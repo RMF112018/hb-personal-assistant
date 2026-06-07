@@ -29,7 +29,12 @@ from .proof import (
     build_mcp_prompts_proof,
     build_mcp_tool_broker_proof,
 )
-from .registry import load_allowed_tools, load_denied_actions, load_global_requirements
+from .registry import (
+    get_mcp_raw_content_posture,
+    load_allowed_tools,
+    load_denied_actions,
+    load_global_requirements,
+)
 from .resources import load_resources, snapshot_resource_registry
 from .store import (
     _sha256,
@@ -256,6 +261,16 @@ def run_mcp_permission_audit(
         },
         "guardrails": {"read_only": True, "metadata_only": True, "no_raw_content": True},
     }
+
+    # P09: include raw MCP posture in audit (explicit, default disabled)
+    try:
+        mcp_raw = get_mcp_raw_content_posture()
+        report["raw_content_posture"] = mcp_raw
+        if mcp_raw.get("mcp_raw_allowed"):
+            report["guardrails"]["no_raw_content"] = False
+            report["guardrails"]["mcp_raw_allowed"] = True
+    except Exception:
+        pass
 
     serialized = json.dumps(report, indent=2, default=str)
     _assert_no_raw(serialized, "mcp permission-audit report")

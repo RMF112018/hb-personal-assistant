@@ -130,6 +130,27 @@ phase_10_app = typer.Typer(
 )
 app.add_typer(phase_10_app, name="phase-10")
 
+local_model_app = typer.Typer(
+    name="local-model",
+    help="Phase 10 local model runtime readiness (probe-only; no generation, no writeback).",
+    no_args_is_help=True,
+)
+app.add_typer(local_model_app, name="local-model")
+
+ai_jobs_app = typer.Typer(
+    name="ai-jobs",
+    help="Phase 10 AI job posture + dry-run structured extraction (advisory; no writeback).",
+    no_args_is_help=True,
+)
+app.add_typer(ai_jobs_app, name="ai-jobs")
+
+action_intel_app = typer.Typer(
+    name="action-intel",
+    help="Phase 10 action intelligence via the schema-enforced structured-output client.",
+    no_args_is_help=True,
+)
+app.add_typer(action_intel_app, name="action-intel")
+
 automation_app = typer.Typer(
     name="automation",
     help="Phase 08B automation health + observability (read-only status surface).",
@@ -7952,3 +7973,427 @@ def phase_10_review_candidate(
         }
         typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
         raise typer.Exit(1) from None
+
+
+@phase_10_app.command("obsidian-raw-export")
+def phase_10_obsidian_raw_export(
+    project: "str | None" = typer.Option(
+        None, "--project", help="Project key to scope raw packets for export."
+    ),  # noqa: B008
+    date: "str | None" = typer.Option(None, "--date", help="Brief date or note date (YYYY-MM-DD)."),  # noqa: B008
+    dry_run: bool = typer.Option(
+        True,
+        "--dry-run/--apply",
+        help="Default dry-run; --apply to write bounded raw section to Obsidian (only if policy permits).",
+    ),  # noqa: B008
+    json_out: bool = typer.Option(True, "--json"),  # noqa: B008
+) -> None:
+    """Config-gated export of raw email/calendar context packets into Obsidian (bounded, provenance-carrying, explicit markers).
+    Respects obsidian_allow_raw_content + permissive raw_content.mode. Default disabled (no write, no leakage).
+    When enabled, writes under allowlisted Phase 10A raw review markers with frontmatter (raw_content, policy, source refs).
+    """
+    from datetime import date as dt_date
+
+    from hb_assistant.construction.second_brain.local_ai.raw_context import (
+        build_raw_calendar_context_packet,
+        build_raw_email_context_packet,
+    )
+    from hb_assistant.construction.store import ConstructionStore
+    from hb_assistant.obsidian.writer import MarkerBoundedWriter
+
+    try:
+        from hb_assistant.construction.second_brain.local_ai.contracts import (
+            load_raw_content_policy as _load_raw_pol,  # noqa: E402
+        )
+
+        rc = _load_raw_pol()
+        rcd = getattr(rc, "raw_content", None)
+        downstream = getattr(rcd, "downstream", None) if rcd is not None else None
+        flag = (
+            bool(getattr(downstream, "obsidian_allow_raw_content", False))
+            if downstream is not None
+            else False
+        )
+        mode = str(getattr(rcd, "mode", "") or "").lower() if rcd is not None else ""
+        permissive = (
+            mode in ("", "all_supported", "all_supported_plus_downstream") or "downstream" in mode
+        )
+        allowed = bool(flag and permissive)
+    except Exception:
+        allowed = False
+        mode = None
+
+    payload_base = {
+        "command": "second-brain phase-10 obsidian-raw-export",
+        "project": project,
+        "date": date,
+        "dry_run": dry_run,
+        "obsidian_raw_allowed_by_policy": allowed,
+        "raw_policy_mode": mode,
+    }
+
+    if not allowed:
+        payload = {
+            **payload_base,
+            "ok": False,
+            "reason": "obsidian_raw_disabled (default; set obsidian_allow_raw_content + permissive mode in raw_content_policy to enable)",
+        }
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(0 if dry_run else 2)
+
+    # Policy allows: build packets (builders apply their model_context.include_raw_content bounds)
+    store = ConstructionStore()
+    email_pkt = build_raw_email_context_packet(project_key=project, store=store)
+    cal_pkt = build_raw_calendar_context_packet(project_key=project, store=store)
+
+    note_date = dt_date.today().isoformat() if not date else str(date)
+    # Bounded raw note content (explicit, source linked, frontmatter)
+    raw_note = f"""---
+phase: "10A"
+packet_types: ["raw_email_context", "raw_calendar_context"]
+raw_content: true
+policy_mode: {mode or "unknown"}
+project: {project or "global"}
+date: {note_date}
+source_refs: {(email_pkt or {}).get("source_refs", []) + (cal_pkt or {}).get("source_refs", [])}
+guardrails: {{local_first: true, bounded: true, provenance: true, no_pem_jwt_url: true}}
+---
+
+<!-- HB_PHASE10_RAW_CONTEXT:BEGIN -->
+
+# Raw Context Packets (per policy)
+
+## Email
+```json
+{json.dumps(email_pkt, indent=2, default=str)[:8000]}
+```
+
+## Calendar
+```json
+{json.dumps(cal_pkt, indent=2, default=str)[:8000]}
+```
+
+<!-- HB_PHASE10_RAW_CONTEXT:END -->
+"""
+
+    if dry_run:
+        payload = {
+            **payload_base,
+            "ok": True,
+            "dry_run": True,
+            "would_write": True,
+            "note_preview_len": len(raw_note),
+            "email_included": bool((email_pkt or {}).get("raw_content_included")),
+            "calendar_included": bool((cal_pkt or {}).get("raw_content_included")),
+        }
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(0)
+
+    # apply: use MarkerBoundedWriter (preserves outside markers)
+    try:
+        w = MarkerBoundedWriter()
+        w.write_bounded_section(
+            target_date=dt_date.fromisoformat(note_date) if note_date else dt_date.today(),
+            inner_content=raw_note,
+            frontmatter_updates={"phase": "10A", "raw_content": True, "obsidian_raw_export": True},
+            dry_run=False,
+            companion=False,
+        )
+        payload = {**payload_base, "ok": True, "applied": True, "note_date": note_date}
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(0)
+    except Exception as e:  # pragma: no cover - defensive
+        payload = {**payload_base, "ok": False, "error": str(e)[:200]}
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(1) from None
+
+
+# ---------------------------------------------------------------------------
+# Phase 10 Prompt 04 — Local Model Structured Output Client CLI surfaces.
+# Local-only, advisory, dry-run default. No writeback; receipts are hash-only.
+# ---------------------------------------------------------------------------
+@local_model_app.command("status")
+def local_model_status(
+    provider: str = typer.Option(  # noqa: B008
+        "ollama", "--provider", help="ollama|mock. mock is offline-safe (no daemon)."
+    ),
+    mock: bool = typer.Option(  # noqa: B008
+        False, "--mock", help="Shortcut for --provider mock (offline readiness shape)."
+    ),
+    heavy_enabled: bool = typer.Option(  # noqa: B008
+        False, "--heavy-enabled", help="Treat heavy profiles as eligible (still requires a model)."
+    ),
+    write_evidence: bool = typer.Option(  # noqa: B008
+        False, "--write-evidence", help="Also write 03-local-model-status-proof.{json,md}."
+    ),
+    json_out: bool = typer.Option(True, "--json", help="Emit machine-readable JSON (default)."),  # noqa: B008
+) -> None:
+    """Probe local model readiness against the Phase 10 profile tiers (read-only, no generation)."""
+    from hb_assistant.construction.second_brain.local_ai import build_local_model_status
+
+    provider_name = "mock" if mock else provider
+    try:
+        result = build_local_model_status(
+            provider_name=provider_name,
+            heavy_enabled=heavy_enabled,
+            write_evidence=write_evidence,
+        )
+    except Exception as e:
+        payload = {
+            "command": "second-brain local-model status",
+            "ok": False,
+            "status": "status_error",
+            "error": str(e)[:300],
+        }
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(3) from None
+    typer.echo(json.dumps(result, indent=2, default=str) if json_out else str(result))
+    raise typer.Exit(0 if result.get("ready") else 3)
+
+
+@ai_jobs_app.command("status")
+def ai_jobs_status(
+    environment: "str | None" = typer.Option(  # noqa: B008
+        None, "--environment", help="dev|production. Scopes queue/run counts (isolation)."
+    ),
+    db: "str | None" = typer.Option(  # noqa: B008
+        None, "--db", help="Explicit SQLite path (tests/isolation). Default: ambient app DB."
+    ),
+    json_out: bool = typer.Option(True, "--json", help="Emit machine-readable JSON (default)."),  # noqa: B008
+) -> None:
+    """Report Phase 10 AI-job posture: queue counts by status + recent run aggregates (read-only)."""
+    from hb_assistant.construction.store import ConstructionStore
+
+    try:
+        summary = ConstructionStore(db_path=db).ai_job_status_summary(environment=environment)
+        payload: dict[str, Any] = {
+            "command": "second-brain ai-jobs status",
+            "ok": True,
+            **summary,
+            "guardrails": {
+                "read_only": True,
+                "metadata_only": True,
+                "environment_isolated": True,
+            },
+        }
+    except Exception as e:
+        payload = {
+            "command": "second-brain ai-jobs status",
+            "ok": False,
+            "status": "status_error",
+            "error": str(e)[:300],
+        }
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(1) from None
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0)
+
+
+@ai_jobs_app.command("run")
+def ai_jobs_run(
+    fixtures_dir: str = typer.Option(  # noqa: B008
+        "tests/fixtures/local_ai",
+        "--fixtures-dir",
+        help="Directory of local_ai fixtures to exercise the structured-output client against.",
+    ),
+    max_items: int = typer.Option(10, "--max-items", help="Cap fixtures processed this run."),  # noqa: B008
+    profile_id: str = typer.Option(  # noqa: B008
+        "default_extract", "--profile", help="Local model profile to resolve for the run."
+    ),
+    dry_run: bool = typer.Option(  # noqa: B008
+        True,
+        "--dry-run/--apply",
+        help="Preview only (default). --apply is blocked in Phase 10 Prompt 04 (advisory-only).",
+    ),
+    json_out: bool = typer.Option(True, "--json", help="Emit machine-readable JSON (default)."),  # noqa: B008
+) -> None:
+    """Dry-run the structured-output client over local fixtures; report counts + blockers.
+
+    No DB writes, no enqueue, no run row — strictly advisory. Each fixture is validated against the
+    ActionCandidate schema via a deterministic offline backend; would-be hash-only receipt fields
+    are surfaced but never persisted. --apply is intentionally not enabled in Prompt 04.
+    """
+    import pathlib
+
+    from hb_assistant.construction.second_brain.local_ai import (
+        ActionCandidate,
+        StaticOutputClient,
+        StructuredOutputClient,
+        action_candidate_dict_from_fixture,
+        load_local_model_profiles,
+    )
+
+    blockers: list[str] = []
+    if not dry_run:
+        blockers.append("apply_not_enabled_in_p04")
+        payload: dict[str, Any] = {
+            "command": "second-brain ai-jobs run",
+            "ok": False,
+            "dry_run": False,
+            "status": "blocked",
+            "blockers": blockers,
+            "note": "Prompt 04 is advisory-only; the apply/enqueue lifecycle lands in a later prompt.",
+        }
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(2)
+
+    try:
+        profiles = load_local_model_profiles()
+        profile = next((p for p in profiles.profiles if p.profile_id == profile_id), None)
+        if profile is None:
+            raise ValueError(f"unknown profile_id {profile_id!r}")
+        client = StructuredOutputClient()
+        base = pathlib.Path(fixtures_dir)
+        fixture_paths = sorted(base.glob("*.json"))[: max(0, int(max_items))]
+        produced = 0
+        valid = 0
+        items: list[dict[str, Any]] = []
+        for fp in fixture_paths:
+            try:
+                fixture = json.loads(fp.read_text(encoding="utf-8"))
+            except Exception:
+                blockers.append(f"unreadable_fixture:{fp.name}")
+                continue
+            produced += 1
+            candidate = action_candidate_dict_from_fixture(fixture)
+            result = client.run(
+                schema=ActionCandidate,
+                profile=profile,
+                profiles=profiles,
+                system="dry-run structured extraction",
+                prompt="extract action candidate",
+                input_context=json.dumps(fixture.get("input_redacted", {}), sort_keys=True),
+                task_type="extract_email_tasks",
+                backend=StaticOutputClient(json.dumps(candidate)),
+                store=None,
+                dry_run=True,
+            )
+            if result.schema_valid:
+                valid += 1
+            items.append(
+                {
+                    "fixture": fp.name,
+                    "status": result.status,
+                    "schema_valid": result.schema_valid,
+                    "input_context_hash": result.input_context_hash,
+                    "output_hash": result.output_hash,
+                    "would_write_receipt": result.would_write_receipt,
+                }
+            )
+        payload = {
+            "command": "second-brain ai-jobs run",
+            "ok": True,
+            "dry_run": True,
+            "profile_id": profile_id,
+            "produced": produced,
+            "schema_valid": valid,
+            "persisted": 0,
+            "blockers": blockers,
+            "items": items,
+            "guardrails": {
+                "local_only": True,
+                "advisory_only": True,
+                "dry_run_zero_writes": True,
+                "no_enqueue": True,
+                "receipts_hash_only_when_applied": True,
+            },
+        }
+    except Exception as e:
+        payload = {
+            "command": "second-brain ai-jobs run",
+            "ok": False,
+            "dry_run": True,
+            "status": "run_error",
+            "error": str(e)[:300],
+        }
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(1) from None
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0)
+
+
+@action_intel_app.command("extract-fixture")
+def action_intel_extract_fixture(
+    fixture: str = typer.Option(..., "--fixture", help="Path to a local_ai fixture JSON file."),  # noqa: B008
+    profile_id: str = typer.Option(  # noqa: B008
+        "default_extract", "--profile", help="Local model profile to resolve."
+    ),
+    apply: bool = typer.Option(  # noqa: B008
+        False,
+        "--apply",
+        help="Write a hash-only run receipt to local_model_run_receipts. Default: no write.",
+    ),
+    db: "str | None" = typer.Option(  # noqa: B008
+        None, "--db", help="Explicit SQLite path (tests/isolation). Default: ambient app DB."
+    ),
+    json_out: bool = typer.Option(True, "--json", help="Emit machine-readable JSON (default)."),  # noqa: B008
+) -> None:
+    """Run the structured-output client over one fixture and emit the validated ActionCandidate.
+
+    A deterministic offline backend returns the fixture's expected candidate; the client validates
+    it against the ActionCandidate schema. Advisory only — no DB write unless --apply, and even then
+    only a hash-only receipt (never raw prompt/response/body). High-stakes items remain review-only.
+    """
+    import pathlib
+
+    from hb_assistant.construction.second_brain.local_ai import (
+        ActionCandidate,
+        StaticOutputClient,
+        StructuredOutputClient,
+        action_candidate_dict_from_fixture,
+        load_local_model_profiles,
+    )
+    from hb_assistant.construction.store import ConstructionStore
+
+    try:
+        fixture_data = json.loads(pathlib.Path(fixture).read_text(encoding="utf-8"))
+        profiles = load_local_model_profiles()
+        profile = next((p for p in profiles.profiles if p.profile_id == profile_id), None)
+        if profile is None:
+            raise ValueError(f"unknown profile_id {profile_id!r}")
+        candidate = action_candidate_dict_from_fixture(fixture_data)
+        store = ConstructionStore(db_path=db) if apply else None
+        result = StructuredOutputClient().run(
+            schema=ActionCandidate,
+            profile=profile,
+            profiles=profiles,
+            system="fixture structured extraction",
+            prompt="extract action candidate",
+            input_context=json.dumps(fixture_data.get("input_redacted", {}), sort_keys=True),
+            task_type="extract_email_tasks",
+            backend=StaticOutputClient(json.dumps(candidate)),
+            store=store,
+            dry_run=not apply,
+        )
+        payload: dict[str, Any] = {
+            "command": "second-brain action-intel extract-fixture",
+            "ok": result.schema_valid,
+            "fixture_id": fixture_data.get("fixture_id"),
+            "applied": apply,
+            "status": result.status,
+            "schema_valid": result.schema_valid,
+            "candidate": result.validated,
+            "input_context_hash": result.input_context_hash,
+            "output_hash": result.output_hash,
+            "receipt_id": result.receipt_id,
+            "would_write_receipt": result.would_write_receipt,
+            "guardrails": {
+                "local_only": True,
+                "advisory_only": True,
+                "strict_schema": True,
+                "no_writeback": True,
+                "receipt_hash_only": True,
+                "high_stakes_review_only": True,
+            },
+        }
+    except Exception as e:
+        payload = {
+            "command": "second-brain action-intel extract-fixture",
+            "ok": False,
+            "status": "extract_error",
+            "error": str(e)[:300],
+        }
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(1) from None
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0 if result.schema_valid else 3)

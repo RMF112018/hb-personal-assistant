@@ -25,6 +25,12 @@ from ..contracts import load_phase_08d_contract
 from .registry import load_allowed_tools, load_denied_actions
 from .store import _sha256, write_mcp_server_config_snapshot
 
+# Phase 10A P09: raw content downstream policy (config-gated; default disabled)
+try:
+    from ..local_ai.contracts import load_raw_content_policy
+except Exception:  # pragma: no cover
+    load_raw_content_policy = None  # type: ignore
+
 TRANSPORT = "stdio"
 _DENIED_TRANSPORTS = ("http", "sse", "websocket", "tcp", "remote")
 _SERVER_POLICY_SEED = "resources/config/phase_08d_mcp_server_policy.seed.yaml"
@@ -170,10 +176,42 @@ def evaluate_startup_checks(*, db_path: str | None = None) -> dict[str, Any]:
 
     foundation_ok = not any(c["status"] == "fail" for c in checks)
     deferred = [c["name"] for c in checks if c["status"] == "deferred"]
+
+    # Phase 10A P09: compute raw MCP capability from policy (default disabled; only honored in permissive downstream modes)
+    mcp_raw_allowed = False
+    raw_policy_mode = None
+    try:
+        if load_raw_content_policy is not None:
+            rc = load_raw_content_policy()
+            rcd = getattr(rc, "raw_content", None)
+            downstream = getattr(rcd, "downstream", None) if rcd is not None else None
+            mcp_flag = (
+                bool(getattr(downstream, "mcp_allow_raw_content", False))
+                if downstream is not None
+                else False
+            )
+            mode = getattr(rcd, "mode", None) if rcd is not None else None
+            raw_policy_mode = str(mode) if mode else None
+            # permissive if mode allows downstream raw (consistent with P01 seed + validator)
+            permissive = (
+                raw_policy_mode in (None, "", "all_supported", "all_supported_plus_downstream")
+            ) or (str(raw_policy_mode or "").endswith("downstream"))
+            mcp_raw_allowed = bool(mcp_flag and permissive)
+    except Exception:
+        mcp_raw_allowed = False
+        raw_policy_mode = None
+
+    effective_no_raw = not mcp_raw_allowed
+
     return {
         "checks": checks,
         "foundation_ok": foundation_ok,
         "deferred": deferred,
+        "raw_content": {
+            "mcp_raw_allowed": mcp_raw_allowed,
+            "raw_policy_mode": raw_policy_mode,
+            "effective_no_raw_content": effective_no_raw,
+        },
     }
 
 
@@ -225,6 +263,7 @@ def build_mcp_status(*, db_path: str | None = None, persist: bool = True) -> dic
         "mcp_denied_actions": denied_actions,
         "serve_blockers": serve_blockers,
         "checks": startup["checks"],
+        "raw_content": startup.get("raw_content", {}),
     }
     config_hash = _sha256(posture)
 
@@ -236,6 +275,12 @@ def build_mcp_status(*, db_path: str | None = None, persist: bool = True) -> dic
             policy_version=policy_version,
             db_path=db_path,
         )
+
+    raw_info = startup.get("raw_content", {}) if isinstance(startup, dict) else {}
+    guardrails = dict(_MCP_GUARDRAILS)
+    if raw_info:
+        guardrails["no_raw_content"] = raw_info.get("effective_no_raw_content", True)
+        guardrails["mcp_raw_allowed"] = raw_info.get("mcp_raw_allowed", False)
 
     return {
         "command": "second-brain mcp status",
@@ -256,5 +301,6 @@ def build_mcp_status(*, db_path: str | None = None, persist: bool = True) -> dic
         "serve_blockers": serve_blockers,
         "config_hash": config_hash,
         "snapshot_id": snapshot_id,
-        "guardrails": dict(_MCP_GUARDRAILS),
+        "guardrails": guardrails,
+        "raw_content": raw_info,
     }

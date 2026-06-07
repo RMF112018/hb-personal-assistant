@@ -19,6 +19,9 @@ import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING, NamedTuple
 
+# Phase 10A P09: obsidian_allow_raw_content gate is loaded/checked for gated raw section export (additive; default disabled).
+from ..local_ai.contracts import load_raw_content_policy  # noqa: E402
+
 from hb_assistant.config.path_policy import PathPolicy
 
 if TYPE_CHECKING:

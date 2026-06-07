@@ -27,6 +27,10 @@ PACKET_TYPES: tuple[str, ...] = (
     "chat_turn",
     "memory_extraction",
     "targeted_research",
+    # Phase 10A Prompt 09: raw-capable packet types (config-gated downstream exposure via MCP/Obsidian when policy allows)
+    "raw_email_context",
+    "raw_calendar_context",
+    "raw_daily_brief_context",
 )
 
 # Packet types whose synthesis requires a research packet first. ``high_impact_query``
@@ -54,6 +58,9 @@ class ResearchPacketPolicyError(RuntimeError):
 
 def requires_research_packet(packet_type: str) -> bool:
     """Whether synthesis for this packet type must be preceded by a research packet."""
+    if packet_type.startswith("raw_"):
+        # raw_* packets (P09) are self-contained raw context sources; they do not require the standard redacted research packet first.
+        return False
     return packet_type in _REQUIRED_FOR
 
 

@@ -17,6 +17,41 @@ class RegistryUnavailable(RuntimeError):
     """Raised when a required MCP registry is missing or empty (fail-closed)."""
 
 
+# Phase 10A P09: MCP raw capability posture (wired for registry consumers; actual gate lives in broker/wrappers)
+try:
+    from ..local_ai.contracts import load_raw_content_policy
+except Exception:  # pragma: no cover
+    load_raw_content_policy = None  # type: ignore
+
+
+def get_mcp_raw_content_posture() -> dict[str, Any]:
+    """Return effective raw MCP exposure posture (default disabled; explicit + permissive to enable)."""
+    try:
+        if load_raw_content_policy is None:
+            return {"mcp_raw_allowed": False, "raw_policy_mode": None}
+        rc = load_raw_content_policy()
+        rcd = getattr(rc, "raw_content", None)
+        downstream = getattr(rcd, "downstream", None) if rcd is not None else None
+        flag = (
+            bool(getattr(downstream, "mcp_allow_raw_content", False))
+            if downstream is not None
+            else False
+        )
+        mode = str(getattr(rcd, "mode", "") or "") if rcd is not None else ""
+        permissive = (
+            mode in ("", "all_supported", "all_supported_plus_downstream")
+            or "downstream" in mode.lower()
+        )
+        allowed = bool(flag and permissive)
+        return {
+            "mcp_raw_allowed": allowed,
+            "raw_policy_mode": mode or None,
+            "effective_no_raw": not allowed,
+        }
+    except Exception:
+        return {"mcp_raw_allowed": False, "raw_policy_mode": None, "effective_no_raw": True}
+
+
 def load_allowed_tools() -> dict[str, dict[str, Any]]:
     """Return ``{tool_name: spec}`` for the ten allowed workflow tools."""
     contract = load_phase_08d_contract("allowed_tools_contract")

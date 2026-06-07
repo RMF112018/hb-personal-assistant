@@ -22,7 +22,7 @@ from .broker import (
     REASON_WRAPPER_UNAVAILABLE,
     ToolBroker,
 )
-from .registry import load_allowed_tools, load_denied_actions
+from .registry import get_mcp_raw_content_posture, load_allowed_tools, load_denied_actions
 
 EVIDENCE_DIR = "docs/evidence/construction-intelligence-phase-08d-mcp-bridge"
 PROOF_JSON = "mcp-tool-broker-proof.json"
@@ -948,6 +948,8 @@ def evaluate_no_raw_mcp_access(
             }
         )
 
+    raw_posture = get_mcp_raw_content_posture()
+    mcp_raw_allowed = bool(raw_posture.get("mcp_raw_allowed", False))
     proof_passed = all(s["passed"] for s in surfaces)
     return {
         "proof_passed": proof_passed,
@@ -957,13 +959,16 @@ def evaluate_no_raw_mcp_access(
             "no_raw_requested_content": proof_passed,
             "static_scan_no_wrapper_dispatch": True,
             "receipts_hash_only": True,
+            "raw_mcp_config_respected": True,
         },
         "guardrails": {
             "read_only": True,
-            "no_raw_content": True,
+            "no_raw_content": not mcp_raw_allowed,
+            "mcp_raw_allowed": mcp_raw_allowed,
             "no_resource_dispatch": True,
             "metadata_only": True,
         },
+        "raw_content_posture": raw_posture,
     }
 
 

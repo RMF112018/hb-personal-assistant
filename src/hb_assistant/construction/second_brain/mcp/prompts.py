@@ -19,6 +19,12 @@ from .policy import _policy_version
 from .registry import load_allowed_tools
 from .store import _sha256, write_mcp_prompt_registry_snapshot
 
+# Phase 10A P09: raw posture for MCP prompts (baseline discourages raw; explicit raw packet tools are the allowed surface when policy permits)
+try:
+    from ..local_ai.contracts import load_raw_content_policy
+except Exception:  # pragma: no cover
+    load_raw_content_policy = None  # type: ignore
+
 # Posture markers every rendered prompt must carry (asserted by the proof/tests).
 _POSTURE = (
     "This is an advisory, source-linked, review-controlled assistant. "
@@ -38,6 +44,27 @@ _PROMPT_POLICY_POSTURE = {
     "no_final_determination": True,
     "no_policy_bypass": True,
 }
+
+
+def _compute_mcp_raw_allowed() -> bool:
+    try:
+        if load_raw_content_policy is None:
+            return False
+        rc = load_raw_content_policy()
+        rcd = getattr(rc, "raw_content", None)
+        downstream = getattr(rcd, "downstream", None) if rcd is not None else None
+        flag = (
+            bool(getattr(downstream, "mcp_allow_raw_content", False))
+            if downstream is not None
+            else False
+        )
+        mode = str(getattr(rcd, "mode", "") or "").lower() if rcd is not None else ""
+        permissive = (
+            mode in ("", "all_supported", "all_supported_plus_downstream") or "downstream" in mode
+        )
+        return bool(flag and permissive)
+    except Exception:
+        return False
 
 
 def _arg(name: str, required: bool) -> dict[str, Any]:
@@ -152,7 +179,11 @@ def render_prompt(name: str, arguments: dict[str, Any] | None = None) -> dict[st
             "status": "denied",
             "reason_code": "prompt_not_allowed",
             "fail_closed": True,
-            "policy_posture": dict(_PROMPT_POLICY_POSTURE),
+            "policy_posture": {
+                **dict(_PROMPT_POLICY_POSTURE),
+                "no_raw": not _compute_mcp_raw_allowed(),
+                "mcp_raw_allowed": _compute_mcp_raw_allowed(),
+            },
         }
 
     args = arguments or {}
@@ -168,7 +199,11 @@ def render_prompt(name: str, arguments: dict[str, Any] | None = None) -> dict[st
             {"role": "system", "content": _POSTURE},
             {"role": "user", "content": body},
         ],
-        "policy_posture": dict(_PROMPT_POLICY_POSTURE),
+        "policy_posture": {
+            **dict(_PROMPT_POLICY_POSTURE),
+            "no_raw": not _compute_mcp_raw_allowed(),
+            "mcp_raw_allowed": _compute_mcp_raw_allowed(),
+        },
     }
     _assert_no_raw(json.dumps(rendered, default=str), f"mcp prompt {name}")
     return rendered

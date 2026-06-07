@@ -35,6 +35,16 @@ from ..safety import build_second_brain_no_writeback_proof
 from ..synthesis.agent import synthesize_answer
 from .proof import build_mcp_tool_broker_proof
 
+# Phase 10A P09: support building raw packets for MCP exposure (gated by broker; builders enforce their own policy)
+try:
+    from ..local_ai.raw_context import (
+        build_raw_calendar_context_packet,
+        build_raw_email_context_packet,
+    )
+except Exception:  # pragma: no cover
+    build_raw_email_context_packet = None  # type: ignore
+    build_raw_calendar_context_packet = None  # type: ignore
+
 Wrapper = Callable[[dict[str, Any]], dict[str, Any]]
 
 _MAX_LIST = 50
@@ -166,6 +176,49 @@ def mcp_research_packet_wrapper(
         )
         packet = result.packet
         assessment = result.assessment
+        packet_type = str(arguments.get("packet_type") or result.packet_type or "interactive_query")
+        if packet_type.startswith("raw_"):
+            # P09: return the canonical raw context packet (already bounded + carries raw markers when policy permitted the include)
+            raw_pkt: dict[str, Any] | None = None
+            pk = str(arguments.get("project_key") or "") or None
+            if packet_type == "raw_email_context" and build_raw_email_context_packet is not None:
+                raw_pkt = build_raw_email_context_packet(project_key=pk)
+            elif (
+                packet_type == "raw_calendar_context"
+                and build_raw_calendar_context_packet is not None
+            ):
+                raw_pkt = build_raw_calendar_context_packet(project_key=pk)
+            elif packet_type == "raw_daily_brief_context":
+                e = (
+                    build_raw_email_context_packet(project_key=pk)
+                    if build_raw_email_context_packet is not None
+                    else {}
+                )
+                c = (
+                    build_raw_calendar_context_packet(project_key=pk)
+                    if build_raw_calendar_context_packet is not None
+                    else {}
+                )
+                raw_pkt = {
+                    "packet_type": packet_type,
+                    "project_key": pk,
+                    "email_context": e,
+                    "calendar_context": c,
+                }
+            if raw_pkt:
+                try:
+                    from .policy import _policy_version as _pv  # noqa: PLC0415
+
+                    pv = _pv()
+                except Exception:
+                    pv = "unknown"
+                return _bounded(
+                    "ok",
+                    "raw research packet",
+                    [raw_pkt],
+                    source_count=0,
+                    classification="raw_packet",
+                )  # raw exposure is visible inside the packet payload + broker envelope; policy_version carried by builder when present
         return _bounded(
             "ok" if result.research_packet_ok else "degraded",
             "research packet builder",

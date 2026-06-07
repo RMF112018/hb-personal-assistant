@@ -18,6 +18,12 @@ from ..contracts import load_phase_08d_contract
 from ..financial_review_routing import _assert_no_raw
 from .policy import _policy_version
 from .store import _sha256, write_mcp_resource_registry_snapshot
+
+# Phase 10A P09: raw MCP posture (resources remain no-raw by default; packet tools carry raw when allowed)
+try:
+    from ..local_ai.contracts import load_raw_content_policy
+except Exception:  # pragma: no cover
+    load_raw_content_policy = None  # type: ignore
 from .wrappers import (
     mcp_get_daily_brief_wrapper,
     mcp_research_packet_wrapper,
@@ -37,6 +43,28 @@ _RESOURCE_POLICY_POSTURE = {
     "no_raw": True,
     "no_final_determination": True,
 }
+
+
+def _compute_mcp_raw_allowed() -> bool:
+    try:
+        if load_raw_content_policy is None:
+            return False
+        rc = load_raw_content_policy()
+        rcd = getattr(rc, "raw_content", None)
+        downstream = getattr(rcd, "downstream", None) if rcd is not None else None
+        flag = (
+            bool(getattr(downstream, "mcp_allow_raw_content", False))
+            if downstream is not None
+            else False
+        )
+        mode = str(getattr(rcd, "mode", "") or "").lower() if rcd is not None else ""
+        permissive = (
+            mode in ("", "all_supported", "all_supported_plus_downstream") or "downstream" in mode
+        )
+        return bool(flag and permissive)
+    except Exception:
+        return False
+
 
 # uri -> (resource_name, backing approved-workflow wrapper, source description)
 _RESOURCES: dict[str, tuple[str, _ResourceFn, str]] = {
@@ -99,7 +127,11 @@ def read_resource(
             "status": "denied",
             "reason_code": "resource_not_allowed",
             "fail_closed": True,
-            "policy_posture": dict(_RESOURCE_POLICY_POSTURE),
+            "policy_posture": {
+                **dict(_RESOURCE_POLICY_POSTURE),
+                "no_raw": not _compute_mcp_raw_allowed(),
+                "mcp_raw_allowed": _compute_mcp_raw_allowed(),
+            },
         }
 
     resource_name, wrapper, source = entry
@@ -114,7 +146,11 @@ def read_resource(
         "source_count": payload.get("source_count", 0),
         "output_classification": payload.get("output_classification", "bounded_summary"),
         "freshness": {"generated_utc": _now(now), "basis": "computed_live"},
-        "policy_posture": dict(_RESOURCE_POLICY_POSTURE),
+        "policy_posture": {
+            **dict(_RESOURCE_POLICY_POSTURE),
+            "no_raw": not _compute_mcp_raw_allowed(),
+            "mcp_raw_allowed": _compute_mcp_raw_allowed(),
+        },
     }
     _assert_no_raw(json.dumps(resource, default=str), uri)
     return resource

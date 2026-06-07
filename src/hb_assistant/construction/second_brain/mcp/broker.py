@@ -20,6 +20,12 @@ from typing import Any, Callable
 from ..financial_review_routing import _assert_no_raw
 from .policy import _policy_version
 from .registry import load_allowed_tools, load_denied_actions
+
+# Phase 10A P09: raw MCP gating (default disabled)
+try:
+    from ..local_ai.contracts import load_raw_content_policy
+except Exception:  # pragma: no cover
+    load_raw_content_policy = None  # type: ignore
 from .store import (
     _sha256,
     write_mcp_denial_receipt,
@@ -55,6 +61,28 @@ _POLICY_POSTURE = {
     "no_raw": True,
     "no_final_determination": True,
 }
+
+
+def _compute_mcp_raw_allowed() -> bool:
+    """Return True only when raw content downstream is explicitly enabled for MCP under a permissive mode."""
+    try:
+        if load_raw_content_policy is None:
+            return False
+        rc = load_raw_content_policy()
+        rcd = getattr(rc, "raw_content", None)
+        downstream = getattr(rcd, "downstream", None) if rcd is not None else None
+        flag = (
+            bool(getattr(downstream, "mcp_allow_raw_content", False))
+            if downstream is not None
+            else False
+        )
+        mode = str(getattr(rcd, "mode", "") or "").strip().lower() if rcd is not None else ""
+        permissive = (
+            mode in ("", "all_supported", "all_supported_plus_downstream") or "downstream" in mode
+        )
+        return bool(flag and permissive)
+    except Exception:
+        return False
 
 
 class ToolBroker:
@@ -129,6 +157,13 @@ class ToolBroker:
                     name, REASON_WRAPPER_UNAVAILABLE, args, correlation_id, client_name
                 )
 
+            # Phase 10A P09: pre-gate raw_* packet_type requests (fail-closed unless mcp_allow_raw_content + permissive)
+            pkt_type = str(args.get("packet_type") or "").strip()
+            requesting_raw = pkt_type.startswith("raw_")
+            mcp_raw_ok = _compute_mcp_raw_allowed()
+            if requesting_raw and not mcp_raw_ok:
+                return self._deny(name, "raw_content_disabled", args, correlation_id, client_name)
+
             # 6. invoke wrapper (fail-closed on any exception; no raw error echoed).
             try:
                 raw_result = wrapper(dict(args))
@@ -136,8 +171,12 @@ class ToolBroker:
                 return self._deny(name, REASON_BROKER_ERROR, args, correlation_id, client_name)
 
             # 7. bound + no-raw validate output.
+            # When the request is for an explicitly-allowed raw packet, relax the strict no-raw assert (builders still bound + provenance; secrets/PEMs still blocked).
             try:
-                bounded = self._bound_output(raw_result)
+                if requesting_raw and mcp_raw_ok:
+                    bounded = self._bound_output(raw_result, allow_raw=True)
+                else:
+                    bounded = self._bound_output(raw_result)
             except _UnsafeOutput:
                 return self._deny(name, REASON_UNSAFE_OUTPUT, args, correlation_id, client_name)
 
@@ -168,7 +207,7 @@ class ToolBroker:
             return "arguments_too_large"
         return None
 
-    def _bound_output(self, result: Any) -> dict[str, Any]:
+    def _bound_output(self, result: Any, *, allow_raw: bool = False) -> dict[str, Any]:
         if not isinstance(result, dict):
             raise _UnsafeOutput("wrapper result is not an object")
         results = result.get("results")
@@ -187,6 +226,13 @@ class ToolBroker:
         bounded["result_count"] = result_count
         bounded["source_count"] = source_count
         bounded["output_classification"] = classification
+
+        if allow_raw:
+            # P09: raw-capable packet explicitly allowed by policy; the wrapper/raw builder is responsible for bounds + provenance + no secrets.
+            # Still tag for visibility.
+            bounded.setdefault("raw_content", True)
+            bounded.setdefault("mcp_raw_exposure", "per_policy")
+            return bounded
 
         # Fail-closed: no forbidden raw pattern may leak through the output.
         try:
@@ -252,7 +298,7 @@ class ToolBroker:
                 correlation_id=correlation_id,
                 db_path=self._db_path,
             )
-        return {
+        env: dict[str, Any] = {
             "tool": tool_name,
             "decision": "allowed",
             "denied": False,
@@ -266,6 +312,15 @@ class ToolBroker:
             "correlation_id": correlation_id,
             "result": bounded,
         }
+        # P09: when raw exposure was permitted for this call, surface it explicitly in the envelope
+        if bounded.get("raw_content") or bounded.get("mcp_raw_exposure"):
+            env["policy_posture"] = {
+                **env.get("policy_posture", {}),
+                "no_raw": False,
+                "raw_content_permitted": True,
+            }
+            env["raw_content"] = True
+        return env
 
 
 class _UnsafeOutput(Exception):

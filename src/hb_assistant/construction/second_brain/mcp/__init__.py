@@ -30,7 +30,12 @@ from .proof import (
     evaluate_no_writeback_mcp_access,
     evaluate_phase_08d_validation_matrix,
 )
-from .registry import load_allowed_tools, load_denied_actions, load_global_requirements
+from .registry import (
+    get_mcp_raw_content_posture,
+    load_allowed_tools,
+    load_denied_actions,
+    load_global_requirements,
+)
 from .render_template_proof import build_claude_render_template_proof
 from .resources import load_resources, read_all_resources, read_resource
 from .server import MCPUnavailable, serve_stdio
@@ -68,6 +73,7 @@ __all__ = [
     "evaluate_no_writeback_mcp_access",
     "evaluate_phase_08d_validation_matrix",
     "evaluate_startup_checks",
+    "get_mcp_raw_content_posture",
     "load_allowed_tools",
     "load_denied_actions",
     "load_global_requirements",

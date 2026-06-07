@@ -14,6 +14,16 @@ from .models import OrchestratorResult
 from .packet import build_research_packet
 from .policy import requires_research_packet
 
+# Phase 10A P09: raw packet builders (canonical in local_ai/raw_context; thin delegation here for first-class orchestrate support)
+try:
+    from ..local_ai.raw_context import (
+        build_raw_calendar_context_packet,
+        build_raw_email_context_packet,
+    )
+except Exception:  # pragma: no cover - optional for environments without full local_ai
+    build_raw_email_context_packet = None  # type: ignore
+    build_raw_calendar_context_packet = None  # type: ignore
+
 
 class RetrievalOrchestrator:
     """Deterministic orchestrator enforcing research-before-synthesis discipline."""
@@ -29,6 +39,114 @@ class RetrievalOrchestrator:
         families: tuple[str, ...] | None = None,
         emit_receipt: bool = True,
     ) -> OrchestratorResult:
+        # Phase 10A P09: raw-capable packets are first-class (delegated to canonical raw builders when requested).
+        # These bypass the standard broker research path (they source from V42 raw tables when policy + model_context allow).
+        if packet_type in ("raw_email_context", "raw_calendar_context", "raw_daily_brief_context"):
+            store = None
+            try:
+                from hb_assistant.construction.store import ConstructionStore
+
+                store = ConstructionStore(self._db_path)
+            except Exception:
+                store = None
+            raw_pkt: dict[str, Any] | None = None
+            if packet_type == "raw_email_context" and build_raw_email_context_packet is not None:
+                raw_pkt = build_raw_email_context_packet(project_key=project_key, store=store)
+            elif (
+                packet_type == "raw_calendar_context"
+                and build_raw_calendar_context_packet is not None
+            ):
+                raw_pkt = build_raw_calendar_context_packet(project_key=project_key, store=store)
+            elif packet_type == "raw_daily_brief_context" and (
+                build_raw_email_context_packet is not None
+                or build_raw_calendar_context_packet is not None
+            ):
+                # Thin composite adapter for raw daily brief context (email + calendar raw sources for the project)
+                email_p = (
+                    build_raw_email_context_packet(project_key=project_key, store=store)
+                    if build_raw_email_context_packet is not None
+                    else {}
+                )
+                cal_p = (
+                    build_raw_calendar_context_packet(project_key=project_key, store=store)
+                    if build_raw_calendar_context_packet is not None
+                    else {}
+                )
+                raw_pkt = {
+                    "packet_type": "raw_daily_brief_context",
+                    "project_key": project_key,
+                    "email_context": email_p,
+                    "calendar_context": cal_p,
+                    "source_refs": (email_p or {}).get("source_refs", [])
+                    + (cal_p or {}).get("source_refs", []),
+                    "raw_content_included": bool(
+                        (email_p or {}).get("raw_content_included")
+                        or (cal_p or {}).get("raw_content_included")
+                    ),
+                }
+            if raw_pkt is None:
+                # Fallback: treat as blocked research packet (raw builder unavailable)
+                from .models import ResearchPacket, ResearchPacketAssessment
+
+                rp = ResearchPacket(
+                    packet_id=f"raw-fallback-{packet_type}",
+                    topic_hash="raw-fallback",
+                    project_key=project_key,
+                    context_quality_class="insufficient",
+                    degradation_mode="blocked",
+                    status="blocked",
+                    summary_redacted=f"raw packet builder unavailable for {packet_type}",
+                )
+                assessment = ResearchPacketAssessment(degradation_recommendation="blocked")
+                return OrchestratorResult(
+                    packet=rp,
+                    assessment=assessment,
+                    packet_type=packet_type,
+                    request_requires_packet=False,
+                    research_packet_ok=False,
+                    synthesis_allowed=False,
+                    warnings=["raw_builder_unavailable"],
+                )
+            # Adapter: present raw packet via a ResearchPacket stand-in (raw posture is explicit via packet_type and raw_pkt content)
+            from .models import ResearchPacket, ResearchPacketAssessment
+
+            rp = ResearchPacket(
+                packet_id=raw_pkt.get("packet_id")
+                or raw_pkt.get("id")
+                or f"{packet_type}:{project_key or 'global'}",
+                topic_hash=raw_pkt.get("topic_hash") or raw_pkt.get("id") or packet_type,
+                project_key=project_key or raw_pkt.get("project_key"),
+                retrieval_receipt_id=None,
+                source_ref_count=len(raw_pkt.get("source_refs", []))
+                if isinstance(raw_pkt.get("source_refs"), list)
+                else 0,
+                context_quality_class="sufficient",
+                degradation_mode="none",
+                confidence_class="high",
+                review_tier=1,
+                review_tier_reason_code="RAW_CONTEXT",
+                review_status="pending_review",
+                advisory_classification="advisory",
+                summary_redacted=f"raw {packet_type} (see raw_content / bounds / source_refs)",
+                status="ok",
+            )
+            assessment = ResearchPacketAssessment(
+                families_present=[packet_type],
+                source_coverage=1.0,
+                degradation_recommendation="none",
+            )
+            return OrchestratorResult(
+                packet=rp,
+                assessment=assessment,
+                packet_type=packet_type,
+                request_requires_packet=False,
+                research_packet_ok=True,
+                synthesis_allowed=True,
+                retrieval_receipt_id=None,
+                packet_receipt_id=None,
+                warnings=[],
+            )
+
         packet, assessment, retrieval_receipt_id, packet_receipt_id = build_research_packet(
             packet_type=packet_type,
             project_key=project_key,
