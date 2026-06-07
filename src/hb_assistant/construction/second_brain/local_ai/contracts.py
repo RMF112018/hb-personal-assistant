@@ -17,7 +17,13 @@ import yaml
 from hb_assistant.config.path_policy import PathPolicy
 
 from ..contracts import _load_json_resource
-from .models import AiJobPolicy, LocalModelProfiles, McpPacketPolicy, ObsidianVaultPolicy
+from .models import (
+    AiJobPolicy,
+    LocalModelProfiles,
+    McpPacketPolicy,
+    ObsidianVaultPolicy,
+    RawContentPolicy,
+)
 
 # Logical name -> packaged JSON filename (src/hb_assistant/resources/json/).
 PHASE_10_CONTRACT_FILES: dict[str, str] = {
@@ -31,6 +37,7 @@ PHASE_10_CONTRACT_FILES: dict[str, str] = {
     "relationship_candidate_contract": "phase_10_relationship_candidate_contract.json",
     "evaluation_metrics_contract": "phase_10_evaluation_metrics_contract.json",
     "frontend_review_queue_contract": "phase_10_frontend_review_queue_contract.json",
+    "raw_content_policy_contract": "phase_10a_raw_content_policy_contract.json",
 }
 
 # Logical name -> (repo-root seed filename, env override var, Pydantic model).
@@ -39,6 +46,7 @@ PHASE_10_SEED_FILES: dict[str, str] = {
     "ai_job_policy": "phase_10_ai_job_policy.seed.yaml",
     "obsidian_vault_policy": "phase_10_obsidian_vault_policy.seed.yaml",
     "mcp_packet_policy": "phase_10_mcp_packet_policy.seed.yaml",
+    "raw_content_policy": "phase_10a_raw_content_policy.seed.yaml",
 }
 
 _SEED_ENV_VARS: dict[str, str] = {
@@ -46,6 +54,7 @@ _SEED_ENV_VARS: dict[str, str] = {
     "ai_job_policy": "HB_PHASE_10_AI_JOB_POLICY",
     "obsidian_vault_policy": "HB_PHASE_10_OBSIDIAN_VAULT_POLICY",
     "mcp_packet_policy": "HB_PHASE_10_MCP_PACKET_POLICY",
+    "raw_content_policy": "HB_PHASE_10_RAW_CONTENT_POLICY",
 }
 
 
@@ -105,3 +114,8 @@ def load_obsidian_vault_policy() -> ObsidianVaultPolicy:
 def load_mcp_packet_policy() -> McpPacketPolicy:
     """Load + validate the MCP packet policy (fail-closed)."""
     return McpPacketPolicy.model_validate(_load_seed_dict("mcp_packet_policy"))
+
+
+def load_raw_content_policy() -> RawContentPolicy:
+    """Load + validate the raw content policy (Phase 10A Prompt 01; fail-closed)."""
+    return RawContentPolicy.model_validate(_load_seed_dict("raw_content_policy"))

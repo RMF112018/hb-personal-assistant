@@ -35,6 +35,7 @@ from .contracts import (
     load_local_model_profiles,
     load_mcp_packet_policy,
     load_obsidian_vault_policy,
+    load_raw_content_policy,
 )
 
 EVIDENCE_DIR = "docs/evidence/construction-intelligence-phase-10-local-action-intelligence"
@@ -186,11 +187,13 @@ def build_phase_10_contracts_proof(
         schema = contracts["action_candidate_output_schema"]
         required = set(schema.get("required", []))
         source_refs = schema.get("properties", {}).get("source_refs", {})
-        provenance_required = (
-            {"source_refs", "confidence"} <= required and source_refs.get("minItems") == 1
-        )
+        provenance_required = {"source_refs", "confidence"} <= required and source_refs.get(
+            "minItems"
+        ) == 1
         if not provenance_required:
-            errors.append("provenance_required: candidate schema must require source_refs/confidence")
+            errors.append(
+                "provenance_required: candidate schema must require source_refs/confidence"
+            )
         for name, body in contracts.items():
             forbidden_findings.extend(_scan_forbidden(f"contract:{name}", body, json.dumps(body)))
 
@@ -203,6 +206,7 @@ def build_phase_10_contracts_proof(
             "ai_job_policy": load_ai_job_policy,
             "obsidian_vault_policy": load_obsidian_vault_policy,
             "mcp_packet_policy": load_mcp_packet_policy,
+            "raw_content_policy": load_raw_content_policy,
         }
         for name, loader in loaders.items():
             model = loader()
@@ -212,6 +216,31 @@ def build_phase_10_contracts_proof(
         seeds_valid = len(seed_versions) == len(PHASE_10_SEED_FILES)
     except (Phase10ContractError, ValidationError, KeyError) as exc:
         errors.append(f"seeds_valid: {exc}")
+
+    # 3a. Phase 10A Prompt 01 raw content policy attestation (mode + no-writeback prohibition).
+    try:
+        raw_pol = load_raw_content_policy()
+        rc = raw_pol.raw_content
+        if rc.mode not in ("email_calendar", "disabled"):
+            # Prompt 01 supports email_calendar first (disabled also valid but seed uses email_calendar)
+            errors.append(f"raw_content_policy mode not email_calendar: {rc.mode}")
+        p = rc.prohibited_without_future_approval
+        if not (
+            p.external_writeback
+            and p.automatic_email_send
+            and p.automatic_calendar_mutation
+            and p.cloud_llm_submission
+        ):
+            errors.append(
+                "raw_content_policy prohibited_without_future_approval flags not all true"
+            )
+        # downstream should be off in Prompt 01 scope for email_calendar
+        if rc.mode == "email_calendar" and (
+            rc.downstream.mcp_allow_raw_content or rc.downstream.obsidian_allow_raw_content
+        ):
+            errors.append("raw_content_policy downstream allowances unexpectedly enabled")
+    except Exception as exc:
+        errors.append(f"raw_content_policy_attest: {exc}")
 
     # 3. Fixtures: parse + structural validation + forbidden-content scan.
     fixtures_validated: list[str] = []
@@ -279,6 +308,22 @@ def build_phase_10_contracts_proof(
             "environment_isolation_intended": True,
         },
     }
+
+    # Phase 10A Prompt 01: explicit raw content policy snapshot in proof payload (safe metadata only).
+    try:
+        raw_pol = load_raw_content_policy()
+        result["raw_content_policy"] = {
+            "version": raw_pol.version,
+            "mode": raw_pol.raw_content.mode,
+            "enabled": raw_pol.raw_content.enabled,
+            "writeback_prohibited": raw_pol.raw_content.prohibited_without_future_approval.external_writeback,
+            "sources": ["email", "calendar"]
+            if raw_pol.raw_content.mode == "email_calendar"
+            else [],
+            "note": "email_calendar mode first; external writeback remains disabled.",
+        }
+    except Exception as exc:
+        result["raw_content_policy"] = {"error": str(exc)[:120]}
 
     if write_evidence:
         result["evidence_written"] = _write_evidence(result, evidence_dir)

@@ -18,6 +18,7 @@ from .contracts import (
     load_mcp_packet_policy,
     load_obsidian_vault_policy,
     load_phase_10_contract,
+    load_raw_content_policy,
 )
 from .models import (
     HIGH_STAKES_CATEGORIES,
@@ -27,10 +28,21 @@ from .models import (
     LocalModelProfiles,
     McpPacketPolicy,
     ObsidianVaultPolicy,
+    RawContentPolicy,
 )
 from .proof import Phase10ProofError, build_phase_10_contracts_proof
+from .schema import (
+    PHASE_10_GUARD_COLUMNS,
+    PHASE_10_V41_TABLES,
+    Phase10SchemaError,
+    build_phase_10_schema_status_report,
+)
 
 __all__ = [
+    "PHASE_10_GUARD_COLUMNS",
+    "PHASE_10_V41_TABLES",
+    "Phase10SchemaError",
+    "build_phase_10_schema_status_report",
     "PHASE_10_CONTRACT_FILES",
     "PHASE_10_SEED_FILES",
     "Phase10ContractError",
@@ -49,4 +61,6 @@ __all__ = [
     "load_ai_job_policy",
     "load_obsidian_vault_policy",
     "load_mcp_packet_policy",
+    "load_raw_content_policy",
+    "RawContentPolicy",
 ]

@@ -19,6 +19,7 @@ from hb_assistant.cli.second_brain import app
 from hb_assistant.construction.second_brain.local_ai import (
     ActionCandidate,
     Phase10ContractError,
+    RawContentPolicy,
     build_phase_10_contracts_proof,
     load_ai_job_policy,
     load_all_phase_10_contracts,
@@ -26,6 +27,7 @@ from hb_assistant.construction.second_brain.local_ai import (
     load_mcp_packet_policy,
     load_obsidian_vault_policy,
     load_phase_10_contract,
+    load_raw_content_policy,
 )
 from hb_assistant.construction.second_brain.local_ai import contracts as c10
 
@@ -39,12 +41,14 @@ PHASE_10_CONTRACT_NAMES = sorted(c10.PHASE_10_CONTRACT_FILES)
 # ---------------------------------------------------------------------------
 def test_all_contracts_load() -> None:
     contracts = load_all_phase_10_contracts()
-    assert len(contracts) == 10
+    assert len(contracts) == 11  # 10 original + phase_10a raw_content_policy_contract
     for name, body in contracts.items():
         assert isinstance(body, dict) and body, name
     # The action candidate schema is a JSON Schema; the rest carry a logical schema id + version.
     assert contracts["action_candidate_output_schema"]["title"] == "Phase10ActionCandidate"
     assert contracts["ai_job_contract"]["version"] == "1.0.0"
+    # Prompt 01 addendum: raw content policy contract present
+    assert "raw_content_policy_contract" in contracts
 
 
 def test_contract_provenance_requires_source_refs() -> None:
@@ -204,11 +208,15 @@ def test_proof_passes_clean() -> None:
     result = build_phase_10_contracts_proof()
     assert result["proof_passed"] is True
     assert result["overall_status"] == "clean"
-    assert result["contract_count"] == 10
-    assert result["seed_count"] == 4
+    assert result["contract_count"] == 11  # + raw_content_policy_contract
+    assert result["seed_count"] == 5  # + raw_content_policy
     assert len(result["fixtures_validated"]) == 5
     assert result["forbidden_findings"] == []
     assert result["guard_attestation"]["no_external_writeback"] is True
+    # Prompt 01 addendum attestation
+    assert "raw_content_policy" in result
+    assert result["raw_content_policy"]["mode"] == "email_calendar"
+    assert result["raw_content_policy"]["writeback_prohibited"] is True
 
 
 def test_proof_writes_evidence(tmp_path) -> None:
