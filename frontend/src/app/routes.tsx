@@ -14,7 +14,7 @@ import { ProjectMeetingsPage } from '../pages/ProjectMeetingsPage'
 import { ProjectFieldOperationsPage } from '../pages/ProjectFieldOperationsPage'
 import { ProjectCostTimePage } from '../pages/ProjectCostTimePage'
 import { MyItemsPage } from '../pages/MyItemsPage'
-import { AdminDataConfidencePage } from '../pages/AdminDataConfidencePage'
+import { DataHealthPage } from '../pages/DataHealthPage'
 import { SettingsPage } from '../pages/SettingsPage'
 import { GetStartedPage } from '../pages/GetStartedPage'
 import { fetchOnboardingReadiness } from '../hooks/useOnboardingReadiness'
@@ -126,7 +126,7 @@ const router = createBrowserRouter([
       },
       {
         path: 'admin',
-        element: <AdminDataConfidencePage />,
+        element: <DataHealthPage />,
       },
       {
         path: 'settings',

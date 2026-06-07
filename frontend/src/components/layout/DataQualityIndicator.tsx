@@ -1,16 +1,14 @@
 import { useDataQualitySummary } from '../../hooks/useDataQualitySummary';
+import { getDataQualityCopy } from '../../lib/statusCopy';
 
 /**
- * Prompt G — Non-admin sidebar footer Data Quality indicator.
- * Renders a compact "● Data Quality" label with status-driven color.
- * Hover (title) shows latest update + mapped message per 05_FRONTEND_UX_SPEC.
- * Intentionally simple (risk note): no diagnostics, no raw, no heavy UI.
- * Colors:
- *  - green: good
- *  - yellow: degraded / unknown (with prior setup)
- *  - red: poor / no trusted data
- * Loading and error degrade conservatively to neutral/unknown.
- * Admin note is advisory text only (no navigation).
+ * Non-admin sidebar footer Data Quality indicator (P07).
+ * Renders a compact "Data Quality" label with status-driven color dot (green/yellow/red/gray).
+ * Hover and keyboard focus reveal latest update + concise status summary (via visible tooltip + title attr).
+ * Keyboard accessible: focusable trigger (tabIndex), role/aria-describedby on tooltip, Escape to dismiss focus.
+ * Uses getDataQualityCopy for consistent fallback description when no message.
+ * No diagnostics or raw data exposed. Colors: green=good, yellow=degraded/unknown, red=poor, gray=other.
+ * Loading/error degrade to neutral/unknown. Only shown for non-admin roles (gated in SidebarFooter).
  */
 export function DataQualityIndicator() {
   const { data, isLoading, error } = useDataQualitySummary();
@@ -19,8 +17,9 @@ export function DataQualityIndicator() {
   const last = data?.last_updated_at || null;
   const msg = data?.message || null;
 
-  // Map status to visual + hover text (exact phrasing from spec examples, with graceful last-updated).
-  // All values are const; computed once from status.
+  const copy = getDataQualityCopy(status);
+
+  // Map status to visual + hover/focus text. Use copy.description for fallback consistency.
   const label = 'Data Quality';
   let colorClass: string;
   let titleLines: string[];
@@ -30,7 +29,7 @@ export function DataQualityIndicator() {
     titleLines = [
       'Data Quality: Good',
       `Last updated: ${when}`,
-      msg || 'Sources are current.',
+      msg || copy.description,
     ];
   } else if (status === 'degraded' || status === 'unknown') {
     colorClass = 'bg-yellow-500';
@@ -38,33 +37,48 @@ export function DataQualityIndicator() {
     titleLines = [
       'Data Quality: Needs attention',
       `Last updated: ${when}`,
-      msg || 'Some approved sources are stale or pending sync.',
+      msg || copy.description,
     ];
   } else if (status === 'poor') {
     colorClass = 'bg-red-500';
     titleLines = [
       'Data Quality: Poor',
       'Last updated: Not available',
-      msg || 'No approved source data has been collected yet.',
+      msg || copy.description,
     ];
   } else {
     colorClass = 'bg-[var(--hb-muted)]';
     titleLines = ['Data Quality: Unknown', 'Last updated: Not available', 'Status unavailable.'];
   }
 
-  // Append non-admin note for admin users (text only)
-  titleLines.push('Admin users may click through to detailed diagnostics in Settings.');
-
   const title = titleLines.join('\n');
 
   return (
     <div
-      className="px-2 py-1 text-[10px] text-[var(--hb-muted)] flex items-center gap-1.5 cursor-default select-none"
-      title={title}
+      className="relative px-2 py-1 text-[10px] text-[var(--hb-muted)] flex items-center gap-1.5 cursor-default select-none group"
       aria-label={label}
     >
-      <span className={`inline-block w-1.5 h-1.5 rounded-full ${colorClass}`} aria-hidden="true" />
-      <span>{label}</span>
+      <span
+        tabIndex={0}
+        className="inline-flex items-center gap-1.5 outline-none focus-visible:ring-1 focus-visible:ring-[var(--hb-border)] rounded"
+        aria-describedby="data-quality-tooltip"
+        title={title}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') {
+            (e.currentTarget as HTMLElement).blur();
+          }
+        }}
+      >
+        <span className={`inline-block w-1.5 h-1.5 rounded-full ${colorClass}`} aria-hidden="true" />
+        <span>{label}</span>
+      </span>
+      <div
+        id="data-quality-tooltip"
+        role="tooltip"
+        className="hidden group-hover:block group-focus-within:block absolute left-0 bottom-full mb-1 z-50 whitespace-pre-line rounded border border-[var(--hb-border)] bg-[var(--hb-surface)] px-2 py-1 text-[10px] text-[var(--hb-muted)] shadow"
+      >
+        {title}
+      </div>
     </div>
   );
 }

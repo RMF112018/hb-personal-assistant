@@ -4,8 +4,6 @@
 export type NavItem = {
   label: string
   route: string
-  disabled?: boolean
-  title?: string
 }
 
 export const PRIMARY_NAV: NavItem[] = [
@@ -15,12 +13,8 @@ export const PRIMARY_NAV: NavItem[] = [
 ]
 
 export const SUPPORT_NAV: NavItem[] = [
-  { label: 'Admin / Data Confidence', route: '/admin' },
+  { label: 'Data Health', route: '/admin' },
   { label: 'Settings', route: '/settings' },
-]
-
-export const DISABLED_NAV: NavItem[] = [
-  { label: 'Chat', route: '/chat', disabled: true, title: 'Future feature only. No active chat page, widget, or route.' },
 ]
 
 // Domain areas that MUST NOT be top-level nav (they are tabs/sections inside Today, Projects, My Items)
@@ -47,6 +41,5 @@ export function isActive(currentPath: string, itemRoute: string): boolean {
 export const NAV_MODEL = {
   primary: PRIMARY_NAV,
   support: SUPPORT_NAV,
-  disabled: DISABLED_NAV,
   contextualOnly: CONTEXTUAL_ONLY,
 }

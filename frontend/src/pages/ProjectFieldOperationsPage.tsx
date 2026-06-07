@@ -58,7 +58,7 @@ export function ProjectFieldOperationsPage() {
           </>
         )}
       </div>
-      <div className="text-xs mt-2"><Link to="/admin" className="underline">Field data quality and coverage → Admin</Link></div>
+      <div className="text-xs mt-2"><Link to="/admin" className="underline">Field data quality and coverage → Data Health</Link></div>
     </div>
   )
 }

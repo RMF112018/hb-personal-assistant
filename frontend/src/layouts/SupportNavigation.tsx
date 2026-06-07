@@ -1,11 +1,15 @@
 import { Link } from 'react-router-dom'
-import { SUPPORT_NAV, DISABLED_NAV, isActive } from '../navigation/navigationModel'
-import { Shield, Settings as SettingsIcon, MessageCircleOff } from 'lucide-react'
+import { SUPPORT_NAV, isActive } from '../navigation/navigationModel'
+import { Shield, Settings as SettingsIcon } from 'lucide-react'
+import { getLocalUiRole } from '../lib/api'
 
 export function SupportNavigation({ currentPath }: { currentPath: string }) {
+  const localRole = getLocalUiRole()
+  const visibleItems = SUPPORT_NAV.filter((item) => item.route !== '/admin' || localRole === 'admin')
+
   return (
-    <nav aria-label="Support" className="space-y-1 support-nav border-t border-[var(--hb-border)] pt-3 mt-2">
-      {SUPPORT_NAV.map((item) => {
+    <nav aria-label="Support" className="space-y-1 support-nav pt-2 mt-2">
+      {visibleItems.map((item) => {
         const active = isActive(currentPath, item.route)
         return (
           <Link
@@ -14,25 +18,11 @@ export function SupportNavigation({ currentPath }: { currentPath: string }) {
             className={`nav-item ${active ? 'active' : ''}`}
             aria-current={active ? 'page' : undefined}
           >
-            {item.label === 'Admin / Data Confidence' ? <Shield className="h-3.5 w-3.5" /> : <SettingsIcon className="h-3.5 w-3.5" />}
+            {item.route === '/admin' ? <Shield className="h-3.5 w-3.5" /> : <SettingsIcon className="h-3.5 w-3.5" />}
             <span>{item.label}</span>
           </Link>
         )
       })}
-
-      {/* Chat is explicitly disabled - no active route or nav item per spec */}
-      {DISABLED_NAV.map((item) => (
-        <div
-          key={item.route}
-          className="nav-item disabled flex items-center gap-2 opacity-40"
-          title={item.title}
-          aria-disabled="true"
-        >
-          <MessageCircleOff className="h-3.5 w-3.5" />
-          <span>{item.label}</span>
-          <span className="ml-auto text-[9px]">(disabled)</span>
-        </div>
-      ))}
     </nav>
   )
 }
