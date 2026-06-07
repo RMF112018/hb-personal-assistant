@@ -3,8 +3,8 @@
   "command": "second-brain daily-brief v2-proof",
   "phase": "09-addendum-v2",
   "proof_passed": true,
-  "generated_utc": "2026-06-06T16:53:39.608556+00:00",
-  "repo_sha": "9429d10df38fbe2d3df1ea40fb0f7b4901121f5f",
+  "generated_utc": "2026-06-06T20:54:19.656695+00:00",
+  "repo_sha": "ec19ac0eda30c296c8c91963a2517cc4f9747be8",
   "check_count": 21,
   "required_checks": [
     "agenda_today_or_none",

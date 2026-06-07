@@ -21,7 +21,7 @@
       "brief_date": null,
       "day_offset": 0,
       "force": false,
-      "original_run_registry_id": "8f2000c38141452686be92c3c2088e18",
+      "original_run_registry_id": "93079ea7db344fa7b7a089007e168cf1",
       "replay_selector": "failed-only",
       "replay_stages": []
     },
@@ -32,7 +32,7 @@
         "brief_date": null,
         "day_offset": 0,
         "force": false,
-        "original_run_registry_id": "8f2000c38141452686be92c3c2088e18",
+        "original_run_registry_id": "93079ea7db344fa7b7a089007e168cf1",
         "replay_selector": "failed-only",
         "replay_stages": []
       },
@@ -132,7 +132,7 @@
       ],
       "overall_status": "planned",
       "dry_run": true,
-      "generated_utc": "2026-06-05T16:52:05.495947+00:00",
+      "generated_utc": "2026-06-08T09:00:00+00:00",
       "policy_version": "phase_08b_automation_executor_policy_v1",
       "stage_registry_version": "phase_08b_executor_stage_registry_v1",
       "reason_codes_used": [
@@ -244,14 +244,14 @@
         "automation_execution_ready_via_proof": true
       }
     },
-    "run_registry_id": "f078b2f218f54d108f1256e59661a43e",
+    "run_registry_id": "ca6eb77dfd0846cd9bda976989625bdb",
     "stage_receipts": [
       {
         "stage": "daily_brief_generate",
         "order": 2,
         "status": "succeeded",
-        "started_utc": "2026-06-05T16:52:05.633766+00:00",
-        "finished_utc": "2026-06-05T16:52:05.633791+00:00",
+        "started_utc": "2026-06-08T09:00:00+00:00",
+        "finished_utc": "2026-06-08T09:00:00+00:00",
         "duration_ms": 0,
         "reason_code": "STAGE_CORE_COMPLETE",
         "detail": null,

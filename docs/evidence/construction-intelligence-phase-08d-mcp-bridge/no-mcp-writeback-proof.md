@@ -11,7 +11,7 @@ Deterministic, read-only scan proving no MCP surface (permission policy, denied 
 | --- | --- | --- |
 | permission_policy | true | 8 allow_* flags, all false=True |
 | denied_registry | true | writeback/direct-API/URL actions all denied |
-| tool_wrappers | true | nine workflow-wrapper-only tools; workflow-only + no-writeback required |
+| tool_wrappers | true | ten workflow-wrapper-only tools; workflow-only + no-writeback required |
 | receipts | true | writeback/API guard columns present and CHECK(=0); all guard columns zero |
 | config_preview | true | no raw keys/patterns |
 | server_guardrails | true | no raw keys/patterns |
@@ -24,4 +24,4 @@ Deterministic, read-only scan proving no MCP surface (permission policy, denied 
 - no_arbitrary_sql: true
 - metadata_only: true
 
-Generated: 2026-06-06T08:43:46.905633+00:00
+Generated: 2026-06-06T21:11:45.777693+00:00

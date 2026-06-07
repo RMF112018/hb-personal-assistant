@@ -3,8 +3,8 @@
   "command": "second-brain retrieval coverage-parity-closeout",
   "phase": "09",
   "closeout_ok": true,
-  "generated_utc": "2026-06-06T08:42:33.896938+00:00",
-  "repo_sha": "db029a0f954b26294bc3c423214ce143ac8ea1b3",
+  "generated_utc": "2026-06-06T17:11:58.836622+00:00",
+  "repo_sha": "6e5527519fbb9f14df5eb6ed51646dc9398a550f",
   "coverage_parity": {
     "deterministic_allowlisted_family_count": 10,
     "deterministic_reader_family_count": 10,

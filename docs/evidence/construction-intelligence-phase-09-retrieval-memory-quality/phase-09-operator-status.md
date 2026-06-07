@@ -2,7 +2,7 @@
 
 - operator_status_ok: True
 - overall_status: advisory_ready
-- generated_utc: 2026-06-06T11:14:21.679324+00:00
+- generated_utc: 2026-06-06T17:11:56.007360+00:00
 - schema_ready: True | gates_ok: True | all_contracts_present: True
 - readiness_overstated: False (must be false)
 - surface_count: 24 | with status/build/proof/eval/gates: {'status': 7, 'build': 14, 'proof': 22, 'eval': 0, 'gates': 1}

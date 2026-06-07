@@ -14,12 +14,12 @@
   },
   "partial_surfaces": {
     "last_failed": "daily_brief_generate",
-    "failure_class": "RETRY_PERMANENT_UNKNOWN",
-    "last_good_unchanged": false
+    "failure_class": "WEEKEND_GATE_SKIPPED",
+    "last_good_unchanged": true
   },
   "exhaust_surfaces": {
-    "retry_exhausted": true,
-    "failure_class": "RETRY_TRANSIENT_LOCAL"
+    "retry_exhausted": false,
+    "failure_class": null
   },
   "replayable_elg": false,
   "job_health_called_on_all": true,

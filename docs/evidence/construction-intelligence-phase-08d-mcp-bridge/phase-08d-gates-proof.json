@@ -4,9 +4,9 @@
   "proof_passed": true,
   "ok": true,
   "phase": "08D",
-  "generated_utc": "2026-06-06T07:47:23.822813Z",
-  "schema_version": 39,
-  "schema_version_expected": 39,
+  "generated_utc": "2026-06-06T21:16:13.382184Z",
+  "schema_version": 40,
+  "schema_version_expected": 40,
   "contract_version": "1.4.0-phase-08d-planning",
   "advisory_only": true,
   "ready_to_serve": true,
@@ -39,7 +39,7 @@
       "gate_status": "pass",
       "blocking": 0,
       "reason": null,
-      "schema_version": 39,
+      "schema_version": 40,
       "contracts": 10
     },
     {
@@ -53,8 +53,8 @@
       "gate_status": "pass",
       "blocking": 0,
       "reason": null,
-      "count": 9,
-      "expected": 9
+      "count": 10,
+      "expected": 10
     },
     {
       "gate_name": "denied_tools",
@@ -84,8 +84,8 @@
       "gate_status": "pass",
       "blocking": 0,
       "reason": null,
-      "count": 9,
-      "expected": 9
+      "count": 10,
+      "expected": 10
     },
     {
       "gate_name": "receipts",

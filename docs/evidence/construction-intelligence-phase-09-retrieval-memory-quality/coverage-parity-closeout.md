@@ -1,7 +1,7 @@
 # Phase 09 — Coverage Parity Closeout
 
 - closeout_ok: True
-- generated_utc: 2026-06-06T08:42:33.896938+00:00
+- generated_utc: 2026-06-06T17:11:58.836622+00:00
 - coverage_parity_ok: True
 - deterministic_allowlisted_family_count: 10
 - deterministic_reader_family_count: 10
