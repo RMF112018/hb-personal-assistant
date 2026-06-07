@@ -67,7 +67,6 @@ export function TodayPage() {
 
   return (
     <PrimaryPageLayout
-      actions={<CheckDataHealthLink />}
       status={<TodayStatusRow freshness={d.freshness} confidence={d.confidence_summary} projectCount={d.project_count} />}
     >
       <DashboardGrid columns="sections" gap="lg">

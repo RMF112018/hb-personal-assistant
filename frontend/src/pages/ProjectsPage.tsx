@@ -48,7 +48,6 @@ export function ProjectsPage() {
           projectCount={individuals.length}
         />
       }
-      actions={<AllProjectsLink label="Open All Projects" />}
     >
       <DashboardGrid>
         <DashboardCard title="Active Projects" span="wide" tone="success">

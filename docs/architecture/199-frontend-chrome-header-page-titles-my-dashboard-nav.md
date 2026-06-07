@@ -92,3 +92,27 @@ Final model summary:
 - Today navigation from My Dashboard page (and reciprocal surfaces) provides the in-page access path.
 
 Post-execution: architecture updated; exact verification block run; only refinement deltas staged for traditional commit (manifest title + version 2026-06-07 / 0.0.0); final agent output is solely the summary + description.
+
+## Generalization (this pass)
+
+Per follow-up request, the redundant top actions bar (duplicate of the primary action already rendered inside the status row) was removed from the remaining primary dashboard pages, generalizing the prior My Dashboard polish.
+
+- `frontend/src/pages/TodayPage.tsx`: removed `actions={<CheckDataHealthLink />}` from the success PrimaryPageLayout (import retained for error state and one inner TodaySectionEmpty action). `status={<TodayStatusRow ... />}` remains; TodayStatusRow already renders the "Check Data Health" link, so the status row now sits directly under the "Today" chrome header with no duplicate bar.
+
+- `frontend/src/pages/ProjectsPage.tsx`: removed `actions={<AllProjectsLink label="Open All Projects" />}` (import retained for two inner SectionCard actions). `status={<ProjectStatusRow ... />}` remains (provides the connections link). "Open All Projects" affordance remains discoverable inside the "All Projects" section card on the page body.
+
+- `frontend/src/pages/ProjectDashboardPage.tsx`: removed `actions={<ProjectConnectionsLink />}` (import retained for the "No project overview yet." EmptyState). Applies to both the aggregated "all" view and per-project `/:projectKey` detail routes. `status={<ProjectStatusRow ... />}` supplies the link.
+
+- `frontend/src/components/layout/DashboardPrimitives.test.tsx`: first test description and comments refreshed to record that primary pages no longer supply a duplicative top actions prop (status rows own the controls) while the primitive continues to support the dual (status + actions) pattern for contract coverage / future use.
+
+- No changes to PrimaryPageLayout (conditional already tightened in prior polish), the *StatusRow or *Actions components (they are the source of truth for the controls), MyItemsPage (already clean), SettingsPage (bare layout with no status/actions), or sub-pages / secondary surfaces.
+
+- Tests: all link expectations ("Check Data Health", "Review project connections in Settings", "Open All Projects", etc.) continue to pass because the elements remain in the DOM via status rows or scoped inner content/empty states. 51/51 tests green.
+
+- Architecture: this generalization section appended. All prior invariants (chrome owns titles + dynamic resolution, single sr-only h1 per route, no duplicate body titles, copy-regression harness, legacy paths, read discipline) preserved. Pre-existing lint warning (ErrorBoundary) noted as unrelated.
+
+- Verification: exact block executed (cd frontend; the four npm commands; the three greps with || true); lint clean (0 errors), type/build clean, tests pass; greps show expected patterns only.
+
+- Commit: only the generalization deltas (three pages + primitives test + this ADR append) staged; traditional commit with manifest title + version; final output solely summary + description.
+
+This closes the "remove the redundant row from all pages" objective while keeping the design where status rows are the canonical place for the primary page-level action links directly under the chrome header.

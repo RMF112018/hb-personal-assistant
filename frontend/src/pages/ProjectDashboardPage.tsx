@@ -50,7 +50,6 @@ export function ProjectDashboardPage() {
           projectCount={isAll ? o.project_count : 1}
         />
       }
-      actions={<ProjectConnectionsLink />}
     >
       <ProjectSubNav projectKey={key} />
 
