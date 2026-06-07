@@ -20,7 +20,7 @@ import { GetStartedPage } from '../pages/GetStartedPage'
 import { fetchOnboardingReadiness } from '../hooks/useOnboardingReadiness'
 
 // Root layout using the required AppShell (provides primary + support nav + header + outlet)
-// Prompt D: index is now a readiness-driven StartupRedirect (first_time → /get-started; otherwise → /today).
+// Prompt D: index is now a readiness-driven StartupRedirect (first_time → /get-started; otherwise → /my-dashboard).
 // Get Started is intentionally not in PRIMARY_NAV (special auto + direct-link + Settings affordance).
 function RootLayout() {
   return (
@@ -34,8 +34,8 @@ function RootLayout() {
  * StartupRedirect (Prompt D)
  * - On mount fetches /api/onboarding/readiness (plain fetch, no hook).
  * - If onboarding_state === 'first_time' navigates (replace) to /get-started.
- * - Otherwise (ready/degraded/reauth_required with prior setup) → /today.
- * - Renders a minimal non-flicker loader while deciding to avoid flashing Today for first-timers.
+ * - Otherwise (ready/degraded/reauth_required with prior setup) → /my-dashboard.
+ * - Renders a minimal non-flicker loader while deciding to avoid flashing My Dashboard for first-timers.
  * - Returning stale-auth users with has_prior_setup are sent to main app (panel will surface reauth cards).
  */
 function StartupRedirect() {
@@ -51,11 +51,11 @@ function StartupRedirect() {
         if (r && r.onboarding_state === 'first_time') {
           navigate('/get-started', { replace: true });
         } else {
-          navigate('/today', { replace: true });
+          navigate('/my-dashboard', { replace: true });
         }
       } catch {
-        // On any error (backend down, etc.) fail open to today to avoid hard block.
-        if (!cancelled) navigate('/today', { replace: true });
+        // On any error (backend down, etc.) fail open to my-dashboard to avoid hard block.
+        if (!cancelled) navigate('/my-dashboard', { replace: true });
       } finally {
         if (!cancelled) setDeciding(false);
       }
@@ -121,6 +121,13 @@ const router = createBrowserRouter([
       {
         path: 'projects/:projectKey/cost-time',
         element: <ProjectCostTimePage />,
+      },
+      // Canonical My Dashboard route (renders the former My Items work-queue page content).
+      // Legacy /my-items kept below for alias compatibility; title resolver maps both to 'My Dashboard'.
+      {
+        path: 'my-dashboard',
+        element: <MyItemsPage />,
+        handle: { title: 'My Dashboard' },
       },
       {
         path: 'my-items',

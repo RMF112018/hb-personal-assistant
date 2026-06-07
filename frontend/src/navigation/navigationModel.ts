@@ -8,15 +8,8 @@ export type NavItem = {
 }
 
 export const PRIMARY_NAV: NavItem[] = [
-  {
-    label: 'My Dashboard',
-    route: '/today',
-    children: [
-      { label: 'Today', route: '/today' },
-    ],
-  },
+  { label: 'My Dashboard', route: '/my-dashboard' },
   { label: 'Projects', route: '/projects' },
-  { label: 'My Items', route: '/my-items' },
 ]
 
 export const SUPPORT_NAV: NavItem[] = [
@@ -24,7 +17,7 @@ export const SUPPORT_NAV: NavItem[] = [
   { label: 'Settings', route: '/settings' },
 ]
 
-// Domain areas that MUST NOT be top-level nav (they are tabs/sections inside Today, Projects, My Items)
+// Domain areas that MUST NOT be top-level nav (they are tabs/sections inside Today, Projects, My Dashboard)
 export const CONTEXTUAL_ONLY: string[] = [
   'Portfolio',
   'Meetings',
@@ -53,7 +46,8 @@ export function getRouteTitleForPath(path: string): string {
   if (path.startsWith('/projects/all')) return 'All Projects'
   if (path.startsWith('/projects/')) return 'Project'
   if (path.startsWith('/projects')) return 'Projects'
-  if (path.startsWith('/my-items')) return 'My Items'
+  // My Dashboard is the canonical route for the former My Items work queue; legacy /my-items aliases here.
+  if (path.startsWith('/my-dashboard') || path.startsWith('/my-items')) return 'My Dashboard'
   if (path.startsWith('/admin')) return 'Data Health'
   if (path.startsWith('/settings')) return 'Settings'
   // Prompt D

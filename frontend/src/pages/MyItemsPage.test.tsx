@@ -98,7 +98,7 @@ describe('MyItemsPage work queue', () => {
   it('renders source-agnostic loading and error states', () => {
     useQueryMock.mockReturnValue({ data: null, isLoading: true, error: null })
     const { unmount } = renderMyItems()
-    expect(screen.getByText('Loading My Items')).toBeInTheDocument()
+    expect(screen.getByText('Loading My Dashboard')).toBeInTheDocument()
     unmount()
 
     useQueryMock.mockReturnValue({ data: null, isLoading: false, error: new Error('Graph diagnostics failed') })

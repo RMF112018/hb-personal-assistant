@@ -45,7 +45,7 @@ export function MyItemsPage() {
   const { data: my, isLoading, error } = useQuery({ queryKey: ['my-items'], queryFn: api.getMyItems })
 
   if (isLoading) {
-    return <LoadingState label="Loading My Items" />
+    return <LoadingState label="Loading My Dashboard" />
   }
 
   if (error) {

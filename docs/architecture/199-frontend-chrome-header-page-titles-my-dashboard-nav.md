@@ -72,3 +72,23 @@ All changes are source-only UI structure/copy; behavior, data, auth, and backend
 This addendum closes the explicit "Chrome Header Owns Page Titles" objective and the coupled "My Dashboard navigation" requirement while preserving all prior P0/P1 invariants from the parent package.
 
 Evidence of the run (full command output) lives with the commit and operator logs. Future shell or navigation work must keep the chrome as the title owner and must update `getRouteTitleForPath` + route handles + MainNavigation children rendering for any new top-level or nested views.
+
+## Refinement (this pass)
+
+Per post-addendum clarification, the navigation model was adjusted so that "My Dashboard" renders the former "My Items" work-queue page content, "My Items" no longer appears as a nav option, and "Today" does not appear in the sidebar at all (Today content is reached via in-page links from the My Dashboard view and from other surfaces).
+
+- `frontend/src/navigation/navigationModel.ts`: `PRIMARY_NAV` reduced to flat two-item list: `[{ label: 'My Dashboard', route: '/my-dashboard' }, { label: 'Projects', route: '/projects' }]`. `children` support and prior nesting removed for this model. `getRouteTitleForPath` updated to return 'My Dashboard' for paths starting with `/my-dashboard` or legacy `/my-items`; 'Today' continues to resolve for `/today`. CONTEXTUAL_ONLY comment and related wording cleaned.
+- `frontend/src/app/routes.tsx`: Added clean `path: 'my-dashboard'` entry rendering `<MyItemsPage />` with `handle: { title: 'My Dashboard' }`. Retained `path: 'my-items'` (same element, legacy alias; its handle left as-is but resolver overrides title). `path: 'today'` retained unchanged (TodayPage remains directly addressable). `StartupRedirect` (and its JSDoc + inline comments) changed from default `/today` to `/my-dashboard`; the root comment and "otherwise → /today" references updated. Root comment re Get Started not in PRIMARY_NAV left as accurate.
+- `frontend/src/layouts/AppShell.tsx`: Sidebar comment updated from "(Today / Projects / My Items)" to "(My Dashboard / Projects)".
+- Label / link hygiene (minimal, only the two "My Items" destination labels): `MyItemsPage.tsx` + its test updated "Loading My Items" → "Loading My Dashboard". `TodayPage.tsx` Action Items empty-state link changed `to="/my-items"` + "Open My Items" → `to="/my-dashboard"` + "Open My Dashboard". `ProjectMeetingsPage.tsx` small link changed from "/my-items" + "See My Items..." → "/my-dashboard" + "See My Dashboard...". All "Open Today" / "Back to Today" links from non-nav surfaces left pointing at `/today` (legitimate in-page reachability).
+- Architecture: this refinement section appended. All prior invariants (chrome owns titles, single sr-only h1 per route, no duplicate body titles, Projects unaffected, legacy paths non-dead) preserved.
+
+Final model summary:
+- Primary nav: My Dashboard (first) | Projects
+- `/my-dashboard` (and legacy `/my-items`) → MyItemsPage content (work queue); chrome title = "My Dashboard"
+- `/today` (and internal links) → TodayPage; Today not in sidebar
+- `/` → StartupRedirect → /my-dashboard (non-first-time)
+- `/today` and `/my-items` continue to function (alias/legacy)
+- Today navigation from My Dashboard page (and reciprocal surfaces) provides the in-page access path.
+
+Post-execution: architecture updated; exact verification block run; only refinement deltas staged for traditional commit (manifest title + version 2026-06-07 / 0.0.0); final agent output is solely the summary + description.

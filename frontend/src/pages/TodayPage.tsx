@@ -118,7 +118,7 @@ export function TodayPage() {
             <TodaySectionEmpty
               title="No items need attention right now."
               hint="Open and aging items for you will appear here."
-              actions={<Link to="/my-items" className="badge">Open My Items</Link>}
+              actions={<Link to="/my-dashboard" className="badge">Open My Dashboard</Link>}
             />
           ) : (
             <TodayList items={actionItemsList} />
