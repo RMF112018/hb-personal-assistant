@@ -1,7 +1,7 @@
 # Dev Launcher Proof (plan-only)
 
 - **command:** `hb-assistant launcher dev --plan --json`
-- **generated_utc:** 2026-06-07T11:51:17.386070+00:00
+- **generated_utc:** 2026-06-07T12:56:00.563920+00:00
 - **status:** `ok`
 
 ## Result
@@ -13,7 +13,7 @@
   "backend_port": 8000,
   "backend_status": "planned",
   "background_mode_active": false,
-  "build_sha": "5d75bf1c",
+  "build_sha": "8287d14c",
   "command": "launcher status",
   "config_profile": "dev",
   "db_path": "<LOCAL_APP_SUPPORT>/app-support (Dev)/db/hb-personal-assistant.sqlite",
@@ -27,7 +27,10 @@
   "frontend_url": "http://127.0.0.1:5173",
   "frontend_url_source": "fallback",
   "log_path": "<LOCAL_APP_SUPPORT>/app-support (Dev)/logs",
-  "mcp_status": "planned",
+  "mcp_managed_by_launcher": false,
+  "mcp_mode": "stdio",
+  "mcp_reason": "stdio MCP is launched by Claude/Cursor and is not a persistent browser-launcher process",
+  "mcp_status": "external_client_managed",
   "opened_url": null,
   "processes": [
     {
@@ -48,7 +51,7 @@
       "pid": null,
       "port": 8000,
       "reason": "plan_only",
-      "started_at": "2026-06-07T11:51:17.368357+00:00",
+      "started_at": "2026-06-07T12:56:00.548587+00:00",
       "status": "planned"
     },
     {
@@ -69,24 +72,7 @@
       "pid": null,
       "port": 5173,
       "reason": "plan_only",
-      "started_at": "2026-06-07T11:51:17.368370+00:00",
-      "status": "planned"
-    },
-    {
-      "argv": [
-        "/Users/bobbyfetting/hb-personal-assistant/.venv/bin/hb-assistant",
-        "second-brain",
-        "mcp",
-        "serve",
-        "--stdio"
-      ],
-      "keep_in_background": true,
-      "log_path": null,
-      "name": "mcp",
-      "pid": null,
-      "port": null,
-      "reason": "plan_only",
-      "started_at": "2026-06-07T11:51:17.368373+00:00",
+      "started_at": "2026-06-07T12:56:00.548597+00:00",
       "status": "planned"
     },
     {
@@ -105,7 +91,7 @@
       "pid": null,
       "port": null,
       "reason": "plan_only",
-      "started_at": "2026-06-07T11:51:17.368376+00:00",
+      "started_at": "2026-06-07T12:56:00.548600+00:00",
       "status": "planned"
     }
   ],

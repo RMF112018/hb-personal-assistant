@@ -438,6 +438,199 @@ export function getDataQualityDetail() {
   return fetchJson<DataQualityDetail>('/api/settings/data-quality/detail');
 }
 
+/* P05 — Graph/Procore Dev UI: environment + aggregate source status, per-source Graph/Procore status +
+ * safe auth bridges, source-refresh actions, and scheduler status. Typed, normalized state models.
+ * Responses are safe metadata only (no tokens, secrets, cache paths, or raw payloads). Errors thrown by
+ * fetchJson are normalized for the UI via getErrorCopy()/safeDisplayText() in lib/errorCopy.ts. */
+
+export interface EnvironmentStatus {
+  surface?: string;
+  status?: string;
+  environment?: 'dev' | 'production' | string;
+  source_refresh_mode?: string;
+  frontend_url?: string;
+  frontend_port?: number;
+  backend_port?: number;
+  app_support_root?: string; // home-redacted (~)
+  live_reads?: any;
+  live_refresh?: { available?: boolean; enabled?: boolean; reason?: string };
+  guardrails?: any;
+}
+
+export interface GraphSourceStatus {
+  surface?: string;
+  system?: string; // microsoft_365_graph
+  state?: string; // connected_valid | reauth_required | cache_present_unverified | not_connected
+  token_type?: string | null;
+  classification?: string | null;
+  account?: string | null;
+  tenant?: string | null;
+  scopes?: string[];
+  expires_in_seconds_if_known?: number | null;
+  scope_presence?: { expected?: string[]; missing?: string[]; all_present?: boolean };
+  next_step?: string | null;
+  message?: string | null;
+  guardrails?: any;
+}
+
+export interface ProcoreSourceStatus {
+  surface?: string;
+  system?: string; // procore
+  state?: string; // not_configured | configured_not_connected | connected
+  auth_status?: string | null;
+  ready_for_live_calls?: boolean;
+  token_cache_present?: boolean;
+  keychain_secret_present?: boolean;
+  env_keys_present?: string[];
+  env_keys_missing?: string[];
+  expires_in_seconds_if_known?: number | null;
+  missing_config?: boolean;
+  missing_mapping?: boolean;
+  mapping?: any;
+  live_reads_enabled?: boolean;
+  hint?: string | null;
+  guardrails?: any;
+}
+
+export interface SourcesStatus {
+  surface?: string;
+  status?: string;
+  environment?: string;
+  source_refresh_mode?: string;
+  live_reads?: any;
+  live_refresh?: any;
+  graph?: any;
+  procore?: any;
+  scheduler?: any;
+  guardrails?: any;
+}
+
+export interface SchedulerStatus {
+  surface?: string;
+  status?: string;
+  job_id?: string;
+  environment?: string;
+  enabled?: boolean;
+  schedule_time_local?: string;
+  timezone?: string;
+  catch_up_on_wake?: boolean;
+  current_local_date?: string;
+  next_expected_run?: string;
+  next_expected_run_from_state?: string | null;
+  last_status?: string | null;
+  last_successful_schedule_date?: string | null;
+  last_attempted_schedule_date?: string | null;
+  consecutive_failures?: number;
+  live_reads_enabled?: boolean;
+  state_health?: string;
+  guardrails?: any;
+}
+
+export interface RefreshReceipt {
+  surface?: string;
+  status?: string; // ok | degraded | blocked | failed
+  dry_run?: boolean;
+  apply?: boolean;
+  mock_data?: boolean;
+  live_reads_enabled?: boolean;
+  live_mode?: string; // local_only | live_source
+  live_read_performed?: boolean; // present on the live (blocked) receipt
+  reason?: string; // present when blocked
+  sqlite_upsert_summary?: any;
+  guardrails?: any;
+  warnings?: string[];
+  failures?: string[];
+  next_operator_action?: string;
+}
+
+export type RefreshMode = 'dry_run' | 'local' | 'live';
+
+/* Environment + aggregate source status (P01/P02). */
+export function getEnvironment() {
+  return fetchJson<EnvironmentStatus>('/api/environment');
+}
+
+export function getSourcesStatus() {
+  return fetchJson<SourcesStatus>('/api/sources/status');
+}
+
+/* Microsoft Graph source status + safe auth bridge (P02). */
+export function getGraphSourceStatus() {
+  return fetchJson<GraphSourceStatus>('/api/sources/graph/status');
+}
+
+export function startGraphSourceAuth() {
+  return fetchJson<GraphAuthStartResult>('/api/sources/graph/auth/start', { method: 'POST' });
+}
+
+export function getGraphSourceAuthStatus(flowId: string) {
+  const qs = encodeURIComponent(flowId);
+  return fetchJson<AuthFlowStatus>(`/api/sources/graph/auth/status?flow_id=${qs}`);
+}
+
+export function refreshGraphSourceAuth() {
+  return fetchJson('/api/sources/graph/auth/refresh', { method: 'POST' });
+}
+
+/* Procore source status + safe OAuth bridge (P03). */
+export function getProcoreSourceStatus() {
+  return fetchJson<ProcoreSourceStatus>('/api/sources/procore/status');
+}
+
+export function startProcoreSourceAuth() {
+  return fetchJson<ProcoreAuthStartResult>('/api/sources/procore/auth/start', { method: 'POST' });
+}
+
+export function getProcoreSourceAuthStatus(flowId: string) {
+  const qs = encodeURIComponent(flowId);
+  return fetchJson<AuthFlowStatus>(`/api/sources/procore/auth/status?flow_id=${qs}`);
+}
+
+export function refreshProcoreSourceAuth() {
+  return fetchJson('/api/sources/procore/auth/refresh', { method: 'POST' });
+}
+
+/* Source-refresh actions (P04). Dry-run never writes the DB; local never calls live clients; live fails
+ * closed unless backend env/config + explicit confirmation permit it. */
+const REFRESH_ENDPOINTS: Record<RefreshMode, string> = {
+  dry_run: '/api/sources/refresh/dry-run',
+  local: '/api/sources/refresh/local',
+  live: '/api/sources/refresh/live',
+};
+
+export function refreshSourcesDryRun() {
+  return fetchJson<RefreshReceipt>(REFRESH_ENDPOINTS.dry_run, { method: 'POST' });
+}
+
+export function refreshSourcesLocal() {
+  return fetchJson<RefreshReceipt>(REFRESH_ENDPOINTS.local, { method: 'POST' });
+}
+
+export function refreshSourcesLive(confirm: boolean) {
+  return fetchJson<RefreshReceipt>(REFRESH_ENDPOINTS.live, {
+    method: 'POST',
+    body: JSON.stringify({ confirm: Boolean(confirm) }),
+  });
+}
+
+/* Action URL selection — choose the refresh endpoint by mode; only `live` carries a confirmation. */
+export function refreshSources(mode: RefreshMode, opts?: { confirm?: boolean }) {
+  const path = REFRESH_ENDPOINTS[mode];
+  if (!path) {
+    throw new Error(`unknown refresh mode: ${mode}`);
+  }
+  const init: RequestInit = { method: 'POST' };
+  if (mode === 'live') {
+    init.body = JSON.stringify({ confirm: Boolean(opts?.confirm) });
+  }
+  return fetchJson<RefreshReceipt>(path, init);
+}
+
+/* Scheduler status for the daily source-refresh job (P04). */
+export function getSchedulerStatus() {
+  return fetchJson<SchedulerStatus>('/api/scheduler/daily-source-refresh/status');
+}
+
 /* Convenience aggregate for pages that prefer a single object. */
 export const api = {
   getToday,
@@ -500,6 +693,22 @@ export const api = {
   // Prompt G — data quality summary (all roles) + admin detail (safe, approval/freshness per source)
   getDataQualitySummary,
   getDataQualityDetail,
+  // P05 — Graph/Procore Dev UI source status + refresh client surfaces (safe metadata only)
+  getEnvironment,
+  getSourcesStatus,
+  getGraphSourceStatus,
+  startGraphSourceAuth,
+  getGraphSourceAuthStatus,
+  refreshGraphSourceAuth,
+  getProcoreSourceStatus,
+  startProcoreSourceAuth,
+  getProcoreSourceAuthStatus,
+  refreshProcoreSourceAuth,
+  refreshSourcesDryRun,
+  refreshSourcesLocal,
+  refreshSourcesLive,
+  refreshSources,
+  getSchedulerStatus,
 };
 
 export default api;

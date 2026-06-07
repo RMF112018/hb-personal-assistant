@@ -144,6 +144,26 @@ def main() -> None:
         note_safe + " Production uses the production app-support DB/config.",
     )
 
+    # 4b. stdio MCP is external-client-managed (never spawned/recorded by launcher).
+    mcp_proof = {
+        "command": "hb-assistant launcher status --environment dev --json (mcp)",
+        "status": "ok",
+        "mcp_status": dev_status["mcp_status"],
+        "mcp_mode": dev_status["mcp_mode"],
+        "mcp_managed_by_launcher": dev_status["mcp_managed_by_launcher"],
+        "mcp_reason": dev_status["mcp_reason"],
+        "process_names": [p["name"] for p in dev_status["processes"]],
+    }
+    _write(
+        "launcher-mcp-external-proof",
+        "Launcher MCP Lifecycle Proof (stdio = external-client-managed)",
+        "hb-assistant launcher dev --json (mcp lifecycle)",
+        _sanitize(mcp_proof, tmp),  # type: ignore[arg-type]
+        note_safe
+        + " stdio MCP is launched by Claude/Cursor; the launcher never spawns/records it "
+        "(absent from process_names) and reports it as external_client_managed.",
+    )
+
     # 5. launcher close (background keeps services)
     profile = prod
     pm = ProcessManager(profile)

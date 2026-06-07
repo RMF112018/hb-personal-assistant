@@ -103,8 +103,9 @@ describe('SettingsPage guided setup', () => {
   it('renders guided settings sections in order', async () => {
     renderSettings()
 
-    // Page label is now non-heading visual text (see PrimaryPageLayout); inner panel headings are still h3/role=heading.
-    await screen.findByText('Settings')
+    // Chrome header owns the page title (no duplicate body label from PrimaryPageLayout).
+    // Wait for first panel content instead of removed page label, then assert inner h3 headings.
+    await screen.findByText('Account Connections')
     const headings = screen.getAllByRole('heading').map((heading) => heading.textContent)
     expect(headings).toEqual(expect.arrayContaining([
       'Account Connections',

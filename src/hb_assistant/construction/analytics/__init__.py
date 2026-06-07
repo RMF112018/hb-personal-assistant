@@ -4,8 +4,10 @@ from .api import ALLOWED_UI_ROLES, create_app, require_operator_role, role_depen
 from .auth_onboarding import AuthOnboardingService
 from .connection_setup import ConnectionSetupService
 from .daily_brief import DailyBriefService
+from .environment_status import EnvironmentStatusService
 from .project_keywords import ProjectKeywordsService
 from .service import AnalyticsService
+from .source_refresh_control import SourceRefreshControlService
 
 __all__ = [
     "ALLOWED_UI_ROLES",
@@ -14,7 +16,9 @@ __all__ = [
     "ConnectionSetupService",
     "create_app",
     "DailyBriefService",
+    "EnvironmentStatusService",
     "ProjectKeywordsService",
     "require_operator_role",
     "role_dependency",
+    "SourceRefreshControlService",
 ]

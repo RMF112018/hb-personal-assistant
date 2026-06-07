@@ -1,10 +1,17 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useParams, Link } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { FreshnessBadge, ConfidenceBadge } from '../components/ui/Badge'
+
+import { EmptyState } from '../components/common/EmptyState'
+import { LoadingState } from '../components/common/LoadingState'
+import { DashboardGrid } from '../components/layout/DashboardGrid'
+import { PrimaryPageLayout } from '../components/layout/PrimaryPageLayout'
+import { ProjectConnectionsLink } from '../components/projects/ProjectActions'
+import { ProjectStatusRow } from '../components/projects/ProjectStatusRow'
 import { ProjectSubNav } from '../components/projects/ProjectSubNav'
-import { EmptyState } from '../components/ui/EmptyState'
+import { SectionCard } from '../components/common/SectionCard'
 import { api } from '../lib/api'
+import { safeDisplayText } from '../lib/errorCopy'
 
 export function ProjectDashboardPage() {
   const { projectKey = 'all' } = useParams()
@@ -18,60 +25,74 @@ export function ProjectDashboardPage() {
   })
 
   if (isLoading) {
-    return <div className="p-6 text-sm text-[var(--hb-muted)]">Loading {title}…</div>
+    return <LoadingState label={`Loading ${title}`} />
   }
 
   const o = overview || {}
-  const fb = o.freshness || {}
-  const cb = o.confidence_summary || {}
 
-  // 8 assistant-like overview sections (Prompt 09 + 11_)
   const sections = [
-    { key: 'important_today', title: 'Important Today', hint: 'High-priority attention, aging decisions, exposure signals.' },
-    { key: 'what_changed', title: 'What Changed', hint: 'Recent Procore, file, correspondence, and signal deltas.' },
-    { key: 'action_items', title: 'Action Items', hint: 'Open, aging, review-required items for the project.' },
-    { key: 'meetings_needing_prep', title: 'Meetings Needing Prep', hint: 'Upcoming meetings, prep status, linked context.' },
-    { key: 'cost_time_signals', title: 'Cost & Time Signals', hint: 'Budget vs actual, change exposure, schedule variance.' },
-    { key: 'field_operations_signals', title: 'Field Operations Signals', hint: 'Logs, observations, punch, inspections, quality/safety.' },
-    { key: 'documents_correspondence', title: 'Documents / Correspondence Highlights', hint: 'Worth-review items, changes, decisions.' },
-    { key: 'startup_closeout_billing', title: 'Startup / Closeout / Billing Attention', hint: 'Where applicable: readiness, blockers, attention.' },
+    { key: 'important_today', title: 'Needs attention', hint: 'No items need attention right now.' },
+    { key: 'what_changed', title: 'Recently updated', hint: 'No recent updates are available yet.' },
+    { key: 'action_items', title: 'Action Items', hint: 'No open action items are visible yet.' },
+    { key: 'meetings_needing_prep', title: 'Meetings', hint: 'No meetings need preparation right now.' },
+    { key: 'cost_time_signals', title: 'Cost & Time', hint: 'Cost and schedule signals will appear after connected data is approved.' },
+    { key: 'field_operations_signals', title: 'Field Operations', hint: 'Field activity will appear after connected data is approved.' },
+    { key: 'documents_correspondence', title: 'Documents and Correspondence', hint: 'Documents and correspondence highlights will appear here.' },
+    { key: 'startup_closeout_billing', title: 'Startup, Closeout, and Billing', hint: 'No startup, closeout, or billing items need attention right now.' },
   ]
 
   return (
-    <div>
+    <PrimaryPageLayout
+      status={
+        <ProjectStatusRow
+          freshness={o.freshness}
+          confidence={o.confidence_summary}
+          projectCount={isAll ? o.project_count : 1}
+        />
+      }
+    >
       <ProjectSubNav projectKey={key} />
-      <div className="flex items-center gap-2 mb-3">
-        <FreshnessBadge status={fb.overall || 'unknown'} minutesAgo={fb.minutes_ago_max} />
-        <ConfidenceBadge level={cb.overall || 'not_available'} />
-        <span className="text-xs text-[var(--hb-muted)] ml-2">advisory • contextual tabs only</span>
-        <Link to="/admin" className="text-xs underline ml-auto">Detailed source/sync/evidence → Admin / Data Confidence</Link>
-      </div>
 
-      <div className="card mb-3">
-        <div className="section-title">{title} • Overview</div>
-        <p className="text-sm">{o.summary || 'Important items, recent changes, attention, and key metrics composed from read models.'}</p>
-        <div className="text-xs mt-2">Meetings, Field Operations, and Cost &amp; Time are available as contextual sections (see tabs above). Documents, correspondence, vendors, billing, schedule, procurement, RFIs, submittals, and design decisions appear inside these or Admin as needed. No top-level domain navs.</div>
-      </div>
+      <SectionCard title="Project overview" description="Current project signals in one place.">
+        <p className="text-sm">
+          {typeof o.summary === 'string' && o.summary.trim().length > 0
+            ? o.summary
+            : 'Project overview will appear after project data is connected and approved.'}
+        </p>
+      </SectionCard>
 
-      <div className="grid md:grid-cols-2 gap-3">
-        {sections.map((s) => {
-          const items = (o[s.key] || o[s.key.replace(/_/g, '')] || []) as any[]
+      <DashboardGrid columns="sections">
+        {sections.map((section) => {
+          const items = getSectionItems(o, section.key)
           return (
-            <div key={s.key} className="card">
-              <div className="section-title">{s.title}</div>
-              {items && items.length > 0 ? (
-                <ul className="text-sm list-disc pl-4 space-y-1">
-                  {items.slice(0, 5).map((it: any, i: number) => <li key={i}>{it.title || it.description || JSON.stringify(it).slice(0, 90)}</li>)}
+            <SectionCard key={section.key} title={section.title}>
+              {items.length > 0 ? (
+                <ul className="list-disc space-y-1 pl-4 text-sm">
+                  {items.slice(0, 5).map((item: any, index: number) => (
+                    <li key={index}>{safeDisplayText(item)}</li>
+                  ))}
                 </ul>
               ) : (
-                <div className="text-sm text-[var(--hb-muted)]">{s.hint}</div>
+                <div className="text-sm text-[var(--hb-muted)]">{section.hint}</div>
               )}
-            </div>
+            </SectionCard>
           )
         })}
-      </div>
+      </DashboardGrid>
 
-      {!overview && <EmptyState title="No overview data" hint="Approve sync (Admin) or refresh sources for this project." />}
-    </div>
+      {!overview && (
+        <EmptyState
+          title="No project overview yet."
+          hint="Review project connections in Settings."
+          actions={<ProjectConnectionsLink />}
+        />
+      )}
+    </PrimaryPageLayout>
   )
+}
+
+function getSectionItems(overview: any, key: string) {
+  const compactKey = key.replace(/_/g, '')
+  const items = overview?.[key] || overview?.[compactKey] || []
+  return Array.isArray(items) ? items : []
 }
