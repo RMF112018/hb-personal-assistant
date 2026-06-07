@@ -27,6 +27,10 @@ class ProcoreOAuthExchangeRequest(BaseModel):
     code: str
 
 
+class RefreshLiveRequest(BaseModel):
+    confirm: bool = False
+
+
 class ConnectionSetupRequest(BaseModel):
     url: str | None = None
     connection_type: str | None = None
@@ -915,6 +919,43 @@ def create_app(*, db_path: str | None = None) -> Any:
         from hb_assistant.construction.analytics.auth_onboarding import AuthOnboardingService
 
         return AuthOnboardingService().attempt_auth_refresh(["procore"])
+
+    @app.post("/api/sources/refresh/dry-run")
+    def sources_refresh_dry_run(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        require_operator_role(role)  # plan only; never writes the DB
+        from hb_assistant.construction.analytics.source_refresh_control import (
+            SourceRefreshControlService,
+        )
+
+        return SourceRefreshControlService(db_path=db_path).dry_run()
+
+    @app.post("/api/sources/refresh/local")
+    def sources_refresh_local(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        require_operator_role(role)  # local/mock only; never constructs a live client
+        from hb_assistant.construction.analytics.source_refresh_control import (
+            SourceRefreshControlService,
+        )
+
+        return SourceRefreshControlService(db_path=db_path).local()
+
+    @app.post("/api/sources/refresh/live")
+    def sources_refresh_live(
+        request: RefreshLiveRequest,
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        require_operator_role(role)  # fails closed unless env+config+confirm all permit live reads
+        from hb_assistant.construction.analytics.source_refresh_control import (
+            SourceRefreshControlService,
+        )
+
+        return SourceRefreshControlService(db_path=db_path).live(confirm=request.confirm)
+
+    @app.get("/api/scheduler/daily-source-refresh/status")
+    def scheduler_daily_source_refresh_status(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role  # all-roles; user-safe status metadata only
+        from hb_assistant.construction.analytics.environment_status import EnvironmentStatusService
+
+        return EnvironmentStatusService().build_scheduler_status()
 
     @app.get("/api/settings/keywords")
     def settings_keywords(role: dict[str, str] = role_dep) -> dict[str, Any]:

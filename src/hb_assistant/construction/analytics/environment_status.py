@@ -217,3 +217,56 @@ class EnvironmentStatusService:
                 "status": "unavailable",
                 "message": "Scheduler state could not be read locally.",
             }
+
+    def build_scheduler_status(self) -> dict[str, Any]:
+        """Offline scheduler status for /api/scheduler/daily-source-refresh/status.
+
+        Built from config + scheduler state + due-time math only — no native-backend subprocess and no
+        ``resolve_profile`` (which would double-append "(Dev)" inside the dev backend).
+        """
+        environment = self._environment()
+        try:
+            from datetime import datetime, timezone
+
+            from hb_assistant.scheduler.due import compute_next_run, current_local_date
+            from hb_assistant.scheduler.state import SchedulerState
+
+            sc = self._config.automation.scheduler
+            state_path = (
+                self._pp.get_app_support() / "scheduler-state" / "daily-source-refresh.json"
+            )
+            state = SchedulerState.load(state_path, environment=environment)
+            now = datetime.now(timezone.utc)
+            today = current_local_date(now, sc.timezone)
+            last_success = state.last_successful_schedule_date
+            future_success = bool(last_success and last_success > today.isoformat())
+            return {
+                "surface": "analytics.scheduler.daily_source_refresh.status",
+                "status": "ok",
+                "job_id": "daily-source-refresh",
+                "environment": environment,
+                "enabled": bool(sc.enabled),
+                "schedule_time_local": sc.schedule_time,
+                "timezone": sc.timezone,
+                "catch_up_on_wake": bool(sc.catch_up_on_wake),
+                "current_local_date": today.isoformat(),
+                "next_expected_run": compute_next_run(
+                    now, sc.schedule_time, sc.timezone
+                ).isoformat(),
+                "next_expected_run_from_state": state.next_expected_run,
+                "last_status": state.last_status,
+                "last_successful_schedule_date": last_success,
+                "last_attempted_schedule_date": state.last_attempted_schedule_date,
+                "consecutive_failures": state.consecutive_failures,
+                "live_reads_enabled": bool(sc.enable_live_reads),
+                "state_health": "future_success_date_detected" if future_success else "ok",
+                "guardrails": _safe_guardrails(),
+            }
+        except Exception:
+            return {
+                "surface": "analytics.scheduler.daily_source_refresh.status",
+                "status": "unavailable",
+                "environment": environment,
+                "message": "Scheduler status could not be read locally.",
+                "guardrails": _safe_guardrails(),
+            }

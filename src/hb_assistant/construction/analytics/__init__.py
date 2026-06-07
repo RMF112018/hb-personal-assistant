@@ -7,6 +7,7 @@ from .daily_brief import DailyBriefService
 from .environment_status import EnvironmentStatusService
 from .project_keywords import ProjectKeywordsService
 from .service import AnalyticsService
+from .source_refresh_control import SourceRefreshControlService
 
 __all__ = [
     "ALLOWED_UI_ROLES",
@@ -19,4 +20,5 @@ __all__ = [
     "ProjectKeywordsService",
     "require_operator_role",
     "role_dependency",
+    "SourceRefreshControlService",
 ]

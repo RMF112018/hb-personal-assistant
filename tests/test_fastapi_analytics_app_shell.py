@@ -154,6 +154,11 @@ def test_openapi_exposes_only_shell_routes(tmp_path: Path) -> None:
         "/api/sources/procore/auth/callback",
         "/api/sources/procore/auth/status",
         "/api/sources/procore/auth/refresh",
+        # P04 — Graph/Procore Dev UI: source refresh + scheduler status surfaces
+        "/api/sources/refresh/dry-run",
+        "/api/sources/refresh/local",
+        "/api/sources/refresh/live",
+        "/api/scheduler/daily-source-refresh/status",
     }
     assert response.json()["info"]["title"] == "HB Personal Assistant Analytics UI Shell"
 
