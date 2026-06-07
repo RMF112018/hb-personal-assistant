@@ -5340,6 +5340,365 @@ class SQLiteMigrator:
         "CREATE INDEX IF NOT EXISTS ix_project_keyword_registry_project_strength ON construction_project_keyword_registry(project_key, strength) WHERE registry_status = 'enabled';",
     ]
 
+    # v41 Phase 10 Local Action Intelligence — additive substrate for local model runtime,
+    # AI jobs, action candidates, follow-ups, relationships, daily-brief candidates, the
+    # Obsidian index, and Claude/MCP packets (V1–V40 untouched; coexists with the V42 raw
+    # content tables). Every table carries the full 13 Phase-10 guard columns (no raw content,
+    # no writeback). Only redacted/hashed columns are stored. Environment isolation lives on
+    # ai_job_queue. The guard fragment is defined once so all 21 tables share an identical set.
+    _P10_GUARDS = """,
+      raw_email_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_email_body_persisted = 0),
+      raw_document_text_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_document_text_persisted = 0),
+      raw_calendar_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_calendar_payload_persisted = 0),
+      raw_procore_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_procore_payload_persisted = 0),
+      raw_prompt_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_prompt_persisted = 0),
+      raw_response_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_response_persisted = 0),
+      signed_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(signed_url_persisted = 0),
+      download_url_persisted INTEGER NOT NULL DEFAULT 0 CHECK(download_url_persisted = 0),
+      external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0),
+      graph_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(graph_writeback_performed = 0),
+      procore_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(procore_writeback_performed = 0),
+      email_send_performed INTEGER NOT NULL DEFAULT 0 CHECK(email_send_performed = 0),
+      calendar_mutation_performed INTEGER NOT NULL DEFAULT 0 CHECK(calendar_mutation_performed = 0)"""
+
+    V41_STATEMENTS: list[str] = [
+        # --- Local model runtime ---
+        f"""
+        CREATE TABLE IF NOT EXISTS local_model_profiles (
+          profile_id TEXT PRIMARY KEY,
+          provider TEXT NOT NULL,
+          model_name TEXT NOT NULL,
+          role TEXT NOT NULL,
+          enabled INTEGER NOT NULL DEFAULT 0,
+          max_context_tokens INTEGER,
+          timeout_seconds INTEGER NOT NULL DEFAULT 120,
+          concurrency_limit INTEGER NOT NULL DEFAULT 1,
+          heavy_profile INTEGER NOT NULL DEFAULT 0,
+          requires_explicit_enable INTEGER NOT NULL DEFAULT 0,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP{_P10_GUARDS}
+        );
+        """,
+        f"""
+        CREATE TABLE IF NOT EXISTS local_model_status_receipts (
+          status_receipt_id TEXT PRIMARY KEY,
+          provider TEXT NOT NULL,
+          generated_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          ready INTEGER NOT NULL DEFAULT 0,
+          daemon_reachable INTEGER NOT NULL DEFAULT 0,
+          profile_count INTEGER NOT NULL DEFAULT 0,
+          available_profile_count INTEGER NOT NULL DEFAULT 0,
+          blockers_json TEXT NOT NULL DEFAULT '[]',
+          detail_json TEXT{_P10_GUARDS}
+        );
+        """,
+        f"""
+        CREATE TABLE IF NOT EXISTS local_model_run_receipts (
+          model_run_receipt_id TEXT PRIMARY KEY,
+          profile_id TEXT NOT NULL,
+          provider TEXT NOT NULL,
+          model_name TEXT NOT NULL,
+          task_type TEXT NOT NULL,
+          status TEXT NOT NULL,
+          input_context_hash TEXT NOT NULL,
+          output_hash TEXT,
+          schema_name TEXT,
+          schema_valid INTEGER NOT NULL DEFAULT 0,
+          input_token_count INTEGER,
+          output_token_count INTEGER,
+          latency_ms INTEGER,
+          fallback_used INTEGER NOT NULL DEFAULT 0,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP{_P10_GUARDS}
+        );
+        """,
+        # --- AI jobs ---
+        f"""
+        CREATE TABLE IF NOT EXISTS ai_job_queue (
+          job_id TEXT PRIMARY KEY,
+          environment TEXT NOT NULL,
+          job_type TEXT NOT NULL,
+          status TEXT NOT NULL,
+          priority INTEGER NOT NULL DEFAULT 100,
+          idempotency_key TEXT NOT NULL,
+          source_watermark TEXT,
+          payload_json TEXT NOT NULL DEFAULT '{{}}',
+          queued_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          started_utc TEXT,
+          finished_utc TEXT,
+          retry_count INTEGER NOT NULL DEFAULT 0,
+          max_retries INTEGER NOT NULL DEFAULT 2,
+          last_error_redacted TEXT{_P10_GUARDS},
+          UNIQUE(environment, job_type, idempotency_key)
+        );
+        """,
+        f"""
+        CREATE TABLE IF NOT EXISTS ai_job_runs (
+          run_id TEXT PRIMARY KEY,
+          job_id TEXT NOT NULL REFERENCES ai_job_queue(job_id) ON DELETE CASCADE,
+          run_kind TEXT NOT NULL,
+          status TEXT NOT NULL,
+          dry_run INTEGER NOT NULL DEFAULT 1,
+          profile_id TEXT,
+          started_utc TEXT NOT NULL,
+          finished_utc TEXT,
+          candidate_count INTEGER NOT NULL DEFAULT 0,
+          accepted_count INTEGER NOT NULL DEFAULT 0,
+          rejected_count INTEGER NOT NULL DEFAULT 0,
+          warning_count INTEGER NOT NULL DEFAULT 0,
+          blockers_json TEXT NOT NULL DEFAULT '[]'{_P10_GUARDS}
+        );
+        """,
+        # --- Action intelligence / candidates ---
+        f"""
+        CREATE TABLE IF NOT EXISTS task_candidates (
+          candidate_id TEXT PRIMARY KEY,
+          stable_key TEXT NOT NULL UNIQUE,
+          title_redacted TEXT NOT NULL,
+          project_key TEXT,
+          assignee_class TEXT NOT NULL,
+          due_at_utc TEXT,
+          urgency TEXT NOT NULL,
+          waiting_state TEXT NOT NULL,
+          safety_category TEXT NOT NULL,
+          confidence REAL NOT NULL,
+          reason_redacted TEXT,
+          recommended_next_action TEXT NOT NULL,
+          review_status TEXT NOT NULL DEFAULT 'pending',
+          model_profile_id TEXT,
+          prompt_template_version TEXT,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP{_P10_GUARDS}
+        );
+        """,
+        f"""
+        CREATE TABLE IF NOT EXISTS commitment_candidates (
+          candidate_id TEXT PRIMARY KEY,
+          stable_key TEXT NOT NULL UNIQUE,
+          title_redacted TEXT NOT NULL,
+          project_key TEXT,
+          commitment_actor_class TEXT NOT NULL,
+          promised_at_utc TEXT,
+          due_at_utc TEXT,
+          urgency TEXT NOT NULL,
+          waiting_state TEXT NOT NULL,
+          safety_category TEXT NOT NULL,
+          confidence REAL NOT NULL,
+          reason_redacted TEXT,
+          recommended_next_action TEXT NOT NULL,
+          review_status TEXT NOT NULL DEFAULT 'pending',
+          model_profile_id TEXT,
+          prompt_template_version TEXT,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP{_P10_GUARDS}
+        );
+        """,
+        f"""
+        CREATE TABLE IF NOT EXISTS candidate_source_refs (
+          source_ref_id TEXT PRIMARY KEY,
+          candidate_type TEXT NOT NULL,
+          candidate_id TEXT NOT NULL,
+          source_family TEXT NOT NULL,
+          source_ref_hash TEXT NOT NULL,
+          source_table TEXT,
+          source_primary_key_hash TEXT,
+          evidence_redacted TEXT,
+          confidence REAL,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP{_P10_GUARDS}
+        );
+        """,
+        f"""
+        CREATE TABLE IF NOT EXISTS candidate_review_events (
+          review_event_id TEXT PRIMARY KEY,
+          candidate_type TEXT NOT NULL,
+          candidate_id TEXT NOT NULL,
+          action TEXT NOT NULL,
+          prior_status TEXT,
+          new_status TEXT,
+          user_note_redacted TEXT,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP{_P10_GUARDS}
+        );
+        """,
+        # --- Follow-ups ---
+        f"""
+        CREATE TABLE IF NOT EXISTS accepted_tasks (
+          accepted_task_id TEXT PRIMARY KEY,
+          candidate_id TEXT REFERENCES task_candidates(candidate_id),
+          title_redacted TEXT NOT NULL,
+          project_key TEXT,
+          status TEXT NOT NULL DEFAULT 'open',
+          due_at_utc TEXT,
+          waiting_state TEXT NOT NULL,
+          safety_category TEXT NOT NULL,
+          accepted_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          completed_utc TEXT{_P10_GUARDS}
+        );
+        """,
+        f"""
+        CREATE TABLE IF NOT EXISTS accepted_commitments (
+          accepted_commitment_id TEXT PRIMARY KEY,
+          candidate_id TEXT REFERENCES commitment_candidates(candidate_id),
+          title_redacted TEXT NOT NULL,
+          project_key TEXT,
+          status TEXT NOT NULL DEFAULT 'open',
+          due_at_utc TEXT,
+          waiting_state TEXT NOT NULL,
+          safety_category TEXT NOT NULL,
+          accepted_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          completed_utc TEXT{_P10_GUARDS}
+        );
+        """,
+        f"""
+        CREATE TABLE IF NOT EXISTS follow_up_watch_items (
+          watch_item_id TEXT PRIMARY KEY,
+          accepted_task_id TEXT,
+          accepted_commitment_id TEXT,
+          project_key TEXT,
+          watch_status TEXT NOT NULL,
+          waiting_state TEXT NOT NULL,
+          next_check_utc TEXT,
+          last_checked_utc TEXT,
+          stale_after_utc TEXT,
+          reason_redacted TEXT,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP{_P10_GUARDS}
+        );
+        """,
+        f"""
+        CREATE TABLE IF NOT EXISTS follow_up_status_events (
+          status_event_id TEXT PRIMARY KEY,
+          watch_item_id TEXT NOT NULL REFERENCES follow_up_watch_items(watch_item_id) ON DELETE CASCADE,
+          prior_status TEXT,
+          new_status TEXT NOT NULL,
+          signal_type TEXT NOT NULL,
+          source_ref_hash TEXT,
+          evidence_redacted TEXT,
+          confidence REAL,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP{_P10_GUARDS}
+        );
+        """,
+        # --- Relationships ---
+        f"""
+        CREATE TABLE IF NOT EXISTS phase10_relationship_candidates (
+          relationship_candidate_id TEXT PRIMARY KEY,
+          from_source_family TEXT NOT NULL,
+          from_source_ref_hash TEXT NOT NULL,
+          to_source_family TEXT NOT NULL,
+          to_source_ref_hash TEXT NOT NULL,
+          relationship_type TEXT NOT NULL,
+          project_key TEXT,
+          confidence REAL NOT NULL,
+          confidence_class TEXT NOT NULL,
+          deterministic INTEGER NOT NULL DEFAULT 0,
+          model_proposed INTEGER NOT NULL DEFAULT 0,
+          review_status TEXT NOT NULL DEFAULT 'pending',
+          reason_redacted TEXT,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP{_P10_GUARDS}
+        );
+        """,
+        # --- Daily brief ---
+        f"""
+        CREATE TABLE IF NOT EXISTS daily_brief_action_candidates (
+          daily_brief_action_candidate_id TEXT PRIMARY KEY,
+          brief_date TEXT NOT NULL,
+          section TEXT NOT NULL,
+          title_redacted TEXT NOT NULL,
+          project_key TEXT,
+          priority INTEGER NOT NULL DEFAULT 100,
+          status TEXT NOT NULL DEFAULT 'candidate',
+          confidence REAL NOT NULL,
+          reason_redacted TEXT,
+          recommended_next_action TEXT,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP{_P10_GUARDS}
+        );
+        """,
+        # --- Obsidian index ---
+        f"""
+        CREATE TABLE IF NOT EXISTS obsidian_note_index (
+          note_id TEXT PRIMARY KEY,
+          vault_profile TEXT NOT NULL,
+          note_path_hash TEXT NOT NULL,
+          note_path_redacted TEXT NOT NULL,
+          title_redacted TEXT,
+          note_type TEXT,
+          last_modified_utc TEXT,
+          indexed_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          managed_section_count INTEGER NOT NULL DEFAULT 0{_P10_GUARDS},
+          UNIQUE(vault_profile, note_path_hash)
+        );
+        """,
+        f"""
+        CREATE TABLE IF NOT EXISTS obsidian_note_tag_index (
+          note_tag_id TEXT PRIMARY KEY,
+          note_id TEXT NOT NULL REFERENCES obsidian_note_index(note_id) ON DELETE CASCADE,
+          tag TEXT NOT NULL,
+          source TEXT NOT NULL,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP{_P10_GUARDS}
+        );
+        """,
+        f"""
+        CREATE TABLE IF NOT EXISTS obsidian_managed_section_registry (
+          managed_section_id TEXT PRIMARY KEY,
+          note_id TEXT NOT NULL REFERENCES obsidian_note_index(note_id) ON DELETE CASCADE,
+          section_key TEXT NOT NULL,
+          marker_start TEXT NOT NULL,
+          marker_end TEXT NOT NULL,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          last_written_utc TEXT{_P10_GUARDS},
+          UNIQUE(note_id, section_key)
+        );
+        """,
+        f"""
+        CREATE TABLE IF NOT EXISTS obsidian_note_update_receipts (
+          update_receipt_id TEXT PRIMARY KEY,
+          note_id TEXT,
+          operation TEXT NOT NULL,
+          mode TEXT NOT NULL CHECK(mode IN ('dry_run','apply')),
+          status TEXT NOT NULL,
+          content_hash TEXT,
+          path_hash TEXT,
+          section_key TEXT,
+          changed_outside_managed_section INTEGER NOT NULL DEFAULT 0 CHECK(changed_outside_managed_section = 0),
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP{_P10_GUARDS}
+        );
+        """,
+        # --- Claude / MCP packets ---
+        f"""
+        CREATE TABLE IF NOT EXISTS claude_context_packets (
+          packet_id TEXT PRIMARY KEY,
+          packet_type TEXT NOT NULL,
+          project_key TEXT,
+          packet_date TEXT,
+          status TEXT NOT NULL,
+          source_ref_count INTEGER NOT NULL DEFAULT 0,
+          token_estimate INTEGER,
+          packet_hash TEXT NOT NULL,
+          output_path_redacted TEXT,
+          output_path_hash TEXT,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP{_P10_GUARDS}
+        );
+        """,
+        f"""
+        CREATE TABLE IF NOT EXISTS claude_context_packet_items (
+          packet_item_id TEXT PRIMARY KEY,
+          packet_id TEXT NOT NULL REFERENCES claude_context_packets(packet_id) ON DELETE CASCADE,
+          item_order INTEGER NOT NULL,
+          item_type TEXT NOT NULL,
+          title_redacted TEXT NOT NULL,
+          source_ref_hash TEXT NOT NULL,
+          confidence REAL,
+          freshness_label TEXT,
+          review_required INTEGER NOT NULL DEFAULT 0,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP{_P10_GUARDS}
+        );
+        """,
+        # --- Indexes (additive; support later-prompt access paths) ---
+        "CREATE INDEX IF NOT EXISTS ix_ai_job_queue_env_status ON ai_job_queue(environment, status);",
+        "CREATE INDEX IF NOT EXISTS ix_task_candidates_review_status ON task_candidates(review_status);",
+        "CREATE INDEX IF NOT EXISTS ix_commitment_candidates_review_status ON commitment_candidates(review_status);",
+        "CREATE INDEX IF NOT EXISTS ix_candidate_source_refs_candidate ON candidate_source_refs(candidate_type, candidate_id);",
+        "CREATE INDEX IF NOT EXISTS ix_follow_up_watch_items_status_check ON follow_up_watch_items(watch_status, next_check_utc);",
+        "CREATE INDEX IF NOT EXISTS ix_daily_brief_action_candidates_date_section ON daily_brief_action_candidates(brief_date, section);",
+        "CREATE INDEX IF NOT EXISTS ix_claude_context_packets_type_date ON claude_context_packets(packet_type, packet_date);",
+    ]
+
     def __init__(self, db_path: str | None = None):
         self._db_path = db_path
 
@@ -5848,6 +6207,16 @@ class SQLiteMigrator:
             if cur.fetchone() is None:
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (40, 'v40_construction_project_keyword_registry', ?)",
+                    (now,),
+                )
+
+            # v41 Phase 10 Local Action Intelligence — additive substrate (additive only).
+            for stmt in self.V41_STATEMENTS:
+                conn.execute(stmt)
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 41")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (41, 'v41_phase_10_local_action_intelligence', ?)",
                     (now,),
                 )
 

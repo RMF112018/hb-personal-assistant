@@ -1,0 +1,22 @@
+{
+  "schema": "phase_10a_raw_content_policy_contract",
+  "version": "1.0.0",
+  "modes": [
+    "disabled",
+    "email_calendar",
+    "all_supported",
+    "all_supported_plus_downstream"
+  ],
+  "default_recommended_mode": "email_calendar",
+  "raw_content_allowed": true,
+  "starting_sources": [
+    "email",
+    "calendar"
+  ],
+  "future_sources": [
+    "files",
+    "procore",
+    "obsidian",
+    "mcp"
+  ]
+}

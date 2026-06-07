@@ -18,7 +18,7 @@
     "phase_owner",
     "blocking_for_phase"
   ],
-  "table_count": 215,
+  "table_count": 221,
   "tables": {
     "construction_data_quality_runs": {
       "table_family": "data_quality_v20v21",
@@ -1954,6 +1954,60 @@
       "blocking_for_phase": "none",
       "v": "V41",
       "notes": "Phase 10 local action intelligence — additive V41. Claude/MCP packet items (source_ref_hash; review_required)"
+    },
+    "raw_content_policy_state": {
+      "table_family": "phase10a_raw_content_v42",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "10A",
+      "blocking_for_phase": "none",
+      "v": "V42",
+      "notes": "Phase 10A raw content enabled local intelligence — additive V42. active raw-content policy state snapshot (one row per environment)"
+    },
+    "email_message_raw_content": {
+      "table_family": "phase10a_raw_content_v42",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "10A",
+      "blocking_for_phase": "none",
+      "v": "V42",
+      "notes": "Phase 10A raw content enabled local intelligence — additive V42. authorized raw email message holder (Phase 10A; redaction exempt by policy)"
+    },
+    "email_thread_raw_context": {
+      "table_family": "phase10a_raw_content_v42",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "10A",
+      "blocking_for_phase": "none",
+      "v": "V42",
+      "notes": "Phase 10A raw content enabled local intelligence — additive V42. authorized raw email thread context holder (Phase 10A)"
+    },
+    "calendar_event_raw_content": {
+      "table_family": "phase10a_raw_content_v42",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "10A",
+      "blocking_for_phase": "none",
+      "v": "V42",
+      "notes": "Phase 10A raw content enabled local intelligence — additive V42. authorized raw calendar event holder (Phase 10A)"
+    },
+    "raw_content_model_context_packets": {
+      "table_family": "phase10a_raw_content_v42",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "10A",
+      "blocking_for_phase": "none",
+      "v": "V42",
+      "notes": "Phase 10A raw content enabled local intelligence — additive V42. raw-content model context packet metadata (Phase 10A)"
+    },
+    "raw_content_access_events": {
+      "table_family": "phase10a_raw_content_v42",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "10A",
+      "blocking_for_phase": "none",
+      "v": "V42",
+      "notes": "Phase 10A raw content enabled local intelligence — additive V42. raw-content access audit events (Phase 10A)"
     }
   }
 }
