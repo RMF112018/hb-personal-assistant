@@ -1,19 +1,15 @@
 
-// Safe presenter for externally generated Markdown only (Prompt 10 / 09 / 08_ contract).
-// The app detects the file (via backend), validates freshness, and renders a polished executive brief.
-// It MUST NOT generate, rewrite, or execute any of the brief content. "Present/polish only".
-// Recommended sections (when present in the external MD) are rendered as titled blocks for executive scanning.
-
 import { Link } from 'react-router-dom'
+import { TechnicalDetails } from '../common/TechnicalDetails'
 
 const STATE_LABELS: Record<string, string> = {
-  not_configured: 'Not configured',
-  external_ai_setup_required: 'External AI setup required',
-  configured_waiting: 'Configured, waiting for next run',
+  not_configured: 'Not available yet',
+  external_ai_setup_required: 'Setup needed',
+  configured_waiting: 'Waiting for the next brief',
   brief_available: 'Brief available',
-  brief_stale: 'Brief stale',
-  brief_generation_failed: 'Brief generation failed',
-  markdown_parse_warning: 'Markdown parse warning',
+  brief_stale: 'May need refresh',
+  brief_generation_failed: 'Brief unavailable',
+  markdown_parse_warning: 'Brief available with formatting notes',
 }
 
 const RECOMMENDED = [
@@ -57,10 +53,15 @@ export function DailyBriefRenderer({
 
   if (!content && !sections) {
     return (
-      <div className="card text-sm">
-        Daily Brief: {label} (external file). Configure via external agent + settings.
-        <div className="advisory mt-1">Source: externally generated Markdown. The app presents/polishes only and does not generate or materially rewrite content.</div>
-        <div className="mt-2 text-xs"><Link to="/settings" className="underline">Open Settings → Daily Brief setup</Link></div>
+      <div className="text-sm">
+        <div className="font-medium">Brief not available yet.</div>
+        <div className="mt-1 text-xs text-[var(--hb-muted)]">Check Daily Brief setup in Settings.</div>
+        <div className="mt-3 text-xs"><Link to="/settings" className="underline">Open Settings</Link></div>
+        <TechnicalDetails
+          summary="Technical details"
+          details={[`Status: ${label}`, path ? `Path: ${path}` : null, ...(warnings || [])].filter(Boolean).join('\n')}
+          className="mt-3"
+        />
       </div>
     )
   }
@@ -72,16 +73,10 @@ export function DailyBriefRenderer({
     : []
 
   return (
-    <div className="card">
+    <div>
       <div className="flex items-center gap-2 text-xs mb-2">
         <span className="badge badge-confidence">{label}</span>
-        {generatedAt && <span className="text-[var(--hb-muted)]">• {generatedAt}</span>}
-        {path && (
-          <>
-            <span className="text-[var(--hb-muted)] truncate">• {path}</span>
-            <button className="badge text-[10px]" onClick={copyPath} title="Copy path to open in your editor or Finder">Copy path</button>
-          </>
-        )}
+        {generatedAt && <span className="text-[var(--hb-muted)]">Last updated {generatedAt}</span>}
       </div>
 
       {haveSections && sectionEntries.length > 0 ? (
@@ -102,13 +97,23 @@ export function DailyBriefRenderer({
       )}
 
       {warnings && warnings.length > 0 && (
-        <div className="text-[10px] text-amber-300 mt-1">Parse warnings: {warnings.join('; ')}</div>
+        <div className="text-[10px] text-amber-300 mt-1">Some brief formatting may need review.</div>
       )}
 
-      <div className="advisory mt-2">
-        Source: externally generated Markdown file. The app presents/polishes only and does not generate or materially rewrite content.
-        <span className="ml-2"><Link to="/settings" className="underline">Configure in Settings</Link></span>
-      </div>
+      <div className="mt-2 text-xs"><Link to="/settings" className="underline">Daily Brief setup</Link></div>
+      <TechnicalDetails
+        summary="Technical details"
+        details={[
+          path ? `Path: ${path}` : null,
+          warnings && warnings.length > 0 ? `Warnings: ${warnings.join('; ')}` : null,
+        ].filter(Boolean).join('\n')}
+        className="mt-3"
+      />
+      {path && (
+        <button className="badge text-[10px] mt-2" onClick={copyPath} title="Copy local file path">
+          Copy path
+        </button>
+      )}
     </div>
   )
 }
