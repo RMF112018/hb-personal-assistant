@@ -746,15 +746,29 @@ def sync_run(
 
     from hb_assistant.procore.sync import run_sync  # lazy, after guard checks
 
-    result = run_sync(
-        project_key=project,
-        dry_run=dry_run and not apply,
-        apply=apply,
-        full_refresh=full_refresh,
-        json_output=json_out,
-        allow_pending=allow_pending,
-        endpoints=endpoints or None,
-    )
+    try:
+        result = run_sync(
+            project_key=project,
+            dry_run=dry_run and not apply,
+            apply=apply,
+            full_refresh=full_refresh,
+            json_output=json_out,
+            allow_pending=allow_pending,
+            endpoints=endpoints or None,
+        )
+    except ProcoreAPIError as exc:
+        # Unknown/pending/mapping-unavailable keys fail closed with a clear envelope
+        # instead of a traceback.
+        _emit(
+            {
+                "command": "procore sync run",
+                "status": "failed",
+                "error": getattr(exc, "message", str(exc)),
+                "guardrails": _GUARDRAILS,
+            },
+            json_out=json_out,
+            exit_code=2,
+        )
     _emit(result, json_out=json_out)
 
 
