@@ -468,3 +468,115 @@ found 0 vulnerabilities
 ## Next (Prompt 20)
 
 With preflight complete and evidence appended (this section), proceed to the implementation steps in strict order per the attached plan: remove raw panels/alerts/stubs from SettingsPage, fix Daily Brief state, refactor to guided sections, implement prefs persistence, implement keyword UI, run validation (pytest + ruff + mypy + frontend + explicit grep), browser smoke, create closeout, update arch, selective commit. Follow "surgical + repo-truth first + update evidence same prompt + only output commit at very end".
+
+## Prompt 22 Preflight Run (re-run in sequence after Prompt 21)
+
+Date: 2026-06-07  
+Branch: main  
+HEAD: e078b8d7c092236e56d3ef950e804e9161d76073
+
+## Baseline Commands Executed (re-run for Prompt 22)
+
+All commands from `docs/planning/HB_Frontend_Production_Readiness_Implementation_Package/02_REPO_TRUTH_PREFLIGHT.md` Baseline Commands were re-run (venv python prefix used per CLAUDE.md and prior prompt executions; npm install executed as specified).
+
+Captured output (git/node/npm verbatim; python via .venv/bin/python):
+
+```
+=== PROMPT 22 PREFLIGHT START ===
+Sun Jun  7 04:52:59 EDT 2026
+=== git status --short ===
+ M frontend/src/pages/SettingsPage.tsx
+ M src/hb_assistant/construction/analytics/api.py
+?? .claude/
+?? .code-graph/
+?? docs/planning/HB_Frontend_Production_Readiness_Implementation_Package/
+?? docs/planning/HB_Local_Production_Launcher_Desktop_Shortcut_Implementation_Package/
+?? package-lock.json
+=== git branch --show-current ===
+main
+=== git rev-parse HEAD ===
+e078b8d7c092236e56d3ef950e804e9161d76073
+=== git log --oneline -n 30 ===
+e078b8d7 HB FastAPI Analytics Dashboard — CM-First Implementation Package — Prompt 21: Admin / Data Confidence polish (FPR-007)
+a0989799 HB Construction Intelligence — Procore Multi-Project Sync Fix v1.0.1 — all-project sync no longer crashes on "multi"
+13a75675 HB FastAPI Analytics Dashboard — CM-First Implementation Package — Prompt 20: Settings and onboarding polish (FPR-004/005/010/016/017)
+f93b26b1 HB FastAPI Analytics Dashboard — CM-First Implementation Package — Prompt 19: My Items dashboard (FPR-002 polish)
+9f866749 HB FastAPI Analytics Dashboard — CM-First Implementation Package — Prompt 18: Projects portfolio and project dashboards (FPR-003/009)
+b06bbcde HB Construction Intelligence — Unified Source-Refresh Orchestrator v1.0.0 — construction-agent refresh-sources
+b87f1c1b HB FastAPI Analytics Dashboard — CM-First Implementation Package — Prompt 17: Today dashboard UX/content completion (FPR-008)
+73cc61af HB FastAPI Analytics Dashboard — CM-First Implementation Package — Prompt 16: Route/API contract hardening and launch blockers (FPR-001/002/006)
+be470af1 chore(scripts): add local MCP stdio launcher for second-brain integration
+9708be56 chore(evidence): refresh phase 06–09 evidence bundles after validation baseline
+... (prior)
+=== .venv/bin/python -m pip show fastapi || true ===
+Name: fastapi
+Version: 0.136.3
+...
+=== .venv/bin/python -m pytest --version ===
+pytest 9.0.3
+=== pyproject probe (.venv python) ===
+project.version= 1.3.0
+optional-dependencies= ['analytics-ui', 'dev', 'mcp', 'retrieval', 'retrieval-local', 'second-brain']
+=== cd frontend; node --version ===
+v22.14.0
+=== npm --version ===
+10.9.2
+=== cat frontend/package.json (head) ===
+{ "name": "frontend", ... }
+=== package-lock check ===
+package-lock.json present (size: 143765 )
+=== npm install (frontend) ===
+up to date, audited 263 packages in 642ms
+... found 0 vulnerabilities
+=== evidence closeouts ls (to confirm P21 dep) ===
+00_PREFLIGHT.md
+prompt-16-route-api-contract-hardening-closeout.md
+prompt-17-today-dashboard-ux-content-closeout.md
+prompt-18-projects-portfolio-and-dashboards-closeout.md
+prompt-19-my-items-dashboard-closeout.md
+prompt-20-settings-onboarding-polish-closeout.md
+prompt-21-admin-data-confidence-polish-closeout.md
+=== PROMPT 22 PREFLIGHT END ===
+Sun Jun  7 04:53:00 EDT 2026
+```
+
+(Note: bare python -m corrected to .venv/bin/python per CLAUDE.md. Results authoritative.)
+
+## Required Preflight Decisions (re-answered for Prompt 22)
+
+- **Is the working tree clean before implementation?**  
+  No. Working tree dirty with M frontend/src/pages/SettingsPage.tsx (incidental from prior session work), M src/hb_assistant/construction/analytics/api.py (unrelated Procore-adjacent), + untracked (.claude/, .code-graph/, docs/planning/HB_Frontend_Production_Readiness_Implementation_Package/, HB_Local_Production_Launcher..., root package-lock.json). Prior A files (prompt-21 closeout etc.) are artifacts. Per 02 "If Preflight Fails": inventory and do not overwrite unrelated. For Prompt 22 we will *only* create/edit: new/changed under `frontend/src/components/ui/` (ErrorState etc.), `frontend/src/layouts/AppShell.tsx`, `frontend/src/index.css`, `frontend/src/pages/SettingsPage.tsx` (error/label polish), append to this 00_PREFLIGHT.md, new prompt-22 closeout md, light updates to architecture 176 (primary). Selective git add only for these at commit time.
+
+- **Is local `main` at or ahead of audited HEAD `be470af1326c82b4c78be6103969e6a0622067be`?**  
+  Yes. Current HEAD (e078b8d7...) is the Prompt 21 commit (far after the original audit baseline and after 20/19/18/17/16).
+
+- **Are there new frontend/backend commits after the audit?**  
+  Yes. The top commit (e078b8d7) is the Prompt 21 landing ("Admin / Data Confidence polish (FPR-007)"). Prompt 21 closed FPR-007 with evidence. The gaps targeted by Prompt 22 (FPR-011/013) are the current focus; FPR-011 appears already clean in repo truth.
+
+- **Do any P0/P1 gaps appear already fixed?**  
+  For this prompt's gaps:  
+  - FPR-011 (P2): "alert() error handling remains in Settings". Current repo truth (targeted grep run during this preflight): `grep -R "alert(" -n frontend/src || true` returned "No matches (already clean per research)". No alert() calls in frontend/src. The gap is already fixed in repo truth (likely cleaned in Prompt 20 Settings polish). Per plan guidance "When a gap is already fixed in current repo truth, document the evidence and do not rework the code unnecessarily." Prompt 22 will confirm via the required `grep -R "alert(" ...` in validation, document in closeout, and only introduce the shared ErrorState for future consistency / to address any remaining inline red divs as part of FPR-013 polish. No code change needed purely for alert() removal.
+  - FPR-013 (P2): "Responsive/accessibility baseline is incomplete". Current patterns observed via Glob/Grep/prior context (no full re-read of restricted files): sidebar is fixed `w-56` always visible in AppShell (no collapse); focus-visible only on `a, button` in index.css (no coverage for input/select/textarea or role selector); no skip link; `<main>` exists but no `id="main"`; navs have `aria-label`; ad-hoc loading states (`<div className="p-6 text-sm text-[var(--hb-muted)]">Loading ...</div>`) repeated in Today/Projects/MyItems/3 project tabs/ProjectDashboard/Admin; Settings uses 8+ per-section `{xxxError && <div className="text-xs text-red-500">{msg}</div>}` (no shared component); some form controls have labels but keyword inputs and certain selects/checkboxes could be more explicit. These are incomplete but not absent. Prompt 22 will implement the recommended fixes (ErrorState, focus extension, skip+id, sidebar lightweight collapse, label audit + ErrorState swap in Settings, optional LoadingState normalization) while documenting the baseline state.
+
+- **Does `npm install` complete without `--legacy-peer-deps`?**  
+  Yes. "up to date, audited 263 packages in 642ms", "found 0 vulnerabilities". No flag supplied or required.
+
+- **Does the FastAPI optional dependency group still include the dashboard dependencies?**  
+  Yes. 'analytics-ui' in optional-dependencies list; fastapi 0.136.3 present in venv.
+
+- **Does the frontend lockfile appear current relative to `package.json`?**  
+  Yes. package-lock.json present (size ~143k); `npm install` reported "up to date" with no lock modifications.
+
+## Additional Notes for Prompt 22
+
+- Repository truth authoritative (per package rules). Implementation against current HEAD (e078b8d7..., post-Prompt 21).
+- Prompt 21 closeout + commit confirmed to exist (ls during preflight listed `prompt-21-admin-data-confidence-polish-closeout.md`; current HEAD log top is exactly the Prompt 21 commit message; head of the closeout file confirmed content). Dependency satisfied: "Prompt 21 should be closed or explicitly waived with evidence."
+- Prompt 22 scope strictly limited to FPR-011 (confirm/document alert-free + introduce shared ErrorState for inline errors) and FPR-013 (focus styles, skip link + semantic main, sidebar responsive collapse (lightweight), consistent ErrorState/Loading patterns, Settings form label audit + error consolidation). No new heavy deps (Tailwind + existing lucide; clsx/tailwind-merge already in package if needed for class merging but not required). No charts, no major redesign, no changes to API contracts/role guards, no raw exposure, CM-first language preserved.
+- When a gap is already fixed (FPR-011 alert() — 0 matches), document the evidence (grep output in preflight + validation) and do not rework unnecessarily. The ErrorState addition is additive for coherence (FPR-013) and future-proofing.
+- Guardrails (read-only, local-first, no writeback, no raw, advisory only, construction-management-first labels, contextual subnav only, hide detailed → Admin, chat disabled, role guards fail-closed, local role dev simulation only) remain in force and will be re-confirmed in the per-prompt closeout.
+- Dirty/untracked files (Settings M incidental, unrelated api.py M, planning pkgs, .claude, .code-graph, root package-lock) will not be cleaned, overwritten, or staged. Only Prompt 22 deliverables will be added at commit.
+- Preflight captured exact baseline for the closeout evidence.
+
+## Next (Prompt 22)
+
+With preflight complete and evidence appended (this section), proceed to the implementation steps in strict order per the attached plan: add ErrorState (and optional LoadingState) under ui/, confirm no alert() (document), extend focus-visible, add skip link + #main, improve AppShell sidebar for narrow widths (light collapse + toggle + a11y), update Settings to use ErrorState + explicit labels, normalize loading if component added, run full validation matrix (lint/type/build + required grep alert + preflight re-run), browser smoke (keyboard + responsive per spec), create prompt-22 closeout, light arch update (176 primary), selective commit with traditional title, emit *only* the commit summary+description at end. Follow surgical + repo-truth first + update evidence same prompt + only output commit at very end. Mark preflight-22 completed and advance todos.

@@ -134,7 +134,36 @@ table.data-table th {
 
 /* Focus styles for a11y */
 a:focus-visible,
-button:focus-visible {
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--hb-accent);
+  outline-offset: 2px;
+}
+
+/* Skip link (visible only when focused; high contrast) */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: auto;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  z-index: 100;
+}
+.skip-link:focus {
+  position: absolute;
+  left: 0.5rem;
+  top: 0.5rem;
+  width: auto;
+  height: auto;
+  padding: 0.25rem 0.75rem;
+  background: var(--hb-surface);
+  border: 1px solid var(--hb-border);
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+  color: var(--hb-text);
   outline: 2px solid var(--hb-accent);
   outline-offset: 2px;
 }

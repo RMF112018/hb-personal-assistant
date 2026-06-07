@@ -3,13 +3,14 @@ import { MainNavigation } from './MainNavigation'
 import { SupportNavigation } from './SupportNavigation'
 import { PageHeader } from './PageHeader'
 import { useTheme } from '../app/providers'
-import { Moon, Sun, Monitor } from 'lucide-react'
+import { Moon, Sun, Monitor, Menu } from 'lucide-react'
 import { useState } from 'react'
 import { getLocalUiRole, setLocalUiRole, type LocalUiRole } from '../lib/api'
 
 export function AppShell({ children }: { children?: React.ReactNode }) {
   const { resolvedTheme, theme: prefTheme, toggle } = useTheme()
   const [localRole, setLocalRole] = useState<LocalUiRole>(() => getLocalUiRole())
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const location = useLocation()
 
   // Simple construction-facing header title (advisory posture)
@@ -17,19 +18,46 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
 
   return (
     <div className="min-h-screen flex bg-[var(--hb-bg)] text-[var(--hb-text)]">
-      {/* Primary sidebar navigation (Today / Projects / My Items) */}
-      <aside className="w-56 border-r border-[var(--hb-border)] p-3 flex flex-col">
+      {/* Skip link for keyboard users (becomes visible on focus) */}
+      <a
+        href="#main"
+        className="skip-link sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[100] focus:px-3 focus:py-1 focus:bg-[var(--hb-surface)] focus:border focus:border-[var(--hb-border)] focus:rounded focus:text-sm focus:outline-none"
+      >
+        Skip to main content
+      </a>
+      {/* Primary sidebar navigation (Today / Projects / My Items) — lightweight collapse for narrow widths */}
+      <aside
+        className={`fixed md:static inset-y-0 left-0 z-50 w-56 border-r border-[var(--hb-border)] p-3 flex flex-col bg-[var(--hb-bg)] transform transition-transform duration-200 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
+      >
         <div className="px-2 py-3 text-xs tracking-[2px] text-[var(--hb-muted)]">CONSTRUCTION INTELLIGENCE</div>
         <MainNavigation currentPath={location.pathname} />
         <div className="mt-auto pt-4">
           <SupportNavigation currentPath={location.pathname} />
         </div>
       </aside>
+      {/* Mobile sidebar overlay (click to close) */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/30 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+          aria-hidden="true"
+        />
+      )}
 
       {/* Main content area */}
       <div className="flex-1 flex flex-col min-w-0">
         <header className="h-12 border-b border-[var(--hb-border)] px-4 flex items-center justify-between bg-[var(--hb-surface)]">
-          <div className="font-medium">{headerTitle}</div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="md:hidden badge"
+              aria-label="Toggle navigation"
+              aria-expanded={sidebarOpen}
+            >
+              <Menu className="h-3.5 w-3.5" />
+            </button>
+            <div className="font-medium">{headerTitle}</div>
+          </div>
           <div className="flex items-center gap-2">
             <label className="flex items-center gap-1 text-[10px] text-[var(--hb-muted)]">
               Local dev role — not production auth
@@ -63,7 +91,7 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
           </div>
         </header>
 
-        <main className="flex-1 p-4 overflow-auto">
+        <main id="main" className="flex-1 p-4 overflow-auto">
           <PageHeader title={getPageTitle(location.pathname)} />
           {children ?? <Outlet />}
         </main>

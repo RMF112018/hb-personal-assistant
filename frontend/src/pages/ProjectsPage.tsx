@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { FreshnessBadge, ConfidenceBadge } from '../components/ui/Badge'
 import { EmptyState } from '../components/ui/EmptyState'
+import { LoadingState } from '../components/ui/LoadingState'
 import { api } from '../lib/api'
 
 // /projects = Portfolio dashboard + project selector (All Projects special entry + individuals).
@@ -16,7 +17,7 @@ export function ProjectsPage() {
   })
 
   if (isLoading) {
-    return <div className="p-6 text-sm text-[var(--hb-muted)]">Loading Portfolio…</div>
+    return <LoadingState label="Loading Portfolio…" />
   }
 
   // Support backend project_keys list or legacy projects/items array.

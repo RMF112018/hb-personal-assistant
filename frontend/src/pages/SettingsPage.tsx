@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTheme } from '../app/providers'
 import { DailyBriefRenderer } from '../components/daily-brief/DailyBriefRenderer'
+import { ErrorState } from '../components/ui/ErrorState'
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import {
   getDailyBriefStatus,
@@ -16,8 +17,6 @@ import {
   getSettingsKeywords,
   getProjectKeywords,
   addProjectKeyword,
-  patchProjectKeyword,
-  deleteProjectKeyword,
   explainProjectKeywordMatch,
   getSettingsDailyBrief,
   getSettingsPreferences,
@@ -111,7 +110,7 @@ export function SettingsPage() {
       if (c.file_pattern) setFilePattern(c.file_pattern)
       if (c.stale_threshold_minutes) setStaleMinutes(c.stale_threshold_minutes)
       if (typeof c.show_on_today === 'boolean') setShowOnToday(c.show_on_today)
-    } catch (e: any) {
+    } catch {
       // alert removed per FPR-004 (raw/debug cleanup)
     } finally {
       setBusy(null)
@@ -157,7 +156,7 @@ export function SettingsPage() {
         file_pattern: filePattern,
       })
       setInstrResult(res)
-    } catch (e: any) {
+    } catch {
       // alert removed per FPR-004 (raw/debug cleanup)
     } finally {
       setBusy(null)
@@ -170,7 +169,7 @@ export function SettingsPage() {
     try {
       const res = await validateDailyBriefOutputFolder({ folder: outputFolder || undefined })
       setValidateResult(res)
-    } catch (e: any) {
+    } catch {
       // alert removed (FPR-004); errors are non-blocking for this flow
     } finally {
       setBusy(null)
@@ -185,7 +184,7 @@ export function SettingsPage() {
       setDetectResult(res)
       // Also refresh main status
       await refreshStatus()
-    } catch (e: any) {
+    } catch {
       // alert removed (FPR-004); errors are non-blocking for this flow
     } finally {
       setBusy(null)
@@ -240,8 +239,9 @@ export function SettingsPage() {
           </label>
 
           <div>
-            <div className="text-xs mb-1">External AI platform</div>
+            <label htmlFor="db-platform" className="text-xs mb-1">External AI platform</label>
             <select
+              id="db-platform"
               className="bg-[var(--hb-bg)] border border-[var(--hb-border)] rounded px-2 py-1 text-sm"
               value={platform}
               onChange={(e) => onPlatformChange(e.target.value as any)}
@@ -255,35 +255,41 @@ export function SettingsPage() {
           </div>
 
           <div>
-            <div className="text-xs mb-1">Output folder (local absolute path the external agent will write to)</div>
+            <label htmlFor="db-output-folder" className="text-xs mb-1">Output folder (local absolute path the external agent will write to)</label>
             <input
+              id="db-output-folder"
               className="w-full bg-[var(--hb-bg)] border border-[var(--hb-border)] rounded px-2 py-1 text-sm"
               value={outputFolder}
               onChange={(e) => setOutputFolder(e.target.value)}
               onBlur={onFolderBlur}
               placeholder="~/Documents/HB-Daily-Briefs or /Users/you/DailyBriefs"
+              aria-label="Output folder for Daily Brief file"
             />
           </div>
 
           <div>
-            <div className="text-xs mb-1">File name pattern</div>
+            <label htmlFor="db-file-pattern" className="text-xs mb-1">File name pattern</label>
             <input
+              id="db-file-pattern"
               className="w-full bg-[var(--hb-bg)] border border-[var(--hb-border)] rounded px-2 py-1 text-sm font-mono"
               value={filePattern}
               onChange={(e) => setFilePattern(e.target.value)}
               onBlur={onPatternBlur}
+              aria-label="File name pattern for Daily Brief"
             />
             <div className="text-[10px] text-[var(--hb-muted)]">Example: HB-Daily-Brief-*.md — the external prompt will substitute the date.</div>
           </div>
 
           <div>
-            <div className="text-xs mb-1">Stale threshold (minutes)</div>
+            <label htmlFor="db-stale-minutes" className="text-xs mb-1">Stale threshold (minutes)</label>
             <input
+              id="db-stale-minutes"
               type="number"
               className="w-40 bg-[var(--hb-bg)] border border-[var(--hb-border)] rounded px-2 py-1 text-sm"
               value={staleMinutes}
               onChange={(e) => setStaleMinutes(parseInt(e.target.value || '1440', 10))}
               onBlur={onStaleBlur}
+              aria-label="Stale threshold minutes for Daily Brief"
             />
             <div className="text-[10px] text-[var(--hb-muted)]">If the file is older than this, Today shows "Brief stale". Typical: 720–1440 (12–24 h).</div>
           </div>
@@ -371,7 +377,21 @@ export function SettingsPage() {
         >
           Load Accounts Status
         </button>
-        {accountsError && <div className="text-xs text-red-500">{accountsError}</div>}
+        <ErrorState
+          message={accountsError}
+          onRetry={() => {
+            setAccountsError(null)
+            ;(async () => {
+              try {
+                const a = await getSettingsAccounts()
+                setAccountsResult(a)
+              } catch (e: any) {
+                setAccountsError(e?.message || String(e))
+                setAccountsResult(null)
+              }
+            })()
+          }}
+        />
         {accountsResult && (
           <div className="text-xs mt-1">
             Loaded. Graph: {accountsResult?.graph?.status || accountsResult?.graph?.connected ? 'connected' : 'n/a'} | Procore: {accountsResult?.procore?.status || 'n/a'}
@@ -398,7 +418,21 @@ export function SettingsPage() {
         >
           Load Projects
         </button>
-        {projectsError && <div className="text-xs text-red-500">{projectsError}</div>}
+        <ErrorState
+          message={projectsError}
+          onRetry={() => {
+            setProjectsError(null)
+            ;(async () => {
+              try {
+                const p = await getSettingsProjects()
+                setProjectsResult(p)
+              } catch (e: any) {
+                setProjectsError(e?.message || String(e))
+                setProjectsResult(null)
+              }
+            })()
+          }}
+        />
         {projectsResult && (
           <div className="text-xs mt-1">
             Loaded project connections status.
@@ -425,7 +459,21 @@ export function SettingsPage() {
         >
           Load Source Scope
         </button>
-        {sourcesError && <div className="text-xs text-red-500">{sourcesError}</div>}
+        <ErrorState
+          message={sourcesError}
+          onRetry={() => {
+            setSourcesError(null)
+            ;(async () => {
+              try {
+                const s = await getSettingsSources()
+                setSourcesResult(s)
+              } catch (e: any) {
+                setSourcesError(e?.message || String(e))
+                setSourcesResult(null)
+              }
+            })()
+          }}
+        />
         {sourcesResult && (
           <div className="text-xs mt-1">
             Loaded source scope info.
@@ -452,7 +500,21 @@ export function SettingsPage() {
         >
           Load Keywords Info
         </button>
-        {keywordsError && <div className="text-xs text-red-500">{keywordsError}</div>}
+        <ErrorState
+          message={keywordsError}
+          onRetry={() => {
+            setKeywordsError(null)
+            ;(async () => {
+              try {
+                const k = await getSettingsKeywords()
+                setKeywordsResult(k)
+              } catch (e: any) {
+                setKeywordsError(e?.message || String(e))
+                setKeywordsResult(null)
+              }
+            })()
+          }}
+        />
         {keywordsResult && (
           <div className="text-xs mt-1">
             Loaded keywords policy/surface info.
@@ -464,9 +526,13 @@ export function SettingsPage() {
       {/* Prompt 20 keyword management (FPR-017) */}
       <div className="mt-2 border border-[var(--hb-border)] rounded p-2">
         <div className="text-xs font-medium mb-1">Keyword Management (per project)</div>
-        <div className="flex gap-2 flex-wrap text-xs">
-          <input className="border px-1" placeholder="project key (e.g. demo-proj)" value={kwProject} onChange={(e) => setKwProject(e.target.value)} />
-          <input className="border px-1" placeholder="term (e.g. foundation)" value={kwTerm} onChange={(e) => setKwTerm(e.target.value)} />
+        <div className="flex gap-2 flex-wrap text-xs items-end">
+          <label className="text-[10px]" htmlFor="kw-project">Project key
+            <input id="kw-project" className="border px-1 block" placeholder="demo-proj" value={kwProject} onChange={(e) => setKwProject(e.target.value)} aria-label="Project key for keyword management" />
+          </label>
+          <label className="text-[10px]" htmlFor="kw-term">Term
+            <input id="kw-term" className="border px-1 block" placeholder="foundation" value={kwTerm} onChange={(e) => setKwTerm(e.target.value)} aria-label="Keyword term" />
+          </label>
           <button className="badge" onClick={async () => {
             if (!kwProject || !kwTerm) return;
             await addProjectKeyword(kwProject, kwTerm, 1);
@@ -507,7 +573,21 @@ export function SettingsPage() {
         >
           Load Daily Brief Status
         </button>
-        {dailyBriefError && <div className="text-xs text-red-500">{dailyBriefError}</div>}
+        <ErrorState
+          message={dailyBriefError}
+          onRetry={() => {
+            setDailyBriefError(null)
+            ;(async () => {
+              try {
+                const d = await getSettingsDailyBrief()
+                setDailyBriefResult(d)
+              } catch (e: any) {
+                setDailyBriefError(e?.message || String(e))
+                setDailyBriefResult(null)
+              }
+            })()
+          }}
+        />
         {dailyBriefResult && (
           <div className="text-xs mt-1">
             Daily Brief status available via the section below (no raw panels).
@@ -539,7 +619,21 @@ export function SettingsPage() {
         >
           Load Preferences
         </button>
-        {prefsError && <div className="text-xs text-red-500">{prefsError}</div>}
+        <ErrorState
+          message={prefsError}
+          onRetry={() => {
+            setPrefsError(null)
+            ;(async () => {
+              try {
+                const pr = await getSettingsPreferences()
+                setPrefsResult(pr)
+              } catch (e: any) {
+                setPrefsError(e?.message || String(e))
+                setPrefsResult(null)
+              }
+            })()
+          }}
+        />
         {prefsResult && (
           <div className="text-xs mt-1">
             Loaded preferences.
@@ -582,7 +676,21 @@ export function SettingsPage() {
         >
           Load Admin Sync (admin role)
         </button>
-        {adminSyncError && <div className="text-xs text-red-500">{adminSyncError}</div>}
+        <ErrorState
+          message={adminSyncError}
+          onRetry={() => {
+            setAdminSyncError(null)
+            ;(async () => {
+              try {
+                const ad = await getSettingsAdminSync()
+                setAdminSyncResult(ad)
+              } catch (e: any) {
+                setAdminSyncError(e?.message || String(e))
+                setAdminSyncResult(null)
+              }
+            })()
+          }}
+        />
         {adminSyncResult && (
           <div className="text-xs mt-1">
             Loaded admin sync info (admin only).

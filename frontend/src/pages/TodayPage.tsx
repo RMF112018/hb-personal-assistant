@@ -6,6 +6,7 @@ import { MetricCard } from '../components/dashboard/MetricCard'
 import { AttentionItemCard } from '../components/dashboard/AttentionItemCard'
 import { EmptyState } from '../components/ui/EmptyState'
 import { StaleDataBanner } from '../components/ui/StaleDataBanner'
+import { LoadingState } from '../components/ui/LoadingState'
 import { DailyBriefRenderer } from '../components/daily-brief/DailyBriefRenderer'
 import { api } from '../lib/api'
 
@@ -30,7 +31,7 @@ export function TodayPage() {
   const { data: portfolioSignals } = useQuery({ queryKey: ['today', 'portfolio-signals'], queryFn: api.getTodayPortfolioSignals })
 
   if (isLoading) {
-    return <div className="p-6 text-sm text-[var(--hb-muted)]">Loading Today…</div>
+    return <LoadingState label="Loading Today…" />
   }
   if (error) {
     return (

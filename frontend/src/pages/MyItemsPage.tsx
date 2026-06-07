@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { FreshnessBadge, ConfidenceBadge } from '../components/ui/Badge'
 import { EmptyState } from '../components/ui/EmptyState'
+import { LoadingState } from '../components/ui/LoadingState'
 import { MyActionItemCard } from '../components/my-items/MyActionItemCard'
 import { api } from '../lib/api'
 
@@ -47,7 +48,7 @@ export function MyItemsPage() {
   const { data: my, isLoading } = useQuery({ queryKey: ['my-items'], queryFn: api.getMyItems })
 
   if (isLoading) {
-    return <div className="p-6 text-sm text-[var(--hb-muted)]">Loading My Items…</div>
+    return <LoadingState label="Loading My Items…" />
   }
 
   const myData: MyItemsEnvelope = (my as MyItemsEnvelope) || {}
