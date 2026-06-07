@@ -54,4 +54,4 @@ Deterministic, read-only gate evaluation over the V35 financial substrate. Advis
 ## Notes
 Deterministic Phase 08C data-quality gate evaluation across schema/contracts, the ten V35 tables + guard columns, amount normalization, currency, WBS/cost-code, source coverage, exposure marts, readiness agent, forecast-readiness, review-required policy, CLI, and no-writeback/no-raw. Advisory review aid only — not a determination, approval, claim, entitlement, or forecast. proof_passed is False when required evidence is missing.
 
-Generated: 2026-06-06T21:15:56.132665Z
+Generated: 2026-06-07T13:00:13.025478Z

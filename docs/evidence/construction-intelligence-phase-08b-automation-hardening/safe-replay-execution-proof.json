@@ -21,7 +21,7 @@
       "brief_date": null,
       "day_offset": 0,
       "force": false,
-      "original_run_registry_id": "93079ea7db344fa7b7a089007e168cf1",
+      "original_run_registry_id": "6404078370f44a3e9a3881f2d43a8997",
       "replay_selector": "failed-only",
       "replay_stages": []
     },
@@ -32,7 +32,7 @@
         "brief_date": null,
         "day_offset": 0,
         "force": false,
-        "original_run_registry_id": "93079ea7db344fa7b7a089007e168cf1",
+        "original_run_registry_id": "6404078370f44a3e9a3881f2d43a8997",
         "replay_selector": "failed-only",
         "replay_stages": []
       },
@@ -244,7 +244,7 @@
         "automation_execution_ready_via_proof": true
       }
     },
-    "run_registry_id": "ca6eb77dfd0846cd9bda976989625bdb",
+    "run_registry_id": "0728d6aee6f54dc0b88522cf932e2621",
     "stage_receipts": [
       {
         "stage": "daily_brief_generate",
