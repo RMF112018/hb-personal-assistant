@@ -24,11 +24,16 @@ def get_connection(db_path: Path | None = None) -> sqlite3.Connection:
     """
     pp = PathPolicy()
     path = Path(db_path) if db_path is not None else pp.get_db_path()
-    pp.ensure_dirs(create_sensitive=False)  # db/ is 755, non-sensitive
 
-    ready = pp.ensure_db_ready(return_report=True)
-    if db_path is not None:
+    if db_path is None:
+        # Default (ambient) DB: full app-support dir + readiness checks.
+        pp.ensure_dirs(create_sensitive=False)  # db/ is 755, non-sensitive
+        ready = pp.ensure_db_ready(return_report=True)
+    else:
+        # Explicit db_path (e.g. an isolated dev DB): NEVER touch the ambient/default DB.
+        # Ensure only the supplied path's own directory and check it directly.
         parent = path.parent
+        parent.mkdir(parents=True, exist_ok=True)
         ready = {
             "ok": parent.exists() and parent.is_dir() and os.access(parent, os.W_OK),
             "status": "ok",

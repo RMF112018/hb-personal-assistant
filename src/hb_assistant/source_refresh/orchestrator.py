@@ -210,6 +210,9 @@ class SourceRefreshOrchestrator:
     def run(self, *, options: RefreshOptions) -> dict[str, Any]:
         """Execute the full refresh and return one consolidated, redacted summary."""
         self._acc = _Accumulator()
+        # Ensure the resolved (possibly isolated dev) DB directory exists so every stage
+        # binds to self.db_path — never the ambient/production DB.
+        self.db_path.parent.mkdir(parents=True, exist_ok=True)
         summary: dict[str, Any] = {
             "command": COMMAND,
             "generated_utc": self._now_iso(),
@@ -518,7 +521,8 @@ class SourceRefreshOrchestrator:
         from hb_assistant.construction.store.repositories import ConstructionStore
 
         materializer = EmailThreadSummaryMaterializer(
-            ConstructionStore(), policy=load_email_thread_summary_policy()
+            ConstructionStore(db_path=self._db_path_str()),
+            policy=load_email_thread_summary_policy(),
         )
         report = materializer.materialize(dry_run=dry_run)
         data = report.model_dump() if hasattr(report, "model_dump") else dict(report)
@@ -561,7 +565,7 @@ class SourceRefreshOrchestrator:
         results: list[dict[str, Any]] = []
         try:
             reader = ReadOnlyCalendarClient(client, contract=load_calendar_endpoint_contract())
-            indexer = CalendarEventIndexer(reader, ConstructionStore())
+            indexer = CalendarEventIndexer(reader, ConstructionStore(db_path=self._db_path_str()))
             policy = load_calendar_source_policy()
             if policy.defaults.enabled:
                 for src in policy.sources:
@@ -595,7 +599,7 @@ class SourceRefreshOrchestrator:
         from hb_assistant.construction.store.repositories import ConstructionStore
 
         registry = load_source_registry()
-        store = ConstructionStore() if not dry_run else None
+        store = ConstructionStore(db_path=self._db_path_str()) if not dry_run else None
         results: list[dict[str, Any]] = []
         for src in registry.sources:
             client = self._graph_client_scoped(scopes_for_source_kind(src.kind))
@@ -703,12 +707,12 @@ class SourceRefreshOrchestrator:
         guardrails["no_raw_vector_index_proof_passed"] = bool(no_raw.get("proof_passed", False))
         mcp_access = self._stage(
             "rebuild.mcp_no_raw_access",
-            lambda: build_no_raw_mcp_access_proof(write_evidence=False),
+            lambda: build_no_raw_mcp_access_proof(db_path=db, write_evidence=False),
         )
         guardrails["mcp_no_raw_access_proof_passed"] = bool(mcp_access.get("proof_passed", False))
         mcp_writeback = self._stage(
             "rebuild.mcp_no_writeback",
-            lambda: build_no_mcp_writeback_proof(write_evidence=False),
+            lambda: build_no_mcp_writeback_proof(db_path=db, write_evidence=False),
         )
         guardrails["mcp_no_writeback_proof_passed"] = bool(mcp_writeback.get("proof_passed", False))
 

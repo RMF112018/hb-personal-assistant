@@ -75,6 +75,29 @@ flag is off — and, critically, never call Procore/Graph auth/status/probe in t
 The `refresh-sources` CLI gains `--mock-data`. `config.automation.scheduler`
 (`SchedulerConfig`) gates production live reads (all OFF by default).
 
+## Scheduled DB isolation (post-232b19a2 hardening)
+
+Every local SQLite read/write performed during a scheduled refresh binds to the
+orchestrator's resolved `self.db_path` — never the ambient/default DB:
+
+- The Graph local stages now pass `db_path=self._db_path_str()` into `ConstructionStore`
+  (`_graph_mail_thread_summary`, `_graph_calendar`, `_graph_files`), and the rebuild MCP
+  proofs pass `db_path=db` (`build_no_raw_mcp_access_proof`, `build_no_mcp_writeback_proof`).
+- **Root cause fix in `store/connection.py`:** `get_connection(db_path)` previously
+  called `PathPolicy.ensure_dirs()` + `ensure_db_ready()` unconditionally, which
+  probed/created the *default* (production) DB even when an explicit `db_path` was
+  supplied. It now branches: the default path keeps full app-support readiness checks;
+  an explicit `db_path` ensures only that path's own directory and checks it directly,
+  so a db_path-bound caller (e.g. an isolated Dev DB) never touches the ambient DB.
+- `SourceRefreshOrchestrator.run()` and `DailySourceRefreshJob.execute()` ensure the
+  resolved DB directory exists (dev's `(Dev)` root may be fresh).
+
+Auth/token-cache `PathPolicy(cfg)` use in `_graph_status`/`_graph_client`/
+`_graph_client_scoped` is intentionally config-derived and runs only in live mode (dev
+mock short-circuits before it); it is not a DB-isolation path. Tests assert a dev
+scheduled run never opens/creates the production DB and vice versa, plus per-helper
+store-construction binding.
+
 ## Guardrails
 
 No Procore/M365 writeback; no raw bodies/URLs/tokens; no vectors in SQLite; scheduler

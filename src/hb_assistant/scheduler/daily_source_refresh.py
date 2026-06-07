@@ -80,6 +80,9 @@ class DailySourceRefreshJob:
         procore_live = options.allow_procore_live and not options.mock_data
         graph_live = options.allow_graph_live and not options.mock_data
 
+        # Ensure the isolated environment DB directory exists (dev's "(Dev)" root may be
+        # fresh) so all local SQLite access binds to this environment's DB.
+        self.profile.db_path.parent.mkdir(parents=True, exist_ok=True)
         store = Store(db_path=str(self.profile.db_path))
         run_id: int | None = None
         try:

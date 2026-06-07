@@ -29,6 +29,7 @@ from hb_assistant.scheduler.daily_source_refresh import DailySourceRefreshJob
 from hb_assistant.scheduler.due import compute_next_run, decide_catch_up
 from hb_assistant.scheduler.runner import SchedulerRunner
 from hb_assistant.scheduler.state import SchedulerState
+from hb_assistant.source_refresh.orchestrator import SourceRefreshOrchestrator
 from hb_assistant.store.migrator import SQLiteMigrator
 
 runner = CliRunner()
@@ -391,3 +392,126 @@ def test_cli_scheduler_install_dry_run_production() -> None:
     assert result.exit_code == 0
     d = json.loads(result.stdout)
     assert d["installed"] is False and d["writes_files"] is False
+
+
+# --- DB isolation: scheduled refresh binds every local store to the env DB ---------
+
+
+def _opened_paths(monkeypatch: pytest.MonkeyPatch) -> list[str]:
+    """Record every sqlite3.connect target during a block."""
+    import sqlite3
+
+    opened: list[str] = []
+    orig = sqlite3.connect
+
+    def traced(database: Any, *a: Any, **k: Any) -> Any:
+        opened.append(str(database))
+        return orig(database, *a, **k)
+
+    monkeypatch.setattr(sqlite3, "connect", traced)
+    return opened
+
+
+def test_dev_scheduled_does_not_touch_production_db(monkeypatch: pytest.MonkeyPatch) -> None:
+    dev = resolve_profile("dev")
+    prod = resolve_profile("production")
+    opened = _opened_paths(monkeypatch)
+    receipt = DailySourceRefreshJob(dev).execute(schedule_date=date(2026, 6, 8), trigger="t")
+    assert receipt.mode == "local_only"
+    assert dev.db_path.exists()
+    # Production DB is never opened or created.
+    assert str(prod.db_path) not in opened
+    assert not prod.db_path.exists()
+    assert any(str(dev.db_path) == p for p in opened)
+
+
+def test_production_scheduled_does_not_touch_dev_db(monkeypatch: pytest.MonkeyPatch) -> None:
+    dev = resolve_profile("dev")
+    prod = resolve_profile("production")
+    opened = _opened_paths(monkeypatch)
+    DailySourceRefreshJob(prod).execute(schedule_date=date(2026, 6, 8), trigger="t")
+    assert prod.db_path.exists()
+    assert str(dev.db_path) not in opened
+    assert not dev.db_path.exists()
+
+
+def test_get_connection_with_db_path_never_opens_default(monkeypatch: pytest.MonkeyPatch) -> None:
+    from hb_assistant.config.path_policy import PathPolicy
+    from hb_assistant.store.connection import get_connection
+
+    default_db = str(PathPolicy().get_db_path())
+    dev = resolve_profile("dev")
+    opened = _opened_paths(monkeypatch)
+    conn = get_connection(dev.db_path)
+    conn.close()
+    assert default_db not in opened  # explicit db_path must not probe the default DB
+
+
+def _spy_construction_store(monkeypatch: pytest.MonkeyPatch) -> list[str | None]:
+    import hb_assistant.construction.store.repositories as repo
+
+    captured: list[str | None] = []
+
+    class _Spy:
+        def __init__(self, db_path: str | None = None) -> None:
+            captured.append(db_path)
+
+    monkeypatch.setattr(repo, "ConstructionStore", _Spy)
+    return captured
+
+
+def test_graph_mail_thread_summary_binds_db(monkeypatch: pytest.MonkeyPatch) -> None:
+    import hb_assistant.construction.calendar as cal
+    import hb_assistant.construction.email as email_mod
+
+    captured = _spy_construction_store(monkeypatch)
+
+    class _Mat:
+        def __init__(self, store: Any, *, policy: Any = None) -> None:
+            pass
+
+        def materialize(self, *, dry_run: bool) -> Any:
+            return type("R", (), {"model_dump": lambda self: {}})()
+
+    monkeypatch.setattr(email_mod, "EmailThreadSummaryMaterializer", _Mat)
+    monkeypatch.setattr(cal, "load_email_thread_summary_policy", lambda: object())
+
+    dev = resolve_profile("dev")
+    SourceRefreshOrchestrator(db_path=dev.db_path)._graph_mail_thread_summary(dry_run=True)
+    assert captured == [str(dev.db_path)]
+
+
+def test_graph_calendar_binds_db(monkeypatch: pytest.MonkeyPatch) -> None:
+    from types import SimpleNamespace
+
+    import hb_assistant.construction.calendar.event_indexer as ei
+    import hb_assistant.construction.calendar.policy as calpol
+    import hb_assistant.graph.calendar_endpoint_guard as guard
+    import hb_assistant.graph.calendar_readonly_client as roc
+
+    captured = _spy_construction_store(monkeypatch)
+    monkeypatch.setattr(ei, "CalendarEventIndexer", lambda reader, store: SimpleNamespace())
+    monkeypatch.setattr(roc, "ReadOnlyCalendarClient", lambda client, contract: SimpleNamespace())
+    monkeypatch.setattr(guard, "load_calendar_endpoint_contract", lambda: SimpleNamespace())
+    monkeypatch.setattr(
+        calpol, "load_calendar_source_policy",
+        lambda: SimpleNamespace(defaults=SimpleNamespace(enabled=False), sources=[]),
+    )
+    dev = resolve_profile("dev")
+    orch = SourceRefreshOrchestrator(db_path=dev.db_path)
+    monkeypatch.setattr(orch, "_graph_client", lambda: SimpleNamespace(close=lambda: None))
+    orch._graph_calendar(dry_run=True)
+    assert captured == [str(dev.db_path)]
+
+
+def test_graph_files_binds_db(monkeypatch: pytest.MonkeyPatch) -> None:
+    from types import SimpleNamespace
+
+    import hb_assistant.construction.config as cfgmod
+
+    captured = _spy_construction_store(monkeypatch)
+    monkeypatch.setattr(cfgmod, "load_source_registry", lambda: SimpleNamespace(sources=[]))
+    dev = resolve_profile("dev")
+    orch = SourceRefreshOrchestrator(db_path=dev.db_path)
+    orch._graph_files(dry_run=False)  # store constructed only when not dry_run
+    assert captured == [str(dev.db_path)]
