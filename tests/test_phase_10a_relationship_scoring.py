@@ -75,6 +75,43 @@ def test_moderate_relationship_marks_review_required() -> None:
     assert rel["review_required"] is True
 
 
+def test_participant_overlap_alone_is_weak_no_anchor() -> None:
+    # Same internal participants, but different projects, no time proximity, no subject/record overlap.
+    rel = score_email_calendar_relationship(
+        _thread(project="A", subject="Lunch", body="sandwiches", sender="bob@hbcd.com",
+                to=("pm@hbcd.com",), when="2026-01-01T00:00:00+00:00"),
+        _event(project="B", subject="Budget", body="numbers", organizer="bob@hbcd.com",
+               attendees=("pm@hbcd.com",), start="2026-06-08T09:00:00+00:00"),
+    )
+    assert rel["anchor_present"] is False
+    assert rel["confidence"] < MODERATE_THRESHOLD
+    assert rel["relationship_class"] == "weak"
+    assert rel["may_combine"] is False
+
+
+def test_generic_shared_term_without_identifier_is_weak() -> None:
+    # "proposal" shared but no specific identifier, different projects, no participant/time/subject anchor.
+    rel = score_email_calendar_relationship(
+        _thread(project="A", subject="Proposal notes", body="the proposal looks fine",
+                sender="x@a.com", to=("y@a.com",), when="2026-01-01T00:00:00+00:00"),
+        _event(project="B", subject="Proposal items", body="proposal", organizer="z@c.com",
+               attendees=("w@d.com",), start="2026-06-08T09:00:00+00:00"),
+    )
+    assert "shared_record_reference" not in rel["score_components"]
+    assert rel["relationship_class"] == "weak"
+
+
+def test_specific_record_identifier_is_anchor() -> None:
+    rel = score_email_calendar_relationship(
+        _thread(project="A", subject="notes", body="please review RFI 42 markups",
+                sender="x@a.com", to=("y@a.com",), when="2026-01-01T00:00:00+00:00"),
+        _event(project="B", subject="site walk", body="RFI 42 discussion", organizer="z@c.com",
+               attendees=("w@d.com",), start="2026-06-08T09:00:00+00:00"),
+    )
+    assert "shared_record_reference" in rel["reason_codes"]
+    assert rel["anchor_present"] is True
+
+
 def test_contract_module_parity() -> None:
     contract = load_phase_10_contract("relationship_candidate_contract")
     assert contract["confidence_thresholds"]["strong"] == STRONG_THRESHOLD

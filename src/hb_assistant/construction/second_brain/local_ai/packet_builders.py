@@ -20,6 +20,7 @@ from typing import Any, Optional
 from .packet_normalize import has_join_url, normalize_model_text, summarize_attendees
 from .relationship_scoring import (
     MODERATE_THRESHOLD,
+    STRONG_THRESHOLD,
     score_email_calendar_relationship,
 )
 
@@ -221,11 +222,20 @@ def build_related_context_action_packet(
     event_index_id: Optional[str] = None,
     store: Any,
     user_domains: tuple[str, ...] = (),
-    min_confidence: float = MODERATE_THRESHOLD,
+    min_confidence: float = STRONG_THRESHOLD,
+    allow_moderate: bool = False,
     scan_limit: int = 50,
 ) -> dict[str, Any]:
+    """Combine an anchor (thread or event) with relationship-scored counterparts.
+
+    Defaults to STRONG relationships only. ``allow_moderate`` lowers the floor to moderate and marks
+    the packet review-only/review-required (inspection use). The combined packet is budget-capped:
+    lower-confidence counterparts are excluded first when ``max_packet_chars`` would be exceeded.
+    """
     if not thread_ref and not event_index_id:
         raise ValueError("provide thread_ref or event_index_id")
+    if allow_moderate:
+        min_confidence = min(min_confidence, MODERATE_THRESHOLD)
     b = BUDGETS["related_context_action_packet"]
     primary_ref = thread_ref or event_index_id or ""
 
@@ -270,25 +280,33 @@ def build_related_context_action_packet(
         source_refs = list(thread_pkt["source_refs"])
         char_estimate = thread_pkt["budget"]["char_estimate"]
         truncated = thread_pkt["budget"]["truncated"]
+        excluded = 0
+        # passing is sorted by confidence DESC → budget overflow drops the lowest-confidence events.
         for ev, rel in passing:
             ev_pkt = build_calendar_event_action_packet(
                 event_index_id=str(ev.get("event_index_id") or ""), store=store,
                 user_domains=user_domains,
             )
+            ev_chars = ev_pkt["budget"]["char_estimate"]
+            if events_content and char_estimate + ev_chars > b["max_packet_chars"]:
+                excluded += 1
+                truncated = True
+                continue
             events_content.extend(ev_pkt["content"]["events"])
             source_refs.extend(ev_pkt["source_refs"])
-            char_estimate += ev_pkt["budget"]["char_estimate"]
+            char_estimate += ev_chars
             relationships.append(rel)
-        review_required = any(r["review_required"] for r in relationships)
+        review_required = allow_moderate or any(r["review_required"] for r in relationships)
         return _envelope(
             packet_type="related_context_action_packet", primary_ref=primary_ref,
             project_key=thread.get("project_key"),
             content={"threads": thread_pkt["content"]["threads"], "events": events_content},
             source_refs=source_refs, char_estimate=char_estimate, truncated=truncated,
-            excluded_item_count=max(0, len(passing) - len(relationships)),
+            excluded_item_count=excluded,
             extra={
                 "compiled": True,
                 "anchor": "email_thread",
+                "review_only": allow_moderate,
                 "review_required": review_required,
                 "relationships": relationships,
             },
@@ -326,23 +344,30 @@ def build_related_context_action_packet(
     source_refs = list(ev_pkt["source_refs"])
     char_estimate = ev_pkt["budget"]["char_estimate"]
     truncated = ev_pkt["budget"]["truncated"]
+    excluded = 0
     for th, rel in passing:
         th_pkt = build_email_thread_action_packet(
             thread_ref=str(th.get("thread_ref") or ""), store=store, user_domains=user_domains
         )
+        th_chars = th_pkt["budget"]["char_estimate"]
+        if threads_content and char_estimate + th_chars > b["max_packet_chars"]:
+            excluded += 1
+            truncated = True
+            continue
         threads_content.extend(th_pkt["content"]["threads"])
         source_refs.extend(th_pkt["source_refs"])
-        char_estimate += th_pkt["budget"]["char_estimate"]
+        char_estimate += th_chars
         relationships.append(rel)
     return _envelope(
         packet_type="related_context_action_packet", primary_ref=primary_ref,
         project_key=event.get("project_key"),
         content={"threads": threads_content, "events": ev_pkt["content"]["events"]},
         source_refs=source_refs, char_estimate=char_estimate, truncated=truncated,
-        excluded_item_count=0,
+        excluded_item_count=excluded,
         extra={
             "compiled": True, "anchor": "calendar_event",
-            "review_required": any(r["review_required"] for r in relationships),
+            "review_only": allow_moderate,
+            "review_required": allow_moderate or any(r["review_required"] for r in relationships),
             "relationships": relationships,
         },
     )

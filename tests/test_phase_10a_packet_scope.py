@@ -86,3 +86,22 @@ def test_unrelated_records_are_not_combined() -> None:
         assert related["compiled"] is False
         assert related["content"]["events"] == []
         assert related["note"] == "no_strong_or_moderate_relationship"
+
+
+def test_combined_extraction_defaults_to_strong_only() -> None:
+    with tempfile.TemporaryDirectory() as td:
+        s = _store(td)
+        # A moderate (0.55–0.80) link: same project + participant + time, but generic event title.
+        _seed_thread(s, thread_ref="t1", project="P", subject="Coordination", body="meeting today")
+        _seed_event(s, eid="e1", project="P", subject="Meeting", body="")
+        # Default build is STRONG-only → a moderate link does not compile.
+        default_pkt = build_related_context_action_packet(thread_ref="t1", store=s)
+        assert default_pkt["compiled"] is False
+        # Explicitly allowing moderate compiles it as review-only.
+        moderate_pkt = build_related_context_action_packet(
+            thread_ref="t1", store=s, allow_moderate=True
+        )
+        assert moderate_pkt["compiled"] is True
+        assert moderate_pkt["review_only"] is True
+        assert moderate_pkt["review_required"] is True
+        assert moderate_pkt["relationships"][0]["relationship_class"] == "moderate"

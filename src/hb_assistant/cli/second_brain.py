@@ -7708,12 +7708,18 @@ def phase_10_extract_packet(
     triage: bool = typer.Option(  # noqa: B008
         False, "--triage", help="Build a triage_batch packet (triage labels only; never persists)."
     ),
+    allow_moderate: bool = typer.Option(  # noqa: B008
+        False, "--allow-moderate",
+        help="Related: include moderate relationships (review-only). Default: strong relationships only.",
+    ),
     project: "str | None" = typer.Option(None, "--project", help="Project filter (triage mode)."),  # noqa: B008
     mock_output: "str | None" = typer.Option(  # noqa: B008
-        None, "--mock-output", help="Canned model JSON (offline/tests).", hidden=True
+        None, "--mock-output", help="Canned model JSON for offline validation (no live model call)."
     ),
-    apply: bool = typer.Option(  # noqa: B008
-        False, "--apply", help="Persist accepted candidates. Default: dry-run (zero writes)."
+    dry_run: bool = typer.Option(  # noqa: B008
+        True,
+        "--dry-run/--apply",
+        help="Dry-run (default; zero writes). --apply persists only after schema + business validation.",
     ),
     db: "str | None" = typer.Option(None, "--db", help="Explicit SQLite path (tests/isolation)."),  # noqa: B008
     json_out: bool = typer.Option(True, "--json", help="Emit JSON (default)."),  # noqa: B008
@@ -7721,8 +7727,10 @@ def phase_10_extract_packet(
     """Extract actions from ONE bounded packet (default one thread/event per packet).
 
     Combined extraction is used only for `--related` packets that pass deterministic relationship
-    scoring. `--triage` packets return triage labels only and never persist task/commitment candidates.
-    Dry-run by default; `--apply` persists only after schema + business validation.
+    scoring (strong by default; `--allow-moderate` includes moderate as review-only). A blocked
+    (non-compiled) related packet never calls the model. `--triage` packets return triage labels only
+    and never persist candidates. Dry-run is the DEFAULT (zero writes); `--apply` persists only after
+    schema + business validation. `--mock-output` is the offline validation path (no live model call).
     """
     from hb_assistant.construction.second_brain.local_ai import (
         build_calendar_event_action_packet,
@@ -7739,7 +7747,8 @@ def phase_10_extract_packet(
             packet = build_triage_batch_packet(store=store, project_key=project)
         elif related:
             packet = build_related_context_action_packet(
-                thread_ref=thread_ref, event_index_id=event_index_id, store=store
+                thread_ref=thread_ref, event_index_id=event_index_id, store=store,
+                allow_moderate=allow_moderate,
             )
         elif thread_ref:
             packet = build_email_thread_action_packet(thread_ref=thread_ref, store=store)
@@ -7754,20 +7763,22 @@ def phase_10_extract_packet(
             typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
             raise typer.Exit(2)
         report = extract_actions_for_packet(
-            packet=packet, store=store, dry_run=not apply, mock_output=mock_output
+            packet=packet, store=store, dry_run=dry_run, mock_output=mock_output
         )
         payload = {
             "command": "second-brain phase-10 extract-packet",
             "ok": True,
-            "applied": apply,
+            "applied": not dry_run,
+            "blocked": bool(report.get("blocked")),
             "packet_type": packet.get("packet_type"),
             "packet_purpose": packet.get("packet_purpose"),
             "allowed_outputs": packet.get("allowed_outputs"),
             "report": report,
             "guardrails": {
-                "dry_run": not apply,
+                "dry_run": dry_run,
                 "one_unit_per_packet": True,
                 "combine_requires_relationship": True,
+                "combine_default_strong_only": True,
                 "triage_never_persists": True,
                 "no_writeback": True,
             },

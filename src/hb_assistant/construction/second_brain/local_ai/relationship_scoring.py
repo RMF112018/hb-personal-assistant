@@ -41,10 +41,24 @@ _GENERIC_TITLES = {
     "meeting", "follow up", "follow-up", "followup", "coordination call", "coordination",
     "check in", "check-in", "sync", "touch base", "weekly", "call", "catch up", "1:1", "standup",
 }
-_RECORD_TOKENS = (
-    "rfi", "submittal", "oac", "agenda", "minutes", "proposal", "bid", "bid review", "change order",
-    "co", "pco", "punch", "schedule", "pay app", "pay application", "draw",
+# A SPECIFIC shared record identifier = a record token followed by a number/code (e.g. "RFI 42",
+# "submittal 03"). Generic terms (bid/proposal/meeting/agenda/review) WITHOUT a number are weak and
+# never count as a shared-record anchor on their own.
+_SPECIFIC_RECORD_RE = re.compile(
+    r"\b(rfi|submittal|asi|rfp|pco|co|change order|change event|pay app|pay application|draw|"
+    r"spec section|addendum|bulletin)\s*#?\s*0*(\d+)\b",
+    re.IGNORECASE,
 )
+_NEAR_EXACT_SUBJECT_JACCARD = 0.6
+_ANCHOR_CONFIDENCE_CAP = 0.40
+
+
+def _specific_record_ids(text: str) -> set[str]:
+    """Normalized specific record identifiers (``rfi-42``) present in ``text`` — generic terms excluded."""
+    return {
+        f"{m.group(1).lower().replace(' ', '_')}-{int(m.group(2))}"
+        for m in _SPECIFIC_RECORD_RE.finditer(text or "")
+    }
 _MEETING_WORDS = re.compile(
     r"\b(meeting|meet|call|agenda|oac|kickoff|kick-off|walk[- ]?through|coordination|review|huddle)\b",
     re.IGNORECASE,
@@ -150,6 +164,7 @@ def score_email_calendar_relationship(
         comp["same_project"] = _WEIGHTS["same_project"]
 
     t_tok, e_tok = _tokens(t["subject"]), _tokens(e["subject"])
+    jac = 0.0
     if t_tok and e_tok:
         jac = len(t_tok & e_tok) / len(t_tok | e_tok)
         if jac >= 0.2:
@@ -169,10 +184,8 @@ def score_email_calendar_relationship(
         elif nearest <= 72:
             comp["time_proximity"] = _WEIGHTS["time_proximity_72h"]
 
-    shared_records = [
-        tok for tok in _RECORD_TOKENS if tok in t["text"] and tok in e["text"]
-    ]
-    if shared_records:
+    shared_ids = _specific_record_ids(t["text"]) & _specific_record_ids(e["text"])
+    if shared_ids:
         comp["shared_record_reference"] = _WEIGHTS["shared_record_reference"]
 
     if _JOIN_HINT.search(t["text"]) and e["has_join"]:
@@ -184,6 +197,16 @@ def score_email_calendar_relationship(
         comp["private_sensitive_penalty"] = _WEIGHTS["private_sensitive_penalty"]
 
     confidence = max(0.0, min(1.0, round(sum(comp.values()), 3)))
+    # Anchor gate: a relationship may only reach moderate+ on a concrete anchor. Generic
+    # internal-domain participant overlap (or other generic-term overlap) alone is capped to weak.
+    anchor_present = (
+        bool(comp.get("same_project"))
+        or jac >= _NEAR_EXACT_SUBJECT_JACCARD
+        or ("time_proximity" in comp and "participant_overlap" in comp)
+        or bool(shared_ids)
+    )
+    if not anchor_present:
+        confidence = min(confidence, _ANCHOR_CONFIDENCE_CAP)
     positive = [k for k, v in comp.items() if v > 0]
     reason_codes = positive or ["no_signal"]
     if confidence >= STRONG_THRESHOLD:
@@ -203,6 +226,7 @@ def score_email_calendar_relationship(
         "project_key": t["project_key"] or e["project_key"],
         "confidence": confidence,
         "relationship_class": relationship_class,
+        "anchor_present": anchor_present,
         "review_required": review_required,
         "reason_codes": reason_codes,
         "score_components": {k: round(v, 3) for k, v in comp.items()},
