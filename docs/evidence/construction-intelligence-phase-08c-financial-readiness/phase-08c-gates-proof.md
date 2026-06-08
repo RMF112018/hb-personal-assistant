@@ -5,7 +5,7 @@ Deterministic, read-only gate evaluation over the V35 financial substrate. Advis
 ## Summary
 - Proof passed: false
 - ok (no fail_blocking): false
-- Schema version: 41 (expected >= 35)
+- Schema version: 42 (expected >= 35)
 - Status counts: {'pass': 6, 'warning': 5, 'fail_blocking': 11, 'deferred_not_blocking': 0}
 - Required fields covered: true
 - Readiness overstated: true
@@ -54,4 +54,4 @@ Deterministic, read-only gate evaluation over the V35 financial substrate. Advis
 ## Notes
 Deterministic Phase 08C data-quality gate evaluation across schema/contracts, the ten V35 tables + guard columns, amount normalization, currency, WBS/cost-code, source coverage, exposure marts, readiness agent, forecast-readiness, review-required policy, CLI, and no-writeback/no-raw. Advisory review aid only — not a determination, approval, claim, entitlement, or forecast. proof_passed is False when required evidence is missing.
 
-Generated: 2026-06-07T19:46:15.695314Z
+Generated: 2026-06-07T23:02:19.203347Z

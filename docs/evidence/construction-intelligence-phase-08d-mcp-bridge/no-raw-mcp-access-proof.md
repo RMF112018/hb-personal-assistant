@@ -20,7 +20,8 @@ Deterministic, read-only scan over every MCP surface (registries, resources, pro
 ## Guardrails
 - read_only: true
 - no_raw_content: true
+- mcp_raw_allowed: false
 - no_resource_dispatch: true
 - metadata_only: true
 
-Generated: 2026-06-06T21:11:45.039482+00:00
+Generated: 2026-06-08T08:52:01.166636+00:00

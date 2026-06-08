@@ -225,8 +225,13 @@ def build_raw_email_context_packet(
     if not threads_out:
         # Re-pull using direct (the list_ above may have been empty due to missing summaries)
         try:
-            from hb_assistant.construction.email.endpoints import list_email_message_raw_content as _list_raw_msgs  # type: ignore
-            raw_msgs = _list_raw_msgs(project_key=project_key, limit=max_threads * max_msgs, include_raw=True, store=s)
+            from hb_assistant.construction.email.endpoints import (
+                list_email_message_raw_content as _list_raw_msgs,  # type: ignore
+            )
+
+            raw_msgs = _list_raw_msgs(
+                project_key=project_key, limit=max_threads * max_msgs, include_raw=True, store=s
+            )
         except Exception:
             raw_msgs = []
         # Group by conversation or just emit as a flat thread for the packet
@@ -239,28 +244,34 @@ def build_raw_email_context_packet(
         for key, lst in list(grouped.items())[:max_threads]:
             bmsgs = []
             for m in lst[:max_msgs]:
-                bmsgs.append({
-                    "subject": m.get("subject"),
-                    "body_text": _truncate(m.get("body_text"), max_chars),
-                    "body_html": _truncate(m.get("body_html"), max_chars),
-                    "from_name": m.get("from_name"),
-                    "from_address": m.get("from_address"),
-                    "to_recipients": m.get("to_recipients") or [],
-                    "sent_at_utc": m.get("sent_at_utc"),
-                    "received_at_utc": m.get("received_at_utc"),
-                })
+                bmsgs.append(
+                    {
+                        "subject": m.get("subject"),
+                        "body_text": _truncate(m.get("body_text"), max_chars),
+                        "body_html": _truncate(m.get("body_html"), max_chars),
+                        "from_name": m.get("from_name"),
+                        "from_address": m.get("from_address"),
+                        "to_recipients": m.get("to_recipients") or [],
+                        "sent_at_utc": m.get("sent_at_utc"),
+                        "received_at_utc": m.get("received_at_utc"),
+                    }
+                )
             if bmsgs:
-                threads_out.append({
-                    "thread_subject": (lst[0].get("subject") if lst else None),
-                    "message_count": len(bmsgs),
-                    "participant_count": None,
-                    "messages": bmsgs,
-                })
+                threads_out.append(
+                    {
+                        "thread_subject": (lst[0].get("subject") if lst else None),
+                        "message_count": len(bmsgs),
+                        "participant_count": None,
+                        "messages": bmsgs,
+                    }
+                )
             for m in lst:
-                source_refs.append({
-                    "source_family": "email_message_raw_content",
-                    "source_ref": m.get("message_id_hash"),
-                })
+                source_refs.append(
+                    {
+                        "source_family": "email_message_raw_content",
+                        "source_ref": m.get("message_id_hash"),
+                    }
+                )
 
     content = {"threads": threads_out}
     token_est = _estimate_tokens(content)
@@ -371,28 +382,40 @@ def build_raw_calendar_context_packet(
     # Fallback direct raw for tests / cases where index list + enrichment didn't surface (pure raw seed)
     if not events_out:
         try:
-            from hb_assistant.construction.calendar.endpoints import list_calendar_event_raw_content as _list_raw_cal  # type: ignore
-            raws = _list_raw_cal(project_key=project_key, limit=max_events, include_raw=True, store=s)
+            from hb_assistant.construction.calendar.endpoints import (
+                list_calendar_event_raw_content as _list_raw_cal,  # type: ignore
+            )
+
+            raws = _list_raw_cal(
+                project_key=project_key, limit=max_events, include_raw=True, store=s
+            )
         except Exception:
             raws = []
         for r in raws[:max_events]:
-            events_out.append({
-                "subject": r.get("subject"),
-                "body_text": _truncate(r.get("body_text"), max_chars),
-                "body_html": _truncate(r.get("body_html"), max_chars),
-                "location": r.get("location_display"),
-                "organizer": {"name": r.get("organizer_name"), "email": r.get("organizer_email")},
-                "attendees": r.get("attendees") or [],
-                "join_url": r.get("join_url"),
-                "start": r.get("start_datetime_utc"),
-                "end": r.get("end_datetime_utc"),
-                "recurrence": r.get("recurrence"),
-            })
+            events_out.append(
+                {
+                    "subject": r.get("subject"),
+                    "body_text": _truncate(r.get("body_text"), max_chars),
+                    "body_html": _truncate(r.get("body_html"), max_chars),
+                    "location": r.get("location_display"),
+                    "organizer": {
+                        "name": r.get("organizer_name"),
+                        "email": r.get("organizer_email"),
+                    },
+                    "attendees": r.get("attendees") or [],
+                    "join_url": r.get("join_url"),
+                    "start": r.get("start_datetime_utc"),
+                    "end": r.get("end_datetime_utc"),
+                    "recurrence": r.get("recurrence"),
+                }
+            )
             if r.get("event_index_id") or r.get("raw_calendar_event_id"):
-                source_refs.append({
-                    "source_family": "calendar_event_raw_content",
-                    "source_ref": r.get("event_index_id") or r.get("raw_calendar_event_id"),
-                })
+                source_refs.append(
+                    {
+                        "source_family": "calendar_event_raw_content",
+                        "source_ref": r.get("event_index_id") or r.get("raw_calendar_event_id"),
+                    }
+                )
 
     content = {"events": events_out}
     token_est = _estimate_tokens(content)

@@ -3,7 +3,7 @@
   "command": "second-brain mcp no-raw-access",
   "phase": "08D",
   "proof_passed": true,
-  "generated_utc": "2026-06-06T21:11:45.039482+00:00",
+  "generated_utc": "2026-06-08T08:52:01.166636+00:00",
   "scanned_surface_count": 7,
   "surfaces": [
     {
@@ -64,11 +64,13 @@
   "metadata_only": {
     "no_raw_requested_content": true,
     "static_scan_no_wrapper_dispatch": true,
-    "receipts_hash_only": true
+    "receipts_hash_only": true,
+    "raw_mcp_config_respected": true
   },
   "guardrails": {
     "read_only": true,
     "no_raw_content": true,
+    "mcp_raw_allowed": false,
     "no_resource_dispatch": true,
     "metadata_only": true
   }

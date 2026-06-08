@@ -4,15 +4,13 @@
   "proof_passed": true,
   "ok": true,
   "phase": "08D",
-  "generated_utc": "2026-06-07T19:46:41.494654Z",
-  "schema_version": 41,
-  "schema_version_expected": 41,
+  "generated_utc": "2026-06-07T23:02:44.035362Z",
+  "schema_version": 42,
+  "schema_version_expected": 42,
   "contract_version": "1.4.0-phase-08d-planning",
   "advisory_only": true,
-  "ready_to_serve": false,
-  "serve_blockers": [
-    "mcp_sdk_not_installed"
-  ],
+  "ready_to_serve": true,
+  "serve_blockers": [],
   "status_counts": {
     "pass": 14,
     "warning": 0,
@@ -41,7 +39,7 @@
       "gate_status": "pass",
       "blocking": 0,
       "reason": null,
-      "schema_version": 41,
+      "schema_version": 42,
       "contracts": 10
     },
     {

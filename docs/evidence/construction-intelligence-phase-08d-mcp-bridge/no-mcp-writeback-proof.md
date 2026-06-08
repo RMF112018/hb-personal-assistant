@@ -24,4 +24,4 @@ Deterministic, read-only scan proving no MCP surface (permission policy, denied 
 - no_arbitrary_sql: true
 - metadata_only: true
 
-Generated: 2026-06-06T21:11:45.777693+00:00
+Generated: 2026-06-08T08:52:01.962726+00:00

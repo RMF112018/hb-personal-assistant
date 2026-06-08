@@ -486,7 +486,6 @@ def test_raw_content_private_cancelled_online_cases(tmp_path: Path) -> None:
 
 
 def test_raw_content_idempotent_reapply(tmp_path: Path) -> None:
-    from hb_assistant.normalize.redaction import hash_value
     indexer, db = _indexer(tmp_path)
     indexer.index(source_id="primary_calendar", dry_run=False, include_raw_content=True)
     indexer.index(source_id="primary_calendar", dry_run=False, include_raw_content=True)

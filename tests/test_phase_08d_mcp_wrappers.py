@@ -13,15 +13,15 @@ import sqlite3
 import tempfile
 from pathlib import Path
 
+from hb_assistant.construction.second_brain.financial_review_routing import _assert_no_raw
 from hb_assistant.construction.second_brain.mcp import (
     build_default_broker,
     build_mcp_allowed_tools_proof,
     build_wrapper_registry,
 )
-from hb_assistant.construction.second_brain.financial_review_routing import _assert_no_raw
 from hb_assistant.construction.second_brain.mcp.proof import (
-    _collect_keys,
     _FORBIDDEN_RESULT_FIELDS,
+    _collect_keys,
 )
 from hb_assistant.construction.second_brain.mcp.registry import load_allowed_tools
 from hb_assistant.construction.second_brain.mcp.wrappers import (
