@@ -12,6 +12,7 @@ body, content, or text excerpts — only metadata identifiers and provenance.
 from __future__ import annotations
 
 import contextlib
+import hashlib
 import json
 import uuid
 from datetime import datetime, timezone
@@ -9139,6 +9140,104 @@ class ConstructionStore:
                 ),
             )
         return status_event_id
+
+    # --- Phase 10 daily-brief action candidates (additive) -----------------
+    # Destination for advisory digest/synthesis candidates (e.g. the Procore
+    # action-signal digest and the daily-brief synthesis layer). Rollup rows only:
+    # redacted titles + reason codes + safe enums — never raw bodies. Guard columns
+    # omitted → DEFAULT 0 / CHECK(=0). Idempotent on a deterministic id.
+    # -----------------------------------------------------------------------
+
+    @staticmethod
+    def daily_brief_action_candidate_id_for(brief_date: str, section: str, group_key: str) -> str:
+        """Deterministic id for a daily-brief action candidate (idempotent upsert key)."""
+        digest = hashlib.sha256(f"{brief_date}|{section}|{group_key}".encode()).hexdigest()[:32]
+        return f"dbac-{digest}"
+
+    def insert_daily_brief_action_candidate(
+        self,
+        *,
+        brief_date: str,
+        section: str,
+        title_redacted: str,
+        confidence: float,
+        project_key: Optional[str] = None,
+        priority: int = 100,
+        status: str = "candidate",
+        reason_redacted: Optional[str] = None,
+        recommended_next_action: Optional[str] = None,
+        daily_brief_action_candidate_id: Optional[str] = None,
+        group_key: Optional[str] = None,
+    ) -> bool:
+        """Insert a daily-brief action candidate. Returns True if a row was inserted.
+
+        Idempotent: the id is derived from (brief_date, section, group_key) unless one is
+        supplied, so a repeat call is a no-op (ON CONFLICT DO NOTHING). Guard columns are
+        omitted → DEFAULT 0 / CHECK(=0).
+        """
+        if not brief_date or not section or not title_redacted:
+            raise ValueError("brief_date, section and title_redacted are required")
+        row_id = daily_brief_action_candidate_id or self.daily_brief_action_candidate_id_for(
+            brief_date, section, group_key or title_redacted
+        )
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            cur = conn.execute(
+                """
+                INSERT INTO daily_brief_action_candidates
+                    (daily_brief_action_candidate_id, brief_date, section, title_redacted,
+                     project_key, priority, status, confidence, reason_redacted,
+                     recommended_next_action)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(daily_brief_action_candidate_id) DO NOTHING
+                """,
+                (
+                    row_id,
+                    brief_date,
+                    section,
+                    title_redacted,
+                    project_key,
+                    priority,
+                    status,
+                    confidence,
+                    reason_redacted,
+                    recommended_next_action,
+                ),
+            )
+            return cur.rowcount > 0
+
+    def list_daily_brief_action_candidates(
+        self,
+        *,
+        brief_date: Optional[str] = None,
+        section: Optional[str] = None,
+        limit: int = 1000,
+    ) -> list[dict[str, Any]]:
+        """List daily-brief action candidates (safe fields only)."""
+        conn = get_connection(self._db_path)
+        clauses: list[str] = []
+        params: list[Any] = []
+        if brief_date is not None:
+            clauses.append("brief_date = ?")
+            params.append(brief_date)
+        if section is not None:
+            clauses.append("section = ?")
+            params.append(section)
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        params.append(limit)
+        cur = conn.execute(
+            f"""
+            SELECT daily_brief_action_candidate_id, brief_date, section, title_redacted,
+                   project_key, priority, status, confidence, reason_redacted,
+                   recommended_next_action, created_utc
+            FROM daily_brief_action_candidates {where}
+            ORDER BY priority ASC, created_utc DESC
+            LIMIT ?
+            """,
+            tuple(params),
+        )
+        cols = [d[0] for d in cur.description]
+        return [dict(zip(cols, row, strict=True)) for row in cur.fetchall()]
 
     # V20 Phase 07A Prompt 01 — Data Quality + Canonical Source-Record Map
     # All adapters enforce the guardrail flags=False at the Python layer (defense

@@ -25,6 +25,7 @@ from .contracts import (
     load_phase_10_contract,
     load_raw_content_policy,
 )
+from .daily_brief_synthesis import build_daily_brief_candidates
 from .email_task_extraction import (
     extract_email_task_candidates,
     score_email_task_signals,
@@ -51,6 +52,7 @@ from .packet_builders import (
     build_triage_batch_packet,
 )
 from .packet_normalize import has_join_url, normalize_model_text, summarize_attendees
+from .procore_digest import build_procore_action_digest
 from .proof import Phase10ProofError, build_phase_10_contracts_proof
 from .provider import build_local_model_status, resolve_local_model_client
 from .raw_action_intelligence import (
@@ -132,4 +134,8 @@ __all__ = [
     # Phase 10: deterministic follow-up watch monitor (advisory, no writeback)
     "classify_watch_status",
     "run_follow_up_watch_scan",
+    # Phase 10: deterministic Procore action-signal digest (advisory, no writeback)
+    "build_procore_action_digest",
+    # Phase 10: daily-brief candidate synthesis (unifies email + Procore families)
+    "build_daily_brief_candidates",
 ]

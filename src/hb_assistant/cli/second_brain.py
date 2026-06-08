@@ -158,6 +158,13 @@ follow_up_watch_app = typer.Typer(
 )
 app.add_typer(follow_up_watch_app, name="follow-up-watch")
 
+procore_digest_app = typer.Typer(
+    name="procore-digest",
+    help="Phase 10 deterministic Procore action-signal digest (advisory; no Procore writeback).",
+    no_args_is_help=True,
+)
+app.add_typer(procore_digest_app, name="procore-digest")
+
 automation_app = typer.Typer(
     name="automation",
     help="Phase 08B automation health + observability (read-only status surface).",
@@ -1987,6 +1994,66 @@ _DAILY_BRIEF_GUARDRAILS = {
     "tier_3_never_final_conclusion": True,
     "model_direct_external_api_access": False,
 }
+
+
+@daily_brief_app.command("synthesize-candidates")
+def daily_brief_synthesize_candidates(
+    as_of: "str | None" = typer.Option(  # noqa: B008
+        None, "--as-of", help="ISO-8601 UTC 'now' (sets brief_date; default: current UTC)."
+    ),
+    limit: int = typer.Option(200, "--limit", help="Max accepted items / watch items to scan."),  # noqa: B008
+    dry_run: bool = typer.Option(  # noqa: B008
+        True, "--dry-run/--apply",
+        help="Dry-run (default; zero writes). --apply persists, capped by --max-persist.",
+    ),
+    max_persist: "int | None" = typer.Option(  # noqa: B008
+        None, "--max-persist", help="REQUIRED with --apply: cap on ACTUAL persisted candidates."
+    ),
+    summary: bool = typer.Option(  # noqa: B008
+        False, "--summary", help="Include the unified brief sections in the response."
+    ),
+    db: "str | None" = typer.Option(None, "--db", help="Explicit SQLite path (tests/isolation)."),  # noqa: B008
+    json_out: bool = typer.Option(True, "--json", help="Emit JSON (default)."),  # noqa: B008
+) -> None:
+    """Synthesize unified daily-brief candidates from accepted tasks + watch items (+ Procore).
+
+    Convergence layer for the local-agent family: unifies the email side (accepted tasks +
+    stale follow-up watch items) and the Procore side (digest rows already written for the date)
+    into reviewable daily_brief_action_candidates by section. Dry-run default; ``--apply`` requires
+    ``--max-persist``. Deterministic, source-linked, advisory — no writeback.
+    """
+    from datetime import datetime as _dt
+    from datetime import timezone as _tz
+
+    from hb_assistant.construction.second_brain.local_ai import build_daily_brief_candidates
+    from hb_assistant.construction.store import ConstructionStore
+
+    cmd = "second-brain daily-brief synthesize-candidates"
+    try:
+        if not dry_run and max_persist is None:
+            payload = {
+                "command": cmd, "ok": False, "applied": False,
+                "error": "apply_requires_max_persist",
+                "guardrails": {"apply_requires_max_persist": True},
+            }
+            typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+            raise typer.Exit(2)
+
+        now_utc = as_of or _dt.now(_tz.utc).isoformat()
+        store = ConstructionStore(db_path=db)
+        payload = build_daily_brief_candidates(
+            store=store, now_utc=now_utc, limit=limit, dry_run=dry_run, max_persist=max_persist,
+        )
+        if not summary:
+            payload = {k: v for k, v in payload.items() if k != "brief"}
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(0)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        payload = {"command": cmd, "ok": False, "error": str(e)[:300]}
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(1) from None
 
 
 @daily_brief_app.command("build")
@@ -8663,6 +8730,100 @@ def second_brain_follow_up_watch_scan(
         )
         if not summary:
             payload = {k: v for k, v in payload.items() if k != "results"}
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(0)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        payload = {"command": cmd, "ok": False, "error": str(e)[:300]}
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(1) from None
+
+
+@procore_digest_app.command("build")
+def second_brain_procore_digest_build(
+    project: "str | None" = typer.Option(  # noqa: B008
+        None, "--project", help="Single Procore project key (default: all projects present)."
+    ),
+    as_of: "str | None" = typer.Option(  # noqa: B008
+        None, "--as-of",
+        help="ISO-8601 UTC 'now' for deterministic overdue/brief-date (default: current UTC).",
+    ),
+    limit: int = typer.Option(50, "--limit", help="Max signal-type groups per project in output."),  # noqa: B008
+    dry_run: bool = typer.Option(  # noqa: B008
+        True, "--dry-run/--apply",
+        help="Dry-run (default; zero writes). --apply persists, capped by --max-persist.",
+    ),
+    max_persist: "int | None" = typer.Option(  # noqa: B008
+        None, "--max-persist", help="REQUIRED with --apply: cap on ACTUAL persisted candidates."
+    ),
+    synthesize: bool = typer.Option(  # noqa: B008
+        False, "--synthesize",
+        help="Optional bounded local-model advisory narrative (off by default; in-memory only).",
+    ),
+    profile: str = typer.Option(  # noqa: B008
+        "default_extract", "--profile", help="Local model profile when --synthesize (default_extract)."
+    ),
+    model: "str | None" = typer.Option(  # noqa: B008
+        None, "--model", help="Override the synthesis model (default from profile: mistral-nemo:12b)."
+    ),
+    provider: str = typer.Option("ollama", "--provider", help="Local model provider (ollama)."),  # noqa: B008
+    timeout_seconds: "float | None" = typer.Option(  # noqa: B008
+        None, "--timeout-seconds", help="Override the synthesis model timeout."
+    ),
+    summary: bool = typer.Option(  # noqa: B008
+        False, "--summary", help="Include the full per-project groups list in the response."
+    ),
+    db: "str | None" = typer.Option(None, "--db", help="Explicit SQLite path (tests/isolation)."),  # noqa: B008
+    json_out: bool = typer.Option(True, "--json", help="Emit JSON (default)."),  # noqa: B008
+) -> None:
+    """Build a deterministic, source-linked Procore action-signal digest (dry-run-first).
+
+    Composes the existing redacted Procore rollup read models into per-project, per-signal-type
+    groups (counts, overdue, dimensions, bounded source refs). Defaults to dry-run (zero writes);
+    ``--apply`` is explicit and REQUIRES ``--max-persist``, capping inserts into
+    daily_brief_action_candidates (idempotent rollups). ``--synthesize`` adds an optional, in-memory
+    advisory narrative fed ONLY redacted aggregates. No Procore/external writeback, no cloud LLM.
+    """
+    from datetime import datetime as _dt
+    from datetime import timezone as _tz
+
+    from hb_assistant.construction.second_brain.local_ai import build_procore_action_digest
+    from hb_assistant.construction.store import ConstructionStore
+
+    cmd = "second-brain procore-digest build"
+    try:
+        if not dry_run and max_persist is None:
+            payload = {
+                "command": cmd, "ok": False, "applied": False,
+                "error": "apply_requires_max_persist",
+                "guardrails": {"apply_requires_max_persist": True},
+            }
+            typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+            raise typer.Exit(2)
+
+        now_utc = as_of or _dt.now(_tz.utc).isoformat()
+        store = ConstructionStore(db_path=db)
+
+        client = None
+        if synthesize:
+            from hb_assistant.construction.second_brain.local_ai import resolve_local_model_client
+
+            client, _resolved, _reason = resolve_local_model_client(
+                provider=provider, profile_id=profile, model=model, timeout_seconds=timeout_seconds,
+            )
+            # client may be None → digest reports synthesis ok=False (deterministic digest unaffected).
+
+        payload = build_procore_action_digest(
+            store=store, now_utc=now_utc, db_path=db, project_key=project, limit=limit,
+            dry_run=dry_run, max_persist=max_persist, synthesize=synthesize, client=client,
+        )
+        if not summary:
+            # Drop the verbose per-project groups unless --summary (counters + synthesis remain).
+            trimmed = []
+            for pv in payload.get("projects", []):
+                trimmed.append({k: v for k, v in pv.items() if k != "groups"})
+            payload = {**payload, "projects": trimmed}
         typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
         raise typer.Exit(0)
     except typer.Exit:

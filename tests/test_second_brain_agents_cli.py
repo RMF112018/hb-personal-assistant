@@ -19,13 +19,17 @@ def test_agents_registry_lists_all(runner: CliRunner) -> None:
     result = runner.invoke(app, ["second-brain", "agents", "registry", "--json"])
     assert result.exit_code == 0, result.output
     payload = json.loads(result.output)
-    # 9 required Phase 08A agents + 2 Phase 10 local-agent-family entries.
-    assert payload["count"] == 11
-    assert len(payload["agents"]) == 11
+    # 9 required Phase 08A agents + 3 Phase 10 local-agent-family entries.
+    assert payload["count"] == 12
+    assert len(payload["agents"]) == 12
     assert payload["guardrails"]["mcp_implemented"] is False
     ids = {a["agent_id"] for a in payload["agents"]}
     assert "second_brain_orchestrator_agent" in ids
-    assert {"email_action_extraction_agent", "follow_up_watch_agent"} <= ids
+    assert {
+        "email_action_extraction_agent",
+        "follow_up_watch_agent",
+        "procore_digest_agent",
+    } <= ids
     for agent in payload["agents"]:
         assert agent["receipt_required"] is True
         assert agent["allowed_tool_groups"]
@@ -35,8 +39,8 @@ def test_agents_status_valid_exit_zero(runner: CliRunner) -> None:
     result = runner.invoke(app, ["second-brain", "agents", "status", "--json"])
     assert result.exit_code == 0, result.output
     payload = json.loads(result.output)
-    assert payload["agent_count"] == 11
-    assert payload["enabled_count"] == 11
+    assert payload["agent_count"] == 12
+    assert payload["enabled_count"] == 12
     assert payload["registry_valid"] is True
     assert payload["tool_policy_valid"] is True
     assert payload["violations_count"] == 0

@@ -104,3 +104,71 @@ schema-lifecycle / 08b-gate set noted in prior evidence. Independent of this bra
 
 Experimental, **ready for audit** — not auto-mergeable (per the working-mode brief). No live Graph
 crawl, no migration, no production/Dev DB mutation were required or performed.
+
+---
+
+# Checkpoint 2 — Procore digest + daily-brief synthesis
+
+Adds two further verticals on top of Checkpoint 1, proven on the **production-DB copy** (real
+Procore data) and via unit tests. The convergence table is `daily_brief_action_candidates`.
+
+## Procore action-signal digest (`second-brain procore-digest build`)
+
+Composes existing redacted Procore read models (`build_operational_digest`, `list_procore_action_signals`,
+`get_procore_text_intelligence`, `_dimensions_for`) into a per-project / per-signal-type digest.
+Deterministic-first; optional `--synthesize` advisory narrative (off by default, in-memory only,
+fed only redacted aggregates). Verified on a copy of the production DB (V42, 5836 open signals, 3
+real projects: alton-hilltop-pbg / pga-modern-garage / tropical):
+
+| Step | Result |
+|------|--------|
+| dry-run | `projects=3, groups=83, total_open_signals=5836, by_importance={high:1434, medium:4235, low:167}, would_persist=83, persisted=0`; headlines `ok=True` for all 3 |
+| dry-run wrote 0 rows | `daily_brief_action_candidates=0` |
+| apply `--max-persist 5` | `persisted=5` (78 held back) |
+| re-apply `--max-persist 5` | `skipped_existing=5, persisted=5` (idempotent) |
+| redaction | output carries no `metadata_json` / `encrypted_full_text_ref` / `text_hash` / titles / `owner_entity_key` |
+| source untouched | `procore_action_signals` still 5836 (no Procore writeback) |
+
+## Daily-brief synthesis (`second-brain daily-brief synthesize-candidates`)
+
+Unifies accepted tasks + stale follow-up watch items + the Procore digest rows into
+`daily_brief_action_candidates` by section (`actions` / `waiting` / `follow_up` / `procore`) and
+returns one advisory brief view. On the production-DB copy (no accepted/watch rows there) the brief
+correctly surfaced the **procore** section with real redacted rollups (e.g. "216 open
+invoice_payment_due signals"); the email sections are covered by unit tests on seeded data.
+
+## Guardrail proof (production-DB copy)
+
+```
+daily_brief_action_candidates: rows=10  guard_nonzero=NONE     # all 13 _P10_GUARDS = 0
+procore_action_signals: 5836 (unchanged — no writeback)
+```
+
+## Tests (Checkpoint 2)
+
+- `tests/test_phase_10_procore_digest.py` (16) — shape/source-linking, redaction (forbidden keys),
+  dry-run zero writes, apply needs flag+cap, max-persist cap, idempotency, guard cols 0, empty clean,
+  synthesis off-by-default + no-client fail-closed + redacted-input-only, CLI wiring.
+- `tests/test_phase_10_daily_brief_synthesis.py` (9) — section routing, dry-run zero, apply needs
+  flag+cap, cap, idempotency, guard cols 0, unified brief includes Procore rows, empty clean, CLI.
+- Registry count assertions updated to 12; `agents status` valid, 0 violations.
+
+Targeted suites green; `ruff` + `mypy` clean on changed modules. Pre-existing clean-HEAD failures
+(`test_email_body_indexing`, `test_phase_10_email_task_extraction::test_commitment_persists...`)
+remain, independent of this branch.
+
+## Family dispositions (evidence-based, not implemented this run)
+
+| Family | Evidence | Verdict |
+|--------|----------|---------|
+| Calendar meeting-prep | Dev `calendar_event_raw_content`=500 but HTML-only bodies, no project_key/source_ref, join-urls | Deferred — needs a normalization slice first (next strongest) |
+| MCP packet builder | infra present, `claude_context_packets`=0 | Deferred — build-on-demand, lower ROI now |
+| Obsidian workflows | safe writer + path policy exist, `obsidian_note_index`=0 | Deferred |
+| File/document enrichment | `files`=0, no populated extracted-text | **Data-blocked** |
+| Inbox classification / entity / relationship | detectors/extractors exist; deterministic relationship scoring already shipped | No high-ROI agent gap this run |
+| Review/API/dashboard | CLI-only by design | Out of scope; review surface = CLI + `daily_brief_action_candidates` |
+
+## Checkpoint 2 status
+
+Experimental, **ready for audit**. No migration, no production/Dev DB mutation (copy only), no
+Procore/Graph/external writeback, no cloud LLM.
