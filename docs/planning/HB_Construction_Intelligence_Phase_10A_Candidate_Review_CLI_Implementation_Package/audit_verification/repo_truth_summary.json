@@ -1,0 +1,17 @@
+{
+  "repository": "RMF112018/hb-personal-assistant",
+  "audit_date_utc": "2026-06-08T17:15:24.290210+00:00",
+  "verified_schema_head": "V42 observed in repo truth audit; local agent must rebaseline",
+  "target_schema_head_after_package": "V43 additive migration if implemented",
+  "phase": "Phase 10A - Local Action Intelligence Candidate Review CLI",
+  "no_repo_write_performed_by_package_generator": true,
+  "key_findings": [
+    "Batch extractor exists under second_brain/local_ai/batch_extraction.py.",
+    "Raw action intelligence exists under second_brain/local_ai/raw_action_intelligence.py.",
+    "Current batch command path is hb-assistant second-brain extract-packets.",
+    "task_candidates and commitment_candidates exist with review_status and guard columns.",
+    "candidate_source_refs exists with evidence_redacted and source ref hashes.",
+    "candidate_review_events exists but store helper/schema drift must be fixed.",
+    "Stored statuses are pending, accepted, rejected, snoozed, suppressed; ignore should map to suppressed."
+  ]
+}

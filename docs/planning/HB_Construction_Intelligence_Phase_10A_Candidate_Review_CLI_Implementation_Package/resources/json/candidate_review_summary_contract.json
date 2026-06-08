@@ -1,0 +1,15 @@
+{
+  "title": "Phase10ACandidateReviewSummaryOutput",
+  "required_counts": [
+    "by_review_status",
+    "by_candidate_type",
+    "by_safety_category",
+    "by_assignee_or_actor",
+    "by_waiting_state",
+    "by_urgency",
+    "by_age_bucket",
+    "by_source_family",
+    "by_model_profile",
+    "by_prompt_version"
+  ]
+}

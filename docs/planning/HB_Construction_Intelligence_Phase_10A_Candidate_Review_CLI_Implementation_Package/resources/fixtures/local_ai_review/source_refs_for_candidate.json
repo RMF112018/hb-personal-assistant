@@ -1,0 +1,15 @@
+{
+  "candidate_type": "task",
+  "candidate_id": "task_review_fixture_001",
+  "source_refs": [
+    {
+      "source_ref_id": "src_fixture_001",
+      "source_family": "email_thread_raw_context",
+      "source_ref_hash": "email_thread_action_packet_fixture_hash",
+      "source_table": "email_thread_action_packets",
+      "source_primary_key_hash": "thread_hash_fixture",
+      "evidence_redacted": "Antonio asked Bobby to send a draft Final Certification response.",
+      "confidence": 0.78
+    }
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "name": "phase_10a_candidate_review_cli_contract",
+  "version": "1.0.0",
+  "commands": {
+    "list": {
+      "path": "hb-assistant second-brain review list",
+      "mutates_local_db": false
+    },
+    "show": {
+      "path": "hb-assistant second-brain review show",
+      "mutates_local_db": false
+    },
+    "summary": {
+      "path": "hb-assistant second-brain review summary",
+      "mutates_local_db": false
+    },
+    "accept": {
+      "path": "hb-assistant second-brain review accept",
+      "mutates_local_db": true
+    },
+    "ignore": {
+      "path": "hb-assistant second-brain review ignore",
+      "mutates_local_db": true,
+      "stored_status": "suppressed"
+    },
+    "reject": {
+      "path": "hb-assistant second-brain review reject",
+      "mutates_local_db": true
+    },
+    "snooze": {
+      "path": "hb-assistant second-brain review snooze",
+      "mutates_local_db": true
+    },
+    "edit": {
+      "path": "hb-assistant second-brain review edit",
+      "mutates_local_db": true
+    },
+    "export": {
+      "path": "hb-assistant second-brain review export",
+      "mutates_local_db": false
+    }
+  },
+  "guardrails": {
+    "external_writeback_allowed": false,
+    "raw_content_output_allowed": false,
+    "cloud_llm_dependency_allowed": false
+  }
+}

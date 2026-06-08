@@ -1,0 +1,17 @@
+phase: phase_10a_candidate_review_cli
+version: 1
+review_statuses:
+  stored: [pending, accepted, rejected, snoozed, suppressed]
+  aliases:
+    ignored: suppressed
+commands:
+  batch_default: dry_run
+  require_apply_for_batch_mutation: true
+  default_limit: 25
+  max_actions_default: 25
+safety:
+  local_db_only: true
+  external_writeback_allowed: false
+  raw_content_output_allowed: false
+  raw_prompt_response_output_allowed: false
+  source_refs_immutable: true

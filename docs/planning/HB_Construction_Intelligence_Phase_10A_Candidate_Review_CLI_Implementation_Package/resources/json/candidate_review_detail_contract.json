@@ -1,0 +1,19 @@
+{
+  "title": "Phase10ACandidateReviewDetailOutput",
+  "required": [
+    "command",
+    "ok",
+    "candidate",
+    "source_refs",
+    "guardrails"
+  ],
+  "forbidden_fields": [
+    "raw_email_body",
+    "raw_prompt",
+    "raw_response",
+    "signed_url",
+    "download_url",
+    "token",
+    "secret"
+  ]
+}

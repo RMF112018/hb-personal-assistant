@@ -1,0 +1,16 @@
+{
+  "fields": [
+    "review_event_id",
+    "candidate_type",
+    "candidate_id",
+    "action",
+    "prior_status",
+    "new_status",
+    "user_note_redacted",
+    "changes_json_redacted",
+    "snoozed_until_utc",
+    "reviewer_ref",
+    "created_utc"
+  ],
+  "guard_columns_must_remain_zero": true
+}

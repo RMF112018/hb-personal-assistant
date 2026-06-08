@@ -1,0 +1,19 @@
+{
+  "candidate_type": "commitment",
+  "candidate_id": "commitment_review_fixture_001",
+  "stable_key": "raw-commitment:fixture001",
+  "title_redacted": "Confirm schedule update will be provided",
+  "project_key": "redacted-project",
+  "commitment_actor_class": "other",
+  "promised_at_utc": null,
+  "due_at_utc": null,
+  "urgency": "normal",
+  "waiting_state": "waiting_on_others",
+  "safety_category": "schedule",
+  "confidence": 0.73,
+  "reason_redacted": "Counterparty indicated they would provide an update; review before action.",
+  "recommended_next_action": "review",
+  "review_status": "pending",
+  "model_profile_id": "default_extract",
+  "prompt_template_version": "phase10a-action-extraction-v1.2.7"
+}

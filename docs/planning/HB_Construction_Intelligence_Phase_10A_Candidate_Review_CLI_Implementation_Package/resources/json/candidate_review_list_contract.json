@@ -1,0 +1,17 @@
+{
+  "title": "Phase10ACandidateReviewListOutput",
+  "required": [
+    "command",
+    "ok",
+    "filters",
+    "candidates",
+    "guardrails"
+  ],
+  "stored_statuses": [
+    "pending",
+    "accepted",
+    "rejected",
+    "snoozed",
+    "suppressed"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "candidate_type": "task",
+  "candidate_id": "task_review_fixture_001",
+  "stable_key": "raw-task:fixture001",
+  "title_redacted": "Send draft Final Certification response",
+  "project_key": "redacted-project",
+  "assignee_class": "other",
+  "due_at_utc": null,
+  "urgency": "normal",
+  "waiting_state": "waiting_on_others",
+  "safety_category": "contract",
+  "confidence": 0.78,
+  "reason_redacted": "Requester asked Bobby for a draft response; review assignee/waiting state before downstream use.",
+  "recommended_next_action": "review",
+  "review_status": "pending",
+  "model_profile_id": "default_extract",
+  "prompt_template_version": "phase10a-action-extraction-v1.2.7"
+}

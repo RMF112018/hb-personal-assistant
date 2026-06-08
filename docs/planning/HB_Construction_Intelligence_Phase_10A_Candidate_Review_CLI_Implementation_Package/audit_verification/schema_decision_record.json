@@ -1,0 +1,22 @@
+{
+  "decision": "Implement additive V43 migration for full snooze/edit/auditability workflow",
+  "minimum_no_migration_capability": [
+    "list",
+    "show",
+    "accept",
+    "ignore/suppress",
+    "reject",
+    "summary",
+    "export"
+  ],
+  "migration_required_for": [
+    "snoozed_until metadata",
+    "reviewed timestamp/by/note",
+    "edit audit changes_json_redacted",
+    "reviewer_ref"
+  ],
+  "critical_precondition": "Fix candidate_review_events insert helper to match observed DDL before relying on events",
+  "status_alias": {
+    "ignored": "suppressed"
+  }
+}
