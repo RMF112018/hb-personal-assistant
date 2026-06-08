@@ -233,3 +233,160 @@ def test_review_action_outputs_have_no_raw_keys(tmp_path: Path) -> None:
     for res in (r1, r2):
         assert res.exit_code == 0, res.output
         _assert_no_forbidden_keys(json.loads(res.output))
+
+
+# ---------------------------------------------------------------------------
+# snooze / edit / export
+# ---------------------------------------------------------------------------
+def test_review_snooze_cli_and_bad_until(tmp_path: Path) -> None:
+    db = str(tmp_path / "db.sqlite")
+    tid, _ = _seed(db)
+    until = "2026-06-12T09:00:00-04:00"
+    res = runner.invoke(
+        app, ["review", "snooze", "--candidate-id", tid, "--until", until, "--db", db, "--json"]
+    )
+    assert res.exit_code == 0, res.output
+    payload = json.loads(res.output)
+    assert payload["new_review_status"] == "snoozed"
+    row = ConstructionStore(db_path=db).get_task_candidate(tid)
+    assert row is not None and row["snoozed_until_utc"] == until
+
+    bad = runner.invoke(
+        app, ["review", "snooze", "--candidate-id", tid, "--until", "nope", "--db", db, "--json"]
+    )
+    assert bad.exit_code == 2, bad.output
+
+
+def test_review_edit_cli_records_changes_and_preserves_status_and_refs(tmp_path: Path) -> None:
+    db = str(tmp_path / "db.sqlite")
+    tid, _ = _seed(db)
+    s = ConstructionStore(db_path=db)
+    refs_before = len(s.list_candidate_source_refs(candidate_id=tid))
+    res = runner.invoke(
+        app,
+        [
+            "review", "edit", "--candidate-id", tid,
+            "--title", "Revised title", "--assignee", "other",
+            "--waiting-state", "waiting_on_others", "--db", db, "--json",
+        ],
+    )
+    assert res.exit_code == 0, res.output
+    payload = json.loads(res.output)
+    assert payload["review_status"] == "pending"  # unchanged
+    assert payload["changes"]["assignee_class"] == {"from": "user", "to": "other"}
+
+    row = s.get_task_candidate(tid)
+    assert row is not None
+    assert row["title_redacted"] == "Revised title"
+    assert row["assignee_class"] == "other"
+    assert row["waiting_state"] == "waiting_on_others"
+    assert row["review_status"] == "pending"
+    assert len(s.list_candidate_source_refs(candidate_id=tid)) == refs_before
+
+    # audit row carries changes_json_redacted
+    conn = sqlite3.connect(db)
+    try:
+        changes = conn.execute(
+            "SELECT changes_json_redacted FROM candidate_review_events "
+            "WHERE candidate_id = ? AND action = 'edit'",
+            (tid,),
+        ).fetchone()
+    finally:
+        conn.close()
+    assert changes is not None and changes[0] and "assignee_class" in changes[0]
+
+
+def test_review_edit_cli_invalid_enum_and_no_edits(tmp_path: Path) -> None:
+    db = str(tmp_path / "db.sqlite")
+    tid, _ = _seed(db)
+    bad = runner.invoke(
+        app, ["review", "edit", "--candidate-id", tid, "--assignee", "nobody", "--db", db, "--json"]
+    )
+    assert bad.exit_code == 2, bad.output
+    none = runner.invoke(app, ["review", "edit", "--candidate-id", tid, "--db", db, "--json"])
+    assert none.exit_code == 2, none.output
+    assert json.loads(none.output)["error"] == "no_edits"
+
+
+def test_review_export_cli_to_file_and_stdout(tmp_path: Path) -> None:
+    db = str(tmp_path / "db.sqlite")
+    _seed(db)
+    out = tmp_path / "queue.json"
+    res = runner.invoke(app, ["review", "export", "--out", str(out), "--db", db, "--json"])
+    assert res.exit_code == 0, res.output
+    summary = json.loads(res.output)
+    assert summary["count"] == 2 and summary["out"] == str(out)
+    written = json.loads(out.read_text())
+    assert written["count"] == 2
+    assert all("source_refs" in it for it in written["items"])
+    _assert_no_forbidden_keys(written)
+
+    # no --out -> full payload to stdout
+    res2 = runner.invoke(app, ["review", "export", "--status", "pending", "--db", db, "--json"])
+    assert res2.exit_code == 0
+    p2 = json.loads(res2.output)
+    assert p2["count"] == 1 and p2["items"][0]["review_status"] == "pending"
+
+    bad = runner.invoke(app, ["review", "export", "--status", "bogus", "--db", db, "--json"])
+    assert bad.exit_code == 2, bad.output
+
+
+# ---------------------------------------------------------------------------
+# Batch actions (dry-run default, --apply to persist)
+# ---------------------------------------------------------------------------
+def test_review_batch_accept_dry_run_then_apply(tmp_path: Path) -> None:
+    db = str(tmp_path / "db.sqlite")
+    tid, cid = _seed(db)
+    id_file = tmp_path / "ids.txt"
+    id_file.write_text(f"# ids to accept\n{tid}\n{cid}\nghost-id\n")
+
+    dry = runner.invoke(
+        app, ["review", "accept", "--candidate-id-file", str(id_file), "--db", db, "--json"]
+    )
+    assert dry.exit_code == 0, dry.output
+    dp = json.loads(dry.output)
+    assert dp["dry_run"] is True and dp["applied"] is False
+    assert dp["summary"]["would_apply"] == 2
+    assert dp["summary"]["not_found"] == 1
+    # nothing persisted in dry-run
+    s = ConstructionStore(db_path=db)
+    assert s.get_task_candidate(tid)["review_status"] == "pending"
+
+    applied = runner.invoke(
+        app,
+        ["review", "accept", "--candidate-id-file", str(id_file), "--apply", "--db", db, "--json"],
+    )
+    assert applied.exit_code == 0, applied.output
+    ap = json.loads(applied.output)
+    assert ap["applied"] is True and ap["summary"]["applied"] == 2
+    assert s.get_task_candidate(tid)["review_status"] == "accepted"
+    assert s.get_commitment_candidate(cid)["review_status"] == "accepted"
+
+
+def test_review_batch_max_actions_caps(tmp_path: Path) -> None:
+    db = str(tmp_path / "db.sqlite")
+    tid, cid = _seed(db)
+    id_file = tmp_path / "ids.txt"
+    id_file.write_text(f"{tid}\n{cid}\n")
+    res = runner.invoke(
+        app,
+        ["review", "ignore", "--candidate-id-file", str(id_file), "--max-actions", "1", "--db", db, "--json"],
+    )
+    assert res.exit_code == 0, res.output
+    payload = json.loads(res.output)
+    assert payload["summary"]["processed"] == 1
+    assert payload["summary"]["skipped_over_cap"] == 1
+
+
+def test_review_action_mutually_exclusive_inputs(tmp_path: Path) -> None:
+    db = str(tmp_path / "db.sqlite")
+    tid, _ = _seed(db)
+    id_file = tmp_path / "ids.txt"
+    id_file.write_text(f"{tid}\n")
+    both = runner.invoke(
+        app,
+        ["review", "accept", "--candidate-id", tid, "--candidate-id-file", str(id_file), "--db", db, "--json"],
+    )
+    assert both.exit_code == 2, both.output
+    neither = runner.invoke(app, ["review", "accept", "--db", db, "--json"])
+    assert neither.exit_code == 2, neither.output

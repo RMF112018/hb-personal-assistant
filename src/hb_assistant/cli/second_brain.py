@@ -4843,23 +4843,32 @@ def _candidate_review_action_guardrails() -> dict[str, Any]:
     }
 
 
+def _read_candidate_id_file(path: str) -> list[str]:
+    """Read candidate_ids from a file: one per line, blanks + '#' comments skipped."""
+    with open(path, encoding="utf-8") as fh:
+        return [ln.strip() for ln in fh if ln.strip() and not ln.lstrip().startswith("#")]
+
+
 def _run_review_action(
     *,
     command: str,
     service_fn: "Any",
     candidate_id: str,
     candidate_type: str | None,
-    reason: str | None,
     db: str | None,
     json_out: bool,
+    call_kwargs: "dict[str, Any] | None" = None,
 ) -> None:
-    """Resolve the candidate, apply a review decision, and emit the result.
+    """Resolve the candidate, apply a single review operation, and emit the result.
 
     Type is resolved via the primary-key getter so the operator only needs
-    --candidate-id; the decision (accept/ignore/reject) is fixed per verb.
+    --candidate-id; the operation-specific args (note/until/edit fields) come via
+    call_kwargs. ValueError (bad enum / bad --until) -> exit 2; a service
+    {"ok": False} -> exit 2 (no_edits) or 3 (not found).
     """
     from hb_assistant.construction.store import ConstructionStore
 
+    call_kwargs = call_kwargs or {}
     try:
         store = ConstructionStore(db_path=db)
         cand = store.get_candidate(candidate_id, candidate_type=candidate_type)
@@ -4880,18 +4889,125 @@ def _run_review_action(
             store,
             candidate_id=candidate_id,
             candidate_type=cand["candidate_type"],
-            note=reason,
+            **call_kwargs,
         )
+        if not result.get("ok"):
+            err = result.get("error")
+            payload = {
+                "command": command,
+                **result,
+                "guardrails": _candidate_review_action_guardrails(),
+            }
+            _emit_08c(
+                payload,
+                json_out=json_out,
+                human=[str(err)],
+                exit_code=2 if err == "no_edits" else 3,
+            )
         payload = {
             "command": command,
             "phase": "10A",
             **result,
             "guardrails": _candidate_review_action_guardrails(),
         }
+        status_str = result.get("new_review_status") or result.get("review_status")
         human = [
             f"{result.get('action')} {result.get('candidate_type')} {candidate_id} "
-            f"({result.get('prior_review_status')} -> {result.get('new_review_status')}); "
-            f"event {result.get('review_event_id')}"
+            f"-> {status_str}; event {result.get('review_event_id')}"
+        ]
+        _emit_08c(payload, json_out=json_out, human=human, exit_code=0)
+    except typer.Exit:
+        raise
+    except ValueError as e:
+        payload = {"command": command, "ok": False, "error": str(e)[:200]}
+        _emit_08c(payload, json_out=json_out, human=[str(e)], exit_code=2)
+    except Exception as e:
+        payload = {"command": command, "ok": False, "error": str(e)[:300]}
+        _emit_08c(payload, json_out=json_out, human=[str(e)], exit_code=1)
+
+
+def _run_review_batch(
+    *,
+    command: str,
+    service_fn: "Any",
+    action: str,
+    target_status: str,
+    candidate_id_file: str,
+    max_actions: int,
+    apply: bool,
+    reason: str | None,
+    db: str | None,
+    json_out: bool,
+) -> None:
+    """Apply a review decision across a file of candidate_ids (dry-run unless --apply).
+
+    Per-id failures (not found) are recorded but never abort the run. The cap
+    (--max-actions) bounds how many ids are processed; the rest are skipped_over_cap.
+    """
+    from hb_assistant.construction.store import ConstructionStore
+
+    try:
+        ids = _read_candidate_id_file(candidate_id_file)
+        capped = ids[:max_actions] if max_actions and max_actions > 0 else ids
+        skipped_over_cap = len(ids) - len(capped)
+        store = ConstructionStore(db_path=db)
+        results: list[dict[str, Any]] = []
+        applied = would_apply = not_found = 0
+        for cid in capped:
+            cand = store.get_candidate(cid)
+            if cand is None:
+                not_found += 1
+                results.append({"candidate_id": cid, "ok": False, "error": "candidate_not_found"})
+                continue
+            ctype = cand["candidate_type"]
+            prior = cand.get("review_status")
+            if apply:
+                res = service_fn(store, candidate_id=cid, candidate_type=ctype, note=reason)
+                applied += 1
+                results.append(
+                    {
+                        "candidate_id": cid,
+                        "candidate_type": ctype,
+                        "prior_review_status": prior,
+                        "new_review_status": res.get("new_review_status"),
+                        "review_event_id": res.get("review_event_id"),
+                        "applied": True,
+                    }
+                )
+            else:
+                would_apply += 1
+                results.append(
+                    {
+                        "candidate_id": cid,
+                        "candidate_type": ctype,
+                        "prior_review_status": prior,
+                        "would_set": target_status,
+                        "applied": False,
+                    }
+                )
+        payload = {
+            "command": command,
+            "phase": "10A",
+            "action": action,
+            "applied": apply,
+            "dry_run": not apply,
+            "max_actions": max_actions,
+            "summary": {
+                "total_ids": len(ids),
+                "processed": len(capped),
+                "applied": applied,
+                "would_apply": would_apply,
+                "not_found": not_found,
+                "skipped_over_cap": skipped_over_cap,
+            },
+            "results": results,
+            "guardrails": _candidate_review_action_guardrails(),
+        }
+        done = applied if apply else would_apply
+        verb = "applied" if apply else "would_apply"
+        human = [
+            f"batch {action}: processed {len(capped)} "
+            f"({verb} {done}, not_found {not_found}, skipped_over_cap {skipped_over_cap})"
         ]
         _emit_08c(payload, json_out=json_out, human=human, exit_code=0)
     except typer.Exit:
@@ -4901,25 +5017,95 @@ def _run_review_action(
         _emit_08c(payload, json_out=json_out, human=[str(e)], exit_code=1)
 
 
+def _dispatch_review_action(
+    *,
+    command: str,
+    service_fn: "Any",
+    action: str,
+    target_status: str,
+    candidate_id: str | None,
+    candidate_id_file: str | None,
+    candidate_type: str | None,
+    reason: str | None,
+    max_actions: int,
+    apply: bool,
+    db: str | None,
+    json_out: bool,
+) -> None:
+    """Dispatch a decision verb to single (immediate) or batch (dry-run default) mode."""
+    if candidate_id and candidate_id_file:
+        payload = {
+            "command": command,
+            "ok": False,
+            "error": "specify either --candidate-id or --candidate-id-file, not both",
+        }
+        _emit_08c(payload, json_out=json_out, human=[payload["error"]], exit_code=2)
+    if candidate_id_file:
+        _run_review_batch(
+            command=command,
+            service_fn=service_fn,
+            action=action,
+            target_status=target_status,
+            candidate_id_file=candidate_id_file,
+            max_actions=max_actions,
+            apply=apply,
+            reason=reason,
+            db=db,
+            json_out=json_out,
+        )
+    elif candidate_id:
+        _run_review_action(
+            command=command,
+            service_fn=service_fn,
+            candidate_id=candidate_id,
+            candidate_type=candidate_type,
+            db=db,
+            json_out=json_out,
+            call_kwargs={"note": reason},
+        )
+    else:
+        payload = {
+            "command": command,
+            "ok": False,
+            "error": "provide --candidate-id or --candidate-id-file",
+        }
+        _emit_08c(payload, json_out=json_out, human=[payload["error"]], exit_code=2)
+
+
 @review_app.command("accept")
 def review_accept(
-    candidate_id: str = typer.Option(..., "--candidate-id", help="candidate_id to accept."),
+    candidate_id: str | None = typer.Option(None, "--candidate-id", help="Single candidate_id to accept."),
+    candidate_id_file: str | None = typer.Option(
+        None, "--candidate-id-file", help="Batch: file of candidate_ids (one per line; dry-run default, needs --apply)."
+    ),
     candidate_type: str | None = typer.Option(
         None, "--candidate-type", help="task|commitment (optional; auto-resolves when omitted)."
     ),
     reason: str | None = typer.Option(None, "--reason", help="Optional redacted operator note."),
+    max_actions: int = typer.Option(50, "--max-actions", help="Batch cap on candidates processed."),
+    apply: bool = typer.Option(
+        False, "--apply/--dry-run", help="Batch only: --apply to persist (default dry-run). Ignored for single --candidate-id."
+    ),
     db: str | None = typer.Option(None, "--db", help="Explicit SQLite path (tests/isolation)."),
     json_out: bool = typer.Option(True, "--json/--no-json"),
 ) -> None:
-    """Accept a Phase 10A candidate (review_status -> accepted; local DB only)."""
+    """Accept Phase 10A candidate(s) (review_status -> accepted; local DB only).
+
+    Single --candidate-id persists immediately; batch --candidate-id-file defaults to dry-run.
+    """
     from hb_assistant.construction.second_brain.local_ai.candidate_review import accept_candidate
 
-    _run_review_action(
+    _dispatch_review_action(
         command="second-brain review accept",
         service_fn=accept_candidate,
+        action="accept",
+        target_status="accepted",
         candidate_id=candidate_id,
+        candidate_id_file=candidate_id_file,
         candidate_type=candidate_type,
         reason=reason,
+        max_actions=max_actions,
+        apply=apply,
         db=db,
         json_out=json_out,
     )
@@ -4927,23 +5113,38 @@ def review_accept(
 
 @review_app.command("ignore")
 def review_ignore(
-    candidate_id: str = typer.Option(..., "--candidate-id", help="candidate_id to ignore."),
+    candidate_id: str | None = typer.Option(None, "--candidate-id", help="Single candidate_id to ignore."),
+    candidate_id_file: str | None = typer.Option(
+        None, "--candidate-id-file", help="Batch: file of candidate_ids (one per line; dry-run default, needs --apply)."
+    ),
     candidate_type: str | None = typer.Option(
         None, "--candidate-type", help="task|commitment (optional; auto-resolves when omitted)."
     ),
     reason: str | None = typer.Option(None, "--reason", help="Optional redacted operator note."),
+    max_actions: int = typer.Option(50, "--max-actions", help="Batch cap on candidates processed."),
+    apply: bool = typer.Option(
+        False, "--apply/--dry-run", help="Batch only: --apply to persist (default dry-run). Ignored for single --candidate-id."
+    ),
     db: str | None = typer.Option(None, "--db", help="Explicit SQLite path (tests/isolation)."),
     json_out: bool = typer.Option(True, "--json/--no-json"),
 ) -> None:
-    """Ignore a Phase 10A candidate (review_status -> suppressed; local DB only)."""
+    """Ignore Phase 10A candidate(s) (review_status -> suppressed; local DB only).
+
+    Single --candidate-id persists immediately; batch --candidate-id-file defaults to dry-run.
+    """
     from hb_assistant.construction.second_brain.local_ai.candidate_review import ignore_candidate
 
-    _run_review_action(
+    _dispatch_review_action(
         command="second-brain review ignore",
         service_fn=ignore_candidate,
+        action="ignore",
+        target_status="suppressed",
         candidate_id=candidate_id,
+        candidate_id_file=candidate_id_file,
         candidate_type=candidate_type,
         reason=reason,
+        max_actions=max_actions,
+        apply=apply,
         db=db,
         json_out=json_out,
     )
@@ -4951,7 +5152,49 @@ def review_ignore(
 
 @review_app.command("reject")
 def review_reject(
-    candidate_id: str = typer.Option(..., "--candidate-id", help="candidate_id to reject."),
+    candidate_id: str | None = typer.Option(None, "--candidate-id", help="Single candidate_id to reject."),
+    candidate_id_file: str | None = typer.Option(
+        None, "--candidate-id-file", help="Batch: file of candidate_ids (one per line; dry-run default, needs --apply)."
+    ),
+    candidate_type: str | None = typer.Option(
+        None, "--candidate-type", help="task|commitment (optional; auto-resolves when omitted)."
+    ),
+    reason: str | None = typer.Option(None, "--reason", help="Optional redacted operator note."),
+    max_actions: int = typer.Option(50, "--max-actions", help="Batch cap on candidates processed."),
+    apply: bool = typer.Option(
+        False, "--apply/--dry-run", help="Batch only: --apply to persist (default dry-run). Ignored for single --candidate-id."
+    ),
+    db: str | None = typer.Option(None, "--db", help="Explicit SQLite path (tests/isolation)."),
+    json_out: bool = typer.Option(True, "--json/--no-json"),
+) -> None:
+    """Reject Phase 10A candidate(s) (review_status -> rejected; local DB only).
+
+    Single --candidate-id persists immediately; batch --candidate-id-file defaults to dry-run.
+    """
+    from hb_assistant.construction.second_brain.local_ai.candidate_review import reject_candidate
+
+    _dispatch_review_action(
+        command="second-brain review reject",
+        service_fn=reject_candidate,
+        action="reject",
+        target_status="rejected",
+        candidate_id=candidate_id,
+        candidate_id_file=candidate_id_file,
+        candidate_type=candidate_type,
+        reason=reason,
+        max_actions=max_actions,
+        apply=apply,
+        db=db,
+        json_out=json_out,
+    )
+
+
+@review_app.command("snooze")
+def review_snooze(
+    candidate_id: str = typer.Option(..., "--candidate-id", help="candidate_id to snooze."),
+    until: str = typer.Option(
+        ..., "--until", help="ISO-8601 timestamp to snooze until (e.g. 2026-06-12T09:00:00-04:00)."
+    ),
     candidate_type: str | None = typer.Option(
         None, "--candidate-type", help="task|commitment (optional; auto-resolves when omitted)."
     ),
@@ -4959,18 +5202,112 @@ def review_reject(
     db: str | None = typer.Option(None, "--db", help="Explicit SQLite path (tests/isolation)."),
     json_out: bool = typer.Option(True, "--json/--no-json"),
 ) -> None:
-    """Reject a Phase 10A candidate (review_status -> rejected; local DB only)."""
-    from hb_assistant.construction.second_brain.local_ai.candidate_review import reject_candidate
+    """Snooze a Phase 10A candidate until an ISO-8601 timestamp (review_status -> snoozed; local DB only)."""
+    from hb_assistant.construction.second_brain.local_ai.candidate_review import snooze_candidate
 
     _run_review_action(
-        command="second-brain review reject",
-        service_fn=reject_candidate,
+        command="second-brain review snooze",
+        service_fn=snooze_candidate,
         candidate_id=candidate_id,
         candidate_type=candidate_type,
-        reason=reason,
         db=db,
         json_out=json_out,
+        call_kwargs={"until": until, "note": reason},
     )
+
+
+@review_app.command("edit")
+def review_edit(
+    candidate_id: str = typer.Option(..., "--candidate-id", help="candidate_id to edit."),
+    title: str | None = typer.Option(None, "--title", help="New redacted title."),
+    assignee: str | None = typer.Option(None, "--assignee", help="user|other|unknown."),
+    waiting_state: str | None = typer.Option(
+        None, "--waiting-state", help="waiting_on_me|waiting_on_others|unknown|not_applicable."
+    ),
+    candidate_type: str | None = typer.Option(
+        None, "--candidate-type", help="task|commitment (optional; auto-resolves when omitted)."
+    ),
+    reason: str | None = typer.Option(None, "--reason", help="Optional redacted operator note."),
+    db: str | None = typer.Option(None, "--db", help="Explicit SQLite path (tests/isolation)."),
+    json_out: bool = typer.Option(True, "--json/--no-json"),
+) -> None:
+    """Edit a Phase 10A candidate's title/assignee/waiting_state (review_status unchanged; records changes_json_redacted)."""
+    from hb_assistant.construction.second_brain.local_ai.candidate_review import edit_candidate
+
+    _run_review_action(
+        command="second-brain review edit",
+        service_fn=edit_candidate,
+        candidate_id=candidate_id,
+        candidate_type=candidate_type,
+        db=db,
+        json_out=json_out,
+        call_kwargs={
+            "title": title,
+            "assignee": assignee,
+            "waiting_state": waiting_state,
+            "note": reason,
+        },
+    )
+
+
+@review_app.command("export")
+def review_export(
+    status: str | None = typer.Option(None, "--status", help="Filter by review_status."),
+    project: str | None = typer.Option(None, "--project", help="Filter by project_key."),
+    limit: int = typer.Option(1000, "--limit", help="Max candidates to export."),
+    out: str | None = typer.Option(None, "--out", help="Write the queue JSON to this local file."),
+    db: str | None = typer.Option(None, "--db", help="Explicit SQLite path (tests/isolation)."),
+    json_out: bool = typer.Option(True, "--json/--no-json"),
+) -> None:
+    """Export the Phase 10A review queue (redacted/safe fields) to stdout or a local --out file."""
+    from pathlib import Path
+
+    from hb_assistant.construction.second_brain.local_ai.candidate_review import (
+        export_review_queue,
+    )
+    from hb_assistant.construction.store import ConstructionStore
+
+    try:
+        store = ConstructionStore(db_path=db)
+        result = export_review_queue(store, status=status, project_key=project, limit=limit)
+        full = {
+            "command": "second-brain review export",
+            "phase": "10A",
+            **result,
+            "guardrails": _candidate_review_guardrails(),
+        }
+        if out:
+            Path(out).write_text(json.dumps(full, indent=2, default=str), encoding="utf-8")
+            summary = {
+                "command": "second-brain review export",
+                "phase": "10A",
+                "ok": True,
+                "status": status,
+                "project_key": project,
+                "count": result.get("count"),
+                "out": out,
+                "guardrails": _candidate_review_guardrails(),
+            }
+            _emit_08c(
+                summary,
+                json_out=json_out,
+                human=[f"exported {result.get('count')} item(s) -> {out}"],
+                exit_code=0,
+            )
+        _emit_08c(
+            full,
+            json_out=json_out,
+            human=[f"{result.get('count')} item(s) in review queue"],
+            exit_code=0,
+        )
+    except typer.Exit:
+        raise
+    except ValueError as e:
+        payload = {"command": "second-brain review export", "ok": False, "error": str(e)[:200]}
+        _emit_08c(payload, json_out=json_out, human=[str(e)], exit_code=2)
+    except Exception as e:
+        payload = {"command": "second-brain review export", "ok": False, "error": str(e)[:300]}
+        _emit_08c(payload, json_out=json_out, human=[str(e)], exit_code=1)
 
 
 @data_quality_app.command("relationship-quality")
