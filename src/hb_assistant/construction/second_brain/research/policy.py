@@ -31,6 +31,12 @@ PACKET_TYPES: tuple[str, ...] = (
     "raw_email_context",
     "raw_calendar_context",
     "raw_daily_brief_context",
+    # Phase 10A: bounded, purposeful action/triage packets (one coherent unit per packet)
+    "email_thread_action_packet",
+    "calendar_event_action_packet",
+    "related_context_action_packet",
+    "triage_batch_packet",
+    "daily_brief_packet",
 )
 
 # Packet types whose synthesis requires a research packet first. ``high_impact_query``

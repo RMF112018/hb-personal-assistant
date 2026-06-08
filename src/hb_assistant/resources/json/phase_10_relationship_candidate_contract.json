@@ -26,6 +26,38 @@
     "high_stakes",
     "cross_source_uncertain"
   ],
+  "email_calendar_score_components": [
+    "same_project",
+    "subject_similarity",
+    "explicit_meeting_reference",
+    "participant_overlap",
+    "time_proximity",
+    "shared_record_reference",
+    "teams_join_reference_match",
+    "generic_title_penalty",
+    "private_sensitive_penalty"
+  ],
+  "email_calendar_reason_codes": [
+    "same_project",
+    "subject_similarity",
+    "explicit_meeting_reference",
+    "participant_overlap",
+    "time_proximity",
+    "shared_record_reference",
+    "teams_join_reference_match",
+    "generic_title_penalty",
+    "private_sensitive_penalty",
+    "no_signal"
+  ],
+  "confidence_thresholds": {
+    "strong": 0.8,
+    "moderate": 0.55
+  },
+  "relationship_classification": {
+    "strong": "confidence >= 0.80; may compile related packet",
+    "moderate": "0.55 <= confidence < 0.80; may compile only with review_required=true",
+    "weak": "confidence < 0.55; do not combine for extraction"
+  },
   "guard_columns": [
     "raw_email_body_persisted",
     "raw_document_text_persisted",

@@ -510,3 +510,61 @@ def extract_action_candidates_from_raw(
         "rejections": [{"reason": last_parse_error or "model_unavailable_or_invalid_output"}],
         "note": "exhausted retries",
     }
+
+
+def extract_actions_for_packet(
+    *,
+    packet: dict[str, Any],
+    store: Optional[ConstructionStore] = None,
+    dry_run: bool = True,
+    mock_output: Optional[str] = None,
+    client: Optional[OllamaChatClient] = None,
+    max_items: int = 20,
+) -> dict[str, Any]:
+    """Route a bounded packet to extraction by its purpose/allowed-outputs.
+
+    Action/related packets feed the bounded packet content (one thread / one event / a
+    deterministically-related small set) to :func:`extract_action_candidates_from_raw`. Packets whose
+    purpose does not allow ``candidate_actions`` (triage, summary) NEVER persist task/commitment
+    candidates — they return their allowed output shape only. The model never combines unrelated
+    records: only relationship-scored ``related_context_action_packet`` content carries >1 source.
+    """
+    purpose = packet.get("packet_purpose")
+    allowed = packet.get("allowed_outputs") or []
+    packet_type = packet.get("packet_type")
+
+    if "candidate_actions" not in allowed:
+        # Triage / summary purposes are blocked from candidate persistence by contract.
+        return {
+            "packet_id": packet.get("packet_id"),
+            "packet_type": packet_type,
+            "packet_purpose": purpose,
+            "allowed_outputs": allowed,
+            "extracted": False,
+            "persisted": 0,
+            "candidates": [],
+            "note": "purpose_does_not_allow_candidate_actions",
+        }
+
+    content = packet.get("content") or {}
+    threads = content.get("threads") or []
+    events = content.get("events") or []
+    email_packet = {"content": {"threads": threads}} if threads else None
+    calendar_packet = {"content": {"events": events}} if events else None
+
+    report = extract_action_candidates_from_raw(
+        raw_email_packet=email_packet,
+        raw_calendar_packet=calendar_packet,
+        project_key=packet.get("project_key"),
+        store=store,
+        mock_output=mock_output,
+        client=client,
+        dry_run=dry_run,
+        source="both",
+        max_items=max_items,
+    )
+    report["extracted"] = True
+    report["packet_id"] = packet.get("packet_id")
+    report["packet_type"] = packet_type
+    report["packet_purpose"] = purpose
+    return report

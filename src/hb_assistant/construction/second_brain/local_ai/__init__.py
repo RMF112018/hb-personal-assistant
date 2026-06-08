@@ -36,14 +36,26 @@ from .models import (
     ObsidianVaultPolicy,
     RawContentPolicy,
 )
+from .packet_builders import (
+    build_calendar_event_action_packet,
+    build_email_thread_action_packet,
+    build_related_context_action_packet,
+    build_triage_batch_packet,
+)
+from .packet_normalize import has_join_url, normalize_model_text, summarize_attendees
 from .proof import Phase10ProofError, build_phase_10_contracts_proof
 from .provider import build_local_model_status
 from .raw_action_intelligence import (
     extract_action_candidates_from_raw,
+    extract_actions_for_packet,
 )
 from .raw_context import (
     build_raw_calendar_context_packet,
     build_raw_email_context_packet,
+)
+from .relationship_scoring import (
+    find_email_calendar_relationships,
+    score_email_calendar_relationship,
 )
 from .structured_output import (
     GenerationBackend,
@@ -95,4 +107,15 @@ __all__ = [
     # Prompt 07: email task candidate extraction (deterministic signals over thread summaries)
     "extract_email_task_candidates",
     "score_email_task_signals",
+    # Phase 10A: bounded purposeful packets + deterministic relationship scoring
+    "build_email_thread_action_packet",
+    "build_calendar_event_action_packet",
+    "build_related_context_action_packet",
+    "build_triage_batch_packet",
+    "normalize_model_text",
+    "has_join_url",
+    "summarize_attendees",
+    "score_email_calendar_relationship",
+    "find_email_calendar_relationships",
+    "extract_actions_for_packet",
 ]

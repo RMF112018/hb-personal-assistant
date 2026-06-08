@@ -7505,25 +7505,63 @@ def phase_10_schema_status(
 
 @phase_10_app.command("raw-email-packet")
 def phase_10_raw_email_packet(
+    thread_ref: "str | None" = typer.Option(  # noqa: B008
+        None, "--thread-ref", help="Build one bounded email-thread action packet for this thread_ref."
+    ),
     project: "str | None" = typer.Option(  # noqa: B008
-        None, "--project", help="Project key filter for raw email content."
-    ),  # noqa: B008
-    json_out: bool = typer.Option(True, "--json", help="Emit the packet as JSON (default)."),  # noqa: B008
+        None, "--project", help="Project key filter (list/triage mode)."
+    ),
+    limit: int = typer.Option(5, "--limit", help="Max thread packets to build in list mode."),  # noqa: B008
+    packet_purpose: str = typer.Option(  # noqa: B008
+        "action_extraction", "--packet-purpose", help="action_extraction|triage|review."
+    ),
+    json_out: bool = typer.Option(True, "--json", help="Emit JSON (default)."),  # noqa: B008
 ) -> None:
-    """Build a model-ready raw email context packet (actual subject/body/participants when policy allows).
+    """Build bounded, scoped email packets — ONE coherent thread per action packet (not a broad dump).
 
-    Uses the Phase 10A raw content tables + model_context bounds from policy.
-    Packet is persisted to raw_content_model_context_packets (local only) and returned.
-    Source refs are hashes + stable row refs. Exit 0 on success.
+    `--thread-ref` builds a single email_thread_action_packet; otherwise a bounded list of per-thread
+    packet envelopes (`--limit`). `--packet-purpose triage` builds a triage_batch_packet instead.
+    Normalized/redacted text only; full HTML/join URLs stay in the raw tables.
     """
     from hb_assistant.construction.second_brain.local_ai import (
-        build_raw_email_context_packet,
+        build_email_thread_action_packet,
+        build_triage_batch_packet,
     )
+    from hb_assistant.construction.store import ConstructionStore
 
     try:
-        pkt = build_raw_email_context_packet(project_key=project)
-        typer.echo(json.dumps(pkt, indent=2, default=str) if json_out else str(pkt))
-        raise typer.Exit(0)
+        store = ConstructionStore()
+        if packet_purpose == "triage":
+            payload: dict[str, Any] = {
+                "command": "second-brain phase-10 raw-email-packet",
+                "ok": True,
+                "packet_purpose": packet_purpose,
+                "packet": build_triage_batch_packet(store=store, project_key=project, limit=limit),
+            }
+        elif thread_ref:
+            pkt = build_email_thread_action_packet(thread_ref=thread_ref, store=store)
+            payload = {
+                "command": "second-brain phase-10 raw-email-packet",
+                "ok": bool(pkt.get("found", True)),
+                "packet_purpose": packet_purpose,
+                "packet": pkt,
+            }
+        else:
+            threads = store.list_email_thread_raw_context(project_key=project, limit=limit)
+            packets = [
+                build_email_thread_action_packet(thread_ref=t.get("thread_ref"), store=store)
+                for t in threads
+                if t.get("thread_ref")
+            ]
+            payload = {
+                "command": "second-brain phase-10 raw-email-packet",
+                "ok": True,
+                "packet_purpose": packet_purpose,
+                "packet_count": len(packets),
+                "packets": packets,
+            }
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(0 if payload["ok"] else 1)
     except typer.Exit:
         raise
     except Exception as e:
@@ -7538,30 +7576,209 @@ def phase_10_raw_email_packet(
 
 @phase_10_app.command("raw-calendar-packet")
 def phase_10_raw_calendar_packet(
+    event_index_id: "str | None" = typer.Option(  # noqa: B008
+        None, "--event-index-id", help="Build one bounded calendar-event action packet for this event."
+    ),
     project: "str | None" = typer.Option(  # noqa: B008
-        None, "--project", help="Project key filter for raw calendar content."
-    ),  # noqa: B008
-    json_out: bool = typer.Option(True, "--json", help="Emit the packet as JSON (default)."),  # noqa: B008
+        None, "--project", help="Project key filter (list/triage mode)."
+    ),
+    limit: int = typer.Option(5, "--limit", help="Max event packets to build in list mode."),  # noqa: B008
+    packet_purpose: str = typer.Option(  # noqa: B008
+        "action_extraction", "--packet-purpose", help="action_extraction|triage|review."
+    ),
+    json_out: bool = typer.Option(True, "--json", help="Emit JSON (default)."),  # noqa: B008
 ) -> None:
-    """Build a model-ready raw calendar context packet (actual subject/body/location/attendees/join when policy allows).
+    """Build bounded, scoped calendar packets — ONE event per action packet (not a broad dump).
 
-    Uses the Phase 10A raw content tables + model_context bounds from policy.
-    Packet is persisted to raw_content_model_context_packets (local only) and returned.
-    Source refs are event_index_id + graph hashes. Exit 0 on success.
+    `--event-index-id` builds a single calendar_event_action_packet; otherwise a bounded list.
+    `--packet-purpose triage` builds a triage_batch_packet. Attendees are summarized (count/domains);
+    `has_join_url` is metadata only — the join URL and full HTML never enter the packet.
     """
     from hb_assistant.construction.second_brain.local_ai import (
-        build_raw_calendar_context_packet,
+        build_calendar_event_action_packet,
+        build_triage_batch_packet,
     )
+    from hb_assistant.construction.store import ConstructionStore
 
     try:
-        pkt = build_raw_calendar_context_packet(project_key=project)
-        typer.echo(json.dumps(pkt, indent=2, default=str) if json_out else str(pkt))
-        raise typer.Exit(0)
+        store = ConstructionStore()
+        if packet_purpose == "triage":
+            payload: dict[str, Any] = {
+                "command": "second-brain phase-10 raw-calendar-packet",
+                "ok": True,
+                "packet_purpose": packet_purpose,
+                "packet": build_triage_batch_packet(store=store, project_key=project, limit=limit),
+            }
+        elif event_index_id:
+            pkt = build_calendar_event_action_packet(event_index_id=event_index_id, store=store)
+            payload = {
+                "command": "second-brain phase-10 raw-calendar-packet",
+                "ok": bool(pkt.get("found", True)),
+                "packet_purpose": packet_purpose,
+                "packet": pkt,
+            }
+        else:
+            events = store.list_calendar_event_raw_content(project_key=project, limit=limit)
+            packets = [
+                build_calendar_event_action_packet(event_index_id=e.get("event_index_id"), store=store)
+                for e in events
+                if e.get("event_index_id")
+            ]
+            payload = {
+                "command": "second-brain phase-10 raw-calendar-packet",
+                "ok": True,
+                "packet_purpose": packet_purpose,
+                "packet_count": len(packets),
+                "packets": packets,
+            }
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(0 if payload["ok"] else 1)
     except typer.Exit:
         raise
     except Exception as e:
         payload = {
             "command": "second-brain phase-10 raw-calendar-packet",
+            "ok": False,
+            "error": str(e)[:300],
+        }
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(1) from None
+
+
+@phase_10_app.command("relationship-candidates")
+def phase_10_relationship_candidates(
+    source: str = typer.Option(  # noqa: B008
+        "email_calendar", "--source", help="Relationship source pair (email_calendar)."
+    ),
+    project: "str | None" = typer.Option(None, "--project", help="Project key filter."),  # noqa: B008
+    limit: int = typer.Option(50, "--limit", help="Max scored relationship candidates."),  # noqa: B008
+    json_out: bool = typer.Option(True, "--json", help="Emit JSON (default)."),  # noqa: B008
+) -> None:
+    """Emit deterministic, explainable email-thread↔calendar-event relationship candidates.
+
+    Read-only. Each candidate carries confidence, relationship_class, reason_codes, and per-feature
+    score_components — so combined packets only form on real evidence (the model never decides this).
+    """
+    from hb_assistant.construction.second_brain.local_ai import find_email_calendar_relationships
+    from hb_assistant.construction.store import ConstructionStore
+
+    if source != "email_calendar":
+        payload = {
+            "command": "second-brain phase-10 relationship-candidates",
+            "ok": False,
+            "error": f"unsupported source {source!r} (only email_calendar)",
+        }
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(2)
+    try:
+        rels = find_email_calendar_relationships(
+            store=ConstructionStore(), project_key=project, limit=limit
+        )
+        payload = {
+            "command": "second-brain phase-10 relationship-candidates",
+            "ok": True,
+            "source": source,
+            "count": len(rels),
+            "relationships": rels,
+            "guardrails": {"deterministic": True, "model_does_not_decide_relatedness": True},
+        }
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(0)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        payload = {
+            "command": "second-brain phase-10 relationship-candidates",
+            "ok": False,
+            "error": str(e)[:300],
+        }
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(1) from None
+
+
+@phase_10_app.command("extract-packet")
+def phase_10_extract_packet(
+    thread_ref: "str | None" = typer.Option(None, "--thread-ref", help="Extract from one email thread."),  # noqa: B008
+    event_index_id: "str | None" = typer.Option(  # noqa: B008
+        None, "--event-index-id", help="Extract from one calendar event."
+    ),
+    related: bool = typer.Option(  # noqa: B008
+        False, "--related", help="Build a related_context packet (combine only if relationship scores)."
+    ),
+    triage: bool = typer.Option(  # noqa: B008
+        False, "--triage", help="Build a triage_batch packet (triage labels only; never persists)."
+    ),
+    project: "str | None" = typer.Option(None, "--project", help="Project filter (triage mode)."),  # noqa: B008
+    mock_output: "str | None" = typer.Option(  # noqa: B008
+        None, "--mock-output", help="Canned model JSON (offline/tests).", hidden=True
+    ),
+    apply: bool = typer.Option(  # noqa: B008
+        False, "--apply", help="Persist accepted candidates. Default: dry-run (zero writes)."
+    ),
+    db: "str | None" = typer.Option(None, "--db", help="Explicit SQLite path (tests/isolation)."),  # noqa: B008
+    json_out: bool = typer.Option(True, "--json", help="Emit JSON (default)."),  # noqa: B008
+) -> None:
+    """Extract actions from ONE bounded packet (default one thread/event per packet).
+
+    Combined extraction is used only for `--related` packets that pass deterministic relationship
+    scoring. `--triage` packets return triage labels only and never persist task/commitment candidates.
+    Dry-run by default; `--apply` persists only after schema + business validation.
+    """
+    from hb_assistant.construction.second_brain.local_ai import (
+        build_calendar_event_action_packet,
+        build_email_thread_action_packet,
+        build_related_context_action_packet,
+        build_triage_batch_packet,
+        extract_actions_for_packet,
+    )
+    from hb_assistant.construction.store import ConstructionStore
+
+    try:
+        store = ConstructionStore(db_path=db)
+        if triage:
+            packet = build_triage_batch_packet(store=store, project_key=project)
+        elif related:
+            packet = build_related_context_action_packet(
+                thread_ref=thread_ref, event_index_id=event_index_id, store=store
+            )
+        elif thread_ref:
+            packet = build_email_thread_action_packet(thread_ref=thread_ref, store=store)
+        elif event_index_id:
+            packet = build_calendar_event_action_packet(event_index_id=event_index_id, store=store)
+        else:
+            payload = {
+                "command": "second-brain phase-10 extract-packet",
+                "ok": False,
+                "error": "provide one of --thread-ref / --event-index-id / --related / --triage",
+            }
+            typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+            raise typer.Exit(2)
+        report = extract_actions_for_packet(
+            packet=packet, store=store, dry_run=not apply, mock_output=mock_output
+        )
+        payload = {
+            "command": "second-brain phase-10 extract-packet",
+            "ok": True,
+            "applied": apply,
+            "packet_type": packet.get("packet_type"),
+            "packet_purpose": packet.get("packet_purpose"),
+            "allowed_outputs": packet.get("allowed_outputs"),
+            "report": report,
+            "guardrails": {
+                "dry_run": not apply,
+                "one_unit_per_packet": True,
+                "combine_requires_relationship": True,
+                "triage_never_persists": True,
+                "no_writeback": True,
+            },
+        }
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(0)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        payload = {
+            "command": "second-brain phase-10 extract-packet",
             "ok": False,
             "error": str(e)[:300],
         }
