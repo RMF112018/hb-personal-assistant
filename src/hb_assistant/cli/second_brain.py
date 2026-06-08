@@ -151,6 +151,13 @@ action_intel_app = typer.Typer(
 )
 app.add_typer(action_intel_app, name="action-intel")
 
+follow_up_watch_app = typer.Typer(
+    name="follow-up-watch",
+    help="Phase 10 deterministic follow-up watch over accepted items (advisory; no writeback).",
+    no_args_is_help=True,
+)
+app.add_typer(follow_up_watch_app, name="follow-up-watch")
+
 automation_app = typer.Typer(
     name="automation",
     help="Phase 08B automation health + observability (read-only status surface).",
@@ -8596,6 +8603,76 @@ def second_brain_extract_packets(
         raise typer.Exit(1) from None
 
 
+@follow_up_watch_app.command("scan")
+def second_brain_follow_up_watch_scan(
+    as_of: "str | None" = typer.Option(  # noqa: B008
+        None, "--as-of",
+        help="ISO-8601 UTC 'now' for deterministic classification (default: current UTC).",
+    ),
+    limit: int = typer.Option(200, "--limit", help="Max accepted items per type to scan."),  # noqa: B008
+    dry_run: bool = typer.Option(  # noqa: B008
+        True, "--dry-run/--apply",
+        help="Dry-run (default; zero writes). --apply persists, capped by --max-persist.",
+    ),
+    max_persist: "int | None" = typer.Option(  # noqa: B008
+        None, "--max-persist", help="REQUIRED with --apply: cap on ACTUAL watch-item writes."
+    ),
+    stale_after_days: int = typer.Option(  # noqa: B008
+        14, "--stale-after-days", help="Days after acceptance (no due date) before an item is stale."
+    ),
+    summary: bool = typer.Option(  # noqa: B008
+        False, "--summary", help="Include the per-item results list in the response."
+    ),
+    timeout_seconds: "float | None" = typer.Option(  # noqa: B008
+        None, "--timeout-seconds", help="Accepted for parity; unused (deterministic, no model)."
+    ),
+    db: "str | None" = typer.Option(None, "--db", help="Explicit SQLite path (tests/isolation)."),  # noqa: B008
+    json_out: bool = typer.Option(True, "--json", help="Emit JSON (default)."),  # noqa: B008
+) -> None:
+    """Scan accepted tasks/commitments → advisory follow-up watch items/status events.
+
+    Deterministic (no model, no clock read inside scoring — ``--as-of`` is stamped once
+    at the boundary). Defaults to dry-run (zero writes). ``--apply`` is explicit and
+    REQUIRES ``--max-persist``, which caps ACTUAL watch-item writes. Items with no
+    source refs are never persisted; unchanged items are skipped. No raw content, no
+    writeback — only redacted titles/excerpts and source-ref hashes are stored.
+    """
+    from datetime import datetime as _dt
+    from datetime import timezone as _tz
+
+    from hb_assistant.construction.second_brain.local_ai import run_follow_up_watch_scan
+    from hb_assistant.construction.store import ConstructionStore
+
+    cmd = "second-brain follow-up-watch scan"
+    try:
+        if not dry_run and max_persist is None:
+            payload = {
+                "command": cmd, "ok": False, "applied": False,
+                "error": "apply_requires_max_persist",
+                "guardrails": {"apply_requires_max_persist": True},
+            }
+            typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+            raise typer.Exit(2)
+
+        # No-clock seam: stamp now_utc ONCE here; scoring never reads a clock.
+        now_utc = as_of or _dt.now(_tz.utc).isoformat()
+        store = ConstructionStore(db_path=db)
+        payload = run_follow_up_watch_scan(
+            store=store, now_utc=now_utc, limit=limit, dry_run=dry_run,
+            max_persist=max_persist, stale_after_days=stale_after_days,
+        )
+        if not summary:
+            payload = {k: v for k, v in payload.items() if k != "results"}
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(0)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        payload = {"command": cmd, "ok": False, "error": str(e)[:300]}
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(1) from None
+
+
 @phase_10_app.command("raw-action-candidates")
 def phase_10_raw_action_candidates(
     project: "str | None" = typer.Option(  # noqa: B008
@@ -8905,13 +8982,21 @@ def phase_10_review_candidate(
         "--emit/--no-emit",
         help="Persist the review_status change (dry-run default, like memory review).",
     ),  # noqa: B008
+    promote: bool = typer.Option(  # noqa: B008
+        False,
+        "--promote/--no-promote",
+        help="With --emit and an 'accepted' decision, also promote into accepted_tasks/"
+        "accepted_commitments (explicit opt-in; idempotent). Default: no-promote.",
+    ),
+    db: "str | None" = typer.Option(None, "--db", help="Explicit SQLite path (tests/isolation)."),  # noqa: B008
     json_out: bool = typer.Option(True, "--json", help="Emit machine-readable report (default)."),  # noqa: B008
 ) -> None:
     """Apply an explicit operator review decision to a Phase 10 raw-content action candidate.
 
-    Mirrors the memory review pattern exactly (dry default, --emit to persist, guardrails, exit codes).
-    Updates review_status on the V41 candidate row. Optionally writes a candidate_review_event row
-    (if the table is present). Does not auto-promote to accepted_* tables; advisory only.
+    Mirrors the memory review pattern (dry default, --emit to persist, guardrails, exit codes).
+    Updates review_status on the V41 candidate row and writes a candidate_review_event row.
+    Promotion into accepted_* is NEVER automatic: it requires an explicit ``--promote`` together
+    with ``--emit`` and an ``accepted`` decision, and is idempotent (re-promotion is a no-op).
     Raw source content can be inspected first via candidate-source or the graph raw-* detail commands.
     """
     from hb_assistant.construction.store import ConstructionStore
@@ -8928,7 +9013,7 @@ def phase_10_review_candidate(
         raise typer.Exit(2)
 
     try:
-        s = ConstructionStore()
+        s = ConstructionStore(db_path=db)
         # locate the row
         cand = None
         if candidate_type == "task":
@@ -8952,6 +9037,8 @@ def phase_10_review_candidate(
             raise typer.Exit(3)
 
         prior_status = cand.get("review_status") or "pending"
+        promoted = False
+        promotion_attempted = False
         if emit:
             # Use the additive store helpers — clean, no private access.
             s.update_candidate_review_state(
@@ -8970,6 +9057,27 @@ def phase_10_review_candidate(
                 prior_status=prior_status,
                 new_status=decision,
             )
+            # Promotion is explicit opt-in: only on accepted + --promote. Idempotent.
+            if promote and decision == "accepted":
+                promotion_attempted = True
+                if candidate_type == "task":
+                    promoted = s.insert_accepted_task(
+                        candidate_id=candidate_id,
+                        title_redacted=str(cand.get("title_redacted") or ""),
+                        waiting_state=str(cand.get("waiting_state") or "unknown"),
+                        safety_category=str(cand.get("safety_category") or "normal"),
+                        project_key=cand.get("project_key"),
+                        due_at_utc=cand.get("due_at_utc"),
+                    )
+                else:
+                    promoted = s.insert_accepted_commitment(
+                        candidate_id=candidate_id,
+                        title_redacted=str(cand.get("title_redacted") or ""),
+                        waiting_state=str(cand.get("waiting_state") or "unknown"),
+                        safety_category=str(cand.get("safety_category") or "normal"),
+                        project_key=cand.get("project_key"),
+                        due_at_utc=cand.get("due_at_utc"),
+                    )
 
         payload = {
             "command": "second-brain phase-10 review-candidate",
@@ -8981,11 +9089,15 @@ def phase_10_review_candidate(
             "prior_review_status": prior_status,
             "new_review_status": decision if emit else prior_status,
             "reason_redacted": reason,
+            "promotion_attempted": promotion_attempted,
+            "promoted": promoted,
             "guardrails": {
                 "explicit_confirmation_required_like_memory": True,
                 "advisory_only": True,
                 "no_silent_accept": True,
-                "no_auto_promote": True,
+                "promotion_requires_explicit_flag": True,
+                "promotion_only_on_accepted": True,
+                "promotion_idempotent": True,
                 "review_status_preserved": True,
                 "raw_excerpts_bounded": True,
             },

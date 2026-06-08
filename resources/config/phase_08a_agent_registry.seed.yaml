@@ -111,3 +111,30 @@ agents:
     review_policy: tier_3_mandatory_review
     output_contract: review_tier_contract
     receipt_required: true
+
+  # --- Phase 10 local-agent family (extension; required set is a subset check) ---
+  # Two first-class agents that make the email second-brain family discoverable.
+  # Extraction is model-assisted (bounded packets, review-tiered); follow-up watch
+  # is deterministic (no model). Both are local-only, source-linked, no-writeback,
+  # and persist only via the capped local_apply path.
+  - agent_id: email_action_extraction_agent
+    phase_owner: "10A"
+    enabled: true
+    purpose: "Extract advisory task/commitment candidates from bounded email-thread packets (dry-run-first, capped persist, source-linked)."
+    allowed_tool_groups: [retrieval_broker, local_apply]
+    denied_tool_groups: [arbitrary_sql, raw_filesystem, direct_graph_api, direct_procore_api, external_writeback]
+    default_model_profile: default_reasoning
+    review_policy: tiered_review_required
+    output_contract: agent_result
+    receipt_required: true
+
+  - agent_id: follow_up_watch_agent
+    phase_owner: "10A"
+    enabled: true
+    purpose: "Deterministically classify accepted tasks/commitments into watch statuses and emit advisory follow-up status events (no model, no writeback)."
+    allowed_tool_groups: [status, retrieval_broker, local_apply]
+    denied_tool_groups: [arbitrary_sql, raw_filesystem, direct_graph_api, direct_procore_api, external_writeback]
+    default_model_profile: none
+    review_policy: advisory_only
+    output_contract: agent_result
+    receipt_required: true

@@ -8890,6 +8890,256 @@ class ConstructionStore:
             )
         return review_event_id
 
+    # --- Phase 10 acceptance promotion + follow-up watch (additive) ---------
+    # Promotion: an explicitly-accepted candidate is copied into accepted_tasks /
+    # accepted_commitments (safe fields only; the 13 _P10_GUARDS columns are never
+    # written and stay DEFAULT 0 / CHECK(=0)). Idempotent: the accepted row id is
+    # derived deterministically from candidate_id, so re-promotion DOES NOTHING.
+    # Follow-up watch: deterministic advisory monitor over the accepted items; it
+    # only ever writes follow_up_watch_items + follow_up_status_events (guards 0).
+    # No raw bodies, no writeback — only redacted titles/excerpts and hashes move.
+    # ------------------------------------------------------------------------
+
+    @staticmethod
+    def accepted_task_id_for(candidate_id: str) -> str:
+        """Deterministic accepted_tasks id for a candidate (idempotent promotion key)."""
+        return f"acc-task:{candidate_id}"
+
+    @staticmethod
+    def accepted_commitment_id_for(candidate_id: str) -> str:
+        """Deterministic accepted_commitments id for a candidate (idempotent promotion key)."""
+        return f"acc-commit:{candidate_id}"
+
+    def insert_accepted_task(
+        self,
+        *,
+        candidate_id: str,
+        title_redacted: str,
+        waiting_state: str,
+        safety_category: str,
+        project_key: Optional[str] = None,
+        status: str = "open",
+        due_at_utc: Optional[str] = None,
+        accepted_utc: Optional[str] = None,
+    ) -> bool:
+        """Promote a task candidate into accepted_tasks. Returns True if a row was inserted.
+
+        Idempotent: the row id is derived from candidate_id, so a repeat call is a
+        no-op (ON CONFLICT DO NOTHING). Guard columns are omitted → DEFAULT 0.
+        """
+        if not candidate_id or not title_redacted:
+            raise ValueError("candidate_id and title_redacted are required")
+        accepted_task_id = self.accepted_task_id_for(candidate_id)
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            cur = conn.execute(
+                """
+                INSERT INTO accepted_tasks
+                    (accepted_task_id, candidate_id, title_redacted, project_key,
+                     status, due_at_utc, waiting_state, safety_category, accepted_utc)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(accepted_task_id) DO NOTHING
+                """,
+                (
+                    accepted_task_id,
+                    candidate_id,
+                    title_redacted,
+                    project_key,
+                    status,
+                    due_at_utc,
+                    waiting_state,
+                    safety_category,
+                    accepted_utc or _utc_now(),
+                ),
+            )
+            return cur.rowcount > 0
+
+    def insert_accepted_commitment(
+        self,
+        *,
+        candidate_id: str,
+        title_redacted: str,
+        waiting_state: str,
+        safety_category: str,
+        project_key: Optional[str] = None,
+        status: str = "open",
+        due_at_utc: Optional[str] = None,
+        accepted_utc: Optional[str] = None,
+    ) -> bool:
+        """Promote a commitment candidate into accepted_commitments. Returns True if inserted.
+
+        Idempotent (deterministic id, ON CONFLICT DO NOTHING). Guards omitted → DEFAULT 0.
+        """
+        if not candidate_id or not title_redacted:
+            raise ValueError("candidate_id and title_redacted are required")
+        accepted_commitment_id = self.accepted_commitment_id_for(candidate_id)
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            cur = conn.execute(
+                """
+                INSERT INTO accepted_commitments
+                    (accepted_commitment_id, candidate_id, title_redacted, project_key,
+                     status, due_at_utc, waiting_state, safety_category, accepted_utc)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(accepted_commitment_id) DO NOTHING
+                """,
+                (
+                    accepted_commitment_id,
+                    candidate_id,
+                    title_redacted,
+                    project_key,
+                    status,
+                    due_at_utc,
+                    waiting_state,
+                    safety_category,
+                    accepted_utc or _utc_now(),
+                ),
+            )
+            return cur.rowcount > 0
+
+    def list_accepted_tasks(self, *, limit: int = 1000) -> list[dict[str, Any]]:
+        """List accepted tasks (safe fields only) — input for the follow-up watch agent."""
+        conn = get_connection(self._db_path)
+        cur = conn.execute(
+            """
+            SELECT accepted_task_id, candidate_id, title_redacted, project_key, status,
+                   due_at_utc, waiting_state, safety_category, accepted_utc, completed_utc
+            FROM accepted_tasks
+            ORDER BY accepted_utc DESC
+            LIMIT ?
+            """,
+            (limit,),
+        )
+        cols = [d[0] for d in cur.description]
+        return [dict(zip(cols, row, strict=True)) for row in cur.fetchall()]
+
+    def list_accepted_commitments(self, *, limit: int = 1000) -> list[dict[str, Any]]:
+        """List accepted commitments (safe fields only) — input for the follow-up watch agent."""
+        conn = get_connection(self._db_path)
+        cur = conn.execute(
+            """
+            SELECT accepted_commitment_id, candidate_id, title_redacted, project_key, status,
+                   due_at_utc, waiting_state, safety_category, accepted_utc, completed_utc
+            FROM accepted_commitments
+            ORDER BY accepted_utc DESC
+            LIMIT ?
+            """,
+            (limit,),
+        )
+        cols = [d[0] for d in cur.description]
+        return [dict(zip(cols, row, strict=True)) for row in cur.fetchall()]
+
+    def list_follow_up_watch_items(self, *, limit: int = 1000) -> list[dict[str, Any]]:
+        """List follow-up watch items (safe fields only)."""
+        conn = get_connection(self._db_path)
+        cur = conn.execute(
+            """
+            SELECT watch_item_id, accepted_task_id, accepted_commitment_id, project_key,
+                   watch_status, waiting_state, next_check_utc, last_checked_utc,
+                   stale_after_utc, reason_redacted, created_utc
+            FROM follow_up_watch_items
+            ORDER BY created_utc DESC
+            LIMIT ?
+            """,
+            (limit,),
+        )
+        cols = [d[0] for d in cur.description]
+        return [dict(zip(cols, row, strict=True)) for row in cur.fetchall()]
+
+    def upsert_follow_up_watch_item(
+        self,
+        *,
+        watch_item_id: str,
+        watch_status: str,
+        waiting_state: str,
+        accepted_task_id: Optional[str] = None,
+        accepted_commitment_id: Optional[str] = None,
+        project_key: Optional[str] = None,
+        next_check_utc: Optional[str] = None,
+        last_checked_utc: Optional[str] = None,
+        stale_after_utc: Optional[str] = None,
+        reason_redacted: Optional[str] = None,
+    ) -> None:
+        """Upsert a follow-up watch item (advisory). Idempotent by watch_item_id.
+
+        created_utc is preserved on update; guard columns are never written so the
+        CHECK(=0) invariants hold.
+        """
+        if not watch_item_id:
+            raise ValueError("watch_item_id is required")
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            conn.execute(
+                """
+                INSERT INTO follow_up_watch_items
+                    (watch_item_id, accepted_task_id, accepted_commitment_id, project_key,
+                     watch_status, waiting_state, next_check_utc, last_checked_utc,
+                     stale_after_utc, reason_redacted)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(watch_item_id) DO UPDATE SET
+                    project_key = excluded.project_key,
+                    watch_status = excluded.watch_status,
+                    waiting_state = excluded.waiting_state,
+                    next_check_utc = excluded.next_check_utc,
+                    last_checked_utc = excluded.last_checked_utc,
+                    stale_after_utc = excluded.stale_after_utc,
+                    reason_redacted = excluded.reason_redacted
+                """,
+                (
+                    watch_item_id,
+                    accepted_task_id,
+                    accepted_commitment_id,
+                    project_key,
+                    watch_status,
+                    waiting_state,
+                    next_check_utc,
+                    last_checked_utc,
+                    stale_after_utc,
+                    reason_redacted,
+                ),
+            )
+
+    def insert_follow_up_status_event(
+        self,
+        *,
+        watch_item_id: str,
+        new_status: str,
+        prior_status: Optional[str] = None,
+        signal_type: str = "deterministic_scan",
+        source_ref_hash: Optional[str] = None,
+        evidence_redacted: Optional[str] = None,
+        confidence: Optional[float] = None,
+    ) -> str:
+        """Insert a follow-up status event (audit of a watch_status change). Returns its id.
+
+        Carries only a source_ref_hash + already-redacted excerpt — never raw content.
+        Guard columns omitted → DEFAULT 0.
+        """
+        if not watch_item_id or not new_status:
+            raise ValueError("watch_item_id and new_status are required")
+        status_event_id = str(uuid.uuid4())
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            conn.execute(
+                """
+                INSERT INTO follow_up_status_events
+                    (status_event_id, watch_item_id, prior_status, new_status,
+                     signal_type, source_ref_hash, evidence_redacted, confidence)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    status_event_id,
+                    watch_item_id,
+                    prior_status,
+                    new_status,
+                    signal_type,
+                    source_ref_hash,
+                    evidence_redacted,
+                    confidence,
+                ),
+            )
+        return status_event_id
+
     # V20 Phase 07A Prompt 01 — Data Quality + Canonical Source-Record Map
     # All adapters enforce the guardrail flags=False at the Python layer (defense
     # in depth with the schema CHECKs). No raw bodies, full text, or writeback.

@@ -30,6 +30,10 @@ from .email_task_extraction import (
     score_email_task_signals,
 )
 from .fixture_runner import run_fixture_suite
+from .follow_up_watch import (
+    classify_watch_status,
+    run_follow_up_watch_scan,
+)
 from .models import (
     HIGH_STAKES_CATEGORIES,
     ActionCandidate,
@@ -125,4 +129,7 @@ __all__ = [
     "resolve_local_model_client",
     "run_batch_extraction",
     "UnsupportedBatchSourceError",
+    # Phase 10: deterministic follow-up watch monitor (advisory, no writeback)
+    "classify_watch_status",
+    "run_follow_up_watch_scan",
 ]
