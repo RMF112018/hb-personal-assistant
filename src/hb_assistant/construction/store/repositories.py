@@ -8528,7 +8528,8 @@ class ConstructionStore:
             SELECT candidate_id, stable_key, title_redacted, project_key, assignee_class,
                    due_at_utc, urgency, waiting_state, safety_category, confidence,
                    reason_redacted, recommended_next_action, review_status,
-                   model_profile_id, prompt_template_version, created_utc, updated_utc
+                   model_profile_id, prompt_template_version, created_utc, updated_utc,
+                   snoozed_until_utc, reviewed_utc, reviewed_by, review_note_redacted
             FROM task_candidates {where}
             ORDER BY created_utc DESC
             LIMIT ?
@@ -8553,6 +8554,11 @@ class ConstructionStore:
             "prompt_template_version",
             "created_utc",
             "updated_utc",
+            # V43 candidate-review lifecycle columns (additive).
+            "snoozed_until_utc",
+            "reviewed_utc",
+            "reviewed_by",
+            "review_note_redacted",
         )
         return [dict(zip(keys, row, strict=True)) for row in cur.fetchall()]
 
@@ -8580,7 +8586,8 @@ class ConstructionStore:
             SELECT candidate_id, stable_key, title_redacted, project_key, commitment_actor_class,
                    promised_at_utc, due_at_utc, urgency, waiting_state, safety_category, confidence,
                    reason_redacted, recommended_next_action, review_status,
-                   model_profile_id, prompt_template_version, created_utc, updated_utc
+                   model_profile_id, prompt_template_version, created_utc, updated_utc,
+                   snoozed_until_utc, reviewed_utc, reviewed_by, review_note_redacted
             FROM commitment_candidates {where}
             ORDER BY created_utc DESC
             LIMIT ?
@@ -8606,6 +8613,11 @@ class ConstructionStore:
             "prompt_template_version",
             "created_utc",
             "updated_utc",
+            # V43 candidate-review lifecycle columns (additive).
+            "snoozed_until_utc",
+            "reviewed_utc",
+            "reviewed_by",
+            "review_note_redacted",
         )
         return [dict(zip(keys, row, strict=True)) for row in cur.fetchall()]
 
@@ -8664,16 +8676,77 @@ class ConstructionStore:
         candidate_type: str,
         candidate_id: str,
         review_status: str,
+        reviewed_utc: Optional[str] = None,
+        reviewed_by: Optional[str] = None,
+        review_note_redacted: Optional[str] = None,
+        snoozed_until_utc: Optional[str] = None,
     ) -> bool:
-        """Set review_status on a task or commitment candidate. Returns True if a row was updated."""
+        """Set review_status on a task or commitment candidate. Returns True if a row was updated.
+
+        Always sets review_status + updated_utc. The optional V43 review-lifecycle
+        columns (reviewed_utc/reviewed_by/review_note_redacted/snoozed_until_utc) are
+        written only when explicitly provided, so legacy 3-arg callers are unchanged.
+        """
         if candidate_type not in ("task", "commitment"):
             return False
         table = "task_candidates" if candidate_type == "task" else "commitment_candidates"
+        sets = ["review_status = ?", "updated_utc = ?"]
+        params: list[Any] = [review_status, _utc_now()]
+        for column, value in (
+            ("reviewed_utc", reviewed_utc),
+            ("reviewed_by", reviewed_by),
+            ("review_note_redacted", review_note_redacted),
+            ("snoozed_until_utc", snoozed_until_utc),
+        ):
+            if value is not None:
+                sets.append(f"{column} = ?")
+                params.append(value)
+        params.append(candidate_id)
         conn = get_connection(self._db_path)
         with transaction(conn):
             cur = conn.execute(
-                f"UPDATE {table} SET review_status = ?, updated_utc = ? WHERE candidate_id = ?",
-                (review_status, _utc_now(), candidate_id),
+                f"UPDATE {table} SET {', '.join(sets)} WHERE candidate_id = ?",
+                tuple(params),
+            )
+            return cur.rowcount > 0
+
+    # Columns an operator may edit on a candidate row (never stable_key, source refs,
+    # or guard columns). assignee maps to the type-specific actor column.
+    _EDITABLE_CANDIDATE_COLUMNS = frozenset(
+        {"title_redacted", "assignee_class", "commitment_actor_class", "waiting_state"}
+    )
+
+    def update_candidate_fields(
+        self,
+        *,
+        candidate_type: str,
+        candidate_id: str,
+        fields: dict[str, str],
+    ) -> bool:
+        """Targeted UPDATE of editable candidate fields. Returns True if a row was updated.
+
+        Only whitelisted columns (_EDITABLE_CANDIDATE_COLUMNS) are written; any other
+        key is ignored. Always bumps updated_utc. Never touches stable_key, review
+        status, source refs, or guard columns.
+        """
+        if candidate_type not in ("task", "commitment"):
+            return False
+        table = "task_candidates" if candidate_type == "task" else "commitment_candidates"
+        allowed = {
+            col: val for col, val in fields.items() if col in self._EDITABLE_CANDIDATE_COLUMNS
+        }
+        if not allowed:
+            return False
+        sets = [f"{col} = ?" for col in allowed]
+        params: list[Any] = list(allowed.values())
+        sets.append("updated_utc = ?")
+        params.append(_utc_now())
+        params.append(candidate_id)
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            cur = conn.execute(
+                f"UPDATE {table} SET {', '.join(sets)} WHERE candidate_id = ?",
+                tuple(params),
             )
             return cur.rowcount > 0
 
@@ -8685,31 +8758,46 @@ class ConstructionStore:
         decision: str,
         reason_redacted: Optional[str] = None,
         reviewer_ref: str = "operator",
+        prior_status: Optional[str] = None,
+        new_status: Optional[str] = None,
+        changes_json_redacted: Optional[str] = None,
+        snoozed_until_utc: Optional[str] = None,
     ) -> Optional[str]:
-        """Insert an audit row for a candidate review decision (best-effort; table may be absent)."""
+        """Insert an audit row for a candidate review decision (best-effort).
+
+        Columns match the actual candidate_review_events schema (V41 + V43): the
+        ``decision`` param maps to ``action`` and ``reason_redacted`` to
+        ``user_note_redacted``. Returns the new review_event_id, or None on failure.
+        """
         try:
-            event_id = str(uuid.uuid4())
+            review_event_id = str(uuid.uuid4())
             conn = get_connection(self._db_path)
             with transaction(conn):
                 conn.execute(
                     """
                     INSERT INTO candidate_review_events
-                        (event_id, candidate_type, candidate_id, decision, reason_redacted, reviewer_ref, created_utc)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                        (review_event_id, candidate_type, candidate_id, action,
+                         prior_status, new_status, user_note_redacted, reviewer_ref,
+                         changes_json_redacted, snoozed_until_utc, created_utc)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
-                        event_id,
+                        review_event_id,
                         candidate_type,
                         candidate_id,
                         decision,
+                        prior_status,
+                        new_status,
                         reason_redacted,
                         reviewer_ref,
+                        changes_json_redacted,
+                        snoozed_until_utc,
                         _utc_now(),
                     ),
                 )
-            return event_id
+            return review_event_id
         except Exception:
-            # Table may not exist or other constraint; non-fatal for review surface.
+            # Non-fatal for the review surface; status update already persisted.
             return None
 
     # V20 Phase 07A Prompt 01 — Data Quality + Canonical Source-Record Map
