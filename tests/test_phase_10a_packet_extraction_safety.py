@@ -268,7 +268,7 @@ def test_unknown_source_ref_is_rejected() -> None:
         }])
         rep = extract_actions_for_packet(packet=pkt, store=s, dry_run=False, mock_output=cand)
         assert rep["accepted"] == 0 and rep["persisted"] == 0
-        assert any(r.get("reason") == "source_ref_not_in_packet" for r in rep["rejections"])
+        assert any(r.get("reason") == "source_alias_not_in_packet" for r in rep["rejections"])
         assert s.list_task_candidates() == []
 
 
@@ -299,6 +299,132 @@ def test_raw_array_output_still_accepted_for_backward_compat() -> None:
         rep = extract_actions_for_packet(packet=pkt, store=s, dry_run=False, mock_output=_candidate())
         assert rep["accepted"] == 1 and rep["persisted"] == 1
         assert rep["diagnostics"]["root_type"] == "array"
+
+
+def _obj_candidate(source_refs: list) -> str:
+    base = json.loads(_candidate())[0]
+    base["source_refs"] = source_refs
+    return json.dumps({"candidates": [base]})
+
+
+class _PromptCapturingClient:
+    """Fake live client that records the prompt and returns object-root empty output."""
+
+    model = "mistral-nemo:12b"
+
+    def __init__(self) -> None:
+        self.system = ""
+        self.prompt = ""
+
+    def generate_json(self, *, system: str, prompt: str) -> str:
+        self.system = system
+        self.prompt = prompt
+        return '{"candidates":[]}'
+
+
+def test_alias_src1_resolves_to_thread_ref_family() -> None:
+    with tempfile.TemporaryDirectory() as td:
+        s = ConstructionStore(db_path=str(Path(td) / "a1.db"))
+        _seed_thread(s)  # packet source_refs: [thread t1, message m1] → src_1=t1
+        pkt = build_email_thread_action_packet(thread_ref="t1", store=s)
+        rep = extract_actions_for_packet(
+            packet=pkt, store=s, dry_run=False, mock_output=_obj_candidate(["src_1"])
+        )
+        assert rep["accepted"] == 1 and rep["persisted"] == 1
+        refs = s.list_candidate_source_refs(candidate_type="task")
+        assert refs[0]["source_ref_hash"] == "t1"  # alias resolved to canonical thread ref
+        assert refs[0]["source_family"] == "email_thread_raw_context"
+        assert rep["diagnostics"]["candidate_refs_resolved_count"] == 1
+
+
+def test_alias_calendar_resolves_to_calendar_family() -> None:
+    with tempfile.TemporaryDirectory() as td:
+        s = ConstructionStore(db_path=str(Path(td) / "a2.db"))
+        s.upsert_calendar_event_raw_content(
+            raw_calendar_event_id="raw:e1", event_index_id="e1", graph_event_id_hash="gh1",
+            project_key="P", subject="Coordination", body_text="Discuss RFI 42 before pour",
+            organizer_email="pm@sub.com", attendees_json="[]",
+            start_datetime_utc="2026-06-08T09:00:00+00:00", end_datetime_utc="2026-06-08T09:30:00+00:00",
+        )
+        from hb_assistant.construction.second_brain.local_ai import (
+            build_calendar_event_action_packet,
+        )
+        pkt = build_calendar_event_action_packet(event_index_id="e1", store=s)
+        rep = extract_actions_for_packet(
+            packet=pkt, store=s, dry_run=False, mock_output=_obj_candidate(["src_1"])
+        )
+        assert rep["persisted"] == 1
+        refs = s.list_candidate_source_refs(candidate_type="task")
+        assert refs[0]["source_ref_hash"] == "e1"
+        assert refs[0]["source_family"] == "calendar_event_raw_content"
+
+
+def test_mixed_related_packet_aliases_preserve_per_ref_family() -> None:
+    with tempfile.TemporaryDirectory() as td:
+        s = ConstructionStore(db_path=str(Path(td) / "a3.db"))
+        _seed_strong_pair(s)  # related packet: src_1=thread, src_2=m1(message), src_3=e1(event)
+        pkt = build_related_context_action_packet(thread_ref="t1", store=s)
+        assert pkt["compiled"] is True
+        rep = extract_actions_for_packet(
+            packet=pkt, store=s, dry_run=False, mock_output=_obj_candidate(["src_2", "src_3"])
+        )
+        assert rep["persisted"] == 1
+        fam = {r["source_ref_hash"]: r["source_family"]
+               for r in s.list_candidate_source_refs(candidate_type="task")}
+        assert fam["m1"] == "email_message_raw_content"
+        assert fam["e1"] == "calendar_event_raw_content"
+
+
+def test_excerpt_label_alias_is_rejected() -> None:
+    with tempfile.TemporaryDirectory() as td:
+        s = ConstructionStore(db_path=str(Path(td) / "a4.db"))
+        _seed_thread(s)
+        pkt = build_email_thread_action_packet(thread_ref="t1", store=s)
+        rep = extract_actions_for_packet(
+            packet=pkt, store=s, dry_run=False, mock_output=_obj_candidate(["<excerpt1>"])
+        )
+        assert rep["accepted"] == 0 and rep["persisted"] == 0
+        assert any(r.get("reason") == "source_alias_not_in_packet" for r in rep["rejections"])
+        assert s.list_task_candidates() == []
+
+
+def test_unknown_alias_src999_is_rejected() -> None:
+    with tempfile.TemporaryDirectory() as td:
+        s = ConstructionStore(db_path=str(Path(td) / "a5.db"))
+        _seed_thread(s)
+        pkt = build_email_thread_action_packet(thread_ref="t1", store=s)
+        rep = extract_actions_for_packet(
+            packet=pkt, store=s, dry_run=False, mock_output=_obj_candidate(["src_999"])
+        )
+        assert rep["accepted"] == 0 and rep["persisted"] == 0
+        assert any(r.get("reason") == "source_alias_not_in_packet" for r in rep["rejections"])
+
+
+def test_alias_dry_run_resolves_but_writes_nothing() -> None:
+    with tempfile.TemporaryDirectory() as td:
+        s = ConstructionStore(db_path=str(Path(td) / "a6.db"))
+        _seed_thread(s)
+        pkt = build_email_thread_action_packet(thread_ref="t1", store=s)
+        rep = extract_actions_for_packet(
+            packet=pkt, store=s, dry_run=True, mock_output=_obj_candidate(["src_1"])
+        )
+        assert rep["accepted"] == 1 and rep["persisted"] == 0
+        assert _counts(s) == {"task": 0, "commitment": 0, "refs": 0, "receipts": 0}
+
+
+def test_prompt_includes_allowed_source_aliases_and_no_placeholder() -> None:
+    with tempfile.TemporaryDirectory() as td:
+        s = ConstructionStore(db_path=str(Path(td) / "a7.db"))
+        _seed_thread(s)
+        pkt = build_email_thread_action_packet(thread_ref="t1", store=s)
+        fake = _PromptCapturingClient()
+        extract_actions_for_packet(packet=pkt, store=s, dry_run=True, mock_output=None, client=fake)
+        assert "allowed_source_aliases" in fake.prompt
+        assert "src_1" in fake.prompt
+        assert "source_alias:" in fake.prompt
+        assert "<ref-from-excerpt>" not in fake.prompt
+        assert "ref=" not in fake.prompt  # no canonical-ref leakage in the excerpt header
+        assert "allowed_source_aliases" in fake.system or "alias" in fake.system
 
 
 def test_diagnostic_reasons_distinguish_failure_modes() -> None:

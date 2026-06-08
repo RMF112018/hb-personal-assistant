@@ -68,7 +68,7 @@ STRICT_ACTION_SYSTEM = (
     "- due_at: ISO string or null\n"
     "- urgency: low|normal|high|critical\n"
     "- waiting_state: waiting_on_me|waiting_on_others|unknown|not_applicable\n"
-    "- source_refs: array of at least 1 non-empty string identifiers (hashes or stable row refs from input)\n"
+    "- source_refs: array of at least 1 alias taken ONLY from `allowed_source_aliases` (e.g. src_1); never raw IDs/labels\n"
     "- confidence: number 0.0-1.0\n"
     "- reason: short grounded justification, max 1000 chars. Must cite concrete signals from the excerpts.\n"
     "- safety_category: normal|contract|legal|financial|payment|claim|entitlement|schedule|safety\n"
@@ -80,7 +80,7 @@ STRICT_ACTION_SYSTEM = (
     "- Only emit concrete, project-deliverable actions (e.g. 'Submit revised RFI sketch by EOD', 'Confirm vendor commitment for material delivery on 2026-06-12').\n"
     "- NEVER emit generic data-cleaning, data-analysis, 'normalize the data', 'analyze trends', 'clean up the spreadsheet', 'process the information', or similar non-actionable meta-work.\n"
     "- If the content only contains analysis requests without a clear deliverable task or commitment, output {\"candidates\":[]}.\n"
-    "- source_refs must be taken from the provided excerpts (e.g. message ids, conversation hashes, event ids).\n"
+    "- source_refs must be aliases from `allowed_source_aliases` only (e.g. src_1) — never `<excerpt1>`, labels, or raw IDs.\n"
     "- reason must be directly supported by the raw excerpt text shown.\n\n"
     "If the input contains no actionable project work, output exactly {\"candidates\":[]}.\n"
 )
@@ -210,16 +210,22 @@ def _build_raw_excerpts(
     return excerpts[:max_items]
 
 
-def _build_prompt(excerpts: list[dict[str, Any]]) -> str:
+def _build_prompt(
+    excerpts: list[dict[str, Any]],
+    ref_to_alias: dict[str, str],
+    allowed_source_aliases: list[dict[str, str]],
+) -> str:
     lines = [
         "RAW CONTENT EXCERPTS (bounded; use only these signals):",
     ]
     for i, ex in enumerate(excerpts, 1):
         fam = ex.get("source_family", "unknown")
-        ref = ex.get("source_ref", f"item-{i}")
+        alias = ref_to_alias.get(str(ex.get("source_ref")), f"src_{i}")
         subj = ex.get("subject") or "(no subject)"
         body = ex.get("body_text") or ""
-        lines.append(f"--- excerpt {i} ({fam} ref={ref}) ---")
+        lines.append(f"--- excerpt {i} ---")
+        lines.append(f"source_alias: {alias}")
+        lines.append(f"source_family: {fam}")
         lines.append(f"subject: {subj}")
         if body:
             lines.append(f"body: {body}")
@@ -233,15 +239,44 @@ def _build_prompt(excerpts: list[dict[str, Any]]) -> str:
     lines.append(
         "TASK: Output ONE JSON object with a top-level `candidates` array (use {\"candidates\":[]} if "
         "none). Follow the schema and business rules in the system prompt exactly.\n"
-        "Example shape (placeholder values; use real source_refs from the excerpts above):\n"
+        "`source_refs` MUST contain ONLY aliases from allowed_source_aliases below. Do NOT output "
+        "`<excerpt1>`, `excerpt 1`, source labels, shortened IDs, invented IDs, or long raw refs. "
+        "Every candidate must include at least one valid alias.\n"
+        "Example shape (note: `src_1` is only an EXAMPLE — use ONLY aliases listed in "
+        "allowed_source_aliases):\n"
         '{"candidates":[{"candidate_type":"task","title":"Submit revised RFI sketch by Friday",'
         '"project_key":null,"assignee":"user","due_at":null,"urgency":"normal",'
-        '"waiting_state":"waiting_on_me","source_refs":["<ref-from-excerpt>"],"confidence":0.8,'
+        '"waiting_state":"waiting_on_me","source_refs":["src_1"],"confidence":0.8,'
         '"reason":"Sender asks to submit the revised sketch.","safety_category":"normal",'
         '"recommended_next_action":"review","review_status":"pending",'
         '"external_action_requires_approval":true}]}'
     )
+    lines.append("")
+    lines.append("allowed_source_aliases:")
+    lines.append(json.dumps({"allowed_source_aliases": allowed_source_aliases}))
     return "\n".join(lines)
+
+
+def _resolve_source_refs(
+    refs: list[str], alias_to_ref: dict[str, str], known_family: dict[str, str]
+) -> tuple[list[str], list[str]]:
+    """Map model-emitted source_refs to canonical refs. Returns (resolved_canonical, unresolved).
+
+    An alias (``src_1``) resolves to its canonical ref; a canonical ref already known to the packet
+    resolves to itself (backward compat). Anything else (``<excerpt1>``, ``item-1``, ``src_999``,
+    invented/shortened IDs) is unresolved — no string guessing.
+    """
+    resolved: list[str] = []
+    unresolved: list[str] = []
+    for r in refs:
+        key = str(r)
+        if key in alias_to_ref:
+            resolved.append(alias_to_ref[key])
+        elif key in known_family:
+            resolved.append(key)
+        else:
+            unresolved.append(key)
+    return list(dict.fromkeys(resolved)), unresolved
 
 
 def _validate_business_contract(candidate: ActionCandidate) -> Optional[str]:
@@ -404,6 +439,10 @@ def _build_diagnostics(
         "has_items_key": meta.get("has_items_key", False),
         "response_char_count": meta.get("response_char_count", 0),
         "parsed_candidate_count": meta.get("parsed_candidate_count", 0),
+        "source_alias_count": meta.get("source_alias_count", 0),
+        "candidate_refs_resolved_count": meta.get("candidate_refs_resolved_count", 0),
+        "candidate_refs_unresolved_count": meta.get("candidate_refs_unresolved_count", 0),
+        "unresolved_ref_reason": meta.get("unresolved_ref_reason"),
     }
 
 
@@ -454,8 +493,6 @@ def extract_action_candidates_from_raw(
             "note": "no raw content available for the given project/packets/source",
         }
 
-    prompt = _build_prompt(excerpts)
-
     # Authoritative source_family per ref: packet source_refs (thread/message/event) override the
     # excerpt-derived families. No string guessing, no calendar fallback.
     excerpt_family = {
@@ -464,6 +501,21 @@ def extract_action_candidates_from_raw(
         if ex.get("source_ref")
     }
     known_family: dict[str, str] = {**excerpt_family, **(source_family_map or {})}
+
+    # Deterministic short aliases over known refs (packet source_refs first → thread/event is src_1),
+    # so the model cites src_N instead of reproducing long canonical Graph/thread/event IDs.
+    ordered_refs = list(
+        dict.fromkeys(
+            [*(source_family_map or {}), *(str(ex["source_ref"]) for ex in excerpts if ex.get("source_ref"))]
+        )
+    )
+    alias_to_ref = {f"src_{i}": ref for i, ref in enumerate(ordered_refs, 1)}
+    ref_to_alias = {ref: a for a, ref in alias_to_ref.items()}
+    allowed_source_aliases = [
+        {"alias": a, "source_family": known_family.get(ref, "unknown")}
+        for a, ref in alias_to_ref.items()
+    ]
+    prompt = _build_prompt(excerpts, ref_to_alias, allowed_source_aliases)
 
     # No model was actually called — never report "model returned no output".
     if client is None and mock_output is None:
@@ -537,6 +589,9 @@ def extract_action_candidates_from_raw(
             parse_meta["parsed_candidate_count"] = len(parsed)
             candidates: list[ActionCandidate] = []
             rejections: list[dict[str, Any]] = []
+            refs_resolved = 0
+            refs_unresolved = 0
+            unresolved_reason: Optional[str] = None
             for item in parsed:
                 try:
                     cand = ActionCandidate.model_validate(item)
@@ -544,13 +599,23 @@ def extract_action_candidates_from_raw(
                     if rej:
                         rejections.append({"reason": rej, "candidate": cand.model_dump()})
                         continue
-                    # Every cited source_ref must resolve to a real packet/excerpt ref + family.
-                    unknown = [r for r in cand.source_refs if str(r) not in known_family]
-                    if unknown:
+                    # Resolve aliases (src_N) → canonical refs before validating against the packet.
+                    resolved, unresolved = _resolve_source_refs(
+                        list(cand.source_refs), alias_to_ref, known_family
+                    )
+                    if unresolved or not resolved:
+                        refs_unresolved += len(unresolved) or 1
+                        unresolved_reason = "source_alias_not_in_packet"
                         rejections.append(
-                            {"reason": "source_ref_not_in_packet", "candidate": cand.model_dump()}
+                            {
+                                "reason": "source_alias_not_in_packet",
+                                "unresolved_refs": unresolved,
+                                "candidate": cand.model_dump(),
+                            }
                         )
                         continue
+                    refs_resolved += len(resolved)
+                    cand = cand.model_copy(update={"source_refs": resolved})
                     candidates.append(cand)
                 except Exception as ve:  # validation or business
                     rejections.append(
@@ -630,6 +695,14 @@ def extract_action_candidates_from_raw(
                         # best effort; do not fail the whole run on one persist
                         continue
 
+            # dict-merge (not .update()) — the second-brain no-writeback scanner flags ".update(".
+            parse_meta = {
+                **parse_meta,
+                "source_alias_count": len(alias_to_ref),
+                "candidate_refs_resolved_count": refs_resolved,
+                "candidate_refs_unresolved_count": refs_unresolved,
+                "unresolved_ref_reason": unresolved_reason,
+            }
             reason = _diagnostic_reason(
                 client=client, mock_output=mock_output, error_class=error_class,
                 is_timeout=is_timeout, produced=len(parsed), accepted=len(candidates),
