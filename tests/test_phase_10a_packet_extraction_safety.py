@@ -427,6 +427,62 @@ def test_prompt_includes_allowed_source_aliases_and_no_placeholder() -> None:
         assert "allowed_source_aliases" in fake.system or "alias" in fake.system
 
 
+def _prompt_aliases(prompt: str) -> tuple[list[str], set]:
+    import re
+
+    shown = re.findall(r"source_alias: (\S+)", prompt)
+    allowed = json.loads(prompt.split("allowed_source_aliases:\n", 1)[1])["allowed_source_aliases"]
+    return shown, {a["alias"] for a in allowed}
+
+
+def test_multimessage_thread_prompt_shows_only_registered_aliases() -> None:
+    with tempfile.TemporaryDirectory() as td:
+        s = ConstructionStore(db_path=str(Path(td) / "mm.db"))
+        # Six messages with NO id/message_id_hash → packet messages have id=None (the live failure case).
+        msgs = [
+            {"subject": f"msg {n}", "body_text": f"please review item {n} by Friday",
+             "sent_at_utc": "2026-06-07T12:00:00+00:00"}
+            for n in range(6)
+        ]
+        s.upsert_email_thread_raw_context(
+            raw_thread_context_id="r1", thread_ref="THREAD-XYZ", project_key="P", message_count=6,
+            thread_subject="RFI thread", messages_json=json.dumps(msgs), source_refs_json="[]",
+            model_ready=1,
+        )
+        pkt = build_email_thread_action_packet(thread_ref="THREAD-XYZ", store=s)
+        fake = _PromptCapturingClient()
+        extract_actions_for_packet(packet=pkt, store=s, dry_run=True, mock_output=None, client=fake)
+        shown, allowed = _prompt_aliases(fake.prompt)
+        assert shown, "expected source_alias lines in the prompt"
+        # Every displayed alias is registered — no index-based src_2.. leak.
+        assert all(a in allowed for a in shown), (shown, allowed)
+        # Thread-level: all message excerpts share the one thread alias.
+        assert set(shown) == {"src_1"}
+        assert "src_2" not in fake.prompt.split("allowed_source_aliases", 1)[0]
+
+
+def test_displayed_alias_resolves_not_rejected() -> None:
+    with tempfile.TemporaryDirectory() as td:
+        s = ConstructionStore(db_path=str(Path(td) / "mm2.db"))
+        msgs = [{"subject": f"m{n}", "body_text": f"review item {n}",
+                 "sent_at_utc": "2026-06-07T12:00:00+00:00"} for n in range(4)]
+        s.upsert_email_thread_raw_context(
+            raw_thread_context_id="r1", thread_ref="THREAD-ABC", project_key="P", message_count=4,
+            thread_subject="thread", messages_json=json.dumps(msgs), source_refs_json="[]",
+            model_ready=1,
+        )
+        pkt = build_email_thread_action_packet(thread_ref="THREAD-ABC", store=s)
+        # The model cites the displayed alias (src_1) → resolves to the canonical thread ref, accepted.
+        rep = extract_actions_for_packet(
+            packet=pkt, store=s, dry_run=False, mock_output=_obj_candidate(["src_1"])
+        )
+        assert rep["accepted"] == 1 and rep["persisted"] == 1
+        refs = s.list_candidate_source_refs(candidate_type="task")
+        assert refs[0]["source_ref_hash"] == "THREAD-ABC"
+        assert refs[0]["source_family"] == "email_thread_raw_context"
+        assert not any(r.get("reason") == "source_alias_not_in_packet" for r in rep["rejections"])
+
+
 def test_diagnostic_reasons_distinguish_failure_modes() -> None:
     with tempfile.TemporaryDirectory() as td:
         s = ConstructionStore(db_path=str(Path(td) / "dr.db"))

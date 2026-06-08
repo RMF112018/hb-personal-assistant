@@ -218,13 +218,26 @@ def _build_prompt(
     lines = [
         "RAW CONTENT EXCERPTS (bounded; use only these signals):",
     ]
+    # Only display REGISTERED aliases (never an index-based fallback). Prefer thread-level aliasing:
+    # every email message/thread excerpt shows the thread's alias (usually src_1) so multi-message
+    # threads cite one consistent, resolvable alias.
+    thread_alias = next(
+        (a["alias"] for a in allowed_source_aliases
+         if a.get("source_family") == "email_thread_raw_context"),
+        None,
+    )
+    default_alias = allowed_source_aliases[0]["alias"] if allowed_source_aliases else None
     for i, ex in enumerate(excerpts, 1):
         fam = ex.get("source_family", "unknown")
-        alias = ref_to_alias.get(str(ex.get("source_ref")), f"src_{i}")
+        own = ref_to_alias.get(str(ex.get("source_ref")))
+        alias: Optional[str] = own or thread_alias or default_alias
+        if fam in ("email_message_raw_content", "email_thread_raw_context") and thread_alias:
+            alias = thread_alias
         subj = ex.get("subject") or "(no subject)"
         body = ex.get("body_text") or ""
         lines.append(f"--- excerpt {i} ---")
-        lines.append(f"source_alias: {alias}")
+        if alias is not None:  # never invent an unregistered alias
+            lines.append(f"source_alias: {alias}")
         lines.append(f"source_family: {fam}")
         lines.append(f"subject: {subj}")
         if body:
