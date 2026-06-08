@@ -96,8 +96,7 @@ def _candidate(**overrides: Any) -> str:
         "recommended_next_action": "review",
         "external_action_requires_approval": True,
     }
-    base.update(overrides)
-    return json.dumps(base)
+    return json.dumps({**base, **overrides})
 
 
 def build_email_task_extraction_proof(

@@ -1,20 +1,21 @@
 # Phase 10 Prompt 03 — Local Model Runtime Status Proof
 
-**Status:** not_ready · **provider:** mock · **generated_utc:** 2026-06-07T21:33:44.396386+00:00
+**Status:** ready · **provider:** mock · **generated_utc:** 2026-06-08T09:28:19.111722+00:00
 
-- repo_sha: `f294eeac82d481fcf0a53f4f66dd4a2eff7bf3db`
-- endpoint: `mock://local` (mock) · daemon_reachable: False · ready: False
-- present_models: []
-- required_models: ['qwen3:14b'] · missing_required: ['qwen3:14b']
-- blockers: ['daemon_unreachable']
+- repo_sha: `db4d8bc4a2696ba31168bd1510034bf8f03ebea5`
+- endpoint: `mock://local` (mock) · daemon_reachable: True · ready: True
+- present_models: ['llama3.1:8b', 'mistral-nemo:12b', 'qwen2.5:14b']
+- required_models: ['mistral-nemo:12b'] · missing_required: []
+- blockers: []
 
 ## Profiles
 
 | Profile | Model | Enabled | Heavy | Available | Blocked reason |
 | --- | --- | --- | --- | --- | --- |
-| fast_extract | qwen3:8b | False | False | False | daemon_unreachable |
-| default_extract | qwen3:14b | True | False | False | daemon_unreachable |
-| quality_reasoning | gpt-oss:20b | False | False | False | daemon_unreachable |
+| default_extract | mistral-nemo:12b | True | False | True | None |
+| high_recall_extract | llama3.1:8b | True | False | True | None |
+| review_filter | qwen2.5:14b | True | False | True | None |
+| quality_reasoning | gpt-oss:20b | False | False | False | profile_disabled |
 | heavy_context | qwen3:30b | False | True | False | heavy_profile_requires_explicit_enable |
 
 ## Guardrails

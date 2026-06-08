@@ -1,8 +1,8 @@
 # Phase 10 Prompt 04 — Local Model Structured Output Client Proof
 
-**Status:** clean · **proof_passed:** True · **generated_utc:** 2026-06-07T21:33:43.682776+00:00
+**Status:** clean · **proof_passed:** True · **generated_utc:** 2026-06-08T09:28:19.445299+00:00
 
-- repo_sha: `f294eeac82d481fcf0a53f4f66dd4a2eff7bf3db`
+- repo_sha: `db4d8bc4a2696ba31168bd1510034bf8f03ebea5`
 - schema_version: V42
 - guard_sum: 0 (must be 0)
 
@@ -31,10 +31,10 @@
 
 ```json
 {
-  "model_run_receipt_id": "1a0fd3a225e644c8b834966ea3aea5ed",
+  "model_run_receipt_id": "d34e80ede1c54e5782f046557b7d5af2",
   "profile_id": "default_extract",
   "provider": "ollama",
-  "model_name": "qwen3:14b",
+  "model_name": "mistral-nemo:12b",
   "task_type": "extract_email_tasks",
   "status": "ok",
   "input_context_hash": "0230c6b1d833",
@@ -45,7 +45,7 @@
   "output_token_count": null,
   "latency_ms": 0,
   "fallback_used": false,
-  "created_utc": "2026-06-07T21:33:43.677034+00:00"
+  "created_utc": "2026-06-08T09:28:19.440597+00:00"
 }
 ```
 

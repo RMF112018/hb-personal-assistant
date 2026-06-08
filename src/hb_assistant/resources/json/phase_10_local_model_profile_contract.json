@@ -5,8 +5,9 @@
     "default_extract"
   ],
   "recommended_profiles": [
-    "fast_extract",
     "default_extract",
+    "high_recall_extract",
+    "review_filter",
     "quality_reasoning",
     "heavy_context"
   ],
@@ -17,6 +18,9 @@
     "llama_cpp"
   ],
   "default_provider": "ollama",
+  "structured_extraction_disabled_model_prefixes": [
+    "qwen3"
+  ],
   "guard_columns": [
     "raw_email_body_persisted",
     "raw_document_text_persisted",

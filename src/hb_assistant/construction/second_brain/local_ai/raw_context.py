@@ -38,6 +38,7 @@ from hb_assistant.construction.second_brain.local_ai import (
     load_raw_content_policy,
 )
 from hb_assistant.construction.store import ConstructionStore
+from hb_assistant.procore.normalizers.financial import html_to_text
 
 
 def _load_policy() -> RawContentPolicy:
@@ -107,6 +108,21 @@ def _truncate(text: Optional[str], max_chars: int) -> Optional[str]:
     if len(text) <= max_chars:
         return text
     return text[:max_chars] + "…[truncated]"
+
+
+def _normalized_body_text(
+    body_text: Optional[str], body_html: Optional[str], max_chars: int
+) -> Optional[str]:
+    """Bounded plain-text body. When body_text is empty/blank, derive clean text from body_html.
+
+    Reuses the stdlib ``html_to_text`` normalizer (tag strip + entity unescape + whitespace collapse)
+    so HTML-only email/calendar bodies still yield usable, bounded model context. Raw HTML is never
+    emitted as the text field; the separate body_html field remains bounded for callers that want it.
+    """
+    text = body_text
+    if (not text or not str(text).strip()) and body_html:
+        text = html_to_text(body_html)
+    return _truncate(text, max_chars)
 
 
 def _estimate_tokens(obj: Any) -> int:
@@ -185,7 +201,9 @@ def build_raw_email_context_packet(
             bounded_msgs.append(
                 {
                     "subject": m.get("subject"),
-                    "body_text": _truncate(m.get("body_text"), max_chars),
+                    "body_text": _normalized_body_text(
+                        m.get("body_text"), m.get("body_html"), max_chars
+                    ),
                     "body_html": _truncate(m.get("body_html"), max_chars),
                     "from_name": m.get("from_name"),
                     "from_address": m.get("from_address"),
@@ -241,13 +259,15 @@ def build_raw_email_context_packet(
             if key not in grouped:
                 grouped[key] = []
             grouped[key].append(rm)
-        for key, lst in list(grouped.items())[:max_threads]:
+        for _key, lst in list(grouped.items())[:max_threads]:
             bmsgs = []
             for m in lst[:max_msgs]:
                 bmsgs.append(
                     {
                         "subject": m.get("subject"),
-                        "body_text": _truncate(m.get("body_text"), max_chars),
+                        "body_text": _normalized_body_text(
+                            m.get("body_text"), m.get("body_html"), max_chars
+                        ),
                         "body_html": _truncate(m.get("body_html"), max_chars),
                         "from_name": m.get("from_name"),
                         "from_address": m.get("from_address"),
@@ -359,7 +379,9 @@ def build_raw_calendar_context_packet(
         raw = e.get("raw_content") or {}
         ev = {
             "subject": raw.get("subject") or e.get("subject_hash"),
-            "body_text": _truncate(raw.get("body_text"), max_chars),
+            "body_text": _normalized_body_text(
+                raw.get("body_text"), raw.get("body_html"), max_chars
+            ),
             "body_html": _truncate(raw.get("body_html"), max_chars),
             "location": raw.get("location") or raw.get("location_display"),
             "organizer": raw.get("organizer"),
@@ -395,7 +417,9 @@ def build_raw_calendar_context_packet(
             events_out.append(
                 {
                     "subject": r.get("subject"),
-                    "body_text": _truncate(r.get("body_text"), max_chars),
+                    "body_text": _normalized_body_text(
+                        r.get("body_text"), r.get("body_html"), max_chars
+                    ),
                     "body_html": _truncate(r.get("body_html"), max_chars),
                     "location": r.get("location_display"),
                     "organizer": {

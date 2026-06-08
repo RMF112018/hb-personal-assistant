@@ -13,8 +13,11 @@ CLI: hb-assistant second-brain local-model status --json
 
 from __future__ import annotations
 
+import json as _json
 import os
 import subprocess
+import urllib.error
+import urllib.request
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from datetime import datetime, timezone
@@ -139,11 +142,11 @@ class OllamaProvider(LocalModelProvider):
         self._get = requests_get
 
     def _resolve_get(self) -> Callable[..., Any]:
+        # Default to a stdlib urllib getter (no `requests` dependency — the second-brain no-writeback
+        # scanner forbids importing requests/httpx/aiohttp in these modules). Tests inject ``_get``.
         if self._get is not None:
             return self._get
-        import requests  # local import; requests is a core dependency
-
-        return requests.get
+        return _urllib_get
 
     def probe_models(self, *, timeout: float = _DEFAULT_TIMEOUT) -> ProbeResult:
         url = f"{self.endpoint_url}{_TAGS_PATH}"
@@ -165,6 +168,27 @@ class OllamaProvider(LocalModelProvider):
             m["name"] for m in models if isinstance(m, dict) and isinstance(m.get("name"), str)
         }
         return names, None
+
+
+class _UrllibResponse:
+    """Minimal response shim exposing the ``status_code`` / ``json()`` surface ``probe_models`` uses."""
+
+    def __init__(self, status_code: int, body: bytes) -> None:
+        self.status_code = status_code
+        self._body = body
+
+    def json(self) -> Any:
+        return _json.loads(self._body.decode("utf-8"))
+
+
+def _urllib_get(url: str, timeout: float = _DEFAULT_TIMEOUT) -> _UrllibResponse:
+    """Stdlib GET returning a response shim. HTTP errors surface as a non-200 status (not a raise)."""
+    req = urllib.request.Request(url, method="GET")  # noqa: S310 - fixed localhost Ollama endpoint
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310
+            return _UrllibResponse(getattr(resp, "status", 200) or 200, resp.read())
+    except urllib.error.HTTPError as exc:  # preserve non-200 status for redacted ollama_status_<n>
+        return _UrllibResponse(int(exc.code), b"")
 
 
 class MockProvider(LocalModelProvider):
@@ -234,8 +258,14 @@ def build_local_model_status(
     profile_reports: list[ProfileAvailability] = []
     pulls: list[str] = []
     for p in profiles.profiles:
+        # A profile is "active" only when enabled, or when it's a heavy profile and heavy use is
+        # explicitly enabled. Pull recommendations are emitted ONLY for active profiles, so a
+        # disabled model (e.g. qwen3:*) is never suggested for pull unless explicitly enabled.
+        active = p.enabled or (p.heavy_profile and heavy_enabled)
         if p.heavy_profile and not heavy_enabled:
             available, reason = False, "heavy_profile_requires_explicit_enable"
+        elif not active:
+            available, reason = False, "profile_disabled"
         elif not daemon_reachable:
             available, reason = False, "daemon_unreachable"
         elif p.model_name not in present:

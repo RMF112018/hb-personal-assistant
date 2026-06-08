@@ -179,6 +179,7 @@ def test_good_candidates_parsed_persisted_with_excerpts(tmp_path: Path):
         project_key=pk,
         store=store,
         mock_output=_good_mock_json(),
+        dry_run=False,  # apply: persistence is asserted below (dry-run is now the default)
     )
 
     assert report["produced"] >= 3
@@ -281,6 +282,7 @@ def test_no_full_raw_leakage_in_excerpts_or_report(tmp_path: Path):
         project_key=pk,
         store=store,
         mock_output=_good_mock_json(),
+        dry_run=False,  # apply: source-ref bounding is asserted on persisted rows below
     )
 
     # The returned report candidates contain only the redacted/reason fields, not full bodies

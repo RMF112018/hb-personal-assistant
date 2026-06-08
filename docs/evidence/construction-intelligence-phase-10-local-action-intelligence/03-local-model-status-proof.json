@@ -1,41 +1,53 @@
 {
   "command": "second-brain local-model status",
   "phase": "10",
-  "generated_utc": "2026-06-07T21:33:44.396386+00:00",
-  "repo_sha": "f294eeac82d481fcf0a53f4f66dd4a2eff7bf3db",
-  "overall_status": "not_ready",
+  "generated_utc": "2026-06-08T09:28:19.111722+00:00",
+  "repo_sha": "db4d8bc4a2696ba31168bd1510034bf8f03ebea5",
+  "overall_status": "ready",
   "provider": "mock",
   "endpoint_url": "mock://local",
   "endpoint_source": "mock",
-  "daemon_reachable": false,
-  "ready": false,
-  "present_models": [],
+  "daemon_reachable": true,
+  "ready": true,
+  "present_models": [
+    "llama3.1:8b",
+    "mistral-nemo:12b",
+    "qwen2.5:14b"
+  ],
   "required_models": [
-    "qwen3:14b"
+    "mistral-nemo:12b"
   ],
-  "missing_required_models": [
-    "qwen3:14b"
-  ],
+  "missing_required_models": [],
   "profiles": [
     {
-      "profile_id": "fast_extract",
-      "model_name": "qwen3:8b",
-      "role": "bulk_triage_retry",
-      "enabled": false,
-      "heavy_profile": false,
-      "requires_explicit_enable": false,
-      "available": false,
-      "blocked_reason": "daemon_unreachable"
-    },
-    {
       "profile_id": "default_extract",
-      "model_name": "qwen3:14b",
+      "model_name": "mistral-nemo:12b",
       "role": "task_commitment_relationship_extraction",
       "enabled": true,
       "heavy_profile": false,
       "requires_explicit_enable": false,
-      "available": false,
-      "blocked_reason": "daemon_unreachable"
+      "available": true,
+      "blocked_reason": null
+    },
+    {
+      "profile_id": "high_recall_extract",
+      "model_name": "llama3.1:8b",
+      "role": "high_recall_bulk_extraction",
+      "enabled": true,
+      "heavy_profile": false,
+      "requires_explicit_enable": false,
+      "available": true,
+      "blocked_reason": null
+    },
+    {
+      "profile_id": "review_filter",
+      "model_name": "qwen2.5:14b",
+      "role": "secondary_review_and_safety_filter",
+      "enabled": true,
+      "heavy_profile": false,
+      "requires_explicit_enable": false,
+      "available": true,
+      "blocked_reason": null
     },
     {
       "profile_id": "quality_reasoning",
@@ -45,7 +57,7 @@
       "heavy_profile": false,
       "requires_explicit_enable": true,
       "available": false,
-      "blocked_reason": "daemon_unreachable"
+      "blocked_reason": "profile_disabled"
     },
     {
       "profile_id": "heavy_context",
@@ -58,12 +70,10 @@
       "blocked_reason": "heavy_profile_requires_explicit_enable"
     }
   ],
-  "blockers": [
-    "daemon_unreachable"
-  ],
+  "blockers": [],
   "heavy_enabled": false,
   "suggested_pull_commands": [],
-  "error_redacted": "daemon_unreachable_mock",
+  "error_redacted": null,
   "guardrails": {
     "local_first": true,
     "read_only": true,

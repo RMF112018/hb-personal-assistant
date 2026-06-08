@@ -1,24 +1,35 @@
 version: "1.0.0"
 provider_default: ollama
 profiles:
-  - profile_id: fast_extract
+  - profile_id: default_extract
     provider: ollama
-    model_name: qwen3:8b
-    enabled: false
-    role: bulk_triage_retry
+    model_name: mistral-nemo:12b
+    enabled: true
+    role: task_commitment_relationship_extraction
+    max_context_tokens: 32768
+    timeout_seconds: 120
+    concurrency_limit: 1
+    heavy_profile: false
+    requires_explicit_enable: false
+
+  - profile_id: high_recall_extract
+    provider: ollama
+    model_name: llama3.1:8b
+    enabled: true
+    role: high_recall_bulk_extraction
     max_context_tokens: 24000
     timeout_seconds: 90
     concurrency_limit: 1
     heavy_profile: false
     requires_explicit_enable: false
 
-  - profile_id: default_extract
+  - profile_id: review_filter
     provider: ollama
-    model_name: qwen3:14b
+    model_name: qwen2.5:14b
     enabled: true
-    role: task_commitment_relationship_extraction
-    max_context_tokens: 32768
-    timeout_seconds: 120
+    role: secondary_review_and_safety_filter
+    max_context_tokens: 24000
+    timeout_seconds: 90
     concurrency_limit: 1
     heavy_profile: false
     requires_explicit_enable: false
@@ -45,6 +56,8 @@ profiles:
     heavy_profile: true
     requires_explicit_enable: true
 fallbacks:
+  high_recall_extract: default_extract
+  review_filter: default_extract
   quality_reasoning: default_extract
   heavy_context: default_extract
 guardrails:

@@ -41,8 +41,8 @@ outside the V42 raw tables themselves).
 
 from __future__ import annotations
 
+import hashlib
 import json
-import uuid
 from typing import Any, Optional
 
 from hb_assistant.construction.classification.client import (
@@ -102,15 +102,19 @@ def _build_raw_excerpts(
     project_key: Optional[str],
     store: Optional[ConstructionStore],
     max_items: int,
+    source: str = "both",
 ) -> list[dict[str, Any]]:
     """Collect bounded raw excerpts + stable source identifiers.
 
     Prefers passed packets (P06 shape). Falls back to loading recent raw rows
-    for the project via the store (P05 list raw surfaces).
+    for the project via the store (P05 list raw surfaces). ``source`` ("email"|"calendar"|"both")
+    restricts which families are considered, for both the packet path and the store fallback.
     """
+    want_email = source in ("email", "both")
+    want_calendar = source in ("calendar", "both")
     excerpts: list[dict[str, Any]] = []
 
-    if raw_email_packet:
+    if raw_email_packet and want_email:
         for th in (raw_email_packet.get("content") or {}).get("threads") or []:
             for m in (th.get("messages") or [])[:max_items]:
                 excerpts.append(
@@ -129,7 +133,7 @@ def _build_raw_excerpts(
             if len(excerpts) >= max_items:
                 break
 
-    if raw_calendar_packet and len(excerpts) < max_items:
+    if raw_calendar_packet and want_calendar and len(excerpts) < max_items:
         for ev in (raw_calendar_packet.get("content") or {}).get("events") or []:
             excerpts.append(
                 {
@@ -151,8 +155,10 @@ def _build_raw_excerpts(
     if not excerpts and project_key and store is not None:
         # Fallback: load recent raw rows directly
         try:
-            raw_msgs = store.list_email_message_raw_content(
-                project_key=project_key, limit=max_items
+            raw_msgs = (
+                store.list_email_message_raw_content(project_key=project_key, limit=max_items)
+                if want_email
+                else []
             )
             for m in raw_msgs:
                 excerpts.append(
@@ -170,7 +176,7 @@ def _build_raw_excerpts(
                     break
         except Exception:
             pass
-        if len(excerpts) < max_items:
+        if want_calendar and len(excerpts) < max_items:
             try:
                 raw_evs = store.list_calendar_event_raw_content(
                     project_key=project_key, limit=max_items
@@ -318,13 +324,18 @@ def extract_action_candidates_from_raw(
     mock_output: Optional[str] = None,
     max_items: int = 20,
     client: Optional[OllamaChatClient] = None,
+    dry_run: bool = True,
+    source: str = "both",
 ) -> dict[str, Any]:
     """Main entry point for P07.
 
-    Loads (or accepts) raw content, builds bounded prompt, runs model (or mock),
-    strict + business validation with retry/repair, persists accepted candidates
-    + source refs (with raw excerpts), and returns a report.
+    Loads (or accepts) raw content (restricted by ``source``), builds bounded prompt, runs model
+    (or mock), strict + business validation with retry/repair, and — only when ``dry_run`` is False —
+    persists accepted candidates + source refs. Dry-run (the default) performs **zero** writes and
+    reports ``would_persist`` instead. Returns a report.
     """
+    if source not in ("email", "calendar", "both"):
+        raise ValueError(f"unknown source {source!r}")
     s = store or ConstructionStore()
 
     excerpts = _build_raw_excerpts(
@@ -333,6 +344,7 @@ def extract_action_candidates_from_raw(
         project_key=project_key,
         store=s,
         max_items=min(max_items, _MAX_ITEMS_PER_CALL),
+        source=source,
     )
 
     if not excerpts:
@@ -341,9 +353,12 @@ def extract_action_candidates_from_raw(
             "accepted": 0,
             "rejected": 0,
             "persisted": 0,
+            "would_persist": 0,
+            "dry_run": dry_run,
+            "source": source,
             "candidates": [],
             "rejections": [],
-            "note": "no raw content available for the given project/packets",
+            "note": "no raw content available for the given project/packets/source",
         }
 
     prompt = _build_prompt(excerpts)
@@ -384,84 +399,93 @@ def extract_action_candidates_from_raw(
                     rejections.append(
                         {"reason": f"schema_or_business_validation_error: {ve}", "raw_item": item}
                     )
-            # Persist accepted
+            # Persist accepted candidates — ONLY on apply (dry-run performs zero writes).
+            persistable = [c for c in candidates if c.candidate_type in ("task", "commitment")]
             persisted = 0
-            for cand in candidates:
-                try:
-                    if cand.candidate_type == "task":
-                        s.upsert_task_candidate(
-                            candidate_id=str(uuid.uuid4()),
-                            stable_key=f"raw-task:{hash(tuple(cand.source_refs))}",
-                            title_redacted=cand.title,
-                            project_key=cand.project_key or project_key,
-                            assignee_class=cand.assignee,
-                            due_at_utc=cand.due_at,
-                            urgency=cand.urgency,
-                            waiting_state=cand.waiting_state,
-                            safety_category=cand.safety_category,
-                            confidence=cand.confidence,
-                            reason_redacted=cand.reason,
-                            recommended_next_action=cand.recommended_next_action,
-                            review_status=cand.review_status,
-                            model_profile_id=cand.model_profile_id,
-                            prompt_template_version=cand.prompt_template_version,
-                        )
-                    elif cand.candidate_type == "commitment":
-                        s.upsert_commitment_candidate(
-                            candidate_id=str(uuid.uuid4()),
-                            stable_key=f"raw-commit:{hash(tuple(cand.source_refs))}",
-                            title_redacted=cand.title,
-                            project_key=cand.project_key or project_key,
-                            commitment_actor_class=getattr(cand, "assignee", "unknown"),
-                            due_at_utc=cand.due_at,
-                            urgency=cand.urgency,
-                            waiting_state=cand.waiting_state,
-                            safety_category=cand.safety_category,
-                            confidence=cand.confidence,
-                            reason_redacted=cand.reason,
-                            recommended_next_action=cand.recommended_next_action,
-                            review_status=cand.review_status,
-                            model_profile_id=cand.model_profile_id,
-                            prompt_template_version=cand.prompt_template_version,
-                        )
-                    else:
-                        # other types (decision etc.) can be extended; for P07 focus on task/comm
-                        pass
-
-                    # Persist source refs with excerpts
-                    for ref in cand.source_refs:
-                        # Find a matching excerpt to attach as evidence
-                        evidence = None
-                        for ex in excerpts:
-                            if str(ex.get("source_ref")) == str(ref) or ref in str(
-                                ex.get("source_ref", "")
-                            ):
-                                body = ex.get("body_text") or ex.get("subject") or ""
-                                evidence = _truncate(body, 400)
-                                break
-                        s.upsert_candidate_source_ref(
-                            source_ref_id=str(uuid.uuid4()),
-                            candidate_type=cand.candidate_type,
-                            candidate_id=cand.source_refs[0]
-                            if cand.source_refs
-                            else "unknown",  # best effort link
-                            source_family="email_message_raw_content"
-                            if "email" in str(ref).lower()
-                            or any(e.get("source_family", "").startswith("email") for e in excerpts)
-                            else "calendar_event_raw_content",
-                            source_ref_hash=ref,
-                            evidence_redacted=evidence,
-                        )
-                    persisted += 1
-                except Exception:
-                    # best effort; do not fail the whole run on one persist
-                    continue
+            seen_stable_keys: set[str] = set()
+            if not dry_run:
+                for cand in persistable:
+                    try:
+                        # Deterministic SHA-256 keys → idempotent re-apply (same source refs dedupe to
+                        # one candidate row + one source-ref row, updated in place via ON CONFLICT).
+                        refs_key = hashlib.sha256(
+                            "|".join(sorted(cand.source_refs)).encode("utf-8")
+                        ).hexdigest()[:16]
+                        stable_key = f"raw-{cand.candidate_type}:{refs_key}"
+                        # Within a run, the first candidate for a (type, source-refs) set wins; later
+                        # duplicates are skipped (deterministic, order-stable) rather than overwriting.
+                        if stable_key in seen_stable_keys:
+                            continue
+                        seen_stable_keys.add(stable_key)
+                        candidate_id = hashlib.sha256(
+                            f"{cand.candidate_type}|{'|'.join(sorted(cand.source_refs))}".encode()
+                        ).hexdigest()[:24]
+                        common: dict[str, Any] = {
+                            "candidate_id": candidate_id,
+                            "title_redacted": cand.title,
+                            "project_key": cand.project_key or project_key,
+                            "due_at_utc": cand.due_at,
+                            "urgency": cand.urgency,
+                            "waiting_state": cand.waiting_state,
+                            "safety_category": cand.safety_category,
+                            "confidence": cand.confidence,
+                            "reason_redacted": cand.reason,
+                            "recommended_next_action": cand.recommended_next_action,
+                            "review_status": cand.review_status,
+                            "model_profile_id": cand.model_profile_id,
+                            "prompt_template_version": cand.prompt_template_version,
+                        }
+                        if cand.candidate_type == "commitment":
+                            s.upsert_commitment_candidate(
+                                stable_key=stable_key,
+                                commitment_actor_class=cand.assignee,
+                                **common,
+                            )
+                        else:
+                            s.upsert_task_candidate(
+                                stable_key=stable_key,
+                                assignee_class=cand.assignee,
+                                **common,
+                            )
+                        # Source refs link to the SAME persisted candidate_id.
+                        for ref in cand.source_refs:
+                            evidence = None
+                            for ex in excerpts:
+                                if str(ex.get("source_ref")) == str(ref) or ref in str(
+                                    ex.get("source_ref", "")
+                                ):
+                                    body = ex.get("body_text") or ex.get("subject") or ""
+                                    evidence = _truncate(body, 400)
+                                    break
+                            s.upsert_candidate_source_ref(
+                                source_ref_id=hashlib.sha256(
+                                    f"{candidate_id}|{ref}".encode()
+                                ).hexdigest()[:24],
+                                candidate_type=cand.candidate_type,
+                                candidate_id=candidate_id,
+                                source_family="email_message_raw_content"
+                                if "email" in str(ref).lower()
+                                or any(
+                                    e.get("source_family", "").startswith("email")
+                                    for e in excerpts
+                                )
+                                else "calendar_event_raw_content",
+                                source_ref_hash=ref,
+                                evidence_redacted=evidence,
+                            )
+                        persisted += 1
+                    except Exception:
+                        # best effort; do not fail the whole run on one persist
+                        continue
 
             final_report = {
                 "produced": len(parsed),
                 "accepted": len(candidates),
                 "rejected": len(rejections),
                 "persisted": persisted,
+                "would_persist": len(persistable),
+                "dry_run": dry_run,
+                "source": source,
                 "candidates": [c.model_dump() for c in candidates],
                 "rejections": rejections,
             }

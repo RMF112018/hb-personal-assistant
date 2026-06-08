@@ -7588,15 +7588,18 @@ def phase_10_raw_action_candidates(
     dry_run: bool = typer.Option(  # noqa: B008
         True,
         "--dry-run/--apply",
-        help="Preview (default); --apply persists accepted candidates + source refs with raw excerpts to the V41 tables.",
+        help="Preview (default; zero writes); --apply persists accepted candidates + source refs to the V41 tables.",
+    ),
+    db: "str | None" = typer.Option(  # noqa: B008
+        None, "--db", help="Explicit SQLite path (tests/isolation). Default: ambient app DB."
     ),
     json_out: bool = typer.Option(True, "--json", help="Emit machine-readable report (default)."),  # noqa: B008
 ) -> None:
     """Extract advisory action candidates (task, commitment, follow-up, ...) from Phase 10A raw email/calendar content.
 
     Uses strict schema + business-contract validation (rejects generic data-cleaning / analysis hallucinations).
-    Supports retry/repair on bad model output. When --apply, persists to task_candidates / commitment_candidates
-    + candidate_source_refs (with bounded evidence_redacted excerpts from the raw rows).
+    Supports retry/repair on bad model output. Dry-run (default) performs ZERO writes; --apply persists to
+    task_candidates / commitment_candidates + candidate_source_refs (with bounded evidence_redacted excerpts).
 
     Local-only, advisory, source-linked. Model output is never trusted without validation.
     Use --mock-output for deterministic tests/CI.
@@ -7604,22 +7607,18 @@ def phase_10_raw_action_candidates(
     from hb_assistant.construction.second_brain.local_ai import (
         extract_action_candidates_from_raw,
     )
+    from hb_assistant.construction.store import ConstructionStore
 
     try:
-        # For the thin CLI we let the extractor load recent raw for the project (it will use store list raw).
-        # If the caller wants explicit packets they can be passed in future extensions; the core supports packets.
+        # The extractor is authoritative for write behavior: dry-run writes nothing at the source,
+        # --apply persists only after schema + business validation. `source` filters email/calendar.
         report = extract_action_candidates_from_raw(
             project_key=project,
+            store=ConstructionStore(db_path=db),
             mock_output=mock_output,
+            dry_run=dry_run,
+            source=source,
         )
-
-        # If not apply, do not mutate (the extractor may have side-effected in some paths; guard here for CLI contract)
-        if dry_run:
-            # Best-effort: the extractor already prefers not to persist when not requested, but we surface intent.
-            report = dict(report)
-            report["dry_run"] = True
-            report["would_persist"] = report.get("persisted", 0)
-            report["persisted"] = 0
 
         payload: dict[str, Any] = {
             "command": "second-brain phase-10 raw-action-candidates",
