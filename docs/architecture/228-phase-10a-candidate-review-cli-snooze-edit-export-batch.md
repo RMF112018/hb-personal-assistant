@@ -58,7 +58,7 @@ mutually-exclusive or missing input/invalid `--status`) · 3 candidate not found
 
 ## Verified
 
-`pytest tests/test_phase_10a_review_cli.py` (17 tests): snooze (status + until; bad
+`pytest tests/test_phase_10a_candidate_review_cli.py` (17 tests): snooze (status + until; bad
 until → 2); edit (fields updated, `review_status` preserved, source refs unchanged,
 audit `changes_json_redacted` populated; invalid enum / no_edits → 2); export
 (to `--out` file with `items` and no forbidden keys, plus stdout form; invalid

@@ -55,7 +55,7 @@ CLI emits them verbatim and adds nothing raw.
 
 ## Verified
 
-`pytest tests/test_phase_10a_review_cli.py` (5 tests, `CliRunner` + temp `--db`):
+`pytest tests/test_phase_10a_candidate_review_cli.py` (5 tests, `CliRunner` + temp `--db`):
 summary counts; list + `--status` filter; invalid status → exit 2; show
 found (with `source_refs`) + not-found → exit 3; and a recursive no-raw-key guard
 over the JSON output of all three verbs. Real CLI smoke

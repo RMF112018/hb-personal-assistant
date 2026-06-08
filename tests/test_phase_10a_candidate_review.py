@@ -25,6 +25,7 @@ from hb_assistant.construction.second_brain.local_ai.candidate_review import (
     show_review_candidate,
     snooze_candidate,
 )
+from hb_assistant.construction.second_brain.local_ai.schema import PHASE_10_GUARD_COLUMNS
 from hb_assistant.construction.store import ConstructionStore
 
 _FORBIDDEN_KEYS = {
@@ -439,3 +440,71 @@ def test_store_insert_candidate_review_event_propagates(tmp_path: Path) -> None:
         s.insert_candidate_review_event(
             candidate_type="task", candidate_id=tid, decision=None  # type: ignore[arg-type]
         )
+
+
+# ---------------------------------------------------------------------------
+# List sorting / snooze visibility / guardrail-columns-zero
+# ---------------------------------------------------------------------------
+def test_list_sorting_by_created_utc_desc(tmp_path: Path) -> None:
+    s = _store(tmp_path)
+    pk = "PRJ-SORT"
+    for cid in ("t1", "t2", "t3"):
+        _seed_task(s, pk, cid=cid)
+    # upsert stamps CURRENT_TIMESTAMP (collides within a second) — set distinct values.
+    conn = sqlite3.connect(str(s._db_path))
+    try:
+        for cid, ts in (
+            ("t1", "2026-01-01T00:00:00+00:00"),
+            ("t2", "2026-02-01T00:00:00+00:00"),
+            ("t3", "2026-03-01T00:00:00+00:00"),
+        ):
+            conn.execute(
+                "UPDATE task_candidates SET created_utc = ? WHERE candidate_id = ?", (ts, cid)
+            )
+        conn.commit()
+    finally:
+        conn.close()
+    order = [r["candidate_id"] for r in s.list_task_candidates(project_key=pk)]
+    assert order == ["t3", "t2", "t1"]  # newest-first (ORDER BY created_utc DESC)
+
+
+def test_snooze_visibility_in_list_and_summary(tmp_path: Path) -> None:
+    s = _store(tmp_path)
+    pk = "PRJ-SNZ"
+    tid = _seed_task(s, pk)
+    until = "2026-06-12T09:00:00-04:00"
+    snooze_candidate(s, candidate_id=tid, candidate_type="task", until=until)
+
+    snoozed = list_review_candidates(s, status="snoozed", project_key=pk)
+    assert snoozed["count"] == 1
+    assert snoozed["candidates"][0]["candidate_id"] == tid
+    assert snoozed["candidates"][0]["snoozed_until_utc"] == until
+
+    summ = review_summary(s, project_key=pk)
+    assert summ["combined"]["snoozed"] == 1
+    assert summ["task"]["snoozed"] == 1
+
+
+def _guard_sum(db_path: str, table: str) -> int:
+    expr = " + ".join(f"COALESCE(SUM({g}),0)" for g in PHASE_10_GUARD_COLUMNS)
+    conn = sqlite3.connect(db_path)
+    try:
+        return int(conn.execute(f"SELECT {expr} FROM {table}").fetchone()[0])
+    finally:
+        conn.close()
+
+
+def test_guardrail_columns_stay_zero_after_review_ops(tmp_path: Path) -> None:
+    s = _store(tmp_path)
+    pk = "PRJ-GUARD"
+    tid = _seed_task(s, pk)
+    cid = _seed_commitment(s, pk)
+    # Exercise row updates + audit inserts across all three review-bearing tables.
+    accept_candidate(s, candidate_id=tid, candidate_type="task", note="ok")
+    edit_candidate(s, candidate_id=tid, candidate_type="task", title="New", assignee="user")
+    snooze_candidate(
+        s, candidate_id=cid, candidate_type="commitment", until="2026-06-12T09:00:00-04:00"
+    )
+    assert len(PHASE_10_GUARD_COLUMNS) == 13
+    for table in ("task_candidates", "commitment_candidates", "candidate_review_events"):
+        assert _guard_sum(str(s._db_path), table) == 0, f"{table} guard columns nonzero"

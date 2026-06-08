@@ -56,7 +56,7 @@ emitted.
 
 ## Verified
 
-`pytest tests/test_phase_10a_review_cli.py` (10 tests total): accept transitions
+`pytest tests/test_phase_10a_candidate_review_cli.py` (10 tests total): accept transitions
 pending→accepted, writes one audit row, and leaves `candidate_source_refs` count
 unchanged; ignore stores `suppressed`; reject `--reason` stores `rejected` +
 `review_note_redacted`; unknown id → exit 3; and a no-raw-key guard over the
