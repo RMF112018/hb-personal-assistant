@@ -148,6 +148,23 @@ def test_no_forbidden_keys_in_output(tmp_path: Path) -> None:
 # --- dry-run / apply posture ---------------------------------------------------
 
 
+def test_limit_bounds_groups_and_would_persist(tmp_path: Path) -> None:
+    # One project with 3 distinct signal-type groups; --limit 2 must bound output + would_persist.
+    db = str(tmp_path / "t.sqlite")
+    rows = [
+        _signal("s1", "alpha", "type_a"),
+        _signal("s2", "alpha", "type_b"),
+        _signal("s3", "alpha", "type_c"),
+    ]
+    s = _seed(db, rows)
+    out = build_procore_action_digest(store=s, now_utc=NOW, db_path=db, limit=2)
+    assert out["summary"]["would_persist"] == 2  # capped from 3
+    alpha = out["projects"][0]
+    assert alpha["group_count"] == 3  # true total still reported (no silent cap)
+    assert alpha["groups_considered"] == 2
+    assert len(alpha["groups"]) == 2
+
+
 def test_dry_run_writes_zero_rows(tmp_path: Path) -> None:
     db = str(tmp_path / "t.sqlite")
     s = _seed(db, _default_rows())

@@ -8749,7 +8749,11 @@ def second_brain_procore_digest_build(
         None, "--as-of",
         help="ISO-8601 UTC 'now' for deterministic overdue/brief-date (default: current UTC).",
     ),
-    limit: int = typer.Option(50, "--limit", help="Max signal-type groups per project in output."),  # noqa: B008
+    limit: int = typer.Option(  # noqa: B008
+        50, "--limit",
+        help="Max signal-type groups per project (highest-count first; bounds output AND "
+        "would-persist). --max-persist is the separate hard cap on actual writes.",
+    ),
     dry_run: bool = typer.Option(  # noqa: B008
         True, "--dry-run/--apply",
         help="Dry-run (default; zero writes). --apply persists, capped by --max-persist.",

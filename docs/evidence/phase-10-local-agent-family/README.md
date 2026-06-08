@@ -82,9 +82,9 @@ existing `candidate_source_refs`) + an already-redacted excerpt — no raw bodie
 
 ## Tests
 
-- `tests/test_phase_10_acceptance_promotion.py` (7) — promotion writers, idempotency, guard cols,
+- `tests/test_phase_10_acceptance_promotion.py` (6) — promotion writers, idempotency, guard cols,
   CLI `--promote` gating (no-promote default, accepted-only, requires emit).
-- `tests/test_phase_10_follow_up_monitor.py` (15) — classifier branches + determinism + no-clock,
+- `tests/test_phase_10_follow_up_monitor.py` (16) — classifier branches + determinism + no-clock,
   dry-run zero writes, apply-requires-cap, max-persist cap, source-ref gate, dedup, status-change
   event, guard cols zero, empty-input clean, no-raw output, CLI wiring, oversized guard.
 - `tests/test_agent_registry.py` / `tests/test_second_brain_agents_cli.py` — updated agent-count
@@ -172,3 +172,17 @@ remain, independent of this branch.
 
 Experimental, **ready for audit**. No migration, no production/Dev DB mutation (copy only), no
 Procore/Graph/external writeback, no cloud LLM.
+
+## Micro-closeout (post-audit fixes)
+
+Addresses two audit findings; no Checkpoint 3 scope:
+- **R1 — `procore-digest --limit` now bounds the digest, not just display.** The top-`limit`
+  highest-count groups per project feed BOTH the output and `would_persist`/apply; `--max-persist`
+  remains the separate hard cap on actual writes. `group_count` still reports the true total
+  (truncation is visible — no silent cap), and a new `groups_considered` field reports the bounded
+  count. Covered by a new `test_limit_bounds_groups_and_would_persist`.
+- **Test-count accuracy.** Corrected the per-file counts (acceptance 7→6, follow-up 15→16; the
+  Checkpoint 1 total of 22 is unchanged). At audit, Checkpoint 2 had 24 tests (`procore_digest` was
+  15, not the stated 16); this closeout adds the one R1 regression test, bringing `procore_digest`
+  to 16 and Checkpoint 2 to **25** — now matching reality. Historical Phase-08A/09 frozen evidence
+  (`agent_count: 9`) is intentionally left unchanged (point-in-time snapshots, not test-enforced).

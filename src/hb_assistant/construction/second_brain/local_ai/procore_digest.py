@@ -187,15 +187,20 @@ def build_procore_action_digest(
                 )
 
         group_list = sorted(groups.values(), key=lambda g: (-g["count"], g["signal_type"]))
-        all_groups.extend(group_list)
+        # --limit bounds the groups used for BOTH output and would-persist/apply (highest-count
+        # first per project). group_count still reports the true total so truncation is visible
+        # (no silent cap); --max-persist is the separate hard cap on actual writes.
+        capped = group_list[:limit]
+        all_groups.extend(capped)
         project_views.append(
             {
                 "project_key": proj,
                 "open_signal_count": len(proj_signals),
                 "group_count": len(group_list),
+                "groups_considered": len(capped),
                 "headline": _project_headline(proj, now_utc=now_utc, db_path=dbp),
                 "risk_terms": _project_risk_terms(proj, db_path=dbp, max_terms=max_risk_terms),
-                "groups": group_list[:limit],
+                "groups": capped,
             }
         )
 
