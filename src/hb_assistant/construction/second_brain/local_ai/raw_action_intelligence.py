@@ -533,6 +533,8 @@ def extract_action_candidates_from_raw(
     dry_run: bool = True,
     source: str = "both",
     source_family_map: Optional[dict[str, str]] = None,
+    max_persist: Optional[int] = None,
+    existing_stable_keys: Optional[set[str]] = None,
 ) -> dict[str, Any]:
     """Main entry point for P07.
 
@@ -726,7 +728,10 @@ def extract_action_candidates_from_raw(
             # Persist accepted candidates — ONLY on apply (dry-run performs zero writes).
             persistable = [c for c in candidates if c.candidate_type in ("task", "commitment")]
             persisted = 0
+            skipped_existing = 0
+            persisted_stable_keys: list[str] = []
             seen_stable_keys: set[str] = set()
+            already_present = existing_stable_keys if existing_stable_keys is not None else set()
             if not dry_run:
                 for cand in persistable:
                     try:
@@ -741,6 +746,14 @@ def extract_action_candidates_from_raw(
                         if stable_key in seen_stable_keys:
                             continue
                         seen_stable_keys.add(stable_key)
+                        # Caller-supplied existing keys (already persisted, in DB or earlier in a batch)
+                        # are skipped without re-writing — counted, not upserted.
+                        if stable_key in already_present:
+                            skipped_existing += 1
+                            continue
+                        # Capped persistence (batch apply budget): stop once the cap is reached.
+                        if max_persist is not None and persisted >= max_persist:
+                            break
                         candidate_id = hashlib.sha256(
                             f"{cand.candidate_type}|{'|'.join(sorted(cand.source_refs))}".encode()
                         ).hexdigest()[:24]
@@ -793,6 +806,7 @@ def extract_action_candidates_from_raw(
                                 evidence_redacted=evidence,
                             )
                         persisted += 1
+                        persisted_stable_keys.append(stable_key)
                     except Exception:
                         # best effort; do not fail the whole run on one persist
                         continue
@@ -816,6 +830,8 @@ def extract_action_candidates_from_raw(
                 "rejected": len(rejections),
                 "persisted": persisted,
                 "would_persist": len(persistable),
+                "skipped_existing": skipped_existing,
+                "persisted_stable_keys": persisted_stable_keys,
                 "dry_run": dry_run,
                 "source": source,
                 "candidates": [c.model_dump() for c in candidates],
@@ -867,6 +883,8 @@ def extract_actions_for_packet(
     mock_output: Optional[str] = None,
     client: Optional[OllamaChatClient] = None,
     max_items: int = 20,
+    max_persist: Optional[int] = None,
+    existing_stable_keys: Optional[set[str]] = None,
 ) -> dict[str, Any]:
     """Route a bounded packet to extraction by its purpose/allowed-outputs.
 
@@ -932,6 +950,8 @@ def extract_actions_for_packet(
         source="both",
         max_items=max_items,
         source_family_map=source_family_map,
+        max_persist=max_persist,
+        existing_stable_keys=existing_stable_keys,
     )
     report["extracted"] = True
     report["packet_id"] = packet.get("packet_id")

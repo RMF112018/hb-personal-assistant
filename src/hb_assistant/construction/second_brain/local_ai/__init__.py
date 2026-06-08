@@ -9,6 +9,10 @@ read-only contracts proof. No Ollama call, no DB schema, no job execution, no wr
 from __future__ import annotations
 
 from .ai_jobs import enqueue_ai_job_request, run_ai_jobs
+from .batch_extraction import (
+    UnsupportedBatchSourceError,
+    run_batch_extraction,
+)
 from .contracts import (
     PHASE_10_CONTRACT_FILES,
     PHASE_10_SEED_FILES,
@@ -119,4 +123,6 @@ __all__ = [
     "find_email_calendar_relationships",
     "extract_actions_for_packet",
     "resolve_local_model_client",
+    "run_batch_extraction",
+    "UnsupportedBatchSourceError",
 ]

@@ -7837,6 +7837,140 @@ def phase_10_extract_packet(
         raise typer.Exit(1) from None
 
 
+@phase_10_app.command("extract-packets")
+def phase_10_extract_packets(
+    source: str = typer.Option(  # noqa: B008
+        "email", "--source", help="Batch source (email only for now; calendar/related fail closed)."
+    ),
+    limit: int = typer.Option(50, "--limit", help="Max source packets/threads to select."),  # noqa: B008
+    offset: int = typer.Option(0, "--offset", help="Skip the first N selected threads."),  # noqa: B008
+    dry_run: bool = typer.Option(  # noqa: B008
+        True, "--dry-run/--apply",
+        help="Dry-run (default; zero writes). --apply persists, capped by --max-persist.",
+    ),
+    max_persist: "int | None" = typer.Option(  # noqa: B008
+        None, "--max-persist", help="REQUIRED with --apply: cap on ACTUAL persisted candidates."
+    ),
+    only_unprocessed: bool = typer.Option(  # noqa: B008
+        False, "--only-unprocessed", help="Skip threads already represented in persisted candidates."
+    ),
+    thread_ref_file: "str | None" = typer.Option(  # noqa: B008
+        None, "--thread-ref-file", help="Restrict selection to thread refs listed (one per line)."
+    ),
+    summary: bool = typer.Option(  # noqa: B008
+        False, "--summary", help="Include aggregate counters in the response (also when --json)."
+    ),
+    profile: str = typer.Option(  # noqa: B008
+        "default_extract", "--profile", help="Local model profile (default: default_extract)."
+    ),
+    model: "str | None" = typer.Option(  # noqa: B008
+        None, "--model", help="Override the resolved model (default from profile: mistral-nemo:12b)."
+    ),
+    provider: str = typer.Option("ollama", "--provider", help="Local model provider (ollama)."),  # noqa: B008
+    timeout_seconds: "float | None" = typer.Option(  # noqa: B008
+        None, "--timeout-seconds", help="Override the per-profile model timeout."
+    ),
+    no_artifact: bool = typer.Option(  # noqa: B008
+        False, "--no-artifact", help="Disable writing the local review JSON artifact."
+    ),
+    artifact_dir: str = typer.Option(  # noqa: B008
+        "/tmp", "--artifact-dir", help="Directory for the review JSON artifact (default /tmp)."
+    ),
+    no_client: bool = typer.Option(  # noqa: B008
+        False, "--no-client", help="Test mode: skip live client construction (no model call).",
+        hidden=True,
+    ),
+    db: "str | None" = typer.Option(None, "--db", help="Explicit SQLite path (tests/isolation)."),  # noqa: B008
+    json_out: bool = typer.Option(True, "--json", help="Emit JSON (default)."),  # noqa: B008
+) -> None:
+    """Batch-extract action candidates from many bounded email-thread packets (dry-run-first).
+
+    Defaults to dry-run (zero writes). ``--apply`` is explicit and REQUIRES ``--max-persist``, which
+    caps ACTUAL persisted candidates across the batch (not packets); once reached, remaining threads
+    are processed in dry-run. Each thread is one ``email_thread_action_packet`` routed through the same
+    extraction path as single ``extract-packet`` — never broad raw packets, never combining unrelated
+    records. Duplicate stable keys already present are skipped. No raw-content or external writeback.
+    """
+    from hb_assistant.construction.second_brain.local_ai import (
+        UnsupportedBatchSourceError,
+        resolve_local_model_client,
+        run_batch_extraction,
+    )
+    from hb_assistant.construction.store import ConstructionStore
+
+    cmd = "second-brain phase-10 extract-packets"
+    try:
+        if not dry_run and max_persist is None:
+            payload = {
+                "command": cmd, "ok": False, "applied": False,
+                "error": "apply_requires_max_persist",
+                "guardrails": {"apply_requires_max_persist": True},
+            }
+            typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+            raise typer.Exit(2)
+
+        if source != "email":
+            payload = {
+                "command": cmd, "ok": False,
+                "error": f"unsupported_source: {source!r} (supported: email)",
+            }
+            typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+            raise typer.Exit(2)
+
+        thread_refs: "list[str] | None" = None
+        if thread_ref_file:
+            with open(thread_ref_file, encoding="utf-8") as fh:
+                thread_refs = [ln.strip() for ln in fh if ln.strip()]
+
+        store = ConstructionStore(db_path=db)
+
+        # Resolve a live model client unless test mode (--no-client).
+        client = None
+        resolved_model: "str | None" = None
+        if not no_client:
+            client, resolved_model, reason = resolve_local_model_client(
+                provider=provider, profile_id=profile, model=model, timeout_seconds=timeout_seconds,
+            )
+            if client is None:
+                payload = {
+                    "command": cmd, "ok": False, "error": "live_model_client_missing",
+                    "diagnostics": {
+                        "reason": reason or "live_model_client_missing",
+                        "model_name": resolved_model, "provider": provider, "profile_id": profile,
+                    },
+                }
+                typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+                raise typer.Exit(1)
+
+        # timeout_seconds is applied through the resolved client (resolve_local_model_client).
+        payload = run_batch_extraction(
+            source=source, store=store, limit=limit, offset=offset, dry_run=dry_run,
+            max_persist=max_persist, client=client, model_name=resolved_model,
+            thread_refs=thread_refs, only_unprocessed=only_unprocessed,
+            write_artifact=not no_artifact, artifact_dir=artifact_dir,
+        )
+        if not summary:
+            # Without --summary, drop the verbose aggregate breakdowns (the core `summary` counters
+            # and per-thread results are always returned).
+            for k in (
+                "candidate_types", "safety_categories", "recommended_actions",
+                "assignee_waiting", "top_rejection_reasons",
+            ):
+                payload = {kk: vv for kk, vv in payload.items() if kk != k}
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(0)
+    except typer.Exit:
+        raise
+    except UnsupportedBatchSourceError as e:
+        payload = {"command": cmd, "ok": False, "error": str(e)[:300]}
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(2) from None
+    except Exception as e:
+        payload = {"command": cmd, "ok": False, "error": str(e)[:300]}
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(1) from None
+
+
 @phase_10_app.command("raw-action-candidates")
 def phase_10_raw_action_candidates(
     project: "str | None" = typer.Option(  # noqa: B008
