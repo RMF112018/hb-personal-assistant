@@ -9,7 +9,10 @@ No Ollama, no network — local DB only.
 
 from __future__ import annotations
 
+import ast
+import inspect
 import sqlite3
+import textwrap
 from pathlib import Path
 
 import pytest
@@ -508,3 +511,104 @@ def test_guardrail_columns_stay_zero_after_review_ops(tmp_path: Path) -> None:
     assert len(PHASE_10_GUARD_COLUMNS) == 13
     for table in ("task_candidates", "commitment_candidates", "candidate_review_events"):
         assert _guard_sum(str(s._db_path), table) == 0, f"{table} guard columns nonzero"
+
+
+# ---------------------------------------------------------------------------
+# No-raw / no-writeback proofs (Prompt 08)
+# ---------------------------------------------------------------------------
+# External-write / raw-exposure module-name substrings the review surface must not
+# import: Graph (mail/calendar), Procore, generic network/email SDKs, MCP raw
+# exposure, and the raw-content packet builders.
+_FORBIDDEN_IMPORT_SUBSTRINGS = (
+    "graph",
+    "procore",
+    "msal",
+    "requests",
+    "httpx",
+    "urllib",
+    "smtplib",
+    "aiohttp",
+    "boto",
+    "mcp",
+    "packet_builders",
+)
+
+
+def _imported_module_names(func: object) -> set[str]:
+    """Collect every module name imported within a function/module's own source (AST)."""
+    src = textwrap.dedent(inspect.getsource(func))  # type: ignore[arg-type]
+    tree = ast.parse(src)
+    mods: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            mods.update(n.name for n in node.names)
+        elif isinstance(node, ast.ImportFrom):
+            mods.add(node.module or "")
+    return mods
+
+
+def test_candidate_review_and_cli_import_no_external_write_surface() -> None:
+    """The review service + CLI path import no external-write / raw-exposure surface.
+
+    AST-imports (not raw text), so guardrail prose like 'no_graph_or_procore_writeback'
+    and the docstring's 'Procore'/'calendar' never false-positive.
+    """
+    from hb_assistant.cli import second_brain as cli
+    from hb_assistant.construction.second_brain.local_ai import candidate_review
+
+    targets: list[object] = [candidate_review]
+    cli_funcs = [
+        "review_list",
+        "review_show",
+        "review_summary_cmd",
+        "review_accept",
+        "review_ignore",
+        "review_reject",
+        "review_snooze",
+        "review_edit",
+        "review_export",
+        "_run_review_action",
+        "_run_review_batch",
+        "_dispatch_review_action",
+    ]
+    targets.extend(getattr(cli, name) for name in cli_funcs)
+
+    offenders: list[str] = []
+    for target in targets:
+        for mod in _imported_module_names(target):
+            low = mod.lower()
+            for bad in _FORBIDDEN_IMPORT_SUBSTRINGS:
+                if bad in low:
+                    label = getattr(target, "__name__", str(target))
+                    offenders.append(f"{label}:{mod}")
+    assert offenders == [], f"review surface imports external-write surface: {offenders}"
+
+
+def test_no_raw_persisted_in_candidate_review_tables(tmp_path: Path) -> None:
+    """Review actions persist no raw bodies / prompts / responses / URLs / tokens."""
+    s = _store(tmp_path)
+    pk = "PRJ-RAW"
+    tid = _seed_task(s, pk)
+    cid = _seed_commitment(s, pk)
+    accept_candidate(s, candidate_id=tid, candidate_type="task", note="reviewed ok")
+    edit_candidate(s, candidate_id=tid, candidate_type="task", title="Edited", assignee="user")
+    snooze_candidate(
+        s, candidate_id=cid, candidate_type="commitment", until="2026-06-12T09:00:00-04:00"
+    )
+    markers = ("http://", "https://", "-----begin", "private key", "access_token", "bearer ")
+    conn = sqlite3.connect(str(s._db_path))
+    try:
+        for table in (
+            "task_candidates",
+            "commitment_candidates",
+            "candidate_review_events",
+            "candidate_source_refs",
+        ):
+            for row in conn.execute(f"SELECT * FROM {table}"):
+                for cell in row:
+                    if isinstance(cell, str):
+                        low = cell.lower()
+                        for m in markers:
+                            assert m not in low, f"{table} cell contains raw marker {m!r}"
+    finally:
+        conn.close()
