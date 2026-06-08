@@ -81,7 +81,13 @@ STRICT_ACTION_SYSTEM = (
     "- NEVER emit generic data-cleaning, data-analysis, 'normalize the data', 'analyze trends', 'clean up the spreadsheet', 'process the information', or similar non-actionable meta-work.\n"
     "- If the content only contains analysis requests without a clear deliverable task or commitment, output {\"candidates\":[]}.\n"
     "- source_refs must be aliases from `allowed_source_aliases` only (e.g. src_1) — never `<excerpt1>`, labels, or raw IDs.\n"
-    "- reason must be directly supported by the raw excerpt text shown.\n\n"
+    "- reason must be directly supported by the raw excerpt text shown.\n"
+    "Assignee / waiting_state rules (follow exactly):\n"
+    "- If Bobby/the user is asked to do something → assignee=user, waiting_state=waiting_on_me.\n"
+    "- If Bobby/the user asks another person to do something → assignee=other, waiting_state=waiting_on_others.\n"
+    "- If another person says they will do something → assignee=other, waiting_state=waiting_on_others.\n"
+    "- Do NOT use waiting_state=not_applicable for task candidates. Purely informational items (FYI, "
+    "newsletters, status with no ask) are not tasks — output {\"candidates\":[]} for them.\n\n"
     "If the input contains no actionable project work, output exactly {\"candidates\":[]}.\n"
 )
 
@@ -329,6 +335,20 @@ def _validate_business_contract(candidate: ActionCandidate) -> Optional[str]:
         and len((candidate.title or "").strip()) < 8
     ):
         return "title_too_vague_for_action"
+
+    # Assignee / waiting_state coherence (task & commitment). High-stakes→review is enforced
+    # upstream by the ActionCandidate model validator, so it never reaches here.
+    if candidate.candidate_type in ("task", "commitment"):
+        title_l = (candidate.title or "").lower()
+        is_followup = "follow up" in title_l or "follow-up" in title_l or "followup" in title_l
+        assignee = candidate.assignee
+        waiting = candidate.waiting_state
+        if candidate.candidate_type == "task" and waiting == "not_applicable":
+            return "task_waiting_state_not_applicable"
+        if assignee == "user" and waiting == "waiting_on_others" and not is_followup:
+            return "assignee_waiting_state_inconsistent"
+        if assignee == "other" and waiting == "waiting_on_me" and not is_followup:
+            return "assignee_waiting_state_inconsistent"
     return None
 
 

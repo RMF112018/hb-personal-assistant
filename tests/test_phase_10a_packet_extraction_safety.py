@@ -483,6 +483,93 @@ def test_displayed_alias_resolves_not_rejected() -> None:
         assert not any(r.get("reason") == "source_alias_not_in_packet" for r in rep["rejections"])
 
 
+def _candidate_with(**overrides) -> str:
+    """Object-root candidate citing src_1 with field overrides (assignee/waiting_state/etc.)."""
+    base = json.loads(_candidate())[0]
+    base["source_refs"] = ["src_1"]
+    base.update(overrides)
+    return json.dumps({"candidates": [base]})
+
+
+def _extract_one(store, packet, mock):
+    return extract_actions_for_packet(packet=packet, store=store, dry_run=True, mock_output=mock)
+
+
+def test_assignee_waiting_state_quality_cases() -> None:
+    with tempfile.TemporaryDirectory() as td:
+        s = ConstructionStore(db_path=str(Path(td) / "q.db"))
+        _seed_thread(s)
+        pkt = build_email_thread_action_packet(thread_ref="t1", store=s)
+
+        # "Peter asks Bobby to confirm..." → user / waiting_on_me → accepted.
+        r = _extract_one(s, pkt, _candidate_with(
+            title="Confirm the revised RFI sketch issuance", assignee="user",
+            waiting_state="waiting_on_me"))
+        assert r["accepted"] == 1, r["rejections"]
+
+        # "Bobby asks Andrew to add..." → other / waiting_on_others → accepted.
+        r = _extract_one(s, pkt, _candidate_with(
+            title="Andrew to add the revised detail to the set", assignee="other",
+            waiting_state="waiting_on_others"))
+        assert r["accepted"] == 1, r["rejections"]
+
+        # "Ryan asks Bobby to forward..." → user / waiting_on_me → accepted.
+        r = _extract_one(s, pkt, _candidate_with(
+            title="Forward the OAC agenda to the design team", assignee="user",
+            waiting_state="waiting_on_me"))
+        assert r["accepted"] == 1, r["rejections"]
+
+
+def test_assignee_waiting_state_inconsistencies_rejected() -> None:
+    with tempfile.TemporaryDirectory() as td:
+        s = ConstructionStore(db_path=str(Path(td) / "qi.db"))
+        _seed_thread(s)
+        pkt = build_email_thread_action_packet(thread_ref="t1", store=s)
+
+        # user + waiting_on_others (not a follow-up title) → rejected.
+        r = _extract_one(s, pkt, _candidate_with(
+            title="Confirm the revised RFI sketch issuance", assignee="user",
+            waiting_state="waiting_on_others"))
+        assert r["accepted"] == 0
+        assert any(x.get("reason") == "assignee_waiting_state_inconsistent" for x in r["rejections"])
+
+        # other + waiting_on_me (not a follow-up title) → rejected.
+        r = _extract_one(s, pkt, _candidate_with(
+            title="Confirm the revised RFI sketch issuance", assignee="other",
+            waiting_state="waiting_on_me"))
+        assert r["accepted"] == 0
+        assert any(x.get("reason") == "assignee_waiting_state_inconsistent" for x in r["rejections"])
+
+        # follow-up exception: user + waiting_on_others with a "Follow up with..." title → accepted.
+        r = _extract_one(s, pkt, _candidate_with(
+            title="Follow up with Andrew on the shop drawings", assignee="user",
+            waiting_state="waiting_on_others"))
+        assert r["accepted"] == 1, r["rejections"]
+
+        # task + not_applicable → rejected.
+        r = _extract_one(s, pkt, _candidate_with(
+            title="Confirm the revised RFI sketch issuance", waiting_state="not_applicable"))
+        assert r["accepted"] == 0
+        assert any(x.get("reason") == "task_waiting_state_not_applicable" for x in r["rejections"])
+
+
+def test_high_stakes_non_review_action_rejected() -> None:
+    with tempfile.TemporaryDirectory() as td:
+        s = ConstructionStore(db_path=str(Path(td) / "hs.db"))
+        _seed_thread(s)
+        pkt = build_email_thread_action_packet(thread_ref="t1", store=s)
+        for category in ("schedule", "financial"):
+            r = _extract_one(s, pkt, _candidate_with(
+                title="Approve the change order pricing", safety_category=category,
+                recommended_next_action="accept"))
+            assert r["accepted"] == 0 and r["persisted"] == 0, category
+        # The same high-stakes candidate WITH review is accepted.
+        r = _extract_one(s, pkt, _candidate_with(
+            title="Review the change order pricing impact", safety_category="financial",
+            recommended_next_action="review"))
+        assert r["accepted"] == 1, r["rejections"]
+
+
 def test_diagnostic_reasons_distinguish_failure_modes() -> None:
     with tempfile.TemporaryDirectory() as td:
         s = ConstructionStore(db_path=str(Path(td) / "dr.db"))

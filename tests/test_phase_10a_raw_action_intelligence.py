@@ -96,7 +96,7 @@ def _good_mock_json() -> str:
                 "assignee": "user",
                 "due_at": "2026-06-13",
                 "urgency": "high",
-                "waiting_state": "not_applicable",
+                "waiting_state": "waiting_on_me",
                 "source_refs": ["msg-hash-abc123"],
                 "confidence": 0.92,
                 "reason": "Explicit ask in email to submit RFI response package by Friday; markups attached.",
