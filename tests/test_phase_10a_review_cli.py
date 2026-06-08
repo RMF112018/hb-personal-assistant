@@ -7,6 +7,7 @@ Exercises the Typer verbs end-to-end against a temp --db: filters, exit codes
 from __future__ import annotations
 
 import json
+import sqlite3
 from pathlib import Path
 
 from typer.testing import CliRunner
@@ -147,5 +148,88 @@ def test_review_cli_outputs_have_no_raw_keys(tmp_path: Path) -> None:
         ["review", "show", "--candidate-id", tid, "--db", db, "--json"],
     ):
         res = runner.invoke(app, args)
+        assert res.exit_code == 0, res.output
+        _assert_no_forbidden_keys(json.loads(res.output))
+
+
+# ---------------------------------------------------------------------------
+# Mutation verbs (accept / ignore / reject)
+# ---------------------------------------------------------------------------
+def _audit_count(db: str, candidate_id: str) -> int:
+    conn = sqlite3.connect(db)
+    try:
+        return conn.execute(
+            "SELECT COUNT(*) FROM candidate_review_events WHERE candidate_id = ?",
+            (candidate_id,),
+        ).fetchone()[0]
+    finally:
+        conn.close()
+
+
+def test_review_accept_cli_transitions_and_audits_and_preserves_refs(tmp_path: Path) -> None:
+    db = str(tmp_path / "db.sqlite")
+    tid, _ = _seed(db)
+    s = ConstructionStore(db_path=db)
+    refs_before = len(s.list_candidate_source_refs(candidate_id=tid))
+
+    res = runner.invoke(app, ["review", "accept", "--candidate-id", tid, "--db", db, "--json"])
+    assert res.exit_code == 0, res.output
+    payload = json.loads(res.output)
+    assert payload["new_review_status"] == "accepted"
+    assert payload["prior_review_status"] == "pending"
+    assert payload["review_event_id"]
+    assert payload["guardrails"]["no_external_writeback"] is True
+
+    row = s.get_task_candidate(tid)
+    assert row is not None and row["review_status"] == "accepted"
+    assert _audit_count(db, tid) == 1
+    # source refs untouched
+    assert len(s.list_candidate_source_refs(candidate_id=tid)) == refs_before
+
+
+def test_review_ignore_cli_normalizes_to_suppressed(tmp_path: Path) -> None:
+    db = str(tmp_path / "db.sqlite")
+    tid, _ = _seed(db)
+    res = runner.invoke(
+        app, ["review", "ignore", "--candidate-id", tid, "--reason", "not actionable", "--db", db, "--json"]
+    )
+    assert res.exit_code == 0, res.output
+    payload = json.loads(res.output)
+    assert payload["action"] == "ignore"
+    assert payload["new_review_status"] == "suppressed"
+    row = ConstructionStore(db_path=db).get_task_candidate(tid)
+    assert row is not None and row["review_status"] == "suppressed"
+
+
+def test_review_reject_cli_with_reason(tmp_path: Path) -> None:
+    db = str(tmp_path / "db.sqlite")
+    tid, _ = _seed(db)
+    res = runner.invoke(
+        app,
+        ["review", "reject", "--candidate-id", tid, "--reason", "incorrect extraction", "--db", db, "--json"],
+    )
+    assert res.exit_code == 0, res.output
+    payload = json.loads(res.output)
+    assert payload["new_review_status"] == "rejected"
+    row = ConstructionStore(db_path=db).get_task_candidate(tid)
+    assert row is not None
+    assert row["review_status"] == "rejected"
+    assert row["review_note_redacted"] == "incorrect extraction"
+
+
+def test_review_action_not_found_exit_3(tmp_path: Path) -> None:
+    db = str(tmp_path / "db.sqlite")
+    _seed(db)
+    res = runner.invoke(app, ["review", "accept", "--candidate-id", "ghost", "--db", db, "--json"])
+    assert res.exit_code == 3, res.output
+    assert json.loads(res.output)["error"] == "candidate_not_found"
+
+
+def test_review_action_outputs_have_no_raw_keys(tmp_path: Path) -> None:
+    db = str(tmp_path / "db.sqlite")
+    tid, cid = _seed(db)
+    r1 = runner.invoke(app, ["review", "accept", "--candidate-id", tid, "--db", db, "--json"])
+    r2 = runner.invoke(app, ["review", "reject", "--candidate-id", cid, "--reason", "x", "--db", db, "--json"])
+    for res in (r1, r2):
         assert res.exit_code == 0, res.output
         _assert_no_forbidden_keys(json.loads(res.output))

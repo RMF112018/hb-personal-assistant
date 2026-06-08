@@ -4829,6 +4829,150 @@ def review_summary_cmd(
         _emit_08c(payload, json_out=json_out, human=[str(e)], exit_code=1)
 
 
+# --- Phase 10A candidate review (local-only state transitions) ---
+def _candidate_review_action_guardrails() -> dict[str, Any]:
+    return {
+        "local_db_update_only": True,
+        "advisory_only": True,
+        "review_event_written": True,
+        "source_refs_immutable": True,
+        "no_external_writeback": True,
+        "no_email_send": True,
+        "no_calendar_mutation": True,
+        "no_graph_or_procore_writeback": True,
+    }
+
+
+def _run_review_action(
+    *,
+    command: str,
+    service_fn: "Any",
+    candidate_id: str,
+    candidate_type: str | None,
+    reason: str | None,
+    db: str | None,
+    json_out: bool,
+) -> None:
+    """Resolve the candidate, apply a review decision, and emit the result.
+
+    Type is resolved via the primary-key getter so the operator only needs
+    --candidate-id; the decision (accept/ignore/reject) is fixed per verb.
+    """
+    from hb_assistant.construction.store import ConstructionStore
+
+    try:
+        store = ConstructionStore(db_path=db)
+        cand = store.get_candidate(candidate_id, candidate_type=candidate_type)
+        if cand is None:
+            payload = {
+                "command": command,
+                "ok": False,
+                "error": "candidate_not_found",
+                "candidate_id": candidate_id,
+            }
+            _emit_08c(
+                payload,
+                json_out=json_out,
+                human=[f"candidate not found: {candidate_id}"],
+                exit_code=3,
+            )
+        result = service_fn(
+            store,
+            candidate_id=candidate_id,
+            candidate_type=cand["candidate_type"],
+            note=reason,
+        )
+        payload = {
+            "command": command,
+            "phase": "10A",
+            **result,
+            "guardrails": _candidate_review_action_guardrails(),
+        }
+        human = [
+            f"{result.get('action')} {result.get('candidate_type')} {candidate_id} "
+            f"({result.get('prior_review_status')} -> {result.get('new_review_status')}); "
+            f"event {result.get('review_event_id')}"
+        ]
+        _emit_08c(payload, json_out=json_out, human=human, exit_code=0)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        payload = {"command": command, "ok": False, "error": str(e)[:300]}
+        _emit_08c(payload, json_out=json_out, human=[str(e)], exit_code=1)
+
+
+@review_app.command("accept")
+def review_accept(
+    candidate_id: str = typer.Option(..., "--candidate-id", help="candidate_id to accept."),
+    candidate_type: str | None = typer.Option(
+        None, "--candidate-type", help="task|commitment (optional; auto-resolves when omitted)."
+    ),
+    reason: str | None = typer.Option(None, "--reason", help="Optional redacted operator note."),
+    db: str | None = typer.Option(None, "--db", help="Explicit SQLite path (tests/isolation)."),
+    json_out: bool = typer.Option(True, "--json/--no-json"),
+) -> None:
+    """Accept a Phase 10A candidate (review_status -> accepted; local DB only)."""
+    from hb_assistant.construction.second_brain.local_ai.candidate_review import accept_candidate
+
+    _run_review_action(
+        command="second-brain review accept",
+        service_fn=accept_candidate,
+        candidate_id=candidate_id,
+        candidate_type=candidate_type,
+        reason=reason,
+        db=db,
+        json_out=json_out,
+    )
+
+
+@review_app.command("ignore")
+def review_ignore(
+    candidate_id: str = typer.Option(..., "--candidate-id", help="candidate_id to ignore."),
+    candidate_type: str | None = typer.Option(
+        None, "--candidate-type", help="task|commitment (optional; auto-resolves when omitted)."
+    ),
+    reason: str | None = typer.Option(None, "--reason", help="Optional redacted operator note."),
+    db: str | None = typer.Option(None, "--db", help="Explicit SQLite path (tests/isolation)."),
+    json_out: bool = typer.Option(True, "--json/--no-json"),
+) -> None:
+    """Ignore a Phase 10A candidate (review_status -> suppressed; local DB only)."""
+    from hb_assistant.construction.second_brain.local_ai.candidate_review import ignore_candidate
+
+    _run_review_action(
+        command="second-brain review ignore",
+        service_fn=ignore_candidate,
+        candidate_id=candidate_id,
+        candidate_type=candidate_type,
+        reason=reason,
+        db=db,
+        json_out=json_out,
+    )
+
+
+@review_app.command("reject")
+def review_reject(
+    candidate_id: str = typer.Option(..., "--candidate-id", help="candidate_id to reject."),
+    candidate_type: str | None = typer.Option(
+        None, "--candidate-type", help="task|commitment (optional; auto-resolves when omitted)."
+    ),
+    reason: str | None = typer.Option(None, "--reason", help="Optional redacted operator note."),
+    db: str | None = typer.Option(None, "--db", help="Explicit SQLite path (tests/isolation)."),
+    json_out: bool = typer.Option(True, "--json/--no-json"),
+) -> None:
+    """Reject a Phase 10A candidate (review_status -> rejected; local DB only)."""
+    from hb_assistant.construction.second_brain.local_ai.candidate_review import reject_candidate
+
+    _run_review_action(
+        command="second-brain review reject",
+        service_fn=reject_candidate,
+        candidate_id=candidate_id,
+        candidate_type=candidate_type,
+        reason=reason,
+        db=db,
+        json_out=json_out,
+    )
+
+
 @data_quality_app.command("relationship-quality")
 def data_quality_relationship_quality(
     project: str | None = typer.Option(
