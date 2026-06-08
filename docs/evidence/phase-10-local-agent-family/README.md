@@ -261,3 +261,57 @@ work stashed — it reads a shared `raw_content` policy state, unrelated to Chec
 Experimental, **ready for audit / merge consideration**. No migration, no production/Dev DB mutation
 (copy only), no calendar/Graph/Procore/external writeback, no cloud LLM. Checkpoints 1 and 2
 preserved (regression green).
+
+## Checkpoint 4 — Daily-brief rendering / consumption (this run)
+
+Closes the loop: `second-brain daily-brief render` turns the convergence table
+`daily_brief_action_candidates` into a redacted, consumable daily brief (JSON + Markdown), with an
+optional path-safe file write. Read-only by default; no new agent (registry stays 13); no schema
+change.
+
+### What was implemented
+
+- Renderer `local_ai/daily_brief_render.py::render_daily_brief` — pure read of the 11 safe columns
+  (already redacted), grouped into 6 ordered display sections, deterministic order
+  (display-section → project_key → priority → `daily_brief_action_candidate_id`), with section/
+  project filters + limit (skipped counts reported) and a valid empty-brief path. Emits structured
+  JSON + redacted Markdown; the candidate id is the per-item traceback indicator.
+- File write off by default, two modes (both marker-bounded + atomic + path-redacted, reusing the
+  approved `daily_brief.output` writer/primitives): governed vault note (`--write`, optional
+  `--vault-brief-dir` override) and explicit `--write --output-path` (absolute, **non-repo**, refuses
+  repo-contained paths and foreign files).
+- CLI `daily-brief render` mirroring `synthesize-candidates` conventions.
+
+### Live proof (copy of Dev DB, populated with 8 calendar candidates; scratch removed after)
+
+```
+calendar-prep build --apply --max-persist 8         → daily_brief_action_candidates rows: 8
+daily-brief render --date 2026-06-08 --limit 50      → ok, rendered=8 (Calendar Prep), write absent
+  rows before/after render: 8 / 8                    → read-only (no mutation, no re-persist)
+render --output-path /tmp/x.md (no --write)          → written=false, would_write_bytes=1383 (no file)
+render --write --output-path /tmp/x.md (abs non-repo)→ written=true, marker-bounded file
+render --write --vault-brief-dir /tmp/hb_vault       → governed note <date>_daily_brief.md written
+render --write --output-path <repo>/x.md             → ok=false error=output_path_inside_repo_refused (no file)
+redaction scan (both written files + markdown)       → 0 http/teams/zoom/email/html/token; brief marker present
+```
+
+### Tests (Checkpoint 4)
+
+- `tests/test_phase_10_daily_brief_rendering.py` (21) — reads convergence table; empty→valid empty
+  brief; display-section grouping + unknown→Unassigned; deterministic order; section/project filters;
+  limit cap + skip counts; **no mutation / no re-persist** (row counts + guard cols 0); no raw content
+  in output; explicit-path write dry-run/apply, relative-path rejected, repo-contained rejected,
+  foreign-file refused, marker-bounded re-write preserves out-of-block content; CLI default reads +
+  writes nothing, markdown included, explicit write, governed-vault write to temp dir, repo path
+  rejected.
+
+Targeted suite green (**108 tests** across Checkpoint 1/2/3/4 + registry); `ruff` + `ruff format` +
+`mypy` clean on changed modules. Registry unchanged at 13 agents (render is a consumption surface).
+The same three branch-independent failures noted under Checkpoint 3 remain (two documented
+pre-existing; one environment-dependent `raw_content` policy state).
+
+## Checkpoint 4 status
+
+Experimental proof on `experiment/local-agent-family-proof` (no merge implied; main untouched). No
+migration, no production/Dev DB mutation (copy only), no vault/Graph/Procore/calendar/email/external
+writeback, no cloud LLM, no MCP. Checkpoints 1–3 preserved (regression green).

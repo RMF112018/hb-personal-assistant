@@ -2063,6 +2063,129 @@ def daily_brief_synthesize_candidates(
         raise typer.Exit(1) from None
 
 
+@daily_brief_app.command("render")
+def daily_brief_render(
+    date: "str | None" = typer.Option(  # noqa: B008
+        None, "--date", help="Brief date YYYY-MM-DD to render (overrides --as-of's date)."
+    ),
+    as_of: "str | None" = typer.Option(  # noqa: B008
+        None, "--as-of", help="ISO-8601 UTC 'now' (its date is the default brief_date)."
+    ),
+    limit: int = typer.Option(200, "--limit", help="Max candidate items to render (deterministic)."),  # noqa: B008
+    section: "list[str] | None" = typer.Option(  # noqa: B008
+        None, "--section", help="Filter by internal section (repeatable: actions/waiting/follow_up/procore/calendar)."
+    ),
+    project_key: "str | None" = typer.Option(  # noqa: B008
+        None, "--project-key", help="Filter to a single project key."
+    ),
+    markdown: bool = typer.Option(  # noqa: B008
+        False, "--markdown", help="Include the rendered Markdown in the payload (or print it with --no-json)."
+    ),
+    summary: bool = typer.Option(  # noqa: B008
+        False, "--summary", help="Include the per-section item lists in the JSON payload."
+    ),
+    write: bool = typer.Option(  # noqa: B008
+        False, "--write", help="Write the brief to a file (off by default). Requires a target."
+    ),
+    output_path: "str | None" = typer.Option(  # noqa: B008
+        None, "--output-path", help="Explicit ABSOLUTE non-repo file path (explicit-path write mode)."
+    ),
+    vault_brief_dir: "str | None" = typer.Option(  # noqa: B008
+        None, "--vault-brief-dir", help="Override the governed vault brief base dir (test/isolation)."
+    ),
+    db: "str | None" = typer.Option(None, "--db", help="Explicit SQLite path (tests/isolation)."),  # noqa: B008
+    json_out: bool = typer.Option(True, "--json/--no-json", help="Emit JSON (default)."),  # noqa: B008
+) -> None:
+    """Render daily_brief_action_candidates into a redacted, consumable daily brief (read-only).
+
+    Reads the convergence table (already-redacted rows from the email/follow-up, Procore, and
+    calendar families), groups them into ordered display sections, and emits structured JSON +
+    optional Markdown. Read-only by default (writes nothing). ``--write`` opts into a file write:
+    with ``--output-path`` it writes that explicit ABSOLUTE non-repo file; otherwise it writes the
+    governed vault brief note (``--vault-brief-dir`` overrides the base dir). Both write modes are
+    marker-bounded + atomic and never emit raw bodies/URLs/emails/tokens.
+    """
+    from datetime import datetime as _dt
+    from datetime import timezone as _tz
+
+    from hb_assistant.construction.second_brain.daily_brief.output import (
+        resolve_brief_path,
+        write_brief_output,
+    )
+    from hb_assistant.construction.second_brain.local_ai import (
+        render_daily_brief,
+        write_rendered_brief_to_path,
+    )
+    from hb_assistant.construction.store import ConstructionStore
+
+    cmd = "second-brain daily-brief render"
+    try:
+        now_utc = as_of or _dt.now(_tz.utc).isoformat()
+        brief_date = date or now_utc[:10]
+        store = ConstructionStore(db_path=db)
+
+        payload = render_daily_brief(
+            store=store,
+            brief_date=brief_date,
+            sections=list(section) if section else None,
+            project_key=project_key,
+            limit=limit,
+        )
+        inner_md = payload.get("markdown", "")
+
+        # File write (off by default). Explicit --output-path → explicit-path mode; else governed vault.
+        if write or output_path is not None:
+            if output_path is not None:
+                result = write_rendered_brief_to_path(
+                    inner_markdown=inner_md, output_path=output_path, dry_run=not write
+                )
+                if not result.get("ok"):
+                    payload = {"command": cmd, "ok": False, "error": result.get("error")}
+                    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+                    raise typer.Exit(2)
+                payload["write"] = {"mode": "explicit_path", **result}
+            else:
+                res = write_brief_output(
+                    brief_date=brief_date,
+                    content=inner_md,
+                    vault_brief_dir=vault_brief_dir,
+                    apply=write,
+                )
+                target = resolve_brief_path(brief_date, vault_brief_dir=vault_brief_dir)
+                try:
+                    from hb_assistant.config.path_policy import PathPolicy
+
+                    redacted = str(target.relative_to(PathPolicy().get_vault_root()))
+                except ValueError:
+                    redacted = f"{target.parent.name}/{target.name}"
+                payload["write"] = {
+                    "mode": "governed_vault",
+                    "written": res.written,
+                    "path_redacted": res.output_path_redacted or redacted,
+                    "content_hash": res.content_hash,
+                }
+
+        # Trim heavy fields unless explicitly requested.
+        if not summary:
+            payload = {**payload, "sections": []}
+        if not markdown:
+            payload = {k: v for k, v in payload.items() if k != "markdown"}
+
+        if json_out:
+            typer.echo(json.dumps(payload, indent=2, default=str))
+        elif markdown:
+            typer.echo(inner_md)
+        else:
+            typer.echo(str(payload))
+        raise typer.Exit(0)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        payload = {"command": cmd, "ok": False, "error": str(e)[:300]}
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(1) from None
+
+
 @daily_brief_app.command("build")
 def daily_brief_build(
     brief_date: str = typer.Option(..., "--date", help="Brief date (YYYY-MM-DD)."),

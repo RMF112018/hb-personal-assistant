@@ -26,6 +26,7 @@ from .contracts import (
     load_phase_10_contract,
     load_raw_content_policy,
 )
+from .daily_brief_render import render_daily_brief, write_rendered_brief_to_path
 from .daily_brief_synthesis import build_daily_brief_candidates
 from .email_task_extraction import (
     extract_email_task_candidates,
@@ -141,4 +142,7 @@ __all__ = [
     "build_calendar_prep_candidates",
     # Phase 10: daily-brief candidate synthesis (unifies email + Procore + calendar families)
     "build_daily_brief_candidates",
+    # Phase 10: daily-brief rendering / consumption (read-only render + path-safe write)
+    "render_daily_brief",
+    "write_rendered_brief_to_path",
 ]

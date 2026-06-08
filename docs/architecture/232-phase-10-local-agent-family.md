@@ -21,10 +21,13 @@ no-raw / no-writeback / dry-run-first guardrail.
 | Procore digest | `procore-digest build` | deterministic-first (optional synth) | `procore_action_signals` + text-intelligence read models | `daily_brief_action_candidates` (section `procore`) |
 | Calendar meeting-prep | `calendar-prep build` | deterministic-first (optional synth) | `calendar_event_index` + `calendar_event_attendees` + bounded `calendar_event_action_packet` | `daily_brief_action_candidates` (section `calendar`) |
 | Daily-brief synthesis | `daily-brief synthesize-candidates` | deterministic | `accepted_*` + `follow_up_watch_items` + `daily_brief_action_candidates` | `daily_brief_action_candidates` (sections `actions`/`waiting`/`follow_up`) |
+| Daily-brief render *(consumption)* | `daily-brief render` | deterministic, **read-only** | `daily_brief_action_candidates` | none by default; optional path-safe file write (`--write`) |
 
-All six are registered in `resources/config/phase_08a_agent_registry.seed.yaml` (13 agents
-total: 9 required Phase-08A + 4 family entries; the extraction front-end reuses the existing
-substrate). `second-brain agents status` validates the registry/tool policy (0 violations).
+The six producing agents are registered in `resources/config/phase_08a_agent_registry.seed.yaml`
+(13 agents total: 9 required Phase-08A + 4 family entries; the extraction front-end reuses the
+existing substrate). Daily-brief **render** is a consumption surface under the existing
+`daily_brief_agent` — it adds no registry entry (count stays 13). `second-brain agents status`
+validates the registry/tool policy (0 violations).
 
 ## Data flow (convergence)
 
@@ -37,10 +40,13 @@ calendar_event_index ─── calendar-prep ──▶ daily_brief_action_candid
                           daily-brief synthesize-candidates ──▶ daily_brief_action_candidates(actions/waiting/follow_up)
                                                                                    ▼
                                                     unified, source-linked, reviewable brief candidates
+                                                                                   ▼
+                          daily-brief render ──▶ redacted Markdown/JSON brief (read-only) ─[opt --write]─▶ governed vault note / explicit non-repo file
 ```
 
-`daily_brief_action_candidates` is the **convergence table** — the email family and the
-Procore family both feed it, and the synthesis layer presents a unified brief by section.
+`daily_brief_action_candidates` is the **convergence table** — the email, Procore, and calendar
+families feed it; the synthesis layer presents a unified brief by section; and **render** closes the
+loop by turning those rows into a consumable, redacted daily brief.
 
 ## Key seams / reuse
 
@@ -90,6 +96,32 @@ Adds calendar as the third source family. The Dev DB realities that shaped it (r
   without `--max-persist`; capped + idempotent; all 13 `_P10_GUARDS` columns = 0; `calendar_event_*`
   source tables unchanged; no join URL / raw HTML / email / raw subject / token in any persisted row
   or emitted excerpt.
+
+## Checkpoint 4 — Daily-brief rendering / consumption (this run)
+
+Closes the loop from "candidates exist in the convergence table" to "a consumable brief." Adds
+`second-brain daily-brief render` (`local_ai/daily_brief_render.py`), a **read-only** consumer of
+`daily_brief_action_candidates`.
+
+- **Render is pure/read-only.** `render_daily_brief` reads only the 11 safe columns from
+  `list_daily_brief_action_candidates` (already redacted at write time), groups internal sections
+  into ordered display headings (Today's Actions, Waiting / Follow-Up, Risks / Watch Items, Procore
+  Project Signals, Calendar Prep, Unassigned / Needs Review), and emits structured JSON + redacted
+  Markdown. Deterministic order (no wall-clock): display-section → project_key → priority →
+  `daily_brief_action_candidate_id` (the stable per-candidate traceback indicator). Section/project
+  filters + `--limit` report skipped counts; the empty set yields a valid empty brief.
+- **File write is off by default, two modes, both marker-bounded + atomic + path-redacted**, reusing
+  the approved `daily_brief.output` primitives (`write_brief_output`, `_ensure_markers`,
+  `_replace_bounded`, `_atomic_write_text`, `SECTION_*` markers). `--write` with `--output-path`
+  writes an **explicit ABSOLUTE non-repo** file (refuses repo-contained paths so private content
+  can't be committed, and refuses to clobber a foreign file lacking the brief marker); `--write`
+  without a path writes the **governed vault** note (`--vault-brief-dir` overrides the base dir for
+  test/isolation). Both default to dry-run unless `--write`.
+- **No new agent / no schema change.** Render is a consumption surface under the existing
+  `daily_brief_agent`; registry stays 13. No DB write, no re-persist (proven: candidate row counts
+  unchanged before/after render; guard columns stay 0). No Graph/Procore/calendar/email/external
+  writeback, no cloud LLM, no MCP. Redaction proven on JSON, Markdown, and written files (no
+  http/join-URL/email/HTML/token).
 
 ## Dispositions (families not implemented this run, evidence-based)
 
