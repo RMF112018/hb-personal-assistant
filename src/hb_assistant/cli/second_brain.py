@@ -104,7 +104,7 @@ app.add_typer(data_quality_app, name="data-quality")
 
 review_app = typer.Typer(
     name="review",
-    help="Phase 09 review burden reduction and advisory promotion policy (two-step classification, financial separate, high-impact clustered summaries, operator budget cap, hash-only examples; read-only).",
+    help="Review surfaces: Phase 09 burden reduction/advisory promotion policy (policy-status/burden/queue/clusters) and Phase 10A candidate triage (list/show/summary; read-only).",
     no_args_is_help=True,
 )
 app.add_typer(review_app, name="review")
@@ -4683,6 +4683,150 @@ def review_clusters(
     }
     human = ["Full review burden clusters (see --json for details; top_examples hash-only)"]
     _emit_08c(payload, json_out=json_out, human=human, exit_code=0)
+
+
+# --- Phase 10A candidate review (read-only verbs over the candidate_review service) ---
+def _candidate_review_guardrails() -> dict[str, Any]:
+    return {
+        "read_only": True,
+        "advisory_only": True,
+        "local_only": True,
+        "no_determination": True,
+        "no_raw_no_writeback": True,
+        "source_refs_immutable": True,
+    }
+
+
+@review_app.command("list")
+def review_list(
+    status: str | None = typer.Option(
+        None, "--status", help="Filter by review_status (pending|accepted|rejected|snoozed|suppressed)."
+    ),
+    project: str | None = typer.Option(None, "--project", help="Filter by project_key."),
+    limit: int = typer.Option(100, "--limit", help="Max candidates to return."),
+    db: str | None = typer.Option(None, "--db", help="Explicit SQLite path (tests/isolation)."),
+    json_out: bool = typer.Option(True, "--json/--no-json"),
+) -> None:
+    """List Phase 10A task + commitment review candidates (read-only; redacted fields only)."""
+    from hb_assistant.construction.second_brain.local_ai.candidate_review import (
+        list_review_candidates,
+    )
+    from hb_assistant.construction.store import ConstructionStore
+
+    try:
+        store = ConstructionStore(db_path=db)
+        result = list_review_candidates(store, status=status, project_key=project, limit=limit)
+        payload = {
+            "command": "second-brain review list",
+            "phase": "10A",
+            **result,
+            "guardrails": _candidate_review_guardrails(),
+        }
+        human = [
+            f"{result['count']} review candidate(s)" + (f" (status={status})" if status else "")
+        ]
+        for c in result["candidates"]:
+            human.append(
+                f"  [{c.get('candidate_type')}] {c.get('candidate_id')} "
+                f"{c.get('review_status')} — {c.get('title_redacted')}"
+            )
+        _emit_08c(payload, json_out=json_out, human=human, exit_code=0)
+    except typer.Exit:
+        raise
+    except ValueError as e:
+        payload = {"command": "second-brain review list", "ok": False, "error": str(e)[:200]}
+        _emit_08c(payload, json_out=json_out, human=[str(e)], exit_code=2)
+    except Exception as e:
+        payload = {"command": "second-brain review list", "ok": False, "error": str(e)[:300]}
+        _emit_08c(payload, json_out=json_out, human=[str(e)], exit_code=1)
+
+
+@review_app.command("show")
+def review_show(
+    candidate_id: str = typer.Option(..., "--candidate-id", help="candidate_id to inspect."),
+    candidate_type: str | None = typer.Option(
+        None, "--candidate-type", help="task|commitment (optional; auto-resolves when omitted)."
+    ),
+    db: str | None = typer.Option(None, "--db", help="Explicit SQLite path (tests/isolation)."),
+    json_out: bool = typer.Option(True, "--json/--no-json"),
+) -> None:
+    """Show a single Phase 10A candidate + its (immutable, redacted) source refs (read-only)."""
+    from hb_assistant.construction.second_brain.local_ai.candidate_review import (
+        show_review_candidate,
+    )
+    from hb_assistant.construction.store import ConstructionStore
+
+    try:
+        store = ConstructionStore(db_path=db)
+        result = show_review_candidate(
+            store, candidate_id=candidate_id, candidate_type=candidate_type
+        )
+        if not result.get("ok"):
+            payload = {
+                "command": "second-brain review show",
+                **result,
+                "guardrails": _candidate_review_guardrails(),
+            }
+            _emit_08c(
+                payload,
+                json_out=json_out,
+                human=[f"candidate not found: {candidate_id}"],
+                exit_code=3,
+            )
+        cand = result.get("candidate", {})
+        payload = {
+            "command": "second-brain review show",
+            "phase": "10A",
+            **result,
+            "guardrails": _candidate_review_guardrails(),
+        }
+        human = [
+            f"[{result.get('candidate_type')}] {candidate_id} "
+            f"{cand.get('review_status')} — {cand.get('title_redacted')}",
+            f"  source_refs: {len(result.get('source_refs', []))}",
+        ]
+        _emit_08c(payload, json_out=json_out, human=human, exit_code=0)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        payload = {"command": "second-brain review show", "ok": False, "error": str(e)[:300]}
+        _emit_08c(payload, json_out=json_out, human=[str(e)], exit_code=1)
+
+
+@review_app.command("summary")
+def review_summary_cmd(
+    project: str | None = typer.Option(None, "--project", help="Filter by project_key."),
+    db: str | None = typer.Option(None, "--db", help="Explicit SQLite path (tests/isolation)."),
+    json_out: bool = typer.Option(True, "--json/--no-json"),
+) -> None:
+    """Counts of Phase 10A candidates by review_status (task + commitment + combined; read-only)."""
+    from hb_assistant.construction.second_brain.local_ai.candidate_review import review_summary
+    from hb_assistant.construction.store import ConstructionStore
+
+    try:
+        store = ConstructionStore(db_path=db)
+        result = review_summary(store, project_key=project)
+        payload = {
+            "command": "second-brain review summary",
+            "phase": "10A",
+            **result,
+            "guardrails": _candidate_review_guardrails(),
+        }
+        combined = result.get("combined", {})
+        human = [
+            f"Candidates: {combined.get('total', 0)} "
+            f"(task={result.get('task', {}).get('total', 0)}, "
+            f"commitment={result.get('commitment', {}).get('total', 0)})",
+        ]
+        for st in ("pending", "accepted", "rejected", "snoozed", "suppressed"):
+            if combined.get(st):
+                human.append(f"  {st}: {combined[st]}")
+        _emit_08c(payload, json_out=json_out, human=human, exit_code=0)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        payload = {"command": "second-brain review summary", "ok": False, "error": str(e)[:300]}
+        _emit_08c(payload, json_out=json_out, human=[str(e)], exit_code=1)
 
 
 @data_quality_app.command("relationship-quality")
