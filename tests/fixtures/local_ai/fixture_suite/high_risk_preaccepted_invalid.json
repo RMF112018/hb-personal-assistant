@@ -1,0 +1,21 @@
+{
+  "fixture_id": "suite_high_risk_preaccepted_001",
+  "scenario": "high_risk_preaccepted",
+  "expected_outcome": "schema_invalid",
+  "raw_candidate": {
+    "candidate_type": "decision",
+    "title": "Accept owner change-order position",
+    "project_key": null,
+    "assignee": "user",
+    "due_at": null,
+    "urgency": "high",
+    "waiting_state": "waiting_on_me",
+    "source_refs": ["email_thread_summary:test:104"],
+    "confidence": 0.91,
+    "reason": "Model attempted to pre-accept a financial change-order decision.",
+    "review_status": "accepted",
+    "safety_category": "financial",
+    "recommended_next_action": "review",
+    "external_action_requires_approval": true
+  }
+}

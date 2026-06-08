@@ -1,0 +1,22 @@
+{
+  "fixture_id": "suite_valid_task_001",
+  "scenario": "valid",
+  "expected_outcome": "valid",
+  "source_family": "email_thread_summary",
+  "source_ref": "email_thread_summary:test:101",
+  "input_redacted": {
+    "thread_subject_redacted": "Hilltop submittal turnaround",
+    "sender_domain": "example-subcontractor.com",
+    "received_at": "2026-06-07T09:15:00-04:00",
+    "summary_redacted": "Sender asks Bobby to confirm the submittal review date for the steel package."
+  },
+  "expected": {
+    "candidate_type": "task",
+    "assignee": "user",
+    "waiting_state": "waiting_on_me",
+    "urgency": "normal",
+    "confidence": 0.82,
+    "safety_category": "normal",
+    "recommended_next_action": "review"
+  }
+}

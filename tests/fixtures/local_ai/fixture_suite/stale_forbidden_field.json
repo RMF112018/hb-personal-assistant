@@ -1,0 +1,22 @@
+{
+  "fixture_id": "suite_stale_forbidden_field_001",
+  "scenario": "stale_forbidden_field",
+  "expected_outcome": "schema_invalid",
+  "raw_candidate": {
+    "candidate_type": "task",
+    "title": "Candidate carrying a forbidden raw field",
+    "project_key": null,
+    "assignee": "user",
+    "due_at": null,
+    "urgency": "normal",
+    "waiting_state": "waiting_on_me",
+    "source_refs": ["email_thread_summary:test:105"],
+    "confidence": 0.7,
+    "reason": "Output carries a forbidden raw field name and must be rejected by extra=forbid.",
+    "review_status": "pending",
+    "safety_category": "normal",
+    "recommended_next_action": "review",
+    "external_action_requires_approval": true,
+    "raw_email_body": "PLACEHOLDER_REJECTED_NEVER_PERSISTED"
+  }
+}

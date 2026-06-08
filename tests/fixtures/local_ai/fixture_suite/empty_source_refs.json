@@ -1,0 +1,21 @@
+{
+  "fixture_id": "suite_empty_source_refs_001",
+  "scenario": "empty_source_refs",
+  "expected_outcome": "schema_invalid",
+  "raw_candidate": {
+    "candidate_type": "task",
+    "title": "Untraceable task without provenance",
+    "project_key": null,
+    "assignee": "user",
+    "due_at": null,
+    "urgency": "normal",
+    "waiting_state": "waiting_on_me",
+    "source_refs": [],
+    "confidence": 0.7,
+    "reason": "Candidate with no source references must be rejected.",
+    "review_status": "pending",
+    "safety_category": "normal",
+    "recommended_next_action": "review",
+    "external_action_requires_approval": true
+  }
+}

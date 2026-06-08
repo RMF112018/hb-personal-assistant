@@ -8385,3 +8385,53 @@ def action_intel_extract_fixture(
         raise typer.Exit(1) from None
     typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
     raise typer.Exit(0 if result.schema_valid else 3)
+
+
+@action_intel_app.command("run-fixtures")
+def action_intel_run_fixtures(
+    fixtures_dir: str = typer.Option(  # noqa: B008
+        "tests/fixtures/local_ai/fixture_suite",
+        "--fixtures-dir",
+        help="Directory of scenario fixtures to run (default: the Prompt 06 suite).",
+    ),
+    profile_id: str = typer.Option(  # noqa: B008
+        "default_extract", "--profile", help="Local model profile to resolve."
+    ),
+    json_out: bool = typer.Option(True, "--json", help="Emit machine-readable JSON (default)."),  # noqa: B008
+) -> None:
+    """Run the action-candidate fixture suite as a batch validation/regression harness.
+
+    Every fixture is run through the schema-enforced structured-output client over the
+    ActionCandidate schema; each run's outcome is classified and compared to the fixture's declared
+    ``expected_outcome`` (valid / schema_invalid / unavailable / blocked). Advisory and dry-run only —
+    no DB write, no raw payloads (only SHA-256[:12] hashes are surfaced). Exits 0 when every fixture
+    matched, else 3.
+    """
+    from hb_assistant.construction.second_brain.local_ai import run_fixture_suite
+
+    try:
+        result = run_fixture_suite(fixtures_dir=fixtures_dir, profile_id=profile_id)
+        payload: dict[str, Any] = {
+            "command": "second-brain action-intel run-fixtures",
+            "ok": result["all_matched"],
+            **result,
+            "guardrails": {
+                "local_only": True,
+                "advisory_only": True,
+                "dry_run": True,
+                "no_writeback": True,
+                "no_raw_persistence": True,
+                "high_stakes_review_only": result["high_risk_routing_ok"],
+            },
+        }
+    except Exception as e:
+        payload = {
+            "command": "second-brain action-intel run-fixtures",
+            "ok": False,
+            "status": "run_error",
+            "error": str(e)[:300],
+        }
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(1) from None
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0 if payload["ok"] else 3)

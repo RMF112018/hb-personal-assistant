@@ -1,0 +1,6 @@
+{
+  "fixture_id": "suite_malformed_json_001",
+  "scenario": "malformed_json",
+  "expected_outcome": "schema_invalid",
+  "malformed_payload": "{ not valid json, missing quotes and braces"
+}

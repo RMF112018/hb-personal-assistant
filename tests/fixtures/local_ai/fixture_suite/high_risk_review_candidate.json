@@ -1,0 +1,21 @@
+{
+  "fixture_id": "suite_high_risk_review_001",
+  "scenario": "high_risk_review",
+  "expected_outcome": "valid",
+  "source_family": "email_thread_summary",
+  "source_ref": "email_thread_summary:test:103",
+  "input_redacted": {
+    "thread_subject_redacted": "Change order pricing — contract impact",
+    "sender_domain": "example-owner.com",
+    "summary_redacted": "Owner references a potential contract change with cost impact and requests Bobby's position."
+  },
+  "expected": {
+    "candidate_type": "decision",
+    "assignee": "user",
+    "waiting_state": "waiting_on_me",
+    "urgency": "high",
+    "confidence": 0.78,
+    "safety_category": "financial",
+    "recommended_next_action": "review"
+  }
+}

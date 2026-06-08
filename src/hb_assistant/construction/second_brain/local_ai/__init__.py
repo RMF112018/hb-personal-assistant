@@ -21,6 +21,7 @@ from .contracts import (
     load_phase_10_contract,
     load_raw_content_policy,
 )
+from .fixture_runner import run_fixture_suite
 from .models import (
     HIGH_STAKES_CATEGORIES,
     ActionCandidate,
@@ -85,4 +86,6 @@ __all__ = [
     # Prompt 05: AI job queue enqueue + run lifecycle (no-overlap, retry/backoff, receipts)
     "enqueue_ai_job_request",
     "run_ai_jobs",
+    # Prompt 06: action candidate fixture suite runner (batch validation/regression harness)
+    "run_fixture_suite",
 ]

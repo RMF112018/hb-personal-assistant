@@ -1,0 +1,6 @@
+{
+  "fixture_id": "suite_unavailable_backend_001",
+  "scenario": "unavailable_backend",
+  "expected_outcome": "unavailable",
+  "unavailable": true
+}

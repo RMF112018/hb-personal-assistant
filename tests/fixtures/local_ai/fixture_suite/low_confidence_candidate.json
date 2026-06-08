@@ -1,0 +1,21 @@
+{
+  "fixture_id": "suite_low_confidence_001",
+  "scenario": "low_confidence",
+  "expected_outcome": "valid",
+  "source_family": "email_thread_summary",
+  "source_ref": "email_thread_summary:test:102",
+  "input_redacted": {
+    "thread_subject_redacted": "FW: maybe a scheduling note?",
+    "sender_domain": "example.com",
+    "summary_redacted": "Ambiguous forwarded thread; unclear whether any action is requested of Bobby."
+  },
+  "expected": {
+    "candidate_type": "question",
+    "assignee": "unknown",
+    "waiting_state": "unknown",
+    "urgency": "low",
+    "confidence": 0.3,
+    "safety_category": "normal",
+    "recommended_next_action": "review"
+  }
+}

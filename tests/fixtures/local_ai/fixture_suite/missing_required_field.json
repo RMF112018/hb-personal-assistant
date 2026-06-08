@@ -1,0 +1,17 @@
+{
+  "fixture_id": "suite_missing_required_001",
+  "scenario": "missing_required_field",
+  "expected_outcome": "schema_invalid",
+  "raw_candidate": {
+    "candidate_type": "task",
+    "assignee": "user",
+    "urgency": "normal",
+    "waiting_state": "waiting_on_me",
+    "confidence": 0.7,
+    "reason": "Candidate missing both title and source_refs.",
+    "review_status": "pending",
+    "safety_category": "normal",
+    "recommended_next_action": "review",
+    "external_action_requires_approval": true
+  }
+}
