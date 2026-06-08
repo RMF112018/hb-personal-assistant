@@ -47,39 +47,16 @@ def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def _list_for_type(
-    store: ConstructionStore,
-    candidate_type: str,
-    *,
-    project_key: Optional[str] = None,
-    review_status: Optional[str] = None,
-    limit: int = 100,
-) -> list[dict[str, Any]]:
-    if candidate_type == "task":
-        rows = store.list_task_candidates(
-            project_key=project_key, review_status=review_status, limit=limit
-        )
-    else:
-        rows = store.list_commitment_candidates(
-            project_key=project_key, review_status=review_status, limit=limit
-        )
-    for r in rows:
-        r["candidate_type"] = candidate_type
-    return rows
-
-
 def _find_candidate(
     store: ConstructionStore,
     candidate_id: str,
     candidate_type: Optional[str] = None,
 ) -> tuple[Optional[dict[str, Any]], Optional[str]]:
-    """Locate a candidate by id, returning (row, resolved_type) or (None, None)."""
-    types = (candidate_type,) if candidate_type in _CANDIDATE_TYPES else _CANDIDATE_TYPES
-    for ctype in types:
-        for row in _list_for_type(store, ctype, limit=_FIND_LIMIT):
-            if row.get("candidate_id") == candidate_id:
-                return row, ctype
-    return None, None
+    """Locate a candidate by id (primary-key getter), returning (row, resolved_type)."""
+    row = store.get_candidate(candidate_id, candidate_type=candidate_type)
+    if row is None:
+        return None, None
+    return row, str(row.get("candidate_type"))
 
 
 def _require_type(candidate_type: str) -> None:
@@ -94,20 +71,23 @@ def review_summary(
     store: ConstructionStore, *, project_key: Optional[str] = None
 ) -> dict[str, Any]:
     """Counts by review_status for task + commitment candidates (read-only)."""
-    out: dict[str, Any] = {"ok": True, "project_key": project_key}
+    per_type: dict[str, dict[str, int]] = {"task": {"total": 0}, "commitment": {"total": 0}}
     combined: dict[str, int] = {}
-    for ctype in _CANDIDATE_TYPES:
-        buckets: dict[str, int] = {}
-        rows = _list_for_type(store, ctype, project_key=project_key, limit=_FIND_LIMIT)
-        for r in rows:
-            status = str(r.get("review_status") or "pending")
-            buckets[status] = buckets.get(status, 0) + 1
-            combined[status] = combined.get(status, 0) + 1
-        buckets["total"] = len(rows)
-        out[ctype] = buckets
-    combined["total"] = out["task"]["total"] + out["commitment"]["total"]
-    out["combined"] = combined
-    return out
+    for r in store.list_review_candidates(project_key=project_key, limit=_FIND_LIMIT):
+        ctype = str(r.get("candidate_type"))
+        status = str(r.get("review_status") or "pending")
+        bucket = per_type.setdefault(ctype, {"total": 0})
+        bucket[status] = bucket.get(status, 0) + 1
+        bucket["total"] += 1
+        combined[status] = combined.get(status, 0) + 1
+    combined["total"] = per_type["task"]["total"] + per_type["commitment"]["total"]
+    return {
+        "ok": True,
+        "project_key": project_key,
+        "task": per_type["task"],
+        "commitment": per_type["commitment"],
+        "combined": combined,
+    }
 
 
 def list_review_candidates(
@@ -120,14 +100,7 @@ def list_review_candidates(
     """List task + commitment candidates (safe fields), optionally filtered by status."""
     if status is not None and status not in _REVIEW_STATUSES:
         raise ValueError(f"invalid review_status: {status!r} (expected {sorted(_REVIEW_STATUSES)})")
-    candidates: list[dict[str, Any]] = []
-    for ctype in _CANDIDATE_TYPES:
-        candidates.extend(
-            _list_for_type(
-                store, ctype, project_key=project_key, review_status=status, limit=limit
-            )
-        )
-    candidates = candidates[:limit]
+    candidates = store.list_review_candidates(status=status, project_key=project_key, limit=limit)
     return {
         "ok": True,
         "status": status,
@@ -177,7 +150,7 @@ def _apply_decision(
     prior_status = str(cand.get("review_status") or "pending")
     note_red = _truncate(note, _NOTE_MAX) if note else None
     now = _utc_now()
-    store.set_candidate_review_status(
+    store.update_candidate_review_state(
         candidate_type=ctype,
         candidate_id=candidate_id,
         review_status=new_status,
@@ -381,15 +354,9 @@ def export_review_queue(
     if status is not None and status not in _REVIEW_STATUSES:
         raise ValueError(f"invalid review_status: {status!r} (expected {sorted(_REVIEW_STATUSES)})")
     items: list[dict[str, Any]] = []
-    for ctype in _CANDIDATE_TYPES:
-        for cand in _list_for_type(
-            store, ctype, project_key=project_key, review_status=status, limit=limit
-        ):
-            refs = store.list_candidate_source_refs(
-                candidate_id=cand["candidate_id"], limit=200
-            )
-            items.append({**cand, "source_refs": refs})
-    items = items[:limit]
+    for cand in store.list_review_candidates(status=status, project_key=project_key, limit=limit):
+        refs = store.list_candidate_source_refs(candidate_id=cand["candidate_id"], limit=200)
+        items.append({**cand, "source_refs": refs})
     return {
         "ok": True,
         "status": status,

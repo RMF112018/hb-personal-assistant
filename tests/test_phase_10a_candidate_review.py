@@ -316,3 +316,126 @@ def test_no_forbidden_keys_in_any_output(tmp_path: Path) -> None:
     _assert_no_forbidden_keys(show_review_candidate(s, candidate_id=tid))
     _assert_no_forbidden_keys(accept_candidate(s, candidate_id=tid, candidate_type="task"))
     _assert_no_forbidden_keys(export_review_queue(s, project_key=pk))
+
+
+# ---------------------------------------------------------------------------
+# Store-layer methods (Prompt 03)
+# ---------------------------------------------------------------------------
+def test_store_getters_found_and_none(tmp_path: Path) -> None:
+    s = _store(tmp_path)
+    pk = "PRJ-1"
+    tid = _seed_task(s, pk)
+    cid = _seed_commitment(s, pk)
+    t = s.get_task_candidate(tid)
+    assert t is not None and t["candidate_id"] == tid
+    assert "snoozed_until_utc" in t and "reviewed_by" in t  # V43 columns projected
+    c = s.get_commitment_candidate(cid)
+    assert c is not None and c["commitment_actor_class"] == "other"
+    assert s.get_task_candidate("missing") is None
+    assert s.get_commitment_candidate("missing") is None
+
+
+def test_store_get_candidate_resolves_type(tmp_path: Path) -> None:
+    s = _store(tmp_path)
+    pk = "PRJ-1"
+    tid = _seed_task(s, pk)
+    cid = _seed_commitment(s, pk)
+    auto_t = s.get_candidate(tid)
+    assert auto_t is not None and auto_t["candidate_type"] == "task"
+    auto_c = s.get_candidate(cid)
+    assert auto_c is not None and auto_c["candidate_type"] == "commitment"
+    # explicit type that doesn't match -> not found
+    assert s.get_candidate(tid, candidate_type="commitment") is None
+    assert s.get_candidate("ghost") is None
+
+
+def test_store_list_review_candidates_merge_and_filters(tmp_path: Path) -> None:
+    s = _store(tmp_path)
+    pk = "PRJ-1"
+    tid = _seed_task(s, pk)
+    _seed_commitment(s, pk)
+    merged = s.list_review_candidates(project_key=pk)
+    assert len(merged) == 2
+    assert {r["candidate_type"] for r in merged} == {"task", "commitment"}
+
+    s.update_candidate_review_state(
+        candidate_type="task", candidate_id=tid, review_status="accepted"
+    )
+    accepted = s.list_review_candidates(status="accepted", project_key=pk)
+    assert len(accepted) == 1 and accepted[0]["candidate_id"] == tid
+    assert s.list_review_candidates(project_key="OTHER") == []
+
+
+def test_store_update_candidate_review_state_sets_lifecycle_columns(tmp_path: Path) -> None:
+    s = _store(tmp_path)
+    pk = "PRJ-1"
+    tid = _seed_task(s, pk)
+    ok = s.update_candidate_review_state(
+        candidate_type="task",
+        candidate_id=tid,
+        review_status="snoozed",
+        reviewed_utc="2026-06-08T00:00:00+00:00",
+        reviewed_by="bobby",
+        review_note_redacted="later",
+        snoozed_until_utc="2026-06-12T09:00:00-04:00",
+    )
+    assert ok is True
+    row = s.get_task_candidate(tid)
+    assert row is not None
+    assert row["review_status"] == "snoozed"
+    assert row["reviewed_by"] == "bobby"
+    assert row["snoozed_until_utc"] == "2026-06-12T09:00:00-04:00"
+    assert row["review_note_redacted"] == "later"
+    # unknown candidate -> no row updated
+    assert (
+        s.update_candidate_review_state(
+            candidate_type="task", candidate_id="ghost", review_status="accepted"
+        )
+        is False
+    )
+
+
+def test_store_update_candidate_fields_whitelist(tmp_path: Path) -> None:
+    s = _store(tmp_path)
+    pk = "PRJ-1"
+    tid = _seed_task(s, pk)
+    original = s.get_task_candidate(tid)
+    assert original is not None
+    # Mix of allowed (title_redacted) and disallowed (stable_key, review_status) keys.
+    ok = s.update_candidate_fields(
+        candidate_type="task",
+        candidate_id=tid,
+        fields={
+            "title_redacted": "Edited title",
+            "stable_key": "HACKED",
+            "review_status": "accepted",
+        },
+    )
+    assert ok is True
+    row = s.get_task_candidate(tid)
+    assert row is not None
+    assert row["title_redacted"] == "Edited title"  # allowed key applied
+    assert row["stable_key"] == original["stable_key"]  # disallowed key ignored
+    assert row["review_status"] == "pending"  # disallowed key ignored
+    # all-disallowed -> no update
+    assert (
+        s.update_candidate_fields(
+            candidate_type="task", candidate_id=tid, fields={"stable_key": "x"}
+        )
+        is False
+    )
+
+
+def test_store_insert_candidate_review_event_propagates(tmp_path: Path) -> None:
+    """The audit insert must not silently swallow failures (action is NOT NULL)."""
+    s = _store(tmp_path)
+    pk = "PRJ-1"
+    tid = _seed_task(s, pk)
+    rid = s.insert_candidate_review_event(
+        candidate_type="task", candidate_id=tid, decision="accept", new_status="accepted"
+    )
+    assert isinstance(rid, str) and rid
+    with pytest.raises(sqlite3.IntegrityError):
+        s.insert_candidate_review_event(
+            candidate_type="task", candidate_id=tid, decision=None  # type: ignore[arg-type]
+        )

@@ -8328,19 +8328,22 @@ def phase_10_review_candidate(
 
         prior_status = cand.get("review_status") or "pending"
         if emit:
-            # Use the additive store helpers (P08) — clean, no private access.
-            s.set_candidate_review_status(
+            # Use the additive store helpers — clean, no private access.
+            s.update_candidate_review_state(
                 candidate_type=candidate_type,
                 candidate_id=candidate_id,
                 review_status=decision,
             )
-            # best-effort event (non-fatal if table absent or other issue)
+            # Required audit evidence: insert propagates on failure (no silent
+            # swallow). Surfaced by the command's outer error handling if it fails.
             s.insert_candidate_review_event(
                 candidate_type=candidate_type,
                 candidate_id=candidate_id,
                 decision=decision,
                 reason_redacted=reason,
                 reviewer_ref="operator",
+                prior_status=prior_status,
+                new_status=decision,
             )
 
         payload = {

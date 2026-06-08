@@ -8664,13 +8664,106 @@ class ConstructionStore:
         )
         return [dict(zip(keys, row, strict=True)) for row in cur.fetchall()]
 
-    # --- Phase 10 Prompt 08 review helpers (additive, minimal) ---
-    # Support operator review of V41 task/commitment candidates (review_status transitions)
-    # and optional audit rows in candidate_review_events (table may be present from V41).
-    # Keep the surface thin; callers (CLI) remain responsible for guardrails/dry-run.
+    # --- Phase 10/10A candidate review helpers (additive) ---
+    # Support operator review of V41/V43 task/commitment candidates (read + review
+    # state transitions + audit). Read methods return only redacted/safe columns
+    # (never the guard columns); source refs are accessed via
+    # list_candidate_source_refs and are never mutated here.
     # -------------------------------------------------------------------------
 
-    def set_candidate_review_status(
+    # Safe, review-relevant column projections (mirror the list_* methods, incl. V43).
+    _TASK_CANDIDATE_COLUMNS = (
+        "candidate_id, stable_key, title_redacted, project_key, assignee_class, "
+        "due_at_utc, urgency, waiting_state, safety_category, confidence, "
+        "reason_redacted, recommended_next_action, review_status, model_profile_id, "
+        "prompt_template_version, created_utc, updated_utc, snoozed_until_utc, "
+        "reviewed_utc, reviewed_by, review_note_redacted"
+    )
+    _COMMITMENT_CANDIDATE_COLUMNS = (
+        "candidate_id, stable_key, title_redacted, project_key, commitment_actor_class, "
+        "promised_at_utc, due_at_utc, urgency, waiting_state, safety_category, confidence, "
+        "reason_redacted, recommended_next_action, review_status, model_profile_id, "
+        "prompt_template_version, created_utc, updated_utc, snoozed_until_utc, "
+        "reviewed_utc, reviewed_by, review_note_redacted"
+    )
+
+    def get_task_candidate(self, candidate_id: str) -> Optional[dict[str, Any]]:
+        """Return a single task candidate by id (safe fields only), or None."""
+        conn = get_connection(self._db_path)
+        cur = conn.execute(
+            f"SELECT {self._TASK_CANDIDATE_COLUMNS} FROM task_candidates "
+            "WHERE candidate_id = ? LIMIT 1",
+            (candidate_id,),
+        )
+        row = cur.fetchone()
+        if row is None:
+            return None
+        cols = [d[0] for d in cur.description]
+        return dict(zip(cols, row, strict=True))
+
+    def get_commitment_candidate(self, candidate_id: str) -> Optional[dict[str, Any]]:
+        """Return a single commitment candidate by id (safe fields only), or None."""
+        conn = get_connection(self._db_path)
+        cur = conn.execute(
+            f"SELECT {self._COMMITMENT_CANDIDATE_COLUMNS} FROM commitment_candidates "
+            "WHERE candidate_id = ? LIMIT 1",
+            (candidate_id,),
+        )
+        row = cur.fetchone()
+        if row is None:
+            return None
+        cols = [d[0] for d in cur.description]
+        return dict(zip(cols, row, strict=True))
+
+    def get_candidate(
+        self, candidate_id: str, *, candidate_type: Optional[str] = None
+    ) -> Optional[dict[str, Any]]:
+        """Return a candidate by id, tagged with candidate_type, or None.
+
+        If candidate_type is given, only that table is checked; otherwise task is
+        tried first, then commitment.
+        """
+        if candidate_type == "task":
+            row = self.get_task_candidate(candidate_id)
+            return {**row, "candidate_type": "task"} if row else None
+        if candidate_type == "commitment":
+            row = self.get_commitment_candidate(candidate_id)
+            return {**row, "candidate_type": "commitment"} if row else None
+        row = self.get_task_candidate(candidate_id)
+        if row:
+            return {**row, "candidate_type": "task"}
+        row = self.get_commitment_candidate(candidate_id)
+        if row:
+            return {**row, "candidate_type": "commitment"}
+        return None
+
+    def list_review_candidates(
+        self,
+        *,
+        status: Optional[str] = None,
+        project_key: Optional[str] = None,
+        limit: int = 100,
+    ) -> list[dict[str, Any]]:
+        """Merged task + commitment candidates (each tagged with candidate_type).
+
+        Applies the same project_key/review_status filters as the per-type list
+        methods, concatenates, and caps the combined result to ``limit``.
+        """
+        merged: list[dict[str, Any]] = []
+        for ctype, rows in (
+            ("task", self.list_task_candidates(
+                project_key=project_key, review_status=status, limit=limit
+            )),
+            ("commitment", self.list_commitment_candidates(
+                project_key=project_key, review_status=status, limit=limit
+            )),
+        ):
+            for r in rows:
+                r["candidate_type"] = ctype
+                merged.append(r)
+        return merged[:limit]
+
+    def update_candidate_review_state(
         self,
         *,
         candidate_type: str,
@@ -8762,43 +8855,40 @@ class ConstructionStore:
         new_status: Optional[str] = None,
         changes_json_redacted: Optional[str] = None,
         snoozed_until_utc: Optional[str] = None,
-    ) -> Optional[str]:
-        """Insert an audit row for a candidate review decision (best-effort).
+    ) -> str:
+        """Insert an audit row for a candidate review decision and return its id.
 
         Columns match the actual candidate_review_events schema (V41 + V43): the
         ``decision`` param maps to ``action`` and ``reason_redacted`` to
-        ``user_note_redacted``. Returns the new review_event_id, or None on failure.
+        ``user_note_redacted``. The review event is required evidence, not optional
+        telemetry — failures are NOT swallowed; they propagate to the caller.
         """
-        try:
-            review_event_id = str(uuid.uuid4())
-            conn = get_connection(self._db_path)
-            with transaction(conn):
-                conn.execute(
-                    """
-                    INSERT INTO candidate_review_events
-                        (review_event_id, candidate_type, candidate_id, action,
-                         prior_status, new_status, user_note_redacted, reviewer_ref,
-                         changes_json_redacted, snoozed_until_utc, created_utc)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """,
-                    (
-                        review_event_id,
-                        candidate_type,
-                        candidate_id,
-                        decision,
-                        prior_status,
-                        new_status,
-                        reason_redacted,
-                        reviewer_ref,
-                        changes_json_redacted,
-                        snoozed_until_utc,
-                        _utc_now(),
-                    ),
-                )
-            return review_event_id
-        except Exception:
-            # Non-fatal for the review surface; status update already persisted.
-            return None
+        review_event_id = str(uuid.uuid4())
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            conn.execute(
+                """
+                INSERT INTO candidate_review_events
+                    (review_event_id, candidate_type, candidate_id, action,
+                     prior_status, new_status, user_note_redacted, reviewer_ref,
+                     changes_json_redacted, snoozed_until_utc, created_utc)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    review_event_id,
+                    candidate_type,
+                    candidate_id,
+                    decision,
+                    prior_status,
+                    new_status,
+                    reason_redacted,
+                    reviewer_ref,
+                    changes_json_redacted,
+                    snoozed_until_utc,
+                    _utc_now(),
+                ),
+            )
+        return review_event_id
 
     # V20 Phase 07A Prompt 01 — Data Quality + Canonical Source-Record Map
     # All adapters enforce the guardrail flags=False at the Python layer (defense

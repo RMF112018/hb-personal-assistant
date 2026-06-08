@@ -192,7 +192,7 @@ def test_review_actions_and_status_transitions(tmp_path: Path):
     assert any(t["candidate_id"] == task_id for t in pending)
 
     # Apply review via the store helper (the path exercised by phase-10 review-candidate --emit)
-    ok = store.set_candidate_review_status(
+    ok = store.update_candidate_review_state(
         candidate_type="task", candidate_id=task_id, review_status="accepted"
     )
     assert ok is True
@@ -200,15 +200,15 @@ def test_review_actions_and_status_transitions(tmp_path: Path):
     after = store.list_task_candidates(project_key=pk, review_status="accepted", limit=5)
     assert any(t["candidate_id"] == task_id for t in after)
 
-    # Best-effort event (may be no-op if table absent in this test DB; should not raise)
+    # Required audit event: the candidate_review_events table is present from V41,
+    # so the insert persists and returns the new review_event_id (no silent swallow).
     ev = store.insert_candidate_review_event(
         candidate_type="task",
         candidate_id=task_id,
         decision="accepted",
         reason_redacted="Reviewed raw email; report will be ready.",
     )
-    # ev may be None or str; either is acceptable for P08 (table is optional in this context)
-    assert ev is None or isinstance(ev, str)
+    assert isinstance(ev, str) and ev
 
     # pending list no longer contains it under that filter
     still_pending = store.list_task_candidates(project_key=pk, review_status="pending", limit=5)
