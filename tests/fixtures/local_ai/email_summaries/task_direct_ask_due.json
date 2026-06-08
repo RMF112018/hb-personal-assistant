@@ -1,0 +1,16 @@
+{
+  "fixture_id": "email_summary_task_direct_ask_due",
+  "scenario": "task_direct_ask_due",
+  "source_family": "email_thread_summary",
+  "source_ref": "email_thread_summary:test:301",
+  "project_key": "HILLTOP",
+  "input_redacted": {
+    "thread_subject_redacted": "Hilltop RFI follow-up",
+    "sender_domain": "example-subcontractor.com",
+    "received_at": "2026-06-07T13:30:00-04:00",
+    "sent_by_user": false,
+    "summary_redacted": "Please confirm whether the revised sketch will be issued by Friday."
+  },
+  "signals_expected": ["direct_ask", "due_date", "waiting_on_me", "unanswered_question", "project_source_confidence"],
+  "expected": { "candidate_type": "task", "waiting_state": "waiting_on_me" }
+}

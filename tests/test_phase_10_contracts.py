@@ -40,8 +40,8 @@ PHASE_10_CONTRACT_NAMES = sorted(c10.PHASE_10_CONTRACT_FILES)
 def test_all_contracts_load() -> None:
     contracts = load_all_phase_10_contracts()
     assert (
-        len(contracts) == 12
-    )  # 10 Phase 10 + Phase 10A raw_content_policy + raw_content_api_response (Prompt 05)
+        len(contracts) == 13
+    )  # 10 Phase 10 + 10A raw_content_policy + raw_content_api_response + email_task_signal (P07)
     for name, body in contracts.items():
         assert isinstance(body, dict) and body, name
     # The action candidate schema is a JSON Schema; the rest carry a logical schema id + version.
@@ -206,7 +206,7 @@ def test_proof_passes_clean() -> None:
     result = build_phase_10_contracts_proof()
     assert result["proof_passed"] is True
     assert result["overall_status"] == "clean"
-    assert result["contract_count"] == 12
+    assert result["contract_count"] == 13
     assert result["seed_count"] == 5
     assert len(result["fixtures_validated"]) == 5
     assert result["forbidden_findings"] == []

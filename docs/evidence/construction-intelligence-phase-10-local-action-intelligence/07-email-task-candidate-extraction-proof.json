@@ -1,0 +1,92 @@
+{
+  "proof": "phase_10_email_task_candidate_extraction_proof",
+  "command": "second-brain action-intel extract-email-tasks",
+  "phase": "10",
+  "prompt": "07",
+  "generated_utc": "2026-06-08T07:50:30.783088+00:00",
+  "repo_sha": "cf75fd33c33f948e0b9ec4d1e9f4d3db2cf95774",
+  "schema_version": 42,
+  "proof_passed": true,
+  "overall_status": "clean",
+  "gates": {
+    "deterministic_signals_fire": true,
+    "success_yields_task": true,
+    "invalid_schema_rejected": true,
+    "stale_forbidden_field_rejected": true,
+    "no_accept_without_source_refs": true,
+    "unavailable_backend_surfaced": true,
+    "bounded_content_policy_gated": true,
+    "dry_run_zero_writes": true,
+    "apply_persists_candidate": true,
+    "guards_clean": true,
+    "no_raw_persistence": true,
+    "source_ref_linkage": true,
+    "contract_module_parity": true
+  },
+  "fixtures_signals": [
+    {
+      "scenario": "commitment_sent_by_user",
+      "reason_codes": [
+        "due_date",
+        "waiting_on_others",
+        "project_source_confidence"
+      ],
+      "matched": true
+    },
+    {
+      "scenario": "follow_up_stale",
+      "reason_codes": [
+        "unanswered_question",
+        "follow_up_stale",
+        "project_source_confidence"
+      ],
+      "matched": true
+    },
+    {
+      "scenario": "low_signal",
+      "reason_codes": [
+        "low_signal"
+      ],
+      "matched": true
+    },
+    {
+      "scenario": "task_direct_ask_due",
+      "reason_codes": [
+        "direct_ask",
+        "due_date",
+        "waiting_on_me",
+        "unanswered_question",
+        "project_source_confidence"
+      ],
+      "matched": true
+    }
+  ],
+  "guard_columns": [
+    "raw_email_body_persisted",
+    "raw_document_text_persisted",
+    "raw_calendar_payload_persisted",
+    "raw_procore_payload_persisted",
+    "raw_prompt_persisted",
+    "raw_response_persisted",
+    "signed_url_persisted",
+    "download_url_persisted",
+    "external_writeback_performed",
+    "graph_writeback_performed",
+    "procore_writeback_performed",
+    "email_send_performed",
+    "calendar_mutation_performed"
+  ],
+  "guard_sum": 0,
+  "dry_run_task_rows": 0,
+  "guardrails": {
+    "local_only": true,
+    "advisory_only": true,
+    "dry_run_default": true,
+    "schema_validation_required": true,
+    "no_raw_persistence": true,
+    "no_external_writeback": true,
+    "high_stakes_review_only": true,
+    "two_modes_metadata_safe_and_bounded_content": true,
+    "fixtures_isolated_from_ai_jobs_glob": true
+  }
+}

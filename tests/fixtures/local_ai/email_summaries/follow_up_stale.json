@@ -1,0 +1,16 @@
+{
+  "fixture_id": "email_summary_follow_up_stale",
+  "scenario": "follow_up_stale",
+  "source_family": "email_thread_summary",
+  "source_ref": "email_thread_summary:test:303",
+  "project_key": "HILLTOP",
+  "input_redacted": {
+    "thread_subject_redacted": "Re: submittal status",
+    "sender_domain": "example-subcontractor.com",
+    "received_at": "2026-05-20T09:00:00-04:00",
+    "sent_by_user": false,
+    "summary_redacted": "Just following up on my earlier note — any update on the submittal?"
+  },
+  "signals_expected": ["unanswered_question", "follow_up_stale", "project_source_confidence"],
+  "expected": { "candidate_type": "task" }
+}

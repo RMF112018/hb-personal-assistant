@@ -1,0 +1,14 @@
+{
+  "fixture_id": "email_summary_low_signal_fyi",
+  "scenario": "low_signal",
+  "source_family": "email_thread_summary",
+  "source_ref": "email_thread_summary:test:304",
+  "input_redacted": {
+    "thread_subject_redacted": "FYI newsletter",
+    "sender_domain": "news.example.com",
+    "sent_by_user": false,
+    "summary_redacted": "Monthly industry newsletter; no action implied."
+  },
+  "signals_expected": ["low_signal"],
+  "expected": { "candidate_type": "task" }
+}

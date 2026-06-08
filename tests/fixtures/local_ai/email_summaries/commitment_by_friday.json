@@ -1,0 +1,15 @@
+{
+  "fixture_id": "email_summary_commitment_by_friday",
+  "scenario": "commitment_sent_by_user",
+  "source_family": "email_thread_summary",
+  "source_ref": "email_thread_summary:test:302",
+  "project_key": "OCCC",
+  "input_redacted": {
+    "thread_subject_redacted": "OCCC VE pricing",
+    "sender_domain": "example.com",
+    "sent_by_user": true,
+    "summary_redacted": "I will send the updated VE summary by Friday afternoon."
+  },
+  "signals_expected": ["due_date", "waiting_on_others", "project_source_confidence"],
+  "expected": { "candidate_type": "commitment", "waiting_state": "waiting_on_others" }
+}

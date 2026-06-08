@@ -37,6 +37,7 @@ PHASE_10_CONTRACT_FILES: dict[str, str] = {
     "relationship_candidate_contract": "phase_10_relationship_candidate_contract.json",
     "evaluation_metrics_contract": "phase_10_evaluation_metrics_contract.json",
     "frontend_review_queue_contract": "phase_10_frontend_review_queue_contract.json",
+    "email_task_signal_contract": "phase_10_email_task_signal_contract.json",
     "raw_content_policy_contract": "phase_10a_raw_content_policy_contract.json",
     "raw_content_api_response_contract": "raw_content_api_response_contract.json",
 }

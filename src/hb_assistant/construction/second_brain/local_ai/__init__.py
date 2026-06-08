@@ -21,6 +21,10 @@ from .contracts import (
     load_phase_10_contract,
     load_raw_content_policy,
 )
+from .email_task_extraction import (
+    extract_email_task_candidates,
+    score_email_task_signals,
+)
 from .fixture_runner import run_fixture_suite
 from .models import (
     HIGH_STAKES_CATEGORIES,
@@ -88,4 +92,7 @@ __all__ = [
     "run_ai_jobs",
     # Prompt 06: action candidate fixture suite runner (batch validation/regression harness)
     "run_fixture_suite",
+    # Prompt 07: email task candidate extraction (deterministic signals over thread summaries)
+    "extract_email_task_candidates",
+    "score_email_task_signals",
 ]

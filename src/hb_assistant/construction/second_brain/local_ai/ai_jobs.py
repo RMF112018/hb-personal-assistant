@@ -197,34 +197,54 @@ def _run_one_job(
             started_utc=now,
         )
 
-    client = StructuredOutputClient()
-    fixtures = _load_fixtures(fixtures_dir, policy.defaults.max_items_per_run)
     produced = valid = rejected = 0
     backend_failed = False
     err_redacted: Optional[str] = None
-    for fixture in fixtures:
-        candidate = action_candidate_dict_from_fixture(fixture)
-        b = backend if backend is not None else StaticOutputClient(json.dumps(candidate))
-        result = client.run(
-            schema=ActionCandidate,
-            profile=profile,
+    if job_type == "extract_email_tasks":
+        # Prompt 07: the real deterministic-signal extractor over email thread summaries.
+        # Lazy import avoids any package-init ordering surprise (ai_jobs is imported first).
+        from .email_task_extraction import extract_email_task_candidates
+
+        report = extract_email_task_candidates(
+            store=store,
+            profile_id=profile.profile_id,
             profiles=profiles,
-            system="ai-jobs structured extraction",
-            prompt="extract action candidate",
-            input_context=json.dumps(fixture.get("input_redacted", {}), sort_keys=True),
-            task_type=job_type,
-            backend=b,
-            store=None if dry_run else store,
+            backend=backend,
             dry_run=dry_run,
+            max_items=policy.defaults.max_items_per_run,
+            mode="metadata_safe",
         )
-        produced += 1
-        if result.schema_valid:
-            valid += 1
-        elif result.status in {"unavailable", "timeout", "failed"}:
-            backend_failed = True
-            err_redacted = result.error_redacted or result.status
-        else:
-            rejected += 1
+        produced = int(report["produced"])
+        valid = int(report["accepted"])
+        rejected = int(report["rejected"])
+        backend_failed = bool(report["backend_unavailable"])
+        err_redacted = report["error_redacted"]
+    else:
+        client = StructuredOutputClient()
+        fixtures = _load_fixtures(fixtures_dir, policy.defaults.max_items_per_run)
+        for fixture in fixtures:
+            candidate = action_candidate_dict_from_fixture(fixture)
+            b = backend if backend is not None else StaticOutputClient(json.dumps(candidate))
+            result = client.run(
+                schema=ActionCandidate,
+                profile=profile,
+                profiles=profiles,
+                system="ai-jobs structured extraction",
+                prompt="extract action candidate",
+                input_context=json.dumps(fixture.get("input_redacted", {}), sort_keys=True),
+                task_type=job_type,
+                backend=b,
+                store=None if dry_run else store,
+                dry_run=dry_run,
+            )
+            produced += 1
+            if result.schema_valid:
+                valid += 1
+            elif result.status in {"unavailable", "timeout", "failed"}:
+                backend_failed = True
+                err_redacted = result.error_redacted or result.status
+            else:
+                rejected += 1
 
     # A job fails if the backend was unavailable, or it produced items but none validated.
     job_failed = backend_failed or (produced > 0 and valid == 0)

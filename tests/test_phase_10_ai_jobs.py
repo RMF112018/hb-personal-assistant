@@ -50,6 +50,38 @@ def _enqueue(store: ConstructionStore, *, environment: str = "dev") -> str:
     return res["job_id"]
 
 
+# A valid ActionCandidate the injected backend returns so the extract_email_tasks job produces work.
+_VALID_CANDIDATE = json.dumps(
+    {
+        "candidate_type": "task",
+        "title": "Confirm revised sketch issuance",
+        "project_key": None,
+        "assignee": "user",
+        "due_at": None,
+        "urgency": "normal",
+        "waiting_state": "waiting_on_me",
+        "source_refs": ["email_thread_summary:test:001"],
+        "confidence": 0.8,
+        "reason": "Sender asks Bobby to confirm whether the sketch will be issued.",
+        "review_status": "pending",
+        "safety_category": "normal",
+        "recommended_next_action": "review",
+        "external_action_requires_approval": True,
+    }
+)
+
+
+def _seed_summary(store: ConstructionStore, *, project_key: "str | None" = None) -> None:
+    """Seed one metadata-safe email thread summary so extract_email_tasks has work to do."""
+    store.upsert_email_thread_summary(
+        thread_key="email_thread_summary:test:001",
+        project_key=project_key,
+        message_count=2,
+        summary_redacted="Please confirm whether the revised sketch will be issued by Friday.",
+        review_required=False,
+    )
+
+
 def _guard_sum(db: str, table: str) -> int:
     conn = sqlite3.connect(db)
     expr = " + ".join(f"COALESCE(SUM({g}),0)" for g in PHASE_10_GUARD_COLUMNS)
@@ -116,7 +148,14 @@ def test_run_apply_succeeds_and_writes_hash_only_receipts() -> None:
     with tempfile.TemporaryDirectory() as td:
         store, db = _store(td)
         _enqueue(store)
-        res = run_ai_jobs(store=store, environment="dev", dry_run=False, locks_dir=f"{td}/locks")
+        _seed_summary(store)
+        res = run_ai_jobs(
+            store=store,
+            environment="dev",
+            dry_run=False,
+            backend=StaticOutputClient(_VALID_CANDIDATE),
+            locks_dir=f"{td}/locks",
+        )
         assert res["status"] == "ok" and res["succeeded"] == 1
         job = store.list_ai_jobs(environment="dev")[0]
         assert job["status"] == "succeeded"
@@ -151,6 +190,7 @@ def test_retry_backoff_then_failed_at_max_retries() -> None:
     with tempfile.TemporaryDirectory() as td:
         store, _ = _store(td)
         _enqueue(store)
+        _seed_summary(store)  # a summary to process so the (failing) backend is actually invoked
         locks = f"{td}/locks"
         bad = StaticOutputClient(raise_unavailable=True)  # forces failure
 

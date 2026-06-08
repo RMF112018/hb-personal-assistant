@@ -8435,3 +8435,92 @@ def action_intel_run_fixtures(
         raise typer.Exit(1) from None
     typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
     raise typer.Exit(0 if payload["ok"] else 3)
+
+
+@action_intel_app.command("extract-email-tasks")
+def action_intel_extract_email_tasks(
+    mode: str = typer.Option(  # noqa: B008
+        "metadata_safe",
+        "--mode",
+        help="metadata_safe (default; summaries only) or bounded_content (policy-gated).",
+    ),
+    project: "str | None" = typer.Option(  # noqa: B008
+        None, "--project", help="Optional project_key filter for store-sourced summaries."
+    ),
+    summary_source: str = typer.Option(  # noqa: B008
+        "store",
+        "--summary-source",
+        help="store (list_email_thread_summaries) or fixtures (--fixtures-dir).",
+    ),
+    fixtures_dir: str = typer.Option(  # noqa: B008
+        "tests/fixtures/local_ai/email_summaries",
+        "--fixtures-dir",
+        help="Summary fixtures dir when --summary-source fixtures.",
+    ),
+    mock_output: "str | None" = typer.Option(  # noqa: B008
+        None, "--mock-output", help="Canned model JSON for offline/hermetic runs (tests/demo)."
+    ),
+    apply: bool = typer.Option(  # noqa: B008
+        False, "--apply", help="Persist accepted candidates. Default: dry-run (no writes)."
+    ),
+    environment: str = typer.Option("dev", "--environment", help="dev|production (DB isolation)."),  # noqa: B008
+    db: "str | None" = typer.Option(  # noqa: B008
+        None, "--db", help="Explicit SQLite path (tests/isolation). Default: ambient app DB."
+    ),
+    json_out: bool = typer.Option(True, "--json", help="Emit machine-readable JSON (default)."),  # noqa: B008
+) -> None:
+    """Extract advisory task/commitment candidates from metadata-safe email thread summaries.
+
+    Deterministic task signals (direct ask, due date, waiting-on, unanswered question, follow-up,
+    project/source confidence) are scored over redacted summary read models, then the schema-enforced
+    structured-output client produces candidates. Advisory only — dry-run by default; even with
+    --apply only structured candidate fields + source refs + bounded excerpts are persisted (never
+    raw bodies/prompts/responses). High-stakes items stay review-only.
+    """
+    import pathlib
+
+    from hb_assistant.construction.second_brain.local_ai import extract_email_task_candidates
+    from hb_assistant.construction.store import ConstructionStore
+
+    try:
+        summaries: "list[dict[str, Any]] | None" = None
+        if summary_source == "fixtures":
+            base = pathlib.Path(fixtures_dir)
+            summaries = [
+                json.loads(p.read_text(encoding="utf-8")) for p in sorted(base.glob("*.json"))
+            ]
+        store = ConstructionStore(db_path=db)
+        report = extract_email_task_candidates(
+            summaries=summaries,
+            store=store,
+            project_key=project,
+            mode=mode,
+            mock_output=mock_output,
+            dry_run=not apply,
+        )
+        payload: dict[str, Any] = {
+            "command": "second-brain action-intel extract-email-tasks",
+            "ok": not report["backend_unavailable"],
+            "applied": apply,
+            "environment": environment,
+            **report,
+            "guardrails": {
+                "local_only": True,
+                "advisory_only": True,
+                "dry_run": not apply,
+                "no_writeback": True,
+                "no_raw_persistence": True,
+                "high_stakes_review_only": True,
+            },
+        }
+    except Exception as e:
+        payload = {
+            "command": "second-brain action-intel extract-email-tasks",
+            "ok": False,
+            "status": "extract_error",
+            "error": str(e)[:300],
+        }
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(1) from None
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0 if payload["ok"] else 2)
