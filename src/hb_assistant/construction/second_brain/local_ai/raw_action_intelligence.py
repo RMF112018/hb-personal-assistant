@@ -43,6 +43,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from typing import Any, Optional
 
 from hb_assistant.construction.classification.client import (
@@ -87,7 +88,14 @@ STRICT_ACTION_SYSTEM = (
     "- If Bobby/the user asks another person to do something → assignee=other, waiting_state=waiting_on_others.\n"
     "- If another person says they will do something → assignee=other, waiting_state=waiting_on_others.\n"
     "- Do NOT use waiting_state=not_applicable for task candidates. Purely informational items (FYI, "
-    "newsletters, status with no ask) are not tasks — output {\"candidates\":[]} for them.\n\n"
+    "newsletters, status with no ask) are not tasks — output {\"candidates\":[]} for them.\n"
+    "- If the text says someone asked Bobby / @Bobby / Bobby is asked to do X → assignee=user, "
+    "waiting_state=waiting_on_me (the user owns it), even if another person is the one asking.\n\n"
+    "Evidence-sensitive classification (follow exactly):\n"
+    "- Open questions ('where should we allocate…', 'should we…', 'which option…') → "
+    "candidate_type=question, recommended_next_action=review — never a task.\n"
+    "- Do NOT convert ambiguous risk/status lines into tasks unless the user is clearly asked to act; "
+    "otherwise emit candidate_type=question or risk_signal, or output {\"candidates\":[]}.\n\n"
     "If the input contains no actionable project work, output exactly {\"candidates\":[]}.\n"
 )
 
@@ -96,6 +104,35 @@ STRICT_ACTION_SYSTEM = (
 # persisted rows are always review-gated and source-attributable before any batch apply.
 DEFAULT_EXTRACT_PROFILE_ID = "default_extract"
 PHASE10A_PROMPT_TEMPLATE_VERSION = "phase10a-action-extraction-v1.2.7"
+
+# A direct ask TO Bobby (Bobby is the object), e.g. "Antonio asked Bobby to …", "@Bobby …",
+# "Bobby is asked to …" — NOT "Bobby asks Andrew …" (Bobby is the subject delegating to others).
+_DIRECT_USER_ASK_RE = re.compile(
+    r"(?:\b(?:asked|asks|ask)\s+bobby\b|@bobby\b|\bbobby\s+is\s+asked\b)", re.IGNORECASE
+)
+
+
+def _is_followup_title(title: Optional[str]) -> bool:
+    t = (title or "").lower()
+    return "follow up" in t or "follow-up" in t or "followup" in t
+
+
+def _normalize_live_item(item: dict[str, Any]) -> dict[str, Any]:
+    """Pre-validation normalization of one raw model candidate (dict-merge only, no .update()).
+
+    - Force ``recommended_next_action='review'`` so high-stakes items are not rejected solely for the
+      model's suggested action (``review`` is always valid and satisfies ``_high_stakes_routing``).
+    - Correct a direct Bobby ask to ``assignee=user`` / ``waiting_state=waiting_on_me``, UNLESS the
+      title is a "Follow up with …" delegation (which legitimately stays user/waiting_on_others).
+
+    Invalid categories, malformed fields, and unsafe values still fail ``model_validate`` downstream.
+    """
+    normalized = {**item, "recommended_next_action": "review"}
+    title = str(item.get("title") or "")
+    blob = f"{title}\n{item.get('reason') or ''}"
+    if _DIRECT_USER_ASK_RE.search(blob) and not _is_followup_title(title):
+        normalized = {**normalized, "assignee": "user", "waiting_state": "waiting_on_me"}
+    return normalized
 
 _MAX_EXCERPT_CHARS = 1200
 _MAX_ITEMS_PER_CALL = 50
@@ -345,8 +382,7 @@ def _validate_business_contract(candidate: ActionCandidate) -> Optional[str]:
     # Assignee / waiting_state coherence (task & commitment). High-stakes→review is enforced
     # upstream by the ActionCandidate model validator, so it never reaches here.
     if candidate.candidate_type in ("task", "commitment"):
-        title_l = (candidate.title or "").lower()
-        is_followup = "follow up" in title_l or "follow-up" in title_l or "followup" in title_l
+        is_followup = _is_followup_title(candidate.title)
         assignee = candidate.assignee
         waiting = candidate.waiting_state
         if candidate.candidate_type == "task" and waiting == "not_applicable":
@@ -633,6 +669,11 @@ def extract_action_candidates_from_raw(
             unresolved_reason: Optional[str] = None
             for item in parsed:
                 try:
+                    # Pre-validation normalization: force review (so high-stakes accept/prepare_packet
+                    # is not rejected by _high_stakes_routing) and correct direct Bobby asks. Malformed
+                    # / non-dict items fall through to model_validate and are rejected there.
+                    if isinstance(item, dict):
+                        item = _normalize_live_item(item)
                     cand = ActionCandidate.model_validate(item)
                     rej = _validate_business_contract(cand)
                     if rej:

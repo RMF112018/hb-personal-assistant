@@ -553,21 +553,81 @@ def test_assignee_waiting_state_inconsistencies_rejected() -> None:
         assert any(x.get("reason") == "task_waiting_state_not_applicable" for x in r["rejections"])
 
 
-def test_high_stakes_non_review_action_rejected() -> None:
+def test_high_stakes_accept_action_normalized_to_review() -> None:
+    # A high-stakes candidate the model marks accept/prepare_packet is normalized to review
+    # BEFORE validation (so _high_stakes_routing passes), then accepted if otherwise valid.
     with tempfile.TemporaryDirectory() as td:
         s = ConstructionStore(db_path=str(Path(td) / "hs.db"))
         _seed_thread(s)
         pkt = build_email_thread_action_packet(thread_ref="t1", store=s)
-        for category in ("schedule", "financial"):
+        for category, action in (("schedule", "accept"), ("financial", "prepare_packet")):
             r = _extract_one(s, pkt, _candidate_with(
-                title="Approve the change order pricing", safety_category=category,
-                recommended_next_action="accept"))
-            assert r["accepted"] == 0 and r["persisted"] == 0, category
-        # The same high-stakes candidate WITH review is accepted.
+                title="Review the change order pricing impact", safety_category=category,
+                recommended_next_action=action))
+            assert r["accepted"] == 1, (category, action, r["rejections"])
+            assert r["candidates"][0]["recommended_next_action"] == "review"
+        # The same high-stakes candidate already marked review is still accepted.
         r = _extract_one(s, pkt, _candidate_with(
             title="Review the change order pricing impact", safety_category="financial",
             recommended_next_action="review"))
         assert r["accepted"] == 1, r["rejections"]
+        assert r["candidates"][0]["recommended_next_action"] == "review"
+
+
+def test_direct_bobby_ask_corrected_to_user_waiting_on_me() -> None:
+    # The model mislabels a direct ask TO Bobby as other/waiting_on_others; it is corrected to
+    # user/waiting_on_me before validation (and not rejected as inconsistent).
+    with tempfile.TemporaryDirectory() as td:
+        s = ConstructionStore(db_path=str(Path(td) / "ask.db"))
+        _seed_thread(s)
+        pkt = build_email_thread_action_packet(thread_ref="t1", store=s)
+
+        r = _extract_one(s, pkt, _candidate_with(
+            title="Antonio asked Bobby to send draft certification",
+            reason="Antonio asked Bobby to send the draft certification to the owner.",
+            assignee="other", waiting_state="waiting_on_others"))
+        assert r["accepted"] == 1, r["rejections"]
+        assert r["candidates"][0]["assignee"] == "user"
+        assert r["candidates"][0]["waiting_state"] == "waiting_on_me"
+
+        # High-stakes (financial) direct ask with model action=accept → corrected + normalized.
+        r = _extract_one(s, pkt, _candidate_with(
+            title="Rob asked Bobby to resend financial statement",
+            reason="Rob asked Bobby to resend the financial statement for the draw.",
+            assignee="other", waiting_state="waiting_on_others",
+            safety_category="financial", recommended_next_action="accept"))
+        assert r["accepted"] == 1, r["rejections"]
+        c = r["candidates"][0]
+        assert c["assignee"] == "user" and c["waiting_state"] == "waiting_on_me"
+        assert c["recommended_next_action"] == "review"
+
+
+def test_followup_title_direct_ask_not_overcorrected() -> None:
+    # A "Follow up with [person]" delegation legitimately stays user/waiting_on_others even when the
+    # text mentions Bobby — the follow-up exception suppresses the direct-ask correction.
+    with tempfile.TemporaryDirectory() as td:
+        s = ConstructionStore(db_path=str(Path(td) / "fu.db"))
+        _seed_thread(s)
+        pkt = build_email_thread_action_packet(thread_ref="t1", store=s)
+        r = _extract_one(s, pkt, _candidate_with(
+            title="Follow up with Antonio on the draft certification",
+            reason="Bobby is asked to keep this moving; follow up with Antonio.",
+            assignee="user", waiting_state="waiting_on_others"))
+        assert r["accepted"] == 1, r["rejections"]
+        assert r["candidates"][0]["assignee"] == "user"
+        assert r["candidates"][0]["waiting_state"] == "waiting_on_others"
+
+
+def test_invented_src3_alias_still_rejected() -> None:
+    # Pre-validation normalization must not weaken source-alias enforcement: an invented src_3 over a
+    # single-source seeded thread is still rejected.
+    with tempfile.TemporaryDirectory() as td:
+        s = ConstructionStore(db_path=str(Path(td) / "s3.db"))
+        _seed_thread(s)
+        pkt = build_email_thread_action_packet(thread_ref="t1", store=s)
+        r = _extract_one(s, pkt, _obj_candidate(["src_3"]))
+        assert r["accepted"] == 0 and r["persisted"] == 0
+        assert any(x.get("reason") == "source_alias_not_in_packet" for x in r["rejections"])
 
 
 def test_diagnostic_reasons_distinguish_failure_modes() -> None:
