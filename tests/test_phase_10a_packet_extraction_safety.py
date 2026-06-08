@@ -666,3 +666,61 @@ def test_cli_extract_packet_dry_run_is_default_and_writes_nothing() -> None:
         assert res2.exit_code == 0
         assert json.loads(res2.output)["applied"] is False
         assert s.list_task_candidates() == []
+
+
+# --- Phase 10A persistence hardening: force review + traceability defaults ----------------------
+
+
+def _obj_candidate_action(action: str) -> str:
+    """Object-root mock candidate (citing src_1) with a chosen recommended_next_action, and with
+    traceability fields omitted (null) so persistence defaults are exercised."""
+    base = json.loads(_candidate())[0]
+    base["source_refs"] = ["src_1"]
+    base["recommended_next_action"] = action
+    base["model_profile_id"] = None
+    base["prompt_template_version"] = None
+    base["model_name"] = None
+    base["input_window_hash"] = None
+    return json.dumps({"candidates": [base]})
+
+
+def test_live_accept_candidate_persisted_as_review() -> None:
+    # A non-high-stakes candidate the model marks `accept` must persist as `review`.
+    with tempfile.TemporaryDirectory() as td:
+        s = ConstructionStore(db_path=str(Path(td) / "force_review.db"))
+        _seed_thread(s)
+        pkt = build_email_thread_action_packet(thread_ref="t1", store=s)
+        rep = extract_actions_for_packet(
+            packet=pkt, store=s, dry_run=False, mock_output=_obj_candidate_action("accept")
+        )
+        assert rep["accepted"] == 1 and rep["persisted"] == 1
+        tasks = s.list_task_candidates()
+        assert len(tasks) == 1
+        assert tasks[0]["recommended_next_action"] == "review"
+        assert rep["candidates"][0]["recommended_next_action"] == "review"
+
+
+def test_persisted_candidate_has_nonnull_traceability_defaults() -> None:
+    # Model omits model_profile_id / prompt_template_version → persisted with Phase 10A defaults.
+    with tempfile.TemporaryDirectory() as td:
+        db = str(Path(td) / "trace.db")
+        s = ConstructionStore(db_path=db)
+        _seed_thread(s)
+        pkt = build_email_thread_action_packet(thread_ref="t1", store=s)
+        rep = extract_actions_for_packet(
+            packet=pkt, store=s, dry_run=False, mock_output=_obj_candidate_action("accept")
+        )
+        assert rep["persisted"] == 1
+        tasks = s.list_task_candidates()
+        assert tasks[0]["model_profile_id"] == "default_extract"
+        assert tasks[0]["prompt_template_version"] == "phase10a-action-extraction-v1.2.7"
+        # Reporting-only traceability (no table columns): carried on the candidate dump.
+        cand = rep["candidates"][0]
+        assert cand["model_name"] == "mock"
+        assert cand["input_window_hash"]  # non-null, non-empty
+        # No raw-content / no-writeback guard columns remain zero.
+        conn = sqlite3.connect(db)
+        expr = " + ".join(f"COALESCE(SUM({g}),0)" for g in PHASE_10_GUARD_COLUMNS)
+        for table in ("task_candidates", "candidate_source_refs"):
+            assert int(conn.execute(f"SELECT {expr} FROM {table}").fetchone()[0]) == 0
+        conn.close()

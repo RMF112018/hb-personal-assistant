@@ -91,6 +91,12 @@ STRICT_ACTION_SYSTEM = (
     "If the input contains no actionable project work, output exactly {\"candidates\":[]}.\n"
 )
 
+# Phase 10A persistence-hardening defaults. Every accepted live candidate is normalized to
+# human-review-gated (`review`) and given traceability defaults the model frequently omits, so
+# persisted rows are always review-gated and source-attributable before any batch apply.
+DEFAULT_EXTRACT_PROFILE_ID = "default_extract"
+PHASE10A_PROMPT_TEMPLATE_VERSION = "phase10a-action-extraction-v1.2.7"
+
 _MAX_EXCERPT_CHARS = 1200
 _MAX_ITEMS_PER_CALL = 50
 
@@ -648,7 +654,29 @@ def extract_action_candidates_from_raw(
                         )
                         continue
                     refs_resolved += len(resolved)
-                    cand = cand.model_copy(update={"source_refs": resolved})
+                    # Phase 10A persistence hardening: every accepted live candidate is forced to
+                    # human-review-gated and given traceability defaults BEFORE the report/persist
+                    # branches (applies to dry-run report + apply persist alike). model_copy does
+                    # not re-validate; "review" always satisfies the high-stakes routing validator.
+                    cand = cand.model_copy(
+                        update={
+                            "source_refs": resolved,
+                            "recommended_next_action": "review",
+                            "model_profile_id": cand.model_profile_id or DEFAULT_EXTRACT_PROFILE_ID,
+                            "prompt_template_version": (
+                                cand.prompt_template_version or PHASE10A_PROMPT_TEMPLATE_VERSION
+                            ),
+                            "model_name": (
+                                cand.model_name
+                                or getattr(client, "model", None)
+                                or ("mock" if mock_output is not None else None)
+                            ),
+                            "input_window_hash": (
+                                cand.input_window_hash
+                                or hashlib.sha256(prompt.encode("utf-8")).hexdigest()[:12]
+                            ),
+                        }
+                    )
                     candidates.append(cand)
                 except Exception as ve:  # validation or business
                     rejections.append(
