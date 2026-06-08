@@ -7716,6 +7716,20 @@ def phase_10_extract_packet(
     mock_output: "str | None" = typer.Option(  # noqa: B008
         None, "--mock-output", help="Canned model JSON for offline validation (no live model call)."
     ),
+    profile: str = typer.Option(  # noqa: B008
+        "default_extract", "--profile", help="Local model profile (default: default_extract)."
+    ),
+    model: "str | None" = typer.Option(  # noqa: B008
+        None, "--model", help="Override the resolved model (default from profile: mistral-nemo:12b)."
+    ),
+    provider: str = typer.Option("ollama", "--provider", help="Local model provider (ollama)."),  # noqa: B008
+    timeout_seconds: "float | None" = typer.Option(  # noqa: B008
+        None, "--timeout-seconds", help="Override the per-profile model timeout."
+    ),
+    no_client: bool = typer.Option(  # noqa: B008
+        False, "--no-client", help="Test mode: skip live client construction (no model call).",
+        hidden=True,
+    ),
     dry_run: bool = typer.Option(  # noqa: B008
         True,
         "--dry-run/--apply",
@@ -7730,7 +7744,8 @@ def phase_10_extract_packet(
     scoring (strong by default; `--allow-moderate` includes moderate as review-only). A blocked
     (non-compiled) related packet never calls the model. `--triage` packets return triage labels only
     and never persist candidates. Dry-run is the DEFAULT (zero writes); `--apply` persists only after
-    schema + business validation. `--mock-output` is the offline validation path (no live model call).
+    schema + business validation. Without `--mock-output` a live local model client is constructed
+    (default profile default_extract → mistral-nemo:12b); `--mock-output` is the offline validation path.
     """
     from hb_assistant.construction.second_brain.local_ai import (
         build_calendar_event_action_packet,
@@ -7738,6 +7753,7 @@ def phase_10_extract_packet(
         build_related_context_action_packet,
         build_triage_batch_packet,
         extract_actions_for_packet,
+        resolve_local_model_client,
     )
     from hb_assistant.construction.store import ConstructionStore
 
@@ -7762,14 +7778,38 @@ def phase_10_extract_packet(
             }
             typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
             raise typer.Exit(2)
+
+        # Resolve a live model client unless offline (--mock-output) or test mode (--no-client).
+        client = None
+        resolved_model: "str | None" = None
+        if mock_output is None and not no_client:
+            client, resolved_model, reason = resolve_local_model_client(
+                provider=provider, profile_id=profile, model=model, timeout_seconds=timeout_seconds,
+            )
+            if client is None:
+                payload = {
+                    "command": "second-brain phase-10 extract-packet",
+                    "ok": False,
+                    "error": "live_model_client_missing",
+                    "diagnostics": {
+                        "reason": reason or "live_model_client_missing",
+                        "model_name": resolved_model,
+                        "provider": provider,
+                        "profile_id": profile,
+                    },
+                }
+                typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+                raise typer.Exit(1)
+
         report = extract_actions_for_packet(
-            packet=packet, store=store, dry_run=dry_run, mock_output=mock_output
+            packet=packet, store=store, dry_run=dry_run, mock_output=mock_output, client=client
         )
         payload = {
             "command": "second-brain phase-10 extract-packet",
             "ok": True,
             "applied": not dry_run,
             "blocked": bool(report.get("blocked")),
+            "model_name": resolved_model or ("mock" if mock_output is not None else None),
             "packet_type": packet.get("packet_type"),
             "packet_purpose": packet.get("packet_purpose"),
             "allowed_outputs": packet.get("allowed_outputs"),

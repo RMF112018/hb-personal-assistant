@@ -16,7 +16,10 @@ from hb_assistant.construction.second_brain.local_ai.contracts import (
     load_local_model_profiles,
     load_phase_10_contract,
 )
-from hb_assistant.construction.second_brain.local_ai.provider import build_local_model_status
+from hb_assistant.construction.second_brain.local_ai.provider import (
+    build_local_model_status,
+    resolve_local_model_client,
+)
 
 _INSTALLED = {"mistral-nemo:12b", "llama3.1:8b", "qwen2.5:14b"}
 
@@ -68,6 +71,23 @@ def test_disabled_profiles_are_not_pull_suggested() -> None:
     status = build_local_model_status(provider_name="mock", mock_models=set())
     assert "ollama pull gpt-oss:20b" not in status["suggested_pull_commands"]
     assert _by_id(status)["quality_reasoning"]["blocked_reason"] == "profile_disabled"
+
+
+def test_resolve_live_client_defaults_to_mistral_nemo() -> None:
+    client, model_name, reason = resolve_local_model_client()
+    assert client is not None and reason is None
+    assert model_name == "mistral-nemo:12b"
+    assert client.model == "mistral-nemo:12b"
+
+
+def test_resolve_live_client_model_override() -> None:
+    client, model_name, reason = resolve_local_model_client(model="llama3.1:8b")
+    assert client is not None and model_name == "llama3.1:8b" and reason is None
+
+
+def test_resolve_live_client_unsupported_provider() -> None:
+    client, _model, reason = resolve_local_model_client(provider="bogus")
+    assert client is None and reason == "unsupported_provider"
 
 
 def test_contract_disables_qwen3_for_structured_extraction() -> None:

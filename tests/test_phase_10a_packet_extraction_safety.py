@@ -187,21 +187,145 @@ def test_related_packet_per_ref_source_family_attribution() -> None:
         assert fam["e1"] == "calendar_event_raw_content"  # not inferred as email
 
 
-def test_no_output_run_returns_safe_diagnostics() -> None:
+def test_no_client_returns_explicit_diagnostic_not_no_output() -> None:
     with tempfile.TemporaryDirectory() as td:
         s = ConstructionStore(db_path=str(Path(td) / "diag.db"))
         _seed_thread(s)
         pkt = build_email_thread_action_packet(thread_ref="t1", store=s)
-        # No mock + no client → no model output → diagnostics, no writes.
+        # No mock + no client → NO model called → explicit no_client_constructed diagnostic.
         rep = extract_actions_for_packet(packet=pkt, store=s, dry_run=True, mock_output=None)
+        assert rep["note"] == "no_model_client"
+        assert rep["note"] != "model returned no output"
         diag = rep["diagnostics"]
+        assert diag["reason"] == "no_client_constructed"
         assert diag["prompt_char_count"] > 0
-        assert diag["packet_char_estimate"] >= 0
-        assert diag["endpoint_reachable"] is None  # no live client attempted
+        assert diag["endpoint_reachable"] is None
         assert diag["model_name"] is None
         assert diag["error_class_redacted"] is None
-        # diagnostics carry no raw body / URL / token.
         assert "http" not in json.dumps(diag).lower()
+
+
+def test_thread_ref_citation_persists_email_thread_family() -> None:
+    with tempfile.TemporaryDirectory() as td:
+        s = ConstructionStore(db_path=str(Path(td) / "tr.db"))
+        _seed_thread(s)
+        pkt = build_email_thread_action_packet(thread_ref="t1", store=s)
+        # Candidate cites the THREAD ref (in packet source_refs as email_thread_raw_context).
+        cand = json.dumps([{
+            "candidate_type": "task", "title": "Submit revised RFI 42 sketch by Friday",
+            "project_key": "P", "assignee": "user", "due_at": None, "urgency": "normal",
+            "waiting_state": "waiting_on_me", "source_refs": ["t1"], "confidence": 0.85,
+            "reason": "Email asks to submit the revised RFI 42 sketch by Friday.",
+            "safety_category": "normal", "recommended_next_action": "review",
+            "review_status": "pending", "external_action_requires_approval": True,
+        }])
+        rep = extract_actions_for_packet(packet=pkt, store=s, dry_run=False, mock_output=cand)
+        assert rep["persisted"] == 1
+        refs = s.list_candidate_source_refs(candidate_type="task")
+        assert refs[0]["source_ref_hash"] == "t1"
+        assert refs[0]["source_family"] == "email_thread_raw_context"  # not calendar
+
+
+def test_event_ref_citation_persists_calendar_family() -> None:
+    with tempfile.TemporaryDirectory() as td:
+        s = ConstructionStore(db_path=str(Path(td) / "er.db"))
+        s.upsert_calendar_event_raw_content(
+            raw_calendar_event_id="raw:e1", event_index_id="e1", graph_event_id_hash="gh1",
+            project_key="P", subject="Coordination", body_text="Discuss RFI 42 before pour",
+            organizer_email="pm@sub.com", attendees_json="[]",
+            start_datetime_utc="2026-06-08T09:00:00+00:00", end_datetime_utc="2026-06-08T09:30:00+00:00",
+        )
+        from hb_assistant.construction.second_brain.local_ai import (
+            build_calendar_event_action_packet,
+        )
+        pkt = build_calendar_event_action_packet(event_index_id="e1", store=s)
+        cand = json.dumps([{
+            "candidate_type": "task", "title": "Confirm RFI 42 status before the pour",
+            "project_key": "P", "assignee": "user", "due_at": None, "urgency": "normal",
+            "waiting_state": "waiting_on_me", "source_refs": ["e1"], "confidence": 0.8,
+            "reason": "Event agenda asks to confirm RFI 42 before the pour.",
+            "safety_category": "normal", "recommended_next_action": "review",
+            "review_status": "pending", "external_action_requires_approval": True,
+        }])
+        rep = extract_actions_for_packet(packet=pkt, store=s, dry_run=False, mock_output=cand)
+        assert rep["persisted"] == 1
+        refs = s.list_candidate_source_refs(candidate_type="task")
+        assert refs[0]["source_family"] == "calendar_event_raw_content"
+
+
+def test_unknown_source_ref_is_rejected() -> None:
+    with tempfile.TemporaryDirectory() as td:
+        s = ConstructionStore(db_path=str(Path(td) / "ur.db"))
+        _seed_thread(s)
+        pkt = build_email_thread_action_packet(thread_ref="t1", store=s)
+        cand = json.dumps([{
+            "candidate_type": "task", "title": "Do the thing referenced nowhere in the packet",
+            "project_key": "P", "assignee": "user", "due_at": None, "urgency": "normal",
+            "waiting_state": "waiting_on_me", "source_refs": ["totally-unknown-ref"], "confidence": 0.8,
+            "reason": "Cites a source ref not present in the packet.",
+            "safety_category": "normal", "recommended_next_action": "review",
+            "review_status": "pending", "external_action_requires_approval": True,
+        }])
+        rep = extract_actions_for_packet(packet=pkt, store=s, dry_run=False, mock_output=cand)
+        assert rep["accepted"] == 0 and rep["persisted"] == 0
+        assert any(r.get("reason") == "source_ref_not_in_packet" for r in rep["rejections"])
+        assert s.list_task_candidates() == []
+
+
+def test_diagnostic_reasons_distinguish_failure_modes() -> None:
+    with tempfile.TemporaryDirectory() as td:
+        s = ConstructionStore(db_path=str(Path(td) / "dr.db"))
+        _seed_thread(s)
+        pkt = build_email_thread_action_packet(thread_ref="t1", store=s)
+        empty = extract_actions_for_packet(packet=pkt, store=s, dry_run=True, mock_output="[]")
+        assert empty["diagnostics"]["reason"] == "empty_model_output"
+        bad = extract_actions_for_packet(packet=pkt, store=s, dry_run=True, mock_output="{not json")
+        assert bad["diagnostics"]["reason"] == "invalid_json_output"
+        generic = json.dumps([{
+            "candidate_type": "task", "title": "Analyze the data and clean up the fields",
+            "project_key": "P", "assignee": "user", "due_at": None, "urgency": "low",
+            "waiting_state": "unknown", "source_refs": ["m1"], "confidence": 0.6,
+            "reason": "Perform data analysis and normalize the spreadsheet fields.",
+            "safety_category": "normal", "recommended_next_action": "review",
+            "review_status": "pending", "external_action_requires_approval": True,
+        }])
+        rejected = extract_actions_for_packet(packet=pkt, store=s, dry_run=True, mock_output=generic)
+        assert rejected["diagnostics"]["reason"] == "schema_rejected_output"
+
+
+def test_cli_live_attempt_reports_model_name_not_null() -> None:
+    with tempfile.TemporaryDirectory() as td:
+        db = str(Path(td) / "live.db")
+        s = ConstructionStore(db_path=db)
+        _seed_thread(s)
+        # No --mock-output, no --no-client → constructs a live Ollama client (default mistral-nemo:12b).
+        res = runner.invoke(
+            app,
+            ["phase-10", "extract-packet", "--thread-ref", "t1", "--timeout-seconds", "1",
+             "--db", db, "--json"],
+        )
+        assert res.exit_code == 0, res.output
+        body = json.loads(res.output)
+        assert body["model_name"] == "mistral-nemo:12b"
+        diag = body["report"].get("diagnostics", {})
+        # A live attempt never reports no_client_constructed; model_name is set even when unreachable.
+        assert diag.get("reason") != "no_client_constructed"
+        assert diag.get("model_name") == "mistral-nemo:12b"
+
+
+def test_cli_no_client_mode_is_explicit_diagnostic() -> None:
+    with tempfile.TemporaryDirectory() as td:
+        db = str(Path(td) / "nc.db")
+        s = ConstructionStore(db_path=db)
+        _seed_thread(s)
+        res = runner.invoke(
+            app,
+            ["phase-10", "extract-packet", "--thread-ref", "t1", "--no-client", "--db", db, "--json"],
+        )
+        assert res.exit_code == 0, res.output
+        body = json.loads(res.output)
+        assert body["report"]["diagnostics"]["reason"] == "no_client_constructed"
+        assert body["report"]["note"] == "no_model_client"
 
 
 def test_cli_extract_packet_dry_run_is_default_and_writes_nothing() -> None:

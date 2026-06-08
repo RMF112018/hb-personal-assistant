@@ -44,7 +44,7 @@ from .packet_builders import (
 )
 from .packet_normalize import has_join_url, normalize_model_text, summarize_attendees
 from .proof import Phase10ProofError, build_phase_10_contracts_proof
-from .provider import build_local_model_status
+from .provider import build_local_model_status, resolve_local_model_client
 from .raw_action_intelligence import (
     extract_action_candidates_from_raw,
     extract_actions_for_packet,
@@ -118,4 +118,5 @@ __all__ = [
     "score_email_calendar_relationship",
     "find_email_calendar_relationships",
     "extract_actions_for_packet",
+    "resolve_local_model_client",
 ]

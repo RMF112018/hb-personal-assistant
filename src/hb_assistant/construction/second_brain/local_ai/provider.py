@@ -27,6 +27,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 from hb_assistant.config.path_policy import PathPolicy
+from hb_assistant.construction.classification.client import OllamaChatClient
 
 from .contracts import Phase10ContractError, load_local_model_profiles, load_phase_10_contract
 from .models import LocalModelProfiles
@@ -226,6 +227,39 @@ def _required_profile_ids() -> list[str]:
     except (Phase10ContractError, KeyError):
         pass
     return ["default_extract"]
+
+
+def resolve_local_model_client(
+    *,
+    provider: str = "ollama",
+    profile_id: str = "default_extract",
+    model: str | None = None,
+    timeout_seconds: float | None = None,
+    profiles: LocalModelProfiles | None = None,
+) -> tuple[OllamaChatClient | None, str | None, str | None]:
+    """Construct a live local-model generation client for action extraction (no daemon call on init).
+
+    Returns ``(client, model_name, reason_if_none)``. The default model resolves from the
+    ``default_extract`` profile (``mistral-nemo:12b``); ``model`` overrides it; ``timeout_seconds``
+    overrides the profile timeout. ``reason_if_none`` is a safe diagnostic code (``unsupported_provider``,
+    ``unknown_profile``, ``live_model_client_missing``) when no client could be built.
+    """
+    if provider != "ollama":
+        return None, None, "unsupported_provider"
+    try:
+        profiles = profiles or load_local_model_profiles()
+    except Exception:
+        return None, None, "live_model_client_missing"
+    profile = next((p for p in profiles.profiles if p.profile_id == profile_id), None)
+    if profile is None:
+        return None, None, "unknown_profile"
+    model_name = model or profile.model_name
+    timeout = float(timeout_seconds) if timeout_seconds is not None else float(profile.timeout_seconds)
+    try:
+        client = OllamaChatClient(model=model_name, timeout=timeout)
+    except Exception:
+        return None, model_name, "live_model_client_missing"
+    return client, model_name, None
 
 
 def build_local_model_status(

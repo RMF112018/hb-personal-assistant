@@ -47,6 +47,7 @@ from typing import Any, Optional
 
 from hb_assistant.construction.classification.client import (
     OllamaChatClient,
+    OllamaUnavailable,
 )
 from hb_assistant.construction.second_brain.local_ai.models import ActionCandidate
 from hb_assistant.construction.store import ConstructionStore
@@ -274,46 +275,105 @@ def _validate_business_contract(candidate: ActionCandidate) -> Optional[str]:
     return None
 
 
-#: Exception class names that indicate the local-model endpoint was unreachable (for diagnostics).
-_UNREACHABLE_ERROR_CLASSES = frozenset(
-    {"OllamaUnavailable", "ConnectionError", "ConnectError", "Timeout", "TimeoutError",
-     "ReadTimeout", "ConnectTimeout", "MaxRetryError", "NewConnectionError"}
-)
-
-
 def _run_with_retry_repair(
     *,
     client: Optional[OllamaChatClient],
     prompt: str,
     mock_output: Optional[str],
     max_attempts: int = 3,
-) -> tuple[Optional[str], Optional[str]]:
+) -> tuple[Optional[str], Optional[str], bool]:
     """Call the model (or use mock). On parse/business failure, repair up to max_attempts.
 
-    Returns ``(raw_model_text_or_None, error_class_redacted_or_None)``. The error class is the
-    exception *type name only* (never the message/body/URL/token) — safe for diagnostics.
+    Returns ``(raw_model_text_or_None, error_class_redacted_or_None, is_timeout)``. The error class is a
+    safe redacted token: the OllamaUnavailable category code (e.g. ``ollama_request_failed``) or the
+    exception *type name only* — never the message/body/URL/token.
     """
     current_prompt = prompt
     error_class: Optional[str] = None
+    is_timeout = False
     for attempt in range(1, max_attempts + 1):
         if mock_output is not None:
-            return mock_output, None
+            return mock_output, None, False
         if client is None:
-            return None, None
+            return None, None, False
         try:
             raw = client.generate_json(system=STRICT_ACTION_SYSTEM, prompt=current_prompt)
-            return raw, None
+            return raw, None, False
         except Exception as exc:  # Ollama errors etc.
-            error_class = type(exc).__name__  # redacted: type name only, no message
+            # OllamaUnavailable carries a safe category code (no body/URL/token); otherwise type name.
+            error_class = str(exc) if isinstance(exc, OllamaUnavailable) else type(exc).__name__
+            is_timeout = "timeout" in str(exc).lower()
             if attempt == max_attempts:
-                return None, error_class
+                return None, error_class, is_timeout
             current_prompt = (
                 prompt
                 + f"\n\nPREVIOUS ATTEMPT FAILED (attempt {attempt}, {error_class}). "
                 + "Output ONLY a corrected JSON array matching the Phase 10 ActionCandidate schema "
                 + "exactly. No other text."
             )
-    return None, error_class
+    return None, error_class, is_timeout
+
+
+def _diagnostic_reason(
+    *,
+    client: Optional[OllamaChatClient],
+    mock_output: Optional[str],
+    error_class: Optional[str],
+    is_timeout: bool,
+    produced: int,
+    accepted: int,
+    last_parse_error: Optional[str],
+) -> Optional[str]:
+    """Classify a run into one safe diagnostic reason (or None on clean success)."""
+    if client is None and mock_output is None:
+        return "no_client_constructed"
+    if is_timeout or (error_class and "timeout" in error_class.lower()):
+        return "model_timeout"
+    if error_class:
+        return "ollama_unreachable"
+    if produced > 0 and accepted == 0:
+        return "schema_rejected_output"
+    if last_parse_error and "json" in last_parse_error.lower():
+        return "invalid_json_output"
+    if produced == 0 and (last_parse_error or accepted == 0):
+        return "empty_model_output"
+    return None
+
+
+def _build_diagnostics(
+    *,
+    reason: Optional[str],
+    client: Optional[OllamaChatClient],
+    mock_output: Optional[str],
+    prompt: str,
+    excerpts: list[dict[str, Any]],
+    error_class: Optional[str],
+) -> dict[str, Any]:
+    """Safe diagnostics: model/profile, char counts, reachability bool, redacted error class + reason."""
+    if mock_output is not None:
+        model_name: Optional[str] = "mock"
+    elif client is not None:
+        model_name = getattr(client, "model", None)
+    else:
+        model_name = None
+    if reason in ("ollama_unreachable", "model_timeout"):
+        endpoint_reachable: Optional[bool] = False
+    elif client is not None and mock_output is None:
+        endpoint_reachable = True
+    else:
+        endpoint_reachable = None
+    packet_char_estimate = sum(
+        len(str(ex.get("body_text") or "")) + len(str(ex.get("subject") or "")) for ex in excerpts
+    )
+    return {
+        "model_name": model_name,
+        "profile_id": None,
+        "prompt_char_count": len(prompt),
+        "packet_char_estimate": packet_char_estimate,
+        "endpoint_reachable": endpoint_reachable,
+        "error_class_redacted": error_class,
+        "reason": reason,
+    }
 
 
 def extract_action_candidates_from_raw(
@@ -327,6 +387,7 @@ def extract_action_candidates_from_raw(
     client: Optional[OllamaChatClient] = None,
     dry_run: bool = True,
     source: str = "both",
+    source_family_map: Optional[dict[str, str]] = None,
 ) -> dict[str, Any]:
     """Main entry point for P07.
 
@@ -364,13 +425,36 @@ def extract_action_candidates_from_raw(
 
     prompt = _build_prompt(excerpts)
 
+    # Authoritative source_family per ref: packet source_refs (thread/message/event) override the
+    # excerpt-derived families. No string guessing, no calendar fallback.
+    excerpt_family = {
+        str(ex["source_ref"]): str(ex.get("source_family") or "")
+        for ex in excerpts
+        if ex.get("source_ref")
+    }
+    known_family: dict[str, str] = {**excerpt_family, **(source_family_map or {})}
+
+    # No model was actually called — never report "model returned no output".
+    if client is None and mock_output is None:
+        return {
+            "produced": 0, "accepted": 0, "rejected": 0, "persisted": 0, "would_persist": 0,
+            "dry_run": dry_run, "source": source, "candidates": [],
+            "rejections": [{"reason": "no_client_constructed"}],
+            "note": "no_model_client",
+            "diagnostics": _build_diagnostics(
+                reason="no_client_constructed", client=client, mock_output=mock_output,
+                prompt=prompt, excerpts=excerpts, error_class=None,
+            ),
+        }
+
     # Try up to N times (the repair helper handles appending instructions)
     raw_json: Optional[str] = None
     last_parse_error: Optional[str] = None
     error_class: Optional[str] = None
+    is_timeout = False
     final_report: Optional[dict[str, Any]] = None
     for attempt in range(3):
-        raw_json, err = _run_with_retry_repair(
+        raw_json, err, tmo = _run_with_retry_repair(
             client=client,
             prompt=prompt,
             mock_output=mock_output
@@ -379,8 +463,11 @@ def extract_action_candidates_from_raw(
             max_attempts=1,  # single shot per outer attempt; repair is in the helper
         )
         error_class = err or error_class
+        is_timeout = is_timeout or tmo
         if not raw_json:
-            last_parse_error = "model returned no output"
+            # Don't clobber a prior invalid-JSON error from an earlier attempt.
+            if last_parse_error is None:
+                last_parse_error = "model returned no output"
             continue
         try:
             parsed = json.loads(raw_json)
@@ -396,6 +483,13 @@ def extract_action_candidates_from_raw(
                     rej = _validate_business_contract(cand)
                     if rej:
                         rejections.append({"reason": rej, "candidate": cand.model_dump()})
+                        continue
+                    # Every cited source_ref must resolve to a real packet/excerpt ref + family.
+                    unknown = [r for r in cand.source_refs if str(r) not in known_family]
+                    if unknown:
+                        rejections.append(
+                            {"reason": "source_ref_not_in_packet", "candidate": cand.model_dump()}
+                        )
                         continue
                     candidates.append(cand)
                 except Exception as ve:  # validation or business
@@ -450,31 +544,24 @@ def extract_action_candidates_from_raw(
                                 assignee_class=cand.assignee,
                                 **common,
                             )
-                        # Source refs link to the SAME persisted candidate_id. Each ref keeps the
-                        # source_family of ITS matching excerpt — never inferred as email just because
-                        # some other excerpt is email.
+                        # Source refs link to the SAME persisted candidate_id. The source_family is
+                        # the authoritative family for THAT ref (packet source_refs / excerpt), never
+                        # inferred from the ref string. (Acceptance already rejected unknown refs.)
                         for ref in cand.source_refs:
                             matched = None
                             for ex in excerpts:
-                                if str(ex.get("source_ref")) == str(ref) or ref in str(
-                                    ex.get("source_ref", "")
-                                ):
+                                if str(ex.get("source_ref")) == str(ref):
                                     matched = ex
                                     break
                             body = (matched.get("body_text") or matched.get("subject")) if matched else None
                             evidence = _truncate(body, 400) if body else None
-                            source_family = (matched.get("source_family") if matched else None) or (
-                                "email_message_raw_content"
-                                if "email" in str(ref).lower()
-                                else "calendar_event_raw_content"
-                            )
                             s.upsert_candidate_source_ref(
                                 source_ref_id=hashlib.sha256(
                                     f"{candidate_id}|{ref}".encode()
                                 ).hexdigest()[:24],
                                 candidate_type=cand.candidate_type,
                                 candidate_id=candidate_id,
-                                source_family=source_family,
+                                source_family=known_family.get(str(ref), "unknown"),
                                 source_ref_hash=ref,
                                 evidence_redacted=evidence,
                             )
@@ -483,6 +570,11 @@ def extract_action_candidates_from_raw(
                         # best effort; do not fail the whole run on one persist
                         continue
 
+            reason = _diagnostic_reason(
+                client=client, mock_output=mock_output, error_class=error_class,
+                is_timeout=is_timeout, produced=len(parsed), accepted=len(candidates),
+                last_parse_error=None,
+            )
             final_report = {
                 "produced": len(parsed),
                 "accepted": len(candidates),
@@ -493,6 +585,10 @@ def extract_action_candidates_from_raw(
                 "source": source,
                 "candidates": [c.model_dump() for c in candidates],
                 "rejections": rejections,
+                "diagnostics": _build_diagnostics(
+                    reason=reason, client=client, mock_output=mock_output, prompt=prompt,
+                    excerpts=excerpts, error_class=error_class,
+                ),
             }
             break
         except Exception as je:
@@ -503,25 +599,13 @@ def extract_action_candidates_from_raw(
                 + f"\n\nPREVIOUS OUTPUT FAILED TO PARSE: {last_parse_error}. Output ONLY corrected JSON array per schema."
             )
 
-    # All attempts failed (or no success path taken)
+    # All attempts failed (or no success path taken) — classify the no-output reason.
     if final_report is not None:
         return final_report
 
-    # Safe diagnostics for a no-output run (type names / counts / bools only — no raw body/URL/token).
-    if mock_output is not None:
-        model_name: Optional[str] = "mock"
-    elif client is not None:
-        model_name = getattr(client, "model", None)
-    else:
-        model_name = None
-    if error_class in _UNREACHABLE_ERROR_CLASSES:
-        endpoint_reachable: Optional[bool] = False
-    elif client is not None:
-        endpoint_reachable = True  # reached the daemon but output was unusable
-    else:
-        endpoint_reachable = None  # no live client was attempted
-    packet_char_estimate = sum(
-        len(str(ex.get("body_text") or "")) + len(str(ex.get("subject") or "")) for ex in excerpts
+    reason = _diagnostic_reason(
+        client=client, mock_output=mock_output, error_class=error_class, is_timeout=is_timeout,
+        produced=0, accepted=0, last_parse_error=last_parse_error,
     )
     return {
         "produced": 0,
@@ -531,14 +615,10 @@ def extract_action_candidates_from_raw(
         "candidates": [],
         "rejections": [{"reason": last_parse_error or "model_unavailable_or_invalid_output"}],
         "note": "exhausted retries",
-        "diagnostics": {
-            "model_name": model_name,
-            "profile_id": None,
-            "prompt_char_count": len(prompt),
-            "packet_char_estimate": packet_char_estimate,
-            "endpoint_reachable": endpoint_reachable,
-            "error_class_redacted": error_class,
-        },
+        "diagnostics": _build_diagnostics(
+            reason=reason, client=client, mock_output=mock_output, prompt=prompt,
+            excerpts=excerpts, error_class=error_class,
+        ),
     }
 
 
@@ -597,6 +677,13 @@ def extract_actions_for_packet(
     email_packet = {"content": {"threads": threads}} if threads else None
     calendar_packet = {"content": {"events": events}} if events else None
 
+    # Authoritative source_family per ref comes from the packet's own source_refs (thread/message/event).
+    source_family_map = {
+        str(sr["source_ref"]): str(sr["source_family"])
+        for sr in (packet.get("source_refs") or [])
+        if sr.get("source_ref") and sr.get("source_family")
+    }
+
     report = extract_action_candidates_from_raw(
         raw_email_packet=email_packet,
         raw_calendar_packet=calendar_packet,
@@ -607,6 +694,7 @@ def extract_actions_for_packet(
         dry_run=dry_run,
         source="both",
         max_items=max_items,
+        source_family_map=source_family_map,
     )
     report["extracted"] = True
     report["packet_id"] = packet.get("packet_id")
