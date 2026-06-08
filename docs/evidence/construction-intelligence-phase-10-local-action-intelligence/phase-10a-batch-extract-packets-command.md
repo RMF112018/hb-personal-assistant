@@ -8,7 +8,7 @@ Date: 2026-06-08 · Local-only · Dry-run default · Capped apply · No external
 | --- | --- |
 | Orchestrator | `construction/second_brain/local_ai/batch_extraction.py::run_batch_extraction` |
 | Extraction-layer cap/dedup | `raw_action_intelligence.py` — `max_persist` + `existing_stable_keys` params; report `skipped_existing` + `persisted_stable_keys` |
-| CLI command | `cli/second_brain.py` — `phase-10 extract-packets` |
+| CLI command | `cli/second_brain.py` — `extract-packets` |
 | Tests | `tests/test_phase_10a_batch_extraction.py` (14 cases) |
 
 ## Required CLI behavior — results
@@ -67,12 +67,12 @@ pytest — batch_extraction (14) + packet_extraction_safety + raw_action_intelli
 
 ```bash
 # Dry-run 50:
-hb-assistant second-brain phase-10 extract-packets \
+hb-assistant second-brain extract-packets \
   --source email --limit 50 --dry-run --summary --db "$DB" --timeout-seconds 180 --json \
   | tee /tmp/phase10a_batch_command_dryrun_50.json
 
 # Controlled apply (cap 10):
-hb-assistant second-brain phase-10 extract-packets \
+hb-assistant second-brain extract-packets \
   --source email --limit 50 --apply --max-persist 10 --summary --db "$DB" \
   --timeout-seconds 180 --json | tee /tmp/phase10a_batch_command_apply_10.json
 

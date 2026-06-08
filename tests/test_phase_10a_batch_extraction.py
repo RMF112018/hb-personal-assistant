@@ -274,7 +274,7 @@ def test_cli_apply_without_max_persist_exits_2() -> None:
         db = str(Path(td) / "b.db")
         ConstructionStore(db_path=db)
         res = runner.invoke(
-            app, ["phase-10", "extract-packets", "--source", "email", "--apply", "--db", db, "--json"]
+            app, ["extract-packets", "--source", "email", "--apply", "--db", db, "--json"]
         )
         assert res.exit_code == 2, res.output
         assert json.loads(res.output)["error"] == "apply_requires_max_persist"
@@ -286,7 +286,7 @@ def test_cli_unsupported_source_exits_2() -> None:
         ConstructionStore(db_path=db)
         res = runner.invoke(
             app,
-            ["phase-10", "extract-packets", "--source", "calendar", "--db", db, "--no-client", "--json"],
+            ["extract-packets", "--source", "calendar", "--db", db, "--no-client", "--json"],
         )
         assert res.exit_code == 2, res.output
         assert "unsupported_source" in json.loads(res.output)["error"]
@@ -300,7 +300,7 @@ def test_cli_dry_run_default_writes_nothing() -> None:
         # --no-client (test mode) + default dry-run: structural wiring, zero writes.
         res = runner.invoke(
             app,
-            ["phase-10", "extract-packets", "--source", "email", "--limit", "5", "--summary",
+            ["extract-packets", "--source", "email", "--limit", "5", "--summary",
              "--no-artifact", "--db", db, "--no-client", "--json"],
         )
         assert res.exit_code == 0, res.output

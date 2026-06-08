@@ -275,7 +275,7 @@ def run_batch_extraction(
     ][:10]
 
     payload: dict[str, Any] = {
-        "command": "second-brain phase-10 extract-packets",
+        "command": "second-brain extract-packets",
         "ok": True,
         "applied": not dry_run,
         "source": source,

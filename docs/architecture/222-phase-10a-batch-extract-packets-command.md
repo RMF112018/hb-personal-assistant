@@ -10,7 +10,7 @@ Manual loop validation proved the single-packet `extract-packet` path is viable 
 dry-run produced 51 / accepted 50 / would_persist 45, 100% review-gated). The next step is to
 operationalize it: a first-class batch command with a dry-run-first / capped-apply workflow, aggregate
 summary reporting, duplicate skipping, and the same no-raw / no-writeback guardrails. This adds
-`second-brain phase-10 extract-packets` and a reusable orchestrator. No schema/migration/contract
+`second-brain extract-packets` and a reusable orchestrator. No schema/migration/contract
 change.
 
 ## Decision
@@ -42,7 +42,7 @@ combining unrelated records.
   <timestamp>.json`) unless `--no-artifact`; the path is returned in the response. Best-effort (an
   unwritable dir never fails the run).
 
-### CLI — `phase-10 extract-packets`
+### CLI — `extract-packets`
 Defaults to dry-run; `--apply` requires `--max-persist` (fail-closed exit 2 otherwise). Mirrors
 `extract-packet` options (`--db`, `--model`, `--profile`, `--provider`, `--timeout-seconds`) plus
 `--source`, `--limit`, `--offset`, `--only-unprocessed`, `--thread-ref-file`, `--summary`,

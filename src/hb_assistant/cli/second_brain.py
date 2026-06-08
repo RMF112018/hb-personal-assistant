@@ -7837,8 +7837,8 @@ def phase_10_extract_packet(
         raise typer.Exit(1) from None
 
 
-@phase_10_app.command("extract-packets")
-def phase_10_extract_packets(
+@app.command("extract-packets")
+def second_brain_extract_packets(
     source: str = typer.Option(  # noqa: B008
         "email", "--source", help="Batch source (email only for now; calendar/related fail closed)."
     ),
@@ -7898,7 +7898,7 @@ def phase_10_extract_packets(
     )
     from hb_assistant.construction.store import ConstructionStore
 
-    cmd = "second-brain phase-10 extract-packets"
+    cmd = "second-brain extract-packets"
     try:
         if not dry_run and max_persist is None:
             payload = {
