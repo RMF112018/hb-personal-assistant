@@ -168,3 +168,14 @@ For the full phased plan and research, see `docs/plans/my-pa-phase-0/`.
 
 **Phase 10A Prompt 09 (2026-06-07):** MCP and Obsidian Raw Capability. Made raw_* packet types first-class (PACKET_TYPES + orchestrator delegation to P06 canonical builders + raw_daily composite). Wired mcp_allow_raw_content (policy + permissive) into mcp/policy/broker/wrappers/resources/prompts/registry/proof/audit (early deny with "raw_content_disabled", allow_raw bound, raw markers + posture in envelopes/receipts/status/audits/proofs; no-raw proofs respect config). Wired obsidian_allow_raw_content into daily_brief/output + new phase-10 obsidian-raw-export CLI (dry default; --apply writes bounded raw note with frontmatter/markers/provenance only when enabled; fences preserved when disabled). New focused config-behavior test (default disabled vs enabled for MCP/Obsidian, visibility, fail-closed). Arch 216 + 00-README line. See 216-....
 **Phase 10A Prompt 10 (2026-06-07):** Validation and Closeout. Executed full matrix (tests, dev raw sync with include-raw, raw packet builds, local extraction/demo, metadata baseline compare). Evidence populated under construction-intelligence-phase-10a-raw-content-enabled-local-intelligence/ (closeout.md + JSONs). Raw enabled (packets raw_content_included=1, V42 counts), useful extraction path shown (specific body -> candidate), no writeback (guards + proofs). Arch 217 + 00-README line. Arch 217 + closeout. See 217-....
+
+**Phase 10A Candidate Review CLI (package; 2026-06-08):** Operator triage of persisted local action candidates via `second-brain review …` (list/show/summary/accept/ignore/reject/snooze/edit/export). Records:
+- **223** — V43 candidate-review schema migration (snooze/edit/audit columns; additive ALTER, version-gated).
+- **224** — candidate review service layer (`local_ai/candidate_review.py`; ignore→suppressed normalization; audit-insert fix).
+- **225** — store candidate read/update API (get_*/list_review_candidates; `set_…`→`update_candidate_review_state` rename; no-swallow audit insert).
+- **226** — read-only review CLI verbs (list/show/summary).
+- **227** — review action CLI verbs (accept/ignore/reject; CLI-side type resolution).
+- **228** — snooze/edit/export + batch (dry-run default, `--apply`).
+- **229** — consolidated targeted test suite (rename to `test_phase_10a_candidate_review_cli.py`; sorting/snooze-visibility/guard-zero).
+- **230** — no-raw / no-writeback proof coverage (AST import scan + persisted-cell scan).
+- **231** — docs, runbook, and captured evidence (this closeout). See `docs/runbooks/phase-10a-candidate-review-cli-runbook.md` and `docs/evidence/construction-intelligence-phase-10a-candidate-review-cli/`.
