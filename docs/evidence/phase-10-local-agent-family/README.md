@@ -161,7 +161,7 @@ remain, independent of this branch.
 
 | Family | Evidence | Verdict |
 |--------|----------|---------|
-| Calendar meeting-prep | Dev `calendar_event_raw_content`=500 but HTML-only bodies, no project_key/source_ref, join-urls | Deferred — needs a normalization slice first (next strongest) |
+| Calendar meeting-prep | Dev `calendar_event_index`=500 / `calendar_event_raw_content`=500, HTML-only bodies, join-urls, no project_key/source_ref | **Implemented (Checkpoint 3, below)** — normalization slice + deterministic fallbacks shipped |
 | MCP packet builder | infra present, `claude_context_packets`=0 | Deferred — build-on-demand, lower ROI now |
 | Obsidian workflows | safe writer + path policy exist, `obsidian_note_index`=0 | Deferred |
 | File/document enrichment | `files`=0, no populated extracted-text | **Data-blocked** |
@@ -186,3 +186,78 @@ Addresses two audit findings; no Checkpoint 3 scope:
   15, not the stated 16); this closeout adds the one R1 regression test, bringing `procore_digest`
   to 16 and Checkpoint 2 to **25** — now matching reality. Historical Phase-08A/09 frozen evidence
   (`agent_count: 9`) is intentionally left unchanged (point-in-time snapshots, not test-enforced).
+
+## Checkpoint 3 — Calendar meeting-prep (this run)
+
+Adds calendar as the third source family: `second-brain calendar-prep build` — deterministic,
+bounded, source-linked, dry-run-default meeting-prep candidates that feed the same
+`daily_brief_action_candidates` convergence table (section `calendar`). No calendar mutation, no
+Graph/external writeback, no cloud LLM.
+
+### Calendar DB readiness (read-only probe, Dev DB V43)
+
+```
+calendar_event_index: 500   calendar_event_raw_content: 500 (1:1 via event_index_id)
+body_text nonempty: 0/500   body_html nonempty: ~460/500   → HTML→text normalization required
+join_url present: 404/500   → stripped/flagged, never persisted
+project_key present: 0/500  source_ref_hash present: 0/500 → deterministic fallback required
+window @ as-of 2026-06-08, lookahead 14d: 39 events in-window (138 future, 5 cancelled, 0 private)
+```
+
+### What was implemented
+
+- New read-only reader `list_calendar_prep_source_events` — safe redacted fields
+  (`subject_redacted`, `location_redacted`, organizer/attendee **domains**, start/end, online flag)
+  + attendee count and DISTINCT domains; excludes cancelled/private; never subjects/bodies/join
+  URLs/attendee names/emails.
+- New builder `local_ai/calendar_prep.py::build_calendar_prep_candidates` — deterministic window +
+  ordering (`now_utc` passed in, no clock read); per-event enrichment **composes** the existing
+  bounded `build_calendar_event_action_packet` (HTML→text, join-URL / dial-in / passcode / Teams
+  boilerplate stripped, attendees→domains) plus a calendar-scoped `_safe_excerpt` pass that also
+  drops scheme-less domain/link tokens and email addresses; deterministic fallbacks
+  `source_ref = cal:<sha256(event_index_id)>` and `project_key → __unassigned__`.
+- CLI `calendar-prep build` mirrors `procore-digest build` (`--db --limit --lookahead-days --as-of
+  --dry-run/--apply --max-persist --summary --json`, optional `--synthesize`).
+- Registry: `calendar_prep_agent` added → **13 agents** (`agents status`: registry_valid,
+  tool_policy_valid, violations 0).
+
+### Live proof (copy of Dev DB; scratch copy removed after)
+
+```
+calendar-prep build --lookahead-days 14 --limit 25 --as-of 2026-06-08T00:00:00+00:00 --dry-run
+  → events_in_window=39, events_considered=25, would_persist=25, persisted=0, applied=false
+  → daily_brief_action_candidates(calendar) rows after dry-run: 0
+
+--apply --max-persist 8 → applied=true, persisted=8 (capped); re-apply → skipped_existing=8 (idempotent)
+guardrail query: 13 _P10_GUARDS columns over section='calendar' rows = 0 (all)
+calendar_event_index / calendar_event_raw_content counts: 500 / 500 (unchanged — no mutation)
+redaction scan (persisted rows + --summary excerpts): 0 http/URL, 0 teams/zoom domains,
+  0 email-shaped tokens, 0 html tags, 0 meeting-id/passcode literals, no raw subject
+```
+
+### Tests (Checkpoint 3)
+
+- `tests/test_phase_10_calendar_meeting_prep.py` (24) — window excludes cancelled/private/far-future,
+  deterministic source-ref + project fallback, missing-source-ref skipped-closed, join-URL / dial-in /
+  passcode / meeting-id / scheme-less-link / email redaction, HTML→bounded text, oversized body
+  bounded, no full attendee list / emails, raw subject never emitted, dry-run zero writes, apply
+  needs flag + cap, max-persist cap, idempotency, guard cols 0, persisted rows carry no raw content,
+  no calendar-table mutation, synthesis off-by-default + no-client + malformed-output fail-closed +
+  redacted-input-only, daily-brief surfaces `calendar` section, CLI wiring (dry-run default,
+  non-summary drops excerpts, apply needs cap, capped apply).
+- Registry count assertions updated to **13**; `tests/test_agent_registry.py` +
+  `tests/test_second_brain_agents_cli.py` green.
+
+Targeted suite green (87 tests across Checkpoint 1/2/3 + registry); `ruff` + `ruff format` + `mypy`
+clean on changed modules. The two pre-existing clean-HEAD failures
+(`test_email_body_indexing::test_capture_encrypts_and_stores_ref_only`,
+`test_phase_10_email_task_extraction::test_commitment_persists...`) remain, independent of this
+branch (confirmed by re-running with this work stashed). A third environment-dependent failure
+(`test_calendar_event_indexing::test_raw_content_flag_produces_rows_and_counts`) also fails with this
+work stashed — it reads a shared `raw_content` policy state, unrelated to Checkpoint 3.
+
+## Checkpoint 3 status
+
+Experimental, **ready for audit / merge consideration**. No migration, no production/Dev DB mutation
+(copy only), no calendar/Graph/Procore/external writeback, no cloud LLM. Checkpoints 1 and 2
+preserved (regression green).

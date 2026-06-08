@@ -19,10 +19,11 @@ no-raw / no-writeback / dry-run-first guardrail.
 | Acceptance promotion | `phase-10 review-candidate --promote` | deterministic | candidate rows | `accepted_tasks` / `accepted_commitments` |
 | Follow-up watch | `follow-up-watch scan` | deterministic, no-clock | `accepted_*` + `candidate_source_refs` | `follow_up_watch_items` / `follow_up_status_events` |
 | Procore digest | `procore-digest build` | deterministic-first (optional synth) | `procore_action_signals` + text-intelligence read models | `daily_brief_action_candidates` (section `procore`) |
+| Calendar meeting-prep | `calendar-prep build` | deterministic-first (optional synth) | `calendar_event_index` + `calendar_event_attendees` + bounded `calendar_event_action_packet` | `daily_brief_action_candidates` (section `calendar`) |
 | Daily-brief synthesis | `daily-brief synthesize-candidates` | deterministic | `accepted_*` + `follow_up_watch_items` + `daily_brief_action_candidates` | `daily_brief_action_candidates` (sections `actions`/`waiting`/`follow_up`) |
 
-All five are registered in `resources/config/phase_08a_agent_registry.seed.yaml` (12 agents
-total: 9 required Phase-08A + 3 family entries; the extraction front-end reuses the existing
+All six are registered in `resources/config/phase_08a_agent_registry.seed.yaml` (13 agents
+total: 9 required Phase-08A + 4 family entries; the extraction front-end reuses the existing
 substrate). `second-brain agents status` validates the registry/tool policy (0 violations).
 
 ## Data flow (convergence)
@@ -31,6 +32,7 @@ substrate). `second-brain agents status` validates the registry/tool policy (0 v
 email_thread_raw_context ─ extract ─▶ task/commitment candidates ─ review --promote ─▶ accepted_*
                                                                                    │
 procore_action_signals ─ procore-digest ─▶ daily_brief_action_candidates(procore)  ├─ follow-up-watch ─▶ follow_up_watch_items
+calendar_event_index ─── calendar-prep ──▶ daily_brief_action_candidates(calendar)  │
                                                                                    ▼
                           daily-brief synthesize-candidates ──▶ daily_brief_action_candidates(actions/waiting/follow_up)
                                                                                    ▼
@@ -60,11 +62,37 @@ source-ref gate (no source refs → no persist); redaction (Procore digest never
 synthesis is fed only already-redacted aggregates, is in-memory (never persisted), and fails
 closed. No Microsoft 365 / Procore / external writeback; no cloud LLM; state stays local.
 
+## Checkpoint 3 — Calendar meeting-prep (this run)
+
+Adds calendar as the third source family. The Dev DB realities that shaped it (read-only probe):
+`calendar_event_index`=500 / `calendar_event_raw_content`=500 (1:1), bodies HTML-only
+(`body_text` empty, `body_html`≈460/500), `join_url` present 404/500, **`project_key` and
+`source_ref_hash` empty 0/500**.
+
+- **Normalization is composed, not reinvented.** `build_calendar_prep_candidates`
+  (`local_ai/calendar_prep.py`) discovers upcoming non-cancelled/non-private events from a new
+  read-only reader `list_calendar_prep_source_events` (safe redacted fields + attendee
+  count/DISTINCT domains only), windows them deterministically (`[as_of, as_of+lookahead_days)`),
+  and enriches each via the existing bounded `build_calendar_event_action_packet`
+  (HTML→text, Teams-boilerplate / join-URL / dial-in / passcode / meeting-id stripping,
+  attendees→domains). A calendar-scoped `_safe_excerpt` pass additionally drops scheme-less
+  domain/link tokens and email addresses the shared normalizer leaves behind (proven against the
+  live Dev DB copy).
+- **Deterministic fallbacks** for the missing columns: `source_ref = cal:<sha256(event_index_id)>`;
+  `project_key` falls back to `__unassigned__`. No raw subject is ever used — the candidate title is
+  the index `subject_redacted`.
+- **Persistence** is one rollup row per event into `daily_brief_action_candidates`
+  (section `calendar`, idempotent on `(brief_date, calendar, source_ref)`); the redacted body
+  excerpt lives only in the in-memory `--summary` JSON, never in a persisted row. The daily-brief
+  synthesis convergence surfaces the `calendar` section automatically (same generic mechanism as
+  `procore`).
+- **Guardrails proven** (Dev DB copy, then removed): dry-run zero writes; `--apply` fail-closed
+  without `--max-persist`; capped + idempotent; all 13 `_P10_GUARDS` columns = 0; `calendar_event_*`
+  source tables unchanged; no join URL / raw HTML / email / raw subject / token in any persisted row
+  or emitted excerpt.
+
 ## Dispositions (families not implemented this run, evidence-based)
 
-- **Calendar meeting-prep**: data present (Dev `calendar_event_raw_content`=500) but HTML-only
-  bodies, no `project_key`/`source_ref_hash`, join-urls to redact → needs a normalization slice
-  before it is source-stable. Deferred (next strong candidate).
 - **MCP packet builder / Obsidian workflows**: infra exists, tables empty
   (`claude_context_packets`=0, `obsidian_note_index`=0) → build-on-demand, no blocker but lower ROI now.
 - **File/document enrichment**: data-blocked (`files`=0, no `extracted_text` table populated).

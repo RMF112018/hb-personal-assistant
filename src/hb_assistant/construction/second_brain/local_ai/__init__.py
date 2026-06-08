@@ -13,6 +13,7 @@ from .batch_extraction import (
     UnsupportedBatchSourceError,
     run_batch_extraction,
 )
+from .calendar_prep import build_calendar_prep_candidates
 from .contracts import (
     PHASE_10_CONTRACT_FILES,
     PHASE_10_SEED_FILES,
@@ -136,6 +137,8 @@ __all__ = [
     "run_follow_up_watch_scan",
     # Phase 10: deterministic Procore action-signal digest (advisory, no writeback)
     "build_procore_action_digest",
-    # Phase 10: daily-brief candidate synthesis (unifies email + Procore families)
+    # Phase 10: deterministic calendar meeting-prep candidates (advisory, no writeback)
+    "build_calendar_prep_candidates",
+    # Phase 10: daily-brief candidate synthesis (unifies email + Procore + calendar families)
     "build_daily_brief_candidates",
 ]

@@ -149,3 +149,14 @@ agents:
     review_policy: advisory_only
     output_contract: agent_result
     receipt_required: true
+
+  - agent_id: calendar_prep_agent
+    phase_owner: "10A"
+    enabled: true
+    purpose: "Compose redacted calendar event index/raw read models into bounded, source-linked meeting-prep candidates and advisory daily-brief entries (deterministic-first, optional bounded synthesis, no calendar mutation, no Graph writeback)."
+    allowed_tool_groups: [status, retrieval_broker, local_apply, daily_brief]
+    denied_tool_groups: [arbitrary_sql, raw_filesystem, direct_graph_api, direct_procore_api, external_writeback]
+    default_model_profile: none
+    review_policy: advisory_only
+    output_contract: agent_result
+    receipt_required: true

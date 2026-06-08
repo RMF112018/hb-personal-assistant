@@ -165,6 +165,13 @@ procore_digest_app = typer.Typer(
 )
 app.add_typer(procore_digest_app, name="procore-digest")
 
+calendar_prep_app = typer.Typer(
+    name="calendar-prep",
+    help="Phase 10 deterministic calendar meeting-prep candidates (advisory; no calendar writeback).",
+    no_args_is_help=True,
+)
+app.add_typer(calendar_prep_app, name="calendar-prep")
+
 automation_app = typer.Typer(
     name="automation",
     help="Phase 08B automation health + observability (read-only status surface).",
@@ -8828,6 +8835,109 @@ def second_brain_procore_digest_build(
             for pv in payload.get("projects", []):
                 trimmed.append({k: v for k, v in pv.items() if k != "groups"})
             payload = {**payload, "projects": trimmed}
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(0)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        payload = {"command": cmd, "ok": False, "error": str(e)[:300]}
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(1) from None
+
+
+@calendar_prep_app.command("build")
+def second_brain_calendar_prep_build(
+    project: "str | None" = typer.Option(  # noqa: B008
+        None, "--project", help="Single project key (default: all events in window)."
+    ),
+    as_of: "str | None" = typer.Option(  # noqa: B008
+        None, "--as-of",
+        help="ISO-8601 UTC 'now' for the deterministic lookahead window / brief-date "
+        "(default: current UTC).",
+    ),
+    lookahead_days: int = typer.Option(  # noqa: B008
+        14, "--lookahead-days", help="Forward window in days from --as-of (events starting within)."
+    ),
+    limit: int = typer.Option(  # noqa: B008
+        50, "--limit",
+        help="Max upcoming events to consider (soonest-first; bounds output AND would-persist). "
+        "--max-persist is the separate hard cap on actual writes.",
+    ),
+    dry_run: bool = typer.Option(  # noqa: B008
+        True, "--dry-run/--apply",
+        help="Dry-run (default; zero writes). --apply persists, capped by --max-persist.",
+    ),
+    max_persist: "int | None" = typer.Option(  # noqa: B008
+        None, "--max-persist", help="REQUIRED with --apply: cap on ACTUAL persisted candidates."
+    ),
+    synthesize: bool = typer.Option(  # noqa: B008
+        False, "--synthesize",
+        help="Optional bounded local-model advisory narrative (off by default; in-memory only).",
+    ),
+    profile: str = typer.Option(  # noqa: B008
+        "default_extract", "--profile", help="Local model profile when --synthesize (default_extract)."
+    ),
+    model: "str | None" = typer.Option(  # noqa: B008
+        None, "--model", help="Override the synthesis model (default from profile: mistral-nemo:12b)."
+    ),
+    provider: str = typer.Option("ollama", "--provider", help="Local model provider (ollama)."),  # noqa: B008
+    timeout_seconds: "float | None" = typer.Option(  # noqa: B008
+        None, "--timeout-seconds", help="Override the synthesis model timeout."
+    ),
+    summary: bool = typer.Option(  # noqa: B008
+        False, "--summary",
+        help="Include the full per-event prep list (redacted excerpts) in the response.",
+    ),
+    db: "str | None" = typer.Option(None, "--db", help="Explicit SQLite path (tests/isolation)."),  # noqa: B008
+    json_out: bool = typer.Option(True, "--json", help="Emit JSON (default)."),  # noqa: B008
+) -> None:
+    """Build deterministic, source-linked calendar meeting-prep candidates (dry-run-first).
+
+    Discovers upcoming, non-cancelled, non-private events within the lookahead window and builds one
+    bounded, redacted prep candidate per event (join URLs / dial-in / passcodes stripped; attendees
+    reduced to counts + domains; never raw subjects/bodies). Defaults to dry-run (zero writes);
+    ``--apply`` is explicit and REQUIRES ``--max-persist``, capping idempotent inserts into
+    daily_brief_action_candidates (section ``calendar``). ``--synthesize`` adds an optional, in-memory
+    advisory narrative fed ONLY redacted aggregates. No calendar/external writeback, no cloud LLM.
+    """
+    from datetime import datetime as _dt
+    from datetime import timezone as _tz
+
+    from hb_assistant.construction.second_brain.local_ai import build_calendar_prep_candidates
+    from hb_assistant.construction.store import ConstructionStore
+
+    cmd = "second-brain calendar-prep build"
+    try:
+        if not dry_run and max_persist is None:
+            payload = {
+                "command": cmd, "ok": False, "applied": False,
+                "error": "apply_requires_max_persist",
+                "guardrails": {"apply_requires_max_persist": True},
+            }
+            typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+            raise typer.Exit(2)
+
+        now_utc = as_of or _dt.now(_tz.utc).isoformat()
+        store = ConstructionStore(db_path=db)
+
+        client = None
+        if synthesize:
+            from hb_assistant.construction.second_brain.local_ai import resolve_local_model_client
+
+            client, _resolved, _reason = resolve_local_model_client(
+                provider=provider, profile_id=profile, model=model, timeout_seconds=timeout_seconds,
+            )
+            # client may be None → prep reports synthesis ok=False (deterministic prep unaffected).
+
+        payload = build_calendar_prep_candidates(
+            store=store, now_utc=now_utc, project_key=project, limit=limit,
+            lookahead_days=lookahead_days, dry_run=dry_run, max_persist=max_persist,
+            synthesize=synthesize, client=client,
+        )
+        if not summary:
+            # Drop the verbose per-event prep list (incl. redacted excerpts) unless --summary;
+            # safe counters + synthesis remain.
+            payload = {**payload, "events": []}
         typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
         raise typer.Exit(0)
     except typer.Exit:

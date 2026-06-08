@@ -3,8 +3,8 @@
 Proves the nine required A01-A09 agents load and validate against the registry/tool/
 model profile contracts, that tool allow/deny rules hold, that both evidence proofs
 pass, and that nothing leaks raw content. The registry is intentionally extensible
-(the contract's required set is a subset check); Phase 10 adds three local-agent-family
-entries, so the seed now carries 12 agents while still containing all 9 required ones.
+(the contract's required set is a subset check); Phase 10 adds four local-agent-family
+entries, so the seed now carries 13 agents while still containing all 9 required ones.
 """
 
 from __future__ import annotations
@@ -44,6 +44,7 @@ _PHASE_10_FAMILY_AGENTS = {
     "email_action_extraction_agent",
     "follow_up_watch_agent",
     "procore_digest_agent",
+    "calendar_prep_agent",
 }
 _EXPECTED_AGENTS = _REQUIRED_AGENTS | _PHASE_10_FAMILY_AGENTS
 
@@ -51,7 +52,7 @@ _EXPECTED_AGENTS = _REQUIRED_AGENTS | _PHASE_10_FAMILY_AGENTS
 def test_seed_loads_expected_enabled_agents() -> None:
     reg = load_agent_registry()
     assert reg.version == "phase_08a_agent_registry-v1"
-    assert len(reg.agents) == 12
+    assert len(reg.agents) == 13
     ids = {a.agent_id for a in reg.agents}
     assert ids == _EXPECTED_AGENTS
     assert _REQUIRED_AGENTS <= ids  # all 9 required still present (subset check)
@@ -80,8 +81,8 @@ def test_registry_validates_against_contracts() -> None:
     assert report["valid"] is True
     assert report["violations"] == []
     assert report["missing_agents"] == []
-    assert report["agent_count"] == 12
-    assert report["enabled_count"] == 12
+    assert report["agent_count"] == 13
+    assert report["enabled_count"] == 13
 
 
 def test_no_agent_allows_a_globally_denied_or_self_denied_group() -> None:
@@ -110,7 +111,7 @@ def test_registry_proof_passes() -> None:
     proof = build_agent_registry_proof()
     assert proof["proof"] == "phase_08a_agent_registry"
     assert proof["proof_passed"] is True
-    assert proof["agent_count"] == 12
+    assert proof["agent_count"] == 13
     assert proof["required_agents_present"] is True
     assert proof["all_fields_complete"] is True
     assert proof["model_profiles_explicit"] is True
@@ -125,7 +126,7 @@ def test_tool_policy_proof_passes() -> None:
     proof = build_agent_tool_policy_proof()
     assert proof["proof"] == "phase_08a_agent_tool_policy"
     assert proof["proof_passed"] is True
-    assert len(proof["per_agent"]) == 12
+    assert len(proof["per_agent"]) == 13
     assert "external_writeback" in proof["denied_tool_groups_global"]
     for entry in proof["per_agent"]:
         assert entry["allowed_valid"] is True

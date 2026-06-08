@@ -1626,6 +1626,69 @@ class ConstructionStore:
             rows.append(rec)
         return rows
 
+    def list_calendar_prep_source_events(
+        self,
+        *,
+        project_key: Optional[str] = None,
+        include_cancelled: bool = False,
+        include_private: bool = False,
+        limit: int = 100000,
+    ) -> list[dict[str, Any]]:
+        """Read safe, redacted calendar-event metadata for Phase 10 meeting-prep.
+
+        Returns only already-redacted/hashed fields from ``calendar_event_index`` plus aggregate
+        attendee facts (count + DISTINCT domains) from ``calendar_event_attendees`` — never subjects,
+        bodies, join URLs, attendee names, or emails. Cancelled/private events are excluded by
+        default. Ordered by start time; time-window selection is done by the caller (deterministic,
+        no clock read here)."""
+        conn = get_connection(self._db_path)
+        clauses: list[str] = []
+        params: list[Any] = []
+        if not include_cancelled:
+            clauses.append("i.is_cancelled = 0")
+        if not include_private:
+            clauses.append("i.is_private = 0")
+        if project_key is not None:
+            clauses.append("i.project_key = ?")
+            params.append(project_key)
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        params.append(limit)
+        sql = f"""
+            SELECT i.event_index_id, i.subject_redacted, i.location_redacted, i.organizer_domain,
+                   i.start_datetime_utc, i.end_datetime_utc, i.is_online_meeting,
+                   i.online_meeting_provider, i.project_key,
+                   COUNT(a.id) AS attendee_count,
+                   group_concat(DISTINCT a.attendee_domain) AS participant_domains_csv
+            FROM calendar_event_index i
+            LEFT JOIN calendar_event_attendees a ON a.event_index_id = i.event_index_id
+            {where}
+            GROUP BY i.event_index_id
+            ORDER BY i.start_datetime_utc, i.event_index_id
+            LIMIT ?
+        """
+        keys = (
+            "event_index_id",
+            "subject_redacted",
+            "location_redacted",
+            "organizer_domain",
+            "start_datetime_utc",
+            "end_datetime_utc",
+            "is_online_meeting",
+            "online_meeting_provider",
+            "project_key",
+            "attendee_count",
+            "participant_domains_csv",
+        )
+        rows: list[dict[str, Any]] = []
+        for row in conn.execute(sql, tuple(params)):
+            rec = dict(zip(keys, row, strict=True))
+            csv = rec.pop("participant_domains_csv") or ""
+            rec["participant_domains"] = sorted({d for d in csv.split(",") if d})[:20]
+            rec["is_online_meeting"] = bool(rec["is_online_meeting"])
+            rec["attendee_count"] = int(rec["attendee_count"] or 0)
+            rows.append(rec)
+        return rows
+
     def upsert_calendar_project_match_candidate(
         self,
         *,
