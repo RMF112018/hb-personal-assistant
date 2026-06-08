@@ -272,25 +272,69 @@ def test_unknown_source_ref_is_rejected() -> None:
         assert s.list_task_candidates() == []
 
 
+def _valid_object_root() -> str:
+    return json.dumps({"candidates": [json.loads(_candidate())[0]]})
+
+
+def test_object_root_output_is_accepted_and_persists() -> None:
+    with tempfile.TemporaryDirectory() as td:
+        s = ConstructionStore(db_path=str(Path(td) / "obj.db"))
+        _seed_thread(s)
+        pkt = build_email_thread_action_packet(thread_ref="t1", store=s)
+        rep = extract_actions_for_packet(
+            packet=pkt, store=s, dry_run=False, mock_output=_valid_object_root()
+        )
+        assert rep["produced"] == 1 and rep["accepted"] == 1 and rep["persisted"] == 1
+        assert rep["diagnostics"]["root_type"] == "object"
+        assert rep["diagnostics"]["has_candidates_key"] is True
+        assert rep["diagnostics"]["parsed_candidate_count"] == 1
+        assert len(s.list_task_candidates()) == 1
+
+
+def test_raw_array_output_still_accepted_for_backward_compat() -> None:
+    with tempfile.TemporaryDirectory() as td:
+        s = ConstructionStore(db_path=str(Path(td) / "arr.db"))
+        _seed_thread(s)
+        pkt = build_email_thread_action_packet(thread_ref="t1", store=s)
+        rep = extract_actions_for_packet(packet=pkt, store=s, dry_run=False, mock_output=_candidate())
+        assert rep["accepted"] == 1 and rep["persisted"] == 1
+        assert rep["diagnostics"]["root_type"] == "array"
+
+
 def test_diagnostic_reasons_distinguish_failure_modes() -> None:
     with tempfile.TemporaryDirectory() as td:
         s = ConstructionStore(db_path=str(Path(td) / "dr.db"))
         _seed_thread(s)
         pkt = build_email_thread_action_packet(thread_ref="t1", store=s)
-        empty = extract_actions_for_packet(packet=pkt, store=s, dry_run=True, mock_output="[]")
-        assert empty["diagnostics"]["reason"] == "empty_model_output"
+        # Object-root empty + raw-array empty → valid empty result, NOT empty_model_output.
+        obj_empty = extract_actions_for_packet(
+            packet=pkt, store=s, dry_run=True, mock_output='{"candidates":[]}'
+        )
+        assert obj_empty["produced"] == 0 and obj_empty["diagnostics"]["reason"] == "no_candidates"
+        arr_empty = extract_actions_for_packet(packet=pkt, store=s, dry_run=True, mock_output="[]")
+        assert arr_empty["diagnostics"]["reason"] == "no_candidates"
+        # Object without candidates/items → invalid envelope (not empty_model_output).
+        envelope = extract_actions_for_packet(packet=pkt, store=s, dry_run=True, mock_output="{}")
+        assert envelope["diagnostics"]["reason"] == "invalid_output_envelope"
+        # Truly empty raw output → empty_model_output.
+        truly_empty = extract_actions_for_packet(packet=pkt, store=s, dry_run=True, mock_output="")
+        assert truly_empty["diagnostics"]["reason"] == "empty_model_output"
+        # Unparseable → invalid_json_output.
         bad = extract_actions_for_packet(packet=pkt, store=s, dry_run=True, mock_output="{not json")
         assert bad["diagnostics"]["reason"] == "invalid_json_output"
-        generic = json.dumps([{
+        # Parsed but all rejected → schema_rejected_output.
+        generic = json.dumps({"candidates": [{
             "candidate_type": "task", "title": "Analyze the data and clean up the fields",
             "project_key": "P", "assignee": "user", "due_at": None, "urgency": "low",
             "waiting_state": "unknown", "source_refs": ["m1"], "confidence": 0.6,
             "reason": "Perform data analysis and normalize the spreadsheet fields.",
             "safety_category": "normal", "recommended_next_action": "review",
             "review_status": "pending", "external_action_requires_approval": True,
-        }])
+        }]})
         rejected = extract_actions_for_packet(packet=pkt, store=s, dry_run=True, mock_output=generic)
         assert rejected["diagnostics"]["reason"] == "schema_rejected_output"
+        # Diagnostics never carry raw response/body/URL.
+        assert "http" not in json.dumps(envelope["diagnostics"]).lower()
 
 
 def test_cli_live_attempt_reports_model_name_not_null() -> None:

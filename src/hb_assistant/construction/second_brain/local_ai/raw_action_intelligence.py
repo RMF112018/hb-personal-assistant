@@ -55,9 +55,11 @@ from hb_assistant.construction.store import ConstructionStore
 STRICT_ACTION_SYSTEM = (
     "You are a precise, grounded action extraction engine for construction projects.\n"
     "You will be shown bounded raw excerpts from email threads or calendar events.\n"
-    "Your ONLY job is to output a JSON array (or [] if none) of ActionCandidate objects.\n"
-    "Each object MUST exactly match the Phase 10 ActionCandidate schema (see field list below).\n"
-    "Output NOTHING except the JSON array. No markdown, no explanations, no prose before or after.\n\n"
+    "Output ONE JSON object with a top-level `candidates` array of ActionCandidate objects.\n"
+    "For no actions, output exactly:\n"
+    '{"candidates":[]}\n'
+    "Each candidate object MUST exactly match the Phase 10 ActionCandidate schema (field list below).\n"
+    "Output NOTHING except the single JSON object. No markdown, no explanations, no prose.\n\n"
     "Required/important fields (exact names and types):\n"
     "- candidate_type: one of task|commitment|decision|question|meeting_prep|risk_signal|relationship\n"
     "- title: short, concrete, max 240 chars\n"
@@ -70,17 +72,17 @@ STRICT_ACTION_SYSTEM = (
     "- confidence: number 0.0-1.0\n"
     "- reason: short grounded justification, max 1000 chars. Must cite concrete signals from the excerpts.\n"
     "- safety_category: normal|contract|legal|financial|payment|claim|entitlement|schedule|safety\n"
-    "- recommended_next_action: review|accept|snooze|ignore\n"
+    "- recommended_next_action: review|accept|snooze|ignore|draft_followup|prepare_meeting|prepare_packet\n"
     "- model_name, model_profile_id, prompt_template_version, input_window_hash: strings or null (use null if unknown)\n"
     "- review_status: pending (always start as pending)\n"
     "- external_action_requires_approval: true (always)\n\n"
     "Business rules you MUST follow:\n"
     "- Only emit concrete, project-deliverable actions (e.g. 'Submit revised RFI sketch by EOD', 'Confirm vendor commitment for material delivery on 2026-06-12').\n"
     "- NEVER emit generic data-cleaning, data-analysis, 'normalize the data', 'analyze trends', 'clean up the spreadsheet', 'process the information', or similar non-actionable meta-work.\n"
-    "- If the content only contains analysis requests without a clear deliverable task or commitment, output [].\n"
+    "- If the content only contains analysis requests without a clear deliverable task or commitment, output {\"candidates\":[]}.\n"
     "- source_refs must be taken from the provided excerpts (e.g. message ids, conversation hashes, event ids).\n"
     "- reason must be directly supported by the raw excerpt text shown.\n\n"
-    "If the input contains no actionable project work, output exactly [].\n"
+    "If the input contains no actionable project work, output exactly {\"candidates\":[]}.\n"
 )
 
 _MAX_EXCERPT_CHARS = 1200
@@ -229,8 +231,15 @@ def _build_prompt(excerpts: list[dict[str, Any]]) -> str:
             lines.append(f"when: {ex.get('start')} - {ex.get('end')}")
         lines.append("")
     lines.append(
-        "TASK: Output ONLY a JSON array of ActionCandidate objects (or []).\n"
-        "Follow the schema and business rules in the system prompt exactly."
+        "TASK: Output ONE JSON object with a top-level `candidates` array (use {\"candidates\":[]} if "
+        "none). Follow the schema and business rules in the system prompt exactly.\n"
+        "Example shape (placeholder values; use real source_refs from the excerpts above):\n"
+        '{"candidates":[{"candidate_type":"task","title":"Submit revised RFI sketch by Friday",'
+        '"project_key":null,"assignee":"user","due_at":null,"urgency":"normal",'
+        '"waiting_state":"waiting_on_me","source_refs":["<ref-from-excerpt>"],"confidence":0.8,'
+        '"reason":"Sender asks to submit the revised sketch.","safety_category":"normal",'
+        '"recommended_next_action":"review","review_status":"pending",'
+        '"external_action_requires_approval":true}]}'
     )
     return "\n".join(lines)
 
@@ -308,8 +317,8 @@ def _run_with_retry_repair(
             current_prompt = (
                 prompt
                 + f"\n\nPREVIOUS ATTEMPT FAILED (attempt {attempt}, {error_class}). "
-                + "Output ONLY a corrected JSON array matching the Phase 10 ActionCandidate schema "
-                + "exactly. No other text."
+                + "Return ONLY a JSON object with top-level key `candidates` containing an array "
+                + "matching the Phase 10 ActionCandidate schema exactly. No other text."
             )
     return None, error_class, is_timeout
 
@@ -323,8 +332,15 @@ def _diagnostic_reason(
     produced: int,
     accepted: int,
     last_parse_error: Optional[str],
+    envelope_invalid: bool = False,
+    parsed_ok: bool = False,
 ) -> Optional[str]:
-    """Classify a run into one safe diagnostic reason (or None on clean success)."""
+    """Classify a run into one safe diagnostic reason (or None on clean success).
+
+    ``no_candidates`` = a valid object/array envelope with zero candidates (the model ran, found
+    nothing). ``invalid_output_envelope`` = a JSON object without a usable candidates/items list.
+    ``empty_model_output`` is reserved for truly empty/None raw output (no JSON parsed at all).
+    """
     if client is None and mock_output is None:
         return "no_client_constructed"
     if is_timeout or (error_class and "timeout" in error_class.lower()):
@@ -333,9 +349,13 @@ def _diagnostic_reason(
         return "ollama_unreachable"
     if produced > 0 and accepted == 0:
         return "schema_rejected_output"
+    if parsed_ok and produced == 0:
+        return "no_candidates"
+    if envelope_invalid:
+        return "invalid_output_envelope"
     if last_parse_error and "json" in last_parse_error.lower():
         return "invalid_json_output"
-    if produced == 0 and (last_parse_error or accepted == 0):
+    if not parsed_ok:
         return "empty_model_output"
     return None
 
@@ -348,8 +368,13 @@ def _build_diagnostics(
     prompt: str,
     excerpts: list[dict[str, Any]],
     error_class: Optional[str],
+    parse_meta: Optional[dict[str, Any]] = None,
 ) -> dict[str, Any]:
-    """Safe diagnostics: model/profile, char counts, reachability bool, redacted error class + reason."""
+    """Safe diagnostics: model/profile, char counts, reachability bool, redacted error class + reason.
+
+    ``parse_meta`` carries safe shape facts (root_type / has_*_key / response_char_count /
+    parsed_candidate_count) — never any raw response body, prompt, URL, token, or source content.
+    """
     if mock_output is not None:
         model_name: Optional[str] = "mock"
     elif client is not None:
@@ -365,6 +390,7 @@ def _build_diagnostics(
     packet_char_estimate = sum(
         len(str(ex.get("body_text") or "")) + len(str(ex.get("subject") or "")) for ex in excerpts
     )
+    meta = parse_meta or {}
     return {
         "model_name": model_name,
         "profile_id": None,
@@ -373,6 +399,11 @@ def _build_diagnostics(
         "endpoint_reachable": endpoint_reachable,
         "error_class_redacted": error_class,
         "reason": reason,
+        "root_type": meta.get("root_type"),
+        "has_candidates_key": meta.get("has_candidates_key", False),
+        "has_items_key": meta.get("has_items_key", False),
+        "response_char_count": meta.get("response_char_count", 0),
+        "parsed_candidate_count": meta.get("parsed_candidate_count", 0),
     }
 
 
@@ -452,6 +483,12 @@ def extract_action_candidates_from_raw(
     last_parse_error: Optional[str] = None
     error_class: Optional[str] = None
     is_timeout = False
+    parsed_ok = False  # a valid object/array envelope was parsed (even if zero candidates)
+    envelope_invalid = False  # a JSON object without a usable candidates/items list was seen
+    parse_meta: dict[str, Any] = {
+        "root_type": None, "has_candidates_key": False, "has_items_key": False,
+        "response_char_count": 0, "parsed_candidate_count": 0,
+    }
     final_report: Optional[dict[str, Any]] = None
     for attempt in range(3):
         raw_json, err, tmo = _run_with_retry_repair(
@@ -470,11 +507,34 @@ def extract_action_candidates_from_raw(
                 last_parse_error = "model returned no output"
             continue
         try:
-            parsed = json.loads(raw_json)
-            if isinstance(parsed, dict):
-                parsed = parsed.get("candidates") or parsed.get("items") or []
-            if not isinstance(parsed, list):
-                parsed = []
+            root = json.loads(raw_json)
+            # Object-root is primary: {"candidates": [...]}; raw arrays stay backward compatible.
+            parse_meta = {
+                "root_type": "array" if isinstance(root, list)
+                else "object" if isinstance(root, dict) else type(root).__name__,
+                "has_candidates_key": isinstance(root, dict) and "candidates" in root,
+                "has_items_key": isinstance(root, dict) and "items" in root,
+                "response_char_count": len(raw_json),
+                "parsed_candidate_count": 0,
+            }
+            if isinstance(root, list):
+                parsed = root
+            elif isinstance(root, dict) and isinstance(root.get("candidates"), list):
+                parsed = root["candidates"]
+            elif isinstance(root, dict) and isinstance(root.get("items"), list):
+                parsed = root["items"]
+            else:
+                # Object without a usable candidates/items list (e.g. {}) — malformed envelope.
+                envelope_invalid = True
+                last_parse_error = last_parse_error or "invalid_output_envelope"
+                prompt = (
+                    prompt
+                    + "\n\nPREVIOUS OUTPUT WAS A JSON OBJECT WITHOUT A `candidates` ARRAY. "
+                    + "Return ONLY a JSON object with top-level key `candidates` containing an array."
+                )
+                continue
+            parsed_ok = True
+            parse_meta["parsed_candidate_count"] = len(parsed)
             candidates: list[ActionCandidate] = []
             rejections: list[dict[str, Any]] = []
             for item in parsed:
@@ -573,7 +633,7 @@ def extract_action_candidates_from_raw(
             reason = _diagnostic_reason(
                 client=client, mock_output=mock_output, error_class=error_class,
                 is_timeout=is_timeout, produced=len(parsed), accepted=len(candidates),
-                last_parse_error=None,
+                last_parse_error=None, envelope_invalid=envelope_invalid, parsed_ok=True,
             )
             final_report = {
                 "produced": len(parsed),
@@ -587,7 +647,7 @@ def extract_action_candidates_from_raw(
                 "rejections": rejections,
                 "diagnostics": _build_diagnostics(
                     reason=reason, client=client, mock_output=mock_output, prompt=prompt,
-                    excerpts=excerpts, error_class=error_class,
+                    excerpts=excerpts, error_class=error_class, parse_meta=parse_meta,
                 ),
             }
             break
@@ -596,7 +656,8 @@ def extract_action_candidates_from_raw(
             # will retry with repair in next outer attempt
             prompt = (
                 prompt
-                + f"\n\nPREVIOUS OUTPUT FAILED TO PARSE: {last_parse_error}. Output ONLY corrected JSON array per schema."
+                + f"\n\nPREVIOUS OUTPUT FAILED TO PARSE: {last_parse_error}. Return ONLY a JSON object "
+                + "with top-level key `candidates` containing an array per the schema."
             )
 
     # All attempts failed (or no success path taken) — classify the no-output reason.
@@ -606,6 +667,7 @@ def extract_action_candidates_from_raw(
     reason = _diagnostic_reason(
         client=client, mock_output=mock_output, error_class=error_class, is_timeout=is_timeout,
         produced=0, accepted=0, last_parse_error=last_parse_error,
+        envelope_invalid=envelope_invalid, parsed_ok=parsed_ok,
     )
     return {
         "produced": 0,
@@ -617,7 +679,7 @@ def extract_action_candidates_from_raw(
         "note": "exhausted retries",
         "diagnostics": _build_diagnostics(
             reason=reason, client=client, mock_output=mock_output, prompt=prompt,
-            excerpts=excerpts, error_class=error_class,
+            excerpts=excerpts, error_class=error_class, parse_meta=parse_meta,
         ),
     }
 
