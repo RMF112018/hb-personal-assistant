@@ -14,7 +14,7 @@ from .connection import get_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 42
+LATEST_SCHEMA_VERSION = 43
 
 
 class SQLiteMigrator:
@@ -5699,6 +5699,29 @@ class SQLiteMigrator:
         "CREATE INDEX IF NOT EXISTS ix_claude_context_packets_type_date ON claude_context_packets(packet_type, packet_date);",
     ]
 
+    # v43 Phase 10A candidate review lifecycle (snooze/edit/audit). Additive
+    # ADD COLUMN only on V41 candidate tables (all nullable TEXT; no CHECK — SQLite
+    # cannot add CHECK via ALTER, and the 13 _P10_GUARDS already protect these rows).
+    V43_STATEMENTS: list[str] = [
+        # task_candidates review-lifecycle columns
+        "ALTER TABLE task_candidates ADD COLUMN snoozed_until_utc TEXT",
+        "ALTER TABLE task_candidates ADD COLUMN reviewed_utc TEXT",
+        "ALTER TABLE task_candidates ADD COLUMN reviewed_by TEXT",
+        "ALTER TABLE task_candidates ADD COLUMN review_note_redacted TEXT",
+        # commitment_candidates review-lifecycle columns (mirror)
+        "ALTER TABLE commitment_candidates ADD COLUMN snoozed_until_utc TEXT",
+        "ALTER TABLE commitment_candidates ADD COLUMN reviewed_utc TEXT",
+        "ALTER TABLE commitment_candidates ADD COLUMN reviewed_by TEXT",
+        "ALTER TABLE commitment_candidates ADD COLUMN review_note_redacted TEXT",
+        # candidate_review_events audit-detail columns
+        "ALTER TABLE candidate_review_events ADD COLUMN changes_json_redacted TEXT",
+        "ALTER TABLE candidate_review_events ADD COLUMN snoozed_until_utc TEXT",
+        "ALTER TABLE candidate_review_events ADD COLUMN reviewer_ref TEXT",
+        # snooze access-path indexes (mirror existing ix_*_review_status style)
+        "CREATE INDEX IF NOT EXISTS ix_task_candidates_snoozed_until ON task_candidates(snoozed_until_utc);",
+        "CREATE INDEX IF NOT EXISTS ix_commitment_candidates_snoozed_until ON commitment_candidates(snoozed_until_utc);",
+    ]
+
     def __init__(self, db_path: str | None = None):
         self._db_path = db_path
 
@@ -6228,6 +6251,18 @@ class SQLiteMigrator:
             if cur.fetchone() is None:
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (42, 'v42_phase_10a_raw_content_tables', ?)",
+                    (now,),
+                )
+
+            # v43 Phase 10A candidate review lifecycle (snooze/edit/audit). Additive
+            # ADD COLUMN only; gated like v13/v15 because ALTER TABLE ADD COLUMN is not
+            # idempotent. V1-V42 untouched.
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 43")
+            if cur.fetchone() is None:
+                for stmt in self.V43_STATEMENTS:
+                    conn.execute(stmt)
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (43, 'v43_phase_10a_candidate_review', ?)",
                     (now,),
                 )
 

@@ -78,6 +78,30 @@ def test_every_table_has_thirteen_guard_columns() -> None:
         assert len(PHASE_10_GUARD_COLUMNS) == 13
 
 
+def test_v43_candidate_review_columns_present() -> None:
+    with tempfile.TemporaryDirectory() as td:
+        db = _migrated_db(td)
+        conn = sqlite3.connect(db)
+        try:
+
+            def cols(table: str) -> set[str]:
+                return {r[1] for r in conn.execute(f"PRAGMA table_info({table})")}
+
+            review_cols = {
+                "snoozed_until_utc",
+                "reviewed_utc",
+                "reviewed_by",
+                "review_note_redacted",
+            }
+            for table in ("task_candidates", "commitment_candidates"):
+                assert review_cols <= cols(table), f"{table} missing V43 review columns"
+            assert {"changes_json_redacted", "snoozed_until_utc", "reviewer_ref"} <= cols(
+                "candidate_review_events"
+            )
+        finally:
+            conn.close()
+
+
 # ---------------------------------------------------------------------------
 # Guard CHECK enforcement + environment isolation
 # ---------------------------------------------------------------------------
