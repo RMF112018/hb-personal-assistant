@@ -60,13 +60,28 @@ from hb_assistant.construction.second_brain.retrieval.vector_index import (
 
 # --- Procore surfaces (patchable at this namespace) -------------------------------
 from hb_assistant.procore.auth import check_auth_status
+from hb_assistant.procore.daily_refresh_plan import (
+    UNSUPPORTED_ENDPOINTS,
+    build_daily_refresh_plan,
+    classify_receipt,
+    daily_log_window,
+    is_degraded_status,
+    is_skipped_status,
+)
 from hb_assistant.procore.live_gate import (
     assert_live_mapping_strict,
     live_env_active,
 )
+from hb_assistant.procore.live_sync import run_live_sync
 from hb_assistant.procore.loader import load_procore_projects
-from hb_assistant.procore.sync import run_sync
 from hb_assistant.store.migrator import LATEST_SCHEMA_VERSION, SQLiteMigrator
+
+# Canonical Procore persistence path (the tables operational read-models consume).
+PROCORE_CANONICAL_TABLES = (
+    "procore_live_records",
+    "procore_live_sync_runs",
+    "procore_live_sync_watermarks",
+)
 
 COMMAND = "construction-agent refresh-sources"
 
@@ -148,6 +163,15 @@ def _safe_git_sha() -> Optional[str]:
 
 def _zero_counts() -> dict[str, int]:
     return {"inserted": 0, "updated": 0, "skipped": 0, "failed": 0, "planned": 0}
+
+
+def _status_histogram(endpoints: list[dict[str, Any]]) -> dict[str, int]:
+    """Count endpoint rows by their taxonomy status code (operator-readable)."""
+    hist: dict[str, int] = {}
+    for row in endpoints:
+        code = str(row.get("status", "unknown"))
+        hist[code] = hist.get(code, 0) + 1
+    return hist
 
 
 @dataclass
@@ -375,96 +399,258 @@ class SourceRefreshOrchestrator:
         if do_live_apply:
             assert_live_mapping_strict(registry, pilot_keys)
 
-        # Iterate per pilot project (the underlying coordinator rejects a multi-project
-        # sentinel); collect counts by project as the objective requires.
-        projects: list[dict[str, Any]] = []
-        counts = _zero_counts()
-        for key in pilot_keys:
-            try:
-                result = run_sync(
-                    project_key=key,
-                    dry_run=not do_live_apply,
-                    apply=do_live_apply,
-                    full_refresh=False,
-                    db_path=self.db_path,
-                    json_output=True,
-                    allow_pending=False,
-                )
-            except Exception as exc:  # noqa: BLE001 — isolate one project, keep going
-                self._acc.degraded = True
-                self._acc.failures.append(
-                    {
-                        "stage": f"procore.{key}",
-                        "status": "failed",
-                        "reason": f"{type(exc).__name__}: {str(exc)[:160]}",
-                    }
-                )
-                projects.append({"project_key": key, "status": "failed"})
-                counts["failed"] += 1
-                continue
-            pc = self._procore_counts(result, applied=do_live_apply)
-            for k, v in pc.items():
-                counts[k] += v
-            proj_errors = result.get("redacted_errors") or []
-            proj_failed = int(pc.get("failed", 0) or 0)
-            proj_status = "ok" if do_live_apply else "planned"
-            if proj_failed:
-                # Endpoint-level errors are real degradation — surface them (do not report "ok").
-                proj_status = "degraded"
-                self._acc.degraded = True
-                sample = [
-                    {
-                        "endpoint": str(e.get("endpoint", ""))[:60],
-                        "error": str(e.get("error", ""))[:160],
-                    }
-                    for e in proj_errors[:5]
-                    if isinstance(e, dict)
-                ]
-                self._acc.failures.append(
-                    {
-                        "stage": f"procore.{key}",
-                        "status": "degraded",
-                        "reason": f"{proj_failed} endpoint error(s); sample={sample}",
-                    }
-                )
-            projects.append(
-                {
-                    "project_key": key,
-                    "status": proj_status,
-                    "total_items_normalized": result.get("total_items_normalized", 0),
-                    "persisted_to_sqlite": bool(result.get("persisted_to_sqlite", False)),
-                    "audit_prerequisite_passed": bool(
-                        result.get("audit_prerequisite_passed", False)
-                    ),
-                    "errors": proj_failed,
-                    "redacted_errors": proj_errors[:8],
-                }
-            )
+        # Daily refresh now reads through the canonical EndpointAdapter registry via
+        # run_live_sync (writing procore_live_*), replacing the stale per-project seed
+        # fanout. Dry-run plans only (no live call); apply executes the live chain.
+        plan = build_daily_refresh_plan()
+        if not do_live_apply:
+            return self._procore_plan_only(plan, pilot_keys, auth_status, ready, live_env)
+        return self._procore_live_execute(plan, pilot_keys, options, auth_status, ready, live_env)
 
-        any_degraded = any(p.get("status") == "degraded" for p in projects)
-        stage_status = "degraded" if any_degraded else ("ok" if do_live_apply else "planned")
+    def _procore_plan_only(
+        self,
+        plan: tuple[Any, ...],
+        pilot_keys: list[str],
+        auth_status: str,
+        ready: bool,
+        live_env: bool,
+    ) -> dict[str, Any]:
+        """Dry-run posture: describe the canonical plan without any live read or write."""
+        endpoints: list[dict[str, Any]] = []
+        counts = _zero_counts()
+        for pe in plan:
+            keys = pilot_keys[:1] if pe.company_level else pilot_keys
+            for key in keys:
+                endpoints.append(
+                    {
+                        "endpoint": pe.canonical_id,
+                        "legacy_alias": pe.legacy_alias,
+                        "scope": "company" if pe.company_level else key,
+                        "date_windowed": pe.date_windowed,
+                        "status": "planned",
+                    }
+                )
+                counts["planned"] += 1
+        for legacy_id, code in UNSUPPORTED_ENDPOINTS.items():
+            endpoints.append(
+                {"endpoint": legacy_id, "legacy_alias": legacy_id, "scope": "n/a", "status": code}
+            )
+            counts["skipped"] += 1
+        summary = {
+            "endpoints_planned": counts["planned"],
+            "endpoints_skipped": counts["skipped"],
+            "endpoints_succeeded": 0,
+            "contract_bug_failures": 0,
+            "externally_blocked": 0,
+            "by_status": _status_histogram(endpoints),
+        }
+        return {
+            "status": "planned",
+            "auth_status": auth_status,
+            "ready_for_live_calls": ready,
+            "mode": "dry_run",
+            "live_read_performed": False,
+            "live_env_active": live_env,
+            "persistence_path": "procore_live",
+            "canonical_tables": list(PROCORE_CANONICAL_TABLES),
+            "endpoint_summary": summary,
+            "endpoints": endpoints,
+            "projects": [{"project_key": k, "status": "planned"} for k in pilot_keys],
+            "counts": counts,
+        }
+
+    def _procore_live_execute(
+        self,
+        plan: tuple[Any, ...],
+        pilot_keys: list[str],
+        options: RefreshOptions,
+        auth_status: str,
+        ready: bool,
+        live_env: bool,
+    ) -> dict[str, Any]:
+        """Apply posture: run each canonical endpoint via run_live_sync and aggregate."""
+        brief_date = self._resolve_brief_date(options)
+        start_date, end_date = daily_log_window(brief_date)
+
+        endpoints: list[dict[str, Any]] = []
+        per_project: dict[str, dict[str, int]] = {
+            k: {"ok": 0, "skipped": 0, "failed": 0} for k in pilot_keys
+        }
+        counts = _zero_counts()
+
+        for pe in plan:
+            keys = pilot_keys[:1] if pe.company_level else pilot_keys
+            # A company-level endpoint is fetched once; the remaining pilots are
+            # marked intentionally skipped below rather than re-running the
+            # company-wide read.
+            for key in keys:
+                receipt = self._run_live_endpoint(pe, key, start_date, end_date)
+                code = classify_receipt(receipt)
+                endpoints.append(self._endpoint_row(pe, key, receipt, code))
+                self._tally_endpoint(pe, key, code, receipt, counts, per_project)
+            if pe.company_level:
+                for key in pilot_keys[1:]:
+                    endpoints.append(
+                        {
+                            "endpoint": pe.canonical_id,
+                            "legacy_alias": pe.legacy_alias,
+                            "scope": key,
+                            "status": "skipped_company_level_already_handled",
+                        }
+                    )
+                    counts["skipped"] += 1
+                    per_project[key]["skipped"] += 1
+
+        for legacy_id, code in UNSUPPORTED_ENDPOINTS.items():
+            endpoints.append(
+                {"endpoint": legacy_id, "legacy_alias": legacy_id, "scope": "n/a", "status": code}
+            )
+            counts["skipped"] += 1
+
+        projects = [
+            {
+                "project_key": key,
+                "status": "degraded" if tally["failed"] else "ok",
+                "endpoints_ok": tally["ok"],
+                "endpoints_skipped": tally["skipped"],
+                "endpoints_failed": tally["failed"],
+            }
+            for key, tally in per_project.items()
+        ]
+        any_failed = counts["failed"] > 0
+        stage_status = "degraded" if any_failed else "ok"
+        summary = {
+            "endpoints_planned": len(endpoints),
+            "endpoints_succeeded": counts["inserted"] + counts["updated"],
+            "endpoints_skipped": counts["skipped"],
+            "contract_bug_failures": sum(
+                1 for e in endpoints if e.get("status", "").startswith("contract_bug_")
+            ),
+            "externally_blocked": sum(
+                1
+                for e in endpoints
+                if e.get("status") in ("transport_error_retryable", "transport_error_non_retryable")
+            ),
+            "by_status": _status_histogram(endpoints),
+        }
         return {
             "status": stage_status,
             "auth_status": auth_status,
             "ready_for_live_calls": ready,
-            "mode": "apply" if do_live_apply else "dry_run",
-            "live_read_performed": do_live_apply,
+            "mode": "apply",
+            "live_read_performed": True,
             "live_env_active": live_env,
+            "persistence_path": "procore_live",
+            "canonical_tables": list(PROCORE_CANONICAL_TABLES),
+            "tables_written": list(PROCORE_CANONICAL_TABLES),
+            "endpoint_summary": summary,
+            "endpoints": endpoints,
             "projects": projects,
             "counts": counts,
+            "next_operator_action": self._procore_next_action(summary),
+            "inspect_hint": (
+                "Inspect canonical Procore data with `hb-assistant procore live records "
+                "--project <key> --endpoint <id>`; run history in procore_live_sync_runs."
+            ),
         }
 
     @staticmethod
-    def _procore_counts(result: dict[str, Any], *, applied: bool) -> dict[str, int]:
-        counts = _zero_counts()
-        normalized = int(result.get("total_items_normalized", 0) or 0)
-        if applied and result.get("persisted_to_sqlite"):
-            counts["inserted"] = int(result.get("rows_inserted", normalized) or 0)
-            counts["updated"] = int(result.get("rows_updated", 0) or 0)
-        else:
-            counts["planned"] = normalized
-        counts["failed"] = len(result.get("redacted_errors", []) or [])
-        return counts
+    def _procore_next_action(summary: dict[str, Any]) -> str:
+        """Operator guidance derived from the endpoint taxonomy histogram."""
+        if summary.get("contract_bug_failures"):
+            return (
+                "Procore endpoint contract regression — inspect procore_live_sync_runs "
+                "for transport_error rows and re-validate the canonical adapter."
+            )
+        if summary.get("externally_blocked"):
+            return "External Procore service/transport errors — retry after the rate window."
+        by_status = summary.get("by_status", {})
+        if any(k.startswith("blocked_") for k in by_status):
+            return "Run `hb-assistant procore auth login` and confirm pilot mapping, then re-run."
+        return "none"
+
+    def _run_live_endpoint(
+        self, pe: Any, project_key: str, start_date: str, end_date: str
+    ) -> dict[str, Any]:
+        """Invoke run_live_sync for one canonical endpoint; never raises."""
+        kwargs: dict[str, Any] = {
+            "project_key": project_key,
+            "endpoint": pe.canonical_id,
+            "apply": True,
+            "sqlite_only": True,
+            "confirm_live_get": True,
+            "mode_hint": "live_apply",
+            "db_path": self.db_path,
+        }
+        if pe.date_windowed:
+            kwargs["start_date"] = start_date
+            kwargs["end_date"] = end_date
+        try:
+            return run_live_sync(**kwargs)
+        except Exception as exc:  # noqa: BLE001 — isolate one endpoint, keep going
+            return {
+                "endpoint_id": pe.canonical_id,
+                "state": "transport_error",
+                "status": "error",
+                "reason_codes": [f"orchestrator_exception:{type(exc).__name__}"],
+                "redacted_errors": [{"orchestrator_error": type(exc).__name__}],
+                "sqlite_upserted_count": 0,
+                "retrieved_count": 0,
+            }
+
+    @staticmethod
+    def _endpoint_row(
+        pe: Any, project_key: str, receipt: dict[str, Any], code: str
+    ) -> dict[str, Any]:
+        return {
+            "endpoint": pe.canonical_id,
+            "legacy_alias": pe.legacy_alias,
+            "scope": "company" if pe.company_level else project_key,
+            "status": code,
+            "retrieved": int(receipt.get("retrieved_count", 0) or 0),
+            "upserted": int(receipt.get("sqlite_upserted_count", 0) or 0),
+        }
+
+    def _tally_endpoint(
+        self,
+        pe: Any,
+        project_key: str,
+        code: str,
+        receipt: dict[str, Any],
+        counts: dict[str, int],
+        per_project: dict[str, dict[str, int]],
+    ) -> None:
+        upserted = int(receipt.get("sqlite_upserted_count", 0) or 0)
+        if code == "success":
+            counts["inserted"] += upserted
+            per_project[project_key]["ok"] += 1
+        elif is_skipped_status(code):
+            counts["skipped"] += 1
+            per_project[project_key]["skipped"] += 1
+        elif is_degraded_status(code):
+            counts["failed"] += 1
+            per_project[project_key]["failed"] += 1
+            self._acc.degraded = True
+            self._acc.failures.append(
+                {
+                    "stage": f"procore.{project_key}",
+                    "status": "degraded",
+                    "reason": f"{pe.canonical_id} ({pe.legacy_alias}): {code}",
+                }
+            )
+        else:  # defensive: unknown -> treat as degradation
+            counts["failed"] += 1
+            per_project[project_key]["failed"] += 1
+            self._acc.degraded = True
+
+    @staticmethod
+    def _resolve_brief_date(options: RefreshOptions) -> date:
+        if options.brief_date:
+            try:
+                return date.fromisoformat(options.brief_date)
+            except ValueError:
+                pass
+        return date.today()
 
     # -- stage 3: graph ------------------------------------------------------------
 
@@ -850,6 +1036,9 @@ class SourceRefreshOrchestrator:
             return "Run `hb-assistant procore auth login` to enable Procore live sync."
         if graph.get("status") == "blocked_auth_not_ready":
             return "Run `hb-assistant auth login` to obtain a delegated Graph token."
+        procore_action = procore.get("next_operator_action")
+        if procore_action and procore_action != "none":
+            return procore_action
         if summary["status"] == "failed" or summary["failures"]:
             return "Review failures[] and warnings[], then re-run."
         if options.dry_run:
