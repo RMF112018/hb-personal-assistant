@@ -410,6 +410,9 @@ def run_model_eval(
         "applied": False,
         "dry_run": True,
         "mode": mode,
+        # Unambiguous label: synthetic eval proves the harness/schema CONTRACT offline; it is not a
+        # live model-quality measurement. --live measures the real local model.
+        "eval_mode": "live_local_model" if mode == "live" else "synthetic_offline_contract",
         "suite": suite,
         "task_families": families,
         "models_attempted": sorted({p.model_name for p in candidate_profiles}),

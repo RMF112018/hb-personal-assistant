@@ -2323,6 +2323,21 @@ def daily_brief_render(
         raise typer.Exit(1) from None
 
 
+def _redact_db_indicator(db: "str | None") -> "tuple[str, str | None]":
+    """Return ``(db_mode, redacted_path)`` for an operator-visible --db echo.
+
+    Never emits a private absolute path: the home dir is collapsed to ``~``. ``/tmp`` copy paths are
+    surfaced as-is so the operator can confirm validation ran against a copy, not the app DB.
+    """
+    if not db:
+        return "default_app_db", None
+    import os
+
+    home = os.path.expanduser("~")
+    redacted = ("~" + db[len(home) :]) if db.startswith(home) else db
+    return "explicit_db", redacted
+
+
 @daily_brief_app.command("intelligence")
 def daily_brief_intelligence_cmd(
     date: str = typer.Option(..., "--date", help="Brief date (YYYY-MM-DD)."),  # noqa: B008
@@ -2371,6 +2386,7 @@ def daily_brief_intelligence_cmd(
             brief_date=date,
             generation_mode="read_only",
         )
+        db_mode, db_path_redacted = _redact_db_indicator(db)
         payload = {
             "command": cmd,
             "ok": True,
@@ -2382,6 +2398,8 @@ def daily_brief_intelligence_cmd(
             # `selected_profile` is the ROUTE-selected profile (consistent with `local-model route`);
             # the terminal/generation profile is reported as `terminal_profile_id`/`profile_id`.
             "selected_profile": result.route_selected_profile,
+            "db_mode": db_mode,
+            "db_path_redacted": db_path_redacted,
             "redaction_passed": result.status != "redaction_failed",
             **result.safe_payload(),
         }

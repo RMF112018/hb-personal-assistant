@@ -308,6 +308,15 @@ def test_cli_intelligence_offline_withholds_safely(tmp_path) -> None:
     # No candidates in an empty DB -> withheld, deterministic fallback.
     assert payload["enriched"] is False
     assert payload["applied"] is False
+    # --db override is echoed (redacted) so the operator can confirm it ran against a copy.
+    assert payload["db_mode"] == "explicit_db"
+    assert payload["db_path_redacted"] == db
+    # selected_profile is the route-selected profile; terminal/profile_id is the generation profile.
+    assert "route_selected_profile" in payload
+    assert "terminal_profile_id" in payload
+    # warnings/blockers are always arrays.
+    assert isinstance(payload["warnings"], list)
+    assert isinstance(payload["blockers"], list)
 
 
 # -- Candidate availability / dry-run semantics (Phase 10 remediation) -----------------------
