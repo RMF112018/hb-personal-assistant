@@ -70,6 +70,7 @@ from .raw_context import (
     build_raw_calendar_context_packet,
     build_raw_email_context_packet,
 )
+from .relationship_candidates import build_relationship_candidates
 from .relationship_scoring import (
     find_email_calendar_relationships,
     score_email_calendar_relationship,
@@ -134,6 +135,8 @@ __all__ = [
     "summarize_attendees",
     "score_email_calendar_relationship",
     "find_email_calendar_relationships",
+    # Phase 10 follow-on: deterministic relationship candidate engine (persist/scan)
+    "build_relationship_candidates",
     "extract_actions_for_packet",
     "resolve_local_model_client",
     "run_batch_extraction",

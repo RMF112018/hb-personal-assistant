@@ -9302,6 +9302,121 @@ class ConstructionStore:
         cols = [d[0] for d in cur.description]
         return [dict(zip(cols, row, strict=True)) for row in cur.fetchall()]
 
+    # V41 Phase 10 — relationship candidates (deterministic, source-linked, redacted)
+    # Persists only hashed source refs + safe reason codes. Guard columns are omitted on
+    # INSERT → DEFAULT 0 / CHECK(=0). No raw subjects, bodies, addresses, URLs, or payloads.
+    # -------------------------------------------------------------------------
+
+    def insert_phase10_relationship_candidate(
+        self,
+        *,
+        relationship_candidate_id: str,
+        from_source_family: str,
+        from_source_ref_hash: str,
+        to_source_family: str,
+        to_source_ref_hash: str,
+        relationship_type: str,
+        confidence: float,
+        confidence_class: str,
+        project_key: Optional[str] = None,
+        deterministic: bool = True,
+        model_proposed: bool = False,
+        review_status: str = "pending",
+        reason_redacted: Optional[str] = None,
+    ) -> bool:
+        """Insert a relationship candidate. Returns True if a row was inserted.
+
+        Idempotent: ``relationship_candidate_id`` is the PK, so a repeat call is a no-op
+        (ON CONFLICT DO NOTHING). Guard columns are omitted → DEFAULT 0 / CHECK(=0).
+        """
+        if not relationship_candidate_id:
+            raise ValueError("relationship_candidate_id is required")
+        if not from_source_family or not to_source_family or not relationship_type:
+            raise ValueError("source families and relationship_type are required")
+        if not from_source_ref_hash or not to_source_ref_hash:
+            raise ValueError("source ref hashes are required")
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            cur = conn.execute(
+                """
+                INSERT INTO phase10_relationship_candidates
+                    (relationship_candidate_id, from_source_family, from_source_ref_hash,
+                     to_source_family, to_source_ref_hash, relationship_type, project_key,
+                     confidence, confidence_class, deterministic, model_proposed,
+                     review_status, reason_redacted)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(relationship_candidate_id) DO NOTHING
+                """,
+                (
+                    relationship_candidate_id,
+                    from_source_family,
+                    from_source_ref_hash,
+                    to_source_family,
+                    to_source_ref_hash,
+                    relationship_type,
+                    project_key,
+                    float(confidence),
+                    confidence_class,
+                    1 if deterministic else 0,
+                    1 if model_proposed else 0,
+                    review_status,
+                    reason_redacted,
+                ),
+            )
+            return cur.rowcount > 0
+
+    def list_phase10_relationship_candidate_ids(self) -> set[str]:
+        """Return the set of existing relationship_candidate_id values (idempotency check)."""
+        conn = get_connection(self._db_path)
+        cur = conn.execute(
+            "SELECT relationship_candidate_id FROM phase10_relationship_candidates"
+        )
+        return {str(row[0]) for row in cur.fetchall()}
+
+    def list_phase10_relationship_candidates(
+        self,
+        *,
+        project_key: Optional[str] = None,
+        relationship_type: Optional[str] = None,
+        limit: int = 1000,
+    ) -> list[dict[str, Any]]:
+        """List relationship candidates (safe fields only) in deterministic order.
+
+        Order: confidence DESC, then relationship_candidate_id ASC (stable tie-break).
+        """
+        conn = get_connection(self._db_path)
+        clauses: list[str] = []
+        params: list[Any] = []
+        if project_key is not None:
+            clauses.append("project_key = ?")
+            params.append(project_key)
+        if relationship_type is not None:
+            clauses.append("relationship_type = ?")
+            params.append(relationship_type)
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        params.append(limit)
+        cur = conn.execute(
+            f"""
+            SELECT relationship_candidate_id, from_source_family, from_source_ref_hash,
+                   to_source_family, to_source_ref_hash, relationship_type, project_key,
+                   confidence, confidence_class, deterministic, model_proposed,
+                   review_status, reason_redacted, created_utc
+            FROM phase10_relationship_candidates {where}
+            ORDER BY confidence DESC, relationship_candidate_id ASC
+            LIMIT ?
+            """,
+            tuple(params),
+        )
+        cols = [d[0] for d in cur.description]
+        return [dict(zip(cols, row, strict=True)) for row in cur.fetchall()]
+
+    def count_phase10_relationship_candidates(self) -> int:
+        """Return the total relationship-candidate row count."""
+        conn = get_connection(self._db_path)
+        cur = conn.execute("SELECT COUNT(*) FROM phase10_relationship_candidates")
+        row = cur.fetchone()
+        return int(row[0]) if row else 0
+
     # V20 Phase 07A Prompt 01 — Data Quality + Canonical Source-Record Map
     # All adapters enforce the guardrail flags=False at the Python layer (defense
     # in depth with the schema CHECKs). No raw bodies, full text, or writeback.
