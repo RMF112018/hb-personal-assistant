@@ -13,6 +13,7 @@ from .batch_extraction import (
     UnsupportedBatchSourceError,
     run_batch_extraction,
 )
+from .calendar_prep import build_calendar_prep_candidates
 from .contracts import (
     PHASE_10_CONTRACT_FILES,
     PHASE_10_SEED_FILES,
@@ -25,11 +26,17 @@ from .contracts import (
     load_phase_10_contract,
     load_raw_content_policy,
 )
+from .daily_brief_render import render_daily_brief, write_rendered_brief_to_path
+from .daily_brief_synthesis import build_daily_brief_candidates
 from .email_task_extraction import (
     extract_email_task_candidates,
     score_email_task_signals,
 )
 from .fixture_runner import run_fixture_suite
+from .follow_up_watch import (
+    classify_watch_status,
+    run_follow_up_watch_scan,
+)
 from .models import (
     HIGH_STAKES_CATEGORIES,
     ActionCandidate,
@@ -47,6 +54,7 @@ from .packet_builders import (
     build_triage_batch_packet,
 )
 from .packet_normalize import has_join_url, normalize_model_text, summarize_attendees
+from .procore_digest import build_procore_action_digest
 from .proof import Phase10ProofError, build_phase_10_contracts_proof
 from .provider import build_local_model_status, resolve_local_model_client
 from .raw_action_intelligence import (
@@ -125,4 +133,16 @@ __all__ = [
     "resolve_local_model_client",
     "run_batch_extraction",
     "UnsupportedBatchSourceError",
+    # Phase 10: deterministic follow-up watch monitor (advisory, no writeback)
+    "classify_watch_status",
+    "run_follow_up_watch_scan",
+    # Phase 10: deterministic Procore action-signal digest (advisory, no writeback)
+    "build_procore_action_digest",
+    # Phase 10: deterministic calendar meeting-prep candidates (advisory, no writeback)
+    "build_calendar_prep_candidates",
+    # Phase 10: daily-brief candidate synthesis (unifies email + Procore + calendar families)
+    "build_daily_brief_candidates",
+    # Phase 10: daily-brief rendering / consumption (read-only render + path-safe write)
+    "render_daily_brief",
+    "write_rendered_brief_to_path",
 ]

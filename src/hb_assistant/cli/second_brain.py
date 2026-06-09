@@ -151,6 +151,27 @@ action_intel_app = typer.Typer(
 )
 app.add_typer(action_intel_app, name="action-intel")
 
+follow_up_watch_app = typer.Typer(
+    name="follow-up-watch",
+    help="Phase 10 deterministic follow-up watch over accepted items (advisory; no writeback).",
+    no_args_is_help=True,
+)
+app.add_typer(follow_up_watch_app, name="follow-up-watch")
+
+procore_digest_app = typer.Typer(
+    name="procore-digest",
+    help="Phase 10 deterministic Procore action-signal digest (advisory; no Procore writeback).",
+    no_args_is_help=True,
+)
+app.add_typer(procore_digest_app, name="procore-digest")
+
+calendar_prep_app = typer.Typer(
+    name="calendar-prep",
+    help="Phase 10 deterministic calendar meeting-prep candidates (advisory; no calendar writeback).",
+    no_args_is_help=True,
+)
+app.add_typer(calendar_prep_app, name="calendar-prep")
+
 automation_app = typer.Typer(
     name="automation",
     help="Phase 08B automation health + observability (read-only status surface).",
@@ -1980,6 +2001,195 @@ _DAILY_BRIEF_GUARDRAILS = {
     "tier_3_never_final_conclusion": True,
     "model_direct_external_api_access": False,
 }
+
+
+@daily_brief_app.command("synthesize-candidates")
+def daily_brief_synthesize_candidates(
+    as_of: "str | None" = typer.Option(  # noqa: B008
+        None, "--as-of", help="ISO-8601 UTC 'now' (sets brief_date; default: current UTC)."
+    ),
+    limit: int = typer.Option(200, "--limit", help="Max accepted items / watch items to scan."),  # noqa: B008
+    dry_run: bool = typer.Option(  # noqa: B008
+        True, "--dry-run/--apply",
+        help="Dry-run (default; zero writes). --apply persists, capped by --max-persist.",
+    ),
+    max_persist: "int | None" = typer.Option(  # noqa: B008
+        None, "--max-persist", help="REQUIRED with --apply: cap on ACTUAL persisted candidates."
+    ),
+    summary: bool = typer.Option(  # noqa: B008
+        False, "--summary", help="Include the unified brief sections in the response."
+    ),
+    db: "str | None" = typer.Option(None, "--db", help="Explicit SQLite path (tests/isolation)."),  # noqa: B008
+    json_out: bool = typer.Option(True, "--json", help="Emit JSON (default)."),  # noqa: B008
+) -> None:
+    """Synthesize unified daily-brief candidates from accepted tasks + watch items (+ Procore).
+
+    Convergence layer for the local-agent family: unifies the email side (accepted tasks +
+    stale follow-up watch items) and the Procore side (digest rows already written for the date)
+    into reviewable daily_brief_action_candidates by section. Dry-run default; ``--apply`` requires
+    ``--max-persist``. Deterministic, source-linked, advisory — no writeback.
+    """
+    from datetime import datetime as _dt
+    from datetime import timezone as _tz
+
+    from hb_assistant.construction.second_brain.local_ai import build_daily_brief_candidates
+    from hb_assistant.construction.store import ConstructionStore
+
+    cmd = "second-brain daily-brief synthesize-candidates"
+    try:
+        if not dry_run and max_persist is None:
+            payload = {
+                "command": cmd, "ok": False, "applied": False,
+                "error": "apply_requires_max_persist",
+                "guardrails": {"apply_requires_max_persist": True},
+            }
+            typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+            raise typer.Exit(2)
+
+        now_utc = as_of or _dt.now(_tz.utc).isoformat()
+        store = ConstructionStore(db_path=db)
+        payload = build_daily_brief_candidates(
+            store=store, now_utc=now_utc, limit=limit, dry_run=dry_run, max_persist=max_persist,
+        )
+        if not summary:
+            payload = {k: v for k, v in payload.items() if k != "brief"}
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(0)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        payload = {"command": cmd, "ok": False, "error": str(e)[:300]}
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(1) from None
+
+
+@daily_brief_app.command("render")
+def daily_brief_render(
+    date: "str | None" = typer.Option(  # noqa: B008
+        None, "--date", help="Brief date YYYY-MM-DD to render (overrides --as-of's date)."
+    ),
+    as_of: "str | None" = typer.Option(  # noqa: B008
+        None, "--as-of", help="ISO-8601 UTC 'now' (its date is the default brief_date)."
+    ),
+    limit: int = typer.Option(200, "--limit", help="Max candidate items to render (deterministic)."),  # noqa: B008
+    section: "list[str] | None" = typer.Option(  # noqa: B008
+        None, "--section", help="Filter by internal section (repeatable: actions/waiting/follow_up/procore/calendar)."
+    ),
+    project_key: "str | None" = typer.Option(  # noqa: B008
+        None, "--project-key", help="Filter to a single project key."
+    ),
+    markdown: bool = typer.Option(  # noqa: B008
+        False, "--markdown", help="Include the rendered Markdown in the payload (or print it with --no-json)."
+    ),
+    summary: bool = typer.Option(  # noqa: B008
+        False, "--summary", help="Include the per-section item lists in the JSON payload."
+    ),
+    raw: bool = typer.Option(  # noqa: B008
+        False, "--raw",
+        help="LOCAL CONSUMPTION ONLY: show real (un-redacted) content from local raw tables "
+        "(calendar subjects/locations, Procore signal titles). Never persisted/logged/committed.",
+    ),
+    write: bool = typer.Option(  # noqa: B008
+        False, "--write", help="Write the brief to a file (off by default). Requires a target."
+    ),
+    output_path: "str | None" = typer.Option(  # noqa: B008
+        None, "--output-path", help="Explicit ABSOLUTE non-repo file path (explicit-path write mode)."
+    ),
+    vault_brief_dir: "str | None" = typer.Option(  # noqa: B008
+        None, "--vault-brief-dir", help="Override the governed vault brief base dir (test/isolation)."
+    ),
+    db: "str | None" = typer.Option(None, "--db", help="Explicit SQLite path (tests/isolation)."),  # noqa: B008
+    json_out: bool = typer.Option(True, "--json/--no-json", help="Emit JSON (default)."),  # noqa: B008
+) -> None:
+    """Render daily_brief_action_candidates into a redacted, consumable daily brief (read-only).
+
+    Reads the convergence table (already-redacted rows from the email/follow-up, Procore, and
+    calendar families), groups them into ordered display sections, and emits structured JSON +
+    optional Markdown. Read-only by default (writes nothing). ``--write`` opts into a file write:
+    with ``--output-path`` it writes that explicit ABSOLUTE non-repo file; otherwise it writes the
+    governed vault brief note (``--vault-brief-dir`` overrides the base dir). Both write modes are
+    marker-bounded + atomic and never emit raw bodies/URLs/emails/tokens.
+    """
+    from datetime import datetime as _dt
+    from datetime import timezone as _tz
+
+    from hb_assistant.construction.second_brain.daily_brief.output import (
+        resolve_brief_path,
+        write_brief_output,
+    )
+    from hb_assistant.construction.second_brain.local_ai import (
+        render_daily_brief,
+        write_rendered_brief_to_path,
+    )
+    from hb_assistant.construction.store import ConstructionStore
+
+    cmd = "second-brain daily-brief render"
+    try:
+        now_utc = as_of or _dt.now(_tz.utc).isoformat()
+        brief_date = date or now_utc[:10]
+        store = ConstructionStore(db_path=db)
+
+        payload = render_daily_brief(
+            store=store,
+            brief_date=brief_date,
+            sections=list(section) if section else None,
+            project_key=project_key,
+            limit=limit,
+            include_raw=raw,
+        )
+        inner_md = payload.get("markdown", "")
+
+        # File write (off by default). Explicit --output-path → explicit-path mode; else governed vault.
+        if write or output_path is not None:
+            if output_path is not None:
+                result = write_rendered_brief_to_path(
+                    inner_markdown=inner_md, output_path=output_path, dry_run=not write
+                )
+                if not result.get("ok"):
+                    payload = {"command": cmd, "ok": False, "error": result.get("error")}
+                    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+                    raise typer.Exit(2)
+                payload["write"] = {"mode": "explicit_path", **result}
+            else:
+                res = write_brief_output(
+                    brief_date=brief_date,
+                    content=inner_md,
+                    vault_brief_dir=vault_brief_dir,
+                    apply=write,
+                )
+                target = resolve_brief_path(brief_date, vault_brief_dir=vault_brief_dir)
+                try:
+                    from hb_assistant.config.path_policy import PathPolicy
+
+                    redacted = str(target.relative_to(PathPolicy().get_vault_root()))
+                except ValueError:
+                    redacted = f"{target.parent.name}/{target.name}"
+                payload["write"] = {
+                    "mode": "governed_vault",
+                    "written": res.written,
+                    "path_redacted": res.output_path_redacted or redacted,
+                    "content_hash": res.content_hash,
+                }
+
+        # Trim heavy fields unless explicitly requested.
+        if not summary:
+            payload = {**payload, "sections": []}
+        if not markdown:
+            payload = {k: v for k, v in payload.items() if k != "markdown"}
+
+        if json_out:
+            typer.echo(json.dumps(payload, indent=2, default=str))
+        elif markdown:
+            typer.echo(inner_md)
+        else:
+            typer.echo(str(payload))
+        raise typer.Exit(0)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        payload = {"command": cmd, "ok": False, "error": str(e)[:300]}
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(1) from None
 
 
 @daily_brief_app.command("build")
@@ -8596,6 +8806,277 @@ def second_brain_extract_packets(
         raise typer.Exit(1) from None
 
 
+@follow_up_watch_app.command("scan")
+def second_brain_follow_up_watch_scan(
+    as_of: "str | None" = typer.Option(  # noqa: B008
+        None, "--as-of",
+        help="ISO-8601 UTC 'now' for deterministic classification (default: current UTC).",
+    ),
+    limit: int = typer.Option(200, "--limit", help="Max accepted items per type to scan."),  # noqa: B008
+    dry_run: bool = typer.Option(  # noqa: B008
+        True, "--dry-run/--apply",
+        help="Dry-run (default; zero writes). --apply persists, capped by --max-persist.",
+    ),
+    max_persist: "int | None" = typer.Option(  # noqa: B008
+        None, "--max-persist", help="REQUIRED with --apply: cap on ACTUAL watch-item writes."
+    ),
+    stale_after_days: int = typer.Option(  # noqa: B008
+        14, "--stale-after-days", help="Days after acceptance (no due date) before an item is stale."
+    ),
+    summary: bool = typer.Option(  # noqa: B008
+        False, "--summary", help="Include the per-item results list in the response."
+    ),
+    timeout_seconds: "float | None" = typer.Option(  # noqa: B008
+        None, "--timeout-seconds", help="Accepted for parity; unused (deterministic, no model)."
+    ),
+    db: "str | None" = typer.Option(None, "--db", help="Explicit SQLite path (tests/isolation)."),  # noqa: B008
+    json_out: bool = typer.Option(True, "--json", help="Emit JSON (default)."),  # noqa: B008
+) -> None:
+    """Scan accepted tasks/commitments → advisory follow-up watch items/status events.
+
+    Deterministic (no model, no clock read inside scoring — ``--as-of`` is stamped once
+    at the boundary). Defaults to dry-run (zero writes). ``--apply`` is explicit and
+    REQUIRES ``--max-persist``, which caps ACTUAL watch-item writes. Items with no
+    source refs are never persisted; unchanged items are skipped. No raw content, no
+    writeback — only redacted titles/excerpts and source-ref hashes are stored.
+    """
+    from datetime import datetime as _dt
+    from datetime import timezone as _tz
+
+    from hb_assistant.construction.second_brain.local_ai import run_follow_up_watch_scan
+    from hb_assistant.construction.store import ConstructionStore
+
+    cmd = "second-brain follow-up-watch scan"
+    try:
+        if not dry_run and max_persist is None:
+            payload = {
+                "command": cmd, "ok": False, "applied": False,
+                "error": "apply_requires_max_persist",
+                "guardrails": {"apply_requires_max_persist": True},
+            }
+            typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+            raise typer.Exit(2)
+
+        # No-clock seam: stamp now_utc ONCE here; scoring never reads a clock.
+        now_utc = as_of or _dt.now(_tz.utc).isoformat()
+        store = ConstructionStore(db_path=db)
+        payload = run_follow_up_watch_scan(
+            store=store, now_utc=now_utc, limit=limit, dry_run=dry_run,
+            max_persist=max_persist, stale_after_days=stale_after_days,
+        )
+        if not summary:
+            payload = {k: v for k, v in payload.items() if k != "results"}
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(0)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        payload = {"command": cmd, "ok": False, "error": str(e)[:300]}
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(1) from None
+
+
+@procore_digest_app.command("build")
+def second_brain_procore_digest_build(
+    project: "str | None" = typer.Option(  # noqa: B008
+        None, "--project", help="Single Procore project key (default: all projects present)."
+    ),
+    as_of: "str | None" = typer.Option(  # noqa: B008
+        None, "--as-of",
+        help="ISO-8601 UTC 'now' for deterministic overdue/brief-date (default: current UTC).",
+    ),
+    limit: int = typer.Option(  # noqa: B008
+        50, "--limit",
+        help="Max signal-type groups per project (highest-count first; bounds output AND "
+        "would-persist). --max-persist is the separate hard cap on actual writes.",
+    ),
+    dry_run: bool = typer.Option(  # noqa: B008
+        True, "--dry-run/--apply",
+        help="Dry-run (default; zero writes). --apply persists, capped by --max-persist.",
+    ),
+    max_persist: "int | None" = typer.Option(  # noqa: B008
+        None, "--max-persist", help="REQUIRED with --apply: cap on ACTUAL persisted candidates."
+    ),
+    synthesize: bool = typer.Option(  # noqa: B008
+        False, "--synthesize",
+        help="Optional bounded local-model advisory narrative (off by default; in-memory only).",
+    ),
+    profile: str = typer.Option(  # noqa: B008
+        "default_extract", "--profile", help="Local model profile when --synthesize (default_extract)."
+    ),
+    model: "str | None" = typer.Option(  # noqa: B008
+        None, "--model", help="Override the synthesis model (default from profile: mistral-nemo:12b)."
+    ),
+    provider: str = typer.Option("ollama", "--provider", help="Local model provider (ollama)."),  # noqa: B008
+    timeout_seconds: "float | None" = typer.Option(  # noqa: B008
+        None, "--timeout-seconds", help="Override the synthesis model timeout."
+    ),
+    summary: bool = typer.Option(  # noqa: B008
+        False, "--summary", help="Include the full per-project groups list in the response."
+    ),
+    db: "str | None" = typer.Option(None, "--db", help="Explicit SQLite path (tests/isolation)."),  # noqa: B008
+    json_out: bool = typer.Option(True, "--json", help="Emit JSON (default)."),  # noqa: B008
+) -> None:
+    """Build a deterministic, source-linked Procore action-signal digest (dry-run-first).
+
+    Composes the existing redacted Procore rollup read models into per-project, per-signal-type
+    groups (counts, overdue, dimensions, bounded source refs). Defaults to dry-run (zero writes);
+    ``--apply`` is explicit and REQUIRES ``--max-persist``, capping inserts into
+    daily_brief_action_candidates (idempotent rollups). ``--synthesize`` adds an optional, in-memory
+    advisory narrative fed ONLY redacted aggregates. No Procore/external writeback, no cloud LLM.
+    """
+    from datetime import datetime as _dt
+    from datetime import timezone as _tz
+
+    from hb_assistant.construction.second_brain.local_ai import build_procore_action_digest
+    from hb_assistant.construction.store import ConstructionStore
+
+    cmd = "second-brain procore-digest build"
+    try:
+        if not dry_run and max_persist is None:
+            payload = {
+                "command": cmd, "ok": False, "applied": False,
+                "error": "apply_requires_max_persist",
+                "guardrails": {"apply_requires_max_persist": True},
+            }
+            typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+            raise typer.Exit(2)
+
+        now_utc = as_of or _dt.now(_tz.utc).isoformat()
+        store = ConstructionStore(db_path=db)
+
+        client = None
+        if synthesize:
+            from hb_assistant.construction.second_brain.local_ai import resolve_local_model_client
+
+            client, _resolved, _reason = resolve_local_model_client(
+                provider=provider, profile_id=profile, model=model, timeout_seconds=timeout_seconds,
+            )
+            # client may be None → digest reports synthesis ok=False (deterministic digest unaffected).
+
+        payload = build_procore_action_digest(
+            store=store, now_utc=now_utc, db_path=db, project_key=project, limit=limit,
+            dry_run=dry_run, max_persist=max_persist, synthesize=synthesize, client=client,
+        )
+        if not summary:
+            # Drop the verbose per-project groups unless --summary (counters + synthesis remain).
+            trimmed = []
+            for pv in payload.get("projects", []):
+                trimmed.append({k: v for k, v in pv.items() if k != "groups"})
+            payload = {**payload, "projects": trimmed}
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(0)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        payload = {"command": cmd, "ok": False, "error": str(e)[:300]}
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(1) from None
+
+
+@calendar_prep_app.command("build")
+def second_brain_calendar_prep_build(
+    project: "str | None" = typer.Option(  # noqa: B008
+        None, "--project", help="Single project key (default: all events in window)."
+    ),
+    as_of: "str | None" = typer.Option(  # noqa: B008
+        None, "--as-of",
+        help="ISO-8601 UTC 'now' for the deterministic lookahead window / brief-date "
+        "(default: current UTC).",
+    ),
+    lookahead_days: int = typer.Option(  # noqa: B008
+        14, "--lookahead-days", help="Forward window in days from --as-of (events starting within)."
+    ),
+    limit: int = typer.Option(  # noqa: B008
+        50, "--limit",
+        help="Max upcoming events to consider (soonest-first; bounds output AND would-persist). "
+        "--max-persist is the separate hard cap on actual writes.",
+    ),
+    dry_run: bool = typer.Option(  # noqa: B008
+        True, "--dry-run/--apply",
+        help="Dry-run (default; zero writes). --apply persists, capped by --max-persist.",
+    ),
+    max_persist: "int | None" = typer.Option(  # noqa: B008
+        None, "--max-persist", help="REQUIRED with --apply: cap on ACTUAL persisted candidates."
+    ),
+    synthesize: bool = typer.Option(  # noqa: B008
+        False, "--synthesize",
+        help="Optional bounded local-model advisory narrative (off by default; in-memory only).",
+    ),
+    profile: str = typer.Option(  # noqa: B008
+        "default_extract", "--profile", help="Local model profile when --synthesize (default_extract)."
+    ),
+    model: "str | None" = typer.Option(  # noqa: B008
+        None, "--model", help="Override the synthesis model (default from profile: mistral-nemo:12b)."
+    ),
+    provider: str = typer.Option("ollama", "--provider", help="Local model provider (ollama)."),  # noqa: B008
+    timeout_seconds: "float | None" = typer.Option(  # noqa: B008
+        None, "--timeout-seconds", help="Override the synthesis model timeout."
+    ),
+    summary: bool = typer.Option(  # noqa: B008
+        False, "--summary",
+        help="Include the full per-event prep list (redacted excerpts) in the response.",
+    ),
+    db: "str | None" = typer.Option(None, "--db", help="Explicit SQLite path (tests/isolation)."),  # noqa: B008
+    json_out: bool = typer.Option(True, "--json", help="Emit JSON (default)."),  # noqa: B008
+) -> None:
+    """Build deterministic, source-linked calendar meeting-prep candidates (dry-run-first).
+
+    Discovers upcoming, non-cancelled, non-private events within the lookahead window and builds one
+    bounded, redacted prep candidate per event (join URLs / dial-in / passcodes stripped; attendees
+    reduced to counts + domains; never raw subjects/bodies). Defaults to dry-run (zero writes);
+    ``--apply`` is explicit and REQUIRES ``--max-persist``, capping idempotent inserts into
+    daily_brief_action_candidates (section ``calendar``). ``--synthesize`` adds an optional, in-memory
+    advisory narrative fed ONLY redacted aggregates. No calendar/external writeback, no cloud LLM.
+    """
+    from datetime import datetime as _dt
+    from datetime import timezone as _tz
+
+    from hb_assistant.construction.second_brain.local_ai import build_calendar_prep_candidates
+    from hb_assistant.construction.store import ConstructionStore
+
+    cmd = "second-brain calendar-prep build"
+    try:
+        if not dry_run and max_persist is None:
+            payload = {
+                "command": cmd, "ok": False, "applied": False,
+                "error": "apply_requires_max_persist",
+                "guardrails": {"apply_requires_max_persist": True},
+            }
+            typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+            raise typer.Exit(2)
+
+        now_utc = as_of or _dt.now(_tz.utc).isoformat()
+        store = ConstructionStore(db_path=db)
+
+        client = None
+        if synthesize:
+            from hb_assistant.construction.second_brain.local_ai import resolve_local_model_client
+
+            client, _resolved, _reason = resolve_local_model_client(
+                provider=provider, profile_id=profile, model=model, timeout_seconds=timeout_seconds,
+            )
+            # client may be None → prep reports synthesis ok=False (deterministic prep unaffected).
+
+        payload = build_calendar_prep_candidates(
+            store=store, now_utc=now_utc, project_key=project, limit=limit,
+            lookahead_days=lookahead_days, dry_run=dry_run, max_persist=max_persist,
+            synthesize=synthesize, client=client,
+        )
+        if not summary:
+            # Drop the verbose per-event prep list (incl. redacted excerpts) unless --summary;
+            # safe counters + synthesis remain.
+            payload = {**payload, "events": []}
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(0)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        payload = {"command": cmd, "ok": False, "error": str(e)[:300]}
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(1) from None
+
+
 @phase_10_app.command("raw-action-candidates")
 def phase_10_raw_action_candidates(
     project: "str | None" = typer.Option(  # noqa: B008
@@ -8905,13 +9386,21 @@ def phase_10_review_candidate(
         "--emit/--no-emit",
         help="Persist the review_status change (dry-run default, like memory review).",
     ),  # noqa: B008
+    promote: bool = typer.Option(  # noqa: B008
+        False,
+        "--promote/--no-promote",
+        help="With --emit and an 'accepted' decision, also promote into accepted_tasks/"
+        "accepted_commitments (explicit opt-in; idempotent). Default: no-promote.",
+    ),
+    db: "str | None" = typer.Option(None, "--db", help="Explicit SQLite path (tests/isolation)."),  # noqa: B008
     json_out: bool = typer.Option(True, "--json", help="Emit machine-readable report (default)."),  # noqa: B008
 ) -> None:
     """Apply an explicit operator review decision to a Phase 10 raw-content action candidate.
 
-    Mirrors the memory review pattern exactly (dry default, --emit to persist, guardrails, exit codes).
-    Updates review_status on the V41 candidate row. Optionally writes a candidate_review_event row
-    (if the table is present). Does not auto-promote to accepted_* tables; advisory only.
+    Mirrors the memory review pattern (dry default, --emit to persist, guardrails, exit codes).
+    Updates review_status on the V41 candidate row and writes a candidate_review_event row.
+    Promotion into accepted_* is NEVER automatic: it requires an explicit ``--promote`` together
+    with ``--emit`` and an ``accepted`` decision, and is idempotent (re-promotion is a no-op).
     Raw source content can be inspected first via candidate-source or the graph raw-* detail commands.
     """
     from hb_assistant.construction.store import ConstructionStore
@@ -8928,7 +9417,7 @@ def phase_10_review_candidate(
         raise typer.Exit(2)
 
     try:
-        s = ConstructionStore()
+        s = ConstructionStore(db_path=db)
         # locate the row
         cand = None
         if candidate_type == "task":
@@ -8952,6 +9441,8 @@ def phase_10_review_candidate(
             raise typer.Exit(3)
 
         prior_status = cand.get("review_status") or "pending"
+        promoted = False
+        promotion_attempted = False
         if emit:
             # Use the additive store helpers — clean, no private access.
             s.update_candidate_review_state(
@@ -8970,6 +9461,27 @@ def phase_10_review_candidate(
                 prior_status=prior_status,
                 new_status=decision,
             )
+            # Promotion is explicit opt-in: only on accepted + --promote. Idempotent.
+            if promote and decision == "accepted":
+                promotion_attempted = True
+                if candidate_type == "task":
+                    promoted = s.insert_accepted_task(
+                        candidate_id=candidate_id,
+                        title_redacted=str(cand.get("title_redacted") or ""),
+                        waiting_state=str(cand.get("waiting_state") or "unknown"),
+                        safety_category=str(cand.get("safety_category") or "normal"),
+                        project_key=cand.get("project_key"),
+                        due_at_utc=cand.get("due_at_utc"),
+                    )
+                else:
+                    promoted = s.insert_accepted_commitment(
+                        candidate_id=candidate_id,
+                        title_redacted=str(cand.get("title_redacted") or ""),
+                        waiting_state=str(cand.get("waiting_state") or "unknown"),
+                        safety_category=str(cand.get("safety_category") or "normal"),
+                        project_key=cand.get("project_key"),
+                        due_at_utc=cand.get("due_at_utc"),
+                    )
 
         payload = {
             "command": "second-brain phase-10 review-candidate",
@@ -8981,11 +9493,15 @@ def phase_10_review_candidate(
             "prior_review_status": prior_status,
             "new_review_status": decision if emit else prior_status,
             "reason_redacted": reason,
+            "promotion_attempted": promotion_attempted,
+            "promoted": promoted,
             "guardrails": {
                 "explicit_confirmation_required_like_memory": True,
                 "advisory_only": True,
                 "no_silent_accept": True,
-                "no_auto_promote": True,
+                "promotion_requires_explicit_flag": True,
+                "promotion_only_on_accepted": True,
+                "promotion_idempotent": True,
                 "review_status_preserved": True,
                 "raw_excerpts_bounded": True,
             },

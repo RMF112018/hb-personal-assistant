@@ -30,6 +30,13 @@ except Exception:  # pragma: no cover - defensive
 SUPPORTED_SOURCES = ("email",)
 _ARTIFACT_PREFIX = "phase10a_extract_packets_"
 
+# Defensive cap on serialized thread size. The packet builder already hard-caps the
+# MODEL-facing output (≤6 messages × ≤1200 chars, ≤12KB), so the model never sees a
+# giant thread; this guard avoids paying pathological parse/sort cost on a single
+# multi-MB ``messages_json`` blob (real data has threads up to ~4.5MB). Oversized
+# threads are skipped and counted, never silently truncated.
+MAX_THREAD_MESSAGES_JSON_CHARS = 1_500_000
+
 
 class UnsupportedBatchSourceError(ValueError):
     """Raised (fail-closed) when an unimplemented --source is requested."""
@@ -74,10 +81,11 @@ def _select_email_threads(
     offset: int,
     thread_refs: Optional[list[str]],
     only_unprocessed: bool,
-) -> tuple[list[dict[str, Any]], int]:
+    max_messages_json_chars: Optional[int] = MAX_THREAD_MESSAGES_JSON_CHARS,
+) -> tuple[list[dict[str, Any]], int, int]:
     """Select email-thread records, longest serialized thread first (matches the validated manual loop).
 
-    Returns (selected, skipped_unprocessed_count).
+    Returns (selected, skipped_unprocessed_count, skipped_oversized_count).
     """
     rows = store.list_email_thread_raw_context(limit=100000)
     # Prefer rows that actually carry messages (messages_json IS NOT NULL / non-empty).
@@ -85,6 +93,12 @@ def _select_email_threads(
     if thread_refs:
         wanted = {str(t) for t in thread_refs}
         rows = [r for r in rows if str(r.get("thread_ref")) in wanted]
+    # Defensive: drop pathologically large serialized threads (counted, never truncated).
+    skipped_oversized = 0
+    if max_messages_json_chars is not None:
+        kept_size = [r for r in rows if len(r.get("messages_json") or "") <= max_messages_json_chars]
+        skipped_oversized = len(rows) - len(kept_size)
+        rows = kept_size
     skipped_unprocessed = 0
     if only_unprocessed:
         seen = _processed_thread_refs(store)
@@ -94,7 +108,7 @@ def _select_email_threads(
     # ORDER BY length(messages_json) DESC, then thread_ref for a stable tiebreak.
     rows.sort(key=lambda r: (-(len(r.get("messages_json") or "")), str(r.get("thread_ref") or "")))
     selected = rows[offset : offset + limit] if limit is not None else rows[offset:]
-    return selected, skipped_unprocessed
+    return selected, skipped_unprocessed, skipped_oversized
 
 
 def _safe_rejections(rejections: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -130,6 +144,7 @@ def run_batch_extraction(
     write_artifact: bool = True,
     artifact_dir: str = "/tmp",
     timestamp: Optional[str] = None,
+    max_messages_json_chars: Optional[int] = MAX_THREAD_MESSAGES_JSON_CHARS,
 ) -> dict[str, Any]:
     """Run Phase 10A extraction over a bounded batch of email-thread packets.
 
@@ -146,9 +161,9 @@ def run_batch_extraction(
     if not dry_run and max_persist is None:
         raise ValueError("apply requires max_persist (cap on actual persisted candidates)")
 
-    selected, skipped_unprocessed = _select_email_threads(
+    selected, skipped_unprocessed, skipped_oversized = _select_email_threads(
         store=store, limit=limit, offset=offset, thread_refs=thread_refs,
-        only_unprocessed=only_unprocessed,
+        only_unprocessed=only_unprocessed, max_messages_json_chars=max_messages_json_chars,
     )
 
     # Existing keys are skipped (counted, not rewritten); newly-persisted keys are added as we go so a
@@ -284,6 +299,7 @@ def run_batch_extraction(
         "model_name": model_name or ("mock" if (mock_output_map or mock_output) is not None else None),
         "processed_packets": len(results),
         "skipped_unprocessed": skipped_unprocessed,
+        "skipped_oversized": skipped_oversized,
         "summary": summary,
         "candidate_types": candidate_types,
         "safety_categories": safety_categories,
