@@ -65,6 +65,47 @@ def _calendar_source_ref(event_index_id: Any) -> str:
     return "cal:" + hashlib.sha256(str(event_index_id).encode("utf-8")).hexdigest()[:32]
 
 
+# Relationship class → conservative recommended operator action (advisory, deterministic).
+_RELATIONSHIP_NEXT_ACTION = {"strong": "prepare_packet", "moderate": "review", "weak": "review"}
+
+
+def _relationship_items(
+    *, store: Any, project_key: Optional[str], limit: int
+) -> list[dict[str, Any]]:
+    """Read bounded, source-linked relationship candidates for the brief (read-only, redacted).
+
+    Returns safe fields only — hashed source-ref pairs, confidence/class, reason codes, source
+    families, a recommended next action, and whether review is required. No raw subjects, bodies,
+    addresses, URLs, or payloads (the persisted rows contain none). Deterministic order is provided
+    by the store helper (confidence DESC, id ASC). Returns ``[]`` when no rows exist or the table is
+    absent, so the brief is unchanged for dates/DBs without relationship candidates.
+    """
+    try:
+        rows = store.list_phase10_relationship_candidates(project_key=project_key, limit=limit)
+    except Exception:
+        return []
+    items: list[dict[str, Any]] = []
+    for r in rows:
+        cls = str(r.get("confidence_class") or "weak")
+        review_required = cls == "moderate"
+        items.append(
+            {
+                "relationship_id": _short_id(r.get("relationship_candidate_id")),
+                "relationship_type": r.get("relationship_type"),
+                "confidence": r.get("confidence"),
+                "confidence_class": cls,
+                "source_families": [r.get("from_source_family"), r.get("to_source_family")],
+                "from_source_ref_hash": r.get("from_source_ref_hash"),
+                "to_source_ref_hash": r.get("to_source_ref_hash"),
+                "project_key": r.get("project_key"),
+                "reason_codes": [c for c in str(r.get("reason_redacted") or "").split(",") if c],
+                "review_required": review_required,
+                "recommended_next_action": _RELATIONSHIP_NEXT_ACTION.get(cls, "review"),
+            }
+        )
+    return items
+
+
 def _build_raw_enrichment(
     *, store: Any, brief_date: str, sections_present: set[str]
 ) -> dict[str, dict[str, Any]]:
@@ -133,6 +174,7 @@ def render_daily_brief(
     project_key: Optional[str] = None,
     limit: int = 200,
     include_raw: bool = False,
+    relationship_limit: int = 10,
 ) -> dict[str, Any]:
     """Render ``daily_brief_action_candidates`` for one date into a brief (read-only).
 
@@ -220,11 +262,18 @@ def render_daily_brief(
         if grouped[disp]
     ]
 
+    # Cross-source relationship enrichment (read-only, bounded, redacted). Appears only when rows
+    # exist, so the brief is byte-identical for dates/DBs without relationship candidates.
+    relationships = _relationship_items(
+        store=store, project_key=project_key, limit=max(0, relationship_limit)
+    )
+
     markdown = _render_markdown(
         brief_date=brief_date,
         grouped=grouped,
         total_rendered=len(rendered),
         include_raw=include_raw,
+        relationships=relationships,
     )
 
     return {
@@ -240,8 +289,10 @@ def render_daily_brief(
             "skipped_by_filter": skipped_by_filter,
             "skipped_by_limit": skipped_by_limit,
             "by_section": by_section,
+            "relationships": len(relationships),
         },
         "sections": sections_out,
+        "relationships": relationships,
         "markdown": markdown,
         "guardrails": {
             "read_only": True,
@@ -264,9 +315,14 @@ def _render_markdown(
     grouped: dict[str, list[dict[str, Any]]],
     total_rendered: int,
     include_raw: bool = False,
+    relationships: Optional[list[dict[str, Any]]] = None,
 ) -> str:
     """Deterministic Markdown. Uses ``display_title`` (real content when ``include_raw``, else the
-    redacted title) + stable candidate ids. ``include_raw`` output is LOCAL-only — never committed."""
+    redacted title) + stable candidate ids. ``include_raw`` output is LOCAL-only — never committed.
+
+    A bounded "Related Context" section is appended only when ``relationships`` is non-empty, so the
+    brief is byte-identical for dates/DBs without relationship candidates."""
+    rels = relationships or []
     disclaimer = (
         "_Advisory only. Source-linked review candidates from the local-agent family "
         "(email/follow-up, Procore, calendar)._"
@@ -275,7 +331,7 @@ def _render_markdown(
         "(email/follow-up, Procore, calendar). Redacted; no raw source content._"
     )
     lines: list[str] = [f"# Daily Brief — {brief_date}", "", disclaimer, ""]
-    if total_rendered == 0:
+    if total_rendered == 0 and not rels:
         lines.append("_No review candidates for this date._")
         return "\n".join(lines).strip() + "\n"
 
@@ -300,6 +356,26 @@ def _render_markdown(
                 parts.append(f"id:{cid}")
             suffix = f" — {' · '.join(parts)}" if parts else ""
             lines.append(f"- {title}{suffix}")
+        lines.append("")
+
+    if rels:
+        lines.append("## Related Context")
+        for r in rels:
+            fams = " ↔ ".join(str(f) for f in (r.get("source_families") or []) if f)
+            parts = [f"{r.get('confidence_class')} ({r.get('confidence')})"]
+            if fams:
+                parts.append(fams)
+            codes = r.get("reason_codes") or []
+            if codes:
+                parts.append("why:" + "+".join(str(c) for c in codes))
+            if r.get("project_key"):
+                parts.append(f"project:{r['project_key']}")
+            parts.append(f"next:{r.get('recommended_next_action')}")
+            if r.get("review_required"):
+                parts.append("review_required")
+            if r.get("relationship_id"):
+                parts.append(f"id:{r['relationship_id']}")
+            lines.append(f"- {r.get('relationship_type')} — {' · '.join(parts)}")
         lines.append("")
     return "\n".join(lines).strip() + "\n"
 

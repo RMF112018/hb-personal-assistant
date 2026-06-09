@@ -17,6 +17,7 @@ from pathlib import Path
 from typer.testing import CliRunner
 
 from hb_assistant.cli.main import app
+from hb_assistant.construction.second_brain.local_ai.daily_brief_render import render_daily_brief
 from hb_assistant.construction.second_brain.local_ai.pipeline import run_local_agent_pipeline
 from hb_assistant.construction.second_brain.local_ai.relationship_candidates import (
     _safe_candidate,
@@ -427,3 +428,66 @@ def test_pipeline_optin_runs_relationship_stage_before_render(tmp_path: Path) ->
     assert "relationship_candidates" in order
     assert order.index("relationship_candidates") < order.index("daily_brief_render")
     assert _row_count(db) == 2  # strong + moderate persisted by the opt-in stage
+
+
+# --------------------------------------------------------------------------- daily brief enrichment
+
+
+def _apply(db: str) -> ConstructionStore:
+    s = _seed(db)
+    build_relationship_candidates(store=s, now_utc=NOW, dry_run=False, max_persist=5)
+    return s
+
+
+def test_brief_default_unchanged_without_relationship_rows(tmp_path: Path) -> None:
+    db = str(tmp_path / "t.sqlite")
+    s = _seed(db)  # raw context only; no relationship rows persisted
+    out = render_daily_brief(store=s, brief_date="2026-06-09")
+    assert out["relationships"] == []
+    assert out["summary"]["relationships"] == 0
+    assert "Related Context" not in out["markdown"]
+
+
+def test_brief_section_appears_when_rows_exist(tmp_path: Path) -> None:
+    db = str(tmp_path / "t.sqlite")
+    s = _apply(db)
+    out = render_daily_brief(store=s, brief_date="2026-06-09")
+    assert len(out["relationships"]) == 2
+    assert "Related Context" in out["markdown"]
+    classes = {r["confidence_class"] for r in out["relationships"]}
+    assert classes == {"strong", "moderate"}
+
+
+def test_brief_relationships_deterministic_and_bounded(tmp_path: Path) -> None:
+    db = str(tmp_path / "t.sqlite")
+    s = _apply(db)
+    out = render_daily_brief(store=s, brief_date="2026-06-09", relationship_limit=1)
+    assert len(out["relationships"]) == 1  # bounded
+    confs = [r["confidence"] for r in out["relationships"]]
+    assert confs == sorted(confs, reverse=True)  # confidence DESC
+
+
+def test_brief_project_filter_applies_to_relationships(tmp_path: Path) -> None:
+    db = str(tmp_path / "t.sqlite")
+    s = _apply(db)
+    out = render_daily_brief(store=s, brief_date="2026-06-09", project_key="PRJ-A")
+    assert [r["project_key"] for r in out["relationships"]] == ["PRJ-A"]
+
+
+def test_brief_render_does_not_mutate(tmp_path: Path) -> None:
+    db = str(tmp_path / "t.sqlite")
+    s = _apply(db)
+    before = _row_count(db)
+    render_daily_brief(store=s, brief_date="2026-06-09")
+    render_daily_brief(store=s, brief_date="2026-06-09")
+    assert _row_count(db) == before  # render writes nothing
+    assert _guard_sum(db) == 0
+
+
+def test_brief_relationship_enrichment_redaction(tmp_path: Path) -> None:
+    db = str(tmp_path / "t.sqlite")
+    s = _apply(db)
+    out = render_daily_brief(store=s, brief_date="2026-06-09")
+    blob = json.dumps(out["relationships"]) + out["markdown"]
+    for needle in ("@", "example.com", "rebar", "logistics", "http", "<", ">"):
+        assert needle not in blob, f"forbidden token {needle!r} in brief relationship enrichment"
