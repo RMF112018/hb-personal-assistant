@@ -1,0 +1,37 @@
+{
+  "table": "email_followup_enrichments",
+  "rows": 3,
+  "guard_columns_present": 13,
+  "guard_columns": [
+    "raw_email_body_persisted",
+    "raw_document_text_persisted",
+    "raw_calendar_payload_persisted",
+    "raw_procore_payload_persisted",
+    "raw_prompt_persisted",
+    "raw_response_persisted",
+    "signed_url_persisted",
+    "download_url_persisted",
+    "external_writeback_performed",
+    "graph_writeback_performed",
+    "procore_writeback_performed",
+    "email_send_performed",
+    "calendar_mutation_performed"
+  ],
+  "per_column_sum": {
+    "raw_email_body_persisted": 0,
+    "raw_document_text_persisted": 0,
+    "raw_calendar_payload_persisted": 0,
+    "raw_procore_payload_persisted": 0,
+    "raw_prompt_persisted": 0,
+    "raw_response_persisted": 0,
+    "signed_url_persisted": 0,
+    "download_url_persisted": 0,
+    "external_writeback_performed": 0,
+    "graph_writeback_performed": 0,
+    "procore_writeback_performed": 0,
+    "email_send_performed": 0,
+    "calendar_mutation_performed": 0
+  },
+  "nonzero_sum": 0,
+  "all_guard_columns_zero": true
+}

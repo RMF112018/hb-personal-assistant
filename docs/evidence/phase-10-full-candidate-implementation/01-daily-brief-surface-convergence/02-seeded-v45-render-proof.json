@@ -1,0 +1,17 @@
+{
+  "scenario": "seeded_v45_pending_rows",
+  "seeded_rows": 3,
+  "pending_followup_summary": {
+    "section": "email_followup_pending_enrichment",
+    "available": true,
+    "count": 3,
+    "omitted_low_confidence": 0,
+    "dropped_leak": 0,
+    "degraded_reason": null
+  },
+  "pending_card_in_html": true,
+  "pending_section_in_obsidian": true,
+  "low_confidence_handled": true,
+  "egress_clean": true,
+  "status": "success"
+}

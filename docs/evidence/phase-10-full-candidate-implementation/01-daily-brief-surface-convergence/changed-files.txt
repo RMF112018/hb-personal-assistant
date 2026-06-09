@@ -1,0 +1,13 @@
+# Prompt 01 — changed files (this candidate only)
+src/hb_assistant/construction/second_brain/local_ai/daily_run.py        # build pending section, append to Obsidian md, pass to HTML, status summary
+src/hb_assistant/construction/second_brain/local_ai/daily_run_html.py   # raw-free pending-followup card + param (emitted before brief body)
+src/hb_assistant/cli/second_brain.py                                    # honest --with-email-raw-enrichment help text
+tests/test_phase_10_daily_run_pending_followup_convergence.py           # NEW regression test for the convergence
+docs/evidence/phase-10-full-candidate-implementation/01-daily-brief-surface-convergence/  # evidence bundle
+
+# NOTE — concurrent external mutation observed (NOT part of this candidate, excluded from commit):
+#   docs/evidence/construction-intelligence-phase-07a-data-quality/07-obsidian-output-preview.md
+#   docs/evidence/construction-intelligence-phase-07a-data-quality/obsidian-data-quality-dry-run.json
+# A background data-quality dry-run regenerated these on the working tree mid-session
+# (their repo_sha == this branch's setup-commit HEAD, generated_utc within this session).
+# Left unstaged; see hb-concurrent-repo-mutation-hazard.

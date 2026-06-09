@@ -9697,9 +9697,11 @@ def second_brain_daily_run_run(
     ),
     with_email_raw_enrichment: bool = typer.Option(  # noqa: B008
         False, "--with-email-raw-enrichment/--no-email-raw-enrichment",
-        help="OPT-IN: surface PENDING V45 email follow-up enrichments in the brief, clearly labeled "
-        "'Model-enriched / pending review' and raw-free. Read-only consumption (no model run, no "
-        "raw-local preview here). Off by default.",
+        help="OPT-IN: also attach the structured PENDING V45 email follow-up section to the run JSON "
+        "payload (a machine-readable twin). The rendered brief (browser HTML + Obsidian note) now "
+        "ALWAYS surfaces pending review-safe enrichments — clearly labeled 'Model-enriched / pending "
+        "review', raw-free, source-linked — so this flag only adds the same data to --json output. "
+        "Read-only consumption (no model run, no raw-local preview here). Off by default.",
     ),
     open_browser: bool = typer.Option(  # noqa: B008
         False,

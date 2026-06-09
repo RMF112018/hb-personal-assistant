@@ -1,0 +1,13 @@
+# Safety scan — Prompt 01 generated outputs
+
+01-no-row-render-proof.json: CLEAN
+02-seeded-v45-render-proof.json: CLEAN
+03-browser-final-output.html: CLEAN
+04-obsidian-final-output.md: CLEAN
+05-status-final-output.json: CLEAN
+06-degraded-output-proof.md: CLEAN
+08-guard-column-proof.json: CLEAN
+
+TOTAL_FILES=7
+TOTAL_FINDINGS=0
+RESULT=PASS — no forbidden content

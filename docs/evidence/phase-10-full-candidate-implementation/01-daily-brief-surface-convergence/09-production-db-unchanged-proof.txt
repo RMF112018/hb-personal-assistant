@@ -1,0 +1,11 @@
+# Production DB Unchanged Proof — Prompt 01
+
+Production DB path resolved from runtime config (PathPolicy.get_db_path), per repo policy.
+All rendering/seeding ran on disposable temp DB copies; production was read once for the
+baseline checksum and never opened for write.
+
+- Path (redacted): ~/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite
+- size: 253255680 bytes
+- sha256 BEFORE: 25e5bce9b9d4c8a21a5175fc1cf09aead2362ec513c03404d2df7d2327deb2d8
+- sha256 AFTER:  25e5bce9b9d4c8a21a5175fc1cf09aead2362ec513c03404d2df7d2327deb2d8
+- UNCHANGED: True

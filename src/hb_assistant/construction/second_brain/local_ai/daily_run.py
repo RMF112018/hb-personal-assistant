@@ -7,7 +7,9 @@ launchd schedule fires at 5:00 AM on weekdays. It:
    weekend skip vs Saturday catch-up of a missed Friday;
 2. runs the pipeline (apply, conservative caps) with that window so every stage uses policy dates;
 3. renders the raw brief into two **private local consumption surfaces** — a governed Obsidian
-   note and a polished self-contained browser HTML file — at stable, **non-repo** paths;
+   note and a polished self-contained browser HTML file — at stable, **non-repo** paths, and
+   converges the raw-free V45 pending email follow-up section onto both surfaces (and a redacted
+   count into the status file) whenever pending review-safe rows exist;
 4. writes a redacted machine-readable status file every run; and
 5. preserves the last *successful* browser brief on failure (never clobbers last-good with a
    failed/partial/unsafe output), writing a degraded "attempted" brief only when safe.
@@ -319,6 +321,41 @@ def run_daily_local_agent(
                 + _render_md_appendix(sections)
             )
 
+    # ---- V45 pending email follow-up enrichment convergence (deterministic, raw-free) ----
+    # Surface the pending-enrichment section on the FINAL surfaces (browser HTML + Obsidian note),
+    # independent of model synthesis, whenever pending review-safe rows exist. Clean-degrades to an
+    # absent section when the table/rows are missing. Source-linked + clearly labeled; never fact.
+    from ..daily_brief.email_followup_pending import (
+        build_pending_email_enrichment_section,
+        render_pending_enrichment_markdown,
+    )
+
+    try:
+        pending_followup = build_pending_email_enrichment_section(store)
+    except Exception as exc:  # advisory only — never fail the deterministic run
+        pending_followup = {
+            "section": "email_followup_pending_enrichment",
+            "available": False,
+            "degraded_reason": f"enrichment_error:{str(exc)[:80]}",
+            "count": 0,
+            "items": [],
+        }
+    pending_md = (
+        render_pending_enrichment_markdown(pending_followup)
+        if pending_followup.get("available")
+        else ""
+    )
+    if pending_md:
+        markdown = (markdown + "\n\n---\n\n" + pending_md) if markdown else pending_md
+    pending_summary = {
+        "section": pending_followup.get("section"),
+        "available": bool(pending_followup.get("available")),
+        "count": int(pending_followup.get("count") or 0),
+        "omitted_low_confidence": int(pending_followup.get("omitted_low_confidence") or 0),
+        "dropped_leak": int(pending_followup.get("dropped_leak") or 0),
+        "degraded_reason": pending_followup.get("degraded_reason"),
+    }
+
     is_fresh_success = (
         status == "success" and not dry_run and pipeline.get("brief_freshness") == "fresh"
     )
@@ -341,6 +378,7 @@ def run_daily_local_agent(
             synthesis=synthesis_dump,
             model_metadata=synthesis_meta,
             degraded=synthesis_degraded,
+            pending_followup=pending_followup,
         )
         egress_matched = scan_daily_run_html(rendered)
         egress_clean = not egress_matched
@@ -396,6 +434,7 @@ def run_daily_local_agent(
         failure_reason=failure_reason,
         is_success=is_fresh_success,
         synthesis=synthesis_meta,
+        pending_followup=pending_summary,
     )
     outputs["status_path"] = _redact_path(status_path)
 
@@ -414,6 +453,7 @@ def run_daily_local_agent(
         "outputs": outputs,
         "synthesis": synthesis_meta,
         "synthesis_degraded": synthesis_degraded,
+        "pending_followup": pending_summary,
         "egress_scan": {"clean": egress_clean, "matched_labels": egress_matched},
         "failure_reason": failure_reason,
         "guardrails": _guardrails(include_raw, dry_run, generate_browser),
@@ -476,11 +516,13 @@ def _write_status(
     failure_reason: Optional[str],
     is_success: bool,
     synthesis: Optional[dict[str, Any]] = None,
+    pending_followup: Optional[dict[str, Any]] = None,
 ) -> Path:
     """Write the redacted machine-readable status (latest + dated). Never contains raw bodies.
 
     ``synthesis`` carries only safe model metadata (profile/model/status/latency/degraded) — never a
-    raw prompt or response."""
+    raw prompt or response. ``pending_followup`` carries only counts/labels (section name, available,
+    count, omitted/dropped counters) — never row-level enrichment content."""
     payload: dict[str, Any] = {
         "command": "second-brain daily-run run",
         "run_timestamp": now_utc,
@@ -493,6 +535,7 @@ def _write_status(
         "summary": pipeline.get("summary") if pipeline else {},
         "outputs": outputs,
         "synthesis": synthesis,
+        "pending_followup": pending_followup,
         "warnings": warnings,
         "failure_reason": failure_reason,
     }

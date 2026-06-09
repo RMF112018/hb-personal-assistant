@@ -1,0 +1,7 @@
+# Prompt 01 — validation commands (run from repo root, venv python3.12)
+python3.12 -m compileall src/hb_assistant/construction/second_brain/local_ai/daily_run.py src/hb_assistant/construction/second_brain/local_ai/daily_run_html.py src/hb_assistant/construction/second_brain/daily_brief/email_followup_pending.py src/hb_assistant/cli/second_brain.py
+python3.12 -m pytest -q tests -k "daily_brief or daily_run or followup or email_followup or render"
+python3.12 -m pytest -q tests/test_phase_10_daily_run_pending_followup_convergence.py
+ruff check src/hb_assistant/construction/second_brain/local_ai/daily_run.py src/hb_assistant/construction/second_brain/local_ai/daily_run_html.py src/hb_assistant/cli/second_brain.py
+mypy src/hb_assistant/construction/second_brain/local_ai/daily_run.py src/hb_assistant/construction/second_brain/local_ai/daily_run_html.py
+python3.12 /tmp/gen_evidence_01.py   # evidence generator (temp DB copies only; prod read-once)
