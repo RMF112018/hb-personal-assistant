@@ -1,0 +1,121 @@
+{
+  "prompt": "01_ENDPOINT_FAILURE_EVIDENCE_AUDIT.md",
+  "safe_evidence_only": true,
+  "raw_payloads_included": false,
+  "tokens_included": false,
+  "correlation_ids_included": false,
+  "notes": "Reason excerpts are normalized short messages (<=160 chars). Full Procore error bodies, correlation_ids, headers, tokens, and resolved Procore IDs are intentionally excluded.",
+  "source_files": [
+    "~/Library/Application Support/HB Personal Assistant/evidence/scheduled/source-refresh-production-2026-06-08-run57.json",
+    "~/Library/Application Support/HB Personal Assistant/evidence/scheduled/scheduled-refresh-production-2026-06-08.json",
+    "production DB: ~/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite (read-only SELECTs)"
+  ],
+  "run_status": {
+    "schedule_date": "2026-06-08",
+    "status": "degraded",
+    "mode": "apply",
+    "counts": { "inserted": 1185, "updated": 0, "skipped": 0, "planned": 0, "failed": 28 },
+    "interpretation": "1185 inserted == the 3 working legacy endpoints across 4 projects (list-rfis 603 + list-submittals 445 + list-commitments 137). 28 failed == 7 endpoints x 4 projects."
+  },
+  "projects_seen": ["tropical", "pga-modern-garage", "alton-hilltop-pbg", "the-wellington"],
+  "endpoint_failures": [
+    {
+      "endpoint": "list-projects",
+      "projects": ["tropical", "pga-modern-garage", "alton-hilltop-pbg", "the-wellington"],
+      "http_status": 400,
+      "reason_code": "BAD_REQUEST",
+      "message_excerpt": "Missing Project or Company ID",
+      "classification": "contract_bug_missing_required_param",
+      "canonical_adapter": "projects",
+      "remediation": "route via canonical company-level adapter (company-scoped, run once per company)"
+    },
+    {
+      "endpoint": "list-change-events",
+      "projects": ["tropical", "pga-modern-garage", "alton-hilltop-pbg", "the-wellington"],
+      "http_status": 400,
+      "reason_code": "BAD_REQUEST",
+      "message_excerpt": "Missing Project or Company ID",
+      "classification": "contract_bug_missing_required_param",
+      "canonical_adapter": "change-events",
+      "remediation": "route via canonical adapter (flat /rest/v1.1/change_events with project_id scoping)"
+    },
+    {
+      "endpoint": "list-invoices",
+      "projects": ["tropical", "pga-modern-garage", "alton-hilltop-pbg", "the-wellington"],
+      "http_status": 400,
+      "reason_code": "BAD_REQUEST",
+      "message_excerpt": "Missing Project or Company ID",
+      "classification": "contract_bug_missing_required_param",
+      "canonical_adapter": "subcontractor-invoices",
+      "remediation": "route via canonical adapter (flat /rest/v1.1/requisitions with project_id scoping)"
+    },
+    {
+      "endpoint": "list-daily-logs",
+      "projects": ["tropical", "pga-modern-garage", "alton-hilltop-pbg", "the-wellington"],
+      "http_status": 400,
+      "reason_code": "BAD_REQUEST",
+      "message_excerpt": "The Start Date and End Date parameters are required.",
+      "classification": "contract_bug_date_window_missing",
+      "canonical_adapter": "daily-log-* family (weather, manpower, notes, deliveries, inspections, dcrs, delays/accident/safety review-routed, dumpster, visitor)",
+      "remediation": "route via canonical date-windowed daily-log sub-type adapters with bounded start_date/end_date"
+    },
+    {
+      "endpoint": "list-drawings",
+      "projects": ["tropical", "pga-modern-garage", "alton-hilltop-pbg", "the-wellington"],
+      "http_status": 404,
+      "reason_code": "not_found",
+      "message_excerpt": "(empty body)",
+      "classification": "skipped_tool_not_enabled",
+      "canonical_adapter": "NONE — no drawings adapter exists in endpoints.py; 0 rows in procore_live_records",
+      "remediation": "classify explicitly as unsupported/tool-not-enabled; do not emit generic error"
+    },
+    {
+      "endpoint": "list-punch-items",
+      "projects": ["tropical", "pga-modern-garage", "alton-hilltop-pbg", "the-wellington"],
+      "http_status": 404,
+      "reason_code": "not_found",
+      "message_excerpt": "(empty body)",
+      "classification": "contract_bug_route_template",
+      "canonical_adapter": "punch-items",
+      "remediation": "route via canonical flat /rest/v1.1/punch_items with project_id query param (legacy used stale /rest/v1.0/projects/{id}/punch_items)"
+    },
+    {
+      "endpoint": "list-prime-contracts",
+      "projects": ["tropical", "pga-modern-garage", "alton-hilltop-pbg", "the-wellington"],
+      "http_status": 404,
+      "reason_code": "not_found",
+      "message_excerpt": "(empty body)",
+      "classification": "contract_bug_route_template",
+      "canonical_adapter": "prime-contracts",
+      "remediation": "route via canonical flat /rest/v1.0/prime_contracts (legacy used stale /rest/v1.0/projects/{id}/prime_contracts)"
+    }
+  ],
+  "successful_endpoints_legacy_path": [
+    { "endpoint": "list-rfis", "synced_entities_rows": 603, "canonical_adapter": "rfis" },
+    { "endpoint": "list-submittals", "synced_entities_rows": 445, "canonical_adapter": "submittals" },
+    { "endpoint": "list-commitments", "synced_entities_rows": 137, "canonical_adapter": "commitment-contracts" }
+  ],
+  "seventh_endpoint_resolution": {
+    "status": "resolved_from_safe_evidence",
+    "seventh_endpoint": "list-invoices",
+    "http_status": 400,
+    "message_excerpt": "Missing Project or Company ID",
+    "evidence": "Named in per-project redacted_errors of source-refresh-production-2026-06-08-run57.json for all 4 pilot projects. Successful endpoints (rfis/submittals/commitments) eliminated; list-invoices is the 7th failing endpoint."
+  },
+  "canonical_path_health_db_proof": {
+    "procore_sync_runs_count": 0,
+    "procore_sync_errors_count": 0,
+    "procore_synced_entities_endpoints": { "list-commitments": 137, "list-rfis": 603, "list-submittals": 445 },
+    "procore_live_records_failing_endpoint_equivalents": {
+      "projects": 21,
+      "change-events": 192,
+      "subcontractor-invoices": 220,
+      "punch-items": 4,
+      "prime-contracts": 4,
+      "daily-log-weather": 121,
+      "daily-log-manpower": 962,
+      "drawings": 0
+    },
+    "interpretation": "Every failing legacy endpoint (except drawings, which has no adapter) already succeeds in the canonical live path. Routing daily-refresh through the canonical adapters resolves the failures."
+  }
+}
