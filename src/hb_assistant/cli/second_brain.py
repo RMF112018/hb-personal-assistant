@@ -5260,6 +5260,55 @@ def review_summary_cmd(
         _emit_08c(payload, json_out=json_out, human=[str(e)], exit_code=1)
 
 
+@review_app.command("report")
+def review_report_cmd(
+    project: str | None = typer.Option(None, "--project", help="Filter by project_key."),
+    limit: int = typer.Option(2000, "--limit", help="Max candidates to scan."),
+    apply_cap: int = typer.Option(  # noqa: B008
+        50, "--apply-cap", help="Bounded preview-apply cap (accepted set previewed; never persisted)."
+    ),
+    markdown_out: str | None = typer.Option(  # noqa: B008
+        None, "--markdown-out", help="Also write the operator-facing Markdown report to this file."
+    ),
+    db: str | None = typer.Option(None, "--db", help="Explicit SQLite path (tests/isolation)."),
+    json_out: bool = typer.Option(True, "--json/--no-json"),
+) -> None:
+    """Consolidated, review-safe candidate lifecycle report (read-only / dry-run).
+
+    One legible operator surface: what is pending / accepted / rejected / snoozed / suppressed, what
+    needs Bobby's review (low-confidence/unclear), and a bounded dry-run preview of the accepted set
+    an apply would act on — each item source-linked with confidence/safety reasons. Persists nothing;
+    `--no-json` prints the Markdown, `--markdown-out` also writes it to a local file.
+    """
+    from pathlib import Path
+
+    from hb_assistant.construction.second_brain.local_ai.candidate_review import (
+        build_review_report,
+        render_review_report_markdown,
+    )
+    from hb_assistant.construction.store import ConstructionStore
+
+    try:
+        store = ConstructionStore(db_path=db)
+        report = build_review_report(store, project_key=project, limit=limit, apply_cap=apply_cap)
+        markdown = render_review_report_markdown(report)
+        if markdown_out:
+            Path(markdown_out).write_text(markdown, encoding="utf-8")
+        payload = {
+            "command": "second-brain review report",
+            "phase": "10A",
+            **report,
+            "markdown_out": markdown_out,
+            "guardrails": _candidate_review_guardrails(),
+        }
+        _emit_08c(payload, json_out=json_out, human=[markdown], exit_code=0)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        payload = {"command": "second-brain review report", "ok": False, "error": str(e)[:300]}
+        _emit_08c(payload, json_out=json_out, human=[str(e)], exit_code=1)
+
+
 # --- Phase 10A candidate review (local-only state transitions) ---
 def _candidate_review_action_guardrails() -> dict[str, Any]:
     return {

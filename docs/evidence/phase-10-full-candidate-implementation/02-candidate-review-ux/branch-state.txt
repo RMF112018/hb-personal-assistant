@@ -1,0 +1,11 @@
+branch: experiment/phase-10-full-candidate-implementation
+HEAD: 4890195f0bd301fda22a65c6ee42b99855d1583f
+baseline: 0c75f4a77b5987cdbd2a058504f5423d69d225f1
+origin/main: 0c75f4a77b5987cdbd2a058504f5423d69d225f1
+--- git status --short ---
+ M docs/evidence/construction-intelligence-phase-09-retrieval-memory-quality/no-raw-vector-index-proof.json
+ M docs/evidence/construction-intelligence-phase-09-retrieval-memory-quality/no-raw-vector-index-proof.md
+ M src/hb_assistant/cli/second_brain.py
+ M src/hb_assistant/construction/second_brain/local_ai/candidate_review.py
+?? docs/evidence/phase-10-full-candidate-implementation/02-candidate-review-ux/
+?? tests/test_phase_10_candidate_review_report.py

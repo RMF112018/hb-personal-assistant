@@ -1,0 +1,17 @@
+{
+  "accept": {
+    "candidate_id": "a1",
+    "prior": "pending",
+    "new": "accepted",
+    "event_id": "2fada868-a3b3-468a-bb66-7ce18d1b3a24"
+  },
+  "reject": {
+    "candidate_id": "r1",
+    "prior": "pending",
+    "new": "rejected",
+    "event_id": "d43c83b2-a399-4579-a249-616c459cf177"
+  },
+  "accept_ok": true,
+  "reject_ok": true,
+  "audit_events_written": true
+}

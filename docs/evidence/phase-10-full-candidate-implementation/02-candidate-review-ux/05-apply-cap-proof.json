@@ -1,0 +1,11 @@
+{
+  "command": "second-brain review accept (batch, capped)",
+  "exit_code": 0,
+  "ids_total": 5,
+  "max_actions": 2,
+  "processed": 2,
+  "applied": 2,
+  "skipped_over_cap": 3,
+  "accepted_rows_after": 2,
+  "cap_enforced": true
+}

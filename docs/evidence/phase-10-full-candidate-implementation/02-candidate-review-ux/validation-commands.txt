@@ -1,0 +1,7 @@
+# Prompt 02 — validation commands (repo root, venv python3.12)
+python3.12 -m compileall src/hb_assistant/construction/second_brain/local_ai/candidate_review.py src/hb_assistant/cli/second_brain.py
+python3.12 -m pytest -q tests/test_phase_10_candidate_review_report.py
+python3.12 -m pytest -q tests -k "candidate or review or apply or daily_brief_action or followup"
+ruff check src/hb_assistant/construction/second_brain/local_ai/candidate_review.py src/hb_assistant/cli/second_brain.py
+mypy src/hb_assistant/construction/second_brain/local_ai/candidate_review.py
+python3.12 /tmp/gen_evidence_02.py   # evidence generator (temp DBs only; prod read-once)
