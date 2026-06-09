@@ -9616,6 +9616,23 @@ def _attach_daily_run_intelligence(*, store: Any, payload: dict, dry_run: bool) 
         return {"enriched": False, "withheld_reason": f"intelligence_error:{str(e)[:120]}"}
 
 
+def _attach_email_raw_enrichment_section(*, store: Any) -> dict:
+    """Surface PENDING V45 email enrichments for the brief (read-only, raw-free, fail-closed)."""
+    from hb_assistant.construction.second_brain.daily_brief.email_followup_pending import (
+        build_pending_email_enrichment_section,
+    )
+
+    try:
+        return build_pending_email_enrichment_section(store)
+    except Exception as e:  # advisory only — never fail the deterministic run
+        return {
+            "section": "email_followup_pending_enrichment",
+            "available": False,
+            "degraded_reason": f"enrichment_error:{str(e)[:120]}",
+            "items": [],
+        }
+
+
 @daily_run_app.command("run")
 def second_brain_daily_run_run(
     as_of: "str | None" = typer.Option(  # noqa: B008
@@ -9677,6 +9694,12 @@ def second_brain_daily_run_run(
         False, "--with-intelligence/--no-intelligence",
         help="OPT-IN: attach local-model advisory daily-brief intelligence (source-linked, "
         "fail-closed, advisory-only; never replaces the deterministic brief). Off by default.",
+    ),
+    with_email_raw_enrichment: bool = typer.Option(  # noqa: B008
+        False, "--with-email-raw-enrichment/--no-email-raw-enrichment",
+        help="OPT-IN: surface PENDING V45 email follow-up enrichments in the brief, clearly labeled "
+        "'Model-enriched / pending review' and raw-free. Read-only consumption (no model run, no "
+        "raw-local preview here). Off by default.",
     ),
     open_browser: bool = typer.Option(  # noqa: B008
         False,
@@ -9770,6 +9793,8 @@ def second_brain_daily_run_run(
             payload["intelligence"] = _attach_daily_run_intelligence(
                 store=store, payload=payload, dry_run=dry_run
             )
+        if with_email_raw_enrichment:
+            payload["email_raw_enrichment"] = _attach_email_raw_enrichment_section(store=store)
         if open_browser:
             payload.setdefault("warnings", []).append("auto_open_not_enabled: browser not opened")
         typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
