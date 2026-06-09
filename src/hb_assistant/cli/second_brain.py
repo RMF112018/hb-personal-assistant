@@ -179,6 +179,19 @@ pipeline_app = typer.Typer(
 )
 app.add_typer(pipeline_app, name="pipeline")
 
+daily_run_app = typer.Typer(
+    name="daily-run",
+    help="Phase 10 Checkpoint 6 daily run: weekday-aware brief + browser/Obsidian outputs + scheduler.",
+    no_args_is_help=True,
+)
+app.add_typer(daily_run_app, name="daily-run")
+daily_run_scheduler_app = typer.Typer(
+    name="scheduler",
+    help="Install/status/uninstall the weekday 5:00 AM launchd daily-run agent (dry-run-first).",
+    no_args_is_help=True,
+)
+daily_run_app.add_typer(daily_run_scheduler_app, name="scheduler")
+
 automation_app = typer.Typer(
     name="automation",
     help="Phase 08B automation health + observability (read-only status surface).",
@@ -9199,6 +9212,248 @@ def second_brain_pipeline_run(
         payload = {"command": cmd, "ok": False, "error": str(e)[:300]}
         typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
         raise typer.Exit(1) from None
+
+
+@daily_run_app.command("run")
+def second_brain_daily_run_run(
+    as_of: "str | None" = typer.Option(  # noqa: B008
+        None, "--as-of", help="ISO-8601 local run time (default: now). Its weekday drives the policy."
+    ),
+    date: "str | None" = typer.Option(  # noqa: B008
+        None, "--date", help="Force the brief date YYYY-MM-DD (run at 05:00 local that day)."
+    ),
+    timezone: str = typer.Option(  # noqa: B008
+        "America/New_York", "--timezone", help="Local timezone for the weekday date policy."
+    ),
+    dry_run: bool = typer.Option(  # noqa: B008
+        True, "--dry-run/--apply", help="Dry-run (default; zero writes). --apply persists (capped)."
+    ),
+    max_persist_per_stage: int = typer.Option(  # noqa: B008
+        10, "--max-persist-per-stage", help="Conservative per-stage persist cap."
+    ),
+    max_total_persist: int = typer.Option(  # noqa: B008
+        30, "--max-total-persist", help="Conservative global persist ceiling."
+    ),
+    limit: int = typer.Option(50, "--limit", help="Per-stage item cap."),  # noqa: B008
+    lookahead_days: int = typer.Option(  # noqa: B008
+        14, "--lookahead-days", help="Calendar fallback window (policy window takes precedence)."
+    ),
+    raw: bool = typer.Option(  # noqa: B008
+        True, "--raw/--no-raw", help="Raw local content in the Obsidian + browser brief (default on)."
+    ),
+    weekdays_only: bool = typer.Option(  # noqa: B008
+        True, "--weekdays-only/--all-days", help="Skip weekend runs (default; Mon–Fri only)."
+    ),
+    write_obsidian: bool = typer.Option(  # noqa: B008
+        False, "--write-obsidian", help="Write the governed Obsidian note (requires confirmation)."
+    ),
+    confirm_vault_write: bool = typer.Option(  # noqa: B008
+        False, "--confirm-vault-write", help="REQUIRED with --write-obsidian (governed vault write)."
+    ),
+    vault_brief_dir: "str | None" = typer.Option(  # noqa: B008
+        None, "--vault-brief-dir", help="Override the governed vault brief dir (test/isolation)."
+    ),
+    generate_browser: bool = typer.Option(  # noqa: B008
+        True, "--generate-browser/--no-generate-browser", help="Generate the browser HTML brief."
+    ),
+    browser_output_dir: "str | None" = typer.Option(  # noqa: B008
+        None, "--browser-output-dir", help="Browser HTML output dir (default: app-support/html)."
+    ),
+    status_dir: "str | None" = typer.Option(  # noqa: B008
+        None, "--status-dir", help="Status-file dir (default: app-support/daily-run-status)."
+    ),
+    open_browser: bool = typer.Option(  # noqa: B008
+        False,
+        "--open-browser/--no-open-browser",
+        help="Reserved — auto-open is NOT enabled yet; the browser is never opened.",
+    ),
+    allow_partial: bool = typer.Option(  # noqa: B008
+        False, "--allow-partial", help="Exit 0 even on a partial/failed run (payload still reports it)."
+    ),
+    db: "str | None" = typer.Option(None, "--db", help="Explicit SQLite path (tests/isolation)."),  # noqa: B008
+    json_out: bool = typer.Option(True, "--json", help="Emit JSON (default)."),  # noqa: B008
+) -> None:
+    """Run the weekday-aware daily local-agent workflow once (dry-run-first; advisory).
+
+    Resolves the weekday date policy (Monday carryover / standard / Friday next-week prep; weekend
+    skip or Saturday catch-up of a missed Friday), runs the pipeline with that window, renders the
+    raw brief to a governed Obsidian note + a self-contained browser HTML file at stable NON-repo
+    paths, writes a redacted status file, and preserves the last successful brief on failure. The
+    browser is never auto-opened.
+    """
+    from datetime import datetime as _dt
+
+    from hb_assistant.construction.second_brain.local_ai import run_daily_local_agent
+    from hb_assistant.construction.store import ConstructionStore
+
+    cmd = "second-brain daily-run run"
+    try:
+        # Governed vault write requires explicit confirmation (mirrors daily-brief render).
+        if write_obsidian and not confirm_vault_write and not dry_run:
+            payload = {
+                "command": cmd,
+                "ok": False,
+                "error": "vault_write_requires_confirmation",
+                "guardrails": {"vault_write_requires_confirmation": True},
+            }
+            typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+            raise typer.Exit(2)
+
+        now_utc = as_of or _dt.now().astimezone().isoformat()
+        if date:
+            now_utc = f"{date}T05:00:00"
+        store = ConstructionStore(db_path=db)
+
+        payload = run_daily_local_agent(
+            store=store,
+            now_utc=now_utc,
+            timezone=timezone,
+            db_path=db,
+            dry_run=dry_run,
+            max_persist_per_stage=max_persist_per_stage,
+            max_total_persist=max_total_persist,
+            limit=limit,
+            lookahead_days=lookahead_days,
+            include_raw=raw,
+            weekdays_only=weekdays_only,
+            write_obsidian=write_obsidian,
+            confirm_vault_write=confirm_vault_write,
+            vault_brief_dir=vault_brief_dir,
+            generate_browser=generate_browser,
+            browser_output_dir=browser_output_dir,
+            status_dir=status_dir,
+        )
+        if open_browser:
+            payload.setdefault("warnings", []).append("auto_open_not_enabled: browser not opened")
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        if not payload.get("ok", False) and not allow_partial:
+            raise typer.Exit(1)
+        raise typer.Exit(0)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        payload = {"command": cmd, "ok": False, "error": str(e)[:300]}
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(1) from None
+
+
+def _build_daily_run_scheduler(
+    *,
+    time: str,
+    weekdays_only: bool,
+    max_persist_per_stage: int,
+    max_total_persist: int,
+    raw: bool,
+    write_obsidian: bool,
+    confirm_vault_write: bool,
+    generate_browser: bool,
+    timezone: str,
+    db: "str | None",
+) -> Any:
+    from hb_assistant.construction.second_brain.local_ai import DailyRunLaunchdManager
+
+    return DailyRunLaunchdManager(
+        time=time,
+        weekdays_only=weekdays_only,
+        apply_mode=True,
+        max_persist_per_stage=max_persist_per_stage,
+        max_total_persist=max_total_persist,
+        raw=raw,
+        write_obsidian=write_obsidian,
+        confirm_vault_write=confirm_vault_write,
+        generate_browser=generate_browser,
+        timezone=timezone,
+        db_path=db,
+    )
+
+
+@daily_run_scheduler_app.command("install")
+def second_brain_daily_run_scheduler_install(
+    time: str = typer.Option("05:00", "--time", help="Local schedule time HH:MM (default 05:00)."),  # noqa: B008
+    weekdays_only: bool = typer.Option(  # noqa: B008
+        True, "--weekdays-only/--all-days", help="Mon–Fri only (default)."
+    ),
+    apply: bool = typer.Option(  # noqa: B008
+        False,
+        "--apply/--dry-run",
+        help="Actually install (write plist + launchctl load). Default: plan.",
+    ),
+    max_persist_per_stage: int = typer.Option(10, "--max-persist-per-stage"),  # noqa: B008
+    max_total_persist: int = typer.Option(30, "--max-total-persist"),  # noqa: B008
+    raw: bool = typer.Option(True, "--raw/--no-raw"),  # noqa: B008
+    write_obsidian: bool = typer.Option(True, "--write-obsidian/--no-write-obsidian"),  # noqa: B008
+    confirm_vault_write: bool = typer.Option(  # noqa: B008
+        False, "--confirm-vault-write", help="REQUIRED with --write-obsidian for the scheduled job."
+    ),
+    generate_browser: bool = typer.Option(True, "--generate-browser/--no-generate-browser"),  # noqa: B008
+    timezone: str = typer.Option("America/New_York", "--timezone"),  # noqa: B008
+    catch_up_on_wake: bool = typer.Option(  # noqa: B008
+        True,
+        "--catch-up-on-wake/--no-catch-up-on-wake",
+        help="Documented launchd-native catch-up on wake (informational).",
+    ),
+    db: "str | None" = typer.Option(None, "--db", help="Pin the working DB for the scheduled job."),  # noqa: B008
+    json_out: bool = typer.Option(True, "--json", help="Emit JSON (default)."),  # noqa: B008
+) -> None:
+    """Install (or plan) the weekday 5:00 AM launchd daily-run agent. Dry-run/plan by default."""
+    cmd = "second-brain daily-run scheduler install"
+    try:
+        if write_obsidian and not confirm_vault_write:
+            payload = {
+                "command": cmd,
+                "ok": False,
+                "error": "vault_write_requires_confirmation",
+                "guardrails": {"vault_write_requires_confirmation": True},
+            }
+            typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+            raise typer.Exit(2)
+        mgr = _build_daily_run_scheduler(
+            time=time,
+            weekdays_only=weekdays_only,
+            max_persist_per_stage=max_persist_per_stage,
+            max_total_persist=max_total_persist,
+            raw=raw,
+            write_obsidian=write_obsidian,
+            confirm_vault_write=confirm_vault_write,
+            generate_browser=generate_browser,
+            timezone=timezone,
+            db=db,
+        )
+        res = mgr.install(dry_run=not apply)
+        res["catch_up_on_wake"] = catch_up_on_wake
+        typer.echo(json.dumps(res, indent=2, default=str) if json_out else str(res))
+        raise typer.Exit(0)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        payload = {"command": cmd, "ok": False, "error": str(e)[:300]}
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(1) from None
+
+
+@daily_run_scheduler_app.command("status")
+def second_brain_daily_run_scheduler_status(
+    json_out: bool = typer.Option(True, "--json", help="Emit JSON (default)."),  # noqa: B008
+) -> None:
+    """Report the weekday daily-run launchd agent status (plist presence, schedule, readiness)."""
+    from hb_assistant.construction.second_brain.local_ai import DailyRunLaunchdManager
+
+    res = DailyRunLaunchdManager().status()
+    typer.echo(json.dumps(res, indent=2, default=str) if json_out else str(res))
+
+
+@daily_run_scheduler_app.command("uninstall")
+def second_brain_daily_run_scheduler_uninstall(
+    apply: bool = typer.Option(  # noqa: B008
+        False, "--apply/--dry-run", help="Actually uninstall (unload + remove plist). Default: plan."
+    ),
+    json_out: bool = typer.Option(True, "--json", help="Emit JSON (default)."),  # noqa: B008
+) -> None:
+    """Uninstall (or plan removal of) the weekday daily-run launchd agent. Dry-run/plan by default."""
+    from hb_assistant.construction.second_brain.local_ai import DailyRunLaunchdManager
+
+    res = DailyRunLaunchdManager().uninstall(dry_run=not apply)
+    typer.echo(json.dumps(res, indent=2, default=str) if json_out else str(res))
 
 
 @phase_10_app.command("raw-action-candidates")

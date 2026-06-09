@@ -176,6 +176,61 @@ Chains the five proven workflows into one repeatable daily run via `second-brain
   all 13 `_P10_GUARDS` columns = 0; render-only subset → `preexisting`; vault write refused without
   confirmation and written with it (temp vault); stdout redaction-clean.
 
+## Checkpoint 6 — Production-like daily run + weekday window policy + browser brief + launchd (this run)
+
+- **Central weekday-aware date/window policy.** `local_ai/daily_brief_window.py` —
+  `compute_daily_brief_window(run_at_local, timezone="America/New_York", *, last_successful_date)`
+  returns a frozen `DailyBriefWindow` (run_date, run_weekday, previous/next_business_day,
+  lookback/lookahead/calendar_prep start+end, `label`, included_dates, explanation, catch_up). One
+  source of truth for every date the run uses — **no stage invents its own dates**. Behaviour by
+  weekday: **Monday** `monday_carryover` (lookback prior-Friday→Mon incl. weekend; lookahead through
+  Friday of the run week); **Tue–Thu** `standard_weekday` (prev business day → next business day);
+  **Friday** `friday_next_week` (lookback Thu→Fri; lookahead through **next Friday** = weekend + next
+  workweek). Weekend resolution: a fresh Sat/Sun with the most-recent Friday already successful →
+  `skipped_weekend`; otherwise a wake catch-up of a missed Friday resolves to the Friday policy
+  (`catch_up=True`). Pure/deterministic + DST-correct (zoneinfo on local NY dates).
+- **Policy threading.** `calendar_prep` gains optional `window_start_iso`/`window_end_iso`
+  (offset-aware local bounds → UTC) overriding `lookahead_days`; `run_local_agent_pipeline` gains
+  optional `window` (forwards the calendar window + emits `date_policy` in the receipt). Both are
+  backward-compatible — with no window the behaviour is exactly Checkpoint 5 (no regression).
+- **Daily-run wrapper.** `local_ai/daily_run.py` `run_daily_local_agent(...)` resolves the policy,
+  runs the pipeline (apply, conservative caps `--max-persist-per-stage 10` / `--max-total-persist
+  30`), then renders the raw brief to two private local-consumption surfaces and writes status —
+  dry-run-default, fail-loud, never auto-opens a browser.
+- **Polished browser brief.** `local_ai/daily_run_html.py` renders a self-contained HTML
+  (inline CSS, zero network) with status banner, `date_policy` panel, the six section cards +
+  carryover/next-week label, and candidate IDs. Two-layer egress containment: per-value
+  `scrub_raw_text` (URLs/join links/SAS/JWT/bearer/emails → safe markers) + `html.escape`, then a
+  fail-closed whole-document scan (reuses `daily_brief_html._scan_html_for_external_assets`); a
+  non-empty scan withholds the HTML and preserves last-good.
+- **Stable non-repo output paths.** Browser `daily-brief-latest.html` (stable) + dated archive +
+  `daily-brief-latest-attempted.html` under `<app_support>/html/`; status `latest-status.json` +
+  dated + `last-successful.json` pointer under `<app_support>/daily-run-status/`; governed Obsidian
+  note via the Checkpoint-5 `write_brief_output` (marker-bounded, raw allowed). Output dirs inside
+  the repo are refused (`output_path_inside_repo_refused`). `latest.html` updates **only** on a fresh
+  success → last-good is preserved on failure; a partial run writes a clearly-marked degraded
+  `attempted.html` only.
+- **Redacted status file.** Machine-readable, safe for evidence: run timestamp, git head, status,
+  brief_date, freshness, full `date_policy`, stage receipts (counts only — no `detail`), summary,
+  redacted output paths, warnings, redacted failure reason. Never carries raw bodies.
+- **Weekday launchd scheduler.** `local_ai/daily_run_scheduler.py` `DailyRunLaunchdManager` (modeled
+  on `automation/launchd_manager.py`, separate from the Phase 12 `morning` job). Label
+  `com.hb.personal-assistant.daily-local-agent`; **weekday-only** `StartCalendarInterval` as an array
+  of five entries (Weekday 1–5, Hour 5, Minute 0; no weekend entries). Catch-up is launchd-native on
+  wake; the wrapper's policy + idempotency make a weekend catch-up safe. `install`/`uninstall`
+  default to dry-run/plan (write nothing); `--apply` performs the real `launchctl load`.
+- **CLI.** `second-brain daily-run run` + `second-brain daily-run scheduler {install,status,
+  uninstall}`. Governed Obsidian write requires `--confirm-vault-write` (exit 2 otherwise);
+  `--no-open-browser` is the only behaviour (auto-open reserved/off). Registry stays **13 agents**
+  (daily-run + scheduler are surfaces, not agents).
+- **Proven (live, Dev-DB copy + temp dirs):** Monday apply → `success`/`fresh`, persisted 10,
+  egress-clean, browser+vault+status written, all 13 `_P10_GUARDS` = 0; **weekday windowing** Friday
+  calendar would-persist 18 (window→2026-06-26) vs Wednesday 8 (→2026-06-18); Saturday catch-up →
+  Friday brief (`catch_up=true`), fresh Saturday (Friday done) → `skipped_weekend`; egress scan clean
+  across HTML/status/vault; status file counts/dates only (no raw); repo-contained output refused.
+  Failure-preserves-last-good + partial-degraded are unit-test proven (live single-stage injection
+  not feasible — shared store, same limitation as Checkpoint 5).
+
 ## Dispositions (families not implemented this run, evidence-based)
 
 - **MCP packet builder / Obsidian workflows**: infra exists, tables empty

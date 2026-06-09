@@ -30,6 +30,7 @@ from typing import Any, Optional
 from .calendar_prep import build_calendar_prep_candidates
 from .daily_brief_render import render_daily_brief
 from .daily_brief_synthesis import build_daily_brief_candidates
+from .daily_brief_window import DailyBriefWindow
 from .follow_up_watch import run_follow_up_watch_scan
 from .procore_digest import build_procore_action_digest
 
@@ -61,6 +62,7 @@ def run_local_agent_pipeline(
     limit: int = 50,
     lookahead_days: int = 14,
     include_raw: bool = False,
+    window: Optional[DailyBriefWindow] = None,
     stages: Optional[list[str]] = None,
 ) -> dict[str, Any]:
     """Run the Phase 10 local-agent pipeline once (dry-run-first, stage-bounded, fail-loud).
@@ -76,13 +78,18 @@ def run_local_agent_pipeline(
     brief_date = now_utc[:10]
     selected = [s for s in STAGE_ORDER if (stages is None or s in set(stages))]
 
+    # When the central weekday policy supplies a window, the calendar stage uses its explicit
+    # bounds instead of the fixed lookahead_days (no stage invents its own dates). With no window,
+    # behaviour is unchanged (lookahead_days) so lower-level pipeline callers are unaffected.
+    calendar_extra: dict[str, Any] = {"db_path": db_path, "lookahead_days": lookahead_days}
+    if window is not None:
+        calendar_extra["window_start_iso"] = window.calendar_prep_start
+        calendar_extra["window_end_iso"] = window.calendar_prep_end
+
     builders: dict[str, tuple[Any, dict[str, Any]]] = {
         "follow_up_watch": (run_follow_up_watch_scan, {}),
         "procore_digest": (build_procore_action_digest, {"db_path": db_path}),
-        "calendar_prep": (
-            build_calendar_prep_candidates,
-            {"db_path": db_path, "lookahead_days": lookahead_days},
-        ),
+        "calendar_prep": (build_calendar_prep_candidates, calendar_extra),
         "daily_brief_synthesis": (build_daily_brief_candidates, {}),
     }
 
@@ -210,6 +217,7 @@ def run_local_agent_pipeline(
         "now_utc": now_utc,
         "brief_date": brief_date,
         "brief_freshness": brief_freshness,
+        "date_policy": window.to_dict() if window is not None else None,
         "warnings": warnings,
         "stages": receipts,
         "brief": brief_view,

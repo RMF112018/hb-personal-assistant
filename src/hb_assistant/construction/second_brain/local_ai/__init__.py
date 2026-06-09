@@ -28,6 +28,10 @@ from .contracts import (
 )
 from .daily_brief_render import render_daily_brief, write_rendered_brief_to_path
 from .daily_brief_synthesis import build_daily_brief_candidates
+from .daily_brief_window import DailyBriefWindow, compute_daily_brief_window
+from .daily_run import run_daily_local_agent
+from .daily_run_html import render_daily_run_html, scan_daily_run_html
+from .daily_run_scheduler import DailyRunLaunchdManager
 from .email_task_extraction import (
     extract_email_task_candidates,
     score_email_task_signals,
@@ -148,4 +152,11 @@ __all__ = [
     "write_rendered_brief_to_path",
     # Phase 10: local-agent pipeline orchestration (one repeatable daily run)
     "run_local_agent_pipeline",
+    # Phase 10 Checkpoint 6: weekday-aware date/window policy + daily-run wrapper + browser brief
+    "DailyBriefWindow",
+    "compute_daily_brief_window",
+    "run_daily_local_agent",
+    "render_daily_run_html",
+    "scan_daily_run_html",
+    "DailyRunLaunchdManager",
 ]

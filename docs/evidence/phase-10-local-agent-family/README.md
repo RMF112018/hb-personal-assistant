@@ -389,3 +389,72 @@ noted earlier remain (two documented pre-existing; one environment-dependent `ra
 Experimental proof on `experiment/local-agent-family-proof` (no merge implied; main untouched). No
 schema migration, no production/Dev DB mutation (copy only), no vault/Graph/Procore/calendar/email/
 external writeback, no cloud LLM, no MCP, no new agent. Checkpoints 1–4 preserved (regression green).
+
+## Checkpoint 6 — Production-like daily run + weekday window policy + browser brief + launchd (this run)
+
+`second-brain daily-run run` wraps the pipeline into one weekday-aware operating workflow that the
+launchd schedule fires Mon–Fri at 05:00 local: resolve the central date policy → run the pipeline
+(apply, conservative caps) → render a governed Obsidian note + a self-contained browser HTML brief
+at stable NON-repo paths → write a redacted status file → preserve the last successful brief on
+failure. `second-brain daily-run scheduler {install,status,uninstall}` manages the weekday agent.
+
+### Weekday window policy (central, deterministic)
+
+`compute_daily_brief_window` is the single source of truth for every date; no stage invents its own.
+Monday absorbs the weekend/prior-Friday carryover; Tue–Thu use adjacent business days; Friday extends
+the lookahead through the next Friday (weekend + next workweek). A fresh weekend with the most-recent
+Friday already successful is `skipped_weekend`; a wake catch-up of a missed Friday runs the Friday
+policy (`catch_up=true`). DST-correct via zoneinfo on local America/New_York dates.
+
+### Live proof (Dev DB copy + temp output dirs; scratch removed after)
+
+```
+# Monday apply (browser + temp vault + status)
+$ daily-run run --as-of 2026-06-15T05:00:00-04:00 --apply --max-persist-per-stage 10 \
+    --max-total-persist 30 --raw --write-obsidian --confirm-vault-write \
+    --vault-brief-dir <tmp> --browser-output-dir <tmp> --status-dir <tmp>
+status=success freshness=fresh persisted=10 egress={clean:true}
+outputs: daily-brief-latest.html, daily-brief-2026-06-15.html, daily-brief-latest-attempted.html,
+         <vault>/2026-06-15_daily_brief.md, latest-status.json, last-successful.json
+all 13 _P10_GUARDS columns = 0
+
+# Weekday windowing (dry-run; calendar would_persist)
+Friday    label=friday_next_week  calendar_prep_end=2026-06-26  cal_would=18
+Wednesday label=standard_weekday  calendar_prep_end=2026-06-18  cal_would=8
+
+# Weekend behaviour
+Saturday (Friday not yet successful) → status=success label=friday_next_week run_date=2026-06-19 catch_up=true
+Saturday (Friday already successful) → status=skipped_weekend ok=true
+
+# Scheduler plan (dry-run; writes no plist)
+$ daily-run scheduler install --confirm-vault-write
+action=preview_install  StartCalendarInterval=[5 weekday entries Mon–Fri Hour 5]
+```
+
+Egress scan over the generated HTML + status JSON + vault note: **clean** (no http/join/email/JWT/
+bearer/SAS/script-src/iframe). The status file carries counts + dates only (stage receipts have no
+`detail`, no raw subjects); the browser HTML carries real meeting subjects (HTML-escaped) for local
+consumption; persisted candidate rows stay redacted (`title_redacted`). Repo-contained output dir →
+`output_path_inside_repo_refused`. Governed vault write without `--confirm-vault-write` → exit 2.
+
+### Tests (Checkpoint 6)
+
+- `tests/test_phase_10_daily_brief_window.py` (13): Monday/Tue–Thu/Friday windows, weekend skip,
+  Saturday/Sunday catch-up of a missed Friday, DST EDT/EST + UTC-input local mapping, to_dict.
+- `tests/test_phase_10_daily_run.py` (27): conservative caps, status file, latest-successful
+  preservation on failure, partial degraded `attempted.html` only, browser outside repo, repo-path
+  refusal, raw-only-in-consumption boundary, egress scrub, governed/confirmed Obsidian, no
+  auto-open, guard cols 0, weekday window threading, weekday 5AM plist encoding (5 entries), install/
+  status/uninstall plan mode, CLI wiring + vault-confirm gate.
+
+Targeted suite green (**169 tests** across Checkpoint 1–6 + registry); `ruff` clean + `mypy` clean on
+changed modules; new modules `ruff format` clean; `agents status` 13 / 0 violations.
+
+## Checkpoint 6 status
+
+Experimental proof on `experiment/local-agent-family-proof` (no merge implied; main untouched). No
+schema migration, no production-DB mutation during validation (Dev-DB copy + temp dirs only), no
+Graph/Procore/calendar/email/external writeback, no cloud LLM, no MCP, no new agent (registry 13).
+Raw content stays in the two private local consumption surfaces (Obsidian note + browser HTML);
+persisted rows, status files, tests, docs, evidence, and logs remain redacted. Checkpoints 1–5
+preserved (regression green).
