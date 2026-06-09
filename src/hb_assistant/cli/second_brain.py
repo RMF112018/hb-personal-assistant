@@ -2323,6 +2323,77 @@ def daily_brief_render(
         raise typer.Exit(1) from None
 
 
+@daily_brief_app.command("intelligence")
+def daily_brief_intelligence_cmd(
+    date: str = typer.Option(..., "--date", help="Brief date (YYYY-MM-DD)."),  # noqa: B008
+    limit: int = typer.Option(200, "--limit", help="Max candidates to consider."),  # noqa: B008
+    dry_run: bool = typer.Option(  # noqa: B008
+        True, "--dry-run/--apply", help="Dry-run (default; no DB write). --apply writes a hash-only receipt."
+    ),
+    raw: bool = typer.Option(  # noqa: B008
+        False, "--raw", help="Reserved: the adapter only consumes redacted candidate fields (raw-safe)."
+    ),
+    provider: str = typer.Option(  # noqa: B008
+        "ollama", "--provider", help="ollama|mock. mock is offline-safe (no daemon)."
+    ),
+    mock: bool = typer.Option(  # noqa: B008
+        False, "--mock", help="Shortcut for --provider mock (offline shape)."
+    ),
+    db: "str | None" = typer.Option(None, "--db", help="Explicit SQLite path (tests/isolation)."),  # noqa: B008
+    json_out: bool = typer.Option(True, "--json", help="Emit JSON (default)."),  # noqa: B008
+) -> None:
+    """Optional local-model advisory daily-brief intelligence (source-linked, fail-closed, advisory).
+
+    Reads the redacted ``daily_brief_action_candidates`` for the date, asks the routed local model
+    for a compact source-linked intelligence object, drops any bullet not citing a real candidate id,
+    and withholds the whole enrichment (falling back to the deterministic brief) on any model/JSON/
+    schema/source-link/redaction failure. Never persists raw prompt/response; default dry-run."""
+    from hb_assistant.construction.second_brain.local_ai.contracts import load_local_model_profiles
+    from hb_assistant.construction.second_brain.local_ai.daily_brief_intelligence import (
+        build_daily_brief_intelligence,
+    )
+    from hb_assistant.construction.store import ConstructionStore
+
+    cmd = "second-brain daily-brief intelligence"
+    try:
+        provider_name = "mock" if mock else provider
+        store = ConstructionStore(db_path=db)
+        candidates = store.list_daily_brief_action_candidates(brief_date=date, limit=limit)
+        present_models, daemon_reachable = _local_model_present(provider_name, False)
+        profiles = load_local_model_profiles()
+        result = build_daily_brief_intelligence(
+            candidates=candidates,
+            profiles=profiles,
+            present_models=present_models if daemon_reachable else None,
+            dry_run=dry_run,
+            allow_raw=raw,
+            store=store,
+        )
+        payload = {
+            "command": cmd,
+            "ok": True,
+            "applied": bool(result.enriched and not dry_run),
+            "dry_run": dry_run,
+            "date": date,
+            "task_family": "daily_brief_synthesis_quality",
+            "candidates": len(candidates),
+            "selected_profile": result.profile_id,
+            "models_attempted": [result.model_name] if result.model_name else [],
+            "blockers": [] if result.enriched else [result.withheld_reason or "withheld"],
+            "warnings": [] if result.enriched else ["enrichment_withheld_fallback_deterministic"],
+            "redaction_passed": result.status != "redaction_failed",
+            **result.safe_payload(),
+        }
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(0)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        payload = {"command": cmd, "ok": False, "error": str(e)[:300]}
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(1) from None
+
+
 @daily_brief_app.command("build")
 def daily_brief_build(
     brief_date: str = typer.Option(..., "--date", help="Brief date (YYYY-MM-DD)."),
@@ -9338,6 +9409,34 @@ def second_brain_pipeline_run(
         raise typer.Exit(1) from None
 
 
+def _attach_daily_run_intelligence(*, store: Any, payload: dict, dry_run: bool) -> dict:
+    """Build advisory daily-brief intelligence for a completed run (fail-closed; never breaks the run)."""
+    from hb_assistant.construction.second_brain.local_ai.contracts import load_local_model_profiles
+    from hb_assistant.construction.second_brain.local_ai.daily_brief_intelligence import (
+        build_daily_brief_intelligence,
+    )
+
+    try:
+        brief_date = payload.get("brief_date") or payload.get("date")
+        candidates = (
+            store.list_daily_brief_action_candidates(brief_date=brief_date, limit=200)
+            if brief_date
+            else []
+        )
+        present_models, daemon_reachable = _local_model_present("ollama", False)
+        profiles = load_local_model_profiles()
+        result = build_daily_brief_intelligence(
+            candidates=candidates,
+            profiles=profiles,
+            present_models=present_models if daemon_reachable else None,
+            dry_run=dry_run,
+            store=store,
+        )
+        return result.safe_payload()
+    except Exception as e:  # advisory only — never fail the deterministic run
+        return {"enriched": False, "withheld_reason": f"intelligence_error:{str(e)[:120]}"}
+
+
 @daily_run_app.command("run")
 def second_brain_daily_run_run(
     as_of: "str | None" = typer.Option(  # noqa: B008
@@ -9394,6 +9493,11 @@ def second_brain_daily_run_run(
     synthesis_profile_id: str = typer.Option(  # noqa: B008
         "brief_synthesis", "--synthesis-profile",
         help="Local model profile id for synthesis (benchmark: default_extract vs review_filter).",
+    ),
+    with_intelligence: bool = typer.Option(  # noqa: B008
+        False, "--with-intelligence/--no-intelligence",
+        help="OPT-IN: attach local-model advisory daily-brief intelligence (source-linked, "
+        "fail-closed, advisory-only; never replaces the deterministic brief). Off by default.",
     ),
     open_browser: bool = typer.Option(  # noqa: B008
         False,
@@ -9483,6 +9587,10 @@ def second_brain_daily_run_run(
             relationship_scan_threads=relationship_scan_threads,
             relationship_scan_events=relationship_scan_events,
         )
+        if with_intelligence:
+            payload["intelligence"] = _attach_daily_run_intelligence(
+                store=store, payload=payload, dry_run=dry_run
+            )
         if open_browser:
             payload.setdefault("warnings", []).append("auto_open_not_enabled: browser not opened")
         typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
@@ -10264,6 +10372,191 @@ def local_model_status(
         raise typer.Exit(3) from None
     typer.echo(json.dumps(result, indent=2, default=str) if json_out else str(result))
     raise typer.Exit(0 if result.get("ready") else 3)
+
+
+def _local_model_present(provider_name: str, heavy_enabled: bool) -> "tuple[set[str], bool]":
+    """Probe installed local models (read-only). Returns (present model names, daemon_reachable)."""
+    from hb_assistant.construction.second_brain.local_ai import build_local_model_status
+
+    status = build_local_model_status(provider_name=provider_name, heavy_enabled=heavy_enabled)
+    present = {str(m) for m in (status.get("present_models") or [])}
+    return present, bool(status.get("daemon_reachable"))
+
+
+@local_model_app.command("profiles")
+def local_model_profiles(
+    provider: str = typer.Option(  # noqa: B008
+        "ollama", "--provider", help="ollama|mock. mock is offline-safe (no daemon)."
+    ),
+    mock: bool = typer.Option(  # noqa: B008
+        False, "--mock", help="Shortcut for --provider mock (offline shape)."
+    ),
+    heavy_enabled: bool = typer.Option(  # noqa: B008
+        False, "--heavy-enabled", help="Treat heavy profiles as eligible (still requires a model)."
+    ),
+    json_out: bool = typer.Option(True, "--json", help="Emit machine-readable JSON (default)."),  # noqa: B008
+) -> None:
+    """List local model profiles with served task families and current availability (read-only)."""
+    from hb_assistant.construction.second_brain.local_ai.model_router import (
+        RouterConfigError,
+        build_profiles_report,
+    )
+
+    provider_name = "mock" if mock else provider
+    present_models, daemon_reachable = _local_model_present(provider_name, heavy_enabled)
+    try:
+        report = build_profiles_report(
+            present_models=present_models if daemon_reachable else None,
+            heavy_enabled=heavy_enabled,
+        )
+    except RouterConfigError as e:
+        payload = {
+            "command": "second-brain local-model profiles",
+            "ok": False,
+            "applied": False,
+            "dry_run": True,
+            "blockers": [f"config_error:{str(e)[:120]}"],
+            "warnings": [],
+            "redaction_passed": True,
+        }
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(2) from None
+    payload = {
+        "command": "second-brain local-model profiles",
+        "ok": True,
+        "applied": False,
+        "dry_run": True,
+        "daemon_reachable": daemon_reachable,
+        "blockers": [],
+        "warnings": [],
+        "redaction_passed": True,
+        **report,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0)
+
+
+@local_model_app.command("route")
+def local_model_route(
+    task_family: str = typer.Option(  # noqa: B008
+        ..., "--task-family", help="Task family to route (e.g. daily_brief_synthesis_quality)."
+    ),
+    provider: str = typer.Option(  # noqa: B008
+        "ollama", "--provider", help="ollama|mock. mock is offline-safe (no daemon)."
+    ),
+    mock: bool = typer.Option(  # noqa: B008
+        False, "--mock", help="Shortcut for --provider mock (offline shape)."
+    ),
+    heavy_enabled: bool = typer.Option(  # noqa: B008
+        False, "--heavy-enabled", help="Treat heavy profiles as eligible (still requires a model)."
+    ),
+    json_out: bool = typer.Option(True, "--json", help="Emit machine-readable JSON (default)."),  # noqa: B008
+) -> None:
+    """Show the deterministic local profile route for a task family (fail-closed, never cloud)."""
+    from hb_assistant.construction.second_brain.local_ai.model_router import route_task_family
+
+    provider_name = "mock" if mock else provider
+    present_models, daemon_reachable = _local_model_present(provider_name, heavy_enabled)
+    route = route_task_family(
+        task_family,
+        present_models=present_models if daemon_reachable else None,
+        heavy_enabled=heavy_enabled,
+    )
+    payload = {
+        "command": "second-brain local-model route",
+        "ok": not route.blocked,
+        "applied": False,
+        "dry_run": True,
+        "warnings": [],
+        "metrics": {},
+        "redaction_passed": True,
+        "models_attempted": [route.model_name] if route.model_name else [],
+        **route.model_dump(),
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    if route.reason_code in {"unknown_task_family", "config_error"}:
+        raise typer.Exit(2)
+    if route.blocked:
+        raise typer.Exit(1)
+    raise typer.Exit(0)
+
+
+@local_model_app.command("eval")
+def local_model_eval(
+    suite: str = typer.Option(  # noqa: B008
+        "daily-brief", "--suite", help="Named suite: daily-brief|synthesis|extraction."
+    ),
+    task_family: "list[str] | None" = typer.Option(  # noqa: B008
+        None, "--task-family", help="Restrict to specific task families (repeatable)."
+    ),
+    models: "list[str]" = typer.Option(  # noqa: B008
+        ["auto"], "--models", help="Model name(s) to evaluate, or 'auto' (enabled non-heavy profiles)."
+    ),
+    live: bool = typer.Option(  # noqa: B008
+        False, "--live/--synthetic",
+        help="--live runs the real local models (daemon required); --synthetic (default) is offline.",
+    ),
+    raw_fixtures_dir: "str | None" = typer.Option(  # noqa: B008
+        None, "--raw-fixtures-dir",
+        help="Opt-in raw operator fixtures dir OUTSIDE the repo (refused if inside the repo).",
+    ),
+    db: "str | None" = typer.Option(  # noqa: B008
+        None, "--db", help="Accepted for parity; v1 eval uses redacted fixtures (not DB rows)."
+    ),
+    json_out: bool = typer.Option(True, "--json", help="Emit machine-readable JSON (default)."),  # noqa: B008
+) -> None:
+    """Evaluate local models/profiles on the repo's structured-output tasks (decisive, raw-safe).
+
+    Reports per task family the recommended profile, blocked/unsafe families, fallback route, reason
+    codes, and a ``use_next_run`` map. Default is offline/synthetic; ``--live`` measures real models.
+    Never emits a raw prompt/response."""
+    from hb_assistant.construction.second_brain.local_ai.model_eval import run_model_eval
+    from hb_assistant.construction.second_brain.local_ai.model_eval_fixtures import (
+        RawFixtureRefusedError,
+        load_raw_fixtures,
+    )
+
+    cmd = "second-brain local-model eval"
+    fixtures = None
+    if raw_fixtures_dir:
+        try:
+            fixtures = load_raw_fixtures(raw_fixtures_dir)
+        except RawFixtureRefusedError as e:
+            payload = {
+                "command": cmd,
+                "ok": False,
+                "applied": False,
+                "dry_run": True,
+                "blockers": [f"raw_fixture_refused:{str(e)[:120]}"],
+                "warnings": [],
+                "redaction_passed": True,
+            }
+            typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+            raise typer.Exit(2) from None
+
+    warnings: list[str] = []
+    if db:
+        warnings.append("db_ignored: v1 eval uses redacted fixtures, not DB rows")
+    result = run_model_eval(
+        suite=suite,
+        task_families=list(task_family) if task_family else None,
+        models=list(models) or ["auto"],
+        mode="live" if live else "synthetic",
+        fixtures=fixtures,
+    )
+    if warnings:
+        result.setdefault("warnings", []).extend(warnings)
+    typer.echo(json.dumps(result, indent=2, default=str) if json_out else str(result))
+
+    blockers = result.get("blockers", [])
+    if result.get("ok"):
+        raise typer.Exit(0)
+    misuse = {"no_fixtures_for_suite", "no_eligible_profiles"}
+    if any(b in misuse for b in blockers) or any(
+        str(b).startswith("profiles_unavailable") for b in blockers
+    ):
+        raise typer.Exit(2)
+    raise typer.Exit(1)
 
 
 @ai_jobs_app.command("status")

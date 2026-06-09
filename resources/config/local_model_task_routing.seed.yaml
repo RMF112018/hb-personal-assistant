@@ -1,0 +1,28 @@
+# Local model task routing (Phase 10 model-routing candidate).
+#
+# Maps a task family to the local model PROFILE that should serve it, with an ordered local-only
+# fallback chain. Profiles themselves (model name, timeout, enabled, heavy gate) live in
+# phase_10_local_model_profiles.seed.yaml — this file only chooses *which* profile per task.
+#
+# Guardrails are local-first and fail-closed: there is no cloud route, raw prompt/response is never
+# persisted, and an unavailable model produces a blocker rather than a silent substitution.
+version: "1.0.0"
+routes:
+  email_action_extraction_json: default_extract
+  daily_brief_synthesis_quality: brief_synthesis
+  short_operator_catchup: brief_synthesis
+  calendar_prep_summary: default_extract
+  procore_digest_summary: default_extract
+  relationship_scoring: review_filter
+# Ordered local-only fallback chains (profile_id -> [next, next, ...]). When a routed profile's
+# model is unavailable, the router walks this chain (all local Ollama profiles) before failing
+# closed. Omitted profiles fall back to the seed's single-hop ``fallbacks`` map.
+fallback_chains:
+  brief_synthesis: [default_extract]
+  high_recall_extract: [default_extract]
+  review_filter: [default_extract]
+  quality_reasoning: [brief_synthesis, default_extract]
+guardrails:
+  local_only: true
+  no_cloud: true
+  no_raw_persistence: true

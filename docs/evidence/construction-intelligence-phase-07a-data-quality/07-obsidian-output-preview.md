@@ -1,15 +1,15 @@
 # Obsidian Data Quality Outputs — Dry-Run Preview (Phase 07A Prompt 06)
 
-Generated: 2026-06-07T22:58:26.712406+00:00
-Repo SHA: 65abdb8c28e130edf7ca95896d6bd538db522a66
+Generated: 2026-06-09T10:32:28.336695+00:00
+Repo SHA: b378157662172f40e39df77505435b9a89cec967
 Schema: V0
 
 ## Project Data Quality Summary (excerpt)
 
 ---
 phase: 07A
-generated_utc: 2026-06-07T22:58:26.712406+00:00
-repo_sha: 65abdb8c28e130edf7ca95896d6bd538db522a66
+generated_utc: 2026-06-09T10:32:28.336695+00:00
+repo_sha: b378157662172f40e39df77505435b9a89cec967
 schema_version: 0
 source_systems:
   - procore
@@ -22,7 +22,7 @@ raw_document_text_persisted: false
 marker_bounded: true
 ---
 # Project Data Quality Summary (Phase 07A)
-Generated: 2026-06-07T22:58:26.712406+00:00 | Repo: 65abdb8c | Schema: V0
+Generated: 2026-06-09T10:32:28.336695+00:00 | Repo: b3781576 | Schema: V0
 
 ## Source Coverage by Project
 _No project coverage data present in local marts (V21). Run data-quality marts first._
@@ -36,8 +36,8 @@ _No project coverage data present in local marts (V21). Run data-quality marts f
 
 ---
 phase: 07A
-generated_utc: 2026-06-07T22:58:26.712406+00:00
-repo_sha: 65abdb8c28e130edf7ca95896d6bd538db522a66
+generated_utc: 2026-06-09T10:32:28.336695+00:00
+repo_sha: b378157662172f40e39df77505435b9a89cec967
 schema_version: 0
 source_systems:
   - procore
@@ -50,7 +50,7 @@ raw_document_text_persisted: false
 marker_bounded: true
 ---
 # Source Record Map Register (Phase 07A)
-Generated: 2026-06-07T22:58:26.712406+00:00 | Total mapped rows shown (capped): 0
+Generated: 2026-06-09T10:32:28.336695+00:00 | Total mapped rows shown (capped): 0
 
 _No rows in source_system_record_map. Run data-quality source-record-map --apply to populate._
 
@@ -65,8 +65,8 @@ Model-proposed, weak, or sensitive relationships are never promoted as authorita
 
 ---
 phase: 07A
-generated_utc: 2026-06-07T22:58:26.712406+00:00
-repo_sha: 65abdb8c28e130edf7ca95896d6bd538db522a66
+generated_utc: 2026-06-09T10:32:28.336695+00:00
+repo_sha: b378157662172f40e39df77505435b9a89cec967
 schema_version: 0
 source_systems:
   - procore
@@ -79,7 +79,7 @@ raw_document_text_persisted: false
 marker_bounded: true
 ---
 # Relationship Diagnostics Register (Phase 07A)
-Generated: 2026-06-07T22:58:26.712406+00:00
+Generated: 2026-06-09T10:32:28.336695+00:00
 
 ## Quality Summary (from relationship_quality_mart)
 _No relationship quality mart rows (run data-quality marts)._
@@ -98,8 +98,8 @@ Model-proposed, weak, or sensitive relationships are never promoted as authorita
 
 ---
 phase: 07A
-generated_utc: 2026-06-07T22:58:26.712406+00:00
-repo_sha: 65abdb8c28e130edf7ca95896d6bd538db522a66
+generated_utc: 2026-06-09T10:32:28.336695+00:00
+repo_sha: b378157662172f40e39df77505435b9a89cec967
 schema_version: 0
 source_systems:
   - procore
@@ -112,7 +112,7 @@ raw_document_text_persisted: false
 marker_bounded: true
 ---
 # Phase 07A Gate Summary / Readiness Snapshot (Phase 07A)
-Generated: 2026-06-07T22:58:26.712406+00:00 | Schema V0
+Generated: 2026-06-09T10:32:28.336695+00:00 | Schema V0
 
 This is a **readiness snapshot** derived from local marts. Full gates with thresholds and go/no-go are in Prompt 07.
 
