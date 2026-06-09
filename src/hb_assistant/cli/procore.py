@@ -1722,6 +1722,119 @@ def live_stale(
     _emit({**report, "guardrails": _GUARDRAILS}, json_out=json_out)
 
 
+@live_app.command("status")
+def live_status(
+    stale_days: int = typer.Option(7, "--stale-days", min=1, help="Freshness threshold (days)."),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Operator status for the canonical Procore data path (Phase: endpoint remediation).
+
+    Read-only over local SQLite. Surfaces the live gate, auth readiness, the
+    canonical persistence path (``procore_live_*``) vs the retired legacy
+    ``procore_sync_*`` staging path, per-pilot endpoint freshness, and the next
+    operator action. No tokens, payloads, or signed URLs — counts/statuses/
+    timestamps and table names only.
+    """
+    import sqlite3
+
+    from hb_assistant.config.path_policy import PathPolicy
+    from hb_assistant.procore.live_gate import live_env_active
+    from hb_assistant.store.migrator import SQLiteMigrator
+    from hb_assistant.store.procore_freshness import build_freshness_report
+
+    SQLiteMigrator().apply()
+    db_path = PathPolicy().get_db_path()
+    now_iso = _query_now().isoformat()
+
+    auth = check_auth_status()
+    try:
+        registry = load_procore_projects()
+        pilots = [p.hb_project_key for p in registry.projects if p.status == "pilot"]
+    except Exception:  # noqa: BLE001 — status must never raise
+        pilots = []
+
+    def _count(conn: sqlite3.Connection, table: str) -> int:
+        try:
+            return int(conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0])  # noqa: S608
+        except sqlite3.Error:
+            return 0
+
+    canonical_counts: dict[str, int] = {}
+    legacy_counts: dict[str, int] = {}
+    with suppress(sqlite3.Error):
+        conn = sqlite3.connect(str(db_path))
+        try:
+            for t in (
+                "procore_live_records",
+                "procore_live_sync_runs",
+                "procore_live_sync_watermarks",
+            ):
+                canonical_counts[t] = _count(conn, t)
+            for t in (
+                "procore_synced_entities",
+                "procore_sync_watermarks",
+                "procore_sync_runs",
+                "procore_sync_errors",
+            ):
+                legacy_counts[t] = _count(conn, t)
+        finally:
+            conn.close()
+
+    per_project = []
+    for key in pilots:
+        with suppress(Exception):
+            report = build_freshness_report(key, now_utc=now_iso, stale_days=stale_days)
+            per_project.append(
+                {
+                    "project_key": key,
+                    "summary": report.get("summary"),
+                    "stale_endpoints": report.get("stale_endpoints"),
+                }
+            )
+
+    live_ready = bool(auth.ready_for_live_calls)
+    if not live_ready:
+        next_action = "Run `hb-assistant procore auth login` (or refresh) to enable live reads."
+    elif not live_env_active():
+        next_action = (
+            "Auth ready; set HB_PROCORE_LIVE=1 (scheduler arms it per-run) to perform live reads."
+        )
+    else:
+        next_action = (
+            "Live gate armed. Run the daily source-refresh apply path to refresh canonical data."
+        )
+
+    payload = {
+        "command": "hb-assistant procore live status",
+        "canonical_path": "procore_live",
+        "canonical_tables": list(canonical_counts.keys()),
+        "canonical_counts": canonical_counts,
+        "legacy_path": "procore_sync (retired from daily source-refresh)",
+        "legacy_counts": legacy_counts,
+        "table_roles": {
+            "procore_live_records": "canonical operational read model (downstream consumers read here)",
+            "procore_live_sync_runs": "canonical endpoint run ledger",
+            "procore_live_sync_watermarks": "canonical per-endpoint watermarks",
+            "procore_synced_entities": "legacy staging (manual `procore sync run` only)",
+            "procore_sync_runs": "legacy run ledger — retired (never written by the scheduler path)",
+        },
+        "live_gate": {
+            "hb_procore_live_armed": live_env_active(),
+            "auth_status": auth.status,
+            "ready_for_live_calls": live_ready,
+        },
+        "pilot_projects": pilots,
+        "freshness": per_project,
+        "inspect_hint": (
+            "Inspect rows with `hb-assistant procore live records --project <key> "
+            "--endpoint <id>`; freshness with `hb-assistant procore live stale --project <key>`."
+        ),
+        "next_operator_action": next_action,
+        "guardrails": _GUARDRAILS,
+    }
+    _emit(payload, json_out=json_out)
+
+
 @live_app.command("coverage")
 def live_coverage(
     project: str = typer.Option(..., "--project", help="Mapped pilot project key (contextual)."),
