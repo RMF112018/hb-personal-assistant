@@ -14,7 +14,7 @@ from .connection import get_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 44
+LATEST_SCHEMA_VERSION = 45
 
 
 class SQLiteMigrator:
@@ -5734,6 +5734,57 @@ class SQLiteMigrator:
         "ALTER TABLE construction_drive_items ADD COLUMN last_modified_by_raw_json TEXT",
     ]
 
+    # v45 Phase 10 Email Follow-Up Raw Enrichment — additive, review-safe enrichment table.
+    # Persists ONLY structured/redacted model-enriched follow-up fields + hashes + source refs
+    # derived from a bounded, sanitized, NON-persisted local raw email window. Carries the full
+    # 13 Phase-10 guard columns (CHECK = 0): no raw body, prompt, response, HTML, URL, token, or
+    # secret ever lands here. ``raw_excerpt_hash`` / ``input_context_hash`` / ``output_hash`` /
+    # ``email_thread_ref_hash`` are SHA-256[:12] hashes only. ``prompt_template_version`` mirrors the
+    # existing task_candidates/local_model_run_receipts metadata column (template version string only,
+    # never a raw prompt). V1-V44 untouched.
+    V45_STATEMENTS: list[str] = [
+        f"""
+        CREATE TABLE IF NOT EXISTS email_followup_enrichments (
+          enrichment_id TEXT PRIMARY KEY,
+          idempotency_key TEXT NOT NULL UNIQUE,
+          source_candidate_id TEXT NOT NULL,
+          source_candidate_type TEXT NOT NULL,
+          watch_item_id TEXT,
+          email_thread_ref_hash TEXT,
+          email_message_ref_hashes_json TEXT NOT NULL DEFAULT '[]',
+          raw_excerpt_hash TEXT NOT NULL,
+          enriched_title TEXT NOT NULL,
+          waiting_state TEXT NOT NULL,
+          assignee_type TEXT NOT NULL,
+          assignee_display TEXT,
+          suggested_next_action TEXT,
+          due_at_utc TEXT,
+          confidence REAL NOT NULL,
+          confidence_band TEXT,
+          reason_codes_json TEXT NOT NULL DEFAULT '[]',
+          source_refs_json TEXT NOT NULL DEFAULT '[]',
+          review_status TEXT NOT NULL DEFAULT 'pending',
+          model_task TEXT NOT NULL DEFAULT 'email_followup_raw_enrichment',
+          model_profile_id TEXT,
+          prompt_template_version TEXT NOT NULL,
+          input_context_hash TEXT NOT NULL,
+          output_hash TEXT NOT NULL,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP{_P10_GUARDS}
+        );
+        """,
+        "CREATE INDEX IF NOT EXISTS ix_email_followup_enrichments_candidate "
+        "ON email_followup_enrichments(source_candidate_id);",
+        "CREATE INDEX IF NOT EXISTS ix_email_followup_enrichments_watch_item "
+        "ON email_followup_enrichments(watch_item_id);",
+        "CREATE INDEX IF NOT EXISTS ix_email_followup_enrichments_review_status "
+        "ON email_followup_enrichments(review_status);",
+        "CREATE INDEX IF NOT EXISTS ix_email_followup_enrichments_waiting_state "
+        "ON email_followup_enrichments(waiting_state);",
+        "CREATE INDEX IF NOT EXISTS ix_email_followup_enrichments_created_utc "
+        "ON email_followup_enrichments(created_utc);",
+    ]
+
     def __init__(self, db_path: str | None = None):
         self._db_path = db_path
 
@@ -6286,6 +6337,18 @@ class SQLiteMigrator:
                     conn.execute(stmt)
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (44, 'v44_graph_drive_item_modified_by_metadata', ?)",
+                    (now,),
+                )
+
+            # v45 Phase 10 email follow-up raw enrichment table (review-safe). Additive
+            # CREATE TABLE/INDEX IF NOT EXISTS; the table carries the 13 guard columns and
+            # holds only structured/redacted enriched fields + hashes. V1-V44 untouched.
+            for stmt in self.V45_STATEMENTS:
+                conn.execute(stmt)
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 45")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (45, 'v45_email_followup_enrichments', ?)",
                     (now,),
                 )
 

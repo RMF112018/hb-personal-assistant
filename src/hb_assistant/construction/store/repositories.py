@@ -9259,6 +9259,222 @@ class ConstructionStore:
             )
         return status_event_id
 
+    # --- Phase 10 email follow-up raw enrichment (V45, additive) ------------
+    # Review-safe destination for model-enriched follow-up metadata derived from a bounded,
+    # sanitized, NON-persisted local raw email window. Persists ONLY structured/redacted enriched
+    # fields + SHA-256[:12] hashes + source refs. No raw body, prompt, response, HTML, URL, token,
+    # or secret can flow through these methods. Guard columns omitted → DEFAULT 0 / CHECK(=0).
+    # Idempotent by idempotency_key (re-enrichment updates in place; operator review_status is
+    # preserved on update). V1-V44 read models untouched.
+    # -----------------------------------------------------------------------
+
+    _EMAIL_FOLLOWUP_ENRICHMENT_COLUMNS = (
+        "enrichment_id, idempotency_key, source_candidate_id, source_candidate_type, "
+        "watch_item_id, email_thread_ref_hash, email_message_ref_hashes_json, raw_excerpt_hash, "
+        "enriched_title, waiting_state, assignee_type, assignee_display, suggested_next_action, "
+        "due_at_utc, confidence, confidence_band, reason_codes_json, source_refs_json, "
+        "review_status, model_task, model_profile_id, prompt_template_version, "
+        "input_context_hash, output_hash, created_utc, updated_utc"
+    )
+
+    def upsert_email_followup_enrichment(
+        self,
+        *,
+        enrichment_id: str,
+        idempotency_key: str,
+        source_candidate_id: str,
+        source_candidate_type: str,
+        raw_excerpt_hash: str,
+        enriched_title: str,
+        waiting_state: str,
+        assignee_type: str,
+        confidence: float,
+        confidence_band: str,
+        input_context_hash: str,
+        output_hash: str,
+        prompt_template_version: str,
+        watch_item_id: Optional[str] = None,
+        email_thread_ref_hash: Optional[str] = None,
+        email_message_ref_hashes: Optional[list[str]] = None,
+        assignee_display: Optional[str] = None,
+        suggested_next_action: Optional[str] = None,
+        due_at_utc: Optional[str] = None,
+        reason_codes: Optional[list[str]] = None,
+        source_refs: Optional[list[str]] = None,
+        review_status: str = "pending",
+        model_task: str = "email_followup_raw_enrichment",
+        model_profile_id: Optional[str] = None,
+    ) -> str:
+        """Upsert a review-safe V45 ``email_followup_enrichments`` row. Returns 'inserted'|'updated'.
+
+        Idempotent by ``idempotency_key``: re-enriching the same (candidate, refs, raw excerpt,
+        task, template, schema) updates the existing row's structured fields in place instead of
+        creating a duplicate. ``review_status`` is set on insert only and preserved on update so an
+        operator decision is never silently reset. Persists ONLY structured/redacted fields, hashes,
+        and source refs — guard columns are omitted so the CHECK(=0) invariants hold.
+        """
+        if not enrichment_id or not idempotency_key or not source_candidate_id:
+            raise ValueError("enrichment_id, idempotency_key and source_candidate_id are required")
+        if not raw_excerpt_hash or not input_context_hash or not output_hash:
+            raise ValueError(
+                "raw_excerpt_hash, input_context_hash and output_hash are required"
+            )
+        msg_hashes_json = json.dumps(list(email_message_ref_hashes or []), sort_keys=True)
+        reasons_json = json.dumps(list(reason_codes or []), sort_keys=True)
+        refs_json = json.dumps(list(source_refs or []), sort_keys=True)
+        now = _utc_now()
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            existing = conn.execute(
+                "SELECT enrichment_id FROM email_followup_enrichments WHERE idempotency_key = ?",
+                (idempotency_key,),
+            ).fetchone()
+            if existing is not None:
+                conn.execute(
+                    """
+                    UPDATE email_followup_enrichments SET
+                        source_candidate_id = ?, source_candidate_type = ?, watch_item_id = ?,
+                        email_thread_ref_hash = ?, email_message_ref_hashes_json = ?,
+                        raw_excerpt_hash = ?, enriched_title = ?, waiting_state = ?,
+                        assignee_type = ?, assignee_display = ?, suggested_next_action = ?,
+                        due_at_utc = ?, confidence = ?, confidence_band = ?, reason_codes_json = ?,
+                        source_refs_json = ?, model_task = ?, model_profile_id = ?,
+                        prompt_template_version = ?, input_context_hash = ?, output_hash = ?,
+                        updated_utc = ?
+                    WHERE idempotency_key = ?
+                    """,
+                    (
+                        source_candidate_id,
+                        source_candidate_type,
+                        watch_item_id,
+                        email_thread_ref_hash,
+                        msg_hashes_json,
+                        raw_excerpt_hash,
+                        enriched_title,
+                        waiting_state,
+                        assignee_type,
+                        assignee_display,
+                        suggested_next_action,
+                        due_at_utc,
+                        confidence,
+                        confidence_band,
+                        reasons_json,
+                        refs_json,
+                        model_task,
+                        model_profile_id,
+                        prompt_template_version,
+                        input_context_hash,
+                        output_hash,
+                        now,
+                        idempotency_key,
+                    ),
+                )
+                return "updated"
+            conn.execute(
+                """
+                INSERT INTO email_followup_enrichments
+                    (enrichment_id, idempotency_key, source_candidate_id, source_candidate_type,
+                     watch_item_id, email_thread_ref_hash, email_message_ref_hashes_json,
+                     raw_excerpt_hash, enriched_title, waiting_state, assignee_type,
+                     assignee_display, suggested_next_action, due_at_utc, confidence,
+                     confidence_band, reason_codes_json, source_refs_json, review_status,
+                     model_task, model_profile_id, prompt_template_version, input_context_hash,
+                     output_hash, created_utc, updated_utc)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                        ?, ?)
+                """,
+                (
+                    enrichment_id,
+                    idempotency_key,
+                    source_candidate_id,
+                    source_candidate_type,
+                    watch_item_id,
+                    email_thread_ref_hash,
+                    msg_hashes_json,
+                    raw_excerpt_hash,
+                    enriched_title,
+                    waiting_state,
+                    assignee_type,
+                    assignee_display,
+                    suggested_next_action,
+                    due_at_utc,
+                    confidence,
+                    confidence_band,
+                    reasons_json,
+                    refs_json,
+                    review_status,
+                    model_task,
+                    model_profile_id,
+                    prompt_template_version,
+                    input_context_hash,
+                    output_hash,
+                    now,
+                    now,
+                ),
+            )
+        return "inserted"
+
+    def list_email_followup_enrichments(
+        self,
+        *,
+        review_status: Optional[str] = None,
+        source_candidate_id: Optional[str] = None,
+        watch_item_id: Optional[str] = None,
+        limit: int = 1000,
+    ) -> list[dict[str, Any]]:
+        """List review-safe V45 enrichment rows (safe columns only; JSON parsed to lists).
+
+        Never returns the guard columns. Used by the daily brief (``review_status='pending'``) and
+        by tests/evidence. Returns structured/redacted fields + hashes + source refs only.
+        """
+        conn = get_connection(self._db_path)
+        clauses: list[str] = []
+        params: list[Any] = []
+        if review_status is not None:
+            clauses.append("review_status = ?")
+            params.append(review_status)
+        if source_candidate_id is not None:
+            clauses.append("source_candidate_id = ?")
+            params.append(source_candidate_id)
+        if watch_item_id is not None:
+            clauses.append("watch_item_id = ?")
+            params.append(watch_item_id)
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        params.append(limit)
+        cur = conn.execute(
+            f"SELECT {self._EMAIL_FOLLOWUP_ENRICHMENT_COLUMNS} FROM email_followup_enrichments "
+            f"{where} ORDER BY created_utc DESC LIMIT ?",
+            tuple(params),
+        )
+        cols = [d[0] for d in cur.description]
+        results: list[dict[str, Any]] = []
+        for row in cur.fetchall():
+            rec = dict(zip(cols, row, strict=True))
+            for jk in (
+                "email_message_ref_hashes_json",
+                "reason_codes_json",
+                "source_refs_json",
+            ):
+                try:
+                    rec[jk.replace("_json", "")] = self._load_json(rec[jk]) or []
+                except Exception:
+                    rec[jk.replace("_json", "")] = []
+            results.append(rec)
+        return results
+
+    def count_email_followup_enrichments(self, *, review_status: Optional[str] = None) -> int:
+        """Count V45 enrichment rows (optionally by review_status)."""
+        conn = get_connection(self._db_path)
+        if review_status is None:
+            cur = conn.execute("SELECT COUNT(*) FROM email_followup_enrichments")
+        else:
+            cur = conn.execute(
+                "SELECT COUNT(*) FROM email_followup_enrichments WHERE review_status = ?",
+                (review_status,),
+            )
+        row = cur.fetchone()
+        return int(row[0]) if row else 0
+
     # --- Phase 10 daily-brief action candidates (additive) -----------------
     # Destination for advisory digest/synthesis candidates (e.g. the Procore
     # action-signal digest and the daily-brief synthesis layer). Rollup rows only:
