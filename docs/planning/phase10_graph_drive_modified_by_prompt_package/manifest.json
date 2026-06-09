@@ -1,0 +1,19 @@
+{
+  "package": "Phase 10 Graph Drive Raw File Metadata Package \u2014 Modified-By Capture",
+  "file_count": 13,
+  "files": [
+    "00_REPO_TRUTH_AND_SCOPE_LOCK.md",
+    "01_SCHEMA_AND_CONTRACT_AUDIT.md",
+    "02_SCHEMA_MIGRATION_AND_REPOSITORY_CHANGES.md",
+    "03_GRAPH_DRIVE_ITEM_NORMALIZATION_AND_INDEXING.md",
+    "04_CLI_READ_MODELS_AND_SAFE_OUTPUTS.md",
+    "05_TESTS_AND_VALIDATION.md",
+    "06_LIVE_DB_PROOF_AND_BACKFILL.md",
+    "07_FINAL_AUDIT_AND_HANDOFF.md",
+    "ACCEPTANCE_CRITERIA.md",
+    "README.md",
+    "STOP_CONDITIONS.md",
+    "SUPPORTING_CONTEXT.md",
+    "VALIDATION_COMMANDS.md"
+  ]
+}

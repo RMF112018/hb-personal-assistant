@@ -67,7 +67,53 @@ def _redact_facet(facet: Any) -> Optional[dict[str, Any]]:
     return out or None
 
 
-def normalize_drive_item(source_id: str, drive_id: str, raw: dict[str, Any]) -> dict[str, Any]:
+def _string_or_none(value: Any) -> Optional[str]:
+    if isinstance(value, str):
+        stripped = value.strip()
+        return stripped or None
+    if isinstance(value, (int, float, bool)):
+        return str(value)
+    return None
+
+
+def _parent_folder_name(path: Any) -> Optional[str]:
+    raw_path = _string_or_none(path)
+    if raw_path is None:
+        return None
+    folder_path = raw_path.split(":", 1)[1] if ":" in raw_path else raw_path
+    parts = [p for p in folder_path.strip("/").split("/") if p]
+    return parts[-1] if parts else None
+
+
+def _last_modified_by_fields(raw: dict[str, Any]) -> dict[str, Optional[str]]:
+    identity = raw.get("lastModifiedBy")
+    if not isinstance(identity, dict):
+        return {
+            "last_modified_by_display_name": None,
+            "last_modified_by_user_id": None,
+            "last_modified_by_email": None,
+            "last_modified_by_application_display_name": None,
+            "last_modified_by_raw_json": None,
+        }
+    user = identity.get("user") if isinstance(identity.get("user"), dict) else {}
+    app = identity.get("application") if isinstance(identity.get("application"), dict) else {}
+    email = _string_or_none(user.get("email")) or _string_or_none(user.get("userPrincipalName"))
+    return {
+        "last_modified_by_display_name": _string_or_none(user.get("displayName")),
+        "last_modified_by_user_id": _string_or_none(user.get("id")),
+        "last_modified_by_email": email,
+        "last_modified_by_application_display_name": _string_or_none(app.get("displayName")),
+        "last_modified_by_raw_json": json.dumps(identity, sort_keys=True),
+    }
+
+
+def normalize_drive_item(
+    source_id: str,
+    drive_id: str,
+    raw: dict[str, Any],
+    *,
+    project_key: Optional[str] = None,
+) -> dict[str, Any]:
     """Map a raw Graph driveItem to canonical ``upsert_drive_item`` kwargs.
 
     ``@microsoft.graph.downloadUrl`` and any url/token-bearing facet keys are
@@ -91,6 +137,7 @@ def normalize_drive_item(source_id: str, drive_id: str, raw: dict[str, Any]) -> 
     )
     quick_xor = hashes.get("quickXorHash") if hashes else None
     name = raw.get("name")
+    parent_reference_path = (parent_ref or {}).get("path")
 
     return {
         "source_id": source_id,
@@ -114,9 +161,11 @@ def normalize_drive_item(source_id: str, drive_id: str, raw: dict[str, Any]) -> 
         "e_tag": raw.get("eTag"),
         "c_tag": raw.get("cTag"),
         "quick_xor_hash": quick_xor,
+        "project_key": project_key,
         "file_hashes_json": json.dumps(hashes, sort_keys=True) if hashes else None,
         "deleted": raw.get("deleted") is not None,
-        "parent_reference_path": (parent_ref or {}).get("path"),
+        "parent_reference_path": parent_reference_path,
+        "parent_folder_name": _parent_folder_name(parent_reference_path),
         "folder_child_count": (folder_facet or {}).get("childCount") if folder_facet else None,
         "sharepoint_web_id": (sp_ids or {}).get("webId"),
         "sharepoint_list_item_id": (sp_ids or {}).get("listItemId"),
@@ -126,6 +175,7 @@ def normalize_drive_item(source_id: str, drive_id: str, raw: dict[str, Any]) -> 
         "remote_item_json_redacted": (
             json.dumps(_redact_facet(remote_facet), sort_keys=True) if remote_facet else None
         ),
+        **_last_modified_by_fields(raw),
     }
 
 
@@ -133,7 +183,7 @@ def redacted_sample(kwargs: dict[str, Any]) -> dict[str, Any]:
     """A compact, content-free preview of a normalized item for dry-run evidence."""
     return {
         "drive_item_id": kwargs.get("drive_item_id"),
-        "name": kwargs.get("name"),
+        "name_present": bool(kwargs.get("name")),
         "is_file": kwargs.get("is_file"),
         "is_folder": kwargs.get("is_folder"),
         "is_package": kwargs.get("is_package"),
@@ -141,7 +191,10 @@ def redacted_sample(kwargs: dict[str, Any]) -> dict[str, Any]:
         "size_bytes": kwargs.get("size_bytes"),
         "file_extension": kwargs.get("file_extension"),
         "last_modified_datetime": kwargs.get("last_modified_datetime"),
-        "parent_reference_path": kwargs.get("parent_reference_path"),
+        "parent_reference_path_present": bool(kwargs.get("parent_reference_path")),
+        "parent_folder_name_present": bool(kwargs.get("parent_folder_name")),
+        "project_key_present": bool(kwargs.get("project_key")),
+        "last_modified_by_present": bool(kwargs.get("last_modified_by_display_name")),
     }
 
 
@@ -222,7 +275,12 @@ class DriveItemIndexer:
                 max_items=max_items,
             ):
                 items_seen += 1
-                kwargs = normalize_drive_item(source.source_key, res.drive_id or "", item)
+                kwargs = normalize_drive_item(
+                    source.source_key,
+                    res.drive_id or "",
+                    item,
+                    project_key=source.project_key,
+                )
                 if not kwargs.get("drive_item_id"):
                     continue
                 # Hard proof: the normalized payload never carries a download URL.

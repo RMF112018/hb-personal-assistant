@@ -113,6 +113,18 @@ _DRIVE_ITEM_KEYS: tuple[str, ...] = (
     "remote_item_json_redacted",
     "first_seen_utc",
     "last_seen_utc",
+    "project_key",
+    "match_confidence",
+    "match_status",
+    "review_required",
+    "review_reason",
+    "match_signals_json",
+    "parent_folder_name",
+    "last_modified_by_display_name",
+    "last_modified_by_user_id",
+    "last_modified_by_email",
+    "last_modified_by_application_display_name",
+    "last_modified_by_raw_json",
 )
 
 
@@ -2150,6 +2162,7 @@ class ConstructionStore:
         last_modified_datetime: Optional[str] = None,
         deleted: bool = False,
         quick_xor_hash: Optional[str] = None,
+        project_key: Optional[str] = None,
         project_number_detected: Optional[str] = None,
         document_type_detected: Optional[str] = None,
         indexing_policy: Optional[str] = None,
@@ -2166,6 +2179,13 @@ class ConstructionStore:
         file_hashes_json: Optional[str] = None,
         package_json_redacted: Optional[str] = None,
         remote_item_json_redacted: Optional[str] = None,
+        # v44 Phase 10 Graph driveItem modified-by metadata.
+        parent_folder_name: Optional[str] = None,
+        last_modified_by_display_name: Optional[str] = None,
+        last_modified_by_user_id: Optional[str] = None,
+        last_modified_by_email: Optional[str] = None,
+        last_modified_by_application_display_name: Optional[str] = None,
+        last_modified_by_raw_json: Optional[str] = None,
     ) -> None:
         now = _utc_now()
         conn = get_connection(self._db_path)
@@ -2184,9 +2204,14 @@ class ConstructionStore:
                      parent_reference_path, folder_child_count,
                      sharepoint_web_id, sharepoint_list_item_id,
                      file_hashes_json, package_json_redacted,
-                     remote_item_json_redacted, first_seen_utc, last_seen_utc)
+                     remote_item_json_redacted, first_seen_utc, last_seen_utc,
+                     project_key, parent_folder_name,
+                     last_modified_by_display_name, last_modified_by_user_id,
+                     last_modified_by_email, last_modified_by_application_display_name,
+                     last_modified_by_raw_json)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                        ?, ?, ?, ?)
                 ON CONFLICT(source_id, drive_item_id) DO UPDATE SET
                     drive_id = excluded.drive_id,
                     parent_drive_item_id = excluded.parent_drive_item_id,
@@ -2220,7 +2245,14 @@ class ConstructionStore:
                     file_hashes_json = excluded.file_hashes_json,
                     package_json_redacted = excluded.package_json_redacted,
                     remote_item_json_redacted = excluded.remote_item_json_redacted,
-                    last_seen_utc = excluded.last_seen_utc
+                    last_seen_utc = excluded.last_seen_utc,
+                    project_key = COALESCE(construction_drive_items.project_key, excluded.project_key),
+                    parent_folder_name = excluded.parent_folder_name,
+                    last_modified_by_display_name = excluded.last_modified_by_display_name,
+                    last_modified_by_user_id = excluded.last_modified_by_user_id,
+                    last_modified_by_email = excluded.last_modified_by_email,
+                    last_modified_by_application_display_name = excluded.last_modified_by_application_display_name,
+                    last_modified_by_raw_json = excluded.last_modified_by_raw_json
                 """,
                 (
                     source_id,
@@ -2260,6 +2292,13 @@ class ConstructionStore:
                     remote_item_json_redacted,
                     now,
                     now,
+                    project_key,
+                    parent_folder_name,
+                    last_modified_by_display_name,
+                    last_modified_by_user_id,
+                    last_modified_by_email,
+                    last_modified_by_application_display_name,
+                    last_modified_by_raw_json,
                 ),
             )
 
@@ -2283,7 +2322,13 @@ class ConstructionStore:
                    parent_reference_path, folder_child_count,
                    sharepoint_web_id, sharepoint_list_item_id,
                    file_hashes_json, package_json_redacted,
-                   remote_item_json_redacted, first_seen_utc, last_seen_utc
+                   remote_item_json_redacted, first_seen_utc, last_seen_utc,
+                   project_key, match_confidence, match_status, review_required,
+                   review_reason, match_signals_json,
+                   parent_folder_name,
+                   last_modified_by_display_name, last_modified_by_user_id,
+                   last_modified_by_email, last_modified_by_application_display_name,
+                   last_modified_by_raw_json
             FROM construction_drive_items
             WHERE source_id = ? AND drive_item_id = ?
             """,
@@ -2293,7 +2338,7 @@ class ConstructionStore:
         if row is None:
             return None
         record = dict(zip(_DRIVE_ITEM_KEYS, row, strict=True))
-        for bool_field in ("is_folder", "is_file", "deleted", "is_package"):
+        for bool_field in ("is_folder", "is_file", "deleted", "is_package", "review_required"):
             record[bool_field] = bool(record[bool_field])
         return record
 
@@ -2321,7 +2366,13 @@ class ConstructionStore:
             "parent_reference_path, folder_child_count, "
             "sharepoint_web_id, sharepoint_list_item_id, "
             "file_hashes_json, package_json_redacted, "
-            "remote_item_json_redacted, first_seen_utc, last_seen_utc "
+            "remote_item_json_redacted, first_seen_utc, last_seen_utc, "
+            "project_key, match_confidence, match_status, review_required, "
+            "review_reason, match_signals_json, "
+            "parent_folder_name, "
+            "last_modified_by_display_name, last_modified_by_user_id, "
+            "last_modified_by_email, last_modified_by_application_display_name, "
+            "last_modified_by_raw_json "
             "FROM construction_drive_items WHERE source_id = ? "
             "ORDER BY drive_item_id"
         )
@@ -2333,7 +2384,7 @@ class ConstructionStore:
         out: list[dict[str, Any]] = []
         for row in conn.execute(sql, params).fetchall():
             record = dict(zip(_DRIVE_ITEM_KEYS, row, strict=True))
-            for bool_field in ("is_folder", "is_file", "deleted", "is_package"):
+            for bool_field in ("is_folder", "is_file", "deleted", "is_package", "review_required"):
                 record[bool_field] = bool(record[bool_field])
             out.append(record)
         return out
@@ -8255,9 +8306,7 @@ class ConstructionStore:
         )
         r_params: list[Any] = []
         if environment is not None:
-            r_sql += (
-                " WHERE job_id IN (SELECT job_id FROM ai_job_queue WHERE environment = ?)"
-            )
+            r_sql += " WHERE job_id IN (SELECT job_id FROM ai_job_queue WHERE environment = ?)"
             r_params.append(environment)
         rrow = conn.execute(r_sql, tuple(r_params)).fetchone()
         runs = {
@@ -8815,12 +8864,18 @@ class ConstructionStore:
         """
         merged: list[dict[str, Any]] = []
         for ctype, rows in (
-            ("task", self.list_task_candidates(
-                project_key=project_key, review_status=status, limit=limit
-            )),
-            ("commitment", self.list_commitment_candidates(
-                project_key=project_key, review_status=status, limit=limit
-            )),
+            (
+                "task",
+                self.list_task_candidates(
+                    project_key=project_key, review_status=status, limit=limit
+                ),
+            ),
+            (
+                "commitment",
+                self.list_commitment_candidates(
+                    project_key=project_key, review_status=status, limit=limit
+                ),
+            ),
         ):
             for r in rows:
                 r["candidate_type"] = ctype
@@ -9368,9 +9423,7 @@ class ConstructionStore:
     def list_phase10_relationship_candidate_ids(self) -> set[str]:
         """Return the set of existing relationship_candidate_id values (idempotency check)."""
         conn = get_connection(self._db_path)
-        cur = conn.execute(
-            "SELECT relationship_candidate_id FROM phase10_relationship_candidates"
-        )
+        cur = conn.execute("SELECT relationship_candidate_id FROM phase10_relationship_candidates")
         return {str(row[0]) for row in cur.fetchall()}
 
     def list_phase10_relationship_candidates(

@@ -24,6 +24,7 @@ preferred_metadata:
   - size
   - createdDateTime
   - lastModifiedDateTime
+  - lastModifiedBy       # local operational metadata only; never emitted raw in repo evidence
   - eTag
   - cTag
   - parentReference     # carries driveId + path; enables folder hierarchy

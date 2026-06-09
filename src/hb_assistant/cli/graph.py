@@ -13,6 +13,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import sqlite3
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -517,6 +518,108 @@ def files_status_cmd(
     }
     typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
     raise typer.Exit(0)
+
+
+def _drive_item_nonempty_count(conn: sqlite3.Connection, expression: str) -> int:
+    row = conn.execute(
+        f"""
+        SELECT COUNT(*)
+        FROM construction_drive_items
+        WHERE {expression} IS NOT NULL
+          AND length(CAST({expression} AS TEXT)) > 0
+        """
+    ).fetchone()
+    return int(row[0]) if row else 0
+
+
+@files_app.command("coverage")
+def files_coverage_cmd(
+    db: Optional[str] = typer.Option(
+        None, "--db", help="Explicit SQLite path for DB-copy proof/isolation."
+    ),
+    json_out: bool = typer.Option(True, "--json", help="Emit machine-readable JSON (default)."),
+) -> None:
+    """Count-only driveItem metadata coverage proof.
+
+    Emits no raw file names, folder paths, URLs, user names, emails, IDs, or raw JSON.
+    """
+    db_path = Path(db) if db else PathPolicy().get_db_path()
+    conn = sqlite3.connect(db_path)
+    required_columns = {
+        "source_id",
+        "drive_item_id",
+        "name",
+        "path",
+        "parent_reference_path",
+        "project_key",
+        "last_modified_datetime",
+        "parent_folder_name",
+        "last_modified_by_display_name",
+        "last_modified_by_user_id",
+        "last_modified_by_email",
+        "last_modified_by_application_display_name",
+        "last_modified_by_raw_json",
+    }
+    exists = conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name='construction_drive_items'"
+    ).fetchone()
+    if not exists:
+        payload: Dict[str, Any] = {
+            "command": "graph files coverage",
+            "ok": False,
+            "table": "construction_drive_items",
+            "status": "missing_table",
+            "raw_values_emitted": False,
+        }
+        typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+        raise typer.Exit(1)
+
+    cols = {str(r[1]) for r in conn.execute("PRAGMA table_info(construction_drive_items)")}
+    missing = sorted(required_columns - cols)
+    row_count = int(conn.execute("SELECT COUNT(*) FROM construction_drive_items").fetchone()[0])
+    coverage: Dict[str, int] = {}
+    if not missing:
+        coverage = {
+            "source_reference": _drive_item_nonempty_count(conn, "source_id"),
+            "project_reference": _drive_item_nonempty_count(conn, "project_key"),
+            "folder_path": _drive_item_nonempty_count(
+                conn, "COALESCE(parent_reference_path, path)"
+            ),
+            "folder_name": _drive_item_nonempty_count(conn, "parent_folder_name"),
+            "file_name": _drive_item_nonempty_count(conn, "name"),
+            "last_modified_datetime": _drive_item_nonempty_count(conn, "last_modified_datetime"),
+            "last_modified_by_display_name": _drive_item_nonempty_count(
+                conn, "last_modified_by_display_name"
+            ),
+            "last_modified_by_user_id": _drive_item_nonempty_count(
+                conn, "last_modified_by_user_id"
+            ),
+            "last_modified_by_email": _drive_item_nonempty_count(conn, "last_modified_by_email"),
+            "last_modified_by_application_display_name": _drive_item_nonempty_count(
+                conn, "last_modified_by_application_display_name"
+            ),
+            "last_modified_by_raw_json": _drive_item_nonempty_count(
+                conn, "last_modified_by_raw_json"
+            ),
+        }
+    conn.close()
+
+    payload = {
+        "command": "graph files coverage",
+        "ok": not missing,
+        "table": "construction_drive_items",
+        "row_count": row_count,
+        "coverage": coverage,
+        "missing_columns": missing,
+        "raw_values_emitted": False,
+        "guardrails": {
+            "graph_calls": "none",
+            "external_systems": "read_only",
+            "output": "count_only",
+        },
+    }
+    typer.echo(json.dumps(payload, indent=2) if json_out else str(payload))
+    raise typer.Exit(0 if not missing else 1)
 
 
 @files_app.command("scope-compliance")
@@ -1050,6 +1153,9 @@ def files_index_cmd(
         True, "--dry-run/--apply", help="Default dry-run; --apply persists canonical driveItems."
     ),
     max_pages: int = typer.Option(5, "--max-pages", help="Hard cap on pages read."),
+    db: Optional[str] = typer.Option(
+        None, "--db", help="Explicit SQLite path for DB-copy proof/isolation."
+    ),
     json_out: bool = typer.Option(True, "--json", help="Output JSON (default)."),
 ) -> None:
     """Index rich driveItem metadata into the canonical V5 construction_drive_items
@@ -1086,7 +1192,7 @@ def files_index_cmd(
         raise typer.Exit(0)
 
     try:
-        store = ConstructionStore() if not dry_run else None
+        store = ConstructionStore(db_path=db) if not dry_run else None
         indexer = DriveItemIndexer(client, store=store)
         report = indexer.index(matching[0], dry_run=dry_run, max_pages=max_pages)
     finally:

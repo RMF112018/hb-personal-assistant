@@ -14,7 +14,7 @@ from .connection import get_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 43
+LATEST_SCHEMA_VERSION = 44
 
 
 class SQLiteMigrator:
@@ -5722,6 +5722,18 @@ class SQLiteMigrator:
         "CREATE INDEX IF NOT EXISTS ix_commitment_candidates_snoozed_until ON commitment_candidates(snoozed_until_utc);",
     ]
 
+    # v44 Phase 10 Graph drive-item modified-by raw operational metadata.
+    # Additive ADD COLUMN only on construction_drive_items; raw identity JSON is
+    # local SQLite operational metadata and must not be emitted in committed evidence.
+    V44_STATEMENTS: list[str] = [
+        "ALTER TABLE construction_drive_items ADD COLUMN parent_folder_name TEXT",
+        "ALTER TABLE construction_drive_items ADD COLUMN last_modified_by_display_name TEXT",
+        "ALTER TABLE construction_drive_items ADD COLUMN last_modified_by_user_id TEXT",
+        "ALTER TABLE construction_drive_items ADD COLUMN last_modified_by_email TEXT",
+        "ALTER TABLE construction_drive_items ADD COLUMN last_modified_by_application_display_name TEXT",
+        "ALTER TABLE construction_drive_items ADD COLUMN last_modified_by_raw_json TEXT",
+    ]
+
     def __init__(self, db_path: str | None = None):
         self._db_path = db_path
 
@@ -6263,6 +6275,17 @@ class SQLiteMigrator:
                     conn.execute(stmt)
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (43, 'v43_phase_10a_candidate_review', ?)",
+                    (now,),
+                )
+
+            # v44 Graph drive-item modified-by metadata and explicit parent folder
+            # name. Additive ADD COLUMN only; existing rows remain valid with NULLs.
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 44")
+            if cur.fetchone() is None:
+                for stmt in self.V44_STATEMENTS:
+                    conn.execute(stmt)
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (44, 'v44_graph_drive_item_modified_by_metadata', ?)",
                     (now,),
                 )
 

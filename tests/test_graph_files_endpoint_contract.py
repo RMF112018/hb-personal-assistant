@@ -67,7 +67,7 @@ def test_read_allowlist_metadata_select_is_content_free():
     select = {f.lower() for f in data.get("drive_item_metadata_select", [])}
     assert "content" not in select
     assert "@microsoft.graph.downloadurl" not in select
-    assert {"id", "name", "size"}.issubset(select)
+    assert {"id", "name", "size", "lastmodifiedby"}.issubset(select)
 
 
 def test_read_allowlist_paging_does_not_parse_skip_token():
@@ -125,3 +125,8 @@ def test_metadata_contract_never_persists_download_url_tokens_and_raw_links():
     assert "refresh_token" in never
     assert "@odata.deltalink" in never
     assert "@odata.nextlink" in never
+
+
+def test_metadata_contract_includes_modified_by_identity():
+    preferred = {n.lower() for n in _load(_METADATA_PATH)["preferred_metadata"]}
+    assert "lastmodifiedby" in preferred

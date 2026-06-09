@@ -84,6 +84,19 @@ class V5DriveItem(BaseModel):
     remote_item_json_redacted: Optional[str] = None
     first_seen_utc: Optional[str] = None
     last_seen_utc: Optional[str] = None
+    # V17 project matching + V44 operational metadata.
+    project_key: Optional[str] = None
+    match_confidence: Optional[str] = None
+    match_status: Optional[str] = None
+    review_required: bool = False
+    review_reason: Optional[str] = None
+    match_signals_json: Optional[str] = None
+    parent_folder_name: Optional[str] = None
+    last_modified_by_display_name: Optional[str] = None
+    last_modified_by_user_id: Optional[str] = None
+    last_modified_by_email: Optional[str] = None
+    last_modified_by_application_display_name: Optional[str] = None
+    last_modified_by_raw_json: Optional[str] = None
 
     model_config = {"extra": "forbid"}
 

@@ -152,7 +152,12 @@ class BaselineCrawler:
                         done = True
                         break
                     items_seen += 1
-                    kwargs = normalize_drive_item(source.source_key, res.drive_id or "", item)
+                    kwargs = normalize_drive_item(
+                        source.source_key,
+                        res.drive_id or "",
+                        item,
+                        project_key=source.project_key,
+                    )
                     if not kwargs.get("drive_item_id"):
                         out_of_scope += 1
                         continue

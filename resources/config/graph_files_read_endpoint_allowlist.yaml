@@ -90,6 +90,7 @@ drive_item_metadata_select:
   - size
   - createdDateTime
   - lastModifiedDateTime
+  - lastModifiedBy
   - eTag
   - cTag
   - parentReference
