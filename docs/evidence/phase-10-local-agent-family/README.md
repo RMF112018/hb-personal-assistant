@@ -310,6 +310,25 @@ Targeted suite green (**108 tests** across Checkpoint 1/2/3/4 + registry); `ruff
 The same three branch-independent failures noted under Checkpoint 3 remain (two documented
 pre-existing; one environment-dependent `raw_content` policy state).
 
+### `--raw` local-consumption real content (Checkpoint 4 addendum)
+
+`daily-brief render --raw` surfaces real (un-redacted) content for **local consumption only** —
+calendar real subject/location/organizer, Procore real signal titles — via a deterministic
+forward-map from candidate id to the local raw tables. Default (no `--raw`) is unchanged. Scope
+authorized: local consumption + model context only; persisted rows and committed/logged artifacts
+stay redacted; no schema change/migration.
+
+Tests added (5): `--raw` default-off keeps redacted; calendar shows real subject + location; Procore
+shows real signal titles; `--raw` does not mutate or persist (DB rows stay redacted); CLI `--raw`
+surfaces real content to stdout yet `--raw --write --output-path <repo>` is still refused.
+
+Live proof (Dev DB copy, 10 calendar candidates; removed after): all 10 enriched with the real
+subject (`display_title` ≠ redacted placeholder) + location/organizer; **default render stays
+redacted and the real subjects are absent from it**; persisted `daily_brief_action_candidates` rows
+remain redacted (real subjects not in DB); guardrails `raw_local_consumption_only=true`,
+`no_raw_persistence=true`; row counts 10/10 unchanged. (No real subjects reproduced in this
+evidence — egress boundary held.)
+
 ## Checkpoint 4 status
 
 Experimental proof on `experiment/local-agent-family-proof` (no merge implied; main untouched). No

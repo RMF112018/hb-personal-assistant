@@ -21,6 +21,7 @@ emitted or written.
 
 from __future__ import annotations
 
+import hashlib
 from pathlib import Path
 from typing import Any, Optional
 
@@ -59,6 +60,71 @@ def _short_id(candidate_id: Optional[str]) -> str:
     return cid[:18] if cid else ""
 
 
+def _calendar_source_ref(event_index_id: Any) -> str:
+    """Recompute the calendar candidate source_ref exactly as calendar-prep does."""
+    return "cal:" + hashlib.sha256(str(event_index_id).encode("utf-8")).hexdigest()[:32]
+
+
+def _build_raw_enrichment(
+    *, store: Any, brief_date: str, sections_present: set[str]
+) -> dict[str, dict[str, Any]]:
+    """Map each persisted candidate id → REAL (un-redacted) content from the LOCAL raw tables.
+
+    Forward-map: candidate ids are deterministic hashes of (brief_date, section, group_key), so we
+    recompute them from each source row and join. Read-only; the real content fetched here is for
+    LOCAL consumption only (caller surfaces it to stdout / a non-repo file) and is never persisted,
+    logged, or written to the repo. Each source read is guarded so a missing table is a no-op.
+    """
+    enrichment: dict[str, dict[str, Any]] = {}
+
+    # Calendar (Graph): real subject / location / organizer from calendar_event_raw_content.
+    if "calendar" in sections_present:
+        try:
+            for row in store.list_calendar_event_raw_content(limit=1_000_000):
+                eid = row.get("event_index_id")
+                if not eid:
+                    continue
+                cid = store.daily_brief_action_candidate_id_for(
+                    brief_date, "calendar", _calendar_source_ref(eid)
+                )
+                subject = str(row.get("subject") or "").strip()
+                detail_bits: list[str] = []
+                if row.get("location_display"):
+                    detail_bits.append(f"loc:{str(row['location_display']).strip()}")
+                if row.get("organizer_name"):
+                    detail_bits.append(f"organizer:{str(row['organizer_name']).strip()}")
+                enrichment[cid] = {
+                    "raw_title": subject or None,
+                    "raw_detail": " · ".join(detail_bits) or None,
+                }
+        except Exception:
+            pass
+
+    # Procore: real per-signal titles backing each (project, signal_type) rollup candidate. The
+    # minimal list_procore_action_signals reader omits title_redacted (which holds the REAL label),
+    # so read it directly. Guarded so a missing table/path is a no-op.
+    if "procore" in sections_present:
+        try:
+            from hb_assistant.store.connection import get_connection
+
+            conn = get_connection(getattr(store, "_db_path", None))
+            cur = conn.execute(
+                "SELECT project_key, signal_type, title_redacted FROM procore_action_signals "
+                "WHERE signal_status = 'open' AND COALESCE(length(title_redacted), 0) > 0"
+            )
+            groups: dict[str, list[str]] = {}
+            for project_key, signal_type, title in cur.fetchall():
+                groups.setdefault(f"{project_key}|{signal_type}", []).append(str(title).strip())
+            for gk, titles in groups.items():
+                cid = store.daily_brief_action_candidate_id_for(brief_date, "procore", gk)
+                uniq = list(dict.fromkeys(t for t in titles if t))[:5]
+                enrichment[cid] = {"raw_title": None, "raw_detail": "; ".join(uniq) or None}
+        except Exception:
+            pass
+
+    return enrichment
+
+
 def render_daily_brief(
     *,
     store: Any,
@@ -66,12 +132,18 @@ def render_daily_brief(
     sections: Optional[list[str]] = None,
     project_key: Optional[str] = None,
     limit: int = 200,
+    include_raw: bool = False,
 ) -> dict[str, Any]:
-    """Render ``daily_brief_action_candidates`` for one date into a redacted brief (read-only).
+    """Render ``daily_brief_action_candidates`` for one date into a brief (read-only).
 
     ``sections`` filters by internal section name; ``project_key`` filters by project; ``limit`` caps
     the rendered item count (deterministic order). Returns a dict with ``summary`` counts, structured
-    ``sections`` (display groups → safe items), and a redacted ``markdown`` string. Writes nothing.
+    ``sections`` (display groups → safe items), and a ``markdown`` string. Writes nothing.
+
+    ``include_raw`` (LOCAL CONSUMPTION ONLY) enriches each item with the REAL (un-redacted) content
+    from the local raw tables — calendar subjects/locations, Procore signal titles. This content is
+    surfaced only to the caller (stdout / a non-repo file); it is never persisted, logged, or written
+    to the repo. Default is False (byte-for-byte the redacted brief).
     """
     section_filter = {str(s) for s in sections} if sections else None
 
@@ -106,23 +178,40 @@ def render_daily_brief(
     rendered = filtered[: max(0, limit)]
     skipped_by_limit = len(filtered) - len(rendered)
 
+    # Optional LOCAL-only enrichment: real content from raw tables, keyed by candidate id.
+    enrichment: dict[str, dict[str, Any]] = {}
+    if include_raw:
+        sections_present = {str(r.get("section") or "") for r in rendered}
+        enrichment = _build_raw_enrichment(
+            store=store, brief_date=brief_date, sections_present=sections_present
+        )
+
     # Group rendered items by display section.
     grouped: dict[str, list[dict[str, Any]]] = {disp: [] for _, disp in _DISPLAY_SECTIONS}
     for r in rendered:
         disp = _display_for(r.get("section"))
-        grouped.setdefault(disp, []).append(
-            {
-                "candidate_id": _short_id(r.get("daily_brief_action_candidate_id")),
-                "section": r.get("section"),
-                "title_redacted": r.get("title_redacted"),
-                "reason_redacted": r.get("reason_redacted"),
-                "project_key": r.get("project_key"),
-                "priority": r.get("priority"),
-                "confidence": r.get("confidence"),
-                "status": r.get("status"),
-                "recommended_next_action": r.get("recommended_next_action"),
-            }
-        )
+        full_id = str(r.get("daily_brief_action_candidate_id") or "")
+        title_redacted = r.get("title_redacted")
+        item: dict[str, Any] = {
+            "candidate_id": _short_id(full_id),
+            "section": r.get("section"),
+            "title_redacted": title_redacted,
+            "reason_redacted": r.get("reason_redacted"),
+            "project_key": r.get("project_key"),
+            "priority": r.get("priority"),
+            "confidence": r.get("confidence"),
+            "status": r.get("status"),
+            "recommended_next_action": r.get("recommended_next_action"),
+            "display_title": title_redacted,
+        }
+        if include_raw:
+            enr = enrichment.get(full_id) or {}
+            if enr.get("raw_title"):
+                item["display_title"] = enr["raw_title"]
+                item["raw_title"] = enr["raw_title"]
+            if enr.get("raw_detail"):
+                item["raw_detail"] = enr["raw_detail"]
+        grouped.setdefault(disp, []).append(item)
 
     by_section = {disp: len(items) for disp, items in grouped.items() if items}
     sections_out = [
@@ -132,7 +221,10 @@ def render_daily_brief(
     ]
 
     markdown = _render_markdown(
-        brief_date=brief_date, grouped=grouped, total_rendered=len(rendered)
+        brief_date=brief_date,
+        grouped=grouped,
+        total_rendered=len(rendered),
+        include_raw=include_raw,
     )
 
     return {
@@ -141,6 +233,7 @@ def render_daily_brief(
         "brief_date": brief_date,
         "project_filter": project_key,
         "section_filter": sorted(section_filter) if section_filter else None,
+        "include_raw": include_raw,
         "summary": {
             "total_for_date": total,
             "rendered": len(rendered),
@@ -154,8 +247,11 @@ def render_daily_brief(
             "read_only": True,
             "deterministic": True,
             "source_linked_candidate_ids": True,
-            "redacted_fields_only": True,
-            "no_raw_content": True,
+            # include_raw surfaces REAL content for LOCAL consumption only; persisted rows + repo
+            # artifacts stay redacted, and nothing raw is logged or committed.
+            "redacted_fields_only": not include_raw,
+            "raw_local_consumption_only": include_raw,
+            "no_raw_persistence": True,
             "no_writeback": True,
             "advisory_only": True,
         },
@@ -163,16 +259,22 @@ def render_daily_brief(
 
 
 def _render_markdown(
-    *, brief_date: str, grouped: dict[str, list[dict[str, Any]]], total_rendered: int
+    *,
+    brief_date: str,
+    grouped: dict[str, list[dict[str, Any]]],
+    total_rendered: int,
+    include_raw: bool = False,
 ) -> str:
-    """Deterministic, redacted Markdown. Uses only already-redacted fields + stable candidate ids."""
-    lines: list[str] = [
-        f"# Daily Brief — {brief_date}",
-        "",
+    """Deterministic Markdown. Uses ``display_title`` (real content when ``include_raw``, else the
+    redacted title) + stable candidate ids. ``include_raw`` output is LOCAL-only — never committed."""
+    disclaimer = (
         "_Advisory only. Source-linked review candidates from the local-agent family "
-        "(email/follow-up, Procore, calendar). Redacted; no raw source content._",
-        "",
-    ]
+        "(email/follow-up, Procore, calendar)._"
+        if include_raw
+        else "_Advisory only. Source-linked review candidates from the local-agent family "
+        "(email/follow-up, Procore, calendar). Redacted; no raw source content._"
+    )
+    lines: list[str] = [f"# Daily Brief — {brief_date}", "", disclaimer, ""]
     if total_rendered == 0:
         lines.append("_No review candidates for this date._")
         return "\n".join(lines).strip() + "\n"
@@ -183,8 +285,10 @@ def _render_markdown(
             continue
         lines.append(f"## {disp}")
         for it in items:
-            title = str(it.get("title_redacted") or "(untitled)")
+            title = str(it.get("display_title") or it.get("title_redacted") or "(untitled)")
             parts: list[str] = []
+            if it.get("raw_detail"):
+                parts.append(str(it["raw_detail"]))
             if it.get("reason_redacted"):
                 parts.append(str(it["reason_redacted"]))
             if it.get("project_key"):

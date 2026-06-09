@@ -2084,6 +2084,11 @@ def daily_brief_render(
     summary: bool = typer.Option(  # noqa: B008
         False, "--summary", help="Include the per-section item lists in the JSON payload."
     ),
+    raw: bool = typer.Option(  # noqa: B008
+        False, "--raw",
+        help="LOCAL CONSUMPTION ONLY: show real (un-redacted) content from local raw tables "
+        "(calendar subjects/locations, Procore signal titles). Never persisted/logged/committed.",
+    ),
     write: bool = typer.Option(  # noqa: B008
         False, "--write", help="Write the brief to a file (off by default). Requires a target."
     ),
@@ -2130,6 +2135,7 @@ def daily_brief_render(
             sections=list(section) if section else None,
             project_key=project_key,
             limit=limit,
+            include_raw=raw,
         )
         inner_md = payload.get("markdown", "")
 

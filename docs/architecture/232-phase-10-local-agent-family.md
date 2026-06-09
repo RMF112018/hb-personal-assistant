@@ -123,6 +123,22 @@ Closes the loop from "candidates exist in the convergence table" to "a consumabl
   writeback, no cloud LLM, no MCP. Redaction proven on JSON, Markdown, and written files (no
   http/join-URL/email/HTML/token).
 
+### `--raw` — local-consumption real content (egress boundary preserved)
+
+A single-user, local-first tool gains little from redacting the operator's own data out of his own
+brief, so `daily-brief render --raw` surfaces the **real** (un-redacted) content for **local
+consumption only**: calendar items show the real subject + location/organizer; Procore items show
+the real signal titles. This is sourced live from the local raw tables
+(`calendar_event_raw_content`; `procore_action_signals.title_redacted`, which holds the real label)
+by a deterministic **forward-map** — recomputing each candidate's id from its source row — so no
+schema change, source-pointer column, or migration is needed. The egress boundary is unchanged:
+`--raw` affects only the in-memory JSON/Markdown and the explicitly-written **non-repo** file (the
+existing path-safety still refuses repo paths); persisted `daily_brief_action_candidates` rows stay
+redacted and guard-protected, and nothing raw is logged or written to `docs/evidence`. Default
+(no `--raw`) is byte-for-byte the redacted brief. The model-context packets already carried real
+content (`build_calendar_event_action_packet` feeds the real subject/body), so model context needed
+no change.
+
 ## Dispositions (families not implemented this run, evidence-based)
 
 - **MCP packet builder / Obsidian workflows**: infra exists, tables empty

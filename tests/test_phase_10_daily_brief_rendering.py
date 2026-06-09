@@ -366,3 +366,192 @@ def test_cli_write_inside_repo_rejected(tmp_path: Path) -> None:
     )
     assert res.exit_code == 2
     assert json.loads(res.output)["error"] == "output_path_inside_repo_refused"
+
+
+# --- raw local-consumption enrichment (--raw) ----------------------------------
+
+import hashlib  # noqa: E402
+
+_PROCORE_COLS = (
+    "action_signal_id, project_key, record_key, endpoint_id, signal_type, signal_status, "
+    "importance, due_at_utc, owner_entity_key, title_redacted, summary_redacted, "
+    "reason_codes_json, first_detected_at_utc, last_seen_at_utc, resolved_at_utc, "
+    "source_change_event_id, metadata_json"
+)
+
+
+def _seed_calendar_raw(db: str, *, event_index_id: str, subject: str, location: str) -> str:
+    """Seed a raw calendar row + a matching calendar candidate; return the real subject."""
+    conn = sqlite3.connect(db)
+    conn.execute(
+        """
+        INSERT INTO calendar_event_raw_content
+            (raw_calendar_event_id, event_index_id, graph_event_id_hash, subject, location_display,
+             organizer_name, attendees_json, start_datetime_utc, end_datetime_utc)
+        VALUES (?, ?, ?, ?, ?, ?, '[]', ?, ?)
+        """,
+        (
+            f"raw-{event_index_id}",
+            event_index_id,
+            f"gh-{event_index_id}",
+            subject,
+            location,
+            "Jane PM",
+            "2026-06-09T15:00:00",
+            "2026-06-09T16:00:00",
+        ),
+    )
+    conn.commit()
+    conn.close()
+    return "cal:" + hashlib.sha256(event_index_id.encode("utf-8")).hexdigest()[:32]
+
+
+def test_raw_default_off_keeps_redacted(tmp_path: Path) -> None:
+    db = str(tmp_path / "t.sqlite")
+    s = ConstructionStore(db_path=db)
+    sref = _seed_calendar_raw(
+        db, event_index_id="ev1", subject="Owner Coordination Meeting", location="Conf Room A"
+    )
+    s.insert_daily_brief_action_candidate(
+        brief_date=DATE,
+        section="calendar",
+        title_redacted="[redacted-subject]",
+        confidence=1.0,
+        group_key=sref,
+    )
+    out = render_daily_brief(store=s, brief_date=DATE)  # default: include_raw False
+    assert out["include_raw"] is False
+    assert out["guardrails"]["redacted_fields_only"] is True
+    assert "Owner Coordination Meeting" not in json.dumps(out)
+    assert out["sections"][0]["items"][0]["display_title"] == "[redacted-subject]"
+
+
+def test_raw_calendar_shows_real_subject_and_location(tmp_path: Path) -> None:
+    db = str(tmp_path / "t.sqlite")
+    s = ConstructionStore(db_path=db)
+    sref = _seed_calendar_raw(
+        db, event_index_id="ev1", subject="Owner Coordination Meeting", location="Conf Room A"
+    )
+    s.insert_daily_brief_action_candidate(
+        brief_date=DATE,
+        section="calendar",
+        title_redacted="[redacted-subject]",
+        confidence=1.0,
+        group_key=sref,
+    )
+    out = render_daily_brief(store=s, brief_date=DATE, include_raw=True)
+    item = out["sections"][0]["items"][0]
+    assert item["display_title"] == "Owner Coordination Meeting"
+    assert item["raw_title"] == "Owner Coordination Meeting"
+    assert "Conf Room A" in item["raw_detail"]
+    assert "Owner Coordination Meeting" in out["markdown"]
+    assert out["include_raw"] is True
+    assert out["guardrails"]["raw_local_consumption_only"] is True
+    assert out["guardrails"]["redacted_fields_only"] is False
+
+
+def test_raw_procore_shows_real_signal_titles(tmp_path: Path) -> None:
+    db = str(tmp_path / "t.sqlite")
+    s = ConstructionStore(db_path=db)
+    conn = sqlite3.connect(db)
+
+    def sig(sid: str, title: str) -> tuple:
+        return (
+            sid,
+            "alpha",
+            f"alpha|ep|{sid}",
+            "ep",
+            "inspection_item_unanswered",
+            "open",
+            "high",
+            None,
+            "oh",
+            title,
+            "sum",
+            "[]",
+            "2026-05-01",
+            "2026-06-01",
+            None,
+            None,
+            "{}",
+        )
+
+    conn.executemany(
+        f"INSERT INTO procore_action_signals ({_PROCORE_COLS}) VALUES ({', '.join(['?'] * 17)})",
+        [sig("s1", "Footing inspection overdue"), sig("s2", "Rebar inspection pending")],
+    )
+    conn.commit()
+    conn.close()
+    s.insert_daily_brief_action_candidate(
+        brief_date=DATE,
+        section="procore",
+        title_redacted="2 open inspection_item_unanswered signals",
+        confidence=1.0,
+        project_key="alpha",
+        group_key="alpha|inspection_item_unanswered",
+    )
+    out = render_daily_brief(store=s, brief_date=DATE, include_raw=True)
+    item = next(it for sec in out["sections"] for it in sec["items"] if it["section"] == "procore")
+    assert "Footing inspection overdue" in item["raw_detail"]
+    assert "Rebar inspection pending" in item["raw_detail"]
+
+
+def test_raw_does_not_mutate_or_persist(tmp_path: Path) -> None:
+    db = str(tmp_path / "t.sqlite")
+    s = ConstructionStore(db_path=db)
+    sref = _seed_calendar_raw(db, event_index_id="ev1", subject="Real Subject", location="Loc")
+    s.insert_daily_brief_action_candidate(
+        brief_date=DATE,
+        section="calendar",
+        title_redacted="[redacted-subject]",
+        confidence=1.0,
+        group_key=sref,
+    )
+    before = _row_count(db)
+    render_daily_brief(store=s, brief_date=DATE, include_raw=True)
+    # persisted candidate row is untouched (still redacted) and count unchanged.
+    assert _row_count(db) == before
+    rows = s.list_daily_brief_action_candidates(brief_date=DATE)
+    assert rows[0]["title_redacted"] == "[redacted-subject]"
+
+
+def test_cli_raw_flag_and_explicit_write_still_repo_safe(tmp_path: Path) -> None:
+    from hb_assistant.config.path_policy import PathPolicy
+
+    db = str(tmp_path / "t.sqlite")
+    s = ConstructionStore(db_path=db)
+    sref = _seed_calendar_raw(db, event_index_id="ev1", subject="Real Meeting", location="Room 1")
+    s.insert_daily_brief_action_candidate(
+        brief_date=DATE,
+        section="calendar",
+        title_redacted="[redacted-subject]",
+        confidence=1.0,
+        group_key=sref,
+    )
+    # --raw surfaces real content to local stdout
+    res = runner.invoke(
+        app, ["daily-brief", "render", "--db", db, "--date", DATE, "--raw", "--markdown"]
+    )
+    assert res.exit_code == 0, res.output
+    assert "Real Meeting" in json.loads(res.output)["markdown"]
+    # --raw must NOT weaken path safety: writing raw into the repo is still refused.
+    repo = PathPolicy().resolve_repo_root()
+    res2 = runner.invoke(
+        app,
+        [
+            "daily-brief",
+            "render",
+            "--db",
+            db,
+            "--date",
+            DATE,
+            "--raw",
+            "--markdown",
+            "--write",
+            "--output-path",
+            str(repo / "raw_nope.md"),
+        ],
+    )
+    assert res2.exit_code == 2
+    assert json.loads(res2.output)["error"] == "output_path_inside_repo_refused"
+    assert not (repo / "raw_nope.md").exists()
