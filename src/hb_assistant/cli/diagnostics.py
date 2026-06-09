@@ -77,6 +77,22 @@ def env_cmd(
         "notes": "All values are safe for logging/evidence. No secret material is present.",
     }
 
+    # Phase 10A Prompt 01: surface raw-content policy mode (email_calendar first; writeback disabled).
+    # Lazy import so diagnostics remains light when local_ai not exercised.
+    from hb_assistant.construction.second_brain.local_ai import load_raw_content_policy
+
+    try:
+        p = load_raw_content_policy()
+        data["raw_content"] = {
+            "mode": p.raw_content.mode,
+            "enabled": p.raw_content.enabled,
+            "writeback_prohibited": p.raw_content.prohibited_without_future_approval.external_writeback,
+            "sources": ["email", "calendar"],
+            "note": "email_calendar mode first; external writeback remains disabled.",
+        }
+    except Exception as e:
+        data["raw_content"] = {"mode": "unavailable", "error": str(e)[:120]}
+
     # Always pretty JSON for diagnostics (human + machine)
     typer.echo(json.dumps(data, indent=2, sort_keys=True))
     raise typer.Exit(0)

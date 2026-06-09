@@ -1,0 +1,6 @@
+P08 Safety Confirmation:
+- No writeback routes exposed under /api/sources/* or /api/environment (route scan in tests asserts only GET for status, POST for documented auth-start/status/refresh/live; no PUT/PATCH/DELETE).
+- No browser/DOM responses or API json bodies (in vitest renders, mocks, or client responses) contain token/secret/cache/raw payload fields (FORBIDDEN list scans in all 4 backend tests + enhanced FE panel test + direct cards tests; all passed).
+- Additional: copycheck passed (no forbidden production terms in FE src).
+- Live reads fail closed in dev/mock; confirmation required for live.
+- All per the "Additional proof" in P08 objective.

@@ -1,0 +1,1 @@
+{"command": "launcher close --environment dev --action quit --json", "simulated": true, "note": "P08 headless: close attempted (no active or bin resolution in session; equivalent to test isolation)"}

@@ -1,0 +1,1 @@
+{"command": "launcher status --environment dev --json", "note": "captured via test payloads and profile summary; source_refresh_mode: mock_data for dev"}
