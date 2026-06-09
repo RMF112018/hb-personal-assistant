@@ -78,3 +78,48 @@ reliable profile), `no_source_linked_bullets` (model cited nothing real), `redac
   data. Evidence in `docs/evidence/phase-10-local-model-routing/` is **metrics-only**.
 - Raw operator fixtures must live **outside** the repo; the loader refuses repo-contained paths.
 - The redaction scanner runs on every surfaced payload; a hit withholds enrichment.
+
+## 9. Intelligence daily-brief manual run + diagnostics (2026-06-09 remediation)
+
+End-to-end manual run against a **copy** of the working DB (never the live DB):
+
+```bash
+# 1. Copy the (Dev) working DB to /tmp (candidates live there; production may be empty)
+cp "$HOME/Library/Application Support/HB Personal Assistant (Dev)/db/hb-personal-assistant.sqlite" \
+   /tmp/hb_daily_brief_intelligence_test.sqlite
+
+# 2. Confirm the route (expect brief_synthesis / mistral-nemo:12b / selected_routed)
+hb-assistant second-brain local-model route --task-family daily_brief_synthesis_quality --json
+
+# 3. Standalone advisory intelligence (read-only; enriches already-persisted candidates)
+hb-assistant second-brain daily-brief intelligence --date <YYYY-MM-DD> \
+  --db /tmp/hb_daily_brief_intelligence_test.sqlite --dry-run --json
+
+# 4. Integrated run (generate + advisory intelligence), suppressing browser/vault, apply on the copy
+hb-assistant second-brain daily-run run --db /tmp/hb_daily_brief_intelligence_test.sqlite \
+  --date <YYYY-MM-DD> --apply --max-persist-per-stage 10 --max-total-persist 30 \
+  --with-intelligence --no-open-browser --no-generate-browser --json
+```
+
+### Reading the new diagnostics
+
+- **Route vs terminal profile:** `route_selected_profile` is what the router chose (should be
+  `brief_synthesis`); `terminal_profile_id` / `profile_id` is what actually generated. If they differ,
+  `fallback_used=true` and `warnings` include `terminal_profile_differs_from_route`. The standalone
+  `selected_profile` field now equals the route-selected profile.
+- **Source linking:** the model cites short aliases (`c1, c2, …`) mapped back to canonical candidate
+  ids. On success `metrics.source_link_coverage=1.0` and `metrics.alias_mapping_used=true`. Dropped
+  cites show as `metrics.unknown_source_ids_count`.
+- **Candidate availability:** `candidate_count`, `candidate_freshness`, and `candidate_availability`
+  explain whether intelligence is operating on freshly applied vs pre-existing candidates. Standalone
+  intelligence reads **already-persisted** candidates only — a dry-run daily-run discovers but does not
+  persist, so fresh candidates require `--apply` (warnings:
+  `requires_daily_run_apply_to_generate_candidates`, `dry_run_did_not_persist_new_candidates`).
+- **Fail-closed:** `enriched=false` + a `withheld_reason` is safe (deterministic brief preserved).
+  `metrics.schema_error_category` / `attempts` / `repair_attempted` explain a `schema_invalid` withhold
+  without leaking raw model text. The command still exits `0`.
+- **Synthetic vs live eval:** `eval --synthetic` reports `eval_mode=synthetic_offline_contract`
+  (harness/contract proof, not model quality); `--live` reports `eval_mode=live_local_model`.
+
+Metrics-only evidence for this remediation:
+`docs/evidence/phase-10-intelligence-daily-brief-remediation/`.

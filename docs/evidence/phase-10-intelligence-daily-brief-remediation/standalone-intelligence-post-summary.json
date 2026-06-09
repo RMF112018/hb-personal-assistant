@@ -1,0 +1,69 @@
+{
+  "command": "second-brain daily-brief intelligence",
+  "ok": true,
+  "applied": false,
+  "dry_run": true,
+  "date": "2026-06-09",
+  "task_family": "daily_brief_synthesis_quality",
+  "candidates": 20,
+  "selected_profile": "brief_synthesis",
+  "db_mode": "explicit_db",
+  "db_path_redacted": "/tmp/hb_daily_brief_intelligence_test.sqlite",
+  "redaction_passed": true,
+  "status": "ok",
+  "withheld_reason": null,
+  "profile_id": "brief_synthesis",
+  "model_name": "mistral-nemo:12b",
+  "schema_valid": true,
+  "fallback_used": false,
+  "latency_ms": 35484,
+  "route_selected_profile": "brief_synthesis",
+  "route_model_name": "mistral-nemo:12b",
+  "route_reason_code": "selected_routed",
+  "generation_profile_id": "brief_synthesis",
+  "terminal_profile_id": "brief_synthesis",
+  "fallback_chain": [
+    "brief_synthesis",
+    "default_extract"
+  ],
+  "models_attempted": [
+    "mistral-nemo:12b"
+  ],
+  "blockers": [],
+  "warnings": [
+    "standalone_reads_preexisting_candidates_only"
+  ],
+  "candidate_count": 20,
+  "candidate_freshness": "current",
+  "candidate_availability": {
+    "candidate_count": 20,
+    "candidate_brief_date": "2026-06-09",
+    "candidate_source": "daily_brief_action_candidates",
+    "candidate_generation_mode": "read_only",
+    "candidate_freshness": "current",
+    "requires_apply_for_fresh_candidates": true,
+    "dry_run_candidate_warning": true
+  },
+  "metrics": {
+    "model_bullets_seen": 7,
+    "bullets_kept": 6,
+    "bullets_dropped": 1,
+    "unknown_source_ids_count": 0,
+    "alias_mapping_used": true,
+    "allowed_candidate_count": 20,
+    "source_link_coverage": 1.0,
+    "sections_populated": [
+      "top_priorities",
+      "open_loops",
+      "waiting_on_me",
+      "waiting_on_others",
+      "project_risk"
+    ],
+    "waiting_on_me": 1,
+    "waiting_on_others": 1,
+    "meeting_prep": 0,
+    "top_priorities": 2,
+    "usefulness_score": 0.9429,
+    "raw_allowed": false
+  }
+}

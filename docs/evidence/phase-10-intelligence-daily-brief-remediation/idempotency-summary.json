@@ -1,0 +1,69 @@
+{
+  "command": "second-brain daily-run run",
+  "ok": true,
+  "status": "success",
+  "partial": false,
+  "dry_run": false,
+  "brief_date": "2026-06-09",
+  "brief_freshness": "fresh",
+  "summary": {
+    "stages_run": 5,
+    "stages_ok": 5,
+    "stages_failed": 0,
+    "total_would_persist": 0,
+    "total_persisted": 0,
+    "total_persist_capped": false
+  },
+  "egress_scan": {
+    "clean": true,
+    "matched_labels": []
+  },
+  "failure_reason": null,
+  "stages": [
+    {
+      "stage": "follow_up_watch",
+      "status": "ok",
+      "would_persist": 0,
+      "persisted": 0
+    },
+    {
+      "stage": "procore_digest",
+      "status": "ok",
+      "would_persist": 0,
+      "persisted": 0
+    },
+    {
+      "stage": "calendar_prep",
+      "status": "ok",
+      "would_persist": 0,
+      "persisted": 0
+    },
+    {
+      "stage": "daily_brief_synthesis",
+      "status": "ok",
+      "would_persist": 0,
+      "persisted": 0
+    },
+    {
+      "stage": "daily_brief_render",
+      "status": "ok",
+      "would_persist": 0,
+      "persisted": 0
+    }
+  ],
+  "warnings": [],
+  "outputs_keys": [
+    "status_path",
+    "vault_brief_dir_redacted"
+  ],
+  "intelligence_summary": {
+    "status": null,
+    "enriched": null,
+    "route_selected_profile": null,
+    "terminal_profile_id": null,
+    "fallback_used": null,
+    "schema_valid": null,
+    "candidate_count": null,
+    "candidate_freshness": null
+  }
+}
