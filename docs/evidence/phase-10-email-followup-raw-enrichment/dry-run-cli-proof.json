@@ -1,0 +1,36 @@
+{
+  "db": "seeded_copy_of_production",
+  "result": {
+    "command": "second-brain follow-up-watch enrich",
+    "ok": true,
+    "mode": "dry_run",
+    "applied": false,
+    "note": null,
+    "eligible": 3,
+    "would_persist": 3,
+    "persisted": 0,
+    "model_unavailable": false,
+    "max_persist": null,
+    "guardrails": {
+      "dry_run_default": true,
+      "apply_requires_max_persist": true,
+      "idempotent": true,
+      "source_linked_only": true,
+      "no_raw_persistence": true,
+      "no_cloud": true,
+      "no_writeback": true,
+      "local_only": true
+    },
+    "enrichment_count": 3,
+    "enrichment_hashes": [
+      "sha256:3d92150b1fdc",
+      "sha256:3d92150b1fdc",
+      "sha256:3d92150b1fdc"
+    ],
+    "waiting_states": [
+      "waiting_on_me"
+    ],
+    "skipped_reasons": []
+  },
+  "db_row_count_after_dry_run": 0
+}

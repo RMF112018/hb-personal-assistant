@@ -1,0 +1,23 @@
+{
+  "task_family": "email_followup_raw_enrichment",
+  "available_route": {
+    "selected_profile": "default_extract",
+    "model_name": "mistral-nemo:12b",
+    "available": true,
+    "no_cloud": true,
+    "reason_code": "selected_routed",
+    "fallback_chain": [
+      "default_extract"
+    ]
+  },
+  "no_model_route": {
+    "available": false,
+    "blocked": true,
+    "blockers": [
+      "no_available_local_model"
+    ],
+    "no_cloud": true,
+    "reason_code": "no_available_local_model"
+  },
+  "cloud_fallback_possible": false
+}

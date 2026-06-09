@@ -1,0 +1,151 @@
+{
+  "table": "email_followup_enrichments",
+  "schema_version": 45,
+  "column_count_total": 39,
+  "structured_columns": [
+    {
+      "name": "enrichment_id",
+      "type": "TEXT",
+      "notnull": 0
+    },
+    {
+      "name": "idempotency_key",
+      "type": "TEXT",
+      "notnull": 1
+    },
+    {
+      "name": "source_candidate_id",
+      "type": "TEXT",
+      "notnull": 1
+    },
+    {
+      "name": "source_candidate_type",
+      "type": "TEXT",
+      "notnull": 1
+    },
+    {
+      "name": "watch_item_id",
+      "type": "TEXT",
+      "notnull": 0
+    },
+    {
+      "name": "email_thread_ref_hash",
+      "type": "TEXT",
+      "notnull": 0
+    },
+    {
+      "name": "email_message_ref_hashes_json",
+      "type": "TEXT",
+      "notnull": 1
+    },
+    {
+      "name": "raw_excerpt_hash",
+      "type": "TEXT",
+      "notnull": 1
+    },
+    {
+      "name": "enriched_title",
+      "type": "TEXT",
+      "notnull": 1
+    },
+    {
+      "name": "waiting_state",
+      "type": "TEXT",
+      "notnull": 1
+    },
+    {
+      "name": "assignee_type",
+      "type": "TEXT",
+      "notnull": 1
+    },
+    {
+      "name": "assignee_display",
+      "type": "TEXT",
+      "notnull": 0
+    },
+    {
+      "name": "suggested_next_action",
+      "type": "TEXT",
+      "notnull": 0
+    },
+    {
+      "name": "due_at_utc",
+      "type": "TEXT",
+      "notnull": 0
+    },
+    {
+      "name": "confidence",
+      "type": "REAL",
+      "notnull": 1
+    },
+    {
+      "name": "confidence_band",
+      "type": "TEXT",
+      "notnull": 0
+    },
+    {
+      "name": "reason_codes_json",
+      "type": "TEXT",
+      "notnull": 1
+    },
+    {
+      "name": "source_refs_json",
+      "type": "TEXT",
+      "notnull": 1
+    },
+    {
+      "name": "review_status",
+      "type": "TEXT",
+      "notnull": 1
+    },
+    {
+      "name": "model_task",
+      "type": "TEXT",
+      "notnull": 1
+    },
+    {
+      "name": "model_profile_id",
+      "type": "TEXT",
+      "notnull": 0
+    },
+    {
+      "name": "prompt_template_version",
+      "type": "TEXT",
+      "notnull": 1
+    },
+    {
+      "name": "input_context_hash",
+      "type": "TEXT",
+      "notnull": 1
+    },
+    {
+      "name": "output_hash",
+      "type": "TEXT",
+      "notnull": 1
+    },
+    {
+      "name": "created_utc",
+      "type": "TEXT",
+      "notnull": 1
+    },
+    {
+      "name": "updated_utc",
+      "type": "TEXT",
+      "notnull": 1
+    }
+  ],
+  "structured_column_count": 26,
+  "guard_columns_present_count": 13,
+  "guard_columns_all_default_zero": true,
+  "guard_column_names_note": "13 Phase-10 guard columns present with CHECK(=0); names listed in store/migrator.py _P10_GUARDS and verified in guard-column-proof.json (counts). Omitted here verbatim to keep evidence forbidden-string-clean.",
+  "indexes": [
+    "ix_email_followup_enrichments_candidate",
+    "ix_email_followup_enrichments_created_utc",
+    "ix_email_followup_enrichments_review_status",
+    "ix_email_followup_enrichments_waiting_state",
+    "ix_email_followup_enrichments_watch_item",
+    "sqlite_autoindex_email_followup_enrichments_1",
+    "sqlite_autoindex_email_followup_enrichments_2"
+  ],
+  "no_raw_content_columns": true
+}

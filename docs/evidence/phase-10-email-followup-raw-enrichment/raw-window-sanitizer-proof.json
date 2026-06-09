@@ -1,0 +1,20 @@
+{
+  "input_was_synthetic": true,
+  "sanitizer_meta": {
+    "quotes_stripped": true,
+    "signatures_stripped": false,
+    "disclaimers_stripped": false,
+    "emails_redacted": false,
+    "tokens_redacted": false,
+    "urls_redacted": false,
+    "boilerplate_stripped": false,
+    "html_excluded": true,
+    "attachments_excluded": true,
+    "truncated": false,
+    "char_count": 30
+  },
+  "output_contains_url": false,
+  "output_has_any_leak": false,
+  "output_char_count": 30,
+  "note": "sanitized output text intentionally NOT included; only redaction flags + leak-scan result"
+}
