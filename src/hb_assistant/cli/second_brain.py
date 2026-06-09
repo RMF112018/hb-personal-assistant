@@ -2368,6 +2368,8 @@ def daily_brief_intelligence_cmd(
             dry_run=dry_run,
             allow_raw=raw,
             store=store,
+            brief_date=date,
+            generation_mode="read_only",
         )
         payload = {
             "command": cmd,
@@ -9430,6 +9432,8 @@ def _attach_daily_run_intelligence(*, store: Any, payload: dict, dry_run: bool) 
             present_models=present_models if daemon_reachable else None,
             dry_run=dry_run,
             store=store,
+            brief_date=brief_date,
+            generation_mode="pipeline_dry_run" if dry_run else "pipeline_apply",
         )
         return result.safe_payload()
     except Exception as e:  # advisory only — never fail the deterministic run

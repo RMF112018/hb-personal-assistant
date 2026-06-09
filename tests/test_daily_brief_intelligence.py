@@ -308,3 +308,110 @@ def test_cli_intelligence_offline_withholds_safely(tmp_path) -> None:
     # No candidates in an empty DB -> withheld, deterministic fallback.
     assert payload["enriched"] is False
     assert payload["applied"] is False
+
+
+# -- Candidate availability / dry-run semantics (Phase 10 remediation) -----------------------
+
+CANDS_DATED = [
+    {**CANDS[0], "created_utc": "2026-06-09T05:00:00+00:00"},
+    {**CANDS[1], "created_utc": "2026-06-09T05:00:00+00:00"},
+]
+
+
+def test_no_candidate_availability_warns_and_requires_apply() -> None:
+    result = build_daily_brief_intelligence(
+        candidates=[],
+        profiles=_profiles(),
+        backend=StaticOutputClient(GOOD_INTEL),
+        dry_run=True,
+        brief_date="2026-06-09",
+        generation_mode="read_only",
+    )
+    assert result.candidate_count == 0
+    assert result.candidate_freshness == "none"
+    assert "no_persisted_candidates_for_date" in result.warnings
+    assert "requires_daily_run_apply_to_generate_candidates" in result.warnings
+    assert result.candidate_availability["requires_apply_for_fresh_candidates"] is True
+
+
+def test_standalone_reads_preexisting_candidates_warning() -> None:
+    result = build_daily_brief_intelligence(
+        candidates=CANDS_DATED,
+        profiles=_profiles(),
+        backend=StaticOutputClient(GOOD_INTEL),
+        dry_run=True,
+        brief_date="2026-06-09",
+        generation_mode="read_only",
+    )
+    assert result.candidate_count == 2
+    assert result.candidate_freshness == "current"
+    assert "standalone_reads_preexisting_candidates_only" in result.warnings
+    av = result.candidate_availability
+    assert av["candidate_generation_mode"] == "read_only"
+    assert av["candidate_source"] == "daily_brief_action_candidates"
+
+
+def test_dry_run_pipeline_candidate_warning() -> None:
+    result = build_daily_brief_intelligence(
+        candidates=CANDS_DATED,
+        profiles=_profiles(),
+        backend=StaticOutputClient(GOOD_INTEL),
+        dry_run=True,
+        brief_date="2026-06-09",
+        generation_mode="pipeline_dry_run",
+    )
+    assert "dry_run_did_not_persist_new_candidates" in result.warnings
+    assert "intelligence_reflects_preexisting_candidates" in result.warnings
+    assert result.candidate_availability["requires_apply_for_fresh_candidates"] is True
+
+
+def test_apply_pipeline_does_not_require_apply() -> None:
+    result = build_daily_brief_intelligence(
+        candidates=CANDS_DATED,
+        profiles=_profiles(),
+        backend=StaticOutputClient(GOOD_INTEL),
+        dry_run=False,
+        brief_date="2026-06-09",
+        generation_mode="pipeline_apply",
+    )
+    av = result.candidate_availability
+    assert av["candidate_generation_mode"] == "pipeline_apply"
+    assert av["requires_apply_for_fresh_candidates"] is False
+    assert "dry_run_did_not_persist_new_candidates" not in result.warnings
+
+
+def test_candidate_date_mismatch_warns_preexisting() -> None:
+    # created_utc predates the requested brief_date -> preexisting + mismatch warning.
+    stale = [{**CANDS[0], "created_utc": "2026-05-01T05:00:00+00:00"}]
+    result = build_daily_brief_intelligence(
+        candidates=stale,
+        profiles=_profiles(),
+        backend=StaticOutputClient(GOOD_INTEL),
+        dry_run=True,
+        brief_date="2026-06-09",
+        generation_mode="read_only",
+    )
+    assert result.candidate_freshness == "preexisting"
+    assert "candidate_rows_predate_requested_brief_date" in result.warnings
+
+
+def test_candidate_availability_keys_in_safe_payload() -> None:
+    sp = build_daily_brief_intelligence(
+        candidates=CANDS_DATED,
+        profiles=_profiles(),
+        backend=StaticOutputClient(GOOD_INTEL),
+        dry_run=True,
+        brief_date="2026-06-09",
+    ).safe_payload()
+    assert sp["candidate_count"] == 2
+    assert "candidate_freshness" in sp
+    for key in (
+        "candidate_count",
+        "candidate_brief_date",
+        "candidate_source",
+        "candidate_generation_mode",
+        "candidate_freshness",
+        "requires_apply_for_fresh_candidates",
+        "dry_run_candidate_warning",
+    ):
+        assert key in sp["candidate_availability"]

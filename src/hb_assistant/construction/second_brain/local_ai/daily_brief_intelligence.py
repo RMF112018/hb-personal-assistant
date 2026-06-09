@@ -178,6 +178,10 @@ class DailyBriefIntelligenceResult:
     models_attempted: list[str] = field(default_factory=list)
     blockers: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
+    # -- candidate availability / dry-run semantics (Phase 10 remediation) --------------------
+    candidate_count: int = 0
+    candidate_freshness: str = ""
+    candidate_availability: dict[str, Any] = field(default_factory=dict)
     metrics: dict[str, Any] = field(default_factory=dict)
     would_write_receipt: Optional[dict[str, Any]] = None
 
@@ -203,6 +207,10 @@ class DailyBriefIntelligenceResult:
             "models_attempted": list(self.models_attempted),
             "blockers": list(self.blockers),
             "warnings": list(self.warnings),
+            # candidate availability / dry-run semantics:
+            "candidate_count": self.candidate_count,
+            "candidate_freshness": self.candidate_freshness,
+            "candidate_availability": self.candidate_availability,
             "intelligence": self.intelligence,
             "metrics": self.metrics,
         }
@@ -360,6 +368,57 @@ def _withheld(
     )
 
 
+#: Candidate generation modes (operator-visible): standalone intelligence is always read-only;
+#: daily-run reflects whether the generation stages ran in dry-run or were applied.
+_GENERATION_MODES = ("read_only", "pipeline_dry_run", "pipeline_apply")
+
+
+def _candidate_availability(
+    candidates: list[dict[str, Any]], brief_date: Optional[str], generation_mode: str
+) -> tuple[dict[str, Any], list[str]]:
+    """Compute operator-visible candidate availability + dry-run dependency warnings (raw-safe).
+
+    Standalone intelligence enriches only already-persisted ``daily_brief_action_candidates``; a
+    dry-run daily-run discovers candidates but does not persist them, so fresh candidates require an
+    apply. This surfaces that dependency instead of silently enriching an empty/stale set.
+    """
+    count = len(candidates)
+    created_dates = sorted(
+        str(c.get("created_utc") or "")[:10] for c in candidates if c.get("created_utc")
+    )
+    if count == 0:
+        freshness = "none"
+    elif brief_date and created_dates and created_dates[-1] >= brief_date:
+        freshness = "current"
+    else:
+        freshness = "preexisting"
+
+    mode = generation_mode if generation_mode in _GENERATION_MODES else "read_only"
+    requires_apply = mode in ("read_only", "pipeline_dry_run")
+    availability = {
+        "candidate_count": count,
+        "candidate_brief_date": brief_date,
+        "candidate_source": "daily_brief_action_candidates",
+        "candidate_generation_mode": mode,
+        "candidate_freshness": freshness,
+        "requires_apply_for_fresh_candidates": requires_apply,
+        "dry_run_candidate_warning": mode in ("read_only", "pipeline_dry_run"),
+    }
+    warnings: list[str] = []
+    if count == 0:
+        warnings.append("no_persisted_candidates_for_date")
+        warnings.append("requires_daily_run_apply_to_generate_candidates")
+    if mode == "read_only" and count > 0:
+        warnings.append("standalone_reads_preexisting_candidates_only")
+    if mode == "pipeline_dry_run":
+        warnings.append("dry_run_did_not_persist_new_candidates")
+        if count > 0:
+            warnings.append("intelligence_reflects_preexisting_candidates")
+    if freshness == "preexisting" and brief_date:
+        warnings.append("candidate_rows_predate_requested_brief_date")
+    return availability, warnings
+
+
 def build_daily_brief_intelligence(
     *,
     candidates: list[dict[str, Any]],
@@ -371,13 +430,51 @@ def build_daily_brief_intelligence(
     dry_run: bool = True,
     allow_raw: bool = False,
     store: Optional[Any] = None,
+    brief_date: Optional[str] = None,
+    generation_mode: str = "read_only",
 ) -> DailyBriefIntelligenceResult:
     """Produce advisory daily-brief intelligence, or withhold (fail-closed) to the deterministic brief.
 
     ``backend`` is injected for offline tests; when omitted a real local client is resolved for the
     routed profile (and enrichment is withheld if none is available). ``store`` is used only to write
-    a hash-only receipt when ``dry_run`` is False; default is no DB write.
+    a hash-only receipt when ``dry_run`` is False; default is no DB write. ``brief_date`` and
+    ``generation_mode`` drive operator-visible candidate-availability diagnostics (they never change
+    what the model sees).
     """
+    result = _run_intelligence(
+        candidates=candidates,
+        profiles=profiles,
+        routing=routing,
+        present_models=present_models,
+        backend=backend,
+        profile_id=profile_id,
+        dry_run=dry_run,
+        allow_raw=allow_raw,
+        store=store,
+    )
+    availability, avail_warnings = _candidate_availability(candidates, brief_date, generation_mode)
+    result.candidate_count = availability["candidate_count"]
+    result.candidate_freshness = availability["candidate_freshness"]
+    result.candidate_availability = availability
+    for w in avail_warnings:
+        if w not in result.warnings:
+            result.warnings.append(w)
+    return result
+
+
+def _run_intelligence(
+    *,
+    candidates: list[dict[str, Any]],
+    profiles: LocalModelProfiles,
+    routing: Any = None,
+    present_models: set[str] | None = None,
+    backend: Optional[GenerationBackend] = None,
+    profile_id: Optional[str] = None,
+    dry_run: bool = True,
+    allow_raw: bool = False,
+    store: Optional[Any] = None,
+) -> DailyBriefIntelligenceResult:
+    """Core enrichment path (route → generate → filter → redact). See the public wrapper above."""
     allowed_ids = {
         str(c.get("daily_brief_action_candidate_id"))
         for c in candidates
