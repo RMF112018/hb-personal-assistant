@@ -1,0 +1,21 @@
+{
+  "scenario": "closed / resolved (terminal status)",
+  "item": {
+    "kind": "task",
+    "accepted_id": "acc-task:closed1",
+    "watch_item_id": "watch:acc-task:closed1",
+    "title_redacted": "Task closed1 (synthetic)",
+    "project_key": "PRJ",
+    "watch_status": "closed",
+    "reason_codes": [
+      "status_terminal"
+    ],
+    "quality_flags": [],
+    "has_source_ref": true,
+    "persistable_as_actionable": true,
+    "due_at_utc": null,
+    "stale_after_utc": "2026-06-15T00:00:00+00:00",
+    "next_check_utc": "2026-06-15T00:00:00+00:00"
+  },
+  "ok": true
+}

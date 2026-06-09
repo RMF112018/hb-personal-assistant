@@ -9171,6 +9171,60 @@ def second_brain_follow_up_watch_scan(
         raise typer.Exit(1) from None
 
 
+@follow_up_watch_app.command("report")
+def second_brain_follow_up_watch_report(
+    as_of: "str | None" = typer.Option(  # noqa: B008
+        None, "--as-of", help="ISO-8601 UTC 'now' for deterministic classification (default: now)."
+    ),
+    limit: int = typer.Option(500, "--limit", help="Max accepted items per type to scan."),  # noqa: B008
+    stale_after_days: int = typer.Option(  # noqa: B008
+        14, "--stale-after-days", help="Days after acceptance (no due date) before an item is stale."
+    ),
+    markdown_out: "str | None" = typer.Option(  # noqa: B008
+        None, "--markdown-out", help="Also write the operator-facing Markdown report to this file."
+    ),
+    db: "str | None" = typer.Option(None, "--db", help="Explicit SQLite path (tests/isolation)."),  # noqa: B008
+    json_out: bool = typer.Option(True, "--json", help="Emit JSON (default)."),  # noqa: B008
+) -> None:
+    """Review-safe follow-up watch report grouped by operator action (deterministic / read-only).
+
+    Buckets accepted tasks/commitments into: needs Bobby action, waiting on someone else, stale /
+    no response, monitor only, closed / resolved, and needs review / insufficient evidence (no source
+    ref or contradictory signals). No model is used — a missing local model never affects this surface;
+    no clock is read inside scoring; no raw content moves. Persists nothing; complements (does not
+    duplicate) the daily brief's V45 pending-enrichment section.
+    """
+    from datetime import datetime as _dt
+    from datetime import timezone as _tz
+    from pathlib import Path
+
+    from hb_assistant.construction.second_brain.local_ai.follow_up_watch import (
+        build_follow_up_watch_report,
+        render_follow_up_watch_report_markdown,
+    )
+    from hb_assistant.construction.store import ConstructionStore
+
+    cmd = "second-brain follow-up-watch report"
+    try:
+        now_utc = as_of or _dt.now(_tz.utc).isoformat()
+        store = ConstructionStore(db_path=db)
+        report = build_follow_up_watch_report(
+            store=store, now_utc=now_utc, limit=limit, stale_after_days=stale_after_days
+        )
+        markdown = render_follow_up_watch_report_markdown(report)
+        if markdown_out:
+            Path(markdown_out).write_text(markdown, encoding="utf-8")
+        report["markdown_out"] = markdown_out
+        typer.echo(json.dumps(report, indent=2, default=str) if json_out else markdown)
+        raise typer.Exit(0)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        payload = {"command": cmd, "ok": False, "error": str(e)[:300]}
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(1) from None
+
+
 @follow_up_watch_app.command("enrich")
 def second_brain_follow_up_watch_enrich(
     candidate_id: "str | None" = typer.Option(  # noqa: B008

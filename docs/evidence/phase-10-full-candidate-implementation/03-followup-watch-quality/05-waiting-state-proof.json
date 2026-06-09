@@ -1,0 +1,18 @@
+{
+  "needs_bobby_action": [
+    "acc-task:needbobby"
+  ],
+  "waiting_on_others": [
+    "acc-task:others"
+  ],
+  "needs_review_insufficient_evidence": [
+    {
+      "id": "acc-task:nosrc",
+      "quality_flags": [
+        "insufficient_evidence"
+      ],
+      "actionable": false
+    }
+  ],
+  "ok": true
+}

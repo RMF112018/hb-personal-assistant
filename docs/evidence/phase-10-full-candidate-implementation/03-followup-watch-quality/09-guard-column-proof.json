@@ -1,0 +1,15 @@
+{
+  "tables": {
+    "follow_up_watch_items": {
+      "rows": 5,
+      "guard_columns_present": 13,
+      "nonzero_sum": 0
+    },
+    "follow_up_status_events": {
+      "rows": 5,
+      "guard_columns_present": 13,
+      "nonzero_sum": 0
+    }
+  },
+  "all_guard_columns_zero": true
+}

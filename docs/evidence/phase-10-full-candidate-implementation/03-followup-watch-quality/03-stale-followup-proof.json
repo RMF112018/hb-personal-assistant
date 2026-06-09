@@ -1,0 +1,22 @@
+{
+  "scenario": "stale (aged past threshold, no due date)",
+  "stale_after_days": 14,
+  "item": {
+    "kind": "task",
+    "accepted_id": "acc-task:stale1",
+    "watch_item_id": "watch:acc-task:stale1",
+    "title_redacted": "Task stale1 (synthetic)",
+    "project_key": "PRJ",
+    "watch_status": "stale",
+    "reason_codes": [
+      "aged_no_due"
+    ],
+    "quality_flags": [],
+    "has_source_ref": true,
+    "persistable_as_actionable": true,
+    "due_at_utc": null,
+    "stale_after_utc": "2026-01-15T00:00:00+00:00",
+    "next_check_utc": "2026-01-15T00:00:00+00:00"
+  },
+  "ok": true
+}

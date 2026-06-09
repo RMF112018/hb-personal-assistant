@@ -1,0 +1,9 @@
+branch: experiment/phase-10-full-candidate-implementation
+HEAD: 4da5a09dfd82a5a42ae3c449aee8d50cad0ace29
+baseline: 0c75f4a77b5987cdbd2a058504f5423d69d225f1
+origin/main: 0c75f4a77b5987cdbd2a058504f5423d69d225f1
+--- git status --short ---
+ M src/hb_assistant/cli/second_brain.py
+ M src/hb_assistant/construction/second_brain/local_ai/follow_up_watch.py
+?? docs/evidence/phase-10-full-candidate-implementation/03-followup-watch-quality/
+?? tests/test_phase_10_follow_up_watch_report.py

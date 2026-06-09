@@ -1,0 +1,142 @@
+{
+  "command": "second-brain follow-up-watch report",
+  "ok": true,
+  "now_utc": "2026-06-09T00:00:00+00:00",
+  "stale_after_days": 14,
+  "counts": {
+    "needs_bobby_action": 1,
+    "waiting_on_others": 1,
+    "stale_no_response": 1,
+    "monitor_only": 1,
+    "closed_resolved": 1,
+    "needs_review": 1,
+    "total": 6
+  },
+  "groups": {
+    "needs_bobby_action": [
+      {
+        "kind": "task",
+        "accepted_id": "acc-task:needbobby",
+        "watch_item_id": "watch:acc-task:needbobby",
+        "title_redacted": "Task needbobby (synthetic)",
+        "project_key": "PRJ",
+        "watch_status": "waiting_on_me",
+        "reason_codes": [
+          "waiting_on_me"
+        ],
+        "quality_flags": [],
+        "has_source_ref": true,
+        "persistable_as_actionable": true,
+        "due_at_utc": null,
+        "stale_after_utc": "2026-06-15T00:00:00+00:00",
+        "next_check_utc": "2026-06-15T00:00:00+00:00"
+      }
+    ],
+    "waiting_on_others": [
+      {
+        "kind": "task",
+        "accepted_id": "acc-task:others",
+        "watch_item_id": "watch:acc-task:others",
+        "title_redacted": "Task others (synthetic)",
+        "project_key": "PRJ",
+        "watch_status": "waiting_on_others",
+        "reason_codes": [
+          "waiting_on_others"
+        ],
+        "quality_flags": [],
+        "has_source_ref": true,
+        "persistable_as_actionable": true,
+        "due_at_utc": null,
+        "stale_after_utc": "2026-06-15T00:00:00+00:00",
+        "next_check_utc": "2026-06-15T00:00:00+00:00"
+      }
+    ],
+    "stale_no_response": [
+      {
+        "kind": "task",
+        "accepted_id": "acc-task:stale1",
+        "watch_item_id": "watch:acc-task:stale1",
+        "title_redacted": "Task stale1 (synthetic)",
+        "project_key": "PRJ",
+        "watch_status": "stale",
+        "reason_codes": [
+          "aged_no_due"
+        ],
+        "quality_flags": [],
+        "has_source_ref": true,
+        "persistable_as_actionable": true,
+        "due_at_utc": null,
+        "stale_after_utc": "2026-01-15T00:00:00+00:00",
+        "next_check_utc": "2026-01-15T00:00:00+00:00"
+      }
+    ],
+    "monitor_only": [
+      {
+        "kind": "task",
+        "accepted_id": "acc-task:openmon",
+        "watch_item_id": "watch:acc-task:openmon",
+        "title_redacted": "Task openmon (synthetic)",
+        "project_key": "PRJ",
+        "watch_status": "open",
+        "reason_codes": [
+          "active"
+        ],
+        "quality_flags": [],
+        "has_source_ref": true,
+        "persistable_as_actionable": true,
+        "due_at_utc": null,
+        "stale_after_utc": "2026-06-15T00:00:00+00:00",
+        "next_check_utc": "2026-06-15T00:00:00+00:00"
+      }
+    ],
+    "closed_resolved": [
+      {
+        "kind": "task",
+        "accepted_id": "acc-task:closed1",
+        "watch_item_id": "watch:acc-task:closed1",
+        "title_redacted": "Task closed1 (synthetic)",
+        "project_key": "PRJ",
+        "watch_status": "closed",
+        "reason_codes": [
+          "status_terminal"
+        ],
+        "quality_flags": [],
+        "has_source_ref": true,
+        "persistable_as_actionable": true,
+        "due_at_utc": null,
+        "stale_after_utc": "2026-06-15T00:00:00+00:00",
+        "next_check_utc": "2026-06-15T00:00:00+00:00"
+      }
+    ],
+    "needs_review": [
+      {
+        "kind": "task",
+        "accepted_id": "acc-task:nosrc",
+        "watch_item_id": "watch:acc-task:nosrc",
+        "title_redacted": "Task nosrc (synthetic)",
+        "project_key": "PRJ",
+        "watch_status": "waiting_on_me",
+        "reason_codes": [
+          "waiting_on_me"
+        ],
+        "quality_flags": [
+          "insufficient_evidence"
+        ],
+        "has_source_ref": false,
+        "persistable_as_actionable": false,
+        "due_at_utc": null,
+        "stale_after_utc": "2026-06-15T00:00:00+00:00",
+        "next_check_utc": "2026-06-15T00:00:00+00:00"
+      }
+    ]
+  },
+  "guardrails": {
+    "read_only": true,
+    "deterministic_no_model": true,
+    "deterministic_no_clock": true,
+    "source_linked_only": true,
+    "no_raw_persistence": true,
+    "no_writeback": true,
+    "advisory_only": true
+  }
+}
