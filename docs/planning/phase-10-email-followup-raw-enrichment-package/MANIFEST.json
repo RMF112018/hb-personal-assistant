@@ -1,0 +1,34 @@
+{
+  "package": "phase-10-email-followup-raw-enrichment-package",
+  "version": "1.0.0",
+  "generated_date": "2026-06-09",
+  "repository": "RMF112018/hb-personal-assistant",
+  "local_repo_path": "/Users/bobbyfetting/hb-personal-assistant",
+  "objective": "Implement Phase 10 email follow-up/raw enrichment with V45 review-safe persistence, explicit raw-local preview, and pending daily-brief consumption.",
+  "resolved_decisions": {
+    "raw_local_operator_preview": true,
+    "include_v45_review_safe_table": true,
+    "daily_brief_consumes_pending_enriched_fields": true
+  },
+  "hard_constraints": [
+    "no cloud LLMs",
+    "no email send or draft creation",
+    "no external writeback",
+    "no production DB mutation during validation",
+    "no raw body/prompt/response persistence",
+    "raw-local preview explicit only",
+    "apply requires caps",
+    "daily brief pending enrichment must be labeled"
+  ],
+  "prompt_chain": [
+    "prompts/00_PREFLIGHT_REPO_TRUTH_AUDIT.md",
+    "prompts/01_V45_SCHEMA_AND_CONTRACTS.md",
+    "prompts/02_RAW_WINDOW_SANITIZER_AND_PREVIEW.md",
+    "prompts/03_LOCAL_MODEL_ROUTE_AND_STRUCTURED_OUTPUT.md",
+    "prompts/04_ENRICHMENT_ENGINE_AND_PERSISTENCE.md",
+    "prompts/05_CLI_SURFACES.md",
+    "prompts/06_DAILY_BRIEF_PENDING_ENRICHMENT.md",
+    "prompts/07_TESTS_VALIDATION_AND_EVIDENCE.md",
+    "prompts/08_DOCS_RUNBOOK_AND_FINAL_HANDOFF.md"
+  ]
+}
