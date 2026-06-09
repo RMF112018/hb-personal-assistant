@@ -172,6 +172,13 @@ calendar_prep_app = typer.Typer(
 )
 app.add_typer(calendar_prep_app, name="calendar-prep")
 
+pipeline_app = typer.Typer(
+    name="pipeline",
+    help="Phase 10 local-agent pipeline: one repeatable daily run (dry-run-first; advisory).",
+    no_args_is_help=True,
+)
+app.add_typer(pipeline_app, name="pipeline")
+
 automation_app = typer.Typer(
     name="automation",
     help="Phase 08B automation health + observability (read-only status surface).",
@@ -2098,6 +2105,11 @@ def daily_brief_render(
     vault_brief_dir: "str | None" = typer.Option(  # noqa: B008
         None, "--vault-brief-dir", help="Override the governed vault brief base dir (test/isolation)."
     ),
+    confirm_vault_write: bool = typer.Option(  # noqa: B008
+        False, "--confirm-vault-write",
+        help="REQUIRED for a governed vault write (a bare --write with no --output-path). Explicit "
+        "second opt-in so the real Obsidian vault note is never written by accident.",
+    ),
     db: "str | None" = typer.Option(None, "--db", help="Explicit SQLite path (tests/isolation)."),  # noqa: B008
     json_out: bool = typer.Option(True, "--json/--no-json", help="Emit JSON (default)."),  # noqa: B008
 ) -> None:
@@ -2151,6 +2163,17 @@ def daily_brief_render(
                     raise typer.Exit(2)
                 payload["write"] = {"mode": "explicit_path", **result}
             else:
+                # Governed vault write → the real (or overridden) Obsidian vault note. Requires an
+                # explicit second opt-in beyond --write so the real vault is never written by accident.
+                if write and not confirm_vault_write:
+                    payload = {
+                        "command": cmd, "ok": False, "error": "vault_write_requires_confirmation",
+                        "guardrails": {"vault_write_requires_confirmation": True},
+                    }
+                    typer.echo(
+                        json.dumps(payload, indent=2, default=str) if json_out else str(payload)
+                    )
+                    raise typer.Exit(2)
                 res = write_brief_output(
                     brief_date=brief_date,
                     content=inner_md,
@@ -9068,6 +9091,107 @@ def second_brain_calendar_prep_build(
             # safe counters + synthesis remain.
             payload = {**payload, "events": []}
         typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(0)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        payload = {"command": cmd, "ok": False, "error": str(e)[:300]}
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(1) from None
+
+
+@pipeline_app.command("run")
+def second_brain_pipeline_run(
+    as_of: "str | None" = typer.Option(  # noqa: B008
+        None, "--as-of", help="ISO-8601 UTC 'now' shared by all stages (default: current UTC)."
+    ),
+    date: "str | None" = typer.Option(  # noqa: B008
+        None, "--date", help="Brief date YYYY-MM-DD for the render stage (overrides --as-of's date)."
+    ),
+    dry_run: bool = typer.Option(  # noqa: B008
+        True, "--dry-run/--apply",
+        help="Dry-run (default; zero writes). --apply persists, capped by --max-persist-per-stage.",
+    ),
+    max_persist_per_stage: "int | None" = typer.Option(  # noqa: B008
+        None, "--max-persist-per-stage",
+        help="REQUIRED with --apply: cap on ACTUAL persists per write stage (independent).",
+    ),
+    max_total_persist: "int | None" = typer.Option(  # noqa: B008
+        None, "--max-total-persist",
+        help="Optional GLOBAL ceiling on total persists; stages beyond it run dry-run.",
+    ),
+    limit: int = typer.Option(50, "--limit", help="Per-stage item cap (deterministic)."),  # noqa: B008
+    lookahead_days: int = typer.Option(  # noqa: B008
+        14, "--lookahead-days", help="Calendar stage forward window in days."
+    ),
+    stage: "list[str] | None" = typer.Option(  # noqa: B008
+        None, "--stage",
+        help="Run only these stages (repeatable): follow_up_watch/procore_digest/calendar_prep/"
+        "daily_brief_synthesis/daily_brief_render.",
+    ),
+    raw: bool = typer.Option(  # noqa: B008
+        False, "--raw",
+        help="LOCAL CONSUMPTION ONLY: render real (un-redacted) content in the final brief.",
+    ),
+    allow_partial: bool = typer.Option(  # noqa: B008
+        False, "--allow-partial",
+        help="Exit 0 even if a stage failed (the payload still reports ok=false, partial=true).",
+    ),
+    summary: bool = typer.Option(  # noqa: B008
+        False, "--summary", help="Include per-stage detail + the brief markdown/sections."
+    ),
+    db: "str | None" = typer.Option(None, "--db", help="Explicit SQLite path (tests/isolation)."),  # noqa: B008
+    json_out: bool = typer.Option(True, "--json", help="Emit JSON (default)."),  # noqa: B008
+) -> None:
+    """Run the Phase 10 local-agent pipeline once, ending in daily-brief render (dry-run-first).
+
+    Chains follow-up-watch → procore-digest → calendar-prep → daily-brief synthesize → daily-brief
+    render. Dry-run by default (zero writes); ``--apply`` is explicit and REQUIRES
+    ``--max-persist-per-stage`` (each write stage capped independently; ``--max-total-persist`` adds a
+    global ceiling). Stage failures are recorded, not hidden: the run continues to a complete receipt
+    but ``ok`` is false and the CLI exits nonzero unless ``--allow-partial``. ``brief_freshness`` warns
+    when the rendered brief does not reflect this run. The pipeline never writes a file or the vault.
+    """
+    from datetime import datetime as _dt
+    from datetime import timezone as _tz
+
+    from hb_assistant.construction.second_brain.local_ai import run_local_agent_pipeline
+    from hb_assistant.construction.store import ConstructionStore
+
+    cmd = "second-brain pipeline run"
+    try:
+        if not dry_run and max_persist_per_stage is None:
+            payload = {
+                "command": cmd, "ok": False, "applied": False,
+                "error": "apply_requires_per_stage_cap",
+                "guardrails": {"apply_requires_per_stage_cap": True},
+            }
+            typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+            raise typer.Exit(2)
+
+        now_utc = as_of or _dt.now(_tz.utc).isoformat()
+        if date:
+            now_utc = f"{date}T00:00:00+00:00"
+        store = ConstructionStore(db_path=db)
+
+        payload = run_local_agent_pipeline(
+            store=store, now_utc=now_utc, db_path=db, dry_run=dry_run,
+            max_persist_per_stage=max_persist_per_stage, max_total_persist=max_total_persist,
+            limit=limit, lookahead_days=lookahead_days, include_raw=raw,
+            stages=list(stage) if stage else None,
+        )
+        if not summary:
+            trimmed_stages = [{k: v for k, v in s.items() if k != "detail"} for s in payload["stages"]]
+            brief = payload.get("brief", {})
+            payload = {
+                **payload,
+                "stages": trimmed_stages,
+                "brief": {k: v for k, v in brief.items() if k not in ("markdown", "sections")},
+            }
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        # Fail-loud: nonzero exit if any stage failed, unless --allow-partial.
+        if not payload.get("ok", False) and not allow_partial:
+            raise typer.Exit(1)
         raise typer.Exit(0)
     except typer.Exit:
         raise

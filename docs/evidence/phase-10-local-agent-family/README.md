@@ -334,3 +334,58 @@ evidence — egress boundary held.)
 Experimental proof on `experiment/local-agent-family-proof` (no merge implied; main untouched). No
 migration, no production/Dev DB mutation (copy only), no vault/Graph/Procore/calendar/email/external
 writeback, no cloud LLM, no MCP. Checkpoints 1–3 preserved (regression green).
+
+## Checkpoint 5 — Pipeline orchestration + governed-vault hardening (this run)
+
+`second-brain pipeline run` chains the five proven Phase 10 workflows into one repeatable daily run
+(follow-up-watch → procore-digest → calendar-prep → daily-brief synthesize → daily-brief render),
+dry-run-first and operator-safe. `daily-brief render` governed vault writes now require a second
+opt-in `--confirm-vault-write`. In-memory run receipt (no run-receipt table, no schema change, no new
+agent — registry stays 13).
+
+### Operator-safety design (per amendments)
+- Cap scope is explicit: `--max-persist-per-stage` (independent per write stage) + optional
+  `--max-total-persist` (global ceiling; later stages run dry-run, `total_persist_capped` reported).
+- Apply fail-closed without the per-stage cap (`apply_requires_per_stage_cap`, exit 2).
+- Fail-loud: a failed stage → `ok=false`, `partial=true`, CLI exit 1 (exit 0 only with `--allow-partial`).
+- Stale-brief protection: `brief_freshness` (`fresh`/`partial`/`preexisting`) + `warnings` + a markdown
+  banner. Dry-run → `preexisting` (nothing persisted); failed generation stage → `partial`.
+- Read-only render; the pipeline never writes a file or the vault; `--raw` →
+  `raw_local_consumption_only=true`.
+
+### Live proof (Dev DB copy; scratch removed after)
+```
+pipeline run --as-of 2026-06-09… (dry-run)        → 5 stages ok, total_would_persist=39, total_persisted=0
+   candidate rows before/after                     → 0 / 0 (no mutation), brief_freshness=preexisting
+pipeline run --apply                               → exit 2 apply_requires_per_stage_cap
+pipeline run --apply --max-persist-per-stage 6     → applied, persisted 6, brief_freshness=fresh
+pipeline run --apply --max-persist-per-stage 100   → persisted 39; re-run → persisted 0 (idempotent)
+guard-column query (39 candidates)                 → all 13 _P10_GUARDS = 0
+pipeline run --stage daily_brief_render            → brief_freshness=preexisting
+pipeline run --raw                                 → guardrails.raw_local_consumption_only=true
+redaction scan of pipeline stdout                  → 0 http/join_url/email/token
+daily-brief render --write  (no confirm)           → exit 2 vault_write_requires_confirmation (nothing written)
+daily-brief render --write --confirm-vault-write --vault-brief-dir <tmp>  → governed_vault written (temp dir)
+```
+(The internal stage-exception → exit-1 / `--allow-partial` → exit-0 path is proven by the CLI test
+`test_cli_stage_failure_exit_code`; a live table-drop can't induce it because `ConstructionStore`
+re-migrates dropped tables on each invocation.)
+
+### Tests (Checkpoint 5)
+- `tests/test_phase_10_pipeline.py` (15): dry-run all-stages + zero writes; deterministic; guardrails
+  block; apply requires per-stage cap; per-stage cap bounds writes; global ceiling halts persistence;
+  idempotent re-run; guard cols 0; **fail-loud** (forced stage failure → failed/ok=false/partial +
+  banner; CLI exit 1, `--allow-partial` exit 0); render-only subset → `preexisting`; `--raw` flag;
+  CLI dry-run/cap/exit wiring.
+- `tests/test_phase_10_daily_brief_rendering.py` (update): governed `--write` now requires
+  `--confirm-vault-write` (refusal test + existing governed test updated).
+
+Targeted suite green (**129 tests** across Checkpoint 1–5 + registry); `ruff`+`ruff format`+`mypy`
+clean on changed modules; `agents status` 13 / 0 violations. The three branch-independent failures
+noted earlier remain (two documented pre-existing; one environment-dependent `raw_content` policy).
+
+## Checkpoint 5 status
+
+Experimental proof on `experiment/local-agent-family-proof` (no merge implied; main untouched). No
+schema migration, no production/Dev DB mutation (copy only), no vault/Graph/Procore/calendar/email/
+external writeback, no cloud LLM, no MCP, no new agent. Checkpoints 1–4 preserved (regression green).

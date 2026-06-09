@@ -21,7 +21,8 @@ no-raw / no-writeback / dry-run-first guardrail.
 | Procore digest | `procore-digest build` | deterministic-first (optional synth) | `procore_action_signals` + text-intelligence read models | `daily_brief_action_candidates` (section `procore`) |
 | Calendar meeting-prep | `calendar-prep build` | deterministic-first (optional synth) | `calendar_event_index` + `calendar_event_attendees` + bounded `calendar_event_action_packet` | `daily_brief_action_candidates` (section `calendar`) |
 | Daily-brief synthesis | `daily-brief synthesize-candidates` | deterministic | `accepted_*` + `follow_up_watch_items` + `daily_brief_action_candidates` | `daily_brief_action_candidates` (sections `actions`/`waiting`/`follow_up`) |
-| Daily-brief render *(consumption)* | `daily-brief render` | deterministic, **read-only** | `daily_brief_action_candidates` | none by default; optional path-safe file write (`--write`) |
+| Daily-brief render *(consumption)* | `daily-brief render` | deterministic, **read-only** | `daily_brief_action_candidates` | none by default; optional path-safe file write (`--write` + `--confirm-vault-write`) |
+| Pipeline *(orchestration)* | `pipeline run` | deterministic, dry-run-first | chains the five above | none of its own; stages persist via their capped paths |
 
 The six producing agents are registered in `resources/config/phase_08a_agent_registry.seed.yaml`
 (13 agents total: 9 required Phase-08A + 4 family entries; the extraction front-end reuses the
@@ -42,6 +43,8 @@ calendar_event_index ─── calendar-prep ──▶ daily_brief_action_candid
                                                     unified, source-linked, reviewable brief candidates
                                                                                    ▼
                           daily-brief render ──▶ redacted Markdown/JSON brief (read-only) ─[opt --write]─▶ governed vault note / explicit non-repo file
+
+  pipeline run ──▶ one repeatable daily run: follow-up-watch → procore-digest → calendar-prep → synthesize → render (dry-run-first, stage-bounded, fail-loud)
 ```
 
 `daily_brief_action_candidates` is the **convergence table** — the email, Procore, and calendar
@@ -138,6 +141,40 @@ redacted and guard-protected, and nothing raw is logged or written to `docs/evid
 (no `--raw`) is byte-for-byte the redacted brief. The model-context packets already carried real
 content (`build_calendar_event_action_packet` feeds the real subject/body), so model context needed
 no change.
+
+## Checkpoint 5 — Pipeline orchestration + governed-vault hardening (this run)
+
+Chains the five proven workflows into one repeatable daily run via `second-brain pipeline run`
+(`local_ai/pipeline.py::run_local_agent_pipeline`) and hardens the governed-vault write.
+
+- **In-process, minimal orchestrator.** The pipeline calls the five builder functions in order
+  (follow-up-watch → procore-digest → calendar-prep → daily-brief synthesis → daily-brief render),
+  sharing one `now_utc`. It deliberately does **not** reuse the heavier Phase-08B
+  `automation_executor`/run-registry (locks/retry/replay) — the run receipt is in-memory structured
+  JSON; no run-receipt table is written, no new schema, no new agent (registry stays 13; orchestration
+  is a surface, not an agent).
+- **Operator-safety posture (per the amendments):**
+  - *Dry-run default; apply fail-closed.* `--apply` requires `--max-persist-per-stage` (else exit 2
+    `apply_requires_per_stage_cap`).
+  - *Stage-bounded caps with explicit scope.* `--max-persist-per-stage` caps each write stage
+    independently; the optional `--max-total-persist` is a global ceiling (stages beyond it run
+    dry-run; `total_persist_capped` is reported).
+  - *Fail-loud.* A stage that raises is recorded `status=failed` with a redacted `reason_code`; the
+    run continues to a complete receipt, but `ok=false`/`partial=true` and the CLI exits **1** unless
+    `--allow-partial` (then exit 0, payload still `ok=false`).
+  - *Stale-brief protection.* `brief_freshness ∈ {fresh, partial, preexisting}` + a `warnings` list +
+    a banner prepended to the brief markdown: a dry-run persists nothing → `preexisting`; a failed
+    generation stage → `partial`; render-only subset → `preexisting`.
+  - *Read-only render / no vault write.* The render stage is read-only; the pipeline never writes a
+    file or the vault. `--raw` surfaces `raw_local_consumption_only=true`.
+- **Governed-vault hardening.** `daily-brief render` governed write (`--write`, no `--output-path`)
+  now requires a second opt-in `--confirm-vault-write` (matches the repo `--confirm` convention); a
+  bare `--write` refuses with `vault_write_requires_confirmation` (exit 2, nothing written). The
+  explicit `--output-path` mode is unchanged (already absolute-non-repo + repo-refused).
+- **Proven (live, Dev-DB copy):** dry-run runs all 5 stages with 0 writes (would-persist 39); apply
+  fail-closed (exit 2); capped apply → `fresh`; idempotent re-run (39 → 0 with a cap above backlog);
+  all 13 `_P10_GUARDS` columns = 0; render-only subset → `preexisting`; vault write refused without
+  confirmation and written with it (temp vault); stdout redaction-clean.
 
 ## Dispositions (families not implemented this run, evidence-based)
 

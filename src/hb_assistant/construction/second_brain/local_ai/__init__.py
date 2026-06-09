@@ -54,6 +54,7 @@ from .packet_builders import (
     build_triage_batch_packet,
 )
 from .packet_normalize import has_join_url, normalize_model_text, summarize_attendees
+from .pipeline import run_local_agent_pipeline
 from .procore_digest import build_procore_action_digest
 from .proof import Phase10ProofError, build_phase_10_contracts_proof
 from .provider import build_local_model_status, resolve_local_model_client
@@ -145,4 +146,6 @@ __all__ = [
     # Phase 10: daily-brief rendering / consumption (read-only render + path-safe write)
     "render_daily_brief",
     "write_rendered_brief_to_path",
+    # Phase 10: local-agent pipeline orchestration (one repeatable daily run)
+    "run_local_agent_pipeline",
 ]

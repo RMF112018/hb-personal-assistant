@@ -317,6 +317,21 @@ def test_cli_explicit_write(tmp_path: Path) -> None:
         assert forbidden not in blob
 
 
+def test_cli_governed_write_requires_confirm(tmp_path: Path) -> None:
+    """A bare governed --write (no --output-path) must refuse without --confirm-vault-write."""
+    db = str(tmp_path / "t.sqlite")
+    _seed(db)
+    vault_dir = tmp_path / "vault_briefs"
+    res = runner.invoke(
+        app,
+        ["daily-brief", "render", "--db", db, "--date", DATE, "--write",
+         "--vault-brief-dir", str(vault_dir)],
+    )
+    assert res.exit_code == 2
+    assert json.loads(res.output)["error"] == "vault_write_requires_confirmation"
+    assert not (vault_dir / f"{DATE}_daily_brief.md").exists()  # nothing written
+
+
 def test_cli_governed_write_to_temp_vault_dir(tmp_path: Path) -> None:
     db = str(tmp_path / "t.sqlite")
     _seed(db)
@@ -331,6 +346,7 @@ def test_cli_governed_write_to_temp_vault_dir(tmp_path: Path) -> None:
             "--date",
             DATE,
             "--write",
+            "--confirm-vault-write",
             "--vault-brief-dir",
             str(vault_dir),
         ],
