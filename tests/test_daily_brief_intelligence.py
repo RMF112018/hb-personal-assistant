@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 import sqlite3
 
-import pytest
 from typer.testing import CliRunner
 
 from hb_assistant.cli.main import app
@@ -41,16 +40,36 @@ GOOD_INTEL = json.dumps(
     {
         "executive_catchup": ["One deadline today; two loops waiting on others."],
         "top_priorities": [
-            {"text": "Send the transmittal", "source_ids": ["c1"], "confidence": 0.9, "reason_code": "due_today"}
+            {
+                "text": "Send the transmittal",
+                "source_ids": ["c1"],
+                "confidence": 0.9,
+                "reason_code": "due_today",
+            }
         ],
         "open_loops": [
-            {"text": "Look-ahead pending", "source_ids": ["c2"], "confidence": 0.6, "reason_code": "stale"}
+            {
+                "text": "Look-ahead pending",
+                "source_ids": ["c2"],
+                "confidence": 0.6,
+                "reason_code": "stale",
+            }
         ],
         "waiting_on_me": [
-            {"text": "Transmittal owed by you", "source_ids": ["c1"], "confidence": 0.8, "reason_code": "owed_by_me"}
+            {
+                "text": "Transmittal owed by you",
+                "source_ids": ["c1"],
+                "confidence": 0.8,
+                "reason_code": "owed_by_me",
+            }
         ],
         "waiting_on_others": [
-            {"text": "Super owes look-ahead", "source_ids": ["c2"], "confidence": 0.7, "reason_code": "owed_by_other"}
+            {
+                "text": "Super owes look-ahead",
+                "source_ids": ["c2"],
+                "confidence": 0.7,
+                "reason_code": "owed_by_other",
+            }
         ],
         "meeting_prep": [],
         "project_risk": [],
@@ -88,6 +107,58 @@ def test_success_is_source_linked_and_advisory() -> None:
     )
 
     assert scan_text_for_forbidden(json.dumps(result.safe_payload())) == []
+
+
+def test_reporting_contract_route_vs_terminal_profile() -> None:
+    # Happy path: route-selected == terminal == brief_synthesis, no fallback.
+    result = build_daily_brief_intelligence(
+        candidates=CANDS,
+        profiles=_profiles(),
+        backend=StaticOutputClient(GOOD_INTEL),
+        dry_run=True,
+    )
+    sp = result.safe_payload()
+    assert result.route_selected_profile == "brief_synthesis"
+    assert result.terminal_profile_id == "brief_synthesis"
+    assert result.generation_profile_id == "brief_synthesis"
+    assert result.fallback_used is False
+    assert "terminal_profile_differs_from_route" not in result.warnings
+    # The contract keys are present and stable on the surfaced payload.
+    for key in (
+        "route_selected_profile",
+        "route_model_name",
+        "route_reason_code",
+        "generation_profile_id",
+        "terminal_profile_id",
+        "fallback_chain",
+        "models_attempted",
+        "blockers",
+        "warnings",
+        "profile_id",
+    ):
+        assert key in sp
+    assert sp["profile_id"] == sp["terminal_profile_id"]
+    # No raw prompt/response/validated leakage in the safe payload.
+    for forbidden in ("prompt", "validated", "raw_output", "response"):
+        assert forbidden not in sp
+
+
+def test_reporting_contract_fallback_terminal_differs_from_route() -> None:
+    # Primary brief_synthesis emits bad JSON for all attempts, then the single-hop fallback
+    # (default_extract) returns valid source-linked output. Route stays brief_synthesis; terminal
+    # becomes default_extract; both divergence warnings fire.
+    result = build_daily_brief_intelligence(
+        candidates=CANDS,
+        profiles=_profiles(),
+        backend=StaticOutputClient(outputs=["not json {", "still bad", "nope", GOOD_INTEL]),
+        dry_run=True,
+    )
+    assert result.enriched is True
+    assert result.route_selected_profile == "brief_synthesis"
+    assert result.terminal_profile_id == "default_extract"
+    assert result.fallback_used is True
+    assert "fallback_profile_attempted" in result.warnings
+    assert "terminal_profile_differs_from_route" in result.warnings
 
 
 def test_loose_bullets_are_coerced_not_rejected() -> None:
@@ -128,7 +199,12 @@ def test_missing_source_links_withheld() -> None:
         {
             "executive_catchup": ["ok"],
             "top_priorities": [
-                {"text": "do a thing", "source_ids": ["not_a_real_id"], "confidence": 0.5, "reason_code": "x"}
+                {
+                    "text": "do a thing",
+                    "source_ids": ["not_a_real_id"],
+                    "confidence": 0.5,
+                    "reason_code": "x",
+                }
             ],
         }
     )
@@ -144,7 +220,12 @@ def test_redaction_failure_withheld() -> None:
         {
             "executive_catchup": ["ok"],
             "top_priorities": [
-                {"text": "ping http://evil.example.com now", "source_ids": ["c1"], "confidence": 0.5, "reason_code": "x"}
+                {
+                    "text": "ping http://evil.example.com now",
+                    "source_ids": ["c1"],
+                    "confidence": 0.5,
+                    "reason_code": "x",
+                }
             ],
         }
     )
@@ -208,7 +289,17 @@ def test_cli_intelligence_offline_withholds_safely(tmp_path) -> None:
     ConstructionStore(db_path=db)  # migrate empty schema
     result = runner.invoke(
         app,
-        ["second-brain", "daily-brief", "intelligence", "--date", "2026-06-09", "--mock", "--db", db, "--json"],
+        [
+            "second-brain",
+            "daily-brief",
+            "intelligence",
+            "--date",
+            "2026-06-09",
+            "--mock",
+            "--db",
+            db,
+            "--json",
+        ],
     )
     assert result.exit_code == 0, result.output
     payload = json.loads(result.output)

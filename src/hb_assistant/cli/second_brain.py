@@ -2377,10 +2377,9 @@ def daily_brief_intelligence_cmd(
             "date": date,
             "task_family": "daily_brief_synthesis_quality",
             "candidates": len(candidates),
-            "selected_profile": result.profile_id,
-            "models_attempted": [result.model_name] if result.model_name else [],
-            "blockers": [] if result.enriched else [result.withheld_reason or "withheld"],
-            "warnings": [] if result.enriched else ["enrichment_withheld_fallback_deterministic"],
+            # `selected_profile` is the ROUTE-selected profile (consistent with `local-model route`);
+            # the terminal/generation profile is reported as `terminal_profile_id`/`profile_id`.
+            "selected_profile": result.route_selected_profile,
             "redaction_passed": result.status != "redaction_failed",
             **result.safe_payload(),
         }

@@ -149,7 +149,14 @@ class DailyBriefIntelligence(BaseModel):
 
 @dataclass
 class DailyBriefIntelligenceResult:
-    """Outcome of an enrichment attempt (advisory; receipt is hash-only; no raw retained)."""
+    """Outcome of an enrichment attempt (advisory; receipt is hash-only; no raw retained).
+
+    Profile reporting is deliberately unambiguous (Phase 10 remediation): the **route-selected**
+    profile (what the router chose for the task family) is reported separately from the
+    **terminal/generation** profile (what actually produced or last-attempted the output, which can
+    differ when :class:`StructuredOutputClient` falls back). ``profile_id`` is retained for backwards
+    compatibility and equals ``terminal_profile_id``.
+    """
 
     status: str
     enriched: bool
@@ -161,6 +168,16 @@ class DailyBriefIntelligenceResult:
     attempts: int
     latency_ms: int
     intelligence: Optional[dict[str, Any]]
+    # -- explicit routing/reporting contract --------------------------------------------------
+    route_selected_profile: str = ""
+    route_model_name: str = ""
+    route_reason_code: str = ""
+    generation_profile_id: str = ""
+    terminal_profile_id: str = ""
+    fallback_chain: list[str] = field(default_factory=list)
+    models_attempted: list[str] = field(default_factory=list)
+    blockers: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
     metrics: dict[str, Any] = field(default_factory=dict)
     would_write_receipt: Optional[dict[str, Any]] = None
 
@@ -170,11 +187,22 @@ class DailyBriefIntelligenceResult:
             "status": self.status,
             "enriched": self.enriched,
             "withheld_reason": self.withheld_reason,
+            # backwards-compatible terminal profile (== terminal_profile_id):
             "profile_id": self.profile_id,
             "model_name": self.model_name,
             "schema_valid": self.schema_valid,
             "fallback_used": self.fallback_used,
             "latency_ms": self.latency_ms,
+            # explicit, unambiguous routing/reporting fields:
+            "route_selected_profile": self.route_selected_profile,
+            "route_model_name": self.route_model_name,
+            "route_reason_code": self.route_reason_code,
+            "generation_profile_id": self.generation_profile_id,
+            "terminal_profile_id": self.terminal_profile_id,
+            "fallback_chain": list(self.fallback_chain),
+            "models_attempted": list(self.models_attempted),
+            "blockers": list(self.blockers),
+            "warnings": list(self.warnings),
             "intelligence": self.intelligence,
             "metrics": self.metrics,
         }
@@ -241,25 +269,92 @@ def _filter_source_links(
     return filtered, kept, dropped
 
 
+@dataclass
+class _RouteCtx:
+    """The route decision context, kept separate from the terminal generation profile."""
+
+    selected_profile: str = ""
+    model_name: str = ""
+    reason_code: str = ""
+    fallback_chain: list[str] = field(default_factory=list)
+    blockers: list[str] = field(default_factory=list)
+
+
+def _seed_chain(profiles: LocalModelProfiles, primary: str) -> list[str]:
+    """Best-effort local-only fallback chain for an injected-backend path (no router call)."""
+    chain = [primary]
+    single = profiles.fallbacks.get(primary)
+    if single and single not in chain:
+        chain.append(single)
+    return chain
+
+
+def _models_attempted(route: _RouteCtx, terminal_model_name: str) -> list[str]:
+    """Ordered, de-duplicated model names that were (or would be) attempted."""
+    out: list[str] = []
+    for name in (route.model_name, terminal_model_name):
+        if name and name not in out:
+            out.append(name)
+    return out
+
+
+def _reporting_warnings(
+    *, route: _RouteCtx, terminal_profile_id: str, fallback_used: bool, status: str, enriched: bool
+) -> list[str]:
+    """Operator-meaningful, raw-safe warnings describing route vs terminal profile divergence."""
+    warnings: list[str] = []
+    if fallback_used:
+        warnings.append("fallback_profile_attempted")
+    if (
+        route.selected_profile
+        and terminal_profile_id
+        and terminal_profile_id != route.selected_profile
+    ):
+        warnings.append("terminal_profile_differs_from_route")
+    if status == "schema_invalid":
+        warnings.append("schema_invalid_after_repair")
+    if not enriched:
+        warnings.append("deterministic_fallback_preserved")
+    return warnings
+
+
 def _withheld(
     *,
     status: str,
     reason: str,
-    profile_id: str,
-    model_name: str,
+    route: _RouteCtx,
+    terminal_profile_id: str,
+    terminal_model_name: str,
     result: Any = None,
 ) -> DailyBriefIntelligenceResult:
+    fallback_used = bool(getattr(result, "fallback_used", False))
+    warnings = _reporting_warnings(
+        route=route,
+        terminal_profile_id=terminal_profile_id,
+        fallback_used=fallback_used,
+        status=status,
+        enriched=False,
+    )
     return DailyBriefIntelligenceResult(
         status=status,
         enriched=False,
         withheld_reason=reason,
-        profile_id=profile_id,
-        model_name=model_name,
+        profile_id=terminal_profile_id,
+        model_name=terminal_model_name,
         schema_valid=bool(getattr(result, "schema_valid", False)),
-        fallback_used=bool(getattr(result, "fallback_used", False)),
+        fallback_used=fallback_used,
         attempts=int(getattr(result, "attempts", 0)),
         latency_ms=int(getattr(result, "latency_ms", 0)),
         intelligence=None,
+        route_selected_profile=route.selected_profile,
+        route_model_name=route.model_name,
+        route_reason_code=route.reason_code,
+        generation_profile_id=terminal_profile_id,
+        terminal_profile_id=terminal_profile_id,
+        fallback_chain=list(route.fallback_chain),
+        models_attempted=_models_attempted(route, terminal_model_name),
+        blockers=[reason] + [b for b in route.blockers if b != reason],
+        warnings=warnings,
         metrics={"withheld": True, "reason": reason},
         would_write_receipt=getattr(result, "would_write_receipt", None),
     )
@@ -288,26 +383,38 @@ def build_daily_brief_intelligence(
         for c in candidates
         if c.get("daily_brief_action_candidate_id")
     }
+    chosen_profile_id = profile_id or _DEFAULT_PROFILE_ID
+    route_ctx = _RouteCtx(selected_profile=chosen_profile_id)
     if not allowed_ids:
         return _withheld(
             status="no_candidates",
             reason="no_candidates",
-            profile_id=profile_id or _DEFAULT_PROFILE_ID,
-            model_name="",
+            route=route_ctx,
+            terminal_profile_id=chosen_profile_id,
+            terminal_model_name="",
         )
 
-    # Resolve the profile + backend (route only matters for the live path).
-    chosen_profile_id = profile_id or _DEFAULT_PROFILE_ID
+    # Resolve the profile + backend. The router decides the route-selected profile (reported
+    # separately from the terminal generation profile). When a backend is injected (offline/tests)
+    # the route is the chosen profile and the chain comes from the profile seed.
     if backend is None:
         route: RouteResult = route_task_family(
             _TASK_FAMILY, profiles=profiles, routing=routing, present_models=present_models
+        )
+        route_ctx = _RouteCtx(
+            selected_profile=route.selected_profile or chosen_profile_id,
+            model_name=route.model_name or "",
+            reason_code=route.reason_code or "",
+            fallback_chain=list(route.fallback_chain),
+            blockers=list(route.blockers),
         )
         if route.blocked or not route.selected_profile:
             return _withheld(
                 status="model_unavailable",
                 reason=route.reason_code or "model_unavailable",
-                profile_id=route.selected_profile or chosen_profile_id,
-                model_name=route.model_name or "",
+                route=route_ctx,
+                terminal_profile_id=route.selected_profile or chosen_profile_id,
+                terminal_model_name=route.model_name or "",
             )
         chosen_profile_id = route.selected_profile
         client, _model_name, why = resolve_local_model_client(
@@ -317,18 +424,28 @@ def build_daily_brief_intelligence(
             return _withheld(
                 status="model_unavailable",
                 reason=why or "live_model_client_missing",
-                profile_id=chosen_profile_id,
-                model_name=route.model_name or "",
+                route=route_ctx,
+                terminal_profile_id=chosen_profile_id,
+                terminal_model_name=route.model_name or "",
             )
         backend = client
+    else:
+        injected = _select_profile(profiles, chosen_profile_id)
+        route_ctx = _RouteCtx(
+            selected_profile=chosen_profile_id,
+            model_name=injected.model_name if injected else "",
+            reason_code="injected_backend",
+            fallback_chain=_seed_chain(profiles, chosen_profile_id),
+        )
 
     profile = _select_profile(profiles, chosen_profile_id)
     if profile is None:
         return _withheld(
             status="profile_error",
             reason="profile_not_found",
-            profile_id=chosen_profile_id,
-            model_name="",
+            route=route_ctx,
+            terminal_profile_id=chosen_profile_id,
+            terminal_model_name="",
         )
 
     view = _candidate_view(candidates)
@@ -355,8 +472,9 @@ def build_daily_brief_intelligence(
         return _withheld(
             status=result.status,
             reason=result.error_redacted or result.status,
-            profile_id=result.profile_id,
-            model_name=result.model_name,
+            route=route_ctx,
+            terminal_profile_id=result.profile_id,
+            terminal_model_name=result.model_name,
             result=result,
         )
 
@@ -367,8 +485,9 @@ def build_daily_brief_intelligence(
         return _withheld(
             status="redaction_failed",
             reason="redaction_failed:" + ",".join(findings),
-            profile_id=result.profile_id,
-            model_name=result.model_name,
+            route=route_ctx,
+            terminal_profile_id=result.profile_id,
+            terminal_model_name=result.model_name,
             result=result,
         )
 
@@ -376,8 +495,9 @@ def build_daily_brief_intelligence(
         return _withheld(
             status="no_source_linked_bullets",
             reason="no_source_linked_bullets",
-            profile_id=result.profile_id,
-            model_name=result.model_name,
+            route=route_ctx,
+            terminal_profile_id=result.profile_id,
+            terminal_model_name=result.model_name,
             result=result,
         )
 
@@ -408,6 +528,20 @@ def build_daily_brief_intelligence(
         attempts=result.attempts,
         latency_ms=result.latency_ms,
         intelligence=filtered,
+        route_selected_profile=route_ctx.selected_profile,
+        route_model_name=route_ctx.model_name,
+        route_reason_code=route_ctx.reason_code,
+        generation_profile_id=result.profile_id,
+        terminal_profile_id=result.profile_id,
+        fallback_chain=list(route_ctx.fallback_chain),
+        models_attempted=_models_attempted(route_ctx, result.model_name),
+        warnings=_reporting_warnings(
+            route=route_ctx,
+            terminal_profile_id=result.profile_id,
+            fallback_used=result.fallback_used,
+            status="ok",
+            enriched=True,
+        ),
         metrics=metrics,
         would_write_receipt=result.would_write_receipt,
     )
