@@ -1,0 +1,24 @@
+{
+  "command": "second-brain local-model route",
+  "ok": true,
+  "applied": false,
+  "dry_run": true,
+  "warnings": [],
+  "redaction_passed": true,
+  "models_attempted": [
+    "mistral-nemo:12b"
+  ],
+  "task_family": "daily_brief_synthesis_quality",
+  "selected_profile": "brief_synthesis",
+  "model_name": "mistral-nemo:12b",
+  "available": true,
+  "blocked": false,
+  "blockers": [],
+  "reason_code": "selected_routed",
+  "fallback_chain": [
+    "brief_synthesis",
+    "default_extract"
+  ],
+  "no_cloud": true,
+  "metrics": {}
+}

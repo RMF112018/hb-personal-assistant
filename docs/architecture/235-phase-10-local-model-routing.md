@@ -115,6 +115,42 @@ parsing.
 - Converging the new intelligence adapter with the existing `--synthesize` `DailyBriefSynthesis`
   path (left as separate opt-ins; convergence is the natural follow-up).
 
+## Intelligence daily-brief remediation (2026-06-09 addendum)
+
+Reproducing the "intelligence sometimes withholds" behaviour on a `/tmp` Dev DB copy isolated two
+concrete root causes plus a reporting ambiguity (branch
+`experiment/phase-10-intelligence-daily-brief-remediation`; still no migration, head **V44**):
+
+- **Source-link loss → `no_source_linked_bullets`.** The candidate view showed the model the 37-char
+  canonical id (`dbac-<32 hex>`); a 12B model garbles long hex ids, dropping every bullet. The view
+  now shows short **citeable aliases** (`c1, c2, …`) mapped back to the canonical
+  `daily_brief_action_candidate_id` in `_filter_source_links`; canonical ids are still accepted.
+  `alias_mapping_used`, `unknown_source_ids_count`, `bullets_kept/dropped`, `model_bullets_seen`, and
+  `allowed_candidate_count` are surfaced (raw-safe).
+- **`schema_invalid` from `executive_catchup`.** The model returns `executive_catchup` as a prose
+  string; the field validator ran `mode="after"`, so list-type validation failed before coercion. The
+  `executive_catchup`/`source_ids` coercers now run `mode="before"`, and a top-level
+  `model_validator` reshapes a bare array or single-key envelope. Safe schema diagnostics
+  (`schema_error_category`, `attempts`, `repair_attempted`, `terminal_profile_id`) are surfaced.
+- **Profile reporting.** The result now reports the **route-selected** profile
+  (`route_selected_profile`, `route_model_name`, `route_reason_code`, `fallback_chain`) separately
+  from the **terminal/generation** profile (`terminal_profile_id`/`generation_profile_id`/
+  `profile_id`), with warnings `fallback_profile_attempted`, `terminal_profile_differs_from_route`,
+  `schema_invalid_after_repair`, `deterministic_fallback_preserved`. The standalone CLI
+  `selected_profile` now means the route-selected profile (consistent with `local-model route`).
+- **Candidate availability.** `build_daily_brief_intelligence` takes `brief_date`/`generation_mode`
+  and emits `candidate_count`, `candidate_freshness`, and a `candidate_availability` block; standalone
+  runs `read_only`, daily-run reports `pipeline_dry_run` vs `pipeline_apply`. Dry-run discovery never
+  implies candidates are available to standalone intelligence.
+- **CLI diagnostics.** Standalone echoes a redacted `--db` indicator (`db_mode`/`db_path_redacted`);
+  `local-model eval` labels `eval_mode` (`synthetic_offline_contract` vs `live_local_model`).
+
+Post-fix, live standalone enrichment is reliable on the **first attempt** with
+`source_link_coverage=1.0` (was withheld/`schema_invalid` before). Both surfaces share the same
+adapter, so route/terminal/candidate semantics are identical. Evidence:
+`docs/evidence/phase-10-intelligence-daily-brief-remediation/`. The convergence of this adapter with
+the `--synthesize` `DailyBriefSynthesis` path remains the natural follow-up (still separate opt-ins).
+
 ## Operator runbook
 
 See `docs/runbooks/phase-10-local-model-routing-runbook.md`.

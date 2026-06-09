@@ -2323,6 +2323,21 @@ def daily_brief_render(
         raise typer.Exit(1) from None
 
 
+def _redact_db_indicator(db: "str | None") -> "tuple[str, str | None]":
+    """Return ``(db_mode, redacted_path)`` for an operator-visible --db echo.
+
+    Never emits a private absolute path: the home dir is collapsed to ``~``. ``/tmp`` copy paths are
+    surfaced as-is so the operator can confirm validation ran against a copy, not the app DB.
+    """
+    if not db:
+        return "default_app_db", None
+    import os
+
+    home = os.path.expanduser("~")
+    redacted = ("~" + db[len(home) :]) if db.startswith(home) else db
+    return "explicit_db", redacted
+
+
 @daily_brief_app.command("intelligence")
 def daily_brief_intelligence_cmd(
     date: str = typer.Option(..., "--date", help="Brief date (YYYY-MM-DD)."),  # noqa: B008
@@ -2368,7 +2383,10 @@ def daily_brief_intelligence_cmd(
             dry_run=dry_run,
             allow_raw=raw,
             store=store,
+            brief_date=date,
+            generation_mode="read_only",
         )
+        db_mode, db_path_redacted = _redact_db_indicator(db)
         payload = {
             "command": cmd,
             "ok": True,
@@ -2377,10 +2395,11 @@ def daily_brief_intelligence_cmd(
             "date": date,
             "task_family": "daily_brief_synthesis_quality",
             "candidates": len(candidates),
-            "selected_profile": result.profile_id,
-            "models_attempted": [result.model_name] if result.model_name else [],
-            "blockers": [] if result.enriched else [result.withheld_reason or "withheld"],
-            "warnings": [] if result.enriched else ["enrichment_withheld_fallback_deterministic"],
+            # `selected_profile` is the ROUTE-selected profile (consistent with `local-model route`);
+            # the terminal/generation profile is reported as `terminal_profile_id`/`profile_id`.
+            "selected_profile": result.route_selected_profile,
+            "db_mode": db_mode,
+            "db_path_redacted": db_path_redacted,
             "redaction_passed": result.status != "redaction_failed",
             **result.safe_payload(),
         }
@@ -9431,6 +9450,8 @@ def _attach_daily_run_intelligence(*, store: Any, payload: dict, dry_run: bool) 
             present_models=present_models if daemon_reachable else None,
             dry_run=dry_run,
             store=store,
+            brief_date=brief_date,
+            generation_mode="pipeline_dry_run" if dry_run else "pipeline_apply",
         )
         return result.safe_payload()
     except Exception as e:  # advisory only — never fail the deterministic run

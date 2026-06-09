@@ -38,6 +38,8 @@ def test_eval_synthetic_json_shape_and_exit_0() -> None:
     assert payload["dry_run"] is True
     assert payload["redaction_passed"] is True
     assert payload["use_next_run"]
+    # Synthetic eval must be labelled as an offline CONTRACT check, not live model quality.
+    assert payload["eval_mode"] == "synthetic_offline_contract"
     _assert_no_raw_leak(result.output)
 
 
