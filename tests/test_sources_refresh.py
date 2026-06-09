@@ -250,9 +250,7 @@ def test_graph_auth_failure_blocks_graph(patched: dict[str, Any]) -> None:
     assert payload["status"] == "degraded"
 
 
-def test_partial_failure_degraded(
-    patched: dict[str, Any], monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_partial_failure_degraded(patched: dict[str, Any], monkeypatch: pytest.MonkeyPatch) -> None:
     def boom(db: str, **k: Any) -> dict[str, Any]:
         raise RuntimeError("coverage exploded")
 
@@ -322,6 +320,81 @@ def test_graph_only_skips_procore(patched: dict[str, Any]) -> None:
     _, payload = _run(["--graph-only", "--json"])
     assert payload["procore_sync_summary"]["status"] == "skipped"
     assert payload["procore_sync_summary"]["reason"] == "graph_only"
+
+
+def test_contract_bug_endpoint_degrades_run(
+    patched: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(orch, "live_env_active", lambda: True)
+
+    def fake_run_live_sync(**kw: Any) -> dict[str, Any]:
+        patched["run_live_sync"].append(kw)
+        if kw.get("endpoint") == "punch-items":
+            return {
+                "endpoint_id": "punch-items",
+                "state": "transport_error",
+                "status": "error",
+                "reason_codes": ["transport_error:400"],
+                "redacted_errors": [{"code": "http_error", "status": 400}],
+                "sqlite_upserted_count": 0,
+                "retrieved_count": 0,
+            }
+        return {
+            "endpoint_id": kw.get("endpoint"),
+            "state": "success",
+            "status": "success",
+            "reason_codes": [],
+            "redacted_errors": [],
+            "sqlite_upserted_count": 3,
+            "retrieved_count": 3,
+        }
+
+    monkeypatch.setattr(orch, "run_live_sync", fake_run_live_sync)
+    # --procore-only isolates the Procore stage (Graph has no token in this fixture
+    # and would otherwise degrade the run + own the top-level next_operator_action).
+    code, payload = _run(["--procore-only", "--apply", "--confirm", "--json"])
+    assert code == 1  # degraded run -> nonzero
+    assert payload["status"] == "degraded"
+    procore = payload["procore_sync_summary"]
+    assert procore["status"] == "degraded"
+    assert procore["endpoint_summary"]["contract_bug_failures"] >= 1
+    # punch-items is per-project; one contract bug per pilot project
+    bug_rows = [
+        e for e in procore["endpoints"] if e["status"] == "contract_bug_missing_required_param"
+    ]
+    assert bug_rows and all(e["endpoint"] == "punch-items" for e in bug_rows)
+    assert "contract regression" in procore["next_operator_action"]
+    assert "contract regression" in payload["next_operator_action"]
+
+
+def test_drawings_classified_skipped_not_failure(
+    patched: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(orch, "live_env_active", lambda: True)
+    # --procore-only: Graph (no token here) must not degrade this Procore assertion.
+    _, payload = _run(["--procore-only", "--apply", "--confirm", "--json"])
+    procore = payload["procore_sync_summary"]
+    drawings = [e for e in procore["endpoints"] if e["endpoint"] == "list-drawings"]
+    assert drawings and drawings[0]["status"] == "skipped_tool_not_enabled"
+    # an all-success run with only the drawings skip is NOT degraded
+    assert procore["status"] == "ok"
+    assert payload["status"] == "ok"
+
+
+def test_apply_receipt_has_no_token_shaped_values(
+    patched: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(orch, "live_env_active", lambda: True)
+    result = runner.invoke(app, CMD + ["--all", "--apply", "--confirm", "--json"])
+    for token in FORBIDDEN_RAW:
+        assert token not in result.output
+    payload = json.loads(result.stdout)
+    assert payload["procore_sync_summary"]["persistence_path"] == "procore_live"
+    assert payload["procore_sync_summary"]["tables_written"] == [
+        "procore_live_records",
+        "procore_live_sync_runs",
+        "procore_live_sync_watermarks",
+    ]
 
 
 def test_v2_packet_generated_after_refresh(patched: dict[str, Any]) -> None:

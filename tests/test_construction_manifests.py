@@ -1056,7 +1056,18 @@ def test_project_card_includes_procore_sync_summary_totals(
          company_id, mode, started_at_utc, status, state)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
-        ("run-1", "rfis", "rfis", "tropical", "111", "5280", "live_apply", now, "success", "success"),
+        (
+            "run-1",
+            "rfis",
+            "rfis",
+            "tropical",
+            "111",
+            "5280",
+            "live_apply",
+            now,
+            "success",
+            "success",
+        ),
     )
     conn.execute(
         f"INSERT INTO procore_live_records ({rec_cols}) VALUES (?,?,?,?,?,?,?,?,?,?)",
