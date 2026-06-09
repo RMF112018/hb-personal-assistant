@@ -14,6 +14,9 @@ routes:
   calendar_prep_summary: default_extract
   procore_digest_summary: default_extract
   relationship_scoring: review_filter
+  # Phase 10 V45 — bounded local raw email follow-up enrichment (local-only, fail-closed; the
+  # proven mistral-nemo:12b extractor profile, falling back only to other local profiles).
+  email_followup_raw_enrichment: default_extract
 # Ordered local-only fallback chains (profile_id -> [next, next, ...]). When a routed profile's
 # model is unavailable, the router walks this chain (all local Ollama profiles) before failing
 # closed. Omitted profiles fall back to the seed's single-hop ``fallbacks`` map.
