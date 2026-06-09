@@ -64,25 +64,29 @@ def patched(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
     Defaults: Procore auth ready, no live env, Graph has no token. Returns a dict of
     call recorders so tests can assert what was (not) invoked.
     """
-    calls: dict[str, Any] = {"run_sync": [], "calendar": 0, "files": 0}
+    calls: dict[str, Any] = {"run_live_sync": [], "calendar": 0, "files": 0}
 
     monkeypatch.setattr(orch, "check_auth_status", _auth_ready)
     monkeypatch.setattr(orch, "load_procore_projects", lambda: _Registry())
     monkeypatch.setattr(orch, "live_env_active", lambda: False)
     monkeypatch.setattr(orch, "assert_live_mapping_strict", lambda reg, keys: None)
 
-    def fake_run_sync(**kw: Any) -> dict[str, Any]:
-        calls["run_sync"].append(kw)
+    def fake_run_live_sync(**kw: Any) -> dict[str, Any]:
+        # The orchestrator only calls run_live_sync on the apply+live path; a
+        # successful canonical receipt persists into procore_live_records.
+        calls["run_live_sync"].append(kw)
         return {
-            "total_items_normalized": 0,
-            "persisted_to_sqlite": bool(kw.get("apply")),
-            "audit_prerequisite_passed": True,
-            "per_endpoint": [],
-            "category_counts": {},
+            "endpoint_id": kw.get("endpoint"),
+            "state": "success",
+            "status": "success",
+            "reason_codes": [],
             "redacted_errors": [],
+            "retrieved_count": 5,
+            "normalized_count": 5,
+            "sqlite_upserted_count": 5,
         }
 
-    monkeypatch.setattr(orch, "run_sync", fake_run_sync)
+    monkeypatch.setattr(orch, "run_live_sync", fake_run_live_sync)
 
     monkeypatch.setattr(
         orch,
@@ -215,9 +219,12 @@ def test_dry_run_writes_nothing(patched: dict[str, Any]) -> None:
     assert payload["dry_run"] is True
     total = payload["sqlite_upsert_summary"]["total"]
     assert total["inserted"] == 0 and total["updated"] == 0
-    # every run_sync invocation was a plan (no apply)
-    assert patched["run_sync"], "procore plan should have run"
-    assert all(c["dry_run"] and not c["apply"] for c in patched["run_sync"])
+    # Dry-run describes the canonical plan WITHOUT any live read (no run_live_sync call).
+    assert patched["run_live_sync"] == [], "dry-run must not perform a live read"
+    procore = payload["procore_sync_summary"]
+    assert procore["status"] == "planned"
+    assert procore["persistence_path"] == "procore_live"
+    assert procore["endpoint_summary"]["endpoints_planned"] > 0
 
 
 def test_procore_auth_failure_blocks_procore(
@@ -228,7 +235,7 @@ def test_procore_auth_failure_blocks_procore(
     assert code == 1
     assert payload["status"] == "degraded"
     assert payload["procore_sync_summary"]["status"] == "blocked_auth_not_ready"
-    assert patched["run_sync"] == [], "no live read when auth not ready"
+    assert patched["run_live_sync"] == [], "no live read when auth not ready"
     assert "procore auth login" in payload["next_operator_action"]
 
 
@@ -279,23 +286,20 @@ def test_sqlite_upsert_counts_reported_apply(
     patched: dict[str, Any], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(orch, "live_env_active", lambda: True)
-
-    def fake_run_sync(**kw: Any) -> dict[str, Any]:
-        patched["run_sync"].append(kw)
-        return {
-            "total_items_normalized": 5,
-            "persisted_to_sqlite": True,
-            "audit_prerequisite_passed": True,
-            "per_endpoint": [],
-            "redacted_errors": [],
-        }
-
-    monkeypatch.setattr(orch, "run_sync", fake_run_sync)
+    # patched fixture already stubs run_live_sync to a success receipt (5 upserted each).
     _, payload = _run(["--all", "--apply", "--confirm", "--json"])
-    # two pilot projects × 5 normalized rows persisted
-    assert payload["sqlite_upsert_summary"]["procore"]["inserted"] == 10
-    assert payload["sqlite_upsert_summary"]["total"]["inserted"] == 10
+    calls = patched["run_live_sync"]
+    assert calls, "apply+live should execute the canonical plan"
+    expected = 5 * len(calls)
+    assert payload["sqlite_upsert_summary"]["procore"]["inserted"] == expected
+    assert payload["sqlite_upsert_summary"]["total"]["inserted"] == expected
     assert payload["procore_sync_summary"]["status"] == "ok"
+    # Company-level `projects` is fetched once, not once per pilot project.
+    projects_calls = [c for c in calls if c.get("endpoint") == "projects"]
+    assert len(projects_calls) == 1
+    # daily-log endpoints carry a bounded date window.
+    dl_calls = [c for c in calls if str(c.get("endpoint", "")).startswith("daily-log")]
+    assert dl_calls and all(c.get("start_date") and c.get("end_date") for c in dl_calls)
 
 
 def test_skip_vector(patched: dict[str, Any]) -> None:
