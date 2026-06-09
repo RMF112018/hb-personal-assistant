@@ -48,6 +48,8 @@ class DailyRunLaunchdManager:
         timezone: str = "America/New_York",
         db_path: Optional[str] = None,
         include_relationship_candidates: bool = False,
+        relationship_scan_threads: Optional[int] = None,
+        relationship_scan_events: Optional[int] = None,
         label: str = DEFAULT_LABEL,
         path_policy: Optional[PathPolicy] = None,
     ) -> None:
@@ -66,6 +68,8 @@ class DailyRunLaunchdManager:
         self.timezone = timezone
         self.db_path = db_path
         self.include_relationship_candidates = include_relationship_candidates
+        self.relationship_scan_threads = relationship_scan_threads
+        self.relationship_scan_events = relationship_scan_events
         self.label = label
         self.launch_agents_dir = Path.home() / "Library" / "LaunchAgents"
         self.plist_path = self.launch_agents_dir / f"{self.label}.plist"
@@ -113,6 +117,11 @@ class DailyRunLaunchdManager:
         # Off by default → the installed schedule is byte-unchanged; only emitted when opted in.
         if self.include_relationship_candidates:
             args += ["--include-relationship-candidates"]
+            # Scan-window overrides ride along only when explicitly set (else stage defaults apply).
+            if self.relationship_scan_threads is not None:
+                args += ["--relationship-scan-threads", str(self.relationship_scan_threads)]
+            if self.relationship_scan_events is not None:
+                args += ["--relationship-scan-events", str(self.relationship_scan_events)]
         if self.db_path:
             args += ["--db", self.db_path]
         args += ["--json"]

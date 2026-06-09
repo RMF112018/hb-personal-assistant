@@ -115,12 +115,16 @@ def run_daily_local_agent(
     status_dir: Optional[str] = None,
     last_successful_date: Optional[str] = None,
     include_relationship_candidates: bool = False,
+    relationship_scan_threads: Optional[int] = None,
+    relationship_scan_events: Optional[int] = None,
 ) -> dict[str, Any]:
     """Run the daily local-agent workflow once. Dry-run by default; see module docstring.
 
     ``include_relationship_candidates`` (default off → the scheduled run is unchanged) opts the
     cross-source relationship-candidate stage into the pipeline, just before render, so relationship
     rows are populated and the brief's "Related Context" section is surfaced automatically.
+    ``relationship_scan_threads`` / ``relationship_scan_events`` widen that stage's scan window
+    (default None → the stage's own 50/50 defaults); they only matter when the stage is opted in.
     """
     cmd = "second-brain daily-run run"
     policy = PathPolicy()
@@ -186,6 +190,8 @@ def run_daily_local_agent(
         include_raw=include_raw,
         window=window,
         include_relationship_candidates=include_relationship_candidates,
+        relationship_scan_threads=relationship_scan_threads,
+        relationship_scan_events=relationship_scan_events,
     )
 
     brief = pipeline.get("brief") or {}
