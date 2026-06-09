@@ -9047,6 +9047,11 @@ def second_brain_follow_up_watch_scan(
     summary: bool = typer.Option(  # noqa: B008
         False, "--summary", help="Include the per-item results list in the response."
     ),
+    with_raw_enrichment: bool = typer.Option(  # noqa: B008
+        False, "--with-raw-enrichment",
+        help="Additively run local raw email follow-up enrichment (V45). Honors --dry-run/--apply "
+        "and --max-persist; never emits raw content. No raw-local preview here (use `enrich`).",
+    ),
     timeout_seconds: "float | None" = typer.Option(  # noqa: B008
         None, "--timeout-seconds", help="Accepted for parity; unused (deterministic, no model)."
     ),
@@ -9087,7 +9092,160 @@ def second_brain_follow_up_watch_scan(
         )
         if not summary:
             payload = {k: v for k, v in payload.items() if k != "results"}
+
+        raw_leak = False
+        if with_raw_enrichment:
+            present_models, daemon_reachable = _local_model_present("ollama", False)
+            from hb_assistant.construction.second_brain.local_ai.email_followup_enrichment import (
+                run_email_followup_enrichment,
+            )
+
+            enrich_payload = run_email_followup_enrichment(
+                store=store, now_utc=now_utc, limit=limit, dry_run=dry_run,
+                max_persist=max_persist,
+                present_models=present_models if daemon_reachable else None,
+            )
+            payload["raw_enrichment"] = enrich_payload
+            raw_leak = any(
+                s.get("reason") == "raw_leak_detected" for s in enrich_payload.get("skipped", [])
+            )
+
         typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        if raw_leak:
+            raise typer.Exit(1)
+        raise typer.Exit(0)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        payload = {"command": cmd, "ok": False, "error": str(e)[:300]}
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(1) from None
+
+
+@follow_up_watch_app.command("enrich")
+def second_brain_follow_up_watch_enrich(
+    candidate_id: "str | None" = typer.Option(  # noqa: B008
+        None, "--candidate-id",
+        help="Enrich a single accepted candidate id (default: all eligible source-linked items).",
+    ),
+    show_raw_local: bool = typer.Option(  # noqa: B008
+        False, "--show-raw-local",
+        help="Print a bounded, redacted, LOCAL-ONLY raw preview. Requires --dry-run and --no-json; "
+        "incompatible with --apply. Never written to evidence/logs.",
+    ),
+    include_closed: bool = typer.Option(  # noqa: B008
+        False, "--include-closed", help="Diagnostic: also enrich closed/completed items."
+    ),
+    limit: int = typer.Option(200, "--limit", help="Max accepted items per type to scan."),  # noqa: B008
+    dry_run: bool = typer.Option(  # noqa: B008
+        True, "--dry-run/--apply",
+        help="Dry-run (default; zero writes). --apply persists, capped by --max-persist.",
+    ),
+    max_persist: "int | None" = typer.Option(  # noqa: B008
+        None, "--max-persist", help="REQUIRED with --apply: cap on ACTUAL V45 enrichment writes."
+    ),
+    db: "str | None" = typer.Option(None, "--db", help="Explicit SQLite path (tests/isolation)."),  # noqa: B008
+    json_out: bool = typer.Option(True, "--json/--no-json", help="Emit JSON (default)."),  # noqa: B008
+) -> None:
+    """Enrich source-linked follow-up items from bounded LOCAL raw email context (dry-run default).
+
+    Builds a bounded, sanitized, NON-persisted raw window per eligible candidate, runs the local-only
+    model (fail-closed), validates, and — only with ``--apply`` + a positive ``--max-persist`` —
+    upserts review-safe V45 rows (idempotent). JSON output is raw-free (hashes + structured fields
+    only). ``--show-raw-local`` prints a redacted terminal-only preview; it requires ``--dry-run`` +
+    ``--no-json`` and is refused with ``--json``/``--apply`` (the preview is never emitted to JSON,
+    evidence, or logs).
+    """
+    cmd = "second-brain follow-up-watch enrich"
+    try:
+        # Raw-local preview gating (clarification: --dry-run + --no-json only; never --json/--apply).
+        if show_raw_local:
+            if json_out:
+                payload = {
+                    "command": cmd, "ok": False,
+                    "error": "show_raw_local_incompatible_with_json",
+                    "hint": "re-run with --no-json (preview is terminal-only, never JSON/evidence)",
+                }
+                typer.echo(json.dumps(payload, indent=2, default=str))
+                raise typer.Exit(2)
+            if not dry_run:
+                typer.echo("ERROR: --show-raw-local requires --dry-run (incompatible with --apply)")
+                raise typer.Exit(2)
+
+        if not dry_run and (max_persist is None or max_persist <= 0):
+            payload = {
+                "command": cmd, "ok": False, "applied": False,
+                "error": "apply_requires_max_persist",
+                "guardrails": {"apply_requires_max_persist": True},
+            }
+            typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+            raise typer.Exit(2)
+
+        from hb_assistant.construction.second_brain.local_ai.email_followup_enrichment import (
+            select_eligible_candidates,
+        )
+        from hb_assistant.construction.second_brain.local_ai.raw_followup_window import (
+            build_raw_followup_window,
+            build_raw_local_preview,
+        )
+        from hb_assistant.construction.store import ConstructionStore
+
+        store = ConstructionStore(db_path=db)
+
+        # --- Raw-local preview mode (terminal-only; no model, no persistence) ---
+        if show_raw_local:
+            candidates = select_eligible_candidates(
+                store=store, candidate_id=candidate_id, include_closed=include_closed, limit=limit
+            )
+            typer.echo(
+                "⚠ RAW-LOCAL PREVIEW — local terminal only. Bounded + redacted. "
+                "NEVER copy into evidence, docs, logs, commits, or the daily brief. Not persisted."
+            )
+            if not candidates:
+                typer.echo("(no eligible source-linked candidates)")
+                raise typer.Exit(0)
+            shown = 0
+            for meta in candidates:
+                window = build_raw_followup_window(
+                    candidate_id=meta["candidate_id"],
+                    candidate_type=meta["candidate_type"],
+                    source_refs=meta["source_refs"],
+                    store=store,
+                )
+                if not window.available:
+                    typer.echo(
+                        f"\n--- candidate {meta['candidate_id']} : no raw content available ---"
+                    )
+                    continue
+                preview = build_raw_local_preview(window, opt_in=True)
+                typer.echo(
+                    f"\n--- candidate {meta['candidate_id']} "
+                    f"(raw_excerpt_hash={preview.raw_excerpt_hash}) ---"
+                )
+                typer.echo(preview.text)
+                shown += 1
+            typer.echo(f"\n[{shown} preview(s) shown; nothing persisted]")
+            raise typer.Exit(0)
+
+        # --- Enrichment mode (JSON, raw-free) ---
+        present_models, daemon_reachable = _local_model_present("ollama", False)
+        from hb_assistant.construction.second_brain.local_ai.email_followup_enrichment import (
+            run_email_followup_enrichment,
+        )
+
+        payload = run_email_followup_enrichment(
+            store=store,
+            candidate_id=candidate_id,
+            include_closed=include_closed,
+            limit=limit,
+            dry_run=dry_run,
+            max_persist=max_persist,
+            present_models=present_models if daemon_reachable else None,
+        )
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        # Raw leakage is a hard safety signal → nonzero even though the row was safely withheld.
+        if any(s.get("reason") == "raw_leak_detected" for s in payload.get("skipped", [])):
+            raise typer.Exit(1)
         raise typer.Exit(0)
     except typer.Exit:
         raise
