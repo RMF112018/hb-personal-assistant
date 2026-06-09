@@ -9372,6 +9372,12 @@ def second_brain_daily_run_run(
     allow_partial: bool = typer.Option(  # noqa: B008
         False, "--allow-partial", help="Exit 0 even on a partial/failed run (payload still reports it)."
     ),
+    include_relationship_candidates: bool = typer.Option(  # noqa: B008
+        False, "--include-relationship-candidates/--no-relationship-candidates",
+        help="OPT-IN: run the cross-source relationship-candidate stage before render (off by default; "
+        "the scheduled daily run is unchanged). When applied, it populates relationship rows the brief "
+        "then surfaces as a 'Related Context' section.",
+    ),
     db: "str | None" = typer.Option(None, "--db", help="Explicit SQLite path (tests/isolation)."),  # noqa: B008
     json_out: bool = typer.Option(True, "--json", help="Emit JSON (default)."),  # noqa: B008
 ) -> None:
@@ -9424,6 +9430,7 @@ def second_brain_daily_run_run(
             generate_browser=generate_browser,
             browser_output_dir=browser_output_dir,
             status_dir=status_dir,
+            include_relationship_candidates=include_relationship_candidates,
         )
         if open_browser:
             payload.setdefault("warnings", []).append("auto_open_not_enabled: browser not opened")
@@ -9451,6 +9458,7 @@ def _build_daily_run_scheduler(
     generate_browser: bool,
     timezone: str,
     db: "str | None",
+    include_relationship_candidates: bool = False,
 ) -> Any:
     from hb_assistant.construction.second_brain.local_ai import DailyRunLaunchdManager
 
@@ -9466,6 +9474,7 @@ def _build_daily_run_scheduler(
         generate_browser=generate_browser,
         timezone=timezone,
         db_path=db,
+        include_relationship_candidates=include_relationship_candidates,
     )
 
 
@@ -9494,6 +9503,11 @@ def second_brain_daily_run_scheduler_install(
         "--catch-up-on-wake/--no-catch-up-on-wake",
         help="Documented launchd-native catch-up on wake (informational).",
     ),
+    include_relationship_candidates: bool = typer.Option(  # noqa: B008
+        False, "--include-relationship-candidates/--no-relationship-candidates",
+        help="Install the schedule with the cross-source relationship-candidate stage enabled "
+        "(off by default → the installed job is unchanged).",
+    ),
     db: "str | None" = typer.Option(None, "--db", help="Pin the working DB for the scheduled job."),  # noqa: B008
     json_out: bool = typer.Option(True, "--json", help="Emit JSON (default)."),  # noqa: B008
 ) -> None:
@@ -9520,6 +9534,7 @@ def second_brain_daily_run_scheduler_install(
             generate_browser=generate_browser,
             timezone=timezone,
             db=db,
+            include_relationship_candidates=include_relationship_candidates,
         )
         res = mgr.install(dry_run=not apply)
         res["catch_up_on_wake"] = catch_up_on_wake

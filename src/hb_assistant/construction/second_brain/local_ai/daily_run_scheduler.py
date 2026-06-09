@@ -47,6 +47,7 @@ class DailyRunLaunchdManager:
         generate_browser: bool = True,
         timezone: str = "America/New_York",
         db_path: Optional[str] = None,
+        include_relationship_candidates: bool = False,
         label: str = DEFAULT_LABEL,
         path_policy: Optional[PathPolicy] = None,
     ) -> None:
@@ -64,6 +65,7 @@ class DailyRunLaunchdManager:
         self.generate_browser = generate_browser
         self.timezone = timezone
         self.db_path = db_path
+        self.include_relationship_candidates = include_relationship_candidates
         self.label = label
         self.launch_agents_dir = Path.home() / "Library" / "LaunchAgents"
         self.plist_path = self.launch_agents_dir / f"{self.label}.plist"
@@ -108,6 +110,9 @@ class DailyRunLaunchdManager:
             args += ["--confirm-vault-write"]
         args += ["--generate-browser"] if self.generate_browser else ["--no-generate-browser"]
         args += ["--no-open-browser"]
+        # Off by default → the installed schedule is byte-unchanged; only emitted when opted in.
+        if self.include_relationship_candidates:
+            args += ["--include-relationship-candidates"]
         if self.db_path:
             args += ["--db", self.db_path]
         args += ["--json"]

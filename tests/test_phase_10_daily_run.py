@@ -462,3 +462,47 @@ def test_cli_scheduler_status() -> None:
     res = runner.invoke(app, ["daily-run", "scheduler", "status"])
     assert res.exit_code == 0
     assert json.loads(res.output)["weekdays_only"] is True
+
+
+# --- relationship-candidate stage opt-in (default off → scheduled run unchanged) ----------------
+
+
+def test_default_schedule_excludes_relationship_stage(tmp_path: Path) -> None:
+    """The scheduled run is unchanged: no relationship stage by default."""
+    db = str(tmp_path / "t.sqlite")
+    s = _seed(db)
+    out = run_daily_local_agent(
+        store=s, now_utc=MON, db_path=db, dry_run=False, max_persist_per_stage=10, **_dirs(tmp_path)
+    )
+    stages = [r["stage"] for r in out["stages"]]
+    assert "relationship_candidates" not in stages
+
+
+def test_optin_runs_relationship_stage_before_render(tmp_path: Path) -> None:
+    db = str(tmp_path / "t.sqlite")
+    s = _seed(db)
+    out = run_daily_local_agent(
+        store=s, now_utc=MON, db_path=db, dry_run=False, max_persist_per_stage=10,
+        include_relationship_candidates=True, **_dirs(tmp_path),
+    )
+    stages = [r["stage"] for r in out["stages"]]
+    assert "relationship_candidates" in stages
+    assert stages.index("relationship_candidates") < stages.index("daily_brief_render")
+
+
+def test_scheduler_install_default_omits_relationship_flag() -> None:
+    res = runner.invoke(app, ["daily-run", "scheduler", "install", "--confirm-vault-write"])
+    assert res.exit_code == 0, res.output
+    args = json.loads(res.output)["plist"]["ProgramArguments"]
+    assert "--include-relationship-candidates" not in args
+
+
+def test_scheduler_install_optin_includes_relationship_flag() -> None:
+    res = runner.invoke(
+        app,
+        ["daily-run", "scheduler", "install", "--confirm-vault-write",
+         "--include-relationship-candidates"],
+    )
+    assert res.exit_code == 0, res.output
+    args = json.loads(res.output)["plist"]["ProgramArguments"]
+    assert "--include-relationship-candidates" in args
