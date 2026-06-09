@@ -182,6 +182,10 @@ cython_debug/
 .tmp-app-support-remediation/evidence/phase-12-runs/morning-orchestrator-20260525-073921.json
 .tmp-app-support-remediation/evidence/phase-12-runs/morning-orchestrator-20260525-073826.json
 .tmp-app-support-remediation/db/hb-personal-assistant.sqlite
+
+# Machine-local runtime config (live-read gates, resolved paths). Only config.example.yml is
+# committed; config.yml is per-machine and must never be committed.
+config/config.yml
 .code-graph/daemon.pid
 .code-graph/graph.bin
 /.claude

@@ -11,6 +11,7 @@ from __future__ import annotations
 import contextlib
 import json
 import os
+import re
 from datetime import date, datetime, timezone
 from typing import Any, Iterator
 
@@ -108,6 +109,25 @@ class DailySourceRefreshJob:
             with contextlib.suppress(Exception):
                 store.finish_assistant_run(run_id, status)
 
+        # Persist the FULL redacted orchestrator summary (failures[], per-stage status,
+        # next_operator_action) so a degraded run is diagnosable without re-running. The
+        # orchestrator owns the redaction; this never raises into the run.
+        evidence_summary_path: str | None = None
+        with contextlib.suppress(Exception):
+            run_tag = f"run{run_id}" if run_id is not None else "runNA"
+            written = orchestrator.write_evidence(
+                summary, suffix=f"{self.profile.environment}-{schedule_date.isoformat()}-{run_tag}"
+            )
+            evidence_summary_path = _redact(str(written))
+
+        failures = _safe_failures(summary.get("failures") or [])
+        stages = {
+            "preflight": _stage_status(summary.get("preflight")),
+            "procore": _stage_status(summary.get("procore_sync_summary")),
+            "graph": _stage_status(summary.get("graph_sync_summary")),
+            "rebuild": _stage_status(summary.get("retrieval_rebuild_summary")),
+        }
+
         receipt = ScheduledRefreshReceipt(
             generated_utc=datetime.now(timezone.utc).isoformat(),
             repo_sha=_safe_git_sha(),
@@ -124,7 +144,18 @@ class DailySourceRefreshJob:
             ledger_run_id=run_id,
             counts=summary.get("sqlite_upsert_summary", {}).get("total", {}),
             guardrails=summary.get("guardrails", {}),
-            status="ok" if status in ("ok", "degraded") else "failed",
+            failure_count=len(failures),
+            failures=failures,
+            stages=stages,
+            procore_auth_status=(
+                str(summary.get("procore_auth_status"))
+                if summary.get("procore_auth_status") is not None
+                else None
+            ),
+            next_operator_action=summary.get("next_operator_action"),
+            evidence_summary_path=evidence_summary_path,
+            # Honest: never collapse degraded -> ok. The receipt mirrors the orchestrator.
+            status=status if status in ("ok", "degraded", "failed") else "failed",
         )
         receipt.receipt_path = _write_receipt(evidence_dir, receipt)
         return receipt
@@ -133,6 +164,43 @@ class DailySourceRefreshJob:
 def _redact(text: str) -> str:
     home = os.path.expanduser("~")
     return text.replace(home, "~") if text.startswith(home) else text
+
+
+_RECEIPT_SCRUB = ("access_token", "refresh_token", "client_secret", "Bearer", "SECRET")
+# Defense-in-depth: redact token-shaped values (JWTs, bearer tokens, long opaque secrets) even if a
+# reason string somehow carried one. Orchestrator/Procore reasons are already reason-code-level.
+_TOKENISH = re.compile(r"eyJ[A-Za-z0-9_.\-]{6,}|Bearer\s+[A-Za-z0-9._\-]{6,}|[A-Za-z0-9_\-]{40,}")
+
+
+def _scrub(text: str) -> str:
+    for bad in _RECEIPT_SCRUB:
+        text = text.replace(bad, "[REDACTED]")
+    return _TOKENISH.sub("[REDACTED]", text)
+
+
+def _stage_status(stage: Any) -> str:
+    """Extract a safe per-stage status string from a summary sub-object."""
+    if isinstance(stage, dict):
+        return str(stage.get("status", "unknown"))
+    return "unknown"
+
+
+def _safe_failures(raw: Any) -> list[dict[str, Any]]:
+    """Project orchestrator failures[] to a bounded, redacted, operator-safe shape (no secrets)."""
+    out: list[dict[str, Any]] = []
+    if not isinstance(raw, list):
+        return out
+    for f in raw[:20]:
+        if not isinstance(f, dict):
+            continue
+        out.append(
+            {
+                "stage": str(f.get("stage", ""))[:80],
+                "status": str(f.get("status", ""))[:24],
+                "reason": _scrub(str(f.get("reason", ""))[:200]),
+            }
+        )
+    return out
 
 
 def _write_receipt(evidence_dir: Any, receipt: ScheduledRefreshReceipt) -> str:
