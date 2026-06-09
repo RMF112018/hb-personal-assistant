@@ -415,3 +415,194 @@ def test_candidate_availability_keys_in_safe_payload() -> None:
         "dry_run_candidate_warning",
     ):
         assert key in sp["candidate_availability"]
+
+
+# -- Schema repair + source-link hardening (Phase 10 remediation) ----------------------------
+# Canonical ids use the real 37-char `dbac-<hex>` shape so alias mapping is exercised distinctly
+# from the short ids used elsewhere in this module.
+
+CANDS_HEX = [
+    {
+        "daily_brief_action_candidate_id": "dbac-44e6ceaef1c24603cd0261789cd58419",
+        "section": "actions",
+        "title_redacted": "Send transmittal",
+        "project_key": "P1",
+        "confidence": 0.8,
+        "recommended_next_action": "review",
+    },
+    {
+        "daily_brief_action_candidate_id": "dbac-f8c7c12bb9db803dfad82addfcb92df3",
+        "section": "waiting",
+        "title_redacted": "Look-ahead pending",
+        "project_key": "P2",
+        "confidence": 0.6,
+        "recommended_next_action": "review",
+    },
+]
+_HEX0 = CANDS_HEX[0]["daily_brief_action_candidate_id"]
+_HEX1 = CANDS_HEX[1]["daily_brief_action_candidate_id"]
+
+
+def _intel_citing(*source_id_lists: list[str]) -> str:
+    bullets = [
+        {"text": f"bullet {i}", "source_ids": sids, "confidence": 0.7, "reason_code": "x"}
+        for i, sids in enumerate(source_id_lists)
+    ]
+    return json.dumps({"executive_catchup": ["ok"], "top_priorities": bullets})
+
+
+def test_alias_ids_mapped_to_canonical() -> None:
+    # Model cites the short alias c1; the filter maps it back to the canonical hex id.
+    result = build_daily_brief_intelligence(
+        candidates=CANDS_HEX,
+        profiles=_profiles(),
+        backend=StaticOutputClient(_intel_citing(["c1"])),
+        dry_run=True,
+    )
+    assert result.enriched is True
+    assert result.intelligence["top_priorities"][0]["source_ids"] == [_HEX0]
+    assert result.metrics["alias_mapping_used"] is True
+    assert result.metrics["source_link_coverage"] == 1.0
+
+
+def test_canonical_ids_still_accepted() -> None:
+    # Model echoes the canonical hex id directly; still accepted (no alias resolution needed).
+    result = build_daily_brief_intelligence(
+        candidates=CANDS_HEX,
+        profiles=_profiles(),
+        backend=StaticOutputClient(_intel_citing([_HEX1])),
+        dry_run=True,
+    )
+    assert result.enriched is True
+    assert result.intelligence["top_priorities"][0]["source_ids"] == [_HEX1]
+    assert result.metrics["alias_mapping_used"] is False
+
+
+def test_unknown_source_ids_counted_and_dropped() -> None:
+    # One bullet cites a real alias + an unknown id; one bullet cites only unknown ids.
+    result = build_daily_brief_intelligence(
+        candidates=CANDS_HEX,
+        profiles=_profiles(),
+        backend=StaticOutputClient(_intel_citing(["c1", "c99"], ["c98"])),
+        dry_run=True,
+    )
+    assert result.enriched is True
+    tp = result.intelligence["top_priorities"]
+    assert len(tp) == 1  # the all-unknown bullet was dropped
+    assert tp[0]["source_ids"] == [_HEX0]
+    assert result.metrics["unknown_source_ids_count"] == 2  # c99 + c98
+    assert result.metrics["bullets_dropped"] == 1
+    assert result.metrics["model_bullets_seen"] == 2
+
+
+def test_all_unsourced_withheld_with_diagnostics() -> None:
+    result = build_daily_brief_intelligence(
+        candidates=CANDS_HEX,
+        profiles=_profiles(),
+        backend=StaticOutputClient(_intel_citing(["nope"], ["also_nope"])),
+        dry_run=True,
+    )
+    assert result.enriched is False
+    assert result.withheld_reason == "no_source_linked_bullets"
+    assert result.metrics["unknown_source_ids_count"] == 2
+    assert result.metrics["model_bullets_seen"] == 2
+    assert result.metrics["allowed_candidate_count"] == 2
+
+
+def test_partial_source_linked_enriches_with_full_coverage() -> None:
+    result = build_daily_brief_intelligence(
+        candidates=CANDS_HEX,
+        profiles=_profiles(),
+        backend=StaticOutputClient(_intel_citing(["c1"], ["unknown"])),
+        dry_run=True,
+    )
+    assert result.enriched is True
+    assert result.metrics["bullets_kept"] == 1
+    assert result.metrics["bullets_dropped"] == 1
+    assert result.metrics["source_link_coverage"] == 1.0
+
+
+def test_schema_invalid_reports_safe_diagnostics() -> None:
+    result = build_daily_brief_intelligence(
+        candidates=CANDS_HEX,
+        profiles=_profiles(),
+        backend=StaticOutputClient("not json {"),
+        dry_run=True,
+    )
+    assert result.enriched is False
+    assert result.metrics["schema_error_category"] == "schema_invalid"
+    assert result.metrics["attempts"] >= 2
+    assert result.metrics["repair_attempted"] is True
+    # No raw model error text leaks (only bounded category + structural counters).
+    from hb_assistant.construction.second_brain.local_ai.model_eval_metrics import (
+        scan_text_for_forbidden,
+    )
+
+    assert scan_text_for_forbidden(json.dumps(result.safe_payload())) == []
+
+
+def test_repair_recovers_after_one_bad_output() -> None:
+    result = build_daily_brief_intelligence(
+        candidates=CANDS_HEX,
+        profiles=_profiles(),
+        backend=StaticOutputClient(outputs=["bad json {", _intel_citing(["c1"])]),
+        dry_run=True,
+    )
+    assert result.enriched is True
+    assert result.attempts == 2
+    assert result.fallback_used is False
+
+
+def test_bare_array_top_level_is_coerced() -> None:
+    # Model returns a bare JSON array of bullets (common JSON-mode failure) instead of an object.
+    arr = json.dumps(
+        [{"text": "ship it", "source_ids": ["c1"], "confidence": 0.8, "reason_code": "x"}]
+    )
+    result = build_daily_brief_intelligence(
+        candidates=CANDS_HEX, profiles=_profiles(), backend=StaticOutputClient(arr), dry_run=True
+    )
+    assert result.enriched is True
+    assert result.intelligence["top_priorities"][0]["source_ids"] == [_HEX0]
+
+
+def test_executive_catchup_string_is_coerced_not_rejected() -> None:
+    # The 12B model commonly returns executive_catchup as a prose STRING (not a list). The whole
+    # object must still validate (string wrapped into a single-element list), not fail schema-invalid.
+    payload = json.dumps(
+        {
+            "executive_catchup": "Two loops are waiting on others; one item is due today.",
+            "top_priorities": [
+                {"text": "ship it", "source_ids": ["c1"], "confidence": 0.8, "reason_code": "x"}
+            ],
+        }
+    )
+    result = build_daily_brief_intelligence(
+        candidates=CANDS_HEX,
+        profiles=_profiles(),
+        backend=StaticOutputClient(payload),
+        dry_run=True,
+    )
+    assert result.enriched is True
+    assert result.schema_valid is True
+    assert result.intelligence["executive_catchup"] == [
+        "Two loops are waiting on others; one item is due today."
+    ]
+    assert result.intelligence["top_priorities"][0]["source_ids"] == [_HEX0]
+
+
+def test_single_key_envelope_is_unwrapped() -> None:
+    env = json.dumps(
+        {
+            "daily_brief_intelligence": {
+                "executive_catchup": ["ok"],
+                "top_priorities": [
+                    {"text": "ship it", "source_ids": ["c2"], "confidence": 0.7, "reason_code": "x"}
+                ],
+            }
+        }
+    )
+    result = build_daily_brief_intelligence(
+        candidates=CANDS_HEX, profiles=_profiles(), backend=StaticOutputClient(env), dry_run=True
+    )
+    assert result.enriched is True
+    assert result.intelligence["top_priorities"][0]["source_ids"] == [_HEX1]

@@ -31,7 +31,7 @@ import json
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, model_validator
 
 from .model_eval_metrics import compute_usefulness, scan_text_for_forbidden
 from .model_router import RouteResult, route_task_family
@@ -83,9 +83,13 @@ class IntelBullet(BaseModel):
     def _v_reason(cls, v: object) -> str:
         return _clamp(v, _MAX_CODE)
 
-    @field_validator("source_ids")
+    @field_validator("source_ids", mode="before")
     @classmethod
     def _v_sources(cls, v: object) -> list[str]:
+        # `mode="before"` so a stray scalar (e.g. a single id as a bare string) is coerced rather
+        # than failing list-type validation outright.
+        if isinstance(v, str):
+            v = [v] if v.strip() else []
         if not isinstance(v, list):
             return []
         return [_clamp(s, _MAX_CODE) for s in v if _clamp(s, _MAX_CODE)][:_MAX_BULLETS]
@@ -112,9 +116,33 @@ class DailyBriefIntelligence(BaseModel):
 
     model_config = {"extra": "ignore"}
 
-    @field_validator("executive_catchup")
+    @model_validator(mode="before")
+    @classmethod
+    def _coerce_top_level(cls, v: object) -> object:
+        # Conservative top-level coercion: a 12B model in JSON mode sometimes returns a bare array of
+        # bullets, or wraps the object under a single non-schema key (e.g. {"intelligence": {...}}).
+        # Reshape those into the expected object WITHOUT inventing content — the source-link filter
+        # and redaction scan downstream still enforce safety (unsourced/unsafe bullets are dropped).
+        if isinstance(v, list):
+            return {"top_priorities": v}
+        if isinstance(v, dict):
+            known = set(cls.model_fields)
+            if v and not (known & set(v.keys())) and len(v) == 1:
+                inner = next(iter(v.values()))
+                if isinstance(inner, dict):
+                    return inner
+                if isinstance(inner, list):
+                    return {"top_priorities": inner}
+        return v
+
+    @field_validator("executive_catchup", mode="before")
     @classmethod
     def _v_catchup(cls, v: object) -> list[str]:
+        # `mode="before"` so a prose string (the common 12B behavior — it returns one narrative
+        # paragraph instead of a list) is wrapped into a single-element list rather than failing
+        # list-type validation and sinking the whole object as schema_invalid.
+        if isinstance(v, str):
+            v = [v] if v.strip() else []
         if not isinstance(v, list):
             return []
         return [_clamp(s, _MAX_TEXT) for s in v if _clamp(s, _MAX_TEXT)][:_MAX_NARRATIVE]
@@ -230,17 +258,33 @@ _SYSTEM_PROMPT = (
     "- meeting_prep: meetings worth preparing, with why/prep.\n"
     "- project_risk: aging/overdue project or Procore signals.\n"
     "- Each bullet has text, source_ids (>=1 real id), confidence (0..1), reason_code.\n"
-    "Return ONLY the JSON object."
+    "Return ONLY a single JSON OBJECT (not an array) with these top-level keys: executive_catchup, "
+    "top_priorities, open_loops, waiting_on_me, waiting_on_others, meeting_prep, project_risk. "
+    'Example bullet: {"text": "...", "source_ids": ["c1"], "confidence": 0.8, "reason_code": "due_today"}.'
 )
 
 
-def _candidate_view(candidates: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Project the redacted candidate read model into the compact view the model sees (safe fields)."""
+def _candidate_view(
+    candidates: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], dict[str, str]]:
+    """Project candidates into the compact model view with short citeable aliases (c1, c2, ...).
+
+    A 12B model reliably copies a short token like ``c3`` but frequently garbles a 37-char canonical
+    id such as ``dbac-<32 hex>`` — which silently drops every bullet at the source-link filter. We
+    therefore show the model only the short alias and map it back to the canonical
+    ``daily_brief_action_candidate_id`` internally. Returns ``(view, alias_to_canonical)``.
+    """
     view: list[dict[str, Any]] = []
-    for c in candidates:
+    alias_to_canonical: dict[str, str] = {}
+    for i, c in enumerate(candidates, start=1):
+        canonical = str(c.get("daily_brief_action_candidate_id") or "")
+        if not canonical:
+            continue
+        alias = f"c{i}"
+        alias_to_canonical[alias] = canonical
         view.append(
             {
-                "id": c.get("daily_brief_action_candidate_id"),
+                "id": alias,
                 "section": c.get("section"),
                 "title": c.get("title_redacted"),
                 "project": c.get("project_key"),
@@ -248,24 +292,53 @@ def _candidate_view(candidates: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 "recommended_next_action": c.get("recommended_next_action"),
             }
         )
-    return view
+    return view, alias_to_canonical
 
 
 def _select_profile(profiles: LocalModelProfiles, profile_id: str) -> Optional[LocalModelProfile]:
     return next((p for p in profiles.profiles if p.profile_id == profile_id), None)
 
 
+def _resolve_source_id(
+    sid: str, alias_to_canonical: dict[str, str], canonical_ids: set[str]
+) -> tuple[Optional[str], bool]:
+    """Map a cited id to a canonical candidate id. Returns (canonical_or_None, used_alias)."""
+    if sid in alias_to_canonical:
+        return alias_to_canonical[sid], True
+    if sid in canonical_ids:
+        return sid, False
+    return None, False
+
+
 def _filter_source_links(
-    validated: dict[str, Any], allowed_ids: set[str]
-) -> tuple[dict[str, Any], int, int]:
-    """Keep only bullets citing a real candidate id; return (filtered, kept, dropped)."""
+    validated: dict[str, Any],
+    alias_to_canonical: dict[str, str],
+    canonical_ids: set[str],
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Keep only bullets citing a real candidate (by alias or canonical id); map cites to canonical.
+
+    Returns ``(filtered, stats)`` where ``stats`` carries safe source-link diagnostics
+    (model_bullets_seen, bullets_kept, bullets_dropped, unknown_source_ids_count, alias_mapping_used).
+    """
     filtered: dict[str, Any] = {"executive_catchup": list(validated.get("executive_catchup") or [])}
     kept = 0
     dropped = 0
+    seen = 0
+    unknown = 0
+    alias_used = False
     for section in _BULLET_SECTIONS:
         out: list[dict[str, Any]] = []
         for bullet in validated.get(section) or []:
-            real = [s for s in (bullet.get("source_ids") or []) if s in allowed_ids]
+            seen += 1
+            real: list[str] = []
+            for sid in bullet.get("source_ids") or []:
+                canonical, used_alias = _resolve_source_id(sid, alias_to_canonical, canonical_ids)
+                if canonical is None:
+                    unknown += 1
+                    continue
+                alias_used = alias_used or used_alias
+                if canonical not in real:
+                    real.append(canonical)
             if real:
                 bullet = dict(bullet)
                 bullet["source_ids"] = real
@@ -274,7 +347,15 @@ def _filter_source_links(
             else:
                 dropped += 1
         filtered[section] = out
-    return filtered, kept, dropped
+    stats = {
+        "model_bullets_seen": seen,
+        "bullets_kept": kept,
+        "bullets_dropped": dropped,
+        "unknown_source_ids_count": unknown,
+        "alias_mapping_used": alias_used,
+        "allowed_candidate_count": len(canonical_ids),
+    }
+    return filtered, stats
 
 
 @dataclass
@@ -326,6 +407,26 @@ def _reporting_warnings(
     return warnings
 
 
+#: Map a closed run/withhold status to a bounded, raw-safe schema-error category code.
+_SCHEMA_ERROR_CATEGORIES = {
+    "ok": "none",
+    "schema_invalid": "schema_invalid",
+    "unavailable": "model_unavailable",
+    "model_unavailable": "model_unavailable",
+    "timeout": "model_timeout",
+    "failed": "generation_failed",
+    "blocked": "profile_blocked",
+    "no_candidates": "no_candidates",
+    "redaction_failed": "redaction_failed",
+    "no_source_linked_bullets": "no_source_linked_bullets",
+    "profile_error": "profile_error",
+}
+
+
+def _schema_error_category(status: str) -> str:
+    return _SCHEMA_ERROR_CATEGORIES.get(status, "unknown")
+
+
 def _withheld(
     *,
     status: str,
@@ -334,8 +435,10 @@ def _withheld(
     terminal_profile_id: str,
     terminal_model_name: str,
     result: Any = None,
+    extra_metrics: Optional[dict[str, Any]] = None,
 ) -> DailyBriefIntelligenceResult:
     fallback_used = bool(getattr(result, "fallback_used", False))
+    attempts = int(getattr(result, "attempts", 0))
     warnings = _reporting_warnings(
         route=route,
         terminal_profile_id=terminal_profile_id,
@@ -343,6 +446,18 @@ def _withheld(
         status=status,
         enriched=False,
     )
+    metrics: dict[str, Any] = {
+        "withheld": True,
+        "reason": reason,
+        # bounded, raw-safe schema/repair diagnostics (no raw model error text):
+        "schema_error_category": _schema_error_category(status),
+        "attempts": attempts,
+        "repair_attempted": attempts > 1,
+        "fallback_used": fallback_used,
+        "terminal_profile_id": terminal_profile_id,
+    }
+    if extra_metrics:
+        metrics.update(extra_metrics)
     return DailyBriefIntelligenceResult(
         status=status,
         enriched=False,
@@ -351,7 +466,7 @@ def _withheld(
         model_name=terminal_model_name,
         schema_valid=bool(getattr(result, "schema_valid", False)),
         fallback_used=fallback_used,
-        attempts=int(getattr(result, "attempts", 0)),
+        attempts=attempts,
         latency_ms=int(getattr(result, "latency_ms", 0)),
         intelligence=None,
         route_selected_profile=route.selected_profile,
@@ -363,7 +478,7 @@ def _withheld(
         models_attempted=_models_attempted(route, terminal_model_name),
         blockers=[reason] + [b for b in route.blockers if b != reason],
         warnings=warnings,
-        metrics={"withheld": True, "reason": reason},
+        metrics=metrics,
         would_write_receipt=getattr(result, "would_write_receipt", None),
     )
 
@@ -545,11 +660,12 @@ def _run_intelligence(
             terminal_model_name="",
         )
 
-    view = _candidate_view(candidates)
+    view, alias_to_canonical = _candidate_view(candidates)
     input_context = json.dumps(view, sort_keys=True, default=str)
     prompt = (
         "Produce the advisory intelligence JSON for these redacted daily-brief candidates. Cite only "
-        "these ids.\n\nCANDIDATES:\n" + input_context
+        "these short ids (e.g. c1, c2) in source_ids; never invent an id.\n\nCANDIDATES:\n"
+        + input_context
     )
 
     result = StructuredOutputClient().run(
@@ -575,7 +691,8 @@ def _run_intelligence(
             result=result,
         )
 
-    filtered, kept, dropped = _filter_source_links(result.validated, allowed_ids)
+    filtered, link_stats = _filter_source_links(result.validated, alias_to_canonical, allowed_ids)
+    kept = int(link_stats["bullets_kept"])
 
     findings = scan_text_for_forbidden(json.dumps(filtered, default=str))
     if findings:
@@ -586,6 +703,7 @@ def _run_intelligence(
             terminal_profile_id=result.profile_id,
             terminal_model_name=result.model_name,
             result=result,
+            extra_metrics=link_stats,
         )
 
     if kept == 0:
@@ -596,13 +714,13 @@ def _run_intelligence(
             terminal_profile_id=result.profile_id,
             terminal_model_name=result.model_name,
             result=result,
+            extra_metrics=link_stats,
         )
 
     sections_populated = [s for s in _BULLET_SECTIONS if filtered.get(s)]
     metrics = {
-        "bullets_kept": kept,
-        "bullets_dropped": dropped,
-        "source_link_coverage": 1.0,  # by construction: every kept bullet cites a real id
+        **link_stats,
+        "source_link_coverage": 1.0,  # by construction: every kept bullet cites a real candidate
         "sections_populated": sections_populated,
         "waiting_on_me": len(filtered.get("waiting_on_me") or []),
         "waiting_on_others": len(filtered.get("waiting_on_others") or []),
