@@ -119,10 +119,32 @@ class DailyBriefIntelligence(BaseModel):
             return []
         return [_clamp(s, _MAX_TEXT) for s in v if _clamp(s, _MAX_TEXT)][:_MAX_NARRATIVE]
 
-    @field_validator(*_BULLET_SECTIONS)
+    @field_validator(*_BULLET_SECTIONS, mode="before")
     @classmethod
-    def _v_bullets(cls, v: object) -> list[IntelBullet]:
-        return list(v)[:_MAX_BULLETS] if isinstance(v, list) else []
+    def _coerce_bullets(cls, v: object) -> list[Any]:
+        # Resilient coercion: a 12B model often emits bullets as bare strings or dicts keyed
+        # ``summary``/``title`` instead of ``text``. Rather than fail the whole brief on one stray
+        # item, normalize each into a ``{text: ...}`` dict and DROP items with no usable text. The
+        # source-link filter and redaction scan downstream still enforce safety.
+        if not isinstance(v, list):
+            return []
+        out: list[Any] = []
+        for item in v:
+            if isinstance(item, str):
+                text = item.strip()
+                if text:
+                    out.append({"text": text})
+            elif isinstance(item, dict):
+                text = str(
+                    item.get("text") or item.get("summary") or item.get("title") or ""
+                ).strip()
+                if text:
+                    merged = dict(item)
+                    merged["text"] = text
+                    out.append(merged)
+            if len(out) >= _MAX_BULLETS:
+                break
+        return out
 
 
 @dataclass

@@ -90,6 +90,27 @@ def test_success_is_source_linked_and_advisory() -> None:
     assert scan_text_for_forbidden(json.dumps(result.safe_payload())) == []
 
 
+def test_loose_bullets_are_coerced_not_rejected() -> None:
+    # Model emits a dict keyed 'summary' (not 'text') + a bare string bullet (no source).
+    loose = json.dumps(
+        {
+            "executive_catchup": ["catch up"],
+            "top_priorities": [
+                {"summary": "Send the transmittal", "source_ids": ["c1"], "confidence": 0.7},
+                "a bare string with no source",
+            ],
+        }
+    )
+    result = build_daily_brief_intelligence(
+        candidates=CANDS, profiles=_profiles(), backend=StaticOutputClient(loose), dry_run=True
+    )
+    assert result.enriched is True  # coerced dict survived; not all-or-nothing
+    tp = result.intelligence["top_priorities"]
+    assert len(tp) == 1  # bare unsourced string dropped by the source-link filter
+    assert tp[0]["text"] == "Send the transmittal"
+    assert tp[0]["source_ids"] == ["c1"]
+
+
 def test_invalid_json_falls_back() -> None:
     result = build_daily_brief_intelligence(
         candidates=CANDS,
