@@ -243,8 +243,10 @@ class ManifestService:
             if ts and (last_sync_at is None or ts > last_sync_at):
                 last_sync_at = ts
 
-        # Prompt 12 continuation: include Procore sync-state summary in
-        # the construction project-card totals projection for pilot projects.
+        # Include the Procore sync-state summary in the construction project-card
+        # totals projection for pilot projects. Sourced from the CANONICAL
+        # procore_live_* path (the tables the daily source-refresh now writes);
+        # the legacy procore_sync_* path is retired from the scheduled refresh.
         procore_entities = 0
         procore_review_required = 0
         procore_watermark_count = 0
@@ -255,8 +257,8 @@ class ManifestService:
                 """
                 SELECT COUNT(*) AS n,
                        SUM(CASE WHEN review_required = 1 THEN 1 ELSE 0 END) AS rr
-                FROM procore_synced_entities
-                WHERE source_project_key = ?
+                FROM procore_live_records
+                WHERE project_key = ?
                 """,
                 (project_key,),
             ).fetchone()
@@ -266,8 +268,8 @@ class ManifestService:
 
             wm = conn.execute(
                 """
-                SELECT COUNT(*) AS n, MAX(last_successful_watermark) AS latest
-                FROM procore_sync_watermarks
+                SELECT COUNT(*) AS n, MAX(last_success_at_utc) AS latest
+                FROM procore_live_sync_watermarks
                 WHERE project_key = ?
                 """,
                 (project_key,),

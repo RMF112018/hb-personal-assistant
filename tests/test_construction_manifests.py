@@ -1038,52 +1038,41 @@ def test_canonical_path_unknown_item_raises(tmp_path: Path) -> None:
 def test_project_card_includes_procore_sync_summary_totals(
     populated_store: ConstructionStore,
 ) -> None:
+    # Seed the CANONICAL procore_live_* path (the tables the daily source-refresh
+    # now writes); the legacy procore_sync_* path is retired. The real V6 schema
+    # is already present, so insert full rows (NOT NULL columns satisfied,
+    # raw_body_persisted=0 honored).
     conn = get_connection(populated_store._db_path)  # noqa: SLF001
-    conn.executescript(
+    rec_cols = (
+        "project_key, procore_project_id, endpoint_id, procore_record_id, "
+        "canonical_json_redacted, review_required, first_seen_at_utc, "
+        "last_seen_at_utc, last_sync_run_id, raw_body_persisted"
+    )
+    now = "2026-05-28T00:00:00+00:00"
+    conn.execute(
         """
-        CREATE TABLE IF NOT EXISTS procore_synced_entities (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            source_project_key TEXT NOT NULL,
-            endpoint_id TEXT NOT NULL,
-            entity_stable_key TEXT NOT NULL,
-            category TEXT,
-            review_required INTEGER DEFAULT 0,
-            canonical_fields_json TEXT,
-            fetched_at TEXT,
-            correlation_id TEXT,
-            redaction_applied INTEGER DEFAULT 1,
-            last_seen_at TEXT
-        );
-        CREATE TABLE IF NOT EXISTS procore_sync_watermarks (
-            endpoint_id TEXT NOT NULL,
-            project_key TEXT NOT NULL,
-            last_successful_watermark TEXT,
-            updated_at TEXT
-        );
-        """
+        INSERT INTO procore_live_sync_runs
+        (sync_run_id, endpoint_id, command_endpoint, project_key, procore_project_id,
+         company_id, mode, started_at_utc, status, state)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        ("run-1", "rfis", "rfis", "tropical", "111", "5280", "live_apply", now, "success", "success"),
+    )
+    conn.execute(
+        f"INSERT INTO procore_live_records ({rec_cols}) VALUES (?,?,?,?,?,?,?,?,?,?)",
+        ("tropical", "111", "rfis", "rfi-1", "{}", 0, now, now, "run-1", 0),
+    )
+    conn.execute(
+        f"INSERT INTO procore_live_records ({rec_cols}) VALUES (?,?,?,?,?,?,?,?,?,?)",
+        ("tropical", "111", "subcontractor-invoices", "inv-1", "{}", 1, now, now, "run-1", 0),
     )
     conn.execute(
         """
-        INSERT INTO procore_synced_entities
-        (source_project_key, endpoint_id, entity_stable_key, category, review_required)
+        INSERT INTO procore_live_sync_watermarks
+        (company_id, project_key, procore_project_id, endpoint_id, last_success_at_utc)
         VALUES (?, ?, ?, ?, ?)
         """,
-        ("tropical", "list-rfis", "rfi-1", "rfis", 0),
-    )
-    conn.execute(
-        """
-        INSERT INTO procore_synced_entities
-        (source_project_key, endpoint_id, entity_stable_key, category, review_required)
-        VALUES (?, ?, ?, ?, ?)
-        """,
-        ("tropical", "list-invoices", "inv-1", "invoices", 1),
-    )
-    conn.execute(
-        """
-        INSERT INTO procore_sync_watermarks (endpoint_id, project_key, last_successful_watermark, updated_at)
-        VALUES (?, ?, ?, ?)
-        """,
-        ("list-rfis", "tropical", "wm-12345", "2026-05-28T00:00:00+00:00"),
+        ("5280", "tropical", "111", "rfis", now),
     )
     conn.commit()
 
