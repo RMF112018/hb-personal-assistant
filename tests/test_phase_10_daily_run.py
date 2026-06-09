@@ -506,3 +506,68 @@ def test_scheduler_install_optin_includes_relationship_flag() -> None:
     assert res.exit_code == 0, res.output
     args = json.loads(res.output)["plist"]["ProgramArguments"]
     assert "--include-relationship-candidates" in args
+
+
+# --- relationship scan-window controls (default off; defaults preserved) ------------------------
+
+
+def test_scheduler_install_omits_scan_window_by_default() -> None:
+    """Opt-in without scan options → plist omits the scan-window flags (stage defaults apply)."""
+    res = runner.invoke(
+        app,
+        ["daily-run", "scheduler", "install", "--confirm-vault-write",
+         "--include-relationship-candidates"],
+    )
+    assert res.exit_code == 0, res.output
+    args = json.loads(res.output)["plist"]["ProgramArguments"]
+    assert "--relationship-scan-threads" not in args
+    assert "--relationship-scan-events" not in args
+
+
+def test_scheduler_install_includes_scan_window_when_provided() -> None:
+    res = runner.invoke(
+        app,
+        ["daily-run", "scheduler", "install", "--confirm-vault-write",
+         "--include-relationship-candidates",
+         "--relationship-scan-threads", "200", "--relationship-scan-events", "200"],
+    )
+    assert res.exit_code == 0, res.output
+    args = json.loads(res.output)["plist"]["ProgramArguments"]
+    assert args[args.index("--relationship-scan-threads") + 1] == "200"
+    assert args[args.index("--relationship-scan-events") + 1] == "200"
+
+
+def test_daily_run_passes_scan_window_into_relationship_stage(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """run_daily_local_agent threads scan-window values into the relationship stage builder."""
+    db = str(tmp_path / "t.sqlite")
+    s = _seed(db)
+    captured: dict[str, int] = {}
+
+    def _spy(**kwargs):  # type: ignore[no-untyped-def]
+        captured["scan_threads"] = kwargs.get("scan_threads")
+        captured["scan_events"] = kwargs.get("scan_events")
+        return {"ok": True, "applied": not kwargs.get("dry_run", True),
+                "summary": {"would_persist": 0, "persisted": 0}}
+
+    monkeypatch.setattr(pipeline_mod, "build_relationship_candidates", _spy)
+    run_daily_local_agent(
+        store=s, now_utc=MON, db_path=db, dry_run=False, max_persist_per_stage=10,
+        include_relationship_candidates=True,
+        relationship_scan_threads=200, relationship_scan_events=200, **_dirs(tmp_path),
+    )
+    assert captured == {"scan_threads": 200, "scan_events": 200}
+
+
+def test_cli_daily_run_invalid_scan_window_fails_closed(tmp_path: Path) -> None:
+    # ``--opt=value`` form so a negative value is parsed as the value, not a flag.
+    # (write_obsidian defaults off → no need to pass it.)
+    for bad in ("--relationship-scan-threads=0", "--relationship-scan-events=-5"):
+        res = runner.invoke(
+            app,
+            ["daily-run", "run", "--db", str(tmp_path / "t.sqlite"), "--date", "2026-06-15",
+             "--dry-run", "--no-generate-browser", "--status-dir", str(tmp_path / "s"), bad],
+        )
+        assert res.exit_code == 2
+        assert json.loads(res.output)["error"] == "relationship_scan_window_must_be_positive"
