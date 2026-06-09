@@ -45,5 +45,15 @@ class ScheduledRefreshReceipt(BaseModel):
     ledger_run_id: int | None = None
     counts: dict[str, int] = Field(default_factory=dict)
     guardrails: dict[str, Any] = Field(default_factory=dict)
+    # Operator-visible failure detail (redacted; no tokens/URLs/raw payloads). Populated from the
+    # orchestrator summary so a degraded run is diagnosable from the receipt without re-running.
+    failure_count: int = 0
+    failures: list[dict[str, Any]] = Field(default_factory=list)
+    stages: dict[str, Any] = Field(default_factory=dict)
+    procore_auth_status: str | None = None
+    next_operator_action: str | None = None
+    evidence_summary_path: str | None = None
     receipt_path: str | None = None
+    # Honest top-level status: mirrors the orchestrator ("ok" | "degraded" | "failed"). A degraded
+    # run is NEVER reported as "ok".
     status: str = "ok"

@@ -131,12 +131,47 @@ def status_cmd(
         "last_attempted_schedule_date": state.last_attempted_schedule_date,
         "consecutive_failures": state.consecutive_failures,
         "last_receipt_path": state.last_receipt_path,
+        # Resolved environment paths + all three live-read gates (operator visibility).
+        "db_path": _redact_home(str(profile.db_path)),
+        "evidence_path": _redact_home(str(profile.evidence_path)),
         "live_reads_enabled": profile.scheduler.enable_live_reads,
+        "enable_procore_live_reads": profile.scheduler.enable_procore_live_reads,
+        "enable_graph_live_reads": profile.scheduler.enable_graph_live_reads,
+        "last_run": _last_run_summary(state.last_receipt_path),
         "future_last_successful_schedule_date": future_success,
         "state_health": "future_success_date_detected" if future_success else "ok",
         "status": "ok",
     }
     _emit(payload, json_out=json_out)
+
+
+def _redact_home(text: str) -> str:
+    import os
+
+    home = os.path.expanduser("~")
+    return text.replace(home, "~") if text.startswith(home) else text
+
+
+def _last_run_summary(receipt_path: Optional[str]) -> dict[str, object]:
+    """Read the last scheduler receipt (safe fields only) so degradation is visible in status."""
+    if not receipt_path:
+        return {"available": False}
+    try:
+        import json as _json
+        from pathlib import Path
+
+        data = _json.loads(Path(receipt_path).read_text(encoding="utf-8"))
+    except Exception:
+        return {"available": False}
+    return {
+        "available": True,
+        "status": data.get("status"),
+        "orchestrator_status": data.get("orchestrator_status"),
+        "failure_count": data.get("failure_count", 0),
+        "next_operator_action": data.get("next_operator_action"),
+        "schedule_date": data.get("schedule_date"),
+        "evidence_summary_path": data.get("evidence_summary_path"),
+    }
 
 
 @app.command("due")
@@ -254,7 +289,16 @@ def run_cmd(
     receipt = runner.run_once(schedule_date=target, trigger=trigger)
     payload = receipt.model_dump()
     payload["command"] = "scheduler run"
-    _emit(payload, json_out=json_out, exit_code=0 if receipt.status in ("ok", "degraded") else 1)
+    # Manual runs surface degradation to the operator/CI via a nonzero exit (2 = degraded,
+    # 1 = failed); a clean run exits 0. Unattended scheduler ticks keep exit 0 for degraded
+    # (see runner.tick) so launchd success detection is unchanged.
+    if receipt.status == "failed":
+        exit_code = 1
+    elif receipt.status == "degraded":
+        exit_code = 2
+    else:
+        exit_code = 0
+    _emit(payload, json_out=json_out, exit_code=exit_code)
 
 
 @app.command("reset")
