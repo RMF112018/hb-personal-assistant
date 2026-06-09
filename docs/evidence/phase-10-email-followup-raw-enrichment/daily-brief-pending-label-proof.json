@@ -1,0 +1,13 @@
+{
+  "pending_label": "Model-enriched / pending review",
+  "low_confidence_label": "low confidence / needs review",
+  "count": 2,
+  "labels": [
+    "Model-enriched / pending review \u2014 low confidence / needs review",
+    "Model-enriched / pending review"
+  ],
+  "all_pending_labeled": true,
+  "low_confidence_marked": true,
+  "source_linked": true,
+  "no_raw_in_section": true
+}

@@ -142,7 +142,7 @@ def test_v38_tables_classified_in_lifecycle_contract() -> None:
         db = Path(td) / "v38.db"
         _migrate(db)
         report = build_table_inventory_report(db_path=str(db))
-        assert report["contract_table_count"] == 221
+        assert report["contract_table_count"] == 222
         by_name = {t["table_name"]: t for t in report["tables"]}
         for t in PHASE_09_V38_TABLES:
             assert t in by_name, f"{t} absent from live inventory"

@@ -1,0 +1,29 @@
+{
+  "all_guard_columns_zero": true,
+  "tables": {
+    "email_followup_enrichments": {
+      "guard_columns_present": 13,
+      "nonzero_sum": 0
+    },
+    "accepted_tasks": {
+      "guard_columns_present": 13,
+      "nonzero_sum": 0
+    },
+    "accepted_commitments": {
+      "guard_columns_present": 13,
+      "nonzero_sum": 0
+    },
+    "follow_up_watch_items": {
+      "guard_columns_present": 13,
+      "nonzero_sum": 0
+    },
+    "candidate_source_refs": {
+      "guard_columns_present": 13,
+      "nonzero_sum": 0
+    },
+    "local_model_run_receipts": {
+      "guard_columns_present": 13,
+      "nonzero_sum": 0
+    }
+  }
+}

@@ -29,6 +29,9 @@ _ALLOWED_PREFIXES_BY_RULE: dict[str, tuple[str, ...]] = {
         # Phase 08D: synthetic "Bearer abc…xyz" fixture asserting the evidence-collector
         # safety scanner *flags* a token (no real secret).
         "tests/test_phase_08d_agent_data_evaluation_evidence_collector.py",
+        # Phase 10 V45: synthetic "Authorization: Bearer eyJ…" fixture proving the raw
+        # follow-up window sanitizer REDACTS bearer tokens (no real secret).
+        "tests/test_phase_10_raw_followup_window.py",
         "docs/",
     ),
     "jwt_like": (
@@ -37,6 +40,8 @@ _ALLOWED_PREFIXES_BY_RULE: dict[str, tuple[str, ...]] = {
         "src/hb_assistant/security/sensitive_scan.py",
         "tests/test_procore_redaction.py",
         "tests/test_repo_sensitive_scan.py",
+        # Phase 10 V45: synthetic JWT-shaped fixture proving token redaction (no real secret).
+        "tests/test_phase_10_raw_followup_window.py",
     ),
     "client_secret_assignment": (
         "src/hb_assistant/security/sensitive_scan.py",

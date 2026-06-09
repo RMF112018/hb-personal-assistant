@@ -1,0 +1,16 @@
+{
+  "valid_run": {
+    "status": "ok",
+    "schema_valid": true,
+    "violations": [],
+    "input_context_hash": "c427529631e6",
+    "output_hash": "c0e762244e4e"
+  },
+  "rejected_run": {
+    "status": "invalid",
+    "violations": [
+      "cited_candidate_not_in_input"
+    ]
+  },
+  "note": "free-text titles/actions intentionally omitted from evidence; hashes + status only"
+}
