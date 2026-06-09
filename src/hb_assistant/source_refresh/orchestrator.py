@@ -542,11 +542,32 @@ class SourceRefreshOrchestrator:
             "live_env_active": live_env,
             "persistence_path": "procore_live",
             "canonical_tables": list(PROCORE_CANONICAL_TABLES),
+            "tables_written": list(PROCORE_CANONICAL_TABLES),
             "endpoint_summary": summary,
             "endpoints": endpoints,
             "projects": projects,
             "counts": counts,
+            "next_operator_action": self._procore_next_action(summary),
+            "inspect_hint": (
+                "Inspect canonical Procore data with `hb-assistant procore live records "
+                "--project <key> --endpoint <id>`; run history in procore_live_sync_runs."
+            ),
         }
+
+    @staticmethod
+    def _procore_next_action(summary: dict[str, Any]) -> str:
+        """Operator guidance derived from the endpoint taxonomy histogram."""
+        if summary.get("contract_bug_failures"):
+            return (
+                "Procore endpoint contract regression — inspect procore_live_sync_runs "
+                "for transport_error rows and re-validate the canonical adapter."
+            )
+        if summary.get("externally_blocked"):
+            return "External Procore service/transport errors — retry after the rate window."
+        by_status = summary.get("by_status", {})
+        if any(k.startswith("blocked_") for k in by_status):
+            return "Run `hb-assistant procore auth login` and confirm pilot mapping, then re-run."
+        return "none"
 
     def _run_live_endpoint(
         self, pe: Any, project_key: str, start_date: str, end_date: str
@@ -1015,6 +1036,9 @@ class SourceRefreshOrchestrator:
             return "Run `hb-assistant procore auth login` to enable Procore live sync."
         if graph.get("status") == "blocked_auth_not_ready":
             return "Run `hb-assistant auth login` to obtain a delegated Graph token."
+        procore_action = procore.get("next_operator_action")
+        if procore_action and procore_action != "none":
+            return procore_action
         if summary["status"] == "failed" or summary["failures"]:
             return "Review failures[] and warnings[], then re-run."
         if options.dry_run:
