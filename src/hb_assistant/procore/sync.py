@@ -134,12 +134,15 @@ class ProcoreSyncCoordinator:
     def __init__(
         self,
         *,
-        environment: str = "prod",
+        environment: str = "production",
         db_path: Optional[
             Path
         ] = None,  # explicit for temp DB validation; None = default PathPolicy
     ) -> None:
-        self.environment = environment
+        # Valid Procore environments are "sandbox" / "production" (see procore.config). The legacy
+        # default "prod" is not a valid environment and made every live apply throw
+        # `Unknown environment: prod` before any API call. Normalize defensively.
+        self.environment = "production" if environment == "prod" else environment
         self.db_path = db_path
         self.correlation_id = str(uuid.uuid4())
         self.auditor = None  # lazy; real Prompt_07 EndpointAuditor constructed with contract + projects in the gate
@@ -147,9 +150,15 @@ class ProcoreSyncCoordinator:
 
     def _get_client(self) -> ProcoreHTTPClient:
         if self.client is None:
+            # Enable the real GET-only transport ONLY when the live gate is armed
+            # (HB_PROCORE_LIVE=1). Without this the client has no transport and every endpoint
+            # fails with `transport_not_injected`; tests run with the gate off and inject a mock.
+            from hb_assistant.procore.live_gate import live_env_active
+
             self.client = ProcoreHTTPClient(
                 transport=None,  # real for apply; tests inject mock
                 environment=self.environment,
+                live_enabled=live_env_active(),
             )
         return self.client
 

@@ -405,20 +405,46 @@ class SourceRefreshOrchestrator:
             pc = self._procore_counts(result, applied=do_live_apply)
             for k, v in pc.items():
                 counts[k] += v
+            proj_errors = result.get("redacted_errors") or []
+            proj_failed = int(pc.get("failed", 0) or 0)
+            proj_status = "ok" if do_live_apply else "planned"
+            if proj_failed:
+                # Endpoint-level errors are real degradation — surface them (do not report "ok").
+                proj_status = "degraded"
+                self._acc.degraded = True
+                sample = [
+                    {
+                        "endpoint": str(e.get("endpoint", ""))[:60],
+                        "error": str(e.get("error", ""))[:160],
+                    }
+                    for e in proj_errors[:5]
+                    if isinstance(e, dict)
+                ]
+                self._acc.failures.append(
+                    {
+                        "stage": f"procore.{key}",
+                        "status": "degraded",
+                        "reason": f"{proj_failed} endpoint error(s); sample={sample}",
+                    }
+                )
             projects.append(
                 {
                     "project_key": key,
-                    "status": "ok" if do_live_apply else "planned",
+                    "status": proj_status,
                     "total_items_normalized": result.get("total_items_normalized", 0),
                     "persisted_to_sqlite": bool(result.get("persisted_to_sqlite", False)),
                     "audit_prerequisite_passed": bool(
                         result.get("audit_prerequisite_passed", False)
                     ),
+                    "errors": proj_failed,
+                    "redacted_errors": proj_errors[:8],
                 }
             )
 
+        any_degraded = any(p.get("status") == "degraded" for p in projects)
+        stage_status = "degraded" if any_degraded else ("ok" if do_live_apply else "planned")
         return {
-            "status": "ok" if do_live_apply else "planned",
+            "status": stage_status,
             "auth_status": auth_status,
             "ready_for_live_calls": ready,
             "mode": "apply" if do_live_apply else "dry_run",

@@ -315,6 +315,8 @@ def get_environment_config(env: Literal["sandbox", "production"] | None = None) 
     """Return base URLs + header requirements for the chosen (or default sandbox) environment."""
     if env is None:
         env = "sandbox"
+    if env == "prod":  # defensive alias: "prod" is a common mistake for "production"
+        env = "production"
     if env not in ENVIRONMENTS:
         raise ValueError(f"Unknown environment: {env}")
     cfg = ENVIRONMENTS[env].copy()
