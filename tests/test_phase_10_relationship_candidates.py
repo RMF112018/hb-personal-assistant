@@ -14,6 +14,10 @@ import json
 import sqlite3
 from pathlib import Path
 
+from typer.testing import CliRunner
+
+from hb_assistant.cli.main import app
+from hb_assistant.construction.second_brain.local_ai.pipeline import run_local_agent_pipeline
 from hb_assistant.construction.second_brain.local_ai.relationship_candidates import (
     _safe_candidate,
     build_relationship_candidates,
@@ -22,6 +26,7 @@ from hb_assistant.construction.second_brain.local_ai.schema import PHASE_10_GUAR
 from hb_assistant.construction.store import ConstructionStore
 
 NOW = "2026-06-09T17:00:00+00:00"
+RUNNER = CliRunner()
 
 
 # --------------------------------------------------------------------------- fixtures
@@ -278,3 +283,147 @@ def test_no_raw_content_in_output_or_rows(tmp_path: Path) -> None:
         for code in (r["reason_redacted"] or "").split(","):
             if code:
                 assert code.replace("_", "").isalpha()
+
+
+# --------------------------------------------------------------------------- CLI surface
+
+
+def _scan(db: str, *extra: str):
+    # Repo truth: ``second-brain`` is a top-level group (not under ``construction``).
+    return RUNNER.invoke(
+        app,
+        [
+            "second-brain",
+            "relationship-candidates",
+            "scan",
+            "--db",
+            db,
+            "--as-of",
+            NOW,
+            "--json",
+            *extra,
+        ],
+    )
+
+
+def test_cli_dry_run_writes_zero(tmp_path: Path) -> None:
+    db = str(tmp_path / "t.sqlite")
+    _seed(db)
+    res = _scan(db)
+    assert res.exit_code == 0
+    payload = json.loads(res.stdout)
+    assert payload["ok"] is True
+    assert payload["applied"] is False
+    assert payload["summary"]["persisted"] == 0
+    assert _row_count(db) == 0
+
+
+def test_cli_apply_without_cap_fails_closed(tmp_path: Path) -> None:
+    db = str(tmp_path / "t.sqlite")
+    _seed(db)
+    res = _scan(db, "--apply")
+    assert res.exit_code == 2
+    payload = json.loads(res.stdout)
+    assert payload["ok"] is False
+    assert payload["error"] == "apply_requires_max_persist"
+    assert _row_count(db) == 0
+
+
+def test_cli_invalid_min_confidence_fails_closed(tmp_path: Path) -> None:
+    db = str(tmp_path / "t.sqlite")
+    _seed(db)
+    res = _scan(db, "--min-confidence", "1.5")
+    assert res.exit_code == 2
+    assert json.loads(res.stdout)["error"] == "min_confidence_out_of_range"
+
+
+def test_cli_apply_with_cap_bounded(tmp_path: Path) -> None:
+    db = str(tmp_path / "t.sqlite")
+    _seed(db)
+    res = _scan(db, "--apply", "--max-persist", "1")
+    assert res.exit_code == 0
+    payload = json.loads(res.stdout)
+    assert payload["summary"]["persisted"] == 1
+    assert _row_count(db) == 1
+
+
+def test_cli_rerun_idempotent(tmp_path: Path) -> None:
+    db = str(tmp_path / "t.sqlite")
+    _seed(db)
+    _scan(db, "--apply", "--max-persist", "5")
+    res = _scan(db, "--apply", "--max-persist", "5")
+    payload = json.loads(res.stdout)
+    assert payload["summary"]["persisted"] == 0
+    assert payload["summary"]["skipped_existing"] == 2
+    assert _row_count(db) == 2
+
+
+def test_cli_json_shape_stable(tmp_path: Path) -> None:
+    db = str(tmp_path / "t.sqlite")
+    _seed(db)
+    # default (no --summary) omits the per-candidate list but keeps stable top-level keys
+    payload = json.loads(_scan(db).stdout)
+    for key in ("command", "ok", "applied", "summary", "guardrails", "by_class"):
+        assert key in payload
+    assert "relationships" not in payload
+    # --summary includes the safe per-candidate list (hashed refs + codes only)
+    detailed = json.loads(_scan(db, "--summary").stdout)
+    assert "relationships" in detailed
+    for r in detailed["relationships"]:
+        assert set(r) >= {
+            "relationship_candidate_id",
+            "relationship_type",
+            "from_source_ref_hash",
+            "to_source_ref_hash",
+            "confidence",
+            "confidence_class",
+            "review_required",
+            "reason_codes",
+        }
+        assert "from_source_ref" not in r  # raw refs never exposed
+
+
+def test_legacy_phase10_relationship_candidates_command_preserved() -> None:
+    """The pre-existing read-only ``phase-10 relationship-candidates`` command is still registered."""
+    res = RUNNER.invoke(
+        app,
+        ["second-brain", "phase-10", "relationship-candidates", "--help"],
+    )
+    assert res.exit_code == 0
+    assert "relationship" in res.stdout.lower()
+
+
+# --------------------------------------------------------------------------- pipeline integration
+
+
+def test_pipeline_default_excludes_relationship_stage(tmp_path: Path) -> None:
+    """Default pipeline run is unchanged: no relationship stage, no relationship rows written."""
+    db = str(tmp_path / "t.sqlite")
+    _seed(db)
+    out = run_local_agent_pipeline(
+        store=ConstructionStore(db),
+        now_utc=NOW,
+        db_path=db,
+        dry_run=False,
+        max_persist_per_stage=5,
+    )
+    stage_names = {s["stage"] for s in out["stages"]}
+    assert "relationship_candidates" not in stage_names
+    assert _row_count(db) == 0
+
+
+def test_pipeline_optin_runs_relationship_stage_before_render(tmp_path: Path) -> None:
+    db = str(tmp_path / "t.sqlite")
+    _seed(db)
+    out = run_local_agent_pipeline(
+        store=ConstructionStore(db),
+        now_utc=NOW,
+        db_path=db,
+        dry_run=False,
+        max_persist_per_stage=5,
+        include_relationship_candidates=True,
+    )
+    order = [s["stage"] for s in out["stages"]]
+    assert "relationship_candidates" in order
+    assert order.index("relationship_candidates") < order.index("daily_brief_render")
+    assert _row_count(db) == 2  # strong + moderate persisted by the opt-in stage

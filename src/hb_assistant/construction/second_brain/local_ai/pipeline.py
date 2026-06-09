@@ -33,8 +33,10 @@ from .daily_brief_synthesis import build_daily_brief_candidates
 from .daily_brief_window import DailyBriefWindow
 from .follow_up_watch import run_follow_up_watch_scan
 from .procore_digest import build_procore_action_digest
+from .relationship_candidates import build_relationship_candidates
 
 _RENDER_STAGE = "daily_brief_render"
+_RELATIONSHIP_STAGE = "relationship_candidates"
 STAGE_ORDER: list[str] = [
     "follow_up_watch",
     "procore_digest",
@@ -42,7 +44,16 @@ STAGE_ORDER: list[str] = [
     "daily_brief_synthesis",
     _RENDER_STAGE,
 ]
-_GENERATION_STAGES = {"follow_up_watch", "procore_digest", "calendar_prep", "daily_brief_synthesis"}
+# Opt-in cross-source stage. It is NOT in the default STAGE_ORDER, so the default daily run is
+# byte-unchanged; ``include_relationship_candidates=True`` inserts it just before the render stage
+# (so freshly-persisted relationship rows are available to the brief's relationship enrichment).
+_GENERATION_STAGES = {
+    "follow_up_watch",
+    "procore_digest",
+    "calendar_prep",
+    "daily_brief_synthesis",
+    _RELATIONSHIP_STAGE,
+}
 
 
 def _stage_summary_counts(result: Any) -> tuple[int, int]:
@@ -64,6 +75,7 @@ def run_local_agent_pipeline(
     include_raw: bool = False,
     window: Optional[DailyBriefWindow] = None,
     stages: Optional[list[str]] = None,
+    include_relationship_candidates: bool = False,
 ) -> dict[str, Any]:
     """Run the Phase 10 local-agent pipeline once (dry-run-first, stage-bounded, fail-loud).
 
@@ -76,7 +88,11 @@ def run_local_agent_pipeline(
         raise ValueError("apply requires max_persist_per_stage (per-stage cap on actual persists)")
 
     brief_date = now_utc[:10]
-    selected = [s for s in STAGE_ORDER if (stages is None or s in set(stages))]
+    # Default order is unchanged; opt-in inserts the relationship stage just before render.
+    effective_order = list(STAGE_ORDER)
+    if include_relationship_candidates:
+        effective_order.insert(effective_order.index(_RENDER_STAGE), _RELATIONSHIP_STAGE)
+    selected = [s for s in effective_order if (stages is None or s in set(stages))]
 
     # When the central weekday policy supplies a window, the calendar stage uses its explicit
     # bounds instead of the fixed lookahead_days (no stage invents its own dates). With no window,
@@ -92,6 +108,8 @@ def run_local_agent_pipeline(
         "calendar_prep": (build_calendar_prep_candidates, calendar_extra),
         "daily_brief_synthesis": (build_daily_brief_candidates, {}),
     }
+    if include_relationship_candidates:
+        builders[_RELATIONSHIP_STAGE] = (build_relationship_candidates, {})
 
     receipts: list[dict[str, Any]] = []
     total_persisted = 0

@@ -172,6 +172,13 @@ calendar_prep_app = typer.Typer(
 )
 app.add_typer(calendar_prep_app, name="calendar-prep")
 
+relationship_candidates_app = typer.Typer(
+    name="relationship-candidates",
+    help="Phase 10 follow-on: deterministic email↔calendar relationship candidates (advisory; no writeback).",
+    no_args_is_help=True,
+)
+app.add_typer(relationship_candidates_app, name="relationship-candidates")
+
 pipeline_app = typer.Typer(
     name="pipeline",
     help="Phase 10 local-agent pipeline: one repeatable daily run (dry-run-first; advisory).",
@@ -2073,6 +2080,94 @@ def daily_brief_synthesize_candidates(
         )
         if not summary:
             payload = {k: v for k, v in payload.items() if k != "brief"}
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(0)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        payload = {"command": cmd, "ok": False, "error": str(e)[:300]}
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(1) from None
+
+
+@relationship_candidates_app.command("scan")
+def relationship_candidates_scan(
+    as_of: "str | None" = typer.Option(  # noqa: B008
+        None, "--as-of", help="ISO-8601 UTC 'now' (stamps the scan; default: current UTC)."
+    ),
+    project_key: "str | None" = typer.Option(  # noqa: B008
+        None, "--project-key", help="Filter to a single project key."
+    ),
+    limit: int = typer.Option(50, "--limit", help="Max relationship candidates to keep (best first)."),  # noqa: B008
+    scan_threads: int = typer.Option(50, "--scan-threads", help="Max email threads to scan."),  # noqa: B008
+    scan_events: int = typer.Option(50, "--scan-events", help="Max calendar events to scan."),  # noqa: B008
+    min_confidence: float = typer.Option(  # noqa: B008
+        0.55, "--min-confidence", help="Minimum confidence to keep (default moderate floor; weak excluded)."
+    ),
+    dry_run: bool = typer.Option(  # noqa: B008
+        True, "--dry-run/--apply",
+        help="Dry-run (default; zero writes). --apply persists, capped by --max-persist.",
+    ),
+    max_persist: "int | None" = typer.Option(  # noqa: B008
+        None, "--max-persist", help="REQUIRED with --apply: cap on ACTUAL persisted candidates."
+    ),
+    summary: bool = typer.Option(  # noqa: B008
+        False, "--summary", help="Keep the per-candidate relationship list in the response."
+    ),
+    db: "str | None" = typer.Option(None, "--db", help="Explicit SQLite path (tests/isolation)."),  # noqa: B008
+    json_out: bool = typer.Option(True, "--json", help="Emit JSON (default)."),  # noqa: B008
+) -> None:
+    """Scan email↔calendar pairs into reviewable, source-linked relationship candidates.
+
+    Deterministic: relatedness is decided ONLY by the relationship scorer — never a model.
+    Dry-run default; ``--apply`` requires ``--max-persist`` and caps actual inserts into
+    ``phase10_relationship_candidates``. Persisted rows carry hashed source refs + safe reason
+    codes only (guard columns stay zero). Re-runs are idempotent (``skipped_existing``).
+    """
+    from datetime import datetime as _dt
+    from datetime import timezone as _tz
+
+    from hb_assistant.construction.second_brain.local_ai import build_relationship_candidates
+    from hb_assistant.construction.store import ConstructionStore
+
+    cmd = "second-brain relationship-candidates scan"
+    try:
+        if not dry_run and max_persist is None:
+            payload = {
+                "command": cmd, "ok": False, "applied": False,
+                "error": "apply_requires_max_persist",
+                "guardrails": {"apply_requires_max_persist": True},
+            }
+            typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+            raise typer.Exit(2)
+        if max_persist is not None and max_persist < 0:
+            payload = {
+                "command": cmd, "ok": False, "applied": False, "error": "max_persist_must_be_non_negative",
+            }
+            typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+            raise typer.Exit(2)
+        if not 0.0 <= min_confidence <= 1.0:
+            payload = {
+                "command": cmd, "ok": False, "applied": False, "error": "min_confidence_out_of_range",
+            }
+            typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+            raise typer.Exit(2)
+
+        now_utc = as_of or _dt.now(_tz.utc).isoformat()
+        store = ConstructionStore(db_path=db)
+        payload = build_relationship_candidates(
+            store=store,
+            now_utc=now_utc,
+            project_key=project_key,
+            limit=limit,
+            scan_threads=scan_threads,
+            scan_events=scan_events,
+            min_confidence=min_confidence,
+            dry_run=dry_run,
+            max_persist=max_persist,
+        )
+        if not summary:
+            payload = {k: v for k, v in payload.items() if k != "relationships"}
         typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
         raise typer.Exit(0)
     except typer.Exit:
@@ -9150,6 +9245,12 @@ def second_brain_pipeline_run(
         False, "--allow-partial",
         help="Exit 0 even if a stage failed (the payload still reports ok=false, partial=true).",
     ),
+    include_relationship_candidates: bool = typer.Option(  # noqa: B008
+        False, "--include-relationship-candidates/--no-relationship-candidates",
+        help="OPT-IN: run the cross-source relationship-candidate stage before render (off by default; "
+        "the default daily run is unchanged). When applied, it populates relationship rows the brief "
+        "render then surfaces.",
+    ),
     summary: bool = typer.Option(  # noqa: B008
         False, "--summary", help="Include per-stage detail + the brief markdown/sections."
     ),
@@ -9192,6 +9293,7 @@ def second_brain_pipeline_run(
             max_persist_per_stage=max_persist_per_stage, max_total_persist=max_total_persist,
             limit=limit, lookahead_days=lookahead_days, include_raw=raw,
             stages=list(stage) if stage else None,
+            include_relationship_candidates=include_relationship_candidates,
         )
         if not summary:
             trimmed_stages = [{k: v for k, v in s.items() if k != "detail"} for s in payload["stages"]]
