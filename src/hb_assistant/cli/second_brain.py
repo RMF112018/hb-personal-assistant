@@ -9386,6 +9386,15 @@ def second_brain_daily_run_run(
     status_dir: "str | None" = typer.Option(  # noqa: B008
         None, "--status-dir", help="Status-file dir (default: app-support/daily-run-status)."
     ),
+    synthesize: bool = typer.Option(  # noqa: B008
+        True, "--synthesize/--no-synthesize",
+        help="Local-model executive synthesis of the brief (apply only; fail-closed → degraded brief "
+        "on model failure/low-quality, never a silent candidate dump).",
+    ),
+    synthesis_profile_id: str = typer.Option(  # noqa: B008
+        "brief_synthesis", "--synthesis-profile",
+        help="Local model profile id for synthesis (benchmark: default_extract vs review_filter).",
+    ),
     open_browser: bool = typer.Option(  # noqa: B008
         False,
         "--open-browser/--no-open-browser",
@@ -9468,6 +9477,8 @@ def second_brain_daily_run_run(
             generate_browser=generate_browser,
             browser_output_dir=browser_output_dir,
             status_dir=status_dir,
+            synthesize_brief=synthesize,
+            synthesis_profile_id=synthesis_profile_id,
             include_relationship_candidates=include_relationship_candidates,
             relationship_scan_threads=relationship_scan_threads,
             relationship_scan_events=relationship_scan_events,

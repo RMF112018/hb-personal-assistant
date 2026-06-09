@@ -1,17 +1,22 @@
 # Phase 10 Checkpoint 6 — Daily Local-Agent Run + launchd Scheduler (Operator Runbook)
 
 A weekday (Mon–Fri) 5:00 AM job that generates your daily brief automatically: it runs the proven
-local-agent pipeline, applies a bounded set of local candidates, and produces **two private local
-consumption surfaces** — a governed Obsidian note and a polished browser HTML file — plus a status
-file. The browser is **not** auto-opened (reserved for later). No external/Graph/Procore/calendar
+local-agent pipeline, applies a bounded set of local candidates, **synthesizes an executive/operator
+brief with a local model** (mistral-nemo:12b / qwen2.5:14b via Ollama — no cloud LLM), and produces
+**two private local consumption surfaces** — a governed Obsidian note and a polished browser HTML
+file — plus a status file. The browser is **not** auto-opened. No external/Graph/Procore/calendar
 writeback ever occurs.
 
-Branch: `experiment/local-agent-family-proof` (experimental; not merged). Commands run via the
-`hb-assistant` CLI (inside the venv or via `.venv/bin/hb-assistant`).
+Branch: `main`. Commands run via the `hb-assistant` CLI (inside the venv or via
+`.venv/bin/hb-assistant`).
 
 ## What you get each weekday morning
 
-- **Obsidian note** (real content): `<vault>/Construction Intelligence/Phase 08A Daily Briefs/<date>_daily_brief.md`
+- **Obsidian note** (real content, governed): `<vault>/Work/Daily Brief/<date>_daily_brief.md`
+  - The legacy `Construction Intelligence/Phase 08A Daily Briefs` folder is **guarded against** — a
+    scheduled run fails closed rather than write there (override only via
+    `HB_ALLOW_LEGACY_BRIEF_DIR=1`). The folder is declared by
+    `resources/config/phase_10_obsidian_vault_policy.seed.yaml` (`target_daily_brief_folder`).
 - **Browser brief** (stable path, real content): `~/Library/Application Support/HB Personal Assistant/html/daily-brief-latest.html`
   - dated archive: `daily-brief-<date>.html`; last attempted (may be partial): `daily-brief-latest-attempted.html`
 - **Status file** (redacted, safe): `~/Library/Application Support/HB Personal Assistant/daily-run-status/latest-status.json`
@@ -22,6 +27,24 @@ standard adjacent-business-day briefs; **Friday** prepares the following workwee
 ahead through next Friday). Weekends don't generate a fresh brief; if the Mac was asleep at 5:00 AM,
 launchd runs the missed weekday job on the next wake (a missed Friday caught up on the weekend still
 produces the Friday/next-week brief).
+
+## Local-model synthesis (executive brief)
+
+The brief is **synthesized by a local model** from a bounded, source-linked context packet (calendar
+meetings classified for prep value, open commitments/follow-ups, project signals, data gaps). It is
+NOT a flat dump of candidate rows. Output sections: Executive Summary · What Changed Since Last Brief
+· Critical / Due Today · Open Commitments & Follow-Ups · Today's Meetings (local time, project, why,
+prep, open questions) · Project / Procore Signals · Recommended Next Actions · FYI · Needs Review /
+Data Gaps. A collapsed **Source-Linked Candidates (audit)** appendix preserves traceability.
+
+- Model profile: `brief_synthesis` (in `phase_10_local_model_profiles.seed.yaml`), with a single-hop
+  fallback to `default_extract`. `--synthesis-profile <id>` overrides for benchmarking.
+- **Fail-closed:** if the model is unavailable / times out / returns malformed or empty output, the
+  run is marked `partial`, a **clearly-marked DEGRADED brief** (deterministic candidates) is written
+  to `daily-brief-latest-attempted.html`, the last successful brief is **preserved**, and the run is
+  **not** counted as a success. A degraded run never silently publishes a candidate dump as the brief.
+- Status JSON carries safe model metadata only (`synthesis`: profile, model, status, degraded,
+  latency) — never raw prompts or responses (receipts are hash-only).
 
 ## Install the schedule (one time)
 
@@ -98,6 +121,23 @@ the Obsidian note exists for the date; `egress_scan.clean` is `true`.
   `last-successful.json` pointer + `daily-brief-latest.html` are the only "current" state.
 - Nothing here mutates Microsoft 365, Procore, the calendar, or the schema; safe to remove without
   side effects.
+
+## Editing project aliases (improving project inference)
+
+Calendar/email items are assigned to a project by a deterministic alias map at
+`resources/config/project_aliases.seed.yaml` (case-insensitive, word-boundary, longest-alias-wins).
+Each entry maps alias tokens → a canonical HB `project_key` (shared with
+`procore_projects.seed.yaml`). Items with no alias match stay unassigned and are grouped under
+**Needs Project Review** (never shown inline as `project:__unassigned__`).
+
+To improve coverage:
+
+1. Run a brief (or dry-run) and read the calendar stage's `unresolved_project_tokens` diagnostic in
+   the status JSON / payload — it lists the most frequent project-looking tokens that did NOT resolve.
+2. Add those tokens to the relevant project's `aliases:` list in `project_aliases.seed.yaml` (avoid
+   short ambiguous tokens that collide across projects).
+3. Re-run; the items should now resolve. `projects_assigned` / `projects_unassigned` /
+   `projects_inferred` counts appear in the calendar stage summary.
 
 ## Safety notes
 

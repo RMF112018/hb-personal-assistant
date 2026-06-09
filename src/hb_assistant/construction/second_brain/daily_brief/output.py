@@ -1,9 +1,11 @@
 """Phase 08A daily-brief approved local/Obsidian output (Prompt 12).
 
 Renders a deterministic, redacted, marker-bounded daily-brief markdown document from the
-brief's cards (never from a model response) and writes it — only on explicit apply — into
-the approved Obsidian root at
-``<vault>/Construction Intelligence/Phase 08A Daily Briefs/<date>_daily_brief.md``.
+brief's cards (never from a model response) and writes it — only on explicit apply — into the
+approved root for THIS product (the Phase 08A/09 MCP-handoff brief): ``<vault>/Construction
+Intelligence/Phase 08A Daily Briefs/<date>_daily_brief.md`` by default, or an explicit
+``vault_brief_dir`` override. (The Phase 10 *scheduled* daily-run routes to the governed
+``Work/Daily Brief`` folder via :mod:`..local_ai.vault_brief_policy`; it passes that dir explicitly.)
 Dry-run is the default: it returns the would-be content + a content hash and writes nothing.
 The write is marker-bounded (user text outside the markers is preserved) and atomic
 (temp file + ``os.replace``). No raw bodies/document text/URLs/secrets are ever written.
@@ -76,7 +78,11 @@ def _atomic_write_text(target: Path, content: str) -> None:
 
 
 def resolve_brief_path(brief_date: str, *, vault_brief_dir: str | Path | None = None) -> Path:
-    """Resolve the approved output path for a brief date (vault-governed by default)."""
+    """Resolve the approved output path for a brief date (Phase 08A/09 product default; or override).
+
+    The Phase 10 scheduled daily-run passes ``vault_brief_dir`` explicitly (the governed
+    ``Work/Daily Brief`` folder); only the legacy Phase 08A/09 MCP-handoff product uses this default.
+    """
     base = (
         Path(vault_brief_dir)
         if vault_brief_dir is not None

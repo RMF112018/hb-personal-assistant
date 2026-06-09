@@ -1,0 +1,47 @@
+# Phase 10 daily-brief project alias map (deterministic project inference).
+#
+# Maps free-text alias tokens observed in calendar/email/Procore text to the canonical HB
+# `project_key` already used by the Procore mapping (resources/config/procore_projects.seed.yaml)
+# and the SharePoint/OneDrive source registry, so an inferred project_key is consistent everywhere.
+#
+# How inference works (see local_ai/project_aliases.py):
+#   * matching is case-insensitive and word-boundary aware (so "Hilltop" does not match "hilltops");
+#   * the LONGEST matching alias wins (so "Alton Hilltop" is preferred over "Hilltop");
+#   * if no alias matches, the item stays unassigned and is grouped under "Needs Project Review"
+#     (never shown inline as project:__unassigned__ in the brief body).
+#
+# To add a project or alias: add/extend an entry below. Keep `project_key` equal to the canonical
+# HB key. Avoid short ambiguous tokens that collide across projects. See the runbook section
+# "Editing project aliases" for diagnostics on frequently-unresolved tokens.
+
+version: 1
+
+projects:
+  - project_key: tropical
+    display_name: "Tropical"
+    aliases:
+      - "TWN"
+      - "Tropical World Way"
+      - "Tropical World"
+      - "Tropical"
+
+  - project_key: pga-modern-garage
+    display_name: "PGA The Modern & Garage"
+    aliases:
+      - "PGA The Modern"
+      - "The Modern"
+      - "PGA"
+
+  - project_key: alton-hilltop-pbg
+    display_name: "Alton Hilltop at PBG"
+    aliases:
+      - "Alton Hilltop at PBG"
+      - "Alton Hilltop"
+      - "Hilltop"
+
+  - project_key: the-wellington
+    display_name: "The Wellington"
+    aliases:
+      - "The Wellington Homes"
+      - "The Wellington"
+      - "Wellington"

@@ -1,8 +1,8 @@
 version: "1.0.0"
 vault_profile: work
-target_daily_brief_folder: "Work/Daily-Brief"
+target_daily_brief_folder: "Work/Daily Brief"
 allowlisted_folders:
-  - "Work/Daily-Brief"
+  - "Work/Daily Brief"
   - "Work/Projects"
   - "Work/Actions"
   - "Work/Meetings"

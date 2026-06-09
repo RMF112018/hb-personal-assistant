@@ -28,7 +28,9 @@ import re
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
+from .calendar_classify import classify_calendar_event
 from .packet_builders import build_calendar_event_action_packet
+from .project_aliases import resolve_project, summarize_unresolved_tokens
 
 _SECTION = "calendar"
 
@@ -205,7 +207,6 @@ def build_calendar_prep_candidates(
             summary["skipped_no_source_refs"] += 1
             continue
         source_ref = _source_ref(event_index_id)
-        proj = ev.get("project_key") or "__unassigned__"
         start = _parse_event_dt(ev.get("start_datetime_utc"))
         days_until = ((start - now_dt).total_seconds() / 86400.0) if start else 0.0
         priority = _priority_for(days_until)
@@ -221,15 +222,39 @@ def build_calendar_prep_candidates(
         has_join = bool(packet.get("has_join_url"))
 
         title = str(ev.get("subject_redacted") or "").strip() or "Meeting prep"
+        location_redacted = ev.get("location_redacted")
         domains = ev.get("participant_domains") or []
         attendee_count = int(ev.get("attendee_count") or 0)
         location_class = "online" if ev.get("is_online_meeting") else "in_person_or_unspecified"
+
+        # Project: prefer the index's project_key; else infer from redacted title/location via the
+        # config-backed alias map; else leave unassigned (grouped under "Needs Project Review").
+        indexed_proj = ev.get("project_key")
+        inferred_proj = (
+            None if indexed_proj else resolve_project(title, str(location_redacted or ""))
+        )
+        proj = indexed_proj or inferred_proj or "__unassigned__"
+
+        # Deterministic value tier (pre-model noise filter); the synthesis packet uses this to
+        # demote/exclude low-value meetings before the local model ever sees them.
+        classification = classify_calendar_event(
+            title=title,
+            location=str(location_redacted or ""),
+            attendee_count=attendee_count,
+            is_online=bool(ev.get("is_online_meeting")),
+            has_project=proj != "__unassigned__",
+            days_until=days_until,
+        )
         reason = f"{attendee_count} attendees · {len(domains)} domains · {location_class}"
 
         view = {
             "event_index_id": event_index_id,
             "source_ref": source_ref,
             "project_key": proj,
+            "project_inferred": bool(inferred_proj),
+            "calendar_class": classification.klass,
+            "calendar_class_reason": classification.reason_code,
+            "calendar_visible": classification.visible,
             "title_redacted": title,
             "start": ev.get("start_datetime_utc"),
             "end": ev.get("end_datetime_utc"),
@@ -237,7 +262,7 @@ def build_calendar_prep_candidates(
             "has_join_url": has_join,
             "attendee_count": attendee_count,
             "participant_domains": domains,
-            "location_redacted": ev.get("location_redacted"),
+            "location_redacted": location_redacted,
             "organizer_domain": ev.get("organizer_domain"),
             "priority": priority,
             "reason_redacted": reason,
@@ -273,6 +298,24 @@ def build_calendar_prep_candidates(
                 remaining -= 1
         else:
             summary["skipped_existing"] += 1
+
+    # Project-inference + value-tier rollups (assigned vs unassigned, class distribution) + a small
+    # diagnostic of frequently-unresolved project tokens so alias coverage can be improved over time.
+    summary["projects_assigned"] = sum(
+        1 for v in event_views if v["project_key"] != "__unassigned__"
+    )
+    summary["projects_unassigned"] = sum(
+        1 for v in event_views if v["project_key"] == "__unassigned__"
+    )
+    summary["projects_inferred"] = sum(1 for v in event_views if v.get("project_inferred"))
+    by_class: dict[str, int] = {}
+    for v in event_views:
+        cls = str(v.get("calendar_class") or "fyi")
+        by_class[cls] = by_class.get(cls, 0) + 1
+    summary["by_calendar_class"] = by_class
+    summary["unresolved_project_tokens"] = summarize_unresolved_tokens(
+        [v["title_redacted"] for v in event_views if v["project_key"] == "__unassigned__"], top=10
+    )
 
     synthesis = _maybe_synthesize(synthesize=synthesize, client=client, event_views=event_views)
 

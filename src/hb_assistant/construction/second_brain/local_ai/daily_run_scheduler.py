@@ -25,6 +25,8 @@ from typing import Any, Optional
 
 from hb_assistant.config.path_policy import PathPolicy
 
+from .vault_brief_policy import governed_brief_dir
+
 DEFAULT_LABEL = "com.hb.personal-assistant.daily-local-agent"
 
 
@@ -45,8 +47,10 @@ class DailyRunLaunchdManager:
         write_obsidian: bool = True,
         confirm_vault_write: bool = True,
         generate_browser: bool = True,
+        synthesize: bool = True,
         timezone: str = "America/New_York",
         db_path: Optional[str] = None,
+        vault_brief_dir: Optional[str] = None,
         include_relationship_candidates: bool = False,
         relationship_scan_threads: Optional[int] = None,
         relationship_scan_events: Optional[int] = None,
@@ -65,8 +69,10 @@ class DailyRunLaunchdManager:
         self.write_obsidian = write_obsidian
         self.confirm_vault_write = confirm_vault_write
         self.generate_browser = generate_browser
+        self.synthesize = synthesize
         self.timezone = timezone
         self.db_path = db_path
+        self.vault_brief_dir = vault_brief_dir
         self.include_relationship_candidates = include_relationship_candidates
         self.relationship_scan_threads = relationship_scan_threads
         self.relationship_scan_events = relationship_scan_events
@@ -98,6 +104,19 @@ class DailyRunLaunchdManager:
     def _resolve_working_directory(self) -> Path:
         return self.pp.resolve_repo_root()
 
+    def _resolve_vault_brief_dir(self) -> Path:
+        """Effective governed brief folder pinned into the schedule (policy-backed by default)."""
+        if self.vault_brief_dir:
+            return Path(self.vault_brief_dir)
+        return governed_brief_dir(path_policy=self.pp)
+
+    def _redacted_vault_brief_dir(self) -> str:
+        target = self._resolve_vault_brief_dir()
+        try:
+            return "~/" + str(target.resolve().relative_to(Path.home()))
+        except ValueError:
+            return f"{target.parent.name}/{target.name}"
+
     def _program_arguments(self, executable: Path) -> list[str]:
         args: list[str] = [str(executable), "second-brain", "daily-run", "run"]
         args += ["--apply"] if self.apply_mode else ["--dry-run"]
@@ -110,9 +129,13 @@ class DailyRunLaunchdManager:
         args += ["--weekdays-only"] if self.weekdays_only else ["--all-days"]
         if self.write_obsidian:
             args += ["--write-obsidian"]
+            # Pin the governed brief folder explicitly so the installed schedule can never drift back
+            # to the legacy Phase 08A folder (the routing failure this correction fixes).
+            args += ["--vault-brief-dir", str(self._resolve_vault_brief_dir())]
         if self.confirm_vault_write:
             args += ["--confirm-vault-write"]
         args += ["--generate-browser"] if self.generate_browser else ["--no-generate-browser"]
+        args += ["--synthesize"] if self.synthesize else ["--no-synthesize"]
         args += ["--no-open-browser"]
         # Off by default → the installed schedule is byte-unchanged; only emitted when opted in.
         if self.include_relationship_candidates:
@@ -189,6 +212,7 @@ class DailyRunLaunchdManager:
             "plist_path": self._redacted(),
             "plist": plist,
             "weekdays_only": self.weekdays_only,
+            "vault_brief_dir_redacted": self._redacted_vault_brief_dir(),
             "catch_up_on_wake": "launchd StartCalendarInterval native (fires missed runs on wake)",
             "readiness": readiness,
             "commands": [
@@ -266,6 +290,7 @@ class DailyRunLaunchdManager:
             "plist_path": self._redacted() if exists else None,
             "schedule_time_local": self.time,
             "weekdays_only": self.weekdays_only,
+            "vault_brief_dir_redacted": self._redacted_vault_brief_dir(),
             "catch_up_on_wake": True,
             "timezone": self.timezone,
             "program_arguments": plist["ProgramArguments"],

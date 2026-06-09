@@ -55,11 +55,26 @@ profiles:
     concurrency_limit: 1
     heavy_profile: true
     requires_explicit_enable: true
+
+  # Daily-brief executive synthesis profile. Live benchmark (2026-06-09, real DB copy) pinned
+  # mistral-nemo:12b: 2/2 schema-valid @ ~38s/run (1 attempt) vs qwen2.5:14b 1/2 direct @ ~83s
+  # (one fell back). Fallback is the proven extractor. See docs/evidence.
+  - profile_id: brief_synthesis
+    provider: ollama
+    model_name: mistral-nemo:12b
+    enabled: true
+    role: daily_brief_executive_synthesis
+    max_context_tokens: 32768
+    timeout_seconds: 180
+    concurrency_limit: 1
+    heavy_profile: false
+    requires_explicit_enable: false
 fallbacks:
   high_recall_extract: default_extract
   review_filter: default_extract
   quality_reasoning: default_extract
   heavy_context: default_extract
+  brief_synthesis: default_extract
 guardrails:
   scheduled_heavy_profile_default: false
   raw_prompt_persisted: false

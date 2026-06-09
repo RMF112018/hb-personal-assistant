@@ -31,6 +31,7 @@ from hb_assistant.config.path_policy import PathPolicy
 from .daily_brief_window import DailyBriefWindow, compute_daily_brief_window
 from .daily_run_html import render_daily_run_html, scan_daily_run_html
 from .pipeline import run_local_agent_pipeline
+from .vault_brief_policy import VaultBriefPolicyError, assert_not_legacy, governed_brief_dir
 
 _STATUS_SUBDIR = "daily-run-status"
 _LATEST_STATUS = "latest-status.json"
@@ -65,6 +66,37 @@ def _atomic_write(target: Path, content: str) -> None:
     tmp = target.parent / f".{target.name}.tmp"
     tmp.write_text(content, encoding="utf-8")
     tmp.replace(target)
+
+
+def _render_md_appendix(sections: list[dict[str, Any]]) -> str:
+    """Compact, source-linked audit appendix from the deterministic brief sections (no H1/disclaimer).
+
+    This is the hybrid brief's traceability tail — it lists the redacted candidate rows backing the
+    synthesized narrative, never the raw technical relationship rows (those are folded into the
+    narrative's "What Changed"/"Needs Review" by the model)."""
+    if not sections:
+        return "_No source-linked candidates for this date._\n"
+    lines: list[str] = []
+    for sec in sections:
+        items = sec.get("items") or []
+        if not items:
+            continue
+        lines.append(
+            f"### {sec.get('display', 'Section')} ({sec.get('section_count', len(items))})"
+        )
+        for it in items:
+            title = str(it.get("display_title") or it.get("title_redacted") or "(untitled)")
+            parts: list[str] = []
+            if it.get("project_key"):
+                parts.append(f"project:{it['project_key']}")
+            if it.get("recommended_next_action"):
+                parts.append(f"next:{it['recommended_next_action']}")
+            if it.get("candidate_id"):
+                parts.append(f"id:{it['candidate_id']}")
+            suffix = f" — {' · '.join(parts)}" if parts else ""
+            lines.append(f"- {title}{suffix}")
+        lines.append("")
+    return "\n".join(lines).strip() + "\n"
 
 
 def _git_head_short() -> Optional[str]:
@@ -114,6 +146,9 @@ def run_daily_local_agent(
     browser_output_dir: Optional[str] = None,
     status_dir: Optional[str] = None,
     last_successful_date: Optional[str] = None,
+    synthesize_brief: bool = False,
+    synthesis_profile_id: str = "brief_synthesis",
+    synthesis_backend: Any = None,
     include_relationship_candidates: bool = False,
     relationship_scan_threads: Optional[int] = None,
     relationship_scan_events: Optional[int] = None,
@@ -130,6 +165,21 @@ def run_daily_local_agent(
     policy = PathPolicy()
     browser_dir = Path(browser_output_dir) if browser_output_dir else policy.get_html_dir()
     status_d = Path(status_dir) if status_dir else (policy.get_app_support() / _STATUS_SUBDIR)
+
+    # Effective governed brief folder for the SCHEDULED daily-run: the explicit ``vault_brief_dir``
+    # override, else the policy-declared governed folder (``Work/Daily Brief``) — NEVER the legacy
+    # Phase 08A folder. Fail-closed if the policy can't resolve or a legacy folder is requested, so a
+    # scheduled run can never silently fall back to the wrong folder. (The separate Phase 08A/09
+    # MCP-handoff brief keeps its own default via daily_brief.output.resolve_brief_path.)
+    try:
+        effective_vault_dir = (
+            Path(vault_brief_dir) if vault_brief_dir else governed_brief_dir(path_policy=policy)
+        )
+        assert_not_legacy(effective_vault_dir)
+    except VaultBriefPolicyError as exc:
+        return _failure_receipt(cmd, "vault_brief_dir_refused", detail=str(exc)[:120])
+    vault_brief_dir = str(effective_vault_dir)
+    vault_brief_dir_redacted = _redact_path(effective_vault_dir)
 
     # Repo-containment guard — generated raw outputs must never land inside the repo.
     for label, d in (("browser_output_dir", browser_dir), ("status_dir", status_d)):
@@ -169,7 +219,10 @@ def run_daily_local_agent(
             "brief_freshness": "skipped",
             "date_policy": window.to_dict(),
             "warnings": [window.explanation],
-            "outputs": {"status_path": _redact_path(status_path)},
+            "outputs": {
+                "status_path": _redact_path(status_path),
+                "vault_brief_dir_redacted": vault_brief_dir_redacted,
+            },
             "egress_scan": {"clean": True, "matched_labels": []},
             "guardrails": _guardrails(include_raw, dry_run, generate_browser),
         }
@@ -210,11 +263,67 @@ def run_daily_local_agent(
         status = "partial"
     else:
         status = "success"
+
+    # ---- Local-model executive synthesis (apply only; dry-run keeps the deterministic preview) ----
+    # The synthesized narrative becomes the primary brief; the deterministic candidates become a
+    # collapsed source-linked audit appendix (hybrid). Fail-closed: a degraded/unavailable/low-quality
+    # model run never produces a "success" — it renders a clearly-marked degraded brief and downgrades
+    # the run to "partial" so the last-successful pointer is preserved.
+    synthesis_meta: Optional[dict[str, Any]] = None
+    synthesis_dump: Optional[dict[str, Any]] = None
+    synthesis_degraded = False
+    if synthesize_brief and not dry_run and status != "failure" and markdown:
+        from .daily_brief_llm_synthesis import (
+            render_degraded_markdown,
+            render_synthesis_markdown,
+            synthesize_daily_brief,
+        )
+
+        synth = synthesize_daily_brief(
+            store=store,
+            brief_date=brief_date,
+            window=window,
+            now_utc=pipeline_now,
+            db_path=db_path,
+            profile_id=synthesis_profile_id,
+            backend=synthesis_backend,
+            dry_run=False,
+        )
+        synthesis_meta = synth.metadata()
+        if synth.degraded or synth.synthesis is None:
+            synthesis_degraded = True
+            markdown = render_degraded_markdown(
+                brief_date=brief_date,
+                window=window,
+                model_metadata=synthesis_meta,
+                generated_label=now_utc,
+                deterministic_markdown=markdown,
+            )
+            if status == "success":
+                status = "partial"
+            warnings.append(
+                f"synthesis_degraded: {synth.degraded_reason or synth.status}; "
+                "deterministic fallback rendered (run NOT counted as success)"
+            )
+        else:
+            synthesis_dump = synth.synthesis.model_dump(mode="json")
+            markdown = (
+                render_synthesis_markdown(
+                    synth.synthesis,
+                    brief_date=brief_date,
+                    window=window,
+                    model_metadata=synthesis_meta,
+                    generated_label=now_utc,
+                )
+                + "\n\n---\n\n## Appendix: Source-Linked Candidates (audit)\n\n"
+                + _render_md_appendix(sections)
+            )
+
     is_fresh_success = (
         status == "success" and not dry_run and pipeline.get("brief_freshness") == "fresh"
     )
 
-    outputs: dict[str, str] = {}
+    outputs: dict[str, str] = {"vault_brief_dir_redacted": vault_brief_dir_redacted}
     egress_clean = True
     egress_matched: list[str] = []
 
@@ -229,6 +338,9 @@ def run_daily_local_agent(
             generated_label=now_utc,
             date_policy=window.to_dict(),
             extra_section_label=window.carryover_section_label,
+            synthesis=synthesis_dump,
+            model_metadata=synthesis_meta,
+            degraded=synthesis_degraded,
         )
         egress_matched = scan_daily_run_html(rendered)
         egress_clean = not egress_matched
@@ -255,7 +367,9 @@ def run_daily_local_agent(
             from ..daily_brief.output import write_brief_output
 
             content = markdown
-            if window.carryover_section_label:
+            # The synthesized/degraded markdown already carries the carryover label in its heading;
+            # only the plain deterministic markdown (synthesis disabled) needs the callout prepended.
+            if window.carryover_section_label and synthesis_meta is None:
                 content = f"> **{window.carryover_section_label}**\n\n{markdown}"
             res = write_brief_output(
                 brief_date=brief_date, content=content, vault_brief_dir=vault_brief_dir, apply=True
@@ -281,6 +395,7 @@ def run_daily_local_agent(
         warnings=warnings,
         failure_reason=failure_reason,
         is_success=is_fresh_success,
+        synthesis=synthesis_meta,
     )
     outputs["status_path"] = _redact_path(status_path)
 
@@ -297,6 +412,8 @@ def run_daily_local_agent(
         "stages": _redacted_stages(pipeline),
         "warnings": warnings,
         "outputs": outputs,
+        "synthesis": synthesis_meta,
+        "synthesis_degraded": synthesis_degraded,
         "egress_scan": {"clean": egress_clean, "matched_labels": egress_matched},
         "failure_reason": failure_reason,
         "guardrails": _guardrails(include_raw, dry_run, generate_browser),
@@ -311,6 +428,8 @@ def _guardrails(include_raw: bool, dry_run: bool, generate_browser: bool) -> dic
         "browser_outside_repo": True,
         "no_browser_auto_open": True,
         "governed_vault_write_requires_confirmation": True,
+        "vault_brief_folder_pinned": True,
+        "legacy_phase_08a_folder_guarded": True,
         "redacted_status_file": True,
         "preserves_last_successful_brief": True,
         "no_external_writeback": True,
@@ -356,8 +475,12 @@ def _write_status(
     warnings: list[str],
     failure_reason: Optional[str],
     is_success: bool,
+    synthesis: Optional[dict[str, Any]] = None,
 ) -> Path:
-    """Write the redacted machine-readable status (latest + dated). Never contains raw bodies."""
+    """Write the redacted machine-readable status (latest + dated). Never contains raw bodies.
+
+    ``synthesis`` carries only safe model metadata (profile/model/status/latency/degraded) — never a
+    raw prompt or response."""
     payload: dict[str, Any] = {
         "command": "second-brain daily-run run",
         "run_timestamp": now_utc,
@@ -369,6 +492,7 @@ def _write_status(
         "stages": _redacted_stages(pipeline) if pipeline else [],
         "summary": pipeline.get("summary") if pipeline else {},
         "outputs": outputs,
+        "synthesis": synthesis,
         "warnings": warnings,
         "failure_reason": failure_reason,
     }

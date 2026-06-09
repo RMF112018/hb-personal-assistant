@@ -93,6 +93,166 @@ padding:2px 10px;font-size:12px;font-weight:700;margin-bottom:8px}
 """
 
 
+def _bullet_card(title: str, items: list[str], *, count: int | None = None, empty: str) -> str:
+    n = count if count is not None else len(items)
+    parts = [f"<div class='card'><h2>{_esc(title)}<span class='count'>{n}</span></h2>"]
+    if items:
+        parts += [f"<div class='item'><div class='ttl'>{i}</div></div>" for i in items]
+    else:
+        parts.append(f"<p class='empty'>{_esc(empty)}</p>")
+    parts.append("</div>")
+    return "".join(parts)
+
+
+def _fmt_bullet(b: dict[str, Any]) -> str:
+    text = _esc(b.get("text"))
+    tail: list[str] = []
+    if b.get("project") and b.get("project") not in {"", "Needs Project Review"}:
+        tail.append("project: " + _esc(b.get("project")))
+    if b.get("source_id"):
+        tail.append("id: " + _esc(b.get("source_id")))
+    suffix = f" <span class='cid'>{' · '.join(tail)}</span>" if tail else ""
+    return text + suffix
+
+
+def _render_synthesis_cards(synthesis: dict[str, Any]) -> str:
+    """Render the nine synthesized operator sections as cards (each with an empty state)."""
+    out: list[str] = []
+    out.append(
+        _bullet_card(
+            "Executive Summary",
+            [_esc(x) for x in synthesis.get("executive_summary") or []],
+            empty="No high-level summary generated.",
+        )
+    )
+    out.append(
+        _bullet_card(
+            "What Changed Since Last Brief",
+            [_fmt_bullet(b) for b in synthesis.get("what_changed_since_last_brief") or []],
+            empty="No notable changes since the last working-period brief.",
+        )
+    )
+    out.append(
+        _bullet_card(
+            "Critical / Due Today",
+            [_fmt_bullet(b) for b in synthesis.get("critical_due_today") or []],
+            empty="No critical due-today actions found.",
+        )
+    )
+    out.append(
+        _bullet_card(
+            "Open Commitments & Follow-Ups",
+            [_fmt_bullet(b) for b in synthesis.get("open_commitments_follow_ups") or []],
+            empty="No open commitments or follow-up items found for this run.",
+        )
+    )
+
+    # Today's Meetings — richer item layout (time, project, why, prep, questions).
+    meetings = synthesis.get("todays_meetings") or []
+    mparts = [
+        f"<div class='card'><h2>Today's Meetings<span class='count'>{len(meetings)}</span></h2>"
+    ]
+    if meetings:
+        for m in meetings:
+            head = " — ".join(_esc(p) for p in (m.get("local_time"), m.get("title")) if p)
+            mparts.append("<div class='item'>")
+            mparts.append(
+                f"<div class='ttl'>{head} <span class='cid'>({_esc(m.get('project'))})</span></div>"
+            )
+            meta: list[str] = []
+            if m.get("why_it_matters"):
+                meta.append("Why: " + _esc(m.get("why_it_matters")))
+            if m.get("prep"):
+                meta.append("Prep: " + _esc(m.get("prep")))
+            if m.get("open_questions"):
+                meta.append("Q: " + "; ".join(_esc(q) for q in m.get("open_questions")))
+            if m.get("recommended_next_action"):
+                meta.append("Next: " + _esc(m.get("recommended_next_action")))
+            if meta:
+                mparts.append(f"<div class='meta'>{' · '.join(meta)}</div>")
+            if m.get("source_id"):
+                mparts.append(f"<div class='cid'>id: {_esc(m.get('source_id'))}</div>")
+            mparts.append("</div>")
+    else:
+        mparts.append("<p class='empty'>No meeting-prep items required attention.</p>")
+    mparts.append("</div>")
+    out.append("".join(mparts))
+
+    # Project / Procore Signals — grouped.
+    signals = synthesis.get("project_signals") or []
+    sparts = [
+        f"<div class='card'><h2>Project / Procore Signals<span class='count'>{len(signals)}</span></h2>"
+    ]
+    if signals:
+        for g in signals:
+            sparts.append(f"<div class='item'><div class='ttl'>{_esc(g.get('project'))}</div>")
+            if g.get("summary"):
+                sparts.append(f"<div class='meta'>{_esc(g.get('summary'))}</div>")
+            for it in g.get("items") or []:
+                sparts.append(f"<div class='meta'>· {_fmt_bullet(it)}</div>")
+            sparts.append("</div>")
+    else:
+        sparts.append("<p class='empty'>No Procore project signals were generated in this run.</p>")
+    sparts.append("</div>")
+    out.append("".join(sparts))
+
+    out.append(
+        _bullet_card(
+            "Recommended Next Actions",
+            [_esc(x) for x in synthesis.get("recommended_next_actions") or []],
+            empty="No prioritized next actions generated.",
+        )
+    )
+    out.append(
+        _bullet_card(
+            "FYI / Low Priority",
+            [_esc(x) for x in synthesis.get("fyi_low_priority") or []],
+            empty="None.",
+        )
+    )
+    out.append(
+        _bullet_card(
+            "Needs Review / Data Gaps",
+            [_esc(x) for x in synthesis.get("needs_review_data_gaps") or []],
+            empty="No data gaps flagged.",
+        )
+    )
+    return "".join(out)
+
+
+def _render_section_cards(sections: list[dict[str, Any]], *, heading_prefix: str = "") -> str:
+    """Render the deterministic candidate sections (used as audit appendix / degraded fallback)."""
+    out: list[str] = []
+    if not sections:
+        out.append("<div class='card'><p class='empty'>No candidates for this date.</p></div>")
+    for sec in sections:
+        disp = _esc(heading_prefix + str(sec.get("display", "")))
+        count = int(sec.get("section_count", 0) or 0)
+        out.append(f"<div class='card'><h2>{disp}<span class='count'>{count}</span></h2>")
+        items = sec.get("items") or []
+        if not items:
+            out.append("<p class='empty'>None.</p>")
+        for it in items:
+            title = _esc(it.get("display_title") or it.get("title_redacted") or "(untitled)")
+            meta_bits: list[str] = []
+            if it.get("reason_redacted"):
+                meta_bits.append(_esc(it.get("reason_redacted")))
+            if it.get("raw_detail"):
+                meta_bits.append(_esc(it.get("raw_detail")))
+            if it.get("project_key"):
+                meta_bits.append("project: " + _esc(it.get("project_key")))
+            if it.get("recommended_next_action"):
+                meta_bits.append("next: " + _esc(it.get("recommended_next_action")))
+            cid = _esc(it.get("candidate_id") or "")
+            out.append("<div class='item'>")
+            out.append(f"<div class='ttl'>{title}</div>")
+            if meta_bits:
+                out.append(f"<div class='meta'>{' · '.join(meta_bits)}</div>")
+            out.append(f"<div class='cid'>id: {cid}</div></div>")
+        out.append("</div>")
+    return "".join(out)
+
+
 def render_daily_run_html(
     *,
     brief_date: str,
@@ -103,13 +263,22 @@ def render_daily_run_html(
     generated_label: str,
     date_policy: dict[str, Any] | None = None,
     extra_section_label: str | None = None,
+    synthesis: dict[str, Any] | None = None,
+    model_metadata: dict[str, Any] | None = None,
+    degraded: bool = False,
 ) -> str:
-    """Build the self-contained browser brief HTML. All dynamic content is scrubbed + escaped."""
+    """Build the self-contained browser brief HTML. All dynamic content is scrubbed + escaped.
+
+    When ``synthesis`` (a validated :class:`DailyBriefSynthesis` dump) is supplied and not
+    ``degraded``, the nine synthesized operator sections are the primary content and the deterministic
+    ``sections`` render as a collapsed "Source-Linked Candidates (audit)" appendix. When ``degraded``
+    (or no synthesis), a degraded banner is shown and the deterministic sections are the fallback body.
+    """
     status_cls = _STATUS_CLASS.get(status, "warn")
     status_text = {
-        "success": "Success — fresh brief generated this run",
-        "partial": "Partial — some stages failed; items may be stale or missing",
-        "failure": "Failure — brief not generated this run; showing last good is preserved",
+        "success": "Success — fresh local-model brief generated this run",
+        "partial": "Partial — synthesis degraded or a stage failed; see banner",
+        "failure": "Failure — brief not generated this run; last good is preserved",
         "skipped_weekend": "Skipped — weekend run, no fresh brief generated",
     }.get(status, status)
 
@@ -119,10 +288,26 @@ def render_daily_run_html(
     parts.append(f"<title>Daily Brief — {_esc(brief_date)}</title>")
     parts.append(f"<style>{_CSS}</style></head><body><div class='wrap'>")
     parts.append(f"<h1>Daily Brief — {_esc(brief_date)}</h1>")
+    model_sub = ""
+    if model_metadata:
+        model_sub = (
+            f" · model {_esc(model_metadata.get('model_name'))} "
+            f"(profile {_esc(model_metadata.get('profile_id'))}, {_esc(model_metadata.get('status'))})"
+        )
     parts.append(
-        f"<p class='sub'>Local-agent family · advisory · generated {_esc(generated_label)}</p>"
+        f"<p class='sub'>Local-agent family · advisory · generated {_esc(generated_label)}{model_sub}</p>"
     )
     parts.append(f"<div class='banner {status_cls}'>{_esc(status_text)}</div>")
+
+    if degraded:
+        reason = (model_metadata or {}).get("degraded_reason") or (model_metadata or {}).get(
+            "status"
+        )
+        parts.append(
+            "<div class='banner fail'>⚠ DEGRADED — local-model synthesis unavailable "
+            f"(reason: {_esc(reason)}). Showing deterministic source-linked candidates; "
+            "this run is NOT counted as successful.</div>"
+        )
 
     if extra_section_label:
         parts.append(f"<div class='banner ok'>{_esc(extra_section_label)}</div>")
@@ -153,33 +338,16 @@ def render_daily_run_html(
             parts.append(f"<dt>·</dt><dd>{_esc(w)}</dd>")
         parts.append("</dl></div>")
 
-    if not sections:
-        parts.append("<div class='card'><p class='empty'>No candidates for this date.</p></div>")
-    for sec in sections:
-        disp = _esc(sec.get("display", ""))
-        count = int(sec.get("section_count", 0) or 0)
-        parts.append(f"<div class='card'><h2>{disp}<span class='count'>{count}</span></h2>")
-        items = sec.get("items") or []
-        if not items:
-            parts.append("<p class='empty'>None.</p>")
-        for it in items:
-            title = _esc(it.get("display_title") or it.get("title_redacted") or "(untitled)")
-            meta_bits: list[str] = []
-            if it.get("reason_redacted"):
-                meta_bits.append(_esc(it.get("reason_redacted")))
-            if it.get("raw_detail"):
-                meta_bits.append(_esc(it.get("raw_detail")))
-            if it.get("project_key"):
-                meta_bits.append("project: " + _esc(it.get("project_key")))
-            if it.get("recommended_next_action"):
-                meta_bits.append("next: " + _esc(it.get("recommended_next_action")))
-            cid = _esc(it.get("candidate_id") or "")
-            parts.append("<div class='item'>")
-            parts.append(f"<div class='ttl'>{title}</div>")
-            if meta_bits:
-                parts.append(f"<div class='meta'>{' · '.join(meta_bits)}</div>")
-            parts.append(f"<div class='cid'>id: {cid}</div></div>")
-        parts.append("</div>")
+    if synthesis and not degraded:
+        parts.append(_render_synthesis_cards(synthesis))
+        parts.append(
+            "<div class='card'><h2>Appendix: Source-Linked Candidates (audit)"
+            f"<span class='count'>{sum(int(s.get('section_count', 0) or 0) for s in sections)}</span></h2>"
+            "<p class='meta'>Deterministic, redacted source rows backing the synthesized brief above.</p></div>"
+        )
+        parts.append(_render_section_cards(sections))
+    else:
+        parts.append(_render_section_cards(sections))
 
     rendered = int(summary.get("rendered", 0) or 0)
     parts.append(
