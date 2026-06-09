@@ -2323,6 +2323,77 @@ def daily_brief_render(
         raise typer.Exit(1) from None
 
 
+@daily_brief_app.command("intelligence")
+def daily_brief_intelligence_cmd(
+    date: str = typer.Option(..., "--date", help="Brief date (YYYY-MM-DD)."),  # noqa: B008
+    limit: int = typer.Option(200, "--limit", help="Max candidates to consider."),  # noqa: B008
+    dry_run: bool = typer.Option(  # noqa: B008
+        True, "--dry-run/--apply", help="Dry-run (default; no DB write). --apply writes a hash-only receipt."
+    ),
+    raw: bool = typer.Option(  # noqa: B008
+        False, "--raw", help="Reserved: the adapter only consumes redacted candidate fields (raw-safe)."
+    ),
+    provider: str = typer.Option(  # noqa: B008
+        "ollama", "--provider", help="ollama|mock. mock is offline-safe (no daemon)."
+    ),
+    mock: bool = typer.Option(  # noqa: B008
+        False, "--mock", help="Shortcut for --provider mock (offline shape)."
+    ),
+    db: "str | None" = typer.Option(None, "--db", help="Explicit SQLite path (tests/isolation)."),  # noqa: B008
+    json_out: bool = typer.Option(True, "--json", help="Emit JSON (default)."),  # noqa: B008
+) -> None:
+    """Optional local-model advisory daily-brief intelligence (source-linked, fail-closed, advisory).
+
+    Reads the redacted ``daily_brief_action_candidates`` for the date, asks the routed local model
+    for a compact source-linked intelligence object, drops any bullet not citing a real candidate id,
+    and withholds the whole enrichment (falling back to the deterministic brief) on any model/JSON/
+    schema/source-link/redaction failure. Never persists raw prompt/response; default dry-run."""
+    from hb_assistant.construction.second_brain.local_ai.contracts import load_local_model_profiles
+    from hb_assistant.construction.second_brain.local_ai.daily_brief_intelligence import (
+        build_daily_brief_intelligence,
+    )
+    from hb_assistant.construction.store import ConstructionStore
+
+    cmd = "second-brain daily-brief intelligence"
+    try:
+        provider_name = "mock" if mock else provider
+        store = ConstructionStore(db_path=db)
+        candidates = store.list_daily_brief_action_candidates(brief_date=date, limit=limit)
+        present_models, daemon_reachable = _local_model_present(provider_name, False)
+        profiles = load_local_model_profiles()
+        result = build_daily_brief_intelligence(
+            candidates=candidates,
+            profiles=profiles,
+            present_models=present_models if daemon_reachable else None,
+            dry_run=dry_run,
+            allow_raw=raw,
+            store=store,
+        )
+        payload = {
+            "command": cmd,
+            "ok": True,
+            "applied": bool(result.enriched and not dry_run),
+            "dry_run": dry_run,
+            "date": date,
+            "task_family": "daily_brief_synthesis_quality",
+            "candidates": len(candidates),
+            "selected_profile": result.profile_id,
+            "models_attempted": [result.model_name] if result.model_name else [],
+            "blockers": [] if result.enriched else [result.withheld_reason or "withheld"],
+            "warnings": [] if result.enriched else ["enrichment_withheld_fallback_deterministic"],
+            "redaction_passed": result.status != "redaction_failed",
+            **result.safe_payload(),
+        }
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(0)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        payload = {"command": cmd, "ok": False, "error": str(e)[:300]}
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(1) from None
+
+
 @daily_brief_app.command("build")
 def daily_brief_build(
     brief_date: str = typer.Option(..., "--date", help="Brief date (YYYY-MM-DD)."),
@@ -9338,6 +9409,34 @@ def second_brain_pipeline_run(
         raise typer.Exit(1) from None
 
 
+def _attach_daily_run_intelligence(*, store: Any, payload: dict, dry_run: bool) -> dict:
+    """Build advisory daily-brief intelligence for a completed run (fail-closed; never breaks the run)."""
+    from hb_assistant.construction.second_brain.local_ai.contracts import load_local_model_profiles
+    from hb_assistant.construction.second_brain.local_ai.daily_brief_intelligence import (
+        build_daily_brief_intelligence,
+    )
+
+    try:
+        brief_date = payload.get("brief_date") or payload.get("date")
+        candidates = (
+            store.list_daily_brief_action_candidates(brief_date=brief_date, limit=200)
+            if brief_date
+            else []
+        )
+        present_models, daemon_reachable = _local_model_present("ollama", False)
+        profiles = load_local_model_profiles()
+        result = build_daily_brief_intelligence(
+            candidates=candidates,
+            profiles=profiles,
+            present_models=present_models if daemon_reachable else None,
+            dry_run=dry_run,
+            store=store,
+        )
+        return result.safe_payload()
+    except Exception as e:  # advisory only — never fail the deterministic run
+        return {"enriched": False, "withheld_reason": f"intelligence_error:{str(e)[:120]}"}
+
+
 @daily_run_app.command("run")
 def second_brain_daily_run_run(
     as_of: "str | None" = typer.Option(  # noqa: B008
@@ -9394,6 +9493,11 @@ def second_brain_daily_run_run(
     synthesis_profile_id: str = typer.Option(  # noqa: B008
         "brief_synthesis", "--synthesis-profile",
         help="Local model profile id for synthesis (benchmark: default_extract vs review_filter).",
+    ),
+    with_intelligence: bool = typer.Option(  # noqa: B008
+        False, "--with-intelligence/--no-intelligence",
+        help="OPT-IN: attach local-model advisory daily-brief intelligence (source-linked, "
+        "fail-closed, advisory-only; never replaces the deterministic brief). Off by default.",
     ),
     open_browser: bool = typer.Option(  # noqa: B008
         False,
@@ -9483,6 +9587,10 @@ def second_brain_daily_run_run(
             relationship_scan_threads=relationship_scan_threads,
             relationship_scan_events=relationship_scan_events,
         )
+        if with_intelligence:
+            payload["intelligence"] = _attach_daily_run_intelligence(
+                store=store, payload=payload, dry_run=dry_run
+            )
         if open_browser:
             payload.setdefault("warnings", []).append("auto_open_not_enabled: browser not opened")
         typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
