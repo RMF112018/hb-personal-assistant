@@ -28,6 +28,10 @@ from .contracts import (
 )
 from .daily_brief_render import render_daily_brief, write_rendered_brief_to_path
 from .daily_brief_synthesis import build_daily_brief_candidates
+from .daily_brief_window import DailyBriefWindow, compute_daily_brief_window
+from .daily_run import run_daily_local_agent
+from .daily_run_html import render_daily_run_html, scan_daily_run_html
+from .daily_run_scheduler import DailyRunLaunchdManager
 from .email_task_extraction import (
     extract_email_task_candidates,
     score_email_task_signals,
@@ -54,6 +58,7 @@ from .packet_builders import (
     build_triage_batch_packet,
 )
 from .packet_normalize import has_join_url, normalize_model_text, summarize_attendees
+from .pipeline import run_local_agent_pipeline
 from .procore_digest import build_procore_action_digest
 from .proof import Phase10ProofError, build_phase_10_contracts_proof
 from .provider import build_local_model_status, resolve_local_model_client
@@ -65,6 +70,7 @@ from .raw_context import (
     build_raw_calendar_context_packet,
     build_raw_email_context_packet,
 )
+from .relationship_candidates import build_relationship_candidates
 from .relationship_scoring import (
     find_email_calendar_relationships,
     score_email_calendar_relationship,
@@ -129,6 +135,8 @@ __all__ = [
     "summarize_attendees",
     "score_email_calendar_relationship",
     "find_email_calendar_relationships",
+    # Phase 10 follow-on: deterministic relationship candidate engine (persist/scan)
+    "build_relationship_candidates",
     "extract_actions_for_packet",
     "resolve_local_model_client",
     "run_batch_extraction",
@@ -145,4 +153,13 @@ __all__ = [
     # Phase 10: daily-brief rendering / consumption (read-only render + path-safe write)
     "render_daily_brief",
     "write_rendered_brief_to_path",
+    # Phase 10: local-agent pipeline orchestration (one repeatable daily run)
+    "run_local_agent_pipeline",
+    # Phase 10 Checkpoint 6: weekday-aware date/window policy + daily-run wrapper + browser brief
+    "DailyBriefWindow",
+    "compute_daily_brief_window",
+    "run_daily_local_agent",
+    "render_daily_run_html",
+    "scan_daily_run_html",
+    "DailyRunLaunchdManager",
 ]

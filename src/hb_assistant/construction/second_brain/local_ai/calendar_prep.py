@@ -25,7 +25,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
 from .packet_builders import build_calendar_event_action_packet
@@ -78,6 +78,21 @@ def _parse_now(value: str) -> Optional[datetime]:
     return dt.replace(tzinfo=None)
 
 
+def _parse_window_bound(value: str) -> Optional[datetime]:
+    """Parse a policy window bound (may carry a local UTC offset) into naive-UTC for comparison
+    against the UTC-stored event stamps. Offset-aware inputs are converted to UTC first (unlike
+    ``_parse_now``, which assumes its input is already UTC)."""
+    if not value or not isinstance(value, str):
+        return None
+    try:
+        dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if dt.tzinfo is not None:
+        dt = dt.astimezone(timezone.utc)
+    return dt.replace(tzinfo=None)
+
+
 def _parse_event_dt(value: Any) -> Optional[datetime]:
     """Parse a stored UTC start/end stamp. Tolerates 7-digit fractional seconds by slicing to
     seconds resolution (``YYYY-MM-DDTHH:MM:SS``); calendar stamps are UTC, so naive compare is safe."""
@@ -109,6 +124,8 @@ def build_calendar_prep_candidates(
     project_key: Optional[str] = None,
     limit: int = 50,
     lookahead_days: int = 14,
+    window_start_iso: Optional[str] = None,
+    window_end_iso: Optional[str] = None,
     dry_run: bool = True,
     max_persist: Optional[int] = None,
     synthesize: bool = False,
@@ -118,6 +135,8 @@ def build_calendar_prep_candidates(
     """Build deterministic, source-linked calendar meeting-prep candidates (dry-run-first).
 
     Discovers upcoming, non-cancelled, non-private events within ``[now_utc, now_utc+lookahead_days)``
+    — or, when the central weekday policy supplies ``window_start_iso``/``window_end_iso`` (offset-aware
+    local bounds, converted to UTC here), within that explicit window instead of ``lookahead_days`` —
     (bounded by ``limit``, soonest-first), enriches each with a bounded/redacted prep excerpt, and
     builds one prep candidate per event. Dry-run is the default (zero writes). ``--apply``
     (dry_run=False) requires ``max_persist`` and caps ACTUAL inserts into
@@ -132,7 +151,17 @@ def build_calendar_prep_candidates(
     now_dt = _parse_now(now_utc)
     if now_dt is None:
         raise ValueError(f"invalid now_utc/as-of: {now_utc!r}")
-    window_end = now_dt + timedelta(days=max(0, lookahead_days))
+    # Window: the central weekday policy's explicit bounds take precedence over lookahead_days.
+    window_start_dt = _parse_window_bound(window_start_iso) if window_start_iso else now_dt
+    if window_start_dt is None:
+        raise ValueError(f"invalid window_start_iso: {window_start_iso!r}")
+    window_end = (
+        _parse_window_bound(window_end_iso)
+        if window_end_iso
+        else now_dt + timedelta(days=max(0, lookahead_days))
+    )
+    if window_end is None:
+        raise ValueError(f"invalid window_end_iso: {window_end_iso!r}")
 
     # Safe redacted fields only — never subjects/bodies/join URLs/attendee names/emails.
     raw_events = store.list_calendar_prep_source_events(project_key=project_key, limit=100000)
@@ -159,7 +188,7 @@ def build_calendar_prep_candidates(
     in_window: list[dict[str, Any]] = []
     for ev in raw_events:
         start = _parse_event_dt(ev.get("start_datetime_utc"))
-        if start is None or not (now_dt <= start < window_end):
+        if start is None or not (window_start_dt <= start < window_end):
             summary["skipped_out_of_window"] += 1
             continue
         in_window.append(ev)

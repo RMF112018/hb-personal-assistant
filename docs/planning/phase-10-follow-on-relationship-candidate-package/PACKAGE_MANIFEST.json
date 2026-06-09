@@ -1,0 +1,29 @@
+{
+  "package": "phase-10-follow-on-relationship-candidate-package",
+  "created_for": "RMF112018/hb-personal-assistant",
+  "target_branch": "experiment/local-agent-family-proof",
+  "selected_candidate": "Relationship candidate engine + cross-source context enrichment",
+  "excludes": [
+    "production-like daily pipeline pilot",
+    "scheduler/launchd implementation",
+    "polished browser delivery",
+    "Obsidian delivery"
+  ],
+  "files": [
+    "00_REPO_TRUTH_AND_BRANCH_GUARD.md",
+    "01_RELATIONSHIP_SCOPE_AND_CONTRACT.md",
+    "02_CORE_RELATIONSHIP_ENGINE.md",
+    "03_CLI_AND_PIPELINE_INTEGRATION.md",
+    "04_DAILY_BRIEF_ENRICHMENT.md",
+    "05_TESTS_AND_VALIDATION.md",
+    "06_LIVE_WORKFLOW_PROOF.md",
+    "07_DOCS_EVIDENCE_AND_RUNBOOK.md",
+    "08_FINAL_AUDIT_AND_HANDOFF.md",
+    "ACCEPTANCE_CRITERIA.md",
+    "CANDIDATE_SCORECARD.md",
+    "README.md",
+    "STOP_CONDITIONS.md",
+    "SUPPORTING_CONTEXT.md",
+    "VALIDATION_COMMANDS.md"
+  ]
+}
