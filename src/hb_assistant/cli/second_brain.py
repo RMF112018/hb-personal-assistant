@@ -9208,6 +9208,11 @@ def second_brain_calendar_prep_build(
         raise typer.Exit(1) from None
 
 
+def _relationship_scan_window_ok(threads: "int | None", events: "int | None") -> bool:
+    """Scan-window overrides, when provided, must be >= 1 (else the run fails closed)."""
+    return not ((threads is not None and threads < 1) or (events is not None and events < 1))
+
+
 @pipeline_app.command("run")
 def second_brain_pipeline_run(
     as_of: "str | None" = typer.Option(  # noqa: B008
@@ -9251,6 +9256,14 @@ def second_brain_pipeline_run(
         "the default daily run is unchanged). When applied, it populates relationship rows the brief "
         "render then surfaces.",
     ),
+    relationship_scan_threads: "int | None" = typer.Option(  # noqa: B008
+        None, "--relationship-scan-threads",
+        help="Relationship stage: max email threads to scan (default: stage default 50).",
+    ),
+    relationship_scan_events: "int | None" = typer.Option(  # noqa: B008
+        None, "--relationship-scan-events",
+        help="Relationship stage: max calendar events to scan (default: stage default 50).",
+    ),
     summary: bool = typer.Option(  # noqa: B008
         False, "--summary", help="Include per-stage detail + the brief markdown/sections."
     ),
@@ -9282,6 +9295,13 @@ def second_brain_pipeline_run(
             }
             typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
             raise typer.Exit(2)
+        if not _relationship_scan_window_ok(relationship_scan_threads, relationship_scan_events):
+            payload = {
+                "command": cmd, "ok": False, "applied": False,
+                "error": "relationship_scan_window_must_be_positive",
+            }
+            typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+            raise typer.Exit(2)
 
         now_utc = as_of or _dt.now(_tz.utc).isoformat()
         if date:
@@ -9294,6 +9314,8 @@ def second_brain_pipeline_run(
             limit=limit, lookahead_days=lookahead_days, include_raw=raw,
             stages=list(stage) if stage else None,
             include_relationship_candidates=include_relationship_candidates,
+            relationship_scan_threads=relationship_scan_threads,
+            relationship_scan_events=relationship_scan_events,
         )
         if not summary:
             trimmed_stages = [{k: v for k, v in s.items() if k != "detail"} for s in payload["stages"]]
@@ -9378,6 +9400,15 @@ def second_brain_daily_run_run(
         "the scheduled daily run is unchanged). When applied, it populates relationship rows the brief "
         "then surfaces as a 'Related Context' section.",
     ),
+    relationship_scan_threads: "int | None" = typer.Option(  # noqa: B008
+        None, "--relationship-scan-threads",
+        help="Relationship stage: max email threads to scan (default: stage default 50). "
+        "Widen this (e.g. 200) so the scheduled run finds relationships on a fuller mailbox.",
+    ),
+    relationship_scan_events: "int | None" = typer.Option(  # noqa: B008
+        None, "--relationship-scan-events",
+        help="Relationship stage: max calendar events to scan (default: stage default 50).",
+    ),
     db: "str | None" = typer.Option(None, "--db", help="Explicit SQLite path (tests/isolation)."),  # noqa: B008
     json_out: bool = typer.Option(True, "--json", help="Emit JSON (default)."),  # noqa: B008
 ) -> None:
@@ -9406,6 +9437,13 @@ def second_brain_daily_run_run(
             }
             typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
             raise typer.Exit(2)
+        if not _relationship_scan_window_ok(relationship_scan_threads, relationship_scan_events):
+            payload = {
+                "command": cmd, "ok": False,
+                "error": "relationship_scan_window_must_be_positive",
+            }
+            typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+            raise typer.Exit(2)
 
         now_utc = as_of or _dt.now().astimezone().isoformat()
         if date:
@@ -9431,6 +9469,8 @@ def second_brain_daily_run_run(
             browser_output_dir=browser_output_dir,
             status_dir=status_dir,
             include_relationship_candidates=include_relationship_candidates,
+            relationship_scan_threads=relationship_scan_threads,
+            relationship_scan_events=relationship_scan_events,
         )
         if open_browser:
             payload.setdefault("warnings", []).append("auto_open_not_enabled: browser not opened")
@@ -9459,6 +9499,8 @@ def _build_daily_run_scheduler(
     timezone: str,
     db: "str | None",
     include_relationship_candidates: bool = False,
+    relationship_scan_threads: "int | None" = None,
+    relationship_scan_events: "int | None" = None,
 ) -> Any:
     from hb_assistant.construction.second_brain.local_ai import DailyRunLaunchdManager
 
@@ -9475,6 +9517,8 @@ def _build_daily_run_scheduler(
         timezone=timezone,
         db_path=db,
         include_relationship_candidates=include_relationship_candidates,
+        relationship_scan_threads=relationship_scan_threads,
+        relationship_scan_events=relationship_scan_events,
     )
 
 
@@ -9508,12 +9552,29 @@ def second_brain_daily_run_scheduler_install(
         help="Install the schedule with the cross-source relationship-candidate stage enabled "
         "(off by default → the installed job is unchanged).",
     ),
+    relationship_scan_threads: "int | None" = typer.Option(  # noqa: B008
+        None, "--relationship-scan-threads",
+        help="Scheduled relationship stage: max email threads to scan (only emitted with "
+        "--include-relationship-candidates; default: stage default 50).",
+    ),
+    relationship_scan_events: "int | None" = typer.Option(  # noqa: B008
+        None, "--relationship-scan-events",
+        help="Scheduled relationship stage: max calendar events to scan (only emitted with "
+        "--include-relationship-candidates; default: stage default 50).",
+    ),
     db: "str | None" = typer.Option(None, "--db", help="Pin the working DB for the scheduled job."),  # noqa: B008
     json_out: bool = typer.Option(True, "--json", help="Emit JSON (default)."),  # noqa: B008
 ) -> None:
     """Install (or plan) the weekday 5:00 AM launchd daily-run agent. Dry-run/plan by default."""
     cmd = "second-brain daily-run scheduler install"
     try:
+        if not _relationship_scan_window_ok(relationship_scan_threads, relationship_scan_events):
+            payload = {
+                "command": cmd, "ok": False,
+                "error": "relationship_scan_window_must_be_positive",
+            }
+            typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+            raise typer.Exit(2)
         if write_obsidian and not confirm_vault_write:
             payload = {
                 "command": cmd,
@@ -9535,6 +9596,8 @@ def second_brain_daily_run_scheduler_install(
             timezone=timezone,
             db=db,
             include_relationship_candidates=include_relationship_candidates,
+            relationship_scan_threads=relationship_scan_threads,
+            relationship_scan_events=relationship_scan_events,
         )
         res = mgr.install(dry_run=not apply)
         res["catch_up_on_wake"] = catch_up_on_wake

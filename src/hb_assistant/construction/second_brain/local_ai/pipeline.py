@@ -76,6 +76,8 @@ def run_local_agent_pipeline(
     window: Optional[DailyBriefWindow] = None,
     stages: Optional[list[str]] = None,
     include_relationship_candidates: bool = False,
+    relationship_scan_threads: Optional[int] = None,
+    relationship_scan_events: Optional[int] = None,
 ) -> dict[str, Any]:
     """Run the Phase 10 local-agent pipeline once (dry-run-first, stage-bounded, fail-loud).
 
@@ -109,7 +111,13 @@ def run_local_agent_pipeline(
         "daily_brief_synthesis": (build_daily_brief_candidates, {}),
     }
     if include_relationship_candidates:
-        builders[_RELATIONSHIP_STAGE] = (build_relationship_candidates, {})
+        # Scan-window overrides are optional; when unset the builder's own defaults (50/50) apply.
+        rel_extra: dict[str, Any] = {}
+        if relationship_scan_threads is not None:
+            rel_extra["scan_threads"] = relationship_scan_threads
+        if relationship_scan_events is not None:
+            rel_extra["scan_events"] = relationship_scan_events
+        builders[_RELATIONSHIP_STAGE] = (build_relationship_candidates, rel_extra)
 
     receipts: list[dict[str, Any]] = []
     total_persisted = 0

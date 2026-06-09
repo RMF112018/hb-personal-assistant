@@ -82,6 +82,35 @@ Two operable paths (handoff states the canonical one):
    inserts a `relationship_candidates` stage **just before** `daily_brief_render`, so freshly
    persisted rows feed the same render. The stage is **not** in the default `STAGE_ORDER`; the
    default daily run is byte-unchanged and regression-tested.
+3. **Scheduled launchd daily-run:** `second-brain daily-run run --include-relationship-candidates`
+   threads the opt-in through `run_daily_local_agent`; the launchd installer
+   (`daily-run scheduler install --include-relationship-candidates`) only adds the flag to the
+   generated `ProgramArguments` when opted in, so the installed weekday job is otherwise unchanged.
+
+### Scan-window controls (scheduled-run effectiveness)
+
+The relationship stage scans a bounded `scan_threads × scan_events` window (stage default **50×50**).
+On a fuller mailbox that default can surface ~0 pairs, so the scheduled stage may find nothing. Two
+optional controls widen it (default `None` → the 50×50 stage default is preserved):
+
+- `--relationship-scan-threads <n>` / `--relationship-scan-events <n>` on
+  `second-brain daily-run run`, `pipeline run`, and `daily-run scheduler install`.
+- They thread through `run_daily_local_agent` → `run_local_agent_pipeline` into the stage's
+  `build_relationship_candidates(scan_threads=…, scan_events=…)` call (via the builder `extra` dict).
+- The launchd `ProgramArguments` emit `--relationship-scan-threads/-events` **only** when the stage is
+  opted in **and** the value is explicitly provided. Values `< 1` fail closed
+  (`error=relationship_scan_window_must_be_positive`, exit 2).
+- Evidence: on a Dev DB copy, a `daily-run run --dry-run --include-relationship-candidates
+  --relationship-scan-threads 200 --relationship-scan-events 200` raised the stage's `would_persist`
+  from ~0 (default window) to 21, positioned before render, persisting nothing (dry-run).
+
+**Enable the wider scan window in the scheduled job:**
+
+```
+hb-assistant second-brain daily-run scheduler install \
+  --confirm-vault-write --include-relationship-candidates \
+  --relationship-scan-threads 200 --relationship-scan-events 200 --apply
+```
 
 ## Guardrails
 
