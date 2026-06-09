@@ -10266,6 +10266,113 @@ def local_model_status(
     raise typer.Exit(0 if result.get("ready") else 3)
 
 
+def _local_model_present(provider_name: str, heavy_enabled: bool) -> "tuple[set[str], bool]":
+    """Probe installed local models (read-only). Returns (present model names, daemon_reachable)."""
+    from hb_assistant.construction.second_brain.local_ai import build_local_model_status
+
+    status = build_local_model_status(provider_name=provider_name, heavy_enabled=heavy_enabled)
+    present = {str(m) for m in (status.get("present_models") or [])}
+    return present, bool(status.get("daemon_reachable"))
+
+
+@local_model_app.command("profiles")
+def local_model_profiles(
+    provider: str = typer.Option(  # noqa: B008
+        "ollama", "--provider", help="ollama|mock. mock is offline-safe (no daemon)."
+    ),
+    mock: bool = typer.Option(  # noqa: B008
+        False, "--mock", help="Shortcut for --provider mock (offline shape)."
+    ),
+    heavy_enabled: bool = typer.Option(  # noqa: B008
+        False, "--heavy-enabled", help="Treat heavy profiles as eligible (still requires a model)."
+    ),
+    json_out: bool = typer.Option(True, "--json", help="Emit machine-readable JSON (default)."),  # noqa: B008
+) -> None:
+    """List local model profiles with served task families and current availability (read-only)."""
+    from hb_assistant.construction.second_brain.local_ai.model_router import (
+        RouterConfigError,
+        build_profiles_report,
+    )
+
+    provider_name = "mock" if mock else provider
+    present_models, daemon_reachable = _local_model_present(provider_name, heavy_enabled)
+    try:
+        report = build_profiles_report(
+            present_models=present_models if daemon_reachable else None,
+            heavy_enabled=heavy_enabled,
+        )
+    except RouterConfigError as e:
+        payload = {
+            "command": "second-brain local-model profiles",
+            "ok": False,
+            "applied": False,
+            "dry_run": True,
+            "blockers": [f"config_error:{str(e)[:120]}"],
+            "warnings": [],
+            "redaction_passed": True,
+        }
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(2) from None
+    payload = {
+        "command": "second-brain local-model profiles",
+        "ok": True,
+        "applied": False,
+        "dry_run": True,
+        "daemon_reachable": daemon_reachable,
+        "blockers": [],
+        "warnings": [],
+        "redaction_passed": True,
+        **report,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0)
+
+
+@local_model_app.command("route")
+def local_model_route(
+    task_family: str = typer.Option(  # noqa: B008
+        ..., "--task-family", help="Task family to route (e.g. daily_brief_synthesis_quality)."
+    ),
+    provider: str = typer.Option(  # noqa: B008
+        "ollama", "--provider", help="ollama|mock. mock is offline-safe (no daemon)."
+    ),
+    mock: bool = typer.Option(  # noqa: B008
+        False, "--mock", help="Shortcut for --provider mock (offline shape)."
+    ),
+    heavy_enabled: bool = typer.Option(  # noqa: B008
+        False, "--heavy-enabled", help="Treat heavy profiles as eligible (still requires a model)."
+    ),
+    json_out: bool = typer.Option(True, "--json", help="Emit machine-readable JSON (default)."),  # noqa: B008
+) -> None:
+    """Show the deterministic local profile route for a task family (fail-closed, never cloud)."""
+    from hb_assistant.construction.second_brain.local_ai.model_router import route_task_family
+
+    provider_name = "mock" if mock else provider
+    present_models, daemon_reachable = _local_model_present(provider_name, heavy_enabled)
+    route = route_task_family(
+        task_family,
+        present_models=present_models if daemon_reachable else None,
+        heavy_enabled=heavy_enabled,
+    )
+    payload = {
+        "command": "second-brain local-model route",
+        "ok": not route.blocked,
+        "applied": False,
+        "dry_run": True,
+        "warnings": [],
+        "metrics": {},
+        "redaction_passed": True,
+        "models_attempted": [route.model_name] if route.model_name else [],
+        **route.model_dump(),
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    if route.reason_code in {"unknown_task_family", "config_error"}:
+        raise typer.Exit(2)
+    if route.blocked:
+        raise typer.Exit(1)
+    raise typer.Exit(0)
+
+
 @ai_jobs_app.command("status")
 def ai_jobs_status(
     environment: "str | None" = typer.Option(  # noqa: B008
