@@ -10481,6 +10481,84 @@ def local_model_route(
     raise typer.Exit(0)
 
 
+@local_model_app.command("eval")
+def local_model_eval(
+    suite: str = typer.Option(  # noqa: B008
+        "daily-brief", "--suite", help="Named suite: daily-brief|synthesis|extraction."
+    ),
+    task_family: "list[str] | None" = typer.Option(  # noqa: B008
+        None, "--task-family", help="Restrict to specific task families (repeatable)."
+    ),
+    models: "list[str]" = typer.Option(  # noqa: B008
+        ["auto"], "--models", help="Model name(s) to evaluate, or 'auto' (enabled non-heavy profiles)."
+    ),
+    live: bool = typer.Option(  # noqa: B008
+        False, "--live/--synthetic",
+        help="--live runs the real local models (daemon required); --synthetic (default) is offline.",
+    ),
+    raw_fixtures_dir: "str | None" = typer.Option(  # noqa: B008
+        None, "--raw-fixtures-dir",
+        help="Opt-in raw operator fixtures dir OUTSIDE the repo (refused if inside the repo).",
+    ),
+    db: "str | None" = typer.Option(  # noqa: B008
+        None, "--db", help="Accepted for parity; v1 eval uses redacted fixtures (not DB rows)."
+    ),
+    json_out: bool = typer.Option(True, "--json", help="Emit machine-readable JSON (default)."),  # noqa: B008
+) -> None:
+    """Evaluate local models/profiles on the repo's structured-output tasks (decisive, raw-safe).
+
+    Reports per task family the recommended profile, blocked/unsafe families, fallback route, reason
+    codes, and a ``use_next_run`` map. Default is offline/synthetic; ``--live`` measures real models.
+    Never emits a raw prompt/response."""
+    from hb_assistant.construction.second_brain.local_ai.model_eval import run_model_eval
+    from hb_assistant.construction.second_brain.local_ai.model_eval_fixtures import (
+        RawFixtureRefusedError,
+        load_raw_fixtures,
+    )
+
+    cmd = "second-brain local-model eval"
+    fixtures = None
+    if raw_fixtures_dir:
+        try:
+            fixtures = load_raw_fixtures(raw_fixtures_dir)
+        except RawFixtureRefusedError as e:
+            payload = {
+                "command": cmd,
+                "ok": False,
+                "applied": False,
+                "dry_run": True,
+                "blockers": [f"raw_fixture_refused:{str(e)[:120]}"],
+                "warnings": [],
+                "redaction_passed": True,
+            }
+            typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+            raise typer.Exit(2) from None
+
+    warnings: list[str] = []
+    if db:
+        warnings.append("db_ignored: v1 eval uses redacted fixtures, not DB rows")
+    result = run_model_eval(
+        suite=suite,
+        task_families=list(task_family) if task_family else None,
+        models=list(models) or ["auto"],
+        mode="live" if live else "synthetic",
+        fixtures=fixtures,
+    )
+    if warnings:
+        result.setdefault("warnings", []).extend(warnings)
+    typer.echo(json.dumps(result, indent=2, default=str) if json_out else str(result))
+
+    blockers = result.get("blockers", [])
+    if result.get("ok"):
+        raise typer.Exit(0)
+    misuse = {"no_fixtures_for_suite", "no_eligible_profiles"}
+    if any(b in misuse for b in blockers) or any(
+        str(b).startswith("profiles_unavailable") for b in blockers
+    ):
+        raise typer.Exit(2)
+    raise typer.Exit(1)
+
+
 @ai_jobs_app.command("status")
 def ai_jobs_status(
     environment: "str | None" = typer.Option(  # noqa: B008
