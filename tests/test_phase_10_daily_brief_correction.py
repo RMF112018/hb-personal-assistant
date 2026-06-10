@@ -532,12 +532,22 @@ def test_26_27_degraded_preserves_last_good_and_is_marked(tmp_path: Path) -> Non
         synthesis_backend=StaticOutputClient(raise_unavailable=True),
         **d,
     )
-    assert out["status"] == "partial" and out["synthesis_degraded"] is True
-    assert latest.read_bytes() == good  # last good preserved
+    # A deterministic-useful brief with degraded synthesis is an operator-usable fallback, NOT a
+    # generic partial/unusable run: explicit status, no partial:false contradiction, fallback marked.
+    assert out["status"] == "deterministic_success_synthesis_degraded"
+    assert out["synthesis_degraded"] is True
+    assert out["partial"] is False
+    assert out["deterministic_fallback_used"] is True
+    assert out["operator_usable"] is True
+    assert latest.read_bytes() == good  # daily-brief-latest.html reserved for full success (preserved)
     pointer2 = json.loads((tmp_path / "status" / "last-successful.json").read_text())
-    assert pointer2["updated"] == pointer["updated"]  # pointer not advanced on degraded
+    assert pointer2["updated"] == pointer["updated"]  # full-success pointer not advanced
+    # Option A: the deterministic fallback publishes its own stable path, clearly marked operator-usable.
+    det_latest = (tmp_path / "html" / "daily-brief-latest-deterministic.html").read_text()
+    assert "Deterministic source-linked brief published" in det_latest
+    assert "NOT counted as successful" not in det_latest
     attempted = (tmp_path / "html" / "daily-brief-latest-attempted.html").read_text()
-    assert "DEGRADED" in attempted  # degraded clearly marked in browser
+    assert "Deterministic source-linked brief published" in attempted
 
 
 def test_28_browser_html_egress_scan_clean(tmp_path: Path) -> None:

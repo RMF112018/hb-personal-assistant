@@ -246,7 +246,7 @@ def status_block(mei: dict[str, Any]) -> dict[str, Any]:
     return {
         "enabled": bool(mei.get("enabled")),
         "available": bool(mei.get("available")),
-        "label": MODEL_ENRICHED_INTELLIGENCE_LABEL,
+        "label": mei.get("label") or MODEL_ENRICHED_INTELLIGENCE_LABEL,
         "degraded": bool(mei.get("degraded")),
         "withheld_reason": mei.get("withheld_reason"),
         "candidate_count": int(mei.get("candidate_count") or 0),

@@ -40,7 +40,13 @@ _STATUS_SUBDIR = "daily-run-status"
 _LATEST_STATUS = "latest-status.json"
 _LAST_SUCCESSFUL = "last-successful.json"
 _BROWSER_LATEST = "daily-brief-latest.html"
+_BROWSER_LATEST_DETERMINISTIC = "daily-brief-latest-deterministic.html"
 _BROWSER_ATTEMPTED = "daily-brief-latest-attempted.html"
+
+# Explicit daily-run result class for a deterministic-useful brief whose local-model synthesis
+# degraded: operator-usable (usefulness gate passed) but NOT a full-synthesis success. Distinct from
+# "partial" (a non-synthesis stage failed) and "degraded" (usefulness gate failed / unusable).
+STATUS_DETERMINISTIC_FALLBACK = "deterministic_success_synthesis_degraded"
 
 
 def _parse_run_dt(now_utc: str) -> datetime:
@@ -384,14 +390,16 @@ def run_daily_local_agent(
     # ---- Local-model executive synthesis (apply only; dry-run keeps the deterministic preview) ----
     # The synthesized narrative becomes the primary brief; the deterministic candidates become a
     # collapsed source-linked audit appendix (hybrid). Fail-closed: a degraded/unavailable/low-quality
-    # model run never produces a "success" — it renders a clearly-marked degraded brief and downgrades
-    # the run to "partial" so the last-successful pointer is preserved.
+    # model run never produces a full "success". But the banner + final status are DEFERRED to the
+    # post-usefulness-gate finalization, because a deterministic-useful brief with degraded synthesis
+    # is a publishable operator fallback (`deterministic_success_synthesis_degraded`), NOT the same
+    # class as an unusable brief. The deterministic markdown is kept here for that decision.
     synthesis_meta: Optional[dict[str, Any]] = None
     synthesis_dump: Optional[dict[str, Any]] = None
     synthesis_degraded = False
+    synth_degraded_reason: Optional[str] = None
     if synthesize_brief and not dry_run and status != "failure" and markdown:
         from .daily_brief_llm_synthesis import (
-            render_degraded_markdown,
             render_synthesis_markdown,
             synthesize_daily_brief,
         )
@@ -409,18 +417,12 @@ def run_daily_local_agent(
         synthesis_meta = synth.metadata()
         if synth.degraded or synth.synthesis is None:
             synthesis_degraded = True
-            markdown = render_degraded_markdown(
-                brief_date=brief_date,
-                window=window,
-                model_metadata=synthesis_meta,
-                generated_label=now_utc,
-                deterministic_markdown=markdown,
-            )
-            if status == "success":
-                status = "partial"
+            synth_degraded_reason = synth.degraded_reason or synth.status
+            # Keep `markdown` as the deterministic brief; the banner + status class are decided after
+            # the usefulness gate (deterministic-fallback vs usefulness-failed).
             warnings.append(
-                f"synthesis_degraded: {synth.degraded_reason or synth.status}; "
-                "deterministic fallback rendered (run NOT counted as success)"
+                f"synthesis_degraded: {synth_degraded_reason}; "
+                "deterministic fallback evaluated after usefulness gate"
             )
         else:
             synthesis_dump = synth.synthesis.model_dump(mode="json")
@@ -496,6 +498,14 @@ def run_daily_local_agent(
         pending_section=pending_followup,
         generated_utc=now_utc,
     )
+    # When executive synthesis degraded, present the model-enriched section as WITHHELD (deterministic
+    # fallback) — never as available/healthy while the brief says synthesis degraded. The advisory
+    # model bullets are withheld; the raw-free pending rows still surface under a non-model label.
+    if synthesis_degraded and model_enriched.get("available"):
+        model_enriched["available"] = False
+        model_enriched["degraded"] = True
+        model_enriched["withheld_reason"] = f"synthesis_degraded:{synth_degraded_reason}"
+        model_enriched["label"] = "Source-Linked Deterministic Brief"
     mei_status = status_block(model_enriched)
     if model_enriched_intelligence:
         # Default-on path: ONE converged "Model Enriched Intelligence" section (advisory + pending).
@@ -537,16 +547,47 @@ def run_daily_local_agent(
         synthesis_present=synthesis_dump is not None,
         synthesis_degraded=synthesis_degraded,
     )
-    # Only an apply-mode run persists candidates, so only an apply run can be gated for usefulness;
-    # a dry-run "success" is a preview (brief_freshness=preexisting, never a fresh success) and is
-    # left unchanged.
-    if status == "success" and not dry_run and not usefulness.passed:
-        status = "partial"
-        warnings.append("usefulness_gate_failed: " + ",".join(usefulness.failed_reasons))
+    # ---- Finalize the run result class (after usefulness gate) ----
+    # Only an apply-mode run persists candidates and runs synthesis, so result-class refinement applies
+    # to an apply-mode base "success" (a dry-run "success" is a preview, left unchanged). Distinguish:
+    #   - usefulness gate FAILED → "degraded" (deterministic output unusable; render the not-successful
+    #     degraded banner; last-successful + stable latest paths preserved);
+    #   - usefulness PASSED + synthesis degraded → "deterministic_success_synthesis_degraded"
+    #     (operator-usable deterministic fallback; render the operator-usable banner; publish the
+    #     separate deterministic-latest path; daily-brief-latest.html reserved for full success);
+    #   - usefulness PASSED + synthesis ok → "success".
+    deterministic_fallback_used = False
+    if status == "success" and not dry_run:
+        if not usefulness.passed:
+            status = "degraded"
+            warnings.append("usefulness_gate_failed: " + ",".join(usefulness.failed_reasons))
+            if synthesis_degraded:
+                from .daily_brief_llm_synthesis import render_degraded_markdown
+
+                markdown = render_degraded_markdown(
+                    brief_date=brief_date,
+                    window=window,
+                    model_metadata=synthesis_meta or {},
+                    generated_label=now_utc,
+                    deterministic_markdown=markdown,
+                )
+        elif synthesis_degraded:
+            status = STATUS_DETERMINISTIC_FALLBACK
+            deterministic_fallback_used = True
+            from .daily_brief_llm_synthesis import render_deterministic_fallback_markdown
+
+            markdown = render_deterministic_fallback_markdown(
+                brief_date=brief_date,
+                window=window,
+                model_metadata=synthesis_meta or {},
+                generated_label=now_utc,
+                deterministic_markdown=markdown,
+            )
 
     is_fresh_success = (
         status == "success" and not dry_run and pipeline.get("brief_freshness") == "fresh"
     )
+    published_deterministic = False
 
     outputs: dict[str, str] = {"vault_brief_dir_redacted": vault_brief_dir_redacted}
     egress_clean = True
@@ -566,6 +607,7 @@ def run_daily_local_agent(
             synthesis=synthesis_dump,
             model_metadata=synthesis_meta,
             degraded=synthesis_degraded,
+            deterministic_fallback=deterministic_fallback_used,
             pending_followup=pending_followup,
             model_enriched=mei_render,
         )
@@ -577,6 +619,14 @@ def run_daily_local_agent(
             _atomic_write(browser_dir / _BROWSER_ATTEMPTED, rendered)
             outputs["browser_dated_path"] = _redact_path(dated)
             outputs["browser_attempted_path"] = _redact_path(browser_dir / _BROWSER_ATTEMPTED)
+            # Stable deterministic-latest path = the latest operator-usable brief (full success OR
+            # deterministic fallback). daily-brief-latest.html stays reserved for full synthesis success.
+            if is_fresh_success or deterministic_fallback_used:
+                _atomic_write(browser_dir / _BROWSER_LATEST_DETERMINISTIC, rendered)
+                outputs["browser_latest_deterministic_path"] = _redact_path(
+                    browser_dir / _BROWSER_LATEST_DETERMINISTIC
+                )
+                published_deterministic = True
             if is_fresh_success:
                 _atomic_write(browser_dir / _BROWSER_LATEST, rendered)
                 outputs["browser_latest_path"] = _redact_path(browser_dir / _BROWSER_LATEST)
@@ -584,7 +634,12 @@ def run_daily_local_agent(
             warnings.append(
                 "browser_egress_blocked: external-asset pattern detected; HTML withheld"
             )
-            status = "failure" if status == "success" else status
+            status = (
+                "failure"
+                if status in ("success", STATUS_DETERMINISTIC_FALLBACK)
+                else status
+            )
+            deterministic_fallback_used = False
 
     # Governed Obsidian note (raw allowed). Requires explicit confirmation; skip on dry-run/failure.
     if write_obsidian and not dry_run and status != "failure" and markdown:
@@ -612,12 +667,36 @@ def run_daily_local_agent(
     if status == "failure":
         failure_reason = "render_stage_failed" if render_failed else "browser_egress_blocked"
 
+    # ---- Deterministic-fallback / operator-usability block (status JSON + payload) ----
+    # A deterministic-useful brief with degraded synthesis is reported as an explicit, published
+    # fallback — distinct from a usefulness-gate failure. `operator_usable` is true whenever the
+    # usefulness gate passed and the run did not hard-fail (regardless of synthesis health).
+    synthesis_status = (
+        None if synthesis_meta is None else ("degraded" if synthesis_degraded else "ok")
+    )
+    _ug_metrics = usefulness.metrics or {}
+    _sec_counts = _ug_metrics.get("section_counts") or {}
+    deterministic_fallback = {
+        "used": deterministic_fallback_used,
+        "reason": (f"synthesis_degraded:{synth_degraded_reason}" if synthesis_degraded else None),
+        "usefulness_gate_passed": bool(usefulness.passed),
+        "published": bool(published_deterministic),
+        "stable_path": outputs.get("browser_latest_deterministic_path"),
+        "counts": {
+            "total_candidates": int(_ug_metrics.get("total_candidates") or 0),
+            "calendar": int(_sec_counts.get("calendar") or 0),
+            "procore": int(_sec_counts.get("procore") or 0),
+        },
+    }
+    operator_usable = bool(usefulness.passed and status != "failure")
+
     # Operator-legible run summary — one consolidated, redacted block surfacing result, wall-clock
     # started/completed, the final output paths (browser / Obsidian / last-successful), partial stage
     # receipts (name+status only), and a safe error summary. No raw content.
     run_summary = _build_run_summary(
         status=status,
         degraded=synthesis_degraded,
+        deterministic_fallback=deterministic_fallback_used,
         started_wall_utc=started_wall_utc,
         completed_wall_utc=datetime.now(_dt_tz.utc).isoformat(),
         brief_date=brief_date,
@@ -646,6 +725,9 @@ def run_daily_local_agent(
         email_raw_enrichment_stage=email_enrichment_receipt,
         run_summary=run_summary,
         usefulness_gate=usefulness.to_dict(),
+        deterministic_fallback=deterministic_fallback,
+        synthesis_status=synthesis_status,
+        operator_usable=operator_usable,
     )
     outputs["status_path"] = _redact_path(status_path)
 
@@ -653,7 +735,8 @@ def run_daily_local_agent(
         "command": cmd,
         "ok": status != "failure",
         "status": status,
-        "partial": bool(pipeline.get("partial")),
+        # `partial` now tracks the top-level status exactly (no more status=partial / partial=false).
+        "partial": status == "partial",
         "dry_run": dry_run,
         "brief_date": brief_date,
         "brief_freshness": pipeline.get("brief_freshness"),
@@ -664,6 +747,11 @@ def run_daily_local_agent(
         "outputs": outputs,
         "synthesis": synthesis_meta,
         "synthesis_degraded": synthesis_degraded,
+        "synthesis_status": synthesis_status,
+        "synthesis_required_for_success": False,
+        "deterministic_fallback": deterministic_fallback,
+        "deterministic_fallback_used": deterministic_fallback_used,
+        "operator_usable": operator_usable,
         "pending_followup": pending_summary,
         "model_enriched_intelligence": mei_status,
         "email_raw_enrichment_stage": email_enrichment_receipt,
@@ -701,6 +789,7 @@ def _build_run_summary(
     *,
     status: str,
     degraded: bool,
+    deterministic_fallback: bool = False,
     started_wall_utc: str,
     completed_wall_utc: str,
     brief_date: str,
@@ -719,9 +808,14 @@ def _build_run_summary(
     status only. ``error_summary`` prefers the structured failure reason, else the last warning on a
     non-success run, else None.
     """
-    result = "degraded" if (degraded and status != "failure") else status
+    if deterministic_fallback:
+        result = STATUS_DETERMINISTIC_FALLBACK
+    elif degraded and status != "failure":
+        result = "degraded"
+    else:
+        result = status
     error_summary = failure_reason
-    if error_summary is None and status != "success" and warnings:
+    if error_summary is None and status not in ("success", STATUS_DETERMINISTIC_FALLBACK) and warnings:
         error_summary = warnings[-1][:160]
     return {
         "result": result,
@@ -794,6 +888,9 @@ def _write_status(
     email_raw_enrichment_stage: Optional[dict[str, Any]] = None,
     run_summary: Optional[dict[str, Any]] = None,
     usefulness_gate: Optional[dict[str, Any]] = None,
+    deterministic_fallback: Optional[dict[str, Any]] = None,
+    synthesis_status: Optional[str] = None,
+    operator_usable: bool = False,
 ) -> Path:
     """Write the redacted machine-readable status (latest + dated). Never contains raw bodies.
 
@@ -817,6 +914,10 @@ def _write_status(
         "model_enriched_intelligence": model_enriched_intelligence,
         "email_raw_enrichment_stage": email_raw_enrichment_stage,
         "usefulness_gate": usefulness_gate,
+        "synthesis_status": synthesis_status,
+        "synthesis_required_for_success": False,
+        "deterministic_fallback": deterministic_fallback,
+        "operator_usable": operator_usable,
         "warnings": warnings,
         "failure_reason": failure_reason,
     }

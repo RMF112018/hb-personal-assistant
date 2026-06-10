@@ -248,6 +248,38 @@ def render_degraded_markdown(
     )
 
 
+def render_deterministic_fallback_markdown(
+    *,
+    brief_date: str,
+    window: DailyBriefWindow,
+    model_metadata: dict[str, Any],
+    generated_label: str,
+    deterministic_markdown: str,
+) -> str:
+    """Render an OPERATOR-USABLE deterministic-fallback brief.
+
+    Used when the deterministic usefulness gate PASSED but local-model executive synthesis degraded:
+    the source-linked deterministic brief is published as a safe fallback (NOT the same class as an
+    unusable/degraded brief). The banner says so explicitly.
+    """
+    reason = model_metadata.get("degraded_reason") or model_metadata.get("status") or "unknown"
+    banner = (
+        "> ✓ **Deterministic source-linked brief published.** "
+        f"Local-model synthesis was degraded: {reason} "
+        f"(model {model_metadata.get('model_name', '?')}). "
+        "This brief is operator-usable because the deterministic usefulness gate passed; it is not a "
+        "full model-synthesized brief."
+    )
+    return (
+        f"# Daily Brief — {brief_date} ({window.run_weekday}{_window_heading_suffix(window)})\n\n"
+        f"{banner}\n\n"
+        f"_{window.explanation}_\n\n"
+        f"{deterministic_markdown.strip()}\n\n"
+        "---\n"
+        f"_Deterministic fallback (usefulness gate passed) · generated {generated_label}._\n"
+    )
+
+
 def _select_profile(profiles: LocalModelProfiles, profile_id: str) -> Optional[LocalModelProfile]:
     for p in profiles.profiles:
         if p.profile_id == profile_id:
