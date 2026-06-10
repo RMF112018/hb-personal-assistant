@@ -65,10 +65,32 @@ future field never seen at generation time is caught.
   carries an explicit, reviewed justification (`SIDECAR_JUSTIFICATIONS`) and is otherwise
   not marked complete.
 
+## Runtime plan/schema parity + column reconciliation (V48 hotfix)
+Two follow-on guarantees were added after a production INSERT crash
+(`no column named architect`):
+
+- **Object-container classification.** `object|null` containers must be `structural`
+  (lossless in the sidecar), never columns — `null` does not make an object container a
+  promotable scalar (`_NON_NULL_SCALARS`). Their scalar children remain first-class columns.
+- **Schema parity gate.** Path coverage and runtime insert-column/physical-schema parity
+  are orthogonal. `runtime_plan_schema_mismatches` / `projection_schema_audit` verify every
+  planned primary + child insert column exists physically and every `procore_ep_*` table
+  exists; this is folded into `projection-audit` `ok` and surfaced via
+  `projection-schema-audit`. `projection-reprocess --apply` runs the check **before any
+  write** and returns a structured `schema_parity_broken` receipt instead of
+  `sqlite3.OperationalError`.
+- **V48 reconciliation migration.** Because the V47 tables are registry-derived and
+  `CREATE TABLE IF NOT EXISTS` cannot add columns, a regenerated registry can require
+  columns existing tables lack. The V48 migration block reconciles physical schema to the
+  registry with additive `ALTER TABLE ADD COLUMN`, run **unconditionally** (outside the
+  version gate) so it self-heals column drift on every `apply()`, even on a DB already at
+  head. Additive only — never drops or alters existing columns; the table set is unchanged
+  (lifecycle contract `table_count` stays 347).
+
 ## CLI (`procore analytics`)
 `projection-inventory [--emit-candidate]`, `projection-audit`, `projection-coverage`,
-`projection-reprocess [--apply]`. `--apply` requires `--db`; no command performs live
-Procore calls or external writeback.
+`projection-schema-audit`, `projection-reprocess [--apply]`. `--apply` requires `--db`; no
+command performs live Procore calls or external writeback.
 
 ## Scope (at remediation time)
 37 endpoints with full raw payloads → 37 primary + 41 child = 78 `procore_ep_` tables;

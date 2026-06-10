@@ -621,11 +621,6 @@
        "rel": "cost_impact.commitment.title"
       },
       {
-       "category": "company",
-       "column": "cost_impact_contract_confirmed",
-       "rel": "cost_impact.contract.confirmed"
-      },
-      {
        "category": "identity",
        "column": "cost_impact_contract_confirmed_id",
        "rel": "cost_impact.contract.confirmed.id"
@@ -759,11 +754,6 @@
        "category": "status",
        "column": "cost_impact_source_of_stage",
        "rel": "cost_impact.source_of_stage"
-      },
-      {
-       "category": "company",
-       "column": "cost_impact_vendor_confirmed",
-       "rel": "cost_impact.vendor.confirmed"
       },
       {
        "category": "identity",
@@ -1192,15 +1182,15 @@
     }
    ],
    "coverage": {
-    "business_field_paths": 206,
+    "business_field_paths": 197,
     "child": 5,
-    "column": 170,
+    "column": 167,
     "excluded": 0,
     "over_sidecar_threshold": false,
-    "sidecar": 31,
+    "sidecar": 25,
     "sidecar_justified": true,
-    "sidecar_only_pct": 15.0,
-    "structural": 44
+    "sidecar_only_pct": 12.7,
+    "structural": 53
    },
    "endpoint_family": "change_management",
    "path_map": [
@@ -1392,7 +1382,7 @@
     },
     {
      "category": "other",
-     "dest": "sidecar:child:$.change_items",
+     "dest": "structural",
      "path": "$.change_items[].cost_impact.commitment",
      "type": "object"
     },
@@ -1506,7 +1496,7 @@
     },
     {
      "category": "company",
-     "dest": "column:$.change_items",
+     "dest": "structural",
      "path": "$.change_items[].cost_impact.contract.confirmed",
      "type": "object"
     },
@@ -1542,7 +1532,7 @@
     },
     {
      "category": "other",
-     "dest": "sidecar:child:$.change_items",
+     "dest": "structural",
      "path": "$.change_items[].cost_impact.contract.proposed",
      "type": "object"
     },
@@ -1626,7 +1616,7 @@
     },
     {
      "category": "other",
-     "dest": "sidecar:child:$.change_items",
+     "dest": "structural",
      "path": "$.change_items[].cost_impact.request_for_quote",
      "type": "object"
     },
@@ -1734,7 +1724,7 @@
     },
     {
      "category": "company",
-     "dest": "column:$.change_items",
+     "dest": "structural",
      "path": "$.change_items[].cost_impact.vendor.confirmed",
      "type": "object"
     },
@@ -1758,7 +1748,7 @@
     },
     {
      "category": "other",
-     "dest": "sidecar:child:$.change_items",
+     "dest": "structural",
      "path": "$.change_items[].cost_impact.vendor.proposed",
      "type": "object"
     },
@@ -2004,7 +1994,7 @@
     },
     {
      "category": "other",
-     "dest": "sidecar:child:$.change_items",
+     "dest": "structural",
      "path": "$.change_items[].revenue_impact.change_order",
      "type": "object"
     },
@@ -2118,7 +2108,7 @@
     },
     {
      "category": "other",
-     "dest": "sidecar:child:$.change_items",
+     "dest": "structural",
      "path": "$.change_items[].revenue_impact.change_order_package",
      "type": "object"
     },
@@ -2382,7 +2372,7 @@
     },
     {
      "category": "other",
-     "dest": "column:primary",
+     "dest": "structural",
      "path": "$.event_origin",
      "type": "object"
     },
@@ -2772,11 +2762,6 @@
      "rel": "description"
     },
     {
-     "category": "other",
-     "column": "event_origin",
-     "rel": "event_origin"
-    },
-    {
      "category": "title",
      "column": "event_origin_display_name",
      "rel": "event_origin.display_name"
@@ -2943,15 +2928,15 @@
   "commitment-change-orders": {
    "child_tables": [],
    "coverage": {
-    "business_field_paths": 45,
+    "business_field_paths": 41,
     "child": 0,
-    "column": 45,
+    "column": 41,
     "excluded": 0,
     "over_sidecar_threshold": false,
     "sidecar": 0,
     "sidecar_justified": true,
     "sidecar_only_pct": 0.0,
-    "structural": 4
+    "structural": 8
    },
    "endpoint_family": "commitments",
    "path_map": [
@@ -2975,7 +2960,7 @@
     },
     {
      "category": "title",
-     "dest": "column:primary",
+     "dest": "structural",
      "path": "$.change_order_change_reason",
      "type": "object"
     },
@@ -3047,7 +3032,7 @@
     },
     {
      "category": "status",
-     "dest": "column:primary",
+     "dest": "structural",
      "path": "$.designated_reviewer",
      "type": "object"
     },
@@ -3149,7 +3134,7 @@
     },
     {
      "category": "other",
-     "dest": "column:primary",
+     "dest": "structural",
      "path": "$.received_from",
      "type": "object"
     },
@@ -3185,7 +3170,7 @@
     },
     {
      "category": "status",
-     "dest": "column:primary",
+     "dest": "structural",
      "path": "$.reviewed_by",
      "type": "object"
     },
@@ -3263,11 +3248,6 @@
     },
     {
      "category": "title",
-     "column": "change_order_change_reason",
-     "rel": "change_order_change_reason"
-    },
-    {
-     "category": "title",
      "column": "change_order_change_reason_change_reason",
      "rel": "change_order_change_reason.change_reason"
     },
@@ -3305,11 +3285,6 @@
      "category": "title",
      "column": "description",
      "rel": "description"
-    },
-    {
-     "category": "status",
-     "column": "designated_reviewer",
-     "rel": "designated_reviewer"
     },
     {
      "category": "identity",
@@ -3387,11 +3362,6 @@
      "rel": "private"
     },
     {
-     "category": "other",
-     "column": "received_from",
-     "rel": "received_from"
-    },
-    {
      "category": "identity",
      "column": "received_from_id",
      "rel": "received_from.id"
@@ -3415,11 +3385,6 @@
      "category": "date",
      "column": "reviewed_at",
      "rel": "reviewed_at"
-    },
-    {
-     "category": "status",
-     "column": "reviewed_by",
-     "rel": "reviewed_by"
     },
     {
      "category": "identity",
@@ -5510,15 +5475,15 @@
     }
    ],
    "coverage": {
-    "business_field_paths": 41,
+    "business_field_paths": 40,
     "child": 1,
-    "column": 37,
+    "column": 36,
     "excluded": 0,
     "over_sidecar_threshold": false,
     "sidecar": 3,
     "sidecar_justified": true,
-    "sidecar_only_pct": 7.3,
-    "structural": 5
+    "sidecar_only_pct": 7.5,
+    "structural": 6
    },
    "endpoint_family": "daily_logs",
    "path_map": [
@@ -5698,7 +5663,7 @@
     },
     {
      "category": "other",
-     "dest": "column:primary",
+     "dest": "structural",
      "path": "$.location",
      "type": "object"
     },
@@ -5876,11 +5841,6 @@
      "rel": "inspector_name"
     },
     {
-     "category": "other",
-     "column": "location",
-     "rel": "location"
-    },
-    {
      "category": "date",
      "column": "location_created_at",
      "rel": "location.created_at"
@@ -5989,15 +5949,15 @@
     }
    ],
    "coverage": {
-    "business_field_paths": 54,
+    "business_field_paths": 51,
     "child": 1,
-    "column": 47,
+    "column": 44,
     "excluded": 0,
     "over_sidecar_threshold": false,
     "sidecar": 6,
     "sidecar_justified": true,
-    "sidecar_only_pct": 11.1,
-    "structural": 6
+    "sidecar_only_pct": 11.8,
+    "structural": 9
    },
    "endpoint_family": "daily_logs",
    "path_map": [
@@ -6069,7 +6029,7 @@
     },
     {
      "category": "person",
-     "dest": "column:primary",
+     "dest": "structural",
      "path": "$.contact",
      "type": "object"
     },
@@ -6141,7 +6101,7 @@
     },
     {
      "category": "identity",
-     "dest": "column:primary",
+     "dest": "structural",
      "path": "$.cost_code",
      "type": "object"
     },
@@ -6231,7 +6191,7 @@
     },
     {
      "category": "other",
-     "dest": "column:primary",
+     "dest": "structural",
      "path": "$.location",
      "type": "object"
     },
@@ -6365,11 +6325,6 @@
    "primary_columns": [
     {
      "category": "person",
-     "column": "contact",
-     "rel": "contact"
-    },
-    {
-     "category": "person",
      "column": "contact_email",
      "rel": "contact.email"
     },
@@ -6407,11 +6362,6 @@
      "category": "company",
      "column": "contact_vendor_name",
      "rel": "contact.vendor_name"
-    },
-    {
-     "category": "identity",
-     "column": "cost_code",
-     "rel": "cost_code"
     },
     {
      "category": "identity",
@@ -6467,11 +6417,6 @@
      "category": "date",
      "column": "deleted_at",
      "rel": "deleted_at"
-    },
-    {
-     "category": "other",
-     "column": "location",
-     "rel": "location"
     },
     {
      "category": "date",
@@ -6602,15 +6547,15 @@
     }
    ],
    "coverage": {
-    "business_field_paths": 35,
+    "business_field_paths": 34,
     "child": 1,
-    "column": 31,
+    "column": 30,
     "excluded": 0,
     "over_sidecar_threshold": false,
     "sidecar": 3,
     "sidecar_justified": true,
-    "sidecar_only_pct": 8.6,
-    "structural": 5
+    "sidecar_only_pct": 8.8,
+    "structural": 6
    },
    "endpoint_family": "daily_logs",
    "path_map": [
@@ -6766,7 +6711,7 @@
     },
     {
      "category": "other",
-     "dest": "column:primary",
+     "dest": "structural",
      "path": "$.location",
      "type": "object"
     },
@@ -6910,11 +6855,6 @@
      "category": "other",
      "column": "is_issue_day",
      "rel": "is_issue_day"
-    },
-    {
-     "category": "other",
-     "column": "location",
-     "rel": "location"
     },
     {
      "category": "date",
@@ -7615,15 +7555,15 @@
     }
    ],
    "coverage": {
-    "business_field_paths": 58,
+    "business_field_paths": 55,
     "child": 1,
-    "column": 45,
+    "column": 42,
     "excluded": 0,
     "over_sidecar_threshold": false,
     "sidecar": 12,
     "sidecar_justified": true,
-    "sidecar_only_pct": 20.7,
-    "structural": 11
+    "sidecar_only_pct": 21.8,
+    "structural": 14
    },
    "endpoint_family": "inspections",
    "path_map": [
@@ -7731,7 +7671,7 @@
     },
     {
      "category": "other",
-     "dest": "column:primary",
+     "dest": "structural",
      "path": "$.item_response",
      "type": "object"
     },
@@ -7881,7 +7821,7 @@
     },
     {
      "category": "other",
-     "dest": "column:primary",
+     "dest": "structural",
      "path": "$.response",
      "type": "object"
     },
@@ -7905,7 +7845,7 @@
     },
     {
      "category": "other",
-     "dest": "column:primary",
+     "dest": "structural",
      "path": "$.response_set",
      "type": "object"
     },
@@ -8069,11 +8009,6 @@
      "rel": "evidence_configuration.updated_at"
     },
     {
-     "category": "other",
-     "column": "item_response",
-     "rel": "item_response"
-    },
-    {
      "category": "identity",
      "column": "item_response_item_id",
      "rel": "item_response.item_id"
@@ -8169,11 +8104,6 @@
      "rel": "responded_with"
     },
     {
-     "category": "other",
-     "column": "response",
-     "rel": "response"
-    },
-    {
      "category": "status",
      "column": "response_corresponding_status",
      "rel": "response.corresponding_status"
@@ -8187,11 +8117,6 @@
      "category": "title",
      "column": "response_name",
      "rel": "response.name"
-    },
-    {
-     "category": "other",
-     "column": "response_set",
-     "rel": "response_set"
     },
     {
      "category": "date",
@@ -8444,11 +8369,6 @@
        "rel": "signatory.name"
       },
       {
-       "category": "other",
-       "column": "signature",
-       "rel": "signature"
-      },
-      {
        "category": "identity",
        "column": "signature_attachment_id",
        "rel": "signature.attachment.id"
@@ -8489,15 +8409,15 @@
     }
    ],
    "coverage": {
-    "business_field_paths": 114,
+    "business_field_paths": 107,
     "child": 4,
-    "column": 99,
+    "column": 92,
     "excluded": 0,
     "over_sidecar_threshold": false,
     "sidecar": 11,
     "sidecar_justified": true,
-    "sidecar_only_pct": 9.6,
-    "structural": 12
+    "sidecar_only_pct": 10.3,
+    "structural": 19
    },
    "endpoint_family": "inspections",
    "path_map": [
@@ -8593,7 +8513,7 @@
     },
     {
      "category": "status",
-     "dest": "column:primary",
+     "dest": "structural",
      "path": "$.closed_by",
      "type": "object"
     },
@@ -8899,7 +8819,7 @@
     },
     {
      "category": "other",
-     "dest": "column:primary",
+     "dest": "structural",
      "path": "$.location",
      "type": "object"
     },
@@ -8989,7 +8909,7 @@
     },
     {
      "category": "person",
-     "dest": "column:primary",
+     "dest": "structural",
      "path": "$.point_of_contact",
      "type": "object"
     },
@@ -9043,7 +8963,7 @@
     },
     {
      "category": "person",
-     "dest": "column:primary",
+     "dest": "structural",
      "path": "$.responsible_contractor",
      "type": "object"
     },
@@ -9115,7 +9035,7 @@
     },
     {
      "category": "other",
-     "dest": "column:$.signature_requests",
+     "dest": "structural",
      "path": "$.signature_requests[].signature",
      "type": "object"
     },
@@ -9181,7 +9101,7 @@
     },
     {
      "category": "other",
-     "dest": "column:primary",
+     "dest": "structural",
      "path": "$.specification_section",
      "type": "object"
     },
@@ -9223,7 +9143,7 @@
     },
     {
      "category": "other",
-     "dest": "column:primary",
+     "dest": "structural",
      "path": "$.trade",
      "type": "object"
     },
@@ -9263,11 +9183,6 @@
      "category": "date",
      "column": "closed_at",
      "rel": "closed_at"
-    },
-    {
-     "category": "status",
-     "column": "closed_by",
-     "rel": "closed_by"
     },
     {
      "category": "company",
@@ -9405,11 +9320,6 @@
      "rel": "list_template_name"
     },
     {
-     "category": "other",
-     "column": "location",
-     "rel": "location"
-    },
-    {
      "category": "identity",
      "column": "location_code",
      "rel": "location.code"
@@ -9480,11 +9390,6 @@
      "rel": "overdue"
     },
     {
-     "category": "person",
-     "column": "point_of_contact",
-     "rel": "point_of_contact"
-    },
-    {
      "category": "company",
      "column": "point_of_contact_company_name",
      "rel": "point_of_contact.company_name"
@@ -9525,11 +9430,6 @@
      "rel": "respondable_item_count"
     },
     {
-     "category": "person",
-     "column": "responsible_contractor",
-     "rel": "responsible_contractor"
-    },
-    {
      "category": "identity",
      "column": "responsible_contractor_id",
      "rel": "responsible_contractor.id"
@@ -9543,11 +9443,6 @@
      "category": "other",
      "column": "schedule",
      "rel": "schedule"
-    },
-    {
-     "category": "other",
-     "column": "specification_section",
-     "rel": "specification_section"
     },
     {
      "category": "title",
@@ -9568,11 +9463,6 @@
      "category": "identity",
      "column": "template_id",
      "rel": "template_id"
-    },
-    {
-     "category": "other",
-     "column": "trade",
-     "rel": "trade"
     },
     {
      "category": "identity",
@@ -9600,15 +9490,15 @@
   "meetings": {
    "child_tables": [],
    "coverage": {
-    "business_field_paths": 22,
+    "business_field_paths": 21,
     "child": 0,
-    "column": 22,
+    "column": 21,
     "excluded": 0,
     "over_sidecar_threshold": false,
     "sidecar": 0,
     "sidecar_justified": true,
     "sidecar_only_pct": 0.0,
-    "structural": 1
+    "structural": 2
    },
    "endpoint_family": "meetings",
    "path_map": [
@@ -9644,7 +9534,7 @@
     },
     {
      "category": "other",
-     "dest": "column:primary",
+     "dest": "structural",
      "path": "$.distributed_by",
      "type": "object"
     },
@@ -9773,11 +9663,6 @@
      "rel": "distributed_at"
     },
     {
-     "category": "other",
-     "column": "distributed_by",
-     "rel": "distributed_by"
-    },
-    {
      "category": "identity",
      "column": "distributed_by_id",
      "rel": "distributed_by.id"
@@ -9871,11 +9756,6 @@
        "rel": "name"
       },
       {
-       "category": "company",
-       "column": "vendor",
-       "rel": "vendor"
-      },
-      {
        "category": "identity",
        "column": "vendor_id",
        "rel": "vendor.id"
@@ -9891,15 +9771,15 @@
     }
    ],
    "coverage": {
-    "business_field_paths": 71,
+    "business_field_paths": 64,
     "child": 1,
-    "column": 59,
+    "column": 52,
     "excluded": 0,
     "over_sidecar_threshold": false,
     "sidecar": 11,
     "sidecar_justified": true,
-    "sidecar_only_pct": 15.5,
-    "structural": 8
+    "sidecar_only_pct": 17.2,
+    "structural": 15
    },
    "endpoint_family": "observations",
    "path_map": [
@@ -9911,7 +9791,7 @@
     },
     {
      "category": "person",
-     "dest": "column:primary",
+     "dest": "structural",
      "path": "$.assignee",
      "type": "object"
     },
@@ -9929,7 +9809,7 @@
     },
     {
      "category": "company",
-     "dest": "column:primary",
+     "dest": "structural",
      "path": "$.assignee.vendor",
      "type": "object"
     },
@@ -9971,7 +9851,7 @@
     },
     {
      "category": "company",
-     "dest": "column:$.assignees",
+     "dest": "structural",
      "path": "$.assignees[].vendor",
      "type": "object"
     },
@@ -10091,7 +9971,7 @@
     },
     {
      "category": "other",
-     "dest": "column:primary",
+     "dest": "structural",
      "path": "$.location",
      "type": "object"
     },
@@ -10145,7 +10025,7 @@
     },
     {
      "category": "other",
-     "dest": "column:primary",
+     "dest": "structural",
      "path": "$.origin",
      "type": "object"
     },
@@ -10193,7 +10073,7 @@
     },
     {
      "category": "other",
-     "dest": "column:primary",
+     "dest": "structural",
      "path": "$.specification_section",
      "type": "object"
     },
@@ -10241,7 +10121,7 @@
     },
     {
      "category": "other",
-     "dest": "column:primary",
+     "dest": "structural",
      "path": "$.trade",
      "type": "object"
     },
@@ -10380,11 +10260,6 @@
    ],
    "primary_columns": [
     {
-     "category": "person",
-     "column": "assignee",
-     "rel": "assignee"
-    },
-    {
      "category": "identity",
      "column": "assignee_id",
      "rel": "assignee.id"
@@ -10393,11 +10268,6 @@
      "category": "title",
      "column": "assignee_name",
      "rel": "assignee.name"
-    },
-    {
-     "category": "company",
-     "column": "assignee_vendor",
-     "rel": "assignee.vendor"
     },
     {
      "category": "identity",
@@ -10470,11 +10340,6 @@
      "rel": "due_date"
     },
     {
-     "category": "other",
-     "column": "location",
-     "rel": "location"
-    },
-    {
      "category": "date",
      "column": "location_created_at",
      "rel": "location.created_at"
@@ -10515,11 +10380,6 @@
      "rel": "number"
     },
     {
-     "category": "other",
-     "column": "origin",
-     "rel": "origin"
-    },
-    {
      "category": "identity",
      "column": "origin_payload_checklist_item_id",
      "rel": "origin.payload.checklist_item_id"
@@ -10543,11 +10403,6 @@
      "category": "other",
      "column": "priority",
      "rel": "priority"
-    },
-    {
-     "category": "other",
-     "column": "specification_section",
-     "rel": "specification_section"
     },
     {
      "category": "identity",
@@ -10578,11 +10433,6 @@
      "category": "status",
      "column": "status",
      "rel": "status"
-    },
-    {
-     "category": "other",
-     "column": "trade",
-     "rel": "trade"
     },
     {
      "category": "identity",
@@ -10831,15 +10681,15 @@
   "prime-change-orders": {
    "child_tables": [],
    "coverage": {
-    "business_field_paths": 43,
+    "business_field_paths": 40,
     "child": 0,
-    "column": 43,
+    "column": 40,
     "excluded": 0,
     "over_sidecar_threshold": false,
     "sidecar": 0,
     "sidecar_justified": true,
     "sidecar_only_pct": 0.0,
-    "structural": 4
+    "structural": 7
    },
    "endpoint_family": "owner_contracts",
    "path_map": [
@@ -10863,7 +10713,7 @@
     },
     {
      "category": "title",
-     "dest": "column:primary",
+     "dest": "structural",
      "path": "$.change_order_change_reason",
      "type": "object"
     },
@@ -10935,7 +10785,7 @@
     },
     {
      "category": "status",
-     "dest": "column:primary",
+     "dest": "structural",
      "path": "$.designated_reviewer",
      "type": "object"
     },
@@ -11037,7 +10887,7 @@
     },
     {
      "category": "other",
-     "dest": "column:primary",
+     "dest": "structural",
      "path": "$.received_from",
      "type": "object"
     },
@@ -11139,11 +10989,6 @@
     },
     {
      "category": "title",
-     "column": "change_order_change_reason",
-     "rel": "change_order_change_reason"
-    },
-    {
-     "category": "title",
      "column": "change_order_change_reason_change_reason",
      "rel": "change_order_change_reason.change_reason"
     },
@@ -11181,11 +11026,6 @@
      "category": "title",
      "column": "description",
      "rel": "description"
-    },
-    {
-     "category": "status",
-     "column": "designated_reviewer",
-     "rel": "designated_reviewer"
     },
     {
      "category": "identity",
@@ -11261,11 +11101,6 @@
      "category": "status",
      "column": "private",
      "rel": "private"
-    },
-    {
-     "category": "other",
-     "column": "received_from",
-     "rel": "received_from"
     },
     {
      "category": "identity",
@@ -11491,16 +11326,16 @@
   "prime-contracts": {
    "child_tables": [],
    "coverage": {
-    "business_field_paths": 124,
+    "business_field_paths": 123,
     "child": 0,
-    "column": 91,
+    "column": 90,
     "excluded": 0,
     "over_sidecar_threshold": true,
     "sidecar": 33,
     "sidecar_justification": "Sidecar holds only secondary nested contractor/vendor company-profile attributes (address, phone, logo, website, labor_union, project_ids[], profile attachments). High-value contract financials and vendor/contractor identity are first-class columns; these profile attributes are polymorphic company-directory metadata with no contract-analytics value.",
     "sidecar_justified": true,
-    "sidecar_only_pct": 26.6,
-    "structural": 8
+    "sidecar_only_pct": 26.8,
+    "structural": 9
    },
    "endpoint_family": "owner_contracts",
    "path_map": [
@@ -11536,7 +11371,7 @@
     },
     {
      "category": "other",
-     "dest": "column:primary",
+     "dest": "structural",
      "path": "$.architect",
      "type": "object"
     },
@@ -12319,11 +12154,6 @@
      "rel": "approved_change_orders"
     },
     {
-     "category": "other",
-     "column": "architect",
-     "rel": "architect"
-    },
-    {
      "category": "identity",
      "column": "architect_id",
      "rel": "architect.id"
@@ -12874,15 +12704,15 @@
     }
    ],
    "coverage": {
-    "business_field_paths": 113,
+    "business_field_paths": 112,
     "child": 7,
-    "column": 86,
+    "column": 85,
     "excluded": 0,
     "over_sidecar_threshold": false,
     "sidecar": 20,
     "sidecar_justified": true,
-    "sidecar_only_pct": 17.7,
-    "structural": 32
+    "sidecar_only_pct": 17.9,
+    "structural": 33
    },
    "endpoint_family": "foundation",
    "path_map": [
@@ -13650,7 +13480,7 @@
     },
     {
      "category": "status",
-     "dest": "column:primary",
+     "dest": "structural",
      "path": "$.project_stage",
      "type": "object"
     },
@@ -13992,11 +13822,6 @@
      "category": "identity",
      "column": "project_sector_id",
      "rel": "project_sector_id"
-    },
-    {
-     "category": "status",
-     "column": "project_stage",
-     "rel": "project_stage"
     },
     {
      "category": "identity",
@@ -15130,16 +14955,16 @@
     }
    ],
    "coverage": {
-    "business_field_paths": 161,
+    "business_field_paths": 157,
     "child": 1,
-    "column": 108,
+    "column": 104,
     "excluded": 0,
     "over_sidecar_threshold": true,
     "sidecar": 52,
     "sidecar_justification": "Sidecar is dominated by per-tenant dynamic custom-field DEFINITION metadata (custom_field_<id>.data_type) and origin_data blobs. Custom-field ids are project-specific and polymorphic, so their definition metadata cannot be fixed columns. Standard PO business and financial fields are first-class columns.",
     "sidecar_justified": true,
-    "sidecar_only_pct": 32.3,
-    "structural": 53
+    "sidecar_only_pct": 33.1,
+    "structural": 57
    },
    "endpoint_family": "purchase_orders",
    "path_map": [
@@ -15175,7 +15000,7 @@
     },
     {
      "category": "person",
-     "dest": "column:primary",
+     "dest": "structural",
      "path": "$.assignee",
      "type": "object"
     },
@@ -15643,7 +15468,7 @@
     },
     {
      "category": "money",
-     "dest": "column:primary",
+     "dest": "structural",
      "path": "$.custom_fields.custom_field_214072.value",
      "type": "object"
     },
@@ -15763,7 +15588,7 @@
     },
     {
      "category": "money",
-     "dest": "column:primary",
+     "dest": "structural",
      "path": "$.custom_fields.custom_field_214078.value",
      "type": "object"
     },
@@ -15943,7 +15768,7 @@
     },
     {
      "category": "money",
-     "dest": "column:primary",
+     "dest": "structural",
      "path": "$.custom_fields.custom_field_214087.value",
      "type": "object"
     },
@@ -16450,11 +16275,6 @@
      "rel": "approved_change_orders"
     },
     {
-     "category": "person",
-     "column": "assignee",
-     "rel": "assignee"
-    },
-    {
      "category": "identity",
      "column": "assignee_id",
      "rel": "assignee.id"
@@ -16600,11 +16420,6 @@
      "rel": "custom_fields.custom_field_214071.value"
     },
     {
-     "category": "money",
-     "column": "custom_fields_custom_field_214072_value",
-     "rel": "custom_fields.custom_field_214072.value"
-    },
-    {
      "category": "identity",
      "column": "custom_fields_custom_field_214072_value_id",
      "rel": "custom_fields.custom_field_214072.value.id"
@@ -16633,11 +16448,6 @@
      "category": "money",
      "column": "custom_fields_custom_field_214077_value",
      "rel": "custom_fields.custom_field_214077.value"
-    },
-    {
-     "category": "money",
-     "column": "custom_fields_custom_field_214078_value",
-     "rel": "custom_fields.custom_field_214078.value"
     },
     {
      "category": "company",
@@ -16688,11 +16498,6 @@
      "category": "money",
      "column": "custom_fields_custom_field_214086_value",
      "rel": "custom_fields.custom_field_214086.value"
-    },
-    {
-     "category": "money",
-     "column": "custom_fields_custom_field_214087_value",
-     "rel": "custom_fields.custom_field_214087.value"
     },
     {
      "category": "identity",
@@ -17632,15 +17437,15 @@
     }
    ],
    "coverage": {
-    "business_field_paths": 90,
+    "business_field_paths": 82,
     "child": 3,
-    "column": 83,
+    "column": 75,
     "excluded": 0,
     "over_sidecar_threshold": false,
     "sidecar": 4,
     "sidecar_justified": true,
-    "sidecar_only_pct": 4.4,
-    "structural": 11
+    "sidecar_only_pct": 4.9,
+    "structural": 19
    },
    "endpoint_family": "rfis",
    "path_map": [
@@ -17652,7 +17457,7 @@
     },
     {
      "category": "person",
-     "dest": "column:primary",
+     "dest": "structural",
      "path": "$.assignee",
      "type": "object"
     },
@@ -17724,7 +17529,7 @@
     },
     {
      "category": "person",
-     "dest": "column:primary",
+     "dest": "structural",
      "path": "$.ball_in_court",
      "type": "object"
     },
@@ -17796,7 +17601,7 @@
     },
     {
      "category": "identity",
-     "dest": "column:primary",
+     "dest": "structural",
      "path": "$.cost_code",
      "type": "object"
     },
@@ -17910,7 +17715,7 @@
     },
     {
      "category": "other",
-     "dest": "column:primary",
+     "dest": "structural",
      "path": "$.location",
      "type": "object"
     },
@@ -17994,7 +17799,7 @@
     },
     {
      "category": "status",
-     "dest": "column:primary",
+     "dest": "structural",
      "path": "$.project_stage",
      "type": "object"
     },
@@ -18090,7 +17895,7 @@
     },
     {
      "category": "other",
-     "dest": "column:primary",
+     "dest": "structural",
      "path": "$.received_from",
      "type": "object"
     },
@@ -18120,7 +17925,7 @@
     },
     {
      "category": "person",
-     "dest": "column:primary",
+     "dest": "structural",
      "path": "$.responsible_contractor",
      "type": "object"
     },
@@ -18204,7 +18009,7 @@
     },
     {
      "category": "other",
-     "dest": "column:primary",
+     "dest": "structural",
      "path": "$.sub_job",
      "type": "object"
     },
@@ -18253,11 +18058,6 @@
    ],
    "primary_columns": [
     {
-     "category": "person",
-     "column": "assignee",
-     "rel": "assignee"
-    },
-    {
      "category": "identity",
      "column": "assignee_id",
      "rel": "assignee.id"
@@ -18271,11 +18071,6 @@
      "category": "title",
      "column": "assignee_name",
      "rel": "assignee.name"
-    },
-    {
-     "category": "person",
-     "column": "ball_in_court",
-     "rel": "ball_in_court"
     },
     {
      "category": "identity",
@@ -18296,11 +18091,6 @@
      "category": "other",
      "column": "connect_export_origin",
      "rel": "connect_export_origin"
-    },
-    {
-     "category": "identity",
-     "column": "cost_code",
-     "rel": "cost_code"
     },
     {
      "category": "identity",
@@ -18373,11 +18163,6 @@
      "rel": "link"
     },
     {
-     "category": "other",
-     "column": "location",
-     "rel": "location"
-    },
-    {
      "category": "date",
      "column": "location_created_at",
      "rel": "location.created_at"
@@ -18439,11 +18224,6 @@
     },
     {
      "category": "status",
-     "column": "project_stage",
-     "rel": "project_stage"
-    },
-    {
-     "category": "status",
      "column": "project_stage_default_stage",
      "rel": "project_stage.default_stage"
     },
@@ -18483,11 +18263,6 @@
      "rel": "proposed_solution"
     },
     {
-     "category": "other",
-     "column": "received_from",
-     "rel": "received_from"
-    },
-    {
      "category": "identity",
      "column": "received_from_id",
      "rel": "received_from.id"
@@ -18506,11 +18281,6 @@
      "category": "other",
      "column": "reference",
      "rel": "reference"
-    },
-    {
-     "category": "person",
-     "column": "responsible_contractor",
-     "rel": "responsible_contractor"
     },
     {
      "category": "identity",
@@ -18566,11 +18336,6 @@
      "category": "status",
      "column": "status",
      "rel": "status"
-    },
-    {
-     "category": "other",
-     "column": "sub_job",
-     "rel": "sub_job"
     },
     {
      "category": "identity",
@@ -23010,15 +22775,15 @@
     }
    ],
    "coverage": {
-    "business_field_paths": 126,
+    "business_field_paths": 117,
     "child": 3,
-    "column": 108,
+    "column": 99,
     "excluded": 0,
     "over_sidecar_threshold": false,
     "sidecar": 15,
     "sidecar_justified": true,
-    "sidecar_only_pct": 11.9,
-    "structural": 18
+    "sidecar_only_pct": 12.8,
+    "structural": 27
    },
    "endpoint_family": "submittals",
    "path_map": [
@@ -23336,7 +23101,7 @@
     },
     {
      "category": "money",
-     "dest": "column:primary",
+     "dest": "structural",
      "path": "$.custom_fields.custom_field_77761.value",
      "type": "object"
     },
@@ -23366,7 +23131,7 @@
     },
     {
      "category": "money",
-     "dest": "column:primary",
+     "dest": "structural",
      "path": "$.custom_fields.custom_field_77762.value",
      "type": "object"
     },
@@ -23468,7 +23233,7 @@
     },
     {
      "category": "other",
-     "dest": "column:primary",
+     "dest": "structural",
      "path": "$.location",
      "type": "object"
     },
@@ -23540,7 +23305,7 @@
     },
     {
      "category": "other",
-     "dest": "column:primary",
+     "dest": "structural",
      "path": "$.received_from",
      "type": "object"
     },
@@ -23582,7 +23347,7 @@
     },
     {
      "category": "person",
-     "dest": "column:primary",
+     "dest": "structural",
      "path": "$.responsible_contractor",
      "type": "object"
     },
@@ -23612,7 +23377,7 @@
     },
     {
      "category": "other",
-     "dest": "column:primary",
+     "dest": "structural",
      "path": "$.specification_section",
      "type": "object"
     },
@@ -23732,7 +23497,7 @@
     },
     {
      "category": "other",
-     "dest": "column:primary",
+     "dest": "structural",
      "path": "$.submittal_package",
      "type": "object"
     },
@@ -23828,7 +23593,7 @@
     },
     {
      "category": "other",
-     "dest": "column:primary",
+     "dest": "structural",
      "path": "$.submittal_workflow_template",
      "type": "object"
     },
@@ -23858,7 +23623,7 @@
     },
     {
      "category": "other",
-     "dest": "column:primary",
+     "dest": "structural",
      "path": "$.type",
      "type": "object"
     },
@@ -23934,11 +23699,6 @@
      "rel": "custom_fields.custom_field_77760.value"
     },
     {
-     "category": "money",
-     "column": "custom_fields_custom_field_77761_value",
-     "rel": "custom_fields.custom_field_77761.value"
-    },
-    {
      "category": "identity",
      "column": "custom_fields_custom_field_77761_value_id",
      "rel": "custom_fields.custom_field_77761.value.id"
@@ -23947,11 +23707,6 @@
      "category": "title",
      "column": "custom_fields_custom_field_77761_value_label",
      "rel": "custom_fields.custom_field_77761.value.label"
-    },
-    {
-     "category": "money",
-     "column": "custom_fields_custom_field_77762_value",
-     "rel": "custom_fields.custom_field_77762.value"
     },
     {
      "category": "company",
@@ -24009,11 +23764,6 @@
      "rel": "issue_date"
     },
     {
-     "category": "other",
-     "column": "location",
-     "rel": "location"
-    },
-    {
      "category": "date",
      "column": "location_created_at",
      "rel": "location.created_at"
@@ -24064,11 +23814,6 @@
      "rel": "received_date"
     },
     {
-     "category": "other",
-     "column": "received_from",
-     "rel": "received_from"
-    },
-    {
      "category": "identity",
      "column": "received_from_id",
      "rel": "received_from.id"
@@ -24094,11 +23839,6 @@
      "rel": "required_on_site_date"
     },
     {
-     "category": "person",
-     "column": "responsible_contractor",
-     "rel": "responsible_contractor"
-    },
-    {
      "category": "identity",
      "column": "responsible_contractor_id",
      "rel": "responsible_contractor.id"
@@ -24117,11 +23857,6 @@
      "category": "other",
      "column": "scheduled_task",
      "rel": "scheduled_task"
-    },
-    {
-     "category": "other",
-     "column": "specification_section",
-     "rel": "specification_section"
     },
     {
      "category": "identity",
@@ -24204,11 +23939,6 @@
      "rel": "submittal_manager.name"
     },
     {
-     "category": "other",
-     "column": "submittal_package",
-     "rel": "submittal_package"
-    },
-    {
      "category": "quantity",
      "column": "submittal_package_attachments_count",
      "rel": "submittal_package.attachments_count"
@@ -24259,11 +23989,6 @@
      "rel": "submittal_package.updated_at"
     },
     {
-     "category": "other",
-     "column": "submittal_workflow_template",
-     "rel": "submittal_workflow_template"
-    },
-    {
      "category": "identity",
      "column": "submittal_workflow_template_id",
      "rel": "submittal_workflow_template.id"
@@ -24282,11 +24007,6 @@
      "category": "title",
      "column": "title",
      "rel": "title"
-    },
-    {
-     "category": "other",
-     "column": "type",
-     "rel": "type"
     },
     {
      "category": "identity",

@@ -390,6 +390,35 @@ def backfill_endpoint_specific_from_raw_payloads(
     endpoint-specific tables. No live Procore calls. Idempotent. Honors source-quality
     precedence. ``apply=False`` is a dry run that writes nothing."""
     conn = get_connection(Path(db_path) if db_path is not None else None)
+
+    # Hard pre-write parity guard: verify every planned primary AND child insert column
+    # exists physically before any INSERT. A drifted schema returns a structured
+    # ``schema_parity_broken`` receipt instead of crashing with sqlite3.OperationalError.
+    if apply:
+        from .projection_audit import TABLE_MISSING, plan_schema_mismatches
+
+        mismatches = plan_schema_mismatches(conn)
+        if mismatches:
+            missing_tables = sum(1 for m in mismatches if m[2] == TABLE_MISSING)
+            return {
+                "command": "hb-assistant procore analytics projection-reprocess",
+                "mode": "apply",
+                "ok": False,
+                "status": "schema_parity_broken",
+                "runtime_plan_schema_mismatches": len(mismatches),
+                "missing_table_count": missing_tables,
+                "missing_column_count": len(mismatches) - missing_tables,
+                "mismatches_sample": [
+                    {"endpoint_id": e, "table": t, "column": c, "context": ctx}
+                    for e, t, c, ctx in mismatches[:50]
+                ],
+                "primary_rows_written": 0,
+                "child_rows_written": 0,
+                "external_writeback_performed": 0,
+                "hint": "run SQLiteMigrator.apply() to reconcile columns (V48), then retry",
+                "guardrails": {"live_calls_disabled": True, "writeback": "none", "emits_values": False},
+            }
+
     in_scope = registry.in_scope_endpoints()
     clauses = ["raw_procore_payload_persisted = 1", "is_current = 1"]
     params: list[Any] = []

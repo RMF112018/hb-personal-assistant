@@ -268,10 +268,12 @@ def projection_audit(
             }
         )
 
+    schema_mismatches = runtime_plan_schema_mismatches(db_path)
     ok = (
         total_unknown == 0
         and all(r["registry_present"] for r in rows)
         and not over_threshold_unjustified
+        and not schema_mismatches
     )
     return {
         "command": "hb-assistant procore analytics projection-audit",
@@ -280,6 +282,7 @@ def projection_audit(
         "unmapped_primary_business_fields": total_unmapped_primary,
         "unmapped_nested_business_fields": total_unmapped_nested,
         "unknown_business_field_paths": total_unknown,
+        "runtime_plan_schema_mismatches": len(schema_mismatches),
         "endpoints_over_sidecar_threshold": over_threshold,
         "endpoints_over_sidecar_threshold_unjustified": over_threshold_unjustified,
         "endpoints": rows,
@@ -309,3 +312,78 @@ def endpoints_without_full_payloads() -> list[str]:
     committed projection registry (i.e. ``no_full_payload_available`` this pass)."""
     in_scope = registry.in_scope_endpoints()
     return [ep.endpoint_id for ep in endpoint_registry.list_all() if ep.endpoint_id not in in_scope]
+
+
+# --- Runtime plan vs physical-schema parity --------------------------------------
+#
+# ``projection_audit`` proves *path coverage*; this proves the orthogonal property that
+# every column the projection engine will INSERT (every ``EndpointPlan.primary_columns`` /
+# ``ChildTable.columns`` entry) actually exists in the physical table, and that every
+# required ``procore_ep_*`` table exists. Without this gate, a registry regenerated after
+# tables were created drifts and the INSERT fails with ``sqlite3.OperationalError``.
+
+TABLE_MISSING = "<TABLE_MISSING>"
+
+
+def _ep_table_columns(conn: sqlite3.Connection) -> dict[str, set[str]]:
+    out: dict[str, set[str]] = {}
+    for (name,) in conn.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'procore_ep_%'"
+    ).fetchall():
+        out[name] = {row[1] for row in conn.execute(f"PRAGMA table_info({name})")}
+    return out
+
+
+def plan_schema_mismatches(conn: sqlite3.Connection) -> list[tuple[str, str, str, str]]:
+    """Return ``(endpoint_id, table, column|TABLE_MISSING, context)`` for every planned
+    insert column absent from its physical table, and every missing required table."""
+    plans = registry.load_registry()
+    table_cols = _ep_table_columns(conn)
+    problems: list[tuple[str, str, str, str]] = []
+    for endpoint_id, plan in sorted(plans.items()):
+        actual = table_cols.get(plan.primary_table)
+        if actual is None:
+            problems.append((endpoint_id, plan.primary_table, TABLE_MISSING, "primary"))
+        else:
+            for rel, col in plan.primary_columns:
+                if col not in actual:
+                    problems.append((endpoint_id, plan.primary_table, col, f"primary rel={rel}"))
+        for child in plan.child_tables:
+            actual = table_cols.get(child.table)
+            if actual is None:
+                problems.append(
+                    (endpoint_id, child.table, TABLE_MISSING, f"child array={child.array_path}")
+                )
+                continue
+            for rel, col in child.columns:
+                if col not in actual:
+                    problems.append(
+                        (endpoint_id, child.table, col, f"child rel={rel} array={child.array_path}")
+                    )
+    return problems
+
+
+def runtime_plan_schema_mismatches(
+    db_path: str | Path | None = None,
+) -> list[tuple[str, str, str, str]]:
+    """``plan_schema_mismatches`` over a freshly opened connection (read-only intent)."""
+    conn = get_connection(Path(db_path) if db_path is not None else None)
+    return plan_schema_mismatches(conn)
+
+
+def projection_schema_audit(*, db_path: str | Path | None = None) -> dict[str, Any]:
+    """Runtime plan/physical-schema parity audit. Table/column names + counts only."""
+    problems = runtime_plan_schema_mismatches(db_path)
+    table_missing = sum(1 for p in problems if p[2] == TABLE_MISSING)
+    return {
+        "command": "hb-assistant procore analytics projection-schema-audit",
+        "ok": not problems,
+        "runtime_plan_schema_mismatches": len(problems),
+        "missing_table_count": table_missing,
+        "missing_column_count": len(problems) - table_missing,
+        "mismatches": [
+            {"endpoint_id": e, "table": t, "column": c, "context": ctx}
+            for e, t, c, ctx in problems[:200]
+        ],
+        "guardrails": {"live_calls_disabled": True, "writeback": "none", "emits_values": False},
+    }

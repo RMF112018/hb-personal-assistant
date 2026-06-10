@@ -219,7 +219,12 @@ def _classify_path(
         return f"child:{child_table_for[path]}", owner, None
 
     is_array_node = "array" in types
-    is_object_node = "object" in types and not _has_scalar_type(types)
+    # An object node is structural even when the field is ``null`` in some payloads
+    # (``object | null``). ``null`` must NOT make an object container scalar-promotable —
+    # otherwise the container leaks into a literal column alongside its decomposed scalar
+    # children (the ``architect`` / ``submittal_package`` defect). Only a genuine non-null
+    # scalar type (string/int/number/bool) makes a path a promotable scalar leaf.
+    is_object_node = "object" in types and not (types & _NON_NULL_SCALARS)
     # The item node of an array (``...[]``) is structural; its scalar fields/own arrays
     # are classified on their own paths.
     if path.endswith("[]"):
@@ -256,8 +261,9 @@ def _sidecar(owner: str | None) -> str:
     return "sidecar:primary" if owner is None else f"sidecar:child:{owner}"
 
 
-def _has_scalar_type(types: set[str]) -> bool:
-    return bool(types & {"string", "integer", "number", "boolean", "null"})
+# Genuine (non-null) scalar JSON types. A path is a promotable scalar leaf only if it has
+# one of these; ``null`` alone never promotes an object container to a column.
+_NON_NULL_SCALARS = frozenset({"string", "integer", "number", "boolean"})
 
 
 def _primary_type(types: set[str]) -> str:
@@ -560,3 +566,40 @@ def build_v47_ddl() -> list[str]:
                 child.table, ("primary_record_key", "raw_payload_id", "parent_item_id")
             )
     return statements
+
+
+# --- Schema reconciliation (V48) --------------------------------------------------
+
+
+def required_curated_columns() -> dict[str, list[str]]:
+    """Map each registry table -> its curated (non-standard) column names.
+
+    Standard identity/guard columns are fixed in the V47 CREATE DDL and present in every
+    table; only the curated, registry-derived columns can drift when the registry is
+    regenerated after tables were created.
+    """
+    out: dict[str, list[str]] = {}
+    for plan in load_registry().values():
+        out[plan.primary_table] = [col for _, col in plan.primary_columns]
+        for child in plan.child_tables:
+            out[child.table] = [col for _, col in child.columns]
+    return out
+
+
+def reconcile_column_alters(existing_cols_by_table: dict[str, set[str]]) -> list[str]:
+    """``ALTER TABLE … ADD COLUMN`` statements for registry curated columns missing from
+    the physical tables described by ``existing_cols_by_table`` (``table -> column set``).
+
+    Additive and idempotent: only missing columns are added (all as ``TEXT``), existing
+    columns are never altered or dropped. Tables absent from the map are skipped (they are
+    created by the V47 CREATE DDL). Column names are pre-sanitised registry identifiers.
+    """
+    alters: list[str] = []
+    for table, cols in sorted(required_curated_columns().items()):
+        existing = existing_cols_by_table.get(table)
+        if existing is None:
+            continue
+        for col in cols:
+            if col not in existing:
+                alters.append(f"ALTER TABLE {table} ADD COLUMN {col} TEXT;")
+    return alters
