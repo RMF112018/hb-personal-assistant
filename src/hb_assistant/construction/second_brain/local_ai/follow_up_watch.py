@@ -373,7 +373,10 @@ def run_follow_up_watch_scan(
     Dry-run is the default (zero writes). ``--apply`` (dry_run=False) requires
     ``max_persist`` and caps ACTUAL watch-item writes; once the cap is hit, remaining
     changed items are counted (``would_persist``) but not written. Items with no
-    source refs are never persisted (``skipped_no_source_refs``). An item whose
+    source refs are never persisted (``skipped_no_source_refs``). A source-linked item that
+    the report would flag as needing review (``watch_quality_flags`` non-empty, e.g.
+    ``contradictory``) is also never persisted as actionable (``skipped_quality_flags``); the
+    entry carries ``quality_flags`` + ``skipped_reason="quality_flags"``. An item whose
     classification already matches its stored watch status is skipped
     (``skipped_existing``); a new/changed status upserts the watch item and inserts
     one status event. No raw content, no writeback.
@@ -398,6 +401,7 @@ def run_follow_up_watch_scan(
         "status_events_written": 0,
         "skipped_existing": 0,
         "skipped_no_source_refs": 0,
+        "skipped_quality_flags": 0,
     }
     results: list[dict[str, Any]] = []
     remaining: Optional[int] = max_persist if (not dry_run and max_persist is not None) else None
@@ -444,6 +448,23 @@ def run_follow_up_watch_scan(
         if source_ref is None:
             summary["skipped_no_source_refs"] += 1
             entry["skipped_reason"] = "no_source_refs"
+            results.append(entry)
+            continue
+
+        # Quality gate: a source-linked item that the report would route to needs-review
+        # (e.g. contradictory: terminal status alongside an active waiting_state with no
+        # completion timestamp) must NOT persist as actionable watch state. This keeps the
+        # scan/persist path consistent with build_follow_up_watch_report's quality gates.
+        quality_flags = watch_quality_flags(
+            status=row.get("status"),
+            waiting_state=row.get("waiting_state"),
+            completed_utc=row.get("completed_utc"),
+            has_source_ref=True,
+        )
+        if quality_flags:
+            summary["skipped_quality_flags"] += 1
+            entry["quality_flags"] = quality_flags
+            entry["skipped_reason"] = "quality_flags"
             results.append(entry)
             continue
 
@@ -509,6 +530,7 @@ def run_follow_up_watch_scan(
             "apply_requires_max_persist": True,
             "deterministic_no_clock": True,
             "source_linked_only": True,
+            "quality_gated": True,
             "no_raw_persistence": True,
             "no_writeback": True,
             "advisory_only": True,

@@ -1,0 +1,4 @@
+# Prompt 03 — Changed files
+src/hb_assistant/construction/second_brain/local_ai/follow_up_watch.py
+tests/test_phase_10_follow_up_watch_report.py
+docs/evidence/phase-10-postmerge-hardening/03-followup-watch-quality-gate/*

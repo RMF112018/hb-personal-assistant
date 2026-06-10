@@ -17,6 +17,7 @@ from hb_assistant.construction.second_brain.local_ai.follow_up_watch import (
     build_follow_up_watch_report,
     operator_action_for,
     render_follow_up_watch_report_markdown,
+    run_follow_up_watch_scan,
     watch_quality_flags,
 )
 from hb_assistant.construction.store import ConstructionStore
@@ -102,6 +103,32 @@ def test_report_buckets_and_is_raw_free(tmp_path: Path) -> None:
     assert not _re.search(r"https?://", blob)
     assert not _re.search(r"[\w.%+-]+@[\w.-]+\.[A-Za-z]{2,}", blob)
     assert report["guardrails"]["deterministic_no_model"] is True
+
+
+def test_scan_does_not_persist_quality_flagged_items(tmp_path: Path) -> None:
+    # A source-linked but CONTRADICTORY item (terminal status + active waiting + no completion)
+    # must be quality-gated out of persistence, consistent with the report's needs-review bucket.
+    db = str(tmp_path / "scan.db")
+    _seed(db, "contra", waiting_state="waiting_on_others", status="done", completed_utc=None,
+          with_source_ref=True)
+    store = ConstructionStore(db_path=db)
+
+    res = run_follow_up_watch_scan(store=store, now_utc=NOW, dry_run=False, max_persist=5)
+    summary = res["summary"]
+    assert summary["scanned"] == 1
+    assert summary["skipped_quality_flags"] == 1
+    assert summary["persisted"] == 0
+    assert summary["status_events_written"] == 0
+
+    # The result entry is flagged contradictory and marked skipped for quality.
+    entry = next(e for e in res["results"] if e["accepted_id"].endswith("contra"))
+    assert "contradictory" in entry["quality_flags"]
+    assert entry["skipped_reason"] == "quality_flags"
+    assert entry["persisted"] is False
+    assert res["guardrails"]["quality_gated"] is True
+
+    # Nothing was written to the watch table.
+    assert store.list_follow_up_watch_items(limit=100) == []
 
 
 def test_cli_emits_json_and_markdown(tmp_path: Path) -> None:
