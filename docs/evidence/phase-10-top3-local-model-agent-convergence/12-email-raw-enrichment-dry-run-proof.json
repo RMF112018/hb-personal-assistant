@@ -1,0 +1,14 @@
+{
+  "stage": "email_followup_raw_enrichment",
+  "status": "ok",
+  "mode": "dry_run",
+  "enabled": true,
+  "eligible": 3,
+  "would_persist": 3,
+  "persisted": 0,
+  "skipped_by_reason": {},
+  "degraded_reason": null,
+  "warnings": [],
+  "_proof": "seeded-copy proof (synthetic fixtures)",
+  "count_after": 0
+}

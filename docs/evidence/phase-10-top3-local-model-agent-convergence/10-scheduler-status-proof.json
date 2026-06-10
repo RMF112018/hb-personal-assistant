@@ -1,0 +1,128 @@
+{
+  "label": "com.hb.personal-assistant.daily-local-agent",
+  "plist_exists": true,
+  "plist_path": "~/Library/LaunchAgents/com.hb.personal-assistant.daily-local-agent.plist",
+  "schedule_time_local": "05:00",
+  "weekdays_only": true,
+  "weekday_intervals": [
+    {
+      "Weekday": 1,
+      "Hour": 5,
+      "Minute": 0
+    },
+    {
+      "Weekday": 2,
+      "Hour": 5,
+      "Minute": 0
+    },
+    {
+      "Weekday": 3,
+      "Hour": 5,
+      "Minute": 0
+    },
+    {
+      "Weekday": 4,
+      "Hour": 5,
+      "Minute": 0
+    },
+    {
+      "Weekday": 5,
+      "Hour": 5,
+      "Minute": 0
+    }
+  ],
+  "vault_brief_dir_redacted": "~/Documents/Obsidian Vault/Work/Daily Brief",
+  "catch_up_on_wake": true,
+  "catch_up_on_wake_explanation": "launchd fires a missed weekday interval on the next wake; the wrapper's date policy resolves a weekend wake of a missed Friday to the Friday brief and skips weekends.",
+  "timezone": "America/New_York",
+  "effective_config": {
+    "model_enriched_intelligence": true,
+    "email_raw_enrichment": true,
+    "email_raw_enrichment_max_persist": null,
+    "browser_generation": true,
+    "browser_auto_open": false,
+    "synthesize_narrative": true,
+    "raw_local_consumption": true,
+    "write_obsidian": true,
+    "apply_mode": true,
+    "max_persist_per_stage": 10,
+    "max_total_persist": 30,
+    "db_path_redacted": null
+  },
+  "program_arguments": [
+    "~/hb-personal-assistant/.venv/bin/hb-assistant",
+    "second-brain",
+    "daily-run",
+    "run",
+    "--apply",
+    "--max-persist-per-stage",
+    "10",
+    "--max-total-persist",
+    "30",
+    "--limit",
+    "50",
+    "--lookahead-days",
+    "14",
+    "--timezone",
+    "America/New_York",
+    "--raw",
+    "--weekdays-only",
+    "--write-obsidian",
+    "--vault-brief-dir",
+    "~/Documents/Obsidian Vault/Work/Daily Brief",
+    "--confirm-vault-write",
+    "--generate-browser",
+    "--synthesize",
+    "--model-enriched-intelligence",
+    "--email-raw-enrichment",
+    "--no-open-browser",
+    "--json"
+  ],
+  "start_calendar_interval": [
+    {
+      "Weekday": 1,
+      "Hour": 5,
+      "Minute": 0
+    },
+    {
+      "Weekday": 2,
+      "Hour": 5,
+      "Minute": 0
+    },
+    {
+      "Weekday": 3,
+      "Hour": 5,
+      "Minute": 0
+    },
+    {
+      "Weekday": 4,
+      "Hour": 5,
+      "Minute": 0
+    },
+    {
+      "Weekday": 5,
+      "Hour": 5,
+      "Minute": 0
+    }
+  ],
+  "readiness": {
+    "executable_ready": true,
+    "executable_path_redacted": "~/hb-personal-assistant/.venv/bin/hb-assistant",
+    "working_directory_ready": true,
+    "working_directory_redacted": "~/hb-personal-assistant",
+    "command_grammar_valid": true,
+    "log_directories_writable": true,
+    "log_run_dir_redacted": "~/Library/Application Support/HB Personal Assistant/logs/run-logs",
+    "log_error_dir_redacted": "~/Library/Application Support/HB Personal Assistant/logs/error-logs",
+    "plist_exists": true,
+    "blocking": false,
+    "blocking_diagnostics": [],
+    "ready": true
+  },
+  "last_run": {
+    "latest_status_path_redacted": "~/Library/Application Support/HB Personal Assistant/daily-run-status/latest-status.json",
+    "last_run_result": "success",
+    "last_successful_brief_path": null,
+    "last_successful_brief_date": "2026-06-09"
+  }
+}

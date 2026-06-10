@@ -1,0 +1,51 @@
+{
+  "_proof": "seeded-copy proof (synthetic fixtures)",
+  "status": "success",
+  "email_raw_enrichment_stage": {
+    "stage": "email_followup_raw_enrichment",
+    "status": "ok",
+    "mode": "apply",
+    "enabled": true,
+    "eligible": 3,
+    "would_persist": 3,
+    "persisted": 3,
+    "skipped_by_reason": {},
+    "degraded_reason": null,
+    "warnings": []
+  },
+  "model_enriched_intelligence": {
+    "enabled": true,
+    "available": true,
+    "label": "Model Enriched Intelligence",
+    "degraded": false,
+    "withheld_reason": null,
+    "candidate_count": 13,
+    "source_link_count": 1,
+    "source_link_coverage": 1.0,
+    "bullets_seen": 1,
+    "bullets_kept": 1,
+    "bullets_dropped": 0,
+    "unknown_source_ids_count": 0,
+    "pending_followup_count": 5,
+    "route_selected_profile": "brief_synthesis",
+    "route_model_name": "mistral-nemo:12b",
+    "terminal_profile_id": "brief_synthesis",
+    "generation_profile_id": "brief_synthesis",
+    "fallback_chain": [
+      "brief_synthesis",
+      "default_extract"
+    ],
+    "warnings": []
+  },
+  "egress_scan": {
+    "clean": true,
+    "matched_labels": []
+  },
+  "outputs": {
+    "vault_brief_dir_redacted": "~/Documents/Obsidian Vault/Work/Daily Brief",
+    "browser_dated_path": "daily-brief-2026-06-09.html",
+    "browser_attempted_path": "daily-brief-latest-attempted.html",
+    "browser_latest_path": "daily-brief-latest.html",
+    "status_path": "latest-status.json"
+  }
+}

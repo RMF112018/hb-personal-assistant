@@ -1,0 +1,7 @@
+{
+  "_proof": "seeded-copy proof (synthetic fixtures)",
+  "count_before_rerun": 2,
+  "rerun_persisted": 2,
+  "count_after_rerun": 2,
+  "idempotent": true
+}

@@ -1,0 +1,45 @@
+{
+  "_proof": "seeded-copy proof (synthetic fixtures)",
+  "status": "success",
+  "model_enriched_intelligence": {
+    "enabled": true,
+    "available": false,
+    "label": "Model Enriched Intelligence",
+    "degraded": true,
+    "withheld_reason": "no_available_local_model",
+    "candidate_count": 24,
+    "source_link_count": 0,
+    "source_link_coverage": 0.0,
+    "bullets_seen": 0,
+    "bullets_kept": 0,
+    "bullets_dropped": 0,
+    "unknown_source_ids_count": 0,
+    "pending_followup_count": 5,
+    "route_selected_profile": "brief_synthesis",
+    "route_model_name": "mistral-nemo:12b",
+    "terminal_profile_id": "brief_synthesis",
+    "generation_profile_id": "brief_synthesis",
+    "fallback_chain": [
+      "brief_synthesis",
+      "default_extract"
+    ],
+    "warnings": [
+      "deterministic_fallback_preserved"
+    ]
+  },
+  "email_raw_enrichment_stage": {
+    "stage": "email_followup_raw_enrichment",
+    "status": "degraded",
+    "mode": "apply",
+    "enabled": true,
+    "eligible": 3,
+    "would_persist": 0,
+    "persisted": 0,
+    "skipped_by_reason": {
+      "model_unavailable": 3
+    },
+    "degraded_reason": "local_model_unavailable",
+    "warnings": []
+  },
+  "deterministic_brief_rendered": true
+}

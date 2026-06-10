@@ -1,0 +1,5 @@
+Production DB sha256 before/after the entire DB-copy live proof run.
+db_redacted: ~/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite
+sha256_before: f93b78081dfbbd7d40ebbfc9254227eab7d306bb08d73e8b92d76e7b33ae4759
+sha256_after:  f93b78081dfbbd7d40ebbfc9254227eab7d306bb08d73e8b92d76e7b33ae4759
+unchanged: True

@@ -1,0 +1,8 @@
+branch: experiment/phase-10-top3-local-model-agent-convergence
+HEAD: ebd8e74a388419606d81685aa48bcd2f5ca764b3
+base_main: ebd8e74a388419606d81685aa48bcd2f5ca764b3
+origin_main: ebd8e74a388419606d81685aa48bcd2f5ca764b3
+merge_base_with_main: ebd8e74a388419606d81685aa48bcd2f5ca764b3
+schema_head: V45
+config_yml: foreign-untracked (never staged)
+created_branch_from: ebd8e74a (PR #14 merge incl. post-merge hardening)

@@ -1,0 +1,28 @@
+{
+  "model_enriched_intelligence": {
+    "enabled": true,
+    "available": true,
+    "label": "Model Enriched Intelligence",
+    "degraded": false,
+    "withheld_reason": null,
+    "candidate_count": 1,
+    "source_link_count": 1,
+    "source_link_coverage": 1.0,
+    "bullets_seen": 2,
+    "bullets_kept": 2,
+    "bullets_dropped": 0,
+    "unknown_source_ids_count": 0,
+    "pending_followup_count": 1,
+    "route_selected_profile": "brief_synthesis",
+    "route_model_name": "mistral-nemo:12b",
+    "terminal_profile_id": "brief_synthesis",
+    "generation_profile_id": "brief_synthesis",
+    "fallback_chain": [
+      "brief_synthesis",
+      "default_extract"
+    ],
+    "warnings": [
+      "standalone_reads_preexisting_candidates_only"
+    ]
+  }
+}

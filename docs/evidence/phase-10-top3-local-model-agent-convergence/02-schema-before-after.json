@@ -1,0 +1,28 @@
+{
+  "evidence": "02-schema-before-after",
+  "package": "phase-10-top3-local-model-agent-convergence",
+  "before": {
+    "latest_schema_version": 45,
+    "v45_table": "email_followup_enrichments",
+    "guard_columns": [
+      "raw_email_body_persisted",
+      "raw_document_text_persisted",
+      "raw_calendar_payload_persisted",
+      "raw_procore_payload_persisted",
+      "raw_prompt_persisted",
+      "raw_response_persisted",
+      "signed_url_persisted",
+      "download_url_persisted",
+      "external_writeback_performed",
+      "graph_writeback_performed",
+      "procore_writeback_performed"
+    ],
+    "guard_contract": "all guard columns default 0 with CHECK(col = 0)"
+  },
+  "planned_change": "none",
+  "rationale": "Convergence + readiness + apply-stage integration reuse existing V45 table and guard columns. No new tables, columns, or migrations are required.",
+  "after": {
+    "latest_schema_version": 45,
+    "migration_added": false
+  }
+}

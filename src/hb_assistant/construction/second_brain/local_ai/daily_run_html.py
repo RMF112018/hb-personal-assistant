@@ -267,6 +267,104 @@ def _render_pending_followup_card(pending: dict[str, Any]) -> str:
     return "".join(out)
 
 
+_MEI_DISPLAY_SECTIONS: tuple[tuple[str, str], ...] = (
+    ("top_priorities", "Top Priorities"),
+    ("open_loops", "Open Loops"),
+    ("waiting_on_me", "Waiting on Me"),
+    ("waiting_on_others", "Waiting on Others"),
+    ("meeting_prep", "Meeting Prep"),
+    ("project_risk", "Project / Procore Risk"),
+)
+
+
+def _render_pending_items(items: list[dict[str, Any]]) -> list[str]:
+    """Raw-free pending V45 follow-up item markup (scrubbed + escaped). Shared by the MEI card."""
+    out: list[str] = []
+    for it in items:
+        title = _esc(it.get("enriched_title") or "(untitled)")
+        out.append("<div class='item'>")
+        out.append(
+            f"<div class='ttl'>{title} <span class='cid'>({_esc(it.get('label'))})</span></div>"
+        )
+        meta = [
+            "waiting: " + _esc(it.get("waiting_state")),
+            "assignee: " + _esc(it.get("assignee_type")),
+            f"confidence: {_esc(it.get('confidence_band'))} ({float(it.get('confidence') or 0.0):.2f})",
+        ]
+        if it.get("suggested_next_action"):
+            meta.append("next: " + _esc(it.get("suggested_next_action")))
+        if it.get("due_at_utc"):
+            meta.append("due: " + _esc(it.get("due_at_utc")))
+        out.append(f"<div class='meta'>{' · '.join(meta)}</div>")
+        refs = ", ".join(_esc(s) for s in (it.get("source_refs") or [])) or "(none)"
+        out.append(
+            f"<div class='cid'>enrichment: {_esc(it.get('enrichment_id'))} · "
+            f"candidate: {_esc(it.get('candidate_id'))} · "
+            f"watch: {_esc(it.get('watch_item_id') or '(none)')} · refs: [{refs}]</div></div>"
+        )
+    return out
+
+
+def _render_model_enriched_card(mei: dict[str, Any]) -> str:
+    """Render the single converged **Model Enriched Intelligence** card (advisory + pending V45).
+
+    Exact-label section combining the source-linked advisory bullets and the raw-free pending email
+    follow-up enrichments. Withheld/degraded → honest banner, no advisory body; pending rows (which
+    are deterministic) still render so the section survives the degraded path. Every dynamic value is
+    scrubbed + escaped.
+    """
+    label = str(mei.get("label") or "Model Enriched Intelligence")
+    available = bool(mei.get("available"))
+    intel = mei.get("intelligence") if available else None
+    pending = mei.get("pending_followup") or {}
+    pending_items = pending.get("items") or []
+    kept = int(mei.get("bullets_kept") or 0)
+    count = kept + len(pending_items)
+    out = [f"<div class='card'><h2>{_esc(label)}<span class='count'>{count}</span></h2>"]
+    out.append(
+        "<p class='meta'>Advisory, source-linked, local-model enrichment of the deterministic "
+        "brief. Not accepted fact.</p>"
+    )
+    if not available:
+        reason = mei.get("withheld_reason") or ("disabled" if not mei.get("enabled") else "withheld")
+        out.append(
+            f"<div class='meta'>⚠ Model-enriched advisory withheld (reason: {_esc(reason)}). "
+            "The deterministic brief is authoritative.</div>"
+        )
+    else:
+        catchup = (intel or {}).get("executive_catchup") or []
+        if catchup:
+            out.append("<div class='item'><div class='ttl'>Executive Catch-Up</div>")
+            out.append(
+                "<div class='meta'>" + " · ".join(_esc(c) for c in catchup) + "</div></div>"
+            )
+        for section, heading in _MEI_DISPLAY_SECTIONS:
+            bullets = (intel or {}).get(section) or []
+            if not bullets:
+                continue
+            out.append(f"<div class='item'><div class='ttl'>{_esc(heading)}</div>")
+            for b in bullets:
+                refs = ", ".join(_esc(str(s)[:18]) for s in (b.get("source_ids") or []) if s)
+                tail = f" <span class='cid'>sources: {refs}</span>" if refs else ""
+                out.append(f"<div class='meta'>· {_esc(b.get('text'))}{tail}</div>")
+            out.append("</div>")
+    if pending_items:
+        out.append(
+            "<div class='item'><div class='ttl'>Pending Email Follow-Up Enrichments"
+            f" <span class='count'>{len(pending_items)}</span></div>"
+            "<div class='meta'>Model-enriched, raw-free, source-linked; awaiting review "
+            "(advisory, not accepted fact).</div></div>"
+        )
+        out.extend(_render_pending_items(pending_items))
+        if pending.get("omitted_low_confidence"):
+            out.append(
+                f"<p class='meta'>{int(pending['omitted_low_confidence'])} "
+                "low-confidence item(s) omitted.</p>"
+            )
+    out.append("</div>")
+    return "".join(out)
+
+
 def _render_section_cards(sections: list[dict[str, Any]], *, heading_prefix: str = "") -> str:
     """Render the deterministic candidate sections (used as audit appendix / degraded fallback)."""
     out: list[str] = []
@@ -314,6 +412,7 @@ def render_daily_run_html(
     model_metadata: dict[str, Any] | None = None,
     degraded: bool = False,
     pending_followup: dict[str, Any] | None = None,
+    model_enriched: dict[str, Any] | None = None,
 ) -> str:
     """Build the self-contained browser brief HTML. All dynamic content is scrubbed + escaped.
 
@@ -390,11 +489,17 @@ def render_daily_run_html(
             parts.append(f"<dt>·</dt><dd>{_esc(w)}</dd>")
         parts.append("</dl></div>")
 
-    # V45 pending email follow-up enrichments — deterministic, raw-free, surfaced regardless of
-    # synthesis state (so the degraded path keeps it too).
-    pending_card = _render_pending_followup_card(pending_followup or {})
-    if pending_card:
-        parts.append(pending_card)
+    # Converged Model Enriched Intelligence section (advisory bullets + pending V45 rows under one
+    # exact label). When supplied it replaces the standalone pending card so the operator sees ONE
+    # coherent section. Legacy callers (no model_enriched) keep the standalone pending card.
+    if model_enriched is not None:
+        parts.append(_render_model_enriched_card(model_enriched))
+    else:
+        # V45 pending email follow-up enrichments — deterministic, raw-free, surfaced regardless of
+        # synthesis state (so the degraded path keeps it too).
+        pending_card = _render_pending_followup_card(pending_followup or {})
+        if pending_card:
+            parts.append(pending_card)
 
     if synthesis and not degraded:
         parts.append(_render_synthesis_cards(synthesis))
