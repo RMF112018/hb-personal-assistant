@@ -1,0 +1,76 @@
+{
+  "coverage": {
+    "command": "hb-assistant email-calendar raw projection-coverage",
+    "ok": true,
+    "registry_version": 1,
+    "projection_schema_version": "email_calendar_projection_v1",
+    "families_with_raw_rows": 2,
+    "total_unmapped_business_fields": 0,
+    "families": [
+      {
+        "source_family": "email_message",
+        "raw_table": "email_message_raw_content",
+        "structured_table": "email_raw_message_structured",
+        "raw_parent_rows": 1,
+        "projected_parent_rows": 1,
+        "unmapped_primary_business_fields": 0,
+        "unmapped_nested_business_fields": 0,
+        "observed_nested_arrays_without_child_table_or_mapped_sidecar": 0,
+        "unmapped_primary_samples": [],
+        "unmapped_nested_samples": [],
+        "status": "complete_with_policy_exclusions"
+      },
+      {
+        "source_family": "email_thread",
+        "raw_table": "email_thread_raw_context",
+        "structured_table": "email_raw_thread_structured",
+        "raw_parent_rows": 0,
+        "projected_parent_rows": 0,
+        "unmapped_primary_business_fields": 0,
+        "unmapped_nested_business_fields": 0,
+        "observed_nested_arrays_without_child_table_or_mapped_sidecar": 0,
+        "unmapped_primary_samples": [],
+        "unmapped_nested_samples": [],
+        "status": "no_raw_rows_available_in_current_copy"
+      },
+      {
+        "source_family": "calendar_event",
+        "raw_table": "calendar_event_raw_content",
+        "structured_table": "calendar_raw_event_structured",
+        "raw_parent_rows": 117,
+        "projected_parent_rows": 117,
+        "unmapped_primary_business_fields": 0,
+        "unmapped_nested_business_fields": 0,
+        "observed_nested_arrays_without_child_table_or_mapped_sidecar": 0,
+        "unmapped_primary_samples": [],
+        "unmapped_nested_samples": [],
+        "status": "complete_with_policy_exclusions"
+      }
+    ],
+    "guardrails": {
+      "live_calls_disabled": true,
+      "writeback": "none",
+      "emits_values": false
+    }
+  },
+  "structured_row_counts": {
+    "email_raw_message_structured": 1,
+    "email_raw_message_recipients_structured": 1,
+    "email_raw_message_attachments_structured": 1,
+    "email_raw_thread_structured": 0,
+    "email_raw_thread_messages_structured": 0,
+    "calendar_raw_event_structured": 117,
+    "calendar_raw_event_attendees_structured": 1262,
+    "calendar_raw_event_recurrence_structured": 0,
+    "calendar_raw_event_locations_structured": 0
+  },
+  "raw_source_quality": {
+    "email_message_raw_content": {
+      "metadata_only": 1
+    },
+    "email_thread_raw_context": {},
+    "calendar_event_raw_content": {
+      "metadata_only": 117
+    }
+  }
+}

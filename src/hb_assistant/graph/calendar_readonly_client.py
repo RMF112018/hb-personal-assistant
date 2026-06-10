@@ -108,8 +108,10 @@ class ReadOnlyCalendarClient:
         # Rich select for the raw content packet. Includes fields deliberately excluded
         # from the event_metadata_select used by list_calendar_view.
         select = (
-            "id,subject,body,location,organizer,attendees,start,end,"
-            "isCancelled,sensitivity,isOnlineMeeting,onlineMeeting,recurrence,"
+            "id,subject,body,bodyPreview,location,locations,organizer,attendees,start,end,"
+            "isAllDay,isCancelled,showAs,sensitivity,categories,type,seriesMasterId,"
+            "isOnlineMeeting,onlineMeetingProvider,onlineMeeting,recurrence,"
+            "createdDateTime,lastModifiedDateTime,originalStart,"
             "iCalUId,webLink,hasAttachments"
         )
         params: dict[str, Any] = {"$select": select}

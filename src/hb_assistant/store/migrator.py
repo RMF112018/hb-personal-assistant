@@ -14,7 +14,7 @@ from .connection import get_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 48
+LATEST_SCHEMA_VERSION = 49
 
 
 class SQLiteMigrator:
@@ -6642,6 +6642,25 @@ class SQLiteMigrator:
                     (now,),
                 )
 
+            # v49 Email + calendar full raw content provenance + final structured
+            # projection layer. Additive only: (a) guarded ADD COLUMN on the three V42
+            # raw tables (source-quality/provenance + a lossless raw_sidecar_json holder),
+            # (b) registry-derived structured parent/child projection tables + ingestion/
+            # projection/coverage receipts (CREATE IF NOT EXISTS), and (c) an unconditional
+            # column reconcile that self-heals structured curated-column drift on every
+            # apply (mirrors V48). V1-V48 tables untouched.
+            for stmt in self._v49_create_statements():
+                conn.execute(stmt)
+            for stmt in self._v49_raw_column_alters(conn):
+                conn.execute(stmt)
+            self._reconcile_v49_columns(conn)
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 49")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (49, 'v49_email_calendar_full_raw_content_and_projections', ?)",
+                    (now,),
+                )
+
         # Return latest version
         conn2 = get_connection(self._db_path)
         cur = conn2.execute("SELECT MAX(version) FROM schema_migrations")
@@ -6671,6 +6690,31 @@ class SQLiteMigrator:
             existing[name] = {row[1] for row in conn.execute(f"PRAGMA table_info({name})")}
         for stmt in reconcile_column_alters(existing):
             conn.execute(stmt)
+
+    @staticmethod
+    def _v49_create_statements() -> list[str]:
+        """Structured email/calendar projection + receipt DDL, generated from the committed
+        email/calendar projection registry. Imported lazily so the migrator carries no
+        import-time dependency on the construction package."""
+        from hb_assistant.construction.email_calendar.schema import build_v49_ddl
+
+        return build_v49_ddl()
+
+    @staticmethod
+    def _v49_raw_column_alters(conn: sqlite3.Connection) -> list[str]:
+        """Guarded ADD COLUMN statements for missing source-quality/provenance columns on the
+        three V42 raw tables (returns only columns absent from the physical table)."""
+        from hb_assistant.construction.email_calendar.schema import raw_table_column_alters
+
+        return raw_table_column_alters(conn)
+
+    @staticmethod
+    def _reconcile_v49_columns(conn: sqlite3.Connection) -> None:
+        """Add registry-required curated columns missing from the structured projection
+        tables (additive ALTER TABLE ADD COLUMN; idempotent). Mirrors V48 reconciliation."""
+        from hb_assistant.construction.email_calendar.schema import reconcile_structured_columns
+
+        reconcile_structured_columns(conn)
 
     def current_version(self) -> int:
         """Return the highest applied migration version (0 if none)."""
