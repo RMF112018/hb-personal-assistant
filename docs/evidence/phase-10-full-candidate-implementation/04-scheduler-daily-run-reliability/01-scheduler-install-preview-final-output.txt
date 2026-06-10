@@ -1,0 +1,85 @@
+{
+  "action": "preview_install",
+  "label": "com.hb.personal-assistant.daily-local-agent",
+  "plist_path": "~/Library/LaunchAgents/com.hb.personal-assistant.daily-local-agent.plist",
+  "plist": {
+    "Label": "com.hb.personal-assistant.daily-local-agent",
+    "ProgramArguments": [
+      "~/hb-personal-assistant/.venv/bin/hb-assistant",
+      "second-brain",
+      "daily-run",
+      "run",
+      "--apply",
+      "--max-persist-per-stage",
+      "10",
+      "--max-total-persist",
+      "30",
+      "--limit",
+      "50",
+      "--lookahead-days",
+      "14",
+      "--timezone",
+      "America/New_York",
+      "--raw",
+      "--weekdays-only",
+      "--write-obsidian",
+      "--vault-brief-dir",
+      "~/Documents/Obsidian Vault/Work/Daily Brief",
+      "--confirm-vault-write",
+      "--generate-browser",
+      "--synthesize",
+      "--no-open-browser",
+      "--json"
+    ],
+    "WorkingDirectory": "~/hb-personal-assistant",
+    "StartCalendarInterval": [
+      {
+        "Weekday": 1,
+        "Hour": 5,
+        "Minute": 0
+      },
+      {
+        "Weekday": 2,
+        "Hour": 5,
+        "Minute": 0
+      },
+      {
+        "Weekday": 3,
+        "Hour": 5,
+        "Minute": 0
+      },
+      {
+        "Weekday": 4,
+        "Hour": 5,
+        "Minute": 0
+      },
+      {
+        "Weekday": 5,
+        "Hour": 5,
+        "Minute": 0
+      }
+    ],
+    "StandardOutPath": "~/Library/Application Support/HB Personal Assistant/logs/run-logs/launchd-daily-local-agent.out.log",
+    "StandardErrorPath": "~/Library/Application Support/HB Personal Assistant/logs/error-logs/launchd-daily-local-agent.err.log",
+    "EnvironmentVariables": {
+      "PYTHONUNBUFFERED": "1"
+    }
+  },
+  "weekdays_only": true,
+  "vault_brief_dir_redacted": "~/Documents/Obsidian Vault/Work/Daily Brief",
+  "catch_up_on_wake": "launchd StartCalendarInterval native (fires missed runs on wake)",
+  "readiness": {
+    "executable_ready": true,
+    "working_directory_ready": true,
+    "command_grammar_valid": true,
+    "log_directories_writable": true,
+    "blocking": false,
+    "ready": true
+  },
+  "commands": [
+    "launchctl load -w ~/Library/LaunchAgents/com.hb.personal-assistant.daily-local-agent.plist",
+    "launchctl kickstart -k gui/$(id -u)/com.hb.personal-assistant.daily-local-agent"
+  ],
+  "status": "ready",
+  "note": "Dry-run only \u2014 no plist written. Real install uses launchctl on the plist."
+}

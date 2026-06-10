@@ -25,6 +25,7 @@ from __future__ import annotations
 import json
 import subprocess
 from datetime import datetime
+from datetime import timezone as _dt_tz  # aliased: the run fn has a `timezone: str` parameter
 from pathlib import Path
 from typing import Any, Optional
 
@@ -164,6 +165,7 @@ def run_daily_local_agent(
     (default None → the stage's own 50/50 defaults); they only matter when the stage is opted in.
     """
     cmd = "second-brain daily-run run"
+    started_wall_utc = datetime.now(_dt_tz.utc).isoformat()
     policy = PathPolicy()
     browser_dir = Path(browser_output_dir) if browser_output_dir else policy.get_html_dir()
     status_d = Path(status_dir) if status_dir else (policy.get_app_support() / _STATUS_SUBDIR)
@@ -423,6 +425,23 @@ def run_daily_local_agent(
     if status == "failure":
         failure_reason = "render_stage_failed" if render_failed else "browser_egress_blocked"
 
+    # Operator-legible run summary — one consolidated, redacted block surfacing result, wall-clock
+    # started/completed, the final output paths (browser / Obsidian / last-successful), partial stage
+    # receipts (name+status only), and a safe error summary. No raw content.
+    run_summary = _build_run_summary(
+        status=status,
+        degraded=synthesis_degraded,
+        started_wall_utc=started_wall_utc,
+        completed_wall_utc=datetime.now(_dt_tz.utc).isoformat(),
+        brief_date=brief_date,
+        brief_freshness=pipeline.get("brief_freshness"),
+        outputs=outputs,
+        stages=_redacted_stages(pipeline),
+        failure_reason=failure_reason,
+        warnings=warnings,
+        pending_count=int(pending_summary.get("count") or 0),
+    )
+
     status_path = _write_status(
         status_d,
         now_utc,
@@ -435,6 +454,7 @@ def run_daily_local_agent(
         is_success=is_fresh_success,
         synthesis=synthesis_meta,
         pending_followup=pending_summary,
+        run_summary=run_summary,
     )
     outputs["status_path"] = _redact_path(status_path)
 
@@ -454,6 +474,7 @@ def run_daily_local_agent(
         "synthesis": synthesis_meta,
         "synthesis_degraded": synthesis_degraded,
         "pending_followup": pending_summary,
+        "run_summary": run_summary,
         "egress_scan": {"clean": egress_clean, "matched_labels": egress_matched},
         "failure_reason": failure_reason,
         "guardrails": _guardrails(include_raw, dry_run, generate_browser),
@@ -480,6 +501,52 @@ def _guardrails(include_raw: bool, dry_run: bool, generate_browser: bool) -> dic
 def _redacted_stages(pipeline: dict[str, Any]) -> list[dict[str, Any]]:
     """Stage receipts with counts only — drop the verbose detail block (safe for status file)."""
     return [{k: v for k, v in s.items() if k != "detail"} for s in pipeline.get("stages", [])]
+
+
+def _build_run_summary(
+    *,
+    status: str,
+    degraded: bool,
+    started_wall_utc: str,
+    completed_wall_utc: str,
+    brief_date: str,
+    brief_freshness: Any,
+    outputs: dict[str, str],
+    stages: list[dict[str, Any]],
+    failure_reason: Optional[str],
+    warnings: list[str],
+    pending_count: int,
+) -> dict[str, Any]:
+    """One operator-legible, redacted run summary (no raw content; paths already ``~/…`` redacted).
+
+    ``result`` reports degraded explicitly (a degraded synthesis is a partial run that is NOT counted
+    as a fresh success, so the last-successful pointer is preserved). ``stage_receipts`` are name +
+    status only. ``error_summary`` prefers the structured failure reason, else the last warning on a
+    non-success run, else None.
+    """
+    result = "degraded" if (degraded and status != "failure") else status
+    error_summary = failure_reason
+    if error_summary is None and status != "success" and warnings:
+        error_summary = warnings[-1][:160]
+    return {
+        "result": result,
+        "raw_status": status,
+        "degraded": bool(degraded),
+        "started_utc": started_wall_utc,
+        "completed_utc": completed_wall_utc,
+        "brief_date": brief_date,
+        "brief_freshness": brief_freshness,
+        "browser_output_path": outputs.get("browser_latest_path")
+        or outputs.get("browser_dated_path"),
+        "obsidian_output_path": outputs.get("obsidian_path_redacted") or None,
+        "last_successful_path": outputs.get("last_successful_path"),
+        "stage_receipts": [
+            {"stage": s.get("stage"), "status": s.get("status")} for s in stages
+        ],
+        "error_summary": error_summary,
+        "pending_followup_count": pending_count,
+        "browser_auto_opened": False,
+    }
 
 
 def _read_last_successful_browser(status_dir: Path) -> Optional[str]:
@@ -517,6 +584,7 @@ def _write_status(
     is_success: bool,
     synthesis: Optional[dict[str, Any]] = None,
     pending_followup: Optional[dict[str, Any]] = None,
+    run_summary: Optional[dict[str, Any]] = None,
 ) -> Path:
     """Write the redacted machine-readable status (latest + dated). Never contains raw bodies.
 
@@ -528,6 +596,7 @@ def _write_status(
         "run_timestamp": now_utc,
         "git_head": _git_head_short(),
         "status": status,
+        "run_summary": run_summary,
         "brief_date": window.run_date,
         "brief_freshness": pipeline.get("brief_freshness") if pipeline else "skipped",
         "date_policy": window.to_dict(),

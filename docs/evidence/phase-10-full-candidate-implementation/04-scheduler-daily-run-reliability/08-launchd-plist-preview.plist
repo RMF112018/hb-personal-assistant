@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>PYTHONUNBUFFERED</key>
+		<string>1</string>
+	</dict>
+	<key>Label</key>
+	<string>com.hb.personal-assistant.daily-local-agent</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>~/hb-personal-assistant/.venv/bin/hb-assistant</string>
+		<string>second-brain</string>
+		<string>daily-run</string>
+		<string>run</string>
+		<string>--apply</string>
+		<string>--max-persist-per-stage</string>
+		<string>10</string>
+		<string>--max-total-persist</string>
+		<string>30</string>
+		<string>--limit</string>
+		<string>50</string>
+		<string>--lookahead-days</string>
+		<string>14</string>
+		<string>--timezone</string>
+		<string>America/New_York</string>
+		<string>--raw</string>
+		<string>--weekdays-only</string>
+		<string>--write-obsidian</string>
+		<string>--vault-brief-dir</string>
+		<string>~/Documents/Obsidian Vault/Work/Daily Brief</string>
+		<string>--confirm-vault-write</string>
+		<string>--generate-browser</string>
+		<string>--synthesize</string>
+		<string>--no-open-browser</string>
+		<string>--json</string>
+	</array>
+	<key>StandardErrorPath</key>
+	<string>~/Library/Application Support/HB Personal Assistant/logs/error-logs/launchd-daily-local-agent.err.log</string>
+	<key>StandardOutPath</key>
+	<string>~/Library/Application Support/HB Personal Assistant/logs/run-logs/launchd-daily-local-agent.out.log</string>
+	<key>StartCalendarInterval</key>
+	<array>
+		<dict>
+			<key>Hour</key>
+			<integer>5</integer>
+			<key>Minute</key>
+			<integer>0</integer>
+			<key>Weekday</key>
+			<integer>1</integer>
+		</dict>
+		<dict>
+			<key>Hour</key>
+			<integer>5</integer>
+			<key>Minute</key>
+			<integer>0</integer>
+			<key>Weekday</key>
+			<integer>2</integer>
+		</dict>
+		<dict>
+			<key>Hour</key>
+			<integer>5</integer>
+			<key>Minute</key>
+			<integer>0</integer>
+			<key>Weekday</key>
+			<integer>3</integer>
+		</dict>
+		<dict>
+			<key>Hour</key>
+			<integer>5</integer>
+			<key>Minute</key>
+			<integer>0</integer>
+			<key>Weekday</key>
+			<integer>4</integer>
+		</dict>
+		<dict>
+			<key>Hour</key>
+			<integer>5</integer>
+			<key>Minute</key>
+			<integer>0</integer>
+			<key>Weekday</key>
+			<integer>5</integer>
+		</dict>
+	</array>
+	<key>WorkingDirectory</key>
+	<string>~/hb-personal-assistant</string>
+</dict>
+</plist>

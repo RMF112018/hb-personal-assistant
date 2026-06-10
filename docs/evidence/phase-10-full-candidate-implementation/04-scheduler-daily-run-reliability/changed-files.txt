@@ -1,0 +1,4 @@
+# Prompt 04 — changed files (this candidate only)
+src/hb_assistant/construction/second_brain/local_ai/daily_run.py  # operator-legible run_summary block + started/completed wall-clock + status threading
+tests/test_phase_10_daily_run_reliability.py                     # NEW regression test
+docs/evidence/phase-10-full-candidate-implementation/04-scheduler-daily-run-reliability/  # evidence bundle
