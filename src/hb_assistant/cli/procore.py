@@ -124,18 +124,42 @@ def analytics_reprocess(
     family: Optional[str] = typer.Option(None, "--family"),
     endpoint: Optional[str] = typer.Option(None, "--endpoint"),
     limit: int = typer.Option(500, "--limit", min=1),
+    source: str = typer.Option(
+        "auto",
+        "--source",
+        help="auto: full raw rows preferred, then redacted legacy fallback | full: full raw only | legacy: redacted legacy only.",
+    ),
     dry_run: bool = typer.Option(True, "--dry-run", help="Default: preview only; zero writes."),
     apply: bool = typer.Option(False, "--apply", help="Persist bounded rows to the supplied/local DB."),
     json_out: bool = typer.Option(True, "--json/--no-json"),
 ) -> None:
     """Backfill/reprocess existing local Procore DB rows into raw landing + structured bronze tables.
 
-    This command never calls Procore. Applying against production is not blocked by code because the
-    operator may intentionally target an isolated copy; package validation must use SQLite backups.
+    Default ``--source auto`` prefers FULL raw payload rows (``raw_procore_payload_persisted=1``)
+    and only falls back to the redacted legacy projection where no full payload exists; legacy
+    replay never overwrites or downgrades full-derived rows. This command never calls Procore.
+    Applying against production is not blocked by code (the operator may target an isolated copy);
+    package validation must use SQLite backups.
     """
-    from hb_assistant.procore.structured_analytics import backfill_from_live_records
+    from hb_assistant.procore.structured_analytics import (
+        backfill_from_live_records,
+        backfill_from_raw_payloads,
+    )
     from hb_assistant.store.migrator import SQLiteMigrator
 
+    if source not in {"auto", "full", "legacy"}:
+        _emit(
+            {
+                "command": "hb-assistant procore analytics reprocess",
+                "ok": False,
+                "status": "blocked_invalid_source",
+                "reason": "--source must be auto|full|legacy",
+                "guardrails": {"live_calls_disabled": True, "writeback": "none"},
+            },
+            json_out=json_out,
+            exit_code=2,
+        )
+        return
     if apply and dry_run:
         dry_run = False
     if apply and not db:
@@ -153,14 +177,48 @@ def analytics_reprocess(
         return
     if apply:
         SQLiteMigrator(db_path=db).apply()
-    payload = backfill_from_live_records(
-        db_path=_analytics_db(db),
-        apply=apply and not dry_run,
-        project_key=project_key,
-        family=family,
-        endpoint=endpoint,
-        limit=limit,
+
+    do_apply = apply and not dry_run
+    db_arg = _analytics_db(db)
+    full_receipt = (
+        backfill_from_raw_payloads(
+            db_path=db_arg, apply=do_apply, project_key=project_key, family=family, endpoint=endpoint, limit=limit
+        )
+        if source in {"auto", "full"}
+        else None
     )
+    legacy_receipt = (
+        backfill_from_live_records(
+            db_path=db_arg, apply=do_apply, project_key=project_key, family=family, endpoint=endpoint, limit=limit
+        )
+        if source in {"auto", "legacy"}
+        else None
+    )
+
+    if source == "legacy":
+        payload = dict(legacy_receipt or {})
+    elif source == "full":
+        payload = dict(full_receipt or {})
+        payload["raw_landing_written"] = 0  # full path projects from existing raw rows
+        payload.setdefault("live_procore_calls", 0)
+        payload.setdefault("external_writeback_performed", 0)
+    else:  # auto: full preferred, legacy fallback (legacy already skips full-covered records)
+        payload = dict(legacy_receipt or {})
+        full_sw = int(full_receipt.get("structured_written", 0)) if full_receipt else 0
+        legacy_sw = int(legacy_receipt.get("structured_written", 0)) if legacy_receipt else 0
+        payload["structured_written"] = full_sw + legacy_sw
+        payload["full_raw_structured_written"] = full_sw
+        payload["full_raw_rows_inspected"] = (
+            int(full_receipt.get("raw_full_rows_inspected", 0)) if full_receipt else 0
+        )
+        payload["legacy_structured_written"] = legacy_sw
+        payload["legacy_skipped_due_to_higher_quality"] = (
+            int(legacy_receipt.get("skipped_due_to_higher_quality", 0)) if legacy_receipt else 0
+        )
+        payload["source_quality"] = (
+            "mixed" if (full_sw and legacy_sw) else payload.get("source_quality", "redacted_legacy_projection")
+        )
+    payload["source"] = source
     payload["command"] = "hb-assistant procore analytics reprocess"
     payload["guardrails"] = {"live_calls_disabled": True, "writeback": "none"}
     _emit(payload, json_out=json_out)
