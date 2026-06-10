@@ -14,7 +14,7 @@ from .connection import get_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 45
+LATEST_SCHEMA_VERSION = 46
 
 
 class SQLiteMigrator:
@@ -5785,6 +5785,253 @@ class SQLiteMigrator:
         "ON email_followup_enrichments(created_utc);",
     ]
 
+    # v46 Procore structured analytics foundation. Additive only. Raw landing
+    # enables replay, while endpoint-family procore_raw_* bronze tables are the
+    # acceptance gate for future analytics.
+    _V46_STRUCTURED_TABLES: tuple[str, ...] = (
+        "procore_raw_rfis",
+        "procore_raw_rfi_responses",
+        "procore_raw_submittals",
+        "procore_raw_submittal_responses",
+        "procore_raw_submittal_packages",
+        "procore_raw_observations",
+        "procore_raw_punch_items",
+        "procore_raw_meetings",
+        "procore_raw_meeting_details",
+        "procore_raw_meeting_topics",
+        "procore_raw_daily_logs",
+        "procore_raw_inspections",
+        "procore_raw_inspection_sections",
+        "procore_raw_inspection_items",
+        "procore_raw_schedules",
+        "procore_raw_schedule_activities",
+        "procore_raw_contracts",
+        "procore_raw_contract_line_items",
+        "procore_raw_change_orders",
+        "procore_raw_change_order_line_items",
+        "procore_raw_billing_periods",
+        "procore_raw_invoices",
+        "procore_raw_invoice_items",
+        "procore_raw_payment_applications",
+        "procore_raw_rfqs",
+        "procore_raw_rfq_responses",
+        "procore_raw_change_events",
+        "procore_raw_change_event_comments",
+        "procore_raw_budget_views",
+        "procore_raw_budget_columns",
+        "procore_raw_budget_rows",
+        "procore_raw_budget_changes",
+        "procore_raw_budget_change_line_items",
+        "procore_raw_budget_modifications",
+        "procore_raw_attachments",
+        "procore_raw_project_dimensions",
+        "procore_raw_company_dimensions",
+        "procore_raw_person_dimensions",
+        "procore_raw_cost_code_dimensions",
+        "procore_raw_location_dimensions",
+        "procore_raw_status_dimensions",
+        "procore_raw_date_dimensions",
+    )
+
+    _V46_STRUCTURED_TABLE_DDL = [
+        f"""
+        CREATE TABLE IF NOT EXISTS {table} (
+          record_key TEXT PRIMARY KEY,
+          raw_payload_id TEXT,
+          source_ref_hash TEXT NOT NULL,
+          endpoint_key TEXT NOT NULL,
+          endpoint_family TEXT NOT NULL,
+          company_id TEXT,
+          company_id_hash TEXT,
+          project_id TEXT,
+          project_id_hash TEXT,
+          project_key TEXT,
+          record_id TEXT NOT NULL,
+          record_id_hash TEXT NOT NULL,
+          parent_record_id TEXT,
+          parent_record_id_hash TEXT,
+          record_number TEXT,
+          title_redacted TEXT,
+          status TEXT,
+          current_state TEXT,
+          owner_name TEXT,
+          assignee_name TEXT,
+          responsible_party_name TEXT,
+          due_at_utc TEXT,
+          start_at_utc TEXT,
+          finish_at_utc TEXT,
+          business_date TEXT,
+          cost_code TEXT,
+          cost_type TEXT,
+          amount TEXT,
+          currency TEXT,
+          quantity TEXT,
+          unit_of_measure TEXT,
+          source_updated_at_utc TEXT,
+          payload_captured_at_utc TEXT,
+          payload_seen_first_utc TEXT,
+          payload_seen_last_utc TEXT,
+          payload_hash TEXT NOT NULL,
+          raw_payload_linked INTEGER NOT NULL DEFAULT 0 CHECK(raw_payload_linked IN (0, 1)),
+          is_current INTEGER NOT NULL DEFAULT 1 CHECK(is_current IN (0, 1)),
+          source_quality TEXT NOT NULL,
+          analytics_eligible INTEGER NOT NULL DEFAULT 1 CHECK(analytics_eligible IN (0, 1)),
+          daily_brief_eligible INTEGER NOT NULL DEFAULT 0 CHECK(daily_brief_eligible IN (0, 1)),
+          security_scrub_status TEXT NOT NULL DEFAULT 'scrubbed',
+          retention_class TEXT NOT NULL DEFAULT 'local_analytics',
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0),
+          raw_payload_emitted_to_read_model INTEGER NOT NULL DEFAULT 0 CHECK(raw_payload_emitted_to_read_model = 0),
+          raw_payload_emitted_to_evidence INTEGER NOT NULL DEFAULT 0 CHECK(raw_payload_emitted_to_evidence = 0),
+          FOREIGN KEY(raw_payload_id) REFERENCES procore_endpoint_raw_payloads(raw_payload_id)
+        );
+        """
+        for table in _V46_STRUCTURED_TABLES
+    ]
+
+    _V46_STRUCTURED_INDEX_DDL = [
+        stmt
+        for table in _V46_STRUCTURED_TABLES
+        for stmt in (
+            f"CREATE INDEX IF NOT EXISTS ix_{table}_endpoint_project ON {table}(endpoint_key, project_key);",
+            f"CREATE INDEX IF NOT EXISTS ix_{table}_project_status ON {table}(project_key, status);",
+            f"CREATE INDEX IF NOT EXISTS ix_{table}_project_date ON {table}(project_key, business_date);",
+            f"CREATE INDEX IF NOT EXISTS ix_{table}_source_ref ON {table}(source_ref_hash);",
+            f"CREATE INDEX IF NOT EXISTS ix_{table}_raw_payload ON {table}(raw_payload_id);",
+        )
+    ]
+
+    V46_STATEMENTS: list[str] = [
+        """
+        CREATE TABLE IF NOT EXISTS procore_endpoint_contracts (
+          endpoint_key TEXT PRIMARY KEY,
+          endpoint_family TEXT NOT NULL,
+          endpoint_version TEXT NOT NULL DEFAULT 'legacy_v1',
+          path_template TEXT NOT NULL,
+          response_envelope TEXT NOT NULL,
+          record_id_field TEXT NOT NULL,
+          parent_record_id_field TEXT,
+          required_path_params_json TEXT NOT NULL DEFAULT '[]',
+          raw_landing_table TEXT NOT NULL DEFAULT 'procore_endpoint_raw_payloads',
+          structured_table TEXT,
+          live_verified INTEGER NOT NULL DEFAULT 0 CHECK(live_verified IN (0, 1)),
+          analytics_eligible INTEGER NOT NULL DEFAULT 0 CHECK(analytics_eligible IN (0, 1)),
+          daily_brief_eligible INTEGER NOT NULL DEFAULT 0 CHECK(daily_brief_eligible IN (0, 1)),
+          sensitivity TEXT NOT NULL,
+          retention_class TEXT NOT NULL DEFAULT 'local_analytics',
+          no_writeback_posture TEXT NOT NULL DEFAULT 'local_read_only',
+          defer_reason TEXT,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS procore_endpoint_capture_runs (
+          capture_run_id TEXT PRIMARY KEY,
+          mode TEXT NOT NULL,
+          source_kind TEXT NOT NULL,
+          started_at_utc TEXT NOT NULL,
+          completed_at_utc TEXT,
+          status TEXT NOT NULL,
+          project_key TEXT,
+          endpoint_key TEXT,
+          endpoint_family TEXT,
+          row_cap INTEGER,
+          inspected_rows INTEGER NOT NULL DEFAULT 0,
+          raw_landing_rows INTEGER NOT NULL DEFAULT 0,
+          structured_rows INTEGER NOT NULL DEFAULT 0,
+          gap_count INTEGER NOT NULL DEFAULT 0,
+          fail_closed_reason TEXT,
+          live_procore_calls INTEGER NOT NULL DEFAULT 0 CHECK(live_procore_calls = 0),
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0),
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS procore_endpoint_capture_pages (
+          capture_page_id TEXT PRIMARY KEY,
+          capture_run_id TEXT NOT NULL REFERENCES procore_endpoint_capture_runs(capture_run_id),
+          endpoint_key TEXT NOT NULL,
+          endpoint_family TEXT NOT NULL,
+          project_key TEXT,
+          request_fingerprint_hash TEXT NOT NULL,
+          page_number INTEGER,
+          page_cursor_hash TEXT,
+          rows_seen INTEGER NOT NULL DEFAULT 0,
+          payload_hash TEXT,
+          status TEXT NOT NULL,
+          fail_closed_reason TEXT,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS procore_endpoint_capture_errors (
+          capture_error_id TEXT PRIMARY KEY,
+          capture_run_id TEXT,
+          endpoint_key TEXT,
+          endpoint_family TEXT,
+          project_key TEXT,
+          error_kind TEXT NOT NULL,
+          error_message_redacted TEXT,
+          fail_closed_reason TEXT,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS procore_endpoint_raw_payloads (
+          raw_payload_id TEXT PRIMARY KEY,
+          capture_run_id TEXT,
+          endpoint_key TEXT NOT NULL,
+          endpoint_family TEXT NOT NULL,
+          endpoint_version TEXT NOT NULL,
+          company_id TEXT,
+          company_id_hash TEXT,
+          project_id TEXT,
+          project_id_hash TEXT,
+          project_key TEXT,
+          record_type TEXT NOT NULL,
+          record_id TEXT NOT NULL,
+          record_id_hash TEXT NOT NULL,
+          parent_record_id TEXT,
+          parent_record_id_hash TEXT,
+          source_ref_hash TEXT NOT NULL,
+          request_fingerprint_hash TEXT NOT NULL,
+          payload_hash TEXT NOT NULL,
+          payload_json TEXT NOT NULL,
+          payload_size_bytes INTEGER NOT NULL DEFAULT 0,
+          payload_captured_at_utc TEXT,
+          payload_seen_first_utc TEXT,
+          payload_seen_last_utc TEXT,
+          is_current INTEGER NOT NULL DEFAULT 1 CHECK(is_current IN (0, 1)),
+          redaction_status TEXT NOT NULL,
+          security_scrub_status TEXT NOT NULL,
+          contains_personal_data INTEGER NOT NULL DEFAULT 0 CHECK(contains_personal_data IN (0, 1)),
+          contains_signed_url INTEGER NOT NULL DEFAULT 0 CHECK(contains_signed_url IN (0, 1)),
+          contains_secret_like_value INTEGER NOT NULL DEFAULT 0 CHECK(contains_secret_like_value IN (0, 1)),
+          retention_class TEXT NOT NULL DEFAULT 'local_analytics',
+          analytics_eligible INTEGER NOT NULL DEFAULT 1 CHECK(analytics_eligible IN (0, 1)),
+          source_quality TEXT NOT NULL,
+          raw_procore_payload_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_procore_payload_persisted IN (0, 1)),
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0),
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(endpoint_key, project_key, parent_record_id, record_id, payload_hash)
+        );
+        """,
+        "CREATE INDEX IF NOT EXISTS ix_procore_endpoint_contracts_family ON procore_endpoint_contracts(endpoint_family, analytics_eligible);",
+        "CREATE INDEX IF NOT EXISTS ix_procore_endpoint_capture_runs_status ON procore_endpoint_capture_runs(status, endpoint_family);",
+        "CREATE INDEX IF NOT EXISTS ix_procore_endpoint_capture_pages_run ON procore_endpoint_capture_pages(capture_run_id, endpoint_key);",
+        "CREATE INDEX IF NOT EXISTS ix_procore_endpoint_raw_payloads_endpoint_project ON procore_endpoint_raw_payloads(endpoint_key, project_key);",
+        "CREATE INDEX IF NOT EXISTS ix_procore_endpoint_raw_payloads_source_ref ON procore_endpoint_raw_payloads(source_ref_hash);",
+        "CREATE INDEX IF NOT EXISTS ix_procore_endpoint_raw_payloads_current ON procore_endpoint_raw_payloads(endpoint_key, is_current);",
+        *_V46_STRUCTURED_TABLE_DDL,
+        *_V46_STRUCTURED_INDEX_DDL,
+    ]
+
     def __init__(self, db_path: str | None = None):
         self._db_path = db_path
 
@@ -6349,6 +6596,18 @@ class SQLiteMigrator:
             if cur.fetchone() is None:
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (45, 'v45_email_followup_enrichments', ?)",
+                    (now,),
+                )
+
+            # v46 Procore structured analytics foundation. Additive local-only
+            # capture/control, raw landing, and endpoint-family structured bronze
+            # tables. Raw landing alone is not the analytics acceptance gate.
+            for stmt in self.V46_STATEMENTS:
+                conn.execute(stmt)
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 46")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (46, 'v46_procore_structured_analytics_foundation', ?)",
                     (now,),
                 )
 

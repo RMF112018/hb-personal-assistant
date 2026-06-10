@@ -1,0 +1,1 @@
+Final safety scan is run after evidence generation. This file is intentionally metadata-only.

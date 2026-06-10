@@ -1,0 +1,1 @@
+No raw payloads or private DB extracts are included in this baseline evidence.

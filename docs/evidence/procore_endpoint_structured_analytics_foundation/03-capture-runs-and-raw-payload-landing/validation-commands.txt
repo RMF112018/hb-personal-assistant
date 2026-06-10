@@ -1,0 +1,3 @@
+SQLiteMigrator(db_path=<fresh_db>).apply()
+hb-assistant procore analytics reprocess --db "$AUDIT_DB" --limit 40000 --apply --json
+sqlite3 "$AUDIT_DB" "SELECT COUNT(*) FROM procore_endpoint_raw_payloads;"

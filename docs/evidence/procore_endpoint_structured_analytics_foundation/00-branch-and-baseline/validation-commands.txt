@@ -1,0 +1,7 @@
+git fetch origin
+git worktree add -b feature/procore-structured-analytics-foundation /Users/bobbyfetting/hb-personal-assistant-worktrees/procore-structured-analytics-foundation-20260610 origin/main
+git rev-parse --abbrev-ref HEAD
+git rev-parse HEAD
+git rev-parse main
+git rev-parse origin/main
+git status --short --untracked-files=all

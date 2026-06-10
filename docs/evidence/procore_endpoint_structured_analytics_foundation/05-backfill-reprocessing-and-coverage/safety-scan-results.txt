@@ -1,0 +1,1 @@
+Backfill evidence contains counts and source-quality labels only. The copied DB under /tmp is not committed.

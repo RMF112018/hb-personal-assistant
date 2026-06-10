@@ -1,0 +1,1 @@
+No raw payload values, tokens, signed URLs, private URLs, or DB extracts are intentionally emitted by the CLI evidence surfaces.

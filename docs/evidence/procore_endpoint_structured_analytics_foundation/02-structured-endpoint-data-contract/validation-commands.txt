@@ -1,0 +1,2 @@
+hb-assistant procore analytics contract --json
+pytest tests/test_procore_structured_analytics_foundation.py -q

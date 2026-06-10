@@ -1,0 +1,29 @@
+{
+  "package_slug": "procore_endpoint_structured_analytics_foundation_package",
+  "title": "Procore Endpoint Structured Analytics Foundation + Daily-Brief Usefulness Package",
+  "version": "v2.0.0-structured-analytics-foundation",
+  "created_utc": "2026-06-10T00:00:00Z",
+  "repository": "RMF112018/hb-personal-assistant",
+  "local_repo_path": "/Users/bobbyfetting/hb-personal-assistant",
+  "package_path": "docs/planning/procore_endpoint_structured_analytics_foundation_package/README.md",
+  "evidence_path": "docs/evidence/procore_endpoint_structured_analytics_foundation/",
+  "supersedes": "docs/planning/procore_endpoint_raw_content_and_daily_brief_usefulness_package/",
+  "primary_objective": "Implement durable local Procore endpoint data capture in structured analytics-grade tables, with raw/local business content preserved for future analytics and downstream local-model/daily-brief projections.",
+  "non_goals": [
+    "Do not make the daily brief the owner of the Procore data model.",
+    "Do not store only generic unqueryable JSON blobs as the analytics foundation.",
+    "Do not commit raw Procore payloads or private DB extracts.",
+    "Do not perform Procore, Graph, email, calendar, SharePoint, or MCP writeback."
+  ],
+  "prompt_sequence": [
+    "prompts/00_shared_context.md",
+    "prompts/01_repo_truth_db_audit_and_schema_baseline.md",
+    "prompts/02_structured_endpoint_data_contract.md",
+    "prompts/03_capture_runs_and_raw_payload_landing.md",
+    "prompts/04_typed_endpoint_family_tables.md",
+    "prompts/05_backfill_reprocessing_and_coverage.md",
+    "prompts/06_ranked_signals_candidates_and_downstream_consumers.md",
+    "prompts/07_operator_analytics_cli_and_evidence_surfaces.md",
+    "prompts/08_validation_safety_and_final_handoff.md"
+  ]
+}

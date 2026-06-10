@@ -74,18 +74,19 @@ def _column_names(db: str) -> list[str]:
     return [c[1] for c in _column_info(db)]
 
 
-def test_fresh_db_migrates_to_v45() -> None:
+def test_fresh_db_migrates_to_latest_and_includes_v45() -> None:
     with tempfile.TemporaryDirectory() as td:
         db = str(Path(td) / "fresh.db")
         assert SQLiteMigrator(db_path=db).apply() == LATEST_SCHEMA_VERSION
-        assert LATEST_SCHEMA_VERSION == 45
+        assert LATEST_SCHEMA_VERSION >= 45
+        assert "enrichment_id" in _column_names(db)
 
 
 def test_migration_idempotent() -> None:
     with tempfile.TemporaryDirectory() as td:
         db = str(Path(td) / "idem.db")
-        assert SQLiteMigrator(db_path=db).apply() == 45
-        assert SQLiteMigrator(db_path=db).apply() == 45
+        assert SQLiteMigrator(db_path=db).apply() == LATEST_SCHEMA_VERSION
+        assert SQLiteMigrator(db_path=db).apply() == LATEST_SCHEMA_VERSION
 
 
 def test_v44_db_upgrades_to_v45() -> None:
@@ -96,12 +97,12 @@ def test_v44_db_upgrades_to_v45() -> None:
         # Simulate a DB that is at V44: drop the V45 artifacts.
         conn = sqlite3.connect(db)
         conn.execute("DROP TABLE email_followup_enrichments")
-        conn.execute("DELETE FROM schema_migrations WHERE version = 45")
+        conn.execute("DELETE FROM schema_migrations WHERE version >= 45")
         conn.commit()
         assert conn.execute("SELECT MAX(version) FROM schema_migrations").fetchone()[0] == 44
         conn.close()
         # Re-apply: the V45 migration must run on the V44 DB.
-        assert SQLiteMigrator(db_path=db).apply() == 45
+        assert SQLiteMigrator(db_path=db).apply() == LATEST_SCHEMA_VERSION
         assert "enrichment_id" in _column_names(db)
 
 
