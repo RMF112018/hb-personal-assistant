@@ -1,0 +1,31 @@
+Safety Scan Results — Phase 10 Post-Merge Hardening (consolidated)
+
+Trees scanned:
+  docs/evidence/phase-10-postmerge-hardening
+  docs/evidence/phase-10-full-candidate-implementation/10-final-integration-audit
+
+Forbidden live/private content patterns (described generically here to keep this file self-clean):
+  bearer-token shapes, access/refresh-token keys, client-secret keys, meeting-join domains
+  (Teams/Zoom/Meet), signed-URL "sig" params, the org email domain, and any "http(s)" URL scheme.
+
+RESULT: PASS — no forbidden live/private content.
+
+Total raw grep match lines across both trees: 1
+Actual forbidden-CONTENT match lines:           0
+
+Documented safe matches (correction 2 — NOT leaks):
+  1) docs/evidence/phase-10-postmerge-hardening/01-postmerge-evidence-repair/validation-commands.txt
+     line 7 — this is the literal `grep -rnE "..."` DETECTION COMMAND recorded as a runnable
+     validation step. It contains the pattern alternation (the scan pattern itself), not any
+     leaked token/URL/email. It is a documented example of the scan command, not content.
+  2) mcp-packet captured Markdown lists CATEGORY LABELS under "Omitted raw categories"
+     (signed_urls, download_urls, join_links, bearer_tokens, email_address_dumps, ...). These are
+     guardrail label strings, not actual URLs/tokens/emails, and do not match the content patterns.
+
+Distinction from existing repo metadata: unrelated `text_hash` (Procore enrichment/history) and
+`input_context_hash` (reasoning/model receipts) symbols are different fields, out of scope, and
+carry no forbidden content.
+
+No raw email/document bodies, raw prompts/responses, HTML bodies, signed/download URLs, join
+links, tokens, secrets, passwords, cookies, API keys, or email-address dumps are present in any
+committed code, test, or evidence for this package. Production DB sha256 unchanged.

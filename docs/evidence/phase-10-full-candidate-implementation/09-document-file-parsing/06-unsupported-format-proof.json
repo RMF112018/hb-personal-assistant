@@ -15,7 +15,8 @@
     "parsed_status": "unsupported",
     "extraction_method": null,
     "text_length": 0,
-    "text_hash": null,
+    "text_excerpt_hash": null,
+    "hash_scope": "text_excerpt",
     "counts": {},
     "degraded_reason": "unsupported_extension:.xyz"
   },

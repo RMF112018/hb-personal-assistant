@@ -2630,7 +2630,9 @@ def daily_brief_mcp_packet(
         None, "--markdown-out", help="Also write the operator-facing Markdown contract to a file."
     ),
     db: "str | None" = typer.Option(None, "--db", help="Explicit SQLite path (tests/isolation)."),  # noqa: B008
-    json_out: bool = typer.Option(True, "--json", help="Emit JSON (default)."),  # noqa: B008
+    json_out: bool = typer.Option(  # noqa: B008
+        True, "--json/--no-json", help="Emit JSON (default); --no-json emits operator Markdown."
+    ),
 ) -> None:
     """Build a hardened, fail-closed MCP context packet (read-only; metadata-only summaries).
 

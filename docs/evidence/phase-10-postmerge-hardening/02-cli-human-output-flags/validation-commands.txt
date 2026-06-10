@@ -1,0 +1,10 @@
+# Prompt 02 validation (repo root, .venv/bin/python3.12)
+.venv/bin/python3.12 -m compileall -q src tests
+.venv/bin/python3.12 -m pytest -q tests/test_phase_10_file_parse_read_model.py tests/test_phase_10_mcp_packet_hardening.py
+.venv/bin/ruff check src/hb_assistant/cli/files.py src/hb_assistant/cli/second_brain.py
+.venv/bin/mypy src/hb_assistant/cli/files.py
+.venv/bin/mypy src/hb_assistant/cli/second_brain.py
+
+# CLI smoke (disposable temp DB + safe fixture):
+.venv/bin/python3.12 -m hb_assistant.cli.main files parse-index <fixture>/note.txt --no-json
+.venv/bin/python3.12 -m hb_assistant.cli.main second-brain daily-brief mcp-packet --db /tmp/phase10_mcp_packet_smoke.sqlite --as-of 2026-06-09T05:00:00-04:00 --no-json

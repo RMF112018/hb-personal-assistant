@@ -66,12 +66,15 @@ def test_read_model_is_raw_free_and_supported(tmp_path: Path) -> None:
         assert rm["extraction_method"] is not None
         assert rm["redaction"]["raw_text_excerpt_excluded"] is True
         assert rm["file_name"] == p.name
-        # text_hash is either None (empty) or a sha256 prefix — never the text.
-        assert rm["text_hash"] is None or rm["text_hash"].startswith("sha256:")
-    # txt fixture has content → a hash + positive length.
+        # The hash covers the BOUNDED excerpt, not full text — named text_excerpt_hash + hash_scope.
+        assert rm["hash_scope"] == "text_excerpt"
+        assert "text_hash" not in rm  # legacy ambiguous field is gone (no alias)
+        assert rm["text_excerpt_hash"] is None or rm["text_excerpt_hash"].startswith("sha256:")
+    # txt fixture has content → an excerpt hash + positive length.
     txt_rm = build_file_parse_read_model(fx["txt"])
     assert txt_rm["text_length"] > 0
-    assert txt_rm["text_hash"].startswith("sha256:")
+    assert txt_rm["text_excerpt_hash"].startswith("sha256:")
+    assert txt_rm["hash_scope"] == "text_excerpt"
 
 
 def test_unsupported_and_missing(tmp_path: Path) -> None:
@@ -106,3 +109,13 @@ def test_cli_parse_index(tmp_path: Path) -> None:
     payload = json.loads(res.output)
     assert payload["counts"]["files"] == 2
     assert payload["guardrails"]["local_only"] is True
+
+
+def test_cli_parse_index_no_json_emits_markdown(tmp_path: Path) -> None:
+    # --no-json must be accepted (post-merge hardening) and print operator Markdown, not JSON.
+    fx = _make_fixtures(tmp_path)
+    res = runner.invoke(app, ["files", "parse-index", str(fx["txt"]), "--no-json"])
+    assert res.exit_code == 0, res.output
+    assert res.output.lstrip().startswith("# File Parse Index")
+    with pytest.raises(json.JSONDecodeError):
+        json.loads(res.output)

@@ -15,7 +15,8 @@
     "parsed_status": "degraded",
     "extraction_method": "pdfplumber+pypdf",
     "text_length": 0,
-    "text_hash": null,
+    "text_excerpt_hash": null,
+    "hash_scope": "text_excerpt",
     "counts": {
       "page_count": 2,
       "table_count": 0

@@ -1,0 +1,19 @@
+# Prompt 01 — Changed files
+
+# Modified (audit evidence repaired to post-merge truth):
+docs/evidence/phase-10-full-candidate-implementation/10-final-integration-audit/01-final-handoff.md
+docs/evidence/phase-10-full-candidate-implementation/10-final-integration-audit/02-commit-log.txt
+docs/evidence/phase-10-full-candidate-implementation/10-final-integration-audit/07-safety-matrix.md
+docs/evidence/phase-10-full-candidate-implementation/10-final-integration-audit/10-manual-verification-runbook.md
+docs/evidence/phase-10-full-candidate-implementation/10-final-integration-audit/13-final-git-status.txt
+
+# Added (package evidence):
+docs/evidence/phase-10-postmerge-hardening/00-branch-and-baseline.md
+docs/evidence/phase-10-postmerge-hardening/01-postmerge-evidence-repair/README.md
+docs/evidence/phase-10-postmerge-hardening/01-postmerge-evidence-repair/final-output.md
+docs/evidence/phase-10-postmerge-hardening/01-postmerge-evidence-repair/validation-commands.txt
+docs/evidence/phase-10-postmerge-hardening/01-postmerge-evidence-repair/validation-results.md
+docs/evidence/phase-10-postmerge-hardening/01-postmerge-evidence-repair/safety-scan-results.txt
+docs/evidence/phase-10-postmerge-hardening/01-postmerge-evidence-repair/changed-files.txt
+
+# Code changed: NONE (docs-only)

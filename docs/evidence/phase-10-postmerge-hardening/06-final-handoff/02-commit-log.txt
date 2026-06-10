@@ -1,0 +1,6 @@
+45fc3870 docs(architecture): record phase 10 post-merge hardening contracts
+5f061033 test(second-brain): add phase 10 post-merge hardening validation
+9ccdbc48 fix(files): clarify phase 10 parse hash contract
+965b2c4c fix(second-brain): gate follow-up watch persistence on quality flags
+8bed66cd fix(cli): align phase 10 operator markdown flags
+ae775cdd docs(second-brain): repair phase 10 post-merge evidence

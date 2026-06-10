@@ -1,0 +1,15 @@
+Prompt 04 — Safety Scan Results
+
+Scope: docs/evidence/phase-10-postmerge-hardening/04-file-parse-hash-contract
+       docs/evidence/phase-10-full-candidate-implementation/09-document-file-parsing (updated files)
+
+Pattern (forbidden live/private content) — described generically to keep this file self-clean:
+  bearer-token shapes, access/refresh-token keys, client-secret keys, meeting-join domains
+  (Teams/Zoom/Meet), signed-URL "sig" params, the org email domain, and any "http(s)" URL scheme.
+
+RESULT: CLEAN — no forbidden live/private content matches.
+Documented safe matches: NONE.
+
+The captured outputs contain only sha256 EXCERPT hashes (opaque digests, not reversible to text),
+synthetic file ids/names, counts, and the new hash_scope label. The fixtures are synthetic;
+binary fixtures are not committed. Production DB never opened. Forbidden-content scan: PASS.

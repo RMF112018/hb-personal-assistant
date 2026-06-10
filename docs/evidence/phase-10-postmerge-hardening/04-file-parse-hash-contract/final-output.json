@@ -1,0 +1,44 @@
+{
+  "command": "second-brain files parse-index",
+  "ok": true,
+  "counts": {
+    "files": 1,
+    "by_status": {
+      "parsed": 1
+    },
+    "by_extension": {
+      ".txt": 1
+    }
+  },
+  "files": [
+    {
+      "source_id": "file:59700155e034d16d",
+      "file_name": "note.txt",
+      "extension": ".txt",
+      "mime_type": "text/plain",
+      "source_refs": [],
+      "redaction": {
+        "raw_text_excerpt_excluded": true,
+        "hash_only": true,
+        "local_only": true,
+        "no_model": true
+      },
+      "parsed_status": "parsed",
+      "extraction_method": "stdlib-text",
+      "text_length": 60,
+      "text_excerpt_hash": "sha256:36481ad3cafc2ef2f47a536a7e2b391568b219343af9196c2e5a620c35d9060c",
+      "hash_scope": "text_excerpt",
+      "counts": {},
+      "degraded_reason": null
+    }
+  ],
+  "guardrails": {
+    "local_only": true,
+    "no_network": true,
+    "no_model": true,
+    "no_raw_text_excerpt": true,
+    "hash_only": true,
+    "no_writeback": true,
+    "deterministic": true
+  }
+}

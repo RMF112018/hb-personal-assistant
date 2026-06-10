@@ -1,0 +1,6 @@
+# Prompt 03 validation (repo root, .venv/bin/python3.12)
+.venv/bin/python3.12 -m compileall -q src tests
+.venv/bin/python3.12 -m pytest -q tests/test_phase_10_follow_up_watch_report.py
+.venv/bin/ruff check src/hb_assistant/construction/second_brain/local_ai/follow_up_watch.py
+# Direct temp-DB proof (no production DB access):
+.venv/bin/python3.12 /tmp/gen_evidence_p10pm_03.py

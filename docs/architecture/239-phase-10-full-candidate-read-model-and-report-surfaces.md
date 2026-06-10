@@ -46,3 +46,27 @@ Most Phase 10 candidates converged on one repeatable surface shape rather than n
 No schema migration was added (schema stays at V45). No external writeback, no cloud LLM, no raw
 content. Guard columns on touched tables stay zero. The production DB is never mutated — every
 candidate validates on disposable temp copies and proves the production sha256 unchanged.
+
+## Post-merge hardening (branch `fix/phase-10-postmerge-hardening`)
+
+After PR #13 merged this work to `main` (merge commit `483e090d`), a focused hardening pass tightened
+three contracts above without changing schema or behavior shape. Evidence:
+`docs/evidence/phase-10-postmerge-hardening/`.
+
+- **Operator Markdown is reachable on every surface.** `files parse-index` and
+  `daily-brief mcp-packet` declared only `--json`; both already rendered Markdown in their `else`
+  branch, so the fix is the paired `--json/--no-json` flag only. The whole surface family now
+  honors the "JSON by default, Markdown via `--no-json`/`--markdown-out`" contract uniformly.
+- **Follow-up watch persistence is quality-gated.** `run_follow_up_watch_scan` previously gated
+  persistence on source refs alone, so a source-linked but **contradictory** item (terminal status +
+  active waiting_state + no completion) could persist as actionable even though
+  `build_follow_up_watch_report` routes it to `needs_review`. The scan now applies the same
+  `watch_quality_flags(...)` and refuses to persist any flagged item (`skipped_quality_flags`
+  counter; `quality_flags` + `skipped_reason="quality_flags"` on the entry; `quality_gated`
+  guardrail). The report and the persist path now agree. No schema change.
+- **File-parse hash scope is explicit.** `file_parse_read_model` hashed the parser's **bounded**
+  `text_excerpt` (parsers cap the excerpt — e.g. `text[:max_chars]`, PDF first N pages) but emitted
+  it as `text_hash`, implying a full-text hash. The field is renamed to `text_excerpt_hash` with an
+  explicit `hash_scope: "text_excerpt"` (no alias; Markdown shows `excerpt-hash:`). `text_length`
+  is likewise the excerpt length. Downstream-consumer grep confirms nothing depended on the old
+  field; the unrelated `text_hash` in Procore enrichment/history is a different symbol.

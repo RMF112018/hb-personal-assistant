@@ -51,14 +51,17 @@ def files_parse_index(
     markdown_out: Optional[str] = typer.Option(  # noqa: B008
         None, "--markdown-out", help="Also write the operator-facing Markdown index to a file."
     ),
-    json_out: bool = typer.Option(True, "--json"),  # noqa: B008
+    json_out: bool = typer.Option(  # noqa: B008
+        True, "--json/--no-json", help="Emit JSON (default); --no-json emits operator Markdown."
+    ),
 ) -> None:
     """Parse local files into a review-safe read-model index (local-only, hash-only, no raw text).
 
     Runs the repo's bounded local parsers (pdf/docx/xlsx/pptx/csv/txt/md/image/zip) and emits ONLY safe
-    metadata per file: id, name, extension, MIME, parsed status, extraction method, text length +
-    sha256 hash, page/table/sheet counts, degraded reason, and redaction flags — never the extracted
-    text. No network, no model, no writeback. Unsupported/missing files degrade honestly.
+    metadata per file: id, name, extension, MIME, parsed status, extraction method, excerpt length +
+    sha256 of the bounded excerpt (text_excerpt_hash; hash_scope="text_excerpt"), page/table/sheet
+    counts, degraded reason, and redaction flags — never the extracted text. No network, no model, no
+    writeback. Unsupported/missing files degrade honestly.
     """
     from pathlib import Path
 

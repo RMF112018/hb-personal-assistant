@@ -1,0 +1,10 @@
+# Prompt 02 — Changed files
+# Source:
+src/hb_assistant/cli/files.py
+src/hb_assistant/cli/second_brain.py
+# Tests:
+tests/test_phase_10_file_parse_read_model.py
+tests/test_phase_10_mcp_packet_hardening.py
+# Evidence:
+docs/evidence/phase-10-postmerge-hardening/02-cli-human-output-flags/*
+# Runbook (labeled "expected after Prompt 02" in Prompt 01) — already committed in Prompt 01.

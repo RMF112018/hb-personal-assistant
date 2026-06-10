@@ -1,0 +1,9 @@
+# Prompt 04 validation (repo root, .venv/bin/python3.12)
+.venv/bin/python3.12 -m compileall -q src tests
+.venv/bin/python3.12 -m pytest -q tests/test_phase_10_file_parse_read_model.py
+.venv/bin/ruff check src/hb_assistant/construction/second_brain/local_ai/file_parse_read_model.py src/hb_assistant/cli/files.py
+# Consumer proof:
+grep -rn "text_hash" src tests | grep -iE "file_parse|parse_index|parse-index|file_index"
+# CLI smoke (safe fixture):
+.venv/bin/python3.12 -m hb_assistant.cli.main files parse-index <fixture>/note.txt --json
+.venv/bin/python3.12 -m hb_assistant.cli.main files parse-index <fixture>/note.txt --no-json

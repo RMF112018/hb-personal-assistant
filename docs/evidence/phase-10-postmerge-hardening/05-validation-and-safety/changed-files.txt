@@ -1,0 +1,11 @@
+# Prompt 05 — changed files (this prompt: evidence only)
+docs/evidence/phase-10-postmerge-hardening/05-validation-and-safety/*
+
+# Cumulative source/test changes across the hardening branch (Prompts 02-04):
+src/hb_assistant/cli/files.py
+src/hb_assistant/cli/second_brain.py
+src/hb_assistant/construction/second_brain/local_ai/follow_up_watch.py
+src/hb_assistant/construction/second_brain/local_ai/file_parse_read_model.py
+tests/test_phase_10_file_parse_read_model.py
+tests/test_phase_10_mcp_packet_hardening.py
+tests/test_phase_10_follow_up_watch_report.py

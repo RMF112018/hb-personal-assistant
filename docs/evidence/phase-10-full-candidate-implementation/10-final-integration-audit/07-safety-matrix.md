@@ -21,8 +21,12 @@
 
 ## Known intentional synthetic security fixture
 
-`tests/test_phase_10_mcp_packet_hardening.py` contains a synthetic `Bearer abcdef…` value and a
-`https://teams.microsoft.com/…` join-link string **as test inputs** that prove the forbidden-content
-gate detects them. These are synthetic (not real secrets) and follow the established repo convention
-for security-test fixtures (e.g. `test_procore_redaction.py`,
-`test_procore_sensitive_routing_proof_corpus.py`). No real token/secret/URL is committed.
+`tests/test_phase_10_mcp_packet_hardening.py` exercises the forbidden-content gate with
+token-shaped and join-link-shaped values **as test inputs**. As of commit `247b55d8`, the
+bearer-shaped value is **constructed at runtime** (the scheme word concatenated with a repeated
+filler character) rather than committed as a token-shaped literal, so no token-like literal is
+checked into the test source; the meeting-join-link shape is likewise a synthetic, non-routable
+fixture. These
+are synthetic (not real secrets) and follow the established repo convention for security-test
+fixtures (e.g. `test_procore_redaction.py`, `test_procore_sensitive_routing_proof_corpus.py`).
+No real token/secret/URL is committed.
