@@ -1,0 +1,92 @@
+{
+  "_proof": "offline synthetic adapter + pending convergence",
+  "model_enriched_intelligence": {
+    "enabled": true,
+    "available": true,
+    "label": "Model Enriched Intelligence",
+    "generated_utc": "2026-06-09T05:00:00-04:00",
+    "degraded": false,
+    "withheld_reason": null,
+    "candidate_count": 1,
+    "candidate_freshness": "current",
+    "source_link_count": 1,
+    "source_link_coverage": 1.0,
+    "bullets_seen": 2,
+    "bullets_kept": 2,
+    "bullets_dropped": 0,
+    "unknown_source_ids_count": 0,
+    "pending_followup_count": 1,
+    "route_selected_profile": "brief_synthesis",
+    "route_model_name": "mistral-nemo:12b",
+    "terminal_profile_id": "brief_synthesis",
+    "generation_profile_id": "brief_synthesis",
+    "fallback_chain": [
+      "brief_synthesis",
+      "default_extract"
+    ],
+    "warnings": [
+      "standalone_reads_preexisting_candidates_only"
+    ],
+    "guardrails": {
+      "label_exact": true,
+      "advisory_only": true,
+      "source_linked": true,
+      "no_raw_persistence": true,
+      "no_cloud": true,
+      "deterministic_fallback_preserved": true
+    },
+    "intelligence": {
+      "executive_catchup": [
+        "Two items need attention today."
+      ],
+      "top_priorities": [
+        {
+          "text": "Respond to the slab RFI",
+          "source_ids": [
+            "dbac-bc24530ec68466710df2bb23a35fd3ae"
+          ],
+          "confidence": 0.9,
+          "reason_code": "due_today"
+        }
+      ],
+      "open_loops": [
+        {
+          "text": "Submittal review still open",
+          "source_ids": [
+            "dbac-bc24530ec68466710df2bb23a35fd3ae"
+          ],
+          "confidence": 0.6,
+          "reason_code": "in_flight"
+        }
+      ],
+      "waiting_on_me": [],
+      "waiting_on_others": [],
+      "meeting_prep": [],
+      "project_risk": []
+    },
+    "pending_followup": {
+      "count": 1,
+      "items": [
+        {
+          "label": "Model-enriched / pending review",
+          "enriched_title": "Send revised submittal",
+          "waiting_state": "waiting_on_me",
+          "assignee_type": "me",
+          "confidence": 0.82,
+          "confidence_band": "high",
+          "suggested_next_action": "Draft and send",
+          "enrichment_id": "enr-1",
+          "candidate_id": "c1",
+          "watch_item_id": "w1",
+          "source_refs": [
+            "sha256:abc123"
+          ]
+        }
+      ],
+      "omitted_low_confidence": 0,
+      "dropped_leak": 0,
+      "available": true,
+      "degraded_reason": null
+    }
+  }
+}

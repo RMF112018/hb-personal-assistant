@@ -9467,6 +9467,53 @@ def second_brain_follow_up_watch_enrich(
         raise typer.Exit(1) from None
 
 
+@follow_up_watch_app.command("enrich-readiness")
+def second_brain_follow_up_watch_enrich_readiness(
+    candidate_id: "str | None" = typer.Option(  # noqa: B008
+        None, "--candidate-id", help="Report readiness for a single accepted candidate id."
+    ),
+    include_closed: bool = typer.Option(  # noqa: B008
+        False, "--include-closed", help="Also include closed/completed items in the funnel."
+    ),
+    limit: int = typer.Option(200, "--limit", help="Max accepted items per type to scan."),  # noqa: B008
+    db: "str | None" = typer.Option(None, "--db", help="Explicit SQLite path (tests/isolation)."),  # noqa: B008
+    json_out: bool = typer.Option(True, "--json", help="Emit JSON (default)."),  # noqa: B008
+) -> None:
+    """Read-only V45 email raw enrichment readiness/eligibility report (raw-free).
+
+    Walks the accepted task/commitment funnel and reports, by reason code, what can safely enrich and
+    why no-op conditions occur (no source refs, no email refs, no raw content, already enriched, local
+    model unavailable, …). Existence of raw email content is determined ONLY from safe source refs /
+    hashes / window-builder availability metadata — raw email body text is never loaded or printed.
+    DB-copy validation is recommended for live proof; this command performs no model run, no
+    persistence, and no writeback.
+    """
+    cmd = "second-brain follow-up-watch enrich-readiness"
+    try:
+        from hb_assistant.construction.second_brain.local_ai.email_followup_readiness import (
+            build_email_followup_enrichment_readiness,
+        )
+        from hb_assistant.construction.store import ConstructionStore
+
+        present_models, daemon_reachable = _local_model_present("ollama", False)
+        store = ConstructionStore(db_path=db)
+        payload = build_email_followup_enrichment_readiness(
+            store=store,
+            candidate_id=candidate_id,
+            include_closed=include_closed,
+            limit=limit,
+            present_models=present_models if daemon_reachable else None,
+        )
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(0)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        payload = {"command": cmd, "ok": False, "error": str(e)[:300]}
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(1) from None
+
+
 @procore_digest_app.command("build")
 def second_brain_procore_digest_build(
     project: "str | None" = typer.Option(  # noqa: B008
@@ -9902,18 +9949,35 @@ def second_brain_daily_run_run(
         "brief_synthesis", "--synthesis-profile",
         help="Local model profile id for synthesis (benchmark: default_extract vs review_filter).",
     ),
+    model_enriched_intelligence: bool = typer.Option(  # noqa: B008
+        True, "--model-enriched-intelligence/--no-model-enriched-intelligence",
+        help="DEFAULT-ON: render the single converged 'Model Enriched Intelligence' section "
+        "(source-linked advisory bullets + pending V45 email follow-up rows) on the browser, "
+        "Obsidian, status, and CLI surfaces. Advisory/source-linked, never accepted fact; fails "
+        "closed to the deterministic brief. Use --no-model-enriched-intelligence to disable.",
+    ),
     with_intelligence: bool = typer.Option(  # noqa: B008
         False, "--with-intelligence/--no-intelligence",
-        help="OPT-IN: attach local-model advisory daily-brief intelligence (source-linked, "
-        "fail-closed, advisory-only; never replaces the deterministic brief). Off by default.",
+        help="Back-compat alias: additionally attach the standalone advisory intelligence object to "
+        "the --json payload. The brief's 'Model Enriched Intelligence' section is now default-on "
+        "(see --model-enriched-intelligence); this flag only adds the JSON twin. Off by default.",
+    ),
+    email_raw_enrichment: bool = typer.Option(  # noqa: B008
+        True, "--email-raw-enrichment/--no-email-raw-enrichment",
+        help="DEFAULT-ON (apply only): run the bounded, capped, idempotent, source-linked V45 email "
+        "raw enrichment stage so newly review-safe rows feed the Model Enriched Intelligence "
+        "section the same run. Dry-run reports would-persist and writes nothing; apply is capped by "
+        "--email-raw-enrichment-max-persist (else --max-persist-per-stage). Local-only; never raw.",
+    ),
+    email_raw_enrichment_max_persist: "int | None" = typer.Option(  # noqa: B008
+        None, "--email-raw-enrichment-max-persist",
+        help="Cap on ACTUAL V45 enrichment writes in apply mode (default: --max-persist-per-stage).",
     ),
     with_email_raw_enrichment: bool = typer.Option(  # noqa: B008
-        False, "--with-email-raw-enrichment/--no-email-raw-enrichment",
-        help="OPT-IN: also attach the structured PENDING V45 email follow-up section to the run JSON "
-        "payload (a machine-readable twin). The rendered brief (browser HTML + Obsidian note) now "
-        "ALWAYS surfaces pending review-safe enrichments — clearly labeled 'Model-enriched / pending "
-        "review', raw-free, source-linked — so this flag only adds the same data to --json output. "
-        "Read-only consumption (no model run, no raw-local preview here). Off by default.",
+        False, "--with-email-raw-enrichment/--no-with-email-raw-enrichment",
+        help="Back-compat alias: also attach the structured PENDING V45 email follow-up section as a "
+        "machine-readable twin to the --json payload. The rendered brief already surfaces pending "
+        "review-safe enrichments under 'Model Enriched Intelligence'. Read-only; off by default.",
     ),
     open_browser: bool = typer.Option(  # noqa: B008
         False,
@@ -10002,6 +10066,9 @@ def second_brain_daily_run_run(
             include_relationship_candidates=include_relationship_candidates,
             relationship_scan_threads=relationship_scan_threads,
             relationship_scan_events=relationship_scan_events,
+            model_enriched_intelligence=model_enriched_intelligence,
+            email_raw_enrichment=email_raw_enrichment,
+            email_raw_enrichment_max_persist=email_raw_enrichment_max_persist,
         )
         if with_intelligence:
             payload["intelligence"] = _attach_daily_run_intelligence(
@@ -10038,6 +10105,9 @@ def _build_daily_run_scheduler(
     include_relationship_candidates: bool = False,
     relationship_scan_threads: "int | None" = None,
     relationship_scan_events: "int | None" = None,
+    model_enriched_intelligence: bool = True,
+    email_raw_enrichment: bool = True,
+    email_raw_enrichment_max_persist: "int | None" = None,
 ) -> Any:
     from hb_assistant.construction.second_brain.local_ai import DailyRunLaunchdManager
 
@@ -10051,6 +10121,9 @@ def _build_daily_run_scheduler(
         write_obsidian=write_obsidian,
         confirm_vault_write=confirm_vault_write,
         generate_browser=generate_browser,
+        model_enriched_intelligence=model_enriched_intelligence,
+        email_raw_enrichment=email_raw_enrichment,
+        email_raw_enrichment_max_persist=email_raw_enrichment_max_persist,
         timezone=timezone,
         db_path=db,
         include_relationship_candidates=include_relationship_candidates,
@@ -10078,6 +10151,18 @@ def second_brain_daily_run_scheduler_install(
         False, "--confirm-vault-write", help="REQUIRED with --write-obsidian for the scheduled job."
     ),
     generate_browser: bool = typer.Option(True, "--generate-browser/--no-generate-browser"),  # noqa: B008
+    model_enriched_intelligence: bool = typer.Option(  # noqa: B008
+        True, "--model-enriched-intelligence/--no-model-enriched-intelligence",
+        help="Install with the default-on Model Enriched Intelligence section (surfaced in status).",
+    ),
+    email_raw_enrichment: bool = typer.Option(  # noqa: B008
+        True, "--email-raw-enrichment/--no-email-raw-enrichment",
+        help="Install with the default-on bounded, capped V45 email raw enrichment apply stage.",
+    ),
+    email_raw_enrichment_max_persist: "int | None" = typer.Option(  # noqa: B008
+        None, "--email-raw-enrichment-max-persist",
+        help="Scheduled cap on V45 enrichment writes (default: --max-persist-per-stage).",
+    ),
     timezone: str = typer.Option("America/New_York", "--timezone"),  # noqa: B008
     catch_up_on_wake: bool = typer.Option(  # noqa: B008
         True,
@@ -10130,6 +10215,9 @@ def second_brain_daily_run_scheduler_install(
             write_obsidian=write_obsidian,
             confirm_vault_write=confirm_vault_write,
             generate_browser=generate_browser,
+            model_enriched_intelligence=model_enriched_intelligence,
+            email_raw_enrichment=email_raw_enrichment,
+            email_raw_enrichment_max_persist=email_raw_enrichment_max_persist,
             timezone=timezone,
             db=db,
             include_relationship_candidates=include_relationship_candidates,

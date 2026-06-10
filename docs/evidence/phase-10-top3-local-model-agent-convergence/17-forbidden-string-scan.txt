@@ -1,0 +1,15 @@
+Forbidden-string scan — Phase 10 top-3 convergence evidence bundle
+Run: 2026-06-10  (branch experiment/phase-10-top3-local-model-agent-convergence)
+
+Patterns scanned (raw/egress/secret families):
+  https?:// | www. | <email>@<domain> | Bearer <tok> | eyJ<jwt> | BEGIN PRIVATE KEY
+  | signed/SAS params (sig/sv/se/sp/sr) | teams.microsoft.com | zoom.us/j/
+  | absolute /Users/<home> paths | synthetic raw body phrase ("slab schedule")
+
+Scope: docs/evidence/phase-10-top3-local-model-agent-convergence/**
+
+Result: CLEAN — no forbidden patterns found.
+  (The only "Application Support" path strings are redacted to ~/ in 09/10/20.)
+
+Method: grep -rInE over the evidence dir; render proofs additionally pass the
+runtime scan_daily_run_html() egress check (05/06 generated with assert clean).

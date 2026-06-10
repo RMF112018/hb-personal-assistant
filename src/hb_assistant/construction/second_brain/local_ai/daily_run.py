@@ -129,6 +129,106 @@ def _stamp(now_utc: str) -> str:
     return "".join(c if c.isalnum() else "-" for c in now_utc)[:32]
 
 
+def _aggregate_skips(skipped: list[dict[str, Any]]) -> dict[str, int]:
+    """Count enrichment skips by reason (raw-free; reason codes only)."""
+    counts: dict[str, int] = {}
+    for s in skipped or []:
+        reason = str(s.get("reason") or "unknown")
+        counts[reason] = counts.get(reason, 0) + 1
+    return counts
+
+
+def _run_email_raw_enrichment_stage(
+    *,
+    store: Any,
+    now_utc: str,
+    enabled: bool,
+    dry_run: bool,
+    max_persist: Optional[int],
+    backend: Any = None,
+    present_models: set[str] | None = None,
+) -> dict[str, Any]:
+    """Bounded, capped, idempotent, source-linked V45 email raw enrichment stage (fail-closed).
+
+    Runs only when ``enabled``. Dry-run reports ``would_persist`` but writes nothing. Apply persists
+    review-safe rows capped by ``max_persist`` (idempotent; never raw body/prompt/response). Returns a
+    raw-free stage receipt. Never raises into the deterministic run — any error degrades to a receipt.
+    """
+    receipt: dict[str, Any] = {
+        "stage": "email_followup_raw_enrichment",
+        "status": "skipped",
+        "mode": "dry_run" if dry_run else "apply",
+        "enabled": bool(enabled),
+        "eligible": 0,
+        "would_persist": 0,
+        "persisted": 0,
+        "skipped_by_reason": {},
+        "degraded_reason": None,
+        "warnings": [],
+    }
+    if not enabled:
+        receipt["degraded_reason"] = "disabled"
+        return receipt
+    # Apply requires a positive cap (defense-in-depth; the engine also enforces this).
+    if not dry_run and (max_persist is None or max_persist <= 0):
+        receipt["status"] = "skipped"
+        receipt["degraded_reason"] = "no_cap"
+        receipt["warnings"].append("email_raw_enrichment_skipped: apply requires a positive cap")
+        return receipt
+    try:
+        from .email_followup_enrichment import run_email_followup_enrichment
+
+        # Probe installed local models only in production (no injected backend, no explicit set).
+        if backend is None and present_models is None:
+            try:
+                from .provider import build_local_model_status
+
+                status = build_local_model_status(provider_name="ollama")
+                present_models = (
+                    {str(m) for m in (status.get("present_models") or [])}
+                    if status.get("daemon_reachable")
+                    else None
+                )
+            except Exception:
+                present_models = None
+
+        res = run_email_followup_enrichment(
+            store=store,
+            now_utc=now_utc,
+            dry_run=dry_run,
+            max_persist=None if dry_run else max_persist,
+            present_models=present_models,
+            backend=backend,
+        )
+        eligible = int(res.get("eligible") or 0)
+        would = int(res.get("would_persist") or 0)
+        persisted = int(res.get("persisted") or 0)
+        skipped_by_reason = _aggregate_skips(res.get("skipped") or [])
+        model_unavailable = bool(res.get("model_unavailable"))
+        if eligible == 0:
+            status_code = "skipped"
+            degraded_reason = res.get("note") or "no_eligible_candidates"
+        elif model_unavailable and persisted == 0 and would == 0:
+            status_code = "degraded"
+            degraded_reason = "local_model_unavailable"
+        else:
+            status_code = "ok"
+            degraded_reason = None
+        receipt.update(
+            status=status_code,
+            eligible=eligible,
+            would_persist=would,
+            persisted=persisted,
+            skipped_by_reason=skipped_by_reason,
+            degraded_reason=degraded_reason,
+        )
+    except Exception as exc:  # advisory-only — never fail the deterministic run
+        receipt["status"] = "failed"
+        receipt["degraded_reason"] = f"stage_error:{type(exc).__name__}"
+        receipt["warnings"].append(f"email_raw_enrichment_stage_error:{type(exc).__name__}")
+    return receipt
+
+
 def run_daily_local_agent(
     *,
     store: Any,
@@ -155,8 +255,21 @@ def run_daily_local_agent(
     include_relationship_candidates: bool = False,
     relationship_scan_threads: Optional[int] = None,
     relationship_scan_events: Optional[int] = None,
+    model_enriched_intelligence: bool = False,
+    model_enriched_backend: Any = None,
+    model_enriched_present_models: set[str] | None = None,
+    email_raw_enrichment: bool = False,
+    email_raw_enrichment_max_persist: Optional[int] = None,
+    email_raw_enrichment_backend: Any = None,
+    email_raw_enrichment_present_models: set[str] | None = None,
 ) -> dict[str, Any]:
     """Run the daily local-agent workflow once. Dry-run by default; see module docstring.
+
+    ``model_enriched_intelligence`` / ``email_raw_enrichment`` default off at the FUNCTION level (so
+    direct callers/tests opt in explicitly, mirroring ``synthesize_brief``); the CLI and the installed
+    scheduler set them ON by default — Model Enriched Intelligence is the default-on operator behavior
+    for ``second-brain daily-run run`` and scheduled runs, with ``--no-model-enriched-intelligence``
+    to disable.
 
     ``include_relationship_candidates`` (default off → the scheduled run is unchanged) opts the
     cross-source relationship-candidate stage into the pipeline, just before render, so relationship
@@ -323,13 +436,40 @@ def run_daily_local_agent(
                 + _render_md_appendix(sections)
             )
 
-    # ---- V45 pending email follow-up enrichment convergence (deterministic, raw-free) ----
-    # Surface the pending-enrichment section on the FINAL surfaces (browser HTML + Obsidian note),
-    # independent of model synthesis, whenever pending review-safe rows exist. Clean-degrades to an
-    # absent section when the table/rows are missing. Source-linked + clearly labeled; never fact.
+    # ---- Email raw enrichment apply stage (Candidate C) — bounded, capped, idempotent, source-linked ----
+    # Runs only in apply mode when enabled; persists review-safe V45 rows so the converged Model
+    # Enriched Intelligence section can consume them in the SAME run. Dry-run reports would_persist
+    # but writes nothing. Fail-closed/advisory: never raises into the deterministic run.
+    email_enrichment_receipt = _run_email_raw_enrichment_stage(
+        store=store,
+        now_utc=pipeline_now,
+        enabled=email_raw_enrichment,
+        dry_run=dry_run,
+        max_persist=(
+            email_raw_enrichment_max_persist
+            if email_raw_enrichment_max_persist is not None
+            else max_persist_per_stage
+        ),
+        backend=email_raw_enrichment_backend,
+        present_models=email_raw_enrichment_present_models,
+    )
+    for w in email_enrichment_receipt.get("warnings", []):
+        if w not in warnings:
+            warnings.append(w)
+
+    # ---- Converged Model Enriched Intelligence section (default-on, deterministic + advisory) ----
+    # ONE operator-facing section: source-linked advisory bullets (the intelligence adapter) + the
+    # raw-free V45 pending follow-up rows (including any persisted by the stage above). Default-on;
+    # explicit disable via model_enriched_intelligence=False. Withheld/degraded → honest banner +
+    # deterministic brief preserved; pending rows still surface. Never raw; never accepted fact.
     from ..daily_brief.email_followup_pending import (
         build_pending_email_enrichment_section,
         render_pending_enrichment_markdown,
+    )
+    from .model_enriched_intelligence import (
+        build_model_enriched_intelligence,
+        render_model_enriched_markdown,
+        status_block,
     )
 
     try:
@@ -342,13 +482,38 @@ def run_daily_local_agent(
             "count": 0,
             "items": [],
         }
-    pending_md = (
-        render_pending_enrichment_markdown(pending_followup)
-        if pending_followup.get("available")
-        else ""
+
+    # Build the unified status object always (so status reports the posture). When disabled the
+    # builder returns a cheap envelope WITHOUT calling the model; pending rows still surface.
+    model_enriched = build_model_enriched_intelligence(
+        store=store,
+        brief_date=brief_date,
+        enabled=model_enriched_intelligence,
+        dry_run=dry_run,
+        generation_mode="pipeline_apply" if not dry_run else "pipeline_dry_run",
+        backend=model_enriched_backend,
+        present_models=model_enriched_present_models,
+        pending_section=pending_followup,
+        generated_utc=now_utc,
     )
-    if pending_md:
-        markdown = (markdown + "\n\n---\n\n" + pending_md) if markdown else pending_md
+    mei_status = status_block(model_enriched)
+    if model_enriched_intelligence:
+        # Default-on path: ONE converged "Model Enriched Intelligence" section (advisory + pending).
+        mei_render = model_enriched
+        mei_md = render_model_enriched_markdown(model_enriched)
+        if mei_md:
+            markdown = (markdown + "\n\n---\n\n" + mei_md) if markdown else mei_md
+    else:
+        # Disabled: no MEI section; the legacy standalone pending card/markdown still surfaces.
+        mei_render = None
+        pending_md = (
+            render_pending_enrichment_markdown(pending_followup)
+            if pending_followup.get("available")
+            else ""
+        )
+        if pending_md:
+            markdown = (markdown + "\n\n---\n\n" + pending_md) if markdown else pending_md
+
     pending_summary = {
         "section": pending_followup.get("section"),
         "available": bool(pending_followup.get("available")),
@@ -381,6 +546,7 @@ def run_daily_local_agent(
             model_metadata=synthesis_meta,
             degraded=synthesis_degraded,
             pending_followup=pending_followup,
+            model_enriched=mei_render,
         )
         egress_matched = scan_daily_run_html(rendered)
         egress_clean = not egress_matched
@@ -440,6 +606,7 @@ def run_daily_local_agent(
         failure_reason=failure_reason,
         warnings=warnings,
         pending_count=int(pending_summary.get("count") or 0),
+        model_enriched=mei_status,
     )
 
     status_path = _write_status(
@@ -454,6 +621,8 @@ def run_daily_local_agent(
         is_success=is_fresh_success,
         synthesis=synthesis_meta,
         pending_followup=pending_summary,
+        model_enriched_intelligence=mei_status,
+        email_raw_enrichment_stage=email_enrichment_receipt,
         run_summary=run_summary,
     )
     outputs["status_path"] = _redact_path(status_path)
@@ -474,6 +643,8 @@ def run_daily_local_agent(
         "synthesis": synthesis_meta,
         "synthesis_degraded": synthesis_degraded,
         "pending_followup": pending_summary,
+        "model_enriched_intelligence": mei_status,
+        "email_raw_enrichment_stage": email_enrichment_receipt,
         "run_summary": run_summary,
         "egress_scan": {"clean": egress_clean, "matched_labels": egress_matched},
         "failure_reason": failure_reason,
@@ -516,6 +687,7 @@ def _build_run_summary(
     failure_reason: Optional[str],
     warnings: list[str],
     pending_count: int,
+    model_enriched: Optional[dict[str, Any]] = None,
 ) -> dict[str, Any]:
     """One operator-legible, redacted run summary (no raw content; paths already ``~/…`` redacted).
 
@@ -545,6 +717,17 @@ def _build_run_summary(
         ],
         "error_summary": error_summary,
         "pending_followup_count": pending_count,
+        "model_enriched_intelligence": {
+            "enabled": bool((model_enriched or {}).get("enabled")),
+            "available": bool((model_enriched or {}).get("available")),
+            "degraded": bool((model_enriched or {}).get("degraded")),
+            "withheld_reason": (model_enriched or {}).get("withheld_reason"),
+            "label": (model_enriched or {}).get("label") or "Model Enriched Intelligence",
+            "source_linked_bullets": int((model_enriched or {}).get("bullets_kept") or 0),
+            "pending_followup_count": int(
+                (model_enriched or {}).get("pending_followup_count") or 0
+            ),
+        },
         "browser_auto_opened": False,
     }
 
@@ -584,6 +767,8 @@ def _write_status(
     is_success: bool,
     synthesis: Optional[dict[str, Any]] = None,
     pending_followup: Optional[dict[str, Any]] = None,
+    model_enriched_intelligence: Optional[dict[str, Any]] = None,
+    email_raw_enrichment_stage: Optional[dict[str, Any]] = None,
     run_summary: Optional[dict[str, Any]] = None,
 ) -> Path:
     """Write the redacted machine-readable status (latest + dated). Never contains raw bodies.
@@ -605,6 +790,8 @@ def _write_status(
         "outputs": outputs,
         "synthesis": synthesis,
         "pending_followup": pending_followup,
+        "model_enriched_intelligence": model_enriched_intelligence,
+        "email_raw_enrichment_stage": email_raw_enrichment_stage,
         "warnings": warnings,
         "failure_reason": failure_reason,
     }

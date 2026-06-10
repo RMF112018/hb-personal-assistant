@@ -48,6 +48,9 @@ class DailyRunLaunchdManager:
         confirm_vault_write: bool = True,
         generate_browser: bool = True,
         synthesize: bool = True,
+        model_enriched_intelligence: bool = True,
+        email_raw_enrichment: bool = True,
+        email_raw_enrichment_max_persist: Optional[int] = None,
         timezone: str = "America/New_York",
         db_path: Optional[str] = None,
         vault_brief_dir: Optional[str] = None,
@@ -70,6 +73,9 @@ class DailyRunLaunchdManager:
         self.confirm_vault_write = confirm_vault_write
         self.generate_browser = generate_browser
         self.synthesize = synthesize
+        self.model_enriched_intelligence = model_enriched_intelligence
+        self.email_raw_enrichment = email_raw_enrichment
+        self.email_raw_enrichment_max_persist = email_raw_enrichment_max_persist
         self.timezone = timezone
         self.db_path = db_path
         self.vault_brief_dir = vault_brief_dir
@@ -136,6 +142,23 @@ class DailyRunLaunchdManager:
             args += ["--confirm-vault-write"]
         args += ["--generate-browser"] if self.generate_browser else ["--no-generate-browser"]
         args += ["--synthesize"] if self.synthesize else ["--no-synthesize"]
+        # Default-on Model Enriched Intelligence + V45 email raw enrichment, emitted explicitly so the
+        # installed schedule's effective posture is unambiguous in the plist (never auto-open browser).
+        args += (
+            ["--model-enriched-intelligence"]
+            if self.model_enriched_intelligence
+            else ["--no-model-enriched-intelligence"]
+        )
+        args += (
+            ["--email-raw-enrichment"]
+            if self.email_raw_enrichment
+            else ["--no-email-raw-enrichment"]
+        )
+        if self.email_raw_enrichment and self.email_raw_enrichment_max_persist is not None:
+            args += [
+                "--email-raw-enrichment-max-persist",
+                str(self.email_raw_enrichment_max_persist),
+            ]
         args += ["--no-open-browser"]
         # Off by default → the installed schedule is byte-unchanged; only emitted when opted in.
         if self.include_relationship_candidates:
@@ -191,17 +214,86 @@ class DailyRunLaunchdManager:
         logs = self.pp.get_logs_dir()
         logs_ok = os.access(logs / "run-logs", os.W_OK) and os.access(logs / "error-logs", os.W_OK)
         blocking = not (exe_ok and wd_ok and grammar_ok and logs_ok)
+        blocking_diagnostics: list[str] = []
+        if not exe_ok:
+            blocking_diagnostics.append("executable_not_found_or_not_executable")
+        if not wd_ok:
+            blocking_diagnostics.append("working_directory_missing")
+        if not grammar_ok:
+            blocking_diagnostics.append("command_grammar_invalid")
+        if not logs_ok:
+            blocking_diagnostics.append("log_directories_not_writable")
         return {
             "executable_ready": exe_ok,
+            "executable_path_redacted": self._redact_path(executable),
             "working_directory_ready": wd_ok,
+            "working_directory_redacted": self._redact_path(working_dir),
             "command_grammar_valid": grammar_ok,
             "log_directories_writable": logs_ok,
+            "log_run_dir_redacted": self._redact_path(logs / "run-logs"),
+            "log_error_dir_redacted": self._redact_path(logs / "error-logs"),
+            "plist_exists": self.plist_path.exists(),
             "blocking": blocking,
+            "blocking_diagnostics": blocking_diagnostics,
             "ready": not blocking,
         }
 
     def _redacted(self) -> str:
         return str(self.plist_path).replace(str(Path.home()), "~")
+
+    @staticmethod
+    def _redact_path(p: Path) -> str:
+        try:
+            return "~/" + str(p.resolve().relative_to(Path.home()))
+        except ValueError:
+            return f"{p.parent.name}/{p.name}"
+
+    def _effective_config(self) -> dict[str, Any]:
+        """Effective scheduled-run posture surfaced to the operator (never a secret)."""
+        return {
+            "model_enriched_intelligence": self.model_enriched_intelligence,
+            "email_raw_enrichment": self.email_raw_enrichment,
+            "email_raw_enrichment_max_persist": self.email_raw_enrichment_max_persist,
+            "browser_generation": self.generate_browser,
+            "browser_auto_open": False,
+            "synthesize_narrative": self.synthesize,
+            "raw_local_consumption": self.raw,
+            "write_obsidian": self.write_obsidian,
+            "apply_mode": self.apply_mode,
+            "max_persist_per_stage": self.max_persist_per_stage,
+            "max_total_persist": self.max_total_persist,
+            "db_path_redacted": self._redact_path(Path(self.db_path)) if self.db_path else None,
+        }
+
+    def _last_run_state(self) -> dict[str, Any]:
+        """Read the redacted daily-run status pointers (latest result + last successful brief)."""
+        import json
+
+        status_dir = self.pp.get_app_support() / "daily-run-status"
+        out: dict[str, Any] = {
+            "latest_status_path_redacted": None,
+            "last_run_result": None,
+            "last_successful_brief_path": None,
+            "last_successful_brief_date": None,
+        }
+        latest = status_dir / "latest-status.json"
+        if latest.exists():
+            out["latest_status_path_redacted"] = self._redact_path(latest)
+            try:
+                data = json.loads(latest.read_text(encoding="utf-8"))
+                rs = data.get("run_summary") or {}
+                out["last_run_result"] = rs.get("result") or data.get("status")
+            except Exception:
+                pass
+        last_good = status_dir / "last-successful.json"
+        if last_good.exists():
+            try:
+                data = json.loads(last_good.read_text(encoding="utf-8"))
+                out["last_successful_brief_path"] = data.get("browser_latest_path")
+                out["last_successful_brief_date"] = data.get("brief_date")
+            except Exception:
+                pass
+        return out
 
     def preview_install(self) -> dict[str, Any]:
         plist = self.render_plist()
@@ -212,8 +304,11 @@ class DailyRunLaunchdManager:
             "plist_path": self._redacted(),
             "plist": plist,
             "weekdays_only": self.weekdays_only,
+            "schedule_time_local": self.time,
+            "timezone": self.timezone,
             "vault_brief_dir_redacted": self._redacted_vault_brief_dir(),
             "catch_up_on_wake": "launchd StartCalendarInterval native (fires missed runs on wake)",
+            "effective_config": self._effective_config(),
             "readiness": readiness,
             "commands": [
                 f"launchctl load -w {self._redacted()}",
@@ -290,10 +385,17 @@ class DailyRunLaunchdManager:
             "plist_path": self._redacted() if exists else None,
             "schedule_time_local": self.time,
             "weekdays_only": self.weekdays_only,
+            "weekday_intervals": plist["StartCalendarInterval"],
             "vault_brief_dir_redacted": self._redacted_vault_brief_dir(),
             "catch_up_on_wake": True,
+            "catch_up_on_wake_explanation": (
+                "launchd fires a missed weekday interval on the next wake; the wrapper's date policy "
+                "resolves a weekend wake of a missed Friday to the Friday brief and skips weekends."
+            ),
             "timezone": self.timezone,
+            "effective_config": self._effective_config(),
             "program_arguments": plist["ProgramArguments"],
             "start_calendar_interval": plist["StartCalendarInterval"],
             "readiness": self._readiness(plist),
+            "last_run": self._last_run_state(),
         }

@@ -1,0 +1,49 @@
+{
+  "command": "second-brain follow-up-watch enrich-readiness",
+  "ok": true,
+  "accepted_task_count": 0,
+  "accepted_commitment_count": 0,
+  "accepted_total": 0,
+  "accepted_with_candidate_id": 0,
+  "accepted_with_source_refs": 0,
+  "accepted_with_email_source_refs": 0,
+  "accepted_with_raw_email_content": 0,
+  "eligible_for_raw_enrichment": 0,
+  "closed_excluded": 0,
+  "already_enriched_pending": 0,
+  "already_enriched_final": 0,
+  "skipped_by_reason": {
+    "no_candidate_id": 0,
+    "no_candidate_source_refs": 0,
+    "no_email_source_ref": 0,
+    "no_raw_email_content": 0,
+    "already_pending": 0,
+    "already_final_review_status": 0,
+    "local_model_unavailable": 0,
+    "raw_policy_disabled": 0,
+    "source_link_invalid": 0,
+    "unsupported_candidate_type": 0
+  },
+  "local_model_available": true,
+  "route": {
+    "task_family": "email_followup_raw_enrichment",
+    "selected_profile": "default_extract",
+    "model_name": "mistral-nemo:12b",
+    "available": true,
+    "reason_code": "selected_routed",
+    "no_cloud": true
+  },
+  "raw_policy_enabled": true,
+  "sample_eligible_candidate_ids": [],
+  "guardrails": {
+    "read_only": true,
+    "raw_free": true,
+    "no_raw_body_loaded": true,
+    "existence_by_hash_or_window_metadata_only": true,
+    "no_model_call": true,
+    "no_persistence": true,
+    "no_writeback": true,
+    "local_only": true
+  },
+  "_proof": "natural readiness on production-copy (pre-seed)"
+}

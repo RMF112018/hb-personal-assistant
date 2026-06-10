@@ -41,6 +41,11 @@ from .follow_up_watch import (
     classify_watch_status,
     run_follow_up_watch_scan,
 )
+from .model_enriched_intelligence import (
+    MODEL_ENRICHED_INTELLIGENCE_LABEL,
+    build_model_enriched_intelligence,
+    render_model_enriched_markdown,
+)
 from .models import (
     HIGH_STAKES_CATEGORIES,
     ActionCandidate,
@@ -162,4 +167,8 @@ __all__ = [
     "render_daily_run_html",
     "scan_daily_run_html",
     "DailyRunLaunchdManager",
+    # Phase 10 convergence: unified Model Enriched Intelligence section
+    "MODEL_ENRICHED_INTELLIGENCE_LABEL",
+    "build_model_enriched_intelligence",
+    "render_model_enriched_markdown",
 ]
