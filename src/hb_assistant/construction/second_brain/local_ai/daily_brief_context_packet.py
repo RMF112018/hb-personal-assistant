@@ -26,6 +26,7 @@ from .calendar_classify import classify_calendar_event
 from .calendar_prep import build_calendar_prep_candidates
 from .daily_brief_window import DailyBriefWindow
 from .project_aliases import resolve_project, summarize_unresolved_tokens
+from .source_ref_gate import gate_model_candidate_context
 
 # Conservative caps (the packet must stay bounded regardless of DB size).
 _MAX_CANDIDATES_PER_SECTION = 12
@@ -138,23 +139,13 @@ def build_daily_brief_context_packet(
         if len(watch_items) >= _MAX_TASKS:
             break
 
-    # --- Persisted action candidates for this date, grouped by section (capped) -------------------
-    candidates_by_section: dict[str, list[dict[str, Any]]] = {}
-    for r in store.list_daily_brief_action_candidates(brief_date=brief_date, limit=100000):
-        sec = str(r.get("section") or "__unassigned__")
-        bucket = candidates_by_section.setdefault(sec, [])
-        if len(bucket) >= _MAX_CANDIDATES_PER_SECTION:
-            continue
-        bucket.append(
-            {
-                "id": _short(r.get("daily_brief_action_candidate_id")),
-                "title": r.get("title_redacted"),
-                "project": r.get("project_key") or "Needs Project Review",
-                "priority": r.get("priority"),
-                "reason": r.get("reason_redacted"),
-                "next_action": r.get("recommended_next_action"),
-            }
-        )
+    # --- Persisted action candidates for this date (SOURCE-REF GATED: model sees only linked rows) -
+    # The gate drops any candidate lacking a candidate_source_refs link, computes coverage/omissions,
+    # and flags withhold_synthesis when candidates exist but none are source-linked. The model context
+    # therefore can only cite source-linked candidate ids.
+    candidates_by_section, source_ref_gate = gate_model_candidate_context(
+        store, brief_date, max_per_section=_MAX_CANDIDATES_PER_SECTION
+    )
 
     # --- Relationship candidates → reason codes only (transformed, never raw technical rows) ------
     relationships: list[dict[str, Any]] = []
@@ -233,13 +224,14 @@ def build_daily_brief_context_packet(
         raw_subject = raw.get("subject") or ""
         title = raw_subject or str(ev.get("title_redacted") or "")
         # Prefer the index/redacted-resolved project; else infer from the real subject/location.
+        # Any "__…__" sentinel (unassigned / needs_review / internal_*) is NOT a real project key.
         proj = ev.get("project_key")
         project_inferred = bool(ev.get("project_inferred"))
-        if (not proj or proj == "__unassigned__") and raw_subject:
+        if (not proj or str(proj).startswith("__")) and raw_subject:
             inferred = resolve_project(raw_subject, raw.get("location") or "")
             if inferred:
                 proj, project_inferred = inferred, True
-        proj_label = proj if proj and proj != "__unassigned__" else "Needs Project Review"
+        proj_label = proj if proj and not str(proj).startswith("__") else "Needs Project Review"
 
         # Re-classify on the real subject (the redacted hash hides prep keywords like RFI/OAC/PTO).
         if raw_subject:
@@ -313,6 +305,7 @@ def build_daily_brief_context_packet(
             "follow_up_watch_items": watch_items,
         },
         "candidates_by_section": candidates_by_section,
+        "source_ref_gate": source_ref_gate,
         "relationships": relationships,
         "procore_signals": procore_signals,
         "calendar": calendar,

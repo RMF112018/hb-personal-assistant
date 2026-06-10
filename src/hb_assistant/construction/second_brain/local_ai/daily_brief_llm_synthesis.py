@@ -310,6 +310,25 @@ def synthesize_daily_brief(
         packet = build_daily_brief_context_packet(
             store=store, brief_date=brief_date, window=window, now_utc=now_utc, db_path=db_path
         )
+
+    # Source-ref gate: if deterministic candidates exist but NONE are source-linked, withhold the
+    # model entirely (fail-closed) — the model must not claim meetings/risks/actions with no source.
+    gate = packet.get("source_ref_gate") or {}
+    if gate.get("withhold_synthesis"):
+        return BriefSynthesisResult(
+            status="blocked",
+            degraded=True,
+            profile_id=profile_id,
+            model_name=profile.model_name,
+            schema_valid=False,
+            fallback_used=False,
+            attempts=0,
+            latency_ms=0,
+            synthesis=None,
+            error_redacted=None,
+            degraded_reason="no_source_linked_context",
+        )
+
     input_context = json.dumps(packet, default=str, sort_keys=True)
     prompt = (
         "Synthesize the daily operator brief from this bounded, source-linked context packet. "
