@@ -792,6 +792,14 @@ live_app = typer.Typer(
 live_endpoints_app = typer.Typer(help="List live endpoint command-contract states.")
 
 
+_SYNC_RUN_ENDPOINTS_OPTION = typer.Option(
+    None,
+    "--endpoints",
+    "-e",
+    help="Filter to one or more endpoint IDs (repeatable). Defaults to every endpoint in the contract.",
+)
+
+
 @sync_app.command("run")
 def sync_run(
     project: Optional[str] = typer.Option(
@@ -817,12 +825,7 @@ def sync_run(
         "--allow-pending",
         help="Explicit opt-in to target a project whose mapping status is 'pending'. Default fails closed.",
     ),
-    endpoints: Optional[list[str]] = typer.Option(
-        None,
-        "--endpoints",
-        "-e",
-        help="Filter to one or more endpoint IDs (repeatable). Defaults to every endpoint in the contract.",
-    ),  # noqa: B008
+    endpoints: Optional[list[str]] = _SYNC_RUN_ENDPOINTS_OPTION,
 ) -> None:
     """Dry-run (default) or apply (opt-in) for pilot projects.
 
@@ -1191,6 +1194,11 @@ def live_sync(
     _emit(payload, json_out=json_out, exit_code=exit_code)
 
 
+_LIVE_INSPECT_OUTPUT_DIR_OPTION = typer.Option(
+    ..., "--output-dir", help="Explicit absolute non-repo directory for raw payload dumps."
+)
+
+
 @live_app.command("inspect")
 def live_inspect(
     project: str = typer.Option(..., "--project", help="Mapped pilot project key."),
@@ -1209,9 +1217,7 @@ def live_inspect(
     max_items: int = typer.Option(5, "--max-items", min=1),
     confirm_live_get: bool = typer.Option(False, "--confirm-live-get"),
     confirm_raw_payload_dump: bool = typer.Option(False, "--confirm-raw-payload-dump"),
-    output_dir: Path = typer.Option(
-        ..., "--output-dir", help="Explicit absolute non-repo directory for raw payload dumps."
-    ),  # noqa: B008
+    output_dir: Path = _LIVE_INSPECT_OUTPUT_DIR_OPTION,
     redact_known_sensitive_fields: bool = typer.Option(False, "--redact-known-sensitive-fields"),
     json_out: bool = typer.Option(True, "--json"),
 ) -> None:
@@ -2006,13 +2012,16 @@ def live_monitor(
     raise typer.Exit(0)
 
 
+_LIVE_COVERAGE_RAW_PAYLOAD_OPTION = typer.Option(
+    ..., "--raw-payload", help="Local JSON payload file (read-only; not persisted)."
+)
+
+
 @live_app.command("coverage")
 def live_coverage(
     project: str = typer.Option(..., "--project", help="Mapped pilot project key (contextual)."),
     endpoint: str = typer.Option(..., "--endpoint", help="Canonical endpoint id."),
-    raw_payload: Path = typer.Option(
-        ..., "--raw-payload", help="Local JSON payload file (read-only; not persisted)."
-    ),  # noqa: B008
+    raw_payload: Path = _LIVE_COVERAGE_RAW_PAYLOAD_OPTION,
     json_out: bool = typer.Option(True, "--json"),
 ) -> None:
     """Report normalizer field coverage for a local raw payload (names/types only). No network, no DB."""
