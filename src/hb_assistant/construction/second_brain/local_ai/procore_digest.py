@@ -25,6 +25,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
 
+from .daily_brief_candidate_writer import persist_candidate_with_refs
 from .procore_ranking import rank_procore_signals
 
 _SYNTH_SYSTEM = (
@@ -283,7 +284,8 @@ def build_procore_action_digest(
         if dry_run or (remaining is not None and remaining <= 0):
             continue
         title = f"{r.why_today}: {r.signal_type}"
-        inserted = store.insert_daily_brief_action_candidate(
+        receipt = persist_candidate_with_refs(
+            store,
             brief_date=brief_date,
             section=section,
             title_redacted=title,
@@ -293,8 +295,9 @@ def build_procore_action_digest(
             reason_redacted=r.why_today,
             recommended_next_action="review",
             group_key=group_key,
+            source_refs=source_refs,
         )
-        if inserted:
+        if receipt.inserted:
             summary["persisted"] += 1
             existing_ids.add(row_id)
             if remaining is not None:

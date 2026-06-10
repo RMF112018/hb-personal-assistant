@@ -30,6 +30,7 @@ from typing import Any, Optional
 
 from .calendar_category import resolve_calendar_category
 from .calendar_classify import classify_calendar_event
+from .daily_brief_candidate_writer import persist_candidate_with_refs
 from .packet_builders import build_calendar_event_action_packet
 from .project_aliases import summarize_unresolved_tokens
 
@@ -292,7 +293,8 @@ def build_calendar_prep_candidates(
         summary["would_persist"] += 1
         if dry_run or (remaining is not None and remaining <= 0):
             continue
-        inserted = store.insert_daily_brief_action_candidate(
+        receipt = persist_candidate_with_refs(
+            store,
             brief_date=brief_date,
             section=_SECTION,
             title_redacted=title,
@@ -302,8 +304,9 @@ def build_calendar_prep_candidates(
             reason_redacted=reason,
             recommended_next_action="review",
             group_key=source_ref,
+            source_refs=view["source_refs"],
         )
-        if inserted:
+        if receipt.inserted:
             summary["persisted"] += 1
             existing_ids.add(row_id)
             if remaining is not None:
