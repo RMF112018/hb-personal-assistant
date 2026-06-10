@@ -1,0 +1,5 @@
+# Prompt 06 — changed files (this candidate only)
+src/hb_assistant/construction/second_brain/local_ai/procore_monitor.py  # NEW consolidated monitoring read-model + renderer
+src/hb_assistant/cli/procore.py                                         # `procore live monitor` verb (read-only)
+tests/test_phase_10_procore_monitor.py                                 # NEW regression test
+docs/evidence/phase-10-full-candidate-implementation/06-procore-expansion/  # evidence bundle

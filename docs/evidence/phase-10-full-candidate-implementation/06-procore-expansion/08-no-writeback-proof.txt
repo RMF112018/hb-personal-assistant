@@ -1,0 +1,9 @@
+# No-writeback proof — Procore monitoring is read-only
+
+Row counts before/after the monitor build + dry-run digest are unchanged; the monitor makes no live HTTP call and writes nothing.
+
+- counts before monitor: {'procore_live_records': 0, 'procore_live_sync_runs': 0, 'procore_live_sync_watermarks': 2, 'daily_brief_action_candidates': 0}
+- counts after monitor:  {'procore_live_records': 0, 'procore_live_sync_runs': 0, 'procore_live_sync_watermarks': 2, 'daily_brief_action_candidates': 0}
+- counts after dry-run digest: {'procore_live_records': 0, 'procore_live_sync_runs': 0, 'procore_live_sync_watermarks': 2, 'daily_brief_action_candidates': 0}
+- monitor==read-only (live tables unchanged): True
+- guardrails: no_live_call_performed=True, no_writeback=True

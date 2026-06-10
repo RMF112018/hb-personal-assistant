@@ -1,0 +1,9 @@
+branch: experiment/phase-10-full-candidate-implementation
+HEAD: 717a4b3ee2b68f0789d760e16f3a8e1ab1e5c7cd
+baseline: 0c75f4a77b5987cdbd2a058504f5423d69d225f1
+origin/main: 0c75f4a77b5987cdbd2a058504f5423d69d225f1
+--- git status --short ---
+ M src/hb_assistant/cli/procore.py
+?? docs/evidence/phase-10-full-candidate-implementation/06-procore-expansion/
+?? src/hb_assistant/construction/second_brain/local_ai/procore_monitor.py
+?? tests/test_phase_10_procore_monitor.py

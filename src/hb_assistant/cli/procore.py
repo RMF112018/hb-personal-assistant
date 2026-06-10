@@ -1835,6 +1835,53 @@ def live_status(
     _emit(payload, json_out=json_out)
 
 
+@live_app.command("monitor")
+def live_monitor(
+    project: "str | None" = typer.Option(  # noqa: B008
+        None, "--project", help="Project key (default: all pilot projects from the registry)."
+    ),
+    stale_days: int = typer.Option(7, "--stale-days", min=1, help="Freshness threshold (days)."),  # noqa: B008
+    markdown_out: "str | None" = typer.Option(  # noqa: B008
+        None, "--markdown-out", help="Also write the operator-facing Markdown report to this file."
+    ),
+    db: "str | None" = typer.Option(None, "--db", help="Explicit SQLite path (tests/isolation)."),  # noqa: B008
+    json_out: bool = typer.Option(True, "--json"),  # noqa: B008
+) -> None:
+    """Consolidated Procore monitoring read-model for daily-brief intelligence (read-only).
+
+    One operator surface combining the endpoint contract status (live-verified vs degraded), per-
+    project source-refresh health (current/stale/never), the next operator action for stale endpoints,
+    and a degraded-honest per-project + overall verdict. Read-only over persisted ``procore_live_*``
+    tables + the static endpoint registry — no live HTTP call, no writeback, no raw values.
+    """
+    from hb_assistant.config.path_policy import PathPolicy
+    from hb_assistant.construction.second_brain.local_ai.procore_monitor import (
+        build_procore_monitoring_report,
+        render_procore_monitoring_markdown,
+    )
+    from hb_assistant.store.migrator import SQLiteMigrator
+
+    SQLiteMigrator().apply()
+    db_path = db or str(PathPolicy().get_db_path())
+    now_iso = _query_now().isoformat()
+    if project:
+        project_keys = [project]
+    else:
+        try:
+            registry = load_procore_projects()
+            project_keys = [p.hb_project_key for p in registry.projects if p.status == "pilot"]
+        except Exception:  # noqa: BLE001 — monitor must never raise
+            project_keys = []
+    report = build_procore_monitoring_report(
+        now_utc=now_iso, project_keys=project_keys, db_path=db_path, stale_days=stale_days
+    )
+    markdown = render_procore_monitoring_markdown(report)
+    if markdown_out:
+        Path(markdown_out).write_text(markdown, encoding="utf-8")
+    typer.echo(json.dumps(report, indent=2, default=str) if json_out else markdown)
+    raise typer.Exit(0)
+
+
 @live_app.command("coverage")
 def live_coverage(
     project: str = typer.Option(..., "--project", help="Mapped pilot project key (contextual)."),
