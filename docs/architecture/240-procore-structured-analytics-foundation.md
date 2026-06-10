@@ -42,6 +42,35 @@ true raw endpoint capture.
 New live capture integrations should populate `procore_endpoint_raw_payloads` and the matching
 `procore_raw_*` structured table at the canonical live-sync boundary.
 
+## Financial Amount Extraction
+
+The bronze `amount` column is populated by endpoint-family-aware monetary extraction, not a single
+generic key probe. `AMOUNT_FIELDS_BY_ENDPOINT` (in `procore/structured_analytics.py`) maps each
+financial `endpoint_id` to an ordered list of source field paths; `_path_value` resolves both flat
+keys and dotted paths (e.g. `summary.current_payment_due`). The original generic key list
+(`amount`, `total`, `total_amount`, `contract_amount`, `revised_budget`, `original_budget_amount`,
+`current_budget_amount`) remains the universal fallback, so endpoints whose payloads already expose
+a plain `amount` (line items, budget rows) are unchanged.
+
+Documented precedence:
+
+- **Invoice items** (`subcontractor-invoice-*-items` → `procore_raw_invoice_items`):
+  `work_completed_this_period` → `total_completed_and_stored_to_date` →
+  `subcontractor_claimed_amount` → `scheduled_value`. The headline represents amount billed this
+  period; SOV/cumulative values stay available in source for other questions.
+- **Invoices** (`subcontractor-invoices` → `procore_raw_invoices`): `total_claimed_amount` →
+  `summary.current_payment_due` → `summary.contract_sum_to_date` →
+  `summary.total_completed_and_stored_to_date`.
+- **Change orders** (`prime-/commitment-change-orders` → `procore_raw_change_orders`): `grand_total`
+  only. `schedule_impact_amount` is deliberately excluded — it is a schedule day-count, not currency.
+- **Payment applications**: mapped but currently source-absent (no `payment-applications` endpoint
+  emits rows); amounts will populate automatically when source rows arrive.
+
+The amount stays `TEXT` (V46 unchanged); typed aggregation is a downstream silver/mart concern.
+Source-field provenance is exposed by `_amount_with_source` for diagnostics/tests but is not
+persisted. `structured_coverage` reports `non_null_amount_rows` and `amount_coverage_pct` per
+endpoint so financial coverage gaps are visible without inspecting payloads.
+
 ## Operator Surfaces
 
 New local-only CLI surfaces:

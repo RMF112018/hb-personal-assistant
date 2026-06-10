@@ -263,6 +263,20 @@ def _row_value(payload: dict[str, Any], *keys: str) -> Any:
     return None
 
 
+def _path_value(payload: dict[str, Any], path: str) -> Any:
+    """Resolve a flat key or dotted path (e.g. ``summary.current_payment_due``).
+
+    Returns ``None`` for a missing path or an empty/``None`` leaf so callers can
+    fall through to the next candidate field.
+    """
+    cur: Any = payload
+    for part in path.split("."):
+        if not isinstance(cur, dict) or part not in cur:
+            return None
+        cur = cur[part]
+    return None if cur in (None, "") else cur
+
+
 def _record_number(payload: dict[str, Any], row: sqlite3.Row) -> str | None:
     return _row_value(payload, "number", "rfi_number", "submittal_number", "name") or row[
         "procore_record_number"
@@ -282,18 +296,81 @@ def _business_date(payload: dict[str, Any]) -> str | None:
     )
 
 
-def _amount(payload: dict[str, Any]) -> str | None:
-    value = _row_value(
-        payload,
+# Generic amount probe, retained as the universal fallback for endpoints whose
+# payloads already expose a plain monetary key (line items, budget rows, etc.).
+_GENERIC_AMOUNT_FIELDS: tuple[str, ...] = (
+    "amount",
+    "total",
+    "total_amount",
+    "contract_amount",
+    "revised_budget",
+    "original_budget_amount",
+    "current_budget_amount",
+)
+
+# Invoice line items (subcontractor invoice SOV detail/contract/change-order items)
+# carry no plain ``amount`` key. Headline = current-period billing, then cumulative,
+# then claimed, then the scheduled (SOV) value as a last resort. All four are present
+# in the source; ``work_completed_this_period`` is first so the column represents the
+# amount billed this period rather than the scheduled value (which answers a different
+# analytics question and should be read from the source SOV fields when needed).
+_INVOICE_ITEM_AMOUNT_FIELDS: tuple[str, ...] = (
+    "work_completed_this_period",
+    "total_completed_and_stored_to_date",
+    "subcontractor_claimed_amount",
+    "scheduled_value",
+)
+
+# Endpoint-family-aware monetary extraction, keyed by the same ``endpoint_id`` used by
+# ``STRUCTURED_TABLE_BY_ENDPOINT``. Paths may be dotted (resolved via ``_path_value``).
+# The generic probe above remains the fallback for any endpoint not listed here.
+AMOUNT_FIELDS_BY_ENDPOINT: dict[str, tuple[str, ...]] = {
+    # invoices: claimed amount, then nested billing summary totals
+    "subcontractor-invoices": (
+        "total_claimed_amount",
+        "summary.current_payment_due",
+        "summary.contract_sum_to_date",
+        "summary.total_completed_and_stored_to_date",
+    ),
+    # invoice line items -> procore_raw_invoice_items
+    "subcontractor-invoice-contract-detail-items": _INVOICE_ITEM_AMOUNT_FIELDS,
+    "subcontractor-invoice-contract-items": _INVOICE_ITEM_AMOUNT_FIELDS,
+    "subcontractor-invoice-change-order-items": _INVOICE_ITEM_AMOUNT_FIELDS,
+    # change orders -> procore_raw_change_orders. ``grand_total`` is the dollar total.
+    # ``schedule_impact_amount`` is deliberately EXCLUDED: sampled values are schedule
+    # day-counts (e.g. "5", "0"), not currency, and would contaminate cost analytics.
+    "prime-change-orders": ("grand_total",),
+    "commitment-change-orders": ("grand_total",),
+    # payment applications: source-absent today (no live endpoint emits rows); mapped so
+    # amounts populate automatically if/when source rows arrive.
+    "payment-applications": (
+        "total_claimed_amount",
+        "summary.current_payment_due",
         "amount",
-        "total",
-        "total_amount",
-        "contract_amount",
-        "revised_budget",
-        "original_budget_amount",
-        "current_budget_amount",
-    )
-    return None if value is None else str(value)
+    ),
+}
+
+
+def _amount_with_source(
+    payload: dict[str, Any], endpoint_id: str | None = None
+) -> tuple[str | None, str | None]:
+    """Return ``(amount, source_field)`` using endpoint-aware precedence then the
+    generic fallback. ``source_field`` is the matched field path (for diagnostics and
+    tests only; it is not persisted — the V46 schema stores ``amount`` alone)."""
+    if endpoint_id and endpoint_id in AMOUNT_FIELDS_BY_ENDPOINT:
+        for path in AMOUNT_FIELDS_BY_ENDPOINT[endpoint_id]:
+            value = _path_value(payload, path)
+            if value is not None:
+                return str(value), path
+    for key in _GENERIC_AMOUNT_FIELDS:
+        value = _path_value(payload, key)
+        if value is not None:
+            return str(value), key
+    return None, None
+
+
+def _amount(payload: dict[str, Any], endpoint_id: str | None = None) -> str | None:
+    return _amount_with_source(payload, endpoint_id)[0]
 
 
 def _normalized_payload(row: sqlite3.Row) -> tuple[dict[str, Any], str, str]:
@@ -348,7 +425,7 @@ def _structured_values(
         "business_date": _business_date(payload),
         "cost_code": _row_value(payload, "cost_code", "cost_code_id", "wbs_code"),
         "cost_type": _row_value(payload, "cost_type", "cost_type_id"),
-        "amount": _amount(payload),
+        "amount": _amount(payload, endpoint_id),
         "currency": _row_value(payload, "currency", "currency_code"),
         "quantity": _row_value(payload, "quantity", "qty"),
         "unit_of_measure": _row_value(payload, "unit_of_measure", "uom"),
@@ -704,6 +781,7 @@ def structured_coverage(
         raw_count = _table_count(conn, RAW_LANDING_TABLE, live_where.replace("endpoint_id", "endpoint_key"), tuple(params))
         structured_count = 0
         current_count = 0
+        non_null_amount = 0
         if table:
             sparams: list[Any] = [ep.endpoint_id]
             structured_where = "endpoint_key = ?"
@@ -712,6 +790,10 @@ def structured_coverage(
                 sparams.append(project_key)
             structured_count = _table_count(conn, table, structured_where, tuple(sparams))
             current_count = _table_count(conn, table, structured_where + " AND is_current = 1", tuple(sparams))
+            non_null_amount = _table_count(
+                conn, table, structured_where + " AND amount IS NOT NULL AND amount != ''", tuple(sparams)
+            )
+        amount_coverage_pct = round(100.0 * non_null_amount / structured_count, 1) if structured_count else 0.0
         gap = None
         if table is None:
             gap = "missing_structured_table_mapping"
@@ -732,6 +814,8 @@ def structured_coverage(
                 "raw_landing_rows": raw_count,
                 "structured_rows": structured_count,
                 "current_structured_rows": current_count,
+                "non_null_amount_rows": non_null_amount,
+                "amount_coverage_pct": amount_coverage_pct,
                 "analytics_eligible": bool(table and ep.live_verified),
                 "daily_brief_eligible": bool(table and ep.family != "foundation"),
                 "coverage_gap_reason": gap,
