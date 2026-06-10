@@ -28,9 +28,10 @@ import re
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
+from .calendar_category import resolve_calendar_category
 from .calendar_classify import classify_calendar_event
 from .packet_builders import build_calendar_event_action_packet
-from .project_aliases import resolve_project, summarize_unresolved_tokens
+from .project_aliases import summarize_unresolved_tokens
 
 _SECTION = "calendar"
 
@@ -227,13 +228,19 @@ def build_calendar_prep_candidates(
         attendee_count = int(ev.get("attendee_count") or 0)
         location_class = "online" if ev.get("is_online_meeting") else "in_person_or_unspecified"
 
-        # Project: prefer the index's project_key; else infer from redacted title/location via the
-        # config-backed alias map; else leave unassigned (grouped under "Needs Project Review").
+        # Category + project: prefer the index's project_key; else delegate to the deterministic
+        # category resolver (project arm = the canonical alias matcher; internal/PTO/training/
+        # needs-review classification around it). Low-confidence project-looking text becomes
+        # ``__needs_review__`` (review-safe) instead of a forced project fact.
         indexed_proj = ev.get("project_key")
-        inferred_proj = (
-            None if indexed_proj else resolve_project(title, str(location_redacted or ""))
+        resolution = resolve_calendar_category(
+            subject=title,
+            location=str(location_redacted or ""),
+            organizer_domain=ev.get("organizer_domain"),
+            attendees=attendee_count,
+            indexed_project_key=indexed_proj,
         )
-        proj = indexed_proj or inferred_proj or "__unassigned__"
+        proj = resolution.project_key
 
         # Deterministic value tier (pre-model noise filter); the synthesis packet uses this to
         # demote/exclude low-value meetings before the local model ever sees them.
@@ -242,7 +249,7 @@ def build_calendar_prep_candidates(
             location=str(location_redacted or ""),
             attendee_count=attendee_count,
             is_online=bool(ev.get("is_online_meeting")),
-            has_project=proj != "__unassigned__",
+            has_project=resolution.category == "project",
             days_until=days_until,
         )
         reason = f"{attendee_count} attendees · {len(domains)} domains · {location_class}"
@@ -251,7 +258,12 @@ def build_calendar_prep_candidates(
             "event_index_id": event_index_id,
             "source_ref": source_ref,
             "project_key": proj,
-            "project_inferred": bool(inferred_proj),
+            "category": resolution.category,
+            "category_reason": resolution.reason,
+            "matched_alias": resolution.matched_alias,
+            "needs_review": resolution.needs_review,
+            "resolution_confidence": resolution.confidence,
+            "project_inferred": bool(resolution.category == "project" and not indexed_proj),
             "calendar_class": classification.klass,
             "calendar_class_reason": classification.reason_code,
             "calendar_visible": classification.visible,
@@ -284,7 +296,7 @@ def build_calendar_prep_candidates(
             brief_date=brief_date,
             section=_SECTION,
             title_redacted=title,
-            confidence=1.0,
+            confidence=resolution.confidence,
             project_key=proj,
             priority=priority,
             reason_redacted=reason,
@@ -299,22 +311,34 @@ def build_calendar_prep_candidates(
         else:
             summary["skipped_existing"] += 1
 
-    # Project-inference + value-tier rollups (assigned vs unassigned, class distribution) + a small
+    # Category + value-tier rollups (project vs internal vs review, class distribution) + a small
     # diagnostic of frequently-unresolved project tokens so alias coverage can be improved over time.
-    summary["projects_assigned"] = sum(
-        1 for v in event_views if v["project_key"] != "__unassigned__"
-    )
+    # "assigned" = resolved to a real project; "unassigned" = needs-review/unknown (NOT internal).
+    summary["projects_assigned"] = sum(1 for v in event_views if v.get("category") == "project")
     summary["projects_unassigned"] = sum(
-        1 for v in event_views if v["project_key"] == "__unassigned__"
+        1 for v in event_views if v.get("category") in ("needs_review", "unknown")
     )
     summary["projects_inferred"] = sum(1 for v in event_views if v.get("project_inferred"))
+    summary["needs_review_count"] = sum(
+        1 for v in event_views if v.get("category") == "needs_review"
+    )
+    by_category: dict[str, int] = {}
+    for v in event_views:
+        cat = str(v.get("category") or "unknown")
+        by_category[cat] = by_category.get(cat, 0) + 1
+    summary["category_distribution"] = by_category
     by_class: dict[str, int] = {}
     for v in event_views:
         cls = str(v.get("calendar_class") or "fyi")
         by_class[cls] = by_class.get(cls, 0) + 1
     summary["by_calendar_class"] = by_class
     summary["unresolved_project_tokens"] = summarize_unresolved_tokens(
-        [v["title_redacted"] for v in event_views if v["project_key"] == "__unassigned__"], top=10
+        [
+            v["title_redacted"]
+            for v in event_views
+            if v.get("category") in ("needs_review", "unknown")
+        ],
+        top=10,
     )
 
     synthesis = _maybe_synthesize(synthesize=synthesize, client=client, event_views=event_views)

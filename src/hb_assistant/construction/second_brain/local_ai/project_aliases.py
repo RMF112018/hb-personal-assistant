@@ -114,22 +114,33 @@ def _load_aliases() -> tuple[_Alias, ...]:
     return tuple(aliases)
 
 
-def resolve_project(*texts: str | None) -> str | None:
-    """Return the canonical ``project_key`` inferred from any of ``texts``, or ``None``.
+def resolve_project_alias(*texts: str | None) -> tuple[str | None, str | None]:
+    """Return ``(project_key, matched_alias_token)`` inferred from any of ``texts``, or ``(None, None)``.
 
-    Checks each text against the alias map (longest alias first); the first match wins. Conservative:
-    returns ``None`` when nothing matches (caller keeps the item unassigned).
+    The single canonical alias-matching implementation (longest alias first, word-boundary aware,
+    case-insensitive; first match wins). :func:`resolve_project` delegates here so callers that also
+    need the matched alias token (e.g. calendar category resolution) never re-implement matching.
     """
     aliases = _load_aliases()
     if not aliases:
-        return None
+        return (None, None)
     for text in texts:
         if not text:
             continue
         for alias in aliases:
             if alias.pattern.search(text):
-                return alias.project_key
-    return None
+                return (alias.project_key, alias.token_lower)
+    return (None, None)
+
+
+def resolve_project(*texts: str | None) -> str | None:
+    """Return the canonical ``project_key`` inferred from any of ``texts``, or ``None``.
+
+    Checks each text against the alias map (longest alias first); the first match wins. Conservative:
+    returns ``None`` when nothing matches (caller keeps the item unassigned). Thin wrapper over
+    :func:`resolve_project_alias` (single matching implementation).
+    """
+    return resolve_project_alias(*texts)[0]
 
 
 def candidate_tokens(text: str | None) -> list[str]:
