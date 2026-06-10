@@ -1,0 +1,7 @@
+# Production DB Unchanged Proof — Prompt 05
+
+Routing diagnostics + eval are offline/synthetic; the only DB touched was a disposable temp DB (receipt-table introspection). Production (PathPolicy.get_db_path) was read once, never written.
+
+- sha256 BEFORE: 25e5bce9b9d4c8a21a5175fc1cf09aead2362ec513c03404d2df7d2327deb2d8
+- sha256 AFTER:  25e5bce9b9d4c8a21a5175fc1cf09aead2362ec513c03404d2df7d2327deb2d8
+- UNCHANGED: True

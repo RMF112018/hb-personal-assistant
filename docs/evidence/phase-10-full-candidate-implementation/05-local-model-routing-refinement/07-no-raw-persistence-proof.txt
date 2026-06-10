@@ -1,0 +1,8 @@
+# No-raw-persistence proof — local_model_run_receipts
+
+The local-model run receipt table stores ONLY hashes + safe metadata; it has no column capable of holding a raw prompt or response, and carries the 13 Phase-10 guard columns (CHECK = 0).
+
+- raw prompt/response columns present: NONE
+- hash columns: ['input_context_hash', 'output_hash']
+- guard columns present (CHECK=0): 13 of 13
+- raw_prompt_persisted + raw_response_persisted guards present: True

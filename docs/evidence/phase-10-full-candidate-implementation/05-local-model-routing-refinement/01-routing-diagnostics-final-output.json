@@ -1,0 +1,199 @@
+{
+  "command": "second-brain local-model diagnostics",
+  "ok": true,
+  "daemon_reachable": true,
+  "present_models": [
+    "llama3.1:8b",
+    "mistral-nemo:12b",
+    "qwen2.5:14b"
+  ],
+  "heavy_enabled": false,
+  "counts": {
+    "total": 7,
+    "available": 7,
+    "blocked": 0,
+    "fallback_selected": 0
+  },
+  "diagnostics": [
+    {
+      "task_family": "calendar_prep_summary",
+      "selected_profile": "default_extract",
+      "model_name": "mistral-nemo:12b",
+      "available": true,
+      "blocked": false,
+      "reason_code": "selected_routed",
+      "candidate_model_chain": [
+        {
+          "profile_id": "default_extract",
+          "model_name": "mistral-nemo:12b",
+          "available": true,
+          "reason": "available"
+        }
+      ],
+      "fallback_from": null,
+      "fallback_reason": null,
+      "fail_closed_reason": null,
+      "blockers": [],
+      "safety_category": "redacted_advisory",
+      "no_cloud": true
+    },
+    {
+      "task_family": "daily_brief_synthesis_quality",
+      "selected_profile": "brief_synthesis",
+      "model_name": "mistral-nemo:12b",
+      "available": true,
+      "blocked": false,
+      "reason_code": "selected_routed",
+      "candidate_model_chain": [
+        {
+          "profile_id": "brief_synthesis",
+          "model_name": "mistral-nemo:12b",
+          "available": true,
+          "reason": "available"
+        },
+        {
+          "profile_id": "default_extract",
+          "model_name": "mistral-nemo:12b",
+          "available": true,
+          "reason": "available"
+        }
+      ],
+      "fallback_from": null,
+      "fallback_reason": null,
+      "fail_closed_reason": null,
+      "blockers": [],
+      "safety_category": "redacted_advisory",
+      "no_cloud": true
+    },
+    {
+      "task_family": "email_action_extraction_json",
+      "selected_profile": "default_extract",
+      "model_name": "mistral-nemo:12b",
+      "available": true,
+      "blocked": false,
+      "reason_code": "selected_routed",
+      "candidate_model_chain": [
+        {
+          "profile_id": "default_extract",
+          "model_name": "mistral-nemo:12b",
+          "available": true,
+          "reason": "available"
+        }
+      ],
+      "fallback_from": null,
+      "fallback_reason": null,
+      "fail_closed_reason": null,
+      "blockers": [],
+      "safety_category": "metadata_only_advisory",
+      "no_cloud": true
+    },
+    {
+      "task_family": "email_followup_raw_enrichment",
+      "selected_profile": "default_extract",
+      "model_name": "mistral-nemo:12b",
+      "available": true,
+      "blocked": false,
+      "reason_code": "selected_routed",
+      "candidate_model_chain": [
+        {
+          "profile_id": "default_extract",
+          "model_name": "mistral-nemo:12b",
+          "available": true,
+          "reason": "available"
+        }
+      ],
+      "fallback_from": null,
+      "fallback_reason": null,
+      "fail_closed_reason": null,
+      "blockers": [],
+      "safety_category": "bounded_raw_input_redacted_output",
+      "no_cloud": true
+    },
+    {
+      "task_family": "procore_digest_summary",
+      "selected_profile": "default_extract",
+      "model_name": "mistral-nemo:12b",
+      "available": true,
+      "blocked": false,
+      "reason_code": "selected_routed",
+      "candidate_model_chain": [
+        {
+          "profile_id": "default_extract",
+          "model_name": "mistral-nemo:12b",
+          "available": true,
+          "reason": "available"
+        }
+      ],
+      "fallback_from": null,
+      "fallback_reason": null,
+      "fail_closed_reason": null,
+      "blockers": [],
+      "safety_category": "metadata_only_advisory",
+      "no_cloud": true
+    },
+    {
+      "task_family": "relationship_scoring",
+      "selected_profile": "review_filter",
+      "model_name": "qwen2.5:14b",
+      "available": true,
+      "blocked": false,
+      "reason_code": "selected_routed",
+      "candidate_model_chain": [
+        {
+          "profile_id": "review_filter",
+          "model_name": "qwen2.5:14b",
+          "available": true,
+          "reason": "available"
+        },
+        {
+          "profile_id": "default_extract",
+          "model_name": "mistral-nemo:12b",
+          "available": true,
+          "reason": "available"
+        }
+      ],
+      "fallback_from": null,
+      "fallback_reason": null,
+      "fail_closed_reason": null,
+      "blockers": [],
+      "safety_category": "metadata_only_advisory",
+      "no_cloud": true
+    },
+    {
+      "task_family": "short_operator_catchup",
+      "selected_profile": "brief_synthesis",
+      "model_name": "mistral-nemo:12b",
+      "available": true,
+      "blocked": false,
+      "reason_code": "selected_routed",
+      "candidate_model_chain": [
+        {
+          "profile_id": "brief_synthesis",
+          "model_name": "mistral-nemo:12b",
+          "available": true,
+          "reason": "available"
+        },
+        {
+          "profile_id": "default_extract",
+          "model_name": "mistral-nemo:12b",
+          "available": true,
+          "reason": "available"
+        }
+      ],
+      "fallback_from": null,
+      "fallback_reason": null,
+      "fail_closed_reason": null,
+      "blockers": [],
+      "safety_category": "redacted_advisory",
+      "no_cloud": true
+    }
+  ],
+  "guardrails": {
+    "local_only": true,
+    "no_cloud": true,
+    "no_raw_persistence": true,
+    "no_raw_prompts_or_responses_in_output": true,
+    "deterministic_fallback": true,
+    "fail_closed_on_unavailable": true
+  }
+}

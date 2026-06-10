@@ -1,0 +1,7 @@
+# No-cloud-fallback proof
+
+Across present / missing-model / daemon-unreachable probes, every task family reports `no_cloud: true` and the routing config declares `guardrails.no_cloud: true`. An unavailable model yields a deterministic local fallback or a fail-closed blocker — never a cloud substitution.
+
+- all diagnostics no_cloud across 3 probes: True
+- guardrails.no_cloud: True
+- guardrails.fail_closed_on_unavailable: True

@@ -10790,6 +10790,50 @@ def local_model_route(
     raise typer.Exit(0)
 
 
+@local_model_app.command("diagnostics")
+def local_model_diagnostics(
+    provider: str = typer.Option(  # noqa: B008
+        "ollama", "--provider", help="ollama|mock. mock is offline-safe (no daemon)."
+    ),
+    mock: bool = typer.Option(  # noqa: B008
+        False, "--mock", help="Shortcut for --provider mock (offline shape)."
+    ),
+    heavy_enabled: bool = typer.Option(  # noqa: B008
+        False, "--heavy-enabled", help="Treat heavy profiles as eligible (still requires a model)."
+    ),
+    markdown_out: "str | None" = typer.Option(  # noqa: B008
+        None, "--markdown-out", help="Also write the operator-facing Markdown diagnostics to a file."
+    ),
+    json_out: bool = typer.Option(True, "--json", help="Emit machine-readable JSON (default)."),  # noqa: B008
+) -> None:
+    """Consolidated routing diagnostics across all task families (fail-closed, never cloud, raw-free).
+
+    For every routed task family: selected profile, candidate model chain, probe/availability status,
+    fallback reason, fail-closed reason, and the declared output safety category. Deterministic given
+    the live model probe; persists nothing; never echoes raw prompts/responses.
+    """
+    from pathlib import Path
+
+    from hb_assistant.construction.second_brain.local_ai.model_diagnostics import (
+        build_routing_diagnostics,
+        render_routing_diagnostics_markdown,
+    )
+
+    provider_name = "mock" if mock else provider
+    present_models, daemon_reachable = _local_model_present(provider_name, heavy_enabled)
+    diag = build_routing_diagnostics(
+        present_models=present_models, daemon_reachable=daemon_reachable, heavy_enabled=heavy_enabled
+    )
+    if markdown_out:
+        Path(markdown_out).write_text(render_routing_diagnostics_markdown(diag), encoding="utf-8")
+    typer.echo(
+        json.dumps(diag, indent=2, default=str)
+        if json_out
+        else render_routing_diagnostics_markdown(diag)
+    )
+    raise typer.Exit(0 if diag.get("ok") else 2)
+
+
 @local_model_app.command("eval")
 def local_model_eval(
     suite: str = typer.Option(  # noqa: B008
