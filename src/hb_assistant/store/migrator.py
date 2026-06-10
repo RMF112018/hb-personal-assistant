@@ -14,7 +14,7 @@ from .connection import get_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 46
+LATEST_SCHEMA_VERSION = 47
 
 
 class SQLiteMigrator:
@@ -6611,11 +6611,35 @@ class SQLiteMigrator:
                     (now,),
                 )
 
+            # v47 Procore endpoint-specific structured projection tables. Additive,
+            # local-only: one primary table per in-scope endpoint family + child/detail
+            # tables for nested business-object arrays, derived deterministically from the
+            # committed projection registry (single source of truth). Every table carries
+            # the standard identity columns, a lossless ``payload_sidecar_json``, and the
+            # zero-CHECK no-writeback / no-raw-emission guards. V1-V46 tables untouched.
+            for stmt in self._v47_statements():
+                conn.execute(stmt)
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 47")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (47, 'v47_procore_endpoint_specific_structured_projections', ?)",
+                    (now,),
+                )
+
         # Return latest version
         conn2 = get_connection(self._db_path)
         cur = conn2.execute("SELECT MAX(version) FROM schema_migrations")
         row = cur.fetchone()
         return int(row[0]) if row and row[0] is not None else 0
+
+    @staticmethod
+    def _v47_statements() -> list[str]:
+        """Endpoint-specific structured projection DDL, generated from the committed
+        Procore projection registry. Imported lazily so the migrator carries no
+        import-time dependency on the procore package."""
+        from hb_assistant.procore.projection_registry import build_v47_ddl
+
+        return build_v47_ddl()
 
     def current_version(self) -> int:
         """Return the highest applied migration version (0 if none)."""

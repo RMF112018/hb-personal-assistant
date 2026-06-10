@@ -262,6 +262,138 @@ def analytics_no_raw_leak_scan(
     _emit(payload, json_out=json_out, exit_code=0 if payload["ok"] else 3)
 
 
+@analytics_app.command("projection-inventory")
+def analytics_projection_inventory(
+    db: Optional[str] = typer.Option(None, "--db", help="Explicit SQLite DB path."),
+    endpoint: Optional[str] = typer.Option(None, "--endpoint"),
+    project_key: Optional[str] = typer.Option(None, "--project-key"),
+    emit_candidate: bool = typer.Option(
+        False,
+        "--emit-candidate",
+        help="Also emit a candidate projection registry (dev-only; structural metadata only).",
+    ),
+    json_out: bool = typer.Option(True, "--json/--no-json"),
+) -> None:
+    """Field-path inventory of full raw payloads (paths/types/counts/null-rates only; no values)."""
+    from hb_assistant.procore.projection_audit import projection_inventory
+
+    payload = projection_inventory(
+        db_path=_analytics_db(db),
+        endpoint=endpoint,
+        project_key=project_key,
+        emit_candidate=emit_candidate,
+    )
+    _emit(payload, json_out=json_out)
+
+
+@analytics_app.command("projection-audit")
+def analytics_projection_audit(
+    db: Optional[str] = typer.Option(None, "--db", help="Explicit SQLite DB path."),
+    endpoint: Optional[str] = typer.Option(None, "--endpoint"),
+    project_key: Optional[str] = typer.Option(None, "--project-key"),
+    json_out: bool = typer.Option(True, "--json/--no-json"),
+) -> None:
+    """Completeness audit: compare live payload paths to the registry allow-list.
+
+    Exit code 3 if any endpoint with full payloads has unmapped/unknown business field
+    paths, or an over-threshold sidecar share lacks an explicit justification.
+    """
+    from hb_assistant.procore.projection_audit import projection_audit
+
+    payload = projection_audit(db_path=_analytics_db(db), endpoint=endpoint, project_key=project_key)
+    _emit(payload, json_out=json_out, exit_code=0 if payload["ok"] else 3)
+
+
+@analytics_app.command("projection-coverage")
+def analytics_projection_coverage(
+    db: Optional[str] = typer.Option(None, "--db", help="Explicit SQLite DB path."),
+    endpoint: Optional[str] = typer.Option(None, "--endpoint"),
+    project_key: Optional[str] = typer.Option(None, "--project-key"),
+    json_out: bool = typer.Option(True, "--json/--no-json"),
+) -> None:
+    """Per-endpoint destination coverage (column/child/sidecar %, amendment-1 thresholds).
+
+    Alias of ``projection-audit`` focused on the coverage matrix; exits 3 on any
+    unmapped/unknown field or unjustified over-threshold sidecar share.
+    """
+    from hb_assistant.procore.projection_audit import projection_audit
+
+    payload = projection_audit(db_path=_analytics_db(db), endpoint=endpoint, project_key=project_key)
+    payload["command"] = "hb-assistant procore analytics projection-coverage"
+    _emit(payload, json_out=json_out, exit_code=0 if payload["ok"] else 3)
+
+
+@analytics_app.command("projection-reprocess")
+def analytics_projection_reprocess(
+    db: Optional[str] = typer.Option(None, "--db", help="Explicit SQLite DB path."),
+    project_key: Optional[str] = typer.Option(None, "--project-key"),
+    endpoint: Optional[str] = typer.Option(None, "--endpoint"),
+    limit: int = typer.Option(200000, "--limit", min=1),
+    dry_run: bool = typer.Option(True, "--dry-run", help="Default: preview only; zero writes."),
+    apply: bool = typer.Option(
+        False, "--apply", help="Persist endpoint-specific rows to the supplied DB."
+    ),
+    json_out: bool = typer.Option(True, "--json/--no-json"),
+) -> None:
+    """Replay full raw payloads into V47 endpoint-specific tables. No live Procore calls.
+
+    Idempotent; honors source-quality precedence. Enforce mode: a payload with an unmapped
+    business path fails closed (degraded count > 0 -> exit 3). ``--apply`` requires ``--db``
+    so the production DB is never mutated accidentally; package validation uses a copy.
+    """
+    from hb_assistant.procore.projection_engine import (
+        MODE_ENFORCE,
+        UnknownProjectionPath,
+        backfill_endpoint_specific_from_raw_payloads,
+    )
+    from hb_assistant.store.migrator import SQLiteMigrator
+
+    if apply and dry_run:
+        dry_run = False
+    if apply and not db:
+        _emit(
+            {
+                "command": "hb-assistant procore analytics projection-reprocess",
+                "ok": False,
+                "status": "blocked_explicit_db_required",
+                "reason": "--apply requires --db so production DB is never mutated accidentally",
+                "guardrails": {"live_calls_disabled": True, "writeback": "none"},
+            },
+            json_out=json_out,
+            exit_code=2,
+        )
+        return
+    if apply:
+        SQLiteMigrator(db_path=db).apply()
+
+    do_apply = apply and not dry_run
+    try:
+        payload = backfill_endpoint_specific_from_raw_payloads(
+            db_path=_analytics_db(db),
+            apply=do_apply,
+            project_key=project_key,
+            endpoint=endpoint,
+            limit=limit,
+            mode=MODE_ENFORCE,
+        )
+    except UnknownProjectionPath as exc:
+        _emit(
+            {
+                "command": "hb-assistant procore analytics projection-reprocess",
+                "ok": False,
+                "status": "fail_closed_unknown_path",
+                "endpoint": exc.endpoint_id,
+                "unmapped_business_field_count": len(exc.unknown),
+                "unmapped_business_field_sample": sorted(exc.unknown)[:20],
+                "guardrails": {"live_calls_disabled": True, "writeback": "none"},
+            },
+            json_out=json_out,
+            exit_code=3,
+        )
+        return
+    _emit(payload, json_out=json_out, exit_code=0 if payload["ok"] else 3)
+
+
 @auth_app.command("status")
 def auth_status(
     json_out: bool = typer.Option(True, "--json"),

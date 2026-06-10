@@ -1,6 +1,6 @@
 {
   "schema": "table_lifecycle_status_contract/v1",
-  "source": "Seeded from docs/evidence/construction-intelligence-phase-07a-data-quality/01-table-lifecycle-inventory.json (Phase 07A Prompt 00 manual inventory); operationalized for hb-assistant construction-agent data-quality table-inventory (Phase 07B Prompt 01); refreshed to map the V20/V21 Phase 07A data-quality and relationship tables that post-dated the manual inventory (Phase 07C Prompt 01 remediation); extended with the ten V25 Phase 07D cross-source relationship and meeting-prep substrate tables (Phase 07D Prompt 02); extended with the twenty-one V26 Phase 08A second-brain runtime substrate tables (Phase 08A Prompt 02); extended with the nineteen V38 Phase 09 retrieval/memory/agent metadata substrate tables (Phase 09 Prompt 12 — schema + contracts + table lifecycle; ships empty/placeholder_deferred); extended with the three V39 Phase 09 review-burden tables (Prompt 37 review burden reduction; advisory promotion policy; ships empty/placeholder_deferred); extended with the one V45 Phase 10 email follow-up raw enrichment table (email_followup_enrichments; review-safe model-enriched follow-up metadata; ships empty/placeholder_deferred); extended with the forty-seven V46 Procore structured analytics foundation tables (landing, capture control, endpoint-family bronze, and dimensions; ships empty/placeholder_deferred until local reprocessing or capture).",
+  "source": "Seeded from docs/evidence/construction-intelligence-phase-07a-data-quality/01-table-lifecycle-inventory.json (Phase 07A Prompt 00 manual inventory); operationalized for hb-assistant construction-agent data-quality table-inventory (Phase 07B Prompt 01); refreshed to map the V20/V21 Phase 07A data-quality and relationship tables that post-dated the manual inventory (Phase 07C Prompt 01 remediation); extended with the ten V25 Phase 07D cross-source relationship and meeting-prep substrate tables (Phase 07D Prompt 02); extended with the twenty-one V26 Phase 08A second-brain runtime substrate tables (Phase 08A Prompt 02); extended with the nineteen V38 Phase 09 retrieval/memory/agent metadata substrate tables (Phase 09 Prompt 12 \u2014 schema + contracts + table lifecycle; ships empty/placeholder_deferred); extended with the three V39 Phase 09 review-burden tables (Prompt 37 review burden reduction; advisory promotion policy; ships empty/placeholder_deferred); extended with the one V45 Phase 10 email follow-up raw enrichment table (email_followup_enrichments; review-safe model-enriched follow-up metadata; ships empty/placeholder_deferred); extended with the forty-seven V46 Procore structured analytics foundation tables (landing, capture control, endpoint-family bronze, and dimensions; ships empty/placeholder_deferred until local reprocessing or capture). ; extended with the seventy-eight V47 Procore endpoint-specific structured projection tables (procore_ep_* primary + child/detail tables derived from the committed projection registry; ships empty/placeholder_deferred until projection replay from full raw payloads).",
   "statuses": [
     "operational_populated",
     "operational_empty_expected",
@@ -18,7 +18,7 @@
     "phase_owner",
     "blocking_for_phase"
   ],
-  "table_count": 269,
+  "table_count": 347,
   "tables": {
     "construction_data_quality_runs": {
       "table_family": "data_quality_v20v21",
@@ -1773,7 +1773,7 @@
       "phase_owner": "10",
       "blocking_for_phase": "none",
       "v": "V41",
-      "notes": "Phase 10 local action intelligence — additive V41. registered local model profile tiers (advisory; no runtime yet)"
+      "notes": "Phase 10 local action intelligence \u2014 additive V41. registered local model profile tiers (advisory; no runtime yet)"
     },
     "local_model_status_receipts": {
       "table_family": "phase10_local_model_v41",
@@ -1782,7 +1782,7 @@
       "phase_owner": "10",
       "blocking_for_phase": "none",
       "v": "V41",
-      "notes": "Phase 10 local action intelligence — additive V41. local model daemon/profile status receipts (metadata-only)"
+      "notes": "Phase 10 local action intelligence \u2014 additive V41. local model daemon/profile status receipts (metadata-only)"
     },
     "local_model_run_receipts": {
       "table_family": "phase10_local_model_v41",
@@ -1791,7 +1791,7 @@
       "phase_owner": "10",
       "blocking_for_phase": "none",
       "v": "V41",
-      "notes": "Phase 10 local action intelligence — additive V41. per-run local model telemetry (hashes/counts only; no raw prompt/response)"
+      "notes": "Phase 10 local action intelligence \u2014 additive V41. per-run local model telemetry (hashes/counts only; no raw prompt/response)"
     },
     "ai_job_queue": {
       "table_family": "phase10_ai_jobs_v41",
@@ -1800,7 +1800,7 @@
       "phase_owner": "10",
       "blocking_for_phase": "none",
       "v": "V41",
-      "notes": "Phase 10 local action intelligence — additive V41. local AI job queue; environment-isolated idempotency key; dry-run default"
+      "notes": "Phase 10 local action intelligence \u2014 additive V41. local AI job queue; environment-isolated idempotency key; dry-run default"
     },
     "ai_job_runs": {
       "table_family": "phase10_ai_jobs_v41",
@@ -1809,7 +1809,7 @@
       "phase_owner": "10",
       "blocking_for_phase": "none",
       "v": "V41",
-      "notes": "Phase 10 local action intelligence — additive V41. AI job run receipts (candidate/accepted/rejected counts; blockers)"
+      "notes": "Phase 10 local action intelligence \u2014 additive V41. AI job run receipts (candidate/accepted/rejected counts; blockers)"
     },
     "task_candidates": {
       "table_family": "phase10_action_candidates_v41",
@@ -1818,7 +1818,7 @@
       "phase_owner": "10",
       "blocking_for_phase": "none",
       "v": "V41",
-      "notes": "Phase 10 local action intelligence — additive V41. advisory task candidates (redacted title/reason; provenance; review_status pending)"
+      "notes": "Phase 10 local action intelligence \u2014 additive V41. advisory task candidates (redacted title/reason; provenance; review_status pending)"
     },
     "commitment_candidates": {
       "table_family": "phase10_action_candidates_v41",
@@ -1827,7 +1827,7 @@
       "phase_owner": "10",
       "blocking_for_phase": "none",
       "v": "V41",
-      "notes": "Phase 10 local action intelligence — additive V41. advisory commitment candidates (redacted; provenance; review_status pending)"
+      "notes": "Phase 10 local action intelligence \u2014 additive V41. advisory commitment candidates (redacted; provenance; review_status pending)"
     },
     "candidate_source_refs": {
       "table_family": "phase10_action_candidates_v41",
@@ -1836,7 +1836,7 @@
       "phase_owner": "10",
       "blocking_for_phase": "none",
       "v": "V41",
-      "notes": "Phase 10 local action intelligence — additive V41. candidate->source provenance bridge (source_ref_hash; no candidate without a source ref)"
+      "notes": "Phase 10 local action intelligence \u2014 additive V41. candidate->source provenance bridge (source_ref_hash; no candidate without a source ref)"
     },
     "candidate_review_events": {
       "table_family": "phase10_action_candidates_v41",
@@ -1845,7 +1845,7 @@
       "phase_owner": "10",
       "blocking_for_phase": "none",
       "v": "V41",
-      "notes": "Phase 10 local action intelligence — additive V41. candidate review audit trail (action/prior/new status; redacted note)"
+      "notes": "Phase 10 local action intelligence \u2014 additive V41. candidate review audit trail (action/prior/new status; redacted note)"
     },
     "accepted_tasks": {
       "table_family": "phase10_follow_up_v41",
@@ -1854,7 +1854,7 @@
       "phase_owner": "10",
       "blocking_for_phase": "none",
       "v": "V41",
-      "notes": "Phase 10 local action intelligence — additive V41. user-accepted tasks promoted from candidates"
+      "notes": "Phase 10 local action intelligence \u2014 additive V41. user-accepted tasks promoted from candidates"
     },
     "accepted_commitments": {
       "table_family": "phase10_follow_up_v41",
@@ -1863,7 +1863,7 @@
       "phase_owner": "10",
       "blocking_for_phase": "none",
       "v": "V41",
-      "notes": "Phase 10 local action intelligence — additive V41. user-accepted commitments promoted from candidates"
+      "notes": "Phase 10 local action intelligence \u2014 additive V41. user-accepted commitments promoted from candidates"
     },
     "follow_up_watch_items": {
       "table_family": "phase10_follow_up_v41",
@@ -1872,7 +1872,7 @@
       "phase_owner": "10",
       "blocking_for_phase": "none",
       "v": "V41",
-      "notes": "Phase 10 local action intelligence — additive V41. follow-up lifecycle watch (stale/possibly-resolved tracking)"
+      "notes": "Phase 10 local action intelligence \u2014 additive V41. follow-up lifecycle watch (stale/possibly-resolved tracking)"
     },
     "follow_up_status_events": {
       "table_family": "phase10_follow_up_v41",
@@ -1881,7 +1881,7 @@
       "phase_owner": "10",
       "blocking_for_phase": "none",
       "v": "V41",
-      "notes": "Phase 10 local action intelligence — additive V41. follow-up status transitions keyed by signal type"
+      "notes": "Phase 10 local action intelligence \u2014 additive V41. follow-up status transitions keyed by signal type"
     },
     "email_followup_enrichments": {
       "table_family": "phase10_email_followup_enrichment_v45",
@@ -1890,7 +1890,7 @@
       "phase_owner": "10",
       "blocking_for_phase": "none",
       "v": "V45",
-      "notes": "Phase 10 email follow-up raw enrichment — additive V45. Review-safe model-enriched follow-up metadata (structured/redacted fields + hashes + source refs) derived from a bounded, sanitized, NON-persisted local raw email window; carries the 13 guard columns (CHECK=0); no raw body/prompt/response/HTML/URL/token persisted"
+      "notes": "Phase 10 email follow-up raw enrichment \u2014 additive V45. Review-safe model-enriched follow-up metadata (structured/redacted fields + hashes + source refs) derived from a bounded, sanitized, NON-persisted local raw email window; carries the 13 guard columns (CHECK=0); no raw body/prompt/response/HTML/URL/token persisted"
     },
     "procore_endpoint_contracts": {
       "table_family": "procore_structured_analytics_foundation_v46",
@@ -1937,48 +1937,384 @@
       "v": "V46",
       "notes": "V46 governed Procore landing/current/history/hash/source-ref layer; raw landing alone is not the analytics acceptance gate."
     },
-    "procore_raw_rfis": {"table_family": "procore_structured_analytics_bronze_v46", "lifecycle_status": "placeholder_deferred", "expected_population_status": "empty", "phase_owner": "Procore Structured Analytics", "blocking_for_phase": "none", "v": "V46", "notes": "V46 structured bronze table for Procore RFI endpoint rows."},
-    "procore_raw_rfi_responses": {"table_family": "procore_structured_analytics_bronze_v46", "lifecycle_status": "placeholder_deferred", "expected_population_status": "empty", "phase_owner": "Procore Structured Analytics", "blocking_for_phase": "none", "v": "V46", "notes": "V46 structured bronze table for Procore RFI response rows."},
-    "procore_raw_submittals": {"table_family": "procore_structured_analytics_bronze_v46", "lifecycle_status": "placeholder_deferred", "expected_population_status": "empty", "phase_owner": "Procore Structured Analytics", "blocking_for_phase": "none", "v": "V46", "notes": "V46 structured bronze table for Procore submittal rows."},
-    "procore_raw_submittal_responses": {"table_family": "procore_structured_analytics_bronze_v46", "lifecycle_status": "placeholder_deferred", "expected_population_status": "empty", "phase_owner": "Procore Structured Analytics", "blocking_for_phase": "none", "v": "V46", "notes": "V46 structured bronze table for Procore submittal response rows."},
-    "procore_raw_submittal_packages": {"table_family": "procore_structured_analytics_bronze_v46", "lifecycle_status": "placeholder_deferred", "expected_population_status": "empty", "phase_owner": "Procore Structured Analytics", "blocking_for_phase": "none", "v": "V46", "notes": "V46 structured bronze table for Procore submittal package rows."},
-    "procore_raw_observations": {"table_family": "procore_structured_analytics_bronze_v46", "lifecycle_status": "placeholder_deferred", "expected_population_status": "empty", "phase_owner": "Procore Structured Analytics", "blocking_for_phase": "none", "v": "V46", "notes": "V46 structured bronze table for Procore observation rows."},
-    "procore_raw_punch_items": {"table_family": "procore_structured_analytics_bronze_v46", "lifecycle_status": "placeholder_deferred", "expected_population_status": "empty", "phase_owner": "Procore Structured Analytics", "blocking_for_phase": "none", "v": "V46", "notes": "V46 structured bronze table for Procore punch item rows."},
-    "procore_raw_meetings": {"table_family": "procore_structured_analytics_bronze_v46", "lifecycle_status": "placeholder_deferred", "expected_population_status": "empty", "phase_owner": "Procore Structured Analytics", "blocking_for_phase": "none", "v": "V46", "notes": "V46 structured bronze table for Procore meeting rows."},
-    "procore_raw_meeting_details": {"table_family": "procore_structured_analytics_bronze_v46", "lifecycle_status": "placeholder_deferred", "expected_population_status": "empty", "phase_owner": "Procore Structured Analytics", "blocking_for_phase": "none", "v": "V46", "notes": "V46 structured bronze table for Procore meeting detail rows."},
-    "procore_raw_meeting_topics": {"table_family": "procore_structured_analytics_bronze_v46", "lifecycle_status": "placeholder_deferred", "expected_population_status": "empty", "phase_owner": "Procore Structured Analytics", "blocking_for_phase": "none", "v": "V46", "notes": "V46 structured bronze table for Procore meeting topic rows."},
-    "procore_raw_daily_logs": {"table_family": "procore_structured_analytics_bronze_v46", "lifecycle_status": "placeholder_deferred", "expected_population_status": "empty", "phase_owner": "Procore Structured Analytics", "blocking_for_phase": "none", "v": "V46", "notes": "V46 structured bronze table for Procore daily log and subtype rows."},
-    "procore_raw_inspections": {"table_family": "procore_structured_analytics_bronze_v46", "lifecycle_status": "placeholder_deferred", "expected_population_status": "empty", "phase_owner": "Procore Structured Analytics", "blocking_for_phase": "none", "v": "V46", "notes": "V46 structured bronze table for Procore inspection rows."},
-    "procore_raw_inspection_sections": {"table_family": "procore_structured_analytics_bronze_v46", "lifecycle_status": "placeholder_deferred", "expected_population_status": "empty", "phase_owner": "Procore Structured Analytics", "blocking_for_phase": "none", "v": "V46", "notes": "V46 structured bronze table for Procore inspection section rows."},
-    "procore_raw_inspection_items": {"table_family": "procore_structured_analytics_bronze_v46", "lifecycle_status": "placeholder_deferred", "expected_population_status": "empty", "phase_owner": "Procore Structured Analytics", "blocking_for_phase": "none", "v": "V46", "notes": "V46 structured bronze table for Procore inspection item rows."},
-    "procore_raw_schedules": {"table_family": "procore_structured_analytics_bronze_v46", "lifecycle_status": "placeholder_deferred", "expected_population_status": "empty", "phase_owner": "Procore Structured Analytics", "blocking_for_phase": "none", "v": "V46", "notes": "V46 structured bronze table for Procore schedule rows."},
-    "procore_raw_schedule_activities": {"table_family": "procore_structured_analytics_bronze_v46", "lifecycle_status": "placeholder_deferred", "expected_population_status": "empty", "phase_owner": "Procore Structured Analytics", "blocking_for_phase": "none", "v": "V46", "notes": "V46 structured bronze table for Procore schedule activity rows."},
-    "procore_raw_contracts": {"table_family": "procore_structured_analytics_bronze_v46", "lifecycle_status": "placeholder_deferred", "expected_population_status": "empty", "phase_owner": "Procore Structured Analytics", "blocking_for_phase": "none", "v": "V46", "notes": "V46 structured bronze table for Procore contract and commitment rows."},
-    "procore_raw_contract_line_items": {"table_family": "procore_structured_analytics_bronze_v46", "lifecycle_status": "placeholder_deferred", "expected_population_status": "empty", "phase_owner": "Procore Structured Analytics", "blocking_for_phase": "none", "v": "V46", "notes": "V46 structured bronze table for Procore contract line item rows."},
-    "procore_raw_change_orders": {"table_family": "procore_structured_analytics_bronze_v46", "lifecycle_status": "placeholder_deferred", "expected_population_status": "empty", "phase_owner": "Procore Structured Analytics", "blocking_for_phase": "none", "v": "V46", "notes": "V46 structured bronze table for Procore change order rows."},
-    "procore_raw_change_order_line_items": {"table_family": "procore_structured_analytics_bronze_v46", "lifecycle_status": "placeholder_deferred", "expected_population_status": "empty", "phase_owner": "Procore Structured Analytics", "blocking_for_phase": "none", "v": "V46", "notes": "V46 structured bronze table for Procore change order line item rows."},
-    "procore_raw_billing_periods": {"table_family": "procore_structured_analytics_bronze_v46", "lifecycle_status": "placeholder_deferred", "expected_population_status": "empty", "phase_owner": "Procore Structured Analytics", "blocking_for_phase": "none", "v": "V46", "notes": "V46 structured bronze table for Procore billing period rows."},
-    "procore_raw_invoices": {"table_family": "procore_structured_analytics_bronze_v46", "lifecycle_status": "placeholder_deferred", "expected_population_status": "empty", "phase_owner": "Procore Structured Analytics", "blocking_for_phase": "none", "v": "V46", "notes": "V46 structured bronze table for Procore invoice rows."},
-    "procore_raw_invoice_items": {"table_family": "procore_structured_analytics_bronze_v46", "lifecycle_status": "placeholder_deferred", "expected_population_status": "empty", "phase_owner": "Procore Structured Analytics", "blocking_for_phase": "none", "v": "V46", "notes": "V46 structured bronze table for Procore invoice item rows."},
-    "procore_raw_payment_applications": {"table_family": "procore_structured_analytics_bronze_v46", "lifecycle_status": "placeholder_deferred", "expected_population_status": "empty", "phase_owner": "Procore Structured Analytics", "blocking_for_phase": "none", "v": "V46", "notes": "V46 structured bronze table for Procore payment application rows."},
-    "procore_raw_rfqs": {"table_family": "procore_structured_analytics_bronze_v46", "lifecycle_status": "placeholder_deferred", "expected_population_status": "empty", "phase_owner": "Procore Structured Analytics", "blocking_for_phase": "none", "v": "V46", "notes": "V46 structured bronze table for Procore RFQ rows."},
-    "procore_raw_rfq_responses": {"table_family": "procore_structured_analytics_bronze_v46", "lifecycle_status": "placeholder_deferred", "expected_population_status": "empty", "phase_owner": "Procore Structured Analytics", "blocking_for_phase": "none", "v": "V46", "notes": "V46 structured bronze table for Procore RFQ response rows."},
-    "procore_raw_change_events": {"table_family": "procore_structured_analytics_bronze_v46", "lifecycle_status": "placeholder_deferred", "expected_population_status": "empty", "phase_owner": "Procore Structured Analytics", "blocking_for_phase": "none", "v": "V46", "notes": "V46 structured bronze table for Procore change event rows."},
-    "procore_raw_change_event_comments": {"table_family": "procore_structured_analytics_bronze_v46", "lifecycle_status": "placeholder_deferred", "expected_population_status": "empty", "phase_owner": "Procore Structured Analytics", "blocking_for_phase": "none", "v": "V46", "notes": "V46 structured bronze table for Procore change event comment rows."},
-    "procore_raw_budget_views": {"table_family": "procore_structured_analytics_bronze_v46", "lifecycle_status": "placeholder_deferred", "expected_population_status": "empty", "phase_owner": "Procore Structured Analytics", "blocking_for_phase": "none", "v": "V46", "notes": "V46 structured bronze table for Procore budget view rows."},
-    "procore_raw_budget_columns": {"table_family": "procore_structured_analytics_bronze_v46", "lifecycle_status": "placeholder_deferred", "expected_population_status": "empty", "phase_owner": "Procore Structured Analytics", "blocking_for_phase": "none", "v": "V46", "notes": "V46 structured bronze table for Procore budget column rows."},
-    "procore_raw_budget_rows": {"table_family": "procore_structured_analytics_bronze_v46", "lifecycle_status": "placeholder_deferred", "expected_population_status": "empty", "phase_owner": "Procore Structured Analytics", "blocking_for_phase": "none", "v": "V46", "notes": "V46 structured bronze table for Procore budget row facts."},
-    "procore_raw_budget_changes": {"table_family": "procore_structured_analytics_bronze_v46", "lifecycle_status": "placeholder_deferred", "expected_population_status": "empty", "phase_owner": "Procore Structured Analytics", "blocking_for_phase": "none", "v": "V46", "notes": "V46 structured bronze table for Procore budget change rows."},
-    "procore_raw_budget_change_line_items": {"table_family": "procore_structured_analytics_bronze_v46", "lifecycle_status": "placeholder_deferred", "expected_population_status": "empty", "phase_owner": "Procore Structured Analytics", "blocking_for_phase": "none", "v": "V46", "notes": "V46 structured bronze table for Procore budget change line item rows."},
-    "procore_raw_budget_modifications": {"table_family": "procore_structured_analytics_bronze_v46", "lifecycle_status": "placeholder_deferred", "expected_population_status": "empty", "phase_owner": "Procore Structured Analytics", "blocking_for_phase": "none", "v": "V46", "notes": "V46 structured bronze table for Procore budget modification rows."},
-    "procore_raw_attachments": {"table_family": "procore_structured_analytics_bronze_v46", "lifecycle_status": "placeholder_deferred", "expected_population_status": "empty", "phase_owner": "Procore Structured Analytics", "blocking_for_phase": "none", "v": "V46", "notes": "V46 structured bronze table for Procore attachment metadata rows."},
-    "procore_raw_project_dimensions": {"table_family": "procore_structured_analytics_dimensions_v46", "lifecycle_status": "placeholder_deferred", "expected_population_status": "empty", "phase_owner": "Procore Structured Analytics", "blocking_for_phase": "none", "v": "V46", "notes": "V46 structured Procore project dimension."},
-    "procore_raw_company_dimensions": {"table_family": "procore_structured_analytics_dimensions_v46", "lifecycle_status": "placeholder_deferred", "expected_population_status": "empty", "phase_owner": "Procore Structured Analytics", "blocking_for_phase": "none", "v": "V46", "notes": "V46 structured Procore company dimension."},
-    "procore_raw_person_dimensions": {"table_family": "procore_structured_analytics_dimensions_v46", "lifecycle_status": "placeholder_deferred", "expected_population_status": "empty", "phase_owner": "Procore Structured Analytics", "blocking_for_phase": "none", "v": "V46", "notes": "V46 structured Procore person dimension."},
-    "procore_raw_cost_code_dimensions": {"table_family": "procore_structured_analytics_dimensions_v46", "lifecycle_status": "placeholder_deferred", "expected_population_status": "empty", "phase_owner": "Procore Structured Analytics", "blocking_for_phase": "none", "v": "V46", "notes": "V46 structured Procore cost-code dimension."},
-    "procore_raw_location_dimensions": {"table_family": "procore_structured_analytics_dimensions_v46", "lifecycle_status": "placeholder_deferred", "expected_population_status": "empty", "phase_owner": "Procore Structured Analytics", "blocking_for_phase": "none", "v": "V46", "notes": "V46 structured Procore location dimension."},
-    "procore_raw_status_dimensions": {"table_family": "procore_structured_analytics_dimensions_v46", "lifecycle_status": "placeholder_deferred", "expected_population_status": "empty", "phase_owner": "Procore Structured Analytics", "blocking_for_phase": "none", "v": "V46", "notes": "V46 structured Procore status dimension."},
-    "procore_raw_date_dimensions": {"table_family": "procore_structured_analytics_dimensions_v46", "lifecycle_status": "placeholder_deferred", "expected_population_status": "empty", "phase_owner": "Procore Structured Analytics", "blocking_for_phase": "none", "v": "V46", "notes": "V46 structured Procore date dimension."},
+    "procore_raw_rfis": {
+      "table_family": "procore_structured_analytics_bronze_v46",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V46",
+      "notes": "V46 structured bronze table for Procore RFI endpoint rows."
+    },
+    "procore_raw_rfi_responses": {
+      "table_family": "procore_structured_analytics_bronze_v46",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V46",
+      "notes": "V46 structured bronze table for Procore RFI response rows."
+    },
+    "procore_raw_submittals": {
+      "table_family": "procore_structured_analytics_bronze_v46",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V46",
+      "notes": "V46 structured bronze table for Procore submittal rows."
+    },
+    "procore_raw_submittal_responses": {
+      "table_family": "procore_structured_analytics_bronze_v46",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V46",
+      "notes": "V46 structured bronze table for Procore submittal response rows."
+    },
+    "procore_raw_submittal_packages": {
+      "table_family": "procore_structured_analytics_bronze_v46",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V46",
+      "notes": "V46 structured bronze table for Procore submittal package rows."
+    },
+    "procore_raw_observations": {
+      "table_family": "procore_structured_analytics_bronze_v46",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V46",
+      "notes": "V46 structured bronze table for Procore observation rows."
+    },
+    "procore_raw_punch_items": {
+      "table_family": "procore_structured_analytics_bronze_v46",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V46",
+      "notes": "V46 structured bronze table for Procore punch item rows."
+    },
+    "procore_raw_meetings": {
+      "table_family": "procore_structured_analytics_bronze_v46",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V46",
+      "notes": "V46 structured bronze table for Procore meeting rows."
+    },
+    "procore_raw_meeting_details": {
+      "table_family": "procore_structured_analytics_bronze_v46",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V46",
+      "notes": "V46 structured bronze table for Procore meeting detail rows."
+    },
+    "procore_raw_meeting_topics": {
+      "table_family": "procore_structured_analytics_bronze_v46",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V46",
+      "notes": "V46 structured bronze table for Procore meeting topic rows."
+    },
+    "procore_raw_daily_logs": {
+      "table_family": "procore_structured_analytics_bronze_v46",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V46",
+      "notes": "V46 structured bronze table for Procore daily log and subtype rows."
+    },
+    "procore_raw_inspections": {
+      "table_family": "procore_structured_analytics_bronze_v46",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V46",
+      "notes": "V46 structured bronze table for Procore inspection rows."
+    },
+    "procore_raw_inspection_sections": {
+      "table_family": "procore_structured_analytics_bronze_v46",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V46",
+      "notes": "V46 structured bronze table for Procore inspection section rows."
+    },
+    "procore_raw_inspection_items": {
+      "table_family": "procore_structured_analytics_bronze_v46",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V46",
+      "notes": "V46 structured bronze table for Procore inspection item rows."
+    },
+    "procore_raw_schedules": {
+      "table_family": "procore_structured_analytics_bronze_v46",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V46",
+      "notes": "V46 structured bronze table for Procore schedule rows."
+    },
+    "procore_raw_schedule_activities": {
+      "table_family": "procore_structured_analytics_bronze_v46",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V46",
+      "notes": "V46 structured bronze table for Procore schedule activity rows."
+    },
+    "procore_raw_contracts": {
+      "table_family": "procore_structured_analytics_bronze_v46",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V46",
+      "notes": "V46 structured bronze table for Procore contract and commitment rows."
+    },
+    "procore_raw_contract_line_items": {
+      "table_family": "procore_structured_analytics_bronze_v46",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V46",
+      "notes": "V46 structured bronze table for Procore contract line item rows."
+    },
+    "procore_raw_change_orders": {
+      "table_family": "procore_structured_analytics_bronze_v46",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V46",
+      "notes": "V46 structured bronze table for Procore change order rows."
+    },
+    "procore_raw_change_order_line_items": {
+      "table_family": "procore_structured_analytics_bronze_v46",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V46",
+      "notes": "V46 structured bronze table for Procore change order line item rows."
+    },
+    "procore_raw_billing_periods": {
+      "table_family": "procore_structured_analytics_bronze_v46",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V46",
+      "notes": "V46 structured bronze table for Procore billing period rows."
+    },
+    "procore_raw_invoices": {
+      "table_family": "procore_structured_analytics_bronze_v46",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V46",
+      "notes": "V46 structured bronze table for Procore invoice rows."
+    },
+    "procore_raw_invoice_items": {
+      "table_family": "procore_structured_analytics_bronze_v46",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V46",
+      "notes": "V46 structured bronze table for Procore invoice item rows."
+    },
+    "procore_raw_payment_applications": {
+      "table_family": "procore_structured_analytics_bronze_v46",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V46",
+      "notes": "V46 structured bronze table for Procore payment application rows."
+    },
+    "procore_raw_rfqs": {
+      "table_family": "procore_structured_analytics_bronze_v46",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V46",
+      "notes": "V46 structured bronze table for Procore RFQ rows."
+    },
+    "procore_raw_rfq_responses": {
+      "table_family": "procore_structured_analytics_bronze_v46",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V46",
+      "notes": "V46 structured bronze table for Procore RFQ response rows."
+    },
+    "procore_raw_change_events": {
+      "table_family": "procore_structured_analytics_bronze_v46",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V46",
+      "notes": "V46 structured bronze table for Procore change event rows."
+    },
+    "procore_raw_change_event_comments": {
+      "table_family": "procore_structured_analytics_bronze_v46",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V46",
+      "notes": "V46 structured bronze table for Procore change event comment rows."
+    },
+    "procore_raw_budget_views": {
+      "table_family": "procore_structured_analytics_bronze_v46",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V46",
+      "notes": "V46 structured bronze table for Procore budget view rows."
+    },
+    "procore_raw_budget_columns": {
+      "table_family": "procore_structured_analytics_bronze_v46",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V46",
+      "notes": "V46 structured bronze table for Procore budget column rows."
+    },
+    "procore_raw_budget_rows": {
+      "table_family": "procore_structured_analytics_bronze_v46",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V46",
+      "notes": "V46 structured bronze table for Procore budget row facts."
+    },
+    "procore_raw_budget_changes": {
+      "table_family": "procore_structured_analytics_bronze_v46",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V46",
+      "notes": "V46 structured bronze table for Procore budget change rows."
+    },
+    "procore_raw_budget_change_line_items": {
+      "table_family": "procore_structured_analytics_bronze_v46",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V46",
+      "notes": "V46 structured bronze table for Procore budget change line item rows."
+    },
+    "procore_raw_budget_modifications": {
+      "table_family": "procore_structured_analytics_bronze_v46",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V46",
+      "notes": "V46 structured bronze table for Procore budget modification rows."
+    },
+    "procore_raw_attachments": {
+      "table_family": "procore_structured_analytics_bronze_v46",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V46",
+      "notes": "V46 structured bronze table for Procore attachment metadata rows."
+    },
+    "procore_raw_project_dimensions": {
+      "table_family": "procore_structured_analytics_dimensions_v46",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V46",
+      "notes": "V46 structured Procore project dimension."
+    },
+    "procore_raw_company_dimensions": {
+      "table_family": "procore_structured_analytics_dimensions_v46",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V46",
+      "notes": "V46 structured Procore company dimension."
+    },
+    "procore_raw_person_dimensions": {
+      "table_family": "procore_structured_analytics_dimensions_v46",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V46",
+      "notes": "V46 structured Procore person dimension."
+    },
+    "procore_raw_cost_code_dimensions": {
+      "table_family": "procore_structured_analytics_dimensions_v46",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V46",
+      "notes": "V46 structured Procore cost-code dimension."
+    },
+    "procore_raw_location_dimensions": {
+      "table_family": "procore_structured_analytics_dimensions_v46",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V46",
+      "notes": "V46 structured Procore location dimension."
+    },
+    "procore_raw_status_dimensions": {
+      "table_family": "procore_structured_analytics_dimensions_v46",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V46",
+      "notes": "V46 structured Procore status dimension."
+    },
+    "procore_raw_date_dimensions": {
+      "table_family": "procore_structured_analytics_dimensions_v46",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V46",
+      "notes": "V46 structured Procore date dimension."
+    },
     "phase10_relationship_candidates": {
       "table_family": "phase10_relationships_v41",
       "lifecycle_status": "placeholder_deferred",
@@ -1986,7 +2322,7 @@
       "phase_owner": "10",
       "blocking_for_phase": "none",
       "v": "V41",
-      "notes": "Phase 10 local action intelligence — additive V41. cross-source relationship candidates (deterministic/model-proposed; review_status)"
+      "notes": "Phase 10 local action intelligence \u2014 additive V41. cross-source relationship candidates (deterministic/model-proposed; review_status)"
     },
     "daily_brief_action_candidates": {
       "table_family": "phase10_daily_brief_v41",
@@ -1995,7 +2331,7 @@
       "phase_owner": "10",
       "blocking_for_phase": "none",
       "v": "V41",
-      "notes": "Phase 10 local action intelligence — additive V41. action-focused daily-brief candidates by section (advisory)"
+      "notes": "Phase 10 local action intelligence \u2014 additive V41. action-focused daily-brief candidates by section (advisory)"
     },
     "obsidian_note_index": {
       "table_family": "phase10_obsidian_v41",
@@ -2004,7 +2340,7 @@
       "phase_owner": "10",
       "blocking_for_phase": "none",
       "v": "V41",
-      "notes": "Phase 10 local action intelligence — additive V41. Obsidian vault note index (vault_profile + path hash; redacted path)"
+      "notes": "Phase 10 local action intelligence \u2014 additive V41. Obsidian vault note index (vault_profile + path hash; redacted path)"
     },
     "obsidian_note_tag_index": {
       "table_family": "phase10_obsidian_v41",
@@ -2013,7 +2349,7 @@
       "phase_owner": "10",
       "blocking_for_phase": "none",
       "v": "V41",
-      "notes": "Phase 10 local action intelligence — additive V41. tags per indexed Obsidian note"
+      "notes": "Phase 10 local action intelligence \u2014 additive V41. tags per indexed Obsidian note"
     },
     "obsidian_managed_section_registry": {
       "table_family": "phase10_obsidian_v41",
@@ -2022,7 +2358,7 @@
       "phase_owner": "10",
       "blocking_for_phase": "none",
       "v": "V41",
-      "notes": "Phase 10 local action intelligence — additive V41. HB-managed marker sections per note (marker-bounded writes only)"
+      "notes": "Phase 10 local action intelligence \u2014 additive V41. HB-managed marker sections per note (marker-bounded writes only)"
     },
     "obsidian_note_update_receipts": {
       "table_family": "phase10_obsidian_v41",
@@ -2031,7 +2367,7 @@
       "phase_owner": "10",
       "blocking_for_phase": "none",
       "v": "V41",
-      "notes": "Phase 10 local action intelligence — additive V41. Obsidian write audit; changed_outside_managed_section guard = 0; mode dry_run/apply"
+      "notes": "Phase 10 local action intelligence \u2014 additive V41. Obsidian write audit; changed_outside_managed_section guard = 0; mode dry_run/apply"
     },
     "claude_context_packets": {
       "table_family": "phase10_mcp_packets_v41",
@@ -2040,7 +2376,7 @@
       "phase_owner": "10",
       "blocking_for_phase": "none",
       "v": "V41",
-      "notes": "Phase 10 local action intelligence — additive V41. Claude/MCP context packet metadata (packet hash; redacted output path)"
+      "notes": "Phase 10 local action intelligence \u2014 additive V41. Claude/MCP context packet metadata (packet hash; redacted output path)"
     },
     "claude_context_packet_items": {
       "table_family": "phase10_mcp_packets_v41",
@@ -2049,7 +2385,7 @@
       "phase_owner": "10",
       "blocking_for_phase": "none",
       "v": "V41",
-      "notes": "Phase 10 local action intelligence — additive V41. Claude/MCP packet items (source_ref_hash; review_required)"
+      "notes": "Phase 10 local action intelligence \u2014 additive V41. Claude/MCP packet items (source_ref_hash; review_required)"
     },
     "raw_content_policy_state": {
       "table_family": "phase10a_raw_content_v42",
@@ -2058,7 +2394,7 @@
       "phase_owner": "10A",
       "blocking_for_phase": "none",
       "v": "V42",
-      "notes": "Phase 10A raw content enabled local intelligence — additive V42. active raw-content policy state snapshot (one row per environment)"
+      "notes": "Phase 10A raw content enabled local intelligence \u2014 additive V42. active raw-content policy state snapshot (one row per environment)"
     },
     "email_message_raw_content": {
       "table_family": "phase10a_raw_content_v42",
@@ -2067,7 +2403,7 @@
       "phase_owner": "10A",
       "blocking_for_phase": "none",
       "v": "V42",
-      "notes": "Phase 10A raw content enabled local intelligence — additive V42. authorized raw email message holder (Phase 10A; redaction exempt by policy)"
+      "notes": "Phase 10A raw content enabled local intelligence \u2014 additive V42. authorized raw email message holder (Phase 10A; redaction exempt by policy)"
     },
     "email_thread_raw_context": {
       "table_family": "phase10a_raw_content_v42",
@@ -2076,7 +2412,7 @@
       "phase_owner": "10A",
       "blocking_for_phase": "none",
       "v": "V42",
-      "notes": "Phase 10A raw content enabled local intelligence — additive V42. authorized raw email thread context holder (Phase 10A)"
+      "notes": "Phase 10A raw content enabled local intelligence \u2014 additive V42. authorized raw email thread context holder (Phase 10A)"
     },
     "calendar_event_raw_content": {
       "table_family": "phase10a_raw_content_v42",
@@ -2085,7 +2421,7 @@
       "phase_owner": "10A",
       "blocking_for_phase": "none",
       "v": "V42",
-      "notes": "Phase 10A raw content enabled local intelligence — additive V42. authorized raw calendar event holder (Phase 10A)"
+      "notes": "Phase 10A raw content enabled local intelligence \u2014 additive V42. authorized raw calendar event holder (Phase 10A)"
     },
     "raw_content_model_context_packets": {
       "table_family": "phase10a_raw_content_v42",
@@ -2094,7 +2430,7 @@
       "phase_owner": "10A",
       "blocking_for_phase": "none",
       "v": "V42",
-      "notes": "Phase 10A raw content enabled local intelligence — additive V42. raw-content model context packet metadata (Phase 10A)"
+      "notes": "Phase 10A raw content enabled local intelligence \u2014 additive V42. raw-content model context packet metadata (Phase 10A)"
     },
     "raw_content_access_events": {
       "table_family": "phase10a_raw_content_v42",
@@ -2103,7 +2439,709 @@
       "phase_owner": "10A",
       "blocking_for_phase": "none",
       "v": "V42",
-      "notes": "Phase 10A raw content enabled local intelligence — additive V42. raw-content access audit events (Phase 10A)"
+      "notes": "Phase 10A raw content enabled local intelligence \u2014 additive V42. raw-content access audit events (Phase 10A)"
+    },
+    "procore_ep_billing_periods": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection primary table for the 'billing-periods' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_budget_change_history": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection primary table for the 'budget-change-history' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_budget_modifications": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection primary table for the 'budget-modifications' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_budget_views": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection primary table for the 'budget-views' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_change_events": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection primary table for the 'change-events' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_change_events_attachments": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection child/detail table for the 'change-events' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_change_events_change_items": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection child/detail table for the 'change-events' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_change_events_change_items_budget_code_seg_2dff22": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection child/detail table for the 'change-events' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_change_events_markup_items": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection child/detail table for the 'change-events' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_change_events_markup_items_wbs_code_segment_items": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection child/detail table for the 'change-events' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_commitment_attachments": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection primary table for the 'commitment-attachments' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_commitment_change_orders": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection primary table for the 'commitment-change-orders' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_commitment_compliance": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection primary table for the 'commitment-compliance' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_commitment_compliance_insurance_documents": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection child/detail table for the 'commitment-compliance' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_commitment_compliance_insurance_documents__52b7bf": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection child/detail table for the 'commitment-compliance' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_commitment_contracts": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection primary table for the 'commitment-contracts' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_commitment_line_items": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection primary table for the 'commitment-line-items' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_daily_log_dcrs": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection primary table for the 'daily-log-dcrs' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_daily_log_dcrs_attachments": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection child/detail table for the 'daily-log-dcrs' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_daily_log_deliveries": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection primary table for the 'daily-log-deliveries' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_daily_log_deliveries_attachments": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection child/detail table for the 'daily-log-deliveries' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_daily_log_inspections": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection primary table for the 'daily-log-inspections' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_daily_log_inspections_attachments": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection child/detail table for the 'daily-log-inspections' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_daily_log_manpower": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection primary table for the 'daily-log-manpower' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_daily_log_manpower_attachments": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection child/detail table for the 'daily-log-manpower' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_daily_log_notes": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection primary table for the 'daily-log-notes' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_daily_log_notes_attachments": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection child/detail table for the 'daily-log-notes' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_daily_log_visitor": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection primary table for the 'daily-log-visitor' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_daily_log_weather": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection primary table for the 'daily-log-weather' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_inspection_items": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection primary table for the 'inspection-items' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_inspection_items_response_set_responses": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection child/detail table for the 'inspection-items' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_inspection_sections": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection primary table for the 'inspection-sections' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_inspections": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection primary table for the 'inspections' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_inspections_attachments": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection child/detail table for the 'inspections' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_inspections_distribution_members": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection child/detail table for the 'inspections' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_inspections_inspectors": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection child/detail table for the 'inspections' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_inspections_signature_requests": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection child/detail table for the 'inspections' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_meetings": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection primary table for the 'meetings' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_observations": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection primary table for the 'observations' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_observations_assignees": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection child/detail table for the 'observations' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_prime_change_order_line_items": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection primary table for the 'prime-change-order-line-items' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_prime_change_orders": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection primary table for the 'prime-change-orders' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_prime_contract_line_items": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection primary table for the 'prime-contract-line-items' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_prime_contracts": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection primary table for the 'prime-contracts' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_punch_items": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection primary table for the 'punch-items' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_punch_items_assignees": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection child/detail table for the 'punch-items' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_punch_items_assignments": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection child/detail table for the 'punch-items' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_punch_items_ball_in_court": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection child/detail table for the 'punch-items' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_purchase_order_contracts": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection primary table for the 'purchase-order-contracts' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_purchase_order_contracts_custom_fields_cus_a0fe65": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection child/detail table for the 'purchase-order-contracts' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_purchase_order_line_items": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection primary table for the 'purchase-order-line-items' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_purchase_order_line_items_cost_code_line_i_779dbd": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection child/detail table for the 'purchase-order-line-items' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_rfis": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection primary table for the 'rfis' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_rfis_assignees": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection child/detail table for the 'rfis' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_rfis_ball_in_courts": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection child/detail table for the 'rfis' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_rfis_questions": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection child/detail table for the 'rfis' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_rfqs": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection primary table for the 'rfqs' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_rfqs_attachments": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection child/detail table for the 'rfqs' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_rfqs_change_event_attachments": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection child/detail table for the 'rfqs' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_rfqs_change_event_change_event_line_items": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection child/detail table for the 'rfqs' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_rfqs_change_event_change_event_line_items__0a3e8d": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection child/detail table for the 'rfqs' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_schedules": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection primary table for the 'schedules' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_subcontractor_invoice_change_order_items": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection primary table for the 'subcontractor-invoice-change-order-items' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_subcontractor_invoice_contract_detail_items": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection primary table for the 'subcontractor-invoice-contract-detail-items' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_subcontractor_invoices": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection primary table for the 'subcontractor-invoices' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_subcontractor_invoices_attachments": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection child/detail table for the 'subcontractor-invoices' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_submittals": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection primary table for the 'submittals' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_submittals_approvers": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection child/detail table for the 'submittals' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_submittals_approvers_attachments": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection child/detail table for the 'submittals' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_submittals_ball_in_court": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection child/detail table for the 'submittals' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_projects": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection primary table for the 'projects' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_projects_custom_fields_custom_field_163287_value": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection child/detail table for the 'projects' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_projects_custom_fields_custom_field_163290_value": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection child/detail table for the 'projects' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_projects_custom_fields_custom_field_163293_value": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection child/detail table for the 'projects' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_projects_custom_fields_custom_field_163296_value": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection child/detail table for the 'projects' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_projects_custom_fields_custom_field_163299_value": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection child/detail table for the 'projects' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_projects_custom_fields_custom_field_163302_value": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection child/detail table for the 'projects' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "procore_ep_projects_custom_fields_custom_field_163305_value": {
+      "table_family": "procore_endpoint_specific_projection_v47",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V47",
+      "notes": "V47 endpoint-specific structured projection child/detail table for the 'projects' endpoint; populated by registry-driven projection replay from full raw payloads."
     }
   }
 }

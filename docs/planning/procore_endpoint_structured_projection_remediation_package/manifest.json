@@ -1,0 +1,15 @@
+{
+  "package": "procore_endpoint_structured_projection_remediation_package",
+  "version": "1.0.0",
+  "created_for": "RMF112018/hb-personal-assistant",
+  "objective": "Audit and remediate all Procore endpoint structured projections so all primary and nested fields from full raw payloads are projected into useful raw/structured content tables.",
+  "branch": "fix/procore-endpoint-specific-structured-projections",
+  "entrypoint": "docs/planning/procore_endpoint_structured_projection_remediation_package/README.md",
+  "trigger_prompt": "docs/planning/procore_endpoint_structured_projection_remediation_package/TRIGGER_PROMPT.md",
+  "non_negotiable_completion_gate": "No endpoint/table is complete until every primary and nested field observed in full raw payloads is projected into an endpoint-specific table, child table, dimension table, or documented lossless JSON sidecar; unmapped business-field count must be zero.",
+  "source_findings": [
+    "PR #18 made full raw Procore payloads available in procore_endpoint_raw_payloads.",
+    "Change-events proof showed live_full_payload rows exist but many structured columns remain empty.",
+    "Nested change-event payloads contain change_items, attachments, markup_items, production_quantities, custom_fields, company_id, project_id, change_type, change_reason, scope, and other business fields not captured by the generic procore_raw_change_events table."
+  ]
+}

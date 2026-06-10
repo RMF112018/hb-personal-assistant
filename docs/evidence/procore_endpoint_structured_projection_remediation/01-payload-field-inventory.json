@@ -1,0 +1,192 @@
+{
+  "endpoint_count": 37,
+  "total_distinct_paths": 2439,
+  "total_array_paths": 84,
+  "endpoints": [
+    {
+      "endpoint_id": "billing-periods",
+      "distinct_paths": 10,
+      "array_paths": 0
+    },
+    {
+      "endpoint_id": "budget-change-history",
+      "distinct_paths": 9,
+      "array_paths": 0
+    },
+    {
+      "endpoint_id": "budget-modifications",
+      "distinct_paths": 10,
+      "array_paths": 0
+    },
+    {
+      "endpoint_id": "budget-views",
+      "distinct_paths": 14,
+      "array_paths": 0
+    },
+    {
+      "endpoint_id": "change-events",
+      "distinct_paths": 250,
+      "array_paths": 11
+    },
+    {
+      "endpoint_id": "commitment-attachments",
+      "distinct_paths": 6,
+      "array_paths": 0
+    },
+    {
+      "endpoint_id": "commitment-change-orders",
+      "distinct_paths": 49,
+      "array_paths": 0
+    },
+    {
+      "endpoint_id": "commitment-compliance",
+      "distinct_paths": 28,
+      "array_paths": 5
+    },
+    {
+      "endpoint_id": "commitment-contracts",
+      "distinct_paths": 54,
+      "array_paths": 0
+    },
+    {
+      "endpoint_id": "commitment-line-items",
+      "distinct_paths": 17,
+      "array_paths": 0
+    },
+    {
+      "endpoint_id": "daily-log-dcrs",
+      "distinct_paths": 53,
+      "array_paths": 2
+    },
+    {
+      "endpoint_id": "daily-log-deliveries",
+      "distinct_paths": 37,
+      "array_paths": 2
+    },
+    {
+      "endpoint_id": "daily-log-inspections",
+      "distinct_paths": 46,
+      "array_paths": 2
+    },
+    {
+      "endpoint_id": "daily-log-manpower",
+      "distinct_paths": 60,
+      "array_paths": 2
+    },
+    {
+      "endpoint_id": "daily-log-notes",
+      "distinct_paths": 40,
+      "array_paths": 2
+    },
+    {
+      "endpoint_id": "daily-log-visitor",
+      "distinct_paths": 28,
+      "array_paths": 2
+    },
+    {
+      "endpoint_id": "daily-log-weather",
+      "distinct_paths": 32,
+      "array_paths": 1
+    },
+    {
+      "endpoint_id": "inspection-items",
+      "distinct_paths": 69,
+      "array_paths": 8
+    },
+    {
+      "endpoint_id": "inspection-sections",
+      "distinct_paths": 6,
+      "array_paths": 0
+    },
+    {
+      "endpoint_id": "inspections",
+      "distinct_paths": 126,
+      "array_paths": 7
+    },
+    {
+      "endpoint_id": "meetings",
+      "distinct_paths": 23,
+      "array_paths": 0
+    },
+    {
+      "endpoint_id": "observations",
+      "distinct_paths": 79,
+      "array_paths": 1
+    },
+    {
+      "endpoint_id": "prime-change-order-line-items",
+      "distinct_paths": 16,
+      "array_paths": 0
+    },
+    {
+      "endpoint_id": "prime-change-orders",
+      "distinct_paths": 47,
+      "array_paths": 0
+    },
+    {
+      "endpoint_id": "prime-contract-line-items",
+      "distinct_paths": 13,
+      "array_paths": 0
+    },
+    {
+      "endpoint_id": "prime-contracts",
+      "distinct_paths": 132,
+      "array_paths": 5
+    },
+    {
+      "endpoint_id": "projects",
+      "distinct_paths": 145,
+      "array_paths": 7
+    },
+    {
+      "endpoint_id": "punch-items",
+      "distinct_paths": 101,
+      "array_paths": 4
+    },
+    {
+      "endpoint_id": "purchase-order-contracts",
+      "distinct_paths": 214,
+      "array_paths": 4
+    },
+    {
+      "endpoint_id": "purchase-order-line-items",
+      "distinct_paths": 62,
+      "array_paths": 1
+    },
+    {
+      "endpoint_id": "rfis",
+      "distinct_paths": 101,
+      "array_paths": 3
+    },
+    {
+      "endpoint_id": "rfqs",
+      "distinct_paths": 256,
+      "array_paths": 7
+    },
+    {
+      "endpoint_id": "schedules",
+      "distinct_paths": 17,
+      "array_paths": 0
+    },
+    {
+      "endpoint_id": "subcontractor-invoice-change-order-items",
+      "distinct_paths": 35,
+      "array_paths": 0
+    },
+    {
+      "endpoint_id": "subcontractor-invoice-contract-detail-items",
+      "distinct_paths": 32,
+      "array_paths": 0
+    },
+    {
+      "endpoint_id": "subcontractor-invoices",
+      "distinct_paths": 78,
+      "array_paths": 1
+    },
+    {
+      "endpoint_id": "submittals",
+      "distinct_paths": 144,
+      "array_paths": 7
+    }
+  ]
+}

@@ -1,0 +1,2 @@
+endpoint_key,endpoint_family,json_path,observed_type,cardinality,occurrence_count,non_null_count,empty_count,business_category,destination_kind,destination_table,destination_column,child_table_parent_key,extraction_strategy,exclusion_reason,status
+change-events,change_management,$.change_items[].cost_impact.commitment.line_item.amount,string,array_child,0,0,0,money,child_table_column,procore_change_event_items,commitment_line_item_amount,change_event_id,extract_nested_string,,mapped

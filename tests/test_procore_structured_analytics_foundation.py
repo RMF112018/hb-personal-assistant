@@ -105,7 +105,10 @@ def test_v46_migration_creates_raw_landing_and_structured_tables(tmp_path: Path)
     }
     assert required <= tables
     version = conn.execute("SELECT max(version) FROM schema_migrations").fetchone()[0]
-    assert version == LATEST_SCHEMA_VERSION == 46
+    # V46 introduced these tables; the head advances additively (V47 adds endpoint-specific
+    # projection tables without altering the V46 set asserted above).
+    assert version == LATEST_SCHEMA_VERSION
+    assert LATEST_SCHEMA_VERSION >= 46
     conn.close()
 
 
