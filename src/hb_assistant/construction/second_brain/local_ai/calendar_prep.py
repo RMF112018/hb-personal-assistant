@@ -239,6 +239,9 @@ def build_calendar_prep_candidates(
         prep_excerpt = _safe_excerpt(str(pkt_event.get("body_text") or ""))
         has_join = bool(packet.get("has_join_url"))
 
+        source_refs: list[dict[str, Any]] = [
+            {"source_family": "calendar_event_raw_content", "source_ref": source_ref}
+        ]
         title = str(ev.get("subject_redacted") or "").strip() or "Meeting prep"
         location_redacted = ev.get("location_redacted")
         domains = ev.get("participant_domains") or []
@@ -298,9 +301,7 @@ def build_calendar_prep_candidates(
             "priority": priority,
             "reason_redacted": reason,
             "prep_excerpt": prep_excerpt,
-            "source_refs": [
-                {"source_family": "calendar_event_raw_content", "source_ref": source_ref}
-            ],
+            "source_refs": source_refs,
         }
         event_views.append(view)
 
@@ -322,7 +323,7 @@ def build_calendar_prep_candidates(
             reason_redacted=reason,
             recommended_next_action="review",
             group_key=source_ref,
-            source_refs=view["source_refs"],
+            source_refs=source_refs,
         )
         if receipt.inserted:
             summary["persisted"] += 1

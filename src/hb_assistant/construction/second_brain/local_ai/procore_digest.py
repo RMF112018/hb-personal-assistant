@@ -220,18 +220,12 @@ def build_procore_action_digest(
     for r in suppressed:
         key = (r.project_key, r.signal_type, r.suppression_reason or "suppressed")
         backlog[key] = backlog.get(key, 0) + 1
-    suppressed_backlog = sorted(
-        (
-            {
-                "project_key": p,
-                "signal_type": stype,
-                "suppression_reason": reason,
-                "count": cnt,
-            }
-            for (p, stype, reason), cnt in backlog.items()
-        ),
-        key=lambda d: (-int(d["count"]), str(d["project_key"]), str(d["signal_type"])),
-    )
+    suppressed_backlog: list[dict[str, Any]] = [
+        {"project_key": p, "signal_type": stype, "suppression_reason": reason, "count": cnt}
+        for (p, stype, reason), cnt in sorted(
+            backlog.items(), key=lambda kv: (-kv[1], kv[0][0], kv[0][1])
+        )
+    ]
 
     # Executive selection: top-ranked PROMOTED signals (capped by --limit); --max-persist still caps writes.
     executive = promoted[: max(0, limit)]
