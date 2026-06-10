@@ -1,0 +1,25 @@
+{
+  "format": ".xlsx",
+  "read_model": {
+    "source_id": "file:f92e7414c873edfc",
+    "file_name": "budget.xlsx",
+    "extension": ".xlsx",
+    "mime_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "source_refs": [],
+    "redaction": {
+      "raw_text_excerpt_excluded": true,
+      "hash_only": true,
+      "local_only": true,
+      "no_model": true
+    },
+    "parsed_status": "parsed",
+    "extraction_method": "openpyxl",
+    "text_length": 328,
+    "text_hash": "sha256:e0b46af56902ce3c6571204a361e22a2791f5bf8df93e8c90b5f50a90e90100c",
+    "counts": {
+      "sheet_count": 1
+    },
+    "degraded_reason": null
+  },
+  "method": "openpyxl"
+}

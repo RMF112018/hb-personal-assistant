@@ -157,6 +157,196 @@ def classify_watch_status(
     }
 
 
+# Operator-action groups for the follow-up watch report (what Bobby does with each item).
+ACTION_NEEDS_BOBBY = "needs_bobby_action"
+ACTION_WAITING_OTHERS = "waiting_on_others"
+ACTION_STALE_NO_RESPONSE = "stale_no_response"
+ACTION_MONITOR_ONLY = "monitor_only"
+ACTION_CLOSED_RESOLVED = "closed_resolved"
+ACTION_NEEDS_REVIEW = "needs_review"
+
+_OPERATOR_ACTIONS: tuple[str, ...] = (
+    ACTION_NEEDS_BOBBY,
+    ACTION_WAITING_OTHERS,
+    ACTION_STALE_NO_RESPONSE,
+    ACTION_MONITOR_ONLY,
+    ACTION_CLOSED_RESOLVED,
+    ACTION_NEEDS_REVIEW,
+)
+
+
+def watch_quality_flags(
+    *,
+    status: Optional[str],
+    waiting_state: Optional[str],
+    completed_utc: Optional[str],
+    has_source_ref: bool,
+) -> list[str]:
+    """Deterministic quality gates for a watch item (advisory; drive the needs-review bucket).
+
+    - ``insufficient_evidence``: no source ref → cannot be presented/persisted as actionable.
+    - ``contradictory``: a terminal status alongside an explicit active waiting_state with no
+      completion timestamp (marked done yet still flagged waiting) → needs a human glance.
+    """
+    flags: list[str] = []
+    if not has_source_ref:
+        flags.append("insufficient_evidence")
+    norm_status = (status or "").strip().lower()
+    waiting = (waiting_state or "").strip().lower()
+    if (
+        norm_status in _TERMINAL_STATUSES
+        and waiting in ("waiting_on_me", "waiting_on_others")
+        and not completed_utc
+    ):
+        flags.append("contradictory")
+    return flags
+
+
+def operator_action_for(watch_status: str, quality_flags: list[str]) -> str:
+    """Map a watch status + quality flags to the operator-action group."""
+    if quality_flags:
+        return ACTION_NEEDS_REVIEW
+    if watch_status == WATCH_WAITING_ON_ME:
+        return ACTION_NEEDS_BOBBY
+    if watch_status == WATCH_WAITING_ON_OTHERS:
+        return ACTION_WAITING_OTHERS
+    if watch_status == WATCH_STALE:
+        return ACTION_STALE_NO_RESPONSE
+    if watch_status == WATCH_CLOSED:
+        return ACTION_CLOSED_RESOLVED
+    return ACTION_MONITOR_ONLY  # open / possibly_resolved
+
+
+def build_follow_up_watch_report(
+    *,
+    store: Any,
+    now_utc: str,
+    limit: int = 500,
+    stale_after_days: int = _DEFAULT_STALE_AFTER_DAYS,
+) -> dict[str, Any]:
+    """Build a review-safe follow-up watch report grouped by operator action (deterministic).
+
+    Read-only: classifies each accepted task/commitment, applies the deterministic quality gates,
+    and buckets it into one operator-action group. No model is used (so a missing local model never
+    affects this surface), no raw content moves — only redacted titles, ids, watch status,
+    reason/quality codes, and staleness metadata. ``stale_after_days`` is the explicit, configurable
+    stale threshold.
+    """
+    groups: dict[str, list[dict[str, Any]]] = {a: [] for a in _OPERATOR_ACTIONS}
+    units: list[tuple[str, dict[str, Any]]] = [("task", r) for r in store.list_accepted_tasks(limit=limit)]
+    units += [("commitment", r) for r in store.list_accepted_commitments(limit=limit)]
+
+    for kind, row in units:
+        accepted_id = str(
+            row.get("accepted_task_id") if kind == "task" else row.get("accepted_commitment_id")
+        )
+        candidate_id = str(row.get("candidate_id") or "")
+        cls = classify_watch_status(
+            waiting_state=row.get("waiting_state"),
+            status=row.get("status"),
+            due_at_utc=row.get("due_at_utc"),
+            accepted_utc=row.get("accepted_utc"),
+            completed_utc=row.get("completed_utc"),
+            now_utc=now_utc,
+            stale_after_days=stale_after_days,
+        )
+        has_src = _first_source_ref(store, candidate_id=candidate_id, candidate_type=kind) is not None
+        quality = watch_quality_flags(
+            status=row.get("status"),
+            waiting_state=row.get("waiting_state"),
+            completed_utc=row.get("completed_utc"),
+            has_source_ref=has_src,
+        )
+        action = operator_action_for(cls["watch_status"], quality)
+        groups[action].append(
+            {
+                "kind": kind,
+                "accepted_id": accepted_id,
+                "watch_item_id": f"watch:{accepted_id}",
+                "title_redacted": row.get("title_redacted"),
+                "project_key": row.get("project_key"),
+                "watch_status": cls["watch_status"],
+                "reason_codes": cls["reason_codes"],
+                "quality_flags": quality,
+                "has_source_ref": has_src,
+                "persistable_as_actionable": has_src and not quality,
+                "due_at_utc": row.get("due_at_utc"),
+                "stale_after_utc": cls["stale_after_utc"],
+                "next_check_utc": cls["next_check_utc"],
+            }
+        )
+
+    counts = {a: len(v) for a, v in groups.items()}
+    counts["total"] = sum(counts.values())
+    return {
+        "command": "second-brain follow-up-watch report",
+        "ok": True,
+        "now_utc": now_utc,
+        "stale_after_days": stale_after_days,
+        "counts": counts,
+        "groups": groups,
+        "guardrails": {
+            "read_only": True,
+            "deterministic_no_model": True,
+            "deterministic_no_clock": True,
+            "source_linked_only": True,
+            "no_raw_persistence": True,
+            "no_writeback": True,
+            "advisory_only": True,
+        },
+    }
+
+
+_ACTION_HEADINGS = {
+    ACTION_NEEDS_BOBBY: "Needs Bobby action",
+    ACTION_WAITING_OTHERS: "Waiting on someone else",
+    ACTION_STALE_NO_RESPONSE: "Stale / no response",
+    ACTION_MONITOR_ONLY: "Monitor only",
+    ACTION_CLOSED_RESOLVED: "Closed / resolved",
+    ACTION_NEEDS_REVIEW: "Needs review / insufficient evidence",
+}
+
+
+def render_follow_up_watch_report_markdown(report: dict[str, Any]) -> str:
+    """Render the follow-up watch report as legible, review-safe operator markdown."""
+    if not report.get("ok"):
+        return f"# Follow-up Watch Report\n\n_Unavailable: {report.get('error')}_\n"
+    counts = report.get("counts", {})
+    lines = [
+        "# Follow-up Watch Report",
+        "",
+        f"_Generated {report.get('now_utc')} · stale threshold {report.get('stale_after_days')}d · "
+        "deterministic / read-only / advisory._",
+        "",
+        "## Summary",
+        f"- total: {counts.get('total', 0)} · needs Bobby: {counts.get('needs_bobby_action', 0)} · "
+        f"waiting others: {counts.get('waiting_on_others', 0)} · stale: {counts.get('stale_no_response', 0)} · "
+        f"monitor: {counts.get('monitor_only', 0)} · closed: {counts.get('closed_resolved', 0)} · "
+        f"needs review: {counts.get('needs_review', 0)}",
+    ]
+    groups = report.get("groups", {})
+    for action in _OPERATOR_ACTIONS:
+        items = groups.get(action) or []
+        lines += ["", f"## {_ACTION_HEADINGS[action]} ({len(items)})"]
+        if not items:
+            lines.append("_None._")
+            continue
+        for it in items:
+            quality = ", ".join(it.get("quality_flags") or []) or "ok"
+            lines.append(
+                f"- **{it.get('title_redacted') or '(untitled)'}** [{it.get('kind')}] "
+                f"_(watch {it.get('watch_status')} · {','.join(it.get('reason_codes') or [])} · "
+                f"quality {quality})_"
+            )
+            lines.append(
+                f"  - id: {it.get('accepted_id')} · project: {it.get('project_key') or '(none)'} · "
+                f"source-linked: {it.get('has_source_ref')} · "
+                f"actionable: {it.get('persistable_as_actionable')} · "
+                f"next-check: {it.get('next_check_utc') or '(none)'}"
+            )
+    return "\n".join(lines) + "\n"
+
+
 def _first_source_ref(
     store: Any, *, candidate_id: str, candidate_type: str
 ) -> Optional[dict[str, Any]]:

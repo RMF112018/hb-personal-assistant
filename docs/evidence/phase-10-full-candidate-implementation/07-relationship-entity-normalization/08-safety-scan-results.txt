@@ -1,0 +1,13 @@
+# Safety scan — Prompt 07 generated outputs
+
+01-relationship-candidates-final-output.md: CLEAN
+02-relationship-candidates-final-output.json: CLEAN
+03-dedupe-proof.json: CLEAN
+04-alias-match-proof.json: CLEAN
+05-low-confidence-proof.md: CLEAN
+06-daily-brief-context-proof.json: CLEAN
+07-apply-cap-or-dry-run-proof.json: CLEAN
+09-guard-column-proof.json: CLEAN
+
+TOTAL_FINDINGS=0
+RESULT=PASS — no forbidden content

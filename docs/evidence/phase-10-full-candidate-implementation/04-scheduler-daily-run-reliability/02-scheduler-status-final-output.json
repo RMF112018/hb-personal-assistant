@@ -1,0 +1,72 @@
+{
+  "label": "com.hb.personal-assistant.daily-local-agent",
+  "plist_exists": true,
+  "plist_path": "~/Library/LaunchAgents/com.hb.personal-assistant.daily-local-agent.plist",
+  "schedule_time_local": "05:00",
+  "weekdays_only": true,
+  "vault_brief_dir_redacted": "~/Documents/Obsidian Vault/Work/Daily Brief",
+  "catch_up_on_wake": true,
+  "timezone": "America/New_York",
+  "program_arguments": [
+    "~/hb-personal-assistant/.venv/bin/hb-assistant",
+    "second-brain",
+    "daily-run",
+    "run",
+    "--apply",
+    "--max-persist-per-stage",
+    "10",
+    "--max-total-persist",
+    "30",
+    "--limit",
+    "50",
+    "--lookahead-days",
+    "14",
+    "--timezone",
+    "America/New_York",
+    "--raw",
+    "--weekdays-only",
+    "--write-obsidian",
+    "--vault-brief-dir",
+    "~/Documents/Obsidian Vault/Work/Daily Brief",
+    "--confirm-vault-write",
+    "--generate-browser",
+    "--synthesize",
+    "--no-open-browser",
+    "--json"
+  ],
+  "start_calendar_interval": [
+    {
+      "Weekday": 1,
+      "Hour": 5,
+      "Minute": 0
+    },
+    {
+      "Weekday": 2,
+      "Hour": 5,
+      "Minute": 0
+    },
+    {
+      "Weekday": 3,
+      "Hour": 5,
+      "Minute": 0
+    },
+    {
+      "Weekday": 4,
+      "Hour": 5,
+      "Minute": 0
+    },
+    {
+      "Weekday": 5,
+      "Hour": 5,
+      "Minute": 0
+    }
+  ],
+  "readiness": {
+    "executable_ready": true,
+    "working_directory_ready": true,
+    "command_grammar_valid": true,
+    "log_directories_writable": true,
+    "blocking": false,
+    "ready": true
+  }
+}

@@ -1,0 +1,11 @@
+branch: experiment/phase-10-full-candidate-implementation
+HEAD: c56643ba3f3819cf8745bd73577c039eab463907
+baseline: 0c75f4a77b5987cdbd2a058504f5423d69d225f1
+origin/main: 0c75f4a77b5987cdbd2a058504f5423d69d225f1
+--- git status --short ---
+ M docs/evidence/construction-intelligence-phase-08b-automation-hardening/automation-execution-proof.md
+ M docs/evidence/construction-intelligence-phase-08b-automation-hardening/phase-08b-final-no-writeback-proof.md
+ M docs/evidence/construction-intelligence-phase-08b-automation-hardening/safe-replay-execution-proof.json
+ M src/hb_assistant/construction/second_brain/local_ai/daily_run.py
+?? docs/evidence/phase-10-full-candidate-implementation/04-scheduler-daily-run-reliability/
+?? tests/test_phase_10_daily_run_reliability.py

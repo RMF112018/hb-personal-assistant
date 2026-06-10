@@ -1,0 +1,14 @@
+{
+  "scenario": "no_pending_rows",
+  "pending_followup_summary": {
+    "section": "email_followup_pending_enrichment",
+    "available": true,
+    "count": 0,
+    "omitted_low_confidence": 0,
+    "dropped_leak": 0,
+    "degraded_reason": null
+  },
+  "pending_card_in_html": false,
+  "status": "success",
+  "egress_clean": true
+}

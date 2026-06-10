@@ -1,0 +1,5 @@
+# Prompt 07 — changed files (this candidate only)
+src/hb_assistant/construction/second_brain/local_ai/relationship_entity_report.py  # NEW report builder + classifier + renderer
+src/hb_assistant/cli/second_brain.py                                               # `relationship-candidates report` verb
+tests/test_phase_10_relationship_entity_report.py                                  # NEW regression test
+docs/evidence/phase-10-full-candidate-implementation/07-relationship-entity-normalization/  # evidence bundle

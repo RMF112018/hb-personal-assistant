@@ -1,0 +1,11 @@
+247b55d8 fix(second-brain): avoid committing synthetic bearer literal in phase 10 mcp test
+c75e1c25 feat(second-brain): add phase 10 local document parsing
+14b5ebdf feat(second-brain): harden phase 10 mcp context packets
+df481d60 feat(second-brain): improve phase 10 relationship entity normalization
+2163886e feat(second-brain): expand phase 10 procore read models
+717a4b3e feat(second-brain): refine phase 10 local model routing
+08bb5975 fix(second-brain): harden phase 10 daily-run scheduler reliability
+c56643ba feat(second-brain): improve phase 10 follow-up watch quality
+4da5a09d feat(second-brain): add phase 10 candidate review ux
+4890195f feat(second-brain): converge phase 10 daily brief surfaces
+19548da2 docs(second-brain): add phase 10 full candidate implementation package

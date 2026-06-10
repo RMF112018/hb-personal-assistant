@@ -1,0 +1,145 @@
+{
+  "command": "second-brain daily-run run",
+  "run_timestamp": "2026-06-09T05:00:00-04:00",
+  "git_head": "c56643ba",
+  "status": "partial",
+  "run_summary": {
+    "result": "degraded",
+    "raw_status": "partial",
+    "degraded": true,
+    "started_utc": "2026-06-10T00:21:37.243081+00:00",
+    "completed_utc": "2026-06-10T00:21:37.308264+00:00",
+    "brief_date": "2026-06-09",
+    "brief_freshness": "fresh",
+    "browser_output_path": "daily-brief-2026-06-09.html",
+    "obsidian_output_path": null,
+    "last_successful_path": "daily-brief-latest.html",
+    "stage_receipts": [
+      {
+        "stage": "follow_up_watch",
+        "status": "ok"
+      },
+      {
+        "stage": "procore_digest",
+        "status": "ok"
+      },
+      {
+        "stage": "calendar_prep",
+        "status": "ok"
+      },
+      {
+        "stage": "daily_brief_synthesis",
+        "status": "ok"
+      },
+      {
+        "stage": "daily_brief_render",
+        "status": "ok"
+      }
+    ],
+    "error_summary": "synthesis_degraded: profile_not_found; deterministic fallback rendered (run NOT counted as success)",
+    "pending_followup_count": 0,
+    "browser_auto_opened": false
+  },
+  "brief_date": "2026-06-09",
+  "brief_freshness": "fresh",
+  "date_policy": {
+    "run_date": "2026-06-09",
+    "run_weekday": "Tuesday",
+    "label": "standard_weekday",
+    "previous_business_day": "2026-06-08",
+    "next_business_day": "2026-06-10",
+    "lookback_start": "2026-06-08T00:00:00-04:00",
+    "lookback_end": "2026-06-09T05:00:00-04:00",
+    "lookahead_start": "2026-06-09T05:00:00-04:00",
+    "lookahead_end": "2026-06-10T23:59:59-04:00",
+    "calendar_prep_start": "2026-06-09T05:00:00-04:00",
+    "calendar_prep_end": "2026-06-10T23:59:59-04:00",
+    "included_dates": [
+      "2026-06-08",
+      "2026-06-09",
+      "2026-06-10"
+    ],
+    "explanation": "Standard Tuesday brief: lookback 2026-06-08 (previous business day) through 2026-06-09 05:00; lookahead through the next business day 2026-06-10.",
+    "timezone": "America/New_York",
+    "catch_up": false
+  },
+  "stages": [
+    {
+      "stage": "follow_up_watch",
+      "order": 1,
+      "status": "ok",
+      "applied": true,
+      "would_persist": 0,
+      "persisted": 0
+    },
+    {
+      "stage": "procore_digest",
+      "order": 2,
+      "status": "ok",
+      "applied": true,
+      "would_persist": 0,
+      "persisted": 0
+    },
+    {
+      "stage": "calendar_prep",
+      "order": 3,
+      "status": "ok",
+      "applied": true,
+      "would_persist": 0,
+      "persisted": 0
+    },
+    {
+      "stage": "daily_brief_synthesis",
+      "order": 4,
+      "status": "ok",
+      "applied": true,
+      "would_persist": 0,
+      "persisted": 0
+    },
+    {
+      "stage": "daily_brief_render",
+      "order": 5,
+      "status": "ok",
+      "would_persist": 0,
+      "persisted": 0
+    }
+  ],
+  "summary": {
+    "stages_run": 5,
+    "stages_ok": 5,
+    "stages_failed": 0,
+    "total_would_persist": 0,
+    "total_persisted": 0,
+    "total_persist_capped": false
+  },
+  "outputs": {
+    "vault_brief_dir_redacted": "~/Documents/Obsidian Vault/Work/Daily Brief",
+    "browser_dated_path": "daily-brief-2026-06-09.html",
+    "browser_attempted_path": "daily-brief-latest-attempted.html",
+    "last_successful_path": "daily-brief-latest.html"
+  },
+  "synthesis": {
+    "profile_id": "__force_degraded__",
+    "model_name": "",
+    "status": "profile_error",
+    "schema_valid": false,
+    "fallback_used": false,
+    "attempts": 0,
+    "latency_ms": 0,
+    "degraded": true,
+    "degraded_reason": "profile_not_found",
+    "error_redacted": "profile_not_found:__force_degraded__"
+  },
+  "pending_followup": {
+    "section": "email_followup_pending_enrichment",
+    "available": true,
+    "count": 0,
+    "omitted_low_confidence": 0,
+    "dropped_leak": 0,
+    "degraded_reason": null
+  },
+  "warnings": [
+    "synthesis_degraded: profile_not_found; deterministic fallback rendered (run NOT counted as success)"
+  ],
+  "failure_reason": null
+}

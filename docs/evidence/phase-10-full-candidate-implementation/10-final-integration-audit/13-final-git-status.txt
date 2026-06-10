@@ -1,0 +1,28 @@
+# Final git status — 2026-06-09 22:30 EDT
+# HEAD: 247b55d8e69466cc7525615bebdceb41c89d8a3c
+ M docs/evidence/construction-intelligence-phase-06-email/13-operational-workflow-pilot-dry-run.json
+ M docs/evidence/construction-intelligence-phase-06-email/13-operational-workflow-pilot-index-proof.md
+ M docs/evidence/construction-intelligence-phase-07a-data-quality/07-obsidian-output-preview.md
+ M docs/evidence/construction-intelligence-phase-07a-data-quality/obsidian-data-quality-dry-run.json
+ M docs/evidence/construction-intelligence-phase-08b-automation-hardening/automation-execution-proof.md
+ M docs/evidence/construction-intelligence-phase-08b-automation-hardening/phase-08b-final-no-writeback-proof.md
+ M docs/evidence/construction-intelligence-phase-08b-automation-hardening/safe-replay-execution-proof.json
+ M docs/evidence/construction-intelligence-phase-08c-financial-readiness/currency-completeness-report.json
+ M docs/evidence/construction-intelligence-phase-08c-financial-readiness/exposure-mart-preview.json
+ M docs/evidence/construction-intelligence-phase-08c-financial-readiness/financial-readiness-agent-proof.json
+ M docs/evidence/construction-intelligence-phase-08c-financial-readiness/financial-source-coverage-matrix.json
+ M docs/evidence/construction-intelligence-phase-08c-financial-readiness/forecast-readiness-gates.md
+ M docs/evidence/construction-intelligence-phase-08c-financial-readiness/forecast-readiness-proof.json
+ M docs/evidence/construction-intelligence-phase-08c-financial-readiness/wbs-cost-code-coverage-report.json
+ M docs/evidence/construction-intelligence-phase-08d-mcp-bridge/phase-08d-gates-proof.json
+ M docs/evidence/construction-intelligence-phase-08d-mcp-bridge/phase-08d-gates-proof.md
+ M docs/evidence/construction-intelligence-phase-09-retrieval-memory-quality/no-raw-vector-index-proof.json
+ M docs/evidence/construction-intelligence-phase-09-retrieval-memory-quality/no-raw-vector-index-proof.md
+ M docs/evidence/mvp-local-runtime/outputs/06-harness-success.marker
+ M docs/evidence/mvp-local-runtime/outputs/scan-sensitive.json
+ M docs/evidence/remediation/prompt-05-delegated-graph-proof/summary.json
+?? docs/evidence/phase-10-full-candidate-implementation/10-final-integration-audit/
+?? docs/planning/phase-10-intelligence-daily-brief-remediation-package/
+?? docs/planning/procore_endpoint_workflow_remediation_package/
+# (only the untracked audit evidence dir is uncommitted; concurrent background processes
+#  intermittently regenerate OTHER phases' evidence — restored to baseline; not this branch.)

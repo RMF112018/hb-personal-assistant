@@ -1,0 +1,5 @@
+# Prompt 02 — changed files (this candidate only)
+src/hb_assistant/construction/second_brain/local_ai/candidate_review.py  # build_review_report + render_review_report_markdown + _safe_candidate_view
+src/hb_assistant/cli/second_brain.py                                     # `second-brain review report` verb (read-only/dry-run)
+tests/test_phase_10_candidate_review_report.py                          # NEW regression test
+docs/evidence/phase-10-full-candidate-implementation/02-candidate-review-ux/  # evidence bundle

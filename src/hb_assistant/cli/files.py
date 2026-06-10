@@ -43,6 +43,39 @@ def _sample_classifications() -> dict[int, list[str]]:
     return classifs
 
 
+@app.command("parse-index")
+def files_parse_index(
+    paths: list[str] = typer.Argument(  # noqa: B008
+        ..., help="One or more local file paths to parse into a review-safe read-model."
+    ),
+    markdown_out: Optional[str] = typer.Option(  # noqa: B008
+        None, "--markdown-out", help="Also write the operator-facing Markdown index to a file."
+    ),
+    json_out: bool = typer.Option(True, "--json"),  # noqa: B008
+) -> None:
+    """Parse local files into a review-safe read-model index (local-only, hash-only, no raw text).
+
+    Runs the repo's bounded local parsers (pdf/docx/xlsx/pptx/csv/txt/md/image/zip) and emits ONLY safe
+    metadata per file: id, name, extension, MIME, parsed status, extraction method, text length +
+    sha256 hash, page/table/sheet counts, degraded reason, and redaction flags — never the extracted
+    text. No network, no model, no writeback. Unsupported/missing files degrade honestly.
+    """
+    from pathlib import Path
+
+    from hb_assistant.construction.second_brain.local_ai.file_parse_read_model import (
+        build_file_index_read_model,
+        render_file_index_markdown,
+    )
+
+    index = build_file_index_read_model(list(paths))
+    if markdown_out:
+        Path(markdown_out).write_text(render_file_index_markdown(index), encoding="utf-8")
+    typer.echo(
+        json.dumps(index, indent=2, default=str) if json_out else render_file_index_markdown(index)
+    )
+    raise typer.Exit(0)
+
+
 @app.command("sample")
 def files_sample(
     json_out: bool = typer.Option(True, "--json"),

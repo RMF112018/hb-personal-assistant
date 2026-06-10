@@ -1,0 +1,27 @@
+{
+  "format": ".pdf",
+  "read_model": {
+    "source_id": "file:900db3ec3bae665c",
+    "file_name": "scan.pdf",
+    "extension": ".pdf",
+    "mime_type": "application/pdf",
+    "source_refs": [],
+    "redaction": {
+      "raw_text_excerpt_excluded": true,
+      "hash_only": true,
+      "local_only": true,
+      "no_model": true
+    },
+    "parsed_status": "degraded",
+    "extraction_method": "pdfplumber+pypdf",
+    "text_length": 0,
+    "text_hash": null,
+    "counts": {
+      "page_count": 2,
+      "table_count": 0
+    },
+    "degraded_reason": "scanned_pdf_no_text"
+  },
+  "parsed": true,
+  "page_count": 2
+}

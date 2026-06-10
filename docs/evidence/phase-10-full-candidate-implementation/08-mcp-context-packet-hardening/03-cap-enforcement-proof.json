@@ -1,0 +1,12 @@
+{
+  "seeded_accepted_tasks": 20,
+  "caps_applied": {
+    "max_candidates_per_section": 12,
+    "max_meetings": 15,
+    "max_relationships": 8,
+    "max_procore_groups": 20,
+    "max_tasks": 15
+  },
+  "accepted_tasks_in_packet": 15,
+  "cap_respected": true
+}

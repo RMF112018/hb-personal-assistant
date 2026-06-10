@@ -1,0 +1,22 @@
+ src/hb_assistant/cli/files.py                      |  33 +++
+ src/hb_assistant/cli/procore.py                    |  47 ++++
+ src/hb_assistant/cli/second_brain.py               | 262 ++++++++++++++++++++-
+ .../second_brain/local_ai/candidate_review.py      | 158 +++++++++++++
+ .../second_brain/local_ai/daily_run.py             | 116 ++++++++-
+ .../second_brain/local_ai/daily_run_html.py        |  58 +++++
+ .../second_brain/local_ai/file_parse_read_model.py | 159 +++++++++++++
+ .../second_brain/local_ai/follow_up_watch.py       | 190 +++++++++++++++
+ .../second_brain/local_ai/mcp_packet_hardening.py  | 209 ++++++++++++++++
+ .../second_brain/local_ai/model_diagnostics.py     | 162 +++++++++++++
+ .../second_brain/local_ai/procore_monitor.py       | 178 ++++++++++++++
+ .../local_ai/relationship_entity_report.py         | 214 +++++++++++++++++
+ tests/test_phase_10_candidate_review_report.py     |  97 ++++++++
+ ...se_10_daily_run_pending_followup_convergence.py | 125 ++++++++++
+ tests/test_phase_10_daily_run_reliability.py       |  87 +++++++
+ tests/test_phase_10_file_parse_read_model.py       | 108 +++++++++
+ tests/test_phase_10_follow_up_watch_report.py      | 118 ++++++++++
+ tests/test_phase_10_mcp_packet_hardening.py        |  84 +++++++
+ tests/test_phase_10_model_routing_diagnostics.py   |  76 ++++++
+ tests/test_phase_10_procore_monitor.py             |  95 ++++++++
+ tests/test_phase_10_relationship_entity_report.py  | 107 +++++++++
+ 21 files changed, 2678 insertions(+), 5 deletions(-)

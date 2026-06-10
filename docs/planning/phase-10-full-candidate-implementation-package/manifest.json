@@ -1,0 +1,22 @@
+{
+  "package": "phase-10-full-candidate-implementation-package",
+  "generated": "2026-06-09",
+  "repo": "RMF112018/hb-personal-assistant",
+  "local_path": "/Users/bobbyfetting/hb-personal-assistant",
+  "baseline_sha": "0c75f4a77b5987cdbd2a058504f5423d69d225f1",
+  "target_repo_path": "docs/planning/phase-10-full-candidate-implementation-package",
+  "branch": "experiment/phase-10-full-candidate-implementation",
+  "pause_between_prompts_seconds": 600,
+  "candidates": [
+    "daily-brief-surface-convergence",
+    "candidate-review-ux",
+    "followup-watch-quality",
+    "scheduler-daily-run-reliability",
+    "local-model-routing-refinement",
+    "procore-expansion",
+    "relationship-entity-normalization",
+    "mcp-context-packet-hardening",
+    "document-file-parsing",
+    "final-integration-audit"
+  ]
+}

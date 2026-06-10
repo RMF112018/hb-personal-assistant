@@ -1,0 +1,25 @@
+{
+  "format": ".docx",
+  "read_model": {
+    "source_id": "file:0eb2ecf5593ce953",
+    "file_name": "report.docx",
+    "extension": ".docx",
+    "mime_type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "source_refs": [],
+    "redaction": {
+      "raw_text_excerpt_excluded": true,
+      "hash_only": true,
+      "local_only": true,
+      "no_model": true
+    },
+    "parsed_status": "parsed",
+    "extraction_method": "python-docx",
+    "text_length": 73,
+    "text_hash": "sha256:05a638fedf9485e366c3708a52831353f846364aef5eb6dd69d1e12bdd8642e5",
+    "counts": {
+      "table_count": 1
+    },
+    "degraded_reason": null
+  },
+  "method": "python-docx"
+}

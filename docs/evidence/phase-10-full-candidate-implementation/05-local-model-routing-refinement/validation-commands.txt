@@ -1,0 +1,7 @@
+# Prompt 05 — validation commands (repo root, venv python3.12)
+python3.12 -m compileall src/hb_assistant/construction/second_brain/local_ai/model_diagnostics.py src/hb_assistant/cli/second_brain.py
+python3.12 -m pytest -q tests/test_phase_10_model_routing_diagnostics.py
+python3.12 -m pytest -q tests -k "model_router or model_eval or structured_output or local_model or daily_brief_intelligence or model_diagnostics"
+ruff check src/hb_assistant/construction/second_brain/local_ai/model_diagnostics.py src/hb_assistant/cli/second_brain.py
+mypy src/hb_assistant/construction/second_brain/local_ai/model_diagnostics.py
+python3.12 /tmp/gen_evidence_05.py

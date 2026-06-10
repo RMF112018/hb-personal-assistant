@@ -2090,6 +2090,50 @@ def daily_brief_synthesize_candidates(
         raise typer.Exit(1) from None
 
 
+@relationship_candidates_app.command("report")
+def relationship_candidates_report(
+    project_key: "str | None" = typer.Option(  # noqa: B008
+        None, "--project-key", help="Filter to a single project key."
+    ),
+    limit: int = typer.Option(2000, "--limit", help="Max candidates to scan."),  # noqa: B008
+    markdown_out: "str | None" = typer.Option(  # noqa: B008
+        None, "--markdown-out", help="Also write the operator-facing Markdown report to this file."
+    ),
+    db: "str | None" = typer.Option(None, "--db", help="Explicit SQLite path (tests/isolation)."),  # noqa: B008
+    json_out: bool = typer.Option(True, "--json", help="Emit JSON (default)."),  # noqa: B008
+) -> None:
+    """Consolidated, review-safe relationship/entity candidate report (read-only / dry-run).
+
+    Groups the unified V25 cross-source relationship candidates by operator action: alias/project
+    matches, person/company/project relationships, likely-duplicate entities, low-confidence
+    needs-review, and rejected/not-actionable. Deterministic grouping (stable enums, no model);
+    persists nothing and promotes nothing — unreviewed inferences stay advisory.
+    """
+    from pathlib import Path
+
+    from hb_assistant.construction.second_brain.local_ai.relationship_entity_report import (
+        build_relationship_entity_report,
+        render_relationship_entity_report_markdown,
+    )
+    from hb_assistant.construction.store import ConstructionStore
+
+    cmd = "second-brain relationship-candidates report"
+    try:
+        store = ConstructionStore(db_path=db)
+        report = build_relationship_entity_report(store=store, project_key=project_key, limit=limit)
+        markdown = render_relationship_entity_report_markdown(report)
+        if markdown_out:
+            Path(markdown_out).write_text(markdown, encoding="utf-8")
+        typer.echo(json.dumps(report, indent=2, default=str) if json_out else markdown)
+        raise typer.Exit(0 if report.get("ok") else 2)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        payload = {"command": cmd, "ok": False, "error": str(e)[:300]}
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(1) from None
+
+
 @relationship_candidates_app.command("scan")
 def relationship_candidates_scan(
     as_of: "str | None" = typer.Option(  # noqa: B008
@@ -2566,6 +2610,69 @@ def daily_brief_packet(
 
     typer.echo(json.dumps(packet, indent=2, default=str) if json_out else str(packet))
     raise typer.Exit(0)
+
+
+@daily_brief_app.command("mcp-packet")
+def daily_brief_mcp_packet(
+    as_of: "str | None" = typer.Option(  # noqa: B008
+        None, "--as-of", help="ISO-8601 local run time (default: now). Drives the source window."
+    ),
+    date: "str | None" = typer.Option(  # noqa: B008
+        None, "--date", help="Force the brief date YYYY-MM-DD (default: resolved from the window)."
+    ),
+    timezone: str = typer.Option(  # noqa: B008
+        "America/New_York", "--timezone", help="Local timezone for the weekday window policy."
+    ),
+    purpose: str = typer.Option(  # noqa: B008
+        "daily_brief_local_agent_context", "--purpose", help="Declared packet purpose."
+    ),
+    markdown_out: "str | None" = typer.Option(  # noqa: B008
+        None, "--markdown-out", help="Also write the operator-facing Markdown contract to a file."
+    ),
+    db: "str | None" = typer.Option(None, "--db", help="Explicit SQLite path (tests/isolation)."),  # noqa: B008
+    json_out: bool = typer.Option(True, "--json", help="Emit JSON (default)."),  # noqa: B008
+) -> None:
+    """Build a hardened, fail-closed MCP context packet (read-only; metadata-only summaries).
+
+    Wraps the existing deterministic daily-brief context packet in an explicit MCP contract: purpose,
+    generated_at, source window, candidate summaries, source-ref summary, caps applied, omitted raw
+    categories, redaction flags, and freshness warnings. A final forbidden-content gate scans the real
+    payload; on any match the packet fails closed (context withheld). Persists nothing, no writeback.
+    """
+    from datetime import datetime as _dt
+    from pathlib import Path
+
+    from hb_assistant.construction.second_brain.local_ai.mcp_packet_hardening import (
+        build_hardened_mcp_packet,
+        render_hardened_mcp_packet_markdown,
+    )
+    from hb_assistant.construction.store import ConstructionStore
+
+    cmd = "second-brain daily-brief mcp-packet"
+    try:
+        now_utc = as_of or _dt.now().astimezone().isoformat()
+        store = ConstructionStore(db_path=db)
+        packet = build_hardened_mcp_packet(
+            store=store, now_utc=now_utc, timezone=timezone, brief_date=date, db_path=db,
+            purpose=purpose,
+        )
+        if markdown_out:
+            Path(markdown_out).write_text(
+                render_hardened_mcp_packet_markdown(packet), encoding="utf-8"
+            )
+        typer.echo(
+            json.dumps(packet, indent=2, default=str)
+            if json_out
+            else render_hardened_mcp_packet_markdown(packet)
+        )
+        # Exit 0 when the packet is emitted; 3 on a fail-closed withhold (operator-visible).
+        raise typer.Exit(0 if packet.get("ok") else 3)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        payload = {"command": cmd, "ok": False, "error": str(e)[:300]}
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(1) from None
 
 
 @daily_brief_app.command("packet-proof")
@@ -5257,6 +5364,55 @@ def review_summary_cmd(
         raise
     except Exception as e:
         payload = {"command": "second-brain review summary", "ok": False, "error": str(e)[:300]}
+        _emit_08c(payload, json_out=json_out, human=[str(e)], exit_code=1)
+
+
+@review_app.command("report")
+def review_report_cmd(
+    project: str | None = typer.Option(None, "--project", help="Filter by project_key."),
+    limit: int = typer.Option(2000, "--limit", help="Max candidates to scan."),
+    apply_cap: int = typer.Option(  # noqa: B008
+        50, "--apply-cap", help="Bounded preview-apply cap (accepted set previewed; never persisted)."
+    ),
+    markdown_out: str | None = typer.Option(  # noqa: B008
+        None, "--markdown-out", help="Also write the operator-facing Markdown report to this file."
+    ),
+    db: str | None = typer.Option(None, "--db", help="Explicit SQLite path (tests/isolation)."),
+    json_out: bool = typer.Option(True, "--json/--no-json"),
+) -> None:
+    """Consolidated, review-safe candidate lifecycle report (read-only / dry-run).
+
+    One legible operator surface: what is pending / accepted / rejected / snoozed / suppressed, what
+    needs Bobby's review (low-confidence/unclear), and a bounded dry-run preview of the accepted set
+    an apply would act on — each item source-linked with confidence/safety reasons. Persists nothing;
+    `--no-json` prints the Markdown, `--markdown-out` also writes it to a local file.
+    """
+    from pathlib import Path
+
+    from hb_assistant.construction.second_brain.local_ai.candidate_review import (
+        build_review_report,
+        render_review_report_markdown,
+    )
+    from hb_assistant.construction.store import ConstructionStore
+
+    try:
+        store = ConstructionStore(db_path=db)
+        report = build_review_report(store, project_key=project, limit=limit, apply_cap=apply_cap)
+        markdown = render_review_report_markdown(report)
+        if markdown_out:
+            Path(markdown_out).write_text(markdown, encoding="utf-8")
+        payload = {
+            "command": "second-brain review report",
+            "phase": "10A",
+            **report,
+            "markdown_out": markdown_out,
+            "guardrails": _candidate_review_guardrails(),
+        }
+        _emit_08c(payload, json_out=json_out, human=[markdown], exit_code=0)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        payload = {"command": "second-brain review report", "ok": False, "error": str(e)[:300]}
         _emit_08c(payload, json_out=json_out, human=[str(e)], exit_code=1)
 
 
@@ -9122,6 +9278,60 @@ def second_brain_follow_up_watch_scan(
         raise typer.Exit(1) from None
 
 
+@follow_up_watch_app.command("report")
+def second_brain_follow_up_watch_report(
+    as_of: "str | None" = typer.Option(  # noqa: B008
+        None, "--as-of", help="ISO-8601 UTC 'now' for deterministic classification (default: now)."
+    ),
+    limit: int = typer.Option(500, "--limit", help="Max accepted items per type to scan."),  # noqa: B008
+    stale_after_days: int = typer.Option(  # noqa: B008
+        14, "--stale-after-days", help="Days after acceptance (no due date) before an item is stale."
+    ),
+    markdown_out: "str | None" = typer.Option(  # noqa: B008
+        None, "--markdown-out", help="Also write the operator-facing Markdown report to this file."
+    ),
+    db: "str | None" = typer.Option(None, "--db", help="Explicit SQLite path (tests/isolation)."),  # noqa: B008
+    json_out: bool = typer.Option(True, "--json", help="Emit JSON (default)."),  # noqa: B008
+) -> None:
+    """Review-safe follow-up watch report grouped by operator action (deterministic / read-only).
+
+    Buckets accepted tasks/commitments into: needs Bobby action, waiting on someone else, stale /
+    no response, monitor only, closed / resolved, and needs review / insufficient evidence (no source
+    ref or contradictory signals). No model is used — a missing local model never affects this surface;
+    no clock is read inside scoring; no raw content moves. Persists nothing; complements (does not
+    duplicate) the daily brief's V45 pending-enrichment section.
+    """
+    from datetime import datetime as _dt
+    from datetime import timezone as _tz
+    from pathlib import Path
+
+    from hb_assistant.construction.second_brain.local_ai.follow_up_watch import (
+        build_follow_up_watch_report,
+        render_follow_up_watch_report_markdown,
+    )
+    from hb_assistant.construction.store import ConstructionStore
+
+    cmd = "second-brain follow-up-watch report"
+    try:
+        now_utc = as_of or _dt.now(_tz.utc).isoformat()
+        store = ConstructionStore(db_path=db)
+        report = build_follow_up_watch_report(
+            store=store, now_utc=now_utc, limit=limit, stale_after_days=stale_after_days
+        )
+        markdown = render_follow_up_watch_report_markdown(report)
+        if markdown_out:
+            Path(markdown_out).write_text(markdown, encoding="utf-8")
+        report["markdown_out"] = markdown_out
+        typer.echo(json.dumps(report, indent=2, default=str) if json_out else markdown)
+        raise typer.Exit(0)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        payload = {"command": cmd, "ok": False, "error": str(e)[:300]}
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(1) from None
+
+
 @follow_up_watch_app.command("enrich")
 def second_brain_follow_up_watch_enrich(
     candidate_id: "str | None" = typer.Option(  # noqa: B008
@@ -9697,9 +9907,11 @@ def second_brain_daily_run_run(
     ),
     with_email_raw_enrichment: bool = typer.Option(  # noqa: B008
         False, "--with-email-raw-enrichment/--no-email-raw-enrichment",
-        help="OPT-IN: surface PENDING V45 email follow-up enrichments in the brief, clearly labeled "
-        "'Model-enriched / pending review' and raw-free. Read-only consumption (no model run, no "
-        "raw-local preview here). Off by default.",
+        help="OPT-IN: also attach the structured PENDING V45 email follow-up section to the run JSON "
+        "payload (a machine-readable twin). The rendered brief (browser HTML + Obsidian note) now "
+        "ALWAYS surfaces pending review-safe enrichments — clearly labeled 'Model-enriched / pending "
+        "review', raw-free, source-linked — so this flag only adds the same data to --json output. "
+        "Read-only consumption (no model run, no raw-local preview here). Off by default.",
     ),
     open_browser: bool = typer.Option(  # noqa: B008
         False,
@@ -10683,6 +10895,50 @@ def local_model_route(
     if route.blocked:
         raise typer.Exit(1)
     raise typer.Exit(0)
+
+
+@local_model_app.command("diagnostics")
+def local_model_diagnostics(
+    provider: str = typer.Option(  # noqa: B008
+        "ollama", "--provider", help="ollama|mock. mock is offline-safe (no daemon)."
+    ),
+    mock: bool = typer.Option(  # noqa: B008
+        False, "--mock", help="Shortcut for --provider mock (offline shape)."
+    ),
+    heavy_enabled: bool = typer.Option(  # noqa: B008
+        False, "--heavy-enabled", help="Treat heavy profiles as eligible (still requires a model)."
+    ),
+    markdown_out: "str | None" = typer.Option(  # noqa: B008
+        None, "--markdown-out", help="Also write the operator-facing Markdown diagnostics to a file."
+    ),
+    json_out: bool = typer.Option(True, "--json", help="Emit machine-readable JSON (default)."),  # noqa: B008
+) -> None:
+    """Consolidated routing diagnostics across all task families (fail-closed, never cloud, raw-free).
+
+    For every routed task family: selected profile, candidate model chain, probe/availability status,
+    fallback reason, fail-closed reason, and the declared output safety category. Deterministic given
+    the live model probe; persists nothing; never echoes raw prompts/responses.
+    """
+    from pathlib import Path
+
+    from hb_assistant.construction.second_brain.local_ai.model_diagnostics import (
+        build_routing_diagnostics,
+        render_routing_diagnostics_markdown,
+    )
+
+    provider_name = "mock" if mock else provider
+    present_models, daemon_reachable = _local_model_present(provider_name, heavy_enabled)
+    diag = build_routing_diagnostics(
+        present_models=present_models, daemon_reachable=daemon_reachable, heavy_enabled=heavy_enabled
+    )
+    if markdown_out:
+        Path(markdown_out).write_text(render_routing_diagnostics_markdown(diag), encoding="utf-8")
+    typer.echo(
+        json.dumps(diag, indent=2, default=str)
+        if json_out
+        else render_routing_diagnostics_markdown(diag)
+    )
+    raise typer.Exit(0 if diag.get("ok") else 2)
 
 
 @local_model_app.command("eval")

@@ -1,0 +1,5 @@
+# Prompt 08 — changed files (this candidate only)
+src/hb_assistant/construction/second_brain/local_ai/mcp_packet_hardening.py  # NEW contract envelope + fail-closed gate + renderer
+src/hb_assistant/cli/second_brain.py                                         # `daily-brief mcp-packet` verb
+tests/test_phase_10_mcp_packet_hardening.py                                  # NEW regression test
+docs/evidence/phase-10-full-candidate-implementation/08-mcp-context-packet-hardening/  # evidence bundle

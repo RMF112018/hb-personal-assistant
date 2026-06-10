@@ -1,0 +1,29 @@
+{
+  "fail_closed_guard": {
+    "scenario": "browser_output_dir inside repo -> refused",
+    "status": "failure",
+    "error": "output_path_inside_repo_refused",
+    "ok": true
+  },
+  "failure_run_summary_shape": {
+    "result": "failure",
+    "raw_status": "failure",
+    "degraded": false,
+    "started_utc": "2026-06-09T09:00:00+00:00",
+    "completed_utc": "2026-06-09T09:00:03+00:00",
+    "brief_date": "2026-06-09",
+    "brief_freshness": "failed",
+    "browser_output_path": null,
+    "obsidian_output_path": null,
+    "last_successful_path": "~/\u2026/daily-brief-latest.html",
+    "stage_receipts": [
+      {
+        "stage": "daily_brief_render",
+        "status": "failed"
+      }
+    ],
+    "error_summary": "render_stage_failed",
+    "pending_followup_count": 0,
+    "browser_auto_opened": false
+  }
+}

@@ -1,0 +1,5 @@
+# Prompt 03 — changed files (this candidate only)
+src/hb_assistant/construction/second_brain/local_ai/follow_up_watch.py  # operator-action grouping + quality gates + report builder/renderer
+src/hb_assistant/cli/second_brain.py                                    # `follow-up-watch report` verb (read-only, deterministic)
+tests/test_phase_10_follow_up_watch_report.py                          # NEW regression test
+docs/evidence/phase-10-full-candidate-implementation/03-followup-watch-quality/  # evidence bundle

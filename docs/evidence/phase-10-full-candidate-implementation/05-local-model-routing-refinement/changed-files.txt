@@ -1,0 +1,5 @@
+# Prompt 05 — changed files (this candidate only)
+src/hb_assistant/construction/second_brain/local_ai/model_diagnostics.py  # NEW: build_routing_diagnostics + renderer + safety-category map
+src/hb_assistant/cli/second_brain.py                                      # `local-model diagnostics` verb
+tests/test_phase_10_model_routing_diagnostics.py                          # NEW regression test
+docs/evidence/phase-10-full-candidate-implementation/05-local-model-routing-refinement/  # evidence bundle

@@ -7,7 +7,9 @@ launchd schedule fires at 5:00 AM on weekdays. It:
    weekend skip vs Saturday catch-up of a missed Friday;
 2. runs the pipeline (apply, conservative caps) with that window so every stage uses policy dates;
 3. renders the raw brief into two **private local consumption surfaces** — a governed Obsidian
-   note and a polished self-contained browser HTML file — at stable, **non-repo** paths;
+   note and a polished self-contained browser HTML file — at stable, **non-repo** paths, and
+   converges the raw-free V45 pending email follow-up section onto both surfaces (and a redacted
+   count into the status file) whenever pending review-safe rows exist;
 4. writes a redacted machine-readable status file every run; and
 5. preserves the last *successful* browser brief on failure (never clobbers last-good with a
    failed/partial/unsafe output), writing a degraded "attempted" brief only when safe.
@@ -23,6 +25,7 @@ from __future__ import annotations
 import json
 import subprocess
 from datetime import datetime
+from datetime import timezone as _dt_tz  # aliased: the run fn has a `timezone: str` parameter
 from pathlib import Path
 from typing import Any, Optional
 
@@ -162,6 +165,7 @@ def run_daily_local_agent(
     (default None → the stage's own 50/50 defaults); they only matter when the stage is opted in.
     """
     cmd = "second-brain daily-run run"
+    started_wall_utc = datetime.now(_dt_tz.utc).isoformat()
     policy = PathPolicy()
     browser_dir = Path(browser_output_dir) if browser_output_dir else policy.get_html_dir()
     status_d = Path(status_dir) if status_dir else (policy.get_app_support() / _STATUS_SUBDIR)
@@ -319,6 +323,41 @@ def run_daily_local_agent(
                 + _render_md_appendix(sections)
             )
 
+    # ---- V45 pending email follow-up enrichment convergence (deterministic, raw-free) ----
+    # Surface the pending-enrichment section on the FINAL surfaces (browser HTML + Obsidian note),
+    # independent of model synthesis, whenever pending review-safe rows exist. Clean-degrades to an
+    # absent section when the table/rows are missing. Source-linked + clearly labeled; never fact.
+    from ..daily_brief.email_followup_pending import (
+        build_pending_email_enrichment_section,
+        render_pending_enrichment_markdown,
+    )
+
+    try:
+        pending_followup = build_pending_email_enrichment_section(store)
+    except Exception as exc:  # advisory only — never fail the deterministic run
+        pending_followup = {
+            "section": "email_followup_pending_enrichment",
+            "available": False,
+            "degraded_reason": f"enrichment_error:{str(exc)[:80]}",
+            "count": 0,
+            "items": [],
+        }
+    pending_md = (
+        render_pending_enrichment_markdown(pending_followup)
+        if pending_followup.get("available")
+        else ""
+    )
+    if pending_md:
+        markdown = (markdown + "\n\n---\n\n" + pending_md) if markdown else pending_md
+    pending_summary = {
+        "section": pending_followup.get("section"),
+        "available": bool(pending_followup.get("available")),
+        "count": int(pending_followup.get("count") or 0),
+        "omitted_low_confidence": int(pending_followup.get("omitted_low_confidence") or 0),
+        "dropped_leak": int(pending_followup.get("dropped_leak") or 0),
+        "degraded_reason": pending_followup.get("degraded_reason"),
+    }
+
     is_fresh_success = (
         status == "success" and not dry_run and pipeline.get("brief_freshness") == "fresh"
     )
@@ -341,6 +380,7 @@ def run_daily_local_agent(
             synthesis=synthesis_dump,
             model_metadata=synthesis_meta,
             degraded=synthesis_degraded,
+            pending_followup=pending_followup,
         )
         egress_matched = scan_daily_run_html(rendered)
         egress_clean = not egress_matched
@@ -385,6 +425,23 @@ def run_daily_local_agent(
     if status == "failure":
         failure_reason = "render_stage_failed" if render_failed else "browser_egress_blocked"
 
+    # Operator-legible run summary — one consolidated, redacted block surfacing result, wall-clock
+    # started/completed, the final output paths (browser / Obsidian / last-successful), partial stage
+    # receipts (name+status only), and a safe error summary. No raw content.
+    run_summary = _build_run_summary(
+        status=status,
+        degraded=synthesis_degraded,
+        started_wall_utc=started_wall_utc,
+        completed_wall_utc=datetime.now(_dt_tz.utc).isoformat(),
+        brief_date=brief_date,
+        brief_freshness=pipeline.get("brief_freshness"),
+        outputs=outputs,
+        stages=_redacted_stages(pipeline),
+        failure_reason=failure_reason,
+        warnings=warnings,
+        pending_count=int(pending_summary.get("count") or 0),
+    )
+
     status_path = _write_status(
         status_d,
         now_utc,
@@ -396,6 +453,8 @@ def run_daily_local_agent(
         failure_reason=failure_reason,
         is_success=is_fresh_success,
         synthesis=synthesis_meta,
+        pending_followup=pending_summary,
+        run_summary=run_summary,
     )
     outputs["status_path"] = _redact_path(status_path)
 
@@ -414,6 +473,8 @@ def run_daily_local_agent(
         "outputs": outputs,
         "synthesis": synthesis_meta,
         "synthesis_degraded": synthesis_degraded,
+        "pending_followup": pending_summary,
+        "run_summary": run_summary,
         "egress_scan": {"clean": egress_clean, "matched_labels": egress_matched},
         "failure_reason": failure_reason,
         "guardrails": _guardrails(include_raw, dry_run, generate_browser),
@@ -440,6 +501,52 @@ def _guardrails(include_raw: bool, dry_run: bool, generate_browser: bool) -> dic
 def _redacted_stages(pipeline: dict[str, Any]) -> list[dict[str, Any]]:
     """Stage receipts with counts only — drop the verbose detail block (safe for status file)."""
     return [{k: v for k, v in s.items() if k != "detail"} for s in pipeline.get("stages", [])]
+
+
+def _build_run_summary(
+    *,
+    status: str,
+    degraded: bool,
+    started_wall_utc: str,
+    completed_wall_utc: str,
+    brief_date: str,
+    brief_freshness: Any,
+    outputs: dict[str, str],
+    stages: list[dict[str, Any]],
+    failure_reason: Optional[str],
+    warnings: list[str],
+    pending_count: int,
+) -> dict[str, Any]:
+    """One operator-legible, redacted run summary (no raw content; paths already ``~/…`` redacted).
+
+    ``result`` reports degraded explicitly (a degraded synthesis is a partial run that is NOT counted
+    as a fresh success, so the last-successful pointer is preserved). ``stage_receipts`` are name +
+    status only. ``error_summary`` prefers the structured failure reason, else the last warning on a
+    non-success run, else None.
+    """
+    result = "degraded" if (degraded and status != "failure") else status
+    error_summary = failure_reason
+    if error_summary is None and status != "success" and warnings:
+        error_summary = warnings[-1][:160]
+    return {
+        "result": result,
+        "raw_status": status,
+        "degraded": bool(degraded),
+        "started_utc": started_wall_utc,
+        "completed_utc": completed_wall_utc,
+        "brief_date": brief_date,
+        "brief_freshness": brief_freshness,
+        "browser_output_path": outputs.get("browser_latest_path")
+        or outputs.get("browser_dated_path"),
+        "obsidian_output_path": outputs.get("obsidian_path_redacted") or None,
+        "last_successful_path": outputs.get("last_successful_path"),
+        "stage_receipts": [
+            {"stage": s.get("stage"), "status": s.get("status")} for s in stages
+        ],
+        "error_summary": error_summary,
+        "pending_followup_count": pending_count,
+        "browser_auto_opened": False,
+    }
 
 
 def _read_last_successful_browser(status_dir: Path) -> Optional[str]:
@@ -476,16 +583,20 @@ def _write_status(
     failure_reason: Optional[str],
     is_success: bool,
     synthesis: Optional[dict[str, Any]] = None,
+    pending_followup: Optional[dict[str, Any]] = None,
+    run_summary: Optional[dict[str, Any]] = None,
 ) -> Path:
     """Write the redacted machine-readable status (latest + dated). Never contains raw bodies.
 
     ``synthesis`` carries only safe model metadata (profile/model/status/latency/degraded) — never a
-    raw prompt or response."""
+    raw prompt or response. ``pending_followup`` carries only counts/labels (section name, available,
+    count, omitted/dropped counters) — never row-level enrichment content."""
     payload: dict[str, Any] = {
         "command": "second-brain daily-run run",
         "run_timestamp": now_utc,
         "git_head": _git_head_short(),
         "status": status,
+        "run_summary": run_summary,
         "brief_date": window.run_date,
         "brief_freshness": pipeline.get("brief_freshness") if pipeline else "skipped",
         "date_policy": window.to_dict(),
@@ -493,6 +604,7 @@ def _write_status(
         "summary": pipeline.get("summary") if pipeline else {},
         "outputs": outputs,
         "synthesis": synthesis,
+        "pending_followup": pending_followup,
         "warnings": warnings,
         "failure_reason": failure_reason,
     }

@@ -1,0 +1,23 @@
+{
+  "format": ".xyz",
+  "read_model": {
+    "source_id": "file:bd8611a628837654",
+    "file_name": "archive.xyz",
+    "extension": ".xyz",
+    "mime_type": "chemical/x-xyz",
+    "source_refs": [],
+    "redaction": {
+      "raw_text_excerpt_excluded": true,
+      "hash_only": true,
+      "local_only": true,
+      "no_model": true
+    },
+    "parsed_status": "unsupported",
+    "extraction_method": null,
+    "text_length": 0,
+    "text_hash": null,
+    "counts": {},
+    "degraded_reason": "unsupported_extension:.xyz"
+  },
+  "degraded_honestly": true
+}

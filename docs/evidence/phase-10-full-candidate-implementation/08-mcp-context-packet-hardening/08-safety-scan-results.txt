@@ -1,0 +1,12 @@
+# Safety scan — Prompt 08 generated outputs
+
+01-mcp-packet-final-output.json: CLEAN
+02-mcp-packet-final-output.md: CLEAN
+03-cap-enforcement-proof.json: CLEAN
+04-forbidden-content-proof.txt: SKIPPED (intentional synthetic leak sample; gate-proof)
+05-source-link-proof.json: CLEAN
+06-daily-brief-packet-alignment-proof.md: CLEAN
+07-no-external-writeback-proof.txt: CLEAN
+
+TOTAL_FINDINGS=0
+RESULT=PASS — no forbidden content

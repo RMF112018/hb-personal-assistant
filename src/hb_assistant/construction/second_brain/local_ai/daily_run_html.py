@@ -220,6 +220,53 @@ def _render_synthesis_cards(synthesis: dict[str, Any]) -> str:
     return "".join(out)
 
 
+def _render_pending_followup_card(pending: dict[str, Any]) -> str:
+    """Render the raw-free V45 pending email follow-up section as a card.
+
+    Deterministic + source-linked + clearly labeled; appears whenever pending review-safe rows
+    exist (independent of model synthesis). Returns "" when the section is unavailable/empty so the
+    brief is unchanged when there is nothing to surface. Every dynamic value is scrubbed + escaped.
+    """
+    if not pending or not pending.get("available") or not pending.get("items"):
+        return ""
+    items = pending.get("items") or []
+    label = pending.get("label") or "Model-enriched / pending review"
+    out = [f"<div class='card'><h2>{_esc(label)}<span class='count'>{len(items)}</span></h2>"]
+    out.append(
+        "<p class='meta'>Pending V45 email follow-up enrichments — model-enriched, raw-free, "
+        "source-linked; awaiting your review (advisory, not accepted fact).</p>"
+    )
+    for it in items:
+        title = _esc(it.get("enriched_title") or "(untitled)")
+        out.append("<div class='item'>")
+        out.append(
+            f"<div class='ttl'>{title} <span class='cid'>({_esc(it.get('label'))})</span></div>"
+        )
+        meta = [
+            "waiting: " + _esc(it.get("waiting_state")),
+            "assignee: " + _esc(it.get("assignee_type")),
+            f"confidence: {_esc(it.get('confidence_band'))} ({float(it.get('confidence') or 0.0):.2f})",
+        ]
+        if it.get("suggested_next_action"):
+            meta.append("next: " + _esc(it.get("suggested_next_action")))
+        if it.get("due_at_utc"):
+            meta.append("due: " + _esc(it.get("due_at_utc")))
+        out.append(f"<div class='meta'>{' · '.join(meta)}</div>")
+        refs = ", ".join(_esc(s) for s in (it.get("source_refs") or [])) or "(none)"
+        out.append(
+            f"<div class='cid'>enrichment: {_esc(it.get('enrichment_id'))} · "
+            f"candidate: {_esc(it.get('candidate_id'))} · "
+            f"watch: {_esc(it.get('watch_item_id') or '(none)')} · refs: [{refs}]</div></div>"
+        )
+    if pending.get("omitted_low_confidence"):
+        out.append(
+            f"<p class='meta'>{int(pending['omitted_low_confidence'])} "
+            "low-confidence item(s) omitted.</p>"
+        )
+    out.append("</div>")
+    return "".join(out)
+
+
 def _render_section_cards(sections: list[dict[str, Any]], *, heading_prefix: str = "") -> str:
     """Render the deterministic candidate sections (used as audit appendix / degraded fallback)."""
     out: list[str] = []
@@ -266,6 +313,7 @@ def render_daily_run_html(
     synthesis: dict[str, Any] | None = None,
     model_metadata: dict[str, Any] | None = None,
     degraded: bool = False,
+    pending_followup: dict[str, Any] | None = None,
 ) -> str:
     """Build the self-contained browser brief HTML. All dynamic content is scrubbed + escaped.
 
@@ -273,6 +321,10 @@ def render_daily_run_html(
     ``degraded``, the nine synthesized operator sections are the primary content and the deterministic
     ``sections`` render as a collapsed "Source-Linked Candidates (audit)" appendix. When ``degraded``
     (or no synthesis), a degraded banner is shown and the deterministic sections are the fallback body.
+
+    ``pending_followup`` (the raw-free V45 pending email follow-up section) is rendered as its own
+    deterministic card before the brief body whenever pending review-safe rows exist — independent of
+    model synthesis, so it survives the degraded path.
     """
     status_cls = _STATUS_CLASS.get(status, "warn")
     status_text = {
@@ -337,6 +389,12 @@ def render_daily_run_html(
         for w in warnings:
             parts.append(f"<dt>·</dt><dd>{_esc(w)}</dd>")
         parts.append("</dl></div>")
+
+    # V45 pending email follow-up enrichments — deterministic, raw-free, surfaced regardless of
+    # synthesis state (so the degraded path keeps it too).
+    pending_card = _render_pending_followup_card(pending_followup or {})
+    if pending_card:
+        parts.append(pending_card)
 
     if synthesis and not degraded:
         parts.append(_render_synthesis_cards(synthesis))

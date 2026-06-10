@@ -339,6 +339,164 @@ def edit_candidate(
     }
 
 
+#: Review-status groups rendered in the consolidated report, in operator-priority order.
+_REPORT_GROUPS: tuple[str, ...] = ("pending", "accepted", "rejected", "snoozed", "suppressed")
+
+#: Below this confidence a still-pending candidate is flagged needs-review (advisory only).
+_NEEDS_REVIEW_CONFIDENCE = 0.5
+
+
+def _safe_candidate_view(
+    store: ConstructionStore, cand: dict[str, Any], *, include_source_refs: bool
+) -> dict[str, Any]:
+    """Project a candidate row to review-safe fields only (redacted) + safe source-ref identifiers."""
+    ctype = str(cand.get("candidate_type") or "")
+    assignee = cand.get("assignee_class") or cand.get("commitment_actor_class")
+    view: dict[str, Any] = {
+        "candidate_id": cand.get("candidate_id"),
+        "candidate_type": ctype,
+        "title_redacted": cand.get("title_redacted"),
+        "project_key": cand.get("project_key"),
+        "assignee_class": assignee,
+        "waiting_state": cand.get("waiting_state"),
+        "urgency": cand.get("urgency"),
+        "due_at_utc": cand.get("due_at_utc"),
+        "safety_category": cand.get("safety_category"),
+        "confidence": cand.get("confidence"),
+        "recommended_next_action": cand.get("recommended_next_action"),
+        "review_status": str(cand.get("review_status") or "pending"),
+    }
+    if include_source_refs:
+        refs = store.list_candidate_source_refs(candidate_id=str(cand.get("candidate_id")), limit=50)
+        view["source_refs"] = [
+            f"{r.get('source_family', '')}:{r.get('source_ref_hash', '')}".strip(":") for r in refs
+        ]
+        view["source_ref_count"] = len(refs)
+    return view
+
+
+def build_review_report(
+    store: ConstructionStore,
+    *,
+    project_key: Optional[str] = None,
+    limit: int = 2000,
+    apply_cap: int = 50,
+    include_source_refs: bool = True,
+) -> dict[str, Any]:
+    """Build one consolidated, review-safe operator report across the candidate lifecycle.
+
+    Read-only: groups candidates by ``review_status`` (pending/accepted/rejected/snoozed/suppressed),
+    flags still-pending low-confidence/unclear items as ``needs_review`` (advisory), and previews —
+    dry-run, bounded by ``apply_cap`` — the accepted candidates an operator apply would persist/act on.
+    Every item carries only redacted fields + safe source-ref identifiers + confidence/safety reasons.
+    """
+    rows = store.list_review_candidates(project_key=project_key, limit=limit)
+    groups: dict[str, list[dict[str, Any]]] = {s: [] for s in _REPORT_GROUPS}
+    needs_review: list[dict[str, Any]] = []
+    for c in rows:
+        view = _safe_candidate_view(store, c, include_source_refs=include_source_refs)
+        status = view["review_status"]
+        groups.setdefault(status, []).append(view)
+        conf = float(c.get("confidence") or 0.0)
+        if status == "pending" and (
+            conf < _NEEDS_REVIEW_CONFIDENCE or str(c.get("waiting_state") or "") == "unclear"
+        ):
+            needs_review.append(view)
+
+    accepted = groups.get("accepted", [])
+    would_persist = accepted[:apply_cap]
+    counts = {s: len(v) for s, v in groups.items()}
+    counts["total"] = len(rows)
+    counts["needs_review"] = len(needs_review)
+    return {
+        "ok": True,
+        "project_key": project_key,
+        "generated_utc": _utc_now(),
+        "counts": counts,
+        "groups": groups,
+        "needs_review": needs_review,
+        "preview_apply": {
+            "dry_run": True,
+            "cap": apply_cap,
+            "accepted_total": len(accepted),
+            "would_persist_count": len(would_persist),
+            "would_persist_candidate_ids": [c["candidate_id"] for c in would_persist],
+            "note": (
+                "Dry-run preview: accepted candidates ready to act on. Apply review decisions in "
+                "bounded batches via `second-brain review accept --candidate-id-file <f> --apply "
+                "--max-actions <cap>`; this report never persists."
+            ),
+        },
+        "guardrails": {
+            "read_only": True,
+            "dry_run": True,
+            "redacted_fields_only": True,
+            "source_linked": True,
+            "no_raw_content": True,
+        },
+    }
+
+
+def render_review_report_markdown(report: dict[str, Any]) -> str:
+    """Render the consolidated review report as legible, review-safe operator markdown."""
+    if not report.get("ok"):
+        return f"# Candidate Review Report\n\n_Report unavailable: {report.get('error')}_\n"
+    counts = report.get("counts", {})
+    proj = report.get("project_key") or "(all projects)"
+    lines = [
+        "# Candidate Review Report",
+        "",
+        f"_Project: {proj} · generated {report.get('generated_utc')} · read-only / dry-run._",
+        "",
+        "## Summary",
+        f"- total: {counts.get('total', 0)} · pending: {counts.get('pending', 0)} · "
+        f"accepted: {counts.get('accepted', 0)} · rejected: {counts.get('rejected', 0)} · "
+        f"snoozed: {counts.get('snoozed', 0)} · suppressed: {counts.get('suppressed', 0)}",
+        f"- needs review (advisory): {counts.get('needs_review', 0)}",
+    ]
+
+    pa = report.get("preview_apply", {})
+    lines += [
+        "",
+        "## Preview apply (dry-run)",
+        f"- accepted ready to act on: {pa.get('accepted_total', 0)}; "
+        f"would persist (cap {pa.get('cap', 0)}): {pa.get('would_persist_count', 0)}",
+        f"- {pa.get('note', '')}",
+    ]
+
+    def _item(it: dict[str, Any]) -> str:
+        conf = it.get("confidence")
+        conf_s = f"{float(conf):.2f}" if isinstance(conf, (int, float)) else "n/a"
+        refs = ", ".join(it.get("source_refs") or []) or "(none)"
+        next_a = it.get("recommended_next_action")
+        tail = f" · next: {next_a}" if next_a else ""
+        return (
+            f"- **{it.get('title_redacted') or '(untitled)'}** "
+            f"[{it.get('candidate_type')}] _(confidence {conf_s} · "
+            f"safety {it.get('safety_category')} · waiting {it.get('waiting_state')})_{tail}\n"
+            f"  - id: {it.get('candidate_id')} · project: {it.get('project_key') or '(none)'} · "
+            f"source: [{refs}]"
+        )
+
+    if report.get("needs_review"):
+        lines += ["", "## Needs Bobby's review (pending · low-confidence/unclear)"]
+        lines += [_item(it) for it in report["needs_review"]]
+
+    groups = report.get("groups", {})
+    headings = {
+        "pending": "Pending",
+        "accepted": "Accepted",
+        "rejected": "Rejected",
+        "snoozed": "Snoozed",
+        "suppressed": "Suppressed (ignored)",
+    }
+    for key in _REPORT_GROUPS:
+        items = groups.get(key) or []
+        lines += ["", f"## {headings[key]} ({len(items)})"]
+        lines += [_item(it) for it in items] if items else ["_None._"]
+    return "\n".join(lines) + "\n"
+
+
 def export_review_queue(
     store: ConstructionStore,
     *,

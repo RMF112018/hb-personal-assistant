@@ -1,0 +1,17 @@
+{
+  "report_is_read_only": true,
+  "rows_before": 8,
+  "rows_after": 8,
+  "rows_unchanged": true,
+  "guardrails": {
+    "read_only": true,
+    "dry_run": true,
+    "deterministic_grouping_no_model": true,
+    "source_linked": true,
+    "no_raw_content": true,
+    "no_writeback": true,
+    "no_promotion": true,
+    "advisory_only": true
+  },
+  "note": "The report persists nothing and promotes nothing. The actual apply path is the existing `relationship-candidates scan --apply --max-persist <cap>` (dry-run default, bounded cap on phase10_relationship_candidates inserts)."
+}

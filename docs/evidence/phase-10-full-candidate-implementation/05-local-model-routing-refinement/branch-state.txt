@@ -1,0 +1,9 @@
+branch: experiment/phase-10-full-candidate-implementation
+HEAD: 08bb597592a5e6d2128dfc820292a4c944367e77
+baseline: 0c75f4a77b5987cdbd2a058504f5423d69d225f1
+origin/main: 0c75f4a77b5987cdbd2a058504f5423d69d225f1
+--- git status --short ---
+ M src/hb_assistant/cli/second_brain.py
+?? docs/evidence/phase-10-full-candidate-implementation/05-local-model-routing-refinement/
+?? src/hb_assistant/construction/second_brain/local_ai/model_diagnostics.py
+?? tests/test_phase_10_model_routing_diagnostics.py

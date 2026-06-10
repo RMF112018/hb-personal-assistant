@@ -1,0 +1,46 @@
+{
+  "scenario": "likely duplicate entities (same family + record-type + explicit dup relation)",
+  "likely_duplicate_entities": [
+    {
+      "candidate_id": "dup1",
+      "relationship_type": "same_entity",
+      "source_family": "person",
+      "source_record_type": "contact",
+      "target_family": "person",
+      "target_record_type": "contact",
+      "project_key": null,
+      "confidence_score": 0.95,
+      "confidence_class": "deterministic",
+      "deterministic": true,
+      "model_proposed": false,
+      "review_required": false,
+      "promotion_status": "candidate",
+      "reason_signal_types": [
+        "shared_thread",
+        "same_project"
+      ],
+      "source_ref_count": 2
+    },
+    {
+      "candidate_id": "dup2",
+      "relationship_type": "alias_of",
+      "source_family": "company",
+      "source_record_type": "org",
+      "target_family": "company",
+      "target_record_type": "org",
+      "project_key": null,
+      "confidence_score": 0.9,
+      "confidence_class": "strong_heuristic",
+      "deterministic": true,
+      "model_proposed": false,
+      "review_required": false,
+      "promotion_status": "candidate",
+      "reason_signal_types": [
+        "shared_thread",
+        "same_project"
+      ],
+      "source_ref_count": 2
+    }
+  ],
+  "ok": true
+}

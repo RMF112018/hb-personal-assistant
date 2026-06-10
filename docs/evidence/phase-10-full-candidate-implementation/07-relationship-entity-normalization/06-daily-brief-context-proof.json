@@ -1,0 +1,18 @@
+{
+  "note": "Relationship candidates feed daily-brief context (daily_brief_context_packet lists relationship_candidates), but this report keeps unreviewed/model-proposed inferences in needs-review and proves none are promoted as fact.",
+  "counts": {
+    "alias_project_matches": 2,
+    "entity_relationships": 2,
+    "likely_duplicate_entities": 2,
+    "low_confidence_needs_review": 1,
+    "rejected_not_actionable": 1,
+    "total": 8
+  },
+  "promotion_safety": {
+    "unreviewed_inferences_promoted_as_fact": 0,
+    "ok": true
+  },
+  "model_proposed_in_needs_review": [
+    "nr1"
+  ]
+}

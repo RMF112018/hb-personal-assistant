@@ -1,0 +1,7 @@
+# Prompt 06 — validation commands (repo root, venv python3.12)
+python3.12 -m compileall src/hb_assistant/construction/second_brain/local_ai/procore_monitor.py src/hb_assistant/cli/procore.py
+python3.12 -m pytest -q tests/test_phase_10_procore_monitor.py
+python3.12 -m pytest -q tests -k "procore or source_refresh or procore_digest or endpoint or freshness"
+ruff check src/hb_assistant/construction/second_brain/local_ai/procore_monitor.py   # changed module clean
+mypy src/hb_assistant/construction/second_brain/local_ai/procore_monitor.py
+python3.12 /tmp/gen_evidence_06.py

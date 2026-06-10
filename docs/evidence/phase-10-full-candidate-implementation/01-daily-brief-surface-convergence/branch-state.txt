@@ -1,0 +1,12 @@
+branch: experiment/phase-10-full-candidate-implementation
+HEAD: 19548da2a1339b8c6d15384efc6cebfeb0a8a5f6
+baseline: 0c75f4a77b5987cdbd2a058504f5423d69d225f1
+origin/main: 0c75f4a77b5987cdbd2a058504f5423d69d225f1
+--- git status --short ---
+ M docs/evidence/construction-intelligence-phase-07a-data-quality/07-obsidian-output-preview.md
+ M docs/evidence/construction-intelligence-phase-07a-data-quality/obsidian-data-quality-dry-run.json
+ M src/hb_assistant/cli/second_brain.py
+ M src/hb_assistant/construction/second_brain/local_ai/daily_run.py
+ M src/hb_assistant/construction/second_brain/local_ai/daily_run_html.py
+?? docs/evidence/phase-10-full-candidate-implementation/
+?? tests/test_phase_10_daily_run_pending_followup_convergence.py

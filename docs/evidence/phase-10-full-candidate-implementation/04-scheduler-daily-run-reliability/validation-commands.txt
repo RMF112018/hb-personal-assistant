@@ -1,0 +1,7 @@
+# Prompt 04 — validation commands (repo root, venv python3.12)
+python3.12 -m compileall src/hb_assistant/construction/second_brain/local_ai/daily_run.py
+python3.12 -m pytest -q tests/test_phase_10_daily_run_reliability.py
+python3.12 -m pytest -q tests/test_phase_10_daily_run.py tests/test_phase_10_daily_run_pending_followup_convergence.py tests/test_phase_10_email_followup_daily_brief.py tests/test_second_brain_launchd_cli.py tests/test_launchd_scheduler_agent.py
+ruff check src/hb_assistant/construction/second_brain/local_ai/daily_run.py
+mypy src/hb_assistant/construction/second_brain/local_ai/daily_run.py
+python3.12 /tmp/gen_evidence_04.py
