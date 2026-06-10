@@ -9,6 +9,7 @@ auto-migrate test.
 from __future__ import annotations
 
 import json
+import sqlite3
 from types import SimpleNamespace
 from typing import Any
 
@@ -47,14 +48,18 @@ def _auth_not_ready() -> SimpleNamespace:
 
 
 class _Project:
-    def __init__(self, key: str) -> None:
+    def __init__(self, key: str, status: str = "pilot", project_id: str = "2525840") -> None:
         self.hb_project_key = key
-        self.status = "pilot"
+        self.status = status
+        self.procore_project_id = project_id
 
 
 class _Registry:
     def __init__(self) -> None:
-        self.projects = [_Project("tropical"), _Project("pga-modern-garage")]
+        self.projects = [
+            _Project("tropical", "pilot", "2525840"),
+            _Project("pga-modern-garage", "active", "2091445"),
+        ]
 
 
 @pytest.fixture
@@ -77,6 +82,7 @@ def patched(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
         calls["run_live_sync"].append(kw)
         return {
             "endpoint_id": kw.get("endpoint"),
+            "sync_run_id": f"{kw.get('project_key')}-{kw.get('endpoint')}",
             "state": "success",
             "status": "success",
             "reason_codes": [],
@@ -84,9 +90,72 @@ def patched(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
             "retrieved_count": 5,
             "normalized_count": 5,
             "sqlite_upserted_count": 5,
+            "raw_payload_rows_written": 5,
         }
 
     monkeypatch.setattr(orch, "run_live_sync", fake_run_live_sync)
+    monkeypatch.setattr(
+        orch.SourceRefreshOrchestrator,
+        "_raw_full_payload_counts_for_current_sync",
+        lambda self, procore_summary: {
+            "sync_run_ids_checked": [
+                e["sync_run_id"] for e in procore_summary.get("endpoints", []) if e.get("sync_run_id")
+            ],
+            "by_project": {
+                p: sum(
+                    int(e.get("raw_payload_rows_written", 0) or 0)
+                    for e in procore_summary.get("endpoints", [])
+                    if e.get("scope") == p and e.get("status") == "success"
+                )
+                for p in {e.get("scope") for e in procore_summary.get("endpoints", [])}
+                if p and p != "company"
+            },
+            "by_project_endpoint": {
+                p: {
+                    e["endpoint"]: int(e.get("raw_payload_rows_written", 0) or 0)
+                    for e in procore_summary.get("endpoints", [])
+                    if e.get("scope") == p and e.get("status") == "success"
+                }
+                for p in {e.get("scope") for e in procore_summary.get("endpoints", [])}
+                if p and p != "company"
+            },
+        },
+    )
+    monkeypatch.setattr(
+        orch,
+        "projection_schema_audit",
+        lambda **k: {
+            "ok": True,
+            "runtime_plan_schema_mismatches": 0,
+            "missing_table_count": 0,
+            "missing_column_count": 0,
+            "mismatches": [],
+            "guardrails": {"live_calls_disabled": True, "writeback": "none", "emits_values": False},
+        },
+    )
+    monkeypatch.setattr(
+        orch,
+        "backfill_endpoint_specific_from_raw_payloads",
+        lambda **k: {
+            "ok": True,
+            "primary_rows_written": 11,
+            "child_rows_written": 7,
+            "raw_full_rows_inspected": 18,
+            "degraded_unknown_projection_fields": 0,
+            "guardrails": {"live_calls_disabled": True, "writeback": "none", "emits_values": False},
+        },
+    )
+    monkeypatch.setattr(
+        orch,
+        "projection_audit",
+        lambda **k: {
+            "ok": True,
+            "endpoint_count": 2,
+            "unknown_business_field_paths": 0,
+            "runtime_plan_schema_mismatches": 0,
+            "guardrails": {"live_calls_disabled": True, "writeback": "none", "emits_values": False},
+        },
+    )
 
     monkeypatch.setattr(
         orch,
@@ -298,6 +367,164 @@ def test_sqlite_upsert_counts_reported_apply(
     # daily-log endpoints carry a bounded date window.
     dl_calls = [c for c in calls if str(c.get("endpoint", "")).startswith("daily-log")]
     assert dl_calls and all(c.get("start_date") and c.get("end_date") for c in dl_calls)
+    proj = payload["procore_projection_summary"]
+    assert proj["status"] == "ok"
+    assert proj["selected_project_count"] == 1
+    assert {p["project_key"] for p in proj["selected_projects"]} == {"tropical"}
+    assert proj["projection_schema_audit"]["ok"] is True
+    assert proj["projection_reprocess"]["ok"] is True
+    assert proj["projection_reprocess"]["primary_rows_written"] == 11
+    assert proj["projection_reprocess"]["child_rows_written"] == 7
+    assert proj["projection_audit"]["ok"] is True
+    assert proj["projection_audit"]["unknown_business_field_paths"] == 0
+    assert proj["projection_audit"]["runtime_plan_schema_mismatches"] == 0
+
+
+def test_all_mapped_scope_skips_unsafe_and_selects_pilot_active(
+    patched: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    class MixedRegistry:
+        projects = [
+            _Project("pilot-job", "pilot", "111"),
+            _Project("active-job", "active", "222"),
+            _Project("pending-job", "pending", ""),
+            _Project("deprecated-job", "deprecated", "333"),
+        ]
+
+    monkeypatch.setattr(orch, "load_procore_projects", lambda: MixedRegistry())
+    monkeypatch.setattr(orch, "live_env_active", lambda: False)
+    opts = orch.RefreshOptions(
+        apply=True,
+        confirm=True,
+        procore_only=True,
+        allow_graph_live=False,
+        procore_project_scope="all_mapped",
+    )
+    payload = orch.SourceRefreshOrchestrator().run(options=opts)
+    scope = payload["procore_sync_summary"]["project_scope_policy"]
+    assert {p["project_key"] for p in scope["selected_projects"]} == {
+        "pilot-job",
+        "active-job",
+    }
+    skipped = {p["project_key"]: p["reason"] for p in scope["skipped_projects"]}
+    assert skipped["pending-job"] == "status_not_live_refresh_eligible:pending"
+    assert skipped["deprecated-job"] == "status_not_live_refresh_eligible:deprecated"
+
+
+def test_allowlist_unknown_key_blocks_before_live_refresh(
+    patched: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(orch, "live_env_active", lambda: True)
+    opts = orch.RefreshOptions(
+        apply=True,
+        confirm=True,
+        procore_only=True,
+        allow_graph_live=False,
+        procore_project_scope="all_mapped",
+        procore_project_keys=("does-not-exist",),
+    )
+    payload = orch.SourceRefreshOrchestrator().run(options=opts)
+    assert payload["status"] == "degraded"
+    assert payload["procore_sync_summary"]["status"] == "blocked_project_scope"
+    assert patched["run_live_sync"] == []
+    assert payload["procore_projection_summary"]["status"] == "blocked_project_scope"
+
+
+def test_projection_schema_mismatch_prevents_reprocess(
+    patched: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    calls: list[str] = []
+    monkeypatch.setattr(orch, "live_env_active", lambda: True)
+    monkeypatch.setattr(
+        orch,
+        "projection_schema_audit",
+        lambda **k: calls.append("schema")
+        or {
+            "ok": False,
+            "runtime_plan_schema_mismatches": 1,
+            "missing_table_count": 0,
+            "missing_column_count": 1,
+            "mismatches": [{"endpoint_id": "rfis", "table": "procore_ep_rfis", "column": "x"}],
+            "guardrails": {"live_calls_disabled": True, "writeback": "none"},
+        },
+    )
+    monkeypatch.setattr(
+        orch,
+        "backfill_endpoint_specific_from_raw_payloads",
+        lambda **k: calls.append("reprocess") or {"ok": True},
+    )
+    _, payload = _run(["--procore-only", "--apply", "--confirm", "--json"])
+    assert payload["status"] == "degraded"
+    assert payload["procore_projection_summary"]["status"] == "degraded"
+    assert payload["procore_projection_summary"]["reason"] == "schema_parity_broken"
+    assert calls == ["schema"]
+
+
+def test_missing_fresh_raw_payloads_prevent_projection_reprocess(
+    patched: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(orch, "live_env_active", lambda: True)
+    monkeypatch.setattr(
+        orch.SourceRefreshOrchestrator,
+        "_raw_full_payload_counts_for_current_sync",
+        lambda self, procore_summary: {
+            "sync_run_ids_checked": ["sync-1"],
+            "by_project": {},
+            "by_project_endpoint": {},
+        },
+    )
+    called = {"reprocess": False}
+    monkeypatch.setattr(
+        orch,
+        "backfill_endpoint_specific_from_raw_payloads",
+        lambda **k: called.__setitem__("reprocess", True) or {"ok": True},
+    )
+    _, payload = _run(["--procore-only", "--apply", "--confirm", "--json"])
+    proj = payload["procore_projection_summary"]
+    assert payload["status"] == "degraded"
+    assert proj["status"] == "degraded"
+    assert proj["reason"] == "raw_full_payload_freshness_missing"
+    assert proj["raw_full_payload_freshness"]["missing_fresh_raw_payload_count"] > 0
+    assert called["reprocess"] is False
+
+
+def test_raw_payload_freshness_counts_only_current_live_full_rows(tmp_path: Any) -> None:
+    db_path = tmp_path / "freshness.sqlite"
+    conn = sqlite3.connect(str(db_path))
+    try:
+        conn.execute(
+            """
+            CREATE TABLE procore_endpoint_raw_payloads (
+              capture_run_id TEXT,
+              project_key TEXT,
+              endpoint_key TEXT,
+              raw_procore_payload_persisted INTEGER,
+              is_current INTEGER,
+              source_quality TEXT
+            )
+            """
+        )
+        conn.executemany(
+            "INSERT INTO procore_endpoint_raw_payloads VALUES (?, ?, ?, ?, ?, ?)",
+            [
+                ("run-1", "tropical", "rfis", 1, 1, "live_full_payload"),
+                ("run-1", "tropical", "rfis", 1, 1, "live_full_payload"),
+                ("run-1", "tropical", "submittals", 1, 0, "live_full_payload"),
+                ("run-1", "tropical", "submittals", 1, 1, "fixture_full_payload"),
+                ("old-run", "tropical", "rfis", 1, 1, "live_full_payload"),
+            ],
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    counts = orch.SourceRefreshOrchestrator(db_path=db_path)._raw_full_payload_counts_for_current_sync(
+        {"endpoints": [{"sync_run_id": "run-1"}]}
+    )
+
+    assert counts["sync_run_ids_checked"] == ["run-1"]
+    assert counts["by_project"] == {"tropical": 2}
+    assert counts["by_project_endpoint"] == {"tropical": {"rfis": 2}}
 
 
 def test_skip_vector(patched: dict[str, Any]) -> None:

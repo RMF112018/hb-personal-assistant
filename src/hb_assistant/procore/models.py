@@ -39,7 +39,8 @@ class Category(str, _Enum):
 HttpMethod = Literal["GET"]  # read-only by construction
 EndpointStatus = Literal["validated", "sensitive_validated", "excluded", "deferred"]
 Sensitivity = Literal["low", "medium", "high", "critical"]
-ProjectMappingStatus = Literal["pilot", "pending", "deprecated"]
+ProjectMappingStatus = Literal["pilot", "active", "pending", "deprecated"]
+LIVE_REFRESH_ELIGIBLE_PROJECT_STATUSES: tuple[str, ...] = ("pilot", "active")
 AuthStatus = Literal["env_present", "env_partial", "env_absent"]
 VerificationStatus = Literal[
     "official_docs_verified",
@@ -266,7 +267,7 @@ class ProcoreProjectMapping(BaseModel):
                     "that a Procore mapping has not yet been established"
                 )
             return self
-        # status in ("pilot", "deprecated") — must carry a valid numeric Procore ID.
+        # status in ("pilot", "active", "deprecated") — must carry a valid numeric Procore ID.
         if not value:
             raise ValueError(
                 f"procore_project_id must be non-empty when status={self.status!r} "

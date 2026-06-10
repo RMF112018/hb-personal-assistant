@@ -834,16 +834,35 @@ def test_scheduled_dev_uses_mock() -> None:
     assert opts.live_reads_enabled is False
 
 
-def test_scheduled_production_default_local_only() -> None:
+def test_production_scheduler_resolves_all_mapped_project_scope() -> None:
     opts = DailySourceRefreshJob(resolve_profile("production")).build_options(date(2026, 6, 7))
+    assert opts.procore_project_scope == "all_mapped"
+    assert opts.procore_project_keys == ()
+
+
+def test_scheduled_production_default_local_only() -> None:
+    profile = _prod_profile_with(
+        pytest.MonkeyPatch(),
+        enable_live_reads=False,
+        enable_procore_live_reads=False,
+        enable_graph_live_reads=False,
+    )
+    opts = DailySourceRefreshJob(profile).build_options(date(2026, 6, 7))
     assert opts.live_reads_enabled is False
     assert opts.mock_data is False  # production is never "mock"
     assert opts.allow_procore_live is False
     assert opts.allow_graph_live is False
+    assert opts.procore_project_scope == "all_mapped"
+    assert opts.procore_project_keys == ()
 
 
 def test_production_default_no_hb_procore_live(monkeypatch: pytest.MonkeyPatch) -> None:
-    profile = resolve_profile("production")
+    profile = _prod_profile_with(
+        monkeypatch,
+        enable_live_reads=False,
+        enable_procore_live_reads=False,
+        enable_graph_live_reads=False,
+    )
     _migrate(profile.db_path)
     seen: dict[str, Any] = {}
 
@@ -856,6 +875,7 @@ def test_production_default_no_hb_procore_live(monkeypatch: pytest.MonkeyPatch) 
     receipt = DailySourceRefreshJob(profile).execute(schedule_date=date(2026, 6, 7), trigger="test")
     assert seen["live"] is None  # never armed for a local-only run
     assert seen["options"].mock_data is False  # production default is not mock
+    assert seen["options"].procore_project_scope == "all_mapped"
     assert receipt.mode == "local_only"
     assert receipt.live_reads_enabled is False
 
@@ -881,11 +901,17 @@ def test_enable_procore_live_sets_env_only_for_run(monkeypatch: pytest.MonkeyPat
     assert receipt.procore_live is True
     assert receipt.mock_data is False
     assert receipt.live_reads_enabled is True
+    assert seen["options"].procore_project_scope == "all_mapped"
 
 
 def test_receipts_distinguish_local_vs_live(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(dsr_mod.SourceRefreshOrchestrator, "run", lambda self, *, options: _canned_summary())
-    prof_local = resolve_profile("production")
+    prof_local = _prod_profile_with(
+        monkeypatch,
+        enable_live_reads=False,
+        enable_procore_live_reads=False,
+        enable_graph_live_reads=False,
+    )
     _migrate(prof_local.db_path)
     local = DailySourceRefreshJob(prof_local).execute(schedule_date=date(2026, 6, 7), trigger="t")
     assert local.mode == "local_only" and local.live_reads_enabled is False
@@ -914,7 +940,12 @@ def test_production_default_no_live_auth_probe(monkeypatch: pytest.MonkeyPatch) 
     monkeypatch.setattr(orch_mod, "check_auth_status", _boom_auth)
     monkeypatch.setattr(orch_mod.SourceRefreshOrchestrator, "_graph_status", _boom_graph)
 
-    profile = resolve_profile("production")
+    profile = _prod_profile_with(
+        monkeypatch,
+        enable_live_reads=False,
+        enable_procore_live_reads=False,
+        enable_graph_live_reads=False,
+    )
     receipt = DailySourceRefreshJob(profile).execute(schedule_date=date(2026, 6, 8), trigger="t")
     assert receipt.status == "ok"
     assert receipt.mode == "local_only"
@@ -1159,10 +1190,11 @@ def test_due_reports_missed_with_future_success_date() -> None:
     assert d.schedule_date == "2026-06-07"  # correct missed target, not the future date
 
 
-def test_run_today_and_past_date_succeed() -> None:
+def test_run_today_and_past_date_succeed(monkeypatch: pytest.MonkeyPatch) -> None:
     from datetime import date as _date
     from zoneinfo import ZoneInfo
 
+    monkeypatch.setattr(dsr_mod.SourceRefreshOrchestrator, "run", lambda self, *, options: _canned_summary())
     today = datetime.now(timezone.utc).astimezone(ZoneInfo("America/New_York")).date()
     for d in (today, today - timedelta_days(2)):
         result = runner.invoke(app, ["scheduler", "run", "daily-source-refresh",
@@ -1174,7 +1206,8 @@ def test_run_today_and_past_date_succeed() -> None:
     assert isinstance(today, _date)
 
 
-def test_allow_future_date_override() -> None:
+def test_allow_future_date_override(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(dsr_mod.SourceRefreshOrchestrator, "run", lambda self, *, options: _canned_summary())
     result = runner.invoke(app, ["scheduler", "run", "daily-source-refresh",
                                  "--environment", "production", "--date", _FUTURE,
                                  "--allow-future-date", "--json"])

@@ -27,7 +27,7 @@ import subprocess
 from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Literal, Optional
 
 from hb_assistant.config.path_policy import PathPolicy
 
@@ -74,6 +74,14 @@ from hb_assistant.procore.live_gate import (
 )
 from hb_assistant.procore.live_sync import run_live_sync
 from hb_assistant.procore.loader import load_procore_projects
+from hb_assistant.procore.models import LIVE_REFRESH_ELIGIBLE_PROJECT_STATUSES
+from hb_assistant.procore.projection_audit import projection_audit, projection_schema_audit
+from hb_assistant.procore.projection_engine import (
+    MODE_ENFORCE,
+    UnknownProjectionPath,
+    backfill_endpoint_specific_from_raw_payloads,
+)
+from hb_assistant.procore.structured_analytics import RAW_LANDING_TABLE, SOURCE_QUALITY_LIVE_FULL
 from hb_assistant.store.migrator import LATEST_SCHEMA_VERSION, SQLiteMigrator
 
 # Canonical Procore persistence path (the tables operational read-models consume).
@@ -135,6 +143,8 @@ class RefreshOptions:
     # explicitly rather than relying on the defaults.
     allow_procore_live: bool = True
     allow_graph_live: bool = True
+    procore_project_scope: Literal["pilot_only", "all_mapped"] = "pilot_only"
+    procore_project_keys: tuple[str, ...] = ()
 
     @property
     def dry_run(self) -> bool:
@@ -251,6 +261,7 @@ class SourceRefreshOrchestrator:
             "procore_auth_status": None,
             "graph_auth_status": None,
             "procore_sync_summary": {"status": "skipped", "reason": "not_run"},
+            "procore_projection_summary": {"status": "skipped", "reason": "not_run"},
             "graph_sync_summary": {"status": "skipped", "reason": "not_run"},
             "sqlite_upsert_summary": {
                 "procore": _zero_counts(),
@@ -274,8 +285,18 @@ class SourceRefreshOrchestrator:
                     "procore", lambda: self._procore_stage(options)
                 )
                 summary["procore_auth_status"] = summary["procore_sync_summary"].get("auth_status")
+                summary["procore_projection_summary"] = self._stage(
+                    "procore_projection",
+                    lambda: self._procore_projection_stage(
+                        options, summary["procore_sync_summary"]
+                    ),
+                )
             else:
                 summary["procore_sync_summary"] = {"status": "skipped", "reason": "graph_only"}
+                summary["procore_projection_summary"] = {
+                    "status": "skipped",
+                    "reason": "graph_only",
+                }
 
             if not options.procore_only:
                 summary["graph_sync_summary"] = self._stage(
@@ -377,13 +398,26 @@ class SourceRefreshOrchestrator:
             }
 
         registry = load_procore_projects()
-        pilot_keys = [p.hb_project_key for p in registry.projects if p.status == "pilot"]
-        if not pilot_keys:
+        scope = self._resolve_procore_project_scope(registry, options)
+        if scope["blocking_rejections"]:
+            self._acc.degraded = True
             return {
-                "status": "no_pilot_projects",
+                "status": "blocked_project_scope",
                 "auth_status": auth_status,
                 "ready_for_live_calls": ready,
                 "live_read_performed": False,
+                "project_scope_policy": scope,
+                "counts": _zero_counts(),
+            }
+        project_keys = [p["project_key"] for p in scope["selected_projects"]]
+        if not project_keys:
+            self._acc.degraded = True
+            return {
+                "status": "no_live_refresh_eligible_projects",
+                "auth_status": auth_status,
+                "ready_for_live_calls": ready,
+                "live_read_performed": False,
+                "project_scope_policy": scope,
                 "counts": _zero_counts(),
             }
 
@@ -397,20 +431,89 @@ class SourceRefreshOrchestrator:
                 "— produced dry-run plan only"
             )
         if do_live_apply:
-            assert_live_mapping_strict(registry, pilot_keys)
+            assert_live_mapping_strict(registry, project_keys)
 
         # Daily refresh now reads through the canonical EndpointAdapter registry via
         # run_live_sync (writing procore_live_*), replacing the stale per-project seed
         # fanout. Dry-run plans only (no live call); apply executes the live chain.
         plan = build_daily_refresh_plan()
         if not do_live_apply:
-            return self._procore_plan_only(plan, pilot_keys, auth_status, ready, live_env)
-        return self._procore_live_execute(plan, pilot_keys, options, auth_status, ready, live_env)
+            return self._procore_plan_only(plan, scope, auth_status, ready, live_env)
+        return self._procore_live_execute(plan, scope, options, auth_status, ready, live_env)
+
+    @staticmethod
+    def _resolve_procore_project_scope(registry: Any, options: RefreshOptions) -> dict[str, Any]:
+        """Resolve scheduled Procore project scope with explicit skipped/rejected reasons."""
+        allowlist = tuple(k.strip() for k in options.procore_project_keys if k.strip())
+        allowset = set(allowlist)
+        by_key = {p.hb_project_key: p for p in registry.projects}
+        selected: list[dict[str, Any]] = []
+        skipped: list[dict[str, Any]] = []
+        blocking: list[dict[str, Any]] = []
+
+        for key in allowlist:
+            if key not in by_key:
+                blocking.append({"project_key": key, "reason": "unknown_key"})
+
+        for project in registry.projects:
+            key = project.hb_project_key
+            status = str(project.status)
+            has_project_id = bool((project.procore_project_id or "").strip())
+            row = {
+                "project_key": key,
+                "status": status,
+                "procore_project_id_present": has_project_id,
+            }
+            allowlisted = not allowset or key in allowset
+            if not allowlisted:
+                skipped.append({**row, "reason": "not_in_allowlist"})
+                continue
+
+            if options.procore_project_scope == "pilot_only" and status != "pilot":
+                reason = f"status_not_pilot:{status}"
+                if allowset:
+                    blocking.append({**row, "reason": reason})
+                else:
+                    skipped.append({**row, "reason": reason})
+                continue
+
+            if (
+                options.procore_project_scope == "all_mapped"
+                and status not in LIVE_REFRESH_ELIGIBLE_PROJECT_STATUSES
+            ):
+                reason = f"status_not_live_refresh_eligible:{status}"
+                if allowset:
+                    blocking.append({**row, "reason": reason})
+                else:
+                    skipped.append({**row, "reason": reason})
+                continue
+
+            if not has_project_id:
+                reason = "procore_project_id_empty"
+                if allowset:
+                    blocking.append({**row, "reason": reason})
+                else:
+                    skipped.append({**row, "reason": reason})
+                continue
+
+            selected.append(row)
+
+        return {
+            "scope": options.procore_project_scope,
+            "allowlist": list(allowlist),
+            "eligible_statuses": list(LIVE_REFRESH_ELIGIBLE_PROJECT_STATUSES),
+            "selected_project_count": len(selected),
+            "skipped_project_count": len(skipped),
+            "blocking_rejection_count": len(blocking),
+            "selected_projects": selected,
+            "skipped_projects": skipped,
+            "blocking_rejections": blocking,
+        }
 
     def _procore_plan_only(
         self,
         plan: tuple[Any, ...],
-        pilot_keys: list[str],
+        scope: dict[str, Any],
         auth_status: str,
         ready: bool,
         live_env: bool,
@@ -418,8 +521,9 @@ class SourceRefreshOrchestrator:
         """Dry-run posture: describe the canonical plan without any live read or write."""
         endpoints: list[dict[str, Any]] = []
         counts = _zero_counts()
+        project_keys = [p["project_key"] for p in scope["selected_projects"]]
         for pe in plan:
-            keys = pilot_keys[:1] if pe.company_level else pilot_keys
+            keys = project_keys[:1] if pe.company_level else project_keys
             for key in keys:
                 endpoints.append(
                     {
@@ -453,16 +557,17 @@ class SourceRefreshOrchestrator:
             "live_env_active": live_env,
             "persistence_path": "procore_live",
             "canonical_tables": list(PROCORE_CANONICAL_TABLES),
+            "project_scope_policy": scope,
             "endpoint_summary": summary,
             "endpoints": endpoints,
-            "projects": [{"project_key": k, "status": "planned"} for k in pilot_keys],
+            "projects": [{"project_key": k, "status": "planned"} for k in project_keys],
             "counts": counts,
         }
 
     def _procore_live_execute(
         self,
         plan: tuple[Any, ...],
-        pilot_keys: list[str],
+        scope: dict[str, Any],
         options: RefreshOptions,
         auth_status: str,
         ready: bool,
@@ -471,15 +576,16 @@ class SourceRefreshOrchestrator:
         """Apply posture: run each canonical endpoint via run_live_sync and aggregate."""
         brief_date = self._resolve_brief_date(options)
         start_date, end_date = daily_log_window(brief_date)
+        project_keys = [p["project_key"] for p in scope["selected_projects"]]
 
         endpoints: list[dict[str, Any]] = []
         per_project: dict[str, dict[str, int]] = {
-            k: {"ok": 0, "skipped": 0, "failed": 0} for k in pilot_keys
+            k: {"ok": 0, "skipped": 0, "failed": 0} for k in project_keys
         }
         counts = _zero_counts()
 
         for pe in plan:
-            keys = pilot_keys[:1] if pe.company_level else pilot_keys
+            keys = project_keys[:1] if pe.company_level else project_keys
             # A company-level endpoint is fetched once; the remaining pilots are
             # marked intentionally skipped below rather than re-running the
             # company-wide read.
@@ -489,7 +595,7 @@ class SourceRefreshOrchestrator:
                 endpoints.append(self._endpoint_row(pe, key, receipt, code))
                 self._tally_endpoint(pe, key, code, receipt, counts, per_project)
             if pe.company_level:
-                for key in pilot_keys[1:]:
+                for key in project_keys[1:]:
                     endpoints.append(
                         {
                             "endpoint": pe.canonical_id,
@@ -543,6 +649,7 @@ class SourceRefreshOrchestrator:
             "persistence_path": "procore_live",
             "canonical_tables": list(PROCORE_CANONICAL_TABLES),
             "tables_written": list(PROCORE_CANONICAL_TABLES),
+            "project_scope_policy": scope,
             "endpoint_summary": summary,
             "endpoints": endpoints,
             "projects": projects,
@@ -606,9 +713,13 @@ class SourceRefreshOrchestrator:
             "endpoint": pe.canonical_id,
             "legacy_alias": pe.legacy_alias,
             "scope": "company" if pe.company_level else project_key,
+            "project_key": project_key,
+            "company_level": bool(pe.company_level),
             "status": code,
             "retrieved": int(receipt.get("retrieved_count", 0) or 0),
             "upserted": int(receipt.get("sqlite_upserted_count", 0) or 0),
+            "sync_run_id": receipt.get("sync_run_id"),
+            "raw_payload_rows_written": int(receipt.get("raw_payload_rows_written", 0) or 0),
         }
 
     def _tally_endpoint(
@@ -651,6 +762,271 @@ class SourceRefreshOrchestrator:
             except ValueError:
                 pass
         return date.today()
+
+    # -- stage 2b: procore projection ---------------------------------------------
+
+    def _procore_projection_stage(
+        self, options: RefreshOptions, procore_summary: dict[str, Any]
+    ) -> dict[str, Any]:
+        scope = procore_summary.get("project_scope_policy") or {
+            "selected_projects": [],
+            "skipped_projects": [],
+            "selected_project_count": 0,
+            "skipped_project_count": 0,
+            "blocking_rejections": [],
+        }
+        base: dict[str, Any] = {
+            "status": "skipped",
+            "reason": "not_run",
+            "selected_project_count": int(scope.get("selected_project_count", 0) or 0),
+            "skipped_project_count": int(scope.get("skipped_project_count", 0) or 0),
+            "selected_projects": scope.get("selected_projects", []),
+            "skipped_projects": scope.get("skipped_projects", []),
+            "blocking_rejections": scope.get("blocking_rejections", []),
+            "raw_full_rows_by_project": {},
+            "raw_full_rows_by_project_endpoint": {},
+            "projection_schema_audit": {"ok": False, "runtime_plan_schema_mismatches": 0},
+            "projection_reprocess": {
+                "ok": False,
+                "primary_rows_written": 0,
+                "child_rows_written": 0,
+            },
+            "projection_audit": {
+                "ok": False,
+                "unknown_business_field_paths": 0,
+                "runtime_plan_schema_mismatches": 0,
+            },
+            "guardrails": {"live_calls_disabled": True, "writeback": "none", "emits_values": False},
+        }
+
+        if procore_summary.get("status") == "blocked_project_scope":
+            self._acc.degraded = True
+            return {**base, "status": "blocked_project_scope", "reason": "project_scope_blocked"}
+        if not options.apply:
+            return {**base, "status": "skipped", "reason": "dry_run"}
+        if not procore_summary.get("live_read_performed"):
+            return {**base, "status": "skipped", "reason": "procore_live_read_not_performed"}
+
+        freshness = self._verify_procore_raw_payload_freshness(procore_summary)
+        base["raw_full_rows_by_project"] = freshness["raw_full_rows_by_project"]
+        base["raw_full_rows_by_project_endpoint"] = freshness[
+            "raw_full_rows_by_project_endpoint"
+        ]
+        base["raw_full_payload_freshness"] = freshness
+        if not freshness["ok"]:
+            self._acc.degraded = True
+            self._acc.failures.append(
+                {
+                    "stage": "procore_projection.raw_payload_freshness",
+                    "status": "degraded",
+                    "reason": "raw_full_payload_freshness_missing",
+                }
+            )
+            return {
+                **base,
+                "status": "degraded",
+                "reason": "raw_full_payload_freshness_missing",
+            }
+
+        SQLiteMigrator(self.db_path).apply()
+        schema = projection_schema_audit(db_path=self.db_path)
+        base["projection_schema_audit"] = self._summarize_projection_schema_audit(schema)
+        if not schema.get("ok"):
+            self._acc.degraded = True
+            self._acc.failures.append(
+                {
+                    "stage": "procore_projection.schema_audit",
+                    "status": "degraded",
+                    "reason": "schema_parity_broken",
+                }
+            )
+            return {**base, "status": "degraded", "reason": "schema_parity_broken"}
+
+        try:
+            reprocess = backfill_endpoint_specific_from_raw_payloads(
+                db_path=self.db_path,
+                apply=True,
+                limit=200000,
+                mode=MODE_ENFORCE,
+            )
+        except UnknownProjectionPath as exc:
+            reprocess = {
+                "ok": False,
+                "status": "fail_closed_unknown_path",
+                "endpoint": exc.endpoint_id,
+                "degraded_unknown_projection_fields": len(exc.unknown),
+                "unknown_business_field_sample": sorted(exc.unknown)[:20],
+                "primary_rows_written": 0,
+                "child_rows_written": 0,
+                "guardrails": {"live_calls_disabled": True, "writeback": "none"},
+            }
+        base["projection_reprocess"] = self._summarize_projection_reprocess(reprocess)
+        if not reprocess.get("ok"):
+            self._acc.degraded = True
+            self._acc.failures.append(
+                {
+                    "stage": "procore_projection.reprocess",
+                    "status": "degraded",
+                    "reason": str(reprocess.get("status", "projection_reprocess_failed")),
+                }
+            )
+            return {
+                **base,
+                "status": "degraded",
+                "reason": str(reprocess.get("status", "projection_reprocess_failed")),
+            }
+
+        audit = projection_audit(db_path=self.db_path)
+        base["projection_audit"] = self._summarize_projection_audit(audit)
+        if not audit.get("ok"):
+            self._acc.degraded = True
+            self._acc.failures.append(
+                {
+                    "stage": "procore_projection.audit",
+                    "status": "degraded",
+                    "reason": "projection_audit_not_ok",
+                }
+            )
+            return {**base, "status": "degraded", "reason": "projection_audit_not_ok"}
+
+        return {**base, "status": "ok", "reason": "projection_pipeline_ok"}
+
+    def _verify_procore_raw_payload_freshness(self, procore_summary: dict[str, Any]) -> dict[str, Any]:
+        """Prove current live-sync receipts wrote the raw rows projection replay consumes."""
+        raw_counts = self._raw_full_payload_counts_for_current_sync(procore_summary)
+        by_project = raw_counts["by_project"]
+        by_project_endpoint = raw_counts["by_project_endpoint"]
+        missing: list[dict[str, Any]] = []
+        for endpoint in procore_summary.get("endpoints", []):
+            if endpoint.get("status") != "success":
+                continue
+            if endpoint.get("company_level"):
+                continue
+            retrieved = int(endpoint.get("retrieved", 0) or 0)
+            if retrieved <= 0:
+                continue
+            key = str(endpoint.get("scope") or "")
+            endpoint_id = str(endpoint.get("endpoint") or "")
+            actual = int(by_project_endpoint.get(key, {}).get(endpoint_id, 0) or 0)
+            if actual <= 0:
+                missing.append(
+                    {
+                        "project_key": key,
+                        "endpoint": endpoint_id,
+                        "retrieved": retrieved,
+                        "raw_full_rows": actual,
+                    }
+                )
+        return {
+            "ok": not missing,
+            "source_quality": SOURCE_QUALITY_LIVE_FULL,
+            "raw_landing_table": RAW_LANDING_TABLE,
+            "sync_run_ids_checked": raw_counts["sync_run_ids_checked"],
+            "raw_full_rows_by_project": by_project,
+            "raw_full_rows_by_project_endpoint": by_project_endpoint,
+            "missing_fresh_raw_payloads": missing[:50],
+            "missing_fresh_raw_payload_count": len(missing),
+            "guardrails": {"emits_values": False, "counts_only": True},
+        }
+
+    def _raw_full_payload_counts_for_current_sync(
+        self, procore_summary: dict[str, Any]
+    ) -> dict[str, Any]:
+        sync_run_ids = sorted(
+            {
+                str(e.get("sync_run_id"))
+                for e in procore_summary.get("endpoints", [])
+                if e.get("sync_run_id")
+            }
+        )
+        by_project: dict[str, int] = {}
+        by_project_endpoint: dict[str, dict[str, int]] = {}
+        if not sync_run_ids:
+            return {
+                "sync_run_ids_checked": [],
+                "by_project": by_project,
+                "by_project_endpoint": by_project_endpoint,
+            }
+        placeholders = ", ".join("?" for _ in sync_run_ids)
+        sql = (
+            f"SELECT project_key, endpoint_key, COUNT(*) FROM {RAW_LANDING_TABLE} "
+            "WHERE raw_procore_payload_persisted = 1 AND is_current = 1 "
+            f"AND source_quality = ? AND capture_run_id IN ({placeholders}) "
+            "GROUP BY project_key, endpoint_key"
+        )
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            for project_key, endpoint_key, count in conn.execute(
+                sql, (SOURCE_QUALITY_LIVE_FULL, *sync_run_ids)
+            ):
+                pkey = str(project_key)
+                ekey = str(endpoint_key)
+                cnt = int(count)
+                by_project[pkey] = by_project.get(pkey, 0) + cnt
+                by_project_endpoint.setdefault(pkey, {})[ekey] = cnt
+        except sqlite3.Error:
+            return {
+                "sync_run_ids_checked": sync_run_ids,
+                "by_project": by_project,
+                "by_project_endpoint": by_project_endpoint,
+            }
+        finally:
+            conn.close()
+        return {
+            "sync_run_ids_checked": sync_run_ids,
+            "by_project": by_project,
+            "by_project_endpoint": by_project_endpoint,
+        }
+
+    @staticmethod
+    def _summarize_projection_schema_audit(payload: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "ok": bool(payload.get("ok", False)),
+            "runtime_plan_schema_mismatches": int(
+                payload.get("runtime_plan_schema_mismatches", 0) or 0
+            ),
+            "missing_table_count": int(payload.get("missing_table_count", 0) or 0),
+            "missing_column_count": int(payload.get("missing_column_count", 0) or 0),
+            "mismatches_sample": payload.get("mismatches", [])[:20],
+            "guardrails": payload.get("guardrails", {}),
+        }
+
+    @staticmethod
+    def _summarize_projection_reprocess(payload: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "ok": bool(payload.get("ok", False)),
+            "status": payload.get("status", "ok" if payload.get("ok") else "failed"),
+            "primary_rows_written": int(payload.get("primary_rows_written", 0) or 0),
+            "child_rows_written": int(payload.get("child_rows_written", 0) or 0),
+            "raw_full_rows_inspected": int(payload.get("raw_full_rows_inspected", 0) or 0),
+            "degraded_unknown_projection_fields": int(
+                payload.get("degraded_unknown_projection_fields", 0) or 0
+            ),
+            "runtime_plan_schema_mismatches": int(
+                payload.get("runtime_plan_schema_mismatches", 0) or 0
+            ),
+            "guardrails": payload.get("guardrails", {}),
+        }
+
+    @staticmethod
+    def _summarize_projection_audit(payload: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "ok": bool(payload.get("ok", False)),
+            "endpoint_count": int(payload.get("endpoint_count", 0) or 0),
+            "unknown_business_field_paths": int(
+                payload.get("unknown_business_field_paths", 0) or 0
+            ),
+            "unmapped_primary_business_fields": int(
+                payload.get("unmapped_primary_business_fields", 0) or 0
+            ),
+            "unmapped_nested_business_fields": int(
+                payload.get("unmapped_nested_business_fields", 0) or 0
+            ),
+            "runtime_plan_schema_mismatches": int(
+                payload.get("runtime_plan_schema_mismatches", 0) or 0
+            ),
+            "guardrails": payload.get("guardrails", {}),
+        }
 
     # -- stage 3: graph ------------------------------------------------------------
 

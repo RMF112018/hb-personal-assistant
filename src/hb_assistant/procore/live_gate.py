@@ -23,7 +23,10 @@ import os
 from collections.abc import Iterable
 
 from hb_assistant.procore.errors import ProcoreAPIError
-from hb_assistant.procore.models import ProcoreProjectsRegistry
+from hb_assistant.procore.models import (
+    LIVE_REFRESH_ELIGIBLE_PROJECT_STATUSES,
+    ProcoreProjectsRegistry,
+)
 
 LIVE_ENV_VAR = "HB_PROCORE_LIVE"
 LIVE_ENV_ENABLER = "1"
@@ -60,10 +63,11 @@ def assert_live_mapping_strict(
     registry: ProcoreProjectsRegistry,
     target_keys: Iterable[str],
 ) -> None:
-    """Raise :class:`ProcoreAPIError` if any target is not a mapped pilot.
+    """Raise :class:`ProcoreAPIError` if any target is not live-refresh eligible.
 
-    Live operations must target rows whose ``status == "pilot"`` and whose
-    ``procore_project_id`` is non-empty. Pending / deprecated / unknown
+    Live operations must target rows whose status is exactly ``pilot`` or
+    ``active`` and whose ``procore_project_id`` is non-empty. Pending /
+    deprecated / unknown
     keys are rejected with an offender list. Distinct from the registry-
     level ``mapping_consistent`` check, which scores the whole registry
     rather than a specific target set.
@@ -75,9 +79,12 @@ def assert_live_mapping_strict(
         if project is None:
             offenders.append({"hb_project_key": key, "reason": "unknown_key"})
             continue
-        if project.status != "pilot":
+        if project.status not in LIVE_REFRESH_ELIGIBLE_PROJECT_STATUSES:
             offenders.append(
-                {"hb_project_key": key, "reason": f"status_not_pilot:{project.status}"}
+                {
+                    "hb_project_key": key,
+                    "reason": f"status_not_live_refresh_eligible:{project.status}",
+                }
             )
             continue
         if not (project.procore_project_id or "").strip():

@@ -50,6 +50,7 @@ class ScheduledRefreshReceipt(BaseModel):
     failure_count: int = 0
     failures: list[dict[str, Any]] = Field(default_factory=list)
     stages: dict[str, Any] = Field(default_factory=dict)
+    procore_projection_summary: dict[str, Any] = Field(default_factory=dict)
     procore_auth_status: str | None = None
     next_operator_action: str | None = None
     evidence_summary_path: str | None = None

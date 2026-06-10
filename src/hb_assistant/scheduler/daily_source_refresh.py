@@ -59,6 +59,8 @@ class DailySourceRefreshJob:
                 mock_data=True,
                 allow_procore_live=False,
                 allow_graph_live=False,
+                procore_project_scope=sc.procore_project_scope,
+                procore_project_keys=tuple(sc.procore_project_keys),
                 brief_date=schedule_date.isoformat(),
             )
         master = sc.enable_live_reads
@@ -74,6 +76,8 @@ class DailySourceRefreshJob:
             mock_data=False,
             allow_procore_live=procore_live,
             allow_graph_live=graph_live,
+            procore_project_scope=sc.procore_project_scope,
+            procore_project_keys=tuple(sc.procore_project_keys),
             brief_date=schedule_date.isoformat(),
         )
 
@@ -124,6 +128,7 @@ class DailySourceRefreshJob:
         stages = {
             "preflight": _stage_status(summary.get("preflight")),
             "procore": _stage_status(summary.get("procore_sync_summary")),
+            "procore_projection": _stage_status(summary.get("procore_projection_summary")),
             "graph": _stage_status(summary.get("graph_sync_summary")),
             "rebuild": _stage_status(summary.get("retrieval_rebuild_summary")),
         }
@@ -147,6 +152,7 @@ class DailySourceRefreshJob:
             failure_count=len(failures),
             failures=failures,
             stages=stages,
+            procore_projection_summary=summary.get("procore_projection_summary", {}),
             procore_auth_status=(
                 str(summary.get("procore_auth_status"))
                 if summary.get("procore_auth_status") is not None
