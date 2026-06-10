@@ -4341,6 +4341,53 @@ class ConstructionStore:
         )
         return [dict(zip(keys, row, strict=True)) for row in cur.fetchall()]
 
+    def list_procore_action_signals_for_ranking(
+        self,
+        *,
+        project_key: Optional[str] = None,
+        signal_status: Optional[str] = None,
+        limit: int = 100000,
+    ) -> list[dict[str, Any]]:
+        """List Procore action signals with the extra fields the daily-brief ranker needs.
+
+        Adds owner/source-change/observation timestamps to the safe-enum set so ranking can compute
+        owner-linked / source-change-linked / recent. Still excludes free-text
+        (title_redacted / summary_redacted / metadata_json). Callers MUST convert ``owner_entity_key``
+        and ``source_change_event_id`` to booleans before emitting any output — the raw values are
+        ranking inputs only and must never appear in a digest payload.
+        """
+        keys = (
+            "action_signal_id",
+            "project_key",
+            "record_key",
+            "endpoint_id",
+            "signal_type",
+            "signal_status",
+            "importance",
+            "due_at_utc",
+            "owner_entity_key",
+            "source_change_event_id",
+            "first_detected_at_utc",
+            "last_seen_at_utc",
+        )
+        clauses: list[str] = []
+        params: list[Any] = []
+        if project_key is not None:
+            clauses.append("project_key = ?")
+            params.append(project_key)
+        if signal_status is not None:
+            clauses.append("signal_status = ?")
+            params.append(signal_status)
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        params.append(limit)
+        conn = get_connection(self._db_path)
+        cur = conn.execute(
+            f"SELECT {', '.join(keys)} FROM procore_action_signals {where} "
+            "ORDER BY action_signal_id LIMIT ?",
+            tuple(params),
+        )
+        return [dict(zip(keys, row, strict=True)) for row in cur.fetchall()]
+
     def upsert_project_risk_digest_item(
         self,
         *,
