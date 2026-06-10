@@ -2090,6 +2090,50 @@ def daily_brief_synthesize_candidates(
         raise typer.Exit(1) from None
 
 
+@relationship_candidates_app.command("report")
+def relationship_candidates_report(
+    project_key: "str | None" = typer.Option(  # noqa: B008
+        None, "--project-key", help="Filter to a single project key."
+    ),
+    limit: int = typer.Option(2000, "--limit", help="Max candidates to scan."),  # noqa: B008
+    markdown_out: "str | None" = typer.Option(  # noqa: B008
+        None, "--markdown-out", help="Also write the operator-facing Markdown report to this file."
+    ),
+    db: "str | None" = typer.Option(None, "--db", help="Explicit SQLite path (tests/isolation)."),  # noqa: B008
+    json_out: bool = typer.Option(True, "--json", help="Emit JSON (default)."),  # noqa: B008
+) -> None:
+    """Consolidated, review-safe relationship/entity candidate report (read-only / dry-run).
+
+    Groups the unified V25 cross-source relationship candidates by operator action: alias/project
+    matches, person/company/project relationships, likely-duplicate entities, low-confidence
+    needs-review, and rejected/not-actionable. Deterministic grouping (stable enums, no model);
+    persists nothing and promotes nothing — unreviewed inferences stay advisory.
+    """
+    from pathlib import Path
+
+    from hb_assistant.construction.second_brain.local_ai.relationship_entity_report import (
+        build_relationship_entity_report,
+        render_relationship_entity_report_markdown,
+    )
+    from hb_assistant.construction.store import ConstructionStore
+
+    cmd = "second-brain relationship-candidates report"
+    try:
+        store = ConstructionStore(db_path=db)
+        report = build_relationship_entity_report(store=store, project_key=project_key, limit=limit)
+        markdown = render_relationship_entity_report_markdown(report)
+        if markdown_out:
+            Path(markdown_out).write_text(markdown, encoding="utf-8")
+        typer.echo(json.dumps(report, indent=2, default=str) if json_out else markdown)
+        raise typer.Exit(0 if report.get("ok") else 2)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        payload = {"command": cmd, "ok": False, "error": str(e)[:300]}
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(1) from None
+
+
 @relationship_candidates_app.command("scan")
 def relationship_candidates_scan(
     as_of: "str | None" = typer.Option(  # noqa: B008

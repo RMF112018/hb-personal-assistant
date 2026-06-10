@@ -1,0 +1,199 @@
+{
+  "command": "second-brain relationship-candidates report",
+  "ok": true,
+  "project_key": null,
+  "counts": {
+    "alias_project_matches": 2,
+    "entity_relationships": 2,
+    "likely_duplicate_entities": 2,
+    "low_confidence_needs_review": 1,
+    "rejected_not_actionable": 1,
+    "total": 8
+  },
+  "groups": {
+    "alias_project_matches": [
+      {
+        "candidate_id": "proj1",
+        "relationship_type": "email_project_match",
+        "source_family": "person",
+        "source_record_type": "contact",
+        "target_family": "project",
+        "target_record_type": "project",
+        "project_key": "PRJ-A",
+        "confidence_score": 0.8,
+        "confidence_class": "strong_heuristic",
+        "deterministic": true,
+        "model_proposed": false,
+        "review_required": false,
+        "promotion_status": "candidate",
+        "reason_signal_types": [
+          "shared_thread",
+          "same_project"
+        ],
+        "source_ref_count": 2
+      },
+      {
+        "candidate_id": "proj2",
+        "relationship_type": "calendar_project_alias",
+        "source_family": "person",
+        "source_record_type": "contact",
+        "target_family": "project",
+        "target_record_type": "project",
+        "project_key": "PRJ-B",
+        "confidence_score": 0.8,
+        "confidence_class": "strong_heuristic",
+        "deterministic": true,
+        "model_proposed": false,
+        "review_required": false,
+        "promotion_status": "candidate",
+        "reason_signal_types": [
+          "shared_thread",
+          "same_project"
+        ],
+        "source_ref_count": 2
+      }
+    ],
+    "entity_relationships": [
+      {
+        "candidate_id": "rel1",
+        "relationship_type": "related_to",
+        "source_family": "person",
+        "source_record_type": "contact",
+        "target_family": "company",
+        "target_record_type": "org",
+        "project_key": null,
+        "confidence_score": 0.8,
+        "confidence_class": "strong_heuristic",
+        "deterministic": true,
+        "model_proposed": false,
+        "review_required": false,
+        "promotion_status": "candidate",
+        "reason_signal_types": [
+          "shared_thread",
+          "same_project"
+        ],
+        "source_ref_count": 2
+      },
+      {
+        "candidate_id": "rel2",
+        "relationship_type": "related_to",
+        "source_family": "person",
+        "source_record_type": "contact",
+        "target_family": "person",
+        "target_record_type": "contact",
+        "project_key": null,
+        "confidence_score": 0.8,
+        "confidence_class": "strong_heuristic",
+        "deterministic": true,
+        "model_proposed": false,
+        "review_required": false,
+        "promotion_status": "candidate",
+        "reason_signal_types": [
+          "shared_thread",
+          "same_project"
+        ],
+        "source_ref_count": 2
+      }
+    ],
+    "likely_duplicate_entities": [
+      {
+        "candidate_id": "dup1",
+        "relationship_type": "same_entity",
+        "source_family": "person",
+        "source_record_type": "contact",
+        "target_family": "person",
+        "target_record_type": "contact",
+        "project_key": null,
+        "confidence_score": 0.95,
+        "confidence_class": "deterministic",
+        "deterministic": true,
+        "model_proposed": false,
+        "review_required": false,
+        "promotion_status": "candidate",
+        "reason_signal_types": [
+          "shared_thread",
+          "same_project"
+        ],
+        "source_ref_count": 2
+      },
+      {
+        "candidate_id": "dup2",
+        "relationship_type": "alias_of",
+        "source_family": "company",
+        "source_record_type": "org",
+        "target_family": "company",
+        "target_record_type": "org",
+        "project_key": null,
+        "confidence_score": 0.9,
+        "confidence_class": "strong_heuristic",
+        "deterministic": true,
+        "model_proposed": false,
+        "review_required": false,
+        "promotion_status": "candidate",
+        "reason_signal_types": [
+          "shared_thread",
+          "same_project"
+        ],
+        "source_ref_count": 2
+      }
+    ],
+    "low_confidence_needs_review": [
+      {
+        "candidate_id": "nr1",
+        "relationship_type": "related_to",
+        "source_family": "person",
+        "source_record_type": "contact",
+        "target_family": "company",
+        "target_record_type": "org",
+        "project_key": null,
+        "confidence_score": 0.3,
+        "confidence_class": "weak_heuristic",
+        "deterministic": true,
+        "model_proposed": true,
+        "review_required": true,
+        "promotion_status": "needs_review",
+        "reason_signal_types": [
+          "shared_thread",
+          "same_project"
+        ],
+        "source_ref_count": 2
+      }
+    ],
+    "rejected_not_actionable": [
+      {
+        "candidate_id": "rej1",
+        "relationship_type": "related_to",
+        "source_family": "person",
+        "source_record_type": "contact",
+        "target_family": "company",
+        "target_record_type": "org",
+        "project_key": null,
+        "confidence_score": 0.8,
+        "confidence_class": "rejected",
+        "deterministic": true,
+        "model_proposed": false,
+        "review_required": false,
+        "promotion_status": "rejected",
+        "reason_signal_types": [
+          "shared_thread",
+          "same_project"
+        ],
+        "source_ref_count": 2
+      }
+    ]
+  },
+  "promotion_safety": {
+    "unreviewed_inferences_promoted_as_fact": 0,
+    "ok": true
+  },
+  "guardrails": {
+    "read_only": true,
+    "dry_run": true,
+    "deterministic_grouping_no_model": true,
+    "source_linked": true,
+    "no_raw_content": true,
+    "no_writeback": true,
+    "no_promotion": true,
+    "advisory_only": true
+  }
+}

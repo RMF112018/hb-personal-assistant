@@ -1,0 +1,17 @@
+{
+  "table": "cross_source_relationship_candidates",
+  "rows": 8,
+  "guard_columns_present": 8,
+  "per_column_sum": {
+    "raw_email_body_persisted": 0,
+    "raw_document_text_persisted": 0,
+    "raw_calendar_payload_persisted": 0,
+    "raw_prompt_persisted": 0,
+    "raw_response_persisted": 0,
+    "signed_url_persisted": 0,
+    "download_url_persisted": 0,
+    "external_writeback_performed": 0
+  },
+  "nonzero_sum": 0,
+  "all_guard_columns_zero": true
+}

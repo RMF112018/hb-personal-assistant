@@ -1,0 +1,46 @@
+{
+  "scenario": "alias / project matches",
+  "alias_project_matches": [
+    {
+      "candidate_id": "proj1",
+      "relationship_type": "email_project_match",
+      "source_family": "person",
+      "source_record_type": "contact",
+      "target_family": "project",
+      "target_record_type": "project",
+      "project_key": "PRJ-A",
+      "confidence_score": 0.8,
+      "confidence_class": "strong_heuristic",
+      "deterministic": true,
+      "model_proposed": false,
+      "review_required": false,
+      "promotion_status": "candidate",
+      "reason_signal_types": [
+        "shared_thread",
+        "same_project"
+      ],
+      "source_ref_count": 2
+    },
+    {
+      "candidate_id": "proj2",
+      "relationship_type": "calendar_project_alias",
+      "source_family": "person",
+      "source_record_type": "contact",
+      "target_family": "project",
+      "target_record_type": "project",
+      "project_key": "PRJ-B",
+      "confidence_score": 0.8,
+      "confidence_class": "strong_heuristic",
+      "deterministic": true,
+      "model_proposed": false,
+      "review_required": false,
+      "promotion_status": "candidate",
+      "reason_signal_types": [
+        "shared_thread",
+        "same_project"
+      ],
+      "source_ref_count": 2
+    }
+  ],
+  "ok": true
+}
