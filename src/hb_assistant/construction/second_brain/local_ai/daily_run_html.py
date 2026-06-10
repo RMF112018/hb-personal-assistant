@@ -37,7 +37,14 @@ _TOKEN_RE = re.compile(
 )
 _SAS_RE = re.compile(r"[?&](?:sig|sv|se|st|sp|sr)=[^&\s]+", re.IGNORECASE)
 
-_STATUS_CLASS = {"success": "ok", "partial": "warn", "failure": "fail", "skipped_weekend": "skip"}
+_STATUS_CLASS = {
+    "success": "ok",
+    "deterministic_success_synthesis_degraded": "ok",
+    "partial": "warn",
+    "degraded": "warn",
+    "failure": "fail",
+    "skipped_weekend": "skip",
+}
 
 
 def scrub_raw_text(text: Any) -> str:
@@ -411,6 +418,7 @@ def render_daily_run_html(
     synthesis: dict[str, Any] | None = None,
     model_metadata: dict[str, Any] | None = None,
     degraded: bool = False,
+    deterministic_fallback: bool = False,
     pending_followup: dict[str, Any] | None = None,
     model_enriched: dict[str, Any] | None = None,
 ) -> str:
@@ -428,7 +436,12 @@ def render_daily_run_html(
     status_cls = _STATUS_CLASS.get(status, "warn")
     status_text = {
         "success": "Success — fresh local-model brief generated this run",
-        "partial": "Partial — synthesis degraded or a stage failed; see banner",
+        "deterministic_success_synthesis_degraded": (
+            "Deterministic brief published — model synthesis degraded; operator-usable "
+            "(usefulness gate passed)"
+        ),
+        "partial": "Partial — a pipeline stage failed; see warnings",
+        "degraded": "Degraded — deterministic usefulness gate failed; last good is preserved",
         "failure": "Failure — brief not generated this run; last good is preserved",
         "skipped_weekend": "Skipped — weekend run, no fresh brief generated",
     }.get(status, status)
@@ -454,11 +467,20 @@ def render_daily_run_html(
         reason = (model_metadata or {}).get("degraded_reason") or (model_metadata or {}).get(
             "status"
         )
-        parts.append(
-            "<div class='banner fail'>⚠ DEGRADED — local-model synthesis unavailable "
-            f"(reason: {_esc(reason)}). Showing deterministic source-linked candidates; "
-            "this run is NOT counted as successful.</div>"
-        )
+        if deterministic_fallback:
+            # Operator-usable: the usefulness gate passed; the deterministic source-linked brief is
+            # published as a safe fallback (NOT the same class as an unusable/degraded brief).
+            parts.append(
+                "<div class='banner ok'>✓ Deterministic source-linked brief published. "
+                f"Local-model synthesis was degraded: {_esc(reason)}. This brief is operator-usable "
+                "because the deterministic usefulness gate passed.</div>"
+            )
+        else:
+            parts.append(
+                "<div class='banner fail'>⚠ DEGRADED — local-model synthesis unavailable "
+                f"(reason: {_esc(reason)}). Showing deterministic source-linked candidates; "
+                "this run is NOT counted as successful.</div>"
+            )
 
     if extra_section_label:
         parts.append(f"<div class='banner ok'>{_esc(extra_section_label)}</div>")
