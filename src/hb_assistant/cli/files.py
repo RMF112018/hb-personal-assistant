@@ -51,7 +51,9 @@ def files_parse_index(
     markdown_out: Optional[str] = typer.Option(  # noqa: B008
         None, "--markdown-out", help="Also write the operator-facing Markdown index to a file."
     ),
-    json_out: bool = typer.Option(True, "--json"),  # noqa: B008
+    json_out: bool = typer.Option(  # noqa: B008
+        True, "--json/--no-json", help="Emit JSON (default); --no-json emits operator Markdown."
+    ),
 ) -> None:
     """Parse local files into a review-safe read-model index (local-only, hash-only, no raw text).
 

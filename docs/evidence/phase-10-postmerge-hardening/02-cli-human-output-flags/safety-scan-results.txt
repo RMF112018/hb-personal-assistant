@@ -1,0 +1,19 @@
+Prompt 02 — Safety Scan Results
+
+Scope: docs/evidence/phase-10-postmerge-hardening/02-cli-human-output-flags
+
+Pattern (forbidden live/private content):
+  Bearer <token>, access_token, refresh_token, client_secret,
+  teams.microsoft.com, zoom.us, meet.google.com, sig=, @hedrickbrothers, https://
+
+RESULT: CLEAN — no forbidden live/private content matches.
+
+Documented safe matches (in captured CLI output, NOT leaks):
+  - The mcp-packet Markdown "## Omitted raw categories" line lists CATEGORY LABELS the contract
+    excludes: `signed_urls`, `download_urls`, `join_links`, `bearer_tokens`, `email_address_dumps`,
+    `html_bodies`, `raw_*`. These are guardrail label strings, not actual URLs/tokens/emails.
+    They do not match the forbidden-content patterns above (e.g. `bearer_tokens` != `Bearer <tok>`).
+  - The captured packet is counts-only / metadata-only; the fail-closed gate passed (no_raw_content).
+
+No raw bodies, signed/download URLs, join links, tokens, secrets, cookies, API keys, or
+email-address dumps are present. Forbidden-content scan: PASS (0 findings).

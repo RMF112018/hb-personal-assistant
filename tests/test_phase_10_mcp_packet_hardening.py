@@ -11,6 +11,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 import hb_assistant.construction.second_brain.local_ai.mcp_packet_hardening as mph
 from hb_assistant.cli.main import app
 from hb_assistant.construction.second_brain.local_ai.mcp_packet_hardening import (
@@ -82,3 +84,16 @@ def test_cli_mcp_packet_emits_json(tmp_path: Path) -> None:
     payload = json.loads(res.output)
     assert payload["packet_contract_version"] == "phase10-mcp-1.0"
     assert payload["guardrails"]["no_raw_content"] is True
+
+
+def test_cli_mcp_packet_no_json_emits_markdown(tmp_path: Path) -> None:
+    # --no-json must be accepted (post-merge hardening) and print operator Markdown, not JSON.
+    db = str(tmp_path / "p.db")
+    ConstructionStore(db_path=db)
+    res = runner.invoke(app, ["second-brain", "daily-brief", "mcp-packet", "--db", db,
+                              "--as-of", NOW, "--no-json"])
+    assert res.exit_code == 0, res.output
+    assert res.output.lstrip().startswith("# MCP Context Packet")
+    # It is Markdown, not JSON.
+    with pytest.raises(json.JSONDecodeError):
+        json.loads(res.output)

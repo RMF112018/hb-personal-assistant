@@ -106,3 +106,13 @@ def test_cli_parse_index(tmp_path: Path) -> None:
     payload = json.loads(res.output)
     assert payload["counts"]["files"] == 2
     assert payload["guardrails"]["local_only"] is True
+
+
+def test_cli_parse_index_no_json_emits_markdown(tmp_path: Path) -> None:
+    # --no-json must be accepted (post-merge hardening) and print operator Markdown, not JSON.
+    fx = _make_fixtures(tmp_path)
+    res = runner.invoke(app, ["files", "parse-index", str(fx["txt"]), "--no-json"])
+    assert res.exit_code == 0, res.output
+    assert res.output.lstrip().startswith("# File Parse Index")
+    with pytest.raises(json.JSONDecodeError):
+        json.loads(res.output)
