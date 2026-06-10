@@ -5,7 +5,7 @@ Procore raw/structured analytics storage.
 
 - Branch: `fix/procore-full-raw-payload-ingestion`
 - Schema: **V46 retained** (no V47 needed)
-- Commit: `c608a916` — `fix(procore): populate raw tables from full endpoint payloads`
+- Commit: `b7eea3f8` — `fix(procore): populate raw tables from full endpoint payloads`
 - Production DB touched during validation: **No** (read-only sha256 verified unchanged;
   all writes on `/tmp` copies and fixtures)
 

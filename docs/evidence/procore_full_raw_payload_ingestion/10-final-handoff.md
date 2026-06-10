@@ -1,7 +1,7 @@
 # 10 — Final handoff
 
 - **Branch:** `fix/procore-full-raw-payload-ingestion`
-- **Commit SHA:** `c608a916204e13dafba2581fece7ab092241cbe2`
+- **Commit SHA:** `b7eea3f8957656b74c5017ec1269a4c148aa3348`
 - **Schema version decision:** **V46 retained** (no V47 — existing columns express
   source-quality / persistence / no-writeback; precedence enforced in application code).
 - **Status:** READY FOR REVIEW
