@@ -1,0 +1,12 @@
+Production DB Unchanged Proof — Phase 10 Post-Merge Hardening
+
+Production DB path (resolved from PathPolicy().get_db_path()):
+  ~/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite
+
+sha256 BEFORE hardening work : f93b78081dfbbd7d40ebbfc9254227eab7d306bb08d73e8b92d76e7b33ae4759
+sha256 AFTER  hardening work : f93b78081dfbbd7d40ebbfc9254227eab7d306bb08d73e8b92d76e7b33ae4759
+UNCHANGED: True
+
+The production DB was referenced by path only and never opened for write. Every proof/smoke
+command used a disposable temp DB (created fresh under /tmp or the OS temp dir, removed after).
+No migration was added; schema remains at V45.

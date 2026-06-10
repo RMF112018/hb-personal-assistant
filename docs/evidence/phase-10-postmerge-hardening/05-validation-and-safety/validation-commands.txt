@@ -1,0 +1,22 @@
+# Prompt 05 validation sweep (repo root, .venv/bin/python3.12)
+.venv/bin/python3.12 -m compileall -q src tests
+.venv/bin/python3.12 -m pytest -q \
+  tests/test_phase_10_mcp_packet_hardening.py \
+  tests/test_phase_10_file_parse_read_model.py \
+  tests/test_phase_10_follow_up_watch_report.py
+
+# CLI smoke (disposable temp DB + safe committed fixture):
+.venv/bin/python3.12 -m hb_assistant.cli.main files parse-index <fixtures>/note.txt --no-json
+.venv/bin/python3.12 -m hb_assistant.cli.main files parse-index <fixtures>/note.txt --json
+.venv/bin/python3.12 -m hb_assistant.cli.main second-brain daily-brief mcp-packet --db /tmp/phase10_postmerge_mcp.sqlite --as-of 2026-06-09T05:00:00-04:00 --no-json
+.venv/bin/python3.12 -m hb_assistant.cli.main second-brain daily-brief mcp-packet --db /tmp/phase10_postmerge_mcp.sqlite --as-of 2026-06-09T05:00:00-04:00 --json
+
+# Changed-file lint/type:
+.venv/bin/ruff check src/hb_assistant/cli/files.py src/hb_assistant/cli/second_brain.py \
+  src/hb_assistant/construction/second_brain/local_ai/follow_up_watch.py \
+  src/hb_assistant/construction/second_brain/local_ai/file_parse_read_model.py
+.venv/bin/mypy src/hb_assistant/cli/files.py src/hb_assistant/cli/second_brain.py \
+  src/hb_assistant/construction/second_brain/local_ai/file_parse_read_model.py
+
+# Production DB sha256 before/after (PathPolicy().get_db_path()) — see production-db-unchanged-proof.txt
+# Safety scan: forbidden-content grep over the two evidence trees (pattern listed in safety-scan-results.txt)
