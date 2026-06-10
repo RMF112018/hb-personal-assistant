@@ -1,0 +1,1 @@
+Structured table evidence reports row counts and table names only. No payload values are committed.

@@ -1,0 +1,7 @@
+docs/architecture/240-procore-structured-analytics-foundation.md
+docs/evidence/procore_endpoint_structured_analytics_foundation/**
+docs/planning/procore_endpoint_structured_analytics_foundation_package/**
+src/hb_assistant/cli/procore.py
+src/hb_assistant/procore/structured_analytics.py
+src/hb_assistant/store/migrator.py
+tests/test_procore_structured_analytics_foundation.py

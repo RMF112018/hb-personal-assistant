@@ -1,0 +1,1 @@
+Evidence contains hashes, counts, schema version, and validation status only. No raw Procore payloads or DB extracts are included.

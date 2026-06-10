@@ -49,6 +49,9 @@ mapping_app = typer.Typer(help="Procore project mapping validation.")
 projects_app = typer.Typer(help="Procore projects registry (read-only).")
 companies_app = typer.Typer(help="Procore company context (read-only).")
 audit_app = typer.Typer(help="Procore endpoint audit (dry-run default; live opt-in manual only).")
+analytics_app = typer.Typer(
+    help="Local Procore structured analytics foundation (SQLite only; no live Procore calls)."
+)
 obsidian_app = typer.Typer(
     help="Procore Obsidian deterministic output (Prompt 10). Dry-run default. --apply explicit gate only. Hybrid procore-*.md in 01_Projects/. No secrets/LLM."
 )
@@ -58,6 +61,7 @@ app.add_typer(mapping_app, name="mapping")
 app.add_typer(projects_app, name="projects")
 app.add_typer(companies_app, name="companies")
 app.add_typer(audit_app, name="audit")
+app.add_typer(analytics_app, name="analytics")
 app.add_typer(
     obsidian_app,
     name="obsidian",
@@ -78,6 +82,126 @@ _GUARDRAILS = {
 def _emit(payload: dict[str, Any], *, json_out: bool, exit_code: int = 0) -> None:
     typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
     raise typer.Exit(exit_code)
+
+
+def _analytics_db(db: Optional[str]) -> Optional[Path]:
+    return Path(db) if db else None
+
+
+@analytics_app.command("contract")
+def analytics_contract(
+    json_out: bool = typer.Option(True, "--json/--no-json"),
+) -> None:
+    """Endpoint contract inventory: every endpoint maps to raw landing + structured target/defer reason."""
+    from hb_assistant.procore.structured_analytics import contract_inventory
+
+    payload = contract_inventory()
+    _emit(payload, json_out=json_out, exit_code=0 if payload["missing_structured_endpoint_count"] == 0 else 3)
+
+
+@analytics_app.command("coverage")
+def analytics_coverage(
+    db: Optional[str] = typer.Option(None, "--db", help="Explicit SQLite DB path."),
+    project_key: Optional[str] = typer.Option(None, "--project-key"),
+    family: Optional[str] = typer.Option(None, "--family"),
+    markdown: bool = typer.Option(False, "--markdown", help="Emit operator Markdown instead of JSON."),
+    json_out: bool = typer.Option(True, "--json/--no-json"),
+) -> None:
+    """Structured analytics coverage from local SQLite only."""
+    from hb_assistant.procore.structured_analytics import coverage_markdown, structured_coverage
+
+    payload = structured_coverage(db_path=_analytics_db(db), project_key=project_key, family=family)
+    if markdown:
+        typer.echo(coverage_markdown(payload))
+        raise typer.Exit(0)
+    _emit(payload, json_out=json_out)
+
+
+@analytics_app.command("reprocess")
+def analytics_reprocess(
+    db: Optional[str] = typer.Option(None, "--db", help="Explicit SQLite DB path."),
+    project_key: Optional[str] = typer.Option(None, "--project-key"),
+    family: Optional[str] = typer.Option(None, "--family"),
+    endpoint: Optional[str] = typer.Option(None, "--endpoint"),
+    limit: int = typer.Option(500, "--limit", min=1),
+    dry_run: bool = typer.Option(True, "--dry-run", help="Default: preview only; zero writes."),
+    apply: bool = typer.Option(False, "--apply", help="Persist bounded rows to the supplied/local DB."),
+    json_out: bool = typer.Option(True, "--json/--no-json"),
+) -> None:
+    """Backfill/reprocess existing local Procore DB rows into raw landing + structured bronze tables.
+
+    This command never calls Procore. Applying against production is not blocked by code because the
+    operator may intentionally target an isolated copy; package validation must use SQLite backups.
+    """
+    from hb_assistant.procore.structured_analytics import backfill_from_live_records
+    from hb_assistant.store.migrator import SQLiteMigrator
+
+    if apply and dry_run:
+        dry_run = False
+    if apply and not db:
+        _emit(
+            {
+                "command": "hb-assistant procore analytics reprocess",
+                "ok": False,
+                "status": "blocked_explicit_db_required",
+                "reason": "--apply requires --db so production DB is never mutated accidentally",
+                "guardrails": {"live_calls_disabled": True, "writeback": "none"},
+            },
+            json_out=json_out,
+            exit_code=2,
+        )
+        return
+    if apply:
+        SQLiteMigrator(db_path=db).apply()
+    payload = backfill_from_live_records(
+        db_path=_analytics_db(db),
+        apply=apply and not dry_run,
+        project_key=project_key,
+        family=family,
+        endpoint=endpoint,
+        limit=limit,
+    )
+    payload["command"] = "hb-assistant procore analytics reprocess"
+    payload["guardrails"] = {"live_calls_disabled": True, "writeback": "none"}
+    _emit(payload, json_out=json_out)
+
+
+@analytics_app.command("structured-counts")
+def analytics_structured_counts(
+    db: Optional[str] = typer.Option(None, "--db", help="Explicit SQLite DB path."),
+    project_key: Optional[str] = typer.Option(None, "--project-key"),
+    json_out: bool = typer.Option(True, "--json/--no-json"),
+) -> None:
+    """Counts by structured procore_raw_* table."""
+    from hb_assistant.procore.structured_analytics import structured_counts
+
+    payload = structured_counts(db_path=_analytics_db(db), project_key=project_key)
+    _emit(payload, json_out=json_out)
+
+
+@analytics_app.command("ranking-diagnostics")
+def analytics_ranking_diagnostics(
+    db: Optional[str] = typer.Option(None, "--db", help="Explicit SQLite DB path."),
+    brief_date: Optional[str] = typer.Option(None, "--brief-date"),
+    json_out: bool = typer.Option(True, "--json/--no-json"),
+) -> None:
+    """Aggregate-sludge and closed-record diagnostics for downstream read models."""
+    from hb_assistant.procore.structured_analytics import ranking_diagnostics
+
+    payload = ranking_diagnostics(db_path=_analytics_db(db), brief_date=brief_date)
+    _emit(payload, json_out=json_out)
+
+
+@analytics_app.command("no-raw-leak-scan")
+def analytics_no_raw_leak_scan(
+    path: list[str] = typer.Option(..., "--path", help="File or directory to scan."),  # noqa: B008
+    json_out: bool = typer.Option(True, "--json/--no-json"),
+) -> None:
+    """Pattern scan evidence/output files for forbidden raw payload or secret leakage."""
+    from hb_assistant.procore.structured_analytics import no_raw_leak_scan
+
+    payload = no_raw_leak_scan(path)
+    _emit(payload, json_out=json_out, exit_code=0 if payload["ok"] else 3)
 
 
 @auth_app.command("status")
@@ -668,6 +792,14 @@ live_app = typer.Typer(
 live_endpoints_app = typer.Typer(help="List live endpoint command-contract states.")
 
 
+_SYNC_RUN_ENDPOINTS_OPTION = typer.Option(
+    None,
+    "--endpoints",
+    "-e",
+    help="Filter to one or more endpoint IDs (repeatable). Defaults to every endpoint in the contract.",
+)
+
+
 @sync_app.command("run")
 def sync_run(
     project: Optional[str] = typer.Option(
@@ -693,12 +825,7 @@ def sync_run(
         "--allow-pending",
         help="Explicit opt-in to target a project whose mapping status is 'pending'. Default fails closed.",
     ),
-    endpoints: Optional[list[str]] = typer.Option(
-        None,
-        "--endpoints",
-        "-e",
-        help="Filter to one or more endpoint IDs (repeatable). Defaults to every endpoint in the contract.",
-    ),  # noqa: B008
+    endpoints: Optional[list[str]] = _SYNC_RUN_ENDPOINTS_OPTION,
 ) -> None:
     """Dry-run (default) or apply (opt-in) for pilot projects.
 
@@ -1067,6 +1194,11 @@ def live_sync(
     _emit(payload, json_out=json_out, exit_code=exit_code)
 
 
+_LIVE_INSPECT_OUTPUT_DIR_OPTION = typer.Option(
+    ..., "--output-dir", help="Explicit absolute non-repo directory for raw payload dumps."
+)
+
+
 @live_app.command("inspect")
 def live_inspect(
     project: str = typer.Option(..., "--project", help="Mapped pilot project key."),
@@ -1085,9 +1217,7 @@ def live_inspect(
     max_items: int = typer.Option(5, "--max-items", min=1),
     confirm_live_get: bool = typer.Option(False, "--confirm-live-get"),
     confirm_raw_payload_dump: bool = typer.Option(False, "--confirm-raw-payload-dump"),
-    output_dir: Path = typer.Option(
-        ..., "--output-dir", help="Explicit absolute non-repo directory for raw payload dumps."
-    ),  # noqa: B008
+    output_dir: Path = _LIVE_INSPECT_OUTPUT_DIR_OPTION,
     redact_known_sensitive_fields: bool = typer.Option(False, "--redact-known-sensitive-fields"),
     json_out: bool = typer.Option(True, "--json"),
 ) -> None:
@@ -1882,13 +2012,16 @@ def live_monitor(
     raise typer.Exit(0)
 
 
+_LIVE_COVERAGE_RAW_PAYLOAD_OPTION = typer.Option(
+    ..., "--raw-payload", help="Local JSON payload file (read-only; not persisted)."
+)
+
+
 @live_app.command("coverage")
 def live_coverage(
     project: str = typer.Option(..., "--project", help="Mapped pilot project key (contextual)."),
     endpoint: str = typer.Option(..., "--endpoint", help="Canonical endpoint id."),
-    raw_payload: Path = typer.Option(
-        ..., "--raw-payload", help="Local JSON payload file (read-only; not persisted)."
-    ),  # noqa: B008
+    raw_payload: Path = _LIVE_COVERAGE_RAW_PAYLOAD_OPTION,
     json_out: bool = typer.Option(True, "--json"),
 ) -> None:
     """Report normalizer field coverage for a local raw payload (names/types only). No network, no DB."""

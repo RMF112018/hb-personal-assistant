@@ -1,0 +1,5 @@
+env PYTHONPATH=src /Users/bobbyfetting/hb-personal-assistant/.venv/bin/pytest tests/test_procore_structured_analytics_foundation.py -q
+env PYTHONPATH=src /Users/bobbyfetting/hb-personal-assistant/.venv/bin/ruff check src/hb_assistant/procore/structured_analytics.py src/hb_assistant/store/migrator.py tests/test_procore_structured_analytics_foundation.py
+env PYTHONPATH=src /Users/bobbyfetting/hb-personal-assistant/.venv/bin/ruff check --extend-ignore B008 src/hb_assistant/cli/procore.py
+env PYTHONPATH=src /Users/bobbyfetting/hb-personal-assistant/.venv/bin/mypy src/hb_assistant/procore/structured_analytics.py
+hb-assistant procore analytics no-raw-leak-scan --path docs/evidence/procore_endpoint_structured_analytics_foundation --json

@@ -1,0 +1,4 @@
+hb-assistant procore analytics structured-counts --db "$AUDIT_DB" --json
+sqlite3 "$AUDIT_DB" "SELECT COUNT(*) FROM procore_raw_rfis;"
+sqlite3 "$AUDIT_DB" "SELECT COUNT(*) FROM procore_raw_invoice_items;"
+pytest tests/test_procore_structured_analytics_foundation.py -q

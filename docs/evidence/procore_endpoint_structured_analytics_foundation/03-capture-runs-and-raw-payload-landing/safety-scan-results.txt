@@ -1,0 +1,1 @@
+Raw landing payload values are not included in repo evidence. Local backfill source quality is labelled redacted_legacy_projection.

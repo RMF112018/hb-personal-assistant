@@ -1,0 +1,4 @@
+hb-assistant procore analytics reprocess --db "$AUDIT_DB" --limit 40000 --apply --json
+hb-assistant procore analytics coverage --db "$AUDIT_DB" --json
+hb-assistant procore analytics coverage --db "$AUDIT_DB" --markdown
+hb-assistant procore analytics structured-counts --db "$AUDIT_DB" --json

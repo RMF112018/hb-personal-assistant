@@ -1,0 +1,3 @@
+src/hb_assistant/procore/structured_analytics.py
+src/hb_assistant/cli/procore.py
+tests/test_procore_structured_analytics_foundation.py

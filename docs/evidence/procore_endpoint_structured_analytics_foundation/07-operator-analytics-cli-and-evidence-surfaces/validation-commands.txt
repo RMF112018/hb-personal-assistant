@@ -1,0 +1,5 @@
+hb-assistant procore analytics contract --json
+hb-assistant procore analytics coverage --db "$AUDIT_DB" --json
+hb-assistant procore analytics structured-counts --db "$AUDIT_DB" --json
+hb-assistant procore analytics ranking-diagnostics --db "$AUDIT_DB" --brief-date 2026-06-10 --json
+hb-assistant procore analytics no-raw-leak-scan --path docs/evidence/procore_endpoint_structured_analytics_foundation --json

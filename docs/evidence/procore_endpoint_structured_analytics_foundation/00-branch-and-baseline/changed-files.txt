@@ -1,0 +1,2 @@
+docs/planning/procore_endpoint_structured_analytics_foundation_package/ copied into unique worktree because it was untracked in the original tree.
+No production DB or external system was modified.

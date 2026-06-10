@@ -1,0 +1,8 @@
+pgrep -af "hb-assistant|uvicorn|daily-run|daily-source-refresh|scheduler"
+ls -lh "$PROD_DB"
+shasum -a 256 "$PROD_DB"
+sqlite3 "$PROD_DB" ".backup '$AUDIT_DB'"
+shasum -a 256 "$AUDIT_DB"
+sqlite3 "$AUDIT_DB" "PRAGMA integrity_check;"
+sqlite3 "$AUDIT_DB" "PRAGMA quick_check;"
+sqlite3 "$AUDIT_DB" "SELECT max(version) FROM schema_migrations;"

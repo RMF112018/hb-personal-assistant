@@ -1,0 +1,3 @@
+src/hb_assistant/procore/structured_analytics.py
+src/hb_assistant/cli/procore.py
+docs/architecture/240-procore-structured-analytics-foundation.md
