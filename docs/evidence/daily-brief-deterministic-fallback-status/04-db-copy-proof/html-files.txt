@@ -1,0 +1,3 @@
+daily-brief-2026-06-10.html
+daily-brief-latest-attempted.html
+daily-brief-latest-deterministic.html
