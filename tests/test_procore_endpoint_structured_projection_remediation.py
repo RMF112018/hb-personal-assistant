@@ -139,9 +139,9 @@ def _project(
 
 
 def test_v47_schema_head_and_tables_present(tmp_path: Path) -> None:
-    assert LATEST_SCHEMA_VERSION == 47
+    assert LATEST_SCHEMA_VERSION == 48  # V47 tables + V48 column reconciliation
     db = tmp_path / "fresh.sqlite"
-    assert SQLiteMigrator(db_path=str(db)).apply() == 47
+    assert SQLiteMigrator(db_path=str(db)).apply() == LATEST_SCHEMA_VERSION
     conn = sqlite3.connect(db)
     existing = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
     # every committed-registry table exists
@@ -440,3 +440,125 @@ def test_no_leak_scan_passes_on_committed_registry() -> None:
 
     result = no_raw_leak_scan([str(registry.REGISTRY_PATH)])
     assert result["ok"] is True, result["findings"]
+
+
+# --- Hotfix: runtime plan/schema parity (V48) -------------------------------------
+
+_DROP_COLUMN_OK = sqlite3.sqlite_version_info >= (3, 35, 0)
+
+
+def test_object_null_container_is_not_promoted_to_column() -> None:
+    """A field that is an object in some payloads and null in others (object|null) must be
+    a structural container, never a literal column, while its scalar children stay columns
+    (the architect / submittal_package defect)."""
+    inv = {
+        "prime-contracts": {
+            "$": ["object"],
+            "$.id": ["integer"],
+            "$.architect": ["object", "null"],  # object|null container
+            "$.architect.id": ["integer"],
+            "$.architect.login": ["string"],
+            "$.architect.name": ["string"],
+        }
+    }
+    doc = registry.build_registry(inv)
+    ep = doc["endpoints"]["prime-contracts"]
+    cols = {c["column"] for c in ep["primary_columns"]}
+    assert "architect" not in cols  # container NOT a column
+    assert {"architect_id", "architect_login", "architect_name"} <= cols  # children kept
+    dest = {e["path"]: e["dest"] for e in ep["path_map"]}
+    assert dest["$.architect"] == "structural"
+
+
+def test_committed_registry_has_no_object_container_columns() -> None:
+    """No primary/child column may be a bare object container (regression guard for the
+    architect/submittal_package/submittal_workflow_template promotion bug)."""
+    plans = registry.load_registry()
+    pc = plans["prime-contracts"]
+    pcols = {c for _, c in pc.primary_columns}
+    assert "architect" not in pcols
+    assert {"architect_id", "architect_login", "architect_name"} <= pcols
+    sm = plans["submittals"]
+    scols = {c for _, c in sm.primary_columns}
+    assert "submittal_package" not in scols
+    assert "submittal_workflow_template" not in scols
+    assert any(c.startswith("submittal_package_") for c in scols)
+
+
+def test_runtime_plan_schema_mismatches_zero_after_migrate(tmp_path: Path) -> None:
+    db = _db(tmp_path)  # migrates the committed registry to head (48)
+    conn = sqlite3.connect(db)
+    try:
+        assert audit.plan_schema_mismatches(conn) == []
+    finally:
+        conn.close()
+
+
+@pytest.mark.skipif(not _DROP_COLUMN_OK, reason="sqlite < 3.35 has no ALTER TABLE DROP COLUMN")
+def test_v48_reconciles_missing_column_even_at_head(tmp_path: Path) -> None:
+    """Proves the V48 reconciliation runs UNCONDITIONALLY: a DB already at head with a
+    dropped registry column is reconciled by a re-run of apply()."""
+    db = _db(tmp_path)
+    assert SQLiteMigrator(db_path=str(db)).current_version() == LATEST_SCHEMA_VERSION
+    conn = sqlite3.connect(db)
+    conn.execute("ALTER TABLE procore_ep_prime_contracts DROP COLUMN architect_id")
+    conn.commit()
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(procore_ep_prime_contracts)")}
+    conn.close()
+    assert "architect_id" not in cols  # drift created at head
+    # re-apply at head -> reconciliation re-adds the column
+    assert SQLiteMigrator(db_path=str(db)).apply() == LATEST_SCHEMA_VERSION
+    conn = sqlite3.connect(db)
+    healed = {r[1] for r in conn.execute("PRAGMA table_info(procore_ep_prime_contracts)")}
+    conn.close()
+    assert "architect_id" in healed
+
+
+@pytest.mark.skipif(not _DROP_COLUMN_OK, reason="sqlite < 3.35 has no ALTER TABLE DROP COLUMN")
+def test_schema_drift_fails_audit_and_reprocess_guards(tmp_path: Path) -> None:
+    """A missing planned insert column makes schema audit ok=false and makes
+    projection-reprocess --apply fail closed with schema_parity_broken — never
+    sqlite3.OperationalError."""
+    db = _db(tmp_path)
+    conn = sqlite3.connect(db)
+    conn.execute("ALTER TABLE procore_ep_prime_contracts DROP COLUMN architect_id")
+    conn.commit()
+    conn.close()
+
+    schema_res = audit.projection_schema_audit(db_path=db)
+    assert schema_res["ok"] is False
+    assert schema_res["runtime_plan_schema_mismatches"] >= 1
+
+    # engine apply guard returns a structured receipt, does not raise OperationalError
+    receipt = eng.backfill_endpoint_specific_from_raw_payloads(
+        db_path=db, apply=True, mode=eng.MODE_ENFORCE
+    )
+    assert receipt["ok"] is False
+    assert receipt["status"] == "schema_parity_broken"
+    assert receipt["primary_rows_written"] == 0
+    assert receipt["external_writeback_performed"] == 0
+
+
+def test_reprocess_apply_succeeds_after_reconcile(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """End-to-end: a payload with an object|null container projects without
+    OperationalError after migrate (reconcile)."""
+    payload = {**_CHANGE_EVENT, "architect": None}  # object|null at top level
+    _install_registry(monkeypatch, tmp_path, payload)
+    db = _db(tmp_path)
+    # persist a full raw payload, then reprocess --apply (enforce); must not raise
+    upsert_full_raw_payload_and_structured(
+        db_path=db,
+        endpoint_id=ENDPOINT,
+        project_key="tropical",
+        procore_project_id="99",
+        raw_item=payload,
+        source_quality=SOURCE_QUALITY_LIVE_FULL,
+    )
+    receipt = eng.backfill_endpoint_specific_from_raw_payloads(
+        db_path=db, apply=True, mode=eng.MODE_ENFORCE
+    )
+    assert receipt["ok"] is True
+    assert receipt["primary_rows_written"] >= 1
+    assert audit.projection_schema_audit(db_path=db)["ok"] is True

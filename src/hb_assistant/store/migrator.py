@@ -14,7 +14,7 @@ from .connection import get_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 47
+LATEST_SCHEMA_VERSION = 48
 
 
 class SQLiteMigrator:
@@ -6626,6 +6626,22 @@ class SQLiteMigrator:
                     (now,),
                 )
 
+            # v48 Procore projection column reconciliation. The V47 endpoint-specific tables
+            # are registry-derived; when the committed projection registry is regenerated
+            # (e.g. wider payload coverage, or the object|null container fix) it can require
+            # curated columns that pre-existing physical tables lack — and CREATE TABLE IF
+            # NOT EXISTS cannot add columns. This reconciliation runs UNCONDITIONALLY (outside
+            # the version-48 gate) so it self-heals column drift on every apply, even on a DB
+            # already at head. Additive only: ALTER TABLE ADD COLUMN for missing registry
+            # columns; never drops or alters existing columns.
+            self._reconcile_v48_columns(conn)
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 48")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (48, 'v48_procore_projection_column_reconciliation', ?)",
+                    (now,),
+                )
+
         # Return latest version
         conn2 = get_connection(self._db_path)
         cur = conn2.execute("SELECT MAX(version) FROM schema_migrations")
@@ -6640,6 +6656,21 @@ class SQLiteMigrator:
         from hb_assistant.procore.projection_registry import build_v47_ddl
 
         return build_v47_ddl()
+
+    @staticmethod
+    def _reconcile_v48_columns(conn: sqlite3.Connection) -> None:
+        """Add registry-required curated columns missing from existing ``procore_ep_*``
+        tables (additive ``ALTER TABLE ADD COLUMN``). Idempotent; introspects physical
+        columns and only adds the missing ones. Imported lazily."""
+        from hb_assistant.procore.projection_registry import reconcile_column_alters
+
+        existing: dict[str, set[str]] = {}
+        for (name,) in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'procore_ep_%'"
+        ).fetchall():
+            existing[name] = {row[1] for row in conn.execute(f"PRAGMA table_info({name})")}
+        for stmt in reconcile_column_alters(existing):
+            conn.execute(stmt)
 
     def current_version(self) -> int:
         """Return the highest applied migration version (0 if none)."""

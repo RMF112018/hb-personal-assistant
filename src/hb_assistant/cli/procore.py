@@ -323,6 +323,22 @@ def analytics_projection_coverage(
     _emit(payload, json_out=json_out, exit_code=0 if payload["ok"] else 3)
 
 
+@analytics_app.command("projection-schema-audit")
+def analytics_projection_schema_audit(
+    db: Optional[str] = typer.Option(None, "--db", help="Explicit SQLite DB path."),
+    json_out: bool = typer.Option(True, "--json/--no-json"),
+) -> None:
+    """Runtime plan vs physical-schema parity: every planned insert column exists.
+
+    Exit code 3 if any required ``procore_ep_*`` table is missing or any planned primary/
+    child insert column is absent from its physical table. Table/column names + counts only.
+    """
+    from hb_assistant.procore.projection_audit import projection_schema_audit
+
+    payload = projection_schema_audit(db_path=_analytics_db(db))
+    _emit(payload, json_out=json_out, exit_code=0 if payload["ok"] else 3)
+
+
 @analytics_app.command("projection-reprocess")
 def analytics_projection_reprocess(
     db: Optional[str] = typer.Option(None, "--db", help="Explicit SQLite DB path."),
