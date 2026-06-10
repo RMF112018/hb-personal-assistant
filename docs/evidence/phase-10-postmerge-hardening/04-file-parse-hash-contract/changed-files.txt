@@ -1,0 +1,12 @@
+# Prompt 04 — Changed files
+src/hb_assistant/construction/second_brain/local_ai/file_parse_read_model.py
+src/hb_assistant/cli/files.py
+tests/test_phase_10_file_parse_read_model.py
+docs/evidence/phase-10-full-candidate-implementation/09-document-file-parsing/01-file-parse-final-output.md
+docs/evidence/phase-10-full-candidate-implementation/09-document-file-parsing/02-file-parse-final-output.json
+docs/evidence/phase-10-full-candidate-implementation/09-document-file-parsing/03-pdf-or-supported-format-proof.json
+docs/evidence/phase-10-full-candidate-implementation/09-document-file-parsing/04-docx-or-supported-format-proof.json
+docs/evidence/phase-10-full-candidate-implementation/09-document-file-parsing/05-xlsx-or-supported-format-proof.json
+docs/evidence/phase-10-full-candidate-implementation/09-document-file-parsing/06-unsupported-format-proof.json
+docs/evidence/phase-10-full-candidate-implementation/09-document-file-parsing/08-no-raw-live-content-proof.txt
+docs/evidence/phase-10-postmerge-hardening/04-file-parse-hash-contract/*

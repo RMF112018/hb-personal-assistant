@@ -15,7 +15,8 @@
     "parsed_status": "parsed",
     "extraction_method": "python-docx",
     "text_length": 73,
-    "text_hash": "sha256:05a638fedf9485e366c3708a52831353f846364aef5eb6dd69d1e12bdd8642e5",
+    "text_excerpt_hash": "sha256:05a638fedf9485e366c3708a52831353f846364aef5eb6dd69d1e12bdd8642e5",
+    "hash_scope": "text_excerpt",
     "counts": {
       "table_count": 1
     },

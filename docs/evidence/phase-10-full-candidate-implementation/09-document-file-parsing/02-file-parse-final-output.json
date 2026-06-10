@@ -33,7 +33,8 @@
       "parsed_status": "parsed",
       "extraction_method": "stdlib-text",
       "text_length": 60,
-      "text_hash": "sha256:36481ad3cafc2ef2f47a536a7e2b391568b219343af9196c2e5a620c35d9060c",
+      "text_excerpt_hash": "sha256:36481ad3cafc2ef2f47a536a7e2b391568b219343af9196c2e5a620c35d9060c",
+      "hash_scope": "text_excerpt",
       "counts": {},
       "degraded_reason": null
     },
@@ -52,7 +53,8 @@
       "parsed_status": "parsed",
       "extraction_method": "stdlib-text",
       "text_length": 55,
-      "text_hash": "sha256:d57b2d3536f7c48bb983ee8326ff349daefc09a85197927e21e6575ff7c9f57a",
+      "text_excerpt_hash": "sha256:d57b2d3536f7c48bb983ee8326ff349daefc09a85197927e21e6575ff7c9f57a",
+      "hash_scope": "text_excerpt",
       "counts": {},
       "degraded_reason": null
     },
@@ -71,7 +73,8 @@
       "parsed_status": "parsed",
       "extraction_method": "python-docx",
       "text_length": 73,
-      "text_hash": "sha256:05a638fedf9485e366c3708a52831353f846364aef5eb6dd69d1e12bdd8642e5",
+      "text_excerpt_hash": "sha256:05a638fedf9485e366c3708a52831353f846364aef5eb6dd69d1e12bdd8642e5",
+      "hash_scope": "text_excerpt",
       "counts": {
         "table_count": 1
       },
@@ -92,7 +95,8 @@
       "parsed_status": "parsed",
       "extraction_method": "openpyxl",
       "text_length": 328,
-      "text_hash": "sha256:e0b46af56902ce3c6571204a361e22a2791f5bf8df93e8c90b5f50a90e90100c",
+      "text_excerpt_hash": "sha256:e0b46af56902ce3c6571204a361e22a2791f5bf8df93e8c90b5f50a90e90100c",
+      "hash_scope": "text_excerpt",
       "counts": {
         "sheet_count": 1
       },
@@ -113,7 +117,8 @@
       "parsed_status": "degraded",
       "extraction_method": "pdfplumber+pypdf",
       "text_length": 0,
-      "text_hash": null,
+      "text_excerpt_hash": null,
+      "hash_scope": "text_excerpt",
       "counts": {
         "page_count": 2,
         "table_count": 0
@@ -135,7 +140,8 @@
       "parsed_status": "unsupported",
       "extraction_method": null,
       "text_length": 0,
-      "text_hash": null,
+      "text_excerpt_hash": null,
+      "hash_scope": "text_excerpt",
       "counts": {},
       "degraded_reason": "unsupported_extension:.xyz"
     }

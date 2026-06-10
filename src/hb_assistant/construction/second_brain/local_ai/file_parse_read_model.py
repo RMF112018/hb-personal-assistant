@@ -4,7 +4,8 @@ Runs the repo's existing bounded local parsers (``hb_assistant.files.router.Pars
 pdfplumber+pypdf, docx via python-docx, xlsx via openpyxl, pptx via python-pptx, csv/txt/md via the
 stdlib, image metadata via Pillow) and projects the result into a **review-safe read-model that never
 carries the extracted text**: only file id / sanitized name / extension / MIME / parsed status /
-extraction method / text length + sha256 hash / page-table-sheet counts / degraded reason / source
+extraction method / excerpt length + sha256 of the bounded excerpt / page-table-sheet counts /
+degraded reason / source
 refs / redaction flags. Local tooling only — no network, no upload, no model. Deterministic.
 """
 
@@ -46,7 +47,13 @@ def build_file_parse_read_model(
     source_id: Optional[str] = None,
     source_refs: Optional[list[str]] = None,
 ) -> dict[str, Any]:
-    """Parse one file with a local bounded parser → review-safe read-model (never the extracted text)."""
+    """Parse one file with a local bounded parser → review-safe read-model (never the extracted text).
+
+    Hash contract: ``text_excerpt_hash`` is a sha256 over the parser's BOUNDED ``text_excerpt``
+    (parsers cap the excerpt — e.g. ``text[:max_chars]``, PDF first N pages), NOT the full
+    extracted document text. ``hash_scope`` is always ``"text_excerpt"`` to make this explicit to
+    downstream readers; ``text_length`` likewise reflects the excerpt's length.
+    """
     p = Path(path)
     ext = p.suffix.lower()
     mime, _ = mimetypes.guess_type(p.name)
@@ -66,19 +73,20 @@ def build_file_parse_read_model(
 
     if not p.exists():
         return {**base, "parsed_status": "error", "extraction_method": None,
-                "text_length": 0, "text_hash": None, "counts": {},
-                "degraded_reason": "file_not_found"}
+                "text_length": 0, "text_excerpt_hash": None, "hash_scope": "text_excerpt",
+                "counts": {}, "degraded_reason": "file_not_found"}
     if ext not in _SUPPORTED:
         return {**base, "parsed_status": "unsupported", "extraction_method": None,
-                "text_length": 0, "text_hash": None, "counts": {},
-                "degraded_reason": f"unsupported_extension:{ext or '(none)'}"}
+                "text_length": 0, "text_excerpt_hash": None, "hash_scope": "text_excerpt",
+                "counts": {}, "degraded_reason": f"unsupported_extension:{ext or '(none)'}"}
 
     from hb_assistant.files.router import ParserRouter
 
     result = ParserRouter().parse(p)
+    # Bounded excerpt only — parsers cap text_excerpt; the hash below covers that excerpt, not full text.
     excerpt = str(result.get("text_excerpt") or "")
     text_length = int(result.get("char_count") or len(excerpt))
-    text_hash = (
+    text_excerpt_hash = (
         "sha256:" + hashlib.sha256(excerpt.encode("utf-8", "replace")).hexdigest()
         if excerpt
         else None
@@ -91,7 +99,8 @@ def build_file_parse_read_model(
         "parsed_status": status,
         "extraction_method": _EXTRACTION_METHOD.get(ext),
         "text_length": text_length,
-        "text_hash": text_hash,
+        "text_excerpt_hash": text_excerpt_hash,
+        "hash_scope": "text_excerpt",
         "counts": {k: result[k] for k in _COUNT_KEYS if k in result},
         # Prefer the bounded failure code; an error string is bounded and carries no extracted text.
         "degraded_reason": failure_code or (str(err)[:120] if err else None),
@@ -153,7 +162,7 @@ def render_file_index_markdown(index: dict[str, Any]) -> str:
         )
         lines.append(
             f"  - id: {it.get('source_id')} · text_length: {it.get('text_length')} · "
-            f"hash: {it.get('text_hash') or '(none)'} · counts: {cnt_s}"
+            f"excerpt-hash: {it.get('text_excerpt_hash') or '(none)'} · counts: {cnt_s}"
             + (f" · degraded: {it['degraded_reason']}" if it.get("degraded_reason") else "")
         )
     return "\n".join(lines) + "\n"
