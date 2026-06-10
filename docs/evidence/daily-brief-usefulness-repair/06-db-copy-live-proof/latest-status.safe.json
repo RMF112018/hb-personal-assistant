@@ -1,0 +1,60 @@
+{
+  "status": "partial",
+  "brief_date": "2026-06-10",
+  "brief_freshness": "fresh",
+  "summary": {
+    "stages_run": 5,
+    "stages_ok": 5,
+    "stages_failed": 0,
+    "total_would_persist": 58,
+    "total_persisted": 18,
+    "total_persist_capped": false
+  },
+  "usefulness_gate": {
+    "passed": true,
+    "verdict": "useful",
+    "failed_reasons": [],
+    "metrics": {
+      "total_candidates": 18,
+      "section_counts": {
+        "calendar": 8,
+        "procore": 10
+      },
+      "deterministic_section_count": 2,
+      "calendar_project_resolution_rate": 1.0,
+      "calendar_project_like_count": 5,
+      "calendar_unresolved_project_like_count": 0,
+      "procore_executive_count": 10,
+      "procore_aggregate_sludge_selected": 0,
+      "source_ref_coverage": 1.0,
+      "executive_source_ref_coverage": 1.0,
+      "executive_candidate_count": 18,
+      "synthesis_present": false,
+      "synthesis_degraded": true,
+      "contradiction_synthesis_without_candidates": false,
+      "egress_clean": true
+    }
+  },
+  "synthesis": {
+    "profile_id": "brief_synthesis",
+    "model_name": "mistral-nemo:12b",
+    "status": "ok",
+    "schema_valid": true,
+    "fallback_used": false,
+    "attempts": 1,
+    "latency_ms": 49899,
+    "degraded": true,
+    "degraded_reason": "empty_synthesis_low_quality",
+    "error_redacted": null
+  },
+  "outputs": {
+    "vault_brief_dir_redacted": "vault",
+    "browser_dated_path": "daily-brief-2026-06-10.html",
+    "browser_attempted_path": "daily-brief-latest-attempted.html",
+    "obsidian_path_redacted": "vault/2026-06-10_daily_brief.md"
+  },
+  "warnings": [
+    "synthesis_degraded: empty_synthesis_low_quality; deterministic fallback rendered (run NOT counted as success)"
+  ],
+  "failure_reason": null
+}
