@@ -1090,24 +1090,45 @@ def upsert_full_raw_payload_and_structured(
         receipt["raw_procore_payload_persisted"] = 1
         if table is None:
             receipt["structured_skipped_no_table"] = 1
-            return
-        values = _structured_values_from_payload(
-            endpoint_id=endpoint_id,
-            project_key=project_key,
-            procore_project_id=procore_project_id,
-            record_id=resolved_id,
-            parent_id=parent_id,
-            payload=payload,
-            raw_payload_id=raw_payload_id,
-            source_hash=source_hash,
-            payload_hash=payload_hash,
-            source_quality=source_quality,
-            fetched_at=fetched_at,
-            now_utc=now_utc,
-        )
-        _insert_structured(active, table, values)
-        _insert_dimensions(active, values)
-        receipt["structured_rows_written"] = 1
+        else:
+            values = _structured_values_from_payload(
+                endpoint_id=endpoint_id,
+                project_key=project_key,
+                procore_project_id=procore_project_id,
+                record_id=resolved_id,
+                parent_id=parent_id,
+                payload=payload,
+                raw_payload_id=raw_payload_id,
+                source_hash=source_hash,
+                payload_hash=payload_hash,
+                source_quality=source_quality,
+                fetched_at=fetched_at,
+                now_utc=now_utc,
+            )
+            _insert_structured(active, table, values)
+            _insert_dimensions(active, values)
+            receipt["structured_rows_written"] = 1
+        # Endpoint-specific structured projection (V47): additive, registry-driven. Imported
+        # lazily to avoid a circular import. Live mode DEGRADES (never raises) on unknown
+        # paths; the full raw payload above is already persisted so nothing is lost.
+        if isinstance(payload, dict):
+            from .projection_engine import MODE_LIVE, project_endpoint_specific
+
+            receipt["endpoint_specific"] = project_endpoint_specific(
+                active,
+                endpoint_id=endpoint_id,
+                project_key=project_key,
+                procore_project_id=procore_project_id,
+                record_id=resolved_id,
+                parent_record_id=parent_id,
+                payload=payload,
+                raw_payload_id=raw_payload_id,
+                payload_hash=payload_hash,
+                source_quality=source_quality,
+                fetched_at=fetched_at,
+                now_utc=now_utc,
+                mode=MODE_LIVE,
+            )
 
     if conn is not None:
         _do(conn)
