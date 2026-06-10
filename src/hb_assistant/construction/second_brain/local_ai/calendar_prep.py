@@ -170,6 +170,22 @@ def build_calendar_prep_candidates(
     # Safe redacted fields only — never subjects/bodies/join URLs/attendee names/emails.
     raw_events = store.list_calendar_prep_source_events(project_key=project_key, limit=100000)
 
+    # Raw subject/location map for PROJECT RESOLUTION ONLY (the persisted subject_redacted is a
+    # hash placeholder in real data, so resolving on it yields 0 — the audit's calendar resolution
+    # rate of 0.0). We read the real subject/location to resolve project/category, but persist ONLY
+    # the redacted title; the raw subject is never persisted, logged, or emitted to status.
+    raw_subjects: dict[str, dict[str, str]] = {}
+    try:
+        for row in store.list_calendar_event_raw_content(limit=100000):
+            eid = row.get("event_index_id")
+            if eid:
+                raw_subjects[str(eid)] = {
+                    "subject": str(row.get("subject") or "").strip(),
+                    "location": str(row.get("location_display") or "").strip(),
+                }
+    except Exception:
+        raw_subjects = {}
+
     existing_ids = {
         str(r.get("daily_brief_action_candidate_id"))
         for r in store.list_daily_brief_action_candidates(
@@ -231,12 +247,14 @@ def build_calendar_prep_candidates(
 
         # Category + project: prefer the index's project_key; else delegate to the deterministic
         # category resolver (project arm = the canonical alias matcher; internal/PTO/training/
-        # needs-review classification around it). Low-confidence project-looking text becomes
-        # ``__needs_review__`` (review-safe) instead of a forced project fact.
+        # needs-review classification around it). Resolve from the REAL subject/location (the
+        # redacted title is a hash placeholder in real data); persist only the redacted title.
+        # Low-confidence project-looking text becomes ``__needs_review__`` (review-safe).
         indexed_proj = ev.get("project_key")
+        raw = raw_subjects.get(event_index_id) or {}
         resolution = resolve_calendar_category(
-            subject=title,
-            location=str(location_redacted or ""),
+            subject=raw.get("subject") or title,
+            location=raw.get("location") or str(location_redacted or ""),
             organizer_domain=ev.get("organizer_domain"),
             attendees=attendee_count,
             indexed_project_key=indexed_proj,

@@ -52,7 +52,7 @@ def _seed_calendar(db: str) -> ConstructionStore:
             (raw_calendar_event_id, event_index_id, graph_event_id_hash, subject, body_html,
              join_url, online_meeting_provider, attendees_json, start_datetime_utc,
              end_datetime_utc, project_key)
-        VALUES ('raw-e1','e1','gh1','Raw Subject','<p>agenda</p>',NULL,NULL,'[]',
+        VALUES ('raw-e1','e1','gh1','TWN OAC','<p>agenda</p>',NULL,NULL,'[]',
                 '2026-06-09T15:00:00+00:00','2026-06-09T16:00:00+00:00',NULL)
         """
     )
