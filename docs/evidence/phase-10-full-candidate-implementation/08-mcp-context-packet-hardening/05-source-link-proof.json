@@ -1,0 +1,24 @@
+{
+  "source_ref_summary": {
+    "approx_source_ref_mentions": 0,
+    "family_mentions": {
+      "calendar": 1
+    }
+  },
+  "redaction_flags": {
+    "titles_redacted": true,
+    "refs_hashed": true,
+    "raw_bodies_excluded": true,
+    "attendees_reduced_to_counts": true
+  },
+  "refs_hashed": true,
+  "sample_task_keys": [
+    "due_at_utc",
+    "id",
+    "overdue",
+    "project",
+    "safety_category",
+    "title",
+    "waiting_state"
+  ]
+}

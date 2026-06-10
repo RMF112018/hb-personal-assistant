@@ -1,0 +1,8 @@
+# No-external-writeback proof — MCP packet hardening is read-only
+
+Building the hardened packet persists nothing and makes no external call.
+
+- counts before: {'accepted_tasks': 20, 'daily_brief_action_candidates': 0, 'task_candidates': 20}
+- counts after:  {'accepted_tasks': 20, 'daily_brief_action_candidates': 0, 'task_candidates': 20}
+- unchanged (read-only): True
+- guardrails: no_external_writeback=True, no_raw_content=True

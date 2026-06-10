@@ -1,0 +1,11 @@
+# Forbidden-content fail-closed proof
+
+The packet gate scans the REAL payload (regex patterns), not the contract's category labels. A payload containing a join link + bearer token is withheld (context dropped).
+
+- scan of a clean dict (category labels only): []
+- scan of a leaky dict: ['bearer', 'url']
+- leaky build ok: False (expected False)
+- redaction_triggered: True
+- withheld_reason: forbidden_content_detected
+- leak_categories: ['bearer', 'url']
+- context withheld (None): True

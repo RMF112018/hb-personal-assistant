@@ -2612,6 +2612,69 @@ def daily_brief_packet(
     raise typer.Exit(0)
 
 
+@daily_brief_app.command("mcp-packet")
+def daily_brief_mcp_packet(
+    as_of: "str | None" = typer.Option(  # noqa: B008
+        None, "--as-of", help="ISO-8601 local run time (default: now). Drives the source window."
+    ),
+    date: "str | None" = typer.Option(  # noqa: B008
+        None, "--date", help="Force the brief date YYYY-MM-DD (default: resolved from the window)."
+    ),
+    timezone: str = typer.Option(  # noqa: B008
+        "America/New_York", "--timezone", help="Local timezone for the weekday window policy."
+    ),
+    purpose: str = typer.Option(  # noqa: B008
+        "daily_brief_local_agent_context", "--purpose", help="Declared packet purpose."
+    ),
+    markdown_out: "str | None" = typer.Option(  # noqa: B008
+        None, "--markdown-out", help="Also write the operator-facing Markdown contract to a file."
+    ),
+    db: "str | None" = typer.Option(None, "--db", help="Explicit SQLite path (tests/isolation)."),  # noqa: B008
+    json_out: bool = typer.Option(True, "--json", help="Emit JSON (default)."),  # noqa: B008
+) -> None:
+    """Build a hardened, fail-closed MCP context packet (read-only; metadata-only summaries).
+
+    Wraps the existing deterministic daily-brief context packet in an explicit MCP contract: purpose,
+    generated_at, source window, candidate summaries, source-ref summary, caps applied, omitted raw
+    categories, redaction flags, and freshness warnings. A final forbidden-content gate scans the real
+    payload; on any match the packet fails closed (context withheld). Persists nothing, no writeback.
+    """
+    from datetime import datetime as _dt
+    from pathlib import Path
+
+    from hb_assistant.construction.second_brain.local_ai.mcp_packet_hardening import (
+        build_hardened_mcp_packet,
+        render_hardened_mcp_packet_markdown,
+    )
+    from hb_assistant.construction.store import ConstructionStore
+
+    cmd = "second-brain daily-brief mcp-packet"
+    try:
+        now_utc = as_of or _dt.now().astimezone().isoformat()
+        store = ConstructionStore(db_path=db)
+        packet = build_hardened_mcp_packet(
+            store=store, now_utc=now_utc, timezone=timezone, brief_date=date, db_path=db,
+            purpose=purpose,
+        )
+        if markdown_out:
+            Path(markdown_out).write_text(
+                render_hardened_mcp_packet_markdown(packet), encoding="utf-8"
+            )
+        typer.echo(
+            json.dumps(packet, indent=2, default=str)
+            if json_out
+            else render_hardened_mcp_packet_markdown(packet)
+        )
+        # Exit 0 when the packet is emitted; 3 on a fail-closed withhold (operator-visible).
+        raise typer.Exit(0 if packet.get("ok") else 3)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        payload = {"command": cmd, "ok": False, "error": str(e)[:300]}
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(1) from None
+
+
 @daily_brief_app.command("packet-proof")
 def daily_brief_packet_proof(
     evidence: bool = typer.Option(

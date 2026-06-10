@@ -1,0 +1,7 @@
+# Prompt 08 — validation commands (repo root, venv python3.12)
+python3.12 -m compileall src/hb_assistant/construction/second_brain/local_ai/mcp_packet_hardening.py src/hb_assistant/cli/second_brain.py
+python3.12 -m pytest -q tests/test_phase_10_mcp_packet_hardening.py
+python3.12 -m pytest -q tests -k "mcp or context_packet or packet or source_ref"
+ruff check src/hb_assistant/construction/second_brain/local_ai/mcp_packet_hardening.py src/hb_assistant/cli/second_brain.py
+mypy src/hb_assistant/construction/second_brain/local_ai/mcp_packet_hardening.py
+python3.12 /tmp/gen_evidence_08.py

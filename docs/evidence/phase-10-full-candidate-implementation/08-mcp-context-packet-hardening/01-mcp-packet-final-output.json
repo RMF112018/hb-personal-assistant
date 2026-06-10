@@ -1,0 +1,259 @@
+{
+  "packet_contract_version": "phase10-mcp-1.0",
+  "ok": true,
+  "purpose": "daily_brief_local_agent_context",
+  "generated_at": "2026-06-09T05:00:00-04:00",
+  "brief_date": "2026-06-09",
+  "source_window": {
+    "run_date": "2026-06-09",
+    "run_weekday": "Tuesday",
+    "label": "standard_weekday",
+    "explanation": "Standard Tuesday brief: lookback 2026-06-08 (previous business day) through 2026-06-09 05:00; lookahead through the next business day 2026-06-10.",
+    "lookback_start": "2026-06-08T00:00:00-04:00",
+    "lookback_end": "2026-06-09T05:00:00-04:00",
+    "lookahead_start": "2026-06-09T05:00:00-04:00",
+    "lookahead_end": "2026-06-10T23:59:59-04:00",
+    "previous_business_day": "2026-06-08",
+    "next_business_day": "2026-06-10",
+    "carryover_section_label": null,
+    "catch_up": false
+  },
+  "candidate_summaries": {
+    "open_commitments": {
+      "accepted_tasks": 15,
+      "accepted_commitments": 0,
+      "follow_up_watch_items": 0
+    },
+    "candidates_by_section": {},
+    "relationships": 0,
+    "procore_signals": 0,
+    "calendar": 7
+  },
+  "source_ref_summary": {
+    "approx_source_ref_mentions": 0,
+    "family_mentions": {
+      "calendar": 1
+    }
+  },
+  "caps_applied": {
+    "max_candidates_per_section": 12,
+    "max_meetings": 15,
+    "max_relationships": 8,
+    "max_procore_groups": 20,
+    "max_tasks": 15
+  },
+  "omitted_raw_categories": [
+    "raw_email_bodies",
+    "raw_document_text",
+    "raw_calendar_payloads",
+    "raw_procore_payloads",
+    "raw_model_prompts",
+    "raw_model_responses",
+    "html_bodies",
+    "signed_urls",
+    "download_urls",
+    "join_links",
+    "bearer_tokens",
+    "attendee_arrays",
+    "email_address_dumps"
+  ],
+  "redaction_flags": {
+    "titles_redacted": true,
+    "refs_hashed": true,
+    "raw_bodies_excluded": true,
+    "attendees_reduced_to_counts": true
+  },
+  "freshness_quality_warnings": [
+    "no Procore action signals available for this run"
+  ],
+  "guardrails": {
+    "read_only": true,
+    "metadata_only_summaries": true,
+    "source_refs_hashed": true,
+    "no_raw_content": true,
+    "no_external_writeback": true,
+    "fail_closed_on_forbidden_content": true,
+    "deterministic": true
+  },
+  "redaction_triggered": false,
+  "context": {
+    "brief_date": "2026-06-09",
+    "date_window": {
+      "run_date": "2026-06-09",
+      "run_weekday": "Tuesday",
+      "label": "standard_weekday",
+      "explanation": "Standard Tuesday brief: lookback 2026-06-08 (previous business day) through 2026-06-09 05:00; lookahead through the next business day 2026-06-10.",
+      "lookback_start": "2026-06-08T00:00:00-04:00",
+      "lookback_end": "2026-06-09T05:00:00-04:00",
+      "lookahead_start": "2026-06-09T05:00:00-04:00",
+      "lookahead_end": "2026-06-10T23:59:59-04:00",
+      "previous_business_day": "2026-06-08",
+      "next_business_day": "2026-06-10",
+      "carryover_section_label": null,
+      "catch_up": false
+    },
+    "open_commitments": {
+      "accepted_tasks": [
+        {
+          "id": "acc-task:c00",
+          "title": "Task c00 (synthetic)",
+          "project": "PRJ",
+          "waiting_state": "waiting_on_me",
+          "due_at_utc": null,
+          "overdue": false,
+          "safety_category": "normal"
+        },
+        {
+          "id": "acc-task:c01",
+          "title": "Task c01 (synthetic)",
+          "project": "PRJ",
+          "waiting_state": "waiting_on_me",
+          "due_at_utc": null,
+          "overdue": false,
+          "safety_category": "normal"
+        },
+        {
+          "id": "acc-task:c02",
+          "title": "Task c02 (synthetic)",
+          "project": "PRJ",
+          "waiting_state": "waiting_on_me",
+          "due_at_utc": null,
+          "overdue": false,
+          "safety_category": "normal"
+        },
+        {
+          "id": "acc-task:c03",
+          "title": "Task c03 (synthetic)",
+          "project": "PRJ",
+          "waiting_state": "waiting_on_me",
+          "due_at_utc": null,
+          "overdue": false,
+          "safety_category": "normal"
+        },
+        {
+          "id": "acc-task:c04",
+          "title": "Task c04 (synthetic)",
+          "project": "PRJ",
+          "waiting_state": "waiting_on_me",
+          "due_at_utc": null,
+          "overdue": false,
+          "safety_category": "normal"
+        },
+        {
+          "id": "acc-task:c05",
+          "title": "Task c05 (synthetic)",
+          "project": "PRJ",
+          "waiting_state": "waiting_on_me",
+          "due_at_utc": null,
+          "overdue": false,
+          "safety_category": "normal"
+        },
+        {
+          "id": "acc-task:c06",
+          "title": "Task c06 (synthetic)",
+          "project": "PRJ",
+          "waiting_state": "waiting_on_me",
+          "due_at_utc": null,
+          "overdue": false,
+          "safety_category": "normal"
+        },
+        {
+          "id": "acc-task:c07",
+          "title": "Task c07 (synthetic)",
+          "project": "PRJ",
+          "waiting_state": "waiting_on_me",
+          "due_at_utc": null,
+          "overdue": false,
+          "safety_category": "normal"
+        },
+        {
+          "id": "acc-task:c08",
+          "title": "Task c08 (synthetic)",
+          "project": "PRJ",
+          "waiting_state": "waiting_on_me",
+          "due_at_utc": null,
+          "overdue": false,
+          "safety_category": "normal"
+        },
+        {
+          "id": "acc-task:c09",
+          "title": "Task c09 (synthetic)",
+          "project": "PRJ",
+          "waiting_state": "waiting_on_me",
+          "due_at_utc": null,
+          "overdue": false,
+          "safety_category": "normal"
+        },
+        {
+          "id": "acc-task:c10",
+          "title": "Task c10 (synthetic)",
+          "project": "PRJ",
+          "waiting_state": "waiting_on_me",
+          "due_at_utc": null,
+          "overdue": false,
+          "safety_category": "normal"
+        },
+        {
+          "id": "acc-task:c11",
+          "title": "Task c11 (synthetic)",
+          "project": "PRJ",
+          "waiting_state": "waiting_on_me",
+          "due_at_utc": null,
+          "overdue": false,
+          "safety_category": "normal"
+        },
+        {
+          "id": "acc-task:c12",
+          "title": "Task c12 (synthetic)",
+          "project": "PRJ",
+          "waiting_state": "waiting_on_me",
+          "due_at_utc": null,
+          "overdue": false,
+          "safety_category": "normal"
+        },
+        {
+          "id": "acc-task:c13",
+          "title": "Task c13 (synthetic)",
+          "project": "PRJ",
+          "waiting_state": "waiting_on_me",
+          "due_at_utc": null,
+          "overdue": false,
+          "safety_category": "normal"
+        },
+        {
+          "id": "acc-task:c14",
+          "title": "Task c14 (synthetic)",
+          "project": "PRJ",
+          "waiting_state": "waiting_on_me",
+          "due_at_utc": null,
+          "overdue": false,
+          "safety_category": "normal"
+        }
+      ],
+      "accepted_commitments": [],
+      "follow_up_watch_items": []
+    },
+    "candidates_by_section": {},
+    "relationships": [],
+    "procore_signals": [],
+    "calendar": {
+      "meetings": [],
+      "fyi_meetings": [],
+      "excluded_count": 0,
+      "assigned": 0,
+      "unassigned": 0,
+      "inferred": 0,
+      "unresolved_project_tokens": []
+    },
+    "data_gaps": [
+      "no Procore action signals available for this run"
+    ],
+    "caps": {
+      "max_candidates_per_section": 12,
+      "max_meetings": 15,
+      "max_relationships": 8,
+      "max_procore_groups": 20,
+      "max_tasks": 15
+    }
+  }
+}

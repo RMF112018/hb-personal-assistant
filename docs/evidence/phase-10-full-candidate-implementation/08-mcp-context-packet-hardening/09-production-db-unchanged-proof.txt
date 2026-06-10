@@ -1,0 +1,7 @@
+# Production DB Unchanged Proof — Prompt 08
+
+All packet builds ran on a disposable temp DB; production (PathPolicy.get_db_path) was read once for the baseline checksum, never written.
+
+- sha256 BEFORE: 25e5bce9b9d4c8a21a5175fc1cf09aead2362ec513c03404d2df7d2327deb2d8
+- sha256 AFTER:  25e5bce9b9d4c8a21a5175fc1cf09aead2362ec513c03404d2df7d2327deb2d8
+- UNCHANGED: True
