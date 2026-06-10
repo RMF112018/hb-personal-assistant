@@ -228,8 +228,10 @@ def test_deterministic_source_ref_and_project_fallback(tmp_path: Path) -> None:
     ev1 = next(e for e in a["events"] if e["event_index_id"] == "ev1")
     ev2 = next(e for e in a["events"] if e["event_index_id"] == "ev2")
     assert ev1["source_ref"].startswith("cal:")
-    assert ev1["project_key"] == "__unassigned__"  # deterministic fallback (index had none)
-    assert ev2["project_key"] == "PROJ-2"
+    # ev1's raw subject is project-looking but matches no alias → review-safe (not a forced project).
+    assert ev1["project_key"] == "__needs_review__"
+    assert ev1["category"] == "needs_review"
+    assert ev2["project_key"] == "PROJ-2"  # indexed key is authoritative
 
 
 def test_missing_source_ref_skipped_closed(tmp_path: Path) -> None:

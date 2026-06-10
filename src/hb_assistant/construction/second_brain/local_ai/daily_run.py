@@ -523,6 +523,27 @@ def run_daily_local_agent(
         "degraded_reason": pending_followup.get("degraded_reason"),
     }
 
+    # ---- Usefulness gate (after deterministic projection + synthesis; before success is final) ----
+    # Fail-closed: a run may stay "success" only if it meets the usefulness bar (>=1 useful
+    # deterministic section, no source/deterministic contradiction, 100% executive source-ref
+    # coverage, project-like calendar not all unresolved, Procore top rows not aggregate sludge).
+    # Otherwise downgrade to "partial" so the last-successful pointer + latest.html are preserved and
+    # the status explains usefulness_gate_failed.
+    from .usefulness_gate import evaluate_usefulness_gate
+
+    usefulness = evaluate_usefulness_gate(
+        store=store,
+        brief_date=brief_date,
+        synthesis_present=synthesis_dump is not None,
+        synthesis_degraded=synthesis_degraded,
+    )
+    # Only an apply-mode run persists candidates, so only an apply run can be gated for usefulness;
+    # a dry-run "success" is a preview (brief_freshness=preexisting, never a fresh success) and is
+    # left unchanged.
+    if status == "success" and not dry_run and not usefulness.passed:
+        status = "partial"
+        warnings.append("usefulness_gate_failed: " + ",".join(usefulness.failed_reasons))
+
     is_fresh_success = (
         status == "success" and not dry_run and pipeline.get("brief_freshness") == "fresh"
     )
@@ -624,6 +645,7 @@ def run_daily_local_agent(
         model_enriched_intelligence=mei_status,
         email_raw_enrichment_stage=email_enrichment_receipt,
         run_summary=run_summary,
+        usefulness_gate=usefulness.to_dict(),
     )
     outputs["status_path"] = _redact_path(status_path)
 
@@ -646,6 +668,7 @@ def run_daily_local_agent(
         "model_enriched_intelligence": mei_status,
         "email_raw_enrichment_stage": email_enrichment_receipt,
         "run_summary": run_summary,
+        "usefulness_gate": usefulness.to_dict(),
         "egress_scan": {"clean": egress_clean, "matched_labels": egress_matched},
         "failure_reason": failure_reason,
         "guardrails": _guardrails(include_raw, dry_run, generate_browser),
@@ -770,6 +793,7 @@ def _write_status(
     model_enriched_intelligence: Optional[dict[str, Any]] = None,
     email_raw_enrichment_stage: Optional[dict[str, Any]] = None,
     run_summary: Optional[dict[str, Any]] = None,
+    usefulness_gate: Optional[dict[str, Any]] = None,
 ) -> Path:
     """Write the redacted machine-readable status (latest + dated). Never contains raw bodies.
 
@@ -792,6 +816,7 @@ def _write_status(
         "pending_followup": pending_followup,
         "model_enriched_intelligence": model_enriched_intelligence,
         "email_raw_enrichment_stage": email_raw_enrichment_stage,
+        "usefulness_gate": usefulness_gate,
         "warnings": warnings,
         "failure_reason": failure_reason,
     }

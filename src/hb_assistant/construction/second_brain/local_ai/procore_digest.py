@@ -25,16 +25,15 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
 
+from .daily_brief_candidate_writer import persist_candidate_with_refs
+from .procore_ranking import rank_procore_signals
+
 _SYNTH_SYSTEM = (
     "You are a construction project assistant. Using ONLY the redacted aggregate counts and "
     "risk keywords provided, write a brief advisory summary (3-5 sentences) and a short list "
     "of risk flags. Do not invent specific records, names, amounts, or dates. Respond with "
     'JSON only: {"narrative": "<text>", "risk_flags": ["<flag>", ...]}.'
 )
-
-# Priority by the highest importance present in a signal-type group (lower = surfaced first).
-_IMPORTANCE_PRIORITY = {"high": 10, "medium": 50, "low": 90}
-
 
 def _parse_dt(value: Any) -> Optional[datetime]:
     if not value or not isinstance(value, str):
@@ -113,6 +112,7 @@ def build_procore_action_digest(
     client: Any = None,
     max_source_refs: int = 5,
     max_risk_terms: int = 10,
+    last_success_utc: Optional[str] = None,
 ) -> dict[str, Any]:
     """Build a deterministic, source-linked Procore action-signal digest.
 
@@ -128,10 +128,17 @@ def build_procore_action_digest(
     brief_date = now_utc[:10]
     section = "procore"
 
-    # Safe enums/ids only — never title/summary/metadata free-text.
-    signals = store.list_procore_action_signals(
+    # Safe enums/ids/timestamps + opaque owner/source-change keys (ranking inputs only — converted to
+    # booleans by the ranker; the raw keys never enter output). Never title/summary/metadata free-text.
+    signals = store.list_procore_action_signals_for_ranking(
         project_key=project_key, signal_status="open", limit=100000
     )
+
+    # Rank + classify: promoted (clear "why today") vs suppressed aggregate backlog. observation_closed
+    # and other semantically-closed signals are suppressed up-front (never surfaced as open actions).
+    ranked = rank_procore_signals(signals, now_utc=now_utc, last_success_utc=last_success_utc)
+    promoted = [r for r in ranked if r.promoted]
+    suppressed = [r for r in ranked if not r.promoted]
 
     projects = (
         [project_key] if project_key else sorted({str(s.get("project_key")) for s in signals})
@@ -207,48 +214,84 @@ def build_procore_action_digest(
     # Deterministic apply ordering: highest-count groups first across projects.
     all_groups.sort(key=lambda g: (-g["count"], g["project_key"], g["signal_type"]))
 
+    # Suppressed aggregate backlog → diagnostics only (NOT executive candidates). The audit's giant
+    # "1,265 open inspection items" counts live here, labeled by suppression reason, never as a top row.
+    backlog: dict[tuple[str, str, str], int] = {}
+    for r in suppressed:
+        key = (r.project_key, r.signal_type, r.suppression_reason or "suppressed")
+        backlog[key] = backlog.get(key, 0) + 1
+    suppressed_backlog: list[dict[str, Any]] = [
+        {"project_key": p, "signal_type": stype, "suppression_reason": reason, "count": cnt}
+        for (p, stype, reason), cnt in sorted(
+            backlog.items(), key=lambda kv: (-kv[1], kv[0][0], kv[0][1])
+        )
+    ]
+
+    # Executive selection: top-ranked PROMOTED signals (capped by --limit); --max-persist still caps writes.
+    executive = promoted[: max(0, limit)]
+    executive_rows: list[dict[str, Any]] = []
+
     summary: dict[str, Any] = {
         "projects": len(projects),
         "groups": len(all_groups),
         "total_open_signals": len(signals),
         "by_importance": dict(sorted(by_importance_global.items())),
         "overdue_total": overdue_total,
+        "promoted_count": len(promoted),
+        "suppressed_count": len(suppressed),
+        "aggregate_sludge_count": sum(1 for r in suppressed if r.is_aggregate_sludge),
+        "semantically_closed_count": sum(
+            1 for r in ranked if not r.is_semantically_actionable
+        ),
+        "due_soon_count": sum(1 for r in ranked if r.due_soon),
+        "recent_count": sum(1 for r in ranked if r.recent),
+        "executive_considered": len(executive),
         "would_persist": 0,
         "persisted": 0,
         "skipped_existing": 0,
     }
     remaining: Optional[int] = max_persist if (not dry_run and max_persist is not None) else None
 
-    for g in all_groups:
-        group_key = f"{g['project_key']}|{g['signal_type']}"
+    for r in executive:
+        group_key = r.action_signal_id
         row_id = store.daily_brief_action_candidate_id_for(brief_date, section, group_key)
+        # Safe, source-linked executive row (no free-text; signal_type/why_today are safe enums/strings).
+        source_refs = [
+            {"source_family": "procore_action_signals", "source_ref": r.action_signal_id}
+        ]
+        executive_rows.append(
+            {
+                "action_signal_id": r.action_signal_id,
+                "project_key": r.project_key,
+                "signal_type": r.signal_type,
+                "rank_score": r.rank_score,
+                "rank_reasons": r.rank_reasons,
+                "why_today": r.why_today,
+                "priority": r.priority,
+                "source_refs": source_refs,
+            }
+        )
         if row_id in existing_ids:
             summary["skipped_existing"] += 1
             continue
         summary["would_persist"] += 1
         if dry_run or (remaining is not None and remaining <= 0):
             continue
-        # Highest importance present in the group → priority.
-        imp = (
-            "high"
-            if g["by_importance"].get("high")
-            else ("medium" if g["by_importance"].get("medium") else "low")
-        )
-        overdue_note = f" ({g['overdue']} overdue)" if g["overdue"] else ""
-        title = f"{g['count']} open {g['signal_type']} signals{overdue_note}"
-        reason = ",".join(g["dimensions"]) or "open_action_signals"
-        inserted = store.insert_daily_brief_action_candidate(
+        title = f"{r.why_today}: {r.signal_type}"
+        receipt = persist_candidate_with_refs(
+            store,
             brief_date=brief_date,
             section=section,
             title_redacted=title,
-            confidence=1.0,
-            project_key=g["project_key"],
-            priority=_IMPORTANCE_PRIORITY.get(imp, 50),
-            reason_redacted=reason,
+            confidence=min(1.0, round(r.rank_score / 100.0, 4)),
+            project_key=r.project_key,
+            priority=r.priority,
+            reason_redacted=r.why_today,
             recommended_next_action="review",
             group_key=group_key,
+            source_refs=source_refs,
         )
-        if inserted:
+        if receipt.inserted:
             summary["persisted"] += 1
             existing_ids.add(row_id)
             if remaining is not None:
@@ -267,6 +310,8 @@ def build_procore_action_digest(
         "project_filter": project_key,
         "summary": summary,
         "projects": project_views,
+        "executive_rows": executive_rows,
+        "suppressed_backlog": suppressed_backlog,
         "synthesis": synthesis,
         "guardrails": {
             "dry_run_default": True,

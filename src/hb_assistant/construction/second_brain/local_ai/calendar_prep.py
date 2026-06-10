@@ -28,9 +28,11 @@ import re
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
+from .calendar_category import resolve_calendar_category
 from .calendar_classify import classify_calendar_event
+from .daily_brief_candidate_writer import persist_candidate_with_refs
 from .packet_builders import build_calendar_event_action_packet
-from .project_aliases import resolve_project, summarize_unresolved_tokens
+from .project_aliases import summarize_unresolved_tokens
 
 _SECTION = "calendar"
 
@@ -168,6 +170,22 @@ def build_calendar_prep_candidates(
     # Safe redacted fields only — never subjects/bodies/join URLs/attendee names/emails.
     raw_events = store.list_calendar_prep_source_events(project_key=project_key, limit=100000)
 
+    # Raw subject/location map for PROJECT RESOLUTION ONLY (the persisted subject_redacted is a
+    # hash placeholder in real data, so resolving on it yields 0 — the audit's calendar resolution
+    # rate of 0.0). We read the real subject/location to resolve project/category, but persist ONLY
+    # the redacted title; the raw subject is never persisted, logged, or emitted to status.
+    raw_subjects: dict[str, dict[str, str]] = {}
+    try:
+        for row in store.list_calendar_event_raw_content(limit=100000):
+            eid = row.get("event_index_id")
+            if eid:
+                raw_subjects[str(eid)] = {
+                    "subject": str(row.get("subject") or "").strip(),
+                    "location": str(row.get("location_display") or "").strip(),
+                }
+    except Exception:
+        raw_subjects = {}
+
     existing_ids = {
         str(r.get("daily_brief_action_candidate_id"))
         for r in store.list_daily_brief_action_candidates(
@@ -221,19 +239,30 @@ def build_calendar_prep_candidates(
         prep_excerpt = _safe_excerpt(str(pkt_event.get("body_text") or ""))
         has_join = bool(packet.get("has_join_url"))
 
+        source_refs: list[dict[str, Any]] = [
+            {"source_family": "calendar_event_raw_content", "source_ref": source_ref}
+        ]
         title = str(ev.get("subject_redacted") or "").strip() or "Meeting prep"
         location_redacted = ev.get("location_redacted")
         domains = ev.get("participant_domains") or []
         attendee_count = int(ev.get("attendee_count") or 0)
         location_class = "online" if ev.get("is_online_meeting") else "in_person_or_unspecified"
 
-        # Project: prefer the index's project_key; else infer from redacted title/location via the
-        # config-backed alias map; else leave unassigned (grouped under "Needs Project Review").
+        # Category + project: prefer the index's project_key; else delegate to the deterministic
+        # category resolver (project arm = the canonical alias matcher; internal/PTO/training/
+        # needs-review classification around it). Resolve from the REAL subject/location (the
+        # redacted title is a hash placeholder in real data); persist only the redacted title.
+        # Low-confidence project-looking text becomes ``__needs_review__`` (review-safe).
         indexed_proj = ev.get("project_key")
-        inferred_proj = (
-            None if indexed_proj else resolve_project(title, str(location_redacted or ""))
+        raw = raw_subjects.get(event_index_id) or {}
+        resolution = resolve_calendar_category(
+            subject=raw.get("subject") or title,
+            location=raw.get("location") or str(location_redacted or ""),
+            organizer_domain=ev.get("organizer_domain"),
+            attendees=attendee_count,
+            indexed_project_key=indexed_proj,
         )
-        proj = indexed_proj or inferred_proj or "__unassigned__"
+        proj = resolution.project_key
 
         # Deterministic value tier (pre-model noise filter); the synthesis packet uses this to
         # demote/exclude low-value meetings before the local model ever sees them.
@@ -242,7 +271,7 @@ def build_calendar_prep_candidates(
             location=str(location_redacted or ""),
             attendee_count=attendee_count,
             is_online=bool(ev.get("is_online_meeting")),
-            has_project=proj != "__unassigned__",
+            has_project=resolution.category == "project",
             days_until=days_until,
         )
         reason = f"{attendee_count} attendees · {len(domains)} domains · {location_class}"
@@ -251,7 +280,12 @@ def build_calendar_prep_candidates(
             "event_index_id": event_index_id,
             "source_ref": source_ref,
             "project_key": proj,
-            "project_inferred": bool(inferred_proj),
+            "category": resolution.category,
+            "category_reason": resolution.reason,
+            "matched_alias": resolution.matched_alias,
+            "needs_review": resolution.needs_review,
+            "resolution_confidence": resolution.confidence,
+            "project_inferred": bool(resolution.category == "project" and not indexed_proj),
             "calendar_class": classification.klass,
             "calendar_class_reason": classification.reason_code,
             "calendar_visible": classification.visible,
@@ -267,9 +301,7 @@ def build_calendar_prep_candidates(
             "priority": priority,
             "reason_redacted": reason,
             "prep_excerpt": prep_excerpt,
-            "source_refs": [
-                {"source_family": "calendar_event_raw_content", "source_ref": source_ref}
-            ],
+            "source_refs": source_refs,
         }
         event_views.append(view)
 
@@ -280,18 +312,20 @@ def build_calendar_prep_candidates(
         summary["would_persist"] += 1
         if dry_run or (remaining is not None and remaining <= 0):
             continue
-        inserted = store.insert_daily_brief_action_candidate(
+        receipt = persist_candidate_with_refs(
+            store,
             brief_date=brief_date,
             section=_SECTION,
             title_redacted=title,
-            confidence=1.0,
+            confidence=resolution.confidence,
             project_key=proj,
             priority=priority,
             reason_redacted=reason,
             recommended_next_action="review",
             group_key=source_ref,
+            source_refs=source_refs,
         )
-        if inserted:
+        if receipt.inserted:
             summary["persisted"] += 1
             existing_ids.add(row_id)
             if remaining is not None:
@@ -299,22 +333,34 @@ def build_calendar_prep_candidates(
         else:
             summary["skipped_existing"] += 1
 
-    # Project-inference + value-tier rollups (assigned vs unassigned, class distribution) + a small
+    # Category + value-tier rollups (project vs internal vs review, class distribution) + a small
     # diagnostic of frequently-unresolved project tokens so alias coverage can be improved over time.
-    summary["projects_assigned"] = sum(
-        1 for v in event_views if v["project_key"] != "__unassigned__"
-    )
+    # "assigned" = resolved to a real project; "unassigned" = needs-review/unknown (NOT internal).
+    summary["projects_assigned"] = sum(1 for v in event_views if v.get("category") == "project")
     summary["projects_unassigned"] = sum(
-        1 for v in event_views if v["project_key"] == "__unassigned__"
+        1 for v in event_views if v.get("category") in ("needs_review", "unknown")
     )
     summary["projects_inferred"] = sum(1 for v in event_views if v.get("project_inferred"))
+    summary["needs_review_count"] = sum(
+        1 for v in event_views if v.get("category") == "needs_review"
+    )
+    by_category: dict[str, int] = {}
+    for v in event_views:
+        cat = str(v.get("category") or "unknown")
+        by_category[cat] = by_category.get(cat, 0) + 1
+    summary["category_distribution"] = by_category
     by_class: dict[str, int] = {}
     for v in event_views:
         cls = str(v.get("calendar_class") or "fyi")
         by_class[cls] = by_class.get(cls, 0) + 1
     summary["by_calendar_class"] = by_class
     summary["unresolved_project_tokens"] = summarize_unresolved_tokens(
-        [v["title_redacted"] for v in event_views if v["project_key"] == "__unassigned__"], top=10
+        [
+            v["title_redacted"]
+            for v in event_views
+            if v.get("category") in ("needs_review", "unknown")
+        ],
+        top=10,
     )
 
     synthesis = _maybe_synthesize(synthesize=synthesize, client=client, event_views=event_views)

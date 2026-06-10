@@ -1,0 +1,27 @@
+{
+  "package_id": "daily-brief-usefulness-repair-package",
+  "title": "Daily Brief Usefulness Repair",
+  "version": "v1.0.0",
+  "created_utc": "2026-06-10T09:03:36Z",
+  "repository": "RMF112018/hb-personal-assistant",
+  "local_repo_path": "/Users/bobbyfetting/hb-personal-assistant",
+  "target_branch": "fix/daily-brief-usefulness-repair",
+  "objective": "Repair daily-brief usefulness across calendar aliasing, Procore ranking, deterministic daily-brief candidate projection, source-ref gates, and daily-run usefulness/success gates.",
+  "audit_basis": {
+    "schema_version": 45,
+    "calendar_project_resolution_rate": 0.0,
+    "calendar_near_term_event_count": 8,
+    "calendar_unassigned_project_like_count": 8,
+    "procore_open_signal_count": 5866,
+    "procore_due_soon_count": 0,
+    "procore_recent_signal_count": 1888,
+    "procore_aggregate_sludge_count": 3592,
+    "followup_open_count": 0,
+    "email_model_ready_thread_count": 0,
+    "email_enrichment_pending_count": 0,
+    "daily_brief_candidate_count": 0,
+    "candidate_source_ref_coverage": 0.0,
+    "project_key_coverage": 0.0,
+    "root_cause": "selection_ranking_fix; model was fed unranked sludge or projection failure"
+  }
+}
