@@ -4,11 +4,15 @@ Run from the repo root inside the venv (`source .venv/bin/activate`, Python 3.12
 read-only / dry-run and safe. Use a disposable DB copy for any `--db` example:
 `cp "$(hb-assistant ...path...)" /tmp/copy.sqlite` or any temp path.
 
-## Branch + baseline
+## Branch + baseline (post-merge)
+Phase 10 full-candidate work is **merged into `main`** (PR #13, merge commit `483e090d`).
+Post-merge hardening runs on `fix/phase-10-postmerge-hardening`.
 ```bash
-git checkout experiment/phase-10-full-candidate-implementation
-git log --oneline main..HEAD          # 10 commits (1 setup + 9 candidates)
-git status --short                    # clean (ignore concurrent foreign evidence churn)
+git checkout main                     # Phase 10 is on main as of merge 483e090d
+git log --oneline -1                  # 483e090d Merge pull request #13 ...
+# Post-merge hardening branch:
+git checkout fix/phase-10-postmerge-hardening
+git status --short                    # clean tracked (3 untracked foreign planning dirs ignored)
 ```
 
 ## Per-candidate operator surfaces
@@ -36,9 +40,13 @@ hb-assistant procore live monitor --db /tmp/copy.sqlite --no-json
 hb-assistant second-brain relationship-candidates report --db /tmp/copy.sqlite --no-json
 
 # 08 Hardened MCP context packet
+#   NOTE: `--no-json` (human Markdown) is enabled by post-merge hardening Prompt 02
+#   (fix/phase-10-postmerge-hardening). On main @ 483e090d this command accepts `--json` only;
+#   the `--no-json` form below is expected to work after Prompt 02 lands.
 hb-assistant second-brain daily-brief mcp-packet --db /tmp/copy.sqlite --as-of 2026-06-09T05:00:00-04:00 --no-json
 
 # 09 Document/file parse read-model
+#   NOTE: `--no-json` is likewise enabled by post-merge hardening Prompt 02 (expected after Prompt 02).
 hb-assistant files parse-index \
   docs/evidence/phase-10-full-candidate-implementation/09-document-file-parsing/fixtures/note.txt --no-json
 ```

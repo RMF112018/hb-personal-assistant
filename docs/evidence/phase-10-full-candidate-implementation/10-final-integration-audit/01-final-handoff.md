@@ -1,12 +1,20 @@
 # Phase 10 Full Candidate Implementation — Final Handoff
 
-## 1. Branch + final HEAD
-- Branch: `experiment/phase-10-full-candidate-implementation`
-- Final HEAD: `247b55d8`
-- Baseline (package): `0c75f4a7` · `origin/main`: `0c75f4a7` (unchanged — **`main` untouched**)
+## 1. Branch + final HEAD (post-merge)
+- Source branch: `experiment/phase-10-full-candidate-implementation` (merged via PR #13)
+- Branch-final HEAD: `f7061ab3` (last commit on the source branch, pre-merge)
+- Merge commit on `main`: `483e090df275a64a2f393e84f051e80e48eff57e` (**PR #13 merged**)
+- Baseline (package start): `0c75f4a7`
+- `main` / `origin/main`: `483e090d` — **advanced by the merge; `main` is no longer untouched**
 
-## 2. Commits (11)
+> Note: the branch-final HEAD (`f7061ab3`) and the merge commit (`483e090d`) are distinct.
+> This handoff was first drafted at `247b55d8`; the handoff commit `f7061ab3` and the PR #13
+> merge commit `483e090d` followed and are reflected below.
+
+## 2. Commits (13 — setup + 9 candidates + integration fix + handoff + merge)
 ```
+483e090d Merge pull request #13 from RMF/experiment/phase-10-full-candidate-implementation
+f7061ab3 docs(second-brain): add phase 10 full candidate handoff
 247b55d8 fix(second-brain): avoid committing synthetic bearer literal in phase 10 mcp test
 c75e1c25 feat(second-brain): add phase 10 local document parsing
 14b5ebdf feat(second-brain): harden phase 10 mcp context packets
@@ -67,10 +75,14 @@ intentional deferrals (deterministic-only grouping, synthetic parsing fixtures).
 ## 11. Exact verification commands
 See `10-manual-verification-runbook.md`.
 
-## 12. PR command (when ready)
+## 12. PR (merged)
+PR #13 was opened from `experiment/phase-10-full-candidate-implementation` and **merged into
+`main`** as merge commit `483e090d`. The original (historical) PR command was:
 ```bash
 git push -u origin experiment/phase-10-full-candidate-implementation
 gh pr create --base main --head experiment/phase-10-full-candidate-implementation \
   --title "Phase 10 full candidate implementation (9 candidates + integration audit)" \
   --body-file docs/evidence/phase-10-full-candidate-implementation/10-final-integration-audit/01-final-handoff.md
 ```
+Post-merge hardening follow-ups are tracked under
+`docs/evidence/phase-10-postmerge-hardening/` (branch `fix/phase-10-postmerge-hardening`).

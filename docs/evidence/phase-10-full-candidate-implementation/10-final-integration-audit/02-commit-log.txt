@@ -1,3 +1,5 @@
+483e090d Merge pull request #13 from RMF/experiment/phase-10-full-candidate-implementation
+f7061ab3 docs(second-brain): add phase 10 full candidate handoff
 247b55d8 fix(second-brain): avoid committing synthetic bearer literal in phase 10 mcp test
 c75e1c25 feat(second-brain): add phase 10 local document parsing
 14b5ebdf feat(second-brain): harden phase 10 mcp context packets
