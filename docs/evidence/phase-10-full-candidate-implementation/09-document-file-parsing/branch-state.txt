@@ -1,0 +1,10 @@
+branch: experiment/phase-10-full-candidate-implementation
+HEAD: 14b5ebdf1fa3919c8880b1c230595ef921e51407
+baseline: 0c75f4a77b5987cdbd2a058504f5423d69d225f1
+origin/main: 0c75f4a77b5987cdbd2a058504f5423d69d225f1
+--- git status --short ---
+ M docs/evidence/remediation/prompt-05-delegated-graph-proof/summary.json
+ M src/hb_assistant/cli/files.py
+?? docs/evidence/phase-10-full-candidate-implementation/09-document-file-parsing/
+?? src/hb_assistant/construction/second_brain/local_ai/file_parse_read_model.py
+?? tests/test_phase_10_file_parse_read_model.py

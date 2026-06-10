@@ -1,0 +1,16 @@
+# Safety scan — Prompt 09 generated outputs
+
+01-file-parse-final-output.md: CLEAN
+02-file-parse-final-output.json: CLEAN
+03-pdf-or-supported-format-proof.json: CLEAN
+04-docx-or-supported-format-proof.json: CLEAN
+05-xlsx-or-supported-format-proof.json: CLEAN
+06-unsupported-format-proof.json: CLEAN
+07-daily-brief-or-file-review-consumption-proof.md: CLEAN
+08-no-raw-live-content-proof.txt: CLEAN
+fixtures/README.md: CLEAN
+fixtures/note.txt: CLEAN
+fixtures/spec.md: CLEAN
+
+TOTAL_FINDINGS=0
+RESULT=PASS — no forbidden content

@@ -1,0 +1,5 @@
+# Prompt 09 — changed files (this candidate only)
+src/hb_assistant/construction/second_brain/local_ai/file_parse_read_model.py  # NEW review-safe read-model + index + renderer
+src/hb_assistant/cli/files.py                                                 # `files parse-index` verb
+tests/test_phase_10_file_parse_read_model.py                                 # NEW regression test
+docs/evidence/phase-10-full-candidate-implementation/09-document-file-parsing/  # evidence bundle (synthetic fixtures)

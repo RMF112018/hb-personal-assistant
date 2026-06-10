@@ -1,0 +1,2 @@
+Synthetic text fixture for Phase 10 file parsing.
+Line two.

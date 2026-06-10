@@ -1,0 +1,152 @@
+{
+  "command": "second-brain files parse-index",
+  "ok": true,
+  "counts": {
+    "files": 6,
+    "by_status": {
+      "parsed": 4,
+      "degraded": 1,
+      "unsupported": 1
+    },
+    "by_extension": {
+      ".txt": 1,
+      ".md": 1,
+      ".docx": 1,
+      ".xlsx": 1,
+      ".pdf": 1,
+      ".xyz": 1
+    }
+  },
+  "files": [
+    {
+      "source_id": "file:59700155e034d16d",
+      "file_name": "note.txt",
+      "extension": ".txt",
+      "mime_type": "text/plain",
+      "source_refs": [],
+      "redaction": {
+        "raw_text_excerpt_excluded": true,
+        "hash_only": true,
+        "local_only": true,
+        "no_model": true
+      },
+      "parsed_status": "parsed",
+      "extraction_method": "stdlib-text",
+      "text_length": 60,
+      "text_hash": "sha256:36481ad3cafc2ef2f47a536a7e2b391568b219343af9196c2e5a620c35d9060c",
+      "counts": {},
+      "degraded_reason": null
+    },
+    {
+      "source_id": "file:bc6661da34ecae62",
+      "file_name": "spec.md",
+      "extension": ".md",
+      "mime_type": "text/markdown",
+      "source_refs": [],
+      "redaction": {
+        "raw_text_excerpt_excluded": true,
+        "hash_only": true,
+        "local_only": true,
+        "no_model": true
+      },
+      "parsed_status": "parsed",
+      "extraction_method": "stdlib-text",
+      "text_length": 55,
+      "text_hash": "sha256:d57b2d3536f7c48bb983ee8326ff349daefc09a85197927e21e6575ff7c9f57a",
+      "counts": {},
+      "degraded_reason": null
+    },
+    {
+      "source_id": "file:0eb2ecf5593ce953",
+      "file_name": "report.docx",
+      "extension": ".docx",
+      "mime_type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "source_refs": [],
+      "redaction": {
+        "raw_text_excerpt_excluded": true,
+        "hash_only": true,
+        "local_only": true,
+        "no_model": true
+      },
+      "parsed_status": "parsed",
+      "extraction_method": "python-docx",
+      "text_length": 73,
+      "text_hash": "sha256:05a638fedf9485e366c3708a52831353f846364aef5eb6dd69d1e12bdd8642e5",
+      "counts": {
+        "table_count": 1
+      },
+      "degraded_reason": null
+    },
+    {
+      "source_id": "file:f92e7414c873edfc",
+      "file_name": "budget.xlsx",
+      "extension": ".xlsx",
+      "mime_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "source_refs": [],
+      "redaction": {
+        "raw_text_excerpt_excluded": true,
+        "hash_only": true,
+        "local_only": true,
+        "no_model": true
+      },
+      "parsed_status": "parsed",
+      "extraction_method": "openpyxl",
+      "text_length": 328,
+      "text_hash": "sha256:e0b46af56902ce3c6571204a361e22a2791f5bf8df93e8c90b5f50a90e90100c",
+      "counts": {
+        "sheet_count": 1
+      },
+      "degraded_reason": null
+    },
+    {
+      "source_id": "file:900db3ec3bae665c",
+      "file_name": "scan.pdf",
+      "extension": ".pdf",
+      "mime_type": "application/pdf",
+      "source_refs": [],
+      "redaction": {
+        "raw_text_excerpt_excluded": true,
+        "hash_only": true,
+        "local_only": true,
+        "no_model": true
+      },
+      "parsed_status": "degraded",
+      "extraction_method": "pdfplumber+pypdf",
+      "text_length": 0,
+      "text_hash": null,
+      "counts": {
+        "page_count": 2,
+        "table_count": 0
+      },
+      "degraded_reason": "scanned_pdf_no_text"
+    },
+    {
+      "source_id": "file:bd8611a628837654",
+      "file_name": "archive.xyz",
+      "extension": ".xyz",
+      "mime_type": "chemical/x-xyz",
+      "source_refs": [],
+      "redaction": {
+        "raw_text_excerpt_excluded": true,
+        "hash_only": true,
+        "local_only": true,
+        "no_model": true
+      },
+      "parsed_status": "unsupported",
+      "extraction_method": null,
+      "text_length": 0,
+      "text_hash": null,
+      "counts": {},
+      "degraded_reason": "unsupported_extension:.xyz"
+    }
+  ],
+  "guardrails": {
+    "local_only": true,
+    "no_network": true,
+    "no_model": true,
+    "no_raw_text_excerpt": true,
+    "hash_only": true,
+    "no_writeback": true,
+    "deterministic": true
+  }
+}

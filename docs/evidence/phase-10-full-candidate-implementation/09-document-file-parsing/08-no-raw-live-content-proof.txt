@@ -1,0 +1,8 @@
+# No-raw-live-content proof
+
+The read-model never carries the extracted text; fixtures are synthetic only.
+
+- read-model keys: ['counts', 'degraded_reason', 'extension', 'extraction_method', 'file_name', 'mime_type', 'parsed_status', 'redaction', 'source_id', 'source_refs', 'text_hash', 'text_length']
+- 'text_excerpt' present in any read-model: False (expected False)
+- every read-model has raw_text_excerpt_excluded=True: True
+- fixtures are synthetic (no live document corpus); binary fixtures are not committed.
