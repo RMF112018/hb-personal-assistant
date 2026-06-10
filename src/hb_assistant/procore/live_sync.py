@@ -95,6 +95,10 @@ from hb_assistant.procore.normalizers.subcontractor_invoice import (
 )
 from hb_assistant.procore.pagination import RetryPolicy
 from hb_assistant.procore.redaction import redact_source_url
+from hb_assistant.procore.structured_analytics import (
+    SOURCE_QUALITY_LIVE_FULL,
+    upsert_full_raw_payload_and_structured,
+)
 from hb_assistant.procore.token_provider import default_procore_token_provider
 from hb_assistant.store.procore_budget_projection import (
     BUDGET_ENDPOINTS,
@@ -449,6 +453,26 @@ def _record_id_of(adapter: EndpointAdapter, raw: Dict[str, Any]) -> Optional[str
     return str(value)
 
 
+def _parent_id_for_upsert(adapter: EndpointAdapter, raw: Dict[str, Any]) -> Optional[str]:
+    """Resolve the parent record id for a child/N+1 endpoint item, else None.
+
+    activities link to their schedule (``schedule_id``); inspection-items link to
+    their list (``list_id``); generalized N+1 children carry the parent id tagged
+    under ``_PARENT_ID_KEY`` during the fetch. All other endpoints have no parent.
+    """
+    if not isinstance(raw, dict):
+        return None
+    if adapter.endpoint_id == "activities":
+        value = raw.get("schedule_id")
+    elif adapter.endpoint_id == "inspection-items":
+        value = raw.get("list_id")
+    elif adapter.endpoint_id in _N1_CHILD_ENDPOINTS:
+        value = raw.get(_PARENT_ID_KEY)
+    else:
+        return None
+    return str(value) if value not in (None, "") else None
+
+
 def _resolve_procore_project_id(project_key: str) -> Optional[str]:
     try:
         registry = load_procore_projects()
@@ -635,6 +659,11 @@ def _build_receipt(
     rate_limit_wait_count: int = 0,
     rate_limit_sleep_seconds_total: float = 0.0,
     max_rate_limit_wait_cycles: int = 0,
+    raw_payload_rows_written: int = 0,
+    structured_rows_written: int = 0,
+    raw_persist_error_count: int = 0,
+    raw_persist_skipped_higher_quality: int = 0,
+    full_raw_persistence_enabled: bool = False,
 ) -> Dict[str, Any]:
     return {
         "receipt_id": receipt_id,
@@ -664,6 +693,16 @@ def _build_receipt(
         "sqlite_total_count_after": sqlite_total_count_after,
         "raw_body_persisted": False,
         "secrets_redacted": True,
+        # Full Procore business payloads are persisted to the private local DB (system
+        # of record); transport/auth secrets are stripped. No payload body is ever
+        # placed in this receipt or written to stdout.
+        "full_raw_persistence_enabled": full_raw_persistence_enabled,
+        "raw_payload_rows_written": raw_payload_rows_written,
+        "structured_rows_written": structured_rows_written,
+        "raw_persist_error_count": raw_persist_error_count,
+        "raw_persist_skipped_due_to_higher_quality": raw_persist_skipped_higher_quality,
+        "raw_payload_body_emitted_to_stdout": False,
+        "ok": status == "success" and raw_persist_error_count == 0,
         "state": state,
         "status": status,
         "reason_codes": sorted(set(reason_codes)),
@@ -1452,6 +1491,11 @@ def run_live_sync(
     parent_retrieved_count = len(items)
     parent_normalized_count = 0
     parent_upserted_count = 0
+    # Full raw payload persistence accumulators (raw-first private-DB system of record).
+    raw_payload_rows_written = 0
+    structured_rows_written = 0
+    raw_persist_skipped_higher_quality = 0
+    raw_persist_error_count = 0
     child_endpoint_id: Optional[str] = None
     child_retrieved_count = 0
     child_normalized_count = 0
@@ -1479,6 +1523,40 @@ def run_live_sync(
             child_endpoint_id = child_adapter.endpoint_id
 
     for raw in items:
+        # Raw-first: resolve a stable record id + parent id and persist the FULL
+        # endpoint payload (transport secrets removed) BEFORE any lossy/normalized
+        # projection, so a normalize/projection failure cannot lose business fields.
+        # parent_procore_id: activities -> schedule_id, inspection-items -> list_id,
+        # N+1 children -> tagged _PARENT_ID_KEY; all other endpoints have no parent.
+        record_id = _record_id_of(adapter, raw) if will_write_db else None
+        parent_id_for_upsert: Optional[str] = (
+            _parent_id_for_upsert(adapter, raw) if will_write_db else None
+        )
+        if will_write_db:
+            if record_id is None:
+                raw_persist_error_count += 1
+                redacted_errors.append({"raw_persist_error": "missing_record_id"})
+            else:
+                try:
+                    full_raw = upsert_full_raw_payload_and_structured(
+                        db_path=db_path,
+                        endpoint_id=adapter.endpoint_id,
+                        project_key=project_key,
+                        procore_project_id=str(procore_project_id),
+                        raw_item=raw,
+                        parent_procore_id=parent_id_for_upsert,
+                        record_id=record_id,
+                        fetched_at_utc=fetched_at,
+                        source_quality=SOURCE_QUALITY_LIVE_FULL,
+                        capture_run_id=sync_run_id,
+                    )
+                    raw_payload_rows_written += full_raw["raw_payload_rows_written"]
+                    structured_rows_written += full_raw["structured_rows_written"]
+                    raw_persist_skipped_higher_quality += full_raw["skipped_due_to_higher_quality"]
+                except Exception:  # noqa: BLE001 -- isolate per-item; verdict downgraded below
+                    raw_persist_error_count += 1
+                    redacted_errors.append({"raw_persist_error": "full_raw_persist_failed"})
+
         try:
             record = normalizer(
                 raw,
@@ -1496,7 +1574,6 @@ def run_live_sync(
         if not will_write_db:
             continue
 
-        record_id = _record_id_of(adapter, raw)
         if record_id is None:
             redacted_errors.append({"normalize_error": "missing_record_id"})
             continue
@@ -1505,27 +1582,6 @@ def run_live_sync(
             if isinstance(record.get("canonical_fields"), dict)
             else None
         )
-        # activities link back to their parent schedule_id via parent_procore_id.
-        # inspection-items links back to its parent list_id (each item
-        # payload carries list_id directly on the v1.1 list endpoint).
-        # inspection-sections are project-wide template surfaces with no
-        # list_id field on the v1.0 list endpoint — parent_procore_id stays
-        # None for sections. All other top-level endpoints leave
-        # parent_procore_id as None.
-        parent_id_for_upsert: Optional[str] = None
-        if adapter.endpoint_id == "activities":
-            sched_id = raw.get("schedule_id") if isinstance(raw, dict) else None
-            if sched_id is not None and sched_id != "":
-                parent_id_for_upsert = str(sched_id)
-        elif adapter.endpoint_id == "inspection-items":
-            list_id = raw.get("list_id") if isinstance(raw, dict) else None
-            if list_id is not None and list_id != "":
-                parent_id_for_upsert = str(list_id)
-        elif adapter.endpoint_id in _N1_CHILD_ENDPOINTS:
-            # Parent id was tagged onto each child during the N+1 fetch above.
-            pid = raw.get(_PARENT_ID_KEY) if isinstance(raw, dict) else None
-            if pid is not None and pid != "":
-                parent_id_for_upsert = str(pid)
         try:
             upsert_procore_live_record(
                 project_key=project_key,
@@ -1788,6 +1844,30 @@ def run_live_sync(
 
         for child_raw in inline_children:
             child_retrieved_count += 1
+            # Raw-first for the inline child: persist the full child payload before
+            # the lossy child normalize/upsert below.
+            child_id = child_raw.get("id")
+            if will_write_db and child_id not in (None, ""):
+                try:
+                    child_full = upsert_full_raw_payload_and_structured(
+                        db_path=db_path,
+                        endpoint_id=child_adapter.endpoint_id,
+                        project_key=project_key,
+                        procore_project_id=str(procore_project_id),
+                        raw_item=child_raw,
+                        parent_procore_id=str(record_id),
+                        record_id=str(child_id),
+                        fetched_at_utc=fetched_at,
+                        source_quality=SOURCE_QUALITY_LIVE_FULL,
+                        capture_run_id=sync_run_id,
+                    )
+                    raw_payload_rows_written += child_full["raw_payload_rows_written"]
+                    structured_rows_written += child_full["structured_rows_written"]
+                    raw_persist_skipped_higher_quality += child_full["skipped_due_to_higher_quality"]
+                except Exception:  # noqa: BLE001 -- isolate per-item; verdict downgraded below
+                    raw_persist_error_count += 1
+                    child_errors_count += 1
+                    redacted_errors.append({"raw_persist_error": "child_full_raw_persist_failed"})
             try:
                 child_record = child_normalizer(
                     child_raw,
@@ -1843,6 +1923,13 @@ def run_live_sync(
     retry_count = 0
     state = "success" if not redacted_errors else "partial_success"
     status = "success" if not redacted_errors else "partial"
+    # Verdict rule: a run that retrieved rows but failed to persist any full raw
+    # payload must NOT read as ok. Per-item failures isolate (loop continues), but
+    # the endpoint-run verdict is degraded so the operator sees the gap.
+    raw_persistence_ok = not (raw_persist_error_count > 0 and retrieved_count > 0)
+    if not raw_persistence_ok:
+        state = "degraded_raw_persistence"
+        status = "partial"
 
     if will_write_db:
         update_watermark(
@@ -1923,6 +2010,11 @@ def run_live_sync(
         rate_limit_wait_count=rate_limit_wait_count,
         rate_limit_sleep_seconds_total=rate_limit_sleep_seconds_total,
         max_rate_limit_wait_cycles=max_rate_limit_wait_cycles,
+        raw_payload_rows_written=raw_payload_rows_written,
+        structured_rows_written=structured_rows_written,
+        raw_persist_error_count=raw_persist_error_count,
+        raw_persist_skipped_higher_quality=raw_persist_skipped_higher_quality,
+        full_raw_persistence_enabled=will_write_db,
     )
 
 
