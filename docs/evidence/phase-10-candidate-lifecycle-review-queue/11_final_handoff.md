@@ -4,7 +4,7 @@
 
 - Manifest: Phase 10 Candidate Lifecycle, Review Queue & Feedback Read Model (247 v1)
 - Branch: `feature/phase-10-candidate-lifecycle-review-queue`
-- Commit SHA: `<filled post-commit>`
+- Commit SHA: `66157658d88265480d350678ac6826e2764e8986` (implementation commit)
 - Base: `feature/phase-10-email-followup-candidate-projection` (== `origin/main` @ `512d103f`)
 - Merge target: `main`
 - Merge readiness: Merge-ready
