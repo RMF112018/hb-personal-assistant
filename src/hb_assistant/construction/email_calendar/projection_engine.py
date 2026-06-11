@@ -451,6 +451,8 @@ def _calendar_event_values(
     for l_idx, loc in enumerate(locs if isinstance(locs, list) else []):
         if not isinstance(loc, dict):
             continue
+        addr = loc.get("address") or {}
+        coord = loc.get("coordinates") or {}
         location_rows.append(
             _base_child(
                 pid,
@@ -464,6 +466,13 @@ def _calendar_event_values(
                     "display_name": loc.get("displayName"),
                     "location_type": loc.get("locationType"),
                     "location_uri": loc.get("locationUri"),
+                    "address_street": addr.get("street"),
+                    "address_city": addr.get("city"),
+                    "address_state": addr.get("state"),
+                    "address_country_or_region": addr.get("countryOrRegion"),
+                    "address_postal_code": addr.get("postalCode"),
+                    "coordinates_latitude": coord.get("latitude"),
+                    "coordinates_longitude": coord.get("longitude"),
                 },
             )
         )

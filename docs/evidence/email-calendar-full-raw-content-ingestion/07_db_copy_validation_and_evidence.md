@@ -2,6 +2,12 @@
 
 All validation ran against a `/tmp` copy of the production DB. The production DB was never mutated.
 
+> **Pass 3:** the calendar `locations[]` nested-field remediation adds its own pristine
+> prod-copy lane (production sha256 `74452bd8…`, unchanged; seven additive columns reconciled
+> onto the copy; coverage restored from 7 unmapped to 0). See
+> `04E_locations_nested_field_remediation.md`. The Pass-1/Pass-2 blocks below (production sha256
+> `7f04f0b8…`) are an earlier snapshot and are left as captured.
+
 ## Production DB untouched (Pass 1 + Pass 2)
 
 ```text

@@ -53,6 +53,26 @@ Graph (read-only)
 - Consumers prefer the structured layer by source-quality rank; a lower-quality row cannot downgrade
   consumer context; raw reads are audited in `raw_content_access_events`.
 
+## Nested-field mapping (dotted `item_fields`)
+
+Child arrays map nested object leaves with dotted source paths in the registry's `item_fields`
+(e.g. `recurrence`: `pattern.type → pattern_type`, `range.startDate → range_start`). The
+completeness matrix flattens every observed JSON path, so a declared **container** key alone does
+not cover its leaves — each leaf must be declared and mapped or it is `unmapped` and the gate fails
+closed. The calendar `locations[]` child array maps the seven Microsoft Graph location leaves to
+dedicated columns:
+
+```text
+address.street → address_street    address.city → address_city    address.state → address_state
+address.countryOrRegion → address_country_or_region    address.postalCode → address_postal_code
+coordinates.latitude → coordinates_latitude    coordinates.longitude → coordinates_longitude
+```
+
+Because the DDL is generated from the registry and the V49 reconcile runs unconditionally, adding
+these `item_fields` is sufficient: fresh DBs get the columns from `CREATE TABLE`; existing V49 DBs
+get them via additive `ALTER TABLE ADD COLUMN`. The lossless `raw_sidecar_json` and the join-URL
+policy are unaffected. Evidence: `docs/evidence/email-calendar-full-raw-content-ingestion/04E_locations_nested_field_remediation.md`.
+
 ## CLI
 
 `hb-assistant email-calendar raw {projection-inventory, projection-coverage, projection-reprocess,
@@ -63,3 +83,5 @@ default and refuses `--apply` without an explicit `--db`.
 
 - Pass 1 `3e50fd7e` — schema + ingestion + projection engine + fixtures + /tmp proof.
 - Pass 2 — consumer read models + CLI + redaction/access audit + evidence + runbook + this doc.
+- Pass 3 — calendar `locations[]` `address.*` / `coordinates.*` nested-leaf mapping (registry +
+  engine); resolved a live prod-copy gate failure (7 unmapped leaves → 0). See evidence 04E.

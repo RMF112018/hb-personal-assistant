@@ -22,6 +22,11 @@ email_message,email_message_raw_content,source_record_id,,column,0,0,0,primary,e
 email_message,email_message_raw_content,source_updated_at_utc,,column,0,0,0,primary,excluded_non_business,,,excluded,provenance: projected as its own column,excluded
 email_message,email_message_raw_content,payload_hash,,column,0,0,0,primary,excluded_non_business,,,excluded,provenance: projected as its own column,excluded
 email_message,email_message_raw_content,raw_content_schema_version,,column,0,0,0,primary,excluded_non_business,,,excluded,provenance schema marker,excluded
+email_message,email_message_raw_content,to_recipients_json[].address,string,array_child,0,0,0,nested,child_table_column,email_raw_message_recipients_structured,address,extract_child_array,,mapped
+email_message,email_message_raw_content,to_recipients_json[].name,string,array_child,0,0,0,nested,child_table_column,email_raw_message_recipients_structured,name,extract_child_array,,mapped
+email_message,email_message_raw_content,cc_recipients_json[].address,string,array_child,0,0,0,nested,child_table_column,email_raw_message_recipients_structured,address,extract_child_array,,mapped
+email_message,email_message_raw_content,cc_recipients_json[].name,string,array_child,0,0,0,nested,child_table_column,email_raw_message_recipients_structured,name,extract_child_array,,mapped
+email_message,email_message_raw_content,attachment_metadata_json[].has_attachments,boolean,array_child,0,0,0,nested,child_table_column,email_raw_message_attachments_structured,payload_sidecar_json,extract_child_array,,mapped
 email_message,email_message_raw_content,attachment_metadata_json[].name,string,array_child,0,0,0,nested,child_table_column,email_raw_message_attachments_structured,name,extract_child_array,,mapped
 email_message,email_message_raw_content,raw_sidecar_json,,json_column,0,0,0,nested,lossless_sidecar_json,email_raw_message_structured,payload_sidecar_json,lossless_sidecar,lossless remainder of widened Graph message fields without dedicated columns,mapped
 email_thread,email_thread_raw_context,thread_ref,,column,0,0,0,primary,primary_column,email_raw_thread_structured,thread_ref,copy,,mapped
@@ -37,6 +42,12 @@ email_thread,email_thread_raw_context,source_quality,,column,0,0,0,primary,exclu
 email_thread,email_thread_raw_context,raw_capture_run_id,,column,0,0,0,primary,excluded_non_business,,,excluded,provenance: projected as its own column,excluded
 email_thread,email_thread_raw_context,payload_hash,,column,0,0,0,primary,excluded_non_business,,,excluded,provenance: projected as its own column,excluded
 email_thread,email_thread_raw_context,raw_content_schema_version,,column,0,0,0,primary,excluded_non_business,,,excluded,provenance schema marker,excluded
+email_thread,email_thread_raw_context,messages_json[].body_html,string,array_child,0,0,0,nested,child_table_column,email_raw_thread_messages_structured,body_html_available,extract_child_array,,mapped
+email_thread,email_thread_raw_context,messages_json[].body_text,null,array_child,0,0,0,nested,child_table_column,email_raw_thread_messages_structured,body_text_available,extract_child_array,,mapped
+email_thread,email_thread_raw_context,messages_json[].from_address,string,array_child,0,0,0,nested,child_table_column,email_raw_thread_messages_structured,from_address,extract_child_array,,mapped
+email_thread,email_thread_raw_context,messages_json[].from_name,string,array_child,0,0,0,nested,child_table_column,email_raw_thread_messages_structured,from_name,extract_child_array,,mapped
+email_thread,email_thread_raw_context,messages_json[].received_at,string,array_child,0,0,0,nested,child_table_column,email_raw_thread_messages_structured,message_received_at,extract_child_array,,mapped
+email_thread,email_thread_raw_context,messages_json[].subject,string,array_child,0,0,0,nested,child_table_column,email_raw_thread_messages_structured,subject,extract_child_array,,mapped
 email_thread,email_thread_raw_context,source_refs_json,,json_column,0,0,0,nested,lossless_sidecar_json,email_raw_thread_structured,source_refs_sidecar_json,lossless_sidecar,lossless source-ref array (scalar array preserved verbatim),mapped
 calendar_event,calendar_event_raw_content,event_index_id,,column,0,0,0,primary,primary_column,calendar_raw_event_structured,event_index_id,copy,,mapped
 calendar_event,calendar_event_raw_content,graph_event_id_hash,,column,0,0,0,primary,primary_column,calendar_raw_event_structured,graph_event_id_hash,copy,,mapped
@@ -67,3 +78,17 @@ calendar_event,calendar_event_raw_content,attendees_json[].address,string,array_
 calendar_event,calendar_event_raw_content,attendees_json[].name,string,array_child,0,0,0,nested,child_table_column,calendar_raw_event_attendees_structured,name,extract_child_array,,mapped
 calendar_event,calendar_event_raw_content,attendees_json[].status,string,array_child,0,0,0,nested,child_table_column,calendar_raw_event_attendees_structured,response_status,extract_child_array,,mapped
 calendar_event,calendar_event_raw_content,attendees_json[].type,string,array_child,0,0,0,nested,child_table_column,calendar_raw_event_attendees_structured,attendee_type,extract_child_array,,mapped
+calendar_event,calendar_event_raw_content,raw_sidecar_json.locations[].address,object,array_child,0,0,0,nested,child_table_column,calendar_raw_event_locations_structured,payload_sidecar_json,extract_nested_array,,mapped
+calendar_event,calendar_event_raw_content,raw_sidecar_json.locations[].address.city,string,array_child,0,0,0,nested,child_table_column,calendar_raw_event_locations_structured,address_city,extract_nested_array,,mapped
+calendar_event,calendar_event_raw_content,raw_sidecar_json.locations[].address.countryOrRegion,string,array_child,0,0,0,nested,child_table_column,calendar_raw_event_locations_structured,address_country_or_region,extract_nested_array,,mapped
+calendar_event,calendar_event_raw_content,raw_sidecar_json.locations[].address.postalCode,string,array_child,0,0,0,nested,child_table_column,calendar_raw_event_locations_structured,address_postal_code,extract_nested_array,,mapped
+calendar_event,calendar_event_raw_content,raw_sidecar_json.locations[].address.state,string,array_child,0,0,0,nested,child_table_column,calendar_raw_event_locations_structured,address_state,extract_nested_array,,mapped
+calendar_event,calendar_event_raw_content,raw_sidecar_json.locations[].address.street,string,array_child,0,0,0,nested,child_table_column,calendar_raw_event_locations_structured,address_street,extract_nested_array,,mapped
+calendar_event,calendar_event_raw_content,raw_sidecar_json.locations[].coordinates,object,array_child,0,0,0,nested,child_table_column,calendar_raw_event_locations_structured,payload_sidecar_json,extract_nested_array,,mapped
+calendar_event,calendar_event_raw_content,raw_sidecar_json.locations[].coordinates.latitude,number,array_child,0,0,0,nested,child_table_column,calendar_raw_event_locations_structured,coordinates_latitude,extract_nested_array,,mapped
+calendar_event,calendar_event_raw_content,raw_sidecar_json.locations[].coordinates.longitude,number,array_child,0,0,0,nested,child_table_column,calendar_raw_event_locations_structured,coordinates_longitude,extract_nested_array,,mapped
+calendar_event,calendar_event_raw_content,raw_sidecar_json.locations[].displayName,string,array_child,0,0,0,nested,child_table_column,calendar_raw_event_locations_structured,display_name,extract_nested_array,,mapped
+calendar_event,calendar_event_raw_content,raw_sidecar_json.locations[].locationType,string,array_child,0,0,0,nested,child_table_column,calendar_raw_event_locations_structured,location_type,extract_nested_array,,mapped
+calendar_event,calendar_event_raw_content,raw_sidecar_json.locations[].locationUri,string,array_child,0,0,0,nested,child_table_column,calendar_raw_event_locations_structured,location_uri,extract_nested_array,,mapped
+calendar_event,calendar_event_raw_content,raw_sidecar_json.locations[].uniqueId,string,array_child,0,0,0,nested,child_table_column,calendar_raw_event_locations_structured,payload_sidecar_json,extract_nested_array,,mapped
+calendar_event,calendar_event_raw_content,raw_sidecar_json.locations[].uniqueIdType,string,array_child,0,0,0,nested,child_table_column,calendar_raw_event_locations_structured,payload_sidecar_json,extract_nested_array,,mapped

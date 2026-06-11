@@ -19,7 +19,7 @@ excluded_non_business   excluded_policy_blocked    (excluded_transport_secret re
 |---|---|---|
 | email_message | email_message_raw_content | to/cc/bcc_recipients_json[] → recipients child (role tag); attachment_metadata_json[] → attachments child; raw_sidecar_json → lossless sidecar |
 | email_thread | email_thread_raw_context | messages_json[] → thread-messages child; source_refs_json → lossless sidecar |
-| calendar_event | calendar_event_raw_content | attendees_json[] → attendees child; recurrence_json → recurrence child + lossless recurrence sidecar; raw_sidecar_json.locations[] → locations child; raw_sidecar_json → lossless sidecar |
+| calendar_event | calendar_event_raw_content | attendees_json[] → attendees child; recurrence_json → recurrence child + lossless recurrence sidecar; raw_sidecar_json.locations[] → locations child (incl. the seven `address.*` / `coordinates.*` nested leaf columns — see 04E); raw_sidecar_json → lossless sidecar |
 
 ## Documented exclusions (with reasons)
 
@@ -31,7 +31,7 @@ excluded_non_business   excluded_policy_blocked    (excluded_transport_secret re
 ## Completeness gate (computed on the `/tmp` production DB copy)
 
 ```text
-matrix rows:                                          68
+matrix rows:                                          93   (current prod copy; incl. the locations[] address.*/coordinates.* leaves)
 unmapped_primary_business_fields  (per family w/ raw): 0
 unmapped_nested_business_fields   (per family w/ raw): 0
 observed_nested_arrays_without_child_or_sidecar:       0
@@ -40,3 +40,7 @@ observed_nested_arrays_without_child_or_sidecar:       0
 The gate FAILS CLOSED on any undeclared business JSON key: a fixture that injects an unknown
 attendee key drives `unmapped_nested_business_fields > 0` and makes enforce-mode reprocess
 raise `UnknownProjectionPath` (see `tests/test_email_calendar_projection_completeness.py`).
+The current production copy exercised this for real on the calendar `locations[]`
+`address.*` / `coordinates.*` leaves; the 04E remediation maps the seven leaves and returns
+the gate to zero unmapped (`email_calendar_projection_matrix.csv` regenerated from the same
+copy).

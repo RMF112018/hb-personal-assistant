@@ -4,6 +4,13 @@ Proof that available raw email/calendar rows are transformed into final structur
 with zero unmapped business fields. Demonstrated on (a) synthetic fixtures and (b) a `/tmp` copy
 of the real production DB. No raw bodies / join URLs / tokens appear in this evidence.
 
+> **Pass 3 update (calendar `locations[]` nested fields):** the Pass-1 numbers below are a
+> point-in-time snapshot (117 calendar rows, no populated `locations[]`). The current production
+> DB carries calendar location objects with populated `address` / `coordinates`, which made the
+> calendar gate fail closed on seven unmapped leaves until remediated. See
+> `04E_locations_nested_field_remediation.md` for the current prod-copy proof (gate restored to
+> zero unmapped; production DB unchanged). Historical blocks below are left as captured.
+
 ## `/tmp` DB-copy validation (real production raw rows)
 
 ```text

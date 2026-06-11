@@ -131,6 +131,17 @@ def _seed_calendar(store: ConstructionStore) -> None:
                         "displayName": "Room 1",
                         "locationType": "conferenceRoom",
                         "locationUri": "room1@hb.com",
+                        "address": {
+                            "street": "123 Main St",
+                            "city": "Denver",
+                            "state": "CO",
+                            "countryOrRegion": "US",
+                            "postalCode": "80205",
+                        },
+                        "coordinates": {
+                            "latitude": 39.7392,
+                            "longitude": -104.9903,
+                        },
                     }
                 ],
             }
@@ -199,9 +210,26 @@ def test_calendar_projects_attendees_recurrence_locations(tmp_path: Path) -> Non
     ).fetchone()
     assert rec["pattern_type"] == "weekly" and rec["range_end"] == "2026-12-31"
     loc = conn.execute(
-        "SELECT display_name, location_type FROM calendar_raw_event_locations_structured"
+        "SELECT display_name, location_type, location_uri, address_street, address_city, "
+        "address_state, address_country_or_region, address_postal_code, "
+        "coordinates_latitude, coordinates_longitude "
+        "FROM calendar_raw_event_locations_structured"
     ).fetchone()
     assert loc["display_name"] == "Room 1" and loc["location_type"] == "conferenceRoom"
+    # the seven nested address/coordinates leaf fields project into dedicated child columns
+    assert loc["address_street"] == "123 Main St"
+    assert loc["address_city"] == "Denver"
+    assert loc["address_state"] == "CO"
+    assert loc["address_country_or_region"] == "US"
+    assert loc["address_postal_code"] == "80205"
+    assert str(loc["coordinates_latitude"]) == "39.7392"
+    assert str(loc["coordinates_longitude"]) == "-104.9903"
+    # the populated location did not trip the fail-closed completeness gate
+    cov = conn.execute(
+        "SELECT unmapped_nested_business_fields FROM email_calendar_projection_coverage "
+        "WHERE source_family='calendar_event'"
+    ).fetchone()
+    assert cov["unmapped_nested_business_fields"] == 0
 
 
 def test_projection_is_idempotent(tmp_path: Path) -> None:
