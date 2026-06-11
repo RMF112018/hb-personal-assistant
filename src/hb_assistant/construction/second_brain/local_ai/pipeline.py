@@ -34,15 +34,18 @@ from .calendar_prep import build_calendar_prep_candidates
 from .daily_brief_render import render_daily_brief
 from .daily_brief_synthesis import build_daily_brief_candidates
 from .daily_brief_window import DailyBriefWindow
+from .email_followup_candidate_projection import build_email_followup_candidates
 from .follow_up_watch import run_follow_up_watch_scan
 from .procore_digest import build_procore_action_digest
 from .relationship_candidates import build_relationship_candidates
 
 _PROJECTION_STAGE = projection_activation.STAGE_NAME
+_EMAIL_FOLLOWUP_STAGE = "email_followup_projection"
 _RENDER_STAGE = "daily_brief_render"
 _RELATIONSHIP_STAGE = "relationship_candidates"
 STAGE_ORDER: list[str] = [
     _PROJECTION_STAGE,
+    _EMAIL_FOLLOWUP_STAGE,
     "follow_up_watch",
     "procore_digest",
     "calendar_prep",
@@ -53,6 +56,7 @@ STAGE_ORDER: list[str] = [
 # byte-unchanged; ``include_relationship_candidates=True`` inserts it just before the render stage
 # (so freshly-persisted relationship rows are available to the brief's relationship enrichment).
 _GENERATION_STAGES = {
+    _EMAIL_FOLLOWUP_STAGE,
     "follow_up_watch",
     "procore_digest",
     "calendar_prep",
@@ -110,6 +114,7 @@ def run_local_agent_pipeline(
         calendar_extra["window_end_iso"] = window.calendar_prep_end
 
     builders: dict[str, tuple[Any, dict[str, Any]]] = {
+        _EMAIL_FOLLOWUP_STAGE: (build_email_followup_candidates, {"db_path": db_path}),
         "follow_up_watch": (run_follow_up_watch_scan, {}),
         "procore_digest": (build_procore_action_digest, {"db_path": db_path}),
         "calendar_prep": (build_calendar_prep_candidates, calendar_extra),

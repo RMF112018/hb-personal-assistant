@@ -184,15 +184,63 @@ def test_no_writeback_dry_run_then_apply_clean_guards() -> None:
 
 
 def test_commitment_persists_to_commitment_table() -> None:
+    # Prior failure was deterministic/offline FIXTURE INCOHERENCE, not model-dependence: the old
+    # fixture inherited assignee="user" while overriding waiting_state="waiting_on_others" on a
+    # non-follow-up title, which the deliberate assignee/waiting-state coherence rule in
+    # raw_action_intelligence.py correctly rejects ("assignee_waiting_state_inconsistent"). The rule
+    # is left UNCHANGED; the fixture is corrected to a coherent third-party commitment (assignee
+    # "other" genuinely waiting on others), which is what the routing assertion intends to exercise.
     with tempfile.TemporaryDirectory() as td:
         db = str(Path(td) / "p07c.db")
         store = ConstructionStore(db_path=db)
-        cand = _candidate(candidate_type="commitment", waiting_state="waiting_on_others")
+        cand = _candidate(
+            candidate_type="commitment",
+            title="Third-party commitment: subcontractor to issue revised sketch",
+            assignee="other",
+            waiting_state="waiting_on_others",
+            reason="The subcontractor committed to issue the revised sketch by Friday.",
+        )
         rep = extract_email_task_candidates(
             summaries=[_TASK_SUMMARY], store=store, backend=StaticOutputClient(cand), dry_run=False
         )
         assert rep["persisted"] == 1
         assert len(store.list_commitment_candidates()) == 1
+        assert store.list_task_candidates() == []
+
+
+def test_user_commitment_persists_to_commitment_table() -> None:
+    # A coherent user commitment (Bobby committed; others wait on Bobby) also routes to the
+    # commitment table — the complementary direction to the third-party regression above.
+    with tempfile.TemporaryDirectory() as td:
+        db = str(Path(td) / "p07u.db")
+        store = ConstructionStore(db_path=db)
+        cand = _candidate(
+            candidate_type="commitment",
+            title="User commitment: send the RFI response",
+            assignee="user",
+            waiting_state="waiting_on_me",
+            reason="Bobby committed to send the RFI response.",
+        )
+        rep = extract_email_task_candidates(
+            summaries=[_TASK_SUMMARY], store=store, backend=StaticOutputClient(cand), dry_run=False
+        )
+        assert rep["persisted"] == 1
+        assert len(store.list_commitment_candidates()) == 1
+        assert store.list_task_candidates() == []
+
+
+def test_incoherent_assignee_waiting_state_still_rejected() -> None:
+    # Guard the unchanged coherence rule: the original incoherent combination (assignee="user" +
+    # waiting_on_others on a non-follow-up title) must STILL be rejected, never silently persisted.
+    with tempfile.TemporaryDirectory() as td:
+        db = str(Path(td) / "p07x.db")
+        store = ConstructionStore(db_path=db)
+        cand = _candidate(candidate_type="commitment", assignee="user", waiting_state="waiting_on_others")
+        rep = extract_email_task_candidates(
+            summaries=[_TASK_SUMMARY], store=store, backend=StaticOutputClient(cand), dry_run=False
+        )
+        assert rep["persisted"] == 0 and rep["rejected"] == 1
+        assert store.list_commitment_candidates() == []
         assert store.list_task_candidates() == []
 
 

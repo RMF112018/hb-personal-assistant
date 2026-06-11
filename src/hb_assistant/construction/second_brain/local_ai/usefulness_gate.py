@@ -130,6 +130,21 @@ def evaluate_usefulness_gate(
     synthesis_without_source_link = bool(
         synthesis_present and not synthesis_degraded and withhold_synthesis
     )
+    # (e/f/g) Email follow-up projection stage health (apply runs supply these; absent keys → no-op,
+    # so dry-run/legacy callers with only {source_rows,status} are unaffected).
+    email_followup_candidate_count = int(fu_ctx.get("candidate_count") or 0)
+    email_followup_project_coverage = fu_ctx.get("project_key_coverage")
+    email_followup_review_required = int(fu_ctx.get("review_required_count") or 0)
+    email_followup_raw_access = int(fu_ctx.get("raw_access_count") or 0)
+    email_followup_stage_degraded = bool(fu_ctx.get("degraded"))
+    # (f) email candidates exist with low project coverage but NOTHING flagged for review — a silent
+    # project-key gap. Low coverage is only acceptable when accompanied by review-required items.
+    email_followup_project_gap = bool(
+        email_followup_candidate_count > 0
+        and email_followup_project_coverage is not None
+        and float(email_followup_project_coverage) < 1.0
+        and email_followup_review_required == 0
+    )
 
     metrics = {
         "total_candidates": len(candidates),
@@ -159,6 +174,12 @@ def evaluate_usefulness_gate(
         "procore_promotable_contradiction": procore_promotable_contradiction,
         "email_followup_contradiction": email_followup_contradiction,
         "synthesis_without_source_linked_candidate": synthesis_without_source_link,
+        "email_followup_candidate_count": email_followup_candidate_count,
+        "email_followup_project_key_coverage": email_followup_project_coverage,
+        "email_followup_review_required_count": email_followup_review_required,
+        "email_followup_raw_access_count": email_followup_raw_access,
+        "email_followup_stage_degraded": email_followup_stage_degraded,
+        "email_followup_project_gap": email_followup_project_gap,
     }
 
     failed: list[str] = []
@@ -176,6 +197,12 @@ def evaluate_usefulness_gate(
         failed.append("procore_promotable_but_no_candidates")
     if email_followup_contradiction:
         failed.append("email_rows_but_empty_followup_no_data_gap")
+    if email_followup_stage_degraded:
+        failed.append("email_followup_stage_degraded")
+    if email_followup_project_gap:
+        failed.append("email_followup_project_coverage_low_no_review")
+    if email_followup_raw_access > 0 and not fu_ctx.get("raw_access_audited", True):
+        failed.append("email_followup_raw_access_unaudited")
     if synthesis_without_source_link:
         failed.append("synthesis_success_without_any_source_linked_candidate")
     if not egress_clean:

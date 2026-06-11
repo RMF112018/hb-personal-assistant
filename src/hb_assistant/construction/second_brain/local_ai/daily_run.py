@@ -549,6 +549,11 @@ def run_daily_local_agent(
     projection_receipt = _stage_detail(pipeline, "email_calendar_projection")
     calendar_detail = _stage_detail(pipeline, "calendar_prep")
     procore_detail = _stage_detail(pipeline, "procore_digest")
+    # Email follow-up projection stage receipt (raw-free) feeds the usefulness gate's
+    # email-specific contradictions (stage degraded, project coverage low w/o review, unaudited
+    # raw access). A failed stage has no detail block → degraded flagged via the receipt status.
+    followup_stage = _stage_receipt(pipeline, "email_followup_projection")
+    followup_detail = (followup_stage or {}).get("detail") or {}
 
     stage_context: Optional[dict[str, Any]] = None
     if not dry_run:
@@ -558,6 +563,13 @@ def run_daily_local_agent(
             "email_followup": {
                 "source_rows": int(email_followup.get("source_rows") or 0),
                 "status": str(email_followup.get("status") or ""),
+                "candidate_count": int(followup_detail.get("generated") or 0),
+                "project_key_coverage": followup_detail.get("project_key_coverage"),
+                "review_required_count": int(followup_detail.get("review_required_count") or 0),
+                "raw_access_count": int(followup_detail.get("raw_access_count") or 0),
+                "degraded": bool(
+                    followup_stage is not None and followup_stage.get("status") == "failed"
+                ),
             },
         }
 
@@ -822,6 +834,14 @@ def _stage_detail(pipeline: dict[str, Any], stage_name: str) -> dict[str, Any]:
         if s.get("stage") == stage_name:
             return s.get("detail") or {}
     return {}
+
+
+def _stage_receipt(pipeline: dict[str, Any], stage_name: str) -> Optional[dict[str, Any]]:
+    """The full receipt (status + detail) for a named pipeline stage, or ``None`` if absent."""
+    for s in pipeline.get("stages", []):
+        if s.get("stage") == stage_name:
+            return s
+    return None
 
 
 def _build_first_slice_block(

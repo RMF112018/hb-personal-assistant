@@ -165,3 +165,66 @@ def test_apply_run_with_unresolved_calendar_downgrades_and_preserves(tmp_path: P
     # status JSON carries the usefulness_gate block.
     status = json.loads((tmp_path / "status" / "latest-status.json").read_text())
     assert status["usefulness_gate"]["verdict"] == "degraded"
+
+
+# --------------------------------------------------------------------------------------------------
+# Email follow-up projection stage contradictions (Phase 10 email follow-up slice).
+# --------------------------------------------------------------------------------------------------
+def _useful_followup_base(tmp_path: Path) -> ConstructionStore:
+    """A store with one source-linked executive follow-up candidate (deterministic section present)."""
+    s = ConstructionStore(db_path=str(tmp_path / "efu-gate.sqlite"))
+    _cand(s, section="follow_up", project_key="p1", group_key="g1", linked=True)
+    return s
+
+
+def test_email_followup_stage_degraded_fails(tmp_path: Path) -> None:
+    s = _useful_followup_base(tmp_path)
+    res = evaluate_usefulness_gate(
+        store=s, brief_date=BRIEF_DATE, synthesis_present=True, synthesis_degraded=False,
+        stage_context={"email_followup": {"source_rows": 5, "status": "populated",
+                                          "candidate_count": 1, "project_key_coverage": 1.0,
+                                          "review_required_count": 0, "raw_access_count": 0,
+                                          "degraded": True}},
+    )
+    assert not res.passed
+    assert "email_followup_stage_degraded" in res.failed_reasons
+
+
+def test_email_followup_project_gap_fails(tmp_path: Path) -> None:
+    s = _useful_followup_base(tmp_path)
+    res = evaluate_usefulness_gate(
+        store=s, brief_date=BRIEF_DATE, synthesis_present=True, synthesis_degraded=False,
+        stage_context={"email_followup": {"source_rows": 5, "status": "populated",
+                                          "candidate_count": 4, "project_key_coverage": 0.5,
+                                          "review_required_count": 0, "raw_access_count": 0,
+                                          "degraded": False}},
+    )
+    assert not res.passed
+    assert "email_followup_project_coverage_low_no_review" in res.failed_reasons
+
+
+def test_email_followup_low_coverage_with_review_is_ok(tmp_path: Path) -> None:
+    s = _useful_followup_base(tmp_path)
+    res = evaluate_usefulness_gate(
+        store=s, brief_date=BRIEF_DATE, synthesis_present=True, synthesis_degraded=False,
+        stage_context={"email_followup": {"source_rows": 5, "status": "populated",
+                                          "candidate_count": 4, "project_key_coverage": 0.5,
+                                          "review_required_count": 2, "raw_access_count": 0,
+                                          "degraded": False}},
+    )
+    # Low project coverage is acceptable when review-required items account for the gap.
+    assert "email_followup_project_coverage_low_no_review" not in res.failed_reasons
+    assert res.passed
+
+
+def test_email_followup_context_absent_is_backward_compatible(tmp_path: Path) -> None:
+    s = _useful_followup_base(tmp_path)
+    # Legacy context shape ({source_rows,status} only) must not trigger any new email checks.
+    res = evaluate_usefulness_gate(
+        store=s, brief_date=BRIEF_DATE, synthesis_present=True, synthesis_degraded=False,
+        stage_context={"email_followup": {"source_rows": 0, "status": "not_configured"}},
+    )
+    assert res.passed
+    for r in ("email_followup_stage_degraded", "email_followup_project_coverage_low_no_review",
+              "email_followup_raw_access_unaudited"):
+        assert r not in res.failed_reasons

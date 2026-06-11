@@ -1,0 +1,18 @@
+{
+  "guard_columns": [
+    "raw_persisted",
+    "raw_writeback_performed",
+    "external_writeback_performed"
+  ],
+  "guard_column_sums_must_be_zero": {
+    "task_candidates": 0,
+    "commitment_candidates": 0,
+    "candidate_source_refs": 0,
+    "daily_brief_action_candidates": 0
+  },
+  "all_zero": true,
+  "prod_db_sha256_pre": "d0c3e52a15b9dbdf65174f9347e1c596ed97ca2098e167902d94406a9ceccdb7",
+  "prod_db_sha256_post": "d0c3e52a15b9dbdf65174f9347e1c596ed97ca2098e167902d94406a9ceccdb7",
+  "prod_untouched": true,
+  "raw_content_access_events_written_by_slice": 0
+}
