@@ -22,7 +22,7 @@ import sqlite3
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional
 
-from .connection import get_connection, transaction
+from .connection import open_connection, transaction
 from .procore_enrichment import (
     emit_action_signal,
     emit_record_edge,
@@ -33,10 +33,6 @@ from .procore_enrichment import (
 
 _SAFETY_FRAGMENTS = ("safety", "incident", "injury", "near miss", "near-miss", "osha", "ppe", "fall")
 _INSPECTION_ENDPOINTS = {"inspections", "inspection-sections", "inspection-items"}
-
-
-def _open(db_path: Optional[Path]) -> sqlite3.Connection:
-    return get_connection(db_path)
 
 
 def _hash(*parts: Any) -> str:
@@ -128,8 +124,7 @@ def project_inspection_record(
     inspected = raw.get("inspected_item_count") or 0
     unanswered_count = max(int(respondable) - int(inspected), 0) if isinstance(respondable, int) and isinstance(inspected, int) else 0
 
-    conn = _open(db_path)
-    with transaction(conn):
+    with open_connection(db_path) as conn, transaction(conn):
         conn.execute(
             """
             INSERT INTO procore_inspection_records (
@@ -220,8 +215,7 @@ def project_inspection_section(
     section_id = str(raw["id"])
     key = _hash("inspection_section", project_key, section_id)
     risk = _risk_category(raw.get("name"))
-    conn = _open(db_path)
-    with transaction(conn):
+    with open_connection(db_path) as conn, transaction(conn):
         conn.execute(
             """
             INSERT INTO procore_inspection_sections (
@@ -250,8 +244,7 @@ def _project_response_set(response_set: Any, *, project_key: str, now_utc: str, 
         return None
     rs_id = str(response_set["id"])
     rs_key = _hash("response_set", project_key, rs_id)
-    conn = _open(db_path)
-    with transaction(conn):
+    with open_connection(db_path) as conn, transaction(conn):
         conn.execute(
             """
             INSERT INTO procore_inspection_response_sets (
@@ -305,8 +298,7 @@ def _project_evidence_rules(raw: Mapping[str, Any], *, project_key: str, item_id
     if not (ec or item_refs):
         return {"requires_observation": False, "requires_photo": False}
     key = _hash("evidence_rule", project_key, item_id)
-    conn = _open(db_path)
-    with transaction(conn):
+    with open_connection(db_path) as conn, transaction(conn):
         conn.execute(
             """
             INSERT INTO procore_inspection_evidence_rules (
@@ -349,8 +341,7 @@ def project_inspection_item(
     rs_key = _project_response_set(raw.get("response_set"), project_key=project_key, now_utc=now_utc, db_path=db_path)
     evidence = _project_evidence_rules(raw, project_key=project_key, item_id=item_id, now_utc=now_utc, db_path=db_path)
 
-    conn = _open(db_path)
-    with transaction(conn):
+    with open_connection(db_path) as conn, transaction(conn):
         conn.execute(
             """
             INSERT INTO procore_inspection_items (

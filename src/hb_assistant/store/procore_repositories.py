@@ -13,11 +13,7 @@ import sqlite3
 from pathlib import Path
 from typing import Any, Dict, Mapping, Optional
 
-from .connection import get_connection, transaction
-
-
-def _open(db_path: Optional[Path]) -> sqlite3.Connection:
-    return get_connection(db_path)
+from .connection import borrow_connection, transaction
 
 
 def record_sync_run_start(
@@ -32,10 +28,10 @@ def record_sync_run_start(
     mode: str,
     started_at_utc: str,
     db_path: Optional[Path] = None,
+    conn: Optional[sqlite3.Connection] = None,
 ) -> None:
     """Insert a pending sync-run row. Counts and state are updated at completion."""
-    conn = _open(db_path)
-    with transaction(conn):
+    with borrow_connection(conn, db_path) as conn, transaction(conn):
         conn.execute(
             """
             INSERT INTO procore_live_sync_runs (
@@ -73,10 +69,10 @@ def record_sync_run_complete(
     completed_at_utc: str,
     no_live_call_performed: bool,
     db_path: Optional[Path] = None,
+    conn: Optional[sqlite3.Connection] = None,
 ) -> None:
     """Update the sync-run row with final counts, state, and reason codes."""
-    conn = _open(db_path)
-    with transaction(conn):
+    with borrow_connection(conn, db_path) as conn, transaction(conn):
         conn.execute(
             """
             UPDATE procore_live_sync_runs
@@ -122,11 +118,14 @@ def upsert_procore_live_record(
     last_sync_run_id: str,
     now_utc: str,
     db_path: Optional[Path] = None,
+    conn: Optional[sqlite3.Connection] = None,
 ) -> str:
     """Upsert a single live record. Returns ``"inserted"`` or ``"updated"``.
 
     ``normalized_fields`` is the canonical-field dict (already redacted) and
     is persisted as a single JSON column to avoid per-endpoint schema sprawl.
+
+    Hot path: pass ``conn=`` to reuse one connection across the per-item loop.
     """
 
     record_number = normalized_fields.get("number") if isinstance(normalized_fields, dict) else None
@@ -136,8 +135,7 @@ def upsert_procore_live_record(
     canonical_json = json.dumps(dict(normalized_fields), default=str, sort_keys=True)
     parent_id_str = parent_procore_id or ""
 
-    conn = _open(db_path)
-    with transaction(conn):
+    with borrow_connection(conn, db_path) as conn, transaction(conn):
         existing = conn.execute(
             """
             SELECT 1 FROM procore_live_records
@@ -231,10 +229,10 @@ def update_watermark(
     receipt_id: str,
     now_utc: str,
     db_path: Optional[Path] = None,
+    conn: Optional[sqlite3.Connection] = None,
 ) -> None:
     """Insert-or-update the per-endpoint watermark row."""
-    conn = _open(db_path)
-    with transaction(conn):
+    with borrow_connection(conn, db_path) as conn, transaction(conn):
         conn.execute(
             """
             INSERT INTO procore_live_sync_watermarks (
@@ -264,18 +262,19 @@ def count_procore_live_records(
     project_key: str,
     endpoint_id: str,
     db_path: Optional[Path] = None,
+    conn: Optional[sqlite3.Connection] = None,
 ) -> int:
     """Return the number of canonical live-records rows for the given scope."""
-    conn = _open(db_path)
-    cur = conn.execute(
-        """
-        SELECT COUNT(1) FROM procore_live_records
-         WHERE project_key = ? AND endpoint_id = ?
-        """,
-        (project_key, endpoint_id),
-    )
-    row = cur.fetchone()
-    return int(row[0]) if row and row[0] is not None else 0
+    with borrow_connection(conn, db_path) as conn:
+        cur = conn.execute(
+            """
+            SELECT COUNT(1) FROM procore_live_records
+             WHERE project_key = ? AND endpoint_id = ?
+            """,
+            (project_key, endpoint_id),
+        )
+        row = cur.fetchone()
+        return int(row[0]) if row and row[0] is not None else 0
 
 
 def count_procore_live_child_records_for_parent(
@@ -284,20 +283,21 @@ def count_procore_live_child_records_for_parent(
     endpoint_id: str,
     parent_procore_id: str,
     db_path: Optional[Path] = None,
+    conn: Optional[sqlite3.Connection] = None,
 ) -> int:
     """Return child-record count for one endpoint/parent pair."""
-    conn = _open(db_path)
-    cur = conn.execute(
-        """
-        SELECT COUNT(1) FROM procore_live_records
-         WHERE project_key = ?
-           AND endpoint_id = ?
-           AND parent_procore_id = ?
-        """,
-        (project_key, endpoint_id, str(parent_procore_id)),
-    )
-    row = cur.fetchone()
-    return int(row[0]) if row and row[0] is not None else 0
+    with borrow_connection(conn, db_path) as conn:
+        cur = conn.execute(
+            """
+            SELECT COUNT(1) FROM procore_live_records
+             WHERE project_key = ?
+               AND endpoint_id = ?
+               AND parent_procore_id = ?
+            """,
+            (project_key, endpoint_id, str(parent_procore_id)),
+        )
+        row = cur.fetchone()
+        return int(row[0]) if row and row[0] is not None else 0
 
 
 def get_first_procore_record_id(
@@ -305,38 +305,42 @@ def get_first_procore_record_id(
     project_key: str,
     endpoint_id: str,
     db_path: Optional[Path] = None,
+    conn: Optional[sqlite3.Connection] = None,
 ) -> Optional[str]:
     """Return earliest-seen procore_record_id for (project, endpoint), else None."""
-    conn = _open(db_path)
-    cur = conn.execute(
-        """
-        SELECT procore_record_id
-          FROM procore_live_records
-         WHERE project_key = ? AND endpoint_id = ?
-         ORDER BY first_seen_at_utc ASC, procore_record_id ASC
-         LIMIT 1
-        """,
-        (project_key, endpoint_id),
-    )
-    row = cur.fetchone()
-    if not row or row[0] in (None, ""):
-        return None
-    return str(row[0])
+    with borrow_connection(conn, db_path) as conn:
+        cur = conn.execute(
+            """
+            SELECT procore_record_id
+              FROM procore_live_records
+             WHERE project_key = ? AND endpoint_id = ?
+             ORDER BY first_seen_at_utc ASC, procore_record_id ASC
+             LIMIT 1
+            """,
+            (project_key, endpoint_id),
+        )
+        row = cur.fetchone()
+        if not row or row[0] in (None, ""):
+            return None
+        return str(row[0])
 
 
 def get_sync_run(
-    *, sync_run_id: str, db_path: Optional[Path] = None
+    *,
+    sync_run_id: str,
+    db_path: Optional[Path] = None,
+    conn: Optional[sqlite3.Connection] = None,
 ) -> Optional[Dict[str, Any]]:
     """Return the sync-run row as a dict (for tests/CLI introspection)."""
-    conn = _open(db_path)
-    cur = conn.execute(
-        "SELECT * FROM procore_live_sync_runs WHERE sync_run_id = ?",
-        (sync_run_id,),
-    )
-    row = cur.fetchone()
-    if row is None:
-        return None
-    return {k: row[k] for k in row.keys()}
+    with borrow_connection(conn, db_path) as conn:
+        cur = conn.execute(
+            "SELECT * FROM procore_live_sync_runs WHERE sync_run_id = ?",
+            (sync_run_id,),
+        )
+        row = cur.fetchone()
+        if row is None:
+            return None
+        return {k: row[k] for k in row.keys()}
 
 
 def delete_procore_live_records_by_sync_run(
@@ -344,6 +348,7 @@ def delete_procore_live_records_by_sync_run(
     sync_run_id: str,
     db_path: Optional[Path] = None,
     dry_run: bool = True,
+    conn: Optional[sqlite3.Connection] = None,
 ) -> Dict[str, Any]:
     """Rollback path: drop every ``procore_live_records`` row attributed to a sync run.
 
@@ -355,37 +360,37 @@ def delete_procore_live_records_by_sync_run(
     with no mutation. Pass ``dry_run=False`` to actually delete; the return
     payload then carries ``deleted`` instead of ``would_delete``.
     """
-    conn = _open(db_path)
-    cur = conn.execute(
-        """
-        SELECT COUNT(1) FROM procore_live_records
-         WHERE last_sync_run_id = ?
-        """,
-        (sync_run_id,),
-    )
-    row = cur.fetchone()
-    matched = int(row[0]) if row and row[0] is not None else 0
-
-    if dry_run:
-        return {
-            "sync_run_id": sync_run_id,
-            "would_delete": matched,
-            "dry_run": True,
-        }
-
-    with transaction(conn):
-        conn.execute(
+    with borrow_connection(conn, db_path) as conn:
+        cur = conn.execute(
             """
-            DELETE FROM procore_live_records
+            SELECT COUNT(1) FROM procore_live_records
              WHERE last_sync_run_id = ?
             """,
             (sync_run_id,),
         )
-    return {
-        "sync_run_id": sync_run_id,
-        "deleted": matched,
-        "dry_run": False,
-    }
+        row = cur.fetchone()
+        matched = int(row[0]) if row and row[0] is not None else 0
+
+        if dry_run:
+            return {
+                "sync_run_id": sync_run_id,
+                "would_delete": matched,
+                "dry_run": True,
+            }
+
+        with transaction(conn):
+            conn.execute(
+                """
+                DELETE FROM procore_live_records
+                 WHERE last_sync_run_id = ?
+                """,
+                (sync_run_id,),
+            )
+        return {
+            "sync_run_id": sync_run_id,
+            "deleted": matched,
+            "dry_run": False,
+        }
 
 
 __all__ = [

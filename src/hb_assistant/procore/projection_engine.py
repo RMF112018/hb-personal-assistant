@@ -26,7 +26,7 @@ import sqlite3
 from pathlib import Path
 from typing import Any
 
-from hb_assistant.store.connection import get_connection, transaction
+from hb_assistant.store.connection import open_connection, transaction
 
 from . import endpoints as endpoint_registry
 from . import projection_paths as pp
@@ -389,8 +389,21 @@ def backfill_endpoint_specific_from_raw_payloads(
     """Replay full raw payloads (``raw_procore_payload_persisted=1``) into the V47
     endpoint-specific tables. No live Procore calls. Idempotent. Honors source-quality
     precedence. ``apply=False`` is a dry run that writes nothing."""
-    conn = get_connection(Path(db_path) if db_path is not None else None)
+    with open_connection(Path(db_path) if db_path is not None else None) as conn:
+        return _backfill_endpoint_specific_with_conn(
+            conn, apply=apply, project_key=project_key, endpoint=endpoint, limit=limit, mode=mode
+        )
 
+
+def _backfill_endpoint_specific_with_conn(
+    conn: sqlite3.Connection,
+    *,
+    apply: bool,
+    project_key: str | None,
+    endpoint: str | None,
+    limit: int,
+    mode: str,
+) -> dict[str, Any]:
     # Hard pre-write parity guard: verify every planned primary AND child insert column
     # exists physically before any INSERT. A drifted schema returns a structured
     # ``schema_parity_broken`` receipt instead of crashing with sqlite3.OperationalError.

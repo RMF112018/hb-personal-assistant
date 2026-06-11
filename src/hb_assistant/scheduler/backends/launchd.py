@@ -26,6 +26,13 @@ class LaunchdSchedulerBackend:
             "StandardOutPath": str(self.log_path / "scheduler.out.log"),
             "StandardErrorPath": str(self.log_path / "scheduler.err.log"),
             "EnvironmentVariables": {"PYTHONUNBUFFERED": "1"},
+            # The daily refresh fans out across many Procore endpoints/records; give the
+            # launchd-spawned process a generous file-descriptor budget so a transient
+            # spike never trips `OSError: [Errno 24] Too many open files`. The job itself
+            # also raises RLIMIT_NOFILE at runtime (covers manual/forced runs that do not
+            # inherit these plist limits).
+            "SoftResourceLimits": {"NumberOfFiles": 4096},
+            "HardResourceLimits": {"NumberOfFiles": 8192},
         }
 
     def preview(self) -> dict[str, Any]:

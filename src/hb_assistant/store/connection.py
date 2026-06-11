@@ -1,7 +1,18 @@
-"""SQLite connection management with required PRAGMAs and transaction helper.
+"""SQLite connection management with required PRAGMAs and lifecycle helpers.
 
 Per 07 spec: foreign_keys=ON, journal_mode=WAL, busy_timeout.
-All access goes through get_connection() + transaction() context.
+
+Connection-ownership invariant (each call to ``get_connection`` opens a NEW connection —
+there is no pool/cache — so leaking one leaks file descriptors):
+
+- ``get_connection(db_path)`` opens a raw connection; the **caller** must close it.
+- ``transaction(conn)`` **borrows** a connection: it commits/rolls back only and NEVER
+  closes. Use it for the unit-of-work boundary on a connection someone else owns.
+- ``open_connection(db_path)`` **owns** a connection: it opens and ALWAYS closes on exit
+  (every return/exception path). Use it wherever a function opens its own connection.
+- ``borrow_connection(conn, db_path)`` uses a caller-supplied ``conn`` (left open) when
+  provided, else owns a fresh one. Use it in helpers that accept an optional ``conn=`` so a
+  parent can thread a single shared connection down a hot path (avoiding per-call churn).
 """
 
 from __future__ import annotations
@@ -100,10 +111,43 @@ def get_connection(db_path: Path | None = None) -> sqlite3.Connection:
 
 @contextmanager
 def transaction(conn: sqlite3.Connection) -> Iterator[sqlite3.Connection]:
-    """Context manager for a transaction with automatic commit/rollback."""
+    """Transaction boundary on a BORROWED connection: commit/rollback only, never close.
+
+    The connection's lifecycle belongs to whoever opened it (``open_connection`` /
+    ``borrow_connection`` / the caller). This helper must not close it.
+    """
     try:
         yield conn
         conn.commit()
     except Exception:
         conn.rollback()
         raise
+
+
+@contextmanager
+def open_connection(db_path: Path | None = None) -> Iterator[sqlite3.Connection]:
+    """Own a connection: open it and ALWAYS close it on exit (every return/exception path).
+
+    Use wherever a function opens its own connection so it never leaks a file descriptor.
+    """
+    conn = get_connection(db_path)
+    try:
+        yield conn
+    finally:
+        conn.close()
+
+
+@contextmanager
+def borrow_connection(
+    conn: sqlite3.Connection | None, db_path: Path | None = None
+) -> Iterator[sqlite3.Connection]:
+    """Yield a caller-supplied ``conn`` (left open) or own+close a fresh one.
+
+    Lets a helper accept an optional ``conn=`` so a parent can thread one shared connection
+    down a hot path (no per-call open/close churn) while standalone callers stay leak-free.
+    """
+    if conn is not None:
+        yield conn
+    else:
+        with open_connection(db_path) as owned:
+            yield owned

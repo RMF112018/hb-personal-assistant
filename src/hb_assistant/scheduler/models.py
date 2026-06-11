@@ -55,6 +55,10 @@ class ScheduledRefreshReceipt(BaseModel):
     next_operator_action: str | None = None
     evidence_summary_path: str | None = None
     receipt_path: str | None = None
+    # File-descriptor budget diagnostics (counts only — no paths/values): the soft/hard
+    # RLIMIT_NOFILE the run executed under and an open-FD snapshot at start/end. Lets an
+    # operator confirm the run stayed well within budget (guards the Errno-24 failure mode).
+    diagnostics: dict[str, Any] = Field(default_factory=dict)
     # Honest top-level status: mirrors the orchestrator ("ok" | "degraded" | "failed"). A degraded
     # run is NEVER reported as "ok".
     status: str = "ok"

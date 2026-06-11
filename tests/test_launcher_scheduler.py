@@ -801,6 +801,21 @@ def test_launchd_plist_valid() -> None:
     assert plist["ProgramArguments"][1:5] == ["scheduler", "run", "daily-source-refresh", "--environment"]
 
 
+def test_launchd_plist_carries_fd_resource_limits() -> None:
+    """The daily refresh fans out across many endpoints/records; the launchd-spawned
+    process must get an explicit NumberOfFiles budget (guards the Errno-24 failure)."""
+    from hb_assistant.scheduler.backends import get_backend
+
+    impl = get_backend("launchd", resolve_profile("production"))
+    plist = impl.preview()["plist"]  # type: ignore[index]
+    assert plist["SoftResourceLimits"]["NumberOfFiles"] == 4096
+    assert plist["HardResourceLimits"]["NumberOfFiles"] == 8192
+    assert (
+        plist["SoftResourceLimits"]["NumberOfFiles"]
+        <= plist["HardResourceLimits"]["NumberOfFiles"]
+    )
+
+
 def test_windows_task_valid() -> None:
     from hb_assistant.scheduler.backends import get_backend
 
