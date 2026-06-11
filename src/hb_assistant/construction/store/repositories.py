@@ -9499,6 +9499,287 @@ class ConstructionStore:
             )
         return review_event_id
 
+    # --- Phase 10 V50 cross-family lifecycle overlay (additive, append-only) -----
+    # candidate_lifecycle_events is an append-only log spanning ALL candidate/action
+    # families (task/commitment/daily_brief_action/accepted_task/accepted_commitment/
+    # follow_up_watch). It EXTENDS — never replaces — the V41/V43 per-family review
+    # status; the unified read model consumes both. Idempotency: lifecycle_event_id is
+    # derived deterministically from idempotency_key, and the insert is ON CONFLICT
+    # (idempotency_key) DO NOTHING, so replaying an operation is a no-op with a stable
+    # id. Guard columns are never written → DEFAULT 0 / CHECK(=0). Only redacted text,
+    # reason codes, hashes, ids, and states move — no raw bodies/URLs/tokens.
+    # ---------------------------------------------------------------------------
+
+    _LIFECYCLE_EVENT_COLUMNS = (
+        "lifecycle_event_id, idempotency_key, subject_type, subject_id, candidate_id, "
+        "family, event_type, prior_state, new_state, reason_code, reason_redacted, "
+        "effective_until_utc, target_subject_type, target_subject_id, "
+        "duplicate_group_key, reviewer_ref, created_utc"
+    )
+
+    @staticmethod
+    def lifecycle_event_id_for(idempotency_key: str) -> str:
+        """Deterministic lifecycle_event_id for an idempotency key (stable across replay)."""
+        return "lce:" + hashlib.sha256(idempotency_key.encode("utf-8")).hexdigest()[:32]
+
+    def insert_lifecycle_event(
+        self,
+        *,
+        idempotency_key: str,
+        subject_type: str,
+        subject_id: str,
+        event_type: str,
+        new_state: Optional[str] = None,
+        prior_state: Optional[str] = None,
+        candidate_id: Optional[str] = None,
+        family: Optional[str] = None,
+        reason_code: Optional[str] = None,
+        reason_redacted: Optional[str] = None,
+        effective_until_utc: Optional[str] = None,
+        target_subject_type: Optional[str] = None,
+        target_subject_id: Optional[str] = None,
+        duplicate_group_key: Optional[str] = None,
+        reviewer_ref: str = "operator",
+        created_utc: Optional[str] = None,
+    ) -> tuple[str, bool]:
+        """Append a lifecycle event. Returns (lifecycle_event_id, inserted).
+
+        Idempotent: the id is derived from idempotency_key and the insert is ON CONFLICT
+        (idempotency_key) DO NOTHING, so a replay returns the same id with inserted=False.
+        Guard columns are omitted → DEFAULT 0 / CHECK(=0).
+        """
+        if not idempotency_key or not subject_type or not subject_id or not event_type:
+            raise ValueError("idempotency_key, subject_type, subject_id, event_type are required")
+        lifecycle_event_id = self.lifecycle_event_id_for(idempotency_key)
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            cur = conn.execute(
+                f"""
+                INSERT INTO candidate_lifecycle_events ({self._LIFECYCLE_EVENT_COLUMNS})
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(idempotency_key) DO NOTHING
+                """,
+                (
+                    lifecycle_event_id,
+                    idempotency_key,
+                    subject_type,
+                    subject_id,
+                    candidate_id,
+                    family,
+                    event_type,
+                    prior_state,
+                    new_state,
+                    reason_code,
+                    reason_redacted,
+                    effective_until_utc,
+                    target_subject_type,
+                    target_subject_id,
+                    duplicate_group_key,
+                    reviewer_ref,
+                    created_utc or _utc_now(),
+                ),
+            )
+            return lifecycle_event_id, cur.rowcount > 0
+
+    def list_lifecycle_events(
+        self,
+        *,
+        subject_type: Optional[str] = None,
+        subject_id: Optional[str] = None,
+        limit: int = 5000,
+    ) -> list[dict[str, Any]]:
+        """List lifecycle events (safe fields only), newest first. Filter by subject."""
+        conn = get_connection(self._db_path)
+        clauses: list[str] = []
+        params: list[Any] = []
+        if subject_type is not None:
+            clauses.append("subject_type = ?")
+            params.append(subject_type)
+        if subject_id is not None:
+            clauses.append("subject_id = ?")
+            params.append(subject_id)
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        params.append(limit)
+        cur = conn.execute(
+            f"""
+            SELECT {self._LIFECYCLE_EVENT_COLUMNS}
+            FROM candidate_lifecycle_events {where}
+            ORDER BY created_utc DESC, lifecycle_event_id DESC
+            LIMIT ?
+            """,
+            tuple(params),
+        )
+        cols = [d[0] for d in cur.description]
+        return [dict(zip(cols, row, strict=True)) for row in cur.fetchall()]
+
+    def latest_lifecycle_states(self) -> dict[tuple[str, str], dict[str, Any]]:
+        """Return the latest lifecycle event per (subject_type, subject_id).
+
+        Deterministic: ordered by created_utc then lifecycle_event_id so ties resolve
+        stably. Keyed by (subject_type, subject_id) for O(1) read-model lookups.
+        """
+        conn = get_connection(self._db_path)
+        cur = conn.execute(
+            f"""
+            SELECT {self._LIFECYCLE_EVENT_COLUMNS}
+            FROM candidate_lifecycle_events
+            ORDER BY created_utc ASC, lifecycle_event_id ASC
+            """
+        )
+        cols = [d[0] for d in cur.description]
+        latest: dict[tuple[str, str], dict[str, Any]] = {}
+        for row in cur.fetchall():
+            rec = dict(zip(cols, row, strict=True))
+            latest[(rec["subject_type"], rec["subject_id"])] = rec
+        return latest
+
+    def lifecycle_counts_by_state(self) -> dict[str, int]:
+        """Count subjects by their latest lifecycle new_state (deterministic)."""
+        counts: dict[str, int] = {}
+        for rec in self.latest_lifecycle_states().values():
+            state = rec.get("new_state") or "unknown"
+            counts[state] = counts.get(state, 0) + 1
+        return counts
+
+    def upsert_merge_link(
+        self,
+        *,
+        idempotency_key: str,
+        source_subject_type: str,
+        source_subject_id: str,
+        target_subject_type: str,
+        target_subject_id: str,
+        merge_reason_code: str,
+        duplicate_group_key: Optional[str] = None,
+        reviewer_ref: str = "operator",
+        created_utc: Optional[str] = None,
+    ) -> tuple[str, bool]:
+        """Insert a merge link. Returns (merge_link_id, inserted). Idempotent by key."""
+        if not idempotency_key or not source_subject_id or not target_subject_id:
+            raise ValueError("idempotency_key, source_subject_id, target_subject_id are required")
+        merge_link_id = "mlk:" + hashlib.sha256(idempotency_key.encode("utf-8")).hexdigest()[:32]
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            cur = conn.execute(
+                """
+                INSERT INTO candidate_merge_links
+                    (merge_link_id, idempotency_key, source_subject_type, source_subject_id,
+                     target_subject_type, target_subject_id, duplicate_group_key,
+                     merge_reason_code, reviewer_ref, created_utc)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(idempotency_key) DO NOTHING
+                """,
+                (
+                    merge_link_id,
+                    idempotency_key,
+                    source_subject_type,
+                    source_subject_id,
+                    target_subject_type,
+                    target_subject_id,
+                    duplicate_group_key,
+                    merge_reason_code,
+                    reviewer_ref,
+                    created_utc or _utc_now(),
+                ),
+            )
+            return merge_link_id, cur.rowcount > 0
+
+    def list_merge_links(self, *, limit: int = 5000) -> list[dict[str, Any]]:
+        """List merge links (safe fields only), newest first."""
+        conn = get_connection(self._db_path)
+        cur = conn.execute(
+            """
+            SELECT merge_link_id, idempotency_key, source_subject_type, source_subject_id,
+                   target_subject_type, target_subject_id, duplicate_group_key,
+                   merge_reason_code, reviewer_ref, created_utc
+            FROM candidate_merge_links
+            ORDER BY created_utc DESC, merge_link_id DESC
+            LIMIT ?
+            """,
+            (limit,),
+        )
+        cols = [d[0] for d in cur.description]
+        return [dict(zip(cols, row, strict=True)) for row in cur.fetchall()]
+
+    def upsert_suppression_rule(
+        self,
+        *,
+        idempotency_key: str,
+        scope: str,
+        reason_code: str,
+        subject_type: Optional[str] = None,
+        subject_id: Optional[str] = None,
+        duplicate_group_key: Optional[str] = None,
+        reason_redacted: Optional[str] = None,
+        active: bool = True,
+        created_utc: Optional[str] = None,
+    ) -> tuple[str, bool]:
+        """Upsert a suppression rule. Returns (suppression_rule_id, inserted).
+
+        Idempotent by idempotency_key. Reversible: re-issuing with active=False
+        flips the rule off (auditable, never deletes the candidate). The first insert
+        reports inserted=True; subsequent calls update active/updated_utc only.
+        """
+        if scope not in ("candidate", "group"):
+            raise ValueError("scope must be 'candidate' or 'group'")
+        suppression_rule_id = "csr:" + hashlib.sha256(
+            idempotency_key.encode("utf-8")
+        ).hexdigest()[:32]
+        now = created_utc or _utc_now()
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            cur = conn.execute(
+                """
+                INSERT INTO candidate_suppression_rules
+                    (suppression_rule_id, idempotency_key, scope, subject_type, subject_id,
+                     duplicate_group_key, reason_code, reason_redacted, active,
+                     created_utc, updated_utc)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(idempotency_key) DO UPDATE SET
+                    active = excluded.active,
+                    reason_code = excluded.reason_code,
+                    reason_redacted = excluded.reason_redacted,
+                    updated_utc = excluded.updated_utc
+                """,
+                (
+                    suppression_rule_id,
+                    idempotency_key,
+                    scope,
+                    subject_type,
+                    subject_id,
+                    duplicate_group_key,
+                    reason_code,
+                    reason_redacted,
+                    1 if active else 0,
+                    now,
+                    now,
+                ),
+            )
+            return suppression_rule_id, cur.rowcount > 0
+
+    def list_suppression_rules(
+        self, *, active_only: bool = True, limit: int = 5000
+    ) -> list[dict[str, Any]]:
+        """List suppression rules (safe fields only). active_only filters to active=1."""
+        conn = get_connection(self._db_path)
+        where = "WHERE active = 1" if active_only else ""
+        cur = conn.execute(
+            f"""
+            SELECT suppression_rule_id, idempotency_key, scope, subject_type, subject_id,
+                   duplicate_group_key, reason_code, reason_redacted, active,
+                   created_utc, updated_utc
+            FROM candidate_suppression_rules {where}
+            ORDER BY created_utc DESC, suppression_rule_id DESC
+            LIMIT ?
+            """,
+            (limit,),
+        )
+        cols = [d[0] for d in cur.description]
+        rows = [dict(zip(cols, row, strict=True)) for row in cur.fetchall()]
+        for r in rows:
+            r["active"] = bool(r.get("active", 0))
+        return rows
+
     # --- Phase 10 acceptance promotion + follow-up watch (additive) ---------
     # Promotion: an explicitly-accepted candidate is copied into accepted_tasks /
     # accepted_commitments (safe fields only; the 13 _P10_GUARDS columns are never

@@ -1,0 +1,69 @@
+{
+  "now_utc": "2026-06-11T12:00:00Z",
+  "transitions": [
+    {
+      "op": "accept",
+      "subject_id": "t1",
+      "prior": "new",
+      "new": "accepted",
+      "status": "accepted"
+    },
+    {
+      "op": "accept_replay",
+      "subject_id": "t1",
+      "prior": "accepted",
+      "new": "accepted",
+      "status": "already_accepted"
+    },
+    {
+      "op": "reject",
+      "subject_id": "t2",
+      "prior": "needs_review",
+      "new": "rejected",
+      "status": "rejected"
+    },
+    {
+      "op": "snooze",
+      "subject_id": "t3",
+      "prior": "project_review_required",
+      "new": "snoozed",
+      "status": "snoozed"
+    },
+    {
+      "op": "accept_blocked",
+      "subject_id": "t4",
+      "prior": "source_missing",
+      "new": "source_missing",
+      "status": "accept_blocked_source_missing"
+    },
+    {
+      "op": "merge",
+      "subject_id": "dupB",
+      "prior": "new",
+      "new": "merged",
+      "status": "merged"
+    },
+    {
+      "op": "close",
+      "subject_id": "dupA",
+      "prior": "new",
+      "new": "closed",
+      "status": "closed"
+    },
+    {
+      "op": "reopen",
+      "subject_id": "dupA",
+      "prior": "closed",
+      "new": "needs_review",
+      "status": "reopened"
+    }
+  ],
+  "lifecycle_counts_by_state": {
+    "accepted": 1,
+    "rejected": 1,
+    "snoozed": 1,
+    "merged": 1,
+    "needs_review": 1
+  },
+  "idempotent_accept_replay_status": "already_accepted"
+}

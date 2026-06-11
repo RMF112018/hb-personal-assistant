@@ -1,0 +1,17 @@
+{
+  "scan_date": "2026-06-11",
+  "scanned_path": "docs/evidence/phase-10-candidate-lifecycle-review-queue",
+  "forbidden_patterns": "body_html|body_text|raw_body|raw_html|recipients_json|attendees_json|join_url|signed_url|download_url|webLink|Authorization|Bearer|token=|secret|<html|</html|http(s)://",
+  "matches_count": 0,
+  "matches": [],
+  "structured_test": "tests/test_phase_10_candidate_lifecycle_no_raw_leak.py",
+  "structured_test_result": "pass (lifecycle no-leak assertions across review queue / op JSON / feedback / daily-brief markdown / event log)",
+  "defensive_layers": [
+    "scrub_note strips URLs/emails/token-strings/HTML from operator notes before storage",
+    "read model re-scrubs already-redacted title/reason/next-action at the boundary (_safe)",
+    "duplicate group keys hash only normalized already-redacted titles, never raw text",
+    "lifecycle outputs emit counts, reason codes, hashes, ids, and states only"
+  ],
+  "disposition": "no raw body/HTML/URL/token/recipient/attendee/prompt/response/Procore-blob in any lifecycle output or evidence",
+  "result": "PASS"
+}

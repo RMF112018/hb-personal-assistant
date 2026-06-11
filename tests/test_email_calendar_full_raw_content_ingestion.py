@@ -42,8 +42,11 @@ def _conn(store: ConstructionStore) -> sqlite3.Connection:
 
 def test_v49_applies_and_is_idempotent(tmp_path: Path) -> None:
     db = tmp_path / "m.sqlite"
-    assert SQLiteMigrator(db_path=str(db)).apply() == LATEST_SCHEMA_VERSION == 49
-    assert SQLiteMigrator(db_path=str(db)).apply() == 49
+    # Head advanced past V49 (V50 candidate-lifecycle overlay is now the head); assert against the
+    # constant, not a literal, and verify the V49 migration row specifically applied + is idempotent.
+    assert SQLiteMigrator(db_path=str(db)).apply() == LATEST_SCHEMA_VERSION
+    assert SQLiteMigrator(db_path=str(db)).apply() == LATEST_SCHEMA_VERSION
+    assert LATEST_SCHEMA_VERSION >= 49
     conn = sqlite3.connect(str(db))
     count = conn.execute("SELECT COUNT(*) FROM schema_migrations WHERE version = 49").fetchone()[0]
     assert count == 1

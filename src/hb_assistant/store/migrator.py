@@ -14,7 +14,7 @@ from .connection import get_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 49
+LATEST_SCHEMA_VERSION = 50
 
 
 class SQLiteMigrator:
@@ -5722,6 +5722,79 @@ class SQLiteMigrator:
         "CREATE INDEX IF NOT EXISTS ix_commitment_candidates_snoozed_until ON commitment_candidates(snoozed_until_utc);",
     ]
 
+    # v50 Phase 10 candidate cross-family lifecycle overlay (review queue / disposition /
+    # merge / suppression). Additive, append-only substrate that extends — never replaces —
+    # the V41/V43 per-family review status. candidate_review_events stays task/commitment-only
+    # and canonical for those families; these three tables carry cross-family lifecycle that no
+    # existing table can represent (merge across arbitrary subjects, group-key suppression,
+    # close/reopen across daily-brief/accepted/watch). Every table carries the full 13 Phase 10
+    # guard columns (no raw content, no writeback). Only redacted/hashed columns are stored.
+    # No materialized review queue table: the queue is a computed read model. V1-V49 untouched.
+    V50_STATEMENTS: list[str] = [
+        f"""
+        CREATE TABLE IF NOT EXISTS candidate_lifecycle_events (
+          lifecycle_event_id TEXT PRIMARY KEY,
+          idempotency_key TEXT NOT NULL UNIQUE,
+          subject_type TEXT NOT NULL,
+          subject_id TEXT NOT NULL,
+          candidate_id TEXT,
+          family TEXT,
+          event_type TEXT NOT NULL,
+          prior_state TEXT,
+          new_state TEXT,
+          reason_code TEXT,
+          reason_redacted TEXT,
+          effective_until_utc TEXT,
+          target_subject_type TEXT,
+          target_subject_id TEXT,
+          duplicate_group_key TEXT,
+          reviewer_ref TEXT,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP{_P10_GUARDS}
+        );
+        """,
+        "CREATE INDEX IF NOT EXISTS ix_candidate_lifecycle_events_subject ON candidate_lifecycle_events(subject_type, subject_id, created_utc);",
+        "CREATE INDEX IF NOT EXISTS ix_candidate_lifecycle_events_candidate ON candidate_lifecycle_events(candidate_id);",
+        "CREATE INDEX IF NOT EXISTS ix_candidate_lifecycle_events_new_state ON candidate_lifecycle_events(new_state);",
+        "CREATE INDEX IF NOT EXISTS ix_candidate_lifecycle_events_group ON candidate_lifecycle_events(duplicate_group_key);",
+        "CREATE INDEX IF NOT EXISTS ix_candidate_lifecycle_events_effective ON candidate_lifecycle_events(effective_until_utc);",
+        f"""
+        CREATE TABLE IF NOT EXISTS candidate_merge_links (
+          merge_link_id TEXT PRIMARY KEY,
+          idempotency_key TEXT NOT NULL UNIQUE,
+          source_subject_type TEXT NOT NULL,
+          source_subject_id TEXT NOT NULL,
+          target_subject_type TEXT NOT NULL,
+          target_subject_id TEXT NOT NULL,
+          duplicate_group_key TEXT,
+          merge_reason_code TEXT NOT NULL,
+          reviewer_ref TEXT,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP{_P10_GUARDS}
+        );
+        """,
+        "CREATE INDEX IF NOT EXISTS ix_candidate_merge_links_source ON candidate_merge_links(source_subject_type, source_subject_id);",
+        "CREATE INDEX IF NOT EXISTS ix_candidate_merge_links_target ON candidate_merge_links(target_subject_type, target_subject_id);",
+        "CREATE INDEX IF NOT EXISTS ix_candidate_merge_links_group ON candidate_merge_links(duplicate_group_key);",
+        f"""
+        CREATE TABLE IF NOT EXISTS candidate_suppression_rules (
+          suppression_rule_id TEXT PRIMARY KEY,
+          idempotency_key TEXT NOT NULL UNIQUE,
+          scope TEXT NOT NULL,
+          subject_type TEXT,
+          subject_id TEXT,
+          duplicate_group_key TEXT,
+          reason_code TEXT NOT NULL,
+          reason_redacted TEXT,
+          active INTEGER NOT NULL DEFAULT 1,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP{_P10_GUARDS}
+        );
+        """,
+        "CREATE INDEX IF NOT EXISTS ix_candidate_suppression_rules_scope ON candidate_suppression_rules(scope);",
+        "CREATE INDEX IF NOT EXISTS ix_candidate_suppression_rules_group ON candidate_suppression_rules(duplicate_group_key);",
+        "CREATE INDEX IF NOT EXISTS ix_candidate_suppression_rules_subject ON candidate_suppression_rules(subject_type, subject_id);",
+        "CREATE INDEX IF NOT EXISTS ix_candidate_suppression_rules_active ON candidate_suppression_rules(active);",
+    ]
+
     # v44 Phase 10 Graph drive-item modified-by raw operational metadata.
     # Additive ADD COLUMN only on construction_drive_items; raw identity JSON is
     # local SQLite operational metadata and must not be emitted in committed evidence.
@@ -6658,6 +6731,19 @@ class SQLiteMigrator:
             if cur.fetchone() is None:
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (49, 'v49_email_calendar_full_raw_content_and_projections', ?)",
+                    (now,),
+                )
+
+            # v50 Phase 10 candidate cross-family lifecycle overlay (review queue /
+            # disposition / merge / suppression). Additive, append-only; CREATE IF NOT
+            # EXISTS so re-apply is a no-op. Extends V41/V43 per-family review status
+            # without creating dual truth. V1-V49 untouched.
+            for stmt in self.V50_STATEMENTS:
+                conn.execute(stmt)
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 50")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (50, 'v50_phase_10_candidate_lifecycle_overlay', ?)",
                     (now,),
                 )
 

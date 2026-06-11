@@ -1,0 +1,59 @@
+{
+  "generated_utc": "2026-06-11T12:00:00Z",
+  "counts": {
+    "total_reviewed": 4,
+    "accepted": 1,
+    "rejected": 1,
+    "snoozed": 1,
+    "merged": 1,
+    "suppressed": 0,
+    "closed": 0,
+    "project_review_required": 0,
+    "source_missing": 1,
+    "needs_review": 1,
+    "stale": 0,
+    "new": 0
+  },
+  "by_family": {
+    "accepted_task": 1,
+    "task": 5
+  },
+  "by_source_family": {
+    "email_message": 3,
+    "email_thread": 2,
+    "unknown": 1
+  },
+  "acceptance_rate_by_family": {
+    "accepted_task": 1.0,
+    "task": 0.0
+  },
+  "reason_codes": {
+    "accept:promoted": 1,
+    "close:completed": 1,
+    "merge:same_source": 1,
+    "reject:not_actionable": 1,
+    "reopen:operator_reopened": 1
+  },
+  "confidence_buckets": {
+    "0_25": 0,
+    "26_50": 1,
+    "51_70": 0,
+    "71_85": 0,
+    "86_100": 4,
+    "unknown": 1
+  },
+  "duplicate_groups": {
+    "total_groups": 6,
+    "groups_with_duplicates": 0,
+    "max_group_size": 1
+  },
+  "project_resolution": {
+    "project_review_required": 1,
+    "resolved": 5
+  },
+  "guardrails": {
+    "raw_safe": true,
+    "deterministic": true,
+    "local_only": true
+  }
+}
