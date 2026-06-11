@@ -27,6 +27,6 @@ Extended Phase 08B safety proof over executor modules, receipts/tables, evidence
 **7. Confirm no MCP and no LlamaIndex surfaces added:**
 - No mcp/llama imports, no MCP/LlamaIndex surfaces in executor or 08b automation code (per addendum guardrails; module scan would surface bad patterns; none present).
 
-**Attestations:** proof_passed=True, schema_version=44, no_external_writeback=True, no_raw_values_persisted=True (incl executor), fakes_used (via P08 integration call), lock_guaranteed_release (in executor), no_live_call, guardrails preserved, all 7 required covered + prior 08a/08b.
+**Attestations:** proof_passed=False, schema_version=49, no_external_writeback=True, no_raw_values_persisted=True (incl executor), fakes_used (via P08 integration call), lock_guaranteed_release (in executor), no_live_call, guardrails preserved, all 7 required covered + prior 08a/08b.
 
 This extends the Phase 08B no-writeback proof for the executor (P03-P08 surfaces).
