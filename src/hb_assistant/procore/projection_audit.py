@@ -22,7 +22,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
-from hb_assistant.store.connection import get_connection
+from hb_assistant.store.connection import open_connection
 
 from . import endpoints as endpoint_registry
 from . import projection_paths as pp
@@ -118,18 +118,18 @@ def collect_inventory(
     project_key: str | None = None,
 ) -> dict[str, dict[str, _PathStat]]:
     """Return ``endpoint_id -> {json_path: _PathStat}`` from full raw payloads."""
-    conn = get_connection(Path(db_path) if db_path is not None else None)
-    out: dict[str, dict[str, _PathStat]] = defaultdict(dict)
-    for endpoint_key, payload_json in _iter_full_payloads(
-        conn, endpoint=endpoint, project_key=project_key
-    ):
-        try:
-            payload = json.loads(payload_json)
-        except (json.JSONDecodeError, TypeError):
-            out[endpoint_key].setdefault("$<invalid_json>", _PathStat()).observe(None, "null")
-            continue
-        _accumulate(payload, out[endpoint_key])
-    return out
+    with open_connection(Path(db_path) if db_path is not None else None) as conn:
+        out: dict[str, dict[str, _PathStat]] = defaultdict(dict)
+        for endpoint_key, payload_json in _iter_full_payloads(
+            conn, endpoint=endpoint, project_key=project_key
+        ):
+            try:
+                payload = json.loads(payload_json)
+            except (json.JSONDecodeError, TypeError):
+                out[endpoint_key].setdefault("$<invalid_json>", _PathStat()).observe(None, "null")
+                continue
+            _accumulate(payload, out[endpoint_key])
+        return out
 
 
 def inventory_for_registry(*, db_path: str | Path | None = None) -> dict[str, dict[str, list[str]]]:
@@ -367,8 +367,8 @@ def runtime_plan_schema_mismatches(
     db_path: str | Path | None = None,
 ) -> list[tuple[str, str, str, str]]:
     """``plan_schema_mismatches`` over a freshly opened connection (read-only intent)."""
-    conn = get_connection(Path(db_path) if db_path is not None else None)
-    return plan_schema_mismatches(conn)
+    with open_connection(Path(db_path) if db_path is not None else None) as conn:
+        return plan_schema_mismatches(conn)
 
 
 def projection_schema_audit(*, db_path: str | Path | None = None) -> dict[str, Any]:

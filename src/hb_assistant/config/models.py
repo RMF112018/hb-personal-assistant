@@ -99,6 +99,11 @@ class SchedulerConfig(BaseModel):
     enable_live_reads: bool = False
     enable_procore_live_reads: bool = False
     enable_graph_live_reads: bool = False
+    # Production daily Procore refresh scope. ``all_mapped`` means every
+    # live-refresh-eligible mapping in the Procore project registry.
+    procore_project_scope: Literal["pilot_only", "all_mapped"] = "all_mapped"
+    # Optional explicit narrowing allowlist. Unknown or unsafe keys block live runs.
+    procore_project_keys: list[str] = Field(default_factory=list)
 
 
 class AutomationConfig(BaseModel):

@@ -94,11 +94,11 @@ def _registry(rows: list[tuple[str, str, str]]) -> ProcoreProjectsRegistry:
     )
 
 
-def test_assert_live_mapping_strict_passes_for_mapped_pilots() -> None:
+def test_assert_live_mapping_strict_passes_for_live_refresh_eligible_statuses() -> None:
     reg = _registry(
         [
             ("tropical", "2525840", "pilot"),
-            ("pga-modern-garage", "2091445", "pilot"),
+            ("pga-modern-garage", "2091445", "active"),
         ]
     )
     assert_live_mapping_strict(reg, ["tropical", "pga-modern-garage"])

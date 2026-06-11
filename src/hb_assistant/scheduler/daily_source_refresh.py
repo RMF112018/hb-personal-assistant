@@ -59,6 +59,8 @@ class DailySourceRefreshJob:
                 mock_data=True,
                 allow_procore_live=False,
                 allow_graph_live=False,
+                procore_project_scope=sc.procore_project_scope,
+                procore_project_keys=tuple(sc.procore_project_keys),
                 brief_date=schedule_date.isoformat(),
             )
         master = sc.enable_live_reads
@@ -74,10 +76,18 @@ class DailySourceRefreshJob:
             mock_data=False,
             allow_procore_live=procore_live,
             allow_graph_live=graph_live,
+            procore_project_scope=sc.procore_project_scope,
+            procore_project_keys=tuple(sc.procore_project_keys),
             brief_date=schedule_date.isoformat(),
         )
 
     def execute(self, *, schedule_date: date, trigger: str) -> ScheduledRefreshReceipt:
+        # Forced/manual runs do not inherit the launchd plist's NumberOfFiles limits, so
+        # raise RLIMIT_NOFILE here too (best-effort) and record the FD budget + an open-FD
+        # snapshot, guarding the `OSError: [Errno 24] Too many open files` failure mode.
+        diagnostics = _raise_fd_limit()
+        diagnostics["open_fd_count_start"] = _open_fd_count()
+
         options = self.build_options(schedule_date)
         procore_live = options.allow_procore_live and not options.mock_data
         graph_live = options.allow_graph_live and not options.mock_data
@@ -120,10 +130,13 @@ class DailySourceRefreshJob:
             )
             evidence_summary_path = _redact(str(written))
 
+        diagnostics["open_fd_count_end"] = _open_fd_count()
+
         failures = _safe_failures(summary.get("failures") or [])
         stages = {
             "preflight": _stage_status(summary.get("preflight")),
             "procore": _stage_status(summary.get("procore_sync_summary")),
+            "procore_projection": _stage_status(summary.get("procore_projection_summary")),
             "graph": _stage_status(summary.get("graph_sync_summary")),
             "rebuild": _stage_status(summary.get("retrieval_rebuild_summary")),
         }
@@ -147,6 +160,7 @@ class DailySourceRefreshJob:
             failure_count=len(failures),
             failures=failures,
             stages=stages,
+            procore_projection_summary=summary.get("procore_projection_summary", {}),
             procore_auth_status=(
                 str(summary.get("procore_auth_status"))
                 if summary.get("procore_auth_status") is not None
@@ -154,11 +168,45 @@ class DailySourceRefreshJob:
             ),
             next_operator_action=summary.get("next_operator_action"),
             evidence_summary_path=evidence_summary_path,
+            diagnostics=diagnostics,
             # Honest: never collapse degraded -> ok. The receipt mirrors the orchestrator.
             status=status if status in ("ok", "degraded", "failed") else "failed",
         )
         receipt.receipt_path = _write_receipt(evidence_dir, receipt)
         return receipt
+
+
+def _raise_fd_limit(target: int = 8192) -> dict[str, Any]:
+    """Best-effort raise of ``RLIMIT_NOFILE`` so forced/manual runs match the launchd budget.
+
+    Returns the resulting soft/hard limits (counts only). Never raises into the run; if the
+    platform lacks ``resource`` or the call is denied, the run proceeds unchanged.
+    """
+    info: dict[str, Any] = {}
+    try:
+        import resource
+
+        soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
+        want = target if hard in (resource.RLIM_INFINITY, -1) else min(target, hard)
+        if soft != resource.RLIM_INFINITY and soft < want:
+            with contextlib.suppress(ValueError, OSError):
+                resource.setrlimit(resource.RLIMIT_NOFILE, (want, hard))
+                soft = want
+        info["fd_soft_limit"] = soft
+        info["fd_hard_limit"] = hard
+    except Exception:  # noqa: BLE001 — diagnostics are best-effort, never fatal
+        pass
+    return info
+
+
+def _open_fd_count() -> int | None:
+    """Best-effort count of currently-open file descriptors (stdlib only, no psutil)."""
+    for path in ("/dev/fd", f"/proc/{os.getpid()}/fd"):
+        try:
+            return len(os.listdir(path))
+        except OSError:
+            continue
+    return None
 
 
 def _redact(text: str) -> str:

@@ -54,6 +54,11 @@ automation:
     enable_live_reads: false
     enable_procore_live_reads: false
     enable_graph_live_reads: false
+    # Production 20:00 Procore scope. all_mapped includes only registry rows
+    # whose status is live-refresh-eligible (pilot or active).
+    procore_project_scope: "all_mapped"
+    # Optional allowlist. Leave empty to include every eligible mapped project.
+    procore_project_keys: []
 launcher:
   # Per-environment launcher UI settings. `frontend_url` is resolved when
   # `hb-assistant launcher <env> --open` opens the UI; leave unset to fall back

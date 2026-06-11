@@ -30,17 +30,13 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, Mapping, Optional
 from urllib.parse import urlparse
 
-from .connection import get_connection, transaction
+from .connection import open_connection, transaction
 
 # Custom-field data types whose values are safe to preserve verbatim. Everything
 # else (string, rich_text, login_information, prostore_files, unknown, ...) is
 # reduced to a hash so no free text / PII / signed URL persists.
 _PRESERVE_TYPES = {"boolean", "integer", "decimal", "datetime", "lov_entry", "lov_entries"}
 _ATTACHMENT_URL_KEYS = ("url", "share_url", "viewable_url", "download_url")
-
-
-def _open(db_path: Optional[Path]) -> sqlite3.Connection:
-    return get_connection(db_path)
 
 
 def _hash(*parts: Any) -> str:
@@ -106,8 +102,7 @@ def extract_people_refs(
     ``person_entity_key`` values. ``source_count`` increments on re-extraction.
     """
     keys: List[str] = []
-    conn = _open(db_path)
-    with transaction(conn):
+    with open_connection(db_path) as conn, transaction(conn):
         for person in _as_list(people):
             if not isinstance(person, dict):
                 continue
@@ -150,8 +145,7 @@ def extract_company_refs(
     Organisation names are kept (not personal PII). Returns ``company_entity_key`` list.
     """
     keys: List[str] = []
-    conn = _open(db_path)
-    with transaction(conn):
+    with open_connection(db_path) as conn, transaction(conn):
         for ref in _as_list(companies):
             if not isinstance(ref, dict):
                 continue
@@ -183,8 +177,7 @@ def extract_location_refs(
     """Upsert location entities from nested location payloads
     (``{id, name, node_name, parent_id}``). Place labels are kept."""
     keys: List[str] = []
-    conn = _open(db_path)
-    with transaction(conn):
+    with open_connection(db_path) as conn, transaction(conn):
         for loc in _as_list(locations):
             if not isinstance(loc, dict):
                 continue
@@ -239,8 +232,7 @@ def extract_attachment_refs(
     (url/share_url/viewable_url) is reduced to path-only + hash — query strings
     (signed tokens / company_id / prostore_file_id) are never persisted."""
     ids: List[str] = []
-    conn = _open(db_path)
-    with transaction(conn):
+    with open_connection(db_path) as conn, transaction(conn):
         for att in _as_list(attachments):
             if not isinstance(att, dict):
                 continue
@@ -302,8 +294,7 @@ def extract_custom_field_values(
     ids: List[str] = []
     if not isinstance(custom_fields, dict):
         return ids
-    conn = _open(db_path)
-    with transaction(conn):
+    with open_connection(db_path) as conn, transaction(conn):
         for cf_key, payload in custom_fields.items():
             if not isinstance(payload, dict):
                 continue
@@ -377,8 +368,7 @@ def emit_record_edge(
 ) -> str:
     """Upsert a relationship edge (record -> record / record -> entity). Idempotent."""
     edge_id = _hash("edge", project_key, from_record_key, to_record_key, to_entity_key, edge_type)
-    conn = _open(db_path)
-    with transaction(conn):
+    with open_connection(db_path) as conn, transaction(conn):
         conn.execute(
             """
             INSERT INTO procore_record_edges (
@@ -427,8 +417,7 @@ def emit_action_signal(
 ) -> str:
     """Upsert an action signal. ``title_redacted`` defaults to ``signal_type``. Idempotent."""
     signal_id = _hash("signal", project_key, record_key, signal_type)
-    conn = _open(db_path)
-    with transaction(conn):
+    with open_connection(db_path) as conn, transaction(conn):
         conn.execute(
             """
             INSERT INTO procore_action_signals (
@@ -511,8 +500,7 @@ def emit_text_intelligence(
         items = list(values)
         return json.dumps(items, default=str) if items else None
 
-    conn = _open(db_path)
-    with transaction(conn):
+    with open_connection(db_path) as conn, transaction(conn):
         conn.execute(
             """
             INSERT OR IGNORE INTO procore_text_intelligence (
@@ -566,22 +554,22 @@ def get_procore_action_signals(
         if value is not None:
             clauses.append(f"{column} = ?")
             params.append(value)
-    conn = _open(db_path)
-    rows = conn.execute(
-        f"""
-        SELECT action_signal_id, project_key, record_key, endpoint_id, signal_type,
-               signal_status, importance, due_at_utc, owner_entity_key, title_redacted,
-               summary_redacted, reason_codes_json, first_detected_at_utc, last_seen_at_utc,
-               resolved_at_utc, metadata_json
-          FROM procore_action_signals
-         WHERE {" AND ".join(clauses)}
-         ORDER BY
-           CASE importance WHEN 'high' THEN 0 WHEN 'medium' THEN 1 ELSE 2 END ASC,
-           first_detected_at_utc DESC, action_signal_id ASC
-        """,
-        params,
-    ).fetchall()
-    return [{k: row[k] for k in row.keys()} for row in rows]
+    with open_connection(db_path) as conn:
+        rows = conn.execute(
+            f"""
+            SELECT action_signal_id, project_key, record_key, endpoint_id, signal_type,
+                   signal_status, importance, due_at_utc, owner_entity_key, title_redacted,
+                   summary_redacted, reason_codes_json, first_detected_at_utc, last_seen_at_utc,
+                   resolved_at_utc, metadata_json
+              FROM procore_action_signals
+             WHERE {" AND ".join(clauses)}
+             ORDER BY
+               CASE importance WHEN 'high' THEN 0 WHEN 'medium' THEN 1 ELSE 2 END ASC,
+               first_detected_at_utc DESC, action_signal_id ASC
+            """,
+            params,
+        ).fetchall()
+        return [{k: row[k] for k in row.keys()} for row in rows]
 
 
 def get_procore_text_intelligence(
@@ -600,20 +588,20 @@ def get_procore_text_intelligence(
         params.append(endpoint_id)
     if with_action_candidates:
         clauses.append("action_candidates_json IS NOT NULL AND action_candidates_json != ''")
-    conn = _open(db_path)
-    rows = conn.execute(
-        f"""
-        SELECT text_intelligence_id, project_key, record_key, endpoint_id, source_field_path,
-               text_hash, text_length, excerpt_redacted, topics_json, mentioned_records_json,
-               action_candidates_json, risk_terms_json, sensitivity, review_required,
-               created_at_utc
-          FROM procore_text_intelligence
-         WHERE {" AND ".join(clauses)}
-         ORDER BY created_at_utc DESC, text_intelligence_id ASC
-        """,
-        params,
-    ).fetchall()
-    return [{k: row[k] for k in row.keys()} for row in rows]
+    with open_connection(db_path) as conn:
+        rows = conn.execute(
+            f"""
+            SELECT text_intelligence_id, project_key, record_key, endpoint_id, source_field_path,
+                   text_hash, text_length, excerpt_redacted, topics_json, mentioned_records_json,
+                   action_candidates_json, risk_terms_json, sensitivity, review_required,
+                   created_at_utc
+              FROM procore_text_intelligence
+             WHERE {" AND ".join(clauses)}
+             ORDER BY created_at_utc DESC, text_intelligence_id ASC
+            """,
+            params,
+        ).fetchall()
+        return [{k: row[k] for k in row.keys()} for row in rows]
 
 
 __all__ = [

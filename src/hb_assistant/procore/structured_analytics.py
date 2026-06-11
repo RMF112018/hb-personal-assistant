@@ -16,7 +16,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
 
-from hb_assistant.store.connection import get_connection, transaction
+from hb_assistant.store.connection import get_connection, open_connection, transaction
 
 from . import endpoints as endpoint_registry
 
@@ -1133,8 +1133,7 @@ def upsert_full_raw_payload_and_structured(
     if conn is not None:
         _do(conn)
     else:
-        active = get_connection(Path(db_path) if db_path is not None else None)
-        with transaction(active):
+        with open_connection(Path(db_path) if db_path is not None else None) as active, transaction(active):
             _do(active)
     return receipt
 

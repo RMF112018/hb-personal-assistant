@@ -5,8 +5,9 @@
 #
 # Pydantic enforces:
 #   * unique hb_project_key and unique non-empty procore_project_id;
-#   * status one of pilot | pending | deprecated;
-#   * for pilot / deprecated: procore_project_id must be a numeric string
+#   * status one of pilot | active | pending | deprecated;
+#   * live-refresh-eligible statuses are exactly pilot | active;
+#   * for pilot / active / deprecated: procore_project_id must be a numeric string
 #     (e.g. "2525840") and must NOT match the HB project-number pattern
 #     ^\d{2}-\d{3}-\d{2}$ (e.g. "23-435-01") — those identify a different
 #     system and would route live audits to the wrong project;

@@ -38,7 +38,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional
 from urllib.parse import urlparse
 
-from .connection import get_connection, transaction
+from .connection import get_connection, open_connection, transaction
 
 
 def _open(db_path: Optional[Path]) -> sqlite3.Connection:
@@ -290,8 +290,7 @@ def _persist(
         f"INSERT INTO {table} ({', '.join(cols)}) VALUES ({placeholders}) "
         f"ON CONFLICT({pk}) DO UPDATE SET {updates}"
     )
-    conn = _open(db_path)
-    with transaction(conn):
+    with open_connection(db_path) as conn, transaction(conn):
         conn.execute(sql, tuple(persisted[c] for c in cols))
 
 
