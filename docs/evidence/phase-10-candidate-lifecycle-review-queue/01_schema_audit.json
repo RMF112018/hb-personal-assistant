@@ -1,0 +1,52 @@
+{
+  "audit_date": "2026-06-11",
+  "method": "read-only (?mode=ro) inspection of plain-root production DB; no copy mutation",
+  "prod_db_path": "~/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite",
+  "prod_db_sha256_baseline": "d0c3e52a15b9dbdf65174f9347e1c596ed97ca2098e167902d94406a9ceccdb7",
+  "latest_schema_migration": {"version": 49, "name": "v49_email_calendar_full_raw_content_and_projections"},
+  "latest_schema_version_constant": 49,
+  "lifecycle_tables_present": {
+    "candidate_lifecycle_events": false,
+    "candidate_merge_links": false,
+    "candidate_suppression_rules": false,
+    "candidate_feedback_summary": false,
+    "candidate_review_queue": false
+  },
+  "existing_table_row_counts": {
+    "daily_brief_action_candidates": 0,
+    "candidate_source_refs": 0,
+    "task_candidates": 0,
+    "commitment_candidates": 0,
+    "accepted_tasks": 0,
+    "accepted_commitments": 0,
+    "candidate_review_events": 0,
+    "follow_up_watch_items": 0,
+    "follow_up_status_events": 0,
+    "note": "Plain-root prod DB carries full V49 schema but zero Phase 10 candidate rows; the dev scheduler writes the (Dev) root. Lifecycle behavior is validated via pytest fixtures and synthetic rows seeded into the /tmp copy."
+  },
+  "candidate_review_events_columns": [
+    "review_event_id", "candidate_type", "candidate_id", "action", "prior_status",
+    "new_status", "user_note_redacted", "created_utc", "changes_json_redacted",
+    "snoozed_until_utc", "reviewer_ref", "<13 guard columns>"
+  ],
+  "cross_family_gap_analysis": {
+    "candidate_review_events_scope": "task|commitment only (candidate_type); no subject_type taxonomy for daily_brief_action / accepted_task / accepted_commitment / follow_up_watch",
+    "missing_fields_for_cross_family_lifecycle": [
+      "subject_type (generalized)", "target_subject_type", "target_subject_id",
+      "duplicate_group_key", "effective_until_utc", "family", "event_type for merge/suppress/close/reopen"
+    ],
+    "no_merge_link_table": true,
+    "no_group_suppression_table": true,
+    "daily_brief_action_candidates_has_no_review_event_log": true
+  },
+  "migration_decision": {
+    "decision": "additive V50 justified",
+    "rationale": "Existing tables cannot represent cross-family lifecycle (merge across arbitrary subjects, group-key suppression, close/reopen across daily-brief/accepted/watch) idempotently. candidate_review_events is task/commitment-only and lacks target/group/effective-until fields.",
+    "tables_to_add": ["candidate_lifecycle_events", "candidate_merge_links", "candidate_suppression_rules"],
+    "append_only": true,
+    "guard_columns": "13 Phase 10 guard columns with CHECK(=0) on each new table",
+    "materialized_queue_added": false,
+    "materialized_queue_rationale": "Review queue is a computed read model over candidate/domain tables + lifecycle overlay; no persisted queue required per review_queue_contract."
+  },
+  "raw_safety": {"raw_content_in_this_file": false, "fields": "table/column names, counts, version numbers, reason codes only"}
+}

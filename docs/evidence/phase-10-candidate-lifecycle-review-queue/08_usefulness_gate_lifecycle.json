@@ -1,0 +1,23 @@
+{
+  "generated_utc": "2026-06-11T12:00:00Z",
+  "total_candidates": 7,
+  "visible_count": 2,
+  "hidden_count": 5,
+  "state_counts": {
+    "accepted": 2,
+    "merged": 1,
+    "needs_review": 1,
+    "rejected": 1,
+    "snoozed": 1,
+    "source_missing": 1
+  },
+  "accepted_missing_source_count": 0,
+  "actionable_source_ref_coverage": 0.5,
+  "duplicate_inflation_groups": 0,
+  "project_review_required_hidden": 0,
+  "lifecycle_read_model_empty_with_candidates": false,
+  "stage_failed": false,
+  "contradictions": [
+    "lifecycle_source_ref_coverage_below_100"
+  ]
+}

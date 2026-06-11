@@ -573,12 +573,26 @@ def run_daily_local_agent(
             },
         }
 
+    # Lifecycle status summary (apply runs only): cross-family lifecycle contradictions (rejected/
+    # suppressed/merged surfaced as new, accepted-without-source-refs, duplicate inflation, coverage
+    # below 100%) must not let a run report success. Computed read-only over the V50 overlay; a
+    # failure to assemble it degrades the run rather than crashing it.
+    lifecycle_context: Optional[dict[str, Any]] = None
+    if not dry_run:
+        from .candidate_lifecycle_daily_brief import lifecycle_stage_context
+
+        try:
+            lifecycle_context = lifecycle_stage_context(store)
+        except Exception as exc:  # noqa: BLE001 - degrade, never crash the run on the overlay
+            lifecycle_context = {"stage_failed": True, "contradictions": [], "error": str(exc)[:200]}
+
     usefulness = evaluate_usefulness_gate(
         store=store,
         brief_date=brief_date,
         synthesis_present=synthesis_dump is not None,
         synthesis_degraded=synthesis_degraded,
         stage_context=stage_context,
+        lifecycle_context=lifecycle_context,
     )
     # ---- Finalize the run result class (after usefulness gate) ----
     # Only an apply-mode run persists candidates and runs synthesis, so result-class refinement applies

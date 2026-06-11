@@ -130,6 +130,17 @@ phase_10_app = typer.Typer(
 )
 app.add_typer(phase_10_app, name="phase-10")
 
+candidates_app = typer.Typer(
+    name="candidates",
+    help=(
+        "Phase 10 V50 cross-family candidate lifecycle — unified raw-safe review queue + "
+        "disposition (accept/reject/snooze/merge/close/reopen/suppress), promotion, and feedback. "
+        "Additive: existing `second-brain review` verbs are unchanged. Local DB only; idempotent."
+    ),
+    no_args_is_help=True,
+)
+app.add_typer(candidates_app, name="candidates")
+
 local_model_app = typer.Typer(
     name="local-model",
     help="Phase 10 local model runtime readiness (probe-only; no generation, no writeback).",
@@ -11482,3 +11493,344 @@ def action_intel_extract_email_tasks(
         raise typer.Exit(1) from None
     typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
     raise typer.Exit(0 if payload["ok"] else 2)
+
+
+# --------------------------------------------------------------------------------------
+# Phase 10 V50 — candidate lifecycle operator surface (additive `second-brain candidates`).
+# Read-only review queue + feedback, and local-DB-only disposition/promotion operations. Every
+# command operates ONLY on the passed --db, emits raw-safe JSON, and is idempotent. Existing
+# `second-brain review` task/commitment verbs are untouched.
+# --------------------------------------------------------------------------------------
+
+_CANDIDATE_SUBJECT_TYPES = (
+    "task_candidate",
+    "commitment_candidate",
+    "daily_brief_action",
+    "accepted_task",
+    "accepted_commitment",
+    "follow_up_watch",
+)
+
+
+def _candidates_guardrails() -> "dict[str, Any]":
+    return {
+        "local_db_only": True,
+        "operates_only_on_passed_db": True,
+        "idempotent": True,
+        "raw_safe": True,
+        "no_external_writeback": True,
+        "no_candidate_deletion": True,
+        "source_ref_gated_acceptance": True,
+    }
+
+
+def _candidates_emit(payload: "dict[str, Any]", *, json_out: bool, exit_code: int) -> None:
+    # Merge CLI guardrails into any already on the payload (e.g. the read-model's
+    # raw_safe/deterministic/local_only) so both operator-surface and data guarantees are shown.
+    payload["guardrails"] = {**(payload.get("guardrails") or {}), **_candidates_guardrails()}
+    if json_out:
+        typer.echo(json.dumps(payload, indent=2, default=str))
+    else:
+        typer.echo(str(payload.get("status") or payload.get("op") or payload.get("command")))
+    raise typer.Exit(exit_code)
+
+
+def _candidates_exit_for(status: str) -> int:
+    if status in ("not_found",):
+        return 3
+    if status in ("invalid", "accept_blocked_source_missing",
+                  "promotion_blocked_source_missing", "promotion_blocked_project_review_required"):
+        return 2
+    return 0
+
+
+@candidates_app.command("review")
+def candidates_review(
+    include_hidden: bool = typer.Option(  # noqa: B008
+        False, "--include-hidden", help="Include rejected/suppressed/merged/closed/snoozed rows."
+    ),
+    now_utc: "str | None" = typer.Option(  # noqa: B008
+        None, "--now-utc", "--as-of", help="Evaluate the queue as of this ISO-8601 instant."
+    ),
+    db: "str | None" = typer.Option(None, "--db", help="Explicit SQLite DB path (validation)."),  # noqa: B008
+    json_out: bool = typer.Option(True, "--json/--no-json", help="JSON (default) or summary."),  # noqa: B008
+) -> None:
+    """Unified raw-safe review queue across all candidate/action families (read-only)."""
+    from hb_assistant.construction.second_brain.local_ai.candidate_lifecycle_read_model import (
+        build_review_queue,
+    )
+    from hb_assistant.construction.store import ConstructionStore
+
+    try:
+        store = ConstructionStore(db_path=db)
+        result = build_review_queue(store, now_utc=now_utc, include_hidden=include_hidden)
+        _candidates_emit(
+            {"command": "second-brain candidates review", "ok": True, **result},
+            json_out=json_out, exit_code=0,
+        )
+    except typer.Exit:
+        raise
+    except Exception as e:  # noqa: BLE001
+        _candidates_emit(
+            {"command": "second-brain candidates review", "ok": False, "error": str(e)[:300]},
+            json_out=json_out, exit_code=1,
+        )
+
+
+@candidates_app.command("show")
+def candidates_show(
+    subject_id: str = typer.Argument(..., help="Subject id."),
+    subject_type: str = typer.Option(..., "--subject-type", help="Subject family type."),  # noqa: B008
+    now_utc: "str | None" = typer.Option(None, "--now-utc", "--as-of", help="ISO-8601 instant."),  # noqa: B008
+    db: "str | None" = typer.Option(None, "--db", help="Explicit SQLite DB path (validation)."),  # noqa: B008
+    json_out: bool = typer.Option(True, "--json/--no-json", help="JSON (default) or summary."),  # noqa: B008
+) -> None:
+    """Show one subject's raw-safe review-queue row + lifecycle context."""
+    from hb_assistant.construction.second_brain.local_ai import candidate_lifecycle as lc
+    from hb_assistant.construction.second_brain.local_ai.candidate_lifecycle_read_model import (
+        build_review_queue,
+    )
+    from hb_assistant.construction.store import ConstructionStore
+
+    try:
+        store = ConstructionStore(db_path=db)
+        rows = build_review_queue(store, now_utc=now_utc, include_hidden=True)["rows"]
+        match = next(
+            (r for r in rows if r["subject_id"] == subject_id and r["subject_type"] == subject_type),
+            None,
+        )
+        if match is None:
+            _candidates_emit(
+                {"command": "second-brain candidates show", "ok": False, "status": "not_found",
+                 "subject_type": subject_type, "subject_id": subject_id},
+                json_out=json_out, exit_code=3,
+            )
+        ctx = lc.subject_context(
+            store, subject_type=subject_type, subject_id=subject_id, now_utc=now_utc
+        )
+        events = store.list_lifecycle_events(subject_type=subject_type, subject_id=subject_id)
+        _candidates_emit(
+            {"command": "second-brain candidates show", "ok": True, "row": match,
+             "context": ctx, "lifecycle_event_count": len(events)},
+            json_out=json_out, exit_code=0,
+        )
+    except typer.Exit:
+        raise
+    except Exception as e:  # noqa: BLE001
+        _candidates_emit(
+            {"command": "second-brain candidates show", "ok": False, "error": str(e)[:300]},
+            json_out=json_out, exit_code=1,
+        )
+
+
+def _candidates_run_op(command: str, op_fn, *, json_out: bool, **kwargs) -> None:
+    """Shared runner for a single-subject disposition op (local DB only, raw-safe JSON)."""
+    from hb_assistant.construction.store import ConstructionStore
+
+    db = kwargs.pop("db", None)
+    try:
+        store = ConstructionStore(db_path=db)
+        result = op_fn(store, **kwargs)
+        status = str(result.get("status") or "")
+        _candidates_emit(
+            {"command": command, **result}, json_out=json_out,
+            exit_code=_candidates_exit_for(status),
+        )
+    except typer.Exit:
+        raise
+    except Exception as e:  # noqa: BLE001
+        _candidates_emit(
+            {"command": command, "ok": False, "error": str(e)[:300]},
+            json_out=json_out, exit_code=1,
+        )
+
+
+@candidates_app.command("accept")
+def candidates_accept(
+    subject_id: str = typer.Argument(..., help="Subject id."),
+    subject_type: str = typer.Option(..., "--subject-type", help="Subject family type."),  # noqa: B008
+    note: "str | None" = typer.Option(None, "--note", help="Optional operator note (scrubbed)."),  # noqa: B008
+    now_utc: "str | None" = typer.Option(None, "--now-utc", "--as-of", help="ISO-8601 instant."),  # noqa: B008
+    db: "str | None" = typer.Option(None, "--db", help="Explicit SQLite DB path (validation)."),  # noqa: B008
+    json_out: bool = typer.Option(True, "--json/--no-json", help="JSON (default) or summary."),  # noqa: B008
+) -> None:
+    """Accept a candidate (source-ref gated; source-missing actionable subjects are blocked)."""
+    from hb_assistant.construction.second_brain.local_ai import candidate_lifecycle as lc
+
+    _candidates_run_op(
+        "second-brain candidates accept", lc.accept, json_out=json_out, db=db,
+        subject_type=subject_type, subject_id=subject_id, note=note, now_utc=now_utc,
+    )
+
+
+@candidates_app.command("reject")
+def candidates_reject(
+    subject_id: str = typer.Argument(..., help="Subject id."),
+    subject_type: str = typer.Option(..., "--subject-type", help="Subject family type."),  # noqa: B008
+    reason: str = typer.Option(..., "--reason", help="Reject reason code."),  # noqa: B008
+    note: "str | None" = typer.Option(None, "--note", help="Optional operator note (scrubbed)."),  # noqa: B008
+    now_utc: "str | None" = typer.Option(None, "--now-utc", "--as-of", help="ISO-8601 instant."),  # noqa: B008
+    db: "str | None" = typer.Option(None, "--db", help="Explicit SQLite DB path (validation)."),  # noqa: B008
+    json_out: bool = typer.Option(True, "--json/--no-json", help="JSON (default) or summary."),  # noqa: B008
+) -> None:
+    """Reject a candidate with a reason code (hidden from normal views, visible with --include-hidden)."""
+    from hb_assistant.construction.second_brain.local_ai import candidate_lifecycle as lc
+
+    _candidates_run_op(
+        "second-brain candidates reject", lc.reject, json_out=json_out, db=db,
+        subject_type=subject_type, subject_id=subject_id, reason=reason, note=note, now_utc=now_utc,
+    )
+
+
+@candidates_app.command("snooze")
+def candidates_snooze(
+    subject_id: str = typer.Argument(..., help="Subject id."),
+    subject_type: str = typer.Option(..., "--subject-type", help="Subject family type."),  # noqa: B008
+    until: str = typer.Option(..., "--until", help="Return date/time (ISO-8601 / YYYY-MM-DD)."),  # noqa: B008
+    reason: "str | None" = typer.Option(None, "--reason", help="Snooze reason code."),  # noqa: B008
+    note: "str | None" = typer.Option(None, "--note", help="Optional operator note (scrubbed)."),  # noqa: B008
+    now_utc: "str | None" = typer.Option(None, "--now-utc", "--as-of", help="ISO-8601 instant."),  # noqa: B008
+    db: "str | None" = typer.Option(None, "--db", help="Explicit SQLite DB path (validation)."),  # noqa: B008
+    json_out: bool = typer.Option(True, "--json/--no-json", help="JSON (default) or summary."),  # noqa: B008
+) -> None:
+    """Snooze a subject until a return date (hidden until then, returns on/after the date)."""
+    from hb_assistant.construction.second_brain.local_ai import candidate_lifecycle as lc
+
+    _candidates_run_op(
+        "second-brain candidates snooze", lc.snooze, json_out=json_out, db=db,
+        subject_type=subject_type, subject_id=subject_id, until=until, reason=reason,
+        note=note, now_utc=now_utc,
+    )
+
+
+@candidates_app.command("close")
+def candidates_close(
+    subject_id: str = typer.Argument(..., help="Subject id."),
+    subject_type: str = typer.Option(..., "--subject-type", help="Subject family type."),  # noqa: B008
+    reason: str = typer.Option("completed", "--reason", help="Close reason code."),  # noqa: B008
+    note: "str | None" = typer.Option(None, "--note", help="Optional operator note (scrubbed)."),  # noqa: B008
+    now_utc: "str | None" = typer.Option(None, "--now-utc", "--as-of", help="ISO-8601 instant."),  # noqa: B008
+    db: "str | None" = typer.Option(None, "--db", help="Explicit SQLite DB path (validation)."),  # noqa: B008
+    json_out: bool = typer.Option(True, "--json/--no-json", help="JSON (default) or summary."),  # noqa: B008
+) -> None:
+    """Close a subject as handled/completed/resolved."""
+    from hb_assistant.construction.second_brain.local_ai import candidate_lifecycle as lc
+
+    _candidates_run_op(
+        "second-brain candidates close", lc.close, json_out=json_out, db=db,
+        subject_type=subject_type, subject_id=subject_id, reason=reason, note=note, now_utc=now_utc,
+    )
+
+
+@candidates_app.command("reopen")
+def candidates_reopen(
+    subject_id: str = typer.Argument(..., help="Subject id."),
+    subject_type: str = typer.Option(..., "--subject-type", help="Subject family type."),  # noqa: B008
+    reason: str = typer.Option("operator_reopened", "--reason", help="Reopen reason code."),  # noqa: B008
+    note: "str | None" = typer.Option(None, "--note", help="Optional operator note (scrubbed)."),  # noqa: B008
+    now_utc: "str | None" = typer.Option(None, "--now-utc", "--as-of", help="ISO-8601 instant."),  # noqa: B008
+    db: "str | None" = typer.Option(None, "--db", help="Explicit SQLite DB path (validation)."),  # noqa: B008
+    json_out: bool = typer.Option(True, "--json/--no-json", help="JSON (default) or summary."),  # noqa: B008
+) -> None:
+    """Reopen a closed/rejected subject back into the review queue."""
+    from hb_assistant.construction.second_brain.local_ai import candidate_lifecycle as lc
+
+    _candidates_run_op(
+        "second-brain candidates reopen", lc.reopen, json_out=json_out, db=db,
+        subject_type=subject_type, subject_id=subject_id, reason=reason, note=note, now_utc=now_utc,
+    )
+
+
+@candidates_app.command("merge")
+def candidates_merge(
+    source_id: str = typer.Argument(..., help="Source subject id (becomes merged)."),
+    target_id: str = typer.Argument(..., help="Target/canonical subject id."),
+    source_type: str = typer.Option(..., "--source-type", help="Source subject family type."),  # noqa: B008
+    target_type: str = typer.Option(..., "--target-type", help="Target subject family type."),  # noqa: B008
+    reason: str = typer.Option("manual_duplicate", "--reason", help="Merge reason code."),  # noqa: B008
+    now_utc: "str | None" = typer.Option(None, "--now-utc", "--as-of", help="ISO-8601 instant."),  # noqa: B008
+    db: "str | None" = typer.Option(None, "--db", help="Explicit SQLite DB path (validation)."),  # noqa: B008
+    json_out: bool = typer.Option(True, "--json/--no-json", help="JSON (default) or summary."),  # noqa: B008
+) -> None:
+    """Merge a source subject into a canonical target (source -> merged; refs preserved)."""
+    from hb_assistant.construction.second_brain.local_ai import candidate_lifecycle as lc
+
+    _candidates_run_op(
+        "second-brain candidates merge", lc.merge, json_out=json_out, db=db,
+        source_subject_type=source_type, source_subject_id=source_id,
+        target_subject_type=target_type, target_subject_id=target_id, reason=reason, now_utc=now_utc,
+    )
+
+
+@candidates_app.command("suppress")
+def candidates_suppress(
+    target: str = typer.Argument(..., help="Subject id (candidate scope) or group key (group scope)."),
+    scope: str = typer.Option("candidate", "--scope", help="candidate | group."),  # noqa: B008
+    reason: str = typer.Option(..., "--reason", help="Suppression reason code."),  # noqa: B008
+    subject_type: "str | None" = typer.Option(  # noqa: B008
+        None, "--subject-type", help="Subject family type (candidate scope)."
+    ),
+    note: "str | None" = typer.Option(None, "--note", help="Optional operator note (scrubbed)."),  # noqa: B008
+    now_utc: "str | None" = typer.Option(None, "--now-utc", "--as-of", help="ISO-8601 instant."),  # noqa: B008
+    db: "str | None" = typer.Option(None, "--db", help="Explicit SQLite DB path (validation)."),  # noqa: B008
+    json_out: bool = typer.Option(True, "--json/--no-json", help="JSON (default) or summary."),  # noqa: B008
+) -> None:
+    """Suppress a recurring false positive by candidate or duplicate group (never deletes)."""
+    from hb_assistant.construction.second_brain.local_ai import candidate_lifecycle as lc
+
+    if scope == "group":
+        _candidates_run_op(
+            "second-brain candidates suppress", lc.suppress, json_out=json_out, db=db,
+            scope="group", reason=reason, duplicate_group_key_value=target, note=note, now_utc=now_utc,
+        )
+    else:
+        _candidates_run_op(
+            "second-brain candidates suppress", lc.suppress, json_out=json_out, db=db,
+            scope="candidate", reason=reason, subject_type=subject_type, subject_id=target,
+            note=note, now_utc=now_utc,
+        )
+
+
+@candidates_app.command("promote")
+def candidates_promote(
+    subject_id: str = typer.Argument(..., help="Subject id."),
+    subject_type: str = typer.Option(..., "--subject-type", help="Subject family type."),  # noqa: B008
+    now_utc: "str | None" = typer.Option(None, "--now-utc", "--as-of", help="ISO-8601 instant."),  # noqa: B008
+    db: "str | None" = typer.Option(None, "--db", help="Explicit SQLite DB path (validation)."),  # noqa: B008
+    json_out: bool = typer.Option(True, "--json/--no-json", help="JSON (default) or summary."),  # noqa: B008
+) -> None:
+    """Promote a candidate into an accepted action (explicit, idempotent, source-ref gated)."""
+    from hb_assistant.construction.second_brain.local_ai import candidate_lifecycle as lc
+
+    _candidates_run_op(
+        "second-brain candidates promote", lc.promote, json_out=json_out, db=db,
+        subject_type=subject_type, subject_id=subject_id, now_utc=now_utc,
+    )
+
+
+@candidates_app.command("feedback")
+def candidates_feedback(
+    now_utc: "str | None" = typer.Option(None, "--now-utc", "--as-of", help="ISO-8601 instant."),  # noqa: B008
+    db: "str | None" = typer.Option(None, "--db", help="Explicit SQLite DB path (validation)."),  # noqa: B008
+    json_out: bool = typer.Option(True, "--json/--no-json", help="JSON (default) or summary."),  # noqa: B008
+) -> None:
+    """Raw-safe feedback read model (counts/rates/reason codes/confidence buckets; deterministic)."""
+    from hb_assistant.construction.second_brain.local_ai.candidate_lifecycle_feedback import (
+        build_feedback_summary,
+    )
+    from hb_assistant.construction.store import ConstructionStore
+
+    try:
+        store = ConstructionStore(db_path=db)
+        result = build_feedback_summary(store, now_utc=now_utc)
+        _candidates_emit(
+            {"command": "second-brain candidates feedback", "ok": True, **result},
+            json_out=json_out, exit_code=0,
+        )
+    except typer.Exit:
+        raise
+    except Exception as e:  # noqa: BLE001
+        _candidates_emit(
+            {"command": "second-brain candidates feedback", "ok": False, "error": str(e)[:300]},
+            json_out=json_out, exit_code=1,
+        )

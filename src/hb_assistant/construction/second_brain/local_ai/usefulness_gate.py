@@ -51,6 +51,7 @@ def evaluate_usefulness_gate(
     synthesis_degraded: bool,
     egress_clean: bool = True,
     stage_context: dict[str, Any] | None = None,
+    lifecycle_context: dict[str, Any] | None = None,
 ) -> UsefulnessGateResult:
     """Evaluate whether the run meets the usefulness bar for `success` (deterministic + read-only).
 
@@ -59,6 +60,14 @@ def evaluate_usefulness_gate(
     "useful source rows exist but candidates are empty" contradictions WITHOUT new DB reads. When
     absent (e.g. dry-run preview or a direct unit call), the source-contradiction checks are skipped
     and the gate behaves exactly as before; the synthesis/source-ref checks always run.
+
+    ``lifecycle_context`` (apply runs only) is the output of
+    ``candidate_lifecycle_daily_brief.lifecycle_stage_context``. When provided, its
+    ``contradictions`` (e.g. ``accepted_actions_missing_source_refs``,
+    ``lifecycle_source_ref_coverage_below_100``, ``duplicate_inflation``,
+    ``rejected/suppressed/merged_visible_as_new``, ``snoozed_visible_before_return``,
+    ``lifecycle_stage_failed``) fail a would-be success. When absent (None), every lifecycle check is
+    skipped and the gate behaves exactly as before — lifecycle-empty/legacy callers are unaffected.
     """
     ctx = stage_context or {}
     candidates = store.list_daily_brief_action_candidates(brief_date=brief_date, limit=100000)
@@ -182,6 +191,19 @@ def evaluate_usefulness_gate(
         "email_followup_project_gap": email_followup_project_gap,
     }
 
+    # Lifecycle contradictions (opt-in via lifecycle_context; None → skipped entirely).
+    lifecycle_contradictions: list[str] = []
+    if lifecycle_context is not None:
+        lifecycle_contradictions = list(lifecycle_context.get("contradictions") or [])
+        if lifecycle_context.get("stage_failed"):
+            lifecycle_contradictions.append("lifecycle_stage_failed")
+        metrics["lifecycle_state_counts"] = lifecycle_context.get("state_counts")
+        metrics["lifecycle_total_candidates"] = lifecycle_context.get("total_candidates")
+        metrics["lifecycle_actionable_source_ref_coverage"] = lifecycle_context.get(
+            "actionable_source_ref_coverage"
+        )
+        metrics["lifecycle_contradictions"] = lifecycle_contradictions
+
     failed: list[str] = []
     if deterministic_section_count < 1:
         failed.append("no_useful_deterministic_section")
@@ -207,6 +229,7 @@ def evaluate_usefulness_gate(
         failed.append("synthesis_success_without_any_source_linked_candidate")
     if not egress_clean:
         failed.append("egress_not_clean")
+    failed.extend(lifecycle_contradictions)
 
     passed = not failed
     return UsefulnessGateResult(

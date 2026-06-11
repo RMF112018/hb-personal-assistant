@@ -1,0 +1,21 @@
+{
+  "promotion": {
+    "op": "promote",
+    "subject_type": "task_candidate",
+    "subject_id": "t1",
+    "ok": true,
+    "status": "promoted",
+    "promotion_status": "promoted",
+    "accepted_id": "acc-task:t1",
+    "project_key": "PRJ",
+    "project_resolution_status": "resolved",
+    "source_ref_count": 1
+  },
+  "accepted_task_count": 1,
+  "accepted_task_id": [
+    "task",
+    "t1"
+  ],
+  "source_ref_count_via_candidate": 1,
+  "promote_replay_status": "already_promoted"
+}
