@@ -1,0 +1,5 @@
+Production DB SHA-256 unchanged across all V52 validation (DB-copy only; never the prod DB).
+db: ~/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite
+before: d0c3e52a15b9dbdf65174f9347e1c596ed97ca2098e167902d94406a9ceccdb7
+after:  d0c3e52a15b9dbdf65174f9347e1c596ed97ca2098e167902d94406a9ceccdb7
+validation copy: /tmp/hb-phase10-effectiveness-20260611-effectiveness/construction.db (migrated 49→52 in isolation)

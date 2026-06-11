@@ -2350,6 +2350,133 @@ def daily_brief_rank_candidates(
         raise typer.Exit(1) from None
 
 
+@daily_brief_app.command("evaluate-effectiveness")
+def daily_brief_evaluate_effectiveness(
+    window_start: "str | None" = typer.Option(  # noqa: B008
+        None, "--window-start", help="Window start (YYYY-MM-DD). Default: --brief-date or today."
+    ),
+    window_end: "str | None" = typer.Option(  # noqa: B008
+        None, "--window-end", help="Window end (YYYY-MM-DD). Default: --brief-date or today."
+    ),
+    brief_date: "str | None" = typer.Option(  # noqa: B008
+        None, "--brief-date", help="Single brief date (YYYY-MM-DD); sets both window ends."
+    ),
+    policy_version: "str | None" = typer.Option(  # noqa: B008
+        None, "--policy-version", help="Filter ranking runs to this policy version."
+    ),
+    model_profile_id: "str | None" = typer.Option(  # noqa: B008
+        None, "--model-profile-id", help="Filter ranking runs to this model profile id."
+    ),
+    eval_mode: str = typer.Option(  # noqa: B008
+        "observed",
+        "--eval-mode",
+        help="observed | deterministic-replay | model-assisted-observed | ablation.",
+    ),
+    ignored_lag_hours: int = typer.Option(  # noqa: B008
+        72, "--ignored-lag-hours", help="Lag window (h) after which an un-actioned item is ignored."
+    ),
+    include_procore_noise: bool = typer.Option(  # noqa: B008
+        True, "--include-procore-noise/--no-procore-noise", help="Include Procore noise metrics."
+    ),
+    include_model_profile: bool = typer.Option(  # noqa: B008
+        True, "--include-model-profile/--no-model-profile", help="Include model-profile reliability."
+    ),
+    include_rollups: bool = typer.Option(  # noqa: B008
+        True, "--include-rollups/--no-rollups", help="Include daily/window/family/source rollups."
+    ),
+    apply: bool = typer.Option(  # noqa: B008
+        False, "--apply/--dry-run", help="Persist telemetry/eval/rollup rows. Default: dry-run."
+    ),
+    max_persist: "int | None" = typer.Option(  # noqa: B008
+        None,
+        "--max-persist",
+        help="Required with --apply: cap on TOTAL projected rows across all V52 tables (fail-closed).",
+    ),
+    db: "str | None" = typer.Option(  # noqa: B008
+        None, "--db", help="Explicit SQLite path (REQUIRED for /tmp-copy validation; never prod)."
+    ),
+    json_out: bool = typer.Option(True, "--json/--no-json", help="JSON (default) or summary."),  # noqa: B008
+) -> None:
+    """Evaluate daily-brief / ranking-policy effectiveness over a window (observational only).
+
+    Deterministic, raw-free telemetry that READS the V51 ranking/assembly overlay + V50 lifecycle
+    read model and measures whether ranked briefs are getting more useful. It mutates no
+    lifecycle/source-ref/ranking/assembly rows and never calls a model. Dry-run (default) writes zero
+    rows; ``--apply`` requires ``--max-persist`` (a cap on the TOTAL projected inserts across all V52
+    tables — exceeding it fails closed before any write). Apply validation must target a ``/tmp`` DB
+    copy via ``--db`` (opening a store migrates the configured DB). Exit 0 ok/dry-run, 2 invalid
+    usage, 3 fail-closed safety/raw-leak/cap violation, 1 unexpected error.
+    """
+    from datetime import datetime as _dt
+    from datetime import timezone as _tz
+
+    from hb_assistant.construction.second_brain.local_ai import (
+        EVAL_MODES,
+        run_daily_brief_effectiveness_evaluation,
+    )
+    from hb_assistant.construction.store import ConstructionStore
+
+    cmd = "second-brain daily-brief evaluate-effectiveness"
+
+    def _emit(payload: dict[str, Any], code: int) -> None:
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(code)
+
+    def _valid_date(value: str) -> bool:
+        try:
+            _dt.strptime(value, "%Y-%m-%d")
+            return True
+        except ValueError:
+            return False
+
+    try:
+        if eval_mode not in EVAL_MODES:
+            _emit({"command": cmd, "ok": False, "status": "invalid", "error": f"invalid_eval_mode:{eval_mode}"}, 2)
+        if apply and max_persist is None:
+            _emit({"command": cmd, "ok": False, "status": "invalid", "error": "apply_requires_max_persist"}, 2)
+        if max_persist is not None and max_persist < 0:
+            _emit({"command": cmd, "ok": False, "status": "invalid", "error": "max_persist_must_be_non_negative"}, 2)
+        if ignored_lag_hours < 0:
+            _emit({"command": cmd, "ok": False, "status": "invalid", "error": "ignored_lag_hours_must_be_non_negative"}, 2)
+
+        today = _dt.now(_tz.utc).date().isoformat()
+        wstart = window_start or brief_date or today
+        wend = window_end or brief_date or today
+        for label, value in (("window_start", wstart), ("window_end", wend)):
+            if not _valid_date(value):
+                _emit({"command": cmd, "ok": False, "status": "invalid", "error": f"invalid_date:{label}={value}"}, 2)
+        if wend < wstart:
+            _emit({"command": cmd, "ok": False, "status": "invalid", "error": f"window_end_before_start:{wstart}>{wend}"}, 2)
+
+        now_utc = _dt.now(_tz.utc).isoformat()
+        store = ConstructionStore(db_path=db)
+        result = run_daily_brief_effectiveness_evaluation(
+            store,
+            window_start=wstart,
+            window_end=wend,
+            now_utc=now_utc,
+            ignored_lag_hours=ignored_lag_hours,
+            eval_mode=eval_mode,
+            policy_version=policy_version,
+            model_profile_id=model_profile_id,
+            include_procore_noise=include_procore_noise,
+            include_model_profile=include_model_profile,
+            include_rollups=include_rollups,
+            dry_run=not apply,
+            max_persist=max_persist,
+        )
+        result["db_indicator"] = _redact_db_indicator(db)
+        if result.get("status") == "fail_closed":
+            _emit(result, 3)
+        _emit(result, 0)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        payload = {"command": cmd, "ok": False, "status": "error", "error": str(e)[:300]}
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(1) from None
+
+
 @daily_brief_app.command("render")
 def daily_brief_render(
     date: "str | None" = typer.Option(  # noqa: B008

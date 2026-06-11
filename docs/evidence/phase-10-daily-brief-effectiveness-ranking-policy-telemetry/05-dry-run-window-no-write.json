@@ -1,0 +1,41 @@
+{
+  "command": "second-brain daily-brief evaluate-effectiveness",
+  "status": "no_ranked_briefs",
+  "window_start": "2026-06-01",
+  "window_end": "2026-06-11",
+  "ignored_lag_hours": 72,
+  "eval_mode": "observed",
+  "data_sufficiency": "insufficient_sample",
+  "confidence_note": "no_ranked_briefs_in_window",
+  "sample_size": {
+    "briefs": 0,
+    "candidates": 0,
+    "outcomes": 0
+  },
+  "metrics": {},
+  "degradation": [
+    "no_ranked_briefs"
+  ],
+  "applied": false,
+  "dry_run": true,
+  "persistence": {
+    "projected_total": 0,
+    "persisted_total": 0,
+    "max_persist": null
+  },
+  "guardrails": {
+    "observational_only": true,
+    "no_lifecycle_mutation": true,
+    "no_source_ref_mutation": true,
+    "no_external_writeback": true,
+    "raw_free": true
+  },
+  "raw_safety": {
+    "raw_free": true,
+    "categories": []
+  },
+  "db_indicator": [
+    "explicit_db",
+    "/tmp/hb-phase10-effectiveness-20260611-effectiveness/construction.db"
+  ]
+}

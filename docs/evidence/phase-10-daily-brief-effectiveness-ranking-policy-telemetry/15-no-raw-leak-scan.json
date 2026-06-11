@@ -1,0 +1,12 @@
+{
+  "command": "hb-assistant email-calendar raw no-raw-leak-scan",
+  "ok": true,
+  "files_scanned": 19,
+  "unsafe_finding_count": 0,
+  "findings": [],
+  "guardrails": {
+    "live_calls_disabled": true,
+    "writeback": "none",
+    "emits_values": false
+  }
+}

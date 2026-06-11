@@ -1,0 +1,19 @@
+{
+  "proof": "schema_migration",
+  "latest_schema_version": 52,
+  "applied": 52,
+  "reapply_idempotent": true,
+  "v52_tables": [
+    "daily_brief_exposure_events",
+    "daily_brief_item_outcome_events",
+    "ranking_policy_eval_runs",
+    "ranking_policy_eval_items",
+    "model_profile_eval_results",
+    "brief_effectiveness_rollups"
+  ],
+  "all_tables_present": true,
+  "all_guards_present": true,
+  "guard_column_count": 13,
+  "guard_sum": 0,
+  "overall_status": "ready"
+}

@@ -1,0 +1,27 @@
+{
+  "proof": "outcome_join",
+  "window": [
+    "2026-06-01",
+    "2026-06-30"
+  ],
+  "status": "ok",
+  "sample_size": {
+    "briefs": 1,
+    "candidates": 5,
+    "outcomes": 5
+  },
+  "outcome_distribution": {
+    "accepted": 1,
+    "ignored": 1,
+    "rejected": 2,
+    "snoozed": 1
+  },
+  "exposure_event_count": 6,
+  "outcome_event_count": 5,
+  "no_lifecycle_mutation": true,
+  "no_source_ref_mutation": true,
+  "raw_safety": {
+    "raw_free": true,
+    "categories": []
+  }
+}

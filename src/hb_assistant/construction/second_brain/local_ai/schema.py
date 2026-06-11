@@ -52,6 +52,21 @@ PHASE_10_V41_TABLES: tuple[str, ...] = (
     "claude_context_packet_items",
 )
 
+#: The 6 additive Phase 10 V52 daily-brief effectiveness / ranking-policy telemetry tables.
+#: Observational only — they read the V41/V50/V51 read models and persist raw-free
+#: counts/scores/hashes/reason codes. Each carries the same 13 guard columns. Enumerated here so
+#: the V52 guard/schema-status surface asserts them, not merely the migration CHECK constraints.
+PHASE_10_V52_TABLES: tuple[str, ...] = (
+    "daily_brief_exposure_events",
+    "daily_brief_item_outcome_events",
+    "ranking_policy_eval_runs",
+    "ranking_policy_eval_items",
+    "model_profile_eval_results",
+    "brief_effectiveness_rollups",
+)
+
+_PHASE_10_V52_TARGET_SCHEMA = 52
+
 #: The 13 guard columns every Phase 10 table carries (each enforced ``CHECK(<col> = 0)``).
 PHASE_10_GUARD_COLUMNS: list[str] = [
     "raw_email_body_persisted",
@@ -204,6 +219,80 @@ def build_phase_10_schema_status_report(
         result["evidence_written"] = _write_evidence(result, evidence_dir)
 
     return result
+
+
+def build_phase_10_v52_schema_status_report(db_path: str | None = None) -> dict[str, Any]:
+    """Read-only guard/schema-status report for the 6 V52 effectiveness telemetry tables.
+
+    Asserts each table is present, carries the full 13 guard columns, and that the guard columns
+    sum to 0 across all rows (a no-raw/no-writeback attestation). Fail-closed on a stale schema
+    (< V52). Read-only over the DB; advisory only; persists nothing.
+    """
+    conn = _open_ro(db_path)
+    schema_version = _schema_version(conn) if conn is not None else 0
+    schema_ready = schema_version >= _PHASE_10_V52_TARGET_SCHEMA
+
+    table_reports: list[dict[str, Any]] = []
+    guard_sum = 0
+    try:
+        for name in PHASE_10_V52_TABLES:
+            present = conn is not None and _table_exists(conn, name)
+            cols = _columns(conn, name) if (conn is not None and present) else set()
+            missing_guards = [g for g in PHASE_10_GUARD_COLUMNS if g not in cols]
+            row_count: int | None = None
+            table_guard_sum: int | None = None
+            if conn is not None and present:
+                row_count = int(conn.execute(f"SELECT COUNT(*) FROM {name}").fetchone()[0])
+                if not missing_guards:
+                    expr = " + ".join(f"COALESCE(SUM({g}),0)" for g in PHASE_10_GUARD_COLUMNS)
+                    table_guard_sum = int(conn.execute(f"SELECT {expr} FROM {name}").fetchone()[0])
+                    guard_sum += table_guard_sum
+            table_reports.append(
+                {
+                    "table_name": name,
+                    "present": present,
+                    "guard_columns_present": present and not missing_guards,
+                    "missing_guard_columns": missing_guards,
+                    "row_count": row_count,
+                    "guard_sum": table_guard_sum,
+                }
+            )
+    finally:
+        if conn is not None:
+            conn.close()
+
+    all_tables_present = all(t["present"] for t in table_reports)
+    all_guards_present = all(t["guard_columns_present"] for t in table_reports)
+    guards_clean = all_tables_present and all_guards_present and guard_sum == 0
+    overall_ready = schema_ready and guards_clean
+
+    return {
+        "command": "second-brain phase-10 v52-effectiveness-schema-status",
+        "proof": "phase_10_v52_effectiveness_schema_status",
+        "phase": "10",
+        "generated_utc": _now(),
+        "repo_sha": _repo_sha(),
+        "schema_version": schema_version,
+        "schema_version_expected": LATEST_SCHEMA_VERSION,
+        "schema_ready": schema_ready,
+        "v52_table_count": len(PHASE_10_V52_TABLES),
+        "guard_column_count": len(PHASE_10_GUARD_COLUMNS),
+        "all_tables_present": all_tables_present,
+        "all_guards_present": all_guards_present,
+        "guard_sum": guard_sum,
+        "guards_clean": guards_clean,
+        "overall_status": "ready" if overall_ready else "not_ready",
+        "tables": table_reports,
+        "read_only": True,
+        "advisory_only": True,
+        "makes_determination": False,
+        "guard_attestation": {
+            "additive_only": True,
+            "no_raw_persistence": True,
+            "no_external_writeback": True,
+            "observational_only": True,
+        },
+    }
 
 
 def _write_evidence(result: dict[str, Any], evidence_dir: str | None) -> dict[str, str]:
