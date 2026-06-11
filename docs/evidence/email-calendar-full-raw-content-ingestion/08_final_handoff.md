@@ -5,7 +5,7 @@
 ```text
 branch:    fix/email-calendar-full-raw-content-ingestion
 Pass 1:    3e50fd7e  (schema V49 + ingestion hardening + structured projection layer + fixtures)
-Pass 2:    <commit #2>  (consumer read models + CLI + redaction/access audit + evidence + runbook + arch)
+Pass 2:    7a663951da6ef32f4767a252cf4cd766e3bb6f51  (consumer read models + CLI + redaction/access audit + evidence + runbook + arch)
 ```
 
 ## Schema head
@@ -86,7 +86,7 @@ follow-up window          | raw rows                                | + structur
 
 ```bash
 git show 3e50fd7e --stat            # Pass 1
-git show <commit#2> --stat          # Pass 2
+git show 7a663951da6ef32f4767a252cf4cd766e3bb6f51 --stat          # Pass 2
 .venv/bin/python3.12 -m pytest tests/test_email_calendar_*.py -q
 # then, when ready for real data, follow operator_production_runbook.md (dry-run first)
 ```

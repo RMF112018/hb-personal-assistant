@@ -11,7 +11,7 @@ source-quality rank, and a lower-quality row can never silently downgrade consum
 child collections (recipients/attendees) + a `body_ref` link. Selection tiers (highest wins):
 
 ```
-structured_full  > structured_preview > raw_landing > structured_legacy > legacy_metadata > none
+structured_full  > structured_preview > structured_legacy > raw_landing > legacy_metadata > none
 ```
 
 Raw body/agenda text is never on the object; it is fetched local-private only via `load_body(...)`,

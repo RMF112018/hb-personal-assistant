@@ -11,8 +11,8 @@ Selection order (highest wins; the chosen tier is returned so it is testable):
 ```
 structured_full     graph_full_body / graph_full_event_body structured projection row
 structured_preview  graph_body_preview_only structured projection row
-raw_landing          raw V42 landing row (no structured projection yet)
 structured_legacy    redacted_legacy_projection / metadata_only structured row
+raw_landing          raw V42 landing row (no structured projection yet)
 legacy_metadata      legacy redacted/metadata index/summary only
 none                 nothing available
 ```
@@ -37,11 +37,12 @@ from .source_quality import (
     rank,
 )
 
-# Tier labels (in descending preference within a family).
+# Tier labels (in descending preference within a family): any structured projection row is
+# preferred over the raw V42 landing row, so structured_legacy outranks raw_landing.
 TIER_STRUCTURED_FULL = "structured_full"
 TIER_STRUCTURED_PREVIEW = "structured_preview"
-TIER_RAW_LANDING = "raw_landing"
 TIER_STRUCTURED_LEGACY = "structured_legacy"
+TIER_RAW_LANDING = "raw_landing"
 TIER_LEGACY_METADATA = "legacy_metadata"
 TIER_NONE = "none"
 

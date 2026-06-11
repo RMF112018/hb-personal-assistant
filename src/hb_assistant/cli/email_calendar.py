@@ -62,14 +62,23 @@ def projection_reprocess(
         None, "--family", help="email_message | email_thread | calendar_event"
     ),
     dry_run: bool = typer.Option(
-        True, "--dry-run/--no-dry-run", help="Default: preview only; zero writes."
+        True,
+        "--dry-run/--no-dry-run",
+        help="Preview only (default). Pass --no-dry-run together with --apply to persist.",
     ),
     apply: bool = typer.Option(
-        False, "--apply", help="Persist structured projection rows to the supplied --db."
+        False,
+        "--apply",
+        help="Persist projection rows. A real apply requires --apply AND --no-dry-run AND --db.",
     ),
     json_out: bool = typer.Option(True, "--json/--no-json"),
 ) -> None:
-    """Project raw rows into the structured tables. Dry-run default; --apply needs an explicit --db."""
+    """Project raw rows into the structured tables.
+
+    Dry-run by default (zero writes). A REAL apply requires all three: ``--apply`` (opt in),
+    ``--no-dry-run`` (override the safe default), and an explicit ``--db`` (so it never targets
+    the production DB implicitly). See the operator runbook for the bounded rollout sequence.
+    """
     from hb_assistant.construction.email_calendar import projection_engine as eng
 
     if apply and not db:
@@ -102,8 +111,12 @@ def status(
 
 @raw_app.command("no-raw-leak-scan")
 def no_raw_leak_scan_cmd(
-    path: list[str] = typer.Option(..., "--path", help="File or directory to scan (repeatable)."),
-    sentinel: list[str] = typer.Option([], "--sentinel", help="Extra body/agenda sentinel string."),
+    path: list[str] = typer.Option(  # noqa: B008 — Typer option default (matches cli/procore.py)
+        ..., "--path", help="File or directory to scan (repeatable)."
+    ),
+    sentinel: list[str] = typer.Option(  # noqa: B008 — Typer option default
+        [], "--sentinel", help="Extra body/agenda sentinel string."
+    ),
     json_out: bool = typer.Option(True, "--json/--no-json"),
 ) -> None:
     """Scan evidence/output for email/calendar raw / secret / join-URL leakage. Exit 3 on finding."""
