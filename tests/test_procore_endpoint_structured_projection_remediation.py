@@ -139,7 +139,7 @@ def _project(
 
 
 def test_v47_schema_head_and_tables_present(tmp_path: Path) -> None:
-    assert LATEST_SCHEMA_VERSION == 48  # V47 tables + V48 column reconciliation
+    assert LATEST_SCHEMA_VERSION == 49  # V47 tables + V48 reconciliation + V49 email/calendar
     db = tmp_path / "fresh.sqlite"
     assert SQLiteMigrator(db_path=str(db)).apply() == LATEST_SCHEMA_VERSION
     conn = sqlite3.connect(db)

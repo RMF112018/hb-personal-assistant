@@ -1,0 +1,53 @@
+{
+  "package_id": "email_calendar_full_raw_content_ingestion_package",
+  "version": "1.1.0",
+  "generated_utc": "2026-06-10T00:00:00Z",
+  "repo": "RMF112018/hb-personal-assistant",
+  "repo_local_path": "/Users/bobbyfetting/hb-personal-assistant",
+  "target_repo_relative_path": "docs/planning/email_calendar_full_raw_content_ingestion_package/",
+  "objective": "Transition email and calendar data from redacted/metadata-only storage into policy-gated local raw content and final structured projections, with mechanical proof of zero unmapped available raw business fields.",
+  "mode": "audit_planning_package_only",
+  "safety": {
+    "no_repo_code_changes_in_this_session": true,
+    "no_commits_in_this_session": true,
+    "no_production_db_mutation_in_this_session": true,
+    "no_live_graph_writes": true,
+    "no_raw_bodies_in_evidence": true
+  },
+  "package_files": [
+    "AUDIT_SUMMARY.md",
+    "README.md",
+    "TRIGGER_PROMPT.md",
+    "VALIDATION_CHECKLIST.md",
+    "manifest.json",
+    "prompts/00_REPO_TRUTH_AND_BRANCH_GUARD.md",
+    "prompts/01_SCHEMA_AND_POLICY_STRATEGY.md",
+    "prompts/02_EMAIL_FULL_RAW_INGESTION.md",
+    "prompts/03_CALENDAR_FULL_RAW_INGESTION.md",
+    "prompts/04A_RAW_FIELD_INVENTORY_AND_PROJECTION_MATRIX.md",
+    "prompts/04B_STRUCTURED_PROJECTION_SCHEMA.md",
+    "prompts/04C_PROJECTION_REGISTRY_AND_EXTRACTORS.md",
+    "prompts/04D_IMPLEMENT_FINAL_STRUCTURED_PROJECTIONS.md",
+    "prompts/04_THREAD_AND_MEETING_CONTEXT_PROJECTION.md",
+    "prompts/05_CONSUMER_READ_MODELS_AND_MODEL_CONTEXT.md",
+    "prompts/06_OUTBOUND_REDACTION_AND_ACCESS_AUDIT.md",
+    "prompts/07_DB_COPY_VALIDATION_AND_EVIDENCE.md",
+    "prompts/08_FINAL_HANDOFF.md",
+    "scripts/email_calendar_raw_probe.py",
+    "scripts/email_calendar_raw_projection_inventory.py",
+    "templates/email_calendar_projection_completeness_smoke.sql",
+    "templates/email_calendar_projection_matrix_template.csv",
+    "templates/email_calendar_raw_validation_sql.sql",
+    "templates/evidence_template.md",
+    "templates/operator_production_runbook_template.md"
+  ],
+  "updated_utc": "2026-06-10T00:00:00Z",
+  "completion_standard": {
+    "raw_capture_alone_is_insufficient": true,
+    "requires_field_inventory": true,
+    "requires_projection_matrix": true,
+    "requires_final_structured_projection_layer": true,
+    "requires_zero_unmapped_primary_business_fields": true,
+    "requires_zero_unmapped_nested_business_fields": true
+  }
+}

@@ -1,0 +1,1 @@
+Execute the objective defined at docs/planning/email_calendar_full_raw_content_ingestion_package/README.md

@@ -398,6 +398,20 @@ def build_raw_followup_window(
     )
     agg_meta["message_count"] = len(aliases)
     agg_meta["char_count"] = len(window_text)
+    # V49 Pass 2: tag with the best structured-projection source-quality backing this window
+    # (prefer structured; a lower-quality row never sets a higher tag).
+    try:
+        from hb_assistant.construction.email_calendar.source_quality import rank as _sq_rank
+
+        best_sq = None
+        for r in rows:
+            sj = store.get_email_message_structured(message_id_hash=r.get("message_id_hash"))
+            if sj and _sq_rank(sj.get("source_quality")) > _sq_rank(best_sq):
+                best_sq = sj.get("source_quality")
+        agg_meta["structured_source_quality"] = best_sq
+        agg_meta["structured_projection_backed"] = best_sq is not None
+    except Exception:
+        pass
     if not rendered_parts and "no_source_refs" not in blockers:
         blockers.append("no_raw_content_available")
 

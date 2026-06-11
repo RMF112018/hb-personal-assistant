@@ -78,6 +78,42 @@ def _organizer_address(ev: dict[str, Any]) -> Optional[str]:
     return ((ev.get("organizer") or {}).get("emailAddress") or {}).get("address")
 
 
+# Extra Graph event fields (from the widened get_event $select) that have no dedicated raw
+# column. They are preserved losslessly in calendar_event_raw_content.raw_sidecar_json so the
+# projection layer can normalise/sidecar them. The join URL is NEVER placed in the sidecar.
+_SIDECAR_EVENT_FIELDS = (
+    "isAllDay",
+    "showAs",
+    "type",
+    "seriesMasterId",
+    "categories",
+    "createdDateTime",
+    "lastModifiedDateTime",
+    "originalStartTimeZone",
+    "originalEndTimeZone",
+    "locations",
+)
+
+
+def _calendar_raw_sidecar(full_ev: dict[str, Any]) -> dict[str, Any]:
+    """Lossless remainder of widened Graph event fields without dedicated columns. Strips the
+    online-meeting join URL so it can never leak via the sidecar."""
+    sidecar: dict[str, Any] = {}
+    for key in _SIDECAR_EVENT_FIELDS:
+        value = full_ev.get(key)
+        if value not in (None, "", [], {}):
+            sidecar[key] = value
+    original_start = full_ev.get("originalStart")
+    if original_start:
+        sidecar["originalStart"] = original_start
+    online_meeting = full_ev.get("onlineMeeting")
+    if isinstance(online_meeting, dict):
+        scrubbed = {k: v for k, v in online_meeting.items() if k != "joinUrl"}
+        if scrubbed:
+            sidecar["onlineMeeting"] = scrubbed
+    return sidecar
+
+
 def _event_datetime(node: Any) -> Optional[str]:
     if isinstance(node, dict):
         return node.get("dateTime")
@@ -307,6 +343,7 @@ class CalendarEventIndexer:
                     if not dry_run:
                         ghash = hash_value(ev.get("id")) or ev.get("id")
                         eidx = hash_value(f"{source_id}|{ghash}") if ghash else None
+                        sidecar = _calendar_raw_sidecar(full_ev or ev)
                         self._store.upsert_calendar_event_raw_content(
                             raw_calendar_event_id=f"raw:{ev.get('id')}",
                             graph_event_id_hash=ghash or "",
@@ -327,6 +364,18 @@ class CalendarEventIndexer:
                             else None,
                             start_datetime_utc=rp.get("start_datetime_utc"),
                             end_datetime_utc=rp.get("end_datetime_utc"),
+                            raw_capture_run_id=run_id,
+                            source_updated_at_utc=(full_ev or ev).get("lastModifiedDateTime"),
+                            join_url_policy="local_db_only",
+                            raw_sidecar_json=json.dumps(sidecar, sort_keys=True) if sidecar else None,
+                        )
+                        # Raw read/persist access audit (no body/join URL is stored in the event row).
+                        self._store.record_raw_content_access_event(
+                            source_family="calendar",
+                            endpoint_or_command="calendar.index.include_raw_content",
+                            source_ref_hash=ghash,
+                            raw_content_included=1,
+                            purpose="raw_calendar_ingestion",
                         )
                     raw_events_persisted += 1
 

@@ -14,6 +14,7 @@ from __future__ import annotations
 import contextlib
 import hashlib
 import json
+import sqlite3
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Callable, Optional
@@ -7369,11 +7370,83 @@ class ConstructionStore:
         received_at_utc: Optional[str] = None,
         has_attachments: int = 0,
         attachment_metadata_json: str = "[]",
+        source_quality: Optional[str] = None,
+        payload_hash: Optional[str] = None,
+        raw_capture_run_id: Optional[str] = None,
+        source_record_ref: Optional[str] = None,
+        source_record_id: Optional[int] = None,
+        source_updated_at_utc: Optional[str] = None,
+        raw_content_schema_version: str = "email_raw_v1",
+        raw_sidecar_json: Optional[str] = None,
     ) -> None:
+        # Source-quality precedence (V49): a strictly lower-quality re-capture updates only
+        # provenance/last-seen metadata and NEVER downgrades local-private body content.
+        from hb_assistant.construction.email_calendar.source_quality import (
+            classify_email,
+            rank_case_sql,
+        )
+
+        if source_quality is None:
+            source_quality = classify_email(
+                body_text=body_text, body_html=body_html, body_preview=body_preview
+            )
+        if payload_hash is None:
+            payload_hash = hashlib.sha256(
+                "|".join(
+                    str(p or "")
+                    for p in (subject, body_text, body_html, body_preview, to_recipients_json)
+                ).encode("utf-8", "replace")
+            ).hexdigest()
+        guard = (
+            f"(({rank_case_sql('excluded.source_quality')}) "
+            f">= ({rank_case_sql('email_message_raw_content.source_quality')}))"
+        )
+
+        def keep(col: str) -> str:
+            return (
+                f"{col} = CASE WHEN {guard} THEN excluded.{col} "
+                f"ELSE email_message_raw_content.{col} END"
+            )
+
+        content_cols = [
+            "subject",
+            "body_preview",
+            "body_text",
+            "body_html",
+            "from_name",
+            "from_address",
+            "to_recipients_json",
+            "cc_recipients_json",
+            "bcc_recipients_json",
+            "has_attachments",
+            "attachment_metadata_json",
+            "source_quality",
+            "payload_hash",
+            "raw_sidecar_json",
+        ]
+        meta_cols = [
+            "message_id_hash",
+            "internet_message_id_hash",
+            "conversation_id_hash",
+            "source_ref_hash",
+            "project_key",
+            "sent_at_utc",
+            "received_at_utc",
+            "raw_capture_run_id",
+            "source_record_ref",
+            "source_record_id",
+            "source_updated_at_utc",
+            "raw_content_schema_version",
+        ]
+        set_clause = ",\n                    ".join(
+            [keep(c) for c in content_cols]
+            + [f"{c} = excluded.{c}" for c in meta_cols]
+            + ["updated_utc = excluded.updated_utc"]
+        )
         conn = get_connection(self._db_path)
         with transaction(conn):
             conn.execute(
-                """
+                f"""
                 INSERT INTO email_message_raw_content
                     (raw_email_id, message_id_hash, internet_message_id_hash,
                      conversation_id_hash, source_ref_hash, project_key,
@@ -7381,28 +7454,13 @@ class ConstructionStore:
                      from_name, from_address,
                      to_recipients_json, cc_recipients_json, bcc_recipients_json,
                      sent_at_utc, received_at_utc, has_attachments,
-                     attachment_metadata_json, created_utc, updated_utc)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     attachment_metadata_json, source_quality, payload_hash,
+                     raw_capture_run_id, source_record_ref, source_record_id,
+                     source_updated_at_utc, raw_content_schema_version, raw_sidecar_json,
+                     created_utc, updated_utc)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(raw_email_id) DO UPDATE SET
-                    message_id_hash = excluded.message_id_hash,
-                    internet_message_id_hash = excluded.internet_message_id_hash,
-                    conversation_id_hash = excluded.conversation_id_hash,
-                    source_ref_hash = excluded.source_ref_hash,
-                    project_key = excluded.project_key,
-                    subject = excluded.subject,
-                    body_preview = excluded.body_preview,
-                    body_text = excluded.body_text,
-                    body_html = excluded.body_html,
-                    from_name = excluded.from_name,
-                    from_address = excluded.from_address,
-                    to_recipients_json = excluded.to_recipients_json,
-                    cc_recipients_json = excluded.cc_recipients_json,
-                    bcc_recipients_json = excluded.bcc_recipients_json,
-                    sent_at_utc = excluded.sent_at_utc,
-                    received_at_utc = excluded.received_at_utc,
-                    has_attachments = excluded.has_attachments,
-                    attachment_metadata_json = excluded.attachment_metadata_json,
-                    updated_utc = excluded.updated_utc
+                    {set_clause}
                 """,
                 (
                     raw_email_id,
@@ -7424,6 +7482,14 @@ class ConstructionStore:
                     received_at_utc,
                     has_attachments,
                     attachment_metadata_json,
+                    source_quality,
+                    payload_hash,
+                    raw_capture_run_id,
+                    source_record_ref,
+                    source_record_id,
+                    source_updated_at_utc,
+                    raw_content_schema_version,
+                    raw_sidecar_json,
                     _utc_now(),
                     _utc_now(),
                 ),
@@ -7442,7 +7508,29 @@ class ConstructionStore:
         messages_json: str = "[]",
         source_refs_json: str = "[]",
         model_ready: int = 1,
+        source_quality: Optional[str] = None,
+        payload_hash: Optional[str] = None,
+        raw_capture_run_id: Optional[str] = None,
+        raw_content_schema_version: str = "email_thread_raw_v1",
     ) -> None:
+        if source_quality is None:
+            from hb_assistant.construction.email_calendar.source_quality import classify_thread
+
+            try:
+                members = json.loads(messages_json) if messages_json else []
+            except (json.JSONDecodeError, TypeError):
+                members = []
+            quals: list[str] = []
+            for m in members if isinstance(members, list) else []:
+                if isinstance(m, dict) and (m.get("body_text") or m.get("body_html")):
+                    quals.append("graph_full_body")
+            source_quality = classify_thread(quals)
+        if payload_hash is None:
+            payload_hash = hashlib.sha256(
+                "|".join(str(p or "") for p in (thread_ref, thread_subject, messages_json)).encode(
+                    "utf-8", "replace"
+                )
+            ).hexdigest()
         conn = get_connection(self._db_path)
         with transaction(conn):
             conn.execute(
@@ -7451,8 +7539,9 @@ class ConstructionStore:
                     (raw_thread_context_id, thread_ref, conversation_id_hash,
                      project_key, message_count, participant_count,
                      thread_subject, messages_json, source_refs_json,
-                     model_ready, created_utc, updated_utc)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     model_ready, source_quality, payload_hash, raw_capture_run_id,
+                     raw_content_schema_version, created_utc, updated_utc)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(thread_ref) DO UPDATE SET
                     raw_thread_context_id = excluded.raw_thread_context_id,
                     conversation_id_hash = excluded.conversation_id_hash,
@@ -7463,6 +7552,10 @@ class ConstructionStore:
                     messages_json = excluded.messages_json,
                     source_refs_json = excluded.source_refs_json,
                     model_ready = excluded.model_ready,
+                    source_quality = excluded.source_quality,
+                    payload_hash = excluded.payload_hash,
+                    raw_capture_run_id = excluded.raw_capture_run_id,
+                    raw_content_schema_version = excluded.raw_content_schema_version,
                     updated_utc = excluded.updated_utc
                 """,
                 (
@@ -7476,8 +7569,93 @@ class ConstructionStore:
                     messages_json,
                     source_refs_json,
                     model_ready,
+                    source_quality,
+                    payload_hash,
+                    raw_capture_run_id,
+                    raw_content_schema_version,
                     _utc_now(),
                     _utc_now(),
+                ),
+            )
+
+    def record_raw_content_access_event(
+        self,
+        *,
+        source_family: str,
+        endpoint_or_command: str,
+        source_ref_hash: Optional[str] = None,
+        raw_content_included: int = 1,
+        purpose: Optional[str] = None,
+    ) -> str:
+        """Append a raw-content access-audit event (V42 table; no raw body is ever stored).
+        Returns the generated event id."""
+        event_id = f"rcae-{uuid.uuid4().hex}"
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            conn.execute(
+                """
+                INSERT INTO raw_content_access_events
+                    (access_event_id, source_family, source_ref_hash,
+                     endpoint_or_command, raw_content_included, purpose, created_utc)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    event_id,
+                    source_family,
+                    source_ref_hash,
+                    endpoint_or_command,
+                    int(raw_content_included),
+                    purpose,
+                    _utc_now(),
+                ),
+            )
+        return event_id
+
+    def record_email_calendar_raw_ingestion_run(
+        self,
+        *,
+        run_id: str,
+        source_family: str,
+        mode: str,
+        items_seen: int = 0,
+        items_attempted_raw: int = 0,
+        items_raw_persisted: int = 0,
+        source_quality_distribution_json: str = "{}",
+        status: str = "ok",
+        error_redacted: Optional[str] = None,
+    ) -> None:
+        """Persist a bounded raw-ingestion run receipt (counts + source-quality distribution;
+        never raw bodies). Guard columns keep raw_body_emitted / external_writeback at 0."""
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            conn.execute(
+                """
+                INSERT INTO email_calendar_raw_ingestion_runs
+                    (run_id, source_family, mode, started_utc, completed_utc,
+                     items_seen, items_attempted_raw, items_raw_persisted,
+                     source_quality_distribution_json, status, error_redacted)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(run_id) DO UPDATE SET
+                    completed_utc = excluded.completed_utc,
+                    items_seen = excluded.items_seen,
+                    items_attempted_raw = excluded.items_attempted_raw,
+                    items_raw_persisted = excluded.items_raw_persisted,
+                    source_quality_distribution_json = excluded.source_quality_distribution_json,
+                    status = excluded.status,
+                    error_redacted = excluded.error_redacted
+                """,
+                (
+                    run_id,
+                    source_family,
+                    mode,
+                    _utc_now(),
+                    _utc_now(),
+                    items_seen,
+                    items_attempted_raw,
+                    items_raw_persisted,
+                    source_quality_distribution_json,
+                    status,
+                    error_redacted,
                 ),
             )
 
@@ -7720,11 +7898,85 @@ class ConstructionStore:
         recurrence_json: Optional[str] = None,
         start_datetime_utc: Optional[str] = None,
         end_datetime_utc: Optional[str] = None,
+        source_quality: Optional[str] = None,
+        payload_hash: Optional[str] = None,
+        raw_capture_run_id: Optional[str] = None,
+        source_record_ref: Optional[str] = None,
+        source_record_id: Optional[int] = None,
+        source_updated_at_utc: Optional[str] = None,
+        raw_content_schema_version: str = "calendar_raw_v1",
+        join_url_policy: str = "local_db_only",
+        raw_sidecar_json: Optional[str] = None,
     ) -> None:
+        # Source-quality precedence (V49): a strictly lower-quality re-capture updates only
+        # provenance metadata and never downgrades local-private event/agenda content. The
+        # join URL is retained locally under join_url_policy and never emitted outward.
+        from hb_assistant.construction.email_calendar.source_quality import (
+            classify_calendar,
+            rank_case_sql,
+        )
+
+        if source_quality is None:
+            source_quality = classify_calendar(
+                body_text=body_text, body_html=body_html, body_preview=body_preview
+            )
+        if payload_hash is None:
+            payload_hash = hashlib.sha256(
+                "|".join(
+                    str(p or "")
+                    for p in (subject, body_text, body_html, attendees_json, recurrence_json)
+                ).encode("utf-8", "replace")
+            ).hexdigest()
+        guard = (
+            f"(({rank_case_sql('excluded.source_quality')}) "
+            f">= ({rank_case_sql('calendar_event_raw_content.source_quality')}))"
+        )
+
+        def keep(col: str) -> str:
+            return (
+                f"{col} = CASE WHEN {guard} THEN excluded.{col} "
+                f"ELSE calendar_event_raw_content.{col} END"
+            )
+
+        content_cols = [
+            "subject",
+            "body_preview",
+            "body_text",
+            "body_html",
+            "location_display",
+            "organizer_name",
+            "organizer_email",
+            "attendees_json",
+            "online_meeting_provider",
+            "join_url",
+            "recurrence_json",
+            "source_quality",
+            "payload_hash",
+            "raw_sidecar_json",
+        ]
+        meta_cols = [
+            "event_index_id",
+            "graph_event_id_hash",
+            "source_ref_hash",
+            "project_key",
+            "start_datetime_utc",
+            "end_datetime_utc",
+            "raw_capture_run_id",
+            "source_record_ref",
+            "source_record_id",
+            "source_updated_at_utc",
+            "raw_content_schema_version",
+            "join_url_policy",
+        ]
+        set_clause = ",\n                    ".join(
+            [keep(c) for c in content_cols]
+            + [f"{c} = excluded.{c}" for c in meta_cols]
+            + ["updated_utc = excluded.updated_utc"]
+        )
         conn = get_connection(self._db_path)
         with transaction(conn):
             conn.execute(
-                """
+                f"""
                 INSERT INTO calendar_event_raw_content
                     (raw_calendar_event_id, event_index_id, graph_event_id_hash,
                      source_ref_hash, project_key,
@@ -7732,27 +7984,13 @@ class ConstructionStore:
                      location_display, organizer_name, organizer_email,
                      attendees_json, online_meeting_provider, join_url,
                      recurrence_json, start_datetime_utc, end_datetime_utc,
+                     source_quality, payload_hash, raw_capture_run_id,
+                     source_record_ref, source_record_id, source_updated_at_utc,
+                     raw_content_schema_version, join_url_policy, raw_sidecar_json,
                      created_utc, updated_utc)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(raw_calendar_event_id) DO UPDATE SET
-                    event_index_id = excluded.event_index_id,
-                    graph_event_id_hash = excluded.graph_event_id_hash,
-                    source_ref_hash = excluded.source_ref_hash,
-                    project_key = excluded.project_key,
-                    subject = excluded.subject,
-                    body_preview = excluded.body_preview,
-                    body_text = excluded.body_text,
-                    body_html = excluded.body_html,
-                    location_display = excluded.location_display,
-                    organizer_name = excluded.organizer_name,
-                    organizer_email = excluded.organizer_email,
-                    attendees_json = excluded.attendees_json,
-                    online_meeting_provider = excluded.online_meeting_provider,
-                    join_url = excluded.join_url,
-                    recurrence_json = excluded.recurrence_json,
-                    start_datetime_utc = excluded.start_datetime_utc,
-                    end_datetime_utc = excluded.end_datetime_utc,
-                    updated_utc = excluded.updated_utc
+                    {set_clause}
                 """,
                 (
                     raw_calendar_event_id,
@@ -7773,6 +8011,15 @@ class ConstructionStore:
                     recurrence_json,
                     start_datetime_utc,
                     end_datetime_utc,
+                    source_quality,
+                    payload_hash,
+                    raw_capture_run_id,
+                    source_record_ref,
+                    source_record_id,
+                    source_updated_at_utc,
+                    raw_content_schema_version,
+                    join_url_policy,
+                    raw_sidecar_json,
                     _utc_now(),
                     _utc_now(),
                 ),
@@ -7897,6 +8144,141 @@ class ConstructionStore:
             except Exception:
                 rec[jk.replace("_json", "")] = []
         return rec
+
+    # -------------------------------------------------------------------------
+    # --- V49 structured projection read accessors (Pass 2) ---
+    # Generic PRAGMA-driven SELECT * helpers + typed getters/listers for the
+    # final structured projection tables. Consumers reach these via the
+    # email_calendar.read_models precedence-aware selectors, never raw JSON.
+    # -------------------------------------------------------------------------
+
+    def _structured_select_one(
+        self, table: str, where_col: str, where_val: Any
+    ) -> Optional[dict[str, Any]]:
+        if not where_val:
+            return None
+        conn = get_connection(self._db_path)
+        try:
+            cols = [r[1] for r in conn.execute(f"PRAGMA table_info({table})")]
+            if not cols:
+                return None
+            row = conn.execute(
+                f"SELECT {', '.join(cols)} FROM {table} WHERE {where_col} = ? LIMIT 1",
+                (where_val,),
+            ).fetchone()
+        except sqlite3.Error:
+            return None
+        return dict(zip(cols, row, strict=True)) if row else None
+
+    def _structured_select_all(
+        self,
+        table: str,
+        *,
+        where_col: Optional[str] = None,
+        where_val: Any = None,
+        limit: int = 1000,
+        order_by: Optional[str] = None,
+    ) -> list[dict[str, Any]]:
+        conn = get_connection(self._db_path)
+        try:
+            cols = [r[1] for r in conn.execute(f"PRAGMA table_info({table})")]
+            if not cols:
+                return []
+            sql = f"SELECT {', '.join(cols)} FROM {table}"
+            params: list[Any] = []
+            if where_col is not None and where_val is not None:
+                sql += f" WHERE {where_col} = ?"
+                params.append(where_val)
+            if order_by:
+                sql += f" ORDER BY {order_by}"
+            sql += " LIMIT ?"
+            params.append(limit)
+            rows = conn.execute(sql, tuple(params)).fetchall()
+        except sqlite3.Error:
+            return []
+        return [dict(zip(cols, r, strict=True)) for r in rows]
+
+    def get_email_message_structured(
+        self, *, message_id_hash: Optional[str] = None
+    ) -> Optional[dict[str, Any]]:
+        return self._structured_select_one(
+            "email_raw_message_structured", "message_id_hash", message_id_hash
+        )
+
+    def list_email_message_structured(
+        self, *, project_key: Optional[str] = None, limit: int = 1000
+    ) -> list[dict[str, Any]]:
+        return self._structured_select_all(
+            "email_raw_message_structured",
+            where_col="project_key" if project_key else None,
+            where_val=project_key,
+            limit=limit,
+            order_by="received_at_utc DESC",
+        )
+
+    def list_email_message_recipients_structured(
+        self, *, parent_projection_id: str
+    ) -> list[dict[str, Any]]:
+        return self._structured_select_all(
+            "email_raw_message_recipients_structured",
+            where_col="parent_projection_id",
+            where_val=parent_projection_id,
+            limit=500,
+            order_by="child_index",
+        )
+
+    def get_thread_structured(
+        self, *, thread_ref: Optional[str] = None
+    ) -> Optional[dict[str, Any]]:
+        return self._structured_select_one(
+            "email_raw_thread_structured", "thread_ref", thread_ref
+        )
+
+    def list_thread_structured(
+        self, *, project_key: Optional[str] = None, limit: int = 1000
+    ) -> list[dict[str, Any]]:
+        return self._structured_select_all(
+            "email_raw_thread_structured",
+            where_col="project_key" if project_key else None,
+            where_val=project_key,
+            limit=limit,
+        )
+
+    def get_event_structured(
+        self,
+        *,
+        event_index_id: Optional[str] = None,
+        graph_event_id_hash: Optional[str] = None,
+    ) -> Optional[dict[str, Any]]:
+        if event_index_id:
+            return self._structured_select_one(
+                "calendar_raw_event_structured", "event_index_id", event_index_id
+            )
+        return self._structured_select_one(
+            "calendar_raw_event_structured", "graph_event_id_hash", graph_event_id_hash
+        )
+
+    def list_event_structured(
+        self, *, project_key: Optional[str] = None, limit: int = 1000
+    ) -> list[dict[str, Any]]:
+        return self._structured_select_all(
+            "calendar_raw_event_structured",
+            where_col="project_key" if project_key else None,
+            where_val=project_key,
+            limit=limit,
+            order_by="start_datetime_utc DESC",
+        )
+
+    def list_event_attendees_structured(
+        self, *, parent_projection_id: str
+    ) -> list[dict[str, Any]]:
+        return self._structured_select_all(
+            "calendar_raw_event_attendees_structured",
+            where_col="parent_projection_id",
+            where_val=parent_projection_id,
+            limit=500,
+            order_by="child_index",
+        )
 
     # -------------------------------------------------------------------------
     # --- Phase 10A Prompt 06 — Raw Model Context Packets (V42 table) ---

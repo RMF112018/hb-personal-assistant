@@ -465,8 +465,14 @@ class EmailMessageIndexer:
                     bodies_encrypted += 1
                     self._body_budget -= 1
                 if include_raw_content and raw_payload:
-                    # Persist raw row (idempotent). Only on apply (not dry_run).
+                    # Persist raw row (idempotent). Only on apply (not dry_run). source_quality
+                    # + payload_hash + downgrade precedence are enforced in the store upsert.
                     mid_hash = hash_value(message_id) or message_id
+                    email_sidecar = {
+                        k: msg.get(k)
+                        for k in ("importance", "categories", "flag")
+                        if msg.get(k) not in (None, "", [], {})
+                    }
                     self._store.upsert_email_message_raw_content(
                         raw_email_id=f"raw:{message_id}",
                         message_id_hash=mid_hash,
@@ -495,6 +501,19 @@ class EmailMessageIndexer:
                         attachment_metadata_json=json.dumps(
                             raw_payload.get("attachment_metadata") or [], sort_keys=True
                         ),
+                        raw_capture_run_id=op_id,
+                        source_updated_at_utc=msg.get("lastModifiedDateTime"),
+                        raw_sidecar_json=json.dumps(email_sidecar, sort_keys=True)
+                        if email_sidecar
+                        else None,
+                    )
+                    # Raw read/persist access audit (no body is stored in the event row).
+                    self._store.record_raw_content_access_event(
+                        source_family="email",
+                        endpoint_or_command="email.index.include_raw_content",
+                        source_ref_hash=mid_hash,
+                        raw_content_included=1,
+                        purpose="raw_email_ingestion",
                     )
                     raw_emails_persisted += 1
                 messages_indexed += 1

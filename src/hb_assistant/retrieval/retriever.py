@@ -25,6 +25,65 @@ class RetrievalHit:
     metadata: dict[str, Any] = None  # name, date hints etc (redacted)
 
 
+def retrieve_email_calendar_structured(
+    construction_store: Any,
+    *,
+    query: str = "",
+    project_key: str | None = None,
+    limit: int = 20,
+) -> list[dict[str, Any]]:
+    """Private raw-aware retrieval read model over the V49 structured projection layer.
+
+    Ranks email message + calendar event structured projection rows by deterministic keyword
+    overlap (matched against local-private subjects in the private DB) but returns **redacted**
+    results only: a hashed subject ref, the selected source-tier + source-quality, and content
+    availability flags — never raw subjects, bodies, or join URLs. Prefers higher source-quality
+    rows so a lower-quality projection can never outrank a structured-full one.
+    """
+    from hb_assistant.construction.email_calendar.source_quality import rank as _rank
+    from hb_assistant.normalize.redaction import hash_value
+
+    terms = [t for t in (query or "").lower().split() if t]
+
+    def _score(subject: str | None, sq: str | None) -> float:
+        subj = (subject or "").lower()
+        kw = sum(1 for t in terms if t in subj) if terms else 0
+        return kw * 10.0 + _rank(sq) / 100.0
+
+    rows: list[dict[str, Any]] = []
+    for r in construction_store.list_email_message_structured(project_key=project_key, limit=500):
+        rows.append(
+            {
+                "content_type": "email_message_structured",
+                "subject_ref": hash_value(r.get("subject") or ""),
+                "selected_source": "structured",
+                "source_quality": r.get("source_quality"),
+                "has_body_text": bool(r.get("body_text_available")),
+                "project_key": r.get("project_key"),
+                "received_at_utc": r.get("received_at_utc"),
+                "_score": _score(r.get("subject"), r.get("source_quality")),
+            }
+        )
+    for r in construction_store.list_event_structured(project_key=project_key, limit=500):
+        rows.append(
+            {
+                "content_type": "calendar_event_structured",
+                "subject_ref": hash_value(r.get("subject") or ""),
+                "selected_source": "structured",
+                "source_quality": r.get("source_quality"),
+                "has_body_text": bool(r.get("body_text_available")),
+                "has_join_url": bool(r.get("has_join_url")),
+                "project_key": r.get("project_key"),
+                "start_datetime_utc": r.get("start_datetime_utc"),
+                "_score": _score(r.get("subject"), r.get("source_quality")),
+            }
+        )
+    rows.sort(key=lambda x: x["_score"], reverse=True)
+    for x in rows:
+        x["score"] = round(x.pop("_score"), 4)
+    return rows[: max(0, limit)]
+
+
 def _cosine(a: list[float], b: list[float]) -> float:
     if not a or not b or len(a) != len(b):
         return 0.0

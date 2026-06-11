@@ -1,0 +1,94 @@
+source_family,source_table,raw_column_or_json_path,observed_type,cardinality,occurrence_count,non_null_count,empty_count,business_category,destination_kind,destination_table,destination_column,extraction_strategy,exclusion_reason,status
+email_message,email_message_raw_content,message_id_hash,,column,0,0,0,primary,primary_column,email_raw_message_structured,message_id_hash,copy,,mapped
+email_message,email_message_raw_content,internet_message_id_hash,,column,0,0,0,primary,primary_column,email_raw_message_structured,internet_message_id_hash,copy,,mapped
+email_message,email_message_raw_content,conversation_id_hash,,column,0,0,0,primary,primary_column,email_raw_message_structured,conversation_id_hash,copy,,mapped
+email_message,email_message_raw_content,source_ref_hash,,column,0,0,0,primary,primary_column,email_raw_message_structured,source_ref_hash,copy,,mapped
+email_message,email_message_raw_content,project_key,,column,0,0,0,primary,primary_column,email_raw_message_structured,project_key,copy,,mapped
+email_message,email_message_raw_content,subject,,column,0,0,0,primary,primary_column,email_raw_message_structured,subject,copy,,mapped
+email_message,email_message_raw_content,body_preview,,column,0,0,0,primary,primary_column,email_raw_message_structured,body_preview_available,copy,,mapped
+email_message,email_message_raw_content,body_text,,column,0,0,0,primary,primary_column,email_raw_message_structured,body_text_available,copy,,mapped
+email_message,email_message_raw_content,body_html,,column,0,0,0,primary,primary_column,email_raw_message_structured,body_html_available,copy,,mapped
+email_message,email_message_raw_content,from_name,,column,0,0,0,primary,primary_column,email_raw_message_structured,from_name,copy,,mapped
+email_message,email_message_raw_content,from_address,,column,0,0,0,primary,primary_column,email_raw_message_structured,from_address,copy,,mapped
+email_message,email_message_raw_content,sent_at_utc,,column,0,0,0,primary,primary_column,email_raw_message_structured,sent_at_utc,copy,,mapped
+email_message,email_message_raw_content,received_at_utc,,column,0,0,0,primary,primary_column,email_raw_message_structured,received_at_utc,copy,,mapped
+email_message,email_message_raw_content,has_attachments,,column,0,0,0,primary,primary_column,email_raw_message_structured,has_attachments,copy,,mapped
+email_message,email_message_raw_content,created_utc,,column,0,0,0,primary,excluded_non_business,,,excluded,system row-create timestamp,excluded
+email_message,email_message_raw_content,updated_utc,,column,0,0,0,primary,excluded_non_business,,,excluded,system row-update timestamp,excluded
+email_message,email_message_raw_content,source_quality,,column,0,0,0,primary,excluded_non_business,,,excluded,provenance: projected as its own column,excluded
+email_message,email_message_raw_content,raw_capture_run_id,,column,0,0,0,primary,excluded_non_business,,,excluded,provenance: projected as its own column,excluded
+email_message,email_message_raw_content,source_record_ref,,column,0,0,0,primary,excluded_non_business,,,excluded,provenance linkage column,excluded
+email_message,email_message_raw_content,source_record_id,,column,0,0,0,primary,excluded_non_business,,,excluded,provenance linkage column,excluded
+email_message,email_message_raw_content,source_updated_at_utc,,column,0,0,0,primary,excluded_non_business,,,excluded,provenance: projected as its own column,excluded
+email_message,email_message_raw_content,payload_hash,,column,0,0,0,primary,excluded_non_business,,,excluded,provenance: projected as its own column,excluded
+email_message,email_message_raw_content,raw_content_schema_version,,column,0,0,0,primary,excluded_non_business,,,excluded,provenance schema marker,excluded
+email_message,email_message_raw_content,to_recipients_json[].address,string,array_child,0,0,0,nested,child_table_column,email_raw_message_recipients_structured,address,extract_child_array,,mapped
+email_message,email_message_raw_content,to_recipients_json[].name,string,array_child,0,0,0,nested,child_table_column,email_raw_message_recipients_structured,name,extract_child_array,,mapped
+email_message,email_message_raw_content,cc_recipients_json[].address,string,array_child,0,0,0,nested,child_table_column,email_raw_message_recipients_structured,address,extract_child_array,,mapped
+email_message,email_message_raw_content,cc_recipients_json[].name,string,array_child,0,0,0,nested,child_table_column,email_raw_message_recipients_structured,name,extract_child_array,,mapped
+email_message,email_message_raw_content,attachment_metadata_json[].has_attachments,boolean,array_child,0,0,0,nested,child_table_column,email_raw_message_attachments_structured,payload_sidecar_json,extract_child_array,,mapped
+email_message,email_message_raw_content,attachment_metadata_json[].name,string,array_child,0,0,0,nested,child_table_column,email_raw_message_attachments_structured,name,extract_child_array,,mapped
+email_message,email_message_raw_content,raw_sidecar_json,,json_column,0,0,0,nested,lossless_sidecar_json,email_raw_message_structured,payload_sidecar_json,lossless_sidecar,lossless remainder of widened Graph message fields without dedicated columns,mapped
+email_thread,email_thread_raw_context,thread_ref,,column,0,0,0,primary,primary_column,email_raw_thread_structured,thread_ref,copy,,mapped
+email_thread,email_thread_raw_context,conversation_id_hash,,column,0,0,0,primary,primary_column,email_raw_thread_structured,conversation_id_hash,copy,,mapped
+email_thread,email_thread_raw_context,project_key,,column,0,0,0,primary,primary_column,email_raw_thread_structured,project_key,copy,,mapped
+email_thread,email_thread_raw_context,message_count,,column,0,0,0,primary,primary_column,email_raw_thread_structured,message_count,copy,,mapped
+email_thread,email_thread_raw_context,participant_count,,column,0,0,0,primary,primary_column,email_raw_thread_structured,participant_count,copy,,mapped
+email_thread,email_thread_raw_context,thread_subject,,column,0,0,0,primary,primary_column,email_raw_thread_structured,thread_subject,copy,,mapped
+email_thread,email_thread_raw_context,model_ready,,column,0,0,0,primary,primary_column,email_raw_thread_structured,model_ready,copy,,mapped
+email_thread,email_thread_raw_context,created_utc,,column,0,0,0,primary,excluded_non_business,,,excluded,system row-create timestamp,excluded
+email_thread,email_thread_raw_context,updated_utc,,column,0,0,0,primary,excluded_non_business,,,excluded,system row-update timestamp,excluded
+email_thread,email_thread_raw_context,source_quality,,column,0,0,0,primary,excluded_non_business,,,excluded,provenance: projected as its own column,excluded
+email_thread,email_thread_raw_context,raw_capture_run_id,,column,0,0,0,primary,excluded_non_business,,,excluded,provenance: projected as its own column,excluded
+email_thread,email_thread_raw_context,payload_hash,,column,0,0,0,primary,excluded_non_business,,,excluded,provenance: projected as its own column,excluded
+email_thread,email_thread_raw_context,raw_content_schema_version,,column,0,0,0,primary,excluded_non_business,,,excluded,provenance schema marker,excluded
+email_thread,email_thread_raw_context,messages_json[].body_html,string,array_child,0,0,0,nested,child_table_column,email_raw_thread_messages_structured,body_html_available,extract_child_array,,mapped
+email_thread,email_thread_raw_context,messages_json[].body_text,null,array_child,0,0,0,nested,child_table_column,email_raw_thread_messages_structured,body_text_available,extract_child_array,,mapped
+email_thread,email_thread_raw_context,messages_json[].from_address,string,array_child,0,0,0,nested,child_table_column,email_raw_thread_messages_structured,from_address,extract_child_array,,mapped
+email_thread,email_thread_raw_context,messages_json[].from_name,string,array_child,0,0,0,nested,child_table_column,email_raw_thread_messages_structured,from_name,extract_child_array,,mapped
+email_thread,email_thread_raw_context,messages_json[].received_at,string,array_child,0,0,0,nested,child_table_column,email_raw_thread_messages_structured,message_received_at,extract_child_array,,mapped
+email_thread,email_thread_raw_context,messages_json[].subject,string,array_child,0,0,0,nested,child_table_column,email_raw_thread_messages_structured,subject,extract_child_array,,mapped
+email_thread,email_thread_raw_context,source_refs_json,,json_column,0,0,0,nested,lossless_sidecar_json,email_raw_thread_structured,source_refs_sidecar_json,lossless_sidecar,lossless source-ref array (scalar array preserved verbatim),mapped
+calendar_event,calendar_event_raw_content,event_index_id,,column,0,0,0,primary,primary_column,calendar_raw_event_structured,event_index_id,copy,,mapped
+calendar_event,calendar_event_raw_content,graph_event_id_hash,,column,0,0,0,primary,primary_column,calendar_raw_event_structured,graph_event_id_hash,copy,,mapped
+calendar_event,calendar_event_raw_content,source_ref_hash,,column,0,0,0,primary,primary_column,calendar_raw_event_structured,source_ref_hash,copy,,mapped
+calendar_event,calendar_event_raw_content,project_key,,column,0,0,0,primary,primary_column,calendar_raw_event_structured,project_key,copy,,mapped
+calendar_event,calendar_event_raw_content,subject,,column,0,0,0,primary,primary_column,calendar_raw_event_structured,subject,copy,,mapped
+calendar_event,calendar_event_raw_content,body_preview,,column,0,0,0,primary,primary_column,calendar_raw_event_structured,body_preview_available,copy,,mapped
+calendar_event,calendar_event_raw_content,body_text,,column,0,0,0,primary,primary_column,calendar_raw_event_structured,body_text_available,copy,,mapped
+calendar_event,calendar_event_raw_content,body_html,,column,0,0,0,primary,primary_column,calendar_raw_event_structured,body_html_available,copy,,mapped
+calendar_event,calendar_event_raw_content,location_display,,column,0,0,0,primary,primary_column,calendar_raw_event_structured,location_display,copy,,mapped
+calendar_event,calendar_event_raw_content,organizer_name,,column,0,0,0,primary,primary_column,calendar_raw_event_structured,organizer_name,copy,,mapped
+calendar_event,calendar_event_raw_content,organizer_email,,column,0,0,0,primary,primary_column,calendar_raw_event_structured,organizer_email,copy,,mapped
+calendar_event,calendar_event_raw_content,online_meeting_provider,,column,0,0,0,primary,primary_column,calendar_raw_event_structured,online_meeting_provider,copy,,mapped
+calendar_event,calendar_event_raw_content,join_url,,column,0,0,0,primary,excluded_policy_blocked,,,excluded,"join URL retained only in the raw table under join_url_policy=local_db_only; the structured row carries a has_join_url flag, never the URL value",excluded
+calendar_event,calendar_event_raw_content,start_datetime_utc,,column,0,0,0,primary,primary_column,calendar_raw_event_structured,start_datetime_utc,copy,,mapped
+calendar_event,calendar_event_raw_content,end_datetime_utc,,column,0,0,0,primary,primary_column,calendar_raw_event_structured,end_datetime_utc,copy,,mapped
+calendar_event,calendar_event_raw_content,created_utc,,column,0,0,0,primary,excluded_non_business,,,excluded,system row-create timestamp,excluded
+calendar_event,calendar_event_raw_content,updated_utc,,column,0,0,0,primary,excluded_non_business,,,excluded,system row-update timestamp,excluded
+calendar_event,calendar_event_raw_content,source_quality,,column,0,0,0,primary,excluded_non_business,,,excluded,provenance: projected as its own column,excluded
+calendar_event,calendar_event_raw_content,raw_capture_run_id,,column,0,0,0,primary,excluded_non_business,,,excluded,provenance: projected as its own column,excluded
+calendar_event,calendar_event_raw_content,source_record_ref,,column,0,0,0,primary,excluded_non_business,,,excluded,provenance linkage column,excluded
+calendar_event,calendar_event_raw_content,source_record_id,,column,0,0,0,primary,excluded_non_business,,,excluded,provenance linkage column,excluded
+calendar_event,calendar_event_raw_content,source_updated_at_utc,,column,0,0,0,primary,excluded_non_business,,,excluded,provenance: projected as its own column,excluded
+calendar_event,calendar_event_raw_content,payload_hash,,column,0,0,0,primary,excluded_non_business,,,excluded,provenance: projected as its own column,excluded
+calendar_event,calendar_event_raw_content,raw_content_schema_version,,column,0,0,0,primary,excluded_non_business,,,excluded,provenance schema marker,excluded
+calendar_event,calendar_event_raw_content,join_url_policy,,column,0,0,0,primary,excluded_non_business,,,excluded,system policy marker column,excluded
+calendar_event,calendar_event_raw_content,attendees_json[].address,string,array_child,0,0,0,nested,child_table_column,calendar_raw_event_attendees_structured,address,extract_child_array,,mapped
+calendar_event,calendar_event_raw_content,attendees_json[].name,string,array_child,0,0,0,nested,child_table_column,calendar_raw_event_attendees_structured,name,extract_child_array,,mapped
+calendar_event,calendar_event_raw_content,attendees_json[].status,string,array_child,0,0,0,nested,child_table_column,calendar_raw_event_attendees_structured,response_status,extract_child_array,,mapped
+calendar_event,calendar_event_raw_content,attendees_json[].type,string,array_child,0,0,0,nested,child_table_column,calendar_raw_event_attendees_structured,attendee_type,extract_child_array,,mapped
+calendar_event,calendar_event_raw_content,raw_sidecar_json.locations[].address,object,array_child,0,0,0,nested,child_table_column,calendar_raw_event_locations_structured,payload_sidecar_json,extract_nested_array,,mapped
+calendar_event,calendar_event_raw_content,raw_sidecar_json.locations[].address.city,string,array_child,0,0,0,nested,child_table_column,calendar_raw_event_locations_structured,address_city,extract_nested_array,,mapped
+calendar_event,calendar_event_raw_content,raw_sidecar_json.locations[].address.countryOrRegion,string,array_child,0,0,0,nested,child_table_column,calendar_raw_event_locations_structured,address_country_or_region,extract_nested_array,,mapped
+calendar_event,calendar_event_raw_content,raw_sidecar_json.locations[].address.postalCode,string,array_child,0,0,0,nested,child_table_column,calendar_raw_event_locations_structured,address_postal_code,extract_nested_array,,mapped
+calendar_event,calendar_event_raw_content,raw_sidecar_json.locations[].address.state,string,array_child,0,0,0,nested,child_table_column,calendar_raw_event_locations_structured,address_state,extract_nested_array,,mapped
+calendar_event,calendar_event_raw_content,raw_sidecar_json.locations[].address.street,string,array_child,0,0,0,nested,child_table_column,calendar_raw_event_locations_structured,address_street,extract_nested_array,,mapped
+calendar_event,calendar_event_raw_content,raw_sidecar_json.locations[].coordinates,object,array_child,0,0,0,nested,child_table_column,calendar_raw_event_locations_structured,payload_sidecar_json,extract_nested_array,,mapped
+calendar_event,calendar_event_raw_content,raw_sidecar_json.locations[].coordinates.latitude,number,array_child,0,0,0,nested,child_table_column,calendar_raw_event_locations_structured,coordinates_latitude,extract_nested_array,,mapped
+calendar_event,calendar_event_raw_content,raw_sidecar_json.locations[].coordinates.longitude,number,array_child,0,0,0,nested,child_table_column,calendar_raw_event_locations_structured,coordinates_longitude,extract_nested_array,,mapped
+calendar_event,calendar_event_raw_content,raw_sidecar_json.locations[].displayName,string,array_child,0,0,0,nested,child_table_column,calendar_raw_event_locations_structured,display_name,extract_nested_array,,mapped
+calendar_event,calendar_event_raw_content,raw_sidecar_json.locations[].locationType,string,array_child,0,0,0,nested,child_table_column,calendar_raw_event_locations_structured,location_type,extract_nested_array,,mapped
+calendar_event,calendar_event_raw_content,raw_sidecar_json.locations[].locationUri,string,array_child,0,0,0,nested,child_table_column,calendar_raw_event_locations_structured,location_uri,extract_nested_array,,mapped
+calendar_event,calendar_event_raw_content,raw_sidecar_json.locations[].uniqueId,string,array_child,0,0,0,nested,child_table_column,calendar_raw_event_locations_structured,payload_sidecar_json,extract_nested_array,,mapped
+calendar_event,calendar_event_raw_content,raw_sidecar_json.locations[].uniqueIdType,string,array_child,0,0,0,nested,child_table_column,calendar_raw_event_locations_structured,payload_sidecar_json,extract_nested_array,,mapped
