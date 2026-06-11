@@ -39,6 +39,9 @@ from hb_assistant.construction.second_brain.daily_brief.packet import (
 from hb_assistant.construction.second_brain.daily_brief.rendered_quality import (
     build_daily_brief_v2_quality_proof,
 )
+from hb_assistant.construction.second_brain.local_ai.projection_activation import (
+    run_email_calendar_projection_stage,
+)
 from hb_assistant.construction.second_brain.mcp.proof import (
     build_no_mcp_writeback_proof,
     build_no_raw_mcp_access_proof,
@@ -263,6 +266,7 @@ class SourceRefreshOrchestrator:
             "procore_sync_summary": {"status": "skipped", "reason": "not_run"},
             "procore_projection_summary": {"status": "skipped", "reason": "not_run"},
             "graph_sync_summary": {"status": "skipped", "reason": "not_run"},
+            "email_calendar_projection_summary": {"status": "skipped", "reason": "not_run"},
             "sqlite_upsert_summary": {
                 "procore": _zero_counts(),
                 "graph": _zero_counts(),
@@ -303,8 +307,18 @@ class SourceRefreshOrchestrator:
                     "graph", lambda: self._graph_stage(options)
                 )
                 summary["graph_auth_status"] = summary["graph_sync_summary"].get("auth_status")
+                summary["email_calendar_projection_summary"] = self._stage(
+                    "email_calendar_projection",
+                    lambda: self._email_calendar_projection_stage(
+                        options, summary["graph_sync_summary"]
+                    ),
+                )
             else:
                 summary["graph_sync_summary"] = {"status": "skipped", "reason": "procore_only"}
+                summary["email_calendar_projection_summary"] = {
+                    "status": "skipped",
+                    "reason": "procore_only",
+                }
 
             self._aggregate_upserts(summary)
 
@@ -1163,7 +1177,9 @@ class SourceRefreshOrchestrator:
             else:
                 reason, overall = "confirm_required_for_live_read", "partial_local_only"
             gated = {"status": "skipped", "reason": reason}
+            families["email_raw_content"] = dict(gated)
             families["calendar_event_index"] = dict(gated)
+            families["calendar_raw_content"] = dict(gated)
             families["files"] = dict(gated)
         else:
             info = self._graph_status()
@@ -1171,20 +1187,38 @@ class SourceRefreshOrchestrator:
             token_ready = token_type != "none"
             if not token_ready:
                 blocked = {"status": "blocked_auth_not_ready", "reason": "no_delegated_token"}
+                families["email_raw_content"] = dict(blocked)
                 families["calendar_event_index"] = dict(blocked)
+                families["calendar_raw_content"] = dict(blocked)
                 families["files"] = dict(blocked)
                 self._acc.degraded = True
                 overall = "blocked_auth_not_ready"
             else:
+                families["email_raw_content"] = self._stage(
+                    "graph.email_raw_content",
+                    lambda: self._graph_email_raw(dry_run),
+                )
                 families["calendar_event_index"] = self._stage(
                     "graph.calendar_event_index",
                     lambda: self._graph_calendar(dry_run),
+                )
+                families["calendar_raw_content"] = self._calendar_raw_family(
+                    families["calendar_event_index"]
                 )
                 families["files"] = self._stage(
                     "graph.files",
                     lambda: self._graph_files(dry_run),
                 )
-                overall = "ok"
+                bad = [
+                    name
+                    for name, fam in families.items()
+                    if fam.get("status") not in ("ok", "skipped")
+                ]
+                if bad:
+                    self._acc.degraded = True
+                    overall = "degraded"
+                else:
+                    overall = "ok"
 
         return {
             "status": overall,
@@ -1192,6 +1226,18 @@ class SourceRefreshOrchestrator:
             "token_ready": token_ready,
             "families": families,
             "counts": self._graph_counts(families),
+            "tables": self._email_calendar_raw_table_counts(),
+            "freshness": self._email_calendar_raw_freshness(),
+            "guardrails": {
+                "read_only_graph_clients": True,
+                "no_graph_send": True,
+                "no_graph_draft": True,
+                "no_graph_update": True,
+                "no_graph_delete": True,
+                "no_calendar_mutation": True,
+                "external_writeback_performed": 0,
+                "emits_values": False,
+            },
         }
 
     def _graph_status(self) -> dict[str, Any]:
@@ -1228,6 +1274,44 @@ class SourceRefreshOrchestrator:
             "summarized": int(data.get("summarized", 0) or 0),
             "considered": int(data.get("considered", 0) or 0),
             "persisted": bool(data.get("persisted", False)),
+        }
+
+    def _graph_email_raw(self, dry_run: bool) -> dict[str, Any]:
+        from hb_assistant.construction.email import EmailMessageIndexer
+        from hb_assistant.construction.store.repositories import ConstructionStore
+        from hb_assistant.graph.mail_endpoint_guard import load_mail_endpoint_contract
+        from hb_assistant.graph.mail_readonly_client import ReadOnlyMailClient
+
+        client = self._graph_client_scoped(["Mail.Read"])
+        try:
+            reader = ReadOnlyMailClient(client, contract=load_mail_endpoint_contract())
+            indexer = EmailMessageIndexer(reader, ConstructionStore(db_path=self._db_path_str()))
+            result = indexer.index(dry_run=dry_run, include_raw_content=True)
+            data = result.model_dump() if hasattr(result, "model_dump") else dict(result)
+        finally:
+            client.close()
+
+        return {
+            "status": "ok",
+            "mode": "dry_run" if dry_run else "apply",
+            "live_read_performed": True,
+            "raw_body_fetch_performed": bool(
+                (not dry_run) and int(data.get("raw_emails_persisted", 0) or 0) > 0
+            ),
+            "folders_crawled": int(data.get("folders_crawled", 0) or 0),
+            "messages_seen": int(data.get("messages_seen", 0) or 0),
+            "messages_indexed": int(data.get("messages_indexed", 0) or 0),
+            "raw_emails_persisted": int(data.get("raw_emails_persisted", 0) or 0),
+            "raw_threads_built": int(data.get("raw_threads_built", 0) or 0),
+            "persisted": bool(data.get("persisted", False)),
+            "tables_written": (
+                ["email_message_raw_content", "email_thread_raw_context"] if not dry_run else []
+            ),
+            "guardrails": {
+                "read_only_graph_client": True,
+                "external_writeback_performed": 0,
+                "emits_values": False,
+            },
         }
 
     def _graph_client(self) -> Any:
@@ -1273,18 +1357,52 @@ class SourceRefreshOrchestrator:
                         lookahead_days=policy.defaults.lookahead_days,
                         max_items=policy.defaults.max_items_per_run,
                         dry_run=dry_run,
+                        include_raw_content=True,
                     )
                     results.append(res.model_dump())
         finally:
             client.close()
 
         indexed = sum(int(r.get("events_indexed", 0) or 0) for r in results)
+        raw_events = sum(int(r.get("raw_events_persisted", 0) or 0) for r in results)
         return {
             "status": "ok",
             "mode": "dry_run" if dry_run else "apply",
             "live_read_performed": True,
             "sources": len(results),
             "events_indexed": indexed,
+            "raw_events_persisted": raw_events,
+            "full_event_body_fetch_performed": bool((not dry_run) and raw_events > 0),
+            "persisted": bool((not dry_run) and any(r.get("persisted") for r in results)),
+            "tables_written": (
+                ["calendar_event_index", "calendar_event_raw_content"] if not dry_run else []
+            ),
+        }
+
+    @staticmethod
+    def _calendar_raw_family(calendar_summary: dict[str, Any]) -> dict[str, Any]:
+        if calendar_summary.get("status") != "ok":
+            return {
+                "status": calendar_summary.get("status", "skipped"),
+                "reason": calendar_summary.get("reason", "calendar_index_not_ok"),
+            }
+        return {
+            "status": "ok",
+            "mode": calendar_summary.get("mode"),
+            "live_read_performed": bool(calendar_summary.get("live_read_performed")),
+            "raw_events_persisted": int(calendar_summary.get("raw_events_persisted", 0) or 0),
+            "full_event_body_fetch_performed": bool(
+                calendar_summary.get("full_event_body_fetch_performed", False)
+            ),
+            "persisted": bool(calendar_summary.get("persisted", False)),
+            "tables_written": ["calendar_event_raw_content"]
+            if calendar_summary.get("mode") == "apply"
+            else [],
+            "guardrails": {
+                "read_only_graph_client": True,
+                "external_writeback_performed": 0,
+                "emits_values": False,
+            },
         }
 
     def _graph_files(self, dry_run: bool) -> dict[str, Any]:
@@ -1342,6 +1460,8 @@ class SourceRefreshOrchestrator:
                 fam.get("events_indexed", 0)
                 or fam.get("items_indexed", 0)
                 or fam.get("summarized", 0)
+                or fam.get("messages_seen", 0)
+                or fam.get("raw_events_persisted", 0)
                 or 0
             )
             if fam.get("mode") == "apply" and fam.get("persisted"):
@@ -1349,6 +1469,108 @@ class SourceRefreshOrchestrator:
             else:
                 counts["planned"] += planned
         return counts
+
+    def _email_calendar_raw_table_counts(self) -> dict[str, int]:
+        tables = (
+            "email_message_raw_content",
+            "email_thread_raw_context",
+            "calendar_event_raw_content",
+        )
+        return self._table_counts(tables)
+
+    def _email_calendar_structured_table_counts(self) -> dict[str, int]:
+        tables = (
+            "email_raw_message_structured",
+            "email_raw_thread_structured",
+            "calendar_raw_event_structured",
+        )
+        return self._table_counts(tables)
+
+    def _table_counts(self, tables: tuple[str, ...]) -> dict[str, int]:
+        out: dict[str, int] = {}
+        try:
+            conn = sqlite3.connect(self.db_path)
+            try:
+                for table in tables:
+                    try:
+                        out[table] = int(
+                            conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+                        )
+                    except sqlite3.Error:
+                        out[table] = 0
+            finally:
+                conn.close()
+        except sqlite3.Error:
+            return dict.fromkeys(tables, 0)
+        return out
+
+    def _email_calendar_raw_freshness(self) -> dict[str, Any]:
+        specs = {
+            "email_message": ("email_message_raw_content", "source_updated_at_utc"),
+            "email_thread": ("email_thread_raw_context", "source_updated_at_utc"),
+            "calendar_event": ("calendar_event_raw_content", "source_updated_at_utc"),
+        }
+        out: dict[str, Any] = {}
+        try:
+            conn = sqlite3.connect(self.db_path)
+            try:
+                for family, (table, col) in specs.items():
+                    try:
+                        row = conn.execute(f"SELECT MAX({col}) FROM {table}").fetchone()
+                        out[family] = row[0] if row else None
+                    except sqlite3.Error:
+                        out[family] = None
+            finally:
+                conn.close()
+        except sqlite3.Error:
+            return dict.fromkeys(specs, None)
+        return out
+
+    def _email_calendar_projection_stage(
+        self, options: RefreshOptions, graph_summary: dict[str, Any]
+    ) -> dict[str, Any]:
+        if options.procore_only:
+            return {"status": "skipped", "reason": "procore_only"}
+        graph_status = str(graph_summary.get("status", "unknown"))
+        if graph_status in ("blocked_auth_not_ready", "live_disabled", "mock_data_local_only"):
+            return {
+                "status": "skipped",
+                "reason": f"graph_raw_ingestion_{graph_status}",
+                "graph_status": graph_status,
+                "raw_tables": self._email_calendar_raw_table_counts(),
+                "structured_tables": self._email_calendar_structured_table_counts(),
+                "guardrails": {"external_writeback_performed": 0, "emits_values": False},
+            }
+
+        before = self._email_calendar_structured_table_counts()
+        receipt = run_email_calendar_projection_stage(db_path=self.db_path, apply=options.apply)
+        after = self._email_calendar_structured_table_counts()
+        status = str(receipt.get("status", "unknown"))
+        if status in ("degraded", "failed"):
+            self._acc.degraded = True
+            self._acc.failures.append(
+                {
+                    "stage": "email_calendar_projection",
+                    "status": status,
+                    "reason": ",".join(receipt.get("degraded_reason") or [])[:200]
+                    or "email_calendar_projection_not_ok",
+                }
+            )
+        return {
+            "status": status,
+            "mode": receipt.get("mode"),
+            "graph_status": graph_status,
+            "run_id": receipt.get("run_id"),
+            "raw_rows_by_family": receipt.get("raw_rows_by_family", {}),
+            "structured_rows_by_family": receipt.get("structured_rows_by_family", {}),
+            "structured_tables_before": before,
+            "structured_tables_after": after,
+            "families_with_raw_rows": receipt.get("families_with_raw_rows", 0),
+            "projection_coverage_status": receipt.get("projection_coverage_status"),
+            "total_unmapped_business_fields": receipt.get("total_unmapped_business_fields", 0),
+            "degraded_reason": receipt.get("degraded_reason", []),
+            "guardrails": receipt.get("guardrails", {}),
+        }
 
     # -- count aggregation ---------------------------------------------------------
 

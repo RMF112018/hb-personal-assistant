@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
@@ -19,6 +20,11 @@ from typer.testing import CliRunner
 import hb_assistant.source_refresh.orchestrator as orch
 from hb_assistant.cli.main import app
 from hb_assistant.config.path_policy import PathPolicy
+from hb_assistant.construction.calendar.event_indexer import CalendarEventIndexer
+from hb_assistant.construction.email.message_indexer import EmailMessageIndexer
+from hb_assistant.construction.store.repositories import ConstructionStore
+from hb_assistant.graph.calendar_readonly_client import ReadOnlyCalendarClient
+from hb_assistant.graph.mail_readonly_client import ReadOnlyMailClient
 from hb_assistant.store.migrator import LATEST_SCHEMA_VERSION, SQLiteMigrator
 
 pytestmark = pytest.mark.usefixtures("isolated_hb_pa_config")
@@ -301,11 +307,18 @@ def test_graph_auth_failure_blocks_graph(patched: dict[str, Any]) -> None:
     code, payload = _run(["--all", "--apply", "--confirm", "--json"])
     graph = payload["graph_sync_summary"]
     assert graph["status"] == "blocked_auth_not_ready"
+    assert graph["families"]["email_raw_content"]["status"] == "blocked_auth_not_ready"
     assert graph["families"]["calendar_event_index"]["status"] == "blocked_auth_not_ready"
+    assert graph["families"]["calendar_raw_content"]["status"] == "blocked_auth_not_ready"
     assert graph["families"]["files"]["status"] == "blocked_auth_not_ready"
     # live Graph indexers were never invoked
     assert patched["calendar"] == 0 and patched["files"] == 0
     assert payload["status"] == "degraded"
+    assert payload["email_calendar_projection_summary"]["status"] == "skipped"
+    assert (
+        payload["email_calendar_projection_summary"]["reason"]
+        == "graph_raw_ingestion_blocked_auth_not_ready"
+    )
 
 
 def test_partial_failure_degraded(patched: dict[str, Any], monkeypatch: pytest.MonkeyPatch) -> None:
@@ -336,6 +349,29 @@ def test_no_source_writeback(patched: dict[str, Any]) -> None:
         "mcp_exposure_unchanged",
     ):
         assert g[flag] is True
+
+
+def test_graph_readonly_clients_expose_no_writeback_methods() -> None:
+    forbidden = (
+        "send",
+        "draft",
+        "create",
+        "update",
+        "delete",
+        "patch",
+        "post",
+        "move",
+        "copy",
+        "reply",
+        "forward",
+        "accept",
+        "decline",
+        "tentative",
+        "cancel",
+    )
+    for cls in (ReadOnlyMailClient, ReadOnlyCalendarClient):
+        public = {name for name in dir(cls) if not name.startswith("_")}
+        assert not (public & set(forbidden))
 
 
 def test_sqlite_upsert_counts_reported_apply(
@@ -657,12 +693,93 @@ def test_procore_only_skips_graph(patched: dict[str, Any]) -> None:
     _, payload = _run(["--procore-only", "--json"])
     assert payload["graph_sync_summary"]["status"] == "skipped"
     assert payload["graph_sync_summary"]["reason"] == "procore_only"
+    assert payload["email_calendar_projection_summary"]["status"] == "skipped"
+    assert payload["email_calendar_projection_summary"]["reason"] == "procore_only"
 
 
 def test_graph_only_skips_procore(patched: dict[str, Any]) -> None:
     _, payload = _run(["--graph-only", "--json"])
     assert payload["procore_sync_summary"]["status"] == "skipped"
     assert payload["procore_sync_summary"]["reason"] == "graph_only"
+    assert payload["procore_projection_summary"]["status"] == "skipped"
+    assert payload["procore_projection_summary"]["reason"] == "graph_only"
+
+
+def test_graph_raw_ingestion_runs_before_email_calendar_projection(
+    patched: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    order: list[str] = []
+    monkeypatch.setattr(
+        orch.SourceRefreshOrchestrator,
+        "_graph_status",
+        lambda self: {"token_type": "delegated"},
+    )
+
+    def _email_raw(self: Any, dry_run: bool) -> dict[str, Any]:
+        order.append("email_raw")
+        return {
+            "status": "ok",
+            "mode": "apply",
+            "messages_seen": 1,
+            "raw_emails_persisted": 1,
+            "raw_threads_built": 1,
+            "persisted": True,
+        }
+
+    def _calendar(self: Any, dry_run: bool) -> dict[str, Any]:
+        order.append("calendar_raw")
+        return {
+            "status": "ok",
+            "mode": "apply",
+            "events_indexed": 1,
+            "raw_events_persisted": 1,
+            "persisted": True,
+        }
+
+    def _projection(**kw: Any) -> dict[str, Any]:
+        order.append("v49_projection")
+        return {
+            "status": "ok",
+            "mode": "apply",
+            "run_id": "r1",
+            "raw_rows_by_family": {"email_message": 1, "calendar_event": 1},
+            "structured_rows_by_family": {"email_message": 1, "calendar_event": 1},
+            "families_with_raw_rows": 2,
+            "projection_coverage_status": "complete",
+            "total_unmapped_business_fields": 0,
+            "degraded_reason": [],
+            "guardrails": {"external_writeback_performed": 0, "emits_values": False},
+        }
+
+    monkeypatch.setattr(orch.SourceRefreshOrchestrator, "_graph_email_raw", _email_raw)
+    monkeypatch.setattr(orch.SourceRefreshOrchestrator, "_graph_calendar", _calendar)
+    monkeypatch.setattr(orch, "run_email_calendar_projection_stage", _projection)
+
+    _, payload = _run(["--graph-only", "--apply", "--confirm", "--json"])
+    assert payload["graph_sync_summary"]["status"] == "ok"
+    assert payload["email_calendar_projection_summary"]["status"] == "ok"
+    assert order == ["email_raw", "calendar_raw", "v49_projection"]
+
+
+def test_graph_degradation_does_not_mask_successful_procore(
+    patched: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(orch, "live_env_active", lambda: True)
+    monkeypatch.setattr(
+        orch.SourceRefreshOrchestrator,
+        "_graph_status",
+        lambda self: {"token_type": "delegated"},
+    )
+
+    def _graph_boom(self: Any, dry_run: bool) -> dict[str, Any]:
+        raise RuntimeError("graph raw failed")
+
+    monkeypatch.setattr(orch.SourceRefreshOrchestrator, "_graph_email_raw", _graph_boom)
+    _, payload = _run(["--all", "--apply", "--confirm", "--json"])
+    assert payload["status"] == "degraded"
+    assert payload["procore_sync_summary"]["status"] == "ok"
+    assert payload["procore_projection_summary"]["status"] == "ok"
+    assert payload["graph_sync_summary"]["status"] == "degraded"
 
 
 def test_contract_bug_endpoint_degrades_run(
@@ -751,6 +868,141 @@ def test_no_raw_content_in_output(patched: dict[str, Any]) -> None:
     result = runner.invoke(app, CMD + ["--all", "--json"])
     for token in FORBIDDEN_RAW:
         assert token not in result.output
+
+
+def test_graph_and_projection_summaries_are_raw_free(
+    patched: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    secret = "SECRET_BODY_SENTINEL https://teams.microsoft.com/l/meetup user@example.com"
+    monkeypatch.setattr(
+        orch.SourceRefreshOrchestrator,
+        "_graph_status",
+        lambda self: {"token_type": "delegated"},
+    )
+    monkeypatch.setattr(
+        orch.SourceRefreshOrchestrator,
+        "_graph_email_raw",
+        lambda self, dry_run: {
+            "status": "ok",
+            "mode": "apply",
+            "messages_seen": 1,
+            "raw_emails_persisted": 1,
+            "persisted": True,
+        },
+    )
+    monkeypatch.setattr(
+        orch.SourceRefreshOrchestrator,
+        "_graph_calendar",
+        lambda self, dry_run: {
+            "status": "ok",
+            "mode": "apply",
+            "events_indexed": 1,
+            "raw_events_persisted": 1,
+            "persisted": True,
+        },
+    )
+    monkeypatch.setattr(
+        orch,
+        "run_email_calendar_projection_stage",
+        lambda **kw: {
+            "status": "ok",
+            "mode": "apply",
+            "run_id": "r1",
+            "raw_rows_by_family": {"email_message": 1},
+            "structured_rows_by_family": {"email_message": 1},
+            "families_with_raw_rows": 1,
+            "projection_coverage_status": "complete",
+            "total_unmapped_business_fields": 0,
+            "degraded_reason": [],
+            "guardrails": {"external_writeback_performed": 0, "emits_values": False},
+            "not_emitted_raw_value": secret,
+        },
+    )
+    result = runner.invoke(app, CMD + ["--graph-only", "--apply", "--confirm", "--json"])
+    assert secret not in result.output
+    payload = json.loads(result.stdout)
+    blob = json.dumps(
+        [payload["graph_sync_summary"], payload["email_calendar_projection_summary"]]
+    )
+    for token in ("SECRET_BODY_SENTINEL", "teams.microsoft.com", "user@example.com"):
+        assert token not in blob
+
+
+class _DryRunMailClient:
+    def __init__(self) -> None:
+        self.body_fetches = 0
+
+    def get_me(self) -> dict[str, Any]:
+        return {"mail": "owner@example.com"}
+
+    def list_messages(self, **kw: Any) -> list[dict[str, Any]]:
+        return [
+            {
+                "id": "m1",
+                "conversationId": "c1",
+                "subject": "Body fetch dry run",
+                "bodyPreview": "preview",
+                "from": {"emailAddress": {"address": "sender@example.com"}},
+                "receivedDateTime": "2026-06-01T00:00:00Z",
+            }
+        ]
+
+    def get_message_body(self, message_id: str) -> dict[str, Any]:
+        self.body_fetches += 1
+        raise AssertionError("dry-run must not fetch full message bodies")
+
+
+class _DryRunCalendarClient:
+    def __init__(self) -> None:
+        self.event_fetches = 0
+
+    def get_me(self) -> dict[str, Any]:
+        return {"mail": "owner@example.com"}
+
+    def list_calendar_view(self, **kw: Any) -> list[dict[str, Any]]:
+        return [
+            {
+                "id": "e1",
+                "subject": "Full event dry run",
+                "start": {"dateTime": "2026-06-01T10:00:00", "timeZone": "UTC"},
+                "end": {"dateTime": "2026-06-01T10:30:00", "timeZone": "UTC"},
+            }
+        ]
+
+    def get_event(self, event_id: str) -> dict[str, Any]:
+        self.event_fetches += 1
+        raise AssertionError("dry-run must not fetch full calendar events")
+
+
+def test_dry_run_raw_indexers_do_not_fetch_full_bodies(tmp_path: Path) -> None:
+    store = ConstructionStore(db_path=str(tmp_path / "dry.sqlite"))
+    store.upsert_email_source_location(
+        source_id="inbox",
+        mailbox_owner_hash="owner",
+        folder_id="inbox",
+        folder_display_name="Inbox",
+        folder_role="included",
+        include_in_sync=True,
+    )
+    mail = _DryRunMailClient()
+    email_result = EmailMessageIndexer(mail, store).index(
+        dry_run=True, include_raw_content=True
+    )
+    assert email_result.raw_emails_persisted == 0
+    assert mail.body_fetches == 0
+
+    calendar = _DryRunCalendarClient()
+    cal_result = CalendarEventIndexer(calendar, store).index(
+        source_id="primary",
+        dry_run=True,
+        include_raw_content=True,
+        max_items=1,
+    )
+    assert cal_result.raw_events_persisted == 1
+    assert calendar.event_fetches == 0
+    conn = sqlite3.connect(store._db_path)
+    assert conn.execute("SELECT COUNT(*) FROM email_message_raw_content").fetchone()[0] == 0
+    assert conn.execute("SELECT COUNT(*) FROM calendar_event_raw_content").fetchone()[0] == 0
 
 
 def test_redact_json_scrubs_tokens() -> None:

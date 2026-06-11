@@ -782,14 +782,21 @@ def test_install_dry_run_writes_no_os_files() -> None:
     profile = resolve_profile("production")
     for name in ("launchd", "windows", "systemd", "foreground"):
         impl = get_backend(name, profile)  # type: ignore[arg-type]
+        existing_artifact = None
+        if name == "launchd":
+            existing_artifact = Path(impl.plist_path).exists()  # type: ignore[attr-defined]
+        elif name == "windows":
+            existing_artifact = Path(impl.xml_path).exists()  # type: ignore[attr-defined]
+        elif name == "systemd":
+            existing_artifact = Path(impl.timer_path).exists()  # type: ignore[attr-defined]
         res = impl.install(dry_run=True)
         assert res["installed"] is False
         if name == "launchd":
-            assert not Path(impl.plist_path).exists()  # type: ignore[attr-defined]
+            assert Path(impl.plist_path).exists() is existing_artifact  # type: ignore[attr-defined]
         elif name == "windows":
-            assert not Path(impl.xml_path).exists()  # type: ignore[attr-defined]
+            assert Path(impl.xml_path).exists() is existing_artifact  # type: ignore[attr-defined]
         elif name == "systemd":
-            assert not Path(impl.timer_path).exists()  # type: ignore[attr-defined]
+            assert Path(impl.timer_path).exists() is existing_artifact  # type: ignore[attr-defined]
 
 
 def test_launchd_plist_valid() -> None:
@@ -917,6 +924,23 @@ def test_enable_procore_live_sets_env_only_for_run(monkeypatch: pytest.MonkeyPat
     assert receipt.mock_data is False
     assert receipt.live_reads_enabled is True
     assert seen["options"].procore_project_scope == "all_mapped"
+
+
+def test_scheduled_production_live_refresh_includes_procore_and_graph(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    profile = _prod_profile_with(
+        monkeypatch,
+        enable_live_reads=True,
+        enable_procore_live_reads=True,
+        enable_graph_live_reads=True,
+    )
+    opts = DailySourceRefreshJob(profile).build_options(date(2026, 6, 7))
+    assert opts.live_reads_enabled is True
+    assert opts.allow_procore_live is True
+    assert opts.allow_graph_live is True
+    assert opts.procore_only is False
+    assert opts.graph_only is False
 
 
 def test_receipts_distinguish_local_vs_live(monkeypatch: pytest.MonkeyPatch) -> None:

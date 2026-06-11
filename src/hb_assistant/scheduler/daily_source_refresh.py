@@ -138,6 +138,9 @@ class DailySourceRefreshJob:
             "procore": _stage_status(summary.get("procore_sync_summary")),
             "procore_projection": _stage_status(summary.get("procore_projection_summary")),
             "graph": _stage_status(summary.get("graph_sync_summary")),
+            "email_calendar_projection": _stage_status(
+                summary.get("email_calendar_projection_summary")
+            ),
             "rebuild": _stage_status(summary.get("retrieval_rebuild_summary")),
         }
 
@@ -161,9 +164,18 @@ class DailySourceRefreshJob:
             failures=failures,
             stages=stages,
             procore_projection_summary=summary.get("procore_projection_summary", {}),
+            graph_sync_summary=summary.get("graph_sync_summary", {}),
+            email_calendar_projection_summary=summary.get(
+                "email_calendar_projection_summary", {}
+            ),
             procore_auth_status=(
                 str(summary.get("procore_auth_status"))
                 if summary.get("procore_auth_status") is not None
+                else None
+            ),
+            graph_auth_status=(
+                str(summary.get("graph_auth_status"))
+                if summary.get("graph_auth_status") is not None
                 else None
             ),
             next_operator_action=summary.get("next_operator_action"),

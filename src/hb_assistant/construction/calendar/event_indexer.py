@@ -336,7 +336,7 @@ class CalendarEventIndexer:
                 # (idempotent). Count for evidence on both dry and apply; only write on apply.
                 if effective_raw and ev.get("id"):
                     try:
-                        full_ev = self._calendar.get_event(ev["id"])
+                        full_ev = self._calendar.get_event(ev["id"]) if not dry_run else ev
                     except Exception:
                         full_ev = ev
                     rp = self._build_raw_calendar_payload(full_ev or ev)
