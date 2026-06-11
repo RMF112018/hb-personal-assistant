@@ -246,11 +246,38 @@ def find_email_calendar_relationships(
     """Score recent thread×event pairs (bounded scan); return combinable candidates, best first."""
     threads = store.list_email_thread_raw_context(project_key=project_key, limit=scan_threads)
     events = store.list_calendar_event_raw_content(project_key=project_key, limit=scan_events)
+    # V49 Pass 2: source-quality of the final structured projections (prefer structured-backed
+    # pairs; tag each relationship so a lower-quality pair never outranks a structured-full one).
+    try:
+        th_sq = {
+            t.get("thread_ref"): t.get("source_quality")
+            for t in store.list_thread_structured(project_key=project_key, limit=scan_threads)
+        }
+        ev_sq = {
+            e.get("event_index_id"): e.get("source_quality")
+            for e in store.list_event_structured(project_key=project_key, limit=scan_events)
+        }
+    except Exception:
+        th_sq, ev_sq = {}, {}
+    from hb_assistant.construction.email_calendar.source_quality import rank as _sq_rank
+
     out: list[dict[str, Any]] = []
     for th in threads:
         for ev in events:
             rel = score_email_calendar_relationship(th, ev)
             if rel["confidence"] >= min_confidence:
+                tsq = th_sq.get(th.get("thread_ref"))
+                esq = ev_sq.get(ev.get("event_index_id"))
+                rel["thread_source_quality"] = tsq
+                rel["event_source_quality"] = esq
+                rel["structured_backed"] = tsq is not None and esq is not None
+                rel["_structured_rank"] = min(_sq_rank(tsq), _sq_rank(esq))
                 out.append(rel)
-    out.sort(key=lambda r: r["confidence"], reverse=True)
+    # structured-backed + higher source-quality first, then confidence
+    out.sort(
+        key=lambda r: (r.get("structured_backed", False), r.get("_structured_rank", 0), r["confidence"]),
+        reverse=True,
+    )
+    for r in out:
+        r.pop("_structured_rank", None)
     return out[: max(0, limit)]

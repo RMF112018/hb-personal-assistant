@@ -28,6 +28,7 @@ import json
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
+from hb_assistant.construction.email_calendar.read_models import select_event_context
 from hb_assistant.construction.relationships.contracts import (
     load_phase_07d_contract,
     load_phase_07d_seed,
@@ -305,31 +306,38 @@ class MeetingPrepBriefBuilder:
             "unmatched_upcoming_meetings": unmatched,
             "matched_event_refs": matched_ids[:25],
         }
-        # Phase 10A: if raw calendar rows exist for these events (policy + ingest with flag),
-        # surface actual subject/body/attendees/join etc. in the packet for meeting prep consumers.
-        # Falls back silently to metadata-only if no raw row (prior behavior).
+        # V49 Pass 2: source agenda/attendee detail from the final structured event projection
+        # (preferred over raw landing / legacy metadata via the read model). The persisted brief
+        # section stays redacted-safe: it carries availability FLAGS + attendee roles + a
+        # source-quality tag, and NEVER the agenda body or the online-meeting join URL (those
+        # remain local-private in the raw table / explicit model packets).
         if matched_ids:
             details: list[dict[str, Any]] = []
             for eid in matched_ids[:10]:
-                raw = self._store.get_calendar_event_raw_content(event_index_id=eid)
-                if raw:
-                    details.append(
-                        {
-                            "event_index_id": eid,
-                            "subject": raw.get("subject"),
-                            "body_text": raw.get("body_text"),
-                            "body_html": raw.get("body_html"),
-                            "location": raw.get("location_display"),
-                            "organizer": {
-                                "name": raw.get("organizer_name"),
-                                "email": raw.get("organizer_email"),
-                            },
-                            "attendees": raw.get("attendees"),
-                            "join_url": raw.get("join_url"),
-                            "start": raw.get("start_datetime_utc"),
-                            "end": raw.get("end_datetime_utc"),
-                        }
-                    )
+                ctx = select_event_context(self._store, event_index_id=eid)
+                if not ctx.available:
+                    continue
+                details.append(
+                    {
+                        "event_index_id": eid,
+                        "selected_source": ctx.selected_source,
+                        "source_quality": ctx.source_quality,
+                        "subject": ctx.subject,
+                        "location": ctx.location_display,
+                        "organizer": {
+                            "name": ctx.organizer_name,
+                            "email": ctx.organizer_email,
+                        },
+                        "attendees": ctx.attendees,
+                        "attendee_count": ctx.attendee_count,
+                        "has_agenda_body": ctx.has_body_text,
+                        "agenda_body_chars": ctx.body_text_chars,
+                        "has_join_url": ctx.has_join_url,
+                        "online_meeting_provider": ctx.online_meeting_provider,
+                        "start": ctx.start_datetime_utc,
+                        "end": ctx.end_datetime_utc,
+                    }
+                )
             if details:
                 payload["matched_event_details"] = details
         if matched_ids:

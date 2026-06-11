@@ -8,12 +8,22 @@ only in the designated local-private raw tables.
 
 from __future__ import annotations
 
-from . import projection_engine, projection_matrix, projection_registry, schema, source_quality
+from . import (
+    projection_engine,
+    projection_matrix,
+    projection_registry,
+    read_models,
+    redaction,
+    schema,
+    source_quality,
+)
 
 __all__ = [
     "projection_engine",
     "projection_matrix",
     "projection_registry",
+    "read_models",
+    "redaction",
     "schema",
     "source_quality",
 ]

@@ -297,11 +297,19 @@ def build_raw_email_context_packet(
     token_est = _estimate_tokens(content)
     packet_id = f"raw-email:{uuid.uuid4()}"
 
+    # V49 Pass 2: record which structured-projection source-quality tiers back this context, so
+    # the model packet is provably sourced through the final structured projection layer.
+    from hb_assistant.construction.email_calendar.read_models import consumer_source_summary
+
+    sq_dist = consumer_source_summary(s, project_key=project_key).get("email_thread", {})
+
     pkt = {
         "packet_id": packet_id,
         "packet_type": "raw_email_context",
         "project_key": project_key,
         "raw_content_included": 1,
+        "structured_projection_preferred": True,
+        "source_quality_distribution": sq_dist,
         "source_refs": source_refs[: max_threads * max_msgs + 10],
         "content": content,
         "bounds": {  # type: ignore[dict-item]
@@ -445,11 +453,18 @@ def build_raw_calendar_context_packet(
     token_est = _estimate_tokens(content)
     packet_id = f"raw-calendar:{uuid.uuid4()}"
 
+    # V49 Pass 2: record the structured-projection source-quality tiers backing this context.
+    from hb_assistant.construction.email_calendar.read_models import consumer_source_summary
+
+    sq_dist = consumer_source_summary(s, project_key=project_key).get("calendar_event", {})
+
     pkt = {
         "packet_id": packet_id,
         "packet_type": "raw_calendar_context",
         "project_key": project_key,
         "raw_content_included": 1,
+        "structured_projection_preferred": True,
+        "source_quality_distribution": sq_dist,
         "source_refs": source_refs,
         "content": content,
         "bounds": {  # type: ignore[dict-item]

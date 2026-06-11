@@ -21,11 +21,25 @@ from __future__ import annotations
 
 from typing import Any, Literal, Optional
 
+from hb_assistant.construction.email_calendar.read_models import select_email_message_context
 from hb_assistant.construction.second_brain.local_ai import load_raw_content_policy
 from hb_assistant.construction.store import ConstructionStore
 from hb_assistant.normalize.redaction import hash_value
 
 RawMode = Literal["include", "metadata_only"]
+
+
+def _mark_email_selection(message: dict[str, Any], store: ConstructionStore, mhash: str) -> None:
+    """Attach the precedence-aware selected source-tier + source_quality (V49 read model).
+
+    This makes the structured projection layer the preferred source and exposes which tier
+    was selected (structured_full/preview/legacy > raw_landing > legacy_metadata > none) so
+    a consumer can never silently prefer a stale/redacted legacy row when a structured row
+    exists. Marker only — no raw body is attached here.
+    """
+    ctx = select_email_message_context(store, message_id_hash=mhash)
+    message["_selected_source"] = ctx.selected_source
+    message["source_quality"] = ctx.source_quality
 
 
 def _load_policy_endpoints():
@@ -199,6 +213,7 @@ def list_email_messages(
             mhash = hash_value(mid)
         except Exception:
             continue
+        _mark_email_selection(m, s, mhash)
         raw = s.get_email_message_raw_content(message_id_hash=mhash)
         if raw:
             m["raw_content"] = {
@@ -245,6 +260,7 @@ def get_email_message(
         return meta
     try:
         mhash = hash_value(message_id)
+        _mark_email_selection(meta, s, mhash)
         raw = s.get_email_message_raw_content(message_id_hash=mhash)
         if raw:
             meta["raw_content"] = {

@@ -14,6 +14,7 @@ from __future__ import annotations
 import contextlib
 import hashlib
 import json
+import sqlite3
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Callable, Optional
@@ -8143,6 +8144,141 @@ class ConstructionStore:
             except Exception:
                 rec[jk.replace("_json", "")] = []
         return rec
+
+    # -------------------------------------------------------------------------
+    # --- V49 structured projection read accessors (Pass 2) ---
+    # Generic PRAGMA-driven SELECT * helpers + typed getters/listers for the
+    # final structured projection tables. Consumers reach these via the
+    # email_calendar.read_models precedence-aware selectors, never raw JSON.
+    # -------------------------------------------------------------------------
+
+    def _structured_select_one(
+        self, table: str, where_col: str, where_val: Any
+    ) -> Optional[dict[str, Any]]:
+        if not where_val:
+            return None
+        conn = get_connection(self._db_path)
+        try:
+            cols = [r[1] for r in conn.execute(f"PRAGMA table_info({table})")]
+            if not cols:
+                return None
+            row = conn.execute(
+                f"SELECT {', '.join(cols)} FROM {table} WHERE {where_col} = ? LIMIT 1",
+                (where_val,),
+            ).fetchone()
+        except sqlite3.Error:
+            return None
+        return dict(zip(cols, row, strict=True)) if row else None
+
+    def _structured_select_all(
+        self,
+        table: str,
+        *,
+        where_col: Optional[str] = None,
+        where_val: Any = None,
+        limit: int = 1000,
+        order_by: Optional[str] = None,
+    ) -> list[dict[str, Any]]:
+        conn = get_connection(self._db_path)
+        try:
+            cols = [r[1] for r in conn.execute(f"PRAGMA table_info({table})")]
+            if not cols:
+                return []
+            sql = f"SELECT {', '.join(cols)} FROM {table}"
+            params: list[Any] = []
+            if where_col is not None and where_val is not None:
+                sql += f" WHERE {where_col} = ?"
+                params.append(where_val)
+            if order_by:
+                sql += f" ORDER BY {order_by}"
+            sql += " LIMIT ?"
+            params.append(limit)
+            rows = conn.execute(sql, tuple(params)).fetchall()
+        except sqlite3.Error:
+            return []
+        return [dict(zip(cols, r, strict=True)) for r in rows]
+
+    def get_email_message_structured(
+        self, *, message_id_hash: Optional[str] = None
+    ) -> Optional[dict[str, Any]]:
+        return self._structured_select_one(
+            "email_raw_message_structured", "message_id_hash", message_id_hash
+        )
+
+    def list_email_message_structured(
+        self, *, project_key: Optional[str] = None, limit: int = 1000
+    ) -> list[dict[str, Any]]:
+        return self._structured_select_all(
+            "email_raw_message_structured",
+            where_col="project_key" if project_key else None,
+            where_val=project_key,
+            limit=limit,
+            order_by="received_at_utc DESC",
+        )
+
+    def list_email_message_recipients_structured(
+        self, *, parent_projection_id: str
+    ) -> list[dict[str, Any]]:
+        return self._structured_select_all(
+            "email_raw_message_recipients_structured",
+            where_col="parent_projection_id",
+            where_val=parent_projection_id,
+            limit=500,
+            order_by="child_index",
+        )
+
+    def get_thread_structured(
+        self, *, thread_ref: Optional[str] = None
+    ) -> Optional[dict[str, Any]]:
+        return self._structured_select_one(
+            "email_raw_thread_structured", "thread_ref", thread_ref
+        )
+
+    def list_thread_structured(
+        self, *, project_key: Optional[str] = None, limit: int = 1000
+    ) -> list[dict[str, Any]]:
+        return self._structured_select_all(
+            "email_raw_thread_structured",
+            where_col="project_key" if project_key else None,
+            where_val=project_key,
+            limit=limit,
+        )
+
+    def get_event_structured(
+        self,
+        *,
+        event_index_id: Optional[str] = None,
+        graph_event_id_hash: Optional[str] = None,
+    ) -> Optional[dict[str, Any]]:
+        if event_index_id:
+            return self._structured_select_one(
+                "calendar_raw_event_structured", "event_index_id", event_index_id
+            )
+        return self._structured_select_one(
+            "calendar_raw_event_structured", "graph_event_id_hash", graph_event_id_hash
+        )
+
+    def list_event_structured(
+        self, *, project_key: Optional[str] = None, limit: int = 1000
+    ) -> list[dict[str, Any]]:
+        return self._structured_select_all(
+            "calendar_raw_event_structured",
+            where_col="project_key" if project_key else None,
+            where_val=project_key,
+            limit=limit,
+            order_by="start_datetime_utc DESC",
+        )
+
+    def list_event_attendees_structured(
+        self, *, parent_projection_id: str
+    ) -> list[dict[str, Any]]:
+        return self._structured_select_all(
+            "calendar_raw_event_attendees_structured",
+            where_col="parent_projection_id",
+            where_val=parent_projection_id,
+            limit=500,
+            order_by="child_index",
+        )
 
     # -------------------------------------------------------------------------
     # --- Phase 10A Prompt 06 — Raw Model Context Packets (V42 table) ---

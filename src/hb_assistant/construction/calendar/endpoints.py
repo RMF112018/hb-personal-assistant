@@ -20,10 +20,20 @@ from __future__ import annotations
 
 from typing import Any, Literal, Optional
 
+from hb_assistant.construction.email_calendar.read_models import select_event_context
 from hb_assistant.construction.second_brain.local_ai import load_raw_content_policy
 from hb_assistant.construction.store import ConstructionStore
 
 RawMode = Literal["include", "metadata_only"]
+
+
+def _mark_event_selection(event: dict[str, Any], store: ConstructionStore, eid: str) -> None:
+    """Attach the precedence-aware selected source-tier + source_quality (V49 read model) so the
+    structured projection layer is the preferred source and the selected tier is visible. Marker
+    only — no raw body / join URL is attached here."""
+    ctx = select_event_context(store, event_index_id=eid)
+    event["_selected_source"] = ctx.selected_source
+    event["source_quality"] = ctx.source_quality
 
 
 def _load_policy_endpoints():
@@ -124,6 +134,7 @@ def list_calendar_events(
         eid = e.get("event_index_id")
         if not eid:
             continue
+        _mark_event_selection(e, s, eid)
         raw = s.get_calendar_event_raw_content(event_index_id=eid)
         if raw:
             e["raw_content"] = {
@@ -172,6 +183,7 @@ def get_calendar_event(
     meta["_raw_content_included"] = False
     if not effective:
         return meta
+    _mark_event_selection(meta, s, event_index_id)
     raw = s.get_calendar_event_raw_content(event_index_id=event_index_id)
     if raw:
         meta["raw_content"] = {

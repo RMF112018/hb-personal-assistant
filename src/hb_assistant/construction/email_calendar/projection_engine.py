@@ -684,6 +684,48 @@ def coverage(*, db_path: str | Path | None = None) -> dict[str, Any]:
     return matrix.compute_coverage(conn)
 
 
+def status(*, db_path: str | Path | None = None) -> dict[str, Any]:
+    """Raw + structured row counts and source-quality distribution (counts only)."""
+    conn = get_connection(Path(db_path) if db_path is not None else None)
+
+    def _count(table: str) -> int:
+        try:
+            return int(conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0])
+        except sqlite3.Error:
+            return 0
+
+    def _sq(table: str) -> dict[str, int]:
+        try:
+            return {
+                r[0]: r[1]
+                for r in conn.execute(
+                    f"SELECT source_quality, COUNT(*) FROM {table} GROUP BY source_quality"
+                )
+            }
+        except sqlite3.Error:
+            return {}
+
+    families = []
+    for plan in reg.PLANS.values():
+        families.append(
+            {
+                "source_family": plan.family,
+                "raw_table": plan.raw_table,
+                "raw_rows": _count(plan.raw_table),
+                "raw_source_quality": _sq(plan.raw_table),
+                "structured_table": plan.structured_table,
+                "structured_rows": _count(plan.structured_table),
+                "structured_source_quality": _sq(plan.structured_table),
+            }
+        )
+    return {
+        "command": "hb-assistant email-calendar raw status",
+        "ok": True,
+        "families": families,
+        "guardrails": {"live_calls_disabled": True, "writeback": "none", "emits_values": False},
+    }
+
+
 def inventory(*, db_path: str | Path | None = None) -> dict[str, Any]:
     conn = get_connection(Path(db_path) if db_path is not None else None)
     rows = matrix.matrix_rows_for_db(conn)
@@ -704,4 +746,5 @@ __all__ = [
     "coverage",
     "inventory",
     "reprocess",
+    "status",
 ]
