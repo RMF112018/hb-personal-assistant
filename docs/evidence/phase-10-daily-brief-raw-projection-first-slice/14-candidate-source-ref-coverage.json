@@ -1,0 +1,26 @@
+{
+  "overall": {
+    "brief_date": "2026-06-11",
+    "section": null,
+    "total_candidates": 50,
+    "covered_candidates": 50,
+    "coverage": 1.0,
+    "uncovered_candidate_ids": []
+  },
+  "calendar": {
+    "brief_date": "2026-06-11",
+    "section": "calendar",
+    "total_candidates": 25,
+    "covered_candidates": 25,
+    "coverage": 1.0,
+    "uncovered_candidate_ids": []
+  },
+  "procore": {
+    "brief_date": "2026-06-11",
+    "section": "procore",
+    "total_candidates": 25,
+    "covered_candidates": 25,
+    "coverage": 1.0,
+    "uncovered_candidate_ids": []
+  }
+}

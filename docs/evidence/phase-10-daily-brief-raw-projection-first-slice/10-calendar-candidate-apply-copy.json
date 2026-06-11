@@ -1,0 +1,33 @@
+{
+  "summary": {
+    "events_in_window": 59,
+    "events_considered": 50,
+    "skipped_no_source_refs": 0,
+    "skipped_out_of_window": 120,
+    "would_persist": 50,
+    "persisted": 25,
+    "skipped_existing": 0,
+    "projects_assigned": 27,
+    "projects_unassigned": 20,
+    "projects_inferred": 27,
+    "needs_review_count": 20,
+    "category_distribution": {
+      "project": 27,
+      "internal_training": 1,
+      "needs_review": 20,
+      "internal_time_off": 2
+    },
+    "by_calendar_class": {
+      "key_meeting": 21,
+      "fyi": 26,
+      "excluded": 3
+    },
+    "subject_substrate": {
+      "structured": 50,
+      "raw_landing": 0,
+      "none": 0
+    },
+    "unresolved_project_tokens": []
+  },
+  "applied": true
+}

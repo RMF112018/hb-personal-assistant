@@ -8084,6 +8084,67 @@ class ConstructionStore:
             results.append(rec)
         return results
 
+    def list_calendar_structured_subjects(
+        self, *, project_key: Optional[str] = None, limit: int = 100000
+    ) -> list[dict[str, Any]]:
+        """Real subject/location per event from the V49 structured projection (preferred substrate).
+
+        Returns only the safe scalar fields used for deterministic project/category resolution
+        (``event_index_id``, ``subject``, ``location_display``, ``source_quality``) — never body
+        text, join URLs, or attendee arrays. ``calendar_raw_event_structured`` carries its own
+        ``event_index_id`` so no join is needed. Used by calendar-prep to prefer structured rows
+        over the raw landing for resolution; the raw landing remains the fallback when a given
+        event has not yet been projected.
+        """
+        conn = get_connection(self._db_path)
+        clauses: list[str] = ["event_index_id IS NOT NULL"]
+        params: list[Any] = []
+        if project_key is not None:
+            clauses.append("project_key = ?")
+            params.append(project_key)
+        where = f"WHERE {' AND '.join(clauses)}"
+        params.append(limit)
+        try:
+            cur = conn.execute(
+                f"""
+                SELECT event_index_id, subject, location_display, project_key, source_quality
+                FROM calendar_raw_event_structured {where}
+                ORDER BY start_datetime_utc DESC, event_index_id
+                LIMIT ?
+                """,
+                tuple(params),
+            )
+        except sqlite3.Error:
+            return []
+        keys = ("event_index_id", "subject", "location_display", "project_key", "source_quality")
+        return [dict(zip(keys, row, strict=True)) for row in cur.fetchall()]
+
+    def email_followup_readiness_counts(self) -> dict[str, int]:
+        """Raw-free row counts for the email/follow-up readiness data-gap surface.
+
+        Returns ``COUNT(*)`` for the email raw/structured substrate and the downstream follow-up
+        layers. Used to decide whether email raw content is available while the follow-up/task
+        layers are empty (a data gap), without emitting any raw values. Missing tables count as 0.
+        """
+        conn = get_connection(self._db_path)
+
+        def _n(table: str) -> int:
+            try:
+                return int(conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0])
+            except sqlite3.Error:
+                return 0
+
+        return {
+            "email_message_raw_content": _n("email_message_raw_content"),
+            "email_thread_raw_context": _n("email_thread_raw_context"),
+            "email_raw_message_structured": _n("email_raw_message_structured"),
+            "email_raw_thread_structured": _n("email_raw_thread_structured"),
+            "email_followup_enrichments": _n("email_followup_enrichments"),
+            "task_candidates": _n("task_candidates"),
+            "commitment_candidates": _n("commitment_candidates"),
+            "follow_up_watch_items": _n("follow_up_watch_items"),
+        }
+
     def get_calendar_event_raw_content(
         self,
         *,

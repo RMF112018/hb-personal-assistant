@@ -539,13 +539,34 @@ def run_daily_local_agent(
     # coverage, project-like calendar not all unresolved, Procore top rows not aggregate sludge).
     # Otherwise downgrade to "partial" so the last-successful pointer + latest.html are preserved and
     # the status explains usefulness_gate_failed.
+    from .email_followup_readiness import build_email_followup_data_gap
     from .usefulness_gate import evaluate_usefulness_gate
+
+    # First-slice substrate signals: the email/follow-up data-gap readiness + the per-stage
+    # summaries already in the pipeline receipt feed the gate's source-vs-candidate contradiction
+    # checks (apply runs only — a dry-run persists nothing, so passing context would false-fail).
+    email_followup = build_email_followup_data_gap(store)
+    projection_receipt = _stage_detail(pipeline, "email_calendar_projection")
+    calendar_detail = _stage_detail(pipeline, "calendar_prep")
+    procore_detail = _stage_detail(pipeline, "procore_digest")
+
+    stage_context: Optional[dict[str, Any]] = None
+    if not dry_run:
+        stage_context = {
+            "calendar": calendar_detail,
+            "procore": procore_detail,
+            "email_followup": {
+                "source_rows": int(email_followup.get("source_rows") or 0),
+                "status": str(email_followup.get("status") or ""),
+            },
+        }
 
     usefulness = evaluate_usefulness_gate(
         store=store,
         brief_date=brief_date,
         synthesis_present=synthesis_dump is not None,
         synthesis_degraded=synthesis_degraded,
+        stage_context=stage_context,
     )
     # ---- Finalize the run result class (after usefulness gate) ----
     # Only an apply-mode run persists candidates and runs synthesis, so result-class refinement applies
@@ -709,6 +730,14 @@ def run_daily_local_agent(
         model_enriched=mei_status,
     )
 
+    first_slice = _build_first_slice_block(
+        projection_receipt=projection_receipt,
+        calendar_detail=calendar_detail,
+        procore_detail=procore_detail,
+        email_followup=email_followup,
+        usefulness=usefulness,
+    )
+
     status_path = _write_status(
         status_d,
         now_utc,
@@ -728,6 +757,7 @@ def run_daily_local_agent(
         deterministic_fallback=deterministic_fallback,
         synthesis_status=synthesis_status,
         operator_usable=operator_usable,
+        first_slice=first_slice,
     )
     outputs["status_path"] = _redact_path(status_path)
 
@@ -757,6 +787,7 @@ def run_daily_local_agent(
         "email_raw_enrichment_stage": email_enrichment_receipt,
         "run_summary": run_summary,
         "usefulness_gate": usefulness.to_dict(),
+        "first_slice": first_slice,
         "egress_scan": {"clean": egress_clean, "matched_labels": egress_matched},
         "failure_reason": failure_reason,
         "guardrails": _guardrails(include_raw, dry_run, generate_browser),
@@ -783,6 +814,105 @@ def _guardrails(include_raw: bool, dry_run: bool, generate_browser: bool) -> dic
 def _redacted_stages(pipeline: dict[str, Any]) -> list[dict[str, Any]]:
     """Stage receipts with counts only — drop the verbose detail block (safe for status file)."""
     return [{k: v for k, v in s.items() if k != "detail"} for s in pipeline.get("stages", [])]
+
+
+def _stage_detail(pipeline: dict[str, Any], stage_name: str) -> dict[str, Any]:
+    """The ``detail`` (summary) block for a named pipeline stage, or ``{}`` if absent."""
+    for s in pipeline.get("stages", []):
+        if s.get("stage") == stage_name:
+            return s.get("detail") or {}
+    return {}
+
+
+def _build_first_slice_block(
+    *,
+    projection_receipt: dict[str, Any],
+    calendar_detail: dict[str, Any],
+    procore_detail: dict[str, Any],
+    email_followup: dict[str, Any],
+    usefulness: Any,
+) -> dict[str, Any]:
+    """Operator-facing first-slice status block (counts / statuses / reason codes only, raw-free).
+
+    Surfaces projection, candidate, source-ref-coverage, project-key-coverage, calendar, Procore,
+    email/follow-up, data-gap, and usefulness-verdict signals so the operator can tell whether the
+    brief is useful, degraded, or blocked — and why.
+    """
+    m = getattr(usefulness, "metrics", {}) or {}
+    sec_counts = m.get("section_counts") or {}
+    cal_assigned = int(calendar_detail.get("projects_assigned") or 0)
+    cal_unassigned = int(calendar_detail.get("projects_unassigned") or 0)
+    cal_total_proj_like = cal_assigned + cal_unassigned
+    project_key_coverage = round(cal_assigned / cal_total_proj_like, 4) if cal_total_proj_like else None
+
+    data_gaps: list[dict[str, Any]] = []
+    card = email_followup.get("data_gap_card")
+    if card:
+        data_gaps.append(card)
+    if int(calendar_detail.get("needs_review_count") or 0) > 0:
+        data_gaps.append(
+            {
+                "section": "calendar",
+                "status": "needs_project_review",
+                "reason": f"{calendar_detail['needs_review_count']} calendar item(s) need project review",
+            }
+        )
+    if int(procore_detail.get("overdue_total") or 0) == 0 and int(
+        procore_detail.get("total_open_signals") or 0
+    ) > 0:
+        data_gaps.append(
+            {
+                "section": "procore",
+                "status": "due_date_coverage_low",
+                "reason": "no due dates on open Procore signals; why-today uses recent/source-change/importance",
+            }
+        )
+
+    return {
+        "projection": {
+            "email_calendar": {
+                "status": projection_receipt.get("status"),
+                "mode": projection_receipt.get("mode"),
+                "structured_rows_by_family": projection_receipt.get("structured_rows_by_family"),
+                "projection_coverage_status": projection_receipt.get("projection_coverage_status"),
+                "total_unmapped_business_fields": projection_receipt.get(
+                    "total_unmapped_business_fields"
+                ),
+                "degraded_reason": projection_receipt.get("degraded_reason"),
+            }
+        },
+        "candidates": {
+            "total": int(m.get("total_candidates") or 0),
+            "by_section": sec_counts,
+        },
+        "candidate_source_ref_coverage": m.get("source_ref_coverage"),
+        "executive_source_ref_coverage": m.get("executive_source_ref_coverage"),
+        "project_key_coverage": project_key_coverage,
+        "calendar": {
+            "events_in_window": int(calendar_detail.get("events_in_window") or 0),
+            "candidates_persisted": int(calendar_detail.get("persisted") or 0),
+            "would_persist": int(calendar_detail.get("would_persist") or 0),
+            "needs_review_count": int(calendar_detail.get("needs_review_count") or 0),
+            "subject_substrate": calendar_detail.get("subject_substrate"),
+        },
+        "procore": {
+            "total_open_signals": int(procore_detail.get("total_open_signals") or 0),
+            "promoted_count": int(procore_detail.get("promoted_count") or 0),
+            "suppressed_count": int(procore_detail.get("suppressed_count") or 0),
+            "aggregate_sludge_count": int(procore_detail.get("aggregate_sludge_count") or 0),
+            "candidates_persisted": int(procore_detail.get("persisted") or 0),
+        },
+        "email_followup": {
+            "status": email_followup.get("status"),
+            "source_rows": int(email_followup.get("source_rows") or 0),
+            "raw_available": bool(email_followup.get("raw_available")),
+            "structured_available": bool(email_followup.get("structured_available")),
+            "followup_rows": int(email_followup.get("followup_rows") or 0),
+        },
+        "data_gaps": data_gaps,
+        "usefulness_verdict": getattr(usefulness, "verdict", None),
+        "degraded_reasons": list(getattr(usefulness, "failed_reasons", []) or []),
+    }
 
 
 def _build_run_summary(
@@ -891,6 +1021,7 @@ def _write_status(
     deterministic_fallback: Optional[dict[str, Any]] = None,
     synthesis_status: Optional[str] = None,
     operator_usable: bool = False,
+    first_slice: Optional[dict[str, Any]] = None,
 ) -> Path:
     """Write the redacted machine-readable status (latest + dated). Never contains raw bodies.
 
@@ -914,6 +1045,7 @@ def _write_status(
         "model_enriched_intelligence": model_enriched_intelligence,
         "email_raw_enrichment_stage": email_raw_enrichment_stage,
         "usefulness_gate": usefulness_gate,
+        "first_slice": first_slice,
         "synthesis_status": synthesis_status,
         "synthesis_required_for_success": False,
         "deterministic_fallback": deterministic_fallback,

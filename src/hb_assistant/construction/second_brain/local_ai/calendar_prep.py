@@ -170,11 +170,16 @@ def build_calendar_prep_candidates(
     # Safe redacted fields only — never subjects/bodies/join URLs/attendee names/emails.
     raw_events = store.list_calendar_prep_source_events(project_key=project_key, limit=100000)
 
-    # Raw subject/location map for PROJECT RESOLUTION ONLY (the persisted subject_redacted is a
+    # Real subject/location map for PROJECT RESOLUTION ONLY (the persisted subject_redacted is a
     # hash placeholder in real data, so resolving on it yields 0 — the audit's calendar resolution
     # rate of 0.0). We read the real subject/location to resolve project/category, but persist ONLY
     # the redacted title; the raw subject is never persisted, logged, or emitted to status.
+    #
+    # Substrate preference (Phase 10 decision: structured projection is the preferred substrate):
+    # the V49 ``calendar_raw_event_structured`` rows win; the raw landing is the fallback for any
+    # event not yet projected. ``subject_substrate`` records the split for evidence.
     raw_subjects: dict[str, dict[str, str]] = {}
+    substrate_for: dict[str, str] = {}
     try:
         for row in store.list_calendar_event_raw_content(limit=100000):
             eid = row.get("event_index_id")
@@ -183,8 +188,21 @@ def build_calendar_prep_candidates(
                     "subject": str(row.get("subject") or "").strip(),
                     "location": str(row.get("location_display") or "").strip(),
                 }
+                substrate_for[str(eid)] = "raw_landing"
     except Exception:
         raw_subjects = {}
+        substrate_for = {}
+    try:
+        for row in store.list_calendar_structured_subjects(limit=100000):
+            eid = row.get("event_index_id")
+            if eid:
+                raw_subjects[str(eid)] = {
+                    "subject": str(row.get("subject") or "").strip(),
+                    "location": str(row.get("location_display") or "").strip(),
+                }
+                substrate_for[str(eid)] = "structured"
+    except Exception:
+        pass
 
     existing_ids = {
         str(r.get("daily_brief_action_candidate_id"))
@@ -354,6 +372,12 @@ def build_calendar_prep_candidates(
         cls = str(v.get("calendar_class") or "fyi")
         by_class[cls] = by_class.get(cls, 0) + 1
     summary["by_calendar_class"] = by_class
+    # Substrate split for the resolved events (structured projection preferred over raw landing).
+    substrate_split: dict[str, int] = {"structured": 0, "raw_landing": 0, "none": 0}
+    for v in event_views:
+        src = substrate_for.get(str(v.get("event_index_id")), "none")
+        substrate_split[src] = substrate_split.get(src, 0) + 1
+    summary["subject_substrate"] = substrate_split
     summary["unresolved_project_tokens"] = summarize_unresolved_tokens(
         [
             v["title_redacted"]

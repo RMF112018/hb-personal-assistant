@@ -1,0 +1,30 @@
+{
+  "captured_utc": "20260611T111157Z",
+  "production_db": {
+    "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite",
+    "sha256": "5517e817bd8cd445cffd0e07678afef6fa06196f20970b2d2f9a2cb709e119a8",
+    "size": 947437568,
+    "mtime_ns": 1781176317690408244
+  },
+  "copy_db": {
+    "path": "/tmp/hb-first-slice-20260611T111157Z/audit-copy.sqlite",
+    "sha256": "ae86996e291d27e40d0903a912b6011a50308c0ac99407b3484f836737774d19",
+    "size": 947437568,
+    "mtime_ns": 1781176317690408244
+  },
+  "copy_matches_source_sha256": false,
+  "roll_dir": "/tmp/hb-first-slice-20260611T111157Z",
+  "copy_internal_quick_check": "ok",
+  "copy_internal_integrity_check": "ok",
+  "copy_schema_max_migration": 49,
+  "concurrent_writer_detected": {
+    "note": "Production DB (PLAIN root) is under active concurrent mutation by an operator-started background process, independent of this slice.",
+    "writer_pid": 21473,
+    "writer_command": "hb-assistant graph mail index --no-dry-run --lookback-days 500 --max-messages 50000 --include-raw-content --json",
+    "writer_holds": "PLAIN production hb-personal-assistant.sqlite open read/write (WAL mode, -wal ~49MB)",
+    "scheduler_pid_11151_target": "HB Personal Assistant (Dev) (Dev) root (separate DB, NOT this validation target)",
+    "effect": "Production sha256/size/mtime change every few seconds regardless of this work; literal before==after unchanged-proof is not achievable while the backfill runs."
+  },
+  "unchanged_proof_method": "Per operator decision (proceed on frozen copy): validation runs ONLY against this frozen /tmp copy via --db; production is opened strictly read-only (mode=ro) for hashing. The production-unchanged guarantee is established as 'no code path or command in this slice opened production read/write' (copy-only validation + code/command scan), NOT as byte-level before==after, which is N/A due to the concurrent operator backfill (PID 21473).",
+  "copy_matches_source_sha256_explanation": "false is EXPECTED: production was mid-write between the pre-copy hash and shutil.copy2. The copy is a valid last-checkpoint snapshot (quick_check ok, integrity ok) and is the stable, self-consistent validation target."
+}

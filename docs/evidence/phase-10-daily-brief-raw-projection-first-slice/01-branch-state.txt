@@ -1,0 +1,13 @@
+Phase 10 branch state captured 2026-06-11T11:10:11Z
+
+## current branch
+experiment/phase-10-daily-brief-raw-projection-first-slice
+## HEAD
+4d8ca0717324955dab539ebf0690b5a93d4db6e0
+## branch --contains HEAD
+* experiment/phase-10-daily-brief-raw-projection-first-slice
+  main
+## main
+4d8ca0717324955dab539ebf0690b5a93d4db6e0
+## origin/main
+4d8ca0717324955dab539ebf0690b5a93d4db6e0

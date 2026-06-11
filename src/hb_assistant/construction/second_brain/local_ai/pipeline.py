@@ -1,9 +1,11 @@
 """Phase 10 — local-agent pipeline orchestration (one repeatable daily run, advisory).
 
-Chains the five proven Phase 10 workflows into a single, stage-bounded, dry-run-default run that
-ends in the consumable daily brief:
+Chains the proven Phase 10 workflows into a single, stage-bounded, dry-run-default run that
+ends in the consumable daily brief. The V49 email/calendar raw → structured projection runs
+first as a substrate refresh so the candidate stages read fresh structured rows in the same run:
 
-  follow_up_watch → procore_digest → calendar_prep → daily_brief_synthesis → daily_brief_render
+  email_calendar_projection → follow_up_watch → procore_digest → calendar_prep
+    → daily_brief_synthesis → daily_brief_render
 
 Operator-safety posture:
 - **Dry-run by default**; ``--apply`` fail-closed without a per-stage cap.
@@ -27,6 +29,7 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
+from . import projection_activation
 from .calendar_prep import build_calendar_prep_candidates
 from .daily_brief_render import render_daily_brief
 from .daily_brief_synthesis import build_daily_brief_candidates
@@ -35,9 +38,11 @@ from .follow_up_watch import run_follow_up_watch_scan
 from .procore_digest import build_procore_action_digest
 from .relationship_candidates import build_relationship_candidates
 
+_PROJECTION_STAGE = projection_activation.STAGE_NAME
 _RENDER_STAGE = "daily_brief_render"
 _RELATIONSHIP_STAGE = "relationship_candidates"
 STAGE_ORDER: list[str] = [
+    _PROJECTION_STAGE,
     "follow_up_watch",
     "procore_digest",
     "calendar_prep",
@@ -126,6 +131,43 @@ def run_local_agent_pipeline(
     brief_result: Optional[dict[str, Any]] = None
 
     for order, name in enumerate(selected, start=1):
+        if name == _PROJECTION_STAGE:
+            # Substrate refresh — runs FIRST so candidate stages read fresh structured rows.
+            # NOT a candidate-generation stage (absent from _GENERATION_STAGES → never flips
+            # brief_freshness) and NOT a candidate write (does not count toward total_persisted /
+            # the global ceiling). Apply pipeline projects raw → structured; dry-run pipeline runs
+            # coverage-only. A hard projection failure (unmapped/parity) flips overall ``ok``.
+            try:
+                proj = projection_activation.run_email_calendar_projection_stage(
+                    db_path=db_path, apply=not dry_run
+                )
+                receipts.append(
+                    {
+                        "stage": name,
+                        "order": order,
+                        "status": (
+                            "failed"
+                            if proj["status"] == projection_activation.STATUS_FAILED
+                            else "ok"
+                        ),
+                        "would_persist": 0,
+                        "persisted": 0,
+                        "projection_status": proj["status"],
+                        "detail": proj,
+                    }
+                )
+            except Exception as e:
+                receipts.append(
+                    {
+                        "stage": name,
+                        "order": order,
+                        "status": "failed",
+                        "would_persist": 0,
+                        "persisted": 0,
+                        "reason_code": f"stage_error:{type(e).__name__}",
+                    }
+                )
+            continue
         if name == _RENDER_STAGE:
             try:
                 brief_result = render_daily_brief(

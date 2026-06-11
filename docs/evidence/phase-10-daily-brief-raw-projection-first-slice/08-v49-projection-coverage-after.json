@@ -1,0 +1,54 @@
+{
+  "command": "hb-assistant email-calendar raw projection-coverage",
+  "ok": true,
+  "registry_version": 1,
+  "projection_schema_version": "email_calendar_projection_v1",
+  "families_with_raw_rows": 3,
+  "total_unmapped_business_fields": 0,
+  "families": [
+    {
+      "source_family": "email_message",
+      "raw_table": "email_message_raw_content",
+      "structured_table": "email_raw_message_structured",
+      "raw_parent_rows": 16603,
+      "projected_parent_rows": 16603,
+      "unmapped_primary_business_fields": 0,
+      "unmapped_nested_business_fields": 0,
+      "observed_nested_arrays_without_child_table_or_mapped_sidecar": 0,
+      "unmapped_primary_samples": [],
+      "unmapped_nested_samples": [],
+      "status": "complete_with_policy_exclusions"
+    },
+    {
+      "source_family": "email_thread",
+      "raw_table": "email_thread_raw_context",
+      "structured_table": "email_raw_thread_structured",
+      "raw_parent_rows": 6823,
+      "projected_parent_rows": 6823,
+      "unmapped_primary_business_fields": 0,
+      "unmapped_nested_business_fields": 0,
+      "observed_nested_arrays_without_child_table_or_mapped_sidecar": 0,
+      "unmapped_primary_samples": [],
+      "unmapped_nested_samples": [],
+      "status": "complete_with_policy_exclusions"
+    },
+    {
+      "source_family": "calendar_event",
+      "raw_table": "calendar_event_raw_content",
+      "structured_table": "calendar_raw_event_structured",
+      "raw_parent_rows": 138,
+      "projected_parent_rows": 138,
+      "unmapped_primary_business_fields": 0,
+      "unmapped_nested_business_fields": 0,
+      "observed_nested_arrays_without_child_table_or_mapped_sidecar": 0,
+      "unmapped_primary_samples": [],
+      "unmapped_nested_samples": [],
+      "status": "complete_with_policy_exclusions"
+    }
+  ],
+  "guardrails": {
+    "live_calls_disabled": true,
+    "writeback": "none",
+    "emits_values": false
+  }
+}

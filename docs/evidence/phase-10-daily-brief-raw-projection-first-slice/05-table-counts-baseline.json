@@ -1,0 +1,91 @@
+{
+  "source": "frozen /tmp copy (read-only); production not touched",
+  "schema_version": 49,
+  "table_counts": {
+    "email_message_raw_content": 11085,
+    "email_thread_raw_context": 432,
+    "calendar_event_raw_content": 138,
+    "email_raw_message_structured": 405,
+    "email_raw_thread_structured": 223,
+    "calendar_raw_event_structured": 138,
+    "email_raw_message_recipients_structured": 1743,
+    "email_raw_message_attachments_structured": 63,
+    "calendar_raw_event_attendees_structured": 1474,
+    "calendar_raw_event_locations_structured": 93,
+    "email_calendar_projection_runs": 3,
+    "email_calendar_projection_coverage": 3,
+    "raw_content_access_events": 11409,
+    "procore_endpoint_raw_payloads": 40245,
+    "procore_action_signals": 5912,
+    "daily_brief_action_candidates": 0,
+    "candidate_source_refs": 0,
+    "construction_project_identity": 0,
+    "construction_project_keyword_registry": 0,
+    "construction_project_source_matches": 0,
+    "construction_source_locations": 15,
+    "follow_up_watch_items": 0,
+    "email_followup_enrichments": 0,
+    "task_candidates": 0,
+    "commitment_candidates": 0,
+    "calendar_event_index": 182
+  },
+  "distributions": {
+    "email_message_raw_content.source_quality": {
+      "graph_full_body": 10886,
+      "metadata_only": 198,
+      "graph_body_preview_only": 1
+    },
+    "calendar_event_raw_content.source_quality": {
+      "graph_full_event_body": 107,
+      "metadata_only": 31
+    },
+    "procore_endpoint_raw_payloads.source_quality": {
+      "redacted_legacy_projection": 29920,
+      "live_full_payload": 10325
+    },
+    "procore_action_signals.signal_status": {
+      "open": 5912
+    },
+    "procore_action_signals.signal_type": {
+      "inspection_item_unanswered": 1366,
+      "inspection_item_requires_observation": 1157,
+      "submittal_response_returned": 374,
+      "submittal_approved": 278,
+      "meeting_topic_open_high_priority": 276,
+      "budget_change_posted": 229,
+      "invoice_payment_due": 223,
+      "invoice_retainage_held": 212,
+      "change_event_pending": 198,
+      "invoice_approved_not_paid": 196,
+      "observation_closed": 158,
+      "budget_modification_posted": 150,
+      "activity_critical": 117,
+      "activity_zero_float": 117,
+      "commitment_unexecuted": 101,
+      "commitment_change_order_unpaid": 94,
+      "submittal_open": 80,
+      "submittal_waiting_on_approver": 71,
+      "rfi_open": 56,
+      "rfi_unanswered": 56,
+      "commitment_compliance_document_expiring": 50,
+      "prime_change_order_unpaid": 48,
+      "inspection_open_safety": 44,
+      "budget_forecast_exceeds_budget": 41,
+      "budget_variance_negative": 41
+    },
+    "procore_action_signals.importance": {
+      "medium": 4297,
+      "high": 1446,
+      "low": 169
+    },
+    "daily_brief_action_candidates.section": {}
+  },
+  "baseline_observations": {
+    "structured_projection_populated": "email_raw_message_structured and calendar_raw_event_structured > 0 (projection has run on prod since the audit)",
+    "projection_runs_present": 3,
+    "daily_candidates_empty": 0,
+    "candidate_source_refs_empty": 0,
+    "project_identity_empty": 0,
+    "core_contradiction_live": "structured calendar/email + Procore signals exist, yet daily_brief_action_candidates == 0"
+  }
+}

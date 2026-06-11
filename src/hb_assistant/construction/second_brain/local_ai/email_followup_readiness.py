@@ -241,4 +241,88 @@ def build_email_followup_enrichment_readiness(
     }
 
 
-__all__ = ["build_email_followup_enrichment_readiness"]
+#: Data-gap readiness statuses (the email-substrate-vs-follow-up-layers view, distinct from the
+#: per-candidate enrichment-eligibility funnel above).
+DATA_GAP_STATUS_POPULATED = "populated"
+DATA_GAP_STATUS_DATA_GAP = "data_gap"
+DATA_GAP_STATUS_NO_SOURCE = "no_source"
+DATA_GAP_STATUS_NOT_CONFIGURED = "not_configured"
+
+_DATA_GAP_REASON = "email raw content available but follow-up projection not yet populated"
+
+
+def classify_email_followup_data_gap(counts: dict[str, int]) -> dict[str, Any]:
+    """Classify raw-free readiness counts into a data-gap status + card. Pure function.
+
+    The honest data-gap case: email raw/structured rows EXIST but every follow-up layer
+    (watch items / task / commitment / enrichment) is empty — the email -> follow-up projection
+    has not been populated. This must surface as a card, never as a silent "nothing to do".
+    ``source_rows`` is the usefulness-gate contradiction-(c) input.
+    """
+    email_substrate = int(counts.get("email_message_raw_content", 0)) + int(
+        counts.get("email_thread_raw_context", 0)
+    )
+    email_structured = int(counts.get("email_raw_message_structured", 0)) + int(
+        counts.get("email_raw_thread_structured", 0)
+    )
+    followup_rows = (
+        int(counts.get("follow_up_watch_items", 0))
+        + int(counts.get("task_candidates", 0))
+        + int(counts.get("commitment_candidates", 0))
+        + int(counts.get("email_followup_enrichments", 0))
+    )
+    source_rows = email_substrate + email_structured
+
+    if followup_rows > 0:
+        status = DATA_GAP_STATUS_POPULATED
+    elif source_rows > 0:
+        status = DATA_GAP_STATUS_DATA_GAP
+    elif email_substrate == 0 and email_structured == 0:
+        status = DATA_GAP_STATUS_NOT_CONFIGURED
+    else:
+        status = DATA_GAP_STATUS_NO_SOURCE
+
+    card = None
+    if status == DATA_GAP_STATUS_DATA_GAP:
+        card = {"section": "email_followup", "status": status, "reason": _DATA_GAP_REASON}
+
+    return {
+        "section": "email_followup",
+        "status": status,
+        "source_rows": source_rows,
+        "raw_available": email_substrate > 0,
+        "structured_available": email_structured > 0,
+        "followup_rows": followup_rows,
+        "counts": {k: int(v) for k, v in counts.items()},
+        "data_gap_card": card,
+    }
+
+
+def build_email_followup_data_gap(store: Any) -> dict[str, Any]:
+    """Compute the email/follow-up data-gap readiness surface from the store (read-only, raw-free)."""
+    try:
+        counts = store.email_followup_readiness_counts()
+    except Exception as exc:  # advisory only — never fail the run
+        return {
+            "section": "email_followup",
+            "status": DATA_GAP_STATUS_NOT_CONFIGURED,
+            "source_rows": 0,
+            "raw_available": False,
+            "structured_available": False,
+            "followup_rows": 0,
+            "counts": {},
+            "data_gap_card": None,
+            "degraded_reason": f"readiness_error:{type(exc).__name__}",
+        }
+    return classify_email_followup_data_gap(counts)
+
+
+__all__ = [
+    "DATA_GAP_STATUS_DATA_GAP",
+    "DATA_GAP_STATUS_NOT_CONFIGURED",
+    "DATA_GAP_STATUS_NO_SOURCE",
+    "DATA_GAP_STATUS_POPULATED",
+    "build_email_followup_data_gap",
+    "build_email_followup_enrichment_readiness",
+    "classify_email_followup_data_gap",
+]
