@@ -1,0 +1,18 @@
+{
+  "user_version": 0,
+  "quick_check": "ok",
+  "max_migration_version": 49,
+  "migration_count": 49,
+  "migrations_present_46_to_49": [
+    46,
+    47,
+    48,
+    49
+  ],
+  "schema_migrations_columns": [
+    "version",
+    "name",
+    "applied_at"
+  ],
+  "total_user_tables": 358
+}

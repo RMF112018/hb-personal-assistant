@@ -1,0 +1,20 @@
+{
+  "identities_before": 0,
+  "identities_after": 6,
+  "source_matches_before": 0,
+  "source_matches_after": 0,
+  "projects_in_matrix": null,
+  "conflicts_flagged_review_required": 0,
+  "report_keys": [
+    "conflicts",
+    "coverage_matrix",
+    "dry_run",
+    "guardrails",
+    "populated_identities",
+    "populated_matches",
+    "repo_sha",
+    "run_utc",
+    "schema_version"
+  ],
+  "note": "deterministic local backfill; conflicts flagged review_required, never auto-resolved"
+}

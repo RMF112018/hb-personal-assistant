@@ -1,0 +1,37 @@
+{
+  "passed": true,
+  "verdict": "useful",
+  "failed_reasons": [],
+  "metrics": {
+    "total_candidates": 50,
+    "section_counts": {
+      "calendar": 25,
+      "procore": 25
+    },
+    "deterministic_section_count": 2,
+    "calendar_project_resolution_rate": 0.5455,
+    "calendar_project_like_count": 22,
+    "calendar_unresolved_project_like_count": 10,
+    "procore_executive_count": 25,
+    "procore_aggregate_sludge_selected": 0,
+    "source_ref_coverage": 1.0,
+    "executive_source_ref_coverage": 1.0,
+    "executive_candidate_count": 50,
+    "synthesis_present": false,
+    "synthesis_degraded": false,
+    "contradiction_synthesis_without_candidates": false,
+    "egress_clean": true,
+    "calendar_events_in_window": 59,
+    "calendar_candidate_count": 25,
+    "procore_open_signals": 5912,
+    "procore_promoted_count": 2095,
+    "procore_candidate_count": 25,
+    "email_followup_source_rows": 1,
+    "followup_candidate_count": 0,
+    "email_followup_status": "data_gap",
+    "calendar_window_contradiction": false,
+    "procore_promotable_contradiction": false,
+    "email_followup_contradiction": false,
+    "synthesis_without_source_linked_candidate": false
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "summary": {
+    "projects": 4,
+    "groups": 92,
+    "total_open_signals": 5912,
+    "by_importance": {
+      "high": 1446,
+      "low": 169,
+      "medium": 4297
+    },
+    "overdue_total": 0,
+    "promoted_count": 2095,
+    "suppressed_count": 3817,
+    "aggregate_sludge_count": 3655,
+    "semantically_closed_count": 162,
+    "due_soon_count": 0,
+    "recent_count": 76,
+    "executive_considered": 50,
+    "would_persist": 50,
+    "persisted": 25,
+    "skipped_existing": 0
+  },
+  "applied": true
+}

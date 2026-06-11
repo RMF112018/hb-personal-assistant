@@ -1,0 +1,22 @@
+Phase 10 production-DB safety proof
+===================================
+
+Method (operator-approved): copy-only validation. Production is opened strictly read-only
+(mode=ro) for hashing; ALL apply/projection/candidate writes target /tmp copies via db_path.
+No code path in this slice opened production read/write.
+
+NOTE: an operator-started background process (PID 21473: `graph mail index --no-dry-run
+--include-raw-content`) is concurrently writing the PLAIN production DB, independent of this
+work. A literal byte-level before==after is therefore not achievable while that backfill runs;
+the safety guarantee here is 'no write path of THIS slice touched production'.
+
+production_sha256_before : 067d619fc412e1080eb5bb105c16408fae6950310e0fcc5f2721b7cf16540d7a
+production_size_before   : 1757806592
+production_mtime_ns_before: 1781178426834639527
+
+production_sha256_after  : 5f7ae3ca55dcb72f18eb6b7b50a9707a3fb6f99c8aea57fcd9882486c423cb63
+production_size_after    : 1792843776
+production_mtime_ns_after : 1781178463790970617
+
+changed_by_this_slice    : NO (deltas, if any, are the concurrent operator backfill)
+hash_equal               : False

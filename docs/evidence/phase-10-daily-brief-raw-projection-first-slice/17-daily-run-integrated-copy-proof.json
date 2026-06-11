@@ -1,0 +1,96 @@
+{
+  "status": "success",
+  "ok": true,
+  "operator_usable": true,
+  "brief_freshness": "fresh",
+  "stages": [
+    {
+      "stage": "email_calendar_projection",
+      "order": 1,
+      "status": "ok",
+      "would_persist": 0,
+      "persisted": 0,
+      "projection_status": "ok"
+    },
+    {
+      "stage": "follow_up_watch",
+      "order": 2,
+      "status": "ok",
+      "applied": true,
+      "would_persist": 0,
+      "persisted": 0
+    },
+    {
+      "stage": "procore_digest",
+      "order": 3,
+      "status": "ok",
+      "applied": true,
+      "would_persist": 50,
+      "persisted": 25
+    },
+    {
+      "stage": "calendar_prep",
+      "order": 4,
+      "status": "ok",
+      "applied": true,
+      "would_persist": 6,
+      "persisted": 6
+    },
+    {
+      "stage": "daily_brief_synthesis",
+      "order": 5,
+      "status": "ok",
+      "applied": true,
+      "would_persist": 0,
+      "persisted": 0
+    },
+    {
+      "stage": "daily_brief_render",
+      "order": 6,
+      "status": "ok",
+      "would_persist": 0,
+      "persisted": 0
+    }
+  ],
+  "usefulness_gate": {
+    "passed": true,
+    "verdict": "useful",
+    "failed_reasons": [],
+    "metrics": {
+      "total_candidates": 31,
+      "section_counts": {
+        "calendar": 6,
+        "procore": 25
+      },
+      "deterministic_section_count": 2,
+      "calendar_project_resolution_rate": 1.0,
+      "calendar_project_like_count": 5,
+      "calendar_unresolved_project_like_count": 0,
+      "procore_executive_count": 25,
+      "procore_aggregate_sludge_selected": 0,
+      "source_ref_coverage": 1.0,
+      "executive_source_ref_coverage": 1.0,
+      "executive_candidate_count": 31,
+      "synthesis_present": false,
+      "synthesis_degraded": false,
+      "contradiction_synthesis_without_candidates": false,
+      "egress_clean": true,
+      "calendar_events_in_window": 6,
+      "calendar_candidate_count": 6,
+      "procore_open_signals": 5912,
+      "procore_promoted_count": 2095,
+      "procore_candidate_count": 25,
+      "email_followup_source_rows": 47958,
+      "followup_candidate_count": 0,
+      "email_followup_status": "data_gap",
+      "calendar_window_contradiction": false,
+      "procore_promotable_contradiction": false,
+      "email_followup_contradiction": false,
+      "synthesis_without_source_linked_candidate": false
+    }
+  },
+  "egress_scan": {
+    "clean": true,
+    "matched_labels": []
+  }
+}

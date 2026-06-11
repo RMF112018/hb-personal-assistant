@@ -1,0 +1,81 @@
+{
+  "stage": "email_calendar_projection",
+  "command": "hb-assistant email-calendar raw projection-reprocess",
+  "mode": "apply",
+  "status": "ok",
+  "ok": true,
+  "run_id": "ecpr-50267ea1f8b44ff08d8682ed",
+  "raw_rows_by_family": {
+    "email_message": 16603,
+    "email_thread": 6823,
+    "calendar_event": 138
+  },
+  "structured_rows_by_family": {
+    "email_message": 16603,
+    "email_thread": 6823,
+    "calendar_event": 138
+  },
+  "skipped_higher_quality": {
+    "email_message": 0,
+    "email_thread": 0,
+    "calendar_event": 0
+  },
+  "unmapped_counts": {
+    "email_message": 0,
+    "email_thread": 0,
+    "calendar_event": 0
+  },
+  "source_quality_distribution": {
+    "email_message": {
+      "metadata_only": 343,
+      "graph_full_body": 16259,
+      "graph_body_preview_only": 1
+    },
+    "email_thread": {
+      "graph_full_body": 6754,
+      "metadata_only": 69
+    },
+    "calendar_event": {
+      "metadata_only": 31,
+      "graph_full_event_body": 107
+    }
+  },
+  "projection_coverage_status": "complete",
+  "total_unmapped_business_fields": 0,
+  "families_with_raw_rows": 3,
+  "degraded_reason": [],
+  "families": [
+    {
+      "source_family": "email_message",
+      "raw_parent_rows": 16603,
+      "structured_rows": 16603,
+      "skipped_higher_quality": 0,
+      "unmapped": 0,
+      "status": "ok",
+      "ok": true
+    },
+    {
+      "source_family": "email_thread",
+      "raw_parent_rows": 6823,
+      "structured_rows": 6823,
+      "skipped_higher_quality": 0,
+      "unmapped": 0,
+      "status": "ok",
+      "ok": true
+    },
+    {
+      "source_family": "calendar_event",
+      "raw_parent_rows": 138,
+      "structured_rows": 138,
+      "skipped_higher_quality": 0,
+      "unmapped": 0,
+      "status": "ok",
+      "ok": true
+    }
+  ],
+  "guardrails": {
+    "live_graph_calls": 0,
+    "external_writeback_performed": 0,
+    "emits_values": false
+  }
+}

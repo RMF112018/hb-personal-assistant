@@ -1,0 +1,11 @@
+{
+  "passed": false,
+  "verdict": "degraded",
+  "failed_reasons": [
+    "no_useful_deterministic_section",
+    "calendar_window_nonempty_but_no_candidates",
+    "procore_promotable_but_no_candidates",
+    "email_rows_but_empty_followup_no_data_gap"
+  ],
+  "expectation": "source rows exist but candidates empty -> degraded (not clean success)"
+}

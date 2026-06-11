@@ -1,0 +1,65 @@
+{
+  "projection": {
+    "email_calendar": {
+      "status": "ok",
+      "mode": "apply",
+      "structured_rows_by_family": {
+        "email_message": 16603,
+        "email_thread": 7376,
+        "calendar_event": 138
+      },
+      "projection_coverage_status": "complete",
+      "total_unmapped_business_fields": 0,
+      "degraded_reason": []
+    }
+  },
+  "candidates": {
+    "total": 31,
+    "by_section": {
+      "calendar": 6,
+      "procore": 25
+    }
+  },
+  "candidate_source_ref_coverage": 1.0,
+  "executive_source_ref_coverage": 1.0,
+  "project_key_coverage": 1.0,
+  "calendar": {
+    "events_in_window": 6,
+    "candidates_persisted": 6,
+    "would_persist": 6,
+    "needs_review_count": 0,
+    "subject_substrate": {
+      "structured": 6,
+      "raw_landing": 0,
+      "none": 0
+    }
+  },
+  "procore": {
+    "total_open_signals": 5912,
+    "promoted_count": 2095,
+    "suppressed_count": 3817,
+    "aggregate_sludge_count": 3655,
+    "candidates_persisted": 25
+  },
+  "email_followup": {
+    "status": "data_gap",
+    "source_rows": 47958,
+    "raw_available": true,
+    "structured_available": true,
+    "followup_rows": 0
+  },
+  "data_gaps": [
+    {
+      "section": "email_followup",
+      "status": "data_gap",
+      "reason": "email raw content available but follow-up projection not yet populated"
+    },
+    {
+      "section": "procore",
+      "status": "due_date_coverage_low",
+      "reason": "no due dates on open Procore signals; why-today uses recent/source-change/importance"
+    }
+  ],
+  "usefulness_verdict": "useful",
+  "degraded_reasons": []
+}

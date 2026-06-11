@@ -1,0 +1,16 @@
+Phase 10 first-slice — no-raw-leak scan (final)
+==============================================
+
+Scanner: hb-assistant email-calendar raw no-raw-leak-scan
+Targets: docs/evidence/phase-10-daily-brief-raw-projection-first-slice  +  docs/architecture/daily-brief-raw-projection-first-slice.md
+         +  docs/runbooks/phase-10-daily-brief-raw-projection-first-slice-runbook.md
+
+evidence files_scanned: 29
+unsafe_finding_count : 0
+findings             : []
+ok                   : True
+docs files_scanned   : 2 (unsafe 0)
+
+Supplementary forbidden-pattern grep (PEM/JWT/join_url/api-key/bearer/passcode): NONE
+
+Result: CLEAN — all artifacts carry counts/hashes/statuses/column-names/reason-codes only.
