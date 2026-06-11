@@ -775,6 +775,35 @@ class SourceRefreshOrchestrator:
             "skipped_project_count": 0,
             "blocking_rejections": [],
         }
+        # Unsafe-mapping / unknown-allowlist rejections block the run before any live read;
+        # surface them as explicit blocked_* freshness counts (a typo in the allowlist must
+        # never silently narrow scope).
+        blocking_rejections = scope.get("blocking_rejections", []) or []
+        blocked_unknown = sum(
+            1 for b in blocking_rejections if str(b.get("reason", "")) == "unknown_key"
+        )
+        blocked_unsafe = len(blocking_rejections) - blocked_unknown
+        default_freshness: dict[str, Any] = {
+            "ok": not blocking_rejections,
+            "status": "blocked" if blocking_rejections else "skipped",
+            "source_quality": SOURCE_QUALITY_LIVE_FULL,
+            "raw_landing_table": RAW_LANDING_TABLE,
+            "counts_by_status": {
+                "ok_payload_landed": 0,
+                "ok_empty_result": 0,
+                "ok_skipped_with_reason": 0,
+                "degraded_raw_payload_landing_missing": 0,
+                "degraded_detail_payload_unavailable": 0,
+                "degraded_external_blocked": 0,
+                "blocked_unsafe_mapping": blocked_unsafe,
+                "blocked_unknown_allowlist_key": blocked_unknown,
+            },
+            "missing_fresh_raw_payloads": [],
+            "missing_fresh_raw_payload_count": 0,
+            "raw_rows_by_project": {},
+            "raw_rows_by_project_endpoint": {},
+            "guardrails": {"emits_values": False, "counts_only": True},
+        }
         base: dict[str, Any] = {
             "status": "skipped",
             "reason": "not_run",
@@ -782,7 +811,8 @@ class SourceRefreshOrchestrator:
             "skipped_project_count": int(scope.get("skipped_project_count", 0) or 0),
             "selected_projects": scope.get("selected_projects", []),
             "skipped_projects": scope.get("skipped_projects", []),
-            "blocking_rejections": scope.get("blocking_rejections", []),
+            "blocking_rejections": blocking_rejections,
+            "raw_full_payload_freshness": default_freshness,
             "raw_full_rows_by_project": {},
             "raw_full_rows_by_project_endpoint": {},
             "projection_schema_audit": {"ok": False, "runtime_plan_schema_mismatches": 0},
@@ -892,91 +922,168 @@ class SourceRefreshOrchestrator:
         return {**base, "status": "ok", "reason": "projection_pipeline_ok"}
 
     def _verify_procore_raw_payload_freshness(self, procore_summary: dict[str, Any]) -> dict[str, Any]:
-        """Prove current live-sync receipts wrote the raw rows projection replay consumes."""
-        raw_counts = self._raw_full_payload_counts_for_current_sync(procore_summary)
-        by_project = raw_counts["by_project"]
-        by_project_endpoint = raw_counts["by_project_endpoint"]
-        missing: list[dict[str, Any]] = []
-        for endpoint in procore_summary.get("endpoints", []):
-            if endpoint.get("status") != "success":
-                continue
-            if endpoint.get("company_level"):
-                continue
-            retrieved = int(endpoint.get("retrieved", 0) or 0)
-            if retrieved <= 0:
-                continue
-            key = str(endpoint.get("scope") or "")
-            endpoint_id = str(endpoint.get("endpoint") or "")
-            actual = int(by_project_endpoint.get(key, {}).get(endpoint_id, 0) or 0)
-            if actual <= 0:
-                missing.append(
-                    {
-                        "project_key": key,
-                        "endpoint": endpoint_id,
-                        "retrieved": retrieved,
-                        "raw_full_rows": actual,
-                    }
-                )
-        return {
-            "ok": not missing,
-            "source_quality": SOURCE_QUALITY_LIVE_FULL,
-            "raw_landing_table": RAW_LANDING_TABLE,
-            "sync_run_ids_checked": raw_counts["sync_run_ids_checked"],
-            "raw_full_rows_by_project": by_project,
-            "raw_full_rows_by_project_endpoint": by_project_endpoint,
-            "missing_fresh_raw_payloads": missing[:50],
-            "missing_fresh_raw_payload_count": len(missing),
-            "guardrails": {"emits_values": False, "counts_only": True},
-        }
+        """Classify each selected project/endpoint's raw-payload landing into one status.
 
-    def _raw_full_payload_counts_for_current_sync(
-        self, procore_summary: dict[str, Any]
-    ) -> dict[str, Any]:
-        sync_run_ids = sorted(
+        Passing statuses (``ok_*``) never degrade the run; ``degraded_*`` keep the gate
+        fail-closed. Landing is proven by the presence of CURRENT live full-payload rows for
+        the ``(project_key, endpoint_key)`` — the exact rows projection replay consumes — and
+        NOT by ``capture_run_id`` (which ``_insert_full_raw_payload`` does not refresh on
+        idempotent re-run upserts, so filtering by it under-counts re-confirmed records).
+
+        Taxonomy:
+          - ``ok_payload_landed``   live success, retrieved > 0, current live rows present.
+          - ``ok_empty_result``     live success, retrieved == 0 (valid no-data / no-tool stage).
+          - ``ok_skipped_with_reason`` endpoint skipped (ineligible / unsupported / 403 / 404 /
+                                       company-level already handled) — reason always recorded.
+          - ``degraded_raw_payload_landing_missing`` retrieved > 0 but no current live rows.
+          - ``degraded_detail_payload_unavailable``  detail/full endpoint retrieved a list but
+                                                     the richer payload did not land.
+          - ``degraded_external_blocked`` transport / contract / normalizer failure (never green;
+                                          the run is already degraded by the procore stage).
+        """
+        counts = self._current_live_full_payload_counts()
+        by_project = counts["by_project"]
+        by_project_endpoint = counts["by_project_endpoint"]
+
+        status_counts: dict[str, int] = {
+            "ok_payload_landed": 0,
+            "ok_empty_result": 0,
+            "ok_skipped_with_reason": 0,
+            "degraded_raw_payload_landing_missing": 0,
+            "degraded_detail_payload_unavailable": 0,
+            "degraded_external_blocked": 0,
+            "blocked_unsafe_mapping": 0,
+            "blocked_unknown_allowlist_key": 0,
+        }
+        classified: list[dict[str, Any]] = []
+        missing: list[dict[str, Any]] = []
+
+        for endpoint in procore_summary.get("endpoints", []):
+            code = str(endpoint.get("status") or "")
+            endpoint_id = str(endpoint.get("endpoint") or "")
+            # Landing rows are keyed by the real project_key the endpoint ran under (company
+            # endpoints carry scope="company" but a concrete project_key); fall back to scope.
+            landing_key = str(endpoint.get("project_key") or endpoint.get("scope") or "")
+            retrieved = int(endpoint.get("retrieved", 0) or 0)
+            landed = int(by_project_endpoint.get(landing_key, {}).get(endpoint_id, 0) or 0)
+
+            if is_skipped_status(code):
+                status = "ok_skipped_with_reason"
+            elif code == "success":
+                if retrieved <= 0:
+                    status = "ok_empty_result"
+                elif landed > 0:
+                    status = "ok_payload_landed"
+                elif self._endpoint_requires_detail_payload(endpoint_id):
+                    status = "degraded_detail_payload_unavailable"
+                else:
+                    status = "degraded_raw_payload_landing_missing"
+            else:
+                # transport_error*, contract_bug, normalizer_missing, unknown_degraded, ...
+                status = "degraded_external_blocked"
+
+            status_counts[status] += 1
+            row = {
+                "project_key": landing_key,
+                "scope": str(endpoint.get("scope") or landing_key),
+                "endpoint": endpoint_id,
+                "freshness_status": status,
+                "reason": code,
+                "retrieved": retrieved,
+                "raw_full_rows": landed,
+            }
+            classified.append(row)
+            if status in (
+                "degraded_raw_payload_landing_missing",
+                "degraded_detail_payload_unavailable",
+            ):
+                missing.append(row)
+
+        # The gate (which authorizes projection replay) fails closed only on raw-landing
+        # gaps: a retrieved endpoint whose rows did not land would feed replay incomplete
+        # data. External transport failures keep the run degraded via the procore stage but
+        # do not block replay over the payloads that DID land (pre-existing posture).
+        landing_failures = (
+            status_counts["degraded_raw_payload_landing_missing"]
+            + status_counts["degraded_detail_payload_unavailable"]
+        )
+        blocking = (
+            status_counts["blocked_unsafe_mapping"]
+            + status_counts["blocked_unknown_allowlist_key"]
+        )
+        ok = landing_failures == 0 and blocking == 0
+        sync_run_ids_checked = sorted(
             {
                 str(e.get("sync_run_id"))
                 for e in procore_summary.get("endpoints", [])
                 if e.get("sync_run_id")
             }
         )
+        return {
+            "ok": ok,
+            "status": "ok" if ok else "degraded",
+            "source_quality": SOURCE_QUALITY_LIVE_FULL,
+            "raw_landing_table": RAW_LANDING_TABLE,
+            "attribution": "current_live_full_payload_rows_by_project_endpoint",
+            "counts_by_status": status_counts,
+            "external_blocked_count": status_counts["degraded_external_blocked"],
+            "classified_endpoints": classified[:200],
+            "sync_run_ids_checked": sync_run_ids_checked,
+            "raw_rows_by_project": by_project,
+            "raw_rows_by_project_endpoint": by_project_endpoint,
+            # Back-compat aliases for existing receipt consumers/evidence.
+            "raw_full_rows_by_project": by_project,
+            "raw_full_rows_by_project_endpoint": by_project_endpoint,
+            "missing_fresh_raw_payloads": missing[:50],
+            "missing_fresh_raw_payload_count": landing_failures,
+            "guardrails": {"emits_values": False, "counts_only": True},
+        }
+
+    def _current_live_full_payload_counts(self) -> dict[str, Any]:
+        """Current live full-payload row counts per ``(project_key, endpoint_key)``.
+
+        Mirrors projection replay's own selection (``raw_procore_payload_persisted=1 AND
+        is_current=1`` at ``source_quality='live_full_payload'``) with NO ``capture_run_id``
+        filter. ``fixture_full_payload`` is intentionally excluded so a production live run is
+        satisfied by live source-quality rows only (fixtures count only in tests/mock mode).
+        """
         by_project: dict[str, int] = {}
         by_project_endpoint: dict[str, dict[str, int]] = {}
-        if not sync_run_ids:
-            return {
-                "sync_run_ids_checked": [],
-                "by_project": by_project,
-                "by_project_endpoint": by_project_endpoint,
-            }
-        placeholders = ", ".join("?" for _ in sync_run_ids)
         sql = (
             f"SELECT project_key, endpoint_key, COUNT(*) FROM {RAW_LANDING_TABLE} "
             "WHERE raw_procore_payload_persisted = 1 AND is_current = 1 "
-            f"AND source_quality = ? AND capture_run_id IN ({placeholders}) "
-            "GROUP BY project_key, endpoint_key"
+            "AND source_quality = ? GROUP BY project_key, endpoint_key"
         )
         conn = sqlite3.connect(str(self.db_path))
         try:
-            for project_key, endpoint_key, count in conn.execute(
-                sql, (SOURCE_QUALITY_LIVE_FULL, *sync_run_ids)
-            ):
+            for project_key, endpoint_key, count in conn.execute(sql, (SOURCE_QUALITY_LIVE_FULL,)):
                 pkey = str(project_key)
                 ekey = str(endpoint_key)
                 cnt = int(count)
                 by_project[pkey] = by_project.get(pkey, 0) + cnt
                 by_project_endpoint.setdefault(pkey, {})[ekey] = cnt
         except sqlite3.Error:
-            return {
-                "sync_run_ids_checked": sync_run_ids,
-                "by_project": by_project,
-                "by_project_endpoint": by_project_endpoint,
-            }
+            pass
         finally:
             conn.close()
-        return {
-            "sync_run_ids_checked": sync_run_ids,
-            "by_project": by_project,
-            "by_project_endpoint": by_project_endpoint,
-        }
+        return {"by_project": by_project, "by_project_endpoint": by_project_endpoint}
+
+    @staticmethod
+    def _endpoint_requires_detail_payload(canonical_id: str) -> bool:
+        """True if the endpoint's richest payload needs a detail/full (N+1) expansion.
+
+        A detail endpoint pairs a parent list path with a non-paginated per-record detail GET
+        (e.g. ``meeting-detail``). The entire daily-refresh plan is list-only (returns False);
+        the check is kept for forward coverage of detail endpoints.
+        """
+        from hb_assistant.procore import endpoints as _endpoints
+
+        adapter = _endpoints.get(canonical_id)
+        if adapter is None:
+            return False
+        return getattr(adapter, "parent_path_template", None) is not None and (
+            getattr(adapter, "pagination", None) == "none"
+        )
 
     @staticmethod
     def _summarize_projection_schema_audit(payload: dict[str, Any]) -> dict[str, Any]:

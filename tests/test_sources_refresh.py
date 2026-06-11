@@ -94,32 +94,21 @@ def patched(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
         }
 
     monkeypatch.setattr(orch, "run_live_sync", fake_run_live_sync)
+
+    # Stand in for the DB count of current live full-payload rows: every plan endpoint for
+    # the (default-registry) projects has landed rows, so success endpoints classify as
+    # ok_payload_landed. The real method queries procore_endpoint_raw_payloads.
+    def _all_landed(self: Any) -> dict[str, Any]:
+        plan = orch.build_daily_refresh_plan()
+        by_project_endpoint = {
+            key: {pe.canonical_id: 5 for pe in plan}
+            for key in ("tropical", "pga-modern-garage")
+        }
+        by_project = {k: sum(v.values()) for k, v in by_project_endpoint.items()}
+        return {"by_project": by_project, "by_project_endpoint": by_project_endpoint}
+
     monkeypatch.setattr(
-        orch.SourceRefreshOrchestrator,
-        "_raw_full_payload_counts_for_current_sync",
-        lambda self, procore_summary: {
-            "sync_run_ids_checked": [
-                e["sync_run_id"] for e in procore_summary.get("endpoints", []) if e.get("sync_run_id")
-            ],
-            "by_project": {
-                p: sum(
-                    int(e.get("raw_payload_rows_written", 0) or 0)
-                    for e in procore_summary.get("endpoints", [])
-                    if e.get("scope") == p and e.get("status") == "success"
-                )
-                for p in {e.get("scope") for e in procore_summary.get("endpoints", [])}
-                if p and p != "company"
-            },
-            "by_project_endpoint": {
-                p: {
-                    e["endpoint"]: int(e.get("raw_payload_rows_written", 0) or 0)
-                    for e in procore_summary.get("endpoints", [])
-                    if e.get("scope") == p and e.get("status") == "success"
-                }
-                for p in {e.get("scope") for e in procore_summary.get("endpoints", [])}
-                if p and p != "company"
-            },
-        },
+        orch.SourceRefreshOrchestrator, "_current_live_full_payload_counts", _all_landed
     )
     monkeypatch.setattr(
         orch,
@@ -466,12 +455,8 @@ def test_missing_fresh_raw_payloads_prevent_projection_reprocess(
     monkeypatch.setattr(orch, "live_env_active", lambda: True)
     monkeypatch.setattr(
         orch.SourceRefreshOrchestrator,
-        "_raw_full_payload_counts_for_current_sync",
-        lambda self, procore_summary: {
-            "sync_run_ids_checked": ["sync-1"],
-            "by_project": {},
-            "by_project_endpoint": {},
-        },
+        "_current_live_full_payload_counts",
+        lambda self: {"by_project": {}, "by_project_endpoint": {}},
     )
     called = {"reprocess": False}
     monkeypatch.setattr(
@@ -488,7 +473,8 @@ def test_missing_fresh_raw_payloads_prevent_projection_reprocess(
     assert called["reprocess"] is False
 
 
-def test_raw_payload_freshness_counts_only_current_live_full_rows(tmp_path: Any) -> None:
+def _freshness_db(tmp_path: Any, rows: list[tuple[Any, ...]]) -> Any:
+    """A minimal procore_endpoint_raw_payloads table seeded with ``rows``."""
     db_path = tmp_path / "freshness.sqlite"
     conn = sqlite3.connect(str(db_path))
     try:
@@ -505,26 +491,156 @@ def test_raw_payload_freshness_counts_only_current_live_full_rows(tmp_path: Any)
             """
         )
         conn.executemany(
-            "INSERT INTO procore_endpoint_raw_payloads VALUES (?, ?, ?, ?, ?, ?)",
-            [
-                ("run-1", "tropical", "rfis", 1, 1, "live_full_payload"),
-                ("run-1", "tropical", "rfis", 1, 1, "live_full_payload"),
-                ("run-1", "tropical", "submittals", 1, 0, "live_full_payload"),
-                ("run-1", "tropical", "submittals", 1, 1, "fixture_full_payload"),
-                ("old-run", "tropical", "rfis", 1, 1, "live_full_payload"),
-            ],
+            "INSERT INTO procore_endpoint_raw_payloads VALUES (?, ?, ?, ?, ?, ?)", rows
         )
         conn.commit()
     finally:
         conn.close()
+    return db_path
 
-    counts = orch.SourceRefreshOrchestrator(db_path=db_path)._raw_full_payload_counts_for_current_sync(
-        {"endpoints": [{"sync_run_id": "run-1"}]}
+
+def test_freshness_counts_current_live_full_rows_ignoring_capture_run(tmp_path: Any) -> None:
+    # The gate mirrors projection replay: count current live_full_payload rows regardless of
+    # capture_run_id (not refreshed on idempotent re-run upserts). Exclude is_current=0,
+    # fixture/legacy quality. The "old-run" live row MUST count (no capture_run_id filter).
+    db_path = _freshness_db(
+        tmp_path,
+        [
+            ("run-1", "tropical", "rfis", 1, 1, "live_full_payload"),
+            ("run-1", "tropical", "rfis", 1, 1, "live_full_payload"),
+            ("old-run", "tropical", "rfis", 1, 1, "live_full_payload"),  # counted: no run filter
+            ("run-1", "tropical", "submittals", 1, 0, "live_full_payload"),  # excluded: stale
+            ("run-1", "tropical", "submittals", 1, 1, "fixture_full_payload"),  # excluded: fixture
+            ("run-1", "tropical", "submittals", 1, 1, "redacted_legacy_projection"),  # excluded
+        ],
     )
 
-    assert counts["sync_run_ids_checked"] == ["run-1"]
-    assert counts["by_project"] == {"tropical": 2}
-    assert counts["by_project_endpoint"] == {"tropical": {"rfis": 2}}
+    counts = orch.SourceRefreshOrchestrator(db_path=db_path)._current_live_full_payload_counts()
+
+    assert counts["by_project"] == {"tropical": 3}
+    assert counts["by_project_endpoint"] == {"tropical": {"rfis": 3}}
+
+
+def test_freshness_taxonomy_classifies_each_endpoint(tmp_path: Any) -> None:
+    db_path = _freshness_db(
+        tmp_path,
+        [
+            ("r1", "tropical", "rfis", 1, 1, "live_full_payload"),
+            ("r1", "tropical", "rfis", 1, 1, "live_full_payload"),
+        ],
+    )
+    summary = {
+        "endpoints": [
+            # retrieved > 0 with current live rows present -> landed
+            {
+                "endpoint": "rfis",
+                "scope": "tropical",
+                "project_key": "tropical",
+                "status": "success",
+                "retrieved": 478,
+                "sync_run_id": "r1",
+            },
+            # retrieved > 0 but no rows -> landing missing (fail closed)
+            {
+                "endpoint": "submittals",
+                "scope": "tropical",
+                "project_key": "tropical",
+                "status": "success",
+                "retrieved": 12,
+                "sync_run_id": "r2",
+            },
+            # valid no-data / no-tool stage -> empty result (green)
+            {
+                "endpoint": "daily-log-weather",
+                "scope": "tropical",
+                "project_key": "tropical",
+                "status": "success",
+                "retrieved": 0,
+                "sync_run_id": "r3",
+            },
+            # detail/full endpoint, list returned records, richer payload absent
+            {
+                "endpoint": "meeting-detail",
+                "scope": "tropical",
+                "project_key": "tropical",
+                "status": "success",
+                "retrieved": 4,
+                "sync_run_id": "r4",
+            },
+            # explicit skip with reason -> green skip
+            {"endpoint": "list-drawings", "scope": "n/a", "status": "skipped_tool_not_enabled"},
+            # transport failure -> degraded, never green
+            {
+                "endpoint": "rfis",
+                "scope": "pga-modern-garage",
+                "project_key": "pga-modern-garage",
+                "status": "transport_error_non_retryable",
+                "retrieved": 0,
+            },
+        ]
+    }
+    fr = orch.SourceRefreshOrchestrator(db_path=db_path)._verify_procore_raw_payload_freshness(
+        summary
+    )
+    counts = fr["counts_by_status"]
+    assert counts["ok_payload_landed"] == 1
+    assert counts["degraded_raw_payload_landing_missing"] == 1
+    assert counts["ok_empty_result"] == 1
+    assert counts["degraded_detail_payload_unavailable"] == 1
+    assert counts["ok_skipped_with_reason"] == 1
+    assert counts["degraded_external_blocked"] == 1
+    # The gate fails closed only on raw-landing gaps (landing_missing + detail_unavailable).
+    assert fr["ok"] is False
+    assert fr["missing_fresh_raw_payload_count"] == 2
+    # Transport failure is classified degraded, NOT a green skipped status.
+    by_pair = {
+        (r["project_key"], r["endpoint"]): r["freshness_status"]
+        for r in fr["classified_endpoints"]
+    }
+    assert by_pair[("pga-modern-garage", "rfis")] == "degraded_external_blocked"
+    assert by_pair[("tropical", "daily-log-weather")] == "ok_empty_result"
+    # Receipt is counts-only: no payload values / secret-shaped strings.
+    blob = json.dumps(fr)
+    assert not any(tok in blob for tok in FORBIDDEN_RAW)
+    assert fr["guardrails"]["emits_values"] is False
+
+
+def test_freshness_all_landed_is_green_and_idempotent(tmp_path: Any) -> None:
+    db_path = _freshness_db(
+        tmp_path,
+        [
+            ("r1", "tropical", "rfis", 1, 1, "live_full_payload"),
+            ("r1", "tropical", "submittals", 1, 1, "live_full_payload"),
+        ],
+    )
+    summary = {
+        "endpoints": [
+            {
+                "endpoint": "rfis",
+                "scope": "tropical",
+                "project_key": "tropical",
+                "status": "success",
+                "retrieved": 9,
+                "sync_run_id": "r1",
+            },
+            {
+                "endpoint": "submittals",
+                "scope": "tropical",
+                "project_key": "tropical",
+                "status": "success",
+                "retrieved": 3,
+                "sync_run_id": "r1",
+            },
+        ]
+    }
+    orch_inst = orch.SourceRefreshOrchestrator(db_path=db_path)
+    first = orch_inst._verify_procore_raw_payload_freshness(summary)
+    second = orch_inst._verify_procore_raw_payload_freshness(summary)
+    assert first["ok"] is True
+    assert first["counts_by_status"]["ok_payload_landed"] == 2
+    assert first["missing_fresh_raw_payload_count"] == 0
+    # Re-running over unchanged landed rows is stable (no capture_run_id drift).
+    assert first["counts_by_status"] == second["counts_by_status"]
 
 
 def test_skip_vector(patched: dict[str, Any]) -> None:
