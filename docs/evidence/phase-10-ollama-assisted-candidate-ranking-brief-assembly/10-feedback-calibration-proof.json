@@ -1,0 +1,22 @@
+{
+  "min_feedback_samples": 5,
+  "max_calibration_adjustment": 0.1,
+  "no_negative_transfer": true,
+  "applied_family_count": 0,
+  "families": {
+    "accepted_task": {
+      "sample_size": 4,
+      "acceptance_rate": 1.0,
+      "threshold_met": false,
+      "applied": false,
+      "adjustment": 0.0
+    },
+    "task": {
+      "sample_size": 2,
+      "acceptance_rate": 0.0,
+      "threshold_met": false,
+      "applied": false,
+      "adjustment": 0.0
+    }
+  }
+}

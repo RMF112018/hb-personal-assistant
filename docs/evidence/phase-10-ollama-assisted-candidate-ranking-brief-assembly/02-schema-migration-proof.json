@@ -1,0 +1,30 @@
+{
+  "latest_schema_version": 51,
+  "applied_to": 51,
+  "idempotent_reapply": 51,
+  "additive_tables": {
+    "daily_brief_ranking_runs": {
+      "column_count": 30,
+      "guard_column_count": 13
+    },
+    "daily_brief_ranked_candidates": {
+      "column_count": 28,
+      "guard_column_count": 13
+    },
+    "candidate_similarity_edges": {
+      "column_count": 24,
+      "guard_column_count": 13
+    },
+    "daily_brief_assembly_runs": {
+      "column_count": 23,
+      "guard_column_count": 13
+    },
+    "daily_brief_assembly_sections": {
+      "column_count": 21,
+      "guard_column_count": 13
+    }
+  },
+  "integrity_check": "ok",
+  "guard_check_enforced": true,
+  "v1_to_v50_untouched": true
+}

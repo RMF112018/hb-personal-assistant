@@ -52,6 +52,7 @@ def evaluate_usefulness_gate(
     egress_clean: bool = True,
     stage_context: dict[str, Any] | None = None,
     lifecycle_context: dict[str, Any] | None = None,
+    ranking_context: dict[str, Any] | None = None,
 ) -> UsefulnessGateResult:
     """Evaluate whether the run meets the usefulness bar for `success` (deterministic + read-only).
 
@@ -68,6 +69,14 @@ def evaluate_usefulness_gate(
     ``rejected/suppressed/merged_visible_as_new``, ``snoozed_visible_before_return``,
     ``lifecycle_stage_failed``) fail a would-be success. When absent (None), every lifecycle check is
     skipped and the gate behaves exactly as before — lifecycle-empty/legacy callers are unaffected.
+
+    ``ranking_context`` (apply runs only) is the output of
+    ``daily_brief_assembly.ranking_stage_context``. When provided, its ``contradictions`` (e.g.
+    ``model_ranked_item_missing_source_refs``, ``model_ranked_item_lifecycle_excluded``,
+    ``model_enriched_without_receipt``, ``model_enriched_but_all_advice_dropped``,
+    ``fallback_used_but_claims_model_success``, ``ranking_source_ref_coverage_below_100``) fail a
+    would-be success so the advisory ranking layer can never overclaim. When absent (None), every
+    ranking check is skipped and the gate behaves exactly as before.
     """
     ctx = stage_context or {}
     candidates = store.list_daily_brief_action_candidates(brief_date=brief_date, limit=100000)
@@ -204,6 +213,17 @@ def evaluate_usefulness_gate(
         )
         metrics["lifecycle_contradictions"] = lifecycle_contradictions
 
+    # Ranking contradictions (opt-in via ranking_context; None → skipped entirely).
+    ranking_contradictions: list[str] = []
+    if ranking_context is not None:
+        ranking_contradictions = list(ranking_context.get("contradictions") or [])
+        metrics["ranking_model_status"] = ranking_context.get("model_status")
+        metrics["ranking_source_ref_coverage"] = ranking_context.get("source_ref_coverage")
+        metrics["ranking_deterministic_fallback_used"] = ranking_context.get(
+            "deterministic_fallback_used"
+        )
+        metrics["ranking_contradictions"] = ranking_contradictions
+
     failed: list[str] = []
     if deterministic_section_count < 1:
         failed.append("no_useful_deterministic_section")
@@ -230,6 +250,7 @@ def evaluate_usefulness_gate(
     if not egress_clean:
         failed.append("egress_not_clean")
     failed.extend(lifecycle_contradictions)
+    failed.extend(ranking_contradictions)
 
     passed = not failed
     return UsefulnessGateResult(

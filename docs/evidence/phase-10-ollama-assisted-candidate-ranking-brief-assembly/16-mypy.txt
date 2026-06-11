@@ -1,0 +1,8 @@
+# mypy src — V51 modules (construction.second_brain.* is in strict scope) are clean.
+# The only 2 errors are pre-existing in review_burden_mart.py (untouched by V51);
+# proven identical on base dbd4d41f via 'mypy src' (443 files base / 450 branch).
+
+src/hb_assistant/construction/second_brain/review_burden_mart.py:169: error: Argument 2 to "_risk_category" has incompatible type "set[Any]"; expected "frozenset[str]"  [arg-type]
+src/hb_assistant/construction/second_brain/review_burden_mart.py:171: error: Incompatible return value type (got "str | None", expected "str")  [return-value]
+src/hb_assistant/construction/second_brain/automation_executor.py:2629: note: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs  [annotation-unchecked]
+Found 2 errors in 1 file (checked 450 source files)

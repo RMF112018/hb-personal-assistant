@@ -14,6 +14,21 @@ from .batch_extraction import (
     run_batch_extraction,
 )
 from .calendar_prep import build_calendar_prep_candidates
+from .candidate_ranking import (
+    ALGORITHM_VERSION,
+    DET_CLOSE_THRESHOLD,
+    MAX_RANK_MOVEMENT,
+    POLICY_VERSION,
+    rank_candidates,
+)
+from .candidate_ranking_models import (
+    CandidateRankingAdvice,
+    CandidateRankingPacket,
+    CandidateRankingResult,
+    DailyBriefAssemblyResult,
+)
+from .candidate_ranking_packets import build_candidate_ranking_packet
+from .candidate_similarity import build_similarity_edges
 from .contracts import (
     PHASE_10_CONTRACT_FILES,
     PHASE_10_SEED_FILES,
@@ -26,6 +41,10 @@ from .contracts import (
     load_phase_10_contract,
     load_raw_content_policy,
 )
+from .daily_brief_assembly import (
+    ASSEMBLY_POLICY_VERSION,
+    run_candidate_ranking_and_assembly,
+)
 from .daily_brief_render import render_daily_brief, write_rendered_brief_to_path
 from .daily_brief_synthesis import build_daily_brief_candidates
 from .daily_brief_window import DailyBriefWindow, compute_daily_brief_window
@@ -35,6 +54,11 @@ from .daily_run_scheduler import DailyRunLaunchdManager
 from .email_task_extraction import (
     extract_email_task_candidates,
     score_email_task_signals,
+)
+from .feedback_calibration import (
+    MAX_CALIBRATION_ADJUSTMENT,
+    MIN_FEEDBACK_SAMPLES,
+    build_calibration,
 )
 from .fixture_runner import run_fixture_suite
 from .follow_up_watch import (
@@ -56,6 +80,7 @@ from .models import (
     ObsidianVaultPolicy,
     RawContentPolicy,
 )
+from .ollama_candidate_ranking import build_ranking_advice
 from .packet_builders import (
     build_calendar_event_action_packet,
     build_email_thread_action_packet,
@@ -171,4 +196,22 @@ __all__ = [
     "MODEL_ENRICHED_INTELLIGENCE_LABEL",
     "build_model_enriched_intelligence",
     "render_model_enriched_markdown",
+    # Phase 10 V51: Ollama-assisted candidate ranking + daily-brief assembly overlay
+    "build_candidate_ranking_packet",
+    "rank_candidates",
+    "POLICY_VERSION",
+    "ALGORITHM_VERSION",
+    "MAX_RANK_MOVEMENT",
+    "DET_CLOSE_THRESHOLD",
+    "build_calibration",
+    "MIN_FEEDBACK_SAMPLES",
+    "MAX_CALIBRATION_ADJUSTMENT",
+    "build_ranking_advice",
+    "build_similarity_edges",
+    "run_candidate_ranking_and_assembly",
+    "ASSEMBLY_POLICY_VERSION",
+    "CandidateRankingPacket",
+    "CandidateRankingAdvice",
+    "CandidateRankingResult",
+    "DailyBriefAssemblyResult",
 ]

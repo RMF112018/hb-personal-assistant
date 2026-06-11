@@ -2233,6 +2233,123 @@ def relationship_candidates_scan(
         raise typer.Exit(1) from None
 
 
+@daily_brief_app.command("rank-candidates")
+def daily_brief_rank_candidates(
+    brief_date: "str | None" = typer.Option(  # noqa: B008
+        None, "--brief-date", help="Brief date (YYYY-MM-DD). Default: today (UTC)."
+    ),
+    apply: bool = typer.Option(  # noqa: B008
+        False, "--apply/--dry-run", help="Persist the ranking/assembly overlay. Default: dry-run."
+    ),
+    max_persist: "int | None" = typer.Option(  # noqa: B008
+        None, "--max-persist", help="Required with --apply: cap on persisted ranked/edge rows."
+    ),
+    profile_id: str = typer.Option(  # noqa: B008
+        "default_extract", "--profile", help="Local model profile id for the advisory layer."
+    ),
+    model: "str | None" = typer.Option(None, "--model", help="Override the profile model name."),  # noqa: B008
+    provider: str = typer.Option("ollama", "--provider", help="Local provider (ollama only)."),  # noqa: B008
+    timeout_seconds: "int | None" = typer.Option(  # noqa: B008
+        None, "--timeout-seconds", help="Override the profile generation timeout."
+    ),
+    no_client: bool = typer.Option(  # noqa: B008
+        False, "--no-client", help="Deterministic-only: skip the model (a success path, not failure)."
+    ),
+    mock_output: "str | None" = typer.Option(  # noqa: B008
+        None, "--mock-output", help="Path or JSON string of mock advisory output (offline test)."
+    ),
+    include_similarity: bool = typer.Option(  # noqa: B008
+        True, "--include-similarity/--no-similarity", help="Compute advisory duplicate edges."
+    ),
+    db: "str | None" = typer.Option(  # noqa: B008
+        None, "--db", help="Explicit SQLite path (tests / isolated /tmp validation)."
+    ),
+    json_out: bool = typer.Option(True, "--json/--no-json", help="JSON (default) or summary."),  # noqa: B008
+) -> None:
+    """Rank daily-brief candidates and assemble the brief (deterministic-authoritative, model advisory).
+
+    The deterministic ranking + section order are authoritative; the local model only nudges within a
+    bounded range and only after deterministic eligibility. ``--no-client`` produces a full
+    deterministic run; an unavailable/invalid/unsafe model falls back to deterministic with an honest
+    degraded status. Dry-run writes nothing; ``--apply`` requires ``--max-persist``. Exit 0 ok,
+    2 invalid usage, 3 fail-closed safety/contract violation, 1 unexpected error.
+    """
+    import pathlib
+    from datetime import datetime as _dt
+    from datetime import timezone as _tz
+
+    from hb_assistant.construction.second_brain.local_ai import (
+        load_local_model_profiles,
+        run_candidate_ranking_and_assembly,
+    )
+    from hb_assistant.construction.second_brain.local_ai.structured_output import StaticOutputClient
+    from hb_assistant.construction.store import ConstructionStore
+    from hb_assistant.retrieval.embedder import DeterministicEmbedder
+
+    cmd = "second-brain daily-brief rank-candidates"
+    try:
+        if provider != "ollama":
+            payload = {"command": cmd, "ok": False, "status": "invalid", "error": "provider_must_be_ollama"}
+            typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+            raise typer.Exit(2)
+        if apply and max_persist is None:
+            payload = {"command": cmd, "ok": False, "status": "invalid", "error": "apply_requires_max_persist"}
+            typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+            raise typer.Exit(2)
+
+        bdate = brief_date or _dt.now(_tz.utc).date().isoformat()
+        now_utc = f"{bdate}T12:00:00+00:00" if brief_date else _dt.now(_tz.utc).isoformat()
+
+        use_model = not no_client
+        backend = None
+        profile = None
+        profiles = None
+        if use_model:
+            profiles = load_local_model_profiles()
+            base = next((p for p in profiles.profiles if p.profile_id == profile_id), None)
+            if base is None:
+                payload = {"command": cmd, "ok": False, "status": "invalid", "error": f"unknown_profile:{profile_id}"}
+                typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+                raise typer.Exit(2)
+            updates: dict[str, Any] = {}
+            if model:
+                updates["model_name"] = model
+            if timeout_seconds is not None:
+                updates["timeout_seconds"] = timeout_seconds
+            profile = base.model_copy(update=updates) if updates else base
+            if mock_output is not None:
+                p = pathlib.Path(mock_output)
+                raw = p.read_text(encoding="utf-8") if p.exists() else mock_output
+                backend = StaticOutputClient(raw)
+
+        store = ConstructionStore(db_path=db)
+        result = run_candidate_ranking_and_assembly(
+            store=store,
+            brief_date=bdate,
+            now_utc=now_utc,
+            profile=profile,
+            profiles=profiles,
+            backend=backend,
+            use_model=use_model,
+            include_similarity=include_similarity,
+            embedder=DeterministicEmbedder(),
+            dry_run=not apply,
+            max_persist=max_persist,
+        )
+        result["db_indicator"] = _redact_db_indicator(db)
+        if result.get("status") == "fail_closed":
+            typer.echo(json.dumps(result, indent=2, default=str) if json_out else str(result))
+            raise typer.Exit(3)
+        typer.echo(json.dumps(result, indent=2, default=str) if json_out else str(result))
+        raise typer.Exit(0)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        payload = {"command": cmd, "ok": False, "status": "error", "error": str(e)[:300]}
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(1) from None
+
+
 @daily_brief_app.command("render")
 def daily_brief_render(
     date: "str | None" = typer.Option(  # noqa: B008

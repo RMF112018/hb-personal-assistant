@@ -1,0 +1,8 @@
+# Ruff — V51 slice files (clean)
+# Project ruff scope is intentionally partial (CLAUDE.md). The V51 changeset files all pass.
+All checks passed!
+
+# Pre-existing whole-tree ruff findings (NOT in this changeset): cli/main.py, mcp/wrappers.py,
+# test_agent_registry.py, test_calendar_event_indexing.py, test_phase_10_daily_run.py,
+# test_phase_10_mcp_packet_hardening.py, test_phase_10_procore_monitor.py,
+# test_phase_10_relationship_entity_report.py — all untouched by V51.

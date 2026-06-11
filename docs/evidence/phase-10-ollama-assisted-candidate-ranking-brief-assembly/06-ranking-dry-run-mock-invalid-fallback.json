@@ -1,0 +1,164 @@
+{
+  "command": "second-brain daily-brief rank-candidates",
+  "status": "ok",
+  "ok": true,
+  "brief_date": "2026-06-11",
+  "applied": false,
+  "packet_status": "ok",
+  "ranking": {
+    "brief_date": "2026-06-11",
+    "ranking_run_id": "rkr:bd3e4bce658a7b5807e05646bde948c9",
+    "policy_version": "rank-policy-v1",
+    "algorithm_version": "rank-det-v1",
+    "candidate_set_hash": "cs:1030660d2b42760ecb774ee2775f9b95",
+    "feedback_digest_hash": "fd:b314d34b3f444e6ca20ce546bb0f986a",
+    "model_status": "withheld",
+    "model_profile_id": "default_extract",
+    "model_name": "mistral-nemo:12b",
+    "model_receipt_id": null,
+    "deterministic_fallback_used": true,
+    "degraded_reason": "raw_leak_in_model_output",
+    "candidate_count": 3,
+    "ranked_count": 3,
+    "withheld_source_missing_count": 0,
+    "source_ref_coverage": 1.0,
+    "usefulness_score": 0.9,
+    "guard_clean": true,
+    "ranked": [
+      {
+        "rank_position": 1,
+        "candidate_id": "accepted_task:acc-task:t2",
+        "subject_type": "accepted_task",
+        "section": "accepted_task",
+        "lifecycle_state": "accepted",
+        "project_key": "PRJ-B",
+        "due_bucket": "overdue",
+        "source_ref_count": 1,
+        "deterministic_score": 83.0,
+        "feedback_score": 50.0,
+        "model_advisory_score": null,
+        "final_score": 76.4,
+        "why_this_matters_redacted": null,
+        "model_reason_codes": null,
+        "duplicate_group_key": "src:email:h-t2"
+      },
+      {
+        "rank_position": 2,
+        "candidate_id": "accepted_task:acc-task:t3",
+        "subject_type": "accepted_task",
+        "section": "accepted_task",
+        "lifecycle_state": "accepted",
+        "project_key": "PRJ-C",
+        "due_bucket": "none",
+        "source_ref_count": 1,
+        "deterministic_score": 71.0,
+        "feedback_score": 50.0,
+        "model_advisory_score": null,
+        "final_score": 66.8,
+        "why_this_matters_redacted": null,
+        "model_reason_codes": null,
+        "duplicate_group_key": "src:email:h-t3"
+      },
+      {
+        "rank_position": 3,
+        "candidate_id": "accepted_task:acc-task:t1",
+        "subject_type": "accepted_task",
+        "section": "accepted_task",
+        "lifecycle_state": "accepted",
+        "project_key": "PRJ-A",
+        "due_bucket": "none",
+        "source_ref_count": 1,
+        "deterministic_score": 65.0,
+        "feedback_score": 50.0,
+        "model_advisory_score": null,
+        "final_score": 62.0,
+        "why_this_matters_redacted": null,
+        "model_reason_codes": null,
+        "duplicate_group_key": "src:email:h-t1"
+      }
+    ]
+  },
+  "assembly": {
+    "brief_date": "2026-06-11",
+    "assembly_run_id": "asm:f70eea17fdbf7ceab2ecaabce5f2035f",
+    "ranking_run_id": "rkr:bd3e4bce658a7b5807e05646bde948c9",
+    "assembly_policy_version": "assembly-v1",
+    "model_layer_status": "withheld",
+    "deterministic_fallback_used": true,
+    "withheld_reason": null,
+    "section_count": 2,
+    "candidate_count": 3,
+    "sections": [
+      {
+        "section_key": "top_priorities",
+        "display_order": 0,
+        "title_redacted": "Top Priorities",
+        "candidate_ids": [
+          "accepted_task:acc-task:t2",
+          "accepted_task:acc-task:t3",
+          "accepted_task:acc-task:t1"
+        ],
+        "section_score": 68.4,
+        "degraded_reason": null
+      },
+      {
+        "section_key": "data_gaps_degraded",
+        "display_order": 7,
+        "title_redacted": "Data Gaps / Degraded Model Status",
+        "candidate_ids": [],
+        "section_score": 0.0,
+        "degraded_reason": "source_missing_withheld=0;model_layer=withheld"
+      }
+    ]
+  },
+  "similarity": {
+    "edge_count": 0,
+    "cluster_count": 0,
+    "semantic_ran": true,
+    "review_only": true
+  },
+  "receipt": {
+    "model_status": "ok",
+    "model_receipt_id": null,
+    "output_hash": "2fb197acce1b",
+    "input_context_hash": "9d9aa9921df2",
+    "would_write_receipt": {
+      "profile_id": "default_extract",
+      "provider": "ollama",
+      "model_name": "mistral-nemo:12b",
+      "task_type": "candidate_ranking_brief_assembly",
+      "status": "ok",
+      "input_context_hash": "9d9aa9921df2",
+      "output_hash": "2fb197acce1b",
+      "schema_name": "CandidateRankingAdvice",
+      "schema_valid": true,
+      "latency_ms": 0,
+      "fallback_used": false
+    },
+    "dropped_unknown_alias": 0
+  },
+  "persistence": {
+    "persisted_ranked": 0,
+    "would_persist_ranked": 3,
+    "persisted_edges": 0,
+    "would_persist_edges": 0
+  },
+  "guardrails": {
+    "deterministic_authoritative": true,
+    "model_advisory_only": true,
+    "model_bounded_influence": true,
+    "source_ref_gate": true,
+    "similarity_review_only": true,
+    "no_auto_merge_or_suppress": true,
+    "dry_run_default": true,
+    "apply_requires_max_persist": true,
+    "receipt_hash_only": true,
+    "no_raw_persistence": true,
+    "no_writeback": true,
+    "local_only": true
+  },
+  "db_indicator": [
+    "explicit_db",
+    "/tmp/hb-phase10-ranking-20260611-173225/seed.sqlite"
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "surfaced_candidate_ids": [
+    "accepted_task:acc-task:noref",
+    "accepted_task:acc-task:t1",
+    "accepted_task:acc-task:t2",
+    "accepted_task:acc-task:t3"
+  ],
+  "rejected_excluded": true,
+  "future_snoozed_excluded": true,
+  "withheld_source_missing_count": 0,
+  "surfaced_states": [
+    "accepted"
+  ]
+}

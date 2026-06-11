@@ -1,0 +1,25 @@
+{
+  "tables": {
+    "daily_brief_ranking_runs": {
+      "rows": 1,
+      "guard_sum": 0
+    },
+    "daily_brief_ranked_candidates": {
+      "rows": 4,
+      "guard_sum": 0
+    },
+    "candidate_similarity_edges": {
+      "rows": 0,
+      "guard_sum": 0
+    },
+    "daily_brief_assembly_runs": {
+      "rows": 1,
+      "guard_sum": 0
+    },
+    "daily_brief_assembly_sections": {
+      "rows": 2,
+      "guard_sum": 0
+    }
+  },
+  "all_guard_sums_zero": true
+}

@@ -1,0 +1,13 @@
+Phase 10 V51 — production DB-copy validation (prod never mutated)
+prod_db: ~/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite
+prod_sha256_before: d0c3e52a15b9dbdf65174f9347e1c596ed97ca2098e167902d94406a9ceccdb7
+prod_sha256_after:  d0c3e52a15b9dbdf65174f9347e1c596ed97ca2098e167902d94406a9ceccdb7
+prod_unchanged: YES
+copy_schema_before: 49
+copy_schema_after: 51
+copy_apply_exit: 0
+copy_guard_sum_v51_tables: 0
+note: plain-root prod has 0 accepted candidates (candidates live in the (Dev) root), so the
+      apply wrote run/assembly metadata only; behavioural ranking proofs use a seeded /tmp DB.
+note: the --environment dev scheduler was live during validation and writes the (Dev) root,
+      NOT this plain root; prod SHA confirmed identical before and after on a frozen /tmp copy.

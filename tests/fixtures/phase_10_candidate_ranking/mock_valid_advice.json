@@ -1,0 +1,20 @@
+{
+  "items": [
+    {
+      "alias": "c1",
+      "priority_hint": 1,
+      "group_label": "Overdue project work",
+      "why_this_matters": "Overdue and project-linked; needs a response today.",
+      "reason_codes": ["overdue", "project_linked"]
+    },
+    {
+      "alias": "c2",
+      "priority_hint": 2,
+      "why_this_matters": "Awaiting a reply from others."
+    }
+  ],
+  "groups": [
+    {"group_label": "Overdue project work", "aliases": ["c1"]}
+  ],
+  "duplicates": []
+}
