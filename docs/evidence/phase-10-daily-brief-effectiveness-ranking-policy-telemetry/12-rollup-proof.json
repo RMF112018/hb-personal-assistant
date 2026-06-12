@@ -1,11 +1,11 @@
 {
   "proof": "rollups",
   "scope_counts": {
+    "project": 2,
     "window": 1,
     "daily": 1,
-    "candidate_family": 1,
     "model_profile": 1,
-    "project": 2,
+    "candidate_family": 1,
     "source_family": 2
   },
   "window_rollup": {

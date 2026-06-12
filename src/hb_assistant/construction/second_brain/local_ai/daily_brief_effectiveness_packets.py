@@ -117,51 +117,85 @@ def _index_lifecycle_events(store: Any) -> dict[tuple[str, str], list[dict[str, 
     return index
 
 
+def _is_post_exposure(event: dict[str, Any], exposure_time: str) -> bool:
+    """True when the lifecycle event occurred at/after the exposure-proxy time."""
+    ev = _parse_iso(event.get("created_utc"))
+    exp = _parse_iso(exposure_time)
+    return ev is not None and exp is not None and ev >= exp
+
+
 def _derive_item_outcome(
     *,
     lifecycle_state: str,
+    actionable: bool,
     subject_events: list[dict[str, Any]],
     exposure_time: str,
     now_utc: str,
     ignored_lag_hours: int,
 ) -> dict[str, Any]:
-    """Return ``{outcome_type, outcome_weight, outcome_lag_hours, lifecycle_event_id}``.
+    """Return ``{outcome_type, outcome_weight, outcome_lag_hours, lifecycle_event_id, status_reason}``.
 
-    ``outcome_type`` is ``None`` for an open item still inside its lag window (pending, not ignored).
-    Derived strictly from V50 lifecycle data; never inferred from rank and never a lifecycle write.
+    Attribution is strictly post-exposure: only a disposition event at/after the exposure-proxy time
+    is counted as that exposure's outcome (``outcome_lag_hours`` is therefore never negative). A
+    disposition that predates the exposure is NOT converted into ignored/stale — it is excluded with
+    ``outcome_type = None`` and ``status_reason = pre_existing_disposition_not_attributed``. ``ignored``
+    is assigned only to a genuinely open, actionable item that has aged past the lag window with no
+    attributable disposition. Derived from V50 lifecycle data only; never a lifecycle write.
     """
-    latest = subject_events[0] if subject_events else None
-    if lifecycle_state in _DISPOSITION_STATE_TO_OUTCOME:
-        outcome = _DISPOSITION_STATE_TO_OUTCOME[lifecycle_state]
-        lifecycle_event_id = None
-        lag = None
-        if latest is not None:
-            if str(latest.get("event_type") or "") == "reopen":
-                outcome = REOPENED
-            lifecycle_event_id = latest.get("lifecycle_event_id")
-            lag = _hours_between(exposure_time, latest.get("created_utc"))
+    # 1) Latest post-exposure disposition event drives both the outcome and the (non-negative) lag.
+    for event in subject_events:  # newest-first
+        if not _is_post_exposure(event, exposure_time):
+            continue
+        event_type = str(event.get("event_type") or "")
+        new_state = str(event.get("new_state") or "")
+        if event_type == "reopen":
+            outcome = REOPENED
+        elif new_state in _DISPOSITION_STATE_TO_OUTCOME:
+            outcome = _DISPOSITION_STATE_TO_OUTCOME[new_state]
+        else:
+            continue  # non-disposition post-exposure event (e.g. a note) — keep scanning
+        lag = _hours_between(exposure_time, event.get("created_utc"))
         return {
             "outcome_type": outcome,
             "outcome_weight": outcome_weight(outcome),
-            "outcome_lag_hours": lag,
-            "lifecycle_event_id": lifecycle_event_id,
+            "outcome_lag_hours": max(0.0, lag) if lag is not None else None,
+            "lifecycle_event_id": event.get("lifecycle_event_id"),
+            "status_reason": "attributed_post_exposure",
         }
 
-    # Open state: only call it ignored/stale once the lag window has elapsed.
+    # 2) No attributable post-exposure disposition, but the item is already in a disposition state →
+    #    the disposition predates the exposure. Exclude it; never call it ignored/stale.
+    if lifecycle_state in _DISPOSITION_STATE_TO_OUTCOME:
+        return {
+            "outcome_type": None,
+            "outcome_weight": None,
+            "outcome_lag_hours": None,
+            "lifecycle_event_id": None,
+            "status_reason": "pre_existing_disposition_not_attributed",
+        }
+
+    # 3) Genuinely open item: ignored/stale only when actionable AND aged past the lag window.
     age = _hours_between(exposure_time, now_utc)
-    if age is not None and age >= ignored_lag_hours:
+    if actionable and age is not None and age >= ignored_lag_hours:
         outcome = STALE_NO_ACTION if lifecycle_state == lc.STATE_STALE else IGNORED
         return {
             "outcome_type": outcome,
             "outcome_weight": outcome_weight(outcome),
             "outcome_lag_hours": None,
             "lifecycle_event_id": None,
+            "status_reason": "no_action_after_lag",
         }
+    reason = (
+        "pending_within_lag_window"
+        if (age is not None and age < ignored_lag_hours)
+        else "open_not_actionable"
+    )
     return {
         "outcome_type": None,
         "outcome_weight": None,
         "outcome_lag_hours": None,
         "lifecycle_event_id": None,
+        "status_reason": reason,
     }
 
 
@@ -270,6 +304,7 @@ def build_effectiveness_packets(
             subject_key = (str(rq.get("subject_type") or ""), str(rq.get("subject_id") or ""))
             outcome = _derive_item_outcome(
                 lifecycle_state=lifecycle_state,
+                actionable=actionable,
                 subject_events=events_by_subject.get(subject_key, []),
                 exposure_time=exposure_time,
                 now_utc=now_utc,
@@ -327,6 +362,7 @@ def build_effectiveness_packets(
                     "outcome_weight": outcome["outcome_weight"],
                     "outcome_lag_hours": outcome["outcome_lag_hours"],
                     "lifecycle_event_id": outcome["lifecycle_event_id"],
+                    "status_reason": outcome["status_reason"],
                 }
             )
 
@@ -393,6 +429,9 @@ def build_effectiveness_packets(
             "briefs": len(briefs),
             "candidates": len(items),
             "outcomes": outcomes_present,
+            "excluded_pre_existing_disposition": sum(
+                1 for it in items if it.get("status_reason") == "pre_existing_disposition_not_attributed"
+            ),
         },
         "degradation": degradation,
     }

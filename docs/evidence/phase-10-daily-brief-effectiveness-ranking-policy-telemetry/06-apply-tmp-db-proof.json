@@ -1,8 +1,8 @@
 {
   "command": "second-brain daily-brief evaluate-effectiveness",
   "status": "no_ranked_briefs",
-  "window_start": "2026-06-01",
-  "window_end": "2026-06-11",
+  "window_start": "2026-06-05",
+  "window_end": "2026-06-12",
   "ignored_lag_hours": 72,
   "eval_mode": "observed",
   "data_sufficiency": "insufficient_sample",
@@ -36,6 +36,8 @@
   },
   "db_indicator": [
     "explicit_db",
-    "/tmp/hb-phase10-effectiveness-20260611-effectiveness/construction.db"
-  ]
+    "/tmp/hb-phase10-effectiveness-20260612-patch2/construction.db"
+  ],
+  "apply_db_temp_checked": true,
+  "apply_db_non_tmp_override_used": false
 }

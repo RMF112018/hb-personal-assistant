@@ -55,6 +55,7 @@ def _event(
     event_type: str,
     new_state: str,
     until: Optional[str] = None,
+    created_utc: Optional[str] = None,
 ) -> None:
     store.insert_lifecycle_event(
         idempotency_key=f"{event_type}:{cid}",
@@ -63,7 +64,39 @@ def _event(
         event_type=event_type,
         new_state=new_state,
         effective_until_utc=until,
+        created_utc=created_utc,
     )
+
+
+def seed_two_brief_runs(db: str) -> ConstructionStore:
+    """Surface the same candidate across TWO ranking runs at different ranks (multi-brief regression).
+
+    Brief A surfaces {c_shared, c_low}; then a higher-priority overdue candidate is added and Brief B
+    surfaces {c_top, c_shared, c_low}, so ``c_shared`` sits at a different rank in run A vs run B.
+    Returns the store with two persisted ranking runs.
+    """
+    store = ConstructionStore(db_path=db)
+    _task(store, "c_shared", source_family="email", project_key="PRJ-A")
+    _task(store, "c_low", source_family="email", project_key="PRJ-A", confidence=0.3)
+    run_candidate_ranking_and_assembly(
+        store=store, brief_date="2026-06-10", now_utc="2026-06-10T12:00:00+00:00",
+        use_model=False, include_similarity=True, dry_run=False, max_persist=1000,
+    )
+    # Add an overdue, higher-priority candidate, then surface a second brief.
+    store.upsert_task_candidate(
+        candidate_id="c_top", stable_key="PRJ:c_top", title_redacted="Task c_top",
+        project_key="PRJ-A", confidence=0.95, review_status="pending",
+        due_at_utc="2026-06-01T00:00:00+00:00",
+    )
+    store.upsert_candidate_source_ref(
+        source_ref_id="sr-c_top", candidate_type="task", candidate_id="c_top",
+        source_family="email", source_ref_hash="h-c_top",
+    )
+    run_candidate_ranking_and_assembly(
+        store=store, brief_date="2026-06-11", now_utc="2026-06-11T12:00:00+00:00",
+        use_model=False, include_similarity=True, dry_run=False, max_persist=1000,
+    )
+    return store
 
 
 def seed_effectiveness_store(db: str, *, now: str = NOW) -> ConstructionStore:

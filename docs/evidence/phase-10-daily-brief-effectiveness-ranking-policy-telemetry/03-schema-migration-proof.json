@@ -1,7 +1,7 @@
 {
   "proof": "schema_migration",
-  "latest_schema_version": 52,
-  "applied": 52,
+  "latest_schema_version": 53,
+  "applied": 53,
   "reapply_idempotent": true,
   "v52_tables": [
     "daily_brief_exposure_events",
@@ -13,7 +13,12 @@
   ],
   "all_tables_present": true,
   "all_guards_present": true,
-  "guard_column_count": 13,
   "guard_sum": 0,
-  "overall_status": "ready"
+  "overall_status": "ready",
+  "ranking_policy_eval_items_pk": [
+    "daily_brief_action_candidate_id",
+    "eval_run_id",
+    "ranking_run_id"
+  ],
+  "v53_reconcile": "adds ranking_run_id + composite PK to ranking_policy_eval_items (non-destructive rebuild, idempotent)"
 }

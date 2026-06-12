@@ -10,5 +10,7 @@
   },
   "guard_sum_total": 0,
   "persisted_total": 25,
-  "schema_status": "ready"
+  "schema_status": "ready",
+  "multi_run_shared_candidate_eval_items": 2,
+  "multi_run_note": "same candidate in 2 ranking runs preserved (V53 composite PK)"
 }

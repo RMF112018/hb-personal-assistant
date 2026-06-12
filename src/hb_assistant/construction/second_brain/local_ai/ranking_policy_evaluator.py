@@ -27,12 +27,21 @@ RANKING_ALGORITHM_VERSION = "rank-det-v1"
 ASSEMBLY_POLICY_VERSION = "assembly-v1"
 
 
-def _rerank_positions(items: list[dict[str, Any]], score_key: str) -> dict[str, int]:
-    """Return ``candidate_id -> 1-based rank`` by ``score_key`` desc within each ranking run.
+def _item_key(it: dict[str, Any]) -> tuple[str, str]:
+    """Composite identity for a surfaced item: a candidate can recur across ranking runs."""
+    return (
+        str(it.get("ranking_run_id")),
+        str(it.get("daily_brief_action_candidate_id")),
+    )
 
-    Deterministic tie-break on candidate id keeps the order stable across runs.
+
+def _rerank_positions(items: list[dict[str, Any]], score_key: str) -> dict[tuple[str, str], int]:
+    """Return ``(ranking_run_id, candidate_id) -> 1-based rank`` by ``score_key`` desc within each run.
+
+    Keyed by the composite (run, candidate) identity so the same candidate ranked in two ranking runs
+    keeps a distinct position per run. Deterministic tie-break on candidate id.
     """
-    positions: dict[str, int] = {}
+    positions: dict[tuple[str, str], int] = {}
     by_run: dict[str, list[dict[str, Any]]] = {}
     for it in items:
         by_run.setdefault(str(it.get("ranking_run_id")), []).append(it)
@@ -45,21 +54,22 @@ def _rerank_positions(items: list[dict[str, Any]], score_key: str) -> dict[str, 
     for run_items in by_run.values():
         ordered = sorted(run_items, key=_sort_key)
         for idx, it in enumerate(ordered, start=1):
-            positions[str(it.get("daily_brief_action_candidate_id"))] = idx
+            positions[_item_key(it)] = idx
     return positions
 
 
-def _rank_outcome_for(items: list[dict[str, Any]], positions: dict[str, int]) -> Optional[float]:
-    """rank_outcome_score using the supplied (mode-specific) rank positions."""
+def _rank_outcome_for(
+    items: list[dict[str, Any]], positions: dict[tuple[str, str], int]
+) -> Optional[float]:
+    """rank_outcome_score using the supplied (mode-specific) per-(run,candidate) rank positions."""
     if not items:
         return None
     scored = []
     candidate_count = max(positions.values()) if positions else len(items)
     for it in items:
-        cid = str(it.get("daily_brief_action_candidate_id"))
         scored.append(
             {
-                "rank_position": positions.get(cid, it.get("rank_position") or 1),
+                "rank_position": positions.get(_item_key(it), it.get("rank_position") or 1),
                 "outcome_type": it.get("outcome_type"),
             }
         )
@@ -77,6 +87,7 @@ def _eval_item_row(it: dict[str, Any], rank_position: int) -> dict[str, Any]:
         "actionable": bool(it.get("actionable")),
     }
     return {
+        "ranking_run_id": it["ranking_run_id"],
         "daily_brief_action_candidate_id": it["daily_brief_action_candidate_id"],
         "rank_position": rank_position,
         "section_key": it.get("section_key"),
@@ -120,10 +131,7 @@ def evaluate_ranking_policy(
         else None
     )
 
-    observed_positions = {
-        str(it["daily_brief_action_candidate_id"]): int(it.get("rank_position") or 1)
-        for it in items
-    }
+    observed_positions = {_item_key(it): int(it.get("rank_position") or 1) for it in items}
     deterministic_positions = _rerank_positions(items, "deterministic_score")
     model_positions = _rerank_positions(items, "final_score")
 
@@ -162,14 +170,8 @@ def evaluate_ranking_policy(
     )
     delta = M.deterministic_vs_model_delta(model_assisted, deterministic_baseline)
 
-    active_positions_for_items = active_positions
     eval_items = [
-        _eval_item_row(
-            it,
-            active_positions_for_items.get(
-                str(it["daily_brief_action_candidate_id"]), it.get("rank_position") or 1
-            ),
-        )
+        _eval_item_row(it, active_positions.get(_item_key(it), it.get("rank_position") or 1))
         for it in items
     ]
 

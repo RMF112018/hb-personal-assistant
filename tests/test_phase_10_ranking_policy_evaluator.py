@@ -73,3 +73,39 @@ def test_eval_items_are_raw_free_and_normalized(tmp_path: Path) -> None:
         assert item["source_family"]
         assert item["project_key"]
         assert item["eval_notes_json"].startswith("{")
+
+
+def test_same_candidate_two_runs_preserved(tmp_path: Path) -> None:
+    import sqlite3
+
+    from hb_assistant.construction.second_brain.local_ai import (
+        run_daily_brief_effectiveness_evaluation,
+    )
+    from tests._phase_10_effectiveness_seed import seed_two_brief_runs
+
+    db = str(tmp_path / "t.sqlite")
+    store = seed_two_brief_runs(db)
+    pkt = build_effectiveness_packets(
+        store, window_start=WINDOW_START, window_end=WINDOW_END, now_utc=EVAL_NOW
+    )
+    ev = evaluate_ranking_policy(pkt, eval_mode="observed")
+    shared = [
+        e
+        for e in ev["eval_items"]
+        if e["daily_brief_action_candidate_id"] == "task_candidate:c_shared"
+    ]
+    # The same candidate surfaced in two ranking runs → two distinct eval-item facts.
+    assert len(shared) == 2
+    assert len({e["ranking_run_id"] for e in shared}) == 2
+    # Apply preserves both rows under the composite PK.
+    res = run_daily_brief_effectiveness_evaluation(
+        store, window_start=WINDOW_START, window_end=WINDOW_END, now_utc=EVAL_NOW,
+        eval_mode="observed", dry_run=False, max_persist=500,
+    )
+    assert res["applied"] is True
+    conn = sqlite3.connect(db)
+    n = conn.execute(
+        "SELECT COUNT(*) FROM ranking_policy_eval_items WHERE daily_brief_action_candidate_id = ?",
+        ("task_candidate:c_shared",),
+    ).fetchone()[0]
+    assert n == 2

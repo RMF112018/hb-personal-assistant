@@ -14,7 +14,7 @@ from .connection import get_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 52
+LATEST_SCHEMA_VERSION = 53
 
 
 class SQLiteMigrator:
@@ -7057,6 +7057,19 @@ class SQLiteMigrator:
                     (now,),
                 )
 
+            # v53 reconcile: add ranking_run_id (+ composite PK) to ranking_policy_eval_items so a
+            # candidate surfaced in two ranking runs keeps a distinct fact per run. Changing a PK
+            # needs a table rebuild; this guarded, idempotent reconcile is a no-op once the column
+            # exists, and preserves any existing rows (backfilling ranking_run_id='unknown'). Needed
+            # because an editable-install runner could migrate a DB to the original V52 shape.
+            self._reconcile_v53_eval_items(conn)
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 53")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (53, 'v53_reconcile_ranking_policy_eval_items_ranking_run_id', ?)",
+                    (now,),
+                )
+
         # Return latest version
         conn2 = get_connection(self._db_path)
         cur = conn2.execute("SELECT MAX(version) FROM schema_migrations")
@@ -7071,6 +7084,71 @@ class SQLiteMigrator:
         from hb_assistant.procore.projection_registry import build_v47_ddl
 
         return build_v47_ddl()
+
+    @classmethod
+    def _reconcile_v53_eval_items(cls, conn: sqlite3.Connection) -> None:
+        """Rebuild ``ranking_policy_eval_items`` to add ``ranking_run_id`` + the composite PK.
+
+        Idempotent and guarded: a no-op once ``ranking_run_id`` exists (fresh DBs created by the new
+        V53-aware migrator already have it; here V52 creates the original shape and this rebuilds it).
+        Non-destructive — existing rows are copied into the rebuilt table (legacy rows, which carry no
+        run id, are backfilled with ``ranking_run_id='unknown'``). The table holds only derived,
+        regenerable telemetry; in practice it is empty wherever this reconcile runs.
+        """
+        cols = {row[1] for row in conn.execute("PRAGMA table_info(ranking_policy_eval_items)")}
+        if not cols or "ranking_run_id" in cols:
+            return  # table absent (pre-V52) or already reconciled
+        new_ddl = f"""
+        CREATE TABLE ranking_policy_eval_items__v53 (
+          eval_run_id TEXT NOT NULL,
+          ranking_run_id TEXT NOT NULL,
+          daily_brief_action_candidate_id TEXT NOT NULL,
+          rank_position INTEGER,
+          section_key TEXT,
+          candidate_family TEXT,
+          source_family TEXT,
+          project_key TEXT,
+          deterministic_score REAL,
+          feedback_score REAL,
+          model_advisory_score REAL,
+          final_score REAL,
+          model_advisory_used INTEGER NOT NULL DEFAULT 0,
+          outcome_type TEXT,
+          outcome_weight REAL,
+          outcome_lag_hours REAL,
+          source_ref_count INTEGER NOT NULL DEFAULT 0,
+          eval_notes_json TEXT,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP{cls._P10_GUARDS},
+          PRIMARY KEY (eval_run_id, ranking_run_id, daily_brief_action_candidate_id)
+        );
+        """
+        conn.execute("DROP TABLE IF EXISTS ranking_policy_eval_items__v53")
+        conn.execute(new_ddl)
+        conn.execute(
+            """
+            INSERT INTO ranking_policy_eval_items__v53 (
+              eval_run_id, ranking_run_id, daily_brief_action_candidate_id, rank_position, section_key,
+              candidate_family, source_family, project_key, deterministic_score, feedback_score,
+              model_advisory_score, final_score, model_advisory_used, outcome_type, outcome_weight,
+              outcome_lag_hours, source_ref_count, eval_notes_json, created_utc
+            )
+            SELECT
+              eval_run_id, 'unknown', daily_brief_action_candidate_id, rank_position, section_key,
+              candidate_family, source_family, project_key, deterministic_score, feedback_score,
+              model_advisory_score, final_score, model_advisory_used, outcome_type, outcome_weight,
+              outcome_lag_hours, source_ref_count, eval_notes_json, created_utc
+            FROM ranking_policy_eval_items
+            """
+        )
+        conn.execute("DROP TABLE ranking_policy_eval_items")
+        conn.execute("ALTER TABLE ranking_policy_eval_items__v53 RENAME TO ranking_policy_eval_items")
+        for stmt in (
+            "CREATE INDEX IF NOT EXISTS ix_ranking_policy_eval_items_run ON ranking_policy_eval_items(eval_run_id);",
+            "CREATE INDEX IF NOT EXISTS ix_ranking_policy_eval_items_ranking_run ON ranking_policy_eval_items(ranking_run_id);",
+            "CREATE INDEX IF NOT EXISTS ix_ranking_policy_eval_items_candidate ON ranking_policy_eval_items(daily_brief_action_candidate_id);",
+            "CREATE INDEX IF NOT EXISTS ix_ranking_policy_eval_items_family ON ranking_policy_eval_items(candidate_family);",
+        ):
+            conn.execute(stmt)
 
     @staticmethod
     def _reconcile_v48_columns(conn: sqlite3.Connection) -> None:

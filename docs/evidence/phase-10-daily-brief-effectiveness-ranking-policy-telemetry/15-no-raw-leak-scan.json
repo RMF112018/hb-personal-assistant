@@ -1,7 +1,7 @@
 {
   "command": "hb-assistant email-calendar raw no-raw-leak-scan",
   "ok": true,
-  "files_scanned": 19,
+  "files_scanned": 23,
   "unsafe_finding_count": 0,
   "findings": [],
   "guardrails": {

@@ -2393,7 +2393,12 @@ def daily_brief_evaluate_effectiveness(
         help="Required with --apply: cap on TOTAL projected rows across all V52 tables (fail-closed).",
     ),
     db: "str | None" = typer.Option(  # noqa: B008
-        None, "--db", help="Explicit SQLite path (REQUIRED for /tmp-copy validation; never prod)."
+        None, "--db", help="Explicit SQLite path (REQUIRED for --apply; must be a /tmp copy, never prod)."
+    ),
+    allow_non_tmp_db: bool = typer.Option(  # noqa: B008
+        False,
+        "--allow-non-tmp-db",
+        help="Override: permit --apply against a --db outside the temp root (NOT recommended).",
     ),
     json_out: bool = typer.Option(True, "--json/--no-json", help="JSON (default) or summary."),  # noqa: B008
 ) -> None:
@@ -2438,6 +2443,23 @@ def daily_brief_evaluate_effectiveness(
             _emit({"command": cmd, "ok": False, "status": "invalid", "error": "max_persist_must_be_non_negative"}, 2)
         if ignored_lag_hours < 0:
             _emit({"command": cmd, "ok": False, "status": "invalid", "error": "ignored_lag_hours_must_be_non_negative"}, 2)
+        # --apply must target an explicit /tmp DB copy (never the prod app DB). Checked BEFORE the
+        # store is opened, so a rejected call never migrates anything.
+        if apply:
+            if db is None:
+                _emit({"command": cmd, "ok": False, "status": "invalid", "error": "apply_requires_db"}, 2)
+            elif not _is_temp_db_path(db) and not allow_non_tmp_db:
+                _emit(
+                    {
+                        "command": cmd, "ok": False, "status": "invalid",
+                        "error": "apply_requires_tmp_db",
+                        "guardrails": {
+                            "apply_requires_temp_db": True,
+                            "override_flag": "--allow-non-tmp-db",
+                        },
+                    },
+                    2,
+                )
 
         today = _dt.now(_tz.utc).date().isoformat()
         wstart = window_start or brief_date or today
@@ -2466,6 +2488,11 @@ def daily_brief_evaluate_effectiveness(
             max_persist=max_persist,
         )
         result["db_indicator"] = _redact_db_indicator(db)
+        if apply:
+            result["apply_db_temp_checked"] = True
+            result["apply_db_non_tmp_override_used"] = bool(
+                db is not None and not _is_temp_db_path(db) and allow_non_tmp_db
+            )
         if result.get("status") == "fail_closed":
             _emit(result, 3)
         _emit(result, 0)
@@ -2475,6 +2502,24 @@ def daily_brief_evaluate_effectiveness(
         payload = {"command": cmd, "ok": False, "status": "error", "error": str(e)[:300]}
         typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
         raise typer.Exit(1) from None
+
+
+def _is_temp_db_path(db: str) -> bool:
+    """True when ``db`` resolves under a recognized OS temp root.
+
+    Accepts both the package's ``/tmp/hb-…`` copies and pytest's ``tmp_path`` (macOS
+    ``$TMPDIR=/var/folders/…``); rejects the real app DB under ``~/Library/Application Support/``. Used
+    to gate ``--apply`` so a persist run can never target the production DB.
+    """
+    import os
+    import tempfile
+
+    real = os.path.realpath(db)
+    roots = {
+        os.path.realpath("/tmp"),
+        os.path.realpath(tempfile.gettempdir()),
+    }
+    return any(real == r or real.startswith(r + os.sep) for r in roots)
 
 
 @daily_brief_app.command("render")

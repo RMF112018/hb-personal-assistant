@@ -11164,7 +11164,7 @@ class ConstructionStore:
         return [dict(zip(cols, row, strict=True)) for row in cur.fetchall()]
 
     _EVAL_ITEM_COLUMNS = (
-        "eval_run_id, daily_brief_action_candidate_id, rank_position, section_key, "
+        "eval_run_id, ranking_run_id, daily_brief_action_candidate_id, rank_position, section_key, "
         "candidate_family, source_family, project_key, deterministic_score, feedback_score, "
         "model_advisory_score, final_score, model_advisory_used, outcome_type, outcome_weight, "
         "outcome_lag_hours, source_ref_count, eval_notes_json, created_utc"
@@ -11174,6 +11174,7 @@ class ConstructionStore:
         self,
         *,
         eval_run_id: str,
+        ranking_run_id: str,
         daily_brief_action_candidate_id: str,
         rank_position: Optional[int] = None,
         section_key: Optional[str] = None,
@@ -11194,20 +11195,24 @@ class ConstructionStore:
     ) -> bool:
         """Insert a per-candidate eval fact. Returns True if inserted.
 
-        Idempotent on (eval_run_id, daily_brief_action_candidate_id).
+        Idempotent on (eval_run_id, ranking_run_id, daily_brief_action_candidate_id) — the same
+        candidate surfaced in two ranking runs keeps a distinct fact per run.
         """
-        if not eval_run_id or not daily_brief_action_candidate_id:
-            raise ValueError("eval_run_id, daily_brief_action_candidate_id are required")
+        if not eval_run_id or not ranking_run_id or not daily_brief_action_candidate_id:
+            raise ValueError(
+                "eval_run_id, ranking_run_id, daily_brief_action_candidate_id are required"
+            )
         conn = get_connection(self._db_path)
         with transaction(conn):
             cur = conn.execute(
                 f"""
                 INSERT INTO ranking_policy_eval_items ({self._EVAL_ITEM_COLUMNS})
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(eval_run_id, daily_brief_action_candidate_id) DO NOTHING
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(eval_run_id, ranking_run_id, daily_brief_action_candidate_id) DO NOTHING
                 """,
                 (
                     eval_run_id,
+                    ranking_run_id,
                     daily_brief_action_candidate_id,
                     rank_position,
                     section_key,
@@ -11232,14 +11237,14 @@ class ConstructionStore:
     def list_ranking_policy_eval_items(
         self, *, eval_run_id: str, limit: int = 5000
     ) -> list[dict[str, Any]]:
-        """List per-candidate eval facts for an eval run, by rank then candidate id."""
+        """List per-candidate eval facts for an eval run, by ranking run then rank then candidate."""
         conn = get_connection(self._db_path)
         cur = conn.execute(
             f"""
             SELECT {self._EVAL_ITEM_COLUMNS}
             FROM ranking_policy_eval_items
             WHERE eval_run_id = ?
-            ORDER BY rank_position ASC, daily_brief_action_candidate_id ASC
+            ORDER BY ranking_run_id ASC, rank_position ASC, daily_brief_action_candidate_id ASC
             LIMIT ?
             """,
             (eval_run_id, limit),

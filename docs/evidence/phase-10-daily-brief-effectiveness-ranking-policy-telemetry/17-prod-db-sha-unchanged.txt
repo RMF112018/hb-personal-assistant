@@ -1,5 +1,9 @@
-Production DB SHA-256 unchanged across all V52 validation (DB-copy only; never the prod DB).
+Production DB SHA-256 unchanged across all V52/V53 patch validation (DB-copy only).
 db: ~/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite
-before: d0c3e52a15b9dbdf65174f9347e1c596ed97ca2098e167902d94406a9ceccdb7
-after:  d0c3e52a15b9dbdf65174f9347e1c596ed97ca2098e167902d94406a9ceccdb7
-validation copy: /tmp/hb-phase10-effectiveness-20260611-effectiveness/construction.db (migrated 49→52 in isolation)
+before: a403b67bd3930e2e36a835170f3dbabe981c5fe98ee07af159d48ff126b8a6d0
+after:  a403b67bd3930e2e36a835170f3dbabe981c5fe98ee07af159d48ff126b8a6d0
+
+Note: between sessions an external editable-install runner migrated the plain prod DB 49->52 with the
+original V52 ranking_policy_eval_items shape (no ranking_run_id). The V53 reconcile rebuilds that table
+non-destructively. This patch's validation touched only the /tmp copy; --apply now exits 2 without an
+explicit temp --db, so no slice path can write prod.

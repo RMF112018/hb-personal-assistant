@@ -55,6 +55,13 @@ def test_report_is_raw_free(tmp_path: Path) -> None:
     assert scan_text_for_forbidden(report["markdown"]) == []
 
 
+def test_policy_version_is_rendered(tmp_path: Path) -> None:
+    report = _report(tmp_path)
+    assert report["policy_version"] == "rank-policy-v1"
+    assert "Policy version: rank-policy-v1" in report["markdown"]
+    assert "Policy version: —" not in report["markdown"]
+
+
 def test_model_degradation_and_procore_summary_present(tmp_path: Path) -> None:
     report = _report(tmp_path)
     assert "model_profiles" in report

@@ -143,6 +143,76 @@ def test_planted_raw_categories_are_caught_category_only(tmp_path: Path) -> None
         assert all(value not in c for c in scan["categories"])
 
 
+def test_pre_exposure_disposition_not_attributed(tmp_path: Path) -> None:
+    from hb_assistant.construction.second_brain.local_ai import run_candidate_ranking_and_assembly
+    from tests._phase_10_effectiveness_seed import _event, _task
+
+    db = str(tmp_path / "t.sqlite")
+    store = ConstructionStore(db_path=db)
+    _task(store, "p1", source_family="email")
+    run_candidate_ranking_and_assembly(
+        store=store,
+        brief_date="2026-06-11",
+        now_utc="2026-06-11T12:00:00+00:00",
+        use_model=False,
+        include_similarity=True,
+        dry_run=False,
+        max_persist=100,
+    )
+    # Disposition that happened BEFORE the 2026-06-11T12:00 exposure proxy.
+    _event(
+        store, "p1", event_type="accept", new_state="accepted",
+        created_utc="2026-06-09T00:00:00+00:00",
+    )
+    pkt = build_effectiveness_packets(
+        store, window_start=WINDOW_START, window_end=WINDOW_END, now_utc=EVAL_NOW
+    )
+    item = next(
+        it for it in pkt["items"] if it["daily_brief_action_candidate_id"] == "task_candidate:p1"
+    )
+    assert item["outcome_type"] is None
+    assert item["status_reason"] == "pre_existing_disposition_not_attributed"
+    assert pkt["sample_size"]["excluded_pre_existing_disposition"] >= 1
+    # Pre-existing dispositions never become an outcome event.
+    assert all(
+        o["daily_brief_action_candidate_id"] != "task_candidate:p1" for o in pkt["outcome_events"]
+    )
+
+
+def test_post_exposure_attributed_with_non_negative_lag(tmp_path: Path) -> None:
+    from hb_assistant.construction.second_brain.local_ai import run_candidate_ranking_and_assembly
+    from tests._phase_10_effectiveness_seed import _event, _task
+
+    db = str(tmp_path / "t.sqlite")
+    store = ConstructionStore(db_path=db)
+    _task(store, "p2", source_family="email")
+    run_candidate_ranking_and_assembly(
+        store=store,
+        brief_date="2026-06-11",
+        now_utc="2026-06-11T12:00:00+00:00",
+        use_model=False,
+        include_similarity=True,
+        dry_run=False,
+        max_persist=100,
+    )
+    # Disposition AFTER the exposure proxy → attributed, lag from exposure to event.
+    _event(
+        store, "p2", event_type="accept", new_state="accepted",
+        created_utc="2026-06-13T00:00:00+00:00",
+    )
+    pkt = build_effectiveness_packets(
+        store, window_start=WINDOW_START, window_end=WINDOW_END, now_utc=EVAL_NOW
+    )
+    item = next(
+        it for it in pkt["items"] if it["daily_brief_action_candidate_id"] == "task_candidate:p2"
+    )
+    assert item["outcome_type"] == "accepted"
+    assert item["status_reason"] == "attributed_post_exposure"
+    assert item["outcome_lag_hours"] is not None and item["outcome_lag_hours"] >= 0
+    # No item ever carries a negative lag.
+    assert all((it["outcome_lag_hours"] or 0) >= 0 for it in pkt["items"])
+
+
 def test_normalize_dim_stable_unknown() -> None:
     assert normalize_dim(None) == "unknown"
     assert normalize_dim("") == "unknown"

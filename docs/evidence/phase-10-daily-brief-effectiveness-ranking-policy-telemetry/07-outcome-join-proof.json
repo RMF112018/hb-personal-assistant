@@ -8,7 +8,8 @@
   "sample_size": {
     "briefs": 1,
     "candidates": 5,
-    "outcomes": 5
+    "outcomes": 5,
+    "excluded_pre_existing_disposition": 0
   },
   "outcome_distribution": {
     "accepted": 1,
@@ -16,8 +17,13 @@
     "rejected": 2,
     "snoozed": 1
   },
+  "status_reason_distribution": {
+    "attributed_post_exposure": 4,
+    "no_action_after_lag": 1
+  },
   "exposure_event_count": 6,
   "outcome_event_count": 5,
+  "all_outcome_lag_hours_non_negative": true,
   "no_lifecycle_mutation": true,
   "no_source_ref_mutation": true,
   "raw_safety": {

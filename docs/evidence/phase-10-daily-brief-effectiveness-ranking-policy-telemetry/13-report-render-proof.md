@@ -31,7 +31,7 @@ _Ignored lag window:_ 72h
 
 ## Ranking Policy
 
-- Policy version: —
+- Policy version: rank-policy-v1
 - Deterministic baseline rank-outcome: 0.51
 - Model-assisted rank-outcome: 0.51
 - Deterministic-vs-model delta: 0.0 (observational, non-causal)

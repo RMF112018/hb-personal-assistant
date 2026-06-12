@@ -95,6 +95,34 @@ def test_invalid_eval_mode_exits_2(tmp_path: Path) -> None:
     assert res.exit_code == 2
 
 
+def test_apply_without_db_exits_2() -> None:
+    # --apply with no --db must be rejected before any store is opened (never the prod app DB).
+    res = runner.invoke(
+        app,
+        [
+            "daily-brief", "evaluate-effectiveness", "--apply", "--max-persist", "100",
+            "--window-start", WINDOW_START, "--window-end", WINDOW_END,
+        ],
+    )
+    assert res.exit_code == 2
+    assert json.loads(res.stdout)["error"] == "apply_requires_db"
+
+
+def test_apply_non_tmp_db_exits_2(tmp_path: Path) -> None:
+    db = str(tmp_path / "t.sqlite")
+    seed_effectiveness_store(db)
+    # A --db outside any temp root is rejected for --apply (no --allow-non-tmp-db override). The path
+    # need not exist: the gate runs before the store is opened, so nothing is created or migrated.
+    non_tmp = str(Path.cwd() / "should-not-be-created.sqlite")
+    res = _invoke(
+        non_tmp, "--apply", "--max-persist", "100",
+        "--window-start", WINDOW_START, "--window-end", WINDOW_END,
+    )
+    assert res.exit_code == 2
+    assert json.loads(res.stdout)["error"] == "apply_requires_tmp_db"
+    assert not Path(non_tmp).exists()
+
+
 def test_apply_cap_exceeded_fails_closed_exit_3(tmp_path: Path) -> None:
     db = str(tmp_path / "t.sqlite")
     seed_effectiveness_store(db)
