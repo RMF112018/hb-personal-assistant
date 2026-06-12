@@ -1,0 +1,24 @@
+{
+  "source_counts_before": {
+    "email_raw_message_structured": 20757,
+    "calendar_raw_event_structured": 1617,
+    "procore_ep_rfis": 610,
+    "procore_raw_rfi_responses": 123,
+    "procore_ep_subcontractor_invoices": 228,
+    "procore_ep_commitment_change_orders": 100,
+    "procore_ep_commitment_contracts": 137,
+    "construction_drive_items": 999
+  },
+  "source_counts_after": {
+    "email_raw_message_structured": 20757,
+    "calendar_raw_event_structured": 1617,
+    "procore_ep_rfis": 610,
+    "procore_raw_rfi_responses": 123,
+    "procore_ep_subcontractor_invoices": 228,
+    "procore_ep_commitment_change_orders": 100,
+    "procore_ep_commitment_contracts": 137,
+    "construction_drive_items": 999
+  },
+  "all_source_tables_unmutated": true,
+  "note": "new-today --apply only INSERTs into the V54 read models; it never writes any source table."
+}

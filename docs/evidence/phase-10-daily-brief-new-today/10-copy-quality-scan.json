@@ -1,0 +1,29 @@
+{
+  "rendered_with_model_client": false,
+  "header_ok": true,
+  "subhead_ok": true,
+  "new_today_is_first_section": true,
+  "forbidden_signal_language_present": {
+    "signal": false,
+    "attendees_domains": false,
+    "project_signals_header": false,
+    "count_only_invoice_signal": false
+  },
+  "no_raw_project_keys": true,
+  "business_anchors_present": {
+    "RFI #025": true,
+    "Invoice #1842": true,
+    "Change Order #07": true,
+    "Commitment #C-12": true,
+    "Alton Hilltop at PBG": true,
+    "PGA The Modern & Garage": true,
+    "The Wellington": true,
+    "Coastal Pipeline": true,
+    "Seema Shibi": true
+  },
+  "attention_groups": [
+    "Needs your attention",
+    "Team follow-up / monitor",
+    "Awareness only"
+  ]
+}

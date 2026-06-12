@@ -2350,6 +2350,177 @@ def daily_brief_rank_candidates(
         raise typer.Exit(1) from None
 
 
+@daily_brief_app.command("new-today")
+def daily_brief_new_today(
+    brief_date: "str | None" = typer.Option(  # noqa: B008
+        None, "--brief-date", help="Brief date (YYYY-MM-DD). Default: today (UTC)."
+    ),
+    apply: bool = typer.Option(  # noqa: B008
+        False, "--apply/--dry-run", help="Persist the New Today change events. Default: dry-run."
+    ),
+    max_persist: "int | None" = typer.Option(  # noqa: B008
+        None, "--max-persist", help="Required with --apply: cap on TOTAL projected inserts (events + refs)."
+    ),
+    profile_id: str = typer.Option(  # noqa: B008
+        "default_extract", "--profile", help="Local model profile id for the advisory overlay."
+    ),
+    model: "str | None" = typer.Option(None, "--model", help="Override the profile model name."),  # noqa: B008
+    provider: str = typer.Option("ollama", "--provider", help="Local provider (ollama only)."),  # noqa: B008
+    timeout_seconds: "int | None" = typer.Option(  # noqa: B008
+        None, "--timeout-seconds", help="Override the profile generation timeout."
+    ),
+    no_client: bool = typer.Option(  # noqa: B008
+        False, "--no-client", help="Deterministic-only: skip the model (a success path, not failure)."
+    ),
+    mock_output: "str | None" = typer.Option(  # noqa: B008
+        None, "--mock-output", help="Path or JSON string of mock advisory output (offline test)."
+    ),
+    db: "str | None" = typer.Option(  # noqa: B008
+        None, "--db", help="Explicit SQLite path (REQUIRED for --apply; must be a /tmp copy, never prod)."
+    ),
+    allow_non_tmp_db: bool = typer.Option(  # noqa: B008
+        False, "--allow-non-tmp-db", help="Override the /tmp-only apply guard (explicit, audited)."
+    ),
+    json_out: bool = typer.Option(True, "--json/--no-json", help="JSON (default) or summary."),  # noqa: B008
+) -> None:
+    """Build the New Today overnight change digest (deterministic-authoritative; model advisory).
+
+    Reads the source projections for the most recent refresh window, extracts source-linked business
+    events grouped by attention class, optionally polishes wording with a bounded local model, renders
+    the user-facing Markdown, and emits a raw-safe JSON proof. ``--no-client`` is a full deterministic
+    success path; an unavailable/invalid/unsafe model falls back to deterministic. Dry-run writes
+    nothing; ``--apply`` requires ``--max-persist`` and a ``/tmp`` ``--db`` copy. Exit 0 ok/degraded,
+    2 invalid usage, 3 fail-closed safety violation, 1 unexpected error.
+    """
+    import pathlib
+    from datetime import datetime as _dt
+    from datetime import timezone as _tz
+
+    from hb_assistant.construction.second_brain.local_ai import load_local_model_profiles
+    from hb_assistant.construction.second_brain.local_ai.model_eval_metrics import (
+        scan_text_for_forbidden,
+    )
+    from hb_assistant.construction.second_brain.local_ai.new_today_digest import (
+        build_new_today_digest,
+        persist_new_today_digest,
+    )
+    from hb_assistant.construction.second_brain.local_ai.new_today_presentation import (
+        build_render_model,
+        render_markdown,
+    )
+    from hb_assistant.construction.second_brain.local_ai.ollama_new_today import apply_model_overlay
+    from hb_assistant.construction.second_brain.local_ai.structured_output import StaticOutputClient
+    from hb_assistant.construction.store import ConstructionStore
+
+    cmd = "second-brain daily-brief new-today"
+
+    def _emit(payload: dict, code: int) -> None:
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(code)
+
+    try:
+        if provider != "ollama":
+            _emit({"command": cmd, "ok": False, "status": "invalid", "error": "provider_must_be_ollama"}, 2)
+        if apply and max_persist is None:
+            _emit({"command": cmd, "ok": False, "status": "invalid", "error": "apply_requires_max_persist"}, 2)
+        if apply:
+            if db is None:
+                _emit({"command": cmd, "ok": False, "status": "invalid", "error": "apply_requires_db"}, 2)
+            elif not _is_temp_db_path(db) and not allow_non_tmp_db:
+                _emit(
+                    {
+                        "command": cmd, "ok": False, "status": "invalid", "error": "apply_requires_tmp_db",
+                        "guardrails": {"apply_requires_temp_db": True, "override_flag": "--allow-non-tmp-db"},
+                    },
+                    2,
+                )
+
+        bdate = brief_date or _dt.now(_tz.utc).date().isoformat()
+        store = ConstructionStore(db_path=db)
+        digest = build_new_today_digest(store=store, brief_date=bdate)
+
+        # Bounded advisory overlay (optional). --no-client is a deterministic success path.
+        model_layer: dict = {"status": "skipped", "reason": "no_client"}
+        if not no_client:
+            profiles = load_local_model_profiles()
+            base = next((p for p in profiles.profiles if p.profile_id == profile_id), None)
+            if base is None:
+                _emit({"command": cmd, "ok": False, "status": "invalid", "error": f"unknown_profile:{profile_id}"}, 2)
+            updates: dict[str, Any] = {}
+            if model:
+                updates["model_name"] = model
+            if timeout_seconds is not None:
+                updates["timeout_seconds"] = timeout_seconds
+            profile = base.model_copy(update=updates) if updates else base
+            backend = None
+            if mock_output is not None:
+                p = pathlib.Path(mock_output)
+                raw = p.read_text(encoding="utf-8") if p.exists() else mock_output
+                backend = StaticOutputClient(raw)
+            model_layer = apply_model_overlay(
+                digest["events"], profile=profile, profiles=profiles, backend=backend,
+                store=store, dry_run=not apply,
+            )
+
+        gates = digest["gates"]
+        run_status = "degraded" if gates.get("email_degraded") else "ok"
+        nt_model = build_render_model(digest, status=run_status)
+        markdown = render_markdown(nt_model)  # raises if any forbidden token leaks
+
+        # Raw-safety scan over the rendered markdown + every group item (must be empty).
+        raw_hits = sorted(set(scan_text_for_forbidden(markdown)))
+        for g in nt_model["groups"]:
+            for item in g["items"]:
+                raw_hits = sorted(set(raw_hits) | set(scan_text_for_forbidden(item)))
+        if raw_hits:
+            _emit({"command": cmd, "ok": False, "status": "fail_closed", "error": "raw_leak", "categories": raw_hits}, 3)
+
+        persist = None
+        if apply:
+            persist = persist_new_today_digest(store, digest, max_persist=max_persist)
+
+        result = {
+            "command": cmd,
+            "ok": True,
+            "status": run_status,
+            "brief_date": bdate,
+            "dry_run": not apply,
+            "refresh_window": digest["refresh_window"],
+            "lookahead_end_date": digest["lookahead_end_date"],
+            "header": nt_model["header"],
+            "subhead": nt_model["subhead"],
+            "attention_groups": [
+                {"label": g["label"], "attention_class": g["attention_class"], "item_count": len(g["items"]), "items": g["items"]}
+                for g in nt_model["groups"]
+            ],
+            "gates": gates,
+            "diagnostics": digest["diagnostics"],
+            "model_layer": {k: v for k, v in model_layer.items() if k != "would_write_receipt"},
+            "persist": persist,
+            "raw_safety_scan": {"clean": not raw_hits, "categories": raw_hits},
+            "markdown": markdown,
+            "db_indicator": _redact_db_indicator(db),
+            "guardrails": {
+                "deterministic_authoritative": True,
+                "model_advisory_only": True,
+                "model_facts_immutable": True,
+                "source_linked": True,
+                "no_raw_persistence": True,
+                "no_writeback": True,
+                "dry_run_default": True,
+                "apply_requires_max_persist": True,
+                "apply_requires_temp_db": True,
+            },
+        }
+        _emit(result, 0)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        payload = {"command": cmd, "ok": False, "status": "error", "error": str(e)[:300]}
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(1) from None
+
+
 @daily_brief_app.command("evaluate-effectiveness")
 def daily_brief_evaluate_effectiveness(
     window_start: "str | None" = typer.Option(  # noqa: B008

@@ -669,6 +669,42 @@ def run_daily_local_agent(
                 deterministic_markdown=markdown,
             )
 
+    # ---- New Today overnight change digest (Phase 10 252) ----------------------------------------
+    # The first, authoritative section of the brief: source-linked business events from the most
+    # recent refresh window, grouped by attention class. Deterministic + raw-safe; the legacy brief
+    # body becomes the collapsed "Run details / diagnostics" block beneath it. Fully guarded — a
+    # digest error degrades to the legacy brief rather than failing the run.
+    new_today_model: Optional[dict[str, Any]] = None
+    new_today_summary: dict[str, Any] = {}
+    try:
+        from .new_today_digest import DEFAULT_LOOKAHEAD_DAYS, build_new_today_digest
+        from .new_today_presentation import DIAGNOSTICS_TITLE, build_render_model, render_markdown
+
+        nt_digest = build_new_today_digest(
+            store=store, brief_date=brief_date, lookahead_days=DEFAULT_LOOKAHEAD_DAYS
+        )
+        new_today_model = build_render_model(nt_digest, status=status)
+        new_today_summary = {
+            "total_items": new_today_model.get("total_items", 0),
+            "by_family": (nt_digest.get("gates") or {}).get("by_family", {}),
+            "email_degraded": bool((nt_digest.get("gates") or {}).get("email_degraded")),
+            "procore_demoted_count": (nt_digest.get("gates") or {}).get("procore_demoted_count", 0),
+            "refresh_window": nt_digest.get("refresh_window", {}),
+            "diagnostic_count": len(nt_digest.get("diagnostics") or []),
+        }
+        if new_today_summary["email_degraded"]:
+            warnings.append(
+                "new_today_email_degraded: email substrate present but no actionable follow-up derived"
+            )
+        if markdown:
+            nt_md = render_markdown(new_today_model)
+            markdown = (
+                f"{nt_md}\n\n---\n\n<details>\n<summary>{DIAGNOSTICS_TITLE}</summary>\n\n"
+                f"{markdown}\n\n</details>\n"
+            )
+    except Exception as exc:  # never let New Today break the established brief
+        warnings.append(f"new_today_unavailable: {type(exc).__name__}")
+
     is_fresh_success = (
         status == "success" and not dry_run and pipeline.get("brief_freshness") == "fresh"
     )
@@ -695,6 +731,7 @@ def run_daily_local_agent(
             deterministic_fallback=deterministic_fallback_used,
             pending_followup=pending_followup,
             model_enriched=mei_render,
+            new_today=new_today_model,
         )
         egress_matched = scan_daily_run_html(rendered)
         egress_clean = not egress_matched
@@ -852,6 +889,7 @@ def run_daily_local_agent(
         "run_summary": run_summary,
         "usefulness_gate": usefulness.to_dict(),
         "candidate_ranking": ranking_status_block,
+        "new_today": new_today_summary,
         "first_slice": first_slice,
         "egress_scan": {"clean": egress_clean, "matched_labels": egress_matched},
         "failure_reason": failure_reason,

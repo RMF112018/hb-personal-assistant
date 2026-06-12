@@ -115,11 +115,16 @@ def _str_field(detail: dict[str, object], key: str) -> Optional[str]:
 
 
 def project_label(project_key: Optional[str]) -> Optional[str]:
-    """Readable project label, or ``None`` for sentinels/empty (never emit a ``__…__`` key)."""
-    pk = str(project_key or "").strip()
-    if not pk or pk.startswith("__"):
-        return None
-    return pk
+    """Readable project *display name*, or ``None`` for sentinels/empty.
+
+    Routes through the config-backed display resolver so neither the user-facing brief nor the
+    collapsed diagnostics ever render a raw lowercase project key (e.g. ``tropical`` →
+    ``Tropical``, ``alton-hilltop-pbg`` → ``Alton Hilltop at PBG``). Unknown keys are cleaned to a
+    title-cased label rather than shown as a slug.
+    """
+    from .project_aliases import project_display_name
+
+    return project_display_name(project_key)
 
 
 def safe_calendar_label(project_key: Optional[str]) -> str:

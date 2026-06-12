@@ -1,0 +1,11 @@
+Phase 10 (252) — Production DB SHA-256 unchanged during validation
+
+prod_db_path: /Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite
+sha256_before: a403b67bd3930e2e36a835170f3dbabe981c5fe98ee07af159d48ff126b8a6d0
+sha256_after:  a403b67bd3930e2e36a835170f3dbabe981c5fe98ee07af159d48ff126b8a6d0
+verdict: UNCHANGED
+
+Method: the production DB was hashed, copied to a /tmp working copy, and ALL migration + new-today
+--apply operations ran against the /tmp copy only. The production DB was never opened for writing
+(verified quiescent via lsof before the copy: no open handles; the running dev scheduler holds the
+separate "(Dev) (Dev)" root). The hash is identical before and after, proving no prod mutation.

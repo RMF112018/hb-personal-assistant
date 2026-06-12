@@ -1,0 +1,7 @@
+{
+  "events_persisted": 44,
+  "event_guard_columns": 13,
+  "event_guard_sum": 0,
+  "ref_guard_sum": 0,
+  "all_guard_columns_zero": true
+}

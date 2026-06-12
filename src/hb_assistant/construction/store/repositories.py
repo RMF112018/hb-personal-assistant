@@ -8718,6 +8718,167 @@ class ConstructionStore:
                 ),
             )
 
+    def insert_daily_brief_change_event(
+        self,
+        *,
+        change_event_id: str,
+        brief_date: str,
+        source_family: str,
+        attention_class: str,
+        refresh_window_start_utc: Optional[str] = None,
+        refresh_window_end_utc: Optional[str] = None,
+        source_record_id: Optional[str] = None,
+        source_ref_count: int = 0,
+        project_key: Optional[str] = None,
+        project_display_name: Optional[str] = None,
+        actor_display_name: Optional[str] = None,
+        actor_company: Optional[str] = None,
+        event_type: Optional[str] = None,
+        event_timestamp_utc: Optional[str] = None,
+        business_record_type: Optional[str] = None,
+        business_record_number: Optional[str] = None,
+        business_record_title_redacted: Optional[str] = None,
+        business_record_status: Optional[str] = None,
+        amount: Optional[str] = None,
+        due_date: Optional[str] = None,
+        meeting_start_utc: Optional[str] = None,
+        meeting_end_utc: Optional[str] = None,
+        meeting_location_or_mode: Optional[str] = None,
+        summary_text: Optional[str] = None,
+        why_it_matters: Optional[str] = None,
+        recommended_action: Optional[str] = None,
+        confidence: Optional[float] = None,
+        enrichment_status: str = "deterministic",
+        model_profile_id: Optional[str] = None,
+        model_name: Optional[str] = None,
+        model_run_receipt_id: Optional[str] = None,
+    ) -> None:
+        """Persist a Phase 10 V54 ``daily_brief_change_events`` row (New Today digest item).
+
+        By contract this accepts **only redacted / title-only / hash-linked columns** — deterministic
+        business facts plus already-sanitized display copy. There is no parameter that can carry a raw
+        email body, raw Procore/calendar payload, prompt, response, URL, token, or path; the model
+        layer is referenced only by its hash-only ``model_run_receipt_id``. The 13 no-raw /
+        no-writeback guard columns are pinned to literal 0 (the schema CHECK forbids any other value
+        and the guard-columns-zero proof sums them to 0).
+        """
+        if not change_event_id or not brief_date or not source_family or not attention_class:
+            raise ValueError(
+                "change_event_id, brief_date, source_family and attention_class are required"
+            )
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO daily_brief_change_events
+                    (change_event_id, brief_date, refresh_window_start_utc, refresh_window_end_utc,
+                     source_family, source_record_id, source_ref_count, project_key,
+                     project_display_name, actor_display_name, actor_company, event_type,
+                     event_timestamp_utc, business_record_type, business_record_number,
+                     business_record_title_redacted, business_record_status, amount, due_date,
+                     meeting_start_utc, meeting_end_utc, meeting_location_or_mode, summary_text,
+                     why_it_matters, recommended_action, attention_class, confidence,
+                     enrichment_status, model_profile_id, model_name, model_run_receipt_id,
+                     created_utc,
+                     raw_email_body_persisted, raw_document_text_persisted,
+                     raw_calendar_payload_persisted, raw_procore_payload_persisted,
+                     raw_prompt_persisted, raw_response_persisted, signed_url_persisted,
+                     download_url_persisted, external_writeback_performed,
+                     graph_writeback_performed, procore_writeback_performed,
+                     email_send_performed, calendar_mutation_performed)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                        ?, ?, ?, ?, ?, ?, ?,
+                        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+                """,
+                (
+                    change_event_id,
+                    brief_date,
+                    refresh_window_start_utc,
+                    refresh_window_end_utc,
+                    source_family,
+                    source_record_id,
+                    int(source_ref_count or 0),
+                    project_key,
+                    project_display_name,
+                    actor_display_name,
+                    actor_company,
+                    event_type,
+                    event_timestamp_utc,
+                    business_record_type,
+                    business_record_number,
+                    business_record_title_redacted,
+                    business_record_status,
+                    amount,
+                    due_date,
+                    meeting_start_utc,
+                    meeting_end_utc,
+                    meeting_location_or_mode,
+                    summary_text,
+                    why_it_matters,
+                    recommended_action,
+                    attention_class,
+                    confidence,
+                    enrichment_status,
+                    model_profile_id,
+                    model_name,
+                    model_run_receipt_id,
+                    _utc_now(),
+                ),
+            )
+
+    def insert_daily_brief_change_event_ref(
+        self, *, change_event_id: str, source_table: str, source_ref_hash: str
+    ) -> None:
+        """Persist one hash-only source linkage for a V54 change event (idempotent)."""
+        if not change_event_id or not source_table or not source_ref_hash:
+            raise ValueError("change_event_id, source_table and source_ref_hash are required")
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            conn.execute(
+                """
+                INSERT OR IGNORE INTO daily_brief_change_event_refs
+                    (change_event_id, source_table, source_ref_hash, created_utc,
+                     raw_email_body_persisted, raw_document_text_persisted,
+                     raw_calendar_payload_persisted, raw_procore_payload_persisted,
+                     raw_prompt_persisted, raw_response_persisted, signed_url_persisted,
+                     download_url_persisted, external_writeback_performed,
+                     graph_writeback_performed, procore_writeback_performed,
+                     email_send_performed, calendar_mutation_performed)
+                VALUES (?, ?, ?, ?, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+                """,
+                (change_event_id, source_table, source_ref_hash, _utc_now()),
+            )
+
+    def list_daily_brief_change_events(
+        self, *, brief_date: Optional[str] = None, limit: int = 1000
+    ) -> list[dict[str, Any]]:
+        """List persisted V54 New Today change events (raw-free), newest brief first then attention."""
+        conn = get_connection(self._db_path)
+        clauses: list[str] = []
+        params: list[Any] = []
+        if brief_date is not None:
+            clauses.append("brief_date = ?")
+            params.append(brief_date)
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        params.append(limit)
+        cur = conn.execute(
+            f"""
+            SELECT change_event_id, brief_date, source_family, source_record_id, source_ref_count,
+                   project_key, project_display_name, actor_display_name, actor_company, event_type,
+                   event_timestamp_utc, business_record_type, business_record_number,
+                   business_record_title_redacted, business_record_status, amount, due_date,
+                   meeting_start_utc, meeting_end_utc, meeting_location_or_mode, summary_text,
+                   why_it_matters, recommended_action, attention_class, confidence,
+                   enrichment_status, model_profile_id, model_name, model_run_receipt_id, created_utc
+            FROM daily_brief_change_events {where}
+            ORDER BY brief_date DESC, attention_class, source_family, change_event_id
+            LIMIT ?
+            """,
+            tuple(params),
+        )
+        cols = [c[0] for c in cur.description]
+        return [dict(zip(cols, row, strict=True)) for row in cur.fetchall()]
+
     def list_local_model_run_receipts(
         self,
         *,
