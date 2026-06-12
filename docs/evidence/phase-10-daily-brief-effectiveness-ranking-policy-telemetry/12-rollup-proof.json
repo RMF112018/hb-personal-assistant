@@ -1,0 +1,34 @@
+{
+  "proof": "rollups",
+  "scope_counts": {
+    "project": 2,
+    "window": 1,
+    "daily": 1,
+    "model_profile": 1,
+    "candidate_family": 1,
+    "source_family": 2
+  },
+  "window_rollup": {
+    "scope": "window",
+    "scope_key": "2026-06-01_2026-06-30",
+    "window_start": "2026-06-01",
+    "window_end": "2026-06-30",
+    "policy_version": "rank-policy-v1",
+    "brief_count": 1,
+    "candidate_count": 5,
+    "outcome_count": 5,
+    "accepted_rate": 0.2,
+    "rejected_rate": 0.4,
+    "snoozed_rate": 0.2,
+    "ignored_rate": 0.2,
+    "brief_usefulness_score": 0.4865,
+    "rank_outcome_score": 0.5325,
+    "source_ref_coverage": 1.0,
+    "procore_noise_score": 1.0,
+    "model_degradation_rate": 1.0,
+    "duplicate_precision_proxy": null,
+    "feedback_calibration_lift": null,
+    "sample_sufficient": true
+  },
+  "total_rollups": 8
+}

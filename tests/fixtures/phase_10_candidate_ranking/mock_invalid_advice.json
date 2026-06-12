@@ -1,0 +1,12 @@
+{
+  "items": [
+    {
+      "alias": "c1",
+      "priority_hint": 1,
+      "why_this_matters": "Reply to the thread at https://mail.example.com/thread/42 right away.",
+      "reason_codes": ["overdue"]
+    }
+  ],
+  "groups": [],
+  "duplicates": []
+}

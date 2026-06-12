@@ -1,0 +1,9 @@
+{
+  "proof": "feedback_calibration_lift",
+  "deterministic_vs_model_delta": {
+    "value": 0.0,
+    "causal": false,
+    "note": "observational_only_no_ab_assignment"
+  },
+  "note": "single policy version in window \u2192 calibration lift insufficient/None (no false signal)"
+}

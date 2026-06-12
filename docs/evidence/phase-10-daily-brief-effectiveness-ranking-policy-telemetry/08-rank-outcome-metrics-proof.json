@@ -1,0 +1,22 @@
+{
+  "proof": "rank_outcome_metrics",
+  "metrics": {
+    "accepted_rate": 0.2,
+    "rejected_rate": 0.4,
+    "snoozed_rate": 0.2,
+    "ignored_rate": 0.2,
+    "rank_outcome_score": 0.5325,
+    "deterministic_baseline_rank_outcome": 0.51,
+    "model_assisted_rank_outcome": 0.51,
+    "deterministic_vs_model_delta": {
+      "value": 0.0,
+      "causal": false,
+      "note": "observational_only_no_ab_assignment"
+    },
+    "source_ref_coverage": 1.0,
+    "brief_usefulness_score": 0.3865,
+    "model_degradation_rate": 1.0,
+    "procore_noise_score": 1.0
+  },
+  "sample_sufficient": true
+}

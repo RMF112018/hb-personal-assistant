@@ -1,0 +1,98 @@
+{
+  "command": "second-brain local-model status",
+  "phase": "10",
+  "generated_utc": "2026-06-11T21:32:27.074931+00:00",
+  "repo_sha": "dbd4d41f370c9909f6b2720a63ef51b334779618",
+  "overall_status": "ready",
+  "provider": "ollama",
+  "endpoint_url": "http://localhost:11434",
+  "endpoint_source": "default",
+  "daemon_reachable": true,
+  "ready": true,
+  "present_models": [
+    "gpt-oss:20b",
+    "llama3.1:8b",
+    "mistral-nemo:12b",
+    "nomic-embed-text:latest",
+    "qwen2.5:14b"
+  ],
+  "required_models": [
+    "mistral-nemo:12b"
+  ],
+  "missing_required_models": [],
+  "profiles": [
+    {
+      "profile_id": "default_extract",
+      "model_name": "mistral-nemo:12b",
+      "role": "task_commitment_relationship_extraction",
+      "enabled": true,
+      "heavy_profile": false,
+      "requires_explicit_enable": false,
+      "available": true,
+      "blocked_reason": null
+    },
+    {
+      "profile_id": "high_recall_extract",
+      "model_name": "llama3.1:8b",
+      "role": "high_recall_bulk_extraction",
+      "enabled": true,
+      "heavy_profile": false,
+      "requires_explicit_enable": false,
+      "available": true,
+      "blocked_reason": null
+    },
+    {
+      "profile_id": "review_filter",
+      "model_name": "qwen2.5:14b",
+      "role": "secondary_review_and_safety_filter",
+      "enabled": true,
+      "heavy_profile": false,
+      "requires_explicit_enable": false,
+      "available": true,
+      "blocked_reason": null
+    },
+    {
+      "profile_id": "quality_reasoning",
+      "model_name": "gpt-oss:20b",
+      "role": "daily_brief_and_mcp_packet_synthesis",
+      "enabled": false,
+      "heavy_profile": false,
+      "requires_explicit_enable": true,
+      "available": false,
+      "blocked_reason": "profile_disabled"
+    },
+    {
+      "profile_id": "heavy_context",
+      "model_name": "qwen3:30b",
+      "role": "manual_on_demand_long_context_synthesis",
+      "enabled": false,
+      "heavy_profile": true,
+      "requires_explicit_enable": true,
+      "available": false,
+      "blocked_reason": "heavy_profile_requires_explicit_enable"
+    },
+    {
+      "profile_id": "brief_synthesis",
+      "model_name": "mistral-nemo:12b",
+      "role": "daily_brief_executive_synthesis",
+      "enabled": true,
+      "heavy_profile": false,
+      "requires_explicit_enable": false,
+      "available": true,
+      "blocked_reason": null
+    }
+  ],
+  "blockers": [],
+  "heavy_enabled": false,
+  "suggested_pull_commands": [],
+  "error_redacted": null,
+  "guardrails": {
+    "local_first": true,
+    "read_only": true,
+    "live_generation": false,
+    "endpoint_path": "/api/tags",
+    "no_external_writeback": true,
+    "no_raw_persistence": true,
+    "heavy_profile_default_blocked": true
+  }
+}

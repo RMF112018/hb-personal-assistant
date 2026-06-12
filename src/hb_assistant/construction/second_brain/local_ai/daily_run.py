@@ -586,6 +586,48 @@ def run_daily_local_agent(
         except Exception as exc:  # noqa: BLE001 - degrade, never crash the run on the overlay
             lifecycle_context = {"stage_failed": True, "contradictions": [], "error": str(exc)[:200]}
 
+    # V51 candidate ranking + daily-brief assembly overlay (apply runs only). Deterministic-
+    # authoritative ranking layered on the V50 lifecycle filtering; it always produces the ranked
+    # brief, so the deterministic brief survives even if the (opt-in, CLI-only) advisory model is
+    # withheld. Runs hermetically here (no model call); never crashes the run.
+    ranking_context: Optional[dict[str, Any]] = None
+    ranking_status_block: Optional[dict[str, Any]] = None
+    if not dry_run:
+        from .daily_brief_assembly import ranking_stage_context, run_candidate_ranking_and_assembly
+
+        try:
+            ranking_result = run_candidate_ranking_and_assembly(
+                store=store,
+                brief_date=brief_date,
+                now_utc=now_utc,
+                use_model=False,
+                include_similarity=True,
+                dry_run=False,
+                max_persist=1000,
+            )
+            ranking_context = ranking_stage_context(ranking_result)
+            _rk = ranking_result["ranking"]
+            ranking_status_block = {
+                "ranking_run_id": _rk["ranking_run_id"],
+                "assembly_run_id": ranking_result["assembly"]["assembly_run_id"],
+                "model_layer_status": _rk["model_status"],
+                "degraded_reason": _rk["degraded_reason"],
+                "deterministic_fallback_used": _rk["deterministic_fallback_used"],
+                "candidate_count": _rk["candidate_count"],
+                "ranked_count": _rk["ranked_count"],
+                "source_ref_coverage": _rk["source_ref_coverage"],
+                "withheld_source_missing_count": _rk["withheld_source_missing_count"],
+                "section_count": ranking_result["assembly"]["section_count"],
+                "similarity_edge_count": ranking_result["similarity"]["edge_count"],
+            }
+        except Exception as exc:  # noqa: BLE001 - degrade, never crash the run on the overlay
+            ranking_context = {"contradictions": [], "stage_failed": True, "error": str(exc)[:200]}
+            ranking_status_block = {
+                "model_layer_status": "degraded",
+                "degraded_reason": "ranking_stage_error",
+                "deterministic_fallback_used": True,
+            }
+
     usefulness = evaluate_usefulness_gate(
         store=store,
         brief_date=brief_date,
@@ -593,6 +635,7 @@ def run_daily_local_agent(
         synthesis_degraded=synthesis_degraded,
         stage_context=stage_context,
         lifecycle_context=lifecycle_context,
+        ranking_context=ranking_context,
     )
     # ---- Finalize the run result class (after usefulness gate) ----
     # Only an apply-mode run persists candidates and runs synthesis, so result-class refinement applies
@@ -813,6 +856,7 @@ def run_daily_local_agent(
         "email_raw_enrichment_stage": email_enrichment_receipt,
         "run_summary": run_summary,
         "usefulness_gate": usefulness.to_dict(),
+        "candidate_ranking": ranking_status_block,
         "first_slice": first_slice,
         "egress_scan": {"clean": egress_clean, "matched_labels": egress_matched},
         "failure_reason": failure_reason,

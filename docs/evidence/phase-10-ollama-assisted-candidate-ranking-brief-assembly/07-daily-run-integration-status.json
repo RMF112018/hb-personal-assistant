@@ -1,0 +1,19 @@
+{
+  "note": "candidate_ranking status block as wired into run_daily_local_agent (apply, hermetic no-model)",
+  "ranking_run_id": "rkr:347432b821ec27b7658c18b1a42d88c7",
+  "model_layer_status": "withheld",
+  "deterministic_fallback_used": true,
+  "degraded_reason": "no_client",
+  "candidate_count": 4,
+  "ranked_count": 4,
+  "source_ref_coverage": 0.75,
+  "section_count": 2,
+  "ranking_stage_context": {
+    "contradictions": [
+      "ranking_source_ref_coverage_below_100"
+    ],
+    "model_status": "withheld",
+    "source_ref_coverage": 0.75,
+    "deterministic_fallback_used": true
+  }
+}

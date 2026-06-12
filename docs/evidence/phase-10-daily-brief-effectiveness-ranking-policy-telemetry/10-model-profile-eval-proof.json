@@ -1,0 +1,27 @@
+{
+  "proof": "model_profile_eval",
+  "results": [
+    {
+      "window_start": "2026-06-01",
+      "window_end": "2026-06-30",
+      "task_type": "candidate_ranking_brief_assembly",
+      "model_profile_id": "default_extract",
+      "model_name": "llama-test",
+      "attempt_count": 3,
+      "success_count": 2,
+      "schema_invalid_count": 1,
+      "safety_withheld_count": 0,
+      "timeout_count": 1,
+      "unknown_alias_count": 0,
+      "lifecycle_excluded_ref_count": 0,
+      "fallback_count": 1,
+      "avg_latency_ms": 266.67,
+      "p95_latency_ms": 500.0,
+      "advisory_adoption_proxy": null,
+      "model_degradation_rate": 0.3333,
+      "sample_sufficient": false,
+      "status": "ok",
+      "advisory": true
+    }
+  ]
+}

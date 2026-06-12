@@ -14,7 +14,7 @@ from .connection import get_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 50
+LATEST_SCHEMA_VERSION = 53
 
 
 class SQLiteMigrator:
@@ -5795,6 +5795,291 @@ class SQLiteMigrator:
         "CREATE INDEX IF NOT EXISTS ix_candidate_suppression_rules_active ON candidate_suppression_rules(active);",
     ]
 
+    # v51 Phase 10 Ollama-assisted candidate ranking + daily-brief assembly overlay.
+    # Additive, append-only ranking/assembly read-models layered on the V41 candidate
+    # projection and the V50 lifecycle overlay. CREATE IF NOT EXISTS so re-apply is a
+    # no-op. V1-V50 untouched: no lifecycle semantics or render path is altered. Model
+    # output is advisory only — every table carries the full 13 Phase-10 guard columns
+    # (no raw content, no writeback), and only redacted/hashed columns are stored. Model
+    # calls reuse the V41 local_model_run_receipts hash-only receipt; these tables store
+    # only receipt ids / hashes / status metadata, never prompts or responses.
+    V51_STATEMENTS: list[str] = [
+        # --- Ranking run metadata (one raw-free row per ranking attempt) ---
+        f"""
+        CREATE TABLE IF NOT EXISTS daily_brief_ranking_runs (
+          ranking_run_id TEXT PRIMARY KEY,
+          brief_date TEXT NOT NULL,
+          policy_version TEXT NOT NULL,
+          algorithm_version TEXT NOT NULL,
+          candidate_set_hash TEXT NOT NULL,
+          feedback_digest_hash TEXT NOT NULL,
+          model_profile_id TEXT,
+          model_name TEXT,
+          model_status TEXT NOT NULL,
+          model_receipt_id TEXT,
+          deterministic_fallback_used INTEGER NOT NULL DEFAULT 0,
+          degraded_reason TEXT,
+          candidate_count INTEGER NOT NULL DEFAULT 0,
+          ranked_count INTEGER NOT NULL DEFAULT 0,
+          source_ref_coverage REAL NOT NULL DEFAULT 0,
+          usefulness_score REAL NOT NULL DEFAULT 0,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP{_P10_GUARDS}
+        );
+        """,
+        "CREATE INDEX IF NOT EXISTS ix_daily_brief_ranking_runs_date ON daily_brief_ranking_runs(brief_date);",
+        "CREATE INDEX IF NOT EXISTS ix_daily_brief_ranking_runs_model_status ON daily_brief_ranking_runs(model_status);",
+        # --- Per-candidate ranking overlay for a run ---
+        f"""
+        CREATE TABLE IF NOT EXISTS daily_brief_ranked_candidates (
+          ranking_run_id TEXT NOT NULL,
+          daily_brief_action_candidate_id TEXT NOT NULL,
+          rank_position INTEGER NOT NULL,
+          section_key TEXT NOT NULL,
+          group_key TEXT,
+          duplicate_cluster_id TEXT,
+          deterministic_score REAL NOT NULL,
+          feedback_score REAL NOT NULL,
+          model_advisory_score REAL,
+          final_score REAL NOT NULL,
+          why_this_matters_redacted TEXT,
+          model_reason_codes_json TEXT,
+          source_ref_count INTEGER NOT NULL DEFAULT 0,
+          lifecycle_state_snapshot TEXT,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP{_P10_GUARDS},
+          PRIMARY KEY (ranking_run_id, daily_brief_action_candidate_id)
+        );
+        """,
+        "CREATE INDEX IF NOT EXISTS ix_daily_brief_ranked_candidates_run ON daily_brief_ranked_candidates(ranking_run_id);",
+        "CREATE INDEX IF NOT EXISTS ix_daily_brief_ranked_candidates_candidate ON daily_brief_ranked_candidates(daily_brief_action_candidate_id);",
+        "CREATE INDEX IF NOT EXISTS ix_daily_brief_ranked_candidates_cluster ON daily_brief_ranked_candidates(duplicate_cluster_id);",
+        # --- Raw-free advisory similarity/duplicate edges (never auto-merge/suppress) ---
+        f"""
+        CREATE TABLE IF NOT EXISTS candidate_similarity_edges (
+          similarity_edge_id TEXT PRIMARY KEY,
+          brief_date TEXT NOT NULL,
+          candidate_a_id TEXT NOT NULL,
+          candidate_b_id TEXT NOT NULL,
+          similarity_score REAL NOT NULL,
+          similarity_method TEXT NOT NULL,
+          cluster_id TEXT,
+          deterministic_features_json TEXT,
+          model_label TEXT,
+          review_recommendation TEXT NOT NULL DEFAULT 'review_duplicate_candidate',
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP{_P10_GUARDS}
+        );
+        """,
+        "CREATE INDEX IF NOT EXISTS ix_candidate_similarity_edges_date ON candidate_similarity_edges(brief_date);",
+        "CREATE INDEX IF NOT EXISTS ix_candidate_similarity_edges_a ON candidate_similarity_edges(candidate_a_id);",
+        "CREATE INDEX IF NOT EXISTS ix_candidate_similarity_edges_b ON candidate_similarity_edges(candidate_b_id);",
+        "CREATE INDEX IF NOT EXISTS ix_candidate_similarity_edges_cluster ON candidate_similarity_edges(cluster_id);",
+        # --- Assembled daily brief metadata (one row per assembly) ---
+        f"""
+        CREATE TABLE IF NOT EXISTS daily_brief_assembly_runs (
+          assembly_run_id TEXT PRIMARY KEY,
+          brief_date TEXT NOT NULL,
+          ranking_run_id TEXT,
+          assembly_policy_version TEXT NOT NULL,
+          model_layer_status TEXT NOT NULL,
+          deterministic_fallback_used INTEGER NOT NULL DEFAULT 0,
+          section_count INTEGER NOT NULL DEFAULT 0,
+          candidate_count INTEGER NOT NULL DEFAULT 0,
+          withheld_reason TEXT,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP{_P10_GUARDS}
+        );
+        """,
+        "CREATE INDEX IF NOT EXISTS ix_daily_brief_assembly_runs_date ON daily_brief_assembly_runs(brief_date);",
+        "CREATE INDEX IF NOT EXISTS ix_daily_brief_assembly_runs_ranking ON daily_brief_assembly_runs(ranking_run_id);",
+        "CREATE INDEX IF NOT EXISTS ix_daily_brief_assembly_runs_model_status ON daily_brief_assembly_runs(model_layer_status);",
+        # --- Section-level raw-free candidate ordering ---
+        f"""
+        CREATE TABLE IF NOT EXISTS daily_brief_assembly_sections (
+          assembly_run_id TEXT NOT NULL,
+          section_key TEXT NOT NULL,
+          display_order INTEGER NOT NULL,
+          title_redacted TEXT NOT NULL,
+          candidate_ids_json TEXT NOT NULL,
+          section_score REAL NOT NULL DEFAULT 0,
+          degraded_reason TEXT,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP{_P10_GUARDS},
+          PRIMARY KEY (assembly_run_id, section_key)
+        );
+        """,
+        "CREATE INDEX IF NOT EXISTS ix_daily_brief_assembly_sections_run ON daily_brief_assembly_sections(assembly_run_id);",
+    ]
+
+    # v52 Phase 10 daily-brief effectiveness / ranking-policy telemetry. Additive, append-only;
+    # CREATE IF NOT EXISTS so re-apply is a no-op. Pure observational telemetry layered on the V41
+    # candidate projection, V50 lifecycle overlay, and V51 ranking/assembly overlay — it READS those
+    # and persists only raw-free counts/scores/hashes/reason codes. It mutates none of them. Every
+    # table carries the identical 13 Phase-10 guard columns (no raw content, no writeback). V1-V51
+    # untouched.
+    V52_STATEMENTS: list[str] = [
+        # --- Surfaced-item exposure proxies (derived from persisted V51 ranking/assembly rows;
+        #     NOT confirmed render impressions). One raw-free row per surfaced candidate/section. ---
+        f"""
+        CREATE TABLE IF NOT EXISTS daily_brief_exposure_events (
+          exposure_event_id TEXT PRIMARY KEY,
+          brief_date TEXT NOT NULL,
+          assembly_run_id TEXT,
+          ranking_run_id TEXT,
+          event_type TEXT NOT NULL,
+          section_key TEXT,
+          daily_brief_action_candidate_id TEXT,
+          rank_position INTEGER,
+          exposure_surface TEXT,
+          policy_version TEXT,
+          artifact_hash TEXT,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP{_P10_GUARDS}
+        );
+        """,
+        "CREATE INDEX IF NOT EXISTS ix_daily_brief_exposure_events_date ON daily_brief_exposure_events(brief_date);",
+        "CREATE INDEX IF NOT EXISTS ix_daily_brief_exposure_events_ranking ON daily_brief_exposure_events(ranking_run_id);",
+        "CREATE INDEX IF NOT EXISTS ix_daily_brief_exposure_events_assembly ON daily_brief_exposure_events(assembly_run_id);",
+        "CREATE INDEX IF NOT EXISTS ix_daily_brief_exposure_events_candidate ON daily_brief_exposure_events(daily_brief_action_candidate_id);",
+        "CREATE INDEX IF NOT EXISTS ix_daily_brief_exposure_events_created ON daily_brief_exposure_events(created_utc);",
+        # --- Post-brief lifecycle outcomes mapped back to exposed items (derived, never creates
+        #     lifecycle events). ``ignored_lag_hours`` records the threshold used to call an item
+        #     ignored (default 72h). ---
+        f"""
+        CREATE TABLE IF NOT EXISTS daily_brief_item_outcome_events (
+          outcome_event_id TEXT PRIMARY KEY,
+          brief_date TEXT NOT NULL,
+          daily_brief_action_candidate_id TEXT NOT NULL,
+          ranking_run_id TEXT,
+          assembly_run_id TEXT,
+          exposure_event_id TEXT,
+          lifecycle_event_id TEXT,
+          outcome_type TEXT NOT NULL,
+          outcome_lag_hours REAL,
+          ignored_lag_hours INTEGER NOT NULL DEFAULT 72,
+          rank_position INTEGER,
+          section_key TEXT,
+          candidate_family TEXT,
+          project_key TEXT,
+          source_ref_count INTEGER NOT NULL DEFAULT 0,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP{_P10_GUARDS}
+        );
+        """,
+        "CREATE INDEX IF NOT EXISTS ix_daily_brief_item_outcome_events_date ON daily_brief_item_outcome_events(brief_date);",
+        "CREATE INDEX IF NOT EXISTS ix_daily_brief_item_outcome_events_candidate ON daily_brief_item_outcome_events(daily_brief_action_candidate_id);",
+        "CREATE INDEX IF NOT EXISTS ix_daily_brief_item_outcome_events_type ON daily_brief_item_outcome_events(outcome_type);",
+        "CREATE INDEX IF NOT EXISTS ix_daily_brief_item_outcome_events_created ON daily_brief_item_outcome_events(created_utc);",
+        # --- Ranking-policy evaluation runs over a brief-date window (observational only) ---
+        f"""
+        CREATE TABLE IF NOT EXISTS ranking_policy_eval_runs (
+          eval_run_id TEXT PRIMARY KEY,
+          window_start TEXT NOT NULL,
+          window_end TEXT NOT NULL,
+          policy_version TEXT,
+          eval_mode TEXT NOT NULL,
+          ranking_algorithm_version TEXT,
+          assembly_policy_version TEXT,
+          model_profile_id TEXT,
+          model_name TEXT,
+          feedback_calibration_version TEXT,
+          ignored_lag_hours INTEGER NOT NULL DEFAULT 72,
+          candidate_count INTEGER NOT NULL DEFAULT 0,
+          outcome_count INTEGER NOT NULL DEFAULT 0,
+          source_ref_coverage REAL,
+          brief_usefulness_score REAL,
+          rank_outcome_score REAL,
+          model_degradation_rate REAL,
+          procore_noise_score REAL,
+          sample_sufficient INTEGER NOT NULL DEFAULT 0,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP{_P10_GUARDS}
+        );
+        """,
+        "CREATE INDEX IF NOT EXISTS ix_ranking_policy_eval_runs_window ON ranking_policy_eval_runs(window_start, window_end);",
+        "CREATE INDEX IF NOT EXISTS ix_ranking_policy_eval_runs_policy ON ranking_policy_eval_runs(policy_version);",
+        "CREATE INDEX IF NOT EXISTS ix_ranking_policy_eval_runs_mode ON ranking_policy_eval_runs(eval_mode);",
+        "CREATE INDEX IF NOT EXISTS ix_ranking_policy_eval_runs_created ON ranking_policy_eval_runs(created_utc);",
+        # --- Per-candidate evaluation facts for a policy eval run ---
+        f"""
+        CREATE TABLE IF NOT EXISTS ranking_policy_eval_items (
+          eval_run_id TEXT NOT NULL,
+          daily_brief_action_candidate_id TEXT NOT NULL,
+          rank_position INTEGER,
+          section_key TEXT,
+          candidate_family TEXT,
+          source_family TEXT,
+          project_key TEXT,
+          deterministic_score REAL,
+          feedback_score REAL,
+          model_advisory_score REAL,
+          final_score REAL,
+          model_advisory_used INTEGER NOT NULL DEFAULT 0,
+          outcome_type TEXT,
+          outcome_weight REAL,
+          outcome_lag_hours REAL,
+          source_ref_count INTEGER NOT NULL DEFAULT 0,
+          eval_notes_json TEXT,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP{_P10_GUARDS},
+          PRIMARY KEY (eval_run_id, daily_brief_action_candidate_id)
+        );
+        """,
+        "CREATE INDEX IF NOT EXISTS ix_ranking_policy_eval_items_run ON ranking_policy_eval_items(eval_run_id);",
+        "CREATE INDEX IF NOT EXISTS ix_ranking_policy_eval_items_candidate ON ranking_policy_eval_items(daily_brief_action_candidate_id);",
+        "CREATE INDEX IF NOT EXISTS ix_ranking_policy_eval_items_family ON ranking_policy_eval_items(candidate_family);",
+        # --- Aggregate local-model profile reliability/utility (receipt metadata only) ---
+        f"""
+        CREATE TABLE IF NOT EXISTS model_profile_eval_results (
+          model_profile_eval_id TEXT PRIMARY KEY,
+          window_start TEXT NOT NULL,
+          window_end TEXT NOT NULL,
+          task_type TEXT,
+          model_profile_id TEXT,
+          model_name TEXT,
+          attempt_count INTEGER NOT NULL DEFAULT 0,
+          success_count INTEGER NOT NULL DEFAULT 0,
+          schema_invalid_count INTEGER NOT NULL DEFAULT 0,
+          safety_withheld_count INTEGER NOT NULL DEFAULT 0,
+          timeout_count INTEGER NOT NULL DEFAULT 0,
+          unknown_alias_count INTEGER NOT NULL DEFAULT 0,
+          lifecycle_excluded_ref_count INTEGER NOT NULL DEFAULT 0,
+          fallback_count INTEGER NOT NULL DEFAULT 0,
+          avg_latency_ms REAL,
+          p95_latency_ms REAL,
+          advisory_adoption_proxy REAL,
+          model_degradation_rate REAL,
+          sample_sufficient INTEGER NOT NULL DEFAULT 0,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP{_P10_GUARDS}
+        );
+        """,
+        "CREATE INDEX IF NOT EXISTS ix_model_profile_eval_results_window ON model_profile_eval_results(window_start, window_end);",
+        "CREATE INDEX IF NOT EXISTS ix_model_profile_eval_results_profile ON model_profile_eval_results(model_profile_id);",
+        "CREATE INDEX IF NOT EXISTS ix_model_profile_eval_results_created ON model_profile_eval_results(created_utc);",
+        # --- Raw-free daily/window/project/family/source/model trend rollups ---
+        f"""
+        CREATE TABLE IF NOT EXISTS brief_effectiveness_rollups (
+          rollup_id TEXT PRIMARY KEY,
+          scope TEXT NOT NULL,
+          scope_key TEXT NOT NULL,
+          window_start TEXT NOT NULL,
+          window_end TEXT NOT NULL,
+          policy_version TEXT,
+          brief_count INTEGER NOT NULL DEFAULT 0,
+          candidate_count INTEGER NOT NULL DEFAULT 0,
+          outcome_count INTEGER NOT NULL DEFAULT 0,
+          accepted_rate REAL,
+          rejected_rate REAL,
+          snoozed_rate REAL,
+          ignored_rate REAL,
+          brief_usefulness_score REAL,
+          rank_outcome_score REAL,
+          source_ref_coverage REAL,
+          procore_noise_score REAL,
+          model_degradation_rate REAL,
+          duplicate_precision_proxy REAL,
+          feedback_calibration_lift REAL,
+          sample_sufficient INTEGER NOT NULL DEFAULT 0,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP{_P10_GUARDS}
+        );
+        """,
+        "CREATE INDEX IF NOT EXISTS ix_brief_effectiveness_rollups_scope ON brief_effectiveness_rollups(scope, scope_key);",
+        "CREATE INDEX IF NOT EXISTS ix_brief_effectiveness_rollups_window ON brief_effectiveness_rollups(window_start, window_end);",
+        "CREATE INDEX IF NOT EXISTS ix_brief_effectiveness_rollups_created ON brief_effectiveness_rollups(created_utc);",
+    ]
+
     # v44 Phase 10 Graph drive-item modified-by raw operational metadata.
     # Additive ADD COLUMN only on construction_drive_items; raw identity JSON is
     # local SQLite operational metadata and must not be emitted in committed evidence.
@@ -6747,6 +7032,44 @@ class SQLiteMigrator:
                     (now,),
                 )
 
+            # v51 Phase 10 Ollama-assisted candidate ranking + daily-brief assembly
+            # overlay. Additive, append-only; CREATE IF NOT EXISTS so re-apply is a no-op.
+            # Layers ranking/assembly read-models on the V41 candidate projection and V50
+            # lifecycle overlay without altering either. V1-V50 untouched.
+            for stmt in self.V51_STATEMENTS:
+                conn.execute(stmt)
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 51")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (51, 'v51_phase_10_candidate_ranking_and_daily_brief_assembly', ?)",
+                    (now,),
+                )
+
+            # v52 Phase 10 daily-brief effectiveness / ranking-policy telemetry. Additive,
+            # append-only; CREATE IF NOT EXISTS so re-apply is a no-op. Observational telemetry
+            # over the V41/V50/V51 read models — reads them, mutates none. V1-V51 untouched.
+            for stmt in self.V52_STATEMENTS:
+                conn.execute(stmt)
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 52")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (52, 'v52_phase_10_daily_brief_effectiveness_telemetry', ?)",
+                    (now,),
+                )
+
+            # v53 reconcile: add ranking_run_id (+ composite PK) to ranking_policy_eval_items so a
+            # candidate surfaced in two ranking runs keeps a distinct fact per run. Changing a PK
+            # needs a table rebuild; this guarded, idempotent reconcile is a no-op once the column
+            # exists, and preserves any existing rows (backfilling ranking_run_id='unknown'). Needed
+            # because an editable-install runner could migrate a DB to the original V52 shape.
+            self._reconcile_v53_eval_items(conn)
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 53")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (53, 'v53_reconcile_ranking_policy_eval_items_ranking_run_id', ?)",
+                    (now,),
+                )
+
         # Return latest version
         conn2 = get_connection(self._db_path)
         cur = conn2.execute("SELECT MAX(version) FROM schema_migrations")
@@ -6761,6 +7084,71 @@ class SQLiteMigrator:
         from hb_assistant.procore.projection_registry import build_v47_ddl
 
         return build_v47_ddl()
+
+    @classmethod
+    def _reconcile_v53_eval_items(cls, conn: sqlite3.Connection) -> None:
+        """Rebuild ``ranking_policy_eval_items`` to add ``ranking_run_id`` + the composite PK.
+
+        Idempotent and guarded: a no-op once ``ranking_run_id`` exists (fresh DBs created by the new
+        V53-aware migrator already have it; here V52 creates the original shape and this rebuilds it).
+        Non-destructive — existing rows are copied into the rebuilt table (legacy rows, which carry no
+        run id, are backfilled with ``ranking_run_id='unknown'``). The table holds only derived,
+        regenerable telemetry; in practice it is empty wherever this reconcile runs.
+        """
+        cols = {row[1] for row in conn.execute("PRAGMA table_info(ranking_policy_eval_items)")}
+        if not cols or "ranking_run_id" in cols:
+            return  # table absent (pre-V52) or already reconciled
+        new_ddl = f"""
+        CREATE TABLE ranking_policy_eval_items__v53 (
+          eval_run_id TEXT NOT NULL,
+          ranking_run_id TEXT NOT NULL,
+          daily_brief_action_candidate_id TEXT NOT NULL,
+          rank_position INTEGER,
+          section_key TEXT,
+          candidate_family TEXT,
+          source_family TEXT,
+          project_key TEXT,
+          deterministic_score REAL,
+          feedback_score REAL,
+          model_advisory_score REAL,
+          final_score REAL,
+          model_advisory_used INTEGER NOT NULL DEFAULT 0,
+          outcome_type TEXT,
+          outcome_weight REAL,
+          outcome_lag_hours REAL,
+          source_ref_count INTEGER NOT NULL DEFAULT 0,
+          eval_notes_json TEXT,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP{cls._P10_GUARDS},
+          PRIMARY KEY (eval_run_id, ranking_run_id, daily_brief_action_candidate_id)
+        );
+        """
+        conn.execute("DROP TABLE IF EXISTS ranking_policy_eval_items__v53")
+        conn.execute(new_ddl)
+        conn.execute(
+            """
+            INSERT INTO ranking_policy_eval_items__v53 (
+              eval_run_id, ranking_run_id, daily_brief_action_candidate_id, rank_position, section_key,
+              candidate_family, source_family, project_key, deterministic_score, feedback_score,
+              model_advisory_score, final_score, model_advisory_used, outcome_type, outcome_weight,
+              outcome_lag_hours, source_ref_count, eval_notes_json, created_utc
+            )
+            SELECT
+              eval_run_id, 'unknown', daily_brief_action_candidate_id, rank_position, section_key,
+              candidate_family, source_family, project_key, deterministic_score, feedback_score,
+              model_advisory_score, final_score, model_advisory_used, outcome_type, outcome_weight,
+              outcome_lag_hours, source_ref_count, eval_notes_json, created_utc
+            FROM ranking_policy_eval_items
+            """
+        )
+        conn.execute("DROP TABLE ranking_policy_eval_items")
+        conn.execute("ALTER TABLE ranking_policy_eval_items__v53 RENAME TO ranking_policy_eval_items")
+        for stmt in (
+            "CREATE INDEX IF NOT EXISTS ix_ranking_policy_eval_items_run ON ranking_policy_eval_items(eval_run_id);",
+            "CREATE INDEX IF NOT EXISTS ix_ranking_policy_eval_items_ranking_run ON ranking_policy_eval_items(ranking_run_id);",
+            "CREATE INDEX IF NOT EXISTS ix_ranking_policy_eval_items_candidate ON ranking_policy_eval_items(daily_brief_action_candidate_id);",
+            "CREATE INDEX IF NOT EXISTS ix_ranking_policy_eval_items_family ON ranking_policy_eval_items(candidate_family);",
+        ):
+            conn.execute(stmt)
 
     @staticmethod
     def _reconcile_v48_columns(conn: sqlite3.Connection) -> None:

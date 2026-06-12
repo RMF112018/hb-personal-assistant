@@ -1,0 +1,7 @@
+{
+  "proof": "source_ref_coverage",
+  "source_ref_coverage": 1.0,
+  "actionable_items": 1,
+  "actionable_with_refs": 1,
+  "note": "V51 withholds source-missing actionable upstream \u2192 coverage 1.0 over ranked items"
+}

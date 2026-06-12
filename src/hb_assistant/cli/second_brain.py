@@ -2233,6 +2233,295 @@ def relationship_candidates_scan(
         raise typer.Exit(1) from None
 
 
+@daily_brief_app.command("rank-candidates")
+def daily_brief_rank_candidates(
+    brief_date: "str | None" = typer.Option(  # noqa: B008
+        None, "--brief-date", help="Brief date (YYYY-MM-DD). Default: today (UTC)."
+    ),
+    apply: bool = typer.Option(  # noqa: B008
+        False, "--apply/--dry-run", help="Persist the ranking/assembly overlay. Default: dry-run."
+    ),
+    max_persist: "int | None" = typer.Option(  # noqa: B008
+        None, "--max-persist", help="Required with --apply: cap on persisted ranked/edge rows."
+    ),
+    profile_id: str = typer.Option(  # noqa: B008
+        "default_extract", "--profile", help="Local model profile id for the advisory layer."
+    ),
+    model: "str | None" = typer.Option(None, "--model", help="Override the profile model name."),  # noqa: B008
+    provider: str = typer.Option("ollama", "--provider", help="Local provider (ollama only)."),  # noqa: B008
+    timeout_seconds: "int | None" = typer.Option(  # noqa: B008
+        None, "--timeout-seconds", help="Override the profile generation timeout."
+    ),
+    no_client: bool = typer.Option(  # noqa: B008
+        False, "--no-client", help="Deterministic-only: skip the model (a success path, not failure)."
+    ),
+    mock_output: "str | None" = typer.Option(  # noqa: B008
+        None, "--mock-output", help="Path or JSON string of mock advisory output (offline test)."
+    ),
+    include_similarity: bool = typer.Option(  # noqa: B008
+        True, "--include-similarity/--no-similarity", help="Compute advisory duplicate edges."
+    ),
+    db: "str | None" = typer.Option(  # noqa: B008
+        None, "--db", help="Explicit SQLite path (tests / isolated /tmp validation)."
+    ),
+    json_out: bool = typer.Option(True, "--json/--no-json", help="JSON (default) or summary."),  # noqa: B008
+) -> None:
+    """Rank daily-brief candidates and assemble the brief (deterministic-authoritative, model advisory).
+
+    The deterministic ranking + section order are authoritative; the local model only nudges within a
+    bounded range and only after deterministic eligibility. ``--no-client`` produces a full
+    deterministic run; an unavailable/invalid/unsafe model falls back to deterministic with an honest
+    degraded status. Dry-run writes nothing; ``--apply`` requires ``--max-persist``. Exit 0 ok,
+    2 invalid usage, 3 fail-closed safety/contract violation, 1 unexpected error.
+    """
+    import pathlib
+    from datetime import datetime as _dt
+    from datetime import timezone as _tz
+
+    from hb_assistant.construction.second_brain.local_ai import (
+        load_local_model_profiles,
+        run_candidate_ranking_and_assembly,
+    )
+    from hb_assistant.construction.second_brain.local_ai.structured_output import StaticOutputClient
+    from hb_assistant.construction.store import ConstructionStore
+    from hb_assistant.retrieval.embedder import DeterministicEmbedder
+
+    cmd = "second-brain daily-brief rank-candidates"
+    try:
+        if provider != "ollama":
+            payload = {"command": cmd, "ok": False, "status": "invalid", "error": "provider_must_be_ollama"}
+            typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+            raise typer.Exit(2)
+        if apply and max_persist is None:
+            payload = {"command": cmd, "ok": False, "status": "invalid", "error": "apply_requires_max_persist"}
+            typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+            raise typer.Exit(2)
+
+        bdate = brief_date or _dt.now(_tz.utc).date().isoformat()
+        now_utc = f"{bdate}T12:00:00+00:00" if brief_date else _dt.now(_tz.utc).isoformat()
+
+        use_model = not no_client
+        backend = None
+        profile = None
+        profiles = None
+        if use_model:
+            profiles = load_local_model_profiles()
+            base = next((p for p in profiles.profiles if p.profile_id == profile_id), None)
+            if base is None:
+                payload = {"command": cmd, "ok": False, "status": "invalid", "error": f"unknown_profile:{profile_id}"}
+                typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+                raise typer.Exit(2)
+            updates: dict[str, Any] = {}
+            if model:
+                updates["model_name"] = model
+            if timeout_seconds is not None:
+                updates["timeout_seconds"] = timeout_seconds
+            profile = base.model_copy(update=updates) if updates else base
+            if mock_output is not None:
+                p = pathlib.Path(mock_output)
+                raw = p.read_text(encoding="utf-8") if p.exists() else mock_output
+                backend = StaticOutputClient(raw)
+
+        store = ConstructionStore(db_path=db)
+        result = run_candidate_ranking_and_assembly(
+            store=store,
+            brief_date=bdate,
+            now_utc=now_utc,
+            profile=profile,
+            profiles=profiles,
+            backend=backend,
+            use_model=use_model,
+            include_similarity=include_similarity,
+            embedder=DeterministicEmbedder(),
+            dry_run=not apply,
+            max_persist=max_persist,
+        )
+        result["db_indicator"] = _redact_db_indicator(db)
+        if result.get("status") == "fail_closed":
+            typer.echo(json.dumps(result, indent=2, default=str) if json_out else str(result))
+            raise typer.Exit(3)
+        typer.echo(json.dumps(result, indent=2, default=str) if json_out else str(result))
+        raise typer.Exit(0)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        payload = {"command": cmd, "ok": False, "status": "error", "error": str(e)[:300]}
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(1) from None
+
+
+@daily_brief_app.command("evaluate-effectiveness")
+def daily_brief_evaluate_effectiveness(
+    window_start: "str | None" = typer.Option(  # noqa: B008
+        None, "--window-start", help="Window start (YYYY-MM-DD). Default: --brief-date or today."
+    ),
+    window_end: "str | None" = typer.Option(  # noqa: B008
+        None, "--window-end", help="Window end (YYYY-MM-DD). Default: --brief-date or today."
+    ),
+    brief_date: "str | None" = typer.Option(  # noqa: B008
+        None, "--brief-date", help="Single brief date (YYYY-MM-DD); sets both window ends."
+    ),
+    policy_version: "str | None" = typer.Option(  # noqa: B008
+        None, "--policy-version", help="Filter ranking runs to this policy version."
+    ),
+    model_profile_id: "str | None" = typer.Option(  # noqa: B008
+        None, "--model-profile-id", help="Filter ranking runs to this model profile id."
+    ),
+    eval_mode: str = typer.Option(  # noqa: B008
+        "observed",
+        "--eval-mode",
+        help="observed | deterministic-replay | model-assisted-observed | ablation.",
+    ),
+    ignored_lag_hours: int = typer.Option(  # noqa: B008
+        72, "--ignored-lag-hours", help="Lag window (h) after which an un-actioned item is ignored."
+    ),
+    include_procore_noise: bool = typer.Option(  # noqa: B008
+        True, "--include-procore-noise/--no-procore-noise", help="Include Procore noise metrics."
+    ),
+    include_model_profile: bool = typer.Option(  # noqa: B008
+        True, "--include-model-profile/--no-model-profile", help="Include model-profile reliability."
+    ),
+    include_rollups: bool = typer.Option(  # noqa: B008
+        True, "--include-rollups/--no-rollups", help="Include daily/window/family/source rollups."
+    ),
+    apply: bool = typer.Option(  # noqa: B008
+        False, "--apply/--dry-run", help="Persist telemetry/eval/rollup rows. Default: dry-run."
+    ),
+    max_persist: "int | None" = typer.Option(  # noqa: B008
+        None,
+        "--max-persist",
+        help="Required with --apply: cap on TOTAL projected rows across all V52 tables (fail-closed).",
+    ),
+    db: "str | None" = typer.Option(  # noqa: B008
+        None, "--db", help="Explicit SQLite path (REQUIRED for --apply; must be a /tmp copy, never prod)."
+    ),
+    allow_non_tmp_db: bool = typer.Option(  # noqa: B008
+        False,
+        "--allow-non-tmp-db",
+        help="Override: permit --apply against a --db outside the temp root (NOT recommended).",
+    ),
+    json_out: bool = typer.Option(True, "--json/--no-json", help="JSON (default) or summary."),  # noqa: B008
+) -> None:
+    """Evaluate daily-brief / ranking-policy effectiveness over a window (observational only).
+
+    Deterministic, raw-free telemetry that READS the V51 ranking/assembly overlay + V50 lifecycle
+    read model and measures whether ranked briefs are getting more useful. It mutates no
+    lifecycle/source-ref/ranking/assembly rows and never calls a model. Dry-run (default) writes zero
+    rows; ``--apply`` requires ``--max-persist`` (a cap on the TOTAL projected inserts across all V52
+    tables — exceeding it fails closed before any write). Apply validation must target a ``/tmp`` DB
+    copy via ``--db`` (opening a store migrates the configured DB). Exit 0 ok/dry-run, 2 invalid
+    usage, 3 fail-closed safety/raw-leak/cap violation, 1 unexpected error.
+    """
+    from datetime import datetime as _dt
+    from datetime import timezone as _tz
+
+    from hb_assistant.construction.second_brain.local_ai import (
+        EVAL_MODES,
+        run_daily_brief_effectiveness_evaluation,
+    )
+    from hb_assistant.construction.store import ConstructionStore
+
+    cmd = "second-brain daily-brief evaluate-effectiveness"
+
+    def _emit(payload: dict[str, Any], code: int) -> None:
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(code)
+
+    def _valid_date(value: str) -> bool:
+        try:
+            _dt.strptime(value, "%Y-%m-%d")
+            return True
+        except ValueError:
+            return False
+
+    try:
+        if eval_mode not in EVAL_MODES:
+            _emit({"command": cmd, "ok": False, "status": "invalid", "error": f"invalid_eval_mode:{eval_mode}"}, 2)
+        if apply and max_persist is None:
+            _emit({"command": cmd, "ok": False, "status": "invalid", "error": "apply_requires_max_persist"}, 2)
+        if max_persist is not None and max_persist < 0:
+            _emit({"command": cmd, "ok": False, "status": "invalid", "error": "max_persist_must_be_non_negative"}, 2)
+        if ignored_lag_hours < 0:
+            _emit({"command": cmd, "ok": False, "status": "invalid", "error": "ignored_lag_hours_must_be_non_negative"}, 2)
+        # --apply must target an explicit /tmp DB copy (never the prod app DB). Checked BEFORE the
+        # store is opened, so a rejected call never migrates anything.
+        if apply:
+            if db is None:
+                _emit({"command": cmd, "ok": False, "status": "invalid", "error": "apply_requires_db"}, 2)
+            elif not _is_temp_db_path(db) and not allow_non_tmp_db:
+                _emit(
+                    {
+                        "command": cmd, "ok": False, "status": "invalid",
+                        "error": "apply_requires_tmp_db",
+                        "guardrails": {
+                            "apply_requires_temp_db": True,
+                            "override_flag": "--allow-non-tmp-db",
+                        },
+                    },
+                    2,
+                )
+
+        today = _dt.now(_tz.utc).date().isoformat()
+        wstart = window_start or brief_date or today
+        wend = window_end or brief_date or today
+        for label, value in (("window_start", wstart), ("window_end", wend)):
+            if not _valid_date(value):
+                _emit({"command": cmd, "ok": False, "status": "invalid", "error": f"invalid_date:{label}={value}"}, 2)
+        if wend < wstart:
+            _emit({"command": cmd, "ok": False, "status": "invalid", "error": f"window_end_before_start:{wstart}>{wend}"}, 2)
+
+        now_utc = _dt.now(_tz.utc).isoformat()
+        store = ConstructionStore(db_path=db)
+        result = run_daily_brief_effectiveness_evaluation(
+            store,
+            window_start=wstart,
+            window_end=wend,
+            now_utc=now_utc,
+            ignored_lag_hours=ignored_lag_hours,
+            eval_mode=eval_mode,
+            policy_version=policy_version,
+            model_profile_id=model_profile_id,
+            include_procore_noise=include_procore_noise,
+            include_model_profile=include_model_profile,
+            include_rollups=include_rollups,
+            dry_run=not apply,
+            max_persist=max_persist,
+        )
+        result["db_indicator"] = _redact_db_indicator(db)
+        if apply:
+            result["apply_db_temp_checked"] = True
+            result["apply_db_non_tmp_override_used"] = bool(
+                db is not None and not _is_temp_db_path(db) and allow_non_tmp_db
+            )
+        if result.get("status") == "fail_closed":
+            _emit(result, 3)
+        _emit(result, 0)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        payload = {"command": cmd, "ok": False, "status": "error", "error": str(e)[:300]}
+        typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+        raise typer.Exit(1) from None
+
+
+def _is_temp_db_path(db: str) -> bool:
+    """True when ``db`` resolves under a recognized OS temp root.
+
+    Accepts both the package's ``/tmp/hb-…`` copies and pytest's ``tmp_path`` (macOS
+    ``$TMPDIR=/var/folders/…``); rejects the real app DB under ``~/Library/Application Support/``. Used
+    to gate ``--apply`` so a persist run can never target the production DB.
+    """
+    import os
+    import tempfile
+
+    real = os.path.realpath(db)
+    roots = {
+        os.path.realpath("/tmp"),
+        os.path.realpath(tempfile.gettempdir()),
+    }
+    return any(real == r or real.startswith(r + os.sep) for r in roots)
+
+
 @daily_brief_app.command("render")
 def daily_brief_render(
     date: "str | None" = typer.Option(  # noqa: B008

@@ -10344,6 +10344,1141 @@ class ConstructionStore:
         cols = [d[0] for d in cur.description]
         return [dict(zip(cols, row, strict=True)) for row in cur.fetchall()]
 
+    # ---------------------------------------------------------------------------
+    # V51 Phase 10 — Ollama-assisted candidate ranking + daily-brief assembly overlay.
+    # Advisory ranking/assembly read-models layered on the V41 candidate projection and
+    # V50 lifecycle overlay. Idempotent on stable keys: re-running against the same
+    # candidate set, feedback digest, policy version, and model receipt/hash does not
+    # duplicate rows. Guard columns are omitted on INSERT → DEFAULT 0 / CHECK(=0). Only
+    # redacted/hashed columns and hash-only model receipt ids are stored.
+    # ---------------------------------------------------------------------------
+
+    _RANKING_RUN_COLUMNS = (
+        "ranking_run_id, brief_date, policy_version, algorithm_version, "
+        "candidate_set_hash, feedback_digest_hash, model_profile_id, model_name, "
+        "model_status, model_receipt_id, deterministic_fallback_used, degraded_reason, "
+        "candidate_count, ranked_count, source_ref_coverage, usefulness_score, created_utc"
+    )
+
+    @staticmethod
+    def ranking_run_id_for(
+        brief_date: str,
+        candidate_set_hash: str,
+        feedback_digest_hash: str,
+        policy_version: str,
+        algorithm_version: str,
+        model_status: str,
+        model_receipt_id: Optional[str] = None,
+    ) -> str:
+        """Deterministic ranking_run_id (idempotent on the stable ranking inputs)."""
+        seed = "|".join(
+            (
+                brief_date,
+                candidate_set_hash,
+                feedback_digest_hash,
+                policy_version,
+                algorithm_version,
+                model_status,
+                model_receipt_id or "",
+            )
+        )
+        return "rkr:" + hashlib.sha256(seed.encode("utf-8")).hexdigest()[:32]
+
+    def insert_ranking_run(
+        self,
+        *,
+        brief_date: str,
+        policy_version: str,
+        algorithm_version: str,
+        candidate_set_hash: str,
+        feedback_digest_hash: str,
+        model_status: str,
+        model_profile_id: Optional[str] = None,
+        model_name: Optional[str] = None,
+        model_receipt_id: Optional[str] = None,
+        deterministic_fallback_used: bool = False,
+        degraded_reason: Optional[str] = None,
+        candidate_count: int = 0,
+        ranked_count: int = 0,
+        source_ref_coverage: float = 0.0,
+        usefulness_score: float = 0.0,
+        ranking_run_id: Optional[str] = None,
+        created_utc: Optional[str] = None,
+    ) -> tuple[str, bool]:
+        """Insert a ranking-run metadata row. Returns (ranking_run_id, inserted)."""
+        if not brief_date or not policy_version or not algorithm_version or not model_status:
+            raise ValueError(
+                "brief_date, policy_version, algorithm_version, model_status are required"
+            )
+        run_id = ranking_run_id or self.ranking_run_id_for(
+            brief_date,
+            candidate_set_hash,
+            feedback_digest_hash,
+            policy_version,
+            algorithm_version,
+            model_status,
+            model_receipt_id,
+        )
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            cur = conn.execute(
+                f"""
+                INSERT INTO daily_brief_ranking_runs ({self._RANKING_RUN_COLUMNS})
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(ranking_run_id) DO NOTHING
+                """,
+                (
+                    run_id,
+                    brief_date,
+                    policy_version,
+                    algorithm_version,
+                    candidate_set_hash,
+                    feedback_digest_hash,
+                    model_profile_id,
+                    model_name,
+                    model_status,
+                    model_receipt_id,
+                    1 if deterministic_fallback_used else 0,
+                    degraded_reason,
+                    candidate_count,
+                    ranked_count,
+                    source_ref_coverage,
+                    usefulness_score,
+                    created_utc or _utc_now(),
+                ),
+            )
+            return run_id, cur.rowcount > 0
+
+    def list_ranking_runs(
+        self, *, brief_date: Optional[str] = None, limit: int = 1000
+    ) -> list[dict[str, Any]]:
+        """List ranking-run metadata rows (safe fields only), newest first."""
+        conn = get_connection(self._db_path)
+        clauses: list[str] = []
+        params: list[Any] = []
+        if brief_date is not None:
+            clauses.append("brief_date = ?")
+            params.append(brief_date)
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        params.append(limit)
+        cur = conn.execute(
+            f"""
+            SELECT {self._RANKING_RUN_COLUMNS}
+            FROM daily_brief_ranking_runs {where}
+            ORDER BY created_utc DESC, ranking_run_id DESC
+            LIMIT ?
+            """,
+            tuple(params),
+        )
+        cols = [d[0] for d in cur.description]
+        return [dict(zip(cols, row, strict=True)) for row in cur.fetchall()]
+
+    _RANKED_CANDIDATE_COLUMNS = (
+        "ranking_run_id, daily_brief_action_candidate_id, rank_position, section_key, "
+        "group_key, duplicate_cluster_id, deterministic_score, feedback_score, "
+        "model_advisory_score, final_score, why_this_matters_redacted, "
+        "model_reason_codes_json, source_ref_count, lifecycle_state_snapshot, created_utc"
+    )
+
+    def insert_ranked_candidate(
+        self,
+        *,
+        ranking_run_id: str,
+        daily_brief_action_candidate_id: str,
+        rank_position: int,
+        section_key: str,
+        deterministic_score: float,
+        feedback_score: float,
+        final_score: float,
+        group_key: Optional[str] = None,
+        duplicate_cluster_id: Optional[str] = None,
+        model_advisory_score: Optional[float] = None,
+        why_this_matters_redacted: Optional[str] = None,
+        model_reason_codes_json: Optional[str] = None,
+        source_ref_count: int = 0,
+        lifecycle_state_snapshot: Optional[str] = None,
+        created_utc: Optional[str] = None,
+    ) -> bool:
+        """Insert a per-candidate ranking overlay row. Returns True if inserted.
+
+        Idempotent on (ranking_run_id, daily_brief_action_candidate_id).
+        """
+        if not ranking_run_id or not daily_brief_action_candidate_id or not section_key:
+            raise ValueError(
+                "ranking_run_id, daily_brief_action_candidate_id, section_key are required"
+            )
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            cur = conn.execute(
+                f"""
+                INSERT INTO daily_brief_ranked_candidates ({self._RANKED_CANDIDATE_COLUMNS})
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(ranking_run_id, daily_brief_action_candidate_id) DO NOTHING
+                """,
+                (
+                    ranking_run_id,
+                    daily_brief_action_candidate_id,
+                    rank_position,
+                    section_key,
+                    group_key,
+                    duplicate_cluster_id,
+                    deterministic_score,
+                    feedback_score,
+                    model_advisory_score,
+                    final_score,
+                    why_this_matters_redacted,
+                    model_reason_codes_json,
+                    source_ref_count,
+                    lifecycle_state_snapshot,
+                    created_utc or _utc_now(),
+                ),
+            )
+            return cur.rowcount > 0
+
+    def list_ranked_candidates(
+        self, *, ranking_run_id: str, limit: int = 1000
+    ) -> list[dict[str, Any]]:
+        """List per-candidate ranking overlay rows for a run, ordered by rank position."""
+        conn = get_connection(self._db_path)
+        cur = conn.execute(
+            f"""
+            SELECT {self._RANKED_CANDIDATE_COLUMNS}
+            FROM daily_brief_ranked_candidates
+            WHERE ranking_run_id = ?
+            ORDER BY rank_position ASC, daily_brief_action_candidate_id ASC
+            LIMIT ?
+            """,
+            (ranking_run_id, limit),
+        )
+        cols = [d[0] for d in cur.description]
+        return [dict(zip(cols, row, strict=True)) for row in cur.fetchall()]
+
+    _SIMILARITY_EDGE_COLUMNS = (
+        "similarity_edge_id, brief_date, candidate_a_id, candidate_b_id, similarity_score, "
+        "similarity_method, cluster_id, deterministic_features_json, model_label, "
+        "review_recommendation, created_utc"
+    )
+
+    @staticmethod
+    def similarity_edge_id_for(
+        brief_date: str, candidate_a_id: str, candidate_b_id: str, similarity_method: str
+    ) -> str:
+        """Deterministic similarity_edge_id. Candidate ids are sorted so (a,b)==(b,a)."""
+        lo, hi = sorted((candidate_a_id, candidate_b_id))
+        seed = "|".join((brief_date, lo, hi, similarity_method))
+        return "sme:" + hashlib.sha256(seed.encode("utf-8")).hexdigest()[:32]
+
+    def upsert_similarity_edge(
+        self,
+        *,
+        brief_date: str,
+        candidate_a_id: str,
+        candidate_b_id: str,
+        similarity_score: float,
+        similarity_method: str,
+        cluster_id: Optional[str] = None,
+        deterministic_features_json: Optional[str] = None,
+        model_label: Optional[str] = None,
+        review_recommendation: str = "review_duplicate_candidate",
+        similarity_edge_id: Optional[str] = None,
+        created_utc: Optional[str] = None,
+    ) -> tuple[str, bool]:
+        """Insert/refresh an advisory similarity edge. Returns (similarity_edge_id, inserted).
+
+        Advisory only — never auto-merges or suppresses. Idempotent: the id is derived from
+        the unordered candidate pair + method; re-run refreshes score/cluster/label.
+        """
+        if not brief_date or not candidate_a_id or not candidate_b_id or not similarity_method:
+            raise ValueError(
+                "brief_date, candidate_a_id, candidate_b_id, similarity_method are required"
+            )
+        edge_id = similarity_edge_id or self.similarity_edge_id_for(
+            brief_date, candidate_a_id, candidate_b_id, similarity_method
+        )
+        lo, hi = sorted((candidate_a_id, candidate_b_id))
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            cur = conn.execute(
+                f"""
+                INSERT INTO candidate_similarity_edges ({self._SIMILARITY_EDGE_COLUMNS})
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(similarity_edge_id) DO UPDATE SET
+                    similarity_score = excluded.similarity_score,
+                    cluster_id = excluded.cluster_id,
+                    deterministic_features_json = excluded.deterministic_features_json,
+                    model_label = excluded.model_label,
+                    review_recommendation = excluded.review_recommendation
+                """,
+                (
+                    edge_id,
+                    brief_date,
+                    lo,
+                    hi,
+                    similarity_score,
+                    similarity_method,
+                    cluster_id,
+                    deterministic_features_json,
+                    model_label,
+                    review_recommendation,
+                    created_utc or _utc_now(),
+                ),
+            )
+            return edge_id, cur.rowcount > 0
+
+    def list_similarity_edges(
+        self, *, brief_date: Optional[str] = None, limit: int = 5000
+    ) -> list[dict[str, Any]]:
+        """List advisory similarity edges (safe fields only)."""
+        conn = get_connection(self._db_path)
+        clauses: list[str] = []
+        params: list[Any] = []
+        if brief_date is not None:
+            clauses.append("brief_date = ?")
+            params.append(brief_date)
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        params.append(limit)
+        cur = conn.execute(
+            f"""
+            SELECT {self._SIMILARITY_EDGE_COLUMNS}
+            FROM candidate_similarity_edges {where}
+            ORDER BY similarity_score DESC, similarity_edge_id ASC
+            LIMIT ?
+            """,
+            tuple(params),
+        )
+        cols = [d[0] for d in cur.description]
+        return [dict(zip(cols, row, strict=True)) for row in cur.fetchall()]
+
+    _ASSEMBLY_RUN_COLUMNS = (
+        "assembly_run_id, brief_date, ranking_run_id, assembly_policy_version, "
+        "model_layer_status, deterministic_fallback_used, section_count, candidate_count, "
+        "withheld_reason, created_utc"
+    )
+
+    @staticmethod
+    def assembly_run_id_for(
+        brief_date: str, ranking_run_id: Optional[str], assembly_policy_version: str
+    ) -> str:
+        """Deterministic assembly_run_id (idempotent on brief_date + ranking run + policy)."""
+        seed = "|".join((brief_date, ranking_run_id or "", assembly_policy_version))
+        return "asm:" + hashlib.sha256(seed.encode("utf-8")).hexdigest()[:32]
+
+    def insert_assembly_run(
+        self,
+        *,
+        brief_date: str,
+        assembly_policy_version: str,
+        model_layer_status: str,
+        ranking_run_id: Optional[str] = None,
+        deterministic_fallback_used: bool = False,
+        section_count: int = 0,
+        candidate_count: int = 0,
+        withheld_reason: Optional[str] = None,
+        assembly_run_id: Optional[str] = None,
+        created_utc: Optional[str] = None,
+    ) -> tuple[str, bool]:
+        """Insert an assembly-run metadata row. Returns (assembly_run_id, inserted)."""
+        if not brief_date or not assembly_policy_version or not model_layer_status:
+            raise ValueError(
+                "brief_date, assembly_policy_version, model_layer_status are required"
+            )
+        run_id = assembly_run_id or self.assembly_run_id_for(
+            brief_date, ranking_run_id, assembly_policy_version
+        )
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            cur = conn.execute(
+                f"""
+                INSERT INTO daily_brief_assembly_runs ({self._ASSEMBLY_RUN_COLUMNS})
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(assembly_run_id) DO NOTHING
+                """,
+                (
+                    run_id,
+                    brief_date,
+                    ranking_run_id,
+                    assembly_policy_version,
+                    model_layer_status,
+                    1 if deterministic_fallback_used else 0,
+                    section_count,
+                    candidate_count,
+                    withheld_reason,
+                    created_utc or _utc_now(),
+                ),
+            )
+            return run_id, cur.rowcount > 0
+
+    def list_assembly_runs(
+        self, *, brief_date: Optional[str] = None, limit: int = 1000
+    ) -> list[dict[str, Any]]:
+        """List assembly-run metadata rows (safe fields only), newest first."""
+        conn = get_connection(self._db_path)
+        clauses: list[str] = []
+        params: list[Any] = []
+        if brief_date is not None:
+            clauses.append("brief_date = ?")
+            params.append(brief_date)
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        params.append(limit)
+        cur = conn.execute(
+            f"""
+            SELECT {self._ASSEMBLY_RUN_COLUMNS}
+            FROM daily_brief_assembly_runs {where}
+            ORDER BY created_utc DESC, assembly_run_id DESC
+            LIMIT ?
+            """,
+            tuple(params),
+        )
+        cols = [d[0] for d in cur.description]
+        return [dict(zip(cols, row, strict=True)) for row in cur.fetchall()]
+
+    _ASSEMBLY_SECTION_COLUMNS = (
+        "assembly_run_id, section_key, display_order, title_redacted, candidate_ids_json, "
+        "section_score, degraded_reason, created_utc"
+    )
+
+    def insert_assembly_section(
+        self,
+        *,
+        assembly_run_id: str,
+        section_key: str,
+        display_order: int,
+        title_redacted: str,
+        candidate_ids_json: str,
+        section_score: float = 0.0,
+        degraded_reason: Optional[str] = None,
+        created_utc: Optional[str] = None,
+    ) -> bool:
+        """Insert a section-level ordering row. Returns True if inserted.
+
+        Idempotent on (assembly_run_id, section_key).
+        """
+        if not assembly_run_id or not section_key or not title_redacted:
+            raise ValueError("assembly_run_id, section_key, title_redacted are required")
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            cur = conn.execute(
+                f"""
+                INSERT INTO daily_brief_assembly_sections ({self._ASSEMBLY_SECTION_COLUMNS})
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(assembly_run_id, section_key) DO NOTHING
+                """,
+                (
+                    assembly_run_id,
+                    section_key,
+                    display_order,
+                    title_redacted,
+                    candidate_ids_json,
+                    section_score,
+                    degraded_reason,
+                    created_utc or _utc_now(),
+                ),
+            )
+            return cur.rowcount > 0
+
+    def list_assembly_sections(
+        self, *, assembly_run_id: str, limit: int = 1000
+    ) -> list[dict[str, Any]]:
+        """List section-level ordering rows for an assembly run, in display order."""
+        conn = get_connection(self._db_path)
+        cur = conn.execute(
+            f"""
+            SELECT {self._ASSEMBLY_SECTION_COLUMNS}
+            FROM daily_brief_assembly_sections
+            WHERE assembly_run_id = ?
+            ORDER BY display_order ASC, section_key ASC
+            LIMIT ?
+            """,
+            (assembly_run_id, limit),
+        )
+        cols = [d[0] for d in cur.description]
+        return [dict(zip(cols, row, strict=True)) for row in cur.fetchall()]
+
+    # V52 Phase 10 — daily-brief effectiveness / ranking-policy telemetry (observational only).
+    # Persists raw-free counts/scores/hashes/reason codes derived from the V41/V50/V51 read models;
+    # never mutates lifecycle/source-ref/ranking/assembly rows. Deterministic prefixed-sha ids keep
+    # inserts idempotent. Guard columns are omitted on INSERT → DEFAULT 0 / CHECK(=0).
+    # -------------------------------------------------------------------------
+
+    _EXPOSURE_EVENT_COLUMNS = (
+        "exposure_event_id, brief_date, assembly_run_id, ranking_run_id, event_type, section_key, "
+        "daily_brief_action_candidate_id, rank_position, exposure_surface, policy_version, "
+        "artifact_hash, created_utc"
+    )
+
+    @staticmethod
+    def exposure_event_id_for(
+        event_type: str,
+        brief_date: str,
+        ranking_run_id: Optional[str],
+        assembly_run_id: Optional[str],
+        daily_brief_action_candidate_id: Optional[str],
+        section_key: Optional[str],
+        exposure_surface: Optional[str],
+        artifact_hash: Optional[str],
+    ) -> str:
+        """Deterministic exposure_event_id (idempotent on the stable exposure-proxy inputs)."""
+        seed = "|".join(
+            (
+                event_type,
+                brief_date,
+                ranking_run_id or "",
+                assembly_run_id or "",
+                daily_brief_action_candidate_id or "",
+                section_key or "",
+                exposure_surface or "",
+                artifact_hash or "",
+            )
+        )
+        return "dbe:" + hashlib.sha256(seed.encode("utf-8")).hexdigest()[:32]
+
+    def insert_daily_brief_exposure_event(
+        self,
+        *,
+        brief_date: str,
+        event_type: str,
+        ranking_run_id: Optional[str] = None,
+        assembly_run_id: Optional[str] = None,
+        section_key: Optional[str] = None,
+        daily_brief_action_candidate_id: Optional[str] = None,
+        rank_position: Optional[int] = None,
+        exposure_surface: Optional[str] = None,
+        policy_version: Optional[str] = None,
+        artifact_hash: Optional[str] = None,
+        exposure_event_id: Optional[str] = None,
+        created_utc: Optional[str] = None,
+    ) -> tuple[str, bool]:
+        """Insert a raw-free surfaced-item exposure proxy. Returns (exposure_event_id, inserted)."""
+        if not brief_date or not event_type:
+            raise ValueError("brief_date, event_type are required")
+        event_id = exposure_event_id or self.exposure_event_id_for(
+            event_type,
+            brief_date,
+            ranking_run_id,
+            assembly_run_id,
+            daily_brief_action_candidate_id,
+            section_key,
+            exposure_surface,
+            artifact_hash,
+        )
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            cur = conn.execute(
+                f"""
+                INSERT INTO daily_brief_exposure_events ({self._EXPOSURE_EVENT_COLUMNS})
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(exposure_event_id) DO NOTHING
+                """,
+                (
+                    event_id,
+                    brief_date,
+                    assembly_run_id,
+                    ranking_run_id,
+                    event_type,
+                    section_key,
+                    daily_brief_action_candidate_id,
+                    rank_position,
+                    exposure_surface,
+                    policy_version,
+                    artifact_hash,
+                    created_utc or _utc_now(),
+                ),
+            )
+            return event_id, cur.rowcount > 0
+
+    def list_daily_brief_exposure_events(
+        self,
+        *,
+        brief_date: Optional[str] = None,
+        ranking_run_id: Optional[str] = None,
+        limit: int = 5000,
+    ) -> list[dict[str, Any]]:
+        """List raw-free exposure-proxy rows, newest first."""
+        conn = get_connection(self._db_path)
+        clauses: list[str] = []
+        params: list[Any] = []
+        if brief_date is not None:
+            clauses.append("brief_date = ?")
+            params.append(brief_date)
+        if ranking_run_id is not None:
+            clauses.append("ranking_run_id = ?")
+            params.append(ranking_run_id)
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        params.append(limit)
+        cur = conn.execute(
+            f"""
+            SELECT {self._EXPOSURE_EVENT_COLUMNS}
+            FROM daily_brief_exposure_events {where}
+            ORDER BY created_utc DESC, exposure_event_id DESC
+            LIMIT ?
+            """,
+            tuple(params),
+        )
+        cols = [d[0] for d in cur.description]
+        return [dict(zip(cols, row, strict=True)) for row in cur.fetchall()]
+
+    _OUTCOME_EVENT_COLUMNS = (
+        "outcome_event_id, brief_date, daily_brief_action_candidate_id, ranking_run_id, "
+        "assembly_run_id, exposure_event_id, lifecycle_event_id, outcome_type, outcome_lag_hours, "
+        "ignored_lag_hours, rank_position, section_key, candidate_family, project_key, "
+        "source_ref_count, created_utc"
+    )
+
+    @staticmethod
+    def outcome_event_id_for(
+        brief_date: str,
+        daily_brief_action_candidate_id: str,
+        lifecycle_event_id: Optional[str],
+        outcome_type: str,
+        ranking_run_id: Optional[str],
+        assembly_run_id: Optional[str],
+    ) -> str:
+        """Deterministic outcome_event_id. Falls back to the outcome type as a synthetic key when no
+        lifecycle event exists (e.g. ``ignored``/``stale_no_action``)."""
+        seed = "|".join(
+            (
+                brief_date,
+                daily_brief_action_candidate_id,
+                lifecycle_event_id or f"synthetic:{outcome_type}",
+                ranking_run_id or "",
+                assembly_run_id or "",
+            )
+        )
+        return "doe:" + hashlib.sha256(seed.encode("utf-8")).hexdigest()[:32]
+
+    def insert_daily_brief_item_outcome_event(
+        self,
+        *,
+        brief_date: str,
+        daily_brief_action_candidate_id: str,
+        outcome_type: str,
+        ranking_run_id: Optional[str] = None,
+        assembly_run_id: Optional[str] = None,
+        exposure_event_id: Optional[str] = None,
+        lifecycle_event_id: Optional[str] = None,
+        outcome_lag_hours: Optional[float] = None,
+        ignored_lag_hours: int = 72,
+        rank_position: Optional[int] = None,
+        section_key: Optional[str] = None,
+        candidate_family: Optional[str] = None,
+        project_key: Optional[str] = None,
+        source_ref_count: int = 0,
+        outcome_event_id: Optional[str] = None,
+        created_utc: Optional[str] = None,
+    ) -> tuple[str, bool]:
+        """Insert a raw-free derived outcome event. Returns (outcome_event_id, inserted).
+
+        Derived from V50 lifecycle data only — never creates or mutates a lifecycle event.
+        """
+        if not brief_date or not daily_brief_action_candidate_id or not outcome_type:
+            raise ValueError(
+                "brief_date, daily_brief_action_candidate_id, outcome_type are required"
+            )
+        event_id = outcome_event_id or self.outcome_event_id_for(
+            brief_date,
+            daily_brief_action_candidate_id,
+            lifecycle_event_id,
+            outcome_type,
+            ranking_run_id,
+            assembly_run_id,
+        )
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            cur = conn.execute(
+                f"""
+                INSERT INTO daily_brief_item_outcome_events ({self._OUTCOME_EVENT_COLUMNS})
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(outcome_event_id) DO NOTHING
+                """,
+                (
+                    event_id,
+                    brief_date,
+                    daily_brief_action_candidate_id,
+                    ranking_run_id,
+                    assembly_run_id,
+                    exposure_event_id,
+                    lifecycle_event_id,
+                    outcome_type,
+                    outcome_lag_hours,
+                    ignored_lag_hours,
+                    rank_position,
+                    section_key,
+                    candidate_family,
+                    project_key,
+                    source_ref_count,
+                    created_utc or _utc_now(),
+                ),
+            )
+            return event_id, cur.rowcount > 0
+
+    def list_daily_brief_item_outcome_events(
+        self, *, brief_date: Optional[str] = None, limit: int = 5000
+    ) -> list[dict[str, Any]]:
+        """List raw-free derived outcome-event rows, newest first."""
+        conn = get_connection(self._db_path)
+        clauses: list[str] = []
+        params: list[Any] = []
+        if brief_date is not None:
+            clauses.append("brief_date = ?")
+            params.append(brief_date)
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        params.append(limit)
+        cur = conn.execute(
+            f"""
+            SELECT {self._OUTCOME_EVENT_COLUMNS}
+            FROM daily_brief_item_outcome_events {where}
+            ORDER BY created_utc DESC, outcome_event_id DESC
+            LIMIT ?
+            """,
+            tuple(params),
+        )
+        cols = [d[0] for d in cur.description]
+        return [dict(zip(cols, row, strict=True)) for row in cur.fetchall()]
+
+    _EVAL_RUN_COLUMNS = (
+        "eval_run_id, window_start, window_end, policy_version, eval_mode, "
+        "ranking_algorithm_version, assembly_policy_version, model_profile_id, model_name, "
+        "feedback_calibration_version, ignored_lag_hours, candidate_count, outcome_count, "
+        "source_ref_coverage, brief_usefulness_score, rank_outcome_score, model_degradation_rate, "
+        "procore_noise_score, sample_sufficient, created_utc"
+    )
+
+    @staticmethod
+    def ranking_policy_eval_run_id_for(
+        window_start: str,
+        window_end: str,
+        policy_version: Optional[str],
+        eval_mode: str,
+        ranking_algorithm_version: Optional[str],
+        assembly_policy_version: Optional[str],
+        model_profile_id: Optional[str],
+        feedback_calibration_version: Optional[str],
+    ) -> str:
+        """Deterministic eval_run_id (idempotent on window + policy + mode + versions)."""
+        seed = "|".join(
+            (
+                window_start,
+                window_end,
+                policy_version or "",
+                eval_mode,
+                ranking_algorithm_version or "",
+                assembly_policy_version or "",
+                model_profile_id or "",
+                feedback_calibration_version or "",
+            )
+        )
+        return "rpe:" + hashlib.sha256(seed.encode("utf-8")).hexdigest()[:32]
+
+    def insert_ranking_policy_eval_run(
+        self,
+        *,
+        window_start: str,
+        window_end: str,
+        eval_mode: str,
+        policy_version: Optional[str] = None,
+        ranking_algorithm_version: Optional[str] = None,
+        assembly_policy_version: Optional[str] = None,
+        model_profile_id: Optional[str] = None,
+        model_name: Optional[str] = None,
+        feedback_calibration_version: Optional[str] = None,
+        ignored_lag_hours: int = 72,
+        candidate_count: int = 0,
+        outcome_count: int = 0,
+        source_ref_coverage: Optional[float] = None,
+        brief_usefulness_score: Optional[float] = None,
+        rank_outcome_score: Optional[float] = None,
+        model_degradation_rate: Optional[float] = None,
+        procore_noise_score: Optional[float] = None,
+        sample_sufficient: bool = False,
+        eval_run_id: Optional[str] = None,
+        created_utc: Optional[str] = None,
+    ) -> tuple[str, bool]:
+        """Insert a ranking-policy eval-run row. Returns (eval_run_id, inserted)."""
+        if not window_start or not window_end or not eval_mode:
+            raise ValueError("window_start, window_end, eval_mode are required")
+        run_id = eval_run_id or self.ranking_policy_eval_run_id_for(
+            window_start,
+            window_end,
+            policy_version,
+            eval_mode,
+            ranking_algorithm_version,
+            assembly_policy_version,
+            model_profile_id,
+            feedback_calibration_version,
+        )
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            cur = conn.execute(
+                f"""
+                INSERT INTO ranking_policy_eval_runs ({self._EVAL_RUN_COLUMNS})
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(eval_run_id) DO NOTHING
+                """,
+                (
+                    run_id,
+                    window_start,
+                    window_end,
+                    policy_version,
+                    eval_mode,
+                    ranking_algorithm_version,
+                    assembly_policy_version,
+                    model_profile_id,
+                    model_name,
+                    feedback_calibration_version,
+                    ignored_lag_hours,
+                    candidate_count,
+                    outcome_count,
+                    source_ref_coverage,
+                    brief_usefulness_score,
+                    rank_outcome_score,
+                    model_degradation_rate,
+                    procore_noise_score,
+                    1 if sample_sufficient else 0,
+                    created_utc or _utc_now(),
+                ),
+            )
+            return run_id, cur.rowcount > 0
+
+    def list_ranking_policy_eval_runs(
+        self, *, window_start: Optional[str] = None, limit: int = 1000
+    ) -> list[dict[str, Any]]:
+        """List ranking-policy eval-run rows, newest first."""
+        conn = get_connection(self._db_path)
+        clauses: list[str] = []
+        params: list[Any] = []
+        if window_start is not None:
+            clauses.append("window_start = ?")
+            params.append(window_start)
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        params.append(limit)
+        cur = conn.execute(
+            f"""
+            SELECT {self._EVAL_RUN_COLUMNS}
+            FROM ranking_policy_eval_runs {where}
+            ORDER BY created_utc DESC, eval_run_id DESC
+            LIMIT ?
+            """,
+            tuple(params),
+        )
+        cols = [d[0] for d in cur.description]
+        return [dict(zip(cols, row, strict=True)) for row in cur.fetchall()]
+
+    _EVAL_ITEM_COLUMNS = (
+        "eval_run_id, ranking_run_id, daily_brief_action_candidate_id, rank_position, section_key, "
+        "candidate_family, source_family, project_key, deterministic_score, feedback_score, "
+        "model_advisory_score, final_score, model_advisory_used, outcome_type, outcome_weight, "
+        "outcome_lag_hours, source_ref_count, eval_notes_json, created_utc"
+    )
+
+    def insert_ranking_policy_eval_item(
+        self,
+        *,
+        eval_run_id: str,
+        ranking_run_id: str,
+        daily_brief_action_candidate_id: str,
+        rank_position: Optional[int] = None,
+        section_key: Optional[str] = None,
+        candidate_family: Optional[str] = None,
+        source_family: Optional[str] = None,
+        project_key: Optional[str] = None,
+        deterministic_score: Optional[float] = None,
+        feedback_score: Optional[float] = None,
+        model_advisory_score: Optional[float] = None,
+        final_score: Optional[float] = None,
+        model_advisory_used: bool = False,
+        outcome_type: Optional[str] = None,
+        outcome_weight: Optional[float] = None,
+        outcome_lag_hours: Optional[float] = None,
+        source_ref_count: int = 0,
+        eval_notes_json: Optional[str] = None,
+        created_utc: Optional[str] = None,
+    ) -> bool:
+        """Insert a per-candidate eval fact. Returns True if inserted.
+
+        Idempotent on (eval_run_id, ranking_run_id, daily_brief_action_candidate_id) — the same
+        candidate surfaced in two ranking runs keeps a distinct fact per run.
+        """
+        if not eval_run_id or not ranking_run_id or not daily_brief_action_candidate_id:
+            raise ValueError(
+                "eval_run_id, ranking_run_id, daily_brief_action_candidate_id are required"
+            )
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            cur = conn.execute(
+                f"""
+                INSERT INTO ranking_policy_eval_items ({self._EVAL_ITEM_COLUMNS})
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(eval_run_id, ranking_run_id, daily_brief_action_candidate_id) DO NOTHING
+                """,
+                (
+                    eval_run_id,
+                    ranking_run_id,
+                    daily_brief_action_candidate_id,
+                    rank_position,
+                    section_key,
+                    candidate_family,
+                    source_family,
+                    project_key,
+                    deterministic_score,
+                    feedback_score,
+                    model_advisory_score,
+                    final_score,
+                    1 if model_advisory_used else 0,
+                    outcome_type,
+                    outcome_weight,
+                    outcome_lag_hours,
+                    source_ref_count,
+                    eval_notes_json,
+                    created_utc or _utc_now(),
+                ),
+            )
+            return cur.rowcount > 0
+
+    def list_ranking_policy_eval_items(
+        self, *, eval_run_id: str, limit: int = 5000
+    ) -> list[dict[str, Any]]:
+        """List per-candidate eval facts for an eval run, by ranking run then rank then candidate."""
+        conn = get_connection(self._db_path)
+        cur = conn.execute(
+            f"""
+            SELECT {self._EVAL_ITEM_COLUMNS}
+            FROM ranking_policy_eval_items
+            WHERE eval_run_id = ?
+            ORDER BY ranking_run_id ASC, rank_position ASC, daily_brief_action_candidate_id ASC
+            LIMIT ?
+            """,
+            (eval_run_id, limit),
+        )
+        cols = [d[0] for d in cur.description]
+        return [dict(zip(cols, row, strict=True)) for row in cur.fetchall()]
+
+    _MODEL_PROFILE_EVAL_COLUMNS = (
+        "model_profile_eval_id, window_start, window_end, task_type, model_profile_id, model_name, "
+        "attempt_count, success_count, schema_invalid_count, safety_withheld_count, timeout_count, "
+        "unknown_alias_count, lifecycle_excluded_ref_count, fallback_count, avg_latency_ms, "
+        "p95_latency_ms, advisory_adoption_proxy, model_degradation_rate, sample_sufficient, "
+        "created_utc"
+    )
+
+    @staticmethod
+    def model_profile_eval_id_for(
+        window_start: str,
+        window_end: str,
+        task_type: Optional[str],
+        model_profile_id: Optional[str],
+        model_name: Optional[str],
+    ) -> str:
+        """Deterministic model_profile_eval_id (idempotent on window + task + profile/name)."""
+        seed = "|".join(
+            (window_start, window_end, task_type or "", model_profile_id or "", model_name or "")
+        )
+        return "mpe:" + hashlib.sha256(seed.encode("utf-8")).hexdigest()[:32]
+
+    def insert_model_profile_eval_result(
+        self,
+        *,
+        window_start: str,
+        window_end: str,
+        task_type: Optional[str] = None,
+        model_profile_id: Optional[str] = None,
+        model_name: Optional[str] = None,
+        attempt_count: int = 0,
+        success_count: int = 0,
+        schema_invalid_count: int = 0,
+        safety_withheld_count: int = 0,
+        timeout_count: int = 0,
+        unknown_alias_count: int = 0,
+        lifecycle_excluded_ref_count: int = 0,
+        fallback_count: int = 0,
+        avg_latency_ms: Optional[float] = None,
+        p95_latency_ms: Optional[float] = None,
+        advisory_adoption_proxy: Optional[float] = None,
+        model_degradation_rate: Optional[float] = None,
+        sample_sufficient: bool = False,
+        model_profile_eval_id: Optional[str] = None,
+        created_utc: Optional[str] = None,
+    ) -> tuple[str, bool]:
+        """Insert an aggregate model-profile eval row (receipt metadata only). Returns (id, inserted)."""
+        if not window_start or not window_end:
+            raise ValueError("window_start, window_end are required")
+        eval_id = model_profile_eval_id or self.model_profile_eval_id_for(
+            window_start, window_end, task_type, model_profile_id, model_name
+        )
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            cur = conn.execute(
+                f"""
+                INSERT INTO model_profile_eval_results ({self._MODEL_PROFILE_EVAL_COLUMNS})
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(model_profile_eval_id) DO NOTHING
+                """,
+                (
+                    eval_id,
+                    window_start,
+                    window_end,
+                    task_type,
+                    model_profile_id,
+                    model_name,
+                    attempt_count,
+                    success_count,
+                    schema_invalid_count,
+                    safety_withheld_count,
+                    timeout_count,
+                    unknown_alias_count,
+                    lifecycle_excluded_ref_count,
+                    fallback_count,
+                    avg_latency_ms,
+                    p95_latency_ms,
+                    advisory_adoption_proxy,
+                    model_degradation_rate,
+                    1 if sample_sufficient else 0,
+                    created_utc or _utc_now(),
+                ),
+            )
+            return eval_id, cur.rowcount > 0
+
+    def list_model_profile_eval_results(
+        self, *, window_start: Optional[str] = None, limit: int = 1000
+    ) -> list[dict[str, Any]]:
+        """List aggregate model-profile eval rows, newest first."""
+        conn = get_connection(self._db_path)
+        clauses: list[str] = []
+        params: list[Any] = []
+        if window_start is not None:
+            clauses.append("window_start = ?")
+            params.append(window_start)
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        params.append(limit)
+        cur = conn.execute(
+            f"""
+            SELECT {self._MODEL_PROFILE_EVAL_COLUMNS}
+            FROM model_profile_eval_results {where}
+            ORDER BY created_utc DESC, model_profile_eval_id DESC
+            LIMIT ?
+            """,
+            tuple(params),
+        )
+        cols = [d[0] for d in cur.description]
+        return [dict(zip(cols, row, strict=True)) for row in cur.fetchall()]
+
+    _ROLLUP_COLUMNS = (
+        "rollup_id, scope, scope_key, window_start, window_end, policy_version, brief_count, "
+        "candidate_count, outcome_count, accepted_rate, rejected_rate, snoozed_rate, ignored_rate, "
+        "brief_usefulness_score, rank_outcome_score, source_ref_coverage, procore_noise_score, "
+        "model_degradation_rate, duplicate_precision_proxy, feedback_calibration_lift, "
+        "sample_sufficient, created_utc"
+    )
+
+    @staticmethod
+    def brief_effectiveness_rollup_id_for(
+        scope: str,
+        scope_key: str,
+        window_start: str,
+        window_end: str,
+        policy_version: Optional[str],
+    ) -> str:
+        """Deterministic rollup_id (idempotent on scope + key + window + policy)."""
+        seed = "|".join((scope, scope_key, window_start, window_end, policy_version or ""))
+        return "ber:" + hashlib.sha256(seed.encode("utf-8")).hexdigest()[:32]
+
+    def insert_brief_effectiveness_rollup(
+        self,
+        *,
+        scope: str,
+        scope_key: str,
+        window_start: str,
+        window_end: str,
+        policy_version: Optional[str] = None,
+        brief_count: int = 0,
+        candidate_count: int = 0,
+        outcome_count: int = 0,
+        accepted_rate: Optional[float] = None,
+        rejected_rate: Optional[float] = None,
+        snoozed_rate: Optional[float] = None,
+        ignored_rate: Optional[float] = None,
+        brief_usefulness_score: Optional[float] = None,
+        rank_outcome_score: Optional[float] = None,
+        source_ref_coverage: Optional[float] = None,
+        procore_noise_score: Optional[float] = None,
+        model_degradation_rate: Optional[float] = None,
+        duplicate_precision_proxy: Optional[float] = None,
+        feedback_calibration_lift: Optional[float] = None,
+        sample_sufficient: bool = False,
+        rollup_id: Optional[str] = None,
+        created_utc: Optional[str] = None,
+    ) -> tuple[str, bool]:
+        """Insert a raw-free effectiveness rollup row. Returns (rollup_id, inserted)."""
+        if not scope or not scope_key or not window_start or not window_end:
+            raise ValueError("scope, scope_key, window_start, window_end are required")
+        rid = rollup_id or self.brief_effectiveness_rollup_id_for(
+            scope, scope_key, window_start, window_end, policy_version
+        )
+        conn = get_connection(self._db_path)
+        with transaction(conn):
+            cur = conn.execute(
+                f"""
+                INSERT INTO brief_effectiveness_rollups ({self._ROLLUP_COLUMNS})
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(rollup_id) DO NOTHING
+                """,
+                (
+                    rid,
+                    scope,
+                    scope_key,
+                    window_start,
+                    window_end,
+                    policy_version,
+                    brief_count,
+                    candidate_count,
+                    outcome_count,
+                    accepted_rate,
+                    rejected_rate,
+                    snoozed_rate,
+                    ignored_rate,
+                    brief_usefulness_score,
+                    rank_outcome_score,
+                    source_ref_coverage,
+                    procore_noise_score,
+                    model_degradation_rate,
+                    duplicate_precision_proxy,
+                    feedback_calibration_lift,
+                    1 if sample_sufficient else 0,
+                    created_utc or _utc_now(),
+                ),
+            )
+            return rid, cur.rowcount > 0
+
+    def list_brief_effectiveness_rollups(
+        self,
+        *,
+        scope: Optional[str] = None,
+        window_start: Optional[str] = None,
+        limit: int = 2000,
+    ) -> list[dict[str, Any]]:
+        """List raw-free effectiveness rollup rows, newest first."""
+        conn = get_connection(self._db_path)
+        clauses: list[str] = []
+        params: list[Any] = []
+        if scope is not None:
+            clauses.append("scope = ?")
+            params.append(scope)
+        if window_start is not None:
+            clauses.append("window_start = ?")
+            params.append(window_start)
+        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        params.append(limit)
+        cur = conn.execute(
+            f"""
+            SELECT {self._ROLLUP_COLUMNS}
+            FROM brief_effectiveness_rollups {where}
+            ORDER BY created_utc DESC, rollup_id DESC
+            LIMIT ?
+            """,
+            tuple(params),
+        )
+        cols = [d[0] for d in cur.description]
+        return [dict(zip(cols, row, strict=True)) for row in cur.fetchall()]
+
     # V41 Phase 10 — relationship candidates (deterministic, source-linked, redacted)
     # Persists only hashed source refs + safe reason codes. Guard columns are omitted on
     # INSERT → DEFAULT 0 / CHECK(=0). No raw subjects, bodies, addresses, URLs, or payloads.

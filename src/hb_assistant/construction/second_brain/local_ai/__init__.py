@@ -14,6 +14,21 @@ from .batch_extraction import (
     run_batch_extraction,
 )
 from .calendar_prep import build_calendar_prep_candidates
+from .candidate_ranking import (
+    ALGORITHM_VERSION,
+    DET_CLOSE_THRESHOLD,
+    MAX_RANK_MOVEMENT,
+    POLICY_VERSION,
+    rank_candidates,
+)
+from .candidate_ranking_models import (
+    CandidateRankingAdvice,
+    CandidateRankingPacket,
+    CandidateRankingResult,
+    DailyBriefAssemblyResult,
+)
+from .candidate_ranking_packets import build_candidate_ranking_packet
+from .candidate_similarity import build_similarity_edges
 from .contracts import (
     PHASE_10_CONTRACT_FILES,
     PHASE_10_SEED_FILES,
@@ -26,15 +41,34 @@ from .contracts import (
     load_phase_10_contract,
     load_raw_content_policy,
 )
+from .daily_brief_assembly import (
+    ASSEMBLY_POLICY_VERSION,
+    run_candidate_ranking_and_assembly,
+)
+from .daily_brief_effectiveness_packets import (
+    build_effectiveness_packets,
+    derive_exposure_events,
+    derive_outcome_events,
+)
+from .daily_brief_effectiveness_report import (
+    build_effectiveness_report,
+    run_daily_brief_effectiveness_evaluation,
+)
 from .daily_brief_render import render_daily_brief, write_rendered_brief_to_path
 from .daily_brief_synthesis import build_daily_brief_candidates
 from .daily_brief_window import DailyBriefWindow, compute_daily_brief_window
 from .daily_run import run_daily_local_agent
 from .daily_run_html import render_daily_run_html, scan_daily_run_html
 from .daily_run_scheduler import DailyRunLaunchdManager
+from .effectiveness_rollups import build_rollups
 from .email_task_extraction import (
     extract_email_task_candidates,
     score_email_task_signals,
+)
+from .feedback_calibration import (
+    MAX_CALIBRATION_ADJUSTMENT,
+    MIN_FEEDBACK_SAMPLES,
+    build_calibration,
 )
 from .fixture_runner import run_fixture_suite
 from .follow_up_watch import (
@@ -46,6 +80,7 @@ from .model_enriched_intelligence import (
     build_model_enriched_intelligence,
     render_model_enriched_markdown,
 )
+from .model_profile_evaluator import evaluate_model_profiles
 from .models import (
     HIGH_STAKES_CATEGORIES,
     ActionCandidate,
@@ -56,6 +91,7 @@ from .models import (
     ObsidianVaultPolicy,
     RawContentPolicy,
 )
+from .ollama_candidate_ranking import build_ranking_advice
 from .packet_builders import (
     build_calendar_event_action_packet,
     build_email_thread_action_packet,
@@ -65,8 +101,10 @@ from .packet_builders import (
 from .packet_normalize import has_join_url, normalize_model_text, summarize_attendees
 from .pipeline import run_local_agent_pipeline
 from .procore_digest import build_procore_action_digest
+from .procore_noise_evaluator import evaluate_procore_noise, evaluate_source_families
 from .proof import Phase10ProofError, build_phase_10_contracts_proof
 from .provider import build_local_model_status, resolve_local_model_client
+from .ranking_policy_evaluator import EVAL_MODES, evaluate_ranking_policy
 from .raw_action_intelligence import (
     extract_action_candidates_from_raw,
     extract_actions_for_packet,
@@ -171,4 +209,34 @@ __all__ = [
     "MODEL_ENRICHED_INTELLIGENCE_LABEL",
     "build_model_enriched_intelligence",
     "render_model_enriched_markdown",
+    # Phase 10 V51: Ollama-assisted candidate ranking + daily-brief assembly overlay
+    "build_candidate_ranking_packet",
+    "rank_candidates",
+    "POLICY_VERSION",
+    "ALGORITHM_VERSION",
+    "MAX_RANK_MOVEMENT",
+    "DET_CLOSE_THRESHOLD",
+    "build_calibration",
+    "MIN_FEEDBACK_SAMPLES",
+    "MAX_CALIBRATION_ADJUSTMENT",
+    "build_ranking_advice",
+    "build_similarity_edges",
+    "run_candidate_ranking_and_assembly",
+    "ASSEMBLY_POLICY_VERSION",
+    "CandidateRankingPacket",
+    "CandidateRankingAdvice",
+    "CandidateRankingResult",
+    "DailyBriefAssemblyResult",
+    # Phase 10 V52: daily-brief effectiveness / ranking-policy telemetry (observational only)
+    "build_effectiveness_packets",
+    "derive_exposure_events",
+    "derive_outcome_events",
+    "evaluate_ranking_policy",
+    "EVAL_MODES",
+    "evaluate_model_profiles",
+    "evaluate_procore_noise",
+    "evaluate_source_families",
+    "build_rollups",
+    "build_effectiveness_report",
+    "run_daily_brief_effectiveness_evaluation",
 ]

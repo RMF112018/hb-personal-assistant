@@ -1,0 +1,6 @@
+{
+  "all_source_linked_coverage": 1.0,
+  "with_accepted_missing_source_coverage": 0.75,
+  "withheld_source_missing_count": 0,
+  "gate": "surfaced source-required items must be 100% covered; accepted-missing-source degrades"
+}
