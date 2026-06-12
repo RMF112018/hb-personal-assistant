@@ -54,7 +54,20 @@ Email / Follow-up → Data Gaps / Degraded.
   and the local browser HTML for inspection — never to the committed/user-facing Markdown.
 - Production DB never mutated; all sample generation runs against a `/tmp` copy via `--db`.
 
+## Browser-consumer parity (251 v2)
+
+The scheduled/browser consumer (`daily_run` → `daily_run_html.render_daily_run_html`) must share the
+same sanitized contract as the Markdown path. `_render_section_cards` renders each section's
+`render_daily_brief(...)["sections"][].lines` — the exact raw-free, aggregated lines produced by the
+presentation layer — and never reconstructs cards from raw per-candidate rows or emits candidate ids.
+`items` is consumed only for an explicitly-gated LOCAL `--raw` detail block, scrubbed through `_esc`
+(URLs/emails/tokens/join-links → safe markers) and labelled local-only; the no-raw browser path is
+the merge gate. Status JSON remains redacted/raw-safe but is not subject to the strict user-facing
+denylist (diagnostic metric keys like `source_ref_coverage` are allowed).
+
 ## Evidence
 
 `docs/evidence/phase-10-daily-brief-user-facing-render-assembly/` — copy-quality 10.0/10,
-usefulness 8.5/10, raw-safety pass, prod-DB SHA unchanged, guard columns zero.
+usefulness 8.5/10, raw-safety pass, prod-DB SHA unchanged, guard columns zero. Browser-consumer fix
+(251 v2): `16-browser-consumer-fix.md`, `17-daily-run-browser-scan.json` (scan pass),
+`18-prod-db-sha-unchanged-v2.txt`.

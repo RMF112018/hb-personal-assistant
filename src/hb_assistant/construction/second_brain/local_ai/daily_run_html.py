@@ -333,7 +333,9 @@ def _render_model_enriched_card(mei: dict[str, Any]) -> str:
         "brief. Not accepted fact.</p>"
     )
     if not available:
-        reason = mei.get("withheld_reason") or ("disabled" if not mei.get("enabled") else "withheld")
+        reason = mei.get("withheld_reason") or (
+            "disabled" if not mei.get("enabled") else "withheld"
+        )
         out.append(
             f"<div class='meta'>⚠ Model-enriched advisory withheld (reason: {_esc(reason)}). "
             "The deterministic brief is authoritative.</div>"
@@ -342,9 +344,7 @@ def _render_model_enriched_card(mei: dict[str, Any]) -> str:
         catchup = (intel or {}).get("executive_catchup") or []
         if catchup:
             out.append("<div class='item'><div class='ttl'>Executive Catch-Up</div>")
-            out.append(
-                "<div class='meta'>" + " · ".join(_esc(c) for c in catchup) + "</div></div>"
-            )
+            out.append("<div class='meta'>" + " · ".join(_esc(c) for c in catchup) + "</div></div>")
         for section, heading in _MEI_DISPLAY_SECTIONS:
             bullets = (intel or {}).get(section) or []
             if not bullets:
@@ -373,29 +373,43 @@ def _render_model_enriched_card(mei: dict[str, Any]) -> str:
 
 
 def _render_section_cards(sections: list[dict[str, Any]], *, heading_prefix: str = "") -> str:
-    """Render the deterministic candidate sections (used as audit appendix / degraded fallback)."""
+    """Render the deterministic candidate sections from the render payload's sanitized ``lines``.
+
+    The browser body uses the SAME raw-free, aggregated presentation contract produced by
+    ``daily_brief_presentation`` and rendered by the Markdown path — the section's ``lines`` (Top
+    Priorities, aggregated Procore, calendar safe labels, email data-gap card, degraded note). It is
+    never reconstructed from raw per-candidate rows and never carries candidate IDs / source refs.
+
+    ``items`` is used ONLY for an optional, explicitly-gated LOCAL ``--raw`` detail block: real
+    subjects/details that the operator opted into with ``--raw``, scrubbed through ``_esc``
+    (URLs/emails/tokens/join-links removed) and clearly labelled local-only. Candidate IDs are never
+    emitted in either path.
+    """
     out: list[str] = []
     if not sections:
         out.append("<div class='card'><p class='empty'>No candidates for this date.</p></div>")
     for sec in sections:
         disp = _esc(heading_prefix + str(sec.get("display", "")))
-        count = int(sec.get("item_count", sec.get("section_count", 0)) or 0)
+        lines = [str(ln) for ln in (sec.get("lines") or [])]
+        count = len(lines)
         out.append(f"<div class='card'><h2>{disp}<span class='count'>{count}</span></h2>")
-        items = sec.get("items") or []
-        if not items:
+        if not lines:
             out.append("<p class='empty'>None.</p>")
-        for it in items:
-            # Real subject (LOCAL --raw only) takes precedence; else the sanitized display line.
-            title = _esc(it.get("raw_title") or it.get("display") or "(untitled)")
-            meta_bits: list[str] = []
-            if it.get("raw_detail"):
-                meta_bits.append(_esc(it.get("raw_detail")))
-            cid = _esc(it.get("candidate_id") or "")
-            out.append("<div class='item'>")
-            out.append(f"<div class='ttl'>{title}</div>")
-            if meta_bits:
-                out.append(f"<div class='meta'>{' · '.join(meta_bits)}</div>")
-            out.append(f"<div class='cid'>id: {cid}</div></div>")
+        for ln in lines:
+            text = ln[2:] if ln.startswith("- ") else ln
+            out.append(f"<div class='item'><div class='ttl'>{_esc(text)}</div></div>")
+        # LOCAL --raw ONLY: optional un-redacted detail (scrubbed). Never candidate IDs / source refs.
+        raw_bits: list[str] = []
+        for it in sec.get("items") or []:
+            joined = " — ".join(str(x) for x in (it.get("raw_title"), it.get("raw_detail")) if x)
+            if joined:
+                raw_bits.append(joined)
+        if raw_bits:
+            out.append(
+                "<div class='meta'>Local detail (raw, local-only): "
+                + _esc("; ".join(raw_bits))
+                + "</div>"
+            )
         out.append("</div>")
     return "".join(out)
 
@@ -522,7 +536,7 @@ def render_daily_run_html(
         parts.append(_render_synthesis_cards(synthesis))
         parts.append(
             "<div class='card'><h2>Appendix: Source-Linked Candidates (audit)"
-            f"<span class='count'>{sum(int(s.get('section_count', 0) or 0) for s in sections)}</span></h2>"
+            f"<span class='count'>{sum(int(s.get('item_count', s.get('line_count', 0)) or 0) for s in sections)}</span></h2>"
             "<p class='meta'>Deterministic, redacted source rows backing the synthesized brief above.</p></div>"
         )
         parts.append(_render_section_cards(sections))

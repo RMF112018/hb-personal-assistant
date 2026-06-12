@@ -23,6 +23,7 @@ from hb_assistant.construction.second_brain.local_ai.daily_brief_candidate_write
     persist_candidate_with_refs,
 )
 from hb_assistant.construction.second_brain.local_ai.daily_brief_render import render_daily_brief
+from hb_assistant.construction.second_brain.local_ai.daily_run_html import render_daily_run_html
 from hb_assistant.construction.store import ConstructionStore
 from hb_assistant.store.migrator import SQLiteMigrator
 
@@ -278,3 +279,84 @@ def test_render_empty_date_is_clean_no_candidates() -> None:
         assert "No review candidates for this date" in md
         for tok in FORBIDDEN:
             assert tok not in md
+
+
+# --------------------------------------------------------------------------------------------
+# Browser HTML consumer (251 v2) — shares the same sanitized presentation contract as Markdown
+# --------------------------------------------------------------------------------------------
+
+# Internal artifacts that must never appear in the browser HTML (the pre-merge proof's failures).
+BROWSER_FORBIDDEN = (
+    "<div class='cid'>",
+    "id:",
+    "dbac-",
+    "rel-",
+    "__needs_review__",
+    "__internal_",
+    "[redacted:",
+    "next:review",
+    "Traceback",
+    "daily_brief_action_candidates",
+    "daily_brief_ranked_candidates",
+    "daily_brief_assembly_sections",
+    "@",
+    "http",
+)
+
+
+def _browser_html(store: ConstructionStore, *, include_raw: bool = False) -> str:
+    payload = render_daily_brief(store=store, brief_date=BRIEF_DATE, include_raw=include_raw)
+    return render_daily_run_html(
+        brief_date=BRIEF_DATE,
+        status="success",
+        sections=payload["sections"],
+        summary=payload["summary"],
+        warnings=[],
+        generated_label=NOW,
+    )
+
+
+def test_browser_html_matches_markdown_contract_and_is_clean() -> None:
+    with tempfile.TemporaryDirectory() as td:
+        db = str(Path(td) / "brief.db")
+        store = _seed_store(db, with_email_task=False, with_email_summary=True)
+        html = _browser_html(store)
+
+        # Same user-facing sections as the Markdown render.
+        for heading in (
+            "Top Priorities",
+            "Calendar Prep",
+            "Procore Financial / Project Signals",
+            "Email / Follow-up",
+            "Data Gaps / Degraded",
+        ):
+            assert heading in html, f"missing browser section: {heading}"
+
+        # The exact pre-merge failures must be gone.
+        for tok in BROWSER_FORBIDDEN:
+            assert tok not in html, f"forbidden token {tok!r} leaked into browser HTML"
+        assert "Email / Follow-up: None" not in html and "Follow-up</h2>" not in html.replace(" ", "")
+        # No section renders the bare "None." placeholder (every shown section has sanitized lines).
+        assert "<p class='empty'>None.</p>" not in html
+
+        # Procore aggregated, not a flat per-candidate dump: the Procore card collapses 32 seeded
+        # signals to a small number of <div class='item'> blocks carrying signal-type counts.
+        procore = html.split("Procore Financial / Project Signals", 1)[1].split("</div></div>", 1)[0]
+        assert "invoice signals" in procore
+        assert procore.count("<div class='item'>") <= 4, "procore must aggregate, not dump rows"
+
+        # Email/Follow-up data-gap card + Data Gaps/Degraded deterministic note (same as Markdown).
+        assert "Email follow-up unavailable" in html
+        assert "deterministic ranking is authoritative" in html
+
+
+def test_browser_html_raw_detail_is_gated_scrubbed_and_idless() -> None:
+    with tempfile.TemporaryDirectory() as td:
+        db = str(Path(td) / "brief.db")
+        store = _seed_store(db, with_email_task=False, with_email_summary=True)
+        # Default (no raw): no "Local detail (raw" block at all.
+        assert "Local detail (raw" not in _browser_html(store, include_raw=False)
+        # With raw: the block appears, labelled local-only, and still carries no ids/source refs.
+        raw_html = _browser_html(store, include_raw=True)
+        for tok in BROWSER_FORBIDDEN:
+            assert tok not in raw_html, f"forbidden token {tok!r} leaked into raw browser HTML"
