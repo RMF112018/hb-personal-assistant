@@ -379,22 +379,17 @@ def _render_section_cards(sections: list[dict[str, Any]], *, heading_prefix: str
         out.append("<div class='card'><p class='empty'>No candidates for this date.</p></div>")
     for sec in sections:
         disp = _esc(heading_prefix + str(sec.get("display", "")))
-        count = int(sec.get("section_count", 0) or 0)
+        count = int(sec.get("item_count", sec.get("section_count", 0)) or 0)
         out.append(f"<div class='card'><h2>{disp}<span class='count'>{count}</span></h2>")
         items = sec.get("items") or []
         if not items:
             out.append("<p class='empty'>None.</p>")
         for it in items:
-            title = _esc(it.get("display_title") or it.get("title_redacted") or "(untitled)")
+            # Real subject (LOCAL --raw only) takes precedence; else the sanitized display line.
+            title = _esc(it.get("raw_title") or it.get("display") or "(untitled)")
             meta_bits: list[str] = []
-            if it.get("reason_redacted"):
-                meta_bits.append(_esc(it.get("reason_redacted")))
             if it.get("raw_detail"):
                 meta_bits.append(_esc(it.get("raw_detail")))
-            if it.get("project_key"):
-                meta_bits.append("project: " + _esc(it.get("project_key")))
-            if it.get("recommended_next_action"):
-                meta_bits.append("next: " + _esc(it.get("recommended_next_action")))
             cid = _esc(it.get("candidate_id") or "")
             out.append("<div class='item'>")
             out.append(f"<div class='ttl'>{title}</div>")

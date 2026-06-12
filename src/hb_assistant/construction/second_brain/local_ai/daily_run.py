@@ -91,18 +91,13 @@ def _render_md_appendix(sections: list[dict[str, Any]]) -> str:
         if not items:
             continue
         lines.append(
-            f"### {sec.get('display', 'Section')} ({sec.get('section_count', len(items))})"
+            f"### {sec.get('display', 'Section')} ({sec.get('item_count', len(items))})"
         )
         for it in items:
-            title = str(it.get("display_title") or it.get("title_redacted") or "(untitled)")
-            parts: list[str] = []
-            if it.get("project_key"):
-                parts.append(f"project:{it['project_key']}")
-            if it.get("recommended_next_action"):
-                parts.append(f"next:{it['recommended_next_action']}")
-            if it.get("candidate_id"):
-                parts.append(f"id:{it['candidate_id']}")
-            suffix = f" — {' · '.join(parts)}" if parts else ""
+            # Real subject (LOCAL --raw only) takes precedence; else the sanitized display line.
+            title = str(it.get("raw_title") or it.get("display") or "(untitled)")
+            detail = it.get("raw_detail")
+            suffix = f" — {detail}" if detail else ""
             lines.append(f"- {title}{suffix}")
         lines.append("")
     return "\n".join(lines).strip() + "\n"

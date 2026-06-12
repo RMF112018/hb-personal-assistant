@@ -2532,7 +2532,7 @@ def daily_brief_render(
     ),
     limit: int = typer.Option(200, "--limit", help="Max candidate items to render (deterministic)."),  # noqa: B008
     section: "list[str] | None" = typer.Option(  # noqa: B008
-        None, "--section", help="Filter by internal section (repeatable: actions/waiting/follow_up/procore/calendar)."
+        None, "--section", help="Filter by internal candidate family (repeatable: actions/waiting/follow_up/procore/calendar). The brief renders the assembly overlay (Top Priorities first) when one exists."
     ),
     project_key: "str | None" = typer.Option(  # noqa: B008
         None, "--project-key", help="Filter to a single project key."
