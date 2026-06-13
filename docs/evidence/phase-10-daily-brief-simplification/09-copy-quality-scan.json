@@ -1,0 +1,22 @@
+{
+  "description": "Forbidden display/copy-quality token scan (assert_clean_display + scan_text_for_forbidden equivalents).",
+  "scans": {
+    "synthetic_markdown": {
+      "matched": []
+    },
+    "synthetic_browser_html_egress": {
+      "matched": []
+    },
+    "real_run_browser_html_egress": {
+      "matched": []
+    },
+    "real_run_json_forbidden": {
+      "matched": []
+    },
+    "real_run_status_forbidden": {
+      "matched": []
+    }
+  },
+  "result": "PASS (all scans matched nothing)",
+  "real_run_above_the_fold_forbidden_hits": []
+}

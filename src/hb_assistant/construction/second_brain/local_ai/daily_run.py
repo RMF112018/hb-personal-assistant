@@ -669,33 +669,88 @@ def run_daily_local_agent(
                 deterministic_markdown=markdown,
             )
 
-    # ---- New Today overnight change digest (Phase 10 252) ----------------------------------------
-    # The first, authoritative section of the brief: source-linked business events from the most
-    # recent refresh window, grouped by attention class. Deterministic + raw-safe; the legacy brief
-    # body becomes the collapsed "Run details / diagnostics" block beneath it. Fully guarded — a
-    # digest error degrades to the legacy brief rather than failing the run.
+    # ---- New Today overnight change digest (Phase 10 252/253) ------------------------------------
+    # The first, authoritative section of the brief AND the product surface: source-linked business
+    # events from the most recent refresh window, grouped by attention class. Deterministic + raw-safe;
+    # the legacy brief body becomes the collapsed "Run details / diagnostics" block beneath it.
+    #
+    # 253 — the user-facing `daily_brief` status is derived HERE from New Today + its substrate, never
+    # from legacy synthesis / MEI health. The legacy top-level `status` is left untouched for backward
+    # compatibility. A digest error degrades to the legacy brief rather than failing the run.
     new_today_model: Optional[dict[str, Any]] = None
     new_today_summary: dict[str, Any] = {}
+    legacy_synthesis_status = (
+        None if synthesis_meta is None else ("degraded" if synthesis_degraded else "ok")
+    )
+    daily_brief_block: dict[str, Any] = {
+        "primary_surface": "new_today",
+        "status": "failed",
+        "operator_usable": bool(markdown),
+        "degraded_reasons": ["new_today_unavailable"],
+        "new_today": {
+            "total_items": 0,
+            "by_family": {},
+            "email_degraded": False,
+            "model_enrichment_status": "not_requested",
+            "deterministic_fallback_used": False,
+        },
+        "diagnostics": {
+            "legacy_status": status,
+            "legacy_synthesis_status": legacy_synthesis_status or "diagnostic_only",
+            "model_enriched_intelligence_status": "diagnostic_only",
+            "legacy_candidate_sections_available": bool(sections),
+        },
+    }
     try:
         from .new_today_digest import DEFAULT_LOOKAHEAD_DAYS, build_new_today_digest
         from .new_today_presentation import DIAGNOSTICS_TITLE, build_render_model, render_markdown
+        from .new_today_usefulness import evaluate_new_today_status
 
         nt_digest = build_new_today_digest(
             store=store, brief_date=brief_date, lookahead_days=DEFAULT_LOOKAHEAD_DAYS
         )
-        new_today_model = build_render_model(nt_digest, status=status)
+        # Two-pass: build the model once to learn the post-fence item count, derive the New Today
+        # product status from it + the substrate, then rebuild with that status so the (New-Today-
+        # driven) degraded warning is correct. New Today runs deterministically in the scheduled path
+        # (its optional Ollama overlay is a CLI concern), so model_enrichment_status is "not_requested".
+        provisional = build_render_model(nt_digest, status="ok")
+        nt_status = evaluate_new_today_status(
+            digest=nt_digest,
+            rendered_total_items=int(provisional.get("total_items") or 0),
+            projection_receipt=projection_receipt,
+            model_enrichment_status="not_requested",
+        )
+        new_today_model = build_render_model(nt_digest, status=nt_status["status"])
+        nt_gates = nt_digest.get("gates") or {}
         new_today_summary = {
             "total_items": new_today_model.get("total_items", 0),
-            "by_family": (nt_digest.get("gates") or {}).get("by_family", {}),
-            "email_degraded": bool((nt_digest.get("gates") or {}).get("email_degraded")),
-            "procore_demoted_count": (nt_digest.get("gates") or {}).get("procore_demoted_count", 0),
+            "by_family": nt_gates.get("by_family", {}),
+            "email_degraded": bool(nt_gates.get("email_degraded")),
+            "procore_demoted_count": nt_gates.get("procore_demoted_count", 0),
             "refresh_window": nt_digest.get("refresh_window", {}),
             "diagnostic_count": len(nt_digest.get("diagnostics") or []),
         }
-        if new_today_summary["email_degraded"]:
-            warnings.append(
-                "new_today_email_degraded: email substrate present but no actionable follow-up derived"
-            )
+        daily_brief_block = {
+            "primary_surface": "new_today",
+            "status": nt_status["status"],
+            "operator_usable": bool(nt_status["operator_usable"]),
+            "degraded_reasons": list(nt_status["degraded_reasons"]),
+            "new_today": {
+                "total_items": new_today_model.get("total_items", 0),
+                "by_family": nt_gates.get("by_family", {}),
+                "email_degraded": bool(nt_gates.get("email_degraded")),
+                "model_enrichment_status": nt_status["model_enrichment_status"],
+                "deterministic_fallback_used": bool(nt_status["deterministic_fallback_used"]),
+            },
+            "diagnostics": {
+                "legacy_status": status,
+                "legacy_synthesis_status": legacy_synthesis_status or "diagnostic_only",
+                "model_enriched_intelligence_status": "diagnostic_only",
+                "legacy_candidate_sections_available": bool(sections),
+            },
+        }
+        for reason in nt_status["degraded_reasons"]:
+            warnings.append(f"daily_brief_degraded: {reason}")
         if markdown:
             nt_md = render_markdown(new_today_model)
             markdown = (
@@ -704,6 +759,7 @@ def run_daily_local_agent(
             )
     except Exception as exc:  # never let New Today break the established brief
         warnings.append(f"new_today_unavailable: {type(exc).__name__}")
+        daily_brief_block["degraded_reasons"] = [f"new_today_unavailable:{type(exc).__name__}"]
 
     is_fresh_success = (
         status == "success" and not dry_run and pipeline.get("brief_freshness") == "fresh"
@@ -859,6 +915,7 @@ def run_daily_local_agent(
         synthesis_status=synthesis_status,
         operator_usable=operator_usable,
         first_slice=first_slice,
+        daily_brief=daily_brief_block,
     )
     outputs["status_path"] = _redact_path(status_path)
 
@@ -890,6 +947,7 @@ def run_daily_local_agent(
         "usefulness_gate": usefulness.to_dict(),
         "candidate_ranking": ranking_status_block,
         "new_today": new_today_summary,
+        "daily_brief": daily_brief_block,
         "first_slice": first_slice,
         "egress_scan": {"clean": egress_clean, "matched_labels": egress_matched},
         "failure_reason": failure_reason,
@@ -1133,6 +1191,7 @@ def _write_status(
     synthesis_status: Optional[str] = None,
     operator_usable: bool = False,
     first_slice: Optional[dict[str, Any]] = None,
+    daily_brief: Optional[dict[str, Any]] = None,
 ) -> Path:
     """Write the redacted machine-readable status (latest + dated). Never contains raw bodies.
 
@@ -1144,6 +1203,7 @@ def _write_status(
         "run_timestamp": now_utc,
         "git_head": _git_head_short(),
         "status": status,
+        "daily_brief": daily_brief,
         "run_summary": run_summary,
         "brief_date": window.run_date,
         "brief_freshness": pipeline.get("brief_freshness") if pipeline else "skipped",

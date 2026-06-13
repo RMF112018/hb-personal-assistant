@@ -1,0 +1,116 @@
+{
+  "_note": "Trimmed raw-safe excerpt of the real scheduled daily-run JSON (counts/statuses/redacted paths only).",
+  "command": "second-brain daily-run run",
+  "status_legacy_top_level": "deterministic_success_synthesis_degraded",
+  "daily_brief": {
+    "primary_surface": "new_today",
+    "status": "degraded",
+    "operator_usable": true,
+    "degraded_reasons": [
+      "email_followup_degraded",
+      "projection_coverage_degraded"
+    ],
+    "new_today": {
+      "total_items": 42,
+      "by_family": {
+        "email": 4,
+        "calendar": 16,
+        "procore": 22,
+        "sharepoint": 0
+      },
+      "email_degraded": true,
+      "model_enrichment_status": "not_requested",
+      "deterministic_fallback_used": false
+    },
+    "diagnostics": {
+      "legacy_status": "deterministic_success_synthesis_degraded",
+      "legacy_synthesis_status": "degraded",
+      "model_enriched_intelligence_status": "diagnostic_only",
+      "legacy_candidate_sections_available": true
+    }
+  },
+  "new_today_summary": {
+    "total_items": 42,
+    "by_family": {
+      "email": 4,
+      "calendar": 16,
+      "procore": 22,
+      "sharepoint": 0
+    },
+    "email_degraded": true,
+    "procore_demoted_count": 1,
+    "refresh_window": {
+      "start_utc": "2026-06-11T09:34:59.322263+00:00",
+      "end_utc": "2026-06-12T00:04:34.854172+00:00",
+      "source": "run_markers",
+      "rationale": "Window spans the prior nightly refresh boundary (the most recent boundary at least 6h before the latest) to the most recent refresh completion."
+    },
+    "diagnostic_count": 2
+  },
+  "synthesis_status": "degraded",
+  "synthesis_required_for_success": false,
+  "operator_usable": true,
+  "usefulness_gate_verdict": "useful",
+  "stages": [
+    {
+      "stage": "email_calendar_projection",
+      "order": 1,
+      "status": "ok"
+    },
+    {
+      "stage": "email_followup_projection",
+      "order": 2,
+      "status": "ok"
+    },
+    {
+      "stage": "follow_up_watch",
+      "order": 3,
+      "status": "ok"
+    },
+    {
+      "stage": "procore_digest",
+      "order": 4,
+      "status": "ok"
+    },
+    {
+      "stage": "calendar_prep",
+      "order": 5,
+      "status": "ok"
+    },
+    {
+      "stage": "daily_brief_synthesis",
+      "order": 6,
+      "status": "ok"
+    },
+    {
+      "stage": "daily_brief_render",
+      "order": 7,
+      "status": "ok"
+    }
+  ],
+  "outputs_redacted": {
+    "vault_brief_dir_redacted": "vault",
+    "browser_dated_path": "daily-brief-2026-06-12.html",
+    "browser_attempted_path": "daily-brief-latest-attempted.html",
+    "browser_latest_deterministic_path": "daily-brief-latest-deterministic.html",
+    "status_path": "latest-status.json"
+  },
+  "egress_scan": {
+    "clean": true,
+    "matched_labels": []
+  },
+  "guardrails": {
+    "dry_run_default": true,
+    "weekday_aware_policy": true,
+    "raw_local_consumption_only": false,
+    "browser_outside_repo": true,
+    "no_browser_auto_open": true,
+    "governed_vault_write_requires_confirmation": true,
+    "vault_brief_folder_pinned": true,
+    "legacy_phase_08a_folder_guarded": true,
+    "redacted_status_file": true,
+    "preserves_last_successful_brief": true,
+    "no_external_writeback": true,
+    "advisory_only": true
+  }
+}

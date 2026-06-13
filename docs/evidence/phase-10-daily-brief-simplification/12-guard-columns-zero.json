@@ -1,0 +1,21 @@
+{
+  "table": "daily_brief_change_events",
+  "row_count": 0,
+  "guard_column_sums": {
+    "raw_email_body_persisted": 0,
+    "raw_document_text_persisted": 0,
+    "raw_calendar_payload_persisted": 0,
+    "raw_procore_payload_persisted": 0,
+    "raw_prompt_persisted": 0,
+    "raw_response_persisted": 0,
+    "signed_url_persisted": 0,
+    "download_url_persisted": 0,
+    "external_writeback_performed": 0,
+    "graph_writeback_performed": 0,
+    "procore_writeback_performed": 0,
+    "email_send_performed": 0,
+    "calendar_mutation_performed": 0
+  },
+  "all_zero": true,
+  "note": "The scheduled daily-run builds New Today read-only (no change-event persistence), so the table is empty on the copy; the guard columns are zero. Persistence-path guard enforcement (CHECK constraints + caps) is covered by the daily-brief new-today CLI tests in tests/test_phase_10_new_today.py."
+}
