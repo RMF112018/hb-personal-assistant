@@ -104,6 +104,16 @@ def cmd_forecast_intelligence(cfg: dict, project: str, data_root, frozen_stamp, 
                    with_llm=with_llm, llm_model=llm_model)
 
 
+def cmd_forecast_monthly(cfg: dict, project: str, data_root, frozen_stamp, out_root,
+                         with_llm, llm_model, forecast_start_month) -> int:
+    """Config-driven month-by-month forecast generator: time-phases the accepted forecast-intelligence
+    final-cost package across the remaining forecast months using CostEntries + subcontractor-invoice
+    trend evidence and schedule remaining-work phasing. Import dispatch."""
+    from .forecast_monthly import generate_monthly_forecast_package as gen
+    return gen.run(project, cfg, data_root=data_root, frozen_stamp=frozen_stamp, out_root=out_root,
+                   with_llm=with_llm, llm_model=llm_model, forecast_start_month=forecast_start_month)
+
+
 def cmd_run_generator(command: str, project: str) -> int:
     if project != "tropical":
         print(json.dumps({
@@ -153,6 +163,16 @@ def build_parser() -> argparse.ArgumentParser:
     fip.add_argument("--with-llm", action="store_true",
                      help="Engage the local Ollama advisory narrative layer (default: deterministic mock).")
     fip.add_argument("--llm-model", default=None, help="Override the configured Ollama model.")
+    fmp = sub.add_parser("forecast-monthly")
+    fmp.add_argument("--project", required=True, help="Project key (e.g. tropical).")
+    fmp.add_argument("--forecast-start-month", default=None,
+                     help="Override the forecast start month (YYYY-MM); default is the system month.")
+    fmp.add_argument("--data-root", default=None, help="Override the configured forecast data root.")
+    fmp.add_argument("--frozen-stamp", default=None, help="Deterministic stamp (determinism check).")
+    fmp.add_argument("--out-root", default=None, help="Override the output base dir.")
+    fmp.add_argument("--with-llm", action="store_true",
+                     help="Engage the local Ollama advisory narrative layer (default: deterministic mock).")
+    fmp.add_argument("--llm-model", default=None, help="Override the configured Ollama model.")
     return ap
 
 
@@ -170,6 +190,10 @@ def main(argv=None) -> int:
     if args.command == "forecast-intelligence":
         return cmd_forecast_intelligence(cfg, args.project, args.data_root, args.frozen_stamp,
                                          args.out_root, args.with_llm, args.llm_model)
+    if args.command == "forecast-monthly":
+        return cmd_forecast_monthly(cfg, args.project, args.data_root, args.frozen_stamp,
+                                    args.out_root, args.with_llm, args.llm_model,
+                                    args.forecast_start_month)
     return cmd_run_generator(args.command, args.project)
 
 
