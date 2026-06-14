@@ -37,10 +37,30 @@ The four generators were consolidated from the **validated package-internal copi
 `/tmp`); their SHA-256 hashes are recorded in `examples/tropical/input_inventory.example.json` and were
 confirmed byte-identical to the working copies.
 
+## Schedule integration decisions (Stage 6)
+Schedule data is **timing / remaining-work / sequencing / risk** evidence only. It never becomes
+accounting actual cost, never earns value, and never by itself sets `recommended_projected_cost`,
+creates a numeric increase, or creates a decrease. Baseline = crosswalk_v2 recommendations.
+- **Forecast exhaustion (`actuals_near_projected`)** is deterministic:
+  `actual_cost_all_source_to_date >= 0.90 * current_projected_cost`.
+- **Material remaining work** = `>= 3` open activities **OR** `>= 14` remaining 8h-days.
+- **Zero vs negative float are separated.** `total_float <= 0` is a critical/longest-path **proxy
+  only** (the source has no explicit longest-path flag). Risk **escalation** uses **negative** float
+  (`< 0`) on **open** work — never zero float alone.
+- **Mapping authority is canonical BudgetDetails only.** A schedule cost code that resolves to exactly
+  one canonical key is `mapped`; one spanning multiple categories (e.g. `15-16-110` → `.MAT`/`.SUB`) is
+  `ambiguous` (no forced key). The extractor's `candidate_budget_code_keys` are **supporting evidence
+  only** and cannot create a `mapped` key.
+- **Decrease guardrail:** a `decrease_forecast` with material remaining schedule work is downgraded to
+  `review_required` with the number cleared (`schedule_blocks_decrease`).
+- **Cash-flow timing** is duration-weighted across months, **confidence capped at `medium`** (no
+  validated cost/resource loading); ambiguous/unmapped exposure stays `not_allocated`; monthly amounts
+  always tie to remaining exposure within rounding tolerance.
+
 ## Deferred work
 - **Parameterize the generators.** They currently carry hardcoded Tropical / 2026-June data-root and
   package-name paths. Until parameterized, the CLI `run-*` commands are Tropical-only and fail clearly
-  for other projects.
+  for other projects. (The schedule-integrated generator is already config-driven.)
 - Extract the generators' inline helpers to import the shared `common/` library (currently the
   generators remain self-contained; `common/` is the tested library surface).
 - Optional packaging install (`pip install -e ".[dev]"`); validation here runs without install via

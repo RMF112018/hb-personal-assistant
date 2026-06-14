@@ -9,10 +9,14 @@ Commands:
     run-analysis          Tropical-only — runs the forecast analysis package generator (v1).
     run-mapping-workpaper Tropical-only — runs the mapping-discrepancy workpaper generator.
     run-crosswalk-v2      Tropical-only — runs the crosswalk-aware analysis v2 generator.
+    schedule-integrate-forecast
+                          Config-driven — runs the schedule-integrated forecast generator. Discovers
+                          the latest schedule / context / crosswalk-v2 / workpaper packages from the
+                          project config + data root and writes one new timestamped output package.
 
 The run-* commands shell out to the verbatim, validated generators, which currently carry hardcoded
 Tropical/2026-June paths. They fail clearly for any non-tropical project until the generators are
-parameterized (deferred work).
+parameterized (deferred work). schedule-integrate-forecast is import-dispatched and config-driven.
 """
 from __future__ import annotations
 
@@ -75,6 +79,12 @@ def cmd_validate_crosswalk(cfg: dict) -> int:
     return 0 if report["passed"] else 1
 
 
+def cmd_schedule_integrate_forecast(cfg: dict, project: str, data_root, frozen_stamp, out_root) -> int:
+    """Config-driven schedule-integrated forecast generator (import dispatch)."""
+    from .schedule_analysis import generate_schedule_integrated_forecast as gen
+    return gen.run(project, cfg, data_root=data_root, frozen_stamp=frozen_stamp, out_root=out_root)
+
+
 def cmd_run_generator(command: str, project: str) -> int:
     if project != "tropical":
         print(json.dumps({
@@ -101,6 +111,13 @@ def build_parser() -> argparse.ArgumentParser:
                  "run-mapping-workpaper", "run-crosswalk-v2"):
         sp = sub.add_parser(name)
         sp.add_argument("--project", required=True, help="Project key (e.g. tropical).")
+    sfp = sub.add_parser("schedule-integrate-forecast")
+    sfp.add_argument("--project", required=True, help="Project key (e.g. tropical).")
+    sfp.add_argument("--data-root", default=None, help="Override the configured forecast data root.")
+    sfp.add_argument("--frozen-stamp", default=None,
+                     help="Deterministic stamp for the output folder (used by the determinism check).")
+    sfp.add_argument("--out-root", default=None,
+                     help="Override the output base dir (defaults to the data root).")
     return ap
 
 
@@ -109,6 +126,9 @@ def main(argv=None) -> int:
     cfg = load_project(args.project)
     if args.command == "validate-crosswalk":
         return cmd_validate_crosswalk(cfg)
+    if args.command == "schedule-integrate-forecast":
+        return cmd_schedule_integrate_forecast(cfg, args.project, args.data_root,
+                                               args.frozen_stamp, args.out_root)
     return cmd_run_generator(args.command, args.project)
 
 

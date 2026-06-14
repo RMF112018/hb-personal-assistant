@@ -17,6 +17,11 @@ makes **no live external calls** and performs **no database, Excel, or source mu
    (`config/crosswalks/tropical/`).
 5. **Crosswalk-aware forecast analysis v2** — compare owner vs Procore vs actuals at the correct
    owner-scope rollup level using the authoritative crosswalk.
+6. **Schedule-integrated forecast** — layer the P6/XER-derived schedule package onto the crosswalk-v2
+   recommendations as **timing / remaining-work / sequencing / risk** evidence: remaining-exposure
+   flags, forecast-exhaustion risk, decrease guardrails, and a cash-flow timing curve. Schedule data
+   never becomes actual cost and never sets a number on its own
+   (`docs/workflow/06_schedule_integrated_forecast.md`).
 
 ## Current project supported
 
@@ -70,10 +75,20 @@ The `run-*` commands (`run-context`, `run-analysis`, `run-mapping-workpaper`, `r
 Tropical/2026-June paths. They fail clearly for any non-tropical project. Parameterizing the
 generators is **deferred work** (see `docs/decisions/tropical_2026_june_decisions.md`).
 
+The schedule-integrated forecast generator is **config-driven** (import-dispatched, not a hardcoded
+generator). It discovers the latest schedule / context / crosswalk-v2 / mapping-workpaper packages
+from the project config and the forecast data root, then writes one new timestamped output package:
+
+```bash
+PYTHONPATH=src python3 -m construction_financial_review.cli \
+    schedule-integrate-forecast --project tropical
+# optional: --data-root <path> --out-root <path> --frozen-stamp <YYYYMMDD_HHMMSS> (determinism check)
+```
+
 ## Layout
 
 ```
-src/construction_financial_review/   library (common/), CLI, and the verbatim generators
+src/construction_financial_review/   library (common/), CLI, verbatim generators, schedule_analysis/
 config/projects/tropical.json        project config + approved decisions
 config/crosswalks/tropical/          authoritative owner SOV scope crosswalk (jsonl + csv + report)
 docs/workflow/                       one doc per pipeline stage
