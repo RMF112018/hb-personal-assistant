@@ -10,7 +10,13 @@ readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "Proprietary" }
 authors = [{ name = "Bobby Fetting" }]
-dependencies = []
+# numpy/scipy power the additive forecast_probability Monte Carlo validation slice
+# (vectorized sampling + scipy.stats distributions/calibration). All other slices remain
+# stdlib-only; the deterministic forecast core does not depend on these.
+dependencies = [
+    "numpy>=2.1,<3",
+    "scipy>=1.14,<2",
+]
 
 [project.optional-dependencies]
 dev = ["pytest>=7.0"]

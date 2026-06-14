@@ -114,6 +114,18 @@ def cmd_forecast_monthly(cfg: dict, project: str, data_root, frozen_stamp, out_r
                    with_llm=with_llm, llm_model=llm_model, forecast_start_month=forecast_start_month)
 
 
+def cmd_forecast_probability(cfg: dict, project: str, data_root, frozen_stamp, out_root,
+                             with_llm, llm_model, forecast_start_month, runs, seed) -> int:
+    """Probabilistic VALIDATION of the accepted deterministic forecast (numpy/scipy Monte Carlo:
+    per-code lognormal cost-to-complete + one-factor correlation; P10..P95, overrun probabilities,
+    downside drivers, monthly risk, sensitivity, dispersion calibration). Advisory; never caps above
+    references; actuals-only floor. Import dispatch."""
+    from .forecast_probability import generate_probabilistic_validation_package as gen
+    return gen.run(project, cfg, data_root=data_root, frozen_stamp=frozen_stamp, out_root=out_root,
+                   with_llm=with_llm, llm_model=llm_model, forecast_start_month=forecast_start_month,
+                   runs=runs, seed=seed)
+
+
 def cmd_run_generator(command: str, project: str) -> int:
     if project != "tropical":
         print(json.dumps({
@@ -173,6 +185,18 @@ def build_parser() -> argparse.ArgumentParser:
     fmp.add_argument("--with-llm", action="store_true",
                      help="Engage the local Ollama advisory narrative layer (default: deterministic mock).")
     fmp.add_argument("--llm-model", default=None, help="Override the configured Ollama model.")
+    fpp = sub.add_parser("forecast-probability")
+    fpp.add_argument("--project", required=True, help="Project key (e.g. tropical).")
+    fpp.add_argument("--runs", type=int, default=10000, help="Monte Carlo runs (default 10000).")
+    fpp.add_argument("--seed", type=int, default=20260614, help="Deterministic RNG seed.")
+    fpp.add_argument("--forecast-start-month", default=None,
+                     help="Override the forecast start month (YYYY-MM); default is the monthly package window.")
+    fpp.add_argument("--data-root", default=None, help="Override the configured forecast data root.")
+    fpp.add_argument("--frozen-stamp", default=None, help="Deterministic stamp (determinism check).")
+    fpp.add_argument("--out-root", default=None, help="Override the output base dir.")
+    fpp.add_argument("--with-llm", action="store_true",
+                     help="Engage the local Ollama advisory narrative layer (default: deterministic mock).")
+    fpp.add_argument("--llm-model", default=None, help="Override the configured Ollama model.")
     return ap
 
 
@@ -194,6 +218,10 @@ def main(argv=None) -> int:
         return cmd_forecast_monthly(cfg, args.project, args.data_root, args.frozen_stamp,
                                     args.out_root, args.with_llm, args.llm_model,
                                     args.forecast_start_month)
+    if args.command == "forecast-probability":
+        return cmd_forecast_probability(cfg, args.project, args.data_root, args.frozen_stamp,
+                                        args.out_root, args.with_llm, args.llm_model,
+                                        args.forecast_start_month, args.runs, args.seed)
     return cmd_run_generator(args.command, args.project)
 
 

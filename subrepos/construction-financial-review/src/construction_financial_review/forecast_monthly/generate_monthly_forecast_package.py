@@ -428,9 +428,23 @@ def _project_rollup(per_code_months, months, inputs, calendar, project_key):
         cum_rec += month_rec
         cum_worst += month_worst
         active = sum(1 for k in per_code_months if per_code_months[k].get(m, (Decimal("0"),))[0] > 0)
-        overrun_codes = sum(1 for k in per_code_months
-                            if (per_code_months[k].get(m, (None, None, None))[2] is not None
-                                and cal.month_index(per_code_months[k][m][2]) <= cal.month_index(m)))
+
+        def _crossed(k):
+            t = per_code_months[k].get(m, (None, None, None))[2]
+            return t is not None and cal.month_index(per_code_months[k][m][2]) <= cal.month_index(m)
+
+        # (1) any code whose cumulative actual-plus-forecast has crossed current projected cost by m.
+        cumulative_codes = sum(1 for k in per_code_months if _crossed(k))
+        # (2) only MATERIAL projected overruns: crossed AND the code's recommended final cost beats
+        #     current projected cost under the approved $25,000 AND 10% materiality rule.
+        material_overrun_codes = sum(
+            1 for k in per_code_months
+            if _crossed(k)
+            and D(rec_by[k].get("recommended_final_cost"))
+            > (dec(rec_by[k].get("current_projected_cost")) or Decimal("0"))
+            and materiality(D(rec_by[k].get("recommended_final_cost")),
+                            D(rec_by[k].get("current_projected_cost")))[2]
+        )
         drivers = sorted(((per_code_months[k].get(m, (Decimal("0"),))[0], k) for k in per_code_months),
                          key=lambda t: t[0], reverse=True)[:5]
         rows.append(OrderedDict([
@@ -444,7 +458,8 @@ def _project_rollup(per_code_months, months, inputs, calendar, project_key):
             ("cumulative_variance_to_current_projected_total", money_str(cum_rec - total_projected)),
             ("cumulative_variance_to_revised_budget_total", money_str(cum_rec - total_revised)),
             ("number_of_active_budget_codes", active),
-            ("number_of_overrun_budget_codes", overrun_codes),
+            ("number_of_cumulative_codes_exceeding_current_projected_cost", cumulative_codes),
+            ("number_of_material_projected_overrun_codes", material_overrun_codes),
             ("major_risk_drivers", [k for _, k in drivers if _ > 0]),
         ]))
     cashflow_summary = OrderedDict([
@@ -514,7 +529,9 @@ def generate(project_key, cfg, data_root=None, frozen_stamp=None, out_root=None,
     _write_data_files(out, collections)
 
     # ---- determinism self-check: rebuild quant data into a temp dir and byte-diff ----
-    determinism = _determinism_check(inputs, calendar, project_key, frozen_stamp)
+    # Record the EFFECTIVE stamp actually used for this package (not the raw, possibly-None arg),
+    # so determinism.frozen_stamp is auditable on normal live runs as well as frozen runs.
+    determinism = _determinism_check(inputs, calendar, project_key, stamp)
 
     # ---- window fallback warning ----
     if not inputs["latest_finish"]:
@@ -567,7 +584,7 @@ def generate(project_key, cfg, data_root=None, frozen_stamp=None, out_root=None,
             "overrun_count": len(collections["monthly_overrun_risk_register.jsonl"])}
 
 
-def _determinism_check(inputs, calendar, project_key, frozen_stamp) -> OrderedDict:
+def _determinism_check(inputs, calendar, project_key, stamp) -> OrderedDict:
     with tempfile.TemporaryDirectory() as d1, tempfile.TemporaryDirectory() as d2:
         p1, p2 = Path(d1), Path(d2)
         c1 = _build_collections(inputs, calendar, project_key); c1.pop("_code_meta")
@@ -585,7 +602,7 @@ def _determinism_check(inputs, calendar, project_key, frozen_stamp) -> OrderedDi
         ("performed", True),
         ("quantitative_core_byte_identical", ok),
         ("llm_excluded_from_byte_diff", True),
-        ("frozen_stamp", frozen_stamp),
+        ("frozen_stamp", stamp),
         ("diff_result", "pass" if ok else "fail"),
         ("per_file", per_file),
     ])
@@ -869,7 +886,11 @@ def _write_schema(out):
         "- `monthly_overrun_risk_register.jsonl` / `top_monthly_overruns.json` — the month each code "
         "first exceeds current projected / revised budget, amount, severity, split confidence.",
         "- `monthly_project_forecast.jsonl` / `project_monthly_cashflow_summary.json` — per-month and "
-        "cumulative project totals.",
+        "cumulative project totals. Overrun counts are split: "
+        "`number_of_cumulative_codes_exceeding_current_projected_cost` (any code whose cumulative "
+        "actual-plus-forecast has crossed current projected cost by that month) vs "
+        "`number_of_material_projected_overrun_codes` (only crossings that also meet the $25k AND 10% "
+        "materiality rule). The material count is always <= the cumulative count.",
         "- `monthly_backtest_results.json` / `monthly_calibration_summary.json` — WAPE (primary) + MAE "
         "+ MAPE; CostEntries-only vs CostEntries+invoice; honest schedule/cohort limitations.",
         "- `audit/*` — db_inventory (schema+counts only), schedule_inventory, source_files_used, "

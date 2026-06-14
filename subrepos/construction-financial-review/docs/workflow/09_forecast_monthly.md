@@ -46,8 +46,10 @@ Per-code × month (127 × N): `monthly_forecast_by_budget_code.jsonl`. Rollups:
 
 ## How a reviewer reads it
 
-- **`monthly_project_forecast.jsonl`** — per-month spend and cumulative, active codes, and how many
-  codes have crossed into overrun by that month.
+- **`monthly_project_forecast.jsonl`** — per-month spend and cumulative, active codes, and two overrun
+  counts: `number_of_cumulative_codes_exceeding_current_projected_cost` (any crossing by that month) and
+  `number_of_material_projected_overrun_codes` (only crossings meeting the $25k AND 10% materiality
+  rule; always ≤ the cumulative count).
 - **`top_monthly_overruns.json` / `monthly_overrun_risk_register.jsonl`** — the month each code first
   exceeds current projected (and revised budget), amount, severity, and split confidence.
 - **`monthly_forecast_by_budget_code.jsonl`** — `recommended_month_cost` vs `worst_credible_month_cost`,

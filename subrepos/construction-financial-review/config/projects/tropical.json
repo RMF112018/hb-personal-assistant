@@ -48,6 +48,23 @@
       "procore_financial_budget_rows"
     ]
   },
+  "forecast_probability": {
+    "runs": 10000,
+    "seed": 20260614,
+    "antithetic": true,
+    "latin_hypercube_systemic": false,
+    "systemic_correlation_rho": "0.35",
+    "high_quantile": "0.90",
+    "overrun_tail_quantile_shift": "0.10",
+    "sigma_floor": "0.02",
+    "sigma_cap": "1.00",
+    "confidence_inflation_k": "0.40",
+    "sigma_weight_cov": "0.25",
+    "sigma_weight_mape": "0.50",
+    "sigma_weight_divergence": "0.20",
+    "monthly_dirichlet_kappa0": "40.0",
+    "p50_recommended_tolerance_pct": "0.03"
+  },
   "approved_by": "Bobby Fetting",
   "approved_date": "2026-06-14"
 }
