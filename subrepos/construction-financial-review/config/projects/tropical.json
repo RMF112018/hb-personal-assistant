@@ -1,0 +1,17 @@
+{
+  "project_key": "tropical",
+  "project_name": "Tropical World Nursery Senior Living Facility",
+  "job_reference": "23-435-01",
+  "forecast_period": "2026-June",
+  "default_data_root": "/Users/bobbyfetting/Library/CloudStorage/SynologyDrive-BFmacSync/Work/NAS - HB/Projects/2023/TWN - NAS/30_Financials/Forecasts/Data/2026-June",
+  "forecast_context_package": "forecast_context_package_tropical_20260614_084510",
+  "forecast_analysis_package": "forecast_analysis_package_tropical_20260614_095847",
+  "mapping_discrepancy_workpaper": "mapping_discrepancy_workpaper_tropical_20260614_105720",
+  "owner_sov_scope_crosswalk": "config/crosswalks/tropical/owner_sov_scope_crosswalk_tropical_authoritative_20260614_final.jsonl",
+  "budget_amount_field": "budget_amounts.revised_budget",
+  "current_projected_cost_field": "budget_amounts.projected_costs",
+  "materiality_absolute": "25000.00",
+  "materiality_percent": "0.10",
+  "approved_by": "Bobby Fetting",
+  "approved_date": "2026-06-14"
+}

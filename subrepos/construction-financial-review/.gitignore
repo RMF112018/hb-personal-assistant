@@ -1,0 +1,20 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+.env
+.DS_Store
+__MACOSX/
+._*
+*.xlsx
+*.xlsm
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.db
+*.zip
+output/
+tmp/
+
+# NOTE: the authoritative crosswalk under config/crosswalks/ (*.jsonl, *.csv, *.json)
+# is intentionally tracked and must NOT be ignored.

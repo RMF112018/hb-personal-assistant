@@ -1,0 +1,46 @@
+{
+  "project_key": "tropical",
+  "project_name": "Tropical World Nursery Senior Living Facility",
+  "job_reference": "23-435-01",
+  "forecast_period": "2026-June",
+  "data_root": "/Users/bobbyfetting/Library/CloudStorage/SynologyDrive-BFmacSync/Work/NAS - HB/Projects/2023/TWN - NAS/30_Financials/Forecasts/Data/2026-June",
+  "consolidated_generators": [
+    {
+      "stage": "1_forecast_context",
+      "installed_path": "src/construction_financial_review/context/generate_forecast_context_package.py",
+      "source_path": "forecast_context_package_tropical_20260614_084510/generate_forecast_context_package.py",
+      "source_kind": "validated_package_internal_copy",
+      "sha256": "27a1c9547af5c554be8fce192dead82f18bb2afadebedbad07fb250c966e5eed"
+    },
+    {
+      "stage": "2_forecast_analysis_v1",
+      "installed_path": "src/construction_financial_review/analysis/generate_forecast_analysis_package.py",
+      "source_path": "forecast_analysis_package_tropical_20260614_095847/generate_forecast_analysis_package.py",
+      "source_kind": "validated_package_internal_copy",
+      "sha256": "1668ae58f28974e3fd2cc20e563e3254e2b0a5f0132bf9e637e14a167b6bad4c"
+    },
+    {
+      "stage": "3_mapping_discrepancy_workpaper",
+      "installed_path": "src/construction_financial_review/mapping/generate_mapping_discrepancy_workpaper.py",
+      "source_path": "mapping_discrepancy_workpaper_tropical_20260614_105720/generate_mapping_discrepancy_workpaper.py",
+      "source_kind": "validated_package_internal_copy",
+      "sha256": "0d035101c1a1b686be3a4820d671ae928f6155c2edf25da9febda6f19ade1d17"
+    },
+    {
+      "stage": "5_forecast_analysis_crosswalk_v2",
+      "installed_path": "src/construction_financial_review/analysis/generate_forecast_analysis_crosswalk_v2.py",
+      "source_path": "forecast_analysis_package_tropical_crosswalk_v2_20260614_115215/generate_forecast_analysis_crosswalk_v2.py",
+      "source_kind": "validated_package_internal_copy",
+      "sha256": "1b5275f1ba0316ae5a2d2eb9bdc096da865c3febf2f653a34a0dc5b722735943"
+    }
+  ],
+  "authoritative_crosswalk": {
+    "installed_path": "config/crosswalks/tropical/owner_sov_scope_crosswalk_tropical_authoritative_20260614_final.jsonl",
+    "source_dir": "owner_sov_scope_crosswalk_tropical_authoritative_20260614_final",
+    "rows": 58,
+    "canonical_budget_coverage": "127/127",
+    "procore_latest_wbs_coverage": "42/42",
+    "unresolved_owner_sov_rows": 0,
+    "duplicate_covered_budget_codes": 0
+  }
+}

@@ -1,0 +1,116 @@
+"""Construction Financial Review CLI (stdlib argparse; no third-party deps).
+
+Run without installation via:
+    PYTHONPATH=src python3 -m construction_financial_review.cli <command> --project tropical
+
+Commands:
+    validate-crosswalk    Fully wired — validates the authoritative owner SOV scope crosswalk.
+    run-context           Tropical-only — runs the forecast context package generator.
+    run-analysis          Tropical-only — runs the forecast analysis package generator (v1).
+    run-mapping-workpaper Tropical-only — runs the mapping-discrepancy workpaper generator.
+    run-crosswalk-v2      Tropical-only — runs the crosswalk-aware analysis v2 generator.
+
+The run-* commands shell out to the verbatim, validated generators, which currently carry hardcoded
+Tropical/2026-June paths. They fail clearly for any non-tropical project until the generators are
+parameterized (deferred work).
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+from .common.io import read_json
+from .mapping import validate_owner_sov_scope_crosswalk as xwval
+
+SUBPROJECT_ROOT = Path(__file__).resolve().parents[2]   # .../construction-financial-review
+CONFIG_PROJECTS = SUBPROJECT_ROOT / "config" / "projects"
+
+# Generator module file (relative to this package) per run-* command.
+GENERATORS = {
+    "run-context": Path(__file__).parent / "context" / "generate_forecast_context_package.py",
+    "run-analysis": Path(__file__).parent / "analysis" / "generate_forecast_analysis_package.py",
+    "run-mapping-workpaper": Path(__file__).parent / "mapping" / "generate_mapping_discrepancy_workpaper.py",
+    "run-crosswalk-v2": Path(__file__).parent / "analysis" / "generate_forecast_analysis_crosswalk_v2.py",
+}
+
+
+def load_project(project: str) -> dict:
+    cfg = CONFIG_PROJECTS / f"{project}.json"
+    if not cfg.exists():
+        raise SystemExit(f"ERROR: no project config at {cfg}")
+    return read_json(cfg)
+
+
+def _resolve_crosswalk(cfg: dict) -> Path:
+    rel = cfg.get("owner_sov_scope_crosswalk")
+    if not rel:
+        raise SystemExit("ERROR: project config missing 'owner_sov_scope_crosswalk'")
+    p = (SUBPROJECT_ROOT / rel) if not Path(rel).is_absolute() else Path(rel)
+    if not p.exists():
+        raise SystemExit(f"ERROR: crosswalk not found at {p}")
+    return p
+
+
+def _resolve_context_package(cfg: dict):
+    root = cfg.get("default_data_root")
+    pkg = cfg.get("forecast_context_package")
+    if root and pkg:
+        cp = Path(root) / pkg
+        if cp.exists():
+            return cp
+    return None
+
+
+def cmd_validate_crosswalk(cfg: dict) -> int:
+    crosswalk = _resolve_crosswalk(cfg)
+    context_pkg = _resolve_context_package(cfg)
+    canonical, procore = xwval._load_universes(str(context_pkg) if context_pkg else None)
+    report = xwval.validate(crosswalk, canonical, procore)
+    report["project_key"] = cfg.get("project_key")
+    report["context_package_used_for_coverage"] = str(context_pkg) if context_pkg else None
+    print(json.dumps(report, indent=2))
+    return 0 if report["passed"] else 1
+
+
+def cmd_run_generator(command: str, project: str) -> int:
+    if project != "tropical":
+        print(json.dumps({
+            "command": command, "project": project, "status": "not_supported",
+            "reason": "Generators are not yet parameterized; only project 'tropical' is supported. "
+                      "Parameterization is deferred work (see docs/decisions).",
+        }, indent=2))
+        return 2
+    script = GENERATORS[command]
+    if not script.exists():
+        raise SystemExit(f"ERROR: generator not found at {script}")
+    print(f"[cfr] START {command} (tropical) -> {script.name}")
+    print("[cfr] writing only to a new timestamped output package folder under the configured data root.")
+    proc = subprocess.run([sys.executable, str(script)])
+    print(f"[cfr] END {command} (exit {proc.returncode})")
+    return proc.returncode
+
+
+def build_parser() -> argparse.ArgumentParser:
+    ap = argparse.ArgumentParser(prog="construction_financial_review.cli",
+                                 description="Construction Financial Review toolkit.")
+    sub = ap.add_subparsers(dest="command", required=True)
+    for name in ("validate-crosswalk", "run-context", "run-analysis",
+                 "run-mapping-workpaper", "run-crosswalk-v2"):
+        sp = sub.add_parser(name)
+        sp.add_argument("--project", required=True, help="Project key (e.g. tropical).")
+    return ap
+
+
+def main(argv=None) -> int:
+    args = build_parser().parse_args(argv)
+    cfg = load_project(args.project)
+    if args.command == "validate-crosswalk":
+        return cmd_validate_crosswalk(cfg)
+    return cmd_run_generator(args.command, args.project)
+
+
+if __name__ == "__main__":
+    sys.exit(main())
