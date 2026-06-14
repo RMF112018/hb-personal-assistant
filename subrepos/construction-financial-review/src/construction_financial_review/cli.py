@@ -85,6 +85,15 @@ def cmd_schedule_integrate_forecast(cfg: dict, project: str, data_root, frozen_s
     return gen.run(project, cfg, data_root=data_root, frozen_stamp=frozen_stamp, out_root=out_root)
 
 
+def cmd_forecast_accuracy(cfg: dict, project: str, data_root, frozen_stamp, out_root,
+                          with_llm, llm_model) -> int:
+    """Config-driven forecast-accuracy generator (independent EAC models + calibrated confidence
+    + backtest + optional advisory local-Ollama narratives). Import dispatch."""
+    from .forecast_accuracy import generate_forecast_accuracy_package as gen
+    return gen.run(project, cfg, data_root=data_root, frozen_stamp=frozen_stamp, out_root=out_root,
+                   with_llm=with_llm, llm_model=llm_model)
+
+
 def cmd_run_generator(command: str, project: str) -> int:
     if project != "tropical":
         print(json.dumps({
@@ -118,6 +127,14 @@ def build_parser() -> argparse.ArgumentParser:
                      help="Deterministic stamp for the output folder (used by the determinism check).")
     sfp.add_argument("--out-root", default=None,
                      help="Override the output base dir (defaults to the data root).")
+    fap = sub.add_parser("forecast-accuracy")
+    fap.add_argument("--project", required=True, help="Project key (e.g. tropical).")
+    fap.add_argument("--data-root", default=None, help="Override the configured forecast data root.")
+    fap.add_argument("--frozen-stamp", default=None, help="Deterministic stamp (determinism check).")
+    fap.add_argument("--out-root", default=None, help="Override the output base dir.")
+    fap.add_argument("--with-llm", action="store_true",
+                     help="Engage the local Ollama advisory narrative layer (default: deterministic mock).")
+    fap.add_argument("--llm-model", default=None, help="Override the configured Ollama model.")
     return ap
 
 
@@ -129,6 +146,9 @@ def main(argv=None) -> int:
     if args.command == "schedule-integrate-forecast":
         return cmd_schedule_integrate_forecast(cfg, args.project, args.data_root,
                                                args.frozen_stamp, args.out_root)
+    if args.command == "forecast-accuracy":
+        return cmd_forecast_accuracy(cfg, args.project, args.data_root, args.frozen_stamp,
+                                     args.out_root, args.with_llm, args.llm_model)
     return cmd_run_generator(args.command, args.project)
 
 

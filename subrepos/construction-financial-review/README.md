@@ -22,6 +22,12 @@ makes **no live external calls** and performs **no database, Excel, or source mu
    flags, forecast-exhaustion risk, decrease guardrails, and a cash-flow timing curve. Schedule data
    never becomes actual cost and never sets a number on its own
    (`docs/workflow/06_schedule_integrated_forecast.md`).
+7. **Forecast accuracy & confidence** — independent multi-method EAC/ETC estimates (burn-rate, owner
+   %-complete, commitment floor, schedule ETC, CPI proxy) reconciled into an **advisory**
+   `model_recommended_projected_cost` (floored to actuals, human-gated), a **backtest-calibrated** 0-1
+   confidence, ERP forecast-adequacy flags, and an optional advisory **local-Ollama** narrative layer.
+   Accounting actuals stay truth; nothing overrides them
+   (`docs/workflow/07_forecast_accuracy.md`).
 
 ## Current project supported
 
@@ -83,6 +89,17 @@ from the project config and the forecast data root, then writes one new timestam
 PYTHONPATH=src python3 -m construction_financial_review.cli \
     schedule-integrate-forecast --project tropical
 # optional: --data-root <path> --out-root <path> --frozen-stamp <YYYYMMDD_HHMMSS> (determinism check)
+```
+
+The forecast-accuracy generator is also config-driven. It builds independent EAC models, calibrates
+confidence with a backtest, flags ERP forecast adequacy, and (with `--with-llm`) adds an advisory
+local-Ollama narrative layer. The quantitative core is deterministic; the LLM layer is advisory,
+safety-scanned, and excluded from the determinism gate:
+
+```bash
+PYTHONPATH=src python3 -m construction_financial_review.cli forecast-accuracy --project tropical
+# advisory local model narratives (Ollama running locally):
+PYTHONPATH=src python3 -m construction_financial_review.cli forecast-accuracy --project tropical --with-llm
 ```
 
 ## Layout

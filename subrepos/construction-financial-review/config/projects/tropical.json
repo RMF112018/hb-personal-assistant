@@ -14,6 +14,15 @@
   "current_projected_cost_field": "budget_amounts.projected_costs",
   "materiality_absolute": "25000.00",
   "materiality_percent": "0.10",
+  "llm": {
+    "model": "qwen2.5:14b",
+    "fallback_model": "llama3.1:8b",
+    "endpoint": "http://localhost:11434",
+    "subset": "material_review_divergent",
+    "temperature": 0,
+    "seed": 7,
+    "timeout_seconds": 60
+  },
   "approved_by": "Bobby Fetting",
   "approved_date": "2026-06-14"
 }

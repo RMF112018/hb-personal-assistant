@@ -57,10 +57,33 @@ creates a numeric increase, or creates a decrease. Baseline = crosswalk_v2 recom
   validated cost/resource loading); ambiguous/unmapped exposure stays `not_allocated`; monthly amounts
   always tie to remaining exposure within rounding tolerance.
 
+## Forecast accuracy decisions (Stage 7)
+Independent quantitative models cross-check the ERP forecast; accounting actuals remain truth and are
+never overridden. Every EAC is floored to actual-to-date.
+- **Advisory model number.** An explicit `model_recommended_projected_cost` (floored to actuals,
+  `requires_human_acceptance: true`) is emitted ALONGSIDE — never replacing — the authoritative
+  rule-based `recommended_projected_cost`.
+- **Five independent EAC methods** (burn-rate, owner %-complete, commitment floor, schedule ETC, CPI
+  proxy) plus two ERP baselines (comparison only). Burn-rate is **gated off near-complete codes**
+  (owner ≥95% or schedule complete) to avoid extrapolating finished scope.
+- **Backtest calibration.** On the owner-≥95% completed cohort, each method's EAC is recomputed at a
+  mid-progress as-of period and scored vs realized; calibration multiplier = `(1/(1+MAPE))` normalized
+  to mean 1.0. The ensemble down-weights poorly-backtesting methods (TWN: burn-rate) and up-weights
+  accurate ones (commitment/owner/cpi).
+- **Calibrated confidence** is a 0–1 score (signal density, model agreement, recency, burn stability),
+  reported alongside a band and drivers.
+- **Forecast adequacy** compares ERP vs model with the $25k AND 10% gate → likely_low / adequate /
+  likely_high / indeterminate.
+- **Local-Ollama advisory layer** (`--with-llm`, default `qwen2.5:14b`, temp 0 + fixed seed) explains
+  the deterministic numbers for a review subset. Advisory only: prompts carry numeric facts only,
+  outputs are JSON-validated, **safety-scanned fail-closed to a deterministic template**, hash-
+  receipted, and never produce a number. The quantitative core is byte-deterministic; the `llm/`
+  outputs are excluded from the determinism gate.
+
 ## Deferred work
 - **Parameterize the generators.** They currently carry hardcoded Tropical / 2026-June data-root and
   package-name paths. Until parameterized, the CLI `run-*` commands are Tropical-only and fail clearly
-  for other projects. (The schedule-integrated generator is already config-driven.)
+  for other projects. (The schedule-integrated and forecast-accuracy generators are config-driven.)
 - Extract the generators' inline helpers to import the shared `common/` library (currently the
   generators remain self-contained; `common/` is the tested library surface).
 - Optional packaging install (`pip install -e ".[dev]"`); validation here runs without install via
