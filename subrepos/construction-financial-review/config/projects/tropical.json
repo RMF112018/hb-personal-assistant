@@ -23,6 +23,31 @@
     "seed": 7,
     "timeout_seconds": 60
   },
+  "forecast_intelligence": {
+    "schedule_integrated_package_glob": "schedule_integrated_forecast_package_tropical_*",
+    "prior_forecast_accuracy_package_glob": "forecast_accuracy_package_tropical_*",
+    "materiality_absolute": "25000.00",
+    "materiality_percent": "0.10",
+    "association_confidence": {
+      "direct": "1.0",
+      "cost_code_family": "0.6",
+      "vendor_or_commitment": "0.5",
+      "owner_scope": "0.4",
+      "division": "0.3",
+      "project_level": "0.0",
+      "none": "0.0"
+    },
+    "subcontractor_udf_title": "SUBCONTRACTOR",
+    "db_path": "~/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite",
+    "db_inventory_tables": [
+      "procore_financial_change_orders",
+      "procore_financial_contracts",
+      "procore_financial_subcontractor_invoices",
+      "procore_financial_invoice_items",
+      "procore_financial_amount_facts",
+      "procore_financial_budget_rows"
+    ]
+  },
   "approved_by": "Bobby Fetting",
   "approved_date": "2026-06-14"
 }

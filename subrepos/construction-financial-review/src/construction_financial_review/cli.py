@@ -94,6 +94,16 @@ def cmd_forecast_accuracy(cfg: dict, project: str, data_root, frozen_stamp, out_
                    with_llm=with_llm, llm_model=llm_model)
 
 
+def cmd_forecast_intelligence(cfg: dict, project: str, data_root, frozen_stamp, out_root,
+                              with_llm, llm_model) -> int:
+    """Config-driven next-gen forecast-intelligence generator (uncapped anticipated final cost +
+    overrun detection + schedule/trend evidence + stronger backtest + optional advisory local-Ollama
+    narratives). Import dispatch."""
+    from .forecast_intelligence import generate_forecast_intelligence_package as gen
+    return gen.run(project, cfg, data_root=data_root, frozen_stamp=frozen_stamp, out_root=out_root,
+                   with_llm=with_llm, llm_model=llm_model)
+
+
 def cmd_run_generator(command: str, project: str) -> int:
     if project != "tropical":
         print(json.dumps({
@@ -135,6 +145,14 @@ def build_parser() -> argparse.ArgumentParser:
     fap.add_argument("--with-llm", action="store_true",
                      help="Engage the local Ollama advisory narrative layer (default: deterministic mock).")
     fap.add_argument("--llm-model", default=None, help="Override the configured Ollama model.")
+    fip = sub.add_parser("forecast-intelligence")
+    fip.add_argument("--project", required=True, help="Project key (e.g. tropical).")
+    fip.add_argument("--data-root", default=None, help="Override the configured forecast data root.")
+    fip.add_argument("--frozen-stamp", default=None, help="Deterministic stamp (determinism check).")
+    fip.add_argument("--out-root", default=None, help="Override the output base dir.")
+    fip.add_argument("--with-llm", action="store_true",
+                     help="Engage the local Ollama advisory narrative layer (default: deterministic mock).")
+    fip.add_argument("--llm-model", default=None, help="Override the configured Ollama model.")
     return ap
 
 
@@ -149,6 +167,9 @@ def main(argv=None) -> int:
     if args.command == "forecast-accuracy":
         return cmd_forecast_accuracy(cfg, args.project, args.data_root, args.frozen_stamp,
                                      args.out_root, args.with_llm, args.llm_model)
+    if args.command == "forecast-intelligence":
+        return cmd_forecast_intelligence(cfg, args.project, args.data_root, args.frozen_stamp,
+                                         args.out_root, args.with_llm, args.llm_model)
     return cmd_run_generator(args.command, args.project)
 
 
