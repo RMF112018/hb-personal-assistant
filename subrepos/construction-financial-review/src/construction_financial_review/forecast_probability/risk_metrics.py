@@ -41,6 +41,8 @@ def project_summary(sim, arrays, project, params) -> OrderedDict:
     det_worst = project["total_worst_credible_final_cost"]
     det_proj = project["total_current_projected_cost"]
     det_actual = project["total_actual_to_date"]
+    det_rb = project["total_revised_budget"]
+    over_rb = np.maximum(pf - det_rb, 0.0)          # project overrun vs revised budget, floored at 0
     mean = float(pf.mean())
     p90 = float(np.percentile(pf, 90))
     p50 = float(np.percentile(pf, 50))
@@ -64,11 +66,33 @@ def project_summary(sim, arrays, project, params) -> OrderedDict:
         ("prob_exceeds_recommended_final", p4((pf > det_rec).mean())),
         ("prob_exceeds_worst_credible_final", p4((pf > det_worst).mean())),
         ("prob_exceeds_current_projected_total", p4((pf > det_proj).mean())),
+        # Project-level revised-budget probability (mirrors the per-code revised-budget metric).
+        ("revised_budget_total", m(det_rb)),
+        ("probability_project_exceeds_revised_budget_total", p4((pf > det_rb).mean())),
+        ("expected_project_overrun_vs_revised_budget_total", m(float(over_rb.mean()))),
+        ("p80_overrun_vs_revised_budget_total", m(float(np.percentile(over_rb, 80)))),
+        ("p90_overrun_vs_revised_budget_total", m(float(np.percentile(over_rb, 90)))),
+        ("p95_overrun_vs_revised_budget_total", m(float(np.percentile(over_rb, 95)))),
         ("recommended_final_percentile_rank", p2(percentileofscore(pf, det_rec, kind="mean"))),
         ("worst_credible_final_percentile_rank", p2(percentileofscore(pf, det_worst, kind="mean"))),
         ("current_projected_percentile_rank", p2(percentileofscore(pf, det_proj, kind="mean"))),
+        ("revised_budget_final_percentile_rank", p2(percentileofscore(pf, det_rb, kind="mean"))),
         ("systemic_variance_share", p4(_systemic_share(sim, arrays))),
         ("p50_minus_deterministic_recommended", m(p50 - det_rec)),
+        # Carry-forward reconciliation: separates accounting actual, the deterministic prior-month
+        # forecast carried forward (0 unless a later --forecast-start-month is used), the simulated
+        # remaining-window CTC, and the simulated final. Carried forecast is NOT actual cost.
+        ("window_reconciliation", OrderedDict([
+            ("forecast_start_override_active", bool(project.get("window_override_active", False))),
+            ("accounting_actual_cost_to_date", m(det_actual)),
+            ("deterministic_prior_forecast_before_probability_window",
+             m(float(project.get("total_carried_prior_forecast", 0.0)))),
+            ("simulated_probability_window_cost_to_complete",
+             m(mean - det_actual - float(project.get("total_carried_prior_forecast", 0.0)))),
+            ("simulated_final_cost_including_carried_forecast", m(mean)),
+            ("identity",
+             "simulated_final = accounting_actual + deterministic_prior_forecast + simulated_window_ctc"),
+        ])),
     ])
 
 

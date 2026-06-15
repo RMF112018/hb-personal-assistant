@@ -38,11 +38,62 @@ def test_validation_passes_and_gates(tmp_path):
     assert report["passed"] is True, report["checks"]
     for gate in ("per_code_completeness_127", "canonical_only_codes", "percentile_monotonicity",
                  "final_cost_floor_at_actuals", "no_upper_cap_uncapped_upside",
+                 "no_upper_cap_audit_present", "no_code_upper_capped",
+                 "no_cap_source_is_reference_value",
+                 "revised_budget_probability_present_and_unit_interval",
+                 "compatibility_alias_files_present_and_parseable",
+                 "forecast_start_month_no_full_ctc_reallocation",
                  "p50_aligns_with_deterministic_recommended", "monthly_reconciles_to_simulated_ctc",
                  "probability_fields_in_unit_interval", "sensitivity_ranking_present",
                  "backtest_cohort_reported", "determinism_passed", "db_inventory_no_payloads",
                  "safety_scan_passed"):
         assert report["checks"][gate] is True, gate
+
+
+def test_compatibility_alias_files_emitted_and_parse(tmp_path):
+    out = _generate(tmp_path)
+    # straight-copy aliases mirror their canonical source row-for-row
+    assert (read_json(out / "simulation_results_project.json")
+            == read_json(out / "probabilistic_project_summary.json"))
+    assert (list(read_jsonl(out / "simulation_results_by_budget_code.jsonl"))
+            == list(read_jsonl(out / "probabilistic_final_cost_by_budget_code.jsonl")))
+    assert (list(read_jsonl(out / "simulation_results_by_month.jsonl"))
+            == list(read_jsonl(out / "probabilistic_monthly_project_forecast.jsonl")))
+    # register is a MATERIAL subset, each row carries its threshold basis
+    register = list(read_jsonl(out / "probabilistic_overrun_risk_register.jsonl"))
+    code_rows = list(read_jsonl(out / "probabilistic_final_cost_by_budget_code.jsonl"))
+    assert len(register) <= len(code_rows)
+    for r in register:
+        assert r["materiality_threshold_basis"]
+        assert Decimal(r["prob_exceeds_current_projected_cost"]) >= Decimal("0.20")
+    # division + per-code sensitivity parse; owner-scope is always present + parseable
+    assert list(read_jsonl(out / "budget_code_sensitivity.jsonl"))
+    assert list(read_jsonl(out / "division_sensitivity.jsonl"))
+    assert list(read_jsonl(out / "owner_scope_sensitivity.jsonl"))
+
+
+def test_no_upper_cap_audit_present_and_uncapped(tmp_path):
+    out = _generate(tmp_path)
+    audit = read_json(out / "audit" / "no_upper_cap_audit.json")
+    assert len(audit) == 127
+    refs = {"erp", "revised_budget", "committed", "owner_sov", "procore_pay_app", "prior_output"}
+    for a in audit:
+        assert a["upper_cap_applied"] is False
+        assert a["upper_cap_source"] is None
+        assert a["reference_values_reported_only"] is True
+        assert a["upper_cap_source"] not in refs
+        assert a["validation_status"] in {"uncapped_ok", "near_complete_point_mass"}
+
+
+def test_project_revised_budget_probability_in_package(tmp_path):
+    out = _generate(tmp_path)
+    s = read_json(out / "probabilistic_project_summary.json")
+    assert Decimal("0") <= Decimal(s["probability_project_exceeds_revised_budget_total"]) <= Decimal("1")
+    for q in (80, 90, 95):
+        assert Decimal(s[f"p{q}_overrun_vs_revised_budget_total"]) >= Decimal("0")
+    wr = s["window_reconciliation"]
+    assert wr["forecast_start_override_active"] is False
+    assert Decimal(wr["deterministic_prior_forecast_before_probability_window"]) == Decimal("0.00")
 
 
 def test_determinism_block_records_frozen_stamp(tmp_path):

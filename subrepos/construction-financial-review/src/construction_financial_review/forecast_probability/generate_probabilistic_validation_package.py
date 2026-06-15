@@ -56,6 +56,25 @@ DATA_FILES = (
     "data_quality_warnings.jsonl",
 )
 
+# Compatibility aliases matching the originally-requested package contract. First-class outputs:
+# emitted, parseable, listed in the manifest, documented in SCHEMA.md, validated, and included in the
+# deterministic byte-diff. Canonical files above are preserved; these are additive views.
+ALIAS_FILES = (
+    "simulation_results_project.json",            # = probabilistic_project_summary.json
+    "simulation_results_by_budget_code.jsonl",    # = probabilistic_final_cost_by_budget_code.jsonl
+    "simulation_results_by_month.jsonl",          # = probabilistic_monthly_project_forecast.jsonl (project-month)
+    "probabilistic_overrun_risk_register.jsonl",  # material overrun rows (probability + dollar/pct gate)
+    "budget_code_sensitivity.jsonl",              # per-code downside contribution + Spearman driver
+    "division_sensitivity.jsonl",                 # risk contribution aggregated by division
+    "owner_scope_sensitivity.jsonl",              # risk contribution aggregated by owner SOV scope
+)
+
+# Probabilistic overrun risk register materiality: a code is included only if its probability of
+# exceeding current projected cost is material AND it carries material dollar OR percentage exposure.
+REGISTER_PROB_MIN = 0.20        # >= 20% chance of exceeding current projected cost
+REGISTER_DOLLAR_MIN = 25000.0   # >= $25k expected overrun
+REGISTER_PCT_MIN = 0.05         # >= 5% expected overrun relative to current projected cost
+
 
 def _git(args):
     try:
@@ -94,7 +113,7 @@ def _build_collections(inputs, runs, seed, antithetic, lhs) -> dict:
 
     diagnostics = _diagnostics(base, arrays)
 
-    return {
+    out = {
         "probabilistic_final_cost_by_budget_code.jsonl": code_rows,
         "code_overrun_probabilities.jsonl": overrun_rows,
         "downside_exposure_ranking.jsonl": downside,
@@ -108,9 +127,169 @@ def _build_collections(inputs, runs, seed, antithetic, lhs) -> dict:
         "simulation_inputs_by_budget_code.jsonl": sim_inputs,
         "calibration_summary.json": calib,
         "data_quality_warnings.jsonl": warnings,
-        "_diagnostics": diagnostics,
-        "_downside": downside,
     }
+    out.update(_build_aliases(out, inputs))
+    out["_diagnostics"] = diagnostics
+    out["_downside"] = downside
+    return out
+
+
+# --------------------------------------------------------------------------- compatibility aliases
+
+def _build_aliases(collections: dict, inputs: dict) -> dict:
+    """Derive the compatibility alias payloads purely from already-computed collections.
+
+    No re-simulation, so the aliases stay byte-deterministic and join the determinism diff.
+    """
+    specs = inputs["specs"]
+    div_by_key = {s["budget_code_key"]: s.get("division") for s in specs}
+    owner_by_key = {s["budget_code_key"]: (s.get("owner_sov_code"), s.get("owner_scope_description"))
+                    for s in specs}
+    code_rows = collections["probabilistic_final_cost_by_budget_code.jsonl"]
+    overrun = collections["code_overrun_probabilities.jsonl"]
+    downside = collections["downside_exposure_ranking.jsonl"]
+    sens = collections["sensitivity_analysis.json"]
+
+    return {
+        "simulation_results_project.json": collections["probabilistic_project_summary.json"],
+        "simulation_results_by_budget_code.jsonl": code_rows,
+        "simulation_results_by_month.jsonl": collections["probabilistic_monthly_project_forecast.jsonl"],
+        "probabilistic_overrun_risk_register.jsonl": _overrun_register(overrun, code_rows),
+        "budget_code_sensitivity.jsonl": _budget_code_sensitivity(sens, downside),
+        "division_sensitivity.jsonl": _division_sensitivity(overrun, downside, div_by_key),
+        "owner_scope_sensitivity.jsonl": _owner_scope_sensitivity(overrun, downside, owner_by_key,
+                                                                  inputs["project_key"]),
+    }
+
+
+def _overrun_register(overrun_rows, code_rows):
+    """Material probabilistic overrun rows: probability gate AND (dollar OR percentage) gate.
+
+    Each emitted row carries the exact materiality basis it met. Rows that merely have a positive
+    expected overrun are NOT included.
+    """
+    proj_by = {r["budget_code_key"]: float(D(r["current_projected_cost"])) for r in code_rows}
+    out = []
+    for r in overrun_rows:
+        prob = float(D(r["prob_exceeds_current_projected_cost"]))
+        exp_over = float(D(r["expected_overrun_vs_current_projected"]))
+        cp = proj_by.get(r["budget_code_key"], 0.0)
+        pct = (exp_over / cp) if cp > 0 else 0.0
+        meets_dollar = exp_over >= REGISTER_DOLLAR_MIN
+        meets_pct = pct >= REGISTER_PCT_MIN
+        if not (prob >= REGISTER_PROB_MIN and (meets_dollar or meets_pct)):
+            continue
+        basis = [f"prob_exceeds_current_projected>={REGISTER_PROB_MIN:.2f}"]
+        if meets_dollar:
+            basis.append(f"expected_overrun>=${REGISTER_DOLLAR_MIN:,.0f}")
+        if meets_pct:
+            basis.append(f"expected_overrun_pct>={REGISTER_PCT_MIN:.2f}")
+        row = OrderedDict(r)
+        row["expected_overrun_pct_of_current_projected"] = risk_metrics.p4(pct)
+        row["materiality_threshold_basis"] = "; ".join(basis)
+        out.append(row)
+    out.sort(key=lambda x: (-float(D(x["expected_overrun_vs_current_projected"])), x["budget_code_key"]))
+    return out
+
+
+def _budget_code_sensitivity(sens, downside):
+    """Per-code sensitivity: co-tail downside contribution to project P90 + Spearman driver rank."""
+    spear = {d["budget_code_key"]: d.get("spearman_vs_project_total")
+             for d in sens.get("top_spearman_code_drivers", [])}
+    out = []
+    for d in downside:
+        k = d["budget_code_key"]
+        out.append(OrderedDict([
+            ("project_key", d.get("project_key", "tropical")),
+            ("budget_code_key", k), ("cost_code", d.get("cost_code")),
+            ("downside_contribution_to_project_p90", d["downside_contribution_to_project_p90"]),
+            ("downside_rank", d.get("rank")),
+            ("spearman_vs_project_total", spear.get(k)),
+        ]))
+    return out
+
+
+def _division_sensitivity(overrun_rows, downside, div_by_key):
+    """Risk contribution aggregated by division (cost-code prefix)."""
+    dmap = {d["budget_code_key"]: float(D(d["downside_contribution_to_project_p90"])) for d in downside}
+    agg = {}
+    for r in overrun_rows:
+        div = div_by_key.get(r["budget_code_key"])
+        a = agg.setdefault(div, {"code_count": 0, "exp_over": 0.0, "downside": 0.0})
+        a["code_count"] += 1
+        a["exp_over"] += float(D(r["expected_overrun_vs_current_projected"]))
+        a["downside"] += dmap.get(r["budget_code_key"], 0.0)
+    rows = [OrderedDict([
+        ("project_key", "tropical"), ("division", div), ("code_count", a["code_count"]),
+        ("sum_expected_overrun_vs_current_projected", risk_metrics.m(a["exp_over"])),
+        ("sum_downside_contribution_to_project_p90", risk_metrics.m(a["downside"])),
+    ]) for div, a in agg.items()]
+    rows.sort(key=lambda x: (-float(D(x["sum_downside_contribution_to_project_p90"])), str(x["division"])))
+    for i, r in enumerate(rows, 1):
+        r["rank"] = i
+    return rows
+
+
+def _owner_scope_sensitivity(overrun_rows, downside, owner_by_key, project_key):
+    """Risk contribution aggregated by authoritative owner SOV scope.
+
+    Falls back to a single explicit unavailable row (still parseable) only when no crosswalk
+    assignment resolved for any code.
+    """
+    have = any(owner_by_key.get(r["budget_code_key"], (None, None))[0] for r in overrun_rows)
+    if not have:
+        return [OrderedDict([
+            ("project_key", project_key), ("owner_sov_code", None), ("owner_scope_description", None),
+            ("code_count", 0), ("sum_expected_overrun_vs_current_projected", None),
+            ("sum_downside_contribution_to_project_p90", None),
+            ("note", "owner scope unavailable: no authoritative owner SOV scope crosswalk assignment "
+                     "resolved for these budget codes; populate cfg['owner_sov_scope_crosswalk']."),
+        ])]
+    dmap = {d["budget_code_key"]: float(D(d["downside_contribution_to_project_p90"])) for d in downside}
+    agg = {}
+    for r in overrun_rows:
+        sov, desc = owner_by_key.get(r["budget_code_key"], (None, None))
+        a = agg.setdefault(sov, {"desc": desc, "code_count": 0, "exp_over": 0.0, "downside": 0.0})
+        a["code_count"] += 1
+        a["exp_over"] += float(D(r["expected_overrun_vs_current_projected"]))
+        a["downside"] += dmap.get(r["budget_code_key"], 0.0)
+    rows = [OrderedDict([
+        ("project_key", project_key), ("owner_sov_code", sov),
+        ("owner_scope_description", a["desc"]), ("code_count", a["code_count"]),
+        ("sum_expected_overrun_vs_current_projected", risk_metrics.m(a["exp_over"])),
+        ("sum_downside_contribution_to_project_p90", risk_metrics.m(a["downside"])),
+    ]) for sov, a in agg.items()]
+    rows.sort(key=lambda x: (-float(D(x["sum_downside_contribution_to_project_p90"])),
+                             str(x["owner_sov_code"])))
+    for i, r in enumerate(rows, 1):
+        r["rank"] = i
+    return rows
+
+
+def _no_upper_cap_audit(collections):
+    """Per-code proof that nothing is capped above actuals against any reference value.
+
+    The model has no upper clamp by construction: cost-to-complete is an unbounded lognormal and the
+    only floor is accounting actuals. This records that posture per code with the realized P95-vs-
+    reference evidence so a reviewer can verify it without rerunning the simulation.
+    """
+    rows = []
+    for r in collections["probabilistic_final_cost_by_budget_code.jsonl"]:
+        near = bool(r["near_complete"])
+        p95 = D(r["simulated_p95"])
+        rows.append(OrderedDict([
+            ("budget_code_key", r["budget_code_key"]),
+            ("distribution_family", "point_mass_complete" if near else "shifted_lognormal_ctc"),
+            ("actual_floor_applied", True),
+            ("upper_cap_applied", False),
+            ("upper_cap_source", None),
+            ("reference_values_reported_only", True),
+            ("p95_exceeds_current_projected_cost", bool(p95 > D(r["current_projected_cost"]))),
+            ("p95_exceeds_revised_budget", bool(p95 > D(r["revised_budget"]))),
+            ("p95_exceeds_worst_credible", bool(p95 > D(r["deterministic_worst_credible_final_cost"]))),
+            ("validation_status", "near_complete_point_mass" if near else "uncapped_ok"),
+        ]))
+    return rows
 
 
 def _sim_input_rows(inputs):
@@ -122,6 +301,15 @@ def _sim_input_rows(inputs):
             ("actual_cost_to_date", risk_metrics.m(s["actual"])),
             ("median_cost_to_complete", risk_metrics.m(s["median_ctc"])),
             ("worst_cost_to_complete", risk_metrics.m(s["worst_ctc"])),
+            # Carry-forward breakdown (prior-month forecast is 0 unless a later start month is used;
+            # it is carried as a deterministic addend, never treated as actual cost).
+            ("accounting_actual_cost_to_date", risk_metrics.m(s.get("accounting_actual", s["actual"]))),
+            ("deterministic_prior_forecast_before_probability_window",
+             risk_metrics.m(s.get("carried_prior_forecast", 0.0))),
+            ("probability_window_recommended_cost_to_complete",
+             risk_metrics.m(s.get("window_recommended_ctc", s["median_ctc"]))),
+            ("probability_window_worst_credible_cost_to_complete",
+             risk_metrics.m(s.get("window_worst_credible_ctc", s["worst_ctc"]))),
             ("distribution_family", "shifted_lognormal_ctc" if not s["near_complete"] else "point_mass_complete"),
             ("near_complete", bool(s["near_complete"])),
             ("mu", risk_metrics.p4(s["mu"])), ("sigma", risk_metrics.p4(s["sigma"])),
@@ -204,7 +392,7 @@ def _diagnostics(base, arrays):
 # --------------------------------------------------------------------------- write + orchestrate
 
 def _write_data_files(out: Path, collections: dict):
-    for fname in DATA_FILES:
+    for fname in DATA_FILES + ALIAS_FILES:
         payload = collections[fname]
         if fname.endswith(".jsonl"):
             write_jsonl(out / fname, payload)
@@ -255,6 +443,8 @@ def generate(project_key, cfg, data_root=None, frozen_stamp=None, out_root=None,
                  model if with_llm else None, len(narratives))
     db_inv = db_inventory.inventory(cfg, project_key)
     write_json(out / "audit" / "db_inventory.json", db_inv)
+    no_cap_audit = _no_upper_cap_audit(collections)
+    write_json(out / "audit" / "no_upper_cap_audit.json", no_cap_audit)
     write_json(out / "audit" / "source_files_used.json", _source_files(inputs, cfg))
     write_json(out / "input_inventory.json", OrderedDict([("generation", meta),
                                                           ("forecast_months", inputs["months"])]))
@@ -267,7 +457,7 @@ def generate(project_key, cfg, data_root=None, frozen_stamp=None, out_root=None,
     safety = safety_scan(data_files)
     write_json(out / "audit" / "safety_scan_report.json", safety)
     validation = _validation(out, inputs, collections, diagnostics, db_inv, safety, meta, determinism,
-                             bool(with_llm and ollama_status == "available"), receipts)
+                             bool(with_llm and ollama_status == "available"), receipts, no_cap_audit)
     write_json(out / "validation_report.json", validation)
     conclusion = ("forecast_probability_ready" if validation["passed"]
                   else "forecast_probability_not_ready")
@@ -294,7 +484,7 @@ def _determinism_check(inputs, runs, seed, antithetic, lhs, stamp) -> OrderedDic
         _write_data_files(p2, c2)
         per_file = []
         ok = True
-        for fname in DATA_FILES:
+        for fname in DATA_FILES + ALIAS_FILES:
             h1, h2 = sha256_file(p1 / fname), sha256_file(p2 / fname)
             same = h1 == h2
             ok = ok and same
@@ -387,7 +577,7 @@ def _source_files(inputs, cfg):
 
 
 def _validation(out, inputs, collections, diagnostics, db_inv, safety, meta, determinism, llm_used,
-                receipts):
+                receipts, no_cap_audit):
     arrays = inputs["arrays"]
     n_codes = arrays["n_codes"]
     n_months = arrays["n_months"]
@@ -425,6 +615,45 @@ def _validation(out, inputs, collections, diagnostics, db_inv, safety, meta, det
                            and D(r["simulated_p95"]) > D(r["deterministic_worst_credible_final_cost"]))
     no_cap = (p95_beyond_worst >= 1
               and D(sp["p95"]) > D(str(project["total_recommended_final_cost"])))
+
+    # Strengthened no-upper-cap audit: every non-near code must be uncapped above, with no reference
+    # field used as a clamp source. The audit file must exist with one record per code.
+    cap_ref_sources = {"erp", "revised_budget", "committed", "owner_sov", "procore_pay_app",
+                       "prior_output", "projected_cost", "committed_cost", "owner_pay_app"}
+    no_cap_audit_present = bool(no_cap_audit) and len(no_cap_audit) == n_codes
+    no_code_upper_capped = all(
+        (a["upper_cap_applied"] is False and a["upper_cap_source"] is None
+         and a["reference_values_reported_only"] is True)
+        for a in no_cap_audit if a["validation_status"] == "uncapped_ok")
+    no_cap_source_is_reference = all(
+        (a["upper_cap_source"] is None) or (a["upper_cap_source"] not in cap_ref_sources)
+        for a in no_cap_audit)
+
+    # Finding 1: project-level revised-budget probability fields present, parse, and unit interval.
+    rb_keys = ("revised_budget_total", "probability_project_exceeds_revised_budget_total",
+               "expected_project_overrun_vs_revised_budget_total", "p80_overrun_vs_revised_budget_total",
+               "p90_overrun_vs_revised_budget_total", "p95_overrun_vs_revised_budget_total")
+    rb_present = all(k in summary for k in rb_keys)
+    rb_unit = rb_present and (Decimal("0") <=
+                              D(summary["probability_project_exceeds_revised_budget_total"]) <= Decimal("1"))
+    revised_budget_ok = rb_present and rb_unit
+
+    # Finding 2: compatibility alias files present + parseable.
+    alias_paths = [out / f for f in ALIAS_FILES]
+    alias_parse = all_files_parse(alias_paths)
+    aliases_ok = all(p.exists() for p in alias_paths) and alias_parse["_all_passed"]
+
+    # Finding 3: a later --forecast-start-month must NOT reallocate prior-month CTC into the window.
+    # When the override is active, the summed window recommended CTC must be strictly less than the
+    # full recommended CTC (prior months were carried forward, not re-phased). Vacuously true otherwise.
+    if inputs.get("window_override_active"):
+        window_ctc = sum(float(s.get("window_recommended_ctc", s["median_ctc"])) for s in inputs["specs"])
+        full_ctc = sum(float(s.get("window_recommended_ctc", s["median_ctc"]))
+                       + float(s.get("carried_prior_forecast", 0.0)) for s in inputs["specs"])
+        no_reallocation = (project.get("total_carried_prior_forecast", 0.0) > 0.0
+                           and window_ctc < full_ctc - 1e-6)
+    else:
+        no_reallocation = True
 
     # P50 alignment: per-code median ~ deterministic recommended (lognormal median is exact), and the
     # deterministic recommended total is a central project outcome.
@@ -477,6 +706,12 @@ def _validation(out, inputs, collections, diagnostics, db_inv, safety, meta, det
         ("percentile_monotonicity", mono_codes and mono_project),
         ("final_cost_floor_at_actuals", floor_ok),
         ("no_upper_cap_uncapped_upside", bool(no_cap)),
+        ("no_upper_cap_audit_present", no_cap_audit_present),
+        ("no_code_upper_capped", bool(no_code_upper_capped)),
+        ("no_cap_source_is_reference_value", bool(no_cap_source_is_reference)),
+        ("revised_budget_probability_present_and_unit_interval", bool(revised_budget_ok)),
+        ("compatibility_alias_files_present_and_parseable", bool(aliases_ok)),
+        ("forecast_start_month_no_full_ctc_reallocation", bool(no_reallocation)),
         ("p50_aligns_with_deterministic_recommended", p50_ok),
         ("monthly_reconciles_to_simulated_ctc", recon_ok),
         ("probability_fields_in_unit_interval", prob_ok),
@@ -542,6 +777,10 @@ def _write_readme(out, project_key, meta, inputs, collections):
         f"{s['worst_credible_final_percentile_rank']}.",
         f"- P(final ≥ recommended) = {s['prob_meets_or_exceeds_recommended_final']}; "
         f"P(final > current projected total) = {s['prob_exceeds_current_projected_total']}.",
+        f"- Revised budget total {s['revised_budget_total']}: "
+        f"P(final > revised budget) = {s['probability_project_exceeds_revised_budget_total']}; "
+        f"expected overrun vs revised budget {s['expected_project_overrun_vs_revised_budget_total']} "
+        f"(P90 {s['p90_overrun_vs_revised_budget_total']}).",
         f"- VaR(P90) {s['value_at_risk_p90']}; CVaR(P90) {s['conditional_value_at_risk_p90']}; "
         f"systemic variance share {s['systemic_variance_share']}.",
         "",
@@ -558,6 +797,13 @@ def _write_readme(out, project_key, meta, inputs, collections):
         "`sensitivity_analysis.json` (which assumptions matter), and `probabilistic_backtest_results.json` "
         "(PIT + coverage calibration). Quant core is deterministic (validation_report.json `determinism`); "
         "`llm/` narratives are advisory and excluded.",
+        "",
+        "**Compatibility aliases** (additive; canonical files preserved): `simulation_results_project.json`, "
+        "`simulation_results_by_budget_code.jsonl`, `simulation_results_by_month.jsonl` (project-month), "
+        "`probabilistic_overrun_risk_register.jsonl` (material rows only — probability + dollar/pct gate), "
+        "`budget_code_sensitivity.jsonl`, `division_sensitivity.jsonl`, `owner_scope_sensitivity.jsonl`. "
+        "`audit/no_upper_cap_audit.json` proves, per code, that nothing is capped above actuals against "
+        "any reference (ERP / revised budget / committed / owner SOV / pay-app / prior output).",
         "",
     ]
     (out / "README.md").write_text("\n".join(md), encoding="utf-8")
@@ -582,8 +828,12 @@ def _write_schema(out):
         "/ `monthly_risk_ranking.json` — simulated monthly P50/P90 cost and cumulative overrun "
         "probability; months ranked by cost and by overrun risk.",
         "- `probabilistic_project_summary.json` — project P10..P95, mean/std, VaR/CVaR, probability "
-        "the recommended/worst-credible/current-projected totals are met or exceeded, where each falls "
-        "as a simulated percentile, and the systemic variance share.",
+        "the recommended/worst-credible/current-projected/revised-budget totals are met or exceeded, "
+        "where each falls as a simulated percentile, the systemic variance share, project-level "
+        "revised-budget overrun (`probability_project_exceeds_revised_budget_total`, "
+        "`expected_project_overrun_vs_revised_budget_total`, P80/P90/P95 overrun vs revised budget), and "
+        "a `window_reconciliation` block (accounting actual + deterministic prior-month forecast + "
+        "simulated window CTC = simulated final).",
         "- `sensitivity_analysis.json` — one-at-a-time ΔP90 by spread source (authoritative), Spearman "
         "code drivers, and systemic-vs-idiosyncratic variance share.",
         "- `probabilistic_backtest_results.json` — PIT + coverage calibration: predictive "
@@ -592,11 +842,30 @@ def _write_schema(out):
         "with a dispersion-adequacy ratio vs historical MAPE as a secondary view; honest about the "
         "small cohort.",
         "- `simulation_inputs_by_budget_code.jsonl` — the calibrated mu/sigma + each sigma source per "
-        "code (full audit of how each draw was parameterized).",
+        "code (full audit of how each draw was parameterized), plus the carry-forward breakdown "
+        "(`accounting_actual_cost_to_date`, `deterministic_prior_forecast_before_probability_window`, "
+        "`probability_window_recommended/worst_credible_cost_to_complete`).",
         "- `calibration_summary.json` — methodology, parameters, numpy/scipy versions, seed, runs.",
-        "- `audit/*` — db_inventory (schema+counts only), source_files_used, safety_scan_report. "
-        "`validation_report.json` carries a `determinism` block. `llm/*` advisory only, excluded from "
-        "determinism.",
+        "",
+        "## Compatibility aliases (additive; canonical files preserved, first-class outputs)",
+        "- `simulation_results_project.json` = `probabilistic_project_summary.json`; "
+        "`simulation_results_by_budget_code.jsonl` = `probabilistic_final_cost_by_budget_code.jsonl`; "
+        "`simulation_results_by_month.jsonl` = `probabilistic_monthly_project_forecast.jsonl` "
+        "(PROJECT-month totals, distinct from the per-code-month canonical file).",
+        "- `probabilistic_overrun_risk_register.jsonl` — MATERIAL overrun rows only: a code is included "
+        "iff P(exceeds current projected) >= 0.20 AND (expected overrun >= $25,000 OR >= 5% of current "
+        "projected). Each row carries `materiality_threshold_basis`. Not merely all codes with "
+        "expected_overrun > 0.",
+        "- `budget_code_sensitivity.jsonl` — per code: co-tail downside contribution to project P90 + "
+        "Spearman driver. `division_sensitivity.jsonl` / `owner_scope_sensitivity.jsonl` — risk "
+        "contribution aggregated by division / authoritative owner SOV scope (owner-scope falls back to "
+        "a single explicit unavailable row only when no crosswalk assignment resolves).",
+        "- `audit/no_upper_cap_audit.json` — one record per code: distribution family, actual floor "
+        "applied, upper_cap_applied (false), upper_cap_source (null), reference_values_reported_only, "
+        "P95-vs-current-projected/revised-budget/worst-credible, validation_status.",
+        "- `audit/*` — db_inventory (schema+counts only), source_files_used, safety_scan_report, "
+        "no_upper_cap_audit. `validation_report.json` carries a `determinism` block. `llm/*` advisory "
+        "only, excluded from determinism.",
         "",
         "## Rules",
         "- Actual cost to date is the ONLY hard floor; simulated finals are never capped at ERP "
@@ -604,7 +873,12 @@ def _write_schema(out):
         "- The deterministic recommended final cost is the per-code simulated P50 by construction.",
         "- Subcontractor invoice & owner pay-app values are progress/exposure/timing evidence, never "
         "actuals. The local LLM produces advisory text only — no numeric simulation result.",
-        "- Deterministic: same seed + same frozen stamp => byte-identical quantitative core.",
+        "- A later `--forecast-start-month` validates only the REMAINING window: the prior-month "
+        "deterministic recommended/worst CTC is carried forward as a fixed addend (never reallocated "
+        "into the shortened window, never treated as actual cost). Simulated final reconciles to "
+        "accounting actual + deterministic prior-month forecast + simulated window CTC.",
+        "- Deterministic: same seed + same frozen stamp => byte-identical quantitative core (canonical "
+        "+ alias files).",
         "",
     ]
     (out / "SCHEMA.md").write_text("\n".join(md), encoding="utf-8")

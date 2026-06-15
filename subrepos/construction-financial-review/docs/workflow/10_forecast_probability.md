@@ -27,7 +27,8 @@ cd subrepos/construction-financial-review
 # Deterministic mock (no model), default 10000 runs / seed 20260614:
 PYTHONPATH=src python3 -m construction_financial_review.cli forecast-probability \
   --project tropical --frozen-stamp 20260101_000000 --out-root /tmp/fp_a
-# Fewer runs / a different seed / a later start month:
+# Fewer runs / a different seed / a later start month (validates only the REMAINING window —
+# prior-month deterministic forecast is carried forward, not reallocated; see Guardrails):
 PYTHONPATH=src python3 -m construction_financial_review.cli forecast-probability \
   --project tropical --runs 5000 --seed 7 --forecast-start-month 2026-08
 # Delivered run with live local-Ollama advisory narratives:
@@ -42,18 +43,27 @@ determinism (see `validation_report.json` `determinism` block).
 
 Per-code (127): `probabilistic_final_cost_by_budget_code.jsonl` (P10..P95 + overrun probabilities),
 `code_overrun_probabilities.jsonl`, `downside_exposure_ranking.jsonl` + `top_downside_drivers.json`,
-`simulation_inputs_by_budget_code.jsonl` (calibration audit). Monthly:
+`simulation_inputs_by_budget_code.jsonl` (calibration audit + carry-forward breakdown). Monthly:
 `probabilistic_monthly_by_budget_code.jsonl`, `probabilistic_monthly_project_forecast.jsonl`,
-`monthly_risk_ranking.json`. Project: `probabilistic_project_summary.json`. Diagnostics:
+`monthly_risk_ranking.json`. Project: `probabilistic_project_summary.json` (now incl. project-level
+revised-budget overrun probability + `window_reconciliation`). Diagnostics:
 `sensitivity_analysis.json`, `probabilistic_backtest_results.json`, `calibration_summary.json`. Plus
 `README`, `SCHEMA`, `manifest.json`, `input_inventory.json`, `validation_report.json`,
-`data_quality_warnings.jsonl`, `audit/*`, advisory `llm/*`.
+`data_quality_warnings.jsonl`, `audit/*` (incl. `no_upper_cap_audit.json`), advisory `llm/*`.
+
+**Compatibility aliases** (additive; canonical files preserved): `simulation_results_project.json`,
+`simulation_results_by_budget_code.jsonl`, `simulation_results_by_month.jsonl` (project-month),
+`probabilistic_overrun_risk_register.jsonl` (material rows only — probability + dollar/percentage
+threshold, with the basis recorded per row), `budget_code_sensitivity.jsonl`,
+`division_sensitivity.jsonl`, `owner_scope_sensitivity.jsonl`.
 
 ## How a reviewer reads it
 
 - **`probabilistic_project_summary.json`** — the headline: project P10/P50/P80/P90/P95, where the
-  deterministic recommended and worst-credible totals fall as simulated percentiles, P(final ≥
-  recommended), VaR/CVaR at P90, and the systemic variance share.
+  deterministic recommended / worst-credible / revised-budget totals fall as simulated percentiles, P(final ≥
+  recommended), P(final > revised budget total) with expected + P80/P90/P95 overrun vs revised budget,
+  VaR/CVaR at P90, the systemic variance share, and `window_reconciliation` (accounting actual +
+  deterministic prior-month forecast + simulated window CTC = simulated final).
 - **`probabilistic_final_cost_by_budget_code.jsonl`** — per-code P10..P95 and the probability each code
   exceeds current projected cost / revised budget / recommended final.
 - **`downside_exposure_ranking.jsonl` / `top_downside_drivers.json`** — which codes drive the project
@@ -71,8 +81,12 @@ Per-code (127): `probabilistic_final_cost_by_budget_code.jsonl` (P10..P95 + over
 ## Guardrails
 
 Actual cost to date is the only hard floor; simulated finals are never capped at ERP projected / revised
-budget / committed / owner SOV / Procore pay-app / prior model output. The deterministic recommended is
-the per-code P50 by construction. Subcontractor invoice & owner pay-app values are evidence only. The
-local LLM produces advisory text only — no numeric simulation result. Deterministic given seed + frozen
-stamp. No source/Excel/SQLite/external mutation (DB read-only). Probabilistic numbers are advisory and
-require human acceptance. No commit unless instructed.
+budget / committed / owner SOV / Procore pay-app / prior model output (proven per code in
+`audit/no_upper_cap_audit.json`). The deterministic recommended is the per-code P50 by construction.
+A later `--forecast-start-month` validates only the **remaining** window: prior-month deterministic
+forecast is carried forward as a fixed addend, never reallocated into the shortened window and never
+treated as actual cost (`window_reconciliation` shows the split; a validation gate fails on any full-CTC
+reallocation). Subcontractor invoice & owner pay-app values are evidence only. The local LLM produces
+advisory text only — no numeric simulation result. Deterministic given seed + frozen stamp. No
+source/Excel/SQLite/external mutation (DB read-only). Probabilistic numbers are advisory and require
+human acceptance. No commit unless instructed.

@@ -57,6 +57,12 @@ def simulate(arrays: dict, *, runs: int, seed: int, antithetic: bool = True,
     mu = arrays["mu"]
     sigma = arrays["sigma"]
     actual = arrays["actual"]
+    # Deterministic prior-month forecast carried forward when a later --forecast-start-month shortens
+    # the window (zeros on the default path). Added as a fixed addend; the accounting actual stays the
+    # only hard floor (carried >= 0 and ctc >= 0, so final >= actual).
+    carried = arrays.get("carried_prior_forecast")
+    if carried is None:
+        carried = np.zeros(arrays["n_codes"], dtype=np.float64)
     near = arrays["near_complete"]
     rho = float(arrays["rho"])
 
@@ -69,7 +75,7 @@ def simulate(arrays: dict, *, runs: int, seed: int, antithetic: bool = True,
     ctc = np.exp(mu[None, :] + sigma[None, :] * z)                    # (runs, n)
     if near.any():
         ctc[:, near] = 0.0                                           # complete codes: no remaining cost
-    final = actual[None, :] + ctc                                    # floor exact; no upper cap
+    final = actual[None, :] + carried[None, :] + ctc                # floor exact; no upper cap
 
     project_finals = final.sum(axis=1)
 

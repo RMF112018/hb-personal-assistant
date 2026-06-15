@@ -69,13 +69,19 @@ def _clamp(x: float, lo: float, hi: float) -> float:
     return lo if x < lo else hi if x > hi else x
 
 
-def calibrate_code(rec: dict, conf: dict, trend: dict, mape_value: float, params: dict) -> OrderedDict:
+def calibrate_code(rec: dict, conf: dict, trend: dict, mape_value: float, params: dict,
+                   ctc_override: dict | None = None) -> OrderedDict:
     """Return the calibrated lognormal-CTC parameters + audit sources for one budget code.
 
     rec   = forecast_recommendations_by_budget_code row (anchor package)
     conf  = forecast_confidence_by_budget_code row (anchor package; may be {})
     trend = trend_evidence_by_budget_code row (anchor package; may be {})
     mape_value = method-weighted backtest MAPE for this code (>= 0)
+    ctc_override = optional {"prior_recommended_ctc", "prior_worst_credible_ctc"} used when a later
+        --forecast-start-month shortens the probability window. The prior-month deterministic
+        recommended/worst CTC is subtracted so the lognormal models ONLY the remaining window CTC;
+        the subtracted recommended amount is carried forward as a fixed deterministic addend
+        (NOT treated as actual cost). Default (None) => carried 0, window == full CTC, unchanged.
     """
     actual = _f(rec.get("actual_cost_all_source_to_date"))
     rec_final = _f(rec.get("recommended_final_cost"))
@@ -90,6 +96,17 @@ def calibrate_code(rec: dict, conf: dict, trend: dict, mape_value: float, params
     median_ctc = max(0.0, _f(rec_ctc) if rec_ctc is not None else (rec_final - actual))
     worst_ctc = max(median_ctc,
                     _f(worst_ctc_field) if worst_ctc_field is not None else (worst_final - actual))
+
+    # Carry-forward for a later --forecast-start-month: subtract prior-month deterministic CTC so the
+    # window models only the remaining work; the prior recommended amount is a fixed deterministic
+    # addend (accounting actual is unchanged and remains the only hard floor).
+    carried_prior_forecast = 0.0
+    if ctc_override:
+        prior_rec = max(0.0, _f(ctc_override.get("prior_recommended_ctc")))
+        prior_worst = max(0.0, _f(ctc_override.get("prior_worst_credible_ctc")))
+        carried_prior_forecast = min(prior_rec, median_ctc)     # cannot carry more than the full CTC
+        median_ctc = max(0.0, median_ctc - prior_rec)           # window recommended CTC
+        worst_ctc = max(median_ctc, worst_ctc - prior_worst)    # window worst-credible CTC
 
     cov = max(0.0, _f(trend.get("cost_volatility_cov")))
     divergence = max(0.0, _f(rec.get("model_divergence")))
@@ -109,6 +126,8 @@ def calibrate_code(rec: dict, conf: dict, trend: dict, mape_value: float, params
             ("current_projected_cost", current_projected), ("revised_budget", revised_budget),
             ("committed_cost", committed),
             ("median_ctc", median_ctc), ("worst_ctc", worst_ctc),
+            ("accounting_actual", actual), ("carried_prior_forecast", carried_prior_forecast),
+            ("window_recommended_ctc", median_ctc), ("window_worst_credible_ctc", worst_ctc),
             ("mu", 0.0), ("sigma", 0.0), ("effective_high_quantile", None),
             ("near_complete", True),
             ("sigma_worst", 0.0), ("sigma_cov", 0.0), ("sigma_mape", 0.0),
@@ -140,6 +159,8 @@ def calibrate_code(rec: dict, conf: dict, trend: dict, mape_value: float, params
         ("current_projected_cost", current_projected), ("revised_budget", revised_budget),
         ("committed_cost", committed),
         ("median_ctc", median_ctc), ("worst_ctc", worst_ctc),
+        ("accounting_actual", actual), ("carried_prior_forecast", carried_prior_forecast),
+        ("window_recommended_ctc", median_ctc), ("window_worst_credible_ctc", worst_ctc),
         ("mu", mu), ("sigma", sigma), ("effective_high_quantile", eff_q),
         ("near_complete", False),
         ("sigma_worst", sigma_worst), ("sigma_cov", sigma_cov), ("sigma_mape", sigma_mape),

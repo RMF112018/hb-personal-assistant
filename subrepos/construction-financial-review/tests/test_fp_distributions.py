@@ -67,3 +67,31 @@ def test_overrun_confidence_fattens_tail_without_moving_median():
 def test_sigma_within_floor_and_cap():
     cal = dist.calibrate_code(_rec(40000, 100000, 1_000_000), {}, {"cost_volatility_cov": "5.0"}, 5.0, PARAMS)
     assert PARAMS["sigma_floor"] <= cal["sigma"] <= PARAMS["sigma_cap"]
+
+
+def test_ctc_override_models_only_remaining_window():
+    rec = _rec(40000, 100000, 160000)   # full recommended CTC = 60k, worst CTC = 120k
+    base = dist.calibrate_code(rec, {}, {}, 0.0, PARAMS)
+    # carry forward 20k recommended / 50k worst of prior-month CTC
+    win = dist.calibrate_code(rec, {}, {}, 0.0, PARAMS,
+                              ctc_override={"prior_recommended_ctc": 20000.0,
+                                            "prior_worst_credible_ctc": 50000.0})
+    assert math.isclose(win["window_recommended_ctc"], 40000.0, rel_tol=1e-9)   # 60k - 20k
+    assert math.isclose(win["window_worst_credible_ctc"], 70000.0, rel_tol=1e-9)  # 120k - 50k
+    assert math.isclose(win["carried_prior_forecast"], 20000.0, rel_tol=1e-9)
+    assert win["accounting_actual"] == 40000.0          # accounting actual unchanged
+    assert math.isclose(win["mu"], math.log(40000.0), rel_tol=1e-9)   # median = window CTC
+    # default path is unchanged: window == full CTC, carried == 0
+    assert math.isclose(base["window_recommended_ctc"], 60000.0, rel_tol=1e-9)
+    assert base["carried_prior_forecast"] == 0.0
+
+
+def test_ctc_override_full_prior_makes_window_near_complete():
+    rec = _rec(40000, 100000, 160000)   # full recommended CTC = 60k
+    win = dist.calibrate_code(rec, {}, {}, 0.0, PARAMS,
+                              ctc_override={"prior_recommended_ctc": 60000.0,
+                                            "prior_worst_credible_ctc": 60000.0})
+    # the entire remaining recommended work was before the window -> window is a point mass
+    assert win["near_complete"] is True
+    assert win["window_recommended_ctc"] == 0.0
+    assert math.isclose(win["carried_prior_forecast"], 60000.0, rel_tol=1e-9)

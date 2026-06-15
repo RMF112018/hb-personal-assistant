@@ -27,6 +27,8 @@ def _project():
     return OrderedDict([
         ("total_actual_to_date", 1_000_000.0), ("total_current_projected_cost", 2_000_000.0),
         ("total_recommended_final_cost", 2_200_000.0), ("total_worst_credible_final_cost", 3_000_000.0),
+        ("total_revised_budget", 2_300_000.0),
+        ("total_carried_prior_forecast", 0.0), ("window_override_active", False),
     ])
 
 
@@ -51,6 +53,38 @@ def test_project_summary_cvar_ge_var_and_ranks():
     sp = s["simulated_final_cost_percentiles"]
     assert Decimal(sp["p10"]) <= Decimal(sp["p50"]) <= Decimal(sp["p90"]) <= Decimal(sp["p95"])
     assert 0 <= float(s["recommended_final_percentile_rank"]) <= 100
+
+
+def test_project_revised_budget_probability_present_and_valid():
+    arr = _arrays()
+    sim = simulate.simulate(arr, runs=4000, seed=5)
+    s = risk_metrics.project_summary(sim, arr, _project(), {"systemic_correlation_rho": 0.3})
+    for k in ("revised_budget_total", "probability_project_exceeds_revised_budget_total",
+              "expected_project_overrun_vs_revised_budget_total", "p80_overrun_vs_revised_budget_total",
+              "p90_overrun_vs_revised_budget_total", "p95_overrun_vs_revised_budget_total"):
+        assert k in s
+    assert Decimal("0") <= Decimal(s["probability_project_exceeds_revised_budget_total"]) <= Decimal("1")
+    # expected overrun matches mean(max(pf - revised_budget, 0)) exactly
+    pf = sim["project_finals"]
+    det_rb = _project()["total_revised_budget"]
+    expected = float(np.maximum(pf - det_rb, 0.0).mean())
+    assert abs(float(s["expected_project_overrun_vs_revised_budget_total"]) - expected) <= 0.01
+    # overrun percentiles are floored at 0 and monotonic
+    p80, p90, p95 = (float(s[f"p{q}_overrun_vs_revised_budget_total"]) for q in (80, 90, 95))
+    assert 0.0 <= p80 <= p90 <= p95
+
+
+def test_window_reconciliation_identity_holds():
+    arr = _arrays()
+    sim = simulate.simulate(arr, runs=4000, seed=5)
+    s = risk_metrics.project_summary(sim, arr, _project(), {"systemic_correlation_rho": 0.3})
+    wr = s["window_reconciliation"]
+    # default (no override): carried forecast is zero; identity reconciles to the simulated mean
+    assert wr["forecast_start_override_active"] is False
+    total = (float(wr["accounting_actual_cost_to_date"])
+             + float(wr["deterministic_prior_forecast_before_probability_window"])
+             + float(wr["simulated_probability_window_cost_to_complete"]))
+    assert abs(total - float(wr["simulated_final_cost_including_carried_forecast"])) <= 0.01
 
 
 def test_downside_ranking_is_sorted_and_complete():
