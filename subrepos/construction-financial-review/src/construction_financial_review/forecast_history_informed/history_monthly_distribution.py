@@ -32,6 +32,8 @@ def build_distribution(signal: dict, validation: dict, reliability: dict, monthl
     sched_w = _d(shares.get("schedule_weight"))
     ce_w = _d(shares.get("cost_entries_weight"))
     inv_w = _d(shares.get("subcontractor_invoice_weight"))
+    # explicit: did we have real accepted monthly source-share evidence, or did we fall back to equal?
+    source_shares_available = (sched_w + ce_w + inv_w) > ZERO
 
     reliability_score = _d(reliability.get("overall_history_reliability_score"))
     curve_shape = signal.get("latest_curve_shape_class")
@@ -62,6 +64,9 @@ def build_distribution(signal: dict, validation: dict, reliability: dict, monthl
         ("budget_code_key", key),
         ("cost_code", signal.get("cost_code")),
         ("current_monthly_distribution_basis", mr.get("monthly_forecast_basis")),
+        ("source_shares_available", source_shares_available),
+        ("distribution_source_basis",
+         "accepted_monthly_source_shares" if source_shares_available else "equal_weight_fallback"),
         ("historical_curve_shape_class", curve_shape),
         ("history_curve_weight_suggestion", _q4(history_curve_weight)),
         ("schedule_weight_suggestion", _q4(sched_s)),

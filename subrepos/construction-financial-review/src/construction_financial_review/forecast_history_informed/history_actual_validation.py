@@ -36,7 +36,8 @@ def _trailing_burn(ordered_months: list, n: int) -> Decimal:
 
 
 def build_validation(cost_code: str, rows: list, mapping: dict, context_by: dict,
-                     intel: dict, project_key: str) -> OrderedDict:
+                     intel: dict, cfg_fhi: dict, project_key: str) -> OrderedDict:
+    zero_inactivity_threshold = int((cfg_fhi or {}).get("actual_inactivity_months_for_zero_support", 12))
     key = mapping.get("budget_code_key")
     series = snapshot_remaining_series(rows)
     latest_snap = list(series.keys())[-1] if series else None
@@ -85,7 +86,8 @@ def build_validation(cost_code: str, rows: list, mapping: dict, context_by: dict
     late_emergence = _late_emergence(months)
 
     vclass, vconf, override = _classify(remaining, actual_in_window, abs_var, accel_ratio,
-                                        inactivity, len(after), burn12, bool(months))
+                                        inactivity, len(after), burn12, bool(months),
+                                        zero_inactivity_threshold)
 
     base.update(OrderedDict([
         ("validation_window_start", after[0][0] if after else None),
@@ -130,16 +132,19 @@ def _late_emergence(months: list) -> bool:
     return any(g >= 3 for g in gaps)
 
 
-def _classify(remaining, actual, abs_var, accel_ratio, inactivity, n_after, recent_12mo_burn, has_actuals):
+def _classify(remaining, actual, abs_var, accel_ratio, inactivity, n_after, recent_12mo_burn,
+              has_actuals, zero_inactivity_threshold):
     """Return (validation_class, confidence, actual_trend_override_score)."""
     escalating = accel_ratio is not None and accel_ratio >= Decimal("1.15")
     if remaining <= ZERO_EPS:
-        # zero-remaining recommendation requires actual inactivity evidence (no meaningful recent burn)
+        # zero-remaining recommendation requires actual inactivity evidence: the configured number of
+        # post-snapshot inactive months AND no meaningful recent burn. Unexpected material actuals
+        # contradict the zero; insufficient inactivity months stay inconclusive.
         if not has_actuals:
             return "inconclusive_zero", Decimal("0.40"), ZERO
         if actual > MATERIAL:
             return "contradicted_unexpected_actuals", Decimal("0.70"), Decimal("0.90")
-        if recent_12mo_burn.copy_abs() <= MATERIAL:
+        if inactivity >= zero_inactivity_threshold and recent_12mo_burn.copy_abs() <= MATERIAL:
             return "validated_zero_inactive", Decimal("0.75"), ZERO
         return "inconclusive_zero", Decimal("0.40"), ZERO
     # nonzero remaining forecast

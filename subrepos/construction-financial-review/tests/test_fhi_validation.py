@@ -81,3 +81,36 @@ def test_count_mismatch_fails_closed(tmp_path):
     inputs["count_reconciliation"]["reconciled"] = False
     rep = fhi_validation.build_validation(tmp_path, inputs, coll, audit, det, safety, meta, False, [])
     assert rep["checks"]["historical_package_counts_reconciled"] is False
+
+
+def test_divergence_reported_passes_when_classified(tmp_path):
+    """A surfaced divergence (classified row with both reality-check fields) passes the gate."""
+    coll = _collections()
+    coll["historical_vs_actual_validation_by_budget_code.jsonl"][0].update({
+        "validation_class": "contradicted_escalation", "actual_trend_override_score": "0.9500"})
+    _write_pkg(tmp_path, coll)
+    inputs, audit, det, safety, meta = _ctx()
+    rep = fhi_validation.build_validation(tmp_path, inputs, coll, audit, det, safety, meta, False, [])
+    assert rep["checks"]["history_vs_actual_divergence_reported"] is True
+
+
+def test_unclassified_validation_fails_divergence_gate(tmp_path):
+    """A validation row missing its class is not surfaced -> gate fails closed (no more `or True`)."""
+    coll = _collections()
+    coll["historical_vs_actual_validation_by_budget_code.jsonl"][0]["validation_class"] = ""
+    _write_pkg(tmp_path, coll)
+    inputs, audit, det, safety, meta = _ctx()
+    rep = fhi_validation.build_validation(tmp_path, inputs, coll, audit, det, safety, meta, False, [])
+    assert rep["passed"] is False
+    assert rep["checks"]["history_vs_actual_divergence_reported"] is False
+
+
+def test_missing_reality_check_field_fails_divergence_gate(tmp_path):
+    """A row missing a reality-check field can't evidence divergence -> gate fails closed."""
+    coll = _collections()
+    del coll["historical_vs_actual_validation_by_budget_code.jsonl"][0][
+        "cost_entries_actual_cost_in_window"]
+    _write_pkg(tmp_path, coll)
+    inputs, audit, det, safety, meta = _ctx()
+    rep = fhi_validation.build_validation(tmp_path, inputs, coll, audit, det, safety, meta, False, [])
+    assert rep["checks"]["history_vs_actual_divergence_reported"] is False

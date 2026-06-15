@@ -5,6 +5,7 @@ from construction_financial_review.forecast_history_informed import history_actu
 
 KEY = "1000.20-18-110.OVH"
 MAP = {"budget_code_key": KEY, "mapping_status": "cost_code_unique_budget_match"}
+CFG = {"actual_inactivity_months_for_zero_support": 12}
 
 
 def _fr(snap, pm, amt):
@@ -29,17 +30,36 @@ def _ma(values, start=(2025, 5)):
 
 
 def test_validated_zero_inactive():
-    rows = [_fr("2026-04", "2099-01", 0)]
-    ctx = _ctx(_ma([0, 0, 0, 0, 0, 0], start=(2025, 11)))
-    v = hav.build_validation("20-18-110", rows, MAP, ctx, {}, "tropical")
+    # 12 inactive post-snapshot months meet the configured threshold -> validated
+    rows = [_fr("2025-04", "2099-01", 0)]
+    ctx = _ctx(_ma([0] * 12, start=(2025, 5)))
+    v = hav.build_validation("20-18-110", rows, MAP, ctx, {}, CFG, "tropical")
     assert v["validation_class"] == "validated_zero_inactive"
+    assert v["actual_inactivity_months_after_forecast"] >= 12
+
+
+def test_fewer_than_threshold_inactive_is_inconclusive():
+    # only 6 inactive post-snapshot months < configured 12 -> not enough inactivity to validate zero
+    rows = [_fr("2025-04", "2099-01", 0)]
+    ctx = _ctx(_ma([0, 0, 0, 0, 0, 0], start=(2025, 5)))
+    v = hav.build_validation("20-18-110", rows, MAP, ctx, {}, CFG, "tropical")
+    assert v["actual_inactivity_months_after_forecast"] == 6
+    assert v["validation_class"] == "inconclusive_zero"
+
+
+def test_unexpected_actuals_contradict_zero():
+    # zero forecast, then material booked cost emerges -> contradicted regardless of threshold
+    rows = [_fr("2025-04", "2099-01", 0)]
+    ctx = _ctx(_ma([0, 0, 0, 0, 80000, 0, 0, 0, 0, 0, 0, 0], start=(2025, 5)))
+    v = hav.build_validation("20-18-110", rows, MAP, ctx, {}, CFG, "tropical")
+    assert v["validation_class"] == "contradicted_unexpected_actuals"
 
 
 def test_contradicted_escalation():
     rows = [_fr("2025-06", "2099-01", 50000)]
     # escalating recent burn, actuals far exceed the prior remaining
     ctx = _ctx(_ma([1000, 1000, 1000, 80000, 90000, 120000], start=(2025, 7)))
-    v = hav.build_validation("20-18-110", rows, MAP, ctx, {}, "tropical")
+    v = hav.build_validation("20-18-110", rows, MAP, ctx, {}, CFG, "tropical")
     assert v["validation_class"] == "contradicted_escalation"
     assert Decimal(v["actual_trend_override_score"]) > Decimal("0")
 
@@ -47,14 +67,14 @@ def test_contradicted_escalation():
 def test_credit_reversal_pattern():
     rows = [_fr("2025-06", "2099-01", 50000)]
     ctx = _ctx(_ma([20000, -5000, 10000], start=(2025, 7)))
-    v = hav.build_validation("20-18-110", rows, MAP, ctx, {}, "tropical")
+    v = hav.build_validation("20-18-110", rows, MAP, ctx, {}, CFG, "tropical")
     assert v["credits_deductive_pattern"] is True
 
 
 def test_no_unique_mapping_is_insufficient():
     rows = [_fr("2025-06", "2099-01", 50000)]
     m = {"budget_code_key": None, "mapping_status": "cost_code_multi_category_rollup"}
-    v = hav.build_validation("15-16-110", rows, m, {}, {}, "tropical")
+    v = hav.build_validation("15-16-110", rows, m, {}, {}, CFG, "tropical")
     assert v["validation_class"] == "insufficient_actuals_no_unique_mapping"
 
 
@@ -62,7 +82,7 @@ def test_no_historical_value_used_as_actual():
     """The actual field is sourced from CostEntries, distinct from the historical forecast field."""
     rows = [_fr("2025-06", "2099-01", 50000)]
     ctx = _ctx(_ma([10000, 10000, 10000], start=(2025, 7)))
-    v = hav.build_validation("20-18-110", rows, MAP, ctx, {}, "tropical")
+    v = hav.build_validation("20-18-110", rows, MAP, ctx, {}, CFG, "tropical")
     assert "cost_entries_actual_cost_in_window" in v
     assert "historical_forecasted_remaining_in_window" in v
     assert v["cost_entries_actual_cost_in_window"] != v["historical_forecasted_remaining_in_window"]

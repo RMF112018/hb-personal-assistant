@@ -210,6 +210,9 @@ def load_inputs(cfg: dict, data_root: Path, project_key: str) -> OrderedDict:
     if monthly_pkg:
         monthly = {
             "monthly": _by_key(monthly_pkg / "monthly_forecast_by_budget_code.jsonl"),
+            # per-code accepted source-share blend (schedule / cost-entries / invoice / flat weights):
+            # the real source_shares evidence the advisory monthly distribution rebalances.
+            "confidence": _by_key(monthly_pkg / "monthly_forecast_confidence_by_budget_code.jsonl"),
             "schedule_phasing": _by_key(monthly_pkg / "schedule_monthly_phasing_by_budget_code.jsonl"),
             "cost_entry_trends": _by_key(monthly_pkg / "cost_entry_monthly_trends_by_budget_code.jsonl"),
             "cashflow": read_json(monthly_pkg / "project_monthly_cashflow_summary.json")

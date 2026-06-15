@@ -89,18 +89,26 @@ def _build_collections(inputs: dict, project_key: str) -> dict:
         signal = history_signals.build_signal(cc, rows, mp, project_key)
         signals.append(signal)
         curves.extend(history_signals.build_curve_rows(cc, rows, mp, project_key))
-        v = history_actual_validation.build_validation(cc, rows, mp, context_by, intel, project_key)
+        v = history_actual_validation.build_validation(cc, rows, mp, context_by, intel, fhi_cfg,
+                                                       project_key)
         validations.append(v)
+        # accepted monthly source-share blend for this code (real schedule/cost-entries/invoice weights)
+        monthly_source_row = (monthly.get("confidence") or {}).get(key)
         rel = history_reliability.build_reliability(signal, v, intel, key, reference_month,
-                                                    half_life, project_key)
+                                                    half_life, monthly_source_row, project_key)
         reliabilities.append(rel)
         adj = history_recommendations.build_adjustment(
             signal, v, rel, (intel.get("recommendations") or {}).get(key), context_by.get(key),
             fhi_cfg, project_key)
         adjustments.append(adj)
         dist = history_monthly_distribution.build_distribution(
-            signal, v, rel, (monthly.get("monthly") or {}).get(key), fhi_cfg, project_key)
+            signal, v, rel, monthly_source_row, fhi_cfg, project_key)
         distributions.append(dist)
+        # surface the equal-weight fallback when a mapped code has no accepted source-share evidence
+        if key and monthly and not dist.get("source_shares_available"):
+            warnings.append(_warn(project_key, key, cc, "monthly_source_shares_unavailable", "low",
+                                  f"{cc} has no accepted monthly source-share evidence; advisory monthly "
+                                  "distribution used the equal-weight fallback."))
         padj = history_probability_adjustments.build_probability_adjustment(
             signal, v, rel, (probability.get("sim_inputs") or {}).get(key),
             (probability.get("overrun") or {}).get(key), project_key)
@@ -351,7 +359,7 @@ def _manifest(out, project_key, meta, conclusion, validation):
     return OrderedDict([
         ("package_name", out.name),
         ("manifest_title", "Forecast History-Informed Evidence Package — Tropical World Nursery"),
-        ("manifest_version", "1.0.0"),
+        ("manifest_version", "1.1.0"),
         ("project", OrderedDict([("project_key", project_key),
                                  ("project_name", "Tropical World Nursery Senior Living Facility"),
                                  ("job_reference", "23-435-01"), ("forecast_period", "2026-June")])),
@@ -518,7 +526,10 @@ def _write_schema(out):
         "actual cost in the post-snapshot window: variance, inactivity, recent burns, escalation, "
         "credits, actual-trend override score, validation_class/confidence. CostEntries are truth.",
         "- `historical_assumption_reliability_by_budget_code.jsonl` — persistence/recency/stability/"
-        "actual-validation/contradiction/schedule/invoice scores → overall reliability + band + reasons.",
+        "actual-validation/contradiction/schedule scores + a tiered actual-evidence support score "
+        "(`actual_evidence_support_score` = CostEntries monthly activity [primary] > subcontractor-"
+        "invoice source share [secondary] > months-of-completed-actuals density [tertiary]) → overall "
+        "reliability + band + reasons.",
         "- `history_informed_forecast_adjustment_by_budget_code.jsonl` — ADVISORY direction + adjustment "
         "(weighted by reliability; floored at actuals; never capped above any reference; do_not_auto_apply).",
         "- `history_informed_monthly_distribution_by_budget_code.jsonl` — advisory curve-shape monthly "

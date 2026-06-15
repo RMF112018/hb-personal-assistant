@@ -46,9 +46,16 @@ requires human acceptance; no accepted intelligence/monthly/probability package 
    CostEntries actual cost in the post-snapshot window — variance, inactivity, recent 1/3/6/12-mo burn,
    escalation, credits/reversals — and classify (validated_zero_inactive / validated_aligned /
    contradicted_escalation / contradicted_unexpected_actuals / history_overstated / inconclusive). A
-   recent escalating trend produces an **override score** so stale history never wins.
+   recent escalating trend produces an **override score** so stale history never wins. A zero-remaining
+   assumption validates as `validated_zero_inactive` only when post-snapshot inactive months meet the
+   config threshold `actual_inactivity_months_for_zero_support` (and recent burn is immaterial);
+   otherwise `inconclusive_zero`, and unexpected material actuals → `contradicted_unexpected_actuals`.
 5. **Reliability** (`history_reliability`): blend persistence/recency/stability/actual-validation/
-   contradiction/schedule/invoice support → overall score + band; **contradiction collapses the score**.
+   contradiction/schedule support + a **tiered actual-evidence support score**
+   (`actual_evidence_support_score`: CostEntries monthly activity [primary, graded strong/weak/absent] >
+   subcontractor-invoice source share [secondary, from the accepted monthly blend] >
+   months-of-completed-actuals density [tertiary fallback]) → overall score + band; **contradiction
+   collapses the score**. (Density is never labeled invoice support.)
 6. **Advisory outputs** (`history_recommendations` / `history_monthly_distribution` /
    `history_probability_adjustments`): a forecast adjustment nudged toward the historical-implied EAC
    *in proportion to reliability* (floored at actuals, never capped, `do_not_auto_apply`); curve-shape

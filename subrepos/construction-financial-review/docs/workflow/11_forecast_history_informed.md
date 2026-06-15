@@ -52,7 +52,9 @@ source_hashes_before_after, db_inventory, safety_scan_report, historical_source_
   class, reliability band; zero-remaining validated candidates; contradicted assumptions.
 - **`historical_vs_actual_validation_by_budget_code.jsonl`** — did the prior assumption hold up against
   CostEntries? Watch for `contradicted_escalation` (actuals overran a stale forecast) and
-  `validated_zero_inactive` (a prior zero confirmed by real inactivity).
+  `validated_zero_inactive` (a prior zero confirmed by real inactivity — only when post-snapshot
+  inactive months meet the config threshold `actual_inactivity_months_for_zero_support`; otherwise
+  `inconclusive_zero`, and unexpected material actuals → `contradicted_unexpected_actuals`).
 - **`history_informed_forecast_adjustment_by_budget_code.jsonl`** — advisory nudge toward the prior
   EAC, weighted by reliability, floored at actuals, never capped (`do_not_auto_apply`).
 - **`audit/gcgr_proportionality_audit.json`** — the GC-fee (20-18-110) taper hypothesis: reported

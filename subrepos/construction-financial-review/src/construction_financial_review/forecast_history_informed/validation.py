@@ -82,10 +82,16 @@ def build_validation(out, inputs, collections, audit, determinism, safety, meta,
         _d(v.get("actual_trend_override_score")) is None or _d(v.get("actual_trend_override_score")) > 0
         for v in validations if (v.get("validation_class") or "").startswith("contradicted"))
 
-    divergence_reported = any((v.get("validation_class") or "").startswith("contradicted")
-                              or (v.get("validation_class") in ("actuals_exceed_history",
-                                                                "history_overstated_remaining"))
-                              for v in validations) or len(validations) == 0 or True
+    # history-vs-actual divergence is reported fail-closed: the validation set must be non-empty, every
+    # row must carry a validation_class, and every row must carry BOTH reality-check fields (CostEntries
+    # actual vs historical remaining) so any divergence (contradicted_*, actuals_exceed_history,
+    # history_overstated_remaining) is evidence-backed and surfaced via its class. An empty set, an
+    # unclassified row, or a row missing a reality-check field fails the gate.
+    all_classified = bool(validations) and all((v.get("validation_class") or "") for v in validations)
+    class_fields_present = all(("cost_entries_actual_cost_in_window" in v
+                                and "historical_forecasted_remaining_in_window" in v)
+                               for v in validations)
+    divergence_reported = all_classified and class_fields_present
 
     gcgr_present = bool(audit.get("gcgr_proportionality_audit"))
 

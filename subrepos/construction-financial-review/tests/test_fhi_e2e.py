@@ -66,6 +66,30 @@ def test_gcgr_fee_taper_audit(tmp_path):
         "confirmed", "tapering_consistent_not_confirmed", "unsupported", "insufficient_evidence")
 
 
+def test_monthly_distribution_uses_real_source_shares(tmp_path):
+    out, _ = _generate(tmp_path)
+    dist = list(read_jsonl(out / "history_informed_monthly_distribution_by_budget_code.jsonl"))
+    # every advisory distribution row declares its source basis explicitly
+    assert dist and all("source_shares_available" in d and "distribution_source_basis" in d
+                        for d in dist)
+    if list(DATA_ROOT.glob("forecast_monthly_package_tropical_*")):
+        # with the accepted monthly package present, real source shares must reach at least some rows
+        assert any(d["source_shares_available"] is True
+                   and d["distribution_source_basis"] == "accepted_monthly_source_shares"
+                   for d in dist)
+
+
+def test_reliability_actual_evidence_support_fields(tmp_path):
+    out, _ = _generate(tmp_path)
+    rel = list(read_jsonl(out / "historical_assumption_reliability_by_budget_code.jsonl"))
+    assert rel
+    for r in rel:
+        assert "invoice_support_score" not in r          # misleading field is gone
+        for f in ("cost_entry_activity_support_score", "subcontractor_invoice_support_score",
+                  "actual_history_density_support_score", "actual_evidence_support_score"):
+            assert f in r, f
+
+
 def test_determinism_byte_identical_quant_core(tmp_path):
     a, _ = _generate(tmp_path / "a")
     b, _ = _generate(tmp_path / "b")
