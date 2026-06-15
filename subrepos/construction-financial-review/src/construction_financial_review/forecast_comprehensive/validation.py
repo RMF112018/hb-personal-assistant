@@ -80,6 +80,9 @@ def build_validation(out, inputs, collections, audit, determinism, safety, meta,
     actuals_gates = (actuals_export.validation_gates(
         collections, canonical, bool(inputs.get("actuals_contamination_ok", True)))
         if actuals_present else OrderedDict())
+    # combined actuals+forecast CSV gates (only when the package emits it)
+    apf_present = "actuals_plus_forecast_monthly_by_cost_code.csv" in collections
+    apf_gates = actuals_export.combined_validation_gates(collections) if apf_present else OrderedDict()
 
     llm_receipts_ok = True
     if llm_used:
@@ -114,6 +117,7 @@ def build_validation(out, inputs, collections, audit, determinism, safety, meta,
         ("operator_staffing_plan_evidence_present_when_active", sp_evidence_ok),
         ("operator_staffing_plan_advisory_requires_acceptance", sp_advisory_ok),
         *actuals_gates.items(),
+        *apf_gates.items(),
         ("meta_files_present", all((out / f).exists() for f in meta_doc)),
         ("source_hashes_unchanged", source_unchanged),
         ("no_sqlite_mutation", True),

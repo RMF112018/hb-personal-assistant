@@ -95,7 +95,11 @@ seven files `actuals_monthly_by_{budget_code,cost_code}.{jsonl,csv}`,
 `audit/actuals_monthly_reconciliation_audit.json`. Dense per code × month (zero months are
 `0.00`/`is_actual: true`, never a `null` sentinel); reconciles per code/cost-code/project to actual cost
 to date; comprehensive re-emits them so the final package is self-contained. Additive evidence only — it
-never changes a recommendation value (`docs/architecture/forecast_actuals_monthly.md`).
+never changes a recommendation value. The comprehensive package additionally emits a combined
+`actuals_plus_forecast_monthly_by_cost_code.csv` (+ a budget-code traceability CSV and audit) that
+stitches historical CostEntries actuals (months before the current forecast month) to the integrated
+forecast (current forecast month forward; boundary = earliest integrated forecast month, e.g. `2026-06`),
+reconciling each half separately (`docs/architecture/forecast_actuals_monthly.md`).
 
 ## Current project supported
 

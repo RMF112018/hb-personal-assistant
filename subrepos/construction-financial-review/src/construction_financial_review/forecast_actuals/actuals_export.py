@@ -18,7 +18,7 @@ from decimal import Decimal
 
 from ..common.io import read_jsonl, write_csv, write_json, write_jsonl
 from ..common.money import D, money_str
-from ..forecast_cost_frequency.weekday_calendar import months_between
+from ..forecast_cost_frequency.weekday_calendar import add_months, months_between
 
 ZERO = Decimal("0")
 CENTS = Decimal("0.01")
@@ -273,6 +273,147 @@ def validation_gates(collections, canonical_keys, contamination_ok: bool) -> "Or
         ("actuals_project_total_reconciles",
          bool(audit.get("budget_code_equals_project_total") and audit.get("budget_code_equals_cost_code_total"))),
         ("actuals_source_is_costentries_only", bool(contamination_ok)),
+    ])
+
+
+ACTUALS_PLUS_FORECAST_DATA_FILES = (
+    "actuals_plus_forecast_monthly_by_cost_code.csv",
+    "actuals_plus_forecast_monthly_by_budget_code.csv",
+)
+ACTUALS_PLUS_FORECAST_AUDIT_FILE = "audit/actuals_plus_forecast_monthly_by_cost_code_audit.json"
+ACTUALS_PLUS_FORECAST_FILES = ACTUALS_PLUS_FORECAST_DATA_FILES + (ACTUALS_PLUS_FORECAST_AUDIT_FILE,)
+
+
+def build_actuals_plus_forecast(project_key, budget_codes, actuals_cc_rows, actuals_bc_rows,
+                                integrated_monthly_rows) -> dict:
+    """Combine historical CostEntries actuals (months < current forecast month) with the integrated
+    comprehensive monthly forecast (current forecast month forward) into month-by-month matrices,
+    collapsed to cost code (+ an optional budget-code traceability matrix). Pure + deterministic.
+
+    Boundary rule: ``current_forecast_month`` = the earliest integrated forecast month; that month and
+    all later months use the forecast even if an actual exists (no June-2026 actual leak). Months before
+    it use CostEntries actuals only. This is an export/bridge — it changes no recommendation value.
+    """
+    # forecast months + boundary (package-derived; never the system date)
+    fmonths = sorted({mc.get("forecast_month") for r in integrated_monthly_rows
+                      for mc in (r.get("monthly_costs") or []) if mc.get("forecast_month")})
+    current_forecast_month = fmonths[0] if fmonths else None
+
+    # per-(cost_code, month) actuals (months < boundary) and forecast (months >= boundary)
+    actual_cc, actual_bc = {}, {}
+    cc_desc, bc_meta = OrderedDict(), OrderedDict()
+    for r in actuals_cc_rows:
+        actual_cc[(r["cost_code"], r["month"])] = D(r.get("actual_cost"))
+        if r["cost_code"] not in cc_desc:
+            cc_desc[r["cost_code"]] = r.get("cost_code_description")
+    for r in actuals_bc_rows:
+        actual_bc[(r["budget_code_key"], r["month"])] = D(r.get("actual_cost"))
+        bc_meta[r["budget_code_key"]] = (r.get("cost_code"), r.get("cost_type"),
+                                         r.get("budget_code_description"))
+    forecast_cc, forecast_bc = defaultdict(lambda: ZERO), defaultdict(lambda: ZERO)
+    for r in integrated_monthly_rows:
+        key, cc = r.get("budget_code_key"), r.get("cost_code")
+        bc_meta.setdefault(key, (cc, None, None))
+        for mc in (r.get("monthly_costs") or []):
+            m, amt = mc.get("forecast_month"), D(mc.get("integrated_month_cost"))
+            forecast_cc[(cc, m)] += amt
+            forecast_bc[(key, m)] += amt
+
+    # contiguous month axis across all actual + forecast months
+    all_months = sorted({m for (_cc, m) in actual_cc} | set(fmonths))
+    months = months_between(all_months[0], all_months[-1]) if all_months else []
+
+    def _is_forecast(m):
+        return current_forecast_month is not None and m >= current_forecast_month
+
+    def _cc_cell(cc, m):
+        return forecast_cc.get((cc, m), ZERO) if _is_forecast(m) else actual_cc.get((cc, m), ZERO)
+
+    def _bc_cell(key, m):
+        return forecast_bc.get((key, m), ZERO) if _is_forecast(m) else actual_bc.get((key, m), ZERO)
+
+    cost_codes = sorted({cc for (cc, _m) in actual_cc} | {cc for (cc, _m) in forecast_cc})
+    budget_keys = sorted(set(bc_meta))
+
+    cc_csv_rows, actual_total, forecast_total = [], ZERO, ZERO
+    for cc in cost_codes:
+        row = OrderedDict([("cost_code", cc)])
+        for m in months:
+            v = _cc_cell(cc, m)
+            row[m] = money_str(v)
+            if _is_forecast(m):
+                forecast_total += v
+            else:
+                actual_total += v
+        cc_csv_rows.append(row)
+
+    bc_csv_rows = []
+    for key in budget_keys:
+        cc, cat, desc = bc_meta[key]
+        row = OrderedDict([("budget_code_key", key), ("cost_code", cc), ("cost_type", cat),
+                           ("budget_code_description", desc)])
+        for m in months:
+            row[m] = money_str(_bc_cell(key, m))
+        bc_csv_rows.append(row)
+
+    # reconciliation: actual side vs actuals jsonl (< boundary); forecast side vs integrated (>= boundary)
+    actual_recon_src = sum((v for (cc, m), v in actual_cc.items() if not _is_forecast(m)), ZERO)
+    forecast_recon_src = sum((v for (k, m), v in forecast_bc.items() if _is_forecast(m)), ZERO)
+    actual_ok = abs(actual_total - actual_recon_src) <= CENTS
+    forecast_ok = abs(forecast_total - forecast_recon_src) <= CENTS
+    combined_total = actual_total + forecast_total
+    months_sorted_ok = months == sorted(months)
+    validation_passed = bool(actual_ok and forecast_ok and months_sorted_ok)
+
+    audit = OrderedDict([
+        ("project_key", project_key),
+        ("current_forecast_month", current_forecast_month),
+        ("actual_month_start", months[0] if months else None),
+        ("actual_month_end", add_months(current_forecast_month, -1) if current_forecast_month else
+         (months[-1] if months else None)),
+        ("forecast_month_start", current_forecast_month),
+        ("forecast_month_end", fmonths[-1] if fmonths else None),
+        ("cost_code_count", len(cost_codes)),
+        ("budget_code_count", len(budget_keys)),
+        ("month_columns", months),
+        ("actual_source", ACTUAL_SOURCE),
+        ("forecast_source", "forecast_comprehensive.integrated_monthly_forecast"),
+        ("actual_total", money_str(actual_total)),
+        ("forecast_total", money_str(forecast_total)),
+        ("combined_total", money_str(combined_total)),
+        ("actual_months_reconciled", bool(actual_ok)),
+        ("forecast_months_reconciled", bool(forecast_ok)),
+        ("month_columns_sorted", bool(months_sorted_ok)),
+        ("boundary_rule", "months < current_forecast_month use CostEntries actuals; current month and "
+                          "later use the integrated forecast (June-2026 actuals are not used)"),
+        ("validation_passed", validation_passed),
+    ])
+    return {
+        "actuals_plus_forecast_monthly_by_cost_code.csv": {
+            "fieldnames": ["cost_code", *months], "rows": cc_csv_rows},
+        "actuals_plus_forecast_monthly_by_budget_code.csv": {
+            "fieldnames": ["budget_code_key", "cost_code", "cost_type", "budget_code_description",
+                           *months], "rows": bc_csv_rows},
+        ACTUALS_PLUS_FORECAST_AUDIT_FILE: audit,
+    }
+
+
+def combined_validation_gates(collections) -> "OrderedDict":
+    """Fail-closed gates for the combined actuals+forecast export (used by forecast_comprehensive)."""
+    cc_csv = collections.get("actuals_plus_forecast_monthly_by_cost_code.csv") or {"rows": [], "fieldnames": []}
+    audit = collections.get(ACTUALS_PLUS_FORECAST_AUDIT_FILE) or {}
+    fields = cc_csv.get("fieldnames") or []
+    month_cols = fields[1:]
+    return OrderedDict([
+        ("actuals_plus_forecast_cost_code_csv_present", bool(cc_csv.get("rows"))),
+        ("actuals_plus_forecast_budget_code_csv_present",
+         bool((collections.get("actuals_plus_forecast_monthly_by_budget_code.csv") or {}).get("rows"))),
+        ("actuals_plus_forecast_audit_present", bool(audit)),
+        ("actuals_plus_forecast_first_column_is_cost_code", fields[:1] == ["cost_code"]),
+        ("actuals_plus_forecast_months_sorted", month_cols == sorted(month_cols)),
+        ("actuals_plus_forecast_actual_side_reconciled", bool(audit.get("actual_months_reconciled"))),
+        ("actuals_plus_forecast_forecast_side_reconciled", bool(audit.get("forecast_months_reconciled"))),
+        ("actuals_plus_forecast_validation_passed", bool(audit.get("validation_passed"))),
     ])
 
 

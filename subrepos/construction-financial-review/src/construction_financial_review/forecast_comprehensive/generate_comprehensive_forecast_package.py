@@ -65,9 +65,10 @@ DATA_FILES = (
     "top_evidence_conflicts.json",
     "top_human_review_items.json",
     "data_quality_warnings.jsonl",
-) + actuals_export.ACTUALS_DATA_FILES
+) + actuals_export.ACTUALS_DATA_FILES + actuals_export.ACTUALS_PLUS_FORECAST_DATA_FILES
 AUDIT_DATA_FILES = (
     actuals_export.ACTUALS_AUDIT_FILE,
+    actuals_export.ACTUALS_PLUS_FORECAST_AUDIT_FILE,
     "audit/evidence_registry_audit.json",
     "audit/evidence_weighting_audit.json",
     "audit/history_consumption_audit.json",
@@ -300,6 +301,10 @@ def _build_collections(inputs: dict, project_key: str) -> dict:
         project_key, inputs["budget_codes"], inputs["actuals_monthly_by_key"],
         inputs["actuals_to_date_by_key"], rec_by_key=inputs["actuals_rec_by_key"],
         forecast_start_month=None))
+    # combined actuals(historical) + integrated forecast month-by-month matrix, collapsed to cost code
+    out.update(actuals_export.build_actuals_plus_forecast(
+        project_key, inputs["budget_codes"], out["actuals_monthly_by_cost_code.jsonl"],
+        out["actuals_monthly_by_budget_code.jsonl"], out["integrated_monthly_forecast_by_budget_code.jsonl"]))
     return out
 
 

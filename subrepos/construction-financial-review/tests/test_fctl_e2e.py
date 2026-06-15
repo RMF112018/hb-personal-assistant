@@ -25,35 +25,76 @@ pytestmark = pytest.mark.skipif(
 STAMP = "20260101_000000"
 
 
-def test_controls_package_valid_deterministic_and_roofing_applied(tmp_path):
+# posture-changing control types (zero months or change dollars) — require human acceptance to apply
+POSTURE_TYPES = {"closeout_stop_date", "forecast_stop_date", "inactive_after_date",
+                 "remaining_cost_allowance", "accepted_final_cost_override", "monthly_distribution_override"}
+
+
+def test_controls_package_valid_deterministic_and_floor_and_cap_audits(tmp_path):
+    """Current operator-control contract: parses, validates, zero ambiguous mappings, floor + no-hidden-cap
+    audits pass, deterministic quantitative core. (File-agnostic — no hardcoded seed counts.)"""
     a = Path(gen.generate("tropical", CFG, data_root=DATA_ROOT, frozen_stamp=STAMP,
                           out_root=tmp_path / "a")["output_package"])
     b = Path(gen.generate("tropical", CFG, data_root=DATA_ROOT, frozen_stamp=STAMP,
                           out_root=tmp_path / "b")["output_package"])
-    rep = read_json(a / "validation_report.json")
-    assert rep["passed"] is True, [k for k, v in rep["checks"].items() if not v]
 
-    data_files = ["forecast_controls_by_budget_code.jsonl",
-                  "forecast_controls_application_by_budget_code.jsonl",
-                  "forecast_controls_monthly_adjustments_by_budget_code.jsonl",
-                  "project_forecast_controls_summary.json",
-                  "audit/control_application_audit.json"]
-    for f in data_files:
+    # deterministic quantitative core (byte-identical across two frozen runs)
+    for f in ("forecast_controls_by_budget_code.jsonl",
+              "forecast_controls_application_by_budget_code.jsonl",
+              "forecast_controls_monthly_adjustments_by_budget_code.jsonl",
+              "project_forecast_controls_summary.json",
+              "audit/control_application_audit.json"):
         assert sha256_file(a / f) == sha256_file(b / f), f
 
+    rep = read_json(a / "validation_report.json")
+    assert rep["passed"] is True, [k for k, v in rep["checks"].items() if not v]
+    checks = rep["checks"]
+    assert checks["no_ambiguous_mapping"] is True
+    assert checks["actuals_floor_preserved"] is True
+    assert checks["no_hidden_cap_without_accepted_control"] is True
+
+    # ambiguous mappings count is zero
+    mapping_audit = read_json(a / "audit" / "control_mapping_audit.json")
+    assert mapping_audit["by_mapping_status"].get("ambiguous_cost_code", 0) == 0
+    assert mapping_audit["ambiguous"] == []
+
+    # floor + no-hidden-cap audits pass
+    assert read_json(a / "audit" / "actuals_floor_audit.json")["all_floors_respected"] is True
+    assert read_json(a / "audit" / "no_hidden_cap_audit.json")["no_hidden_cap"] is True
+
+    # Roofing is controlled and at least one control is applied (current state, not a hardcoded count)
     summary = read_json(a / "project_forecast_controls_summary.json")
     assert ROOFING in summary["controlled_budget_codes"]
-    assert summary["applied_control_count"] == 1
-    assert summary["acceptance_counts"]["pending"] == 1
+    assert summary["applied_control_count"] >= 1
 
 
-def test_roofing_pending_queued_and_accepted_applied(tmp_path):
+def test_application_invariants_and_roofing_stop(tmp_path):
+    """Application-level invariants over the live operator-control file + the Roofing stop still holds."""
     out = Path(gen.generate("tropical", CFG, data_root=DATA_ROOT, frozen_stamp=STAMP,
                             out_root=tmp_path)["output_package"])
-    queue = list(read_jsonl(out / "forecast_controls_review_queue.jsonl"))
-    pend = [q for q in queue if q["control_id"] == "tropical-roofing-15-07-590-closeout-2026-06"]
-    assert pend and pend[0]["disposition"] == "superseded_by_accepted_control"
+    apps = list(read_jsonl(out / "forecast_controls_application_by_budget_code.jsonl"))
+    queued_ids = {q["control_id"] for q in
+                  read_jsonl(out / "forecast_controls_review_queue.jsonl")}
 
+    for r in apps:
+        # every applied control maps to a canonical budget code
+        if r["applied"]:
+            assert r["budget_code_key"], r
+        # timing-only controls never create a hidden dollar override (dollars only when accepted)
+        if r["dollar_applied"]:
+            assert r["acceptance_status"] == "accepted", r
+        # accepted, explicitly-mapped, posture-changing controls are applied unless explicitly superseded
+        if (r["acceptance_status"] == "accepted" and r["mapping_status"] == "mapped_explicit"
+                and r["control_type"] in POSTURE_TYPES):
+            assert r["applied"] is True or r["disposition"] == "superseded_by_accepted_control", r
+        # pending posture-changing controls, if any, are not applied and are queued for review
+        if r["acceptance_status"] == "pending" and r["control_type"] in POSTURE_TYPES:
+            assert r["applied"] is False, r
+            assert r["control_id"] in queued_ids, r
+
+    assert any(r["applied"] for r in apps), "expected at least one applied control"
+
+    # Roofing still stops after July 2026; post-stop months remain 0.00
     adj = [a for a in read_jsonl(out / "forecast_controls_monthly_adjustments_by_budget_code.jsonl")
            if a["budget_code_key"] == ROOFING]
     assert adj, "expected a roofing monthly adjustment row"

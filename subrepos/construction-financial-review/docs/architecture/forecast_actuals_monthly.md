@@ -66,6 +66,34 @@ byte-identical actuals from the same CostEntries source.
 `actuals_reconcile_to_actual_cost_to_date`, `actuals_project_total_reconciles`,
 `actuals_source_is_costentries_only`. Each package folds these into its `validation_report.json` checks.
 
+## Combined actuals+forecast CSV (comprehensive only)
+
+`forecast_comprehensive` also emits a single month-by-month matrix stitching historical actuals to the
+integrated forecast, via `actuals_export.build_actuals_plus_forecast()`:
+
+- `actuals_plus_forecast_monthly_by_cost_code.csv` — column A `cost_code`, then ascending `YYYY-MM`
+  columns. Months **before** `current_forecast_month` use CostEntries actuals (from
+  `actuals_monthly_by_cost_code.jsonl`); the current forecast month and later use the integrated
+  forecast (`integrated_monthly_forecast_by_budget_code.jsonl`, rolled up to cost code). Rows = union of
+  actuals + forecast cost codes, sorted; missing cells `0.00`.
+- `actuals_plus_forecast_monthly_by_budget_code.csv` — optional traceability matrix
+  (`budget_code_key,cost_code,cost_type,budget_code_description,<months>`), same boundary.
+- `audit/actuals_plus_forecast_monthly_by_cost_code_audit.json` — `current_forecast_month`,
+  `actual_month_start/end`, `forecast_month_start/end`, `cost_code_count`, `actual_source` (CostEntries),
+  `forecast_source` (forecast_comprehensive.integrated_monthly_forecast), `actual_total`,
+  `forecast_total`, `combined_total`, `actual_months_reconciled`, `forecast_months_reconciled`,
+  `validation_passed`.
+
+`current_forecast_month` = the earliest integrated forecast month (package-derived, not the system date).
+**Boundary rule:** that month and later always use the forecast even when an actual exists, so a partial
+current-month actual (e.g. June 2026) never leaks into the combined view. Validation reconciles each half
+separately: actual side == actuals JSONL for months `< current_forecast_month`; forecast side ==
+integrated monthly rolled to cost code for months `>= current_forecast_month`; combined == actual +
+forecast. Both CSVs + the audit are in `DATA_FILES`/`AUDIT_DATA_FILES` (manifest, validation gates,
+deterministic byte-diff). Tropical: boundary `2026-06`, actuals `2023-06..2026-05`, forecast
+`2026-06..2026-11`, 100 cost codes, CSV 100×43; actual-side `$47,527,804.29` + forecast-side
+`$15,508,980.45` = combined `$63,036,784.74`.
+
 ## Tropical (2026-June) facts
 
 127 canonical budget codes; actuals month axis **2023-06 → 2026-06** (37 months); dense
