@@ -32,6 +32,7 @@ from ..common.safety import safety_scan
 from ..common.validation import all_files_parse
 from ..forecast_accuracy import signals
 from ..forecast_accuracy.llm import narrate
+from ..forecast_actuals import actuals_export
 from ..forecast_accuracy.llm.client import OllamaClient
 from ..schedule_analysis import schedule_io, schedule_mapping, schedule_rollup
 from . import (backtest_strong, change_explanation, confidence_intel, db_inventory,
@@ -101,6 +102,12 @@ def generate(project_key: str, cfg: dict, data_root: Optional[Path] = None,
     recs = list(read_jsonl(analysis_pkg / "forecast_recommendations_by_budget_code.jsonl"))
     rec_by_key = {r["budget_code_key"]: r for r in recs}
     owner_history = signals.load_owner_history(context_pkg)
+
+    # monthly actuals (CostEntries/Sage only) for the actuals export + recommendation-row fields
+    actuals_load = actuals_export.load_costentries_monthly(context_pkg)
+    monthly_actuals_by_key = actuals_load["by_key"]
+    actuals_to_date_by_key = {r["budget_code_key"]: (r.get("actuals") or {}).get(
+        "actual_cost_all_source_to_date") for r in context_rows if r.get("budget_code_key")}
 
     cashflow_totals = {}
     if sched_integrated_pkg:
@@ -182,7 +189,8 @@ def generate(project_key: str, cfg: dict, data_root: Optional[Path] = None,
             ("contributions", recommendation.get("contributions")),
             ("estimates", ests),
         ]))
-        recommendations.append(_recommendation_row(recommendation, conf, rec, bc))
+        recommendations.append(_recommendation_row(
+            recommendation, conf, rec, bc, actuals_export.rec_row_fields(monthly_actuals_by_key.get(key, {}))))
 
     rec_by = {r["budget_code_key"]: r for r in recommendations}
     evidence_by_key = {b["budget_code_key"]: b for b in bundles}
@@ -223,6 +231,12 @@ def generate(project_key: str, cfg: dict, data_root: Optional[Path] = None,
     write_json(out / "top_overrun_risks.json", overrun_register.rank_top(register, 25))
     write_json(out / "top_forecast_changes.json", change_ranked[:25])
 
+    # ---- monthly actuals export (CostEntries/Sage only; additive evidence contract) ----
+    actuals_collections = actuals_export.build_collections(
+        project_key, budget_codes, monthly_actuals_by_key, actuals_to_date_by_key,
+        rec_by_key=rec_by, forecast_start_month=None)
+    actuals_export.write_collections(out, actuals_collections)
+
     # ---- Audit -------------------------------------------------------------
     meta = _generation_metadata(command, context_pkg, analysis_pkg, sched_integrated_pkg,
                                 prior_accuracy_pkg, schedule_raw_pkg, stamp, generated_ts,
@@ -256,7 +270,9 @@ def generate(project_key: str, cfg: dict, data_root: Optional[Path] = None,
     write_json(out / "audit" / "safety_scan_report.json", safety)
     validation = _build_validation_report(out, recommendations, model_evidence, confidences,
                                           sched_evidence, trend_rows, remaining_rows, changes,
-                                          budget_codes, bundles, db_inv, safety, meta, bt)
+                                          budget_codes, bundles, db_inv, safety, meta, bt,
+                                          actuals_collections=actuals_collections,
+                                          actuals_contamination_ok=actuals_load["contamination_ok"])
     write_json(out / "validation_report.json", validation)
     conclusion = (CONCLUSION_OVERRUNS if (validation["passed"] and register)
                   else (CONCLUSION_READY if validation["passed"] else CONCLUSION_NOT_READY))
@@ -323,12 +339,15 @@ def _load_prior(prior_pkg):
     return prior_model_rec_by_key, prior_bt_summary
 
 
-def _recommendation_row(recommendation, conf, v2_rec, bc):
+def _recommendation_row(recommendation, conf, v2_rec, bc, actuals_fields=None):
     row = OrderedDict(recommendation)
     row["budget_code_description"] = bc.get("budget_code_description")
     row["confidence_score"] = conf.get("calibrated_confidence")
     row["confidence_band"] = conf.get("confidence_band")
     row["overrun_confidence"] = conf.get("overrun_confidence")
+    # Additive monthly-actuals history (CostEntries; never changes the recommendation values).
+    for k, v in (actuals_fields or {}).items():
+        row[k] = v
     # Rule-based reference (read only; never overrides the model number).
     row["rule_based_forecast_action"] = v2_rec.get("forecast_action")
     row["rule_based_recommended_projected_cost"] = v2_rec.get("recommended_projected_cost")
@@ -570,7 +589,8 @@ def _analysis_reconciliation(budget_codes, recommendations, co_agg, bt):
 
 def _build_validation_report(out, recommendations, model_evidence, confidences, sched_evidence,
                              trend_rows, remaining_rows, changes, budget_codes, bundles, db_inv,
-                             safety, meta, bt) -> OrderedDict:
+                             safety, meta, bt, actuals_collections=None,
+                             actuals_contamination_ok=True) -> OrderedDict:
     n = len(budget_codes)
     canonical = {bc["budget_code_key"] for bc in budget_codes}
     per_code = (recommendations, model_evidence, confidences, sched_evidence, trend_rows,
@@ -641,6 +661,9 @@ def _build_validation_report(out, recommendations, model_evidence, confidences, 
         ("backtest_cohort_present", backtest_ok),
         ("safety_scan_passed", safety["passed"]),
     ])
+    if actuals_collections is not None:
+        checks.update(actuals_export.validation_gates(actuals_collections, canonical,
+                                                      actuals_contamination_ok))
     passed = all(bool(v) for v in checks.values())
     return OrderedDict([
         ("generated_timestamp_local", meta["generated_timestamp_local"]),

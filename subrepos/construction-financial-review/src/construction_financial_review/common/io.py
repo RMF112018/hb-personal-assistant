@@ -1,6 +1,7 @@
-"""Streaming JSON/JSONL IO helpers (stdlib only)."""
+"""Streaming JSON/JSONL/CSV IO helpers (stdlib only)."""
 from __future__ import annotations
 
+import csv
 import json
 from pathlib import Path
 from typing import Any, Iterable, Iterator
@@ -37,6 +38,24 @@ def write_json(path: str | Path, obj: Any) -> None:
     with open(p, "w", encoding="utf-8") as fh:
         json.dump(obj, fh, ensure_ascii=False, indent=2)
         fh.write("\n")
+
+
+def write_csv(path: str | Path, fieldnames: list[str], rows: Iterable[dict]) -> int:
+    """Write rows as CSV deterministically: fixed field order, QUOTE_ALL, '\\n' terminator, no BOM.
+
+    Caller is responsible for deterministic row ordering and 2dp Decimal-string money values.
+    """
+    p = Path(path)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    n = 0
+    with open(p, "w", encoding="utf-8", newline="") as fh:
+        writer = csv.DictWriter(fh, fieldnames=fieldnames, quoting=csv.QUOTE_ALL,
+                                lineterminator="\n", extrasaction="ignore")
+        writer.writeheader()
+        for r in rows:
+            writer.writerow(r)
+            n += 1
+    return n
 
 
 def jsonl_parses(path: str | Path) -> bool:

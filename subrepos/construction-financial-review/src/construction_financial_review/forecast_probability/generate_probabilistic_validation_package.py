@@ -27,10 +27,11 @@ import numpy as np
 import scipy
 
 from ..common.hashing import sha256_file, sha256_text
-from ..common.io import read_json, read_jsonl, write_json, write_jsonl
+from ..common.io import read_json, read_jsonl, write_csv, write_json, write_jsonl
 from ..common.money import D
 from ..common.safety import safety_scan
 from ..common.validation import all_files_parse
+from ..forecast_actuals import actuals_export
 from ..forecast_accuracy.llm import narrate
 from ..forecast_accuracy.llm.client import OllamaClient
 from ..forecast_intelligence import db_inventory
@@ -54,7 +55,7 @@ DATA_FILES = (
     "simulation_inputs_by_budget_code.jsonl",
     "calibration_summary.json",
     "data_quality_warnings.jsonl",
-)
+) + actuals_export.ACTUALS_FILES
 
 # Compatibility aliases matching the originally-requested package contract. First-class outputs:
 # emitted, parseable, listed in the manifest, documented in SCHEMA.md, validated, and included in the
@@ -129,6 +130,10 @@ def _build_collections(inputs, runs, seed, antithetic, lhs) -> dict:
         "data_quality_warnings.jsonl": warnings,
     }
     out.update(_build_aliases(out, inputs))
+    ab = inputs.get("actuals_build")
+    if ab is not None:
+        out.update(actuals_export.build_collections(
+            inputs["project_key"], ab["budget_codes"], ab["monthly_by_key"], ab["to_date_by_key"]))
     out["_diagnostics"] = diagnostics
     out["_downside"] = downside
     return out
@@ -394,8 +399,11 @@ def _diagnostics(base, arrays):
 def _write_data_files(out: Path, collections: dict):
     for fname in DATA_FILES + ALIAS_FILES:
         payload = collections[fname]
+        (out / fname).parent.mkdir(parents=True, exist_ok=True)
         if fname.endswith(".jsonl"):
             write_jsonl(out / fname, payload)
+        elif fname.endswith(".csv"):
+            write_csv(out / fname, payload["fieldnames"], payload["rows"])
         else:
             write_json(out / fname, payload)
 
@@ -406,6 +414,21 @@ def generate(project_key, cfg, data_root=None, frozen_stamp=None, out_root=None,
     data_root = Path(data_root or cfg["default_data_root"])
     inputs = simulation_inputs.load_inputs(cfg, data_root, project_key, forecast_start_month)
     params = inputs["params"]
+
+    # monthly actuals export (CostEntries/Sage only; re-emitted so the package carries actuals history)
+    ctx_pkg = inputs.get("context_pkg")
+    actuals_load = actuals_export.load_costentries_monthly(ctx_pkg) if ctx_pkg else \
+        OrderedDict([("by_key", {}), ("contamination_ok", True)])
+    actuals_budget_codes, actuals_to_date = [], {}
+    if ctx_pkg:
+        actuals_budget_codes = list(read_jsonl(Path(ctx_pkg) / "canonical" / "budget_codes.jsonl"))
+        actuals_to_date = {r["budget_code_key"]: (r.get("actuals") or {}).get(
+            "actual_cost_all_source_to_date")
+            for r in read_jsonl(Path(ctx_pkg) / "summaries" / "budget_code_forecast_context.jsonl")
+            if r.get("budget_code_key")}
+    inputs["actuals_build"] = {"budget_codes": actuals_budget_codes,
+                               "monthly_by_key": actuals_load["by_key"], "to_date_by_key": actuals_to_date}
+    inputs["actuals_contamination_ok"] = actuals_load["contamination_ok"]
     antithetic = bool(cfg.get("forecast_probability", {}).get("antithetic", True))
     lhs = bool(cfg.get("forecast_probability", {}).get("latin_hypercube_systemic", False))
 
@@ -723,6 +746,10 @@ def _validation(out, inputs, collections, diagnostics, db_inv, safety, meta, det
         ("db_inventory_no_payloads", db_clean),
         ("safety_scan_passed", safety["passed"]),
     ])
+    ab = inputs.get("actuals_build") or {}
+    checks.update(actuals_export.validation_gates(
+        collections, {bc["budget_code_key"] for bc in ab.get("budget_codes", [])},
+        bool(inputs.get("actuals_contamination_ok", True))))
     passed = all(bool(v) for v in checks.values())
     return OrderedDict([
         ("generated_timestamp_local", meta["generated_timestamp_local"]),

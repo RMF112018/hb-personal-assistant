@@ -21,9 +21,10 @@ from decimal import Decimal
 from pathlib import Path
 
 from ..common.hashing import sha256_file
-from ..common.io import read_jsonl, write_json, write_jsonl
+from ..common.io import read_jsonl, write_csv, write_json, write_jsonl
 from ..common.money import D, money_str
 from ..common.safety import safety_scan
+from ..forecast_actuals import actuals_export
 from ..forecast_controls import integration as fctl_integration
 from ..forecast_intelligence import db_inventory
 from ..schedule_analysis.schedule_mapping import build_canonical_index
@@ -64,8 +65,9 @@ DATA_FILES = (
     "top_evidence_conflicts.json",
     "top_human_review_items.json",
     "data_quality_warnings.jsonl",
-)
+) + actuals_export.ACTUALS_DATA_FILES
 AUDIT_DATA_FILES = (
+    actuals_export.ACTUALS_AUDIT_FILE,
     "audit/evidence_registry_audit.json",
     "audit/evidence_weighting_audit.json",
     "audit/history_consumption_audit.json",
@@ -294,6 +296,10 @@ def _build_collections(inputs: dict, project_key: str) -> dict:
         "data_quality_warnings.jsonl": warnings,
     }
     out.update(audits)
+    out.update(actuals_export.build_collections(
+        project_key, inputs["budget_codes"], inputs["actuals_monthly_by_key"],
+        inputs["actuals_to_date_by_key"], rec_by_key=inputs["actuals_rec_by_key"],
+        forecast_start_month=None))
     return out
 
 
@@ -305,6 +311,8 @@ def _write_collections(out: Path, collections: dict):
         (out / fname).parent.mkdir(parents=True, exist_ok=True)
         if fname.endswith(".jsonl"):
             write_jsonl(out / fname, payload)
+        elif fname.endswith(".csv"):
+            write_csv(out / fname, payload["fieldnames"], payload["rows"])
         else:
             write_json(out / fname, payload)
 
@@ -371,6 +379,14 @@ def load_inputs(cfg, data_root, project_key, frozen_stamp):
 
     sources = evidence_registry.load_sources(discovery)
 
+    # monthly actuals export (CostEntries/Sage only; re-emitted so the comprehensive package is
+    # self-contained)
+    actuals_load = actuals_export.load_costentries_monthly(context_pkg)
+    actuals_to_date_by_key = {k: (r.get("actuals") or {}).get("actual_cost_all_source_to_date")
+                              for k, r in sources["context_by"].items()}
+    actuals_rec_by_key = {k: {"recommended_cost_to_complete": r.get("recommended_cost_to_complete")}
+                          for k, r in sources["rec_by"].items()}
+
     # operator forecast controls (read-only; fail closed before generation if unsafe)
     actuals_by_key = {k: D((r.get("actuals") or {}).get("actual_cost_all_source_to_date"))
                       for k, r in sources["context_by"].items()}
@@ -407,6 +423,10 @@ def load_inputs(cfg, data_root, project_key, frozen_stamp):
         ("controls_ctx", controls_ctx),
         ("staffing_plan_active", bool(discovery.get("staffing_plan", {}).get("present"))),
         ("staffing_plan_conflicts", sources.get("staffing_plan_conflicts") or []),
+        ("actuals_monthly_by_key", actuals_load["by_key"]),
+        ("actuals_to_date_by_key", actuals_to_date_by_key),
+        ("actuals_rec_by_key", actuals_rec_by_key),
+        ("actuals_contamination_ok", actuals_load["contamination_ok"]),
     ])
 
 

@@ -4,6 +4,7 @@ from __future__ import annotations
 from collections import OrderedDict
 
 from ..common.validation import all_files_parse
+from ..forecast_actuals import actuals_export
 
 
 def _has_acceptance(rows):
@@ -74,6 +75,12 @@ def build_validation(out, inputs, collections, audit, determinism, safety, meta,
     sp_advisory_ok = all(i.get("requires_human_acceptance") and i.get("do_not_auto_apply")
                          for i in sp_items)
 
+    # actuals export gates (only when the package emits the actuals collection)
+    actuals_present = "actuals_monthly_by_budget_code.jsonl" in collections
+    actuals_gates = (actuals_export.validation_gates(
+        collections, canonical, bool(inputs.get("actuals_contamination_ok", True)))
+        if actuals_present else OrderedDict())
+
     llm_receipts_ok = True
     if llm_used:
         req = {"budget_code_key", "model", "status", "safety_passed"}
@@ -106,6 +113,7 @@ def build_validation(out, inputs, collections, audit, determinism, safety, meta,
         ("operator_controls_mapping_unambiguous", op_mapping_ok),
         ("operator_staffing_plan_evidence_present_when_active", sp_evidence_ok),
         ("operator_staffing_plan_advisory_requires_acceptance", sp_advisory_ok),
+        *actuals_gates.items(),
         ("meta_files_present", all((out / f).exists() for f in meta_doc)),
         ("source_hashes_unchanged", source_unchanged),
         ("no_sqlite_mutation", True),

@@ -87,6 +87,16 @@ makes **no live external calls** and performs **no database, Excel, or source mu
     acceptance. CostEntries are truth and actual cost to date is the only floor — no hidden caps
     (`docs/workflow/16_forecast_staffing_plan.md`).
 
+**Monthly actuals export contract (cross-cutting).** Every forecast package
+(`forecast_accuracy_next`/intelligence, monthly, probability, comprehensive) emits month-by-month
+**actual incurred cost** for each canonical budget code, sourced **only** from CostEntries/Sage — the
+seven files `actuals_monthly_by_{budget_code,cost_code}.{jsonl,csv}`,
+`actuals_monthly_project_total.jsonl`, `actuals_to_forecast_bridge_by_budget_code.jsonl`, and
+`audit/actuals_monthly_reconciliation_audit.json`. Dense per code × month (zero months are
+`0.00`/`is_actual: true`, never a `null` sentinel); reconciles per code/cost-code/project to actual cost
+to date; comprehensive re-emits them so the final package is self-contained. Additive evidence only — it
+never changes a recommendation value (`docs/architecture/forecast_actuals_monthly.md`).
+
 ## Current project supported
 
 Tropical World Nursery Senior Living Facility — `tropical` / `23-435-01` / `2026-June`.

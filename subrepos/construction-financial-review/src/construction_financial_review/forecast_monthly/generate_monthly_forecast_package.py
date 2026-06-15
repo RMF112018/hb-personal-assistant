@@ -27,7 +27,7 @@ from typing import Optional
 from ..common.budget_keys import parse_budget_key
 from ..common.dates import normalize_date
 from ..common.hashing import sha256_file, sha256_text
-from ..common.io import read_json, read_jsonl, write_json, write_jsonl
+from ..common.io import read_json, read_jsonl, write_csv, write_json, write_jsonl
 from ..common.money import D, dec, materiality, money_str
 from ..common.safety import safety_scan
 from ..common.validation import all_files_parse
@@ -36,6 +36,7 @@ from ..forecast_accuracy.llm.client import OllamaClient
 from ..forecast_controls import apply as fctl_apply
 from ..forecast_controls import integration as fctl_integration
 from ..forecast_staffing_plan import integration as fsp_integration
+from ..forecast_actuals import actuals_export
 from ..forecast_intelligence import db_inventory
 from ..schedule_analysis import schedule_io, schedule_mapping, schedule_rollup
 from . import (calendar as cal, cost_entry_trends, frequency_phasing, monthly_backtest,
@@ -59,7 +60,7 @@ DATA_FILES = (
     "monthly_calibration_summary.json", "project_monthly_cashflow_summary.json",
     "top_monthly_overruns.json", "data_quality_warnings.jsonl",
     "frequency_monthly_phasing_by_budget_code.jsonl",
-)
+) + actuals_export.ACTUALS_FILES
 
 SEV_CRIT_ABS, SEV_CRIT_PCT = Decimal("250000"), Decimal("0.25")
 SEV_HIGH_ABS, SEV_HIGH_PCT = Decimal("100000"), Decimal("0.15")
@@ -148,6 +149,10 @@ def _load_inputs(cfg, data_root, project_key):
     staffing_active = fsp_integration.integration_active(cfg, staffing_bundle)
     staffing_by_key = staffing_bundle["resolved"]["by_key"] if staffing_active else {}
 
+    # monthly actuals export (CostEntries/Sage only)
+    actuals_load = actuals_export.load_costentries_monthly(context_pkg)
+    actuals_to_date_by_key = {k: r.get("actual_cost_all_source_to_date") for k, r in rec_by_key.items()}
+
     return {
         "data_root": data_root, "packages": packages, "context_pkg": context_pkg,
         "analysis_pkg": analysis_pkg, "schedule_raw_pkg": schedule_raw_pkg, "accepted_pkg": accepted_pkg,
@@ -163,6 +168,8 @@ def _load_inputs(cfg, data_root, project_key):
         "controls_bundle": controls_bundle,
         "staffing_active": staffing_active, "staffing_by_key": staffing_by_key,
         "staffing_bundle": staffing_bundle,
+        "actuals_load": actuals_load, "actuals_monthly_by_key": actuals_load["by_key"],
+        "actuals_to_date_by_key": actuals_to_date_by_key,
     }
 
 
@@ -320,7 +327,7 @@ def _build_collections(inputs, calendar, project_key) -> dict:
     if bt.get("cohort_warning"):
         warnings.append(_warn(project_key, None, "medium", bt["cohort_warning"]))
 
-    return {
+    out = {
         "monthly_forecast_by_budget_code.jsonl": monthly_rows,
         "monthly_forecast_by_owner_scope.jsonl": owner_rollup,
         "monthly_forecast_by_division.jsonl": division_rollup,
@@ -340,6 +347,11 @@ def _build_collections(inputs, calendar, project_key) -> dict:
         "data_quality_warnings.jsonl": warnings,
         "_code_meta": code_meta,
     }
+    out.update(actuals_export.build_collections(
+        project_key, inputs["budget_codes"], inputs["actuals_monthly_by_key"],
+        inputs["actuals_to_date_by_key"], rec_by_key=inputs["rec_by_key"],
+        forecast_start_month=calendar["forecast_start_month"]))
+    return out
 
 
 def _monthly_row(reconcile, mc, conf, cost_row, inv_row, assoc_row, start, end, project_key,
@@ -661,8 +673,11 @@ def _staffing_plan_audit(inputs) -> OrderedDict:
 def _write_data_files(out: Path, collections: dict):
     for fname in DATA_FILES:
         payload = collections[fname]
+        (out / fname).parent.mkdir(parents=True, exist_ok=True)
         if fname.endswith(".jsonl"):
             write_jsonl(out / fname, payload)
+        elif fname.endswith(".csv"):
+            write_csv(out / fname, payload["fieldnames"], payload["rows"])
         else:
             write_json(out / fname, payload)
 
@@ -993,6 +1008,9 @@ def _validation(out, inputs, collections, calendar, db_inv, safety, meta, determ
         ("db_inventory_no_payloads", db_clean),
         ("safety_scan_passed", safety["passed"]),
     ])
+    checks.update(actuals_export.validation_gates(
+        collections, {bc["budget_code_key"] for bc in inputs["budget_codes"]},
+        inputs["actuals_load"]["contamination_ok"]))
     passed = all(bool(v) for v in checks.values())
     return OrderedDict([
         ("generated_timestamp_local", meta["generated_timestamp_local"]),
