@@ -77,6 +77,24 @@ def test_recommended_is_central_and_percentiles_monotonic(tmp_path):
     assert vals == sorted(vals)
 
 
+def test_pit_coverage_backtest_present(tmp_path):
+    out = _generate(tmp_path)
+    bt = read_json(out / "probabilistic_backtest_results.json")
+    assert bt["primary"] == "pit_coverage_calibration"
+    assert "n_pit_points" in bt and "cohort_size" in bt
+    assert bt["calibration_verdict"] in {
+        "insufficient_cohort", "under_dispersed", "over_dispersed",
+        "well_calibrated", "approximately_calibrated"}
+    pit = bt["pit_coverage"]
+    for field in ("coverage_p10_p90", "coverage_p05_p95", "pit_mean_target_0_5", "pit_deciles"):
+        assert field in pit
+    # with the real near-complete cohort we expect at least some scorable points
+    assert bt["n_pit_points"] >= 1
+    for p in pit["pit_points"]:
+        assert Decimal("0") <= Decimal(p["pit"]) <= Decimal("1")
+    assert bt["dispersion_adequacy_secondary"]["method"] == "dispersion_adequacy_vs_historical_mape"
+
+
 def test_byte_deterministic_quant_core(tmp_path):
     a = _generate(tmp_path / "a")
     b = _generate(tmp_path / "b")

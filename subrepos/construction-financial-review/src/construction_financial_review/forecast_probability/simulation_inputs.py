@@ -15,6 +15,8 @@ import numpy as np
 from ..common.budget_keys import parse_budget_key
 from ..common.io import read_json, read_jsonl
 from ..common.money import D
+from ..forecast_accuracy import signals
+from ..schedule_analysis import schedule_io
 from . import distributions as dist
 
 ACCEPTED_GLOB = "forecast_accuracy_next_package_tropical_*"
@@ -79,6 +81,16 @@ def load_inputs(cfg: dict, data_root: Path, project_key: str,
     mconf_by = _by_key(monthly / "monthly_forecast_confidence_by_budget_code.jsonl")
     cashflow = read_json(monthly / "project_monthly_cashflow_summary.json")
 
+    # Context package (read-only): owner pay-app history + per-code actuals, needed to reconstruct the
+    # near-complete backtest cohort for the PIT/coverage calibration check. Degrades gracefully.
+    context_pkg = schedule_io.discover_packages(data_root, cfg).get("context_package")
+    context_rows, owner_history = [], {}
+    if context_pkg:
+        ctx_summary = context_pkg / "summaries" / "budget_code_forecast_context.jsonl"
+        if ctx_summary.exists():
+            context_rows = list(read_jsonl(ctx_summary))
+        owner_history = signals.load_owner_history(context_pkg)
+
     months = list(cashflow.get("forecast_months") or [])
     if forecast_start_month:
         months = [m for m in months if m >= forecast_start_month]
@@ -111,10 +123,11 @@ def load_inputs(cfg: dict, data_root: Path, project_key: str,
         ("total_worst_credible_final_cost", float(D(cashflow.get("total_worst_credible_final_cost")))),
     ])
     return OrderedDict([
-        ("anchor_pkg", anchor), ("monthly_pkg", monthly),
+        ("anchor_pkg", anchor), ("monthly_pkg", monthly), ("context_pkg", context_pkg),
         ("project_key", project_key), ("months", months), ("params", params),
         ("specs", specs), ("arrays", arrays), ("project", project),
         ("backtest", backtest), ("cashflow", cashflow),
+        ("context_rows", context_rows), ("owner_history", owner_history),
     ])
 
 

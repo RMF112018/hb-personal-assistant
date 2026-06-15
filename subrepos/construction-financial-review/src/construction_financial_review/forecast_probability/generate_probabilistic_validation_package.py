@@ -367,6 +367,7 @@ def _meta(command, inputs, stamp, generated_ts, runs, seed, ollama_status, model
         ("selected_input_packages", OrderedDict([
             ("accepted_forecast_intelligence_package", str(inputs["anchor_pkg"])),
             ("accepted_forecast_monthly_package", str(inputs["monthly_pkg"])),
+            ("context_package", str(inputs["context_pkg"]) if inputs.get("context_pkg") else None),
         ])),
     ])
 
@@ -375,6 +376,7 @@ def _source_files(inputs, cfg):
     return OrderedDict([
         ("accepted_forecast_intelligence_package", str(inputs["anchor_pkg"])),
         ("accepted_forecast_monthly_package", str(inputs["monthly_pkg"])),
+        ("context_package", str(inputs["context_pkg"]) if inputs.get("context_pkg") else None),
         ("local_db", str(db_inventory.resolve_db_path(cfg))),
         ("mutation_posture", "READ-ONLY: no source/Excel/SQLite/external mutation; DB opened mode=ro"),
         ("simulation_rule", "Probabilistic outputs are advisory; actual cost to date is the only hard "
@@ -554,7 +556,7 @@ def _write_readme(out, project_key, meta, inputs, collections):
         "`downside_exposure_ranking.jsonl` (codes driving the project P90), "
         "`probabilistic_monthly_project_forecast.jsonl` + `monthly_risk_ranking.json` (timing), "
         "`sensitivity_analysis.json` (which assumptions matter), and `probabilistic_backtest_results.json` "
-        "(dispersion calibration). Quant core is deterministic (validation_report.json `determinism`); "
+        "(PIT + coverage calibration). Quant core is deterministic (validation_report.json `determinism`); "
         "`llm/` narratives are advisory and excluded.",
         "",
     ]
@@ -584,8 +586,11 @@ def _write_schema(out):
         "as a simulated percentile, and the systemic variance share.",
         "- `sensitivity_analysis.json` — one-at-a-time ΔP90 by spread source (authoritative), Spearman "
         "code drivers, and systemic-vs-idiosyncratic variance share.",
-        "- `probabilistic_backtest_results.json` — dispersion-adequacy vs historical method MAPE on the "
-        "near-complete cohort; honest about the small cohort and the absence of row-level PIT.",
+        "- `probabilistic_backtest_results.json` — PIT + coverage calibration: predictive "
+        "shifted-lognormal-on-CTC at each as-of point (40/60/80% owner progress) vs realized final on "
+        "the near-complete cohort (coverage at P10-P90 / P05-P95, PIT uniformity KS, per-point detail), "
+        "with a dispersion-adequacy ratio vs historical MAPE as a secondary view; honest about the "
+        "small cohort.",
         "- `simulation_inputs_by_budget_code.jsonl` — the calibrated mu/sigma + each sigma source per "
         "code (full audit of how each draw was parameterized).",
         "- `calibration_summary.json` — methodology, parameters, numpy/scipy versions, seed, runs.",

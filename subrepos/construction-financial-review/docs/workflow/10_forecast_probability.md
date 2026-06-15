@@ -11,6 +11,10 @@ change — the `forecast_intelligence` and `forecast_monthly` outputs. First sli
 - **Monthly** — `forecast_monthly_package_tropical_*`: `remaining_work_monthly_distribution_*`
   (deterministic monthly weights), `monthly_forecast_confidence_*` (monthly distribution score),
   `project_monthly_cashflow_summary.json` (project totals + forecast months).
+- **Context** — `forecast_context_package_tropical_*`: owner pay-app history
+  (`canonical/owner_pay_app_line_items_mapped.jsonl`) + per-code actuals
+  (`summaries/budget_code_forecast_context.jsonl`), used read-only to reconstruct the near-complete
+  cohort for the PIT/coverage backtest. The backtest degrades to `insufficient_cohort` if absent.
 - Local DB read-only inventory only.
 
 ## Run
@@ -58,8 +62,11 @@ Per-code (127): `probabilistic_final_cost_by_budget_code.jsonl` (P10..P95 + over
   the most cost and the highest cumulative overrun probability.
 - **`sensitivity_analysis.json`** — which assumption most moves the project P90 (one-at-a-time ΔP90),
   plus Spearman code drivers.
-- **`probabilistic_backtest_results.json`** — dispersion calibration vs historical method error, with an
-  explicit interpretation of the small near-complete cohort.
+- **`probabilistic_backtest_results.json`** — PIT + coverage calibration: at 40/60/80% owner progress
+  on the near-complete cohort, does the realized final land inside the predicted bands at the nominal
+  rate? Reports `coverage_p10_p90` (nominal 0.80), `coverage_p05_p95` (nominal 0.90), `pit_mean`,
+  KS uniformity, per-point detail, and a `calibration_verdict`; a dispersion-adequacy ratio vs
+  historical MAPE is kept as a secondary view, with the small-cohort caveat.
 
 ## Guardrails
 

@@ -69,14 +69,16 @@ with `monthly_distribution_confidence`), so per run `Σ months == CTC` exactly.
 | Module | Responsibility |
 |---|---|
 | `distributions.py` | Per-code lognormal-CTC calibration (median anchor, worst-credible quantile, evidence-blended sigma, overrun-tail shift); config parameter resolution. |
-| `simulation_inputs.py` | Load the accepted anchor + monthly packages (read-only); effective-weight MAPE; build per-code specs and stacked numpy arrays. |
+| `simulation_inputs.py` | Load the accepted anchor + monthly packages and (for the PIT backtest) the context package owner-history + actuals (all read-only); effective-weight MAPE; build per-code specs and stacked numpy arrays. |
 | `simulate.py` | Vectorized Monte Carlo: one-factor copula → lognormal final costs (floored, uncapped) + Dirichlet monthly phasing. |
 | `risk_metrics.py` | Percentiles, exceedance probabilities, VaR/CVaR, co-tail downside contribution, monthly risk, percentile-rank of the deterministic anchors. |
 | `sensitivity.py` | One-at-a-time ΔP90 by spread source (authoritative), Spearman code drivers, systemic-vs-idiosyncratic variance share. |
-| `probabilistic_backtest.py` | Dispersion-adequacy vs historical method MAPE on the near-complete cohort; honest about the small cohort and absent row-level PIT. |
+| `probabilistic_backtest.py` | PIT + coverage calibration: reconstruct the near-complete cohort via `forecast_intelligence.backtest_strong`, rebuild the predictive shifted-lognormal-on-CTC at each as-of point (40/60/80%), and test realized finals (coverage at P10-P90 / P05-P95, PIT-uniformity KS). Dispersion-adequacy vs historical MAPE kept as a secondary view; honest about the small cohort. |
 | `generate_probabilistic_validation_package.py` | Orchestrator: package, determinism self-check, validation gates, safety, manifest, advisory LLM. |
 
-Reuses `common/*`, `forecast_intelligence.db_inventory`, and `forecast_accuracy.llm`.
+Reuses `common/*`, `forecast_intelligence.db_inventory`, `forecast_intelligence.backtest_strong`
+(deterministic cohort reconstruction for the PIT test), `forecast_accuracy.signals` +
+`schedule_analysis.schedule_io` (read-only context-package loaders), and `forecast_accuracy.llm`.
 
 ## Hardening
 
