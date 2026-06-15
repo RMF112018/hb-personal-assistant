@@ -17,6 +17,10 @@ from ..common.money import D, dec, materiality, money_str
 
 CENTS = Decimal("0.01")
 INVOICE_FACTOR = {"high": Decimal("0.5"), "medium": Decimal("0.4"), "low": Decimal("0.25")}
+# Cadence/frequency timing share carved from the post-schedule residual (staffing weekday cadence is
+# the primary timing basis for staffing codes). "none" => no frequency contribution.
+FREQUENCY_FACTOR = {"high": Decimal("0.8"), "medium": Decimal("0.6"), "low": Decimal("0.4"),
+                    "none": Decimal("0")}
 
 
 def _clamp01(x: Decimal) -> Decimal:
@@ -50,7 +54,9 @@ def reconcile_code(rec: dict, calendar: dict, cost_weights: "OrderedDict[str, De
                    invoice_weights: Optional["OrderedDict[str, Decimal]"],
                    schedule_weights: Optional["OrderedDict[str, Decimal]"],
                    schedule_confidence, invoice_confidence: str, cost_shape: str,
-                   project_key: str) -> dict:
+                   project_key: str,
+                   frequency_weights: Optional["OrderedDict[str, Decimal]"] = None,
+                   frequency_confidence: str = "none") -> dict:
     months = [m["forecast_month"] for m in calendar["months"]]
     frac = {m["forecast_month"]: dec(m["month_remaining_fraction"]) or Decimal("1")
             for m in calendar["months"]}
@@ -66,8 +72,14 @@ def reconcile_code(rec: dict, calendar: dict, cost_weights: "OrderedDict[str, De
     revised = dec(rec.get("revised_budget"))
 
     # ---- source shares ----
+    # schedule first; then cadence/frequency (staffing weekday cadence is the primary timing basis);
+    # the remaining residual splits between invoice and cost-entries as before. Adding frequency only
+    # reshapes month weights — it never changes the cost-to-complete or the accepted final cost.
     sched_share = _clamp01(dec(schedule_confidence) or Decimal("0")) if schedule_weights else Decimal("0")
     remaining = Decimal("1") - sched_share
+    freq_factor = FREQUENCY_FACTOR.get(frequency_confidence, Decimal("0")) if frequency_weights else Decimal("0")
+    freq_share = remaining * freq_factor
+    remaining = remaining - freq_share
     inv_factor = INVOICE_FACTOR.get(invoice_confidence, Decimal("0")) if invoice_weights else Decimal("0")
     inv_share = remaining * inv_factor
     cost_share = remaining - inv_share
@@ -77,6 +89,8 @@ def reconcile_code(rec: dict, calendar: dict, cost_weights: "OrderedDict[str, De
         w = cost_share * cost_weights.get(m, Decimal("0"))
         if schedule_weights:
             w += sched_share * schedule_weights.get(m, Decimal("0"))
+        if frequency_weights:
+            w += freq_share * frequency_weights.get(m, Decimal("0"))
         if invoice_weights:
             w += inv_share * invoice_weights.get(m, Decimal("0"))
         blended[m] = w
@@ -141,9 +155,11 @@ def reconcile_code(rec: dict, calendar: dict, cost_weights: "OrderedDict[str, De
     direction = rec.get("forecast_direction")
     if direction == "insufficient_evidence":
         basis = "insufficient_evidence"
+    elif freq_share >= Decimal("0.5"):
+        basis = "frequency_cadence"
     elif sched_share >= Decimal("0.5"):
         basis = "schedule_phasing"
-    elif sched_share > 0 and (cost_share > 0 or inv_share > 0):
+    elif (sched_share > 0 or freq_share > 0) and (cost_share > 0 or inv_share > 0):
         basis = "combined"
     elif inv_share > 0 and inv_share >= cost_share:
         basis = "subcontractor_invoice_trend"
@@ -179,6 +195,7 @@ def reconcile_code(rec: dict, calendar: dict, cost_weights: "OrderedDict[str, De
             ("schedule_weight", str(sched_share.quantize(Decimal("0.0001")))),
             ("cost_entries_weight", str(cost_share.quantize(Decimal("0.0001")))),
             ("subcontractor_invoice_weight", str(inv_share.quantize(Decimal("0.0001")))),
+            ("frequency_weight", str(freq_share.quantize(Decimal("0.0001")))),
             ("flat_weight", "0.0000"),
         ]),
         "monthly_forecast_basis": basis,

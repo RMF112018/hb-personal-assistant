@@ -36,6 +36,13 @@ makes **no live external calls** and performs **no database, Excel, or source mu
    confidence/uncertainty shifts and monthly-shape signals. Historical forecast is prior-assumption
    evidence — never actual cost, never a cap; nothing accepted is mutated
    (`docs/workflow/11_forecast_history_informed.md`).
+10. **Forecast cost-frequency / billing-cadence** — additive evidence layer that classifies each
+    canonical code's cost-incurrence cadence from real CostEntries (transaction dates + per-month entry
+    counts), recognizes the configured weekly internal-staffing codes with weekday-normalized daily
+    rates from the latest **complete** actual month, revalidates cadence before each run, and emits
+    **advisory** monthly phasing. The same cadence logic is wired into **forecast monthly** as an
+    additive timing source (staffing codes phase by weekday count) — timing/shape only; cost-to-complete
+    and accepted final cost are reconciled and unchanged (`docs/workflow/12_forecast_cost_frequency.md`).
 
 ## Current project supported
 

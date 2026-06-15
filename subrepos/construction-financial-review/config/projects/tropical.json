@@ -60,6 +60,43 @@
       "procore_financial_budget_rows"
     ]
   },
+  "forecast_cost_frequency": {
+    "weekly_internal_staffing_budget_code_keys": [
+      "0000.03-01-413.LAB",
+      "0000.03-01-413.LBN",
+      "1000.10-01-100.LAB",
+      "1000.10-01-302.LAB",
+      "1000.10-01-302.LBN",
+      "1000.10-01-308.LAB",
+      "1000.10-01-308.LBN",
+      "1000.10-01-310.LAB",
+      "1000.10-01-310.LBN",
+      "1000.10-01-311.LAB",
+      "1000.10-01-311.LBN",
+      "1000.10-01-312.LAB",
+      "1000.10-01-312.LBN",
+      "1000.10-01-314.LAB",
+      "1000.10-01-314.LBN",
+      "1000.10-01-315.LAB",
+      "1000.10-01-315.LBN",
+      "1000.10-01-317.LAB",
+      "1000.10-01-317.LBN",
+      "1000.10-01-318.LAB",
+      "1000.10-01-318.LBN",
+      "1000.10-01-460.LAB",
+      "1000.10-01-460.LBN"
+    ],
+    "staff_change_events": [],
+    "latest_complete_month_policy": "context_period_bucket",
+    "minimum_months_for_observed_frequency": 3,
+    "monthly_frequency_entry_count_threshold": 1,
+    "bi_monthly_entry_count_threshold": 2,
+    "weekly_entry_count_threshold": 4,
+    "cadence_change_recent_months": 3,
+    "weekday_calendar_policy": "weekday_no_holidays",
+    "staffing_daily_rate_method": "latest_complete_month_weekday_normalized",
+    "forecast_monthly_integration_enabled": true
+  },
   "forecast_probability": {
     "runs": 10000,
     "seed": 20260614,

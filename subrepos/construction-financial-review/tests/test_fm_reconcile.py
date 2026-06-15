@@ -2,6 +2,7 @@
 from datetime import date
 from decimal import Decimal
 
+from construction_financial_review.forecast_cost_frequency.weekday_calendar import weekday_weight_vector
 from construction_financial_review.forecast_monthly import calendar as cal
 from construction_financial_review.forecast_monthly import cost_entry_trends as cet
 from construction_financial_review.forecast_monthly import monthly_reconcile as mr
@@ -63,6 +64,29 @@ def test_cumulative_monotonic_and_caps_at_final():
     cums = [Decimal(m["cumulative_recommended_cost_through_month"]) for m in r["month_costs"]]
     assert cums == sorted(cums)
     assert cums[-1] == Decimal("1000000.00")
+
+
+def test_frequency_cadence_reshapes_but_never_changes_final_or_ctc():
+    cost_w = cet.shape_weights(MONTHS, cet.FLAT)
+    freq_w = weekday_weight_vector(MONTHS)
+    r = mr.reconcile_code(REC, CAL, cost_w, None, None, None, "none", "flat_recent_burn", "tropical",
+                          frequency_weights=freq_w, frequency_confidence="high")
+    # frequency carved a dominant timing share and became the basis
+    assert r["source_shares"]["frequency_weight"] == "0.8000"
+    assert r["monthly_forecast_basis"] == "frequency_cadence"
+    # but the totals are untouched: months sum to CTC, actual + sum == final cost (unchanged)
+    rec_sum = sum((Decimal(m["recommended_month_cost"]) for m in r["month_costs"]), Decimal("0"))
+    assert rec_sum == Decimal("600000.00")
+    assert r["recommended_final_cost"] == Decimal("1000000.00")
+    assert r["reconciliation_ok"] is True
+
+
+def test_no_frequency_is_backward_compatible():
+    cost_w = cet.shape_weights(MONTHS, cet.FLAT)
+    r = mr.reconcile_code(REC, CAL, cost_w, None, None, None, "none", "flat_recent_burn", "tropical")
+    # frequency_weight present but zero; behavior identical to before integration
+    assert r["source_shares"]["frequency_weight"] == "0.0000"
+    assert r["reconciliation_ok"] is True
 
 
 def test_zero_ctc_emits_zero_months():

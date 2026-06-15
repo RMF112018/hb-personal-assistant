@@ -35,8 +35,9 @@ from ..forecast_accuracy.llm import narrate
 from ..forecast_accuracy.llm.client import OllamaClient
 from ..forecast_intelligence import db_inventory
 from ..schedule_analysis import schedule_io, schedule_mapping, schedule_rollup
-from . import (calendar as cal, cost_entry_trends, monthly_backtest, monthly_confidence,
-               monthly_reconcile, schedule_monthly_phasing, subcontractor_invoice_trends)
+from . import (calendar as cal, cost_entry_trends, frequency_phasing, monthly_backtest,
+               monthly_confidence, monthly_reconcile, schedule_monthly_phasing,
+               subcontractor_invoice_trends)
 
 SUBPROJECT_ROOT = Path(__file__).resolve().parents[3]
 GENERATOR_NAME = "construction_financial_review.forecast_monthly.generate_monthly_forecast_package"
@@ -54,6 +55,7 @@ DATA_FILES = (
     "monthly_forecast_change_explanation.jsonl", "monthly_backtest_results.json",
     "monthly_calibration_summary.json", "project_monthly_cashflow_summary.json",
     "top_monthly_overruns.json", "data_quality_warnings.jsonl",
+    "frequency_monthly_phasing_by_budget_code.jsonl",
 )
 
 SEV_CRIT_ABS, SEV_CRIT_PCT = Decimal("250000"), Decimal("0.25")
@@ -107,6 +109,18 @@ def _load_inputs(cfg, data_root, project_key):
             if k:
                 invoice_by_key[k].append(r)
 
+    # transaction-level cost-entry accounting dates by canonical key (cadence/frequency timing source)
+    txn_dates_by_key = defaultdict(list)
+    ce_path = context_pkg / "canonical" / "cost_entries.jsonl"
+    if ce_path.exists():
+        for r in read_jsonl(ce_path):
+            k = r.get("mapped_budget_code_key") or r.get("budget_code_key")
+            d = r.get("accounting_date")
+            if k and d:
+                txn_dates_by_key[k].append(str(d)[:10])
+    for k in txn_dates_by_key:
+        txn_dates_by_key[k].sort()
+
     open_features_by_key, latest_finish, schedule_data_date, sched_inventory = _load_schedule(
         schedule_raw_pkg, budget_codes, project_key)
 
@@ -117,6 +131,8 @@ def _load_inputs(cfg, data_root, project_key):
         "budget_codes": budget_codes, "context_rows": context_rows, "context_by_key": context_by_key,
         "rec_by_key": rec_by_key, "sched_ev_by_key": sched_ev_by_key, "v2_by_key": v2_by_key,
         "invoice_by_key": dict(invoice_by_key), "open_features_by_key": open_features_by_key,
+        "txn_dates_by_key": dict(txn_dates_by_key),
+        "cfg_fcf": cfg.get("forecast_cost_frequency") or {},
         "latest_finish": latest_finish, "schedule_data_date": schedule_data_date,
         "schedule_inventory": sched_inventory,
     }
@@ -164,10 +180,11 @@ def _build_collections(inputs, calendar, project_key) -> dict:
     start, end = calendar["forecast_start_month"], calendar["forecast_end_month"]
     rec_by, sched_ev, ctx_by = inputs["rec_by_key"], inputs["sched_ev_by_key"], inputs["context_by_key"]
     v2_by, invoice_by, openf_by = inputs["v2_by_key"], inputs["invoice_by_key"], inputs["open_features_by_key"]
+    txn_by, cfg_fcf = inputs["txn_dates_by_key"], inputs["cfg_fcf"]
     sdd = inputs["schedule_data_date"]
 
     monthly_rows, owner_rows_src, division_rows_src = [], [], []
-    cost_trends, inv_trends, sched_phasings = [], [], []
+    cost_trends, inv_trends, sched_phasings, freq_phasings = [], [], [], []
     remaining_dists, confidences, changes, overrun_register = [], [], [], []
     warnings = []
     per_code_months = {}      # key -> {month: (rec_cost, worst_cost)} for project rollup
@@ -193,17 +210,21 @@ def _build_collections(inputs, calendar, project_key) -> dict:
             invoice_by.get(key, []), months, project_key, key, cost_row.get("latest_actual_month"))
         sp_row, sched_w = schedule_monthly_phasing.analyze(
             assoc_row, openf_by.get(key, []), months, sdd, project_key, key)
+        freq_row, freq_w, freq_conf = frequency_phasing.analyze(
+            key, parsed[1] if parsed else None, parsed[2] if parsed else None,
+            monthly_actuals, txn_by.get(key, []), months, cfg_fcf, project_key)
 
         reconcile = monthly_reconcile.reconcile_code(
             rec, calendar, cost_w, inv_w, sched_w, assoc_row.get("schedule_confidence"),
             inv_row.get("confidence_in_invoice_trend"), cost_row.get("cost_entry_trend_shape"),
-            project_key)
+            project_key, frequency_weights=freq_w, frequency_confidence=freq_conf)
         conf = monthly_confidence.score(rec, reconcile, cost_row.get("stable_enough_for_phasing"),
                                         inv_row.get("confidence_in_invoice_trend"))
 
         cost_trends.append(cost_row)
         inv_trends.append(inv_row)
         sched_phasings.append(sp_row)
+        freq_phasings.append(freq_row)
         confidences.append(_confidence_row(reconcile, conf, project_key, key))
         remaining_dists.append(_remaining_dist_row(reconcile, project_key, key))
         changes.append(_change_row(reconcile, project_key, key))
@@ -248,6 +269,7 @@ def _build_collections(inputs, calendar, project_key) -> dict:
         "cost_entry_monthly_trends_by_budget_code.jsonl": cost_trends,
         "subcontractor_invoice_monthly_trends_by_budget_code.jsonl": inv_trends,
         "schedule_monthly_phasing_by_budget_code.jsonl": sched_phasings,
+        "frequency_monthly_phasing_by_budget_code.jsonl": freq_phasings,
         "remaining_work_monthly_distribution_by_budget_code.jsonl": remaining_dists,
         "monthly_overrun_risk_register.jsonl": overrun_register,
         "monthly_forecast_confidence_by_budget_code.jsonl": confidences,
@@ -332,6 +354,7 @@ def _remaining_dist_row(reconcile, project_key, key):
         ("cost_entries_weight", s["cost_entries_weight"]),
         ("subcontractor_invoice_weight", s["subcontractor_invoice_weight"]),
         ("schedule_weight", s["schedule_weight"]),
+        ("frequency_weight", s.get("frequency_weight", "0.0000")),
         ("flat_weight", s["flat_weight"]),
         ("monthly_distribution_weights", weights),
         ("total_weight_check", str(total.quantize(Decimal("0.0001")))),
@@ -509,6 +532,40 @@ def _write_data_files(out: Path, collections: dict):
             write_json(out / fname, payload)
 
 
+def _cadence_reconciliation_proof(inputs, collections, project_key) -> OrderedDict:
+    """Prove cadence is timing-only: monthly remaining sums to CTC, actual+remaining==final, and the
+    accepted final cost is UNCHANGED by cadence (monthly final == accepted-intelligence final per code)."""
+    rec_by = inputs["rec_by_key"]
+    changes = collections["monthly_forecast_change_explanation.jsonl"]
+    confidences = collections["monthly_forecast_confidence_by_budget_code.jsonl"]
+    dists = collections["remaining_work_monthly_distribution_by_budget_code.jsonl"]
+    freq_share_by = {c["budget_code_key"]: dec((c.get("source_shares") or {}).get("frequency_weight"))
+                     or Decimal("0") for c in confidences}
+    final_mismatch, reconcile_fail = [], []
+    for ch in changes:
+        key = ch["budget_code_key"]
+        accepted_final = D((rec_by.get(key) or {}).get("recommended_final_cost"))
+        monthly_final = D(ch.get("recommended_final_cost"))
+        if abs(accepted_final - monthly_final) > Decimal("0.01"):
+            final_mismatch.append(key)
+    for d in dists:
+        if "RECONCILIATION FAILED" in (d.get("validation_notes") or ""):
+            reconcile_fail.append(d["budget_code_key"])
+    codes_with_freq = sorted(k for k, v in freq_share_by.items() if v > 0)
+    return OrderedDict([
+        ("project_key", project_key),
+        ("codes_with_frequency_share", len(codes_with_freq)),
+        ("codes_with_frequency_share_keys", codes_with_freq),
+        ("all_codes_reconcile_to_ctc_and_final", not reconcile_fail),
+        ("reconciliation_failures", reconcile_fail),
+        ("accepted_final_cost_unchanged_by_cadence", not final_mismatch),
+        ("final_cost_mismatches", final_mismatch),
+        ("proof", "monthly remaining cost Σ == cost-to-complete and actual + Σ == final cost "
+                  "(per-code reconciliation_ok); accepted final cost per code equals the accepted "
+                  "forecast-intelligence final cost — cadence reshapes months only, never the total."),
+    ])
+
+
 def generate(project_key, cfg, data_root=None, frozen_stamp=None, out_root=None,
              with_llm=False, llm_model=None, forecast_start_month=None) -> dict:
     data_root = Path(data_root or cfg["default_data_root"])
@@ -561,6 +618,8 @@ def generate(project_key, cfg, data_root=None, frozen_stamp=None, out_root=None,
     write_json(out / "audit" / "source_files_used.json", _source_files(inputs, cfg))
     write_json(out / "audit" / "analysis_reconciliation.json",
                _analysis_reconciliation(inputs, collections, calendar))
+    write_json(out / "audit" / "cadence_reconciliation_proof.json",
+               _cadence_reconciliation_proof(inputs, collections, project_key))
     write_json(out / "input_inventory.json", OrderedDict([("generation", meta), ("calendar", calendar)]))
     _write_readme(out, project_key, meta, calendar, collections)
     _write_schema(out)

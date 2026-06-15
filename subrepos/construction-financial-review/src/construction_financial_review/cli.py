@@ -137,6 +137,17 @@ def cmd_forecast_history_informed(cfg: dict, project: str, data_root, frozen_sta
                    with_llm=with_llm, llm_model=llm_model)
 
 
+def cmd_forecast_cost_frequency(cfg: dict, project: str, data_root, frozen_stamp, out_root,
+                                with_llm, llm_model) -> int:
+    """Config-driven cost-frequency / billing-cadence evidence generator: classifies each canonical
+    code's incurrence cadence from CostEntries, recognizes weekly internal-staffing codes with
+    weekday-normalized daily rates, revalidates cadence, and emits ADVISORY monthly phasing (timing
+    only; never changes accepted final cost). Import dispatch."""
+    from .forecast_cost_frequency import generate_forecast_cost_frequency_package as gen
+    return gen.run(project, cfg, data_root=data_root, frozen_stamp=frozen_stamp, out_root=out_root,
+                   with_llm=with_llm, llm_model=llm_model)
+
+
 def cmd_run_generator(command: str, project: str) -> int:
     if project != "tropical":
         print(json.dumps({
@@ -216,6 +227,14 @@ def build_parser() -> argparse.ArgumentParser:
     fhp.add_argument("--with-llm", action="store_true",
                      help="Engage the local Ollama advisory narrative layer (advisory only, never numeric).")
     fhp.add_argument("--llm-model", default=None, help="Override the configured Ollama model.")
+    fcp = sub.add_parser("forecast-cost-frequency")
+    fcp.add_argument("--project", required=True, help="Project key (e.g. tropical).")
+    fcp.add_argument("--data-root", default=None, help="Override the configured forecast data root.")
+    fcp.add_argument("--frozen-stamp", default=None, help="Deterministic stamp (determinism check).")
+    fcp.add_argument("--out-root", default=None, help="Override the output base dir.")
+    fcp.add_argument("--with-llm", action="store_true",
+                     help="Engage the local Ollama advisory narrative layer (advisory only, never numeric).")
+    fcp.add_argument("--llm-model", default=None, help="Override the configured Ollama model.")
     return ap
 
 
@@ -244,6 +263,9 @@ def main(argv=None) -> int:
     if args.command == "forecast-history-informed":
         return cmd_forecast_history_informed(cfg, args.project, args.data_root, args.frozen_stamp,
                                              args.out_root, args.with_llm, args.llm_model)
+    if args.command == "forecast-cost-frequency":
+        return cmd_forecast_cost_frequency(cfg, args.project, args.data_root, args.frozen_stamp,
+                                           args.out_root, args.with_llm, args.llm_model)
     return cmd_run_generator(args.command, args.project)
 
 
