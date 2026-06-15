@@ -23,6 +23,18 @@
     "seed": 7,
     "timeout_seconds": 60
   },
+  "forecast_history_informed": {
+    "cash_flow_history_package": "cash_flow_forecast_history_json_package",
+    "gcgr_history_package": "gcgr_forecast_history_json_package",
+    "forecast_intelligence_package_glob": "forecast_accuracy_next_package_tropical_*",
+    "forecast_monthly_package_glob": "forecast_monthly_package_tropical_*",
+    "forecast_probability_package_glob": "forecast_probability_package_tropical_*",
+    "minimum_zero_persistence_snapshots": 3,
+    "actual_inactivity_months_for_zero_support": 12,
+    "history_recency_half_life_months": 6,
+    "history_max_weight_when_unvalidated": "0.20",
+    "history_max_weight_when_validated": "0.45"
+  },
   "forecast_intelligence": {
     "schedule_integrated_package_glob": "schedule_integrated_forecast_package_tropical_*",
     "prior_forecast_accuracy_package_glob": "forecast_accuracy_package_tropical_*",

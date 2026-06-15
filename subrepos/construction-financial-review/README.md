@@ -28,6 +28,14 @@ makes **no live external calls** and performs **no database, Excel, or source mu
    confidence, ERP forecast-adequacy flags, and an optional advisory **local-Ollama** narrative layer.
    Accounting actuals stay truth; nothing overrides them
    (`docs/workflow/07_forecast_accuracy.md`).
+8. **Forecast intelligence / monthly / probability** — anticipated final cost + overrun detection,
+   month-by-month time-phasing, and a Monte Carlo probabilistic validation of the estimate
+   (`docs/workflow/08_*`, `09_*`, `10_forecast_probability.md`).
+9. **Forecast history-informed** — additive evidence layer that mines prior cash-flow + GC/GR forecast
+   assumptions and validates each against CostEntries actuals, surfacing **advisory** recommendations,
+   confidence/uncertainty shifts and monthly-shape signals. Historical forecast is prior-assumption
+   evidence — never actual cost, never a cap; nothing accepted is mutated
+   (`docs/workflow/11_forecast_history_informed.md`).
 
 ## Current project supported
 

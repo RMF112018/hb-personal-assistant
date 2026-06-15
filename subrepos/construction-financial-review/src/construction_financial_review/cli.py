@@ -126,6 +126,17 @@ def cmd_forecast_probability(cfg: dict, project: str, data_root, frozen_stamp, o
                    runs=runs, seed=seed)
 
 
+def cmd_forecast_history_informed(cfg: dict, project: str, data_root, frozen_stamp, out_root,
+                                  with_llm, llm_model) -> int:
+    """Additive historical-forecast-assumption evidence: mines prior cash-flow + GC/GR forecasts,
+    validates each against CostEntries actuals, and surfaces ADVISORY recommendations, confidence/
+    uncertainty shifts and monthly-shape signals. Never mutates accepted packages; history is evidence,
+    not actuals, not caps. Import dispatch."""
+    from .forecast_history_informed import generate_forecast_history_informed_package as gen
+    return gen.run(project, cfg, data_root=data_root, frozen_stamp=frozen_stamp, out_root=out_root,
+                   with_llm=with_llm, llm_model=llm_model)
+
+
 def cmd_run_generator(command: str, project: str) -> int:
     if project != "tropical":
         print(json.dumps({
@@ -197,6 +208,14 @@ def build_parser() -> argparse.ArgumentParser:
     fpp.add_argument("--with-llm", action="store_true",
                      help="Engage the local Ollama advisory narrative layer (default: deterministic mock).")
     fpp.add_argument("--llm-model", default=None, help="Override the configured Ollama model.")
+    fhp = sub.add_parser("forecast-history-informed")
+    fhp.add_argument("--project", required=True, help="Project key (e.g. tropical).")
+    fhp.add_argument("--data-root", default=None, help="Override the configured forecast data root.")
+    fhp.add_argument("--frozen-stamp", default=None, help="Deterministic stamp (determinism check).")
+    fhp.add_argument("--out-root", default=None, help="Override the output base dir.")
+    fhp.add_argument("--with-llm", action="store_true",
+                     help="Engage the local Ollama advisory narrative layer (advisory only, never numeric).")
+    fhp.add_argument("--llm-model", default=None, help="Override the configured Ollama model.")
     return ap
 
 
@@ -222,6 +241,9 @@ def main(argv=None) -> int:
         return cmd_forecast_probability(cfg, args.project, args.data_root, args.frozen_stamp,
                                         args.out_root, args.with_llm, args.llm_model,
                                         args.forecast_start_month, args.runs, args.seed)
+    if args.command == "forecast-history-informed":
+        return cmd_forecast_history_informed(cfg, args.project, args.data_root, args.frozen_stamp,
+                                             args.out_root, args.with_llm, args.llm_model)
     return cmd_run_generator(args.command, args.project)
 
 
