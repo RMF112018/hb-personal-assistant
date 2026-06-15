@@ -28,12 +28,15 @@ F_HIST_MONTHLY = "history_informed_monthly_shape"
 F_HIST_PROB = "history_informed_probability"
 F_FREQ_CADENCE = "cost_frequency_cadence"
 F_STAFFING_RATE = "internal_staffing_weekday_rate"
+F_OPERATOR_CONTROL = "operator_forecast_control"
+F_OPERATOR_STAFFING_PLAN = "operator_staffing_plan"
 F_LLM = "llm_advisory_narrative"
 
 FAMILIES = (
     F_ACTUAL, F_BUDGET, F_PROJECTED, F_OWNER_SCOPE, F_OWNER_PAYAPP, F_SUB_PAYAPP, F_COST_TREND,
     F_SCHED_REMAIN, F_SCHED_MONTHLY, F_ACCURACY, F_INTELLIGENCE, F_MONTHLY, F_PROBABILITY,
-    F_HIST_FINAL, F_HIST_MONTHLY, F_HIST_PROB, F_FREQ_CADENCE, F_STAFFING_RATE, F_LLM,
+    F_HIST_FINAL, F_HIST_MONTHLY, F_HIST_PROB, F_FREQ_CADENCE, F_STAFFING_RATE, F_OPERATOR_CONTROL,
+    F_OPERATOR_STAFFING_PLAN, F_LLM,
 )
 
 # independence groups — items in the same group describe ONE underlying signal (no double-count)
@@ -47,6 +50,8 @@ INDEPENDENCE_GROUP = {
     F_PROBABILITY: "base_model",
     F_HIST_FINAL: "history", F_HIST_MONTHLY: "history", F_HIST_PROB: "history",
     F_FREQ_CADENCE: "frequency", F_STAFFING_RATE: "frequency",
+    F_OPERATOR_CONTROL: "operator_control",
+    F_OPERATOR_STAFFING_PLAN: "staffing_plan",
     F_LLM: "narrative",
 }
 

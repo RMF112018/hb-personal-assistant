@@ -33,6 +33,18 @@ def build(project_key, key, entry, sc) -> tuple:
     integrated_ctc = integrated_final - actual_floor
     if integrated_ctc < ZERO:
         integrated_ctc = ZERO
+
+    # operator forecast control: an ACCEPTED dollar control (remaining allowance / final override)
+    # changes the integrated final cost; floored at actuals; recorded as an operator decision, not model
+    # evidence. Timing-only stop-date controls do NOT change the dollar total here.
+    decision = entry.get("operator_control")
+    operator_dollar = bool(decision and decision.get("dollar_applied"))
+    if operator_dollar:
+        from ..forecast_controls.apply import effective_ctc
+        new_ctc, _, _ = effective_ctc(accepted_ctc, accepted_ctc, actual_floor, decision)
+        integrated_ctc = new_ctc if new_ctc > ZERO else ZERO
+        integrated_final = actual_floor + integrated_ctc
+        floored = integrated_final == actual_floor and new_ctc <= ZERO
     delta = integrated_final - accepted_final
 
     evidence_summary = OrderedDict([
@@ -65,6 +77,8 @@ def build(project_key, key, entry, sc) -> tuple:
         ("probability_consumption_status", sc["probability_consumption_status"]),
         ("schedule_consumption_status", sc["schedule_consumption_status"]),
         ("pay_app_consumption_status", sc["pay_app_consumption_status"]),
+        ("operator_control_status", _operator_status(decision)),
+        ("operator_control_id", (decision or {}).get("control_id")),
         ("reason_codes", sc["reason_codes"]),
     ])
     ha.stamp(forecast_row)
@@ -88,6 +102,16 @@ def build(project_key, key, entry, sc) -> tuple:
         ("upper_cap_applied", False),
     ])
     return forecast_row, final_rec, floor_audit, integrated_final, integrated_ctc
+
+
+def _operator_status(decision) -> str:
+    if not decision:
+        return "none"
+    if decision.get("dollar_applied"):
+        return "applied_dollar"
+    if decision.get("timing_applied"):
+        return "applied_timing_only"
+    return "present"
 
 
 def _direction(delta: Decimal) -> str:

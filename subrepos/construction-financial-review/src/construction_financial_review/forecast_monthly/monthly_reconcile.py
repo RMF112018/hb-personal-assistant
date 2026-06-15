@@ -21,6 +21,12 @@ INVOICE_FACTOR = {"high": Decimal("0.5"), "medium": Decimal("0.4"), "low": Decim
 # the primary timing basis for staffing codes). "none" => no frequency contribution.
 FREQUENCY_FACTOR = {"high": Decimal("0.8"), "medium": Decimal("0.6"), "low": Decimal("0.4"),
                     "none": Decimal("0")}
+# Operator staffing-plan timing share, carved BEFORE all other signals: an explicit operator-supplied
+# staffing schedule is the strongest forward-looking timing source for a mapped .LAB code. It only
+# SHAPES months (scaled to the accepted cost-to-complete); the dollar total is never changed here — the
+# plan-implied dollars + deltas are disclosed by the staffing-plan package and on each monthly row.
+STAFFING_PLAN_FACTOR = {"high": Decimal("0.95"), "medium": Decimal("0.8"), "low": Decimal("0.6"),
+                        "none": Decimal("0")}
 
 
 def _clamp01(x: Decimal) -> Decimal:
@@ -56,7 +62,9 @@ def reconcile_code(rec: dict, calendar: dict, cost_weights: "OrderedDict[str, De
                    schedule_confidence, invoice_confidence: str, cost_shape: str,
                    project_key: str,
                    frequency_weights: Optional["OrderedDict[str, Decimal]"] = None,
-                   frequency_confidence: str = "none") -> dict:
+                   frequency_confidence: str = "none",
+                   staffing_plan_weights: Optional["OrderedDict[str, Decimal]"] = None,
+                   staffing_plan_confidence: str = "none") -> dict:
     months = [m["forecast_month"] for m in calendar["months"]]
     frac = {m["forecast_month"]: dec(m["month_remaining_fraction"]) or Decimal("1")
             for m in calendar["months"]}
@@ -72,11 +80,15 @@ def reconcile_code(rec: dict, calendar: dict, cost_weights: "OrderedDict[str, De
     revised = dec(rec.get("revised_budget"))
 
     # ---- source shares ----
-    # schedule first; then cadence/frequency (staffing weekday cadence is the primary timing basis);
-    # the remaining residual splits between invoice and cost-entries as before. Adding frequency only
-    # reshapes month weights — it never changes the cost-to-complete or the accepted final cost.
-    sched_share = _clamp01(dec(schedule_confidence) or Decimal("0")) if schedule_weights else Decimal("0")
-    remaining = Decimal("1") - sched_share
+    # operator staffing plan FIRST (strongest forward-looking timing source for a mapped .LAB code);
+    # then schedule; then cadence/frequency (staffing weekday cadence); the remaining residual splits
+    # between invoice and cost-entries as before. Every share only reshapes month weights — it never
+    # changes the cost-to-complete or the accepted final cost.
+    sp_share = (STAFFING_PLAN_FACTOR.get(staffing_plan_confidence, Decimal("0"))
+                if staffing_plan_weights else Decimal("0"))
+    base = Decimal("1") - sp_share
+    sched_share = (_clamp01(dec(schedule_confidence) or Decimal("0")) * base) if schedule_weights else Decimal("0")
+    remaining = base - sched_share
     freq_factor = FREQUENCY_FACTOR.get(frequency_confidence, Decimal("0")) if frequency_weights else Decimal("0")
     freq_share = remaining * freq_factor
     remaining = remaining - freq_share
@@ -87,6 +99,8 @@ def reconcile_code(rec: dict, calendar: dict, cost_weights: "OrderedDict[str, De
     blended: "OrderedDict[str, Decimal]" = OrderedDict()
     for m in months:
         w = cost_share * cost_weights.get(m, Decimal("0"))
+        if staffing_plan_weights:
+            w += sp_share * staffing_plan_weights.get(m, Decimal("0"))
         if schedule_weights:
             w += sched_share * schedule_weights.get(m, Decimal("0"))
         if frequency_weights:
@@ -155,6 +169,8 @@ def reconcile_code(rec: dict, calendar: dict, cost_weights: "OrderedDict[str, De
     direction = rec.get("forecast_direction")
     if direction == "insufficient_evidence":
         basis = "insufficient_evidence"
+    elif sp_share >= Decimal("0.5"):
+        basis = "operator_staffing_plan"
     elif freq_share >= Decimal("0.5"):
         basis = "frequency_cadence"
     elif sched_share >= Decimal("0.5"):
@@ -192,6 +208,7 @@ def reconcile_code(rec: dict, calendar: dict, cost_weights: "OrderedDict[str, De
         "month_costs": month_costs,
         "blended": blended,
         "source_shares": OrderedDict([
+            ("staffing_plan_weight", str(sp_share.quantize(Decimal("0.0001")))),
             ("schedule_weight", str(sched_share.quantize(Decimal("0.0001")))),
             ("cost_entries_weight", str(cost_share.quantize(Decimal("0.0001")))),
             ("subcontractor_invoice_weight", str(inv_share.quantize(Decimal("0.0001")))),

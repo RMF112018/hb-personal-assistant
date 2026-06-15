@@ -116,6 +116,29 @@
     "allow_degraded_without_frequency_package": true,
     "deterministic_seed": 20260614
   },
+  "forecast_controls": {
+    "enabled": true,
+    "control_file": "config/forecast_controls/tropical/code_forecast_controls.jsonl",
+    "require_accepted_status_for_final_cost_change": true,
+    "require_accepted_status_for_post_stop_zero": true,
+    "allow_pending_controls_in_review_queue": true,
+    "allow_pending_timing_controls": false,
+    "default_month_proration_policy": "month_level",
+    "stop_date_post_month_policy": "zero_after_stop_month",
+    "fail_on_ambiguous_cost_code": true,
+    "preserve_actuals_floor": true
+  },
+  "forecast_staffing_plan": {
+    "enabled": true,
+    "package_glob": "staffing_json_package_tropical_*",
+    "mapping_file": "config/forecast_staffing/tropical/staffing_budget_code_mapping.jsonl",
+    "require_mapping_acceptance": true,
+    "fail_on_ambiguous_mapping": true,
+    "zero_after_staffing_plan_end": true,
+    "preserve_actuals_floor": true,
+    "allow_final_cost_recommendation": true,
+    "materiality_threshold": "25000.00"
+  },
   "forecast_improvement_audit": {
     "deterministic_seed": 20260614,
     "fee_cost_codes": ["20-18-110"],

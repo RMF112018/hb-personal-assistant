@@ -74,4 +74,43 @@ def build(project_key, key, entry, sc, integrated_final: Decimal) -> list:
                                  "current_projected_diverges_from_integrated_forecast", "high",
                                  f"integrated final {integrated_final} vs current projected {projected}",
                                  ["current_projected_cost", "forecast_intelligence"]))
+
+    out.extend(_operator_control_conflicts(project_key, key, cost_code, entry))
+    # operator staffing-plan conflicts are emitted by the staffing-plan package in the comprehensive
+    # conflict-row schema; surface them here so they enter the integrated conflict register + review queue.
+    out.extend(entry.get("staffing_plan_conflicts") or [])
+    return out
+
+
+def _operator_control_conflicts(project_key, key, cost_code, entry) -> list:
+    """Conflicts between explicit operator controls and the model forecast / schedule / actuals."""
+    out = []
+    decision = entry.get("operator_control")
+    apps = entry.get("operator_control_apps") or []
+    sched = entry.get("sched") or {}
+
+    if decision and (decision.get("timing_applied") or decision.get("dollar_applied")):
+        out.append(_conflict(project_key, key, cost_code, "operator_control_conflicts_with_model_forecast",
+                             "medium", f"operator control {decision.get('control_id')} overrides the model "
+                             f"forecast ({decision.get('disposition')})",
+                             ["operator_forecast_control", "forecast_intelligence"]))
+        if decision.get("timing_applied") and sched.get("influences_code_estimate"):
+            out.append(_conflict(project_key, key, cost_code,
+                                 "operator_stop_date_conflicts_with_schedule_remaining_work", "high",
+                                 "operator stop-date applied but schedule remaining-work still influences "
+                                 f"this code (status={sched.get('schedule_remaining_work_status')})",
+                                 ["operator_forecast_control", "schedule_remaining_work"]))
+
+    for a in apps:
+        if a.get("disposition") in ("rejected_final_below_actuals", "rejected_remaining_below_zero"):
+            out.append(_conflict(project_key, key, cost_code,
+                                 "operator_remaining_allowance_below_actuals", "high",
+                                 f"accepted operator amount for {a.get('control_id')} is below actual cost "
+                                 "to date; rejected (floor preserved)",
+                                 ["operator_forecast_control", "actual_cost_truth"]))
+        elif a.get("disposition") == "pending_not_applied":
+            out.append(_conflict(project_key, key, cost_code, "operator_control_pending_not_applied",
+                                 "medium", f"pending operator control {a.get('control_id')} exists but is "
+                                 "not applied (awaiting human acceptance)",
+                                 ["operator_forecast_control"]))
     return out

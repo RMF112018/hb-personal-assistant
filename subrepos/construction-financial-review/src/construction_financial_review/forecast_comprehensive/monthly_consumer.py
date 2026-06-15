@@ -84,6 +84,15 @@ def build(project_key, key, entry, sc, integrated_ctc: Decimal) -> tuple:
         blended[m] = v
     blended = _norm(blended)
 
+    # operator forecast control: zero months after an applied stop date and renormalize over the allowed
+    # window (timing only; integrated_ctc is unchanged and still reconciles exactly).
+    decision = entry.get("operator_control")
+    operator_stop_month = None
+    if decision and decision.get("timing_applied") and decision.get("stop_month"):
+        from ..forecast_controls.apply import restrict_weights
+        operator_stop_month = decision["stop_month"]
+        blended = restrict_weights(blended, months, operator_stop_month)
+
     month_costs = _allocate(integrated_ctc, blended, months)
     total = sum(month_costs.values(), ZERO)
     reconciled = abs(total - integrated_ctc) <= CENTS
@@ -110,6 +119,8 @@ def build(project_key, key, entry, sc, integrated_ctc: Decimal) -> tuple:
         ("history_consumption_status", "consumed" if hist_share > 0 else sc["history_consumption_status"]),
         ("frequency_consumption_status", sc["frequency_consumption_status"]),
         ("schedule_consumption_status", sc["schedule_consumption_status"]),
+        ("operator_controlled", bool(operator_stop_month)),
+        ("operator_stop_month", operator_stop_month),
     ])
     ha.stamp(row)
     audit = OrderedDict([("budget_code_key", key),

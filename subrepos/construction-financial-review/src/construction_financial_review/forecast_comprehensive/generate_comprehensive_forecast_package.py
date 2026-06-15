@@ -24,6 +24,7 @@ from ..common.hashing import sha256_file
 from ..common.io import read_jsonl, write_json, write_jsonl
 from ..common.money import D, money_str
 from ..common.safety import safety_scan
+from ..forecast_controls import integration as fctl_integration
 from ..forecast_intelligence import db_inventory
 from ..schedule_analysis.schedule_mapping import build_canonical_index
 from . import (
@@ -39,6 +40,7 @@ from . import evidence_scoring as scoring
 from . import human_acceptance as ha
 from . import validation as fc_validation
 
+SUBPROJECT_ROOT = Path(__file__).resolve().parents[3]
 ZERO = Decimal("0")
 CENTS = Decimal("0.01")
 
@@ -151,6 +153,14 @@ def _build_collections(inputs: dict, project_key: str) -> dict:
                 ("review_priority", priority),
             ])))
 
+    # operator staffing-plan conflicts for unmapped / non-canonical cost codes (per-code ones are
+    # already emitted via conflicts.build); surface them in the integrated register too.
+    canon_set = set(canonical)
+    for c in inputs.get("staffing_plan_conflicts") or []:
+        k = c.get("budget_code_key")
+        if k is None or k not in canon_set:
+            conflict_rows.append(c)
+
     # ---- project monthly rollup + reconciliation ----
     proj_months = sorted(project_months.keys())
     project_monthly = [OrderedDict([
@@ -177,7 +187,7 @@ def _build_collections(inputs: dict, project_key: str) -> dict:
             ("project_key", project_key),
             ("independence_groups", ["actuals_truth", "cost_entry_trend", "budget_reference",
                                      "pay_application", "schedule", "base_model", "history",
-                                     "frequency", "narrative"]),
+                                     "frequency", "operator_control", "staffing_plan", "narrative"]),
             ("no_double_count_rule", "evidence in the same independence_group counts once; the same "
              "CostEntries trend surfacing in context/intelligence/monthly/history is not weighted 4x"),
             ("bounds", OrderedDict([
@@ -360,7 +370,26 @@ def load_inputs(cfg, data_root, project_key, frozen_stamp):
     canonical_keys = set(index["keys"])
 
     sources = evidence_registry.load_sources(discovery)
-    items, per_code = evidence_registry.build_registry(canonical_keys, sources, project_key)
+
+    # operator forecast controls (read-only; fail closed before generation if unsafe)
+    actuals_by_key = {k: D((r.get("actuals") or {}).get("actual_cost_all_source_to_date"))
+                      for k, r in sources["context_by"].items()}
+    controls_bundle = fctl_integration.prepare(cfg, SUBPROJECT_ROOT, canonical_keys, actuals_by_key,
+                                               project_key)
+    fctl_integration.assert_integration_safe(cfg, controls_bundle)
+    controls_active = fctl_integration.integration_active(cfg, controls_bundle)
+    resolved = controls_bundle["resolved"]
+    apps_by_key = {}
+    for a in resolved["applications"]:
+        if a.get("budget_code_key"):
+            apps_by_key.setdefault(a["budget_code_key"], []).append(a)
+    controls_ctx = {
+        "by_key": resolved["by_key"] if controls_active else {},
+        "apps_by_key": apps_by_key if controls_active else {},
+        "control_file": controls_bundle["load_result"]["control_file"],
+        "active": controls_active,
+    }
+    items, per_code = evidence_registry.build_registry(canonical_keys, sources, project_key, controls_ctx)
 
     source_files = []
     for pth in sources["_paths"].values():
@@ -374,6 +403,10 @@ def load_inputs(cfg, data_root, project_key, frozen_stamp):
         ("evidence_items", items), ("per_code", per_code),
         ("frequency_disposition", freq_disp), ("frequency_reason", freq_reason),
         ("source_files", source_files[:400]), ("source_hashes_before", pre_hashes),
+        ("controls_active", controls_active), ("controls_bundle", controls_bundle),
+        ("controls_ctx", controls_ctx),
+        ("staffing_plan_active", bool(discovery.get("staffing_plan", {}).get("present"))),
+        ("staffing_plan_conflicts", sources.get("staffing_plan_conflicts") or []),
     ])
 
 

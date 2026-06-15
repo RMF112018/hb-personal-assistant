@@ -35,6 +35,7 @@ def load_sources(discovery: OrderedDict) -> dict:
     ctx, intel = p("context"), p("intelligence")
     monthly, prob = p("monthly"), p("probability")
     hist, freq = p("history_informed"), p("cost_frequency")
+    staffing = p("staffing_plan")
 
     src = {
         "context_by": _by_key(ctx / "summaries" / "budget_code_forecast_context.jsonl") if ctx else {},
@@ -56,16 +57,38 @@ def load_sources(discovery: OrderedDict) -> dict:
         "freq_by": _by_key(freq / "cost_frequency_by_budget_code.jsonl") if freq else {},
         "freq_phasing_by": _by_key(freq / "frequency_adjusted_monthly_phasing_by_budget_code.jsonl") if freq else {},
         "freq_rate_by": _by_key(freq / "internal_staffing_daily_rate_by_budget_code.jsonl") if freq else {},
+        "staffing_plan_by": _by_key(staffing / "staffing_plan_summary_by_budget_code.jsonl") if staffing else {},
+        "staffing_plan_monthly_by": _by_key(
+            staffing / "staffing_plan_monthly_by_budget_code.jsonl") if staffing else {},
+        "staffing_plan_conflicts": (list(read_jsonl(staffing / "staffing_plan_conflicts.jsonl"))
+                                    if staffing and (staffing / "staffing_plan_conflicts.jsonl").exists()
+                                    else []),
         "_paths": {"context": ctx, "intelligence": intel, "monthly": monthly, "probability": prob,
-                   "history_informed": hist, "cost_frequency": freq},
+                   "history_informed": hist, "cost_frequency": freq, "staffing_plan": staffing},
     }
     return src
 
 
-def build_registry(canonical_keys, sources: dict, project_key: str):
-    """Return (evidence_items, per_code). Emit one evidence item per present family per code."""
+def build_registry(canonical_keys, sources: dict, project_key: str, controls_ctx: dict | None = None):
+    """Return (evidence_items, per_code). Emit one evidence item per present family per code.
+
+    ``controls_ctx`` (optional) carries operator forecast controls: {"by_key", "apps_by_key",
+    "control_file"}. When present, each controlled code gets an ``operator_forecast_control`` evidence
+    item and the resolved decision is attached to per_code for the consumers + conflict register.
+    """
     items, per_code = [], OrderedDict()
     paths = sources["_paths"]
+    controls_ctx = controls_ctx or {}
+    ctrl_by_key = controls_ctx.get("by_key") or {}
+    ctrl_apps_by_key = controls_ctx.get("apps_by_key") or {}
+    ctrl_file = controls_ctx.get("control_file")
+
+    # operator staffing plan (consumed as accepted-package OUTPUT rows; advisory, never auto-applied)
+    staffing_plan_by = sources.get("staffing_plan_by") or {}
+    staffing_plan_path = (sources.get("_paths") or {}).get("staffing_plan")
+    sp_conflicts_by_key = {}
+    for c in sources.get("staffing_plan_conflicts") or []:
+        sp_conflicts_by_key.setdefault(c.get("budget_code_key"), []).append(c)
 
     for key in sorted(canonical_keys):
         ctx = sources["context_by"].get(key, {})
@@ -188,6 +211,38 @@ def build_registry(canonical_keys, sources: dict, project_key: str):
                     "daily_rate", freq.get("daily_rate"), confidence=freq.get("daily_rate_confidence"),
                     supports_monthly_phasing=True, reason_codes=["timing_only_never_final_cost"])
 
+        # ---- operator forecast control (explicit human decision; never model truth) ----
+        ctrl_apps = ctrl_apps_by_key.get(key, [])
+        decision = ctrl_by_key.get(key)
+        if ctrl_apps:
+            cid = (decision or {}).get("control_id") or ctrl_apps[0].get("control_id")
+            items.append(es.evidence_item(
+                project_key, key, "operator_control", ctrl_file, "code_forecast_controls.jsonl", cid,
+                es.F_OPERATOR_CONTROL, "operator_control_type",
+                (decision or {}).get("control_type") or ctrl_apps[0].get("control_type"),
+                direction="stop_or_reduce", confidence="operator_decision",
+                supports_final_cost=bool(decision and decision.get("dollar_applied")),
+                supports_monthly_phasing=bool(decision and decision.get("timing_applied")),
+                requires_human_acceptance=True, do_not_auto_apply=(decision is None),
+                reason_codes=[a.get("disposition") for a in ctrl_apps],
+                notes="operator decision; pending controls queued only; applied only when accepted"))
+
+        # ---- operator staffing plan (operator-supplied planned staffing; advisory final-cost evidence) ----
+        sp_row = staffing_plan_by.get(key)
+        sp_conflicts = sp_conflicts_by_key.get(key, [])
+        if sp_row:
+            add(es.F_OPERATOR_STAFFING_PLAN, "staffing_plan",
+                "staffing_plan_summary_by_budget_code.jsonl",
+                "staffing_plan_implied_final_cost", sp_row.get("staffing_plan_implied_final_cost"),
+                direction="operator_planned_staffing", confidence="operator_supplied",
+                supports_final_cost=True, supports_monthly_phasing=True,
+                requires_human_acceptance=True, do_not_auto_apply=True,
+                reason_codes=["operator_planned_staffing_lab_only", sp_row.get("recommendation_status"),
+                              ("requires_operator_acceptance" if sp_row.get("requires_operator_acceptance")
+                               else "within_materiality")],
+                notes="operator-supplied planned staffing; LAB-only numeric; plan-implied final cost is "
+                      "advisory until explicit operator acceptance")
+
         per_code[key] = {
             "actual_cost_to_date": actuals.get("actual_cost_all_source_to_date"),
             "revised_budget": budg.get("revised_budget"), "projected_costs": budg.get("projected_costs"),
@@ -197,5 +252,7 @@ def build_registry(canonical_keys, sources: dict, project_key: str):
             "hist_adj": hadj, "hist_rel": hrel, "hist_val": hval, "hist_mon": hmon, "hist_prob": hprob,
             "freq": freq, "freq_phasing": fphase,
             "owner_pay_app": opa, "sub_pay_app": spa,
+            "operator_control": decision, "operator_control_apps": ctrl_apps,
+            "staffing_plan": sp_row, "staffing_plan_conflicts": sp_conflicts,
         }
     return items, per_code

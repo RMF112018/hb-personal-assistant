@@ -55,6 +55,22 @@ AUDIT_DATA_FILES = (
     "audit/staffing_code_policy_audit.json",
 )
 ZERO = Decimal("0")
+STAFFING_PLAN_GLOB = "forecast_staffing_plan_package_tropical_*"
+
+
+def _load_staffing_plan(data_root: Path) -> dict:
+    """Read the latest staffing-plan package bridge (read-only). Returns {budget_code_key: summary_row}.
+
+    The operator staffing plan is a stronger forward-looking timing source than historical cadence for
+    the mapped .LAB codes; cadence classification is preserved here for diagnostics.
+    """
+    matches = sorted(p for p in Path(data_root).glob(STAFFING_PLAN_GLOB) if p.is_dir())
+    if not matches:
+        return {}
+    fpath = matches[-1] / "staffing_plan_summary_by_budget_code.jsonl"
+    if not fpath.exists():
+        return {}
+    return {r["budget_code_key"]: r for r in read_jsonl(fpath) if r.get("budget_code_key")}
 
 
 # --------------------------------------------------------------------------- pure deterministic build
@@ -65,6 +81,7 @@ def _build_collections(inputs: dict, project_key: str) -> dict:
     months = window["months"]
     boundary = window["latest_complete_month_boundary"]
     context_by, rec_by, txn_by = inputs["context_by"], inputs["rec_by"], inputs["txn_dates_by"]
+    staffing_plan_by = inputs.get("staffing_plan_by_key") or {}
 
     freq_rows, obs_rows, rate_rows, reval_rows = [], [], [], []
     phasing_rows, recs, warnings = [], [], []
@@ -91,6 +108,8 @@ def _build_collections(inputs: dict, project_key: str) -> dict:
                                    detected["frequency_confidence"], months, rate.get("daily_rate"), ctc)
         phasing_rows.append(prow)
         cadence_material = effective in ("weekly_internal_staffing", "weekly_observed")
+        sp_row = staffing_plan_by.get(key)
+        staffing_plan_present = bool(sp_row)
 
         # accumulate the project-level staffing projection (scaled to CTC; timing only)
         if is_staffing and rate.get("daily_rate") is not None:
@@ -128,6 +147,12 @@ def _build_collections(inputs: dict, project_key: str) -> dict:
             ("cadence_materially_changed_monthly_phasing", cadence_material),
             ("staffing_projection_scaled_to_ctc", prow["staffing_projection_scaled_to_ctc"]),
             ("recommended_monthly_phasing_basis", prow["recommended_monthly_phasing_basis"]),
+            ("staffing_plan_present", staffing_plan_present),
+            ("forward_looking_timing_source",
+             "operator_staffing_plan" if staffing_plan_present
+             else ("cost_frequency_cadence" if cadence_material else "model_default")),
+            ("staffing_plan_supersedes_cadence_for_future_months", staffing_plan_present),
+            ("cadence_classification_preserved_for_diagnostics", True),
             ("requires_human_acceptance", True),
         ]))
         obs_rows.append(frequency_detect.observation_row(project_key, key, cost_code, category, detected))
@@ -154,6 +179,7 @@ def _build_collections(inputs: dict, project_key: str) -> dict:
             ("effective_frequency_class", effective),
             ("recommended_monthly_phasing_basis", prow["recommended_monthly_phasing_basis"]),
             ("cadence_change_detected", reval["cadence_change_detected"]),
+            ("staffing_plan_supersedes_cadence", staffing_plan_present),
             ("do_not_change_accepted_final_cost", True),
             ("requires_human_acceptance", True),
         ]))
@@ -330,6 +356,7 @@ def generate(project_key, cfg, data_root=None, frozen_stamp=None, out_root=None,
     data_root = Path(data_root or cfg["default_data_root"])
     inputs = frequency_io.load_inputs(cfg, data_root, project_key)
     inputs["_cfg"] = cfg
+    inputs["staffing_plan_by_key"] = _load_staffing_plan(data_root)
 
     stamp = frozen_stamp or datetime.now().strftime("%Y%m%d_%H%M%S")
     generated_ts = frozen_stamp if frozen_stamp else datetime.now().isoformat(timespec="seconds")
@@ -360,6 +387,14 @@ def generate(project_key, cfg, data_root=None, frozen_stamp=None, out_root=None,
     ])
     write_json(out / "audit" / "source_hashes_before_after.json", audit["source_hashes_before_after"])
     write_json(out / "audit" / "source_files_used.json", _source_files_audit(inputs))
+    write_json(out / "audit" / "staffing_plan_consumption.json", OrderedDict([
+        ("project_key", project_key),
+        ("staffing_plan_present", bool(inputs["staffing_plan_by_key"])),
+        ("staffing_plan_budget_codes", sorted(inputs["staffing_plan_by_key"].keys())),
+        ("rule", "for mapped staffing .LAB codes the operator staffing plan is the forward-looking "
+                 "timing source (stronger than historical cadence); cadence classification is preserved "
+                 "as diagnostic and the accepted final cost is never changed by this slice"),
+    ]))
     db_inv = db_inventory.inventory(cfg, project_key)
     write_json(out / "audit" / "db_inventory.json", db_inv)
     write_json(out / "input_inventory.json", OrderedDict([("generation", meta),

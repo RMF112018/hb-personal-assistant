@@ -20,6 +20,8 @@ PACKAGE_SPECS = (
      "forecast_analysis_package_tropical_crosswalk_v2_*"),
     ("schedule_integrated_package_glob", "schedule_integrated", False,
      "schedule_integrated_forecast_package_tropical_*"),
+    ("forecast_staffing_plan_package_glob", "staffing_plan", False,
+     "forecast_staffing_plan_package_tropical_*"),
 )
 
 

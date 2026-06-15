@@ -33,6 +33,9 @@ from ..common.safety import safety_scan
 from ..common.validation import all_files_parse
 from ..forecast_accuracy.llm import narrate
 from ..forecast_accuracy.llm.client import OllamaClient
+from ..forecast_controls import apply as fctl_apply
+from ..forecast_controls import integration as fctl_integration
+from ..forecast_staffing_plan import integration as fsp_integration
 from ..forecast_intelligence import db_inventory
 from ..schedule_analysis import schedule_io, schedule_mapping, schedule_rollup
 from . import (calendar as cal, cost_entry_trends, frequency_phasing, monthly_backtest,
@@ -124,6 +127,27 @@ def _load_inputs(cfg, data_root, project_key):
     open_features_by_key, latest_finish, schedule_data_date, sched_inventory = _load_schedule(
         schedule_raw_pkg, budget_codes, project_key)
 
+    # operator forecast controls (read-only; fail closed before generation if unsafe)
+    canonical_keys = {bc["budget_code_key"] for bc in budget_codes}
+    actuals_by_key = {k: D(r.get("actual_cost_all_source_to_date")) for k, r in rec_by_key.items()}
+    controls_bundle = fctl_integration.prepare(cfg, SUBPROJECT_ROOT, canonical_keys, actuals_by_key,
+                                               project_key)
+    fctl_integration.assert_integration_safe(cfg, controls_bundle)
+    controls_active = fctl_integration.integration_active(cfg, controls_bundle)
+    controls_by_key = controls_bundle["resolved"]["by_key"] if controls_active else {}
+
+    # operator staffing plan (read-only; fail closed before generation if unsafe). For mapped .LAB codes
+    # the plan provides the forward-looking monthly timing shape; the monthly forecast stays reconciled
+    # to the accepted CTC and each row discloses the plan-implied vs applied (CTC-reconciled) amounts.
+    monthly_actuals_by_key = {k: (v.get("actuals") or {}).get("monthly_actuals") or []
+                              for k, v in context_by_key.items()}
+    staffing_bundle = fsp_integration.prepare(
+        cfg, SUBPROJECT_ROOT, data_root, budget_codes, actuals_by_key, rec_by_key, project_key,
+        monthly_actuals_by_key=monthly_actuals_by_key)
+    fsp_integration.assert_integration_safe(cfg, staffing_bundle)
+    staffing_active = fsp_integration.integration_active(cfg, staffing_bundle)
+    staffing_by_key = staffing_bundle["resolved"]["by_key"] if staffing_active else {}
+
     return {
         "data_root": data_root, "packages": packages, "context_pkg": context_pkg,
         "analysis_pkg": analysis_pkg, "schedule_raw_pkg": schedule_raw_pkg, "accepted_pkg": accepted_pkg,
@@ -135,6 +159,10 @@ def _load_inputs(cfg, data_root, project_key):
         "cfg_fcf": cfg.get("forecast_cost_frequency") or {},
         "latest_finish": latest_finish, "schedule_data_date": schedule_data_date,
         "schedule_inventory": sched_inventory,
+        "controls_active": controls_active, "controls_by_key": controls_by_key,
+        "controls_bundle": controls_bundle,
+        "staffing_active": staffing_active, "staffing_by_key": staffing_by_key,
+        "staffing_bundle": staffing_bundle,
     }
 
 
@@ -183,6 +211,9 @@ def _build_collections(inputs, calendar, project_key) -> dict:
     txn_by, cfg_fcf = inputs["txn_dates_by_key"], inputs["cfg_fcf"]
     sdd = inputs["schedule_data_date"]
 
+    controls_by_key = inputs.get("controls_by_key") or {}
+    staffing_by_key = inputs.get("staffing_by_key") or {}
+
     monthly_rows, owner_rows_src, division_rows_src = [], [], []
     cost_trends, inv_trends, sched_phasings, freq_phasings = [], [], [], []
     remaining_dists, confidences, changes, overrun_register = [], [], [], []
@@ -214,10 +245,37 @@ def _build_collections(inputs, calendar, project_key) -> dict:
             key, parsed[1] if parsed else None, parsed[2] if parsed else None,
             monthly_actuals, txn_by.get(key, []), months, cfg_fcf, project_key)
 
+        # operator staffing plan: forward-looking monthly timing shape for a mapped .LAB code (timing
+        # only; the dollar total stays reconciled to the accepted CTC — plan-implied dollars are
+        # disclosed on the row). Zero outside the plan window (zero_after_staffing_plan_end).
+        sdecision = staffing_by_key.get(key)
+        sp_weights, sp_conf = None, "none"
+        if sdecision:
+            implied = sdecision.get("implied_monthly") or {}
+            cand = OrderedDict((m, D(implied.get(m, Decimal("0")))) for m in months)
+            if sum(cand.values(), Decimal("0")) > 0:
+                sp_weights, sp_conf = cand, "high"
+
         reconcile = monthly_reconcile.reconcile_code(
             rec, calendar, cost_w, inv_w, sched_w, assoc_row.get("schedule_confidence"),
             inv_row.get("confidence_in_invoice_trend"), cost_row.get("cost_entry_trend_shape"),
-            project_key, frequency_weights=freq_w, frequency_confidence=freq_conf)
+            project_key, frequency_weights=freq_w, frequency_confidence=freq_conf,
+            staffing_plan_weights=sp_weights, staffing_plan_confidence=sp_conf)
+        # operator forecast control: reshape monthly timing (zero post-stop months, redistribute the
+        # allowed cost-to-complete). Timing-only here keeps CTC/final unchanged so monthly reconciliation
+        # and the actuals floor still hold; dollar overrides flow through the controls/comprehensive layer.
+        decision = controls_by_key.get(key)
+        if decision and decision.get("timing_applied") and not decision.get("dollar_applied"):
+            reconcile = fctl_apply.reshape_reconcile(reconcile, decision)
+            warnings.append(_warn(project_key, key, "medium",
+                                  f"operator forecast control '{decision['control_id']}' applied: forecast "
+                                  f"stopped after {decision.get('stop_month')}; months after the stop are "
+                                  "zeroed and the cost-to-complete is redistributed through the stop window"))
+            if decision.get("dollars_model_derived"):
+                warnings.append(_warn(project_key, key, "low",
+                                      "operator stop-date applied without an accepted remaining/final "
+                                      "amount; the total remaining cost is still model-derived"))
+
         conf = monthly_confidence.score(rec, reconcile, cost_row.get("stable_enough_for_phasing"),
                                         inv_row.get("confidence_in_invoice_trend"))
 
@@ -231,7 +289,8 @@ def _build_collections(inputs, calendar, project_key) -> dict:
 
         per_code_months[key] = {}
         for mc in reconcile["month_costs"]:
-            row = _monthly_row(reconcile, mc, conf, cost_row, inv_row, assoc_row, start, end, project_key)
+            row = _monthly_row(reconcile, mc, conf, cost_row, inv_row, assoc_row, start, end, project_key,
+                               sdecision)
             monthly_rows.append(row)
             owner_rows_src.append((owner_sov, mc["forecast_month"], mc["recommended_month_cost"],
                                    mc["worst_credible_month_cost"]))
@@ -283,7 +342,19 @@ def _build_collections(inputs, calendar, project_key) -> dict:
     }
 
 
-def _monthly_row(reconcile, mc, conf, cost_row, inv_row, assoc_row, start, end, project_key):
+def _monthly_row(reconcile, mc, conf, cost_row, inv_row, assoc_row, start, end, project_key,
+                 staffing_decision=None):
+    ss = reconcile["source_shares"]
+    sp_weight = ss.get("staffing_plan_weight", "0.0000")
+    sp_numeric_driver = bool(staffing_decision)
+    # applied = the CTC-reconciled month cost actually used; implied/raw = the operator plan dollars.
+    applied_amount = mc["recommended_month_cost"]
+    implied_amount = None
+    acceptance_required = False
+    if staffing_decision:
+        implied = staffing_decision.get("implied_monthly") or {}
+        implied_amount = money_str(D(implied.get(mc["forecast_month"], Decimal("0"))))
+        acceptance_required = bool(staffing_decision.get("requires_operator_acceptance"))
     return OrderedDict([
         ("project_key", project_key),
         ("budget_code_key", reconcile["budget_code_key"]),
@@ -323,6 +394,16 @@ def _monthly_row(reconcile, mc, conf, cost_row, inv_row, assoc_row, start, end, 
         ("overrun_existence_confidence", conf.get("overrun_existence_confidence")),
         ("final_cost_estimate_confidence", conf.get("final_cost_estimate_confidence")),
         ("monthly_distribution_confidence", conf.get("monthly_distribution_confidence")),
+        # ---- operator staffing-plan disclosure (applied = CTC-reconciled; implied = plan dollars) ----
+        ("monthly_forecast_amount", applied_amount),
+        ("ctc_reconciliation_applied", True),
+        ("staffing_plan_raw_amount", implied_amount),
+        ("staffing_plan_applied_amount", applied_amount if sp_numeric_driver else None),
+        ("staffing_plan_implied_amount", implied_amount),
+        ("staffing_plan_weight", sp_weight),
+        ("staffing_plan_is_numeric_driver", sp_numeric_driver),
+        ("staffing_plan_is_recommendation_only", acceptance_required),
+        ("operator_acceptance_required", acceptance_required),
         ("requires_human_acceptance", True),
         ("notes", None),
     ])
@@ -351,6 +432,7 @@ def _remaining_dist_row(reconcile, project_key, key):
         ("recommended_cost_to_complete", money_str(reconcile["recommended_cost_to_complete"])),
         ("worst_credible_cost_to_complete", money_str(reconcile["worst_credible_cost_to_complete"])),
         ("distribution_basis", reconcile["monthly_forecast_basis"]),
+        ("staffing_plan_weight", s.get("staffing_plan_weight", "0.0000")),
         ("cost_entries_weight", s["cost_entries_weight"]),
         ("subcontractor_invoice_weight", s["subcontractor_invoice_weight"]),
         ("schedule_weight", s["schedule_weight"]),
@@ -521,6 +603,59 @@ def _warn(project_key, key, severity, message):
                         ("severity", severity), ("message", message)])
 
 
+def _forecast_controls_audit(inputs) -> OrderedDict:
+    """Audit which operator controls reshaped monthly timing (timing-only applied here)."""
+    bundle = inputs.get("controls_bundle") or {}
+    resolved = (bundle.get("resolved") or {})
+    by_key = inputs.get("controls_by_key") or {}
+    applied = [OrderedDict([("budget_code_key", k), ("control_id", d.get("control_id")),
+                            ("control_type", d.get("control_type")), ("stop_month", d.get("stop_month")),
+                            ("timing_applied", d.get("timing_applied")),
+                            ("dollar_applied", d.get("dollar_applied")),
+                            ("dollars_model_derived", d.get("dollars_model_derived"))])
+               for k, d in sorted(by_key.items())
+               if d.get("timing_applied") and not d.get("dollar_applied")]
+    return OrderedDict([
+        ("controls_active", bool(inputs.get("controls_active"))),
+        ("control_file", (bundle.get("load_result") or {}).get("control_file")),
+        ("applied_monthly_timing_controls", applied),
+        ("acceptance_counts", resolved.get("counts")),
+        ("controlled_budget_codes", resolved.get("controlled_budget_codes")),
+        ("note", "monthly integration applies stop-date TIMING only; dollar overrides flow through the "
+                 "forecast-controls package and comprehensive layer; actuals floor preserved"),
+    ])
+
+
+def _staffing_plan_audit(inputs) -> OrderedDict:
+    """Audit which mapped .LAB codes the operator staffing plan timed, and the plan-implied vs accepted
+    deltas. Monthly applies TIMING only (output stays reconciled to the accepted CTC); the plan-implied
+    dollars + deltas are disclosed here and on each monthly row so a stale accepted CTC is never hidden."""
+    by_key = inputs.get("staffing_by_key") or {}
+    bundle = inputs.get("staffing_bundle") or {}
+    disc = bundle.get("discovery") or {}
+    applied = []
+    for k, d in sorted(by_key.items()):
+        acc_ctc = d.get("accepted_cost_to_complete")
+        implied = d.get("plan_implied_remaining_cost")
+        applied.append(OrderedDict([
+            ("budget_code_key", k), ("source_cost_code", d.get("source_cost_code")),
+            ("plan_implied_remaining_cost", money_str(implied) if implied is not None else None),
+            ("accepted_cost_to_complete", money_str(acc_ctc) if acc_ctc is not None else None),
+            ("delta_vs_accepted_ctc",
+             money_str(implied - acc_ctc) if (implied is not None and acc_ctc is not None) else None),
+            ("requires_operator_acceptance", d.get("requires_operator_acceptance")),
+        ]))
+    return OrderedDict([
+        ("staffing_active", bool(inputs.get("staffing_active"))),
+        ("source_package", disc.get("package_name")),
+        ("timed_budget_codes", applied),
+        ("note", "monthly integration applies the staffing plan as a TIMING shape only; the monthly "
+                 "forecast stays reconciled to the accepted CTC. Plan-implied dollar totals and their "
+                 "deltas vs the accepted CTC/final are advisory and surfaced for operator acceptance "
+                 "(see the staffing-plan package bridge); actuals floor preserved."),
+    ])
+
+
 # --------------------------------------------------------------------------- write + orchestrate
 
 def _write_data_files(out: Path, collections: dict):
@@ -620,6 +755,8 @@ def generate(project_key, cfg, data_root=None, frozen_stamp=None, out_root=None,
                _analysis_reconciliation(inputs, collections, calendar))
     write_json(out / "audit" / "cadence_reconciliation_proof.json",
                _cadence_reconciliation_proof(inputs, collections, project_key))
+    write_json(out / "audit" / "forecast_controls_applied.json", _forecast_controls_audit(inputs))
+    write_json(out / "audit" / "staffing_plan_applied.json", _staffing_plan_audit(inputs))
     write_json(out / "input_inventory.json", OrderedDict([("generation", meta), ("calendar", calendar)]))
     _write_readme(out, project_key, meta, calendar, collections)
     _write_schema(out)

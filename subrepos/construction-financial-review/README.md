@@ -63,6 +63,29 @@ makes **no live external calls** and performs **no database, Excel, or source mu
     FEE`) **are** capped by the projected budget value subject to the actuals floor (missing cap value →
     data gap, never an invented cap). Nothing is applied into accepted outputs; unsupported pieces are
     reported as data gaps (`docs/workflow/14_forecast_improvement_audit.md`).
+13. **Forecast controls** — operator-controlled stop-date / closeout-constraint layer. Loads a
+    project-level operator control file, maps each control to a canonical budget code, resolves
+    precedence (**accepted > pending**), and emits applied decisions, a monthly-adjustment preview, a
+    human-review queue, warnings, and fail-closed audits. A posture-changing control (post-stop zeroing
+    or a dollar change) applies ONLY when human-accepted; pending controls are queued, not applied.
+    Consumed by `forecast-monthly` (stop-date timing) and `forecast-comprehensive` (the
+    `operator_forecast_control` evidence family + conflict register). CostEntries are truth and actual
+    cost to date is the only floor — no hidden caps; stop-date timing without an accepted amount keeps
+    the dollar total model-derived (`docs/workflow/15_forecast_controls.md`).
+14. **Forecast staffing plan** — operator-supplied planned-staffing forecast layer. Discovers + validates
+    the extracted staffing JSON package, resolves each source cost code to a canonical `.LAB` budget-code
+    key (**LAB-only numeric**, allocation 1.0000; the `.LAB`/`.LBN`/`.MAT` family is date-context only),
+    and emits the per-code **bridge** (actual / accepted vs plan-implied final + CTC / deltas), BOTH the
+    plan-implied and current-CTC-reconciled monthly forecasts, a mapping review queue, conflicts (incl.
+    `staffing_plan_conflicts_with_current_accepted_ctc`), warnings, and fail-closed audits. A cost code
+    applies numerically only when it resolves to exactly one `.LAB` AND an operator override accepts it;
+    ambiguous / unmapped / pending codes are review-only. Consumed by `forecast-cost-frequency` (the plan
+    is the forward-looking timing source; cadence preserved as diagnostic), `forecast-monthly` (plan
+    timing shape; rows disclose plan-implied vs CTC-reconciled applied amounts), and
+    `forecast-comprehensive` (the `operator_staffing_plan` evidence family + conflict register). The plan
+    never hides a stale accepted CTC; plan-driven final-cost changes are advisory until operator
+    acceptance. CostEntries are truth and actual cost to date is the only floor — no hidden caps
+    (`docs/workflow/16_forecast_staffing_plan.md`).
 
 ## Current project supported
 

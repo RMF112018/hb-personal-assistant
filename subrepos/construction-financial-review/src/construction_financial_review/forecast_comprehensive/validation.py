@@ -59,6 +59,21 @@ def build_validation(out, inputs, collections, audit, determinism, safety, meta,
     src = audit.get("source_hashes_before_after") or {}
     source_unchanged = bool(src.get("unchanged"))
 
+    # operator forecast controls
+    controls_active = bool(inputs.get("controls_active"))
+    resolved = (inputs.get("controls_bundle") or {}).get("resolved") or {}
+    op_items = [i for i in items if i["evidence_family"] == "operator_forecast_control"]
+    op_evidence_ok = (not controls_active) or (len(op_items) > 0)
+    op_floor_ok = not resolved.get("any_floor_violation")
+    op_mapping_ok = not resolved.get("any_ambiguous") and not resolved.get("any_invented")
+
+    # operator staffing plan (advisory; consumed as accepted-package OUTPUT)
+    staffing_active = bool(inputs.get("staffing_plan_active"))
+    sp_items = [i for i in items if i["evidence_family"] == "operator_staffing_plan"]
+    sp_evidence_ok = (not staffing_active) or (len(sp_items) > 0)
+    sp_advisory_ok = all(i.get("requires_human_acceptance") and i.get("do_not_auto_apply")
+                         for i in sp_items)
+
     llm_receipts_ok = True
     if llm_used:
         req = {"budget_code_key", "model", "status", "safety_passed"}
@@ -86,6 +101,11 @@ def build_validation(out, inputs, collections, audit, determinism, safety, meta,
         ("history_outputs_consumed_or_explicitly_downgraded", history_ok),
         ("frequency_outputs_consumed_or_explicitly_missing", frequency_ok),
         ("human_acceptance_fields_present", acceptance_ok),
+        ("operator_control_evidence_present_when_active", op_evidence_ok),
+        ("operator_controls_floor_preserved", op_floor_ok),
+        ("operator_controls_mapping_unambiguous", op_mapping_ok),
+        ("operator_staffing_plan_evidence_present_when_active", sp_evidence_ok),
+        ("operator_staffing_plan_advisory_requires_acceptance", sp_advisory_ok),
         ("meta_files_present", all((out / f).exists() for f in meta_doc)),
         ("source_hashes_unchanged", source_unchanged),
         ("no_sqlite_mutation", True),

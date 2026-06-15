@@ -161,6 +161,32 @@ def cmd_forecast_comprehensive(cfg: dict, project: str, data_root, frozen_stamp,
                    with_llm=with_llm, llm_model=llm_model)
 
 
+def cmd_forecast_controls(cfg: dict, project: str, data_root, frozen_stamp, out_root,
+                          with_llm, llm_model) -> int:
+    """Operator-controlled forecast stop-date / closeout-constraint layer: loads the operator control
+    file, maps each control to a canonical budget code, resolves precedence (accepted > pending) into
+    applied decisions, and emits applied decisions, a monthly-adjustment preview, a human-review queue,
+    warnings, and fail-closed audits. Posture-changing controls apply only when human-accepted; pending
+    controls are queued. Never mutates source Excel / accepted packages / SQLite; no live external calls.
+    Import dispatch."""
+    from .forecast_controls import generate_forecast_controls_package as gen
+    return gen.run(project, cfg, data_root=data_root, frozen_stamp=frozen_stamp, out_root=out_root,
+                   with_llm=with_llm, llm_model=llm_model)
+
+
+def cmd_forecast_staffing_plan(cfg: dict, project: str, data_root, frozen_stamp, out_root,
+                               with_llm, llm_model) -> int:
+    """Operator-supplied planned-staffing forecast layer: discovers + validates the extracted staffing
+    JSON package, resolves each source cost code to a canonical .LAB budget-code key (LAB-only numeric;
+    .LAB/.LBN/.MAT family is date-context only), and emits the per-code bridge (actual / accepted vs
+    plan-implied final+CTC / deltas), BOTH the plan-implied and current-CTC-reconciled monthly forecasts,
+    a mapping review queue, conflicts, warnings, and fail-closed audits. Never mutates source Excel, the
+    staffing JSON package, accepted packages, or SQLite; no live external calls. Import dispatch."""
+    from .forecast_staffing_plan import generate_forecast_staffing_plan_package as gen
+    return gen.run(project, cfg, data_root=data_root, frozen_stamp=frozen_stamp, out_root=out_root,
+                   with_llm=with_llm, llm_model=llm_model)
+
+
 def cmd_forecast_improvement_audit(cfg: dict, project: str, data_root, frozen_stamp, out_root,
                                    with_llm, llm_model) -> int:
     """Additive forecast improvement-audit: validates the seven forecasting-priority improvements
@@ -268,6 +294,22 @@ def build_parser() -> argparse.ArgumentParser:
     fkp.add_argument("--with-llm", action="store_true",
                      help="Engage the local Ollama advisory narrative layer (advisory only, never numeric).")
     fkp.add_argument("--llm-model", default=None, help="Override the configured Ollama model.")
+    fctlp = sub.add_parser("forecast-controls")
+    fctlp.add_argument("--project", required=True, help="Project key (e.g. tropical).")
+    fctlp.add_argument("--data-root", default=None, help="Override the configured forecast data root.")
+    fctlp.add_argument("--frozen-stamp", default=None, help="Deterministic stamp (determinism check).")
+    fctlp.add_argument("--out-root", default=None, help="Override the output base dir.")
+    fctlp.add_argument("--with-llm", action="store_true",
+                       help="Engage the local Ollama advisory narrative layer (advisory only, never numeric).")
+    fctlp.add_argument("--llm-model", default=None, help="Override the configured Ollama model.")
+    fspp = sub.add_parser("forecast-staffing-plan")
+    fspp.add_argument("--project", required=True, help="Project key (e.g. tropical).")
+    fspp.add_argument("--data-root", default=None, help="Override the configured forecast data root.")
+    fspp.add_argument("--frozen-stamp", default=None, help="Deterministic stamp (determinism check).")
+    fspp.add_argument("--out-root", default=None, help="Override the output base dir.")
+    fspp.add_argument("--with-llm", action="store_true",
+                      help="Engage the local Ollama advisory narrative layer (advisory only, never numeric).")
+    fspp.add_argument("--llm-model", default=None, help="Override the configured Ollama model.")
     fiap = sub.add_parser("forecast-improvement-audit")
     fiap.add_argument("--project", required=True, help="Project key (e.g. tropical).")
     fiap.add_argument("--data-root", default=None, help="Override the configured forecast data root.")
@@ -309,6 +351,12 @@ def main(argv=None) -> int:
                                            args.out_root, args.with_llm, args.llm_model)
     if args.command == "forecast-comprehensive":
         return cmd_forecast_comprehensive(cfg, args.project, args.data_root, args.frozen_stamp,
+                                          args.out_root, args.with_llm, args.llm_model)
+    if args.command == "forecast-controls":
+        return cmd_forecast_controls(cfg, args.project, args.data_root, args.frozen_stamp,
+                                     args.out_root, args.with_llm, args.llm_model)
+    if args.command == "forecast-staffing-plan":
+        return cmd_forecast_staffing_plan(cfg, args.project, args.data_root, args.frozen_stamp,
                                           args.out_root, args.with_llm, args.llm_model)
     if args.command == "forecast-improvement-audit":
         return cmd_forecast_improvement_audit(cfg, args.project, args.data_root, args.frozen_stamp,
