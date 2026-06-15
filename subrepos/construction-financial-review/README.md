@@ -53,6 +53,16 @@ makes **no live external calls** and performs **no database, Excel, or source mu
     floor; no evidence is a cap; cadence shapes timing only; probability is a **deterministic transform**
     of the accepted package (not a fresh Monte Carlo). Standalone packages are never mutated
     (`docs/workflow/13_forecast_comprehensive.md`).
+12. **Forecast improvement audit** — additive, advisory, read-only audit that validates the seven
+    forecasting-priority improvements against repo + data truth and implements each only where the
+    available JSON packages / SQLite tables support it: a Basis of Estimate (+ coverage audit),
+    calibration enhancements with sample-size/denominator guards, actual-cost lag diagnostics, a schedule
+    cost-loading readiness posture, GC/GR behavior classification, change-order exposure from the
+    read-only DB, and the **fee projected-budget cap** governance. CostEntries are truth and the only
+    floor; reference values never cap NON-fee forecasts, but FEE codes (currently `20-18-110 CONTRACTORS
+    FEE`) **are** capped by the projected budget value subject to the actuals floor (missing cap value →
+    data gap, never an invented cap). Nothing is applied into accepted outputs; unsupported pieces are
+    reported as data gaps (`docs/workflow/14_forecast_improvement_audit.md`).
 
 ## Current project supported
 

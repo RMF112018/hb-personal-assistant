@@ -116,6 +116,20 @@
     "allow_degraded_without_frequency_package": true,
     "deterministic_seed": 20260614
   },
+  "forecast_improvement_audit": {
+    "deterministic_seed": 20260614,
+    "fee_cost_codes": ["20-18-110"],
+    "fee_cap_source_field": "projected_budget",
+    "gcgr_description_keywords": ["GENERAL CONDITION", "GENERAL REQUIREMENT", "FEE", "INSURANCE",
+      "BOND", "PERMIT", "UTILITY", "ADMIN", "SUPERVISION", "OVERHEAD", "GENERAL LIABILITY"],
+    "gcgr_zero_threshold": "1.0",
+    "calibration_min_sample": 8,
+    "lag_recency_gap_months": 2,
+    "lag_zero_threshold": "1.0",
+    "schedule_drive_mapped_fraction": 0.6,
+    "schedule_drive_cost_loaded_fraction": 0.5,
+    "schedule_inform_mapped_fraction": 0.2
+  },
   "forecast_probability": {
     "runs": 10000,
     "seed": 20260614,
