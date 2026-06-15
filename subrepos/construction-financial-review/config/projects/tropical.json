@@ -97,6 +97,25 @@
     "staffing_daily_rate_method": "latest_complete_month_weekday_normalized",
     "forecast_monthly_integration_enabled": true
   },
+  "forecast_comprehensive": {
+    "forecast_context_package_glob": "forecast_context_package_tropical_*",
+    "forecast_intelligence_package_glob": "forecast_accuracy_next_package_tropical_*",
+    "forecast_monthly_package_glob": "forecast_monthly_package_tropical_*",
+    "forecast_probability_package_glob": "forecast_probability_package_tropical_*",
+    "forecast_history_informed_package_glob": "forecast_history_informed_package_tropical_*",
+    "forecast_cost_frequency_package_glob": "forecast_cost_frequency_package_tropical_*",
+    "forecast_crosswalk_v2_package_glob": "forecast_analysis_package_tropical_crosswalk_v2_*",
+    "schedule_integrated_package_glob": "schedule_integrated_forecast_package_tropical_*",
+    "history_enabled": true,
+    "frequency_enabled": true,
+    "max_history_final_cost_weight": "0.45",
+    "max_history_monthly_shape_weight": "0.30",
+    "max_history_probability_weight": "0.25",
+    "max_frequency_monthly_shape_weight": "0.60",
+    "require_human_acceptance": true,
+    "allow_degraded_without_frequency_package": true,
+    "deterministic_seed": 20260614
+  },
   "forecast_probability": {
     "runs": 10000,
     "seed": 20260614,

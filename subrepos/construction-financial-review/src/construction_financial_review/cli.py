@@ -148,6 +148,19 @@ def cmd_forecast_cost_frequency(cfg: dict, project: str, data_root, frozen_stamp
                    with_llm=with_llm, llm_model=llm_model)
 
 
+def cmd_forecast_comprehensive(cfg: dict, project: str, data_root, frozen_stamp, out_root,
+                               with_llm, llm_model) -> int:
+    """Integrated forecast model layer: discovers + consumes all accepted evidence packages (context,
+    intelligence, monthly, probability, history-informed, cost-frequency, crosswalk-v2, schedule-
+    integrated) into a per-code evidence registry, scores advisory evidence at bounded de-duplicated
+    weights, and emits integrated final-cost / monthly / probability recommendations with lineage, an
+    evidence-conflict register, and a human-acceptance review queue. Never mutates a package. Import
+    dispatch."""
+    from .forecast_comprehensive import generate_comprehensive_forecast_package as gen
+    return gen.run(project, cfg, data_root=data_root, frozen_stamp=frozen_stamp, out_root=out_root,
+                   with_llm=with_llm, llm_model=llm_model)
+
+
 def cmd_run_generator(command: str, project: str) -> int:
     if project != "tropical":
         print(json.dumps({
@@ -235,6 +248,14 @@ def build_parser() -> argparse.ArgumentParser:
     fcp.add_argument("--with-llm", action="store_true",
                      help="Engage the local Ollama advisory narrative layer (advisory only, never numeric).")
     fcp.add_argument("--llm-model", default=None, help="Override the configured Ollama model.")
+    fkp = sub.add_parser("forecast-comprehensive")
+    fkp.add_argument("--project", required=True, help="Project key (e.g. tropical).")
+    fkp.add_argument("--data-root", default=None, help="Override the configured forecast data root.")
+    fkp.add_argument("--frozen-stamp", default=None, help="Deterministic stamp (determinism check).")
+    fkp.add_argument("--out-root", default=None, help="Override the output base dir.")
+    fkp.add_argument("--with-llm", action="store_true",
+                     help="Engage the local Ollama advisory narrative layer (advisory only, never numeric).")
+    fkp.add_argument("--llm-model", default=None, help="Override the configured Ollama model.")
     return ap
 
 
@@ -266,6 +287,9 @@ def main(argv=None) -> int:
     if args.command == "forecast-cost-frequency":
         return cmd_forecast_cost_frequency(cfg, args.project, args.data_root, args.frozen_stamp,
                                            args.out_root, args.with_llm, args.llm_model)
+    if args.command == "forecast-comprehensive":
+        return cmd_forecast_comprehensive(cfg, args.project, args.data_root, args.frozen_stamp,
+                                          args.out_root, args.with_llm, args.llm_model)
     return cmd_run_generator(args.command, args.project)
 
 

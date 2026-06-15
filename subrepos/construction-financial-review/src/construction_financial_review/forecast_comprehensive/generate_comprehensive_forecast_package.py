@@ -1,0 +1,607 @@
+"""Generate the comprehensive integrated forecast package for Tropical World Nursery.
+
+Discovers + consumes the accepted evidence packages (context, intelligence, monthly, probability,
+history-informed, cost-frequency; crosswalk-v2 + schedule-integrated for completeness), normalizes them
+into a per-code evidence registry, scores advisory evidence within bounded, de-duplicated weights, and
+emits integrated final-cost / monthly / probability recommendations with full lineage, an evidence
+conflict register, and a human-acceptance review queue. Never re-runs the heavy generators; never mutates
+any package. Deterministic (frozen stamp); probability is a deterministic transform of the accepted
+distribution (no fresh Monte Carlo). CostEntries are truth; actual cost to date is the only floor; no cap.
+
+Run:
+    PYTHONPATH=src python3 -m construction_financial_review.cli forecast-comprehensive --project tropical \
+        [--frozen-stamp YYYYMMDD_HHMMSS] [--out-root DIR] [--with-llm]
+"""
+from __future__ import annotations
+
+import tempfile
+from collections import Counter, OrderedDict
+from datetime import datetime
+from decimal import Decimal
+from pathlib import Path
+
+from ..common.hashing import sha256_file
+from ..common.io import read_jsonl, write_json, write_jsonl
+from ..common.money import D, money_str
+from ..common.safety import safety_scan
+from ..forecast_intelligence import db_inventory
+from ..schedule_analysis.schedule_mapping import build_canonical_index
+from . import (
+    conflicts,
+    evidence_registry,
+    final_package,
+    intelligence_consumer,
+    monthly_consumer,
+    package_discovery,
+    probability_consumer,
+)
+from . import evidence_scoring as scoring
+from . import human_acceptance as ha
+from . import validation as fc_validation
+
+ZERO = Decimal("0")
+CENTS = Decimal("0.01")
+
+DATA_FILES = (
+    "integrated_forecast_by_budget_code.jsonl",
+    "integrated_evidence_registry_by_budget_code.jsonl",
+    "integrated_evidence_weights_by_budget_code.jsonl",
+    "integrated_final_cost_recommendations.jsonl",
+    "integrated_monthly_forecast_by_budget_code.jsonl",
+    "integrated_monthly_project_forecast.jsonl",
+    "integrated_probability_by_budget_code.jsonl",
+    "integrated_probability_project_summary.json",
+    "integrated_risk_register.jsonl",
+    "integrated_human_review_queue.jsonl",
+    "integrated_change_explanation.jsonl",
+    "evidence_conflict_register.jsonl",
+    "model_package_inventory.json",
+    "project_comprehensive_forecast_summary.json",
+    "top_overrun_risks.json",
+    "top_confidence_improvements.json",
+    "top_evidence_conflicts.json",
+    "top_human_review_items.json",
+    "data_quality_warnings.jsonl",
+)
+AUDIT_DATA_FILES = (
+    "audit/evidence_registry_audit.json",
+    "audit/evidence_weighting_audit.json",
+    "audit/history_consumption_audit.json",
+    "audit/frequency_consumption_audit.json",
+    "audit/monthly_reconciliation_audit.json",
+    "audit/probability_adjustment_audit.json",
+    "audit/no_upper_cap_audit.json",
+    "audit/actuals_floor_audit.json",
+    "audit/model_evidence_completeness_matrix.json",
+)
+
+
+# --------------------------------------------------------------------------- pure deterministic build
+
+def _build_collections(inputs: dict, project_key: str) -> dict:
+    cfg_fc = (inputs.get("_cfg") or {}).get("forecast_comprehensive") or {}
+    canonical = inputs["canonical_keys"]
+    per_code = inputs["per_code"]
+    items = inputs["evidence_items"]
+    discovery = inputs["discovery"]
+    seed = cfg_fc.get("deterministic_seed")
+
+    weights_rows, forecast_rows, final_recs = [], [], []
+    monthly_rows, probability_rows, conflict_rows = [], [], []
+    floor_audits, monthly_audits, review_rows, change_rows, risk_rows, warnings = [], [], [], [], [], []
+    project_months = OrderedDict()
+    totals = {"accepted_final": ZERO, "integrated_final": ZERO, "integrated_ctc": ZERO, "actual": ZERO}
+    prob_dir_counts = Counter()
+
+    for key in sorted(canonical):
+        entry = per_code[key]
+        sc = scoring.score_code(entry, cfg_fc)
+        weights_rows.append(scoring.weights_row(project_key, key, entry, sc))
+
+        f_row, rec_row, floor_audit, integ_final, integ_ctc = intelligence_consumer.build(
+            project_key, key, entry, sc)
+        forecast_rows.append(f_row)
+        final_recs.append(rec_row)
+        floor_audits.append(floor_audit)
+        totals["accepted_final"] += D(f_row["accepted_recommended_final_cost"])
+        totals["integrated_final"] += integ_final
+        totals["integrated_ctc"] += integ_ctc
+        totals["actual"] += D(f_row["actual_cost_to_date"])
+
+        m_row, m_months, m_audit = monthly_consumer.build(project_key, key, entry, sc, integ_ctc)
+        if m_row:
+            monthly_rows.append(m_row)
+            monthly_audits.append(m_audit)
+            for mo, c in m_months.items():
+                project_months[mo] = project_months.get(mo, ZERO) + c
+
+        p_row, p_contrib = probability_consumer.build(project_key, key, entry, sc, cfg_fc)
+        if p_row:
+            probability_rows.append(p_row)
+            prob_dir_counts[p_row["integrated_uncertainty_direction"]] += 1
+
+        code_conflicts = conflicts.build(project_key, key, entry, sc, integ_final)
+        conflict_rows.extend(code_conflicts)
+
+        delta = integ_final - D(f_row["accepted_recommended_final_cost"])
+        if delta.copy_abs() > CENTS:
+            change_rows.append(OrderedDict([
+                ("project_key", project_key), ("budget_code_key", key),
+                ("cost_code", f_row["cost_code"]),
+                ("accepted_recommended_final_cost", f_row["accepted_recommended_final_cost"]),
+                ("integrated_recommended_final_cost", f_row["integrated_recommended_final_cost"]),
+                ("change_amount", money_str(delta)),
+                ("history_final_cost_weight", f_row["history_final_cost_weight"]),
+                ("reason_codes", sc["reason_codes"]),
+            ]))
+        high_conf = [c for c in code_conflicts if c["severity"] == "high"]
+        if delta.copy_abs() > CENTS or high_conf or sc["contradicted"]:
+            priority = "high" if (high_conf or sc["contradicted"]) else "medium"
+            review_rows.append(ha.review_item(
+                project_key, key, f_row["cost_code"], priority,
+                "integrated final-cost change or high-severity conflict or actuals contradict history",
+                [c["conflict_class"] for c in code_conflicts]))
+            risk_rows.append(ha.stamp(OrderedDict([
+                ("project_key", project_key), ("budget_code_key", key), ("cost_code", f_row["cost_code"]),
+                ("integrated_recommended_final_cost", f_row["integrated_recommended_final_cost"]),
+                ("integrated_minus_accepted_final_cost", money_str(delta)),
+                ("conflict_count", len(code_conflicts)),
+                ("max_conflict_severity", "high" if high_conf else (
+                    "medium" if any(c["severity"] == "medium" for c in code_conflicts) else "low")),
+                ("review_priority", priority),
+            ])))
+
+    # ---- project monthly rollup + reconciliation ----
+    proj_months = sorted(project_months.keys())
+    project_monthly = [OrderedDict([
+        ("project_key", project_key), ("forecast_month", m),
+        ("integrated_month_cost", money_str(project_months[m]))]) for m in proj_months]
+    project_month_total = sum(project_months.values(), ZERO)
+    per_code_recon = all(a["reconciled"] for a in monthly_audits)
+    project_recon = abs(project_month_total - totals["integrated_ctc"]) <= CENTS * (len(monthly_audits) or 1)
+
+    # ---- audits ----
+    floor_all = all(a["floor_respected"] for a in floor_audits)
+    cap_rows_ok = all(r["upper_cap_applied"] is False for r in forecast_rows) and \
+        all(r["upper_cap_applied"] is False for r in probability_rows)
+    hist_status_counts = Counter(r["history_consumption_status"] for r in forecast_rows)
+    freq_status_counts = Counter(r["frequency_consumption_status"] for r in forecast_rows)
+
+    audits = {
+        "audit/evidence_registry_audit.json": OrderedDict([
+            ("project_key", project_key), ("evidence_item_count", len(items)),
+            ("by_evidence_family", dict(Counter(i["evidence_family"] for i in items))),
+            ("by_source_package_type", dict(Counter(i["source_package_type"] for i in items))),
+            ("lineage_complete", all(i.get("source_package_type") and i.get("source_row_id") for i in items))]),
+        "audit/evidence_weighting_audit.json": OrderedDict([
+            ("project_key", project_key),
+            ("independence_groups", ["actuals_truth", "cost_entry_trend", "budget_reference",
+                                     "pay_application", "schedule", "base_model", "history",
+                                     "frequency", "narrative"]),
+            ("no_double_count_rule", "evidence in the same independence_group counts once; the same "
+             "CostEntries trend surfacing in context/intelligence/monthly/history is not weighted 4x"),
+            ("bounds", OrderedDict([
+                ("max_history_final_cost_weight", cfg_fc.get("max_history_final_cost_weight")),
+                ("max_history_monthly_shape_weight", cfg_fc.get("max_history_monthly_shape_weight")),
+                ("max_history_probability_weight", cfg_fc.get("max_history_probability_weight")),
+                ("max_frequency_monthly_shape_weight", cfg_fc.get("max_frequency_monthly_shape_weight"))])),
+            ("frequency_final_cost_weight", "0.0000 (cadence shapes timing only)")]),
+        "audit/history_consumption_audit.json": OrderedDict([
+            ("project_key", project_key), ("status_counts", dict(hist_status_counts)),
+            ("every_code_consumed_or_downgraded",
+             all(s in ("consumed", "downgraded", "missing") for s in hist_status_counts))]),
+        "audit/frequency_consumption_audit.json": OrderedDict([
+            ("project_key", project_key), ("disposition", inputs["frequency_disposition"]),
+            ("disposition_reason", inputs["frequency_reason"]),
+            ("status_counts", dict(freq_status_counts)),
+            ("cadence_affects_final_cost", False),
+            ("note", "cost-frequency shapes monthly timing + timing-risk only; zero final-cost weight")]),
+        "audit/monthly_reconciliation_audit.json": OrderedDict([
+            ("project_key", project_key),
+            ("per_code_all_reconciled", bool(per_code_recon)),
+            ("per_code_count", len(monthly_audits)),
+            ("project_total_reconciled", bool(project_recon)),
+            ("integrated_cost_to_complete_total", money_str(totals["integrated_ctc"])),
+            ("project_monthly_total", money_str(project_month_total)),
+            ("note", "per code: Σ integrated monthly == integrated CTC; project: Σ months == Σ CTC")]),
+        "audit/probability_adjustment_audit.json": OrderedDict([
+            ("project_key", project_key),
+            ("probability_method", probability_consumer.PROBABILITY_METHOD),
+            ("deterministic_no_monte_carlo", True),
+            ("deterministic_seed", seed),
+            ("direction_counts", dict(prob_dir_counts)),
+            ("note", "deterministic reshaping of the accepted probability band around P50; NOT a fresh "
+             "Monte Carlo; floored at actuals; never capped")]),
+        "audit/no_upper_cap_audit.json": OrderedDict([
+            ("project_key", project_key), ("no_upper_cap_anywhere", bool(cap_rows_ok)),
+            ("final_cost_rows_checked", len(forecast_rows)),
+            ("probability_rows_checked", len(probability_rows)),
+            ("rule", "no history / pay-app / owner SOV / ERP budget / commitment / prior forecast / "
+             "probability value is used as a hard cap; integrated final floored at actuals only")]),
+        "audit/actuals_floor_audit.json": OrderedDict([
+            ("project_key", project_key), ("all_floors_respected", bool(floor_all)),
+            ("codes_checked", len(floor_audits)),
+            ("floored_at_actuals_count", sum(1 for r in forecast_rows if r["floored_at_actuals"]))]),
+        "audit/model_evidence_completeness_matrix.json": final_package.completeness_matrix(
+            project_key, discovery, inputs["frequency_disposition"],
+            bool(cfg_fc.get("history_enabled", True))),
+    }
+
+    if inputs["frequency_disposition"] != "consumed":
+        warnings.append(OrderedDict([
+            ("project_key", project_key), ("warning_type", "cost_frequency_package_missing"),
+            ("severity", "medium"), ("message", inputs["frequency_reason"])]))
+    for c in conflict_rows:
+        if c["severity"] == "high":
+            warnings.append(OrderedDict([
+                ("project_key", project_key), ("budget_code_key", c["budget_code_key"]),
+                ("warning_type", "evidence_conflict"), ("severity", "high"),
+                ("message", f"{c['conflict_class']}: {c['detail']}")]))
+
+    # deterministic sorts
+    skey = lambda r: (r.get("budget_code_key") or "", r.get("cost_code") or "")  # noqa: E731
+    for lst in (weights_rows, forecast_rows, final_recs, monthly_rows, probability_rows, change_rows,
+                review_rows, risk_rows):
+        lst.sort(key=skey)
+    conflict_rows.sort(key=lambda c: (c.get("budget_code_key") or "", c.get("conflict_class") or ""))
+    warnings.sort(key=lambda w: (w.get("warning_type") or "", w.get("budget_code_key") or ""))
+
+    top_over, top_conf, top_confl, top_rev = final_package.tops(
+        forecast_rows, probability_rows, conflict_rows, review_rows)
+    prob_summary = OrderedDict([
+        ("project_key", project_key),
+        ("probability_method", probability_consumer.PROBABILITY_METHOD),
+        ("deterministic_seed", seed),
+        ("integrated_p50_total", money_str(sum((D(r["integrated_p50"]) for r in probability_rows), ZERO))),
+        ("integrated_p90_total", money_str(sum((D(r["integrated_p90"]) for r in probability_rows), ZERO))),
+        ("integrated_p95_total", money_str(sum((D(r["integrated_p95"]) for r in probability_rows), ZERO))),
+        ("direction_counts", dict(prob_dir_counts)),
+        ("note", "deterministic transform of the accepted probability package, not a fresh Monte Carlo"),
+        ("requires_human_acceptance", True),
+    ])
+    summary = final_package.summary(project_key, discovery, forecast_rows, monthly_rows, probability_rows,
+                                    review_rows, conflict_rows, inputs["frequency_disposition"], totals)
+
+    out = {
+        "integrated_forecast_by_budget_code.jsonl": forecast_rows,
+        "integrated_evidence_registry_by_budget_code.jsonl": items,
+        "integrated_evidence_weights_by_budget_code.jsonl": weights_rows,
+        "integrated_final_cost_recommendations.jsonl": final_recs,
+        "integrated_monthly_forecast_by_budget_code.jsonl": monthly_rows,
+        "integrated_monthly_project_forecast.jsonl": project_monthly,
+        "integrated_probability_by_budget_code.jsonl": probability_rows,
+        "integrated_probability_project_summary.json": prob_summary,
+        "integrated_risk_register.jsonl": risk_rows,
+        "integrated_human_review_queue.jsonl": review_rows,
+        "integrated_change_explanation.jsonl": change_rows,
+        "evidence_conflict_register.jsonl": conflict_rows,
+        "model_package_inventory.json": final_package.model_package_inventory(project_key, discovery),
+        "project_comprehensive_forecast_summary.json": summary,
+        "top_overrun_risks.json": top_over,
+        "top_confidence_improvements.json": top_conf,
+        "top_evidence_conflicts.json": top_confl,
+        "top_human_review_items.json": top_rev,
+        "data_quality_warnings.jsonl": warnings,
+    }
+    out.update(audits)
+    return out
+
+
+# --------------------------------------------------------------------------- write + orchestrate
+
+def _write_collections(out: Path, collections: dict):
+    for fname in DATA_FILES + AUDIT_DATA_FILES:
+        payload = collections[fname]
+        (out / fname).parent.mkdir(parents=True, exist_ok=True)
+        if fname.endswith(".jsonl"):
+            write_jsonl(out / fname, payload)
+        else:
+            write_json(out / fname, payload)
+
+
+def _determinism_check(inputs, project_key) -> OrderedDict:
+    with tempfile.TemporaryDirectory() as d1, tempfile.TemporaryDirectory() as d2:
+        p1, p2 = Path(d1), Path(d2)
+        c1 = _build_collections(inputs, project_key)
+        c2 = _build_collections(inputs, project_key)
+        _write_collections(p1, c1)
+        _write_collections(p2, c2)
+        per_file, ok = [], True
+        for fname in DATA_FILES + AUDIT_DATA_FILES:
+            h1, h2 = sha256_file(p1 / fname), sha256_file(p2 / fname)
+            same = h1 == h2
+            ok = ok and same
+            per_file.append(OrderedDict([("file", fname), ("sha256", h1), ("identical", same)]))
+    return OrderedDict([
+        ("performed", True), ("quantitative_core_byte_identical", ok),
+        ("llm_excluded_from_byte_diff", True), ("diff_result", "pass" if ok else "fail"),
+        ("per_file", per_file)])
+
+
+def _source_hashes(files) -> OrderedDict:
+    out = OrderedDict()
+    for p in files:
+        out[str(p)] = sha256_file(p) if Path(p).exists() else None
+    return out
+
+
+def _maybe_generate_cost_frequency(cfg, data_root, project_key, frozen_stamp, discovery):
+    """Refinement #2: if no cost-frequency package and the CLI can produce one, generate it first."""
+    fc = cfg.get("forecast_comprehensive") or {}
+    if discovery["cost_frequency"]["present"] or not fc.get("frequency_enabled", True):
+        return discovery, ("consumed" if discovery["cost_frequency"]["present"] else "intentionally_excluded"), \
+            "cost-frequency package already present" if discovery["cost_frequency"]["present"] \
+            else "frequency_enabled is false"
+    try:
+        from ..forecast_cost_frequency import generate_forecast_cost_frequency_package as fcfgen
+        fcfgen.generate(project_key, cfg, data_root=data_root, frozen_stamp=frozen_stamp, out_root=None)
+        discovery = package_discovery.discover(cfg, data_root)
+        return discovery, "consumed", "cost-frequency package generated into the data root, then consumed"
+    except FileExistsError:
+        discovery = package_discovery.discover(cfg, data_root)
+        return discovery, "consumed", "cost-frequency package already existed for this stamp"
+    except Exception as e:
+        if fc.get("allow_degraded_without_frequency_package", True):
+            return discovery, "degraded_missing", f"cost-frequency generation failed: {e}; degraded allowed"
+        raise
+
+
+def load_inputs(cfg, data_root, project_key, frozen_stamp):
+    discovery = package_discovery.discover(cfg, data_root)
+    missing = package_discovery.missing_required(discovery)
+    if missing:
+        raise SystemExit(f"ERROR: required package(s) missing: {missing}")
+    discovery, freq_disp, freq_reason = _maybe_generate_cost_frequency(
+        cfg, data_root, project_key, frozen_stamp, discovery)
+
+    context_pkg = Path(discovery["context"]["path"])
+    budget_codes = list(read_jsonl(context_pkg / "canonical" / "budget_codes.jsonl"))
+    index = build_canonical_index(budget_codes)
+    canonical_keys = set(index["keys"])
+
+    sources = evidence_registry.load_sources(discovery)
+    items, per_code = evidence_registry.build_registry(canonical_keys, sources, project_key)
+
+    source_files = []
+    for pth in sources["_paths"].values():
+        if pth:
+            source_files.extend(sorted(pth.rglob("*.jsonl")))
+    pre_hashes = _source_hashes(source_files[:400])   # bound the hash set for speed; deterministic order
+
+    return OrderedDict([
+        ("project_key", project_key), ("discovery", discovery),
+        ("budget_codes", budget_codes), ("index", index), ("canonical_keys", canonical_keys),
+        ("evidence_items", items), ("per_code", per_code),
+        ("frequency_disposition", freq_disp), ("frequency_reason", freq_reason),
+        ("source_files", source_files[:400]), ("source_hashes_before", pre_hashes),
+    ])
+
+
+def generate(project_key, cfg, data_root=None, frozen_stamp=None, out_root=None,
+             with_llm=False, llm_model=None) -> dict:
+    data_root = Path(data_root or cfg["default_data_root"])
+    inputs = load_inputs(cfg, data_root, project_key, frozen_stamp)
+    inputs["_cfg"] = cfg
+
+    stamp = frozen_stamp or datetime.now().strftime("%Y%m%d_%H%M%S")
+    generated_ts = frozen_stamp if frozen_stamp else datetime.now().isoformat(timespec="seconds")
+    out_base = Path(out_root) if out_root else data_root
+    out = out_base / f"forecast_comprehensive_package_tropical_{stamp}"
+    out.mkdir(parents=True, exist_ok=False)
+    (out / "audit").mkdir(exist_ok=True)
+    (out / "llm").mkdir(exist_ok=True)
+
+    collections = _build_collections(inputs, project_key)
+    _write_collections(out, collections)
+    determinism = _determinism_check(inputs, project_key)
+
+    narratives, receipts, ollama_status = _run_llm(with_llm, cfg, llm_model,
+                                                   collections["integrated_human_review_queue.jsonl"])
+    write_jsonl(out / "llm" / "comprehensive_narratives.jsonl", narratives)
+    write_jsonl(out / "llm" / "comprehensive_narrative_receipts.jsonl", receipts)
+
+    command = (f"python3 -m construction_financial_review.cli forecast-comprehensive "
+               f"--project {project_key}" + (" --with-llm" if with_llm else ""))
+    meta = OrderedDict([
+        ("generator", "construction_financial_review.forecast_comprehensive."
+                      "generate_comprehensive_forecast_package"),
+        ("command", command), ("package_stamp", stamp), ("generated_timestamp_local", generated_ts),
+        ("project_key", project_key)])
+
+    after = _source_hashes(inputs["source_files"])
+    src_audit = OrderedDict([("before", inputs["source_hashes_before"]), ("after", after),
+                             ("unchanged", inputs["source_hashes_before"] == after)])
+    audit = OrderedDict([
+        ("actuals_floor_audit", collections["audit/actuals_floor_audit.json"]),
+        ("no_upper_cap_audit", collections["audit/no_upper_cap_audit.json"]),
+        ("monthly_reconciliation_audit", collections["audit/monthly_reconciliation_audit.json"]),
+        ("probability_adjustment_audit", collections["audit/probability_adjustment_audit.json"]),
+        ("history_consumption_audit", collections["audit/history_consumption_audit.json"]),
+        ("frequency_consumption_audit", collections["audit/frequency_consumption_audit.json"]),
+        ("source_hashes_before_after", src_audit)])
+    write_json(out / "audit" / "source_hashes_before_after.json", src_audit)
+    write_json(out / "audit" / "source_packages_used.json",
+               final_package.model_package_inventory(project_key, inputs["discovery"]))
+    db_inv = db_inventory.inventory(cfg, project_key)
+    write_json(out / "audit" / "db_inventory.json", db_inv)
+    write_json(out / "input_inventory.json", OrderedDict([("generation", meta),
+                                                          ("discovery", inputs["discovery"])]))
+    _write_readme(out, project_key, meta, collections)
+    _write_schema(out)
+
+    data_files = sorted(p for p in out.rglob("*") if p.is_file()
+                        and p.name not in ("manifest.json", "validation_report.json"))
+    safety = safety_scan(data_files)
+    write_json(out / "audit" / "safety_scan_report.json", safety)
+    validation = fc_validation.build_validation(out, inputs, collections, audit, determinism, safety,
+                                                meta, inputs["discovery"],
+                                                bool(with_llm and ollama_status == "available"), receipts)
+    write_json(out / "validation_report.json", validation)
+    conclusion = ("forecast_comprehensive_ready" if validation["passed"]
+                  else "forecast_comprehensive_not_ready")
+    write_json(out / "manifest.json", _manifest(out, project_key, meta, conclusion, validation))
+
+    summary = collections["project_comprehensive_forecast_summary.json"]
+    return {"output_package": str(out), "validation_passed": validation["passed"],
+            "safety_passed": safety["passed"], "determinism_passed": determinism["diff_result"] == "pass",
+            "source_hashes_unchanged": src_audit["unchanged"],
+            "frequency_disposition": inputs["frequency_disposition"],
+            "packages_consumed": summary["packages_consumed"], "packages_missing": summary["packages_missing"],
+            "canonical_codes_covered": summary["canonical_codes_covered"],
+            "integrated_final_cost_recommendations": summary["integrated_final_cost_recommendations"],
+            "integrated_monthly_rows": summary["integrated_monthly_rows"],
+            "integrated_probability_rows": summary["integrated_probability_rows"],
+            "human_review_items": summary["human_review_items"],
+            "evidence_conflicts": summary["evidence_conflicts"], "llm_status": ollama_status}
+
+
+def _manifest(out, project_key, meta, conclusion, validation):
+    files = []
+    for p in sorted(out.rglob("*")):
+        if p.is_file() and p.name != "manifest.json":
+            rows = sum(1 for _ in read_jsonl(p)) if p.suffix == ".jsonl" else None
+            files.append(OrderedDict([("path", str(p.relative_to(out))), ("size_bytes", p.stat().st_size),
+                                      ("row_count", rows), ("sha256", sha256_file(p))]))
+    return OrderedDict([
+        ("package_name", out.name),
+        ("manifest_title", "Comprehensive Integrated Forecast Package — Tropical World Nursery"),
+        ("manifest_version", "1.0.0"),
+        ("project", OrderedDict([("project_key", project_key),
+                                 ("project_name", "Tropical World Nursery Senior Living Facility"),
+                                 ("job_reference", "23-435-01"), ("forecast_period", "2026-June")])),
+        ("generation", meta), ("output_files", files),
+        ("validation_status", OrderedDict([("passed", validation["passed"]),
+                                           ("checks", validation["checks"])])),
+        ("conclusion", conclusion)])
+
+
+def _run_llm(with_llm, cfg, llm_model, review_rows):
+    if not with_llm:
+        return [], [], "disabled"
+    try:
+        from ..forecast_accuracy.llm import narrate
+        from ..forecast_accuracy.llm.client import OllamaClient
+    except Exception:
+        return [], [], "unavailable"
+    llm_cfg = cfg.get("llm") or {}
+    model = llm_model or llm_cfg.get("model", "qwen2.5:14b")
+    client = OllamaClient(model=model, endpoint=llm_cfg.get("endpoint", "http://localhost:11434"),
+                          temperature=float(llm_cfg.get("temperature", 0)),
+                          seed=int(llm_cfg.get("seed", 7)), timeout=float(llm_cfg.get("timeout_seconds", 60)))
+    up, _present = client.available() if hasattr(client, "available") else (False, False)
+    if not up:
+        return [], [], "unavailable"
+    backend = narrate.make_backend(client) if hasattr(narrate, "make_backend") else None
+    narratives, receipts = [], []
+    for r in review_rows[:15]:
+        facts = OrderedDict([("budget_code_key", r.get("budget_code_key")), ("cost_code", r.get("cost_code")),
+                             ("review_priority", r.get("review_priority")), ("review_reason", r.get("review_reason"))])
+        try:
+            nrow, rrow = narrate.narrate_one(facts, backend, model)
+            narratives.append(nrow)
+            receipts.append(rrow)
+        except Exception:
+            continue
+    return narratives, receipts, "available"
+
+
+def _write_readme(out, project_key, meta, collections):
+    s = collections["project_comprehensive_forecast_summary.json"]
+    md = [
+        f"# forecast_comprehensive_package_tropical ({meta['package_stamp']})",
+        "",
+        "Comprehensive integrated forecast for Tropical World Nursery "
+        f"({project_key} / 23-435-01 / 2026-June). Discovers and CONSUMES the accepted evidence packages "
+        "(context, intelligence, monthly, probability, history-informed, cost-frequency; crosswalk-v2 + "
+        "schedule-integrated for completeness) into a per-budget-code evidence registry, scores advisory "
+        "evidence at bounded de-duplicated weights, and emits integrated final-cost / monthly / "
+        "probability recommendations with full lineage, an evidence-conflict register, and a "
+        "human-acceptance review queue. It does NOT replace or mutate the standalone packages.",
+        "",
+        f"- Packages consumed: {s['packages_consumed']}; missing: {s['packages_missing']}; cost-frequency: "
+        f"{s['frequency_disposition']}.",
+        f"- Canonical codes covered: {s['canonical_codes_covered']}; integrated final-cost recs: "
+        f"{s['integrated_final_cost_recommendations']}; monthly rows: {s['integrated_monthly_rows']}; "
+        f"probability rows: {s['integrated_probability_rows']}.",
+        f"- Human-review items: {s['human_review_items']}; evidence conflicts: {s['evidence_conflicts']} "
+        f"{s['evidence_conflicts_by_class']}.",
+        "",
+        "**How evidence flows.** Accepted forecast-intelligence `recommended_final_cost` is the BASE. "
+        "History-informed final cost is one advisory family, consumed at a bounded weight that COLLAPSES "
+        "when CostEntries contradict it. Cost-frequency shapes monthly TIMING only (zero final-cost "
+        "weight). Monthly phasing reshapes by frequency (weekday) + history curve-shape tilt and "
+        "reconciles exactly to the integrated cost-to-complete (per code and project total). Probability "
+        "is a **deterministic transform** of the accepted distribution band around P50 "
+        "(`probability_method = accepted_distribution_deterministic_adjustment`) — NOT a fresh Monte "
+        "Carlo.",
+        "",
+        "**Posture.** CostEntries/Sage incurred cost is accounting truth; actual cost to date is the only "
+        "hard floor; no evidence (history / pay-app / owner SOV / ERP budget / commitment / prior "
+        "forecast / probability) is ever a cap. Every recommendation is advisory and requires human "
+        "acceptance (`acceptance_status: pending`). The local LLM is advisory only (no numeric output) "
+        "and excluded from the determinism gate.",
+        "",
+        "**Accepted vs pending.** This package PROPOSES an integrated forecast; nothing here is formally "
+        "accepted. An operator reviews `integrated_human_review_queue.jsonl` + `evidence_conflict_register"
+        ".jsonl`, then accepts/rejects per code. See `audit/model_evidence_completeness_matrix.json` for "
+        "which model outputs were discovered / consumed / partially consumed / downgraded / missing.",
+        "",
+    ]
+    (out / "README.md").write_text("\n".join(md), encoding="utf-8")
+
+
+def _write_schema(out):
+    md = [
+        "# Comprehensive Integrated Forecast Package — Schema",
+        "",
+        "Money is Decimal-string (2dp); weights/scores are 4dp Decimal strings. Integrated outputs are "
+        "ADVISORY (human-acceptance pending); they consume accepted package OUTPUT rows and never mutate "
+        "them.",
+        "",
+        "## Key files",
+        "- `integrated_forecast_by_budget_code.jsonl` — master per-code row: actual floor, accepted vs "
+        "integrated final cost + CTC, history final-cost weight (frequency final-cost weight = 0), "
+        "evidence-family disposition, the six `*_consumption_status` fields, human-acceptance fields.",
+        "- `integrated_evidence_registry_by_budget_code.jsonl` — every normalized evidence item with "
+        "lineage (`source_package_type/path/file/row_id`), `evidence_family`, `independence_group`, "
+        "support flags, contradiction score.",
+        "- `integrated_evidence_weights_by_budget_code.jsonl` — bounded, de-duplicated weights + "
+        "accept/downgrade/reject reason codes per code.",
+        "- `integrated_final_cost_recommendations.jsonl` — accepted base + bounded history adjustment, "
+        "floored at actuals, never capped.",
+        "- `integrated_monthly_forecast_by_budget_code.jsonl` / `integrated_monthly_project_forecast.jsonl` "
+        "— integrated phasing with six source shares (cost_entry/invoice/schedule/history_shape/frequency/"
+        "fallback); reconciles to integrated CTC per code and project total.",
+        "- `integrated_probability_by_budget_code.jsonl` / `integrated_probability_project_summary.json` — "
+        "deterministic adjustment of the accepted band (`probability_method = "
+        "accepted_distribution_deterministic_adjustment`); floored at actuals; never capped.",
+        "- `integrated_risk_register.jsonl`, `integrated_human_review_queue.jsonl`, "
+        "`integrated_change_explanation.jsonl`, `evidence_conflict_register.jsonl` (7 conflict classes), "
+        "`model_package_inventory.json`, `project_comprehensive_forecast_summary.json`, `top_*`.",
+        "- `audit/*` — evidence_registry, evidence_weighting (no-double-count), history_consumption, "
+        "frequency_consumption, monthly_reconciliation (per-code + project), probability_adjustment "
+        "(deterministic, non-MC), no_upper_cap, actuals_floor, model_evidence_completeness_matrix, "
+        "source_hashes_before_after, safety_scan. `llm/*` advisory only, excluded from determinism.",
+        "",
+        "## Rules",
+        "- CostEntries/Sage incurred cost is the only actual-cost source; actual cost to date is the only "
+        "hard floor; NO evidence is ever a hard cap.",
+        "- Accepted intelligence is the base final cost; advisory evidence is bounded + contradiction-"
+        "collapsed with explicit reason codes; independence groups prevent double-counting.",
+        "- Cost-frequency shapes monthly timing + timing-risk only — never final cost by itself.",
+        "- Probability is a DETERMINISTIC transform of the accepted package, not a fresh Monte Carlo.",
+        "- Every posture-changing row carries human-acceptance fields (default pending).",
+        "- Deterministic: same frozen stamp + same input packages => byte-identical quantitative core.",
+        "",
+    ]
+    (out / "SCHEMA.md").write_text("\n".join(md), encoding="utf-8")
+
+
+def run(project_key, cfg, data_root=None, frozen_stamp=None, out_root=None, with_llm=False,
+        llm_model=None) -> int:
+    import json
+    res = generate(project_key, cfg, data_root=data_root, frozen_stamp=frozen_stamp, out_root=out_root,
+                   with_llm=with_llm, llm_model=llm_model)
+    print(json.dumps(OrderedDict([("status", "ok" if res["validation_passed"] else "validation_failed"),
+                                  *res.items()]), indent=2))
+    return 0 if res["validation_passed"] else 1

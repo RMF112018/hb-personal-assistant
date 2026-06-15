@@ -43,6 +43,16 @@ makes **no live external calls** and performs **no database, Excel, or source mu
     **advisory** monthly phasing. The same cadence logic is wired into **forecast monthly** as an
     additive timing source (staffing codes phase by weekday count) — timing/shape only; cost-to-complete
     and accepted final cost are reconciled and unchanged (`docs/workflow/12_forecast_cost_frequency.md`).
+11. **Forecast comprehensive** — top-level integration layer that **discovers and consumes** every
+    accepted evidence package (context, intelligence, monthly, probability, history-informed,
+    cost-frequency; crosswalk-v2 + schedule-integrated for completeness) into a per-budget-code evidence
+    registry, scores advisory evidence at **bounded, de-duplicated** weights with explicit
+    accept/downgrade/reject reason codes, and emits integrated final-cost / monthly / probability
+    recommendations with full lineage, an evidence-conflict register, and a human-acceptance review
+    queue. Accepted intelligence is the base; CostEntries are truth; actual cost to date is the only
+    floor; no evidence is a cap; cadence shapes timing only; probability is a **deterministic transform**
+    of the accepted package (not a fresh Monte Carlo). Standalone packages are never mutated
+    (`docs/workflow/13_forecast_comprehensive.md`).
 
 ## Current project supported
 
