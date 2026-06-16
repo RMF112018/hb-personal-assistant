@@ -51,6 +51,8 @@ Review `forecast_model_controls_package_tropical_<stamp>/`:
   final.
 - `model_control_probability_assessment_by_budget_code.jsonl` — anchor vs provisional plausibility.
 - `model_control_review_queue.jsonl` / `model_control_conflicts.jsonl` / `model_control_warnings.jsonl`.
+- `audit/source_hashes_before_after.json` — SHA-256 of every input file before and after the run; `unchanged:true` confirms no source was mutated.
+- `audit/safety_scan_report.json` — automated safety scan over all output files; `passed:true` required.
 - `validation_report.json` — all fail-closed gates; `passed:true` required.
 
 ## Notes

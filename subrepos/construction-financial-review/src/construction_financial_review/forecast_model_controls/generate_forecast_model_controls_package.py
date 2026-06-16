@@ -613,7 +613,8 @@ def _write_schema(out):
         "`project_forecast_model_controls_summary.json`.",
         "- `audit/` — control mapping, target-source resolution, window resolution, actuals floor, "
         "no-hidden-cap, model shape, monthly reconciliation, probability-anchor policy, combined-CSV target "
-        "reconciliation, source hashes, safety scan.",
+        "reconciliation, `source_hashes_before_after.json` (input files unchanged before/after), and "
+        "`safety_scan_report.json` (output safety scan, must pass).",
         "",
         "## Rules",
         "- Explicit `budget_code_key` must be canonical; a `cost_code`-only control resolves only when "
