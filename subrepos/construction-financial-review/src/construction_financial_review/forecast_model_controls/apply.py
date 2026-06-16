@@ -20,7 +20,7 @@ from __future__ import annotations
 from collections import Counter, OrderedDict, defaultdict
 from decimal import Decimal
 
-from ..common.money import D, dec, money_str
+from ..common.money import D, dec, materiality, money_str
 from ..forecast_monthly.monthly_reconcile import _allocate
 from . import control_schema as cs
 from . import mapping as cmap
@@ -29,6 +29,102 @@ from . import model_shapes, target_sources, window_resolver
 ZERO = Decimal("0")
 ONE = Decimal("1")
 CENTS = Decimal("0.01")
+
+
+def _overrun(final: Decimal, ref) -> bool:
+    """Material overrun of the controlled final against a reference (final must exceed it materially)."""
+    if ref is None or final is None or final <= ref:
+        return False
+    return materiality(final, ref)[2]
+
+
+def reshape_monthly(reconcile: dict, decision: dict) -> dict:
+    """Rewrite a base monthly reconcile to the operator-controlled window / shape / final.
+
+    Returns a control-adjusted copy in the same shape ``forecast_monthly`` already consumes (so
+    ``_monthly_row`` and the rollups work unchanged), plus ``operator_model_*`` disclosure fields. The
+    recommended monthly vector IS the decision's reconciled allocation; the worst-credible vector follows
+    the same shape over the active window. Months outside the active window are zero.
+    """
+    months = [mc["forecast_month"] for mc in reconcile["month_costs"]]
+    actual = reconcile["actual"]
+    rec_ctc = decision["controlled_remaining"]
+    final = decision["controlled_final_cost"]
+    alloc = decision["monthly_allocation"] or {}
+    rec_month = OrderedDict((m, alloc.get(m, ZERO)) for m in months)
+
+    total = sum(rec_month.values(), ZERO)
+    if total > 0:
+        weights = OrderedDict((m, rec_month[m] / total) for m in months)
+    else:
+        active = set(decision["active_months"] or months)
+        n = Decimal(len(active) or len(months))
+        weights = OrderedDict((m, (ONE / n if m in active else ZERO)) for m in months)
+
+    if decision["changes_deterministic_final"]:
+        worst_ctc = rec_ctc
+    else:
+        w0 = reconcile.get("worst_credible_cost_to_complete") or rec_ctc
+        worst_ctc = w0 if w0 > rec_ctc else rec_ctc
+    worst_month = _allocate(worst_ctc, weights, months)
+
+    rec_final, worst_final = actual + rec_ctc, actual + worst_ctc
+    projected, revised = reconcile.get("current_projected_cost"), reconcile.get("revised_budget")
+
+    cum_rec = cum_worst = actual
+    peak = ZERO
+    fe_proj = fe_rev = None
+    rows = []
+    for mc in reconcile["month_costs"]:
+        m = mc["forecast_month"]
+        cum_rec += rec_month[m]
+        cum_worst += worst_month[m]
+        if fe_proj is None and projected is not None and cum_rec > projected:
+            fe_proj = m
+        if fe_rev is None and revised is not None and cum_rec > revised:
+            fe_rev = m
+        if rec_month[m] > peak:
+            peak = rec_month[m]
+        row = OrderedDict(mc)
+        row["recommended_month_cost"] = money_str(rec_month[m])
+        row["worst_credible_month_cost"] = money_str(worst_month[m])
+        row["cumulative_recommended_cost_through_month"] = money_str(cum_rec)
+        row["cumulative_worst_credible_cost_through_month"] = money_str(cum_worst)
+        row["remaining_recommended_cost_after_month"] = money_str(rec_final - cum_rec)
+        row["remaining_worst_credible_cost_after_month"] = money_str(worst_final - cum_worst)
+        row["blended_month_weight"] = str(weights[m].quantize(Decimal("0.000001")))
+        rows.append(row)
+
+    rec_sum = sum((D(r["recommended_month_cost"]) for r in rows), ZERO)
+    ok = abs(rec_sum - rec_ctc) <= CENTS and abs((actual + rec_sum) - rec_final) <= CENTS
+
+    out = dict(reconcile)
+    out["month_costs"] = rows
+    out["blended"] = weights
+    out["recommended_cost_to_complete"] = rec_ctc
+    out["worst_credible_cost_to_complete"] = worst_ctc
+    out["recommended_final_cost"] = rec_final
+    out["worst_credible_final_cost"] = worst_final
+    out["variance_to_current_projected_cost"] = (rec_final - projected) if projected is not None else None
+    out["variance_to_revised_budget"] = (rec_final - revised) if revised is not None else None
+    out["overrun_vs_current_projected_cost"] = _overrun(rec_final, projected)
+    out["overrun_vs_revised_budget"] = _overrun(rec_final, revised)
+    out["peak_month_cost"] = money_str(peak)
+    out["first_month_exceed_current_projected"] = fe_proj
+    out["first_month_exceed_revised_budget"] = fe_rev
+    out["monthly_forecast_basis"] = "operator_model_controlled_" + decision["model_type"]
+    out["reconciliation_ok"] = bool(ok)
+    out["operator_model_controlled"] = True
+    out["operator_model_control_id"] = decision["control_id"]
+    out["operator_model_value_constraint_policy"] = decision["value_constraint_policy"]
+    out["operator_model_type"] = decision["model_type"]
+    out["operator_forecast_start_date"] = decision["resolved_start_date"]
+    out["operator_forecast_end_date"] = decision["resolved_end_date"]
+    out["operator_schedule_end_basis"] = decision["schedule_end_basis"]
+    out["operator_controlled_final_cost"] = money_str(final)
+    out["operator_controlled_remaining"] = money_str(rec_ctc)
+    out["operator_changes_deterministic_final"] = decision["changes_deterministic_final"]
+    return out
 _MONTH_RE_LEN = 7  # "YYYY-MM"
 
 # application status vocabulary

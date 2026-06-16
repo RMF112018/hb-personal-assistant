@@ -105,13 +105,15 @@ def cmd_forecast_intelligence(cfg: dict, project: str, data_root, frozen_stamp, 
 
 
 def cmd_forecast_monthly(cfg: dict, project: str, data_root, frozen_stamp, out_root,
-                         with_llm, llm_model, forecast_start_month) -> int:
+                         with_llm, llm_model, forecast_start_month, control_file=None) -> int:
     """Config-driven month-by-month forecast generator: time-phases the accepted forecast-intelligence
     final-cost package across the remaining forecast months using CostEntries + subcontractor-invoice
-    trend evidence and schedule remaining-work phasing. Import dispatch."""
+    trend evidence and schedule remaining-work phasing. Applies accepted operator forecast-model controls
+    (window / shape / value / manual) when present. Import dispatch."""
     from .forecast_monthly import generate_monthly_forecast_package as gen
     return gen.run(project, cfg, data_root=data_root, frozen_stamp=frozen_stamp, out_root=out_root,
-                   with_llm=with_llm, llm_model=llm_model, forecast_start_month=forecast_start_month)
+                   with_llm=with_llm, llm_model=llm_model, forecast_start_month=forecast_start_month,
+                   control_file=control_file)
 
 
 def cmd_forecast_probability(cfg: dict, project: str, data_root, frozen_stamp, out_root,
@@ -214,6 +216,15 @@ def cmd_forecast_improvement_audit(cfg: dict, project: str, data_root, frozen_st
                    with_llm=with_llm, llm_model=llm_model)
 
 
+def cmd_actuals_erp_crosscheck(cfg: dict, project: str, data_root, frozen_stamp, out_root,
+                               strict: bool) -> int:
+    """Additive CostEntries actuals to BudgetDetails ERP job-to-date cross-check. Advisory by
+    default; strict mode fails closed on material variances and configured structural failures."""
+    from .forecast_actuals import actuals_erp_crosscheck as gen
+    return gen.run(project, cfg, data_root=data_root, frozen_stamp=frozen_stamp, out_root=out_root,
+                   strict=strict)
+
+
 def cmd_run_generator(command: str, project: str) -> int:
     if project != "tropical":
         print(json.dumps({
@@ -273,6 +284,8 @@ def build_parser() -> argparse.ArgumentParser:
     fmp.add_argument("--with-llm", action="store_true",
                      help="Engage the local Ollama advisory narrative layer (default: deterministic mock).")
     fmp.add_argument("--llm-model", default=None, help="Override the configured Ollama model.")
+    fmp.add_argument("--forecast-model-control-file", default=None,
+                     help="Override the committed forecast-model-control file (no silent fallback).")
     fpp = sub.add_parser("forecast-probability")
     fpp.add_argument("--project", required=True, help="Project key (e.g. tropical).")
     fpp.add_argument("--runs", type=int, default=10000, help="Monte Carlo runs (default 10000).")
@@ -344,6 +357,13 @@ def build_parser() -> argparse.ArgumentParser:
     fiap.add_argument("--with-llm", action="store_true",
                       help="Engage the local Ollama advisory narrative layer (advisory only, never numeric).")
     fiap.add_argument("--llm-model", default=None, help="Override the configured Ollama model.")
+    aecp = sub.add_parser("actuals-erp-crosscheck")
+    aecp.add_argument("--project", required=True, help="Project key (e.g. tropical).")
+    aecp.add_argument("--data-root", default=None, help="Override the configured forecast data root.")
+    aecp.add_argument("--frozen-stamp", default=None, help="Deterministic stamp.")
+    aecp.add_argument("--out-root", default=None, help="Override the output base dir.")
+    aecp.add_argument("--strict", action="store_true",
+                      help="Fail closed on material variances and configured structural failures.")
     return ap
 
 
@@ -364,7 +384,7 @@ def main(argv=None) -> int:
     if args.command == "forecast-monthly":
         return cmd_forecast_monthly(cfg, args.project, args.data_root, args.frozen_stamp,
                                     args.out_root, args.with_llm, args.llm_model,
-                                    args.forecast_start_month)
+                                    args.forecast_start_month, args.forecast_model_control_file)
     if args.command == "forecast-probability":
         return cmd_forecast_probability(cfg, args.project, args.data_root, args.frozen_stamp,
                                         args.out_root, args.with_llm, args.llm_model,
@@ -391,6 +411,9 @@ def main(argv=None) -> int:
     if args.command == "forecast-improvement-audit":
         return cmd_forecast_improvement_audit(cfg, args.project, args.data_root, args.frozen_stamp,
                                               args.out_root, args.with_llm, args.llm_model)
+    if args.command == "actuals-erp-crosscheck":
+        return cmd_actuals_erp_crosscheck(cfg, args.project, args.data_root, args.frozen_stamp,
+                                          args.out_root, args.strict)
     return cmd_run_generator(args.command, args.project)
 
 
