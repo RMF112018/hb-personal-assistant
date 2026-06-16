@@ -88,6 +88,53 @@ def _git(args):
     return None
 
 
+# --------------------------------------------------------------------------- operator value caps
+
+def _apply_operator_value_constraints(base, arrays, inputs) -> None:
+    """Re-anchor binding accepted not_to_exceed caps to their controlled final BEFORE the reducers run.
+
+    For each operator-constrained code the simulated final is collapsed to a deterministic point mass at
+    the controlled final cost (p50 == p90 == controlled final, no upside above the accepted cap); the
+    counterfactual uncapped p50/p90/model-final are captured first (cheaply, from the vectorized run) for
+    disclosure. The deterministic recommended anchor is set to the controlled final so the per-code P50
+    alignment gate compares capped-vs-capped. Monthly costs are re-phased to the controlled remaining by
+    the deterministic month weights so the months still reconcile to that code's CTC. Pure + deterministic
+    (idempotent under the determinism rebuild). Codes outside the cap path are untouched.
+    """
+    constraints = inputs.get("operator_value_constraints") or {}
+    if not constraints:
+        return
+    finals = base["final_costs"]
+    ctc = base["ctc"]
+    months = base["month_costs"]
+    idx = {k: j for j, k in enumerate(arrays["keys"])}
+    base_weights = arrays["base_weights"]
+    actual = arrays["actual"]
+    carried = arrays.get("carried_prior_forecast")
+    changed = False
+    for key, c in constraints.items():
+        j = idx.get(key)
+        if j is None:
+            continue
+        # counterfactual uncapped evidence (captured from the natural simulated column)
+        col = finals[:, j]
+        c["uncapped_p50"] = float(np.percentile(col, 50))
+        c["uncapped_p90"] = float(np.percentile(col, 90))
+        c["cap_delta_to_uncapped_model"] = c["uncapped_model_final"] - c["controlled_final"]
+        if not c.get("operator_constrained"):
+            continue                                     # floor event: actuals win, leave distribution
+        cf = c["controlled_final"]
+        rem = max(0.0, cf - float(actual[j]) - (float(carried[j]) if carried is not None else 0.0))
+        finals[:, j] = cf                                # deterministic point mass at the accepted cap
+        ctc[:, j] = rem
+        if months is not None:
+            months[:, j, :] = rem * base_weights[j][None, :]
+        arrays["recommended_final"][j] = cf              # capped deterministic recommended (P50 anchor)
+        changed = True
+    if changed:
+        base["project_finals"] = finals.sum(axis=1)
+
+
 # --------------------------------------------------------------------------- pure quant build
 
 def _build_collections(inputs, runs, seed, antithetic, lhs) -> dict:
@@ -97,8 +144,9 @@ def _build_collections(inputs, runs, seed, antithetic, lhs) -> dict:
 
     base = simulate.simulate(arrays, runs=runs, seed=seed, antithetic=antithetic, lhs=lhs,
                              draw_months=True)
+    _apply_operator_value_constraints(base, arrays, inputs)
 
-    code_rows = risk_metrics.code_rows(base, arrays)
+    code_rows = risk_metrics.code_rows(base, arrays, inputs.get("operator_value_constraints"))
     overrun_rows = risk_metrics.overrun_probability_rows(base, arrays)
     downside = risk_metrics.downside_ranking(base, arrays)
     monthly = risk_metrics.monthly_rows(base, arrays, project)
@@ -271,30 +319,156 @@ def _owner_scope_sensitivity(overrun_rows, downside, owner_by_key, project_key):
     return rows
 
 
-def _no_upper_cap_audit(collections):
-    """Per-code proof that nothing is capped above actuals against any reference value.
+def _no_upper_cap_audit(collections, operator_value_constraints=None):
+    """Per-code proof that nothing is capped above actuals against any reference value EXCEPT where an
+    accepted, disclosed operator not_to_exceed control applies.
 
-    The model has no upper clamp by construction: cost-to-complete is an unbounded lognormal and the
-    only floor is accounting actuals. This records that posture per code with the realized P95-vs-
-    reference evidence so a reviewer can verify it without rerunning the simulation.
+    The model has no hidden upper clamp by construction: cost-to-complete is an unbounded lognormal and
+    the only floor is accounting actuals. An accepted operator cap is the one disclosed exception — it is
+    recorded as ``operator_accepted_cap`` with ``upper_cap_source = accepted_operator_not_to_exceed`` so a
+    reviewer can tell an accepted operator constraint apart from a prohibited hidden/reference cap.
     """
+    constraints = operator_value_constraints or {}
     rows = []
     for r in collections["probabilistic_final_cost_by_budget_code.jsonl"]:
+        key = r["budget_code_key"]
         near = bool(r["near_complete"])
         p95 = D(r["simulated_p95"])
-        rows.append(OrderedDict([
-            ("budget_code_key", r["budget_code_key"]),
-            ("distribution_family", "point_mass_complete" if near else "shifted_lognormal_ctc"),
+        c = constraints.get(key)
+        accepted_cap = bool(c and c.get("operator_constrained"))
+        row = OrderedDict([
+            ("budget_code_key", key),
+            ("distribution_family",
+             "operator_constrained_point_mass" if accepted_cap
+             else ("point_mass_complete" if near else "shifted_lognormal_ctc")),
             ("actual_floor_applied", True),
-            ("upper_cap_applied", False),
-            ("upper_cap_source", None),
-            ("reference_values_reported_only", True),
+            ("operator_accepted_cap", accepted_cap),
+            ("upper_cap_applied", bool(accepted_cap)),
+            ("upper_cap_source", "accepted_operator_not_to_exceed" if accepted_cap else None),
+            ("reference_values_reported_only", not accepted_cap),
             ("p95_exceeds_current_projected_cost", bool(p95 > D(r["current_projected_cost"]))),
             ("p95_exceeds_revised_budget", bool(p95 > D(r["revised_budget"]))),
             ("p95_exceeds_worst_credible", bool(p95 > D(r["deterministic_worst_credible_final_cost"]))),
-            ("validation_status", "near_complete_point_mass" if near else "uncapped_ok"),
-        ]))
+            ("validation_status",
+             "accepted_operator_cap" if accepted_cap
+             else ("near_complete_point_mass" if near else "uncapped_ok")),
+        ])
+        rows.append(row)
     return rows
+
+
+# Forbidden hidden-cap sources. projected_cost is forbidden as an IMPLICIT cap, but allowed when it is an
+# accepted operator control (tagged upper_cap_source = accepted_operator_not_to_exceed, excluded below).
+CAP_REFERENCE_SOURCES = frozenset({"erp", "revised_budget", "committed", "owner_sov", "procore_pay_app",
+                                   "prior_output", "projected_cost", "committed_cost", "owner_pay_app"})
+
+
+def _upper_cap_checks(code_rows, no_cap_audit, constraints, project_p95, project_rec_total):
+    """Pure split of the upper-cap invariant: hidden/implicit caps stay prohibited, accepted+disclosed
+    operator not_to_exceed caps are allowed. Returns the four named booleans (req 6)."""
+    operator_keys = {k for k, c in (constraints or {}).items() if c.get("operator_constrained")}
+    rows_by_key = {r["budget_code_key"]: r for r in code_rows}
+
+    # (1) hidden / implicit caps absent: uncapped upside realized among NON-operator-constrained codes
+    # (>=1 non-near, non-constrained code whose P95 beats worst-credible, and project P95 > deterministic
+    # recommended total), AND no audit row carries a prohibited (non-accepted) cap source.
+    p95_beyond_worst = sum(1 for r in code_rows if not r["near_complete"]
+                           and r["budget_code_key"] not in operator_keys
+                           and D(r["simulated_p95"]) > D(r["deterministic_worst_credible_final_cost"]))
+    no_implicit_cap_source = all(
+        a.get("operator_accepted_cap")
+        or (a["upper_cap_source"] is None) or (a["upper_cap_source"] not in CAP_REFERENCE_SOURCES)
+        for a in no_cap_audit)
+    no_unaccepted_upper_capped = all(
+        (a["upper_cap_applied"] is False and a["upper_cap_source"] is None)
+        for a in no_cap_audit
+        if not a.get("operator_accepted_cap") and a["validation_status"] == "uncapped_ok")
+    hidden_absent = bool(p95_beyond_worst >= 1 and project_p95 > D(str(project_rec_total))
+                         and no_implicit_cap_source and no_unaccepted_upper_capped)
+
+    # (2) accepted operator caps disclosed: every constrained row carries the full not_to_exceed disclosure.
+    disclosed = all(
+        (rows_by_key.get(k, {}).get("operator_value_constraint_policy") == "not_to_exceed_reference"
+         and rows_by_key.get(k, {}).get("reference_source") == "projected_cost"
+         and rows_by_key.get(k, {}).get("reference_field") == "projected_costs"
+         and rows_by_key.get(k, {}).get("acceptance_status") == "accepted"
+         and rows_by_key.get(k, {}).get("requires_human_acceptance_operator_constraint") is True)
+        for k in operator_keys)
+
+    # (3) accepted operator caps applied: each binding cap row has p50==p90==controlled final, no upside.
+    def _applied(k):
+        r = rows_by_key.get(k, {})
+        cf = constraints[k]["controlled_final"]
+        return (r.get("probability_treatment") == "operator_constrained_not_to_exceed"
+                and r.get("cap_binding") is True and r.get("upside_simulated") is False
+                and abs(float(D(r.get("simulated_p50"))) - cf) <= 0.01
+                and abs(float(D(r.get("simulated_p90"))) - cf) <= 0.01)
+    applied = all(_applied(k) for k in operator_keys)
+
+    # (4) no unaccepted reference caps: a reference cap appears ONLY for accepted operator controls, and
+    # every accepted cap respects the actuals floor (controlled final >= actual cost to date).
+    floor_respected = all(constraints[k]["controlled_final"] >= constraints[k]["actual_cost_to_date"] - 0.005
+                          for k in operator_keys)
+    no_unaccepted = bool(no_implicit_cap_source and floor_respected)
+
+    return OrderedDict([
+        ("hidden_or_implicit_upper_caps_absent", hidden_absent),
+        ("accepted_operator_caps_disclosed", bool(disclosed)),
+        ("accepted_operator_caps_applied", bool(applied)),
+        ("no_unaccepted_reference_caps", no_unaccepted),
+    ])
+
+
+def _operator_value_constraints_audit(project_key, collections, constraints):
+    """Disclose every accepted operator value-constrained probability row (one record per constrained
+    code). Binding not_to_exceed caps report p50==p90==controlled final with the uncapped counterfactual;
+    a reference below actuals is a disclosed floor event (actuals win). This is the explicit proof that
+    these are accepted, disclosed operator constraints — not hidden model caps."""
+    rows_by_key = {r["budget_code_key"]: r for r in collections["probabilistic_final_cost_by_budget_code.jsonl"]}
+    records = []
+    for key in sorted(constraints):
+        c = constraints[key]
+        r = rows_by_key.get(key, {})
+        binding = bool(c.get("operator_constrained"))
+        floor = bool(c.get("floor_event"))
+        records.append(OrderedDict([
+            ("budget_code_key", key),
+            ("control_id", c.get("control_id")),
+            ("value_constraint_policy", c["value_constraint_policy"]),
+            ("reference_source", c["reference_source"]),
+            ("reference_field", c["reference_field"]),
+            ("reference_value", risk_metrics.m(c["reference_value"])),
+            ("actual_cost_to_date", risk_metrics.m(c["actual_cost_to_date"])),
+            ("deterministic_uncapped_final", risk_metrics.m(c["uncapped_model_final"])),
+            ("deterministic_controlled_final", risk_metrics.m(c["controlled_final"])),
+            ("cap_binding", binding),
+            ("probability_treatment",
+             "operator_constrained_not_to_exceed" if binding
+             else ("actuals_floor_over_reference" if floor else "operator_reference_non_binding")),
+            ("p50", r.get("simulated_p50")),
+            ("p90", r.get("simulated_p90")),
+            ("uncapped_p50", risk_metrics.m(c.get("uncapped_p50", c["uncapped_model_final"]))),
+            ("uncapped_p90", risk_metrics.m(c.get("uncapped_p90", c["uncapped_model_final"]))),
+            ("cap_delta_to_uncapped_model", risk_metrics.m(c.get("cap_delta_to_uncapped_model", 0.0))),
+            ("reason", "accepted_not_to_exceed_projected_cost" if binding
+             else ("reference_below_actual_cost_to_date_actuals_floor_wins" if floor
+                   else "reference_at_or_above_model_final_no_constraint")),
+            ("validation_status", "operator_constrained_disclosed" if binding
+             else ("actuals_floor_preserved_disclosed" if floor else "non_binding_disclosed")),
+        ]))
+    binding_keys = [k for k, c in constraints.items() if c.get("operator_constrained")]
+    return OrderedDict([
+        ("project_key", project_key),
+        ("source", "accepted forecast_monthly model-controls resolution (forecast_model_controls)"),
+        ("rule", "accepted not_to_exceed_reference caps are operator-constrained and disclosed: p50==p90=="
+                 "controlled final, no simulated upside above the accepted cap; actuals floor is absolute; "
+                 "explicit/manual value controls (e.g. 1000.15-16-110.SUB) are excluded from this path; "
+                 "hidden/implicit upper caps remain prohibited"),
+        ("constrained_code_count", len(records)),
+        ("binding_cap_count", len(binding_keys)),
+        ("floor_event_count", sum(1 for c in constraints.values() if c.get("floor_event"))),
+        ("records", records),
+    ])
 
 
 def _sim_input_rows(inputs):
@@ -466,8 +640,11 @@ def generate(project_key, cfg, data_root=None, frozen_stamp=None, out_root=None,
                  model if with_llm else None, len(narratives))
     db_inv = db_inventory.inventory(cfg, project_key)
     write_json(out / "audit" / "db_inventory.json", db_inv)
-    no_cap_audit = _no_upper_cap_audit(collections)
+    constraints = inputs.get("operator_value_constraints") or {}
+    no_cap_audit = _no_upper_cap_audit(collections, constraints)
     write_json(out / "audit" / "no_upper_cap_audit.json", no_cap_audit)
+    op_cap_audit = _operator_value_constraints_audit(project_key, collections, constraints)
+    write_json(out / "audit" / "operator_probability_value_constraints_audit.json", op_cap_audit)
     write_json(out / "audit" / "source_files_used.json", _source_files(inputs, cfg))
     write_json(out / "input_inventory.json", OrderedDict([("generation", meta),
                                                           ("forecast_months", inputs["months"])]))
@@ -480,7 +657,8 @@ def generate(project_key, cfg, data_root=None, frozen_stamp=None, out_root=None,
     safety = safety_scan(data_files)
     write_json(out / "audit" / "safety_scan_report.json", safety)
     validation = _validation(out, inputs, collections, diagnostics, db_inv, safety, meta, determinism,
-                             bool(with_llm and ollama_status == "available"), receipts, no_cap_audit)
+                             bool(with_llm and ollama_status == "available"), receipts, no_cap_audit,
+                             op_cap_audit)
     write_json(out / "validation_report.json", validation)
     conclusion = ("forecast_probability_ready" if validation["passed"]
                   else "forecast_probability_not_ready")
@@ -600,7 +778,7 @@ def _source_files(inputs, cfg):
 
 
 def _validation(out, inputs, collections, diagnostics, db_inv, safety, meta, determinism, llm_used,
-                receipts, no_cap_audit):
+                receipts, no_cap_audit, op_cap_audit):
     arrays = inputs["arrays"]
     n_codes = arrays["n_codes"]
     n_months = arrays["n_months"]
@@ -632,25 +810,19 @@ def _validation(out, inputs, collections, diagnostics, db_inv, safety, meta, det
     floor_ok = bool(diagnostics["floor_ok"]) and all(D(r["simulated_p10"]) >= D(r["actual_cost_to_date"])
                                                      for r in code_rows)
 
-    # no upper cap: at least one non-near code's P95 strictly exceeds its worst-credible final, and the
-    # project P95 exceeds the deterministic recommended total (uncapped upside is realized).
-    p95_beyond_worst = sum(1 for r in code_rows if not r["near_complete"]
-                           and D(r["simulated_p95"]) > D(r["deterministic_worst_credible_final_cost"]))
-    no_cap = (p95_beyond_worst >= 1
-              and D(sp["p95"]) > D(str(project["total_recommended_final_cost"])))
-
-    # Strengthened no-upper-cap audit: every non-near code must be uncapped above, with no reference
-    # field used as a clamp source. The audit file must exist with one record per code.
-    cap_ref_sources = {"erp", "revised_budget", "committed", "owner_sov", "procore_pay_app",
-                       "prior_output", "projected_cost", "committed_cost", "owner_pay_app"}
+    # --- upper-cap invariant, SPLIT into hidden/implicit (prohibited) vs accepted operator (allowed) ---
+    constraints = inputs.get("operator_value_constraints") or {}
     no_cap_audit_present = bool(no_cap_audit) and len(no_cap_audit) == n_codes
-    no_code_upper_capped = all(
-        (a["upper_cap_applied"] is False and a["upper_cap_source"] is None
-         and a["reference_values_reported_only"] is True)
-        for a in no_cap_audit if a["validation_status"] == "uncapped_ok")
-    no_cap_source_is_reference = all(
-        (a["upper_cap_source"] is None) or (a["upper_cap_source"] not in cap_ref_sources)
-        for a in no_cap_audit)
+    cap_checks = _upper_cap_checks(code_rows, no_cap_audit, constraints,
+                                   D(sp["p95"]), project["total_recommended_final_cost"])
+    hidden_or_implicit_upper_caps_absent = cap_checks["hidden_or_implicit_upper_caps_absent"]
+    accepted_operator_caps_disclosed = cap_checks["accepted_operator_caps_disclosed"]
+    accepted_operator_caps_applied = cap_checks["accepted_operator_caps_applied"]
+    no_unaccepted_reference_caps = cap_checks["no_unaccepted_reference_caps"]
+
+    operator_value_constraints_audit_present = bool(
+        (out / "audit" / "operator_probability_value_constraints_audit.json").exists()
+        and op_cap_audit.get("constrained_code_count") == len(constraints))
 
     # Finding 1: project-level revised-budget probability fields present, parse, and unit interval.
     rb_keys = ("revised_budget_total", "probability_project_exceeds_revised_budget_total",
@@ -728,10 +900,13 @@ def _validation(out, inputs, collections, diagnostics, db_inv, safety, meta, det
         ("canonical_only_codes", canonical_only),
         ("percentile_monotonicity", mono_codes and mono_project),
         ("final_cost_floor_at_actuals", floor_ok),
-        ("no_upper_cap_uncapped_upside", bool(no_cap)),
         ("no_upper_cap_audit_present", no_cap_audit_present),
-        ("no_code_upper_capped", bool(no_code_upper_capped)),
-        ("no_cap_source_is_reference_value", bool(no_cap_source_is_reference)),
+        ("hidden_or_implicit_upper_caps_absent", hidden_or_implicit_upper_caps_absent),
+        ("accepted_operator_caps_disclosed", bool(accepted_operator_caps_disclosed)),
+        ("accepted_operator_caps_applied", bool(accepted_operator_caps_applied)),
+        ("no_unaccepted_reference_caps", no_unaccepted_reference_caps),
+        ("operator_probability_value_constraints_audit_present",
+         operator_value_constraints_audit_present),
         ("revised_budget_probability_present_and_unit_interval", bool(revised_budget_ok)),
         ("compatibility_alias_files_present_and_parseable", bool(aliases_ok)),
         ("forecast_start_month_no_full_ctc_reallocation", bool(no_reallocation)),

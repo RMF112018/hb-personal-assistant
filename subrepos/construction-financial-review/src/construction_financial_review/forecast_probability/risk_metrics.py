@@ -109,7 +109,7 @@ def _systemic_share(sim, arrays):
     return max(0.0, min(1.0, r * r))
 
 
-def code_rows(sim, arrays) -> list:
+def code_rows(sim, arrays, operator_value_constraints=None) -> list:
     finals = sim["final_costs"]
     keys = arrays["keys"]
     actual = arrays["actual"]
@@ -118,13 +118,14 @@ def code_rows(sim, arrays) -> list:
     proj = arrays["current_projected"]
     rb = arrays["revised_budget"]
     near = arrays["near_complete"]
+    constraints = operator_value_constraints or {}
     pct = np.percentile(finals, PCTS, axis=0)        # (5, n)
     mean = finals.mean(axis=0)
     std = finals.std(axis=0, ddof=1)
     rows = []
     for j, key in enumerate(keys):
         col = finals[:, j]
-        rows.append(OrderedDict([
+        row = OrderedDict([
             ("project_key", "tropical"), ("budget_code_key", key),
             ("cost_code", _cc(key)),
             ("actual_cost_to_date", m(actual[j])),
@@ -141,8 +142,49 @@ def code_rows(sim, arrays) -> list:
             ("prob_exceeds_revised_budget", p4((col > rb[j]).mean())),
             ("prob_exceeds_recommended_final_cost", p4((col > rec[j]).mean())),
             ("requires_human_acceptance", True),
-        ]))
+        ])
+        _disclose_operator_constraint(row, constraints.get(key))
+        rows.append(row)
     return rows
+
+
+def _disclose_operator_constraint(row, c) -> None:
+    """Append operator value-cap disclosure to a code row. A binding accepted not_to_exceed cap is an
+    operator constraint (p50==p90==controlled final, no simulated upside), NOT a hidden model cap; a
+    reference below actuals is a disclosed floor event where actuals win. Counterfactual uncapped risk
+    evidence is preserved either way. Untouched codes get no extra fields."""
+    if not c:
+        return
+    base = OrderedDict([
+        ("operator_value_constraint_policy", c["value_constraint_policy"]),
+        ("operator_control_id", c.get("control_id")),
+        ("reference_source", c["reference_source"]),
+        ("reference_field", c["reference_field"]),
+        ("reference_value", m(c["reference_value"])),
+        ("acceptance_status", "accepted"),
+        ("requires_human_acceptance_operator_constraint", True),
+        ("deterministic_controlled_final_cost", m(c["controlled_final"])),
+        ("uncapped_model_final", m(c["uncapped_model_final"])),
+        ("uncapped_p50", m(c.get("uncapped_p50", c["uncapped_model_final"]))),
+        ("uncapped_p90", m(c.get("uncapped_p90", c["uncapped_model_final"]))),
+        ("cap_delta_to_uncapped_model", m(c.get("cap_delta_to_uncapped_model", 0.0))),
+    ])
+    if c.get("operator_constrained"):
+        base["cap_binding"] = True
+        base["upside_simulated"] = False
+        base["probability_treatment"] = "operator_constrained_not_to_exceed"
+        base["reason"] = "accepted_not_to_exceed_projected_cost"
+    elif c.get("floor_event"):
+        base["cap_binding"] = False
+        base["upside_simulated"] = True
+        base["probability_treatment"] = "actuals_floor_over_reference"
+        base["reason"] = "reference_below_actual_cost_to_date_actuals_floor_wins"
+    else:
+        base["cap_binding"] = False
+        base["upside_simulated"] = True
+        base["probability_treatment"] = "operator_reference_non_binding"
+        base["reason"] = "reference_at_or_above_model_final_no_constraint"
+    row.update(base)
 
 
 def overrun_probability_rows(sim, arrays) -> list:
