@@ -173,6 +173,17 @@
     "schedule_drive_cost_loaded_fraction": 0.5,
     "schedule_inform_mapped_fraction": 0.2
   },
+  "actuals_erp_crosscheck": {
+    "enabled": true,
+    "erp_cost_to_date_field": "amounts.erp_job_to_date_costs",
+    "absolute_variance_materiality": "0.01",
+    "percent_variance_materiality": null,
+    "warn_on_material_variance": true,
+    "fail_on_material_variance": false,
+    "fail_on_missing_erp_cost_to_date": false,
+    "fail_on_unmapped_budget_code_key": true,
+    "emit_monthly_reconciliation": true
+  },
   "forecast_probability": {
     "runs": 10000,
     "seed": 20260614,
