@@ -174,6 +174,21 @@ def cmd_forecast_controls(cfg: dict, project: str, data_root, frozen_stamp, out_
                    with_llm=with_llm, llm_model=llm_model)
 
 
+def cmd_forecast_model_controls(cfg: dict, project: str, data_root, frozen_stamp, out_root,
+                                with_llm, llm_model, control_file) -> int:
+    """Operator forecast-model-control layer: loads the model-control file (committed dormant config or a
+    --forecast-model-control-file override), resolves each control's forecast window, value constraint,
+    model shape, and manual inputs into a controlled monthly forecast, maps it to a canonical budget code,
+    enforces the actuals floor + window + manual + duplicate-conflict + acceptance gates, and emits applied
+    decisions, resolved references, a monthly-reconciliation preview, a deterministic probability/
+    plausibility assessment, a human-review queue, conflicts, warnings, and fail-closed audits. Only
+    accepted controls apply; pending controls are queued. Never mutates source Excel / accepted packages /
+    SQLite; no live external calls. Import dispatch."""
+    from .forecast_model_controls import generate_forecast_model_controls_package as gen
+    return gen.run(project, cfg, data_root=data_root, frozen_stamp=frozen_stamp, out_root=out_root,
+                   with_llm=with_llm, llm_model=llm_model, control_file=control_file)
+
+
 def cmd_forecast_staffing_plan(cfg: dict, project: str, data_root, frozen_stamp, out_root,
                                with_llm, llm_model) -> int:
     """Operator-supplied planned-staffing forecast layer: discovers + validates the extracted staffing
@@ -302,6 +317,17 @@ def build_parser() -> argparse.ArgumentParser:
     fctlp.add_argument("--with-llm", action="store_true",
                        help="Engage the local Ollama advisory narrative layer (advisory only, never numeric).")
     fctlp.add_argument("--llm-model", default=None, help="Override the configured Ollama model.")
+    fmcp = sub.add_parser("forecast-model-controls")
+    fmcp.add_argument("--project", required=True, help="Project key (e.g. tropical).")
+    fmcp.add_argument("--data-root", default=None, help="Override the configured forecast data root.")
+    fmcp.add_argument("--frozen-stamp", default=None, help="Deterministic stamp (determinism check).")
+    fmcp.add_argument("--out-root", default=None, help="Override the output base dir.")
+    fmcp.add_argument("--with-llm", action="store_true",
+                      help="Engage the local Ollama advisory narrative layer (advisory only, never numeric).")
+    fmcp.add_argument("--llm-model", default=None, help="Override the configured Ollama model.")
+    fmcp.add_argument("--forecast-model-control-file", default=None,
+                      help="Override the committed model-control file (validation/operator override; no "
+                           "silent fallback to the committed config).")
     fspp = sub.add_parser("forecast-staffing-plan")
     fspp.add_argument("--project", required=True, help="Project key (e.g. tropical).")
     fspp.add_argument("--data-root", default=None, help="Override the configured forecast data root.")
@@ -355,6 +381,10 @@ def main(argv=None) -> int:
     if args.command == "forecast-controls":
         return cmd_forecast_controls(cfg, args.project, args.data_root, args.frozen_stamp,
                                      args.out_root, args.with_llm, args.llm_model)
+    if args.command == "forecast-model-controls":
+        return cmd_forecast_model_controls(cfg, args.project, args.data_root, args.frozen_stamp,
+                                           args.out_root, args.with_llm, args.llm_model,
+                                           args.forecast_model_control_file)
     if args.command == "forecast-staffing-plan":
         return cmd_forecast_staffing_plan(cfg, args.project, args.data_root, args.frozen_stamp,
                                           args.out_root, args.with_llm, args.llm_model)

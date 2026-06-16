@@ -128,6 +128,26 @@
     "fail_on_ambiguous_cost_code": true,
     "preserve_actuals_floor": true
   },
+  "forecast_model_controls": {
+    "enabled": true,
+    "control_file": "config/forecast_model_controls/tropical/code_forecast_model_controls.jsonl",
+    "require_accepted_status_for_value_change": true,
+    "fail_on_unknown_budget_code_key": true,
+    "fail_on_ambiguous_cost_code": true,
+    "preserve_actuals_floor": true,
+    "fail_on_duplicate_conflicting_controls": true,
+    "fail_on_missing_target_reference": true,
+    "default_forecast_start_policy": "current_month_start",
+    "default_forecast_end_policy": "latest_project_schedule_date",
+    "default_model_type": "existing_model",
+    "allow_existing_horizon_fallback_when_schedule_missing": false,
+    "allow_manual_month_outside_window": false,
+    "manual_monthly_total_materiality": "0.01",
+    "probability_control_policy": "anchor_when_available_else_provisional_assessment",
+    "fail_on_missing_prior_probability_row": false,
+    "allow_provisional_probability_assessment": true,
+    "combined_actuals_plus_forecast_must_equal_controlled_final": true
+  },
   "forecast_staffing_plan": {
     "enabled": true,
     "package_glob": "staffing_json_package_tropical_*",
