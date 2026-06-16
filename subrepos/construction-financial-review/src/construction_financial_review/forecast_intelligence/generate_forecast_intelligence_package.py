@@ -158,6 +158,13 @@ def generate(project_key: str, cfg: dict, data_root: Optional[Path] = None,
     # Anchor "months since last actual" to the current FORECAST month (first month being phased), not the
     # schedule data_date (a prior month-end as-of). For Tropical forecast_period "2026-June" => 2026-06.
     current_forecast_month = _forecast_period_month(cfg, data_date)
+    # Staffing/general-conditions signals for recent-zero-run suppression: the staffing code list and the
+    # codes with an active staffing-plan future assignment (affirmative remaining evidence that revives a
+    # stopped staffing cost stream).
+    staffing_code_list = (cfg.get("forecast_cost_frequency") or {}).get(
+        "weekly_internal_staffing_budget_code_keys") or []
+    staffing_future_keys = _load_staffing_future_assignments(
+        cfg, data_root, budget_codes, context_by_key, rec_by_key, project_key, stamp)
     dorm_decisions, dorm_audit = [], []
     recommendations, model_evidence, sched_evidence, trend_rows = [], [], [], []
     remaining_rows, confidences, changes, bundles = [], [], [], []
@@ -183,7 +190,8 @@ def generate(project_key: str, cfg: dict, data_root: Optional[Path] = None,
         # dormant / closed-code suppression (authoritative decision; emitted as the status file)
         if dorm_enabled:
             decision = dormancy_classify.classify(
-                _dormancy_inputs(key, bc, ctx, bundle, assoc, monthly, current_forecast_month), dcfg)
+                _dormancy_inputs(key, bc, ctx, bundle, assoc, monthly, current_forecast_month,
+                                 staffing_code_list, key in staffing_future_keys), dcfg)
             dorm_decisions.append(decision)
             before = OrderedDict([("recommended_cost_to_complete", recommendation.get("recommended_cost_to_complete")),
                                   ("recommended_final_cost", recommendation.get("recommended_final_cost"))])
@@ -397,7 +405,33 @@ def _forecast_period_month(cfg, data_date) -> Optional[str]:
     return d[:7] if d else None
 
 
-def _dormancy_inputs(key, bc, ctx, bundle, assoc, monthly, current_month):
+def _load_staffing_future_assignments(cfg, data_root, budget_codes, context_by_key, rec_by_key,
+                                      project_key, stamp_iso):
+    """Set of budget_code_keys with an active staffing-plan future assignment (plan_implied_remaining_cost
+    > 0). Best-effort + guarded: a missing/unsafe staffing package just yields no staffing evidence (codes
+    without a confirmed assignment); it never crashes intelligence."""
+    sp = cfg.get("forecast_staffing_plan") or {}
+    if not sp.get("enabled"):
+        return set()
+    try:
+        from ..forecast_staffing_plan import integration as fsp_integration
+        actuals_by_key = {r["budget_code_key"]: D((r.get("actuals") or {}).get("actual_cost_all_source_to_date"))
+                          for r in context_by_key.values() if r.get("budget_code_key")}
+        monthly_actuals_by_key = {k: (v.get("actuals") or {}).get("monthly_actuals") or []
+                                  for k, v in context_by_key.items()}
+        bundle = fsp_integration.prepare(cfg, SUBPROJECT_ROOT, data_root, budget_codes, actuals_by_key,
+                                         rec_by_key, project_key, stamp_iso=stamp_iso,
+                                         monthly_actuals_by_key=monthly_actuals_by_key)
+        if not fsp_integration.integration_active(cfg, bundle):
+            return set()
+        return {k for k, d in (bundle["resolved"]["by_key"] or {}).items()
+                if D(d.get("plan_implied_remaining_cost")) > Decimal("0")}
+    except Exception:                                       # noqa: BLE001 - staffing evidence is optional
+        return set()
+
+
+def _dormancy_inputs(key, bc, ctx, bundle, assoc, monthly, current_month, staffing_code_list,
+                     staffing_plan_future_assignment):
     """Assemble the per-code signals the dormancy classifier consumes from intelligence context."""
     amounts = ctx.get("budget_amounts") or bc.get("amounts") or {}
     owner = ctx.get("owner_pay_app") or {}
@@ -420,6 +454,8 @@ def _dormancy_inputs(key, bc, ctx, bundle, assoc, monthly, current_month):
         "schedule_remaining_work_status": assoc.get("schedule_remaining_work_status"),
         "schedule_open_activity_count": assoc.get("open_activity_count"),
         "schedule_latest_finish": assoc.get("latest_schedule_finish"),
+        "staffing_code_list": staffing_code_list,
+        "staffing_plan_future_assignment": staffing_plan_future_assignment,
         "model_control": None,  # operator value controls compose at the consumers, not at the origin
     }
 
@@ -432,9 +468,14 @@ def _dormant_audit(project_key, decisions, audit_rows, dcfg) -> OrderedDict:
         ("enabled", bool(dcfg.get("enabled"))),
         ("lookback_months_without_actual_cost", dcfg.get("lookback_months_without_actual_cost")),
         ("closed_description_patterns", dcfg.get("closed_description_patterns")),
+        ("recent_zero_run", dcfg.get("recent_zero_run")),
         ("status_counts", dict(Counter(d["dormant_status"] for d in decisions))),
         ("suppressed_count", len(suppressed)),
         ("suppressed_budget_codes", [d["budget_code_key"] for d in suppressed]),
+        ("recent_zero_run_suppressed_count",
+         sum(1 for d in suppressed if d["dormant_status"] == "recent_zero_run_after_prior_activity")),
+        ("non_staffing_recent_zero_run_advisory_codes",
+         [d["budget_code_key"] for d in decisions if d.get("non_staffing_suppression_candidate")]),
         ("rows", audit_rows),
         ("rule", "CLOSED - DO NOT USE codes and codes idle >= lookback with no affirmative remaining "
                  "evidence get CTC=0 / final=actual; a trend/inactivity conclusion, never a budget cap; "
@@ -755,6 +796,11 @@ def _build_validation_report(out, recommendations, model_evidence, confidences, 
         not (d["closure_phrase_detected"] and not d["operator_control_override"] and not d["remaining_evidence"]
              and D(rec_by_v.get(d["budget_code_key"], {}).get("recommended_cost_to_complete")) > Decimal("0"))
         for d in dorm)
+    no_positive_for_recent_zero_run = all(
+        not (d["dormant_status"] == "recent_zero_run_after_prior_activity" and not d["operator_control_override"]
+             and not d["remaining_evidence"]
+             and D(rec_by_v.get(d["budget_code_key"], {}).get("recommended_cost_to_complete")) > Decimal("0"))
+        for d in dorm)
 
     checks = OrderedDict([
         ("output_files_parse", parse["_all_passed"]),
@@ -773,6 +819,7 @@ def _build_validation_report(out, recommendations, model_evidence, confidences, 
         ("dormant_suppression_did_not_change_actuals", dorm_actual_unchanged),
         ("dormant_suppressed_final_not_below_actuals", dorm_final_geq_actual),
         ("no_positive_forecast_for_closed_without_evidence", no_positive_for_closed),
+        ("no_positive_forecast_for_recent_zero_run_without_evidence", no_positive_for_recent_zero_run),
         ("safety_scan_passed", safety["passed"]),
     ])
     if actuals_collections is not None:

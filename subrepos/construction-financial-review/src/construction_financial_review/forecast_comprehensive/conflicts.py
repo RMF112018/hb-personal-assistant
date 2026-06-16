@@ -67,6 +67,11 @@ def build(project_key, key, entry, sc, integrated_final: Decimal) -> list:
             out.append(_conflict(project_key, key, cost_code, "dormant_code_has_future_schedule_evidence",
                                  "medium", "mapped future schedule work keeps an otherwise-idle code "
                                  "forecastable", ["dormant_code", "schedule_remaining_work"]))
+        if dormant.get("non_staffing_suppression_candidate"):
+            out.append(_conflict(project_key, key, cost_code, "non_staffing_recent_zero_run_advisory",
+                                 "low", "non-staffing code has a recent zero-cost run; advisory only "
+                                 "(recent-zero-run suppression is staffing/GC-only this slice)",
+                                 ["dormant_code", "cost_entry_trend"]))
 
     # operator forecast-model control disclosure: a value-changing control overrides the model forecast
     # (and a binding not_to_exceed is disclosed as an operator constraint, never a silent cap); a

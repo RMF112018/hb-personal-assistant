@@ -20,7 +20,37 @@ controls should only **distribute a validated remaining amount** — they must n
 ## Statuses (`forecast_dormancy/classify.py`)
 
 `active_forecastable`, `active_with_remaining_evidence`, `operator_controlled`, `closed_do_not_use`,
-`inactive_no_remaining_evidence`, `dormant_no_recent_cost`. The last three suppress.
+`inactive_no_remaining_evidence`, `dormant_no_recent_cost`, `recent_zero_run_after_prior_activity`. The
+last four suppress.
+
+## Recent-zero-run suppression (staffing / general-conditions)
+
+Beyond long-idle closed codes, active **staffing / general-conditions** codes can stop: prior cost
+activity, then a short trailing run of zero-cost months, yet the model resumes future dollars (e.g. the
+SUPERINTENDENT 1 codes `1000.10-01-312.LAB/.LBN/.MAT` — last actual 2026-02, 4-month zero run, no
+commitment, no staffing-plan assignment, ~$74k/$18.7k/$3.7k future CTC). `recent_zero_run_after_prior_activity`
+treats the zero run as a stopped cost stream and suppresses (CTC 0 / final = actual) at a low threshold.
+
+- **Staffing/GC detection** (`_is_staffing_or_gc`, category-aware): the staffing code list
+  (`forecast_cost_frequency.weekly_internal_staffing_budget_code_keys`); OR for LAB/LBN, cost-code family
+  in `staffing_general_conditions_cost_code_families` (10-01 = General Conditions) **or** a staffing/GC
+  description term; OR for any other category (e.g. MAT), family **and** a staffing/GC description term (or
+  a staffing-plan assignment) — **family alone is never enough** for a material code, so generic GC
+  materials (temp fencing/power) are not suppressed.
+- **Thresholds:** staffing/GC `trailing_zero_month_threshold` (default 3). The **non-staffing arm is
+  disabled by default** this slice — a non-staffing code matching the pattern (idle ≥ the non-staffing
+  threshold, default 6) is NOT suppressed; it emits advisory evidence only
+  (`non_staffing_suppression_candidate = true`, `suppression_reason = non_staffing_recent_zero_run_advisory_only`,
+  conflict class `non_staffing_recent_zero_run_advisory`).
+- **Recent actual cost** is evaluated against the staffing zero-run threshold for an active staffing/GC
+  code (so idle past that short window counts as stopped) and against the long lookback otherwise (so a
+  closed code paid within the lookback stays active) — and it is checked **before** closure, so a
+  recently-paid code is never suppressed.
+- **Override:** an active **staffing-plan future assignment** (`plan_implied_remaining_cost > 0`, loaded in
+  intelligence via `forecast_staffing_plan.integration.prepare`) is affirmative remaining evidence ⇒
+  `active_with_remaining_evidence` (not suppressed). A value-asserting accepted operator model control
+  revives; shape/window/timing-only controls do not.
+- **Gate:** `no_positive_forecast_for_recent_zero_run_without_evidence`.
 
 ## Precedence (contrary evidence overrides closure)
 
