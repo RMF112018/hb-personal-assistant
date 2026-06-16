@@ -29,6 +29,45 @@ def build(project_key, key, entry, sc, integrated_final: Decimal) -> list:
     mconf, pfin, freq = entry["monthly_conf"], entry["prob_final"], entry["freq"]
     ss = (mconf or {}).get("source_shares") or {}
 
+    # dormant / closed-code suppression disclosure + defensive review classes
+    dormant = entry.get("dormant")
+    if dormant:
+        st = dormant.get("dormant_status")
+        actual = _d(entry.get("actual_cost_to_date"))
+        positive_forecast = integrated_final is not None and integrated_final > actual + Decimal("0.01")
+        if dormant.get("suppression_applied"):
+            cls = "closed_code_forecast_suppressed" if st == "closed_do_not_use" else "dormant_code_model_forecast_suppressed"
+            out.append(_conflict(project_key, key, cost_code, cls, "low",
+                                 dormant.get("suppression_reason"),
+                                 ["dormant_code", "forecast_intelligence"]))
+        if dormant.get("operator_control_override"):
+            out.append(_conflict(project_key, key, cost_code, "dormant_code_overridden_by_operator_control",
+                                 "medium", "dormancy overridden by a value-asserting accepted operator "
+                                 "model control (positive remaining)", ["dormant_code", "operator_model_control"]))
+        if dormant.get("closure_phrase_detected") and not dormant.get("suppression_applied") \
+                and not dormant.get("operator_control_override") and not dormant.get("remaining_evidence") \
+                and positive_forecast:
+            out.append(_conflict(project_key, key, cost_code,
+                                 "closed_code_has_positive_forecast_without_operator_acceptance", "high",
+                                 "CLOSED-marked code carries positive future forecast without affirmative "
+                                 "remaining evidence or an accepted operator control",
+                                 ["dormant_code", "forecast_intelligence"]))
+        elif st in ("dormant_no_recent_cost", "inactive_no_remaining_evidence") \
+                and not dormant.get("suppression_applied") and not dormant.get("remaining_evidence") \
+                and positive_forecast:
+            out.append(_conflict(project_key, key, cost_code,
+                                 "dormant_code_has_positive_forecast_without_remaining_evidence", "high",
+                                 "dormant code carries positive future forecast without affirmative "
+                                 "remaining evidence", ["dormant_code", "forecast_intelligence"]))
+        if _d(dormant.get("open_commitment_remaining")) > Decimal("0.01"):
+            out.append(_conflict(project_key, key, cost_code, "dormant_code_has_open_commitment_remaining",
+                                 "medium", f"open commitment remaining {dormant.get('open_commitment_remaining')} "
+                                 "keeps an otherwise-idle code forecastable", ["dormant_code", "commitment"]))
+        if dormant.get("schedule_remaining_evidence"):
+            out.append(_conflict(project_key, key, cost_code, "dormant_code_has_future_schedule_evidence",
+                                 "medium", "mapped future schedule work keeps an otherwise-idle code "
+                                 "forecastable", ["dormant_code", "schedule_remaining_work"]))
+
     # operator forecast-model control disclosure: a value-changing control overrides the model forecast
     # (and a binding not_to_exceed is disclosed as an operator constraint, never a silent cap); a
     # value-changing control with no prior accepted probability row runs on a provisional assessment.

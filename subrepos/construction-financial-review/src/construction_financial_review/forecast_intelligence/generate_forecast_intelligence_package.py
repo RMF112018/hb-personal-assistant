@@ -34,6 +34,8 @@ from ..forecast_accuracy import signals
 from ..forecast_accuracy.llm import narrate
 from ..forecast_actuals import actuals_export
 from ..forecast_accuracy.llm.client import OllamaClient
+from ..forecast_dormancy import classify as dormancy_classify
+from ..forecast_dormancy import suppress as dormancy_suppress
 from ..schedule_analysis import schedule_io, schedule_mapping, schedule_rollup
 from . import (backtest_strong, change_explanation, confidence_intel, db_inventory,
                estimators_uncapped, evidence, overrun_register, reconcile_final,
@@ -148,6 +150,15 @@ def generate(project_key: str, cfg: dict, data_root: Optional[Path] = None,
     calibration = bt["calibration_weights"]
 
     # ---- Per-budget-code build (canonical 127) -----------------------------
+    # Dormant / closed-code suppression runs BEFORE phasing: a CLOSED - DO NOT USE code, or a code idle
+    # past the lookback window with no affirmative remaining evidence, gets CTC=0 / final=actual here so
+    # no shape/history/frequency/schedule allocator can invent future cost downstream.
+    dcfg = cfg.get("dormant_code_suppression") or {}
+    dorm_enabled = bool(dcfg.get("enabled"))
+    # Anchor "months since last actual" to the current FORECAST month (first month being phased), not the
+    # schedule data_date (a prior month-end as-of). For Tropical forecast_period "2026-June" => 2026-06.
+    current_forecast_month = _forecast_period_month(cfg, data_date)
+    dorm_decisions, dorm_audit = [], []
     recommendations, model_evidence, sched_evidence, trend_rows = [], [], [], []
     remaining_rows, confidences, changes, bundles = [], [], [], []
     for bc in sorted(budget_codes, key=lambda r: r["budget_code_key"]):
@@ -168,6 +179,18 @@ def generate(project_key: str, cfg: dict, data_root: Optional[Path] = None,
                                             project_finish, project_key)
         ests = estimators_uncapped.estimate_all(bundle)
         recommendation = reconcile_final.select_final(key, project_key, ests, bundle, calibration)
+
+        # dormant / closed-code suppression (authoritative decision; emitted as the status file)
+        if dorm_enabled:
+            decision = dormancy_classify.classify(
+                _dormancy_inputs(key, bc, ctx, bundle, assoc, monthly, current_forecast_month), dcfg)
+            dorm_decisions.append(decision)
+            before = OrderedDict([("recommended_cost_to_complete", recommendation.get("recommended_cost_to_complete")),
+                                  ("recommended_final_cost", recommendation.get("recommended_final_cost"))])
+            if decision["suppression_applied"]:
+                recommendation, before = dormancy_suppress.suppress_recommendation(recommendation, decision)
+            dorm_audit.append(dormancy_suppress.audit_row(decision, before))
+
         conf = confidence_intel.score(bundle, recommendation)
         change = change_explanation.explain_change(recommendation, prior_model_rec_by_key.get(key),
                                                    rec, project_key)
@@ -210,6 +233,9 @@ def generate(project_key: str, cfg: dict, data_root: Optional[Path] = None,
 
     # ---- Write artifacts ---------------------------------------------------
     write_jsonl(out / "forecast_recommendations_by_budget_code.jsonl", recommendations)
+    write_jsonl(out / "dormant_code_status_by_budget_code.jsonl", dorm_decisions)
+    write_json(out / "audit" / "dormant_code_suppression_audit.json",
+               _dormant_audit(project_key, dorm_decisions, dorm_audit, dcfg))
     write_jsonl(out / "forecast_accuracy_next_by_budget_code.jsonl", accuracy_next)
     write_jsonl(out / "forecast_model_evidence_by_budget_code.jsonl", model_evidence)
     write_jsonl(out / "schedule_forecast_evidence_by_budget_code.jsonl", sched_evidence)
@@ -272,7 +298,8 @@ def generate(project_key: str, cfg: dict, data_root: Optional[Path] = None,
                                           sched_evidence, trend_rows, remaining_rows, changes,
                                           budget_codes, bundles, db_inv, safety, meta, bt,
                                           actuals_collections=actuals_collections,
-                                          actuals_contamination_ok=actuals_load["contamination_ok"])
+                                          actuals_contamination_ok=actuals_load["contamination_ok"],
+                                          dorm_decisions=dorm_decisions)
     write_json(out / "validation_report.json", validation)
     conclusion = (CONCLUSION_OVERRUNS if (validation["passed"] and register)
                   else (CONCLUSION_READY if validation["passed"] else CONCLUSION_NOT_READY))
@@ -352,6 +379,68 @@ def _recommendation_row(recommendation, conf, v2_rec, bc, actuals_fields=None):
     row["rule_based_forecast_action"] = v2_rec.get("forecast_action")
     row["rule_based_recommended_projected_cost"] = v2_rec.get("recommended_projected_cost")
     return row
+
+
+_MONTH_NAMES = {"JANUARY": 1, "FEBRUARY": 2, "MARCH": 3, "APRIL": 4, "MAY": 5, "JUNE": 6, "JULY": 7,
+                "AUGUST": 8, "SEPTEMBER": 9, "OCTOBER": 10, "NOVEMBER": 11, "DECEMBER": 12}
+
+
+def _forecast_period_month(cfg, data_date) -> Optional[str]:
+    """Current forecast month (YYYY-MM) from cfg['forecast_period'] (e.g. '2026-June'); fallback data_date."""
+    fp = cfg.get("forecast_period")
+    if isinstance(fp, str) and "-" in fp:
+        y, mon = fp.split("-", 1)
+        m = _MONTH_NAMES.get(mon.strip().upper()) or (int(mon) if mon.strip().isdigit() else None)
+        if m and y.strip().isdigit():
+            return f"{int(y):04d}-{int(m):02d}"
+    d = normalize_date(data_date)
+    return d[:7] if d else None
+
+
+def _dormancy_inputs(key, bc, ctx, bundle, assoc, monthly, current_month):
+    """Assemble the per-code signals the dormancy classifier consumes from intelligence context."""
+    amounts = ctx.get("budget_amounts") or bc.get("amounts") or {}
+    owner = ctx.get("owner_pay_app") or {}
+    sub = ctx.get("procore_subcontractor_pay_apps") or {}
+    assoc = assoc or {}
+    return {
+        "budget_code_key": key, "cost_code": bc.get("cost_code") or ctx.get("cost_code"),
+        "category": bc.get("category") or ctx.get("category"),
+        "sub_job_description": ctx.get("sub_job_description") or bc.get("sub_job_description"),
+        "budget_code_description": ctx.get("budget_code_description") or bc.get("budget_code_description"),
+        "cost_type_description": bc.get("cost_type_description") or ctx.get("cost_type_description"),
+        "monthly_actuals": monthly,
+        "actual_cost_to_date": bundle.get("actual_cost_all_source_to_date"),
+        "current_forecast_month": current_month,
+        "revised_budget": amounts.get("revised_budget"), "projected_costs": amounts.get("projected_costs"),
+        "committed_costs": amounts.get("committed_costs"),
+        "commitment_invoiced": amounts.get("commitment_invoiced"),
+        "owner_latest_period_to": owner.get("latest_period_to"),
+        "procore_latest_period_end": sub.get("latest_period_end"),
+        "schedule_remaining_work_status": assoc.get("schedule_remaining_work_status"),
+        "schedule_open_activity_count": assoc.get("open_activity_count"),
+        "schedule_latest_finish": assoc.get("latest_schedule_finish"),
+        "model_control": None,  # operator value controls compose at the consumers, not at the origin
+    }
+
+
+def _dormant_audit(project_key, decisions, audit_rows, dcfg) -> OrderedDict:
+    from collections import Counter
+    suppressed = [d for d in decisions if d["suppression_applied"]]
+    return OrderedDict([
+        ("project_key", project_key),
+        ("enabled", bool(dcfg.get("enabled"))),
+        ("lookback_months_without_actual_cost", dcfg.get("lookback_months_without_actual_cost")),
+        ("closed_description_patterns", dcfg.get("closed_description_patterns")),
+        ("status_counts", dict(Counter(d["dormant_status"] for d in decisions))),
+        ("suppressed_count", len(suppressed)),
+        ("suppressed_budget_codes", [d["budget_code_key"] for d in suppressed]),
+        ("rows", audit_rows),
+        ("rule", "CLOSED - DO NOT USE codes and codes idle >= lookback with no affirmative remaining "
+                 "evidence get CTC=0 / final=actual; a trend/inactivity conclusion, never a budget cap; "
+                 "actuals are never reduced and final never falls below actuals; overridden only by "
+                 "affirmative remaining evidence or a value-asserting accepted operator control"),
+    ])
 
 
 def _accuracy_next_row(r):
@@ -590,7 +679,7 @@ def _analysis_reconciliation(budget_codes, recommendations, co_agg, bt):
 def _build_validation_report(out, recommendations, model_evidence, confidences, sched_evidence,
                              trend_rows, remaining_rows, changes, budget_codes, bundles, db_inv,
                              safety, meta, bt, actuals_collections=None,
-                             actuals_contamination_ok=True) -> OrderedDict:
+                             actuals_contamination_ok=True, dorm_decisions=None) -> OrderedDict:
     n = len(budget_codes)
     canonical = {bc["budget_code_key"] for bc in budget_codes}
     per_code = (recommendations, model_evidence, confidences, sched_evidence, trend_rows,
@@ -647,6 +736,26 @@ def _build_validation_report(out, recommendations, model_evidence, confidences, 
     parse = all_files_parse([p for p in out.rglob("*") if p.suffix in (".json", ".jsonl")])
     backtest_ok = bt["cohort_size"] >= 1
 
+    # ---- dormant / closed-code suppression gates (fail closed) ----
+    dorm = dorm_decisions or []
+    rec_by_v = {r["budget_code_key"]: r for r in recommendations}
+    supp = [d for d in dorm if d["suppression_applied"]]
+    dorm_ctc_zero = all(D(rec_by_v.get(d["budget_code_key"], {}).get("recommended_cost_to_complete")) == Decimal("0")
+                        for d in supp)
+    dorm_final_eq_actual = all(
+        D(rec_by_v.get(d["budget_code_key"], {}).get("recommended_final_cost")) == actual_by_key.get(d["budget_code_key"], Decimal("0"))
+        for d in supp)
+    dorm_actual_unchanged = all(
+        D(rec_by_v.get(d["budget_code_key"], {}).get("actual_cost_all_source_to_date")) == D(d["actual_cost_to_date"])
+        for d in supp)
+    dorm_final_geq_actual = all(
+        D(rec_by_v.get(d["budget_code_key"], {}).get("recommended_final_cost")) >= D(d["actual_cost_to_date"])
+        for d in supp)
+    no_positive_for_closed = all(
+        not (d["closure_phrase_detected"] and not d["operator_control_override"] and not d["remaining_evidence"]
+             and D(rec_by_v.get(d["budget_code_key"], {}).get("recommended_cost_to_complete")) > Decimal("0"))
+        for d in dorm)
+
     checks = OrderedDict([
         ("output_files_parse", parse["_all_passed"]),
         ("one_row_per_canonical_key", one_per),
@@ -659,6 +768,11 @@ def _build_validation_report(out, recommendations, model_evidence, confidences, 
         ("no_payapp_overwrite_of_actuals", no_payapp_overwrite),
         ("db_inventory_no_payloads", db_inv_clean),
         ("backtest_cohort_present", backtest_ok),
+        ("dormant_suppressed_ctc_zero", dorm_ctc_zero),
+        ("dormant_suppressed_final_equals_actual", dorm_final_eq_actual),
+        ("dormant_suppression_did_not_change_actuals", dorm_actual_unchanged),
+        ("dormant_suppressed_final_not_below_actuals", dorm_final_geq_actual),
+        ("no_positive_forecast_for_closed_without_evidence", no_positive_for_closed),
         ("safety_scan_passed", safety["passed"]),
     ])
     if actuals_collections is not None:

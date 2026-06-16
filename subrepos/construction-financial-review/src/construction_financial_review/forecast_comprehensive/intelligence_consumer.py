@@ -61,6 +61,19 @@ def build(project_key, key, entry, sc) -> tuple:
         if integrated_ctc < ZERO:
             integrated_ctc = ZERO
         floored = integrated_final == actual_floor and D(mdecision["controlled_final_cost"]) <= actual_floor
+
+    # dormant / closed-code suppression (defensive enforcement of the authoritative intelligence decision):
+    # a suppressed code's integrated final stays at actual cost to date (CTC=0) so the history blend cannot
+    # re-inflate it. Overridden ONLY by a value-asserting operator model control that asserts positive
+    # remaining (controlled_remaining > 0); shape/window/timing-only controls do not revive a dormant code.
+    dormant = entry.get("dormant")
+    op_value_assert = bool(mdecision and mdecision.get("changes_deterministic_final")
+                           and D(mdecision.get("controlled_remaining")) > ZERO)
+    dormant_suppressed = bool(dormant and dormant.get("suppression_applied") and not op_value_assert)
+    if dormant_suppressed:
+        integrated_final = actual_floor
+        integrated_ctc = ZERO
+        floored = True
     delta = integrated_final - accepted_final
 
     evidence_summary = OrderedDict([
@@ -101,6 +114,9 @@ def build(project_key, key, entry, sc) -> tuple:
         ("operator_model_type", (mdecision or {}).get("model_type")),
         ("operator_model_controlled_final", money_str(D(mdecision["controlled_final_cost"]))
          if mdecision else None),
+        ("dormant_status", (dormant or {}).get("dormant_status")),
+        ("dormant_suppression_applied", bool(dormant_suppressed)),
+        ("dormant_suppression_reason", (dormant or {}).get("suppression_reason") if dormant_suppressed else None),
         ("reason_codes", sc["reason_codes"]),
     ])
     ha.stamp(forecast_row)

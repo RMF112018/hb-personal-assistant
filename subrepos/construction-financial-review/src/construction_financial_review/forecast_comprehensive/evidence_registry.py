@@ -40,6 +40,7 @@ def load_sources(discovery: OrderedDict) -> dict:
     src = {
         "context_by": _by_key(ctx / "summaries" / "budget_code_forecast_context.jsonl") if ctx else {},
         "rec_by": _by_key(intel / "forecast_recommendations_by_budget_code.jsonl") if intel else {},
+        "dormant_by": _by_key(intel / "dormant_code_status_by_budget_code.jsonl") if intel else {},
         "trend_by": _by_key(intel / "trend_evidence_by_budget_code.jsonl") if intel else {},
         "sched_by": _by_key(intel / "schedule_forecast_evidence_by_budget_code.jsonl") if intel else {},
         "conf_by": _by_key(intel / "forecast_confidence_by_budget_code.jsonl") if intel else {},
@@ -254,5 +255,6 @@ def build_registry(canonical_keys, sources: dict, project_key: str, controls_ctx
             "owner_pay_app": opa, "sub_pay_app": spa,
             "operator_control": decision, "operator_control_apps": ctrl_apps,
             "staffing_plan": sp_row, "staffing_plan_conflicts": sp_conflicts,
+            "dormant": (sources.get("dormant_by") or {}).get(key),
         }
     return items, per_code

@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 from collections import OrderedDict
+from decimal import Decimal
 
+from ..common.money import D
 from ..common.validation import all_files_parse
 from ..forecast_actuals import actuals_export
 
@@ -89,6 +91,16 @@ def build_validation(out, inputs, collections, audit, determinism, safety, meta,
         req = {"budget_code_key", "model", "status", "safety_passed"}
         llm_receipts_ok = bool(receipts) and all(req <= set(r.keys()) for r in receipts)
 
+    # dormant / closed-code suppression: a suppressed code integrates to actual cost to date (CTC 0) and
+    # carries a degenerate dormant_suppressed probability row (no broad risk distribution).
+    dorm_forecast = [r for r in forecast if r.get("dormant_suppression_applied")]
+    dorm_integrated_ok = all(
+        D(r["integrated_recommended_final_cost"]) == D(r["actual_cost_to_date"])
+        and D(r["integrated_cost_to_complete"]) == Decimal("0") for r in dorm_forecast)
+    _prob_by = {r["budget_code_key"]: r for r in probability}
+    dorm_prob_ok = all(_prob_by.get(r["budget_code_key"], {}).get("probability_status") == "dormant_suppressed"
+                       for r in dorm_forecast)
+
     checks = OrderedDict([
         ("output_files_parse", parse["_all_passed"]),
         ("manifest_present", True),
@@ -116,6 +128,8 @@ def build_validation(out, inputs, collections, audit, determinism, safety, meta,
         ("operator_controls_mapping_unambiguous", op_mapping_ok),
         ("operator_staffing_plan_evidence_present_when_active", sp_evidence_ok),
         ("operator_staffing_plan_advisory_requires_acceptance", sp_advisory_ok),
+        ("dormant_suppressed_integrated_final_equals_actual", dorm_integrated_ok),
+        ("dormant_suppressed_probability_marked", dorm_prob_ok),
         *actuals_gates.items(),
         *apf_gates.items(),
         ("meta_files_present", all((out / f).exists() for f in meta_doc)),

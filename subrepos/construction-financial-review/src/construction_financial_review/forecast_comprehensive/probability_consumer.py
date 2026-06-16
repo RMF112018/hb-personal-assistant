@@ -29,10 +29,19 @@ def _d(x, default=ZERO):
 def build(project_key, key, entry, sc, cfg_fc) -> tuple:
     cost_code = key.split(".")[1] if "." in key else None
 
+    # dormant / closed-code suppression: a suppressed code carries no future cost, so probability is a
+    # degenerate point at actual cost to date (probability_status = dormant_suppressed) — NOT a broad risk
+    # distribution. Overridden only by a value-asserting operator model control (controlled_remaining > 0).
+    dormant = entry.get("dormant")
+    mdec = entry.get("model_control")
+    op_value_assert = bool(mdec and mdec.get("changes_deterministic_final")
+                           and D(mdec.get("controlled_remaining")) > ZERO)
+    if dormant and dormant.get("suppression_applied") and not op_value_assert:
+        return _dormant_probability(project_key, key, cost_code, entry, dormant)
+
     # operator forecast-MODEL control that changes the deterministic final value: probability is
     # degraded-not-fatal. Anchor to a prior accepted probability row when one exists, else emit a
     # deterministic provisional plausibility assessment (numeric probabilities null) — never kill the run.
-    mdec = entry.get("model_control")
     if mdec and mdec.get("changes_deterministic_final"):
         return _model_controlled_probability(project_key, key, cost_code, entry, sc, cfg_fc, mdec)
 
@@ -87,6 +96,30 @@ def build(project_key, key, entry, sc, cfg_fc) -> tuple:
     contrib = {"p50": adj["simulated_p50"], "p90": adj["simulated_p90"], "p95": adj["simulated_p95"],
                "direction": direction}
     return row, contrib
+
+
+def _dormant_probability(project_key, key, cost_code, entry, dormant) -> tuple:
+    """Degenerate point distribution at actual cost to date for a suppressed dormant/closed code."""
+    actual = D(entry["actual_cost_to_date"])
+    a = money_str(actual)
+    row = OrderedDict([
+        ("project_key", project_key), ("budget_code_key", key), ("cost_code", cost_code),
+        ("probability_method", "dormant_code_suppressed_point"),
+        ("probability_status", "dormant_suppressed"),
+        ("actual_cost_to_date", a),
+        ("integrated_p10", a), ("integrated_p50", a), ("integrated_p80", a),
+        ("integrated_p90", a), ("integrated_p95", a),
+        ("integrated_uncertainty_direction", "dormant"),
+        ("cadence_timing_widening_applied", False), ("upper_cap_applied", False),
+        ("operator_final_value_anchor_applied", False),
+        ("dormant_status", dormant.get("dormant_status")),
+        ("dormant_suppression_reason", dormant.get("suppression_reason")),
+        ("history_consumption_status", "not_applicable_dormant"),
+        ("frequency_consumption_status", "not_applicable_dormant"),
+        ("probability_consumption_status", "dormant_suppressed"),
+    ])
+    ha.stamp(row)
+    return row, {"p50": actual, "p90": actual, "p95": actual, "direction": "dormant"}
 
 
 def _anchor_row(project_key, key, cost_code, entry, sc, mdec, actual_floor, controlled_final):

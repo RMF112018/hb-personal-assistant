@@ -166,6 +166,9 @@ def build(project_key, key, entry, sc, integrated_ctc: Decimal) -> tuple:
         ("schedule_consumption_status", sc["schedule_consumption_status"]),
         ("operator_controlled", bool(operator_stop_month)),
         ("operator_stop_month", operator_stop_month),
+        ("dormant_status", (entry.get("dormant") or {}).get("dormant_status")),
+        ("dormant_suppression_applied",
+         bool((entry.get("dormant") or {}).get("suppression_applied") and integrated_ctc == ZERO)),
     ])
     ha.stamp(row)
     audit = OrderedDict([("budget_code_key", key),
