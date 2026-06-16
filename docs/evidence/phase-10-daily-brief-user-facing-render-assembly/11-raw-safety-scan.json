@@ -1,0 +1,41 @@
+{
+  "status": "pass",
+  "files_scanned": [
+    "render_full.md",
+    "render_calendar.md",
+    "render_procore.md",
+    "render_nodata.md",
+    "09-copy-quality-scan.json",
+    "13-guard-columns-zero.json",
+    "14-source-table-no-mutation-proof.json"
+  ],
+  "patterns_checked": [
+    "email",
+    "url",
+    "mac_user_path",
+    "token_access",
+    "bearer",
+    "jwt",
+    "signed_url",
+    "pem",
+    "traceback"
+  ],
+  "real_content_findings": [],
+  "real_content_finding_count": 0,
+  "accepted_identifier_matches": {
+    "rationale": "guard-column NAMES (signed_url_persisted/download_url_persisted) in the guard-columns proof \u2014 schema identifiers, not values",
+    "matches": [
+      {
+        "file": "13-guard-columns-zero.json",
+        "pattern": "signed_url",
+        "match": "download_url"
+      },
+      {
+        "file": "13-guard-columns-zero.json",
+        "pattern": "signed_url",
+        "match": "signed_url"
+      }
+    ]
+  },
+  "note": "No emails, URLs, /Users home paths, tokens, signed URLs, PEMs, or tracebacks in rendered briefs or evidence."
+}

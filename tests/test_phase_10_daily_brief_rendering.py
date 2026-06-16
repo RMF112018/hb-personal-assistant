@@ -104,17 +104,16 @@ def test_sections_grouped_into_display_headings(tmp_path: Path) -> None:
     s = _seed(db)
     out = render_daily_brief(store=s, brief_date=DATE)
     displays = [sec["display"] for sec in out["sections"]]
-    # All five internal sections map to distinct display headings, in canonical order.
+    # No overlay → family fallback into the user-facing display groups, in canonical order:
+    # calendar → Calendar Prep, procore → Procore section, actions/waiting/follow_up → Email/Follow-up.
     assert displays == [
-        "Today's Actions",
-        "Waiting / Follow-Up",
-        "Risks / Watch Items",
-        "Procore Project Signals",
         "Calendar Prep",
+        "Procore Financial / Project Signals",
+        "Email / Follow-up",
     ]
 
 
-def test_unknown_section_routes_to_unassigned(tmp_path: Path) -> None:
+def test_unknown_section_routes_to_needs_review(tmp_path: Path) -> None:
     db = str(tmp_path / "t.sqlite")
     s = _seed(db)
     s.insert_daily_brief_action_candidate(
@@ -126,7 +125,7 @@ def test_unknown_section_routes_to_unassigned(tmp_path: Path) -> None:
     )
     out = render_daily_brief(store=s, brief_date=DATE)
     displays = [sec["display"] for sec in out["sections"]]
-    assert "Unassigned / Needs Review" in displays
+    assert "Needs Review / Decisions" in displays
 
 
 def test_deterministic_ordering(tmp_path: Path) -> None:
@@ -142,28 +141,28 @@ def test_section_filter(tmp_path: Path) -> None:
     db = str(tmp_path / "t.sqlite")
     s = _seed(db)
     out = render_daily_brief(store=s, brief_date=DATE, sections=["calendar", "procore"])
+    # 1 calendar line + 1 aggregated procore line.
     assert out["summary"]["rendered"] == 2
-    assert out["summary"]["skipped_by_filter"] == 3
     displays = {sec["display"] for sec in out["sections"]}
-    assert displays == {"Procore Project Signals", "Calendar Prep"}
+    assert displays == {"Procore Financial / Project Signals", "Calendar Prep"}
 
 
 def test_project_filter(tmp_path: Path) -> None:
     db = str(tmp_path / "t.sqlite")
     s = _seed(db)
     out = render_daily_brief(store=s, brief_date=DATE, project_key="PROJ-A")
-    assert out["summary"]["rendered"] == 2  # actions + waiting
-    for sec in out["sections"]:
-        for it in sec["items"]:
-            assert it["project_key"] == "PROJ-A"
+    # PROJ-A owns only actions + waiting → both fall into the Email / Follow-up group.
+    assert out["summary"]["rendered"] == 2
+    assert [sec["display"] for sec in out["sections"]] == ["Email / Follow-up"]
 
 
-def test_limit_caps_and_reports_skip(tmp_path: Path) -> None:
+def test_limit_caps_per_group(tmp_path: Path) -> None:
     db = str(tmp_path / "t.sqlite")
     s = _seed(db)
+    # Email / Follow-up holds 3 items (actions/waiting/follow_up); limit caps its rendered lines.
     out = render_daily_brief(store=s, brief_date=DATE, limit=2)
-    assert out["summary"]["rendered"] == 2
-    assert out["summary"]["skipped_by_limit"] == 3
+    email = next(sec for sec in out["sections"] if sec["display"] == "Email / Follow-up")
+    assert email["line_count"] == 2
 
 
 # --- no mutation / no re-persist -----------------------------------------------
@@ -284,7 +283,7 @@ def test_cli_markdown_included(tmp_path: Path) -> None:
     assert res.exit_code == 0, res.output
     payload = json.loads(res.output)
     assert payload["markdown"].startswith("# Daily Brief — 2026-06-08")
-    assert "## Today's Actions" in payload["markdown"]
+    assert "## Email / Follow-up" in payload["markdown"]
 
 
 def test_cli_explicit_write(tmp_path: Path) -> None:
@@ -437,12 +436,12 @@ def test_raw_default_off_keeps_redacted(tmp_path: Path) -> None:
     )
     out = render_daily_brief(store=s, brief_date=DATE)  # default: include_raw False
     assert out["include_raw"] is False
-    assert out["guardrails"]["redacted_fields_only"] is True
+    assert out["guardrails"]["redacted_markdown_always"] is True
+    # The real subject never appears in the rendered output (markdown is always sanitized).
     assert "Owner Coordination Meeting" not in json.dumps(out)
-    assert out["sections"][0]["items"][0]["display_title"] == "[redacted-subject]"
 
 
-def test_raw_calendar_shows_real_subject_and_location(tmp_path: Path) -> None:
+def test_raw_calendar_attaches_real_subject_to_json_only(tmp_path: Path) -> None:
     db = str(tmp_path / "t.sqlite")
     s = ConstructionStore(db_path=db)
     sref = _seed_calendar_raw(
@@ -457,13 +456,15 @@ def test_raw_calendar_shows_real_subject_and_location(tmp_path: Path) -> None:
     )
     out = render_daily_brief(store=s, brief_date=DATE, include_raw=True)
     item = out["sections"][0]["items"][0]
-    assert item["display_title"] == "Owner Coordination Meeting"
+    # Real content is attached to the JSON item for LOCAL inspection only...
     assert item["raw_title"] == "Owner Coordination Meeting"
     assert "Conf Room A" in item["raw_detail"]
-    assert "Owner Coordination Meeting" in out["markdown"]
+    # ...but never enters the user-facing Markdown, which stays sanitized.
+    assert "Owner Coordination Meeting" not in out["markdown"]
+    assert "Conf Room A" not in out["markdown"]
     assert out["include_raw"] is True
     assert out["guardrails"]["raw_local_consumption_only"] is True
-    assert out["guardrails"]["redacted_fields_only"] is False
+    assert out["guardrails"]["redacted_markdown_always"] is True
 
 
 def test_raw_procore_shows_real_signal_titles(tmp_path: Path) -> None:
@@ -544,12 +545,16 @@ def test_cli_raw_flag_and_explicit_write_still_repo_safe(tmp_path: Path) -> None
         confidence=1.0,
         group_key=sref,
     )
-    # --raw surfaces real content to local stdout
+    # --raw surfaces real content to local JSON items only; the Markdown stays sanitized.
     res = runner.invoke(
-        app, ["daily-brief", "render", "--db", db, "--date", DATE, "--raw", "--markdown"]
+        app, ["daily-brief", "render", "--db", db, "--date", DATE, "--raw", "--markdown", "--summary"]
     )
     assert res.exit_code == 0, res.output
-    assert "Real Meeting" in json.loads(res.output)["markdown"]
+    payload = json.loads(res.output)
+    assert "Real Meeting" not in payload["markdown"]
+    assert any(
+        it.get("raw_title") == "Real Meeting" for sec in payload["sections"] for it in sec["items"]
+    )
     # --raw must NOT weaken path safety: writing raw into the repo is still refused.
     repo = PathPolicy().resolve_repo_root()
     res2 = runner.invoke(

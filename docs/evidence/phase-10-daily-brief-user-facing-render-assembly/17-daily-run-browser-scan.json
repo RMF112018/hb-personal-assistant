@@ -1,0 +1,10 @@
+{
+  "status": "pass",
+  "files_scanned": [
+    "daily-brief-2026-06-12.html",
+    "daily-brief-latest-deterministic.html",
+    "daily-brief-latest.html",
+    "daily-brief-latest-attempted.html"
+  ],
+  "findings": []
+}

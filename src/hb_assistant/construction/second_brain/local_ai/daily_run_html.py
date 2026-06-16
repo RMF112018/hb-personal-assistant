@@ -97,6 +97,15 @@ padding:2px 10px;font-size:12px;font-weight:700;margin-bottom:8px}
 .item .cid{color:#6b7a99;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}
 .foot{color:var(--muted);font-size:12px;margin-top:24px;text-align:center}
 .empty{color:var(--muted);font-style:italic}
+.new-today{margin:0 0 22px}.nt-title{font-size:20px;margin:0 0 12px}
+.new-today .card h3{font-size:16px;margin:0 0 10px;display:flex;justify-content:space-between;align-items:center}
+.nt-list{margin:0;padding:0 0 0 18px}.nt-list li{margin:0 0 8px}
+.card.nt-attn{border-left:4px solid var(--fail)}
+.card.nt-team{border-left:4px solid var(--warn)}
+.card.nt-aware{border-left:4px solid var(--accent)}
+details.diag{margin:18px 0 0;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 14px}
+details.diag>summary{cursor:pointer;color:var(--muted);font-weight:600}
+details.diag .meta{color:var(--muted);font-size:12px;margin:6px 0 12px}
 """
 
 
@@ -333,7 +342,9 @@ def _render_model_enriched_card(mei: dict[str, Any]) -> str:
         "brief. Not accepted fact.</p>"
     )
     if not available:
-        reason = mei.get("withheld_reason") or ("disabled" if not mei.get("enabled") else "withheld")
+        reason = mei.get("withheld_reason") or (
+            "disabled" if not mei.get("enabled") else "withheld"
+        )
         out.append(
             f"<div class='meta'>⚠ Model-enriched advisory withheld (reason: {_esc(reason)}). "
             "The deterministic brief is authoritative.</div>"
@@ -342,9 +353,7 @@ def _render_model_enriched_card(mei: dict[str, Any]) -> str:
         catchup = (intel or {}).get("executive_catchup") or []
         if catchup:
             out.append("<div class='item'><div class='ttl'>Executive Catch-Up</div>")
-            out.append(
-                "<div class='meta'>" + " · ".join(_esc(c) for c in catchup) + "</div></div>"
-            )
+            out.append("<div class='meta'>" + " · ".join(_esc(c) for c in catchup) + "</div></div>")
         for section, heading in _MEI_DISPLAY_SECTIONS:
             bullets = (intel or {}).get(section) or []
             if not bullets:
@@ -373,35 +382,76 @@ def _render_model_enriched_card(mei: dict[str, Any]) -> str:
 
 
 def _render_section_cards(sections: list[dict[str, Any]], *, heading_prefix: str = "") -> str:
-    """Render the deterministic candidate sections (used as audit appendix / degraded fallback)."""
+    """Render the deterministic candidate sections from the render payload's sanitized ``lines``.
+
+    The browser body uses the SAME raw-free, aggregated presentation contract produced by
+    ``daily_brief_presentation`` and rendered by the Markdown path — the section's ``lines`` (Top
+    Priorities, aggregated Procore, calendar safe labels, email data-gap card, degraded note). It is
+    never reconstructed from raw per-candidate rows and never carries candidate IDs / source refs.
+
+    ``items`` is used ONLY for an optional, explicitly-gated LOCAL ``--raw`` detail block: real
+    subjects/details that the operator opted into with ``--raw``, scrubbed through ``_esc``
+    (URLs/emails/tokens/join-links removed) and clearly labelled local-only. Candidate IDs are never
+    emitted in either path.
+    """
     out: list[str] = []
     if not sections:
         out.append("<div class='card'><p class='empty'>No candidates for this date.</p></div>")
     for sec in sections:
         disp = _esc(heading_prefix + str(sec.get("display", "")))
-        count = int(sec.get("section_count", 0) or 0)
+        lines = [str(ln) for ln in (sec.get("lines") or [])]
+        count = len(lines)
         out.append(f"<div class='card'><h2>{disp}<span class='count'>{count}</span></h2>")
-        items = sec.get("items") or []
-        if not items:
+        if not lines:
             out.append("<p class='empty'>None.</p>")
-        for it in items:
-            title = _esc(it.get("display_title") or it.get("title_redacted") or "(untitled)")
-            meta_bits: list[str] = []
-            if it.get("reason_redacted"):
-                meta_bits.append(_esc(it.get("reason_redacted")))
-            if it.get("raw_detail"):
-                meta_bits.append(_esc(it.get("raw_detail")))
-            if it.get("project_key"):
-                meta_bits.append("project: " + _esc(it.get("project_key")))
-            if it.get("recommended_next_action"):
-                meta_bits.append("next: " + _esc(it.get("recommended_next_action")))
-            cid = _esc(it.get("candidate_id") or "")
-            out.append("<div class='item'>")
-            out.append(f"<div class='ttl'>{title}</div>")
-            if meta_bits:
-                out.append(f"<div class='meta'>{' · '.join(meta_bits)}</div>")
-            out.append(f"<div class='cid'>id: {cid}</div></div>")
+        for ln in lines:
+            text = ln[2:] if ln.startswith("- ") else ln
+            out.append(f"<div class='item'><div class='ttl'>{_esc(text)}</div></div>")
+        # LOCAL --raw ONLY: optional un-redacted detail (scrubbed). Never candidate IDs / source refs.
+        raw_bits: list[str] = []
+        for it in sec.get("items") or []:
+            joined = " — ".join(str(x) for x in (it.get("raw_title"), it.get("raw_detail")) if x)
+            if joined:
+                raw_bits.append(joined)
+        if raw_bits:
+            out.append(
+                "<div class='meta'>Local detail (raw, local-only): "
+                + _esc("; ".join(raw_bits))
+                + "</div>"
+            )
         out.append("</div>")
+    return "".join(out)
+
+
+_NT_CLASS = {
+    "needs_attention": "nt-attn",
+    "team_follow_up": "nt-team",
+    "awareness": "nt-aware",
+}
+
+
+def _render_new_today_cards(model: dict[str, Any]) -> str:
+    """Render the New Today render model (attention groups of business events) as browser cards.
+
+    Items are already raw-safe deterministic sentences; they still pass through ``_esc`` (scrub +
+    HTML-escape) as defense in depth. Empty groups are omitted.
+    """
+    out: list[str] = ["<section class='new-today'>"]
+    out.append(f"<h2 class='nt-title'>{_esc(model.get('section_title') or 'New Today')}</h2>")
+    if model.get("empty"):
+        out.append(
+            "<div class='card'><p class='meta'>No notable business changes in the most recent "
+            "refresh window.</p></div>"
+        )
+    for group in model.get("groups") or []:
+        items = group.get("items") or []
+        cls = _NT_CLASS.get(str(group.get("attention_class")), "nt-aware")
+        out.append(f"<div class='card {cls}'><h3>{_esc(group.get('label'))}")
+        out.append(f"<span class='count'>{len(items)}</span></h3><ul class='nt-list'>")
+        for item in items:
+            out.append(f"<li>{_esc(item)}</li>")
+        out.append("</ul></div>")
+    out.append("</section>")
     return "".join(out)
 
 
@@ -421,6 +471,7 @@ def render_daily_run_html(
     deterministic_fallback: bool = False,
     pending_followup: dict[str, Any] | None = None,
     model_enriched: dict[str, Any] | None = None,
+    new_today: dict[str, Any] | None = None,
 ) -> str:
     """Build the self-contained browser brief HTML. All dynamic content is scrubbed + escaped.
 
@@ -449,9 +500,27 @@ def render_daily_run_html(
     parts: list[str] = []
     parts.append("<!DOCTYPE html><html lang='en'><head><meta charset='utf-8'>")
     parts.append("<meta name='viewport' content='width=device-width, initial-scale=1'>")
-    parts.append(f"<title>Daily Brief — {_esc(brief_date)}</title>")
+    page_title = "Today's Daily Brief" if new_today is not None else f"Daily Brief — {brief_date}"
+    parts.append(f"<title>{_esc(page_title)}</title>")
     parts.append(f"<style>{_CSS}</style></head><body><div class='wrap'>")
-    parts.append(f"<h1>Daily Brief — {_esc(brief_date)}</h1>")
+
+    # New Today is the only visible primary body. Everything else (legacy candidate sections, run /
+    # schedule / status metadata) is relocated unchanged into a collapsed "Run details / diagnostics"
+    # block after New Today. No status banner above New Today: on success it is omitted; on degraded /
+    # failure a single concise warning is shown here and technical detail stays in the collapsed block.
+    if new_today is not None:
+        parts.append("<h1>Today's Daily Brief</h1>")
+        parts.append(f"<p class='sub'>{_esc(new_today.get('subhead', ''))}</p>")
+        warning = new_today.get("degraded_warning")
+        if warning:
+            parts.append(f"<div class='banner warn'>⚠ {_esc(warning)}</div>")
+        parts.append(_render_new_today_cards(new_today))
+        parts.append(
+            "<details class='diag'><summary>Run details / diagnostics</summary>"
+            "<p class='meta'>Diagnostic context only — not part of the action brief.</p>"
+        )
+    else:
+        parts.append(f"<h1>Daily Brief — {_esc(brief_date)}</h1>")
     model_sub = ""
     if model_metadata:
         model_sub = (
@@ -527,7 +596,7 @@ def render_daily_run_html(
         parts.append(_render_synthesis_cards(synthesis))
         parts.append(
             "<div class='card'><h2>Appendix: Source-Linked Candidates (audit)"
-            f"<span class='count'>{sum(int(s.get('section_count', 0) or 0) for s in sections)}</span></h2>"
+            f"<span class='count'>{sum(int(s.get('item_count', s.get('line_count', 0)) or 0) for s in sections)}</span></h2>"
             "<p class='meta'>Deterministic, redacted source rows backing the synthesized brief above.</p></div>"
         )
         parts.append(_render_section_cards(sections))
@@ -539,5 +608,7 @@ def render_daily_run_html(
         f"<div class='foot'>{rendered} candidate(s) · brief {_esc(brief_date)} · "
         f"generated {_esc(generated_label)} · local consumption only</div>"
     )
+    if new_today is not None:
+        parts.append("</details>")  # close the collapsed Run details / diagnostics block
     parts.append("</div></body></html>")
     return "".join(parts)

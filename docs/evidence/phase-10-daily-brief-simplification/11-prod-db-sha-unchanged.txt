@@ -1,0 +1,10 @@
+# Production DB SHA-256 — unchanged across apply-mode validation
+
+Source DB resolved from PathPolicy.get_db_path() (plain Application Support root).
+
+BEFORE:
+b0216f0fda8e7ea46e6f862a4b5acdc48fae380cadfc36af85e1d464c165a1bc  /Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite
+AFTER:
+b0216f0fda8e7ea46e6f862a4b5acdc48fae380cadfc36af85e1d464c165a1bc  /Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite
+
+RESULT: PROD DB UNCHANGED ✓ (apply ran on the /tmp copy only)

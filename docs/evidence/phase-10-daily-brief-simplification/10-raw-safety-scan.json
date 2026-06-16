@@ -1,0 +1,10 @@
+{
+  "description": "Raw-safety / egress scan: no tokens, URLs, emails, join links, or PEMs in committed or rendered surfaces.",
+  "real_run_browser_html_egress_matched": [],
+  "real_run_json_forbidden_matched": [],
+  "real_run_status_forbidden_matched": [],
+  "synthetic_samples_committed": true,
+  "real_run_rendered_html_committed": false,
+  "note": "Committed HTML/MD samples are rendered from the synthetic seed fixture (no real names/content). The real prod-derived run is scanned but NOT committed.",
+  "result": "PASS"
+}

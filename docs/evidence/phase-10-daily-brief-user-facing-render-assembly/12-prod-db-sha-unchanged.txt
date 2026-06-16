@@ -1,0 +1,6 @@
+Production DB SHA-256 (config-canonical PLAIN root, resolved via PathPolicy.get_db_path())
+path: ~/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite
+before: a403b67bd3930e2e36a835170f3dbabe981c5fe98ee07af159d48ff126b8a6d0
+after:  a403b67bd3930e2e36a835170f3dbabe981c5fe98ee07af159d48ff126b8a6d0
+verdict: UNCHANGED
+note: all sample generation / ranking / assembly / render ran against the /tmp copy via --db; no mutation-capable command touched the production DB.

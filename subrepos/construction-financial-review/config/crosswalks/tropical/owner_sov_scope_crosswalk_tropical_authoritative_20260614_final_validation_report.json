@@ -1,0 +1,41 @@
+{
+  "canonical_budget_code_count": 127,
+  "covered_canonical_budget_code_count": 127,
+  "covered_procore_latest_unique_wbs_count": 42,
+  "crosswalk_row_count": 58,
+  "direct_or_same_code_rows": 53,
+  "duplicate_covered_budget_codes": [],
+  "generated_date": "2026-06-14",
+  "invalid_covered_budget_codes": [],
+  "mapping_version": "2026-06-v1",
+  "notes": [
+    "Every canonical BudgetDetails key is covered by an authoritative user-provided rule.",
+    "Every Procore latest WBS code is covered by an authoritative user-provided rule.",
+    "Owner SOV 20-18-105 is explicitly mapped to 1000.20-18-170.MAT per user confirmation.",
+    "The prior unresolved owner-SOV warning for 20-18-105 has been cleared.",
+    "The 10-XX-XXX mapping is description-sensitive and intentionally has two rows."
+  ],
+  "one_to_many_rows": 5,
+  "one_to_one_rows": 53,
+  "procore_latest_unique_wbs_count": 42,
+  "project_key": "tropical",
+  "sha256": {
+    "owner_sov_scope_crosswalk_tropical_authoritative_20260614_final.csv": "6fb91f5e79637ccd9b02f2e6256fa890e5cae192bb1c5a6bdc2f978602357913",
+    "owner_sov_scope_crosswalk_tropical_authoritative_20260614_final.jsonl": "50ad7a6f9f8b250d27e6d6f71527b7c674e31a160a6044bfde7fa64bce64265b",
+    "owner_sov_scope_crosswalk_tropical_authoritative_20260614_final_validation_report.json": "5b938ff356ecf835aa206e56ea679a7e2d4863ea26065c85a1c930f789d183c5"
+  },
+  "status": "validated",
+  "summary_parent_rows": 3,
+  "uncovered_canonical_budget_codes": [],
+  "uncovered_procore_latest_wbs_codes": [],
+  "unresolved_owner_sov_rows_from_review_template": [],
+  "validation_checks": {
+    "all_canonical_budget_codes_covered": true,
+    "all_procore_latest_wbs_codes_covered": true,
+    "no_duplicate_covered_budget_codes": true,
+    "no_invalid_covered_budget_codes": true,
+    "owner_sov_20_18_105_confirmed": true,
+    "owner_sov_20_18_170_not_duplicate_mapped_to_1000_20_18_170_mat": true,
+    "unresolved_owner_sov_warning_cleared": true
+  }
+}

@@ -1,0 +1,76 @@
+{
+  "target": ">= 8.0",
+  "score": 10.0,
+  "passed": 13,
+  "total": 13,
+  "checks": [
+    {
+      "check": "no_internal_artifacts",
+      "pass": true,
+      "detail": "hits={}"
+    },
+    {
+      "check": "top_priorities_first",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "check": "ordered_review_after_top",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "check": "calendar_safe_labels",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "check": "no_hash_calendar_labels",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "check": "procore_aggregated",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "check": "procore_not_dumped",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "check": "ctas_present",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "check": "no_next_review",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "check": "email_family_represented",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "check": "data_gap_card_polished",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "check": "calendar_capped_overflow",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "check": "readable_titles",
+      "pass": true,
+      "detail": ""
+    }
+  ],
+  "forbidden_token_hits": {},
+  "before_audit_score": 4.7,
+  "verdict": "pass"
+}

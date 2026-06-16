@@ -122,3 +122,7 @@ A local-first Vite/React/TypeScript/Tailwind command center (primary navigation:
 
 All steps and docs preserve the core guardrails (read-only, local-first, no writeback, no raw/secrets serialization, chat disabled, local role = dev simulation only, construction-management-first language).
 
+
+## Construction Financial Review
+
+This repository includes a contained subproject at `subrepos/construction-financial-review/` for deterministic construction financial forecast review, owner/Procore scope crosswalk application, and review-package generation. See the subproject README for setup and execution details.

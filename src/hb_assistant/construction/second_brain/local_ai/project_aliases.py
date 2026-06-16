@@ -76,6 +76,75 @@ class _Alias:
     pattern: re.Pattern[str]
 
 
+def _seed_path() -> Path:
+    """Resolve the alias seed path (env override, else repo ``resources/config``)."""
+    override = os.environ.get(_SEED_ENV)
+    if override:
+        return Path(override).expanduser()
+    return PathPolicy().resolve_repo_root() / _SEED_RELATIVE
+
+
+@lru_cache(maxsize=1)
+def _load_display_names() -> dict[str, str]:
+    """Map canonical ``project_key`` → seed ``display_name`` (empty when the seed is unavailable).
+
+    The same seed that backs alias inference also carries a human ``display_name`` per project, so the
+    user-facing brief can show "Alton Hilltop at PBG" instead of the ``alton-hilltop-pbg`` key. A
+    missing/malformed seed yields an empty map (callers fall back to the identity store / title-case).
+    """
+    try:
+        data = yaml.safe_load(_seed_path().read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    out: dict[str, str] = {}
+    for entry in data.get("projects", []) or []:
+        if not isinstance(entry, dict):
+            continue
+        key = str(entry.get("project_key") or "").strip()
+        name = str(entry.get("display_name") or "").strip()
+        if key and name:
+            out[key] = name
+    return out
+
+
+def _titlecase_slug(project_key: str) -> str:
+    """Clean a raw ``project_key`` slug into a readable label (never a bare lowercase slug)."""
+    words = re.split(r"[-_\s]+", project_key.strip())
+    return " ".join(w[:1].upper() + w[1:] for w in words if w)
+
+
+def project_display_name(project_key: str | None, *, store: object | None = None) -> str | None:
+    """Readable project name for a canonical ``project_key`` (never a raw lowercase slug).
+
+    Resolution order: (1) the seed ``display_name``; (2) the construction project-identity store's
+    ``project_name_raw``/``project_name_normalized`` when a ``store`` is supplied; (3) a cleaned,
+    title-cased form of the slug. Returns ``None`` for empty input or internal sentinels
+    (``__needs_review__`` / ``__internal_*``) so the caller emits a safe label instead.
+    """
+    pk = str(project_key or "").strip()
+    if not pk or pk.startswith("__"):
+        return None
+    seed = _load_display_names().get(pk)
+    if seed:
+        return seed
+    if store is not None:
+        getter = getattr(store, "get_project_identity", None)
+        if callable(getter):
+            try:
+                rec = getter(pk)
+            except Exception:
+                rec = None
+            if rec:
+                name = str(rec.get("project_name_raw") or "").strip() or str(
+                    rec.get("project_name_normalized") or ""
+                ).strip()
+                if name:
+                    return name
+    return _titlecase_slug(pk)
+
+
 @lru_cache(maxsize=1)
 def _load_aliases() -> tuple[_Alias, ...]:
     """Load + compile the alias map (longest token first). Empty tuple if the seed is unavailable.
@@ -83,14 +152,8 @@ def _load_aliases() -> tuple[_Alias, ...]:
     Advisory: a missing/malformed seed yields no aliases (every item stays unassigned) rather than
     crashing the daily run — project inference is a quality enhancement, not a guardrail.
     """
-    override = os.environ.get(_SEED_ENV)
-    path = (
-        Path(override).expanduser()
-        if override
-        else PathPolicy().resolve_repo_root() / _SEED_RELATIVE
-    )
     try:
-        data = yaml.safe_load(path.read_text(encoding="utf-8"))
+        data = yaml.safe_load(_seed_path().read_text(encoding="utf-8"))
     except Exception:
         return ()
     if not isinstance(data, dict):

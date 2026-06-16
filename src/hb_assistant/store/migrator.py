@@ -14,7 +14,7 @@ from .connection import get_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 53
+LATEST_SCHEMA_VERSION = 54
 
 
 class SQLiteMigrator:
@@ -6080,6 +6080,63 @@ class SQLiteMigrator:
         "CREATE INDEX IF NOT EXISTS ix_brief_effectiveness_rollups_created ON brief_effectiveness_rollups(created_utc);",
     ]
 
+    # v54 Phase 10 (252) "New Today" overnight change digest. Additive, append-only; CREATE IF NOT
+    # EXISTS so re-apply is a no-op. One raw-free, source-linked business-event row per New Today item
+    # (deterministic facts authoritative; redacted/title-only columns; advisory model receipt is
+    # hash-only via model_run_receipt_id) + a hash-only source-ref child table. V1-V53 untouched.
+    V54_STATEMENTS: list[str] = [
+        f"""
+        CREATE TABLE IF NOT EXISTS daily_brief_change_events (
+          change_event_id TEXT PRIMARY KEY,
+          brief_date TEXT NOT NULL,
+          refresh_window_start_utc TEXT,
+          refresh_window_end_utc TEXT,
+          source_family TEXT NOT NULL,
+          source_record_id TEXT,
+          source_ref_count INTEGER NOT NULL DEFAULT 0,
+          project_key TEXT,
+          project_display_name TEXT,
+          actor_display_name TEXT,
+          actor_company TEXT,
+          event_type TEXT,
+          event_timestamp_utc TEXT,
+          business_record_type TEXT,
+          business_record_number TEXT,
+          business_record_title_redacted TEXT,
+          business_record_status TEXT,
+          amount TEXT,
+          due_date TEXT,
+          meeting_start_utc TEXT,
+          meeting_end_utc TEXT,
+          meeting_location_or_mode TEXT,
+          summary_text TEXT,
+          why_it_matters TEXT,
+          recommended_action TEXT,
+          attention_class TEXT NOT NULL,
+          confidence REAL,
+          enrichment_status TEXT NOT NULL DEFAULT 'deterministic',
+          model_profile_id TEXT,
+          model_name TEXT,
+          model_run_receipt_id TEXT,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP{_P10_GUARDS}
+        );
+        """,
+        "CREATE INDEX IF NOT EXISTS ix_daily_brief_change_events_date ON daily_brief_change_events(brief_date);",
+        "CREATE INDEX IF NOT EXISTS ix_daily_brief_change_events_family ON daily_brief_change_events(source_family);",
+        "CREATE INDEX IF NOT EXISTS ix_daily_brief_change_events_attention ON daily_brief_change_events(attention_class);",
+        "CREATE INDEX IF NOT EXISTS ix_daily_brief_change_events_created ON daily_brief_change_events(created_utc);",
+        f"""
+        CREATE TABLE IF NOT EXISTS daily_brief_change_event_refs (
+          change_event_id TEXT NOT NULL,
+          source_table TEXT NOT NULL,
+          source_ref_hash TEXT NOT NULL,
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP{_P10_GUARDS},
+          PRIMARY KEY (change_event_id, source_table, source_ref_hash)
+        );
+        """,
+        "CREATE INDEX IF NOT EXISTS ix_daily_brief_change_event_refs_event ON daily_brief_change_event_refs(change_event_id);",
+    ]
+
     # v44 Phase 10 Graph drive-item modified-by raw operational metadata.
     # Additive ADD COLUMN only on construction_drive_items; raw identity JSON is
     # local SQLite operational metadata and must not be emitted in committed evidence.
@@ -7067,6 +7124,18 @@ class SQLiteMigrator:
             if cur.fetchone() is None:
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (53, 'v53_reconcile_ranking_policy_eval_items_ranking_run_id', ?)",
+                    (now,),
+                )
+
+            # v54 Phase 10 (252) New Today overnight change digest. Additive, append-only; CREATE IF
+            # NOT EXISTS so re-apply is a no-op. Source-linked business-event read model + hash-only
+            # source-ref child, both carrying the full 13 Phase-10 guards. V1-V53 untouched.
+            for stmt in self.V54_STATEMENTS:
+                conn.execute(stmt)
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 54")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (54, 'v54_phase_10_daily_brief_new_today_change_events', ?)",
                     (now,),
                 )
 

@@ -1,0 +1,95 @@
+{
+  "status": "pass",
+  "db": "/tmp copy of PLAIN config-canonical prod DB (generation target)",
+  "production_db_mutated": false,
+  "production_db_sha": "UNCHANGED (see 12-prod-db-sha-unchanged.txt)",
+  "changed_tables_on_copy_vs_prod": [
+    {
+      "table": "candidate_similarity_edges",
+      "prod": 0,
+      "copy": 319
+    },
+    {
+      "table": "candidate_source_refs",
+      "prod": 0,
+      "copy": 95
+    },
+    {
+      "table": "daily_brief_action_candidates",
+      "prod": 0,
+      "copy": 95
+    },
+    {
+      "table": "daily_brief_assembly_runs",
+      "prod": 0,
+      "copy": 1
+    },
+    {
+      "table": "daily_brief_assembly_sections",
+      "prod": 0,
+      "copy": 3
+    },
+    {
+      "table": "daily_brief_ranked_candidates",
+      "prod": 0,
+      "copy": 95
+    },
+    {
+      "table": "daily_brief_ranking_runs",
+      "prod": 0,
+      "copy": 1
+    },
+    {
+      "table": "schema_migrations",
+      "prod": 52,
+      "copy": 53
+    }
+  ],
+  "expected_overlay_tables": [
+    "candidate_similarity_edges",
+    "candidate_source_refs",
+    "daily_brief_action_candidates",
+    "daily_brief_assembly_runs",
+    "daily_brief_assembly_sections",
+    "daily_brief_ranked_candidates",
+    "daily_brief_ranking_runs"
+  ],
+  "expected_schema_bookkeeping": [
+    "schema_migrations"
+  ],
+  "schema_migrations_note": "The /tmp copy is migrated forward to the current schema version on first store open; this is schema bookkeeping, not a source-data mutation.",
+  "unexpected_mutations": [],
+  "pure_source_read_models_unchanged": {
+    "calendar_event_index": {
+      "prod": 1619,
+      "copy": 1619,
+      "unchanged": true
+    },
+    "calendar_event_attendees": {
+      "prod": 20867,
+      "copy": 20867,
+      "unchanged": true
+    },
+    "calendar_event_raw_content": {
+      "prod": 1617,
+      "copy": 1617,
+      "unchanged": true
+    },
+    "email_thread_summaries": {
+      "prod": 281,
+      "copy": 281,
+      "unchanged": true
+    },
+    "procore_action_signals": {
+      "prod": 5933,
+      "copy": 5933,
+      "unchanged": true
+    },
+    "procore_endpoint_raw_payloads": {
+      "prod": 40474,
+      "copy": 40474,
+      "unchanged": true
+    }
+  },
+  "note": "All writes occurred ONLY on the /tmp copy via deterministic generation; pure source read-models (calendar/email/Procore/raw payloads) are byte-count identical prod\u2194copy."
+}

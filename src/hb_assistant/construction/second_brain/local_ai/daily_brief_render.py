@@ -1,14 +1,21 @@
 """Phase 10 — daily-brief rendering / consumption (read-only, advisory, no writeback).
 
-Closes the local-agent loop: renders the already-redacted rows of the convergence table
-``daily_brief_action_candidates`` (written by the email/follow-up, Procore, and calendar families)
-into a consumable, deterministic daily brief — structured JSON + redacted Markdown — and, only on
-explicit request, writes that Markdown to a path-safe file.
+Closes the local-agent loop: renders the V51 ranking/assembly overlay
+(``daily_brief_assembly_sections`` + ``daily_brief_action_candidates``) into a consumable,
+deterministic, user-facing daily brief — an operator action plan in structured JSON + polished
+Markdown — and, only on explicit request, writes that Markdown to a path-safe file.
 
-Read-only by design: ``render_daily_brief`` performs zero writes and reads only the 11 safe columns
-exposed by ``list_daily_brief_action_candidates`` (titles/reasons are redacted at write time). The
-per-candidate ``daily_brief_action_candidate_id`` is the stable traceback indicator. Ordering is
-deterministic (no wall-clock): display-section order → project_key → priority → candidate id.
+When an assembly overlay exists for the date, render consumes it: items are grouped and ordered by
+the assembly's authoritative ``candidate_ids_json`` (Top Priorities first), Procore rows are
+aggregated by project + signal type, calendar rows get safe labels, and the email/follow-up family
+is always represented (candidates or a polished data-gap card). When no overlay exists, render falls
+back to family grouping — through the *same* sanitization. All user-facing copy is produced by the
+pure :mod:`daily_brief_presentation` layer and passes its output fence (no internal ids, sentinels,
+hash labels, ``next:review``, table/column names, or raw subjects/bodies/URLs/emails).
+
+Read-only by design: ``render_daily_brief`` performs zero writes and reads only the safe columns
+exposed by the overlay read models (titles/reasons are redacted at write time). Ordering is
+deterministic (no wall-clock): assembly display order, then priority, then candidate id.
 
 File writing is off by default and has two modes, both marker-bounded + atomic + path-redacted and
 reusing the approved ``daily_brief.output`` primitives:
@@ -22,6 +29,7 @@ emitted or written.
 from __future__ import annotations
 
 import hashlib
+import json
 from pathlib import Path
 from typing import Any, Optional
 
@@ -35,23 +43,19 @@ from ..daily_brief.output import (
     _replace_bounded,
     _sha256,
 )
-
-# Internal candidate section → display section. Ordered for deterministic rendering.
-_DISPLAY_SECTIONS: list[tuple[str, str]] = [
-    ("actions", "Today's Actions"),
-    ("waiting", "Waiting / Follow-Up"),
-    ("follow_up", "Risks / Watch Items"),
-    ("procore", "Procore Project Signals"),
-    ("calendar", "Calendar Prep"),
-    ("__unassigned__", "Unassigned / Needs Review"),
-]
-_SECTION_TO_DISPLAY = dict(_DISPLAY_SECTIONS)
-_DISPLAY_ORDER = {v: i for i, (_, v) in enumerate(_DISPLAY_SECTIONS)}
-_UNASSIGNED_DISPLAY = "Unassigned / Needs Review"
-
-
-def _display_for(section: Optional[str]) -> str:
-    return _SECTION_TO_DISPLAY.get(str(section or ""), _UNASSIGNED_DISPLAY)
+from .daily_brief_presentation import (
+    ASSEMBLY_KEY_TO_GROUP,
+    CALENDAR_MAX_LINES,
+    DISPLAY_GROUP_ORDER,
+    FAMILY_TO_GROUP,
+    aggregate_procore_lines,
+    assert_clean_display,
+    cap_lines,
+    collapse_duplicate_lines,
+    email_followup_gap_card,
+    render_data_gap_lines,
+    render_item_line,
+)
 
 
 def _short_id(candidate_id: Optional[str]) -> str:
@@ -63,47 +67,6 @@ def _short_id(candidate_id: Optional[str]) -> str:
 def _calendar_source_ref(event_index_id: Any) -> str:
     """Recompute the calendar candidate source_ref exactly as calendar-prep does."""
     return "cal:" + hashlib.sha256(str(event_index_id).encode("utf-8")).hexdigest()[:32]
-
-
-# Relationship class → conservative recommended operator action (advisory, deterministic).
-_RELATIONSHIP_NEXT_ACTION = {"strong": "prepare_packet", "moderate": "review", "weak": "review"}
-
-
-def _relationship_items(
-    *, store: Any, project_key: Optional[str], limit: int
-) -> list[dict[str, Any]]:
-    """Read bounded, source-linked relationship candidates for the brief (read-only, redacted).
-
-    Returns safe fields only — hashed source-ref pairs, confidence/class, reason codes, source
-    families, a recommended next action, and whether review is required. No raw subjects, bodies,
-    addresses, URLs, or payloads (the persisted rows contain none). Deterministic order is provided
-    by the store helper (confidence DESC, id ASC). Returns ``[]`` when no rows exist or the table is
-    absent, so the brief is unchanged for dates/DBs without relationship candidates.
-    """
-    try:
-        rows = store.list_phase10_relationship_candidates(project_key=project_key, limit=limit)
-    except Exception:
-        return []
-    items: list[dict[str, Any]] = []
-    for r in rows:
-        cls = str(r.get("confidence_class") or "weak")
-        review_required = cls == "moderate"
-        items.append(
-            {
-                "relationship_id": _short_id(r.get("relationship_candidate_id")),
-                "relationship_type": r.get("relationship_type"),
-                "confidence": r.get("confidence"),
-                "confidence_class": cls,
-                "source_families": [r.get("from_source_family"), r.get("to_source_family")],
-                "from_source_ref_hash": r.get("from_source_ref_hash"),
-                "to_source_ref_hash": r.get("to_source_ref_hash"),
-                "project_key": r.get("project_key"),
-                "reason_codes": [c for c in str(r.get("reason_redacted") or "").split(",") if c],
-                "review_required": review_required,
-                "recommended_next_action": _RELATIONSHIP_NEXT_ACTION.get(cls, "review"),
-            }
-        )
-    return items
 
 
 def _build_raw_enrichment(
@@ -166,6 +129,131 @@ def _build_raw_enrichment(
     return enrichment
 
 
+def _latest_assembly_sections(store: Any, brief_date: str) -> Optional[list[dict[str, Any]]]:
+    """Return the newest assembly run's sections (display order) for ``brief_date``, or ``None``.
+
+    ``None`` means no overlay exists for the date — render falls back to family grouping. Guarded so
+    a missing overlay table is treated as "no overlay" rather than an error.
+    """
+    try:
+        runs = store.list_assembly_runs(brief_date=brief_date, limit=1)
+    except Exception:
+        return None
+    if not runs:
+        return None
+    run_id = str(runs[0].get("assembly_run_id") or "")
+    if not run_id:
+        return None
+    try:
+        return store.list_assembly_sections(assembly_run_id=run_id, limit=10_000)
+    except Exception:
+        return None
+
+
+def _eligible(
+    row: dict[str, Any], *, section_filter: Optional[set[str]], project_key: Optional[str]
+) -> bool:
+    """Apply the optional internal-section and project-key filters to a candidate detail row."""
+    if section_filter is not None and str(row.get("section") or "") not in section_filter:
+        return False
+    return not (project_key is not None and str(row.get("project_key") or "") != str(project_key))
+
+
+def _section_ids(sec: dict[str, Any]) -> list[str]:
+    """Parse a section's ``candidate_ids_json`` into a list of candidate id strings (guarded)."""
+    try:
+        return [str(c) for c in json.loads(str(sec.get("candidate_ids_json") or "[]"))]
+    except (ValueError, TypeError):
+        return []
+
+
+def _group_from_overlay(
+    sections: list[dict[str, Any]],
+    detail_by_id: dict[str, dict[str, Any]],
+    *,
+    section_filter: Optional[set[str]],
+    project_key: Optional[str],
+) -> tuple[dict[str, list[dict[str, Any]]], Optional[str]]:
+    """Resolve assembly sections → display groups of candidate details (authoritative order).
+
+    The assembly's ``top_priorities`` membership is rendered first, as individual sanitized lines. The
+    remaining candidates are routed to their dedicated display section *by family* — Procore rows to
+    the aggregated Procore section, calendar rows to Calendar Prep — so the procore-aggregation and
+    calendar-safe-label contracts hold regardless of which lifecycle bucket the overlay placed them
+    in; every other family follows the assembly ``section_key`` mapping. Sections arrive in display
+    order, so within-group order is deterministic. Returns ``(groups, degraded_reason)``.
+    """
+    groups: dict[str, list[dict[str, Any]]] = {g: [] for g in DISPLAY_GROUP_ORDER}
+    degraded_reason: Optional[str] = None
+    placed: set[str] = set()
+
+    def _take(cid: str) -> Optional[dict[str, Any]]:
+        if cid in placed:
+            return None
+        detail = detail_by_id.get(cid)
+        if detail is None or not _eligible(
+            detail, section_filter=section_filter, project_key=project_key
+        ):
+            return None
+        placed.add(cid)
+        return detail
+
+    # Top Priorities first (authoritative selection + order), rendered as individual lines.
+    for sec in sections:
+        if str(sec.get("section_key") or "") != "top_priorities":
+            continue
+        for cid in _section_ids(sec):
+            detail = _take(cid)
+            if detail is not None:
+                groups["Top Priorities"].append(detail)
+        break
+
+    # Remaining sections: Procore/calendar routed by family; others by assembly section_key.
+    for sec in sections:
+        key = str(sec.get("section_key") or "")
+        if key == "top_priorities":
+            continue
+        if key == "data_gaps_degraded":
+            degraded_reason = sec.get("degraded_reason")
+            continue
+        for cid in _section_ids(sec):
+            detail = _take(cid)
+            if detail is None:
+                continue
+            family = str(detail.get("section") or "")
+            if family == "procore":
+                group = "Procore Financial / Project Signals"
+            elif family == "calendar":
+                group = "Calendar Prep"
+            else:
+                group = ASSEMBLY_KEY_TO_GROUP.get(key, "Needs Review / Decisions")
+            groups[group].append(detail)
+    return groups, degraded_reason
+
+
+def _group_from_family(
+    all_rows: list[dict[str, Any]],
+    *,
+    section_filter: Optional[set[str]],
+    project_key: Optional[str],
+) -> dict[str, list[dict[str, Any]]]:
+    """Fallback grouping (no overlay): bucket candidates by source family into display groups."""
+    groups: dict[str, list[dict[str, Any]]] = {g: [] for g in DISPLAY_GROUP_ORDER}
+    for r in all_rows:
+        if not _eligible(r, section_filter=section_filter, project_key=project_key):
+            continue
+        group = FAMILY_TO_GROUP.get(str(r.get("section") or ""), "Needs Review / Decisions")
+        groups[group].append(r)
+    for g in groups:
+        groups[g].sort(
+            key=lambda r: (
+                int(r.get("priority") or 100),
+                str(r.get("daily_brief_action_candidate_id") or ""),
+            )
+        )
+    return groups
+
+
 def render_daily_brief(
     *,
     store: Any,
@@ -176,104 +264,72 @@ def render_daily_brief(
     include_raw: bool = False,
     relationship_limit: int = 10,
 ) -> dict[str, Any]:
-    """Render ``daily_brief_action_candidates`` for one date into a brief (read-only).
+    """Render the daily brief for one date as a user-facing action plan (read-only).
 
-    ``sections`` filters by internal section name; ``project_key`` filters by project; ``limit`` caps
-    the rendered item count (deterministic order). Returns a dict with ``summary`` counts, structured
-    ``sections`` (display groups → safe items), and a ``markdown`` string. Writes nothing.
+    Consumes the V51 assembly overlay when one exists for ``brief_date`` (Top Priorities first,
+    Procore aggregated, calendar safe-labelled, email/follow-up always represented); otherwise falls
+    back to family grouping through the same sanitization. ``sections`` filters by internal family;
+    ``project_key`` filters by project; ``limit`` caps per-group item lines. Returns a dict with
+    ``summary`` counts, structured ``sections`` (display groups → safe lines), and a clean ``markdown``
+    string (it passes the presentation output fence). Writes nothing.
 
-    ``include_raw`` (LOCAL CONSUMPTION ONLY) enriches each item with the REAL (un-redacted) content
-    from the local raw tables — calendar subjects/locations, Procore signal titles. This content is
-    surfaced only to the caller (stdout / a non-repo file); it is never persisted, logged, or written
-    to the repo. Default is False (byte-for-byte the redacted brief).
+    ``include_raw`` (LOCAL CONSUMPTION ONLY) attaches the REAL (un-redacted) content from the local
+    raw tables onto the JSON items for local inspection — never into the Markdown, never persisted,
+    logged, or committed. The user-facing Markdown is always the sanitized, raw-safe form.
     """
     section_filter = {str(s) for s in sections} if sections else None
 
-    # Read the full date set once (safe columns only), then filter/cap deterministically in Python.
     all_rows = store.list_daily_brief_action_candidates(brief_date=brief_date, limit=1_000_000)
     total = len(all_rows)
+    detail_by_id = {str(r.get("daily_brief_action_candidate_id") or ""): r for r in all_rows}
 
-    filtered: list[dict[str, Any]] = []
-    skipped_by_filter = 0
-    for r in all_rows:
-        if section_filter is not None and str(r.get("section") or "") not in section_filter:
-            skipped_by_filter += 1
-            continue
-        if project_key is not None and str(r.get("project_key") or "") != str(project_key):
-            skipped_by_filter += 1
-            continue
-        filtered.append(r)
-
-    # Deterministic order: display-section, then project_key (None last), then priority, then id.
-    def _key(r: dict[str, Any]) -> tuple[int, int, str, int, str]:
-        disp = _display_for(r.get("section"))
-        proj = r.get("project_key")
-        return (
-            _DISPLAY_ORDER.get(disp, len(_DISPLAY_SECTIONS)),
-            1 if proj is None else 0,
-            str(proj or ""),
-            int(r.get("priority") or 100),
-            str(r.get("daily_brief_action_candidate_id") or ""),
+    overlay_sections = _latest_assembly_sections(store, brief_date)
+    used_overlay = overlay_sections is not None
+    if used_overlay:
+        groups, degraded_reason = _group_from_overlay(
+            overlay_sections or [],
+            detail_by_id,
+            section_filter=section_filter,
+            project_key=project_key,
         )
+    else:
+        groups = _group_from_family(
+            all_rows, section_filter=section_filter, project_key=project_key
+        )
+        degraded_reason = None
 
-    filtered.sort(key=_key)
-    rendered = filtered[: max(0, limit)]
-    skipped_by_limit = len(filtered) - len(rendered)
-
-    # Optional LOCAL-only enrichment: real content from raw tables, keyed by candidate id.
+    # Optional LOCAL-only enrichment: real content from raw tables, attached to JSON items only.
     enrichment: dict[str, dict[str, Any]] = {}
     if include_raw:
-        sections_present = {str(r.get("section") or "") for r in rendered}
+        sections_present = {str(r.get("section") or "") for items in groups.values() for r in items}
         enrichment = _build_raw_enrichment(
             store=store, brief_date=brief_date, sections_present=sections_present
         )
 
-    # Group rendered items by display section.
-    grouped: dict[str, list[dict[str, Any]]] = {disp: [] for _, disp in _DISPLAY_SECTIONS}
-    for r in rendered:
-        disp = _display_for(r.get("section"))
-        full_id = str(r.get("daily_brief_action_candidate_id") or "")
-        title_redacted = r.get("title_redacted")
-        item: dict[str, Any] = {
-            "candidate_id": _short_id(full_id),
-            "section": r.get("section"),
-            "title_redacted": title_redacted,
-            "reason_redacted": r.get("reason_redacted"),
-            "project_key": r.get("project_key"),
-            "priority": r.get("priority"),
-            "confidence": r.get("confidence"),
-            "status": r.get("status"),
-            "recommended_next_action": r.get("recommended_next_action"),
-            "display_title": title_redacted,
-        }
-        if include_raw:
-            enr = enrichment.get(full_id) or {}
-            if enr.get("raw_title"):
-                item["display_title"] = enr["raw_title"]
-                item["raw_title"] = enr["raw_title"]
-            if enr.get("raw_detail"):
-                item["raw_detail"] = enr["raw_detail"]
-        grouped.setdefault(disp, []).append(item)
+    # Email/follow-up family is never silently omitted — unless a section filter deliberately scopes
+    # it out. When in scope and empty, surface a data-gap card (count of unconverted summaries).
+    email_families = {"actions", "waiting", "follow_up"}
+    email_gap_enabled = section_filter is None or bool(section_filter & email_families)
+    thread_count = 0
+    if email_gap_enabled and not groups["Email / Follow-up"]:
+        try:
+            thread_count = len(store.list_email_thread_summaries(limit=1_000_000))
+        except Exception:
+            thread_count = 0
 
-    by_section = {disp: len(items) for disp, items in grouped.items() if items}
-    sections_out = [
-        {"display": disp, "section_count": len(grouped[disp]), "items": grouped[disp]}
-        for _, disp in _DISPLAY_SECTIONS
-        if grouped[disp]
-    ]
-
-    # Cross-source relationship enrichment (read-only, bounded, redacted). Appears only when rows
-    # exist, so the brief is byte-identical for dates/DBs without relationship candidates.
-    relationships = _relationship_items(
-        store=store, project_key=project_key, limit=max(0, relationship_limit)
+    # Build each display group's sanitized body once; markdown, JSON sections, and counts derive
+    # from these, so what the operator reads and what the summary reports never drift apart.
+    bodies = _ordered_bodies(
+        groups,
+        degraded_reason=degraded_reason,
+        thread_count=thread_count,
+        limit=limit,
+        email_gap_enabled=email_gap_enabled,
     )
 
-    markdown = _render_markdown(
-        brief_date=brief_date,
-        grouped=grouped,
-        total_rendered=len(rendered),
-        include_raw=include_raw,
-        relationships=relationships,
+    markdown = _render_markdown(brief_date=brief_date, bodies=bodies)
+    sections_out = _structured_sections(
+        bodies, groups, limit=limit, include_raw=include_raw, enrichment=enrichment
     )
 
     return {
@@ -283,24 +339,24 @@ def render_daily_brief(
         "project_filter": project_key,
         "section_filter": sorted(section_filter) if section_filter else None,
         "include_raw": include_raw,
+        "used_assembly_overlay": used_overlay,
         "summary": {
             "total_for_date": total,
-            "rendered": len(rendered),
-            "skipped_by_filter": skipped_by_filter,
-            "skipped_by_limit": skipped_by_limit,
-            "by_section": by_section,
-            "relationships": len(relationships),
+            "rendered": sum(len(body) for body in bodies.values()),
+            "by_group": {group: len(body) for group, body in bodies.items()},
+            "email_followup_thread_summaries": thread_count,
         },
         "sections": sections_out,
-        "relationships": relationships,
         "markdown": markdown,
         "guardrails": {
             "read_only": True,
             "deterministic": True,
+            "consumes_assembly_overlay": used_overlay,
             "source_linked_candidate_ids": True,
-            # include_raw surfaces REAL content for LOCAL consumption only; persisted rows + repo
-            # artifacts stay redacted, and nothing raw is logged or committed.
-            "redacted_fields_only": not include_raw,
+            "user_facing_markdown_sanitized": True,
+            # include_raw attaches REAL content to JSON items for LOCAL consumption only; the Markdown
+            # stays sanitized, persisted rows + repo artifacts stay redacted, nothing raw is committed.
+            "redacted_markdown_always": True,
             "raw_local_consumption_only": include_raw,
             "no_raw_persistence": True,
             "no_writeback": True,
@@ -309,75 +365,133 @@ def render_daily_brief(
     }
 
 
-def _render_markdown(
+def _group_body_lines(
+    group: str,
+    items: list[dict[str, Any]],
     *,
-    brief_date: str,
-    grouped: dict[str, list[dict[str, Any]]],
-    total_rendered: int,
-    include_raw: bool = False,
-    relationships: Optional[list[dict[str, Any]]] = None,
-) -> str:
-    """Deterministic Markdown. Uses ``display_title`` (real content when ``include_raw``, else the
-    redacted title) + stable candidate ids. ``include_raw`` output is LOCAL-only — never committed.
+    degraded_reason: Optional[str],
+    thread_count: int,
+    limit: int,
+) -> list[str]:
+    """Sanitized Markdown bullet lines for one display group (procore aggregated; email gap card)."""
+    if group == "Procore Financial / Project Signals":
+        return aggregate_procore_lines(items)
+    if group == "Calendar Prep":
+        # Safe-labelled per-meeting lines, deduped, then capped with an explicit overflow summary.
+        lines = collapse_duplicate_lines([render_item_line(d, group=group) for d in items])
+        return cap_lines(
+            lines, max_lines=min(CALENDAR_MAX_LINES, max(0, limit)), more_noun="meetings"
+        )
+    if group == "Email / Follow-up":
+        if items:
+            return collapse_duplicate_lines(
+                [render_item_line(d, group=group) for d in items[: max(0, limit)]]
+            )
+        return email_followup_gap_card(thread_count)
+    if group == "Data Gaps / Degraded":
+        if degraded_reason is None:
+            return []
+        return render_data_gap_lines(degraded_reason)
+    return collapse_duplicate_lines(
+        [render_item_line(d, group=group) for d in items[: max(0, limit)]]
+    )
 
-    A bounded "Related Context" section is appended only when ``relationships`` is non-empty, so the
-    brief is byte-identical for dates/DBs without relationship candidates."""
-    rels = relationships or []
+
+def _ordered_bodies(
+    groups: dict[str, list[dict[str, Any]]],
+    *,
+    degraded_reason: Optional[str],
+    thread_count: int,
+    limit: int,
+    email_gap_enabled: bool = True,
+) -> dict[str, list[str]]:
+    """Build each display group's sanitized body lines, in display order (non-empty groups only).
+
+    The email/follow-up data-gap card renders when the email family is in scope but has no
+    candidates; it is suppressed when a section filter scopes the email family out, and on an
+    otherwise-empty brief (so an empty date reads "no review candidates" rather than only a card).
+    """
+    bodies: dict[str, list[str]] = {}
+    for group in DISPLAY_GROUP_ORDER:
+        items = groups.get(group) or []
+        if group == "Email / Follow-up" and not items and not email_gap_enabled:
+            continue
+        body = _group_body_lines(
+            group,
+            items,
+            degraded_reason=degraded_reason,
+            thread_count=thread_count,
+            limit=limit,
+        )
+        if body:
+            bodies[group] = body
+
+    email_group_empty = not groups.get("Email / Follow-up")
+    if email_group_empty and "Email / Follow-up" in bodies:
+        others = [g for g in bodies if g != "Email / Follow-up"]
+        if not others:
+            del bodies["Email / Follow-up"]
+    return bodies
+
+
+def _render_markdown(*, brief_date: str, bodies: dict[str, list[str]]) -> str:
+    """Deterministic, sanitized user-facing Markdown. Passes the presentation output fence."""
     disclaimer = (
-        "_Advisory only. Source-linked review candidates from the local-agent family "
-        "(email/follow-up, Procore, calendar)._"
-        if include_raw
-        else "_Advisory only. Source-linked review candidates from the local-agent family "
-        "(email/follow-up, Procore, calendar). Redacted; no raw source content._"
+        "_Advisory only. A deterministic, source-linked action plan from the local-agent family "
+        "(email/follow-up, Procore, calendar). No raw source content._"
     )
     lines: list[str] = [f"# Daily Brief — {brief_date}", "", disclaimer, ""]
-    if total_rendered == 0 and not rels:
+    for group, body in bodies.items():
+        lines.append(f"## {group}")
+        lines.extend(body)
+        lines.append("")
+    if not bodies:
         lines.append("_No review candidates for this date._")
-        return "\n".join(lines).strip() + "\n"
 
-    for _, disp in _DISPLAY_SECTIONS:
-        items = grouped.get(disp) or []
-        if not items:
-            continue
-        lines.append(f"## {disp}")
-        for it in items:
-            title = str(it.get("display_title") or it.get("title_redacted") or "(untitled)")
-            parts: list[str] = []
-            if it.get("raw_detail"):
-                parts.append(str(it["raw_detail"]))
-            if it.get("reason_redacted"):
-                parts.append(str(it["reason_redacted"]))
-            if it.get("project_key"):
-                parts.append(f"project:{it['project_key']}")
-            if it.get("recommended_next_action"):
-                parts.append(f"next:{it['recommended_next_action']}")
-            cid = it.get("candidate_id")
-            if cid:
-                parts.append(f"id:{cid}")
-            suffix = f" — {' · '.join(parts)}" if parts else ""
-            lines.append(f"- {title}{suffix}")
-        lines.append("")
+    markdown = "\n".join(lines).strip() + "\n"
+    # Output fence: fail loud if any internal artifact or raw private content leaked into the brief.
+    assert_clean_display(markdown)
+    return markdown
 
-    if rels:
-        lines.append("## Related Context")
-        for r in rels:
-            fams = " ↔ ".join(str(f) for f in (r.get("source_families") or []) if f)
-            parts = [f"{r.get('confidence_class')} ({r.get('confidence')})"]
-            if fams:
-                parts.append(fams)
-            codes = r.get("reason_codes") or []
-            if codes:
-                parts.append("why:" + "+".join(str(c) for c in codes))
-            if r.get("project_key"):
-                parts.append(f"project:{r['project_key']}")
-            parts.append(f"next:{r.get('recommended_next_action')}")
-            if r.get("review_required"):
-                parts.append("review_required")
-            if r.get("relationship_id"):
-                parts.append(f"id:{r['relationship_id']}")
-            lines.append(f"- {r.get('relationship_type')} — {' · '.join(parts)}")
-        lines.append("")
-    return "\n".join(lines).strip() + "\n"
+
+def _structured_sections(
+    bodies: dict[str, list[str]],
+    groups: dict[str, list[dict[str, Any]]],
+    *,
+    limit: int,
+    include_raw: bool,
+    enrichment: dict[str, dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Build the JSON ``sections`` payload (sanitized display lines + safe candidate metadata)."""
+    sections_out: list[dict[str, Any]] = []
+    for group, body in bodies.items():
+        items = groups.get(group) or []
+        json_items: list[dict[str, Any]] = []
+        for r in items[: max(0, limit)]:
+            full_id = str(r.get("daily_brief_action_candidate_id") or "")
+            entry: dict[str, Any] = {
+                "candidate_id": _short_id(full_id),
+                "section": r.get("section"),
+                # Sanitized single-item line (raw-free), reused by local consumers (browser/appendix).
+                "display": render_item_line(r, group=group).removeprefix("- "),
+            }
+            if include_raw:
+                enr = enrichment.get(full_id) or {}
+                if enr.get("raw_title"):
+                    entry["raw_title"] = enr["raw_title"]
+                if enr.get("raw_detail"):
+                    entry["raw_detail"] = enr["raw_detail"]
+            json_items.append(entry)
+        sections_out.append(
+            {
+                "display": group,
+                "line_count": len(body),
+                "item_count": len(items),
+                "lines": body,
+                "items": json_items,
+            }
+        )
+    return sections_out
 
 
 def _redact_path(target: Path) -> str:
