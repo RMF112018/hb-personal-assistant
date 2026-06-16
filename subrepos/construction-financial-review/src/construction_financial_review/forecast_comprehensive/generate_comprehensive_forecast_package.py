@@ -303,10 +303,14 @@ def _build_collections(inputs: dict, project_key: str) -> dict:
         inputs["actuals_to_date_by_key"], rec_by_key=inputs["actuals_rec_by_key"],
         forecast_start_month=None))
     # combined actuals(historical) + integrated forecast month-by-month matrix, collapsed to cost code.
-    # Controlled keys carry their controlled final + actuals-to-date so the combined CSV row reconciles to
-    # the controlled final (current-month actuals counted once).
+    # Controlled keys reconcile the combined CSV row to the AUTHORITATIVE integrated final (current-month
+    # actuals counted once). For value-changing controls the integrated final equals the controlled final;
+    # for shape-only controls it is the history-blended final the integrated monthly already sums to.
     model_by_key = ((inputs.get("model_controls_bundle") or {}).get("resolved") or {}).get("by_key") or {}
-    controlled = {k: {"final": d["controlled_final_cost"], "actual": d["actual_cost_to_date"]}
+    integ_final_by_key = {r["budget_code_key"]: r["integrated_recommended_final_cost"]
+                          for r in out["integrated_final_cost_recommendations.jsonl"]}
+    controlled = {k: {"final": integ_final_by_key.get(k, money_str(d["controlled_final_cost"])),
+                      "actual": d["actual_cost_to_date"]}
                   for k, d in model_by_key.items()}
     out.update(actuals_export.build_actuals_plus_forecast(
         project_key, inputs["budget_codes"], out["actuals_monthly_by_cost_code.jsonl"],

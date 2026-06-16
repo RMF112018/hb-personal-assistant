@@ -48,16 +48,21 @@ def build(project_key, key, entry, sc, integrated_ctc: Decimal) -> tuple:
     base_weights = mdist.get("monthly_distribution_weights") or []
     months = [w["month"] for w in base_weights]
 
-    # operator forecast-MODEL control: the controlled code's monthly forecast IS the operator's reconciled
-    # allocation (window + shape + value), not the blended model timing. It reconciles exactly to the
-    # integrated cost-to-complete (which the intelligence consumer already set to the controlled remaining).
+    # operator forecast-MODEL control: the operator dictates the active months + curve. We take the SHAPE
+    # from the operator's allocation (normalized weights, preserving active months) and reallocate the
+    # AUTHORITATIVE integrated cost-to-complete with the cent-safe allocator, so the monthly sum reconciles
+    # exactly to integrated_ctc. This matters for shape-only controls (value_constraint none), where the
+    # comprehensive integrated_ctc is history-blended and differs from the control's model-derived dollars;
+    # for value-changing controls integrated_ctc == controlled_remaining, so the same path reproduces the
+    # operator's allocation. A shape control sets timing, never the dollar total.
     mdec = entry.get("model_control")
     if mdec:
         alloc = mdec.get("monthly_allocation") or {}
         all_months = sorted(set(months) | set(alloc.keys()))
         if not all_months:
             return None, None, None
-        month_costs = OrderedDict((m, D(alloc.get(m, ZERO))) for m in all_months)
+        weights = _norm(OrderedDict((m, D(alloc.get(m, ZERO))) for m in all_months))
+        month_costs = _allocate(integrated_ctc, weights, all_months)
         total = sum(month_costs.values(), ZERO)
         reconciled = abs(total - integrated_ctc) <= CENTS
         shares = OrderedDict([("cost_entry_share", "0.0000"), ("invoice_share", "0.0000"),
