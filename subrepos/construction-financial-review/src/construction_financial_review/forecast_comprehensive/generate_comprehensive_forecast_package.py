@@ -26,6 +26,7 @@ from ..common.money import D, money_str
 from ..common.safety import safety_scan
 from ..forecast_actuals import actuals_export
 from ..forecast_controls import integration as fctl_integration
+from ..forecast_model_controls import integration as fmc_integration
 from ..forecast_intelligence import db_inventory
 from ..schedule_analysis.schedule_mapping import build_canonical_index
 from . import (
@@ -301,10 +302,16 @@ def _build_collections(inputs: dict, project_key: str) -> dict:
         project_key, inputs["budget_codes"], inputs["actuals_monthly_by_key"],
         inputs["actuals_to_date_by_key"], rec_by_key=inputs["actuals_rec_by_key"],
         forecast_start_month=None))
-    # combined actuals(historical) + integrated forecast month-by-month matrix, collapsed to cost code
+    # combined actuals(historical) + integrated forecast month-by-month matrix, collapsed to cost code.
+    # Controlled keys carry their controlled final + actuals-to-date so the combined CSV row reconciles to
+    # the controlled final (current-month actuals counted once).
+    model_by_key = ((inputs.get("model_controls_bundle") or {}).get("resolved") or {}).get("by_key") or {}
+    controlled = {k: {"final": d["controlled_final_cost"], "actual": d["actual_cost_to_date"]}
+                  for k, d in model_by_key.items()}
     out.update(actuals_export.build_actuals_plus_forecast(
         project_key, inputs["budget_codes"], out["actuals_monthly_by_cost_code.jsonl"],
-        out["actuals_monthly_by_budget_code.jsonl"], out["integrated_monthly_forecast_by_budget_code.jsonl"]))
+        out["actuals_monthly_by_budget_code.jsonl"], out["integrated_monthly_forecast_by_budget_code.jsonl"],
+        controlled=controlled))
     return out
 
 
@@ -369,7 +376,7 @@ def _maybe_generate_cost_frequency(cfg, data_root, project_key, frozen_stamp, di
         raise
 
 
-def load_inputs(cfg, data_root, project_key, frozen_stamp):
+def load_inputs(cfg, data_root, project_key, frozen_stamp, control_file=None):
     discovery = package_discovery.discover(cfg, data_root)
     missing = package_discovery.missing_required(discovery)
     if missing:
@@ -412,6 +419,43 @@ def load_inputs(cfg, data_root, project_key, frozen_stamp):
     }
     items, per_code = evidence_registry.build_registry(canonical_keys, sources, project_key, controls_ctx)
 
+    # operator forecast-MODEL controls (read-only; fail closed before generation if unsafe). Resolved
+    # against the comprehensive month set; decisions injected into per_code so the final / monthly /
+    # probability consumers override the controlled code to the operator's window / shape / value.
+    amounts_by_key = {k: (r.get("budget_amounts") or {}) for k, r in sources["context_by"].items()}
+    rec_by = {k: (per_code.get(k, {}).get("rec") or {}) for k in canonical_keys}
+    model_final = {k: D(rec_by[k].get("recommended_final_cost")) if rec_by[k].get("recommended_final_cost")
+                   is not None else None for k in canonical_keys}
+    model_ctc = {k: D(rec_by[k].get("recommended_cost_to_complete"))
+                 if rec_by[k].get("recommended_cost_to_complete") is not None else None for k in canonical_keys}
+    ref_ctx = fmc_integration.build_ref_ctx(canonical_keys, amounts_by_key, rec_by,
+                                            context_package_path=str(context_pkg))
+    schedule_by_key, latest_proj = {}, None
+    for k in canonical_keys:
+        sev = per_code.get(k, {}).get("sched") or {}
+        fin = sev.get("latest_schedule_finish")
+        if fin:
+            schedule_by_key[k] = {"latest_schedule_finish": fin, "latest_remaining_finish": fin}
+            if latest_proj is None or fin > latest_proj:
+                latest_proj = fin
+    project_schedule = {"schedule_present": bool(latest_proj), "latest_project_schedule_date": latest_proj}
+    comp_months = sorted({w["month"] for k in canonical_keys
+                          for w in ((per_code.get(k, {}).get("monthly_dist") or {})
+                                    .get("monthly_distribution_weights") or [])})
+    model_bundle = fmc_integration.prepare(cfg, SUBPROJECT_ROOT, canonical_keys, actuals_by_key, ref_ctx,
+                                           schedule_by_key, project_schedule, comp_months, model_final,
+                                           model_ctc, project_key, override_path=control_file)
+    fmc_integration.assert_integration_safe(cfg, model_bundle)
+    model_active = fmc_integration.integration_active(cfg, model_bundle)
+    model_by_key = model_bundle["resolved"]["by_key"] if model_active else {}
+    for k in canonical_keys:
+        amts = amounts_by_key.get(k) or {}
+        per_code[k]["committed_costs"] = amts.get("committed_costs")
+        per_code[k]["original_budget_amount"] = amts.get("original_budget_amount")
+    for k, decision in model_by_key.items():
+        if k in per_code:
+            per_code[k]["model_control"] = decision
+
     source_files = []
     for pth in sources["_paths"].values():
         if pth:
@@ -426,6 +470,7 @@ def load_inputs(cfg, data_root, project_key, frozen_stamp):
         ("source_files", source_files[:400]), ("source_hashes_before", pre_hashes),
         ("controls_active", controls_active), ("controls_bundle", controls_bundle),
         ("controls_ctx", controls_ctx),
+        ("model_controls_active", model_active), ("model_controls_bundle", model_bundle),
         ("staffing_plan_active", bool(discovery.get("staffing_plan", {}).get("present"))),
         ("staffing_plan_conflicts", sources.get("staffing_plan_conflicts") or []),
         ("actuals_monthly_by_key", actuals_load["by_key"]),
@@ -436,9 +481,9 @@ def load_inputs(cfg, data_root, project_key, frozen_stamp):
 
 
 def generate(project_key, cfg, data_root=None, frozen_stamp=None, out_root=None,
-             with_llm=False, llm_model=None) -> dict:
+             with_llm=False, llm_model=None, control_file=None) -> dict:
     data_root = Path(data_root or cfg["default_data_root"])
-    inputs = load_inputs(cfg, data_root, project_key, frozen_stamp)
+    inputs = load_inputs(cfg, data_root, project_key, frozen_stamp, control_file=control_file)
     inputs["_cfg"] = cfg
 
     stamp = frozen_stamp or datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -656,10 +701,10 @@ def _write_schema(out):
 
 
 def run(project_key, cfg, data_root=None, frozen_stamp=None, out_root=None, with_llm=False,
-        llm_model=None) -> int:
+        llm_model=None, control_file=None) -> int:
     import json
     res = generate(project_key, cfg, data_root=data_root, frozen_stamp=frozen_stamp, out_root=out_root,
-                   with_llm=with_llm, llm_model=llm_model)
+                   with_llm=with_llm, llm_model=llm_model, control_file=control_file)
     print(json.dumps(OrderedDict([("status", "ok" if res["validation_passed"] else "validation_failed"),
                                   *res.items()]), indent=2))
     return 0 if res["validation_passed"] else 1

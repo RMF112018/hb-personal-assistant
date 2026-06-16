@@ -47,6 +47,51 @@ def build(project_key, key, entry, sc, integrated_ctc: Decimal) -> tuple:
     mdist = entry["monthly_dist"]
     base_weights = mdist.get("monthly_distribution_weights") or []
     months = [w["month"] for w in base_weights]
+
+    # operator forecast-MODEL control: the controlled code's monthly forecast IS the operator's reconciled
+    # allocation (window + shape + value), not the blended model timing. It reconciles exactly to the
+    # integrated cost-to-complete (which the intelligence consumer already set to the controlled remaining).
+    mdec = entry.get("model_control")
+    if mdec:
+        alloc = mdec.get("monthly_allocation") or {}
+        all_months = sorted(set(months) | set(alloc.keys()))
+        if not all_months:
+            return None, None, None
+        month_costs = OrderedDict((m, D(alloc.get(m, ZERO))) for m in all_months)
+        total = sum(month_costs.values(), ZERO)
+        reconciled = abs(total - integrated_ctc) <= CENTS
+        shares = OrderedDict([("cost_entry_share", "0.0000"), ("invoice_share", "0.0000"),
+                              ("schedule_share", "0.0000"), ("history_shape_share", "0.0000"),
+                              ("frequency_share", "0.0000"), ("fallback_share", "0.0000"),
+                              ("operator_model_share", "1.0000")])
+        row = OrderedDict([
+            ("project_key", project_key), ("budget_code_key", key), ("cost_code", cost_code),
+            ("integrated_cost_to_complete", money_str(integrated_ctc)),
+            ("monthly_costs", [OrderedDict([("forecast_month", m),
+                                            ("integrated_month_cost", money_str(month_costs[m]))])
+                               for m in all_months]),
+            ("source_shares", shares),
+            ("reconciles_to_integrated_ctc", bool(reconciled)),
+            ("history_consumption_status", sc["history_consumption_status"]),
+            ("frequency_consumption_status", sc["frequency_consumption_status"]),
+            ("schedule_consumption_status", sc["schedule_consumption_status"]),
+            ("operator_controlled", False), ("operator_stop_month", None),
+            ("operator_model_controlled", True),
+            ("operator_model_control_id", mdec.get("control_id")),
+            ("operator_model_type", mdec.get("model_type")),
+            ("operator_model_value_constraint_policy", mdec.get("value_constraint_policy")),
+            ("operator_forecast_start_date", mdec.get("resolved_start_date")),
+            ("operator_forecast_end_date", mdec.get("resolved_end_date")),
+            ("operator_schedule_end_basis", mdec.get("schedule_end_basis")),
+            ("operator_controlled_final_cost", money_str(mdec["controlled_final_cost"])),
+        ])
+        ha.stamp(row)
+        audit = OrderedDict([("budget_code_key", key),
+                             ("integrated_cost_to_complete", money_str(integrated_ctc)),
+                             ("monthly_sum", money_str(total)), ("reconciled", bool(reconciled)),
+                             ("operator_model_controlled", True)])
+        return row, {m: month_costs[m] for m in all_months}, audit
+
     if not months:
         return None, None, None   # no monthly base for this code (skip; required monthly package covers all)
 

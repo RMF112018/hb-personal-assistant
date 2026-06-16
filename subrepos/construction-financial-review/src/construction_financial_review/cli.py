@@ -151,16 +151,17 @@ def cmd_forecast_cost_frequency(cfg: dict, project: str, data_root, frozen_stamp
 
 
 def cmd_forecast_comprehensive(cfg: dict, project: str, data_root, frozen_stamp, out_root,
-                               with_llm, llm_model) -> int:
+                               with_llm, llm_model, control_file=None) -> int:
     """Integrated forecast model layer: discovers + consumes all accepted evidence packages (context,
     intelligence, monthly, probability, history-informed, cost-frequency, crosswalk-v2, schedule-
     integrated) into a per-code evidence registry, scores advisory evidence at bounded de-duplicated
     weights, and emits integrated final-cost / monthly / probability recommendations with lineage, an
-    evidence-conflict register, and a human-acceptance review queue. Never mutates a package. Import
-    dispatch."""
+    evidence-conflict register, and a human-acceptance review queue. Applies accepted operator forecast-
+    model controls (window / shape / value / manual) as the highest-priority operator decision. Never
+    mutates a package. Import dispatch."""
     from .forecast_comprehensive import generate_comprehensive_forecast_package as gen
     return gen.run(project, cfg, data_root=data_root, frozen_stamp=frozen_stamp, out_root=out_root,
-                   with_llm=with_llm, llm_model=llm_model)
+                   with_llm=with_llm, llm_model=llm_model, control_file=control_file)
 
 
 def cmd_forecast_controls(cfg: dict, project: str, data_root, frozen_stamp, out_root,
@@ -319,6 +320,8 @@ def build_parser() -> argparse.ArgumentParser:
     fkp.add_argument("--data-root", default=None, help="Override the configured forecast data root.")
     fkp.add_argument("--frozen-stamp", default=None, help="Deterministic stamp (determinism check).")
     fkp.add_argument("--out-root", default=None, help="Override the output base dir.")
+    fkp.add_argument("--forecast-model-control-file", default=None,
+                     help="Override the committed forecast-model-control file (no silent fallback).")
     fkp.add_argument("--with-llm", action="store_true",
                      help="Engage the local Ollama advisory narrative layer (advisory only, never numeric).")
     fkp.add_argument("--llm-model", default=None, help="Override the configured Ollama model.")
@@ -397,7 +400,8 @@ def main(argv=None) -> int:
                                            args.out_root, args.with_llm, args.llm_model)
     if args.command == "forecast-comprehensive":
         return cmd_forecast_comprehensive(cfg, args.project, args.data_root, args.frozen_stamp,
-                                          args.out_root, args.with_llm, args.llm_model)
+                                          args.out_root, args.with_llm, args.llm_model,
+                                          args.forecast_model_control_file)
     if args.command == "forecast-controls":
         return cmd_forecast_controls(cfg, args.project, args.data_root, args.frozen_stamp,
                                      args.out_root, args.with_llm, args.llm_model)

@@ -285,7 +285,7 @@ ACTUALS_PLUS_FORECAST_FILES = ACTUALS_PLUS_FORECAST_DATA_FILES + (ACTUALS_PLUS_F
 
 
 def build_actuals_plus_forecast(project_key, budget_codes, actuals_cc_rows, actuals_bc_rows,
-                                integrated_monthly_rows) -> dict:
+                                integrated_monthly_rows, controlled=None) -> dict:
     """Combine historical CostEntries actuals (months < current forecast month) with the integrated
     comprehensive monthly forecast (current forecast month forward) into month-by-month matrices,
     collapsed to cost code (+ an optional budget-code traceability matrix). Pure + deterministic.
@@ -329,7 +329,15 @@ def build_actuals_plus_forecast(project_key, budget_codes, actuals_cc_rows, actu
     def _cc_cell(cc, m):
         return forecast_cc.get((cc, m), ZERO) if _is_forecast(m) else actual_cc.get((cc, m), ZERO)
 
+    controlled = controlled or {}
+
     def _bc_cell(key, m):
+        # Anti-double-count: for an operator-controlled key the current forecast-month combined cell is
+        # the current-month actuals-to-date PLUS the current-month remaining forecast (counted once), so
+        # the row sums to the controlled final cost without dropping or double counting current-month
+        # actuals. All other cells follow the normal boundary rule.
+        if key in controlled and current_forecast_month is not None and m == current_forecast_month:
+            return actual_bc.get((key, m), ZERO) + forecast_bc.get((key, m), ZERO)
         return forecast_bc.get((key, m), ZERO) if _is_forecast(m) else actual_bc.get((key, m), ZERO)
 
     cost_codes = sorted({cc for (cc, _m) in actual_cc} | {cc for (cc, _m) in forecast_cc})
@@ -363,7 +371,30 @@ def build_actuals_plus_forecast(project_key, budget_codes, actuals_cc_rows, actu
     forecast_ok = abs(forecast_total - forecast_recon_src) <= CENTS
     combined_total = actual_total + forecast_total
     months_sorted_ok = months == sorted(months)
-    validation_passed = bool(actual_ok and forecast_ok and months_sorted_ok)
+
+    # operator-model-controlled target reconciliation: each controlled budget-code row must sum to its
+    # controlled final cost, with current-month actuals counted exactly once (anti-double-count).
+    controlled_recon = []
+    for key in sorted(controlled):
+        target = D(controlled[key].get("final"))
+        actual_to_date = D(controlled[key].get("actual"))
+        hist = sum((actual_bc.get((key, m), ZERO) for m in months if not _is_forecast(m)), ZERO)
+        cur_actual = actual_bc.get((key, current_forecast_month), ZERO) if current_forecast_month else ZERO
+        cur_remaining = forecast_bc.get((key, current_forecast_month), ZERO) if current_forecast_month else ZERO
+        fsum = sum((forecast_bc.get((key, m), ZERO) for m in months if _is_forecast(m)), ZERO)
+        row_total = sum((_bc_cell(key, m) for m in months), ZERO)
+        reconciles = abs(row_total - target) <= CENTS
+        controlled_recon.append(OrderedDict([
+            ("budget_code_key", key), ("actual_cost_to_date", money_str(actual_to_date)),
+            ("historical_actuals_used_in_combined_csv", money_str(hist)),
+            ("current_month_actuals_included", money_str(cur_actual)),
+            ("current_month_remaining_forecast", money_str(cur_remaining)),
+            ("forecast_sum_used_in_combined_csv", money_str(fsum)),
+            ("combined_csv_total", money_str(row_total)), ("target_final_cost", money_str(target)),
+            ("current_month_basis", "current_month_actuals_added_to_remaining_forecast"),
+            ("reconciles_to_target_final_cost", bool(reconciles))]))
+    all_controlled_reconcile = all(r["reconciles_to_target_final_cost"] for r in controlled_recon)
+    validation_passed = bool(actual_ok and forecast_ok and months_sorted_ok and all_controlled_reconcile)
 
     audit = OrderedDict([
         ("project_key", project_key),
@@ -385,7 +416,12 @@ def build_actuals_plus_forecast(project_key, budget_codes, actuals_cc_rows, actu
         ("forecast_months_reconciled", bool(forecast_ok)),
         ("month_columns_sorted", bool(months_sorted_ok)),
         ("boundary_rule", "months < current_forecast_month use CostEntries actuals; current month and "
-                          "later use the integrated forecast (June-2026 actuals are not used)"),
+                          "later use the integrated forecast (June-2026 actuals are not used). For an "
+                          "operator-controlled key the current-month combined cell adds current-month "
+                          "actuals-to-date to the current-month remaining forecast (counted once) so the "
+                          "row sums to the controlled final cost."),
+        ("controlled_target_reconciliation", controlled_recon),
+        ("all_controlled_targets_reconcile", bool(all_controlled_reconcile)),
         ("validation_passed", validation_passed),
     ])
     return {
