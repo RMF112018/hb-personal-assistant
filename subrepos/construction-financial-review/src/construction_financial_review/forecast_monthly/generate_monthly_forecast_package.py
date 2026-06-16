@@ -35,6 +35,8 @@ from ..forecast_accuracy.llm import narrate
 from ..forecast_accuracy.llm.client import OllamaClient
 from ..forecast_controls import apply as fctl_apply
 from ..forecast_controls import integration as fctl_integration
+from ..forecast_model_controls import apply as fmc_apply
+from ..forecast_model_controls import integration as fmc_integration
 from ..forecast_staffing_plan import integration as fsp_integration
 from ..forecast_actuals import actuals_export
 from ..forecast_intelligence import db_inventory
@@ -210,6 +212,34 @@ def _load_schedule(schedule_raw_pkg, budget_codes, project_key):
 
 # --------------------------------------------------------------------------- pure build
 
+def _prepare_model_controls(inputs, cfg, calendar, project_key, control_file):
+    """Resolve operator forecast-model controls against this calendar (override-aware; fail closed)."""
+    months = [m["forecast_month"] for m in calendar["months"]]
+    rec_by, ctx_by, sched_ev = inputs["rec_by_key"], inputs["context_by_key"], inputs["sched_ev_by_key"]
+    canonical_keys = {bc["budget_code_key"] for bc in inputs["budget_codes"]}
+    actuals_by_key = {k: D(r.get("actual_cost_all_source_to_date")) for k, r in rec_by.items()}
+    amounts_by_key = {k: (v.get("budget_amounts") or {}) for k, v in ctx_by.items()}
+    model_final = {k: dec(r.get("recommended_final_cost")) for k, r in rec_by.items()}
+    model_ctc = {k: dec(r.get("recommended_cost_to_complete")) for k, r in rec_by.items()}
+    ref_ctx = fmc_integration.build_ref_ctx(
+        canonical_keys, amounts_by_key, rec_by, context_package_path=str(inputs["context_pkg"]),
+        intelligence_package_path=str(inputs["accepted_pkg"]))
+    schedule_by_key, latest_proj = {}, inputs.get("latest_finish")
+    for k, ev in sched_ev.items():
+        fin = ev.get("latest_schedule_finish")
+        if fin:
+            schedule_by_key[k] = {"latest_schedule_finish": fin, "latest_remaining_finish": fin}
+            if latest_proj is None or fin > latest_proj:
+                latest_proj = fin
+    project_schedule = {"schedule_present": bool(latest_proj), "latest_project_schedule_date": latest_proj}
+    bundle = fmc_integration.prepare(cfg, SUBPROJECT_ROOT, canonical_keys, actuals_by_key, ref_ctx,
+                                     schedule_by_key, project_schedule, months, model_final, model_ctc,
+                                     project_key, override_path=control_file)
+    fmc_integration.assert_integration_safe(cfg, bundle)
+    active = fmc_integration.integration_active(cfg, bundle)
+    return active, (bundle["resolved"]["by_key"] if active else {}), bundle
+
+
 def _build_collections(inputs, calendar, project_key) -> dict:
     months = [m["forecast_month"] for m in calendar["months"]]
     start, end = calendar["forecast_start_month"], calendar["forecast_end_month"]
@@ -220,6 +250,7 @@ def _build_collections(inputs, calendar, project_key) -> dict:
 
     controls_by_key = inputs.get("controls_by_key") or {}
     staffing_by_key = inputs.get("staffing_by_key") or {}
+    model_controls_by_key = inputs.get("model_controls_by_key") or {}
 
     monthly_rows, owner_rows_src, division_rows_src = [], [], []
     cost_trends, inv_trends, sched_phasings, freq_phasings = [], [], [], []
@@ -282,6 +313,21 @@ def _build_collections(inputs, calendar, project_key) -> dict:
                 warnings.append(_warn(project_key, key, "low",
                                       "operator stop-date applied without an accepted remaining/final "
                                       "amount; the total remaining cost is still model-derived"))
+
+        # operator forecast-MODEL control: rewrite the monthly forecast to the controlled window / model
+        # shape / value constraint / manual values. This is the authoritative per-code override (window +
+        # dollars + shape); it supersedes the timing-only stop-date reshape above. Actuals stay the floor
+        # and the monthly vector reconciles exactly to the controlled remaining / final.
+        mdecision = model_controls_by_key.get(key)
+        if mdecision:
+            reconcile = fmc_apply.reshape_monthly(reconcile, mdecision)
+            warnings.append(_warn(project_key, key, "medium",
+                                  f"operator forecast-model control '{mdecision['control_id']}' applied: "
+                                  f"model_type={mdecision['model_type']}, value_constraint="
+                                  f"{mdecision['value_constraint_policy']}, controlled final="
+                                  f"{money_str(mdecision['controlled_final_cost'])}; monthly forecast "
+                                  "rewritten to the controlled window/shape and reconciled to the "
+                                  "controlled remaining"))
 
         conf = monthly_confidence.score(rec, reconcile, cost_row.get("stable_enough_for_phasing"),
                                         inv_row.get("confidence_in_invoice_trend"))
@@ -416,6 +462,16 @@ def _monthly_row(reconcile, mc, conf, cost_row, inv_row, assoc_row, start, end, 
         ("staffing_plan_is_numeric_driver", sp_numeric_driver),
         ("staffing_plan_is_recommendation_only", acceptance_required),
         ("operator_acceptance_required", acceptance_required),
+        # ---- operator forecast-model-control disclosure ----
+        ("operator_model_controlled", bool(reconcile.get("operator_model_controlled"))),
+        ("operator_model_control_id", reconcile.get("operator_model_control_id")),
+        ("operator_model_type", reconcile.get("operator_model_type")),
+        ("operator_model_value_constraint_policy", reconcile.get("operator_model_value_constraint_policy")),
+        ("operator_forecast_start_date", reconcile.get("operator_forecast_start_date")),
+        ("operator_forecast_end_date", reconcile.get("operator_forecast_end_date")),
+        ("operator_schedule_end_basis", reconcile.get("operator_schedule_end_basis")),
+        ("operator_controlled_final_cost", reconcile.get("operator_controlled_final_cost")),
+        ("operator_controlled_remaining", reconcile.get("operator_controlled_remaining")),
         ("requires_human_acceptance", True),
         ("notes", None),
     ])
@@ -638,6 +694,33 @@ def _forecast_controls_audit(inputs) -> OrderedDict:
     ])
 
 
+def _forecast_model_controls_audit(inputs) -> OrderedDict:
+    """Audit which operator forecast-model controls rewrote the monthly forecast (window/shape/value)."""
+    bundle = inputs.get("model_controls_bundle") or {}
+    resolved = (bundle.get("resolved") or {})
+    by_key = inputs.get("model_controls_by_key") or {}
+    applied = [OrderedDict([
+        ("budget_code_key", k), ("control_id", d.get("control_id")), ("model_type", d.get("model_type")),
+        ("value_constraint_policy", d.get("value_constraint_policy")),
+        ("schedule_end_basis", d.get("schedule_end_basis")),
+        ("controlled_final_cost", money_str(d.get("controlled_final_cost"))),
+        ("controlled_remaining", money_str(d.get("controlled_remaining"))),
+        ("changes_deterministic_final", d.get("changes_deterministic_final")),
+        ("active_month_count", len(d.get("active_months") or []))])
+        for k, d in sorted(by_key.items())]
+    return OrderedDict([
+        ("model_controls_active", bool(inputs.get("model_controls_active"))),
+        ("control_file", (bundle.get("load_result") or {}).get("control_file")),
+        ("control_file_is_override", (bundle.get("load_result") or {}).get("control_file_is_override")),
+        ("applied_model_controls", applied),
+        ("acceptance_counts", resolved.get("counts")),
+        ("controlled_budget_codes", resolved.get("controlled_budget_codes")),
+        ("note", "monthly integration rewrites the controlled code's monthly forecast to the operator "
+                 "window/shape/value and reconciles exactly to the controlled remaining/final; actuals "
+                 "floor preserved; pending controls never applied"),
+    ])
+
+
 def _staffing_plan_audit(inputs) -> OrderedDict:
     """Audit which mapped .LAB codes the operator staffing plan timed, and the plan-implied vs accepted
     deltas. Monthly applies TIMING only (output stays reconciled to the accepted CTC); the plan-implied
@@ -692,8 +775,11 @@ def _cadence_reconciliation_proof(inputs, collections, project_key) -> OrderedDi
     freq_share_by = {c["budget_code_key"]: dec((c.get("source_shares") or {}).get("frequency_weight"))
                      or Decimal("0") for c in confidences}
     final_mismatch, reconcile_fail = [], []
+    model_controls_by_key = inputs.get("model_controls_by_key") or {}
     for ch in changes:
         key = ch["budget_code_key"]
+        if key in model_controls_by_key:
+            continue  # final intentionally changed by an accepted operator model control, not by cadence
         accepted_final = D((rec_by.get(key) or {}).get("recommended_final_cost"))
         monthly_final = D(ch.get("recommended_final_cost"))
         if abs(accepted_final - monthly_final) > Decimal("0.01"):
@@ -717,12 +803,20 @@ def _cadence_reconciliation_proof(inputs, collections, project_key) -> OrderedDi
 
 
 def generate(project_key, cfg, data_root=None, frozen_stamp=None, out_root=None,
-             with_llm=False, llm_model=None, forecast_start_month=None) -> dict:
+             with_llm=False, llm_model=None, forecast_start_month=None, control_file=None) -> dict:
     data_root = Path(data_root or cfg["default_data_root"])
     as_of = datetime.now().date()
     inputs = _load_inputs(cfg, data_root, project_key)
 
     calendar = cal.build_calendar(inputs["latest_finish"], as_of, forecast_start_month)
+
+    # operator forecast-model controls resolved against THIS calendar (override-aware; fail closed if
+    # unsafe). Stored on inputs so the deterministic rebuild consumes identical controlled decisions.
+    mc_active, mc_by_key, mc_bundle = _prepare_model_controls(
+        inputs, cfg, calendar, project_key, control_file)
+    inputs["model_controls_active"] = mc_active
+    inputs["model_controls_by_key"] = mc_by_key
+    inputs["model_controls_bundle"] = mc_bundle
     stamp = frozen_stamp or datetime.now().strftime("%Y%m%d_%H%M%S")
     generated_ts = frozen_stamp if frozen_stamp else datetime.now().isoformat(timespec="seconds")
     out_base = Path(out_root) if out_root else data_root
@@ -771,6 +865,8 @@ def generate(project_key, cfg, data_root=None, frozen_stamp=None, out_root=None,
     write_json(out / "audit" / "cadence_reconciliation_proof.json",
                _cadence_reconciliation_proof(inputs, collections, project_key))
     write_json(out / "audit" / "forecast_controls_applied.json", _forecast_controls_audit(inputs))
+    write_json(out / "audit" / "forecast_model_controls_applied.json",
+               _forecast_model_controls_audit(inputs))
     write_json(out / "audit" / "staffing_plan_applied.json", _staffing_plan_audit(inputs))
     write_json(out / "input_inventory.json", OrderedDict([("generation", meta), ("calendar", calendar)]))
     _write_readme(out, project_key, meta, calendar, collections)
@@ -926,7 +1022,21 @@ def _validation(out, inputs, collections, calendar, db_inv, safety, meta, determ
                  and (inputs["latest_finish"] is None
                       or calendar["forecast_end_month"] == inputs["latest_finish"][:7]))
 
-    # reconciliation: Σ month cost == CTC and actual+Σ == final per code (cent tolerance)
+    # reconciliation: Σ month cost == CTC and actual+Σ == final per code (cent tolerance). For an
+    # operator forecast-model-controlled code the expected CTC/final are the CONTROLLED targets (the
+    # monthly forecast was intentionally rewritten to them), not the accepted intelligence values.
+    model_controls_by_key = inputs.get("model_controls_by_key") or {}
+
+    def _expected(k, rec, actual):
+        mc = model_controls_by_key.get(k)
+        if not mc:
+            return (D(rec.get("recommended_cost_to_complete")), D(rec.get("worst_credible_cost_to_complete")),
+                    D(rec.get("recommended_final_cost")), D(rec.get("worst_credible_final_cost")))
+        ctc = D(mc["controlled_remaining"])
+        final = D(mc["controlled_final_cost"])
+        wctc = ctc if mc["changes_deterministic_final"] else max(D(rec.get("worst_credible_cost_to_complete")), ctc)
+        return ctc, wctc, final, actual + wctc
+
     recon_ok = True
     floor_ok = True
     by_code_sum = defaultdict(lambda: [Decimal("0"), Decimal("0")])
@@ -936,13 +1046,14 @@ def _validation(out, inputs, collections, calendar, db_inv, safety, meta, determ
     for k, (rsum, wsum) in by_code_sum.items():
         rec = rec_by[k]
         actual = D(rec.get("actual_cost_all_source_to_date"))
-        if abs(rsum - D(rec.get("recommended_cost_to_complete"))) > Decimal("0.01"):
+        exp_ctc, exp_wctc, exp_final, exp_wfinal = _expected(k, rec, actual)
+        if abs(rsum - exp_ctc) > Decimal("0.01"):
             recon_ok = False
-        if abs(wsum - D(rec.get("worst_credible_cost_to_complete"))) > Decimal("0.01"):
+        if abs(wsum - exp_wctc) > Decimal("0.01"):
             recon_ok = False
-        if abs((actual + rsum) - D(rec.get("recommended_final_cost"))) > Decimal("0.01"):
+        if abs((actual + rsum) - exp_final) > Decimal("0.01"):
             recon_ok = False
-        if D(rec.get("recommended_final_cost")) < actual or D(rec.get("worst_credible_final_cost")) < actual:
+        if exp_final < actual or exp_wfinal < actual:
             floor_ok = False
 
     # no current-month double count: current-month forecast must not exceed CTC (actuals excluded)
@@ -950,7 +1061,9 @@ def _validation(out, inputs, collections, calendar, db_inv, safety, meta, determ
     for r in monthly:
         if r["is_partial_current_month"]:
             rec = rec_by[r["budget_code_key"]]
-            if D(r["recommended_month_cost"]) > D(rec.get("recommended_cost_to_complete")) + Decimal("0.01"):
+            actual = D(rec.get("actual_cost_all_source_to_date"))
+            exp_ctc, _, _, _ = _expected(r["budget_code_key"], rec, actual)
+            if D(r["recommended_month_cost"]) > exp_ctc + Decimal("0.01"):
                 no_double = False
 
     # project-level schedule association never drives code-level cost
@@ -1122,9 +1235,10 @@ def _write_schema(out):
 
 
 def run(project_key, cfg, data_root=None, frozen_stamp=None, out_root=None, with_llm=False,
-        llm_model=None, forecast_start_month=None) -> int:
+        llm_model=None, forecast_start_month=None, control_file=None) -> int:
     res = generate(project_key, cfg, Path(data_root) if data_root else None, frozen_stamp,
-                   Path(out_root) if out_root else None, with_llm, llm_model, forecast_start_month)
+                   Path(out_root) if out_root else None, with_llm, llm_model, forecast_start_month,
+                   control_file=control_file)
     print(json.dumps({"status": "ok", "output_package": res["output_package"],
                       "validation_passed": res["validation_passed"],
                       "determinism_passed": res["determinism_passed"],

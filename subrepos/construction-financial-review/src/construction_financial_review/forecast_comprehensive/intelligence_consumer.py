@@ -45,6 +45,22 @@ def build(project_key, key, entry, sc) -> tuple:
         integrated_ctc = new_ctc if new_ctc > ZERO else ZERO
         integrated_final = actual_floor + integrated_ctc
         floored = integrated_final == actual_floor and new_ctc <= ZERO
+
+    # operator forecast-MODEL control: the highest-priority explicit operator decision. A value-changing
+    # control (equality / cap-that-binds / explicit total / manual totals) sets the integrated final cost
+    # directly (floored at actuals, never a cap). Window/shape-only controls leave the dollar total
+    # model-derived. Disclosed as an operator decision, not model evidence.
+    mdecision = entry.get("model_control")
+    operator_model_value = bool(mdecision and mdecision.get("changes_deterministic_final"))
+    if operator_model_value:
+        cf = D(mdecision["controlled_final_cost"])
+        if cf < actual_floor:
+            cf = actual_floor
+        integrated_final = cf
+        integrated_ctc = cf - actual_floor
+        if integrated_ctc < ZERO:
+            integrated_ctc = ZERO
+        floored = integrated_final == actual_floor and D(mdecision["controlled_final_cost"]) <= actual_floor
     delta = integrated_final - accepted_final
 
     evidence_summary = OrderedDict([
@@ -79,6 +95,12 @@ def build(project_key, key, entry, sc) -> tuple:
         ("pay_app_consumption_status", sc["pay_app_consumption_status"]),
         ("operator_control_status", _operator_status(decision)),
         ("operator_control_id", (decision or {}).get("control_id")),
+        ("operator_model_control_status", _operator_model_status(mdecision)),
+        ("operator_model_control_id", (mdecision or {}).get("control_id")),
+        ("operator_model_value_constraint_policy", (mdecision or {}).get("value_constraint_policy")),
+        ("operator_model_type", (mdecision or {}).get("model_type")),
+        ("operator_model_controlled_final", money_str(D(mdecision["controlled_final_cost"]))
+         if mdecision else None),
         ("reason_codes", sc["reason_codes"]),
     ])
     ha.stamp(forecast_row)
@@ -112,6 +134,14 @@ def _operator_status(decision) -> str:
     if decision.get("timing_applied"):
         return "applied_timing_only"
     return "present"
+
+
+def _operator_model_status(decision) -> str:
+    if not decision:
+        return "none"
+    if decision.get("changes_deterministic_final"):
+        return "applied_model_value"
+    return "applied_model_shape_or_window"
 
 
 def _direction(delta: Decimal) -> str:

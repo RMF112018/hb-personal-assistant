@@ -65,3 +65,10 @@ $PY -m construction_financial_review.cli forecast-comprehensive --project tropic
 CostEntries are truth; actual cost to date is the only floor; no hidden caps. Pending controls never
 change the forecast. Accepted dollar controls can never go below actuals. Nothing mutates source Excel,
 accepted packages, or SQLite; no live external calls.
+
+## Next step
+
+`forecast-model-controls` (doc: `17_forecast_model_controls.md`) is the next pipeline step. It adds
+per-code forecast **window**, **model shape**, **value-constraint**, and **manual-value** controls and
+runs before forecast-monthly. Use it when you need to set a code's final to a reference, reshape its
+monthly curve, or enter manual monthly values — not just stop its forecast.

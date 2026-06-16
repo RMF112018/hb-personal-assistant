@@ -105,13 +105,15 @@ def cmd_forecast_intelligence(cfg: dict, project: str, data_root, frozen_stamp, 
 
 
 def cmd_forecast_monthly(cfg: dict, project: str, data_root, frozen_stamp, out_root,
-                         with_llm, llm_model, forecast_start_month) -> int:
+                         with_llm, llm_model, forecast_start_month, control_file=None) -> int:
     """Config-driven month-by-month forecast generator: time-phases the accepted forecast-intelligence
     final-cost package across the remaining forecast months using CostEntries + subcontractor-invoice
-    trend evidence and schedule remaining-work phasing. Import dispatch."""
+    trend evidence and schedule remaining-work phasing. Applies accepted operator forecast-model controls
+    (window / shape / value / manual) when present. Import dispatch."""
     from .forecast_monthly import generate_monthly_forecast_package as gen
     return gen.run(project, cfg, data_root=data_root, frozen_stamp=frozen_stamp, out_root=out_root,
-                   with_llm=with_llm, llm_model=llm_model, forecast_start_month=forecast_start_month)
+                   with_llm=with_llm, llm_model=llm_model, forecast_start_month=forecast_start_month,
+                   control_file=control_file)
 
 
 def cmd_forecast_probability(cfg: dict, project: str, data_root, frozen_stamp, out_root,
@@ -149,16 +151,17 @@ def cmd_forecast_cost_frequency(cfg: dict, project: str, data_root, frozen_stamp
 
 
 def cmd_forecast_comprehensive(cfg: dict, project: str, data_root, frozen_stamp, out_root,
-                               with_llm, llm_model) -> int:
+                               with_llm, llm_model, control_file=None) -> int:
     """Integrated forecast model layer: discovers + consumes all accepted evidence packages (context,
     intelligence, monthly, probability, history-informed, cost-frequency, crosswalk-v2, schedule-
     integrated) into a per-code evidence registry, scores advisory evidence at bounded de-duplicated
     weights, and emits integrated final-cost / monthly / probability recommendations with lineage, an
-    evidence-conflict register, and a human-acceptance review queue. Never mutates a package. Import
-    dispatch."""
+    evidence-conflict register, and a human-acceptance review queue. Applies accepted operator forecast-
+    model controls (window / shape / value / manual) as the highest-priority operator decision. Never
+    mutates a package. Import dispatch."""
     from .forecast_comprehensive import generate_comprehensive_forecast_package as gen
     return gen.run(project, cfg, data_root=data_root, frozen_stamp=frozen_stamp, out_root=out_root,
-                   with_llm=with_llm, llm_model=llm_model)
+                   with_llm=with_llm, llm_model=llm_model, control_file=control_file)
 
 
 def cmd_forecast_controls(cfg: dict, project: str, data_root, frozen_stamp, out_root,
@@ -172,6 +175,21 @@ def cmd_forecast_controls(cfg: dict, project: str, data_root, frozen_stamp, out_
     from .forecast_controls import generate_forecast_controls_package as gen
     return gen.run(project, cfg, data_root=data_root, frozen_stamp=frozen_stamp, out_root=out_root,
                    with_llm=with_llm, llm_model=llm_model)
+
+
+def cmd_forecast_model_controls(cfg: dict, project: str, data_root, frozen_stamp, out_root,
+                                with_llm, llm_model, control_file) -> int:
+    """Operator forecast-model-control layer: loads the model-control file (committed dormant config or a
+    --forecast-model-control-file override), resolves each control's forecast window, value constraint,
+    model shape, and manual inputs into a controlled monthly forecast, maps it to a canonical budget code,
+    enforces the actuals floor + window + manual + duplicate-conflict + acceptance gates, and emits applied
+    decisions, resolved references, a monthly-reconciliation preview, a deterministic probability/
+    plausibility assessment, a human-review queue, conflicts, warnings, and fail-closed audits. Only
+    accepted controls apply; pending controls are queued. Never mutates source Excel / accepted packages /
+    SQLite; no live external calls. Import dispatch."""
+    from .forecast_model_controls import generate_forecast_model_controls_package as gen
+    return gen.run(project, cfg, data_root=data_root, frozen_stamp=frozen_stamp, out_root=out_root,
+                   with_llm=with_llm, llm_model=llm_model, control_file=control_file)
 
 
 def cmd_forecast_staffing_plan(cfg: dict, project: str, data_root, frozen_stamp, out_root,
@@ -197,6 +215,15 @@ def cmd_forecast_improvement_audit(cfg: dict, project: str, data_root, frozen_st
     from .forecast_improvement_audit import generate_forecast_improvement_audit_package as gen
     return gen.run(project, cfg, data_root=data_root, frozen_stamp=frozen_stamp, out_root=out_root,
                    with_llm=with_llm, llm_model=llm_model)
+
+
+def cmd_actuals_erp_crosscheck(cfg: dict, project: str, data_root, frozen_stamp, out_root,
+                               strict: bool) -> int:
+    """Additive CostEntries actuals to BudgetDetails ERP job-to-date cross-check. Advisory by
+    default; strict mode fails closed on material variances and configured structural failures."""
+    from .forecast_actuals import actuals_erp_crosscheck as gen
+    return gen.run(project, cfg, data_root=data_root, frozen_stamp=frozen_stamp, out_root=out_root,
+                   strict=strict)
 
 
 def cmd_run_generator(command: str, project: str) -> int:
@@ -258,6 +285,8 @@ def build_parser() -> argparse.ArgumentParser:
     fmp.add_argument("--with-llm", action="store_true",
                      help="Engage the local Ollama advisory narrative layer (default: deterministic mock).")
     fmp.add_argument("--llm-model", default=None, help="Override the configured Ollama model.")
+    fmp.add_argument("--forecast-model-control-file", default=None,
+                     help="Override the committed forecast-model-control file (no silent fallback).")
     fpp = sub.add_parser("forecast-probability")
     fpp.add_argument("--project", required=True, help="Project key (e.g. tropical).")
     fpp.add_argument("--runs", type=int, default=10000, help="Monte Carlo runs (default 10000).")
@@ -291,6 +320,8 @@ def build_parser() -> argparse.ArgumentParser:
     fkp.add_argument("--data-root", default=None, help="Override the configured forecast data root.")
     fkp.add_argument("--frozen-stamp", default=None, help="Deterministic stamp (determinism check).")
     fkp.add_argument("--out-root", default=None, help="Override the output base dir.")
+    fkp.add_argument("--forecast-model-control-file", default=None,
+                     help="Override the committed forecast-model-control file (no silent fallback).")
     fkp.add_argument("--with-llm", action="store_true",
                      help="Engage the local Ollama advisory narrative layer (advisory only, never numeric).")
     fkp.add_argument("--llm-model", default=None, help="Override the configured Ollama model.")
@@ -302,6 +333,17 @@ def build_parser() -> argparse.ArgumentParser:
     fctlp.add_argument("--with-llm", action="store_true",
                        help="Engage the local Ollama advisory narrative layer (advisory only, never numeric).")
     fctlp.add_argument("--llm-model", default=None, help="Override the configured Ollama model.")
+    fmcp = sub.add_parser("forecast-model-controls")
+    fmcp.add_argument("--project", required=True, help="Project key (e.g. tropical).")
+    fmcp.add_argument("--data-root", default=None, help="Override the configured forecast data root.")
+    fmcp.add_argument("--frozen-stamp", default=None, help="Deterministic stamp (determinism check).")
+    fmcp.add_argument("--out-root", default=None, help="Override the output base dir.")
+    fmcp.add_argument("--with-llm", action="store_true",
+                      help="Engage the local Ollama advisory narrative layer (advisory only, never numeric).")
+    fmcp.add_argument("--llm-model", default=None, help="Override the configured Ollama model.")
+    fmcp.add_argument("--forecast-model-control-file", default=None,
+                      help="Override the committed model-control file (validation/operator override; no "
+                           "silent fallback to the committed config).")
     fspp = sub.add_parser("forecast-staffing-plan")
     fspp.add_argument("--project", required=True, help="Project key (e.g. tropical).")
     fspp.add_argument("--data-root", default=None, help="Override the configured forecast data root.")
@@ -318,6 +360,13 @@ def build_parser() -> argparse.ArgumentParser:
     fiap.add_argument("--with-llm", action="store_true",
                       help="Engage the local Ollama advisory narrative layer (advisory only, never numeric).")
     fiap.add_argument("--llm-model", default=None, help="Override the configured Ollama model.")
+    aecp = sub.add_parser("actuals-erp-crosscheck")
+    aecp.add_argument("--project", required=True, help="Project key (e.g. tropical).")
+    aecp.add_argument("--data-root", default=None, help="Override the configured forecast data root.")
+    aecp.add_argument("--frozen-stamp", default=None, help="Deterministic stamp.")
+    aecp.add_argument("--out-root", default=None, help="Override the output base dir.")
+    aecp.add_argument("--strict", action="store_true",
+                      help="Fail closed on material variances and configured structural failures.")
     return ap
 
 
@@ -338,7 +387,7 @@ def main(argv=None) -> int:
     if args.command == "forecast-monthly":
         return cmd_forecast_monthly(cfg, args.project, args.data_root, args.frozen_stamp,
                                     args.out_root, args.with_llm, args.llm_model,
-                                    args.forecast_start_month)
+                                    args.forecast_start_month, args.forecast_model_control_file)
     if args.command == "forecast-probability":
         return cmd_forecast_probability(cfg, args.project, args.data_root, args.frozen_stamp,
                                         args.out_root, args.with_llm, args.llm_model,
@@ -351,16 +400,24 @@ def main(argv=None) -> int:
                                            args.out_root, args.with_llm, args.llm_model)
     if args.command == "forecast-comprehensive":
         return cmd_forecast_comprehensive(cfg, args.project, args.data_root, args.frozen_stamp,
-                                          args.out_root, args.with_llm, args.llm_model)
+                                          args.out_root, args.with_llm, args.llm_model,
+                                          args.forecast_model_control_file)
     if args.command == "forecast-controls":
         return cmd_forecast_controls(cfg, args.project, args.data_root, args.frozen_stamp,
                                      args.out_root, args.with_llm, args.llm_model)
+    if args.command == "forecast-model-controls":
+        return cmd_forecast_model_controls(cfg, args.project, args.data_root, args.frozen_stamp,
+                                           args.out_root, args.with_llm, args.llm_model,
+                                           args.forecast_model_control_file)
     if args.command == "forecast-staffing-plan":
         return cmd_forecast_staffing_plan(cfg, args.project, args.data_root, args.frozen_stamp,
                                           args.out_root, args.with_llm, args.llm_model)
     if args.command == "forecast-improvement-audit":
         return cmd_forecast_improvement_audit(cfg, args.project, args.data_root, args.frozen_stamp,
                                               args.out_root, args.with_llm, args.llm_model)
+    if args.command == "actuals-erp-crosscheck":
+        return cmd_actuals_erp_crosscheck(cfg, args.project, args.data_root, args.frozen_stamp,
+                                          args.out_root, args.strict)
     return cmd_run_generator(args.command, args.project)
 
 

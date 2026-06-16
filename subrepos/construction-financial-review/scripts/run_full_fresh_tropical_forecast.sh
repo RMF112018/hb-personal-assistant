@@ -13,6 +13,8 @@ $PY -m construction_financial_review.cli validate-crosswalk --project tropical
 
 echo "== Core packages =="
 $PY -m construction_financial_review.cli run-context --project tropical
+$PY -m construction_financial_review.cli actuals-erp-crosscheck --project tropical || \
+  echo "WARN: actuals-erp-crosscheck advisory package reported validation warnings; continuing full run"
 $PY -m construction_financial_review.cli run-analysis --project tropical
 $PY -m construction_financial_review.cli run-mapping-workpaper --project tropical
 $PY -m construction_financial_review.cli run-crosswalk-v2 --project tropical
@@ -25,6 +27,7 @@ $PY -m construction_financial_review.cli forecast-intelligence --project tropica
 echo "== Advisory / operator evidence =="
 $PY -m construction_financial_review.cli forecast-history-informed --project tropical
 $PY -m construction_financial_review.cli forecast-controls --project tropical
+$PY -m construction_financial_review.cli forecast-model-controls --project tropical
 $PY -m construction_financial_review.cli forecast-staffing-plan --project tropical
 $PY -m construction_financial_review.cli forecast-cost-frequency --project tropical
 

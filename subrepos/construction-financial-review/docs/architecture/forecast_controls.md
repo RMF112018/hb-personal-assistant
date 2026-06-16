@@ -114,3 +114,10 @@ monthly/comprehensive generation when any of these would make integration unsafe
 
 Same frozen stamp + same inputs ⇒ byte-identical quantitative core + audits (tempdir rebuild + SHA-256
 compare). Controls are static config, so resolution is a pure function of the inputs.
+
+## See also
+
+`docs/architecture/forecast_model_controls.md` — the per-code **forecast model control** layer (forecast
+window, model shape, value constraints, manual totals/monthly values) that runs immediately after
+forecast-controls and feeds forecast-monthly and forecast-comprehensive. Final-value pinning lives there,
+not here; this layer remains timing/stop-date oriented.
