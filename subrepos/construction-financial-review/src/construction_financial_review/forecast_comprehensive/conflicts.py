@@ -29,6 +29,30 @@ def build(project_key, key, entry, sc, integrated_final: Decimal) -> list:
     mconf, pfin, freq = entry["monthly_conf"], entry["prob_final"], entry["freq"]
     ss = (mconf or {}).get("source_shares") or {}
 
+    # operator forecast-model control disclosure: a value-changing control overrides the model forecast
+    # (and a binding not_to_exceed is disclosed as an operator constraint, never a silent cap); a
+    # value-changing control with no prior accepted probability row runs on a provisional assessment.
+    mdec = entry.get("model_control")
+    if mdec:
+        if mdec.get("changes_deterministic_final"):
+            out.append(_conflict(
+                project_key, key, cost_code, "operator_model_overrides_model_forecast", "medium",
+                f"operator model control '{mdec['control_id']}' "
+                f"({mdec['value_constraint_policy']}/{mdec['model_type']}) sets final="
+                f"{mdec['controlled_final_cost']} vs model evidence",
+                ["operator_model_control", "forecast_intelligence"]))
+            if mdec["value_constraint_policy"] == "not_to_exceed_reference" and mdec.get("constraint_applied"):
+                out.append(_conflict(
+                    project_key, key, cost_code, "operator_not_to_exceed_constraint_applied", "medium",
+                    "operator not_to_exceed constraint lowered the model result (disclosed, not a cap)",
+                    ["operator_model_control", "budget_reference"]))
+            if not pfin:
+                out.append(_conflict(
+                    project_key, key, cost_code, "operator_model_missing_prior_probability_row", "low",
+                    "controlled final has no prior accepted probability row; probability is a provisional "
+                    "assessment (deterministic run unaffected)",
+                    ["operator_model_control", "forecast_probability"]))
+
     if sc["contradicted"]:
         out.append(_conflict(project_key, key, cost_code, "actuals_contradict_history", "high",
                              f"validation={sc['validation_class']}; history final-cost weight collapsed",
