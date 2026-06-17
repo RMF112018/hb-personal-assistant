@@ -22,10 +22,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
+from datetime import datetime
 from pathlib import Path
 
+from .common import run_lineage
 from .common.io import read_json
 from .mapping import validate_owner_sov_scope_crosswalk as xwval
 
@@ -243,7 +246,8 @@ def cmd_procore_budget_details_parity(cfg: dict, project: str, data_root, db_pat
     return 0 if ok else 3
 
 
-def cmd_run_generator(command: str, project: str) -> int:
+def cmd_run_generator(command: str, project: str, *, overrides: dict | None = None,
+                      lineage_state: str | None = None) -> int:
     if project != "tropical":
         print(json.dumps({
             "command": command, "project": project, "status": "not_supported",
@@ -254,11 +258,63 @@ def cmd_run_generator(command: str, project: str) -> int:
     script = GENERATORS[command]
     if not script.exists():
         raise SystemExit(f"ERROR: generator not found at {script}")
+    # Forward the active full-fresh run lineage state (normally inherited from the runner's env) and any
+    # debug/developer stamp overrides to the generator subprocess. The runner sets none of these by hand.
+    env = dict(os.environ)
+    if lineage_state:
+        env["CFR_RUN_LINEAGE_STATE"] = lineage_state
+    for cli_key, env_key in (("context_stamp", "CFR_CONTEXT_STAMP"),
+                             ("analysis_stamp", "CFR_ANALYSIS_STAMP"),
+                             ("mapping_workpaper_stamp", "CFR_MAPPING_WORKPAPER_STAMP")):
+        v = (overrides or {}).get(cli_key)
+        if v:
+            env[env_key] = v
     print(f"[cfr] START {command} (tropical) -> {script.name}")
     print("[cfr] writing only to a new timestamped output package folder under the configured data root.")
-    proc = subprocess.run([sys.executable, str(script)])
+    proc = subprocess.run([sys.executable, str(script)], env=env)
     print(f"[cfr] END {command} (exit {proc.returncode})")
     return proc.returncode
+
+
+def cmd_lineage_init(cfg: dict, project: str) -> int:
+    """Mint a FRESH run-specific full-fresh lineage state and print its path (for CFR_RUN_LINEAGE_STATE)."""
+    data_root = cfg.get("default_data_root")
+    if not data_root:
+        raise SystemExit("ERROR: project config missing 'default_data_root'")
+    run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+    path = run_lineage.new_run_state_path(SUBPROJECT_ROOT, project, run_id)
+    run_lineage.start_run_state(project, data_root, run_id, path=path)
+    print(str(path))   # stdout = the state path the runner exports as CFR_RUN_LINEAGE_STATE
+    return 0
+
+
+def cmd_lineage_record(cfg: dict, project: str, ptype: str) -> int:
+    """Validate + record the freshly generated package of `ptype` into the active run state."""
+    state = run_lineage.active_state_path()
+    if state is None:
+        raise SystemExit("ERROR: no active run lineage state (CFR_RUN_LINEAGE_STATE not set)")
+    rec = run_lineage.record_latest(state, ptype, project_key=project)
+    print(f"[cfr] recorded {ptype}: {Path(rec['path']).name} (stamp {rec['stamp']})")
+    return 0
+
+
+def cmd_lineage_show(cfg: dict, project: str, field: str | None = None) -> int:
+    """Print the active run lineage state (or a single field like `context_stamp`)."""
+    state = run_lineage.active_state()
+    if state is None:
+        raise SystemExit("ERROR: no active run lineage state (CFR_RUN_LINEAGE_STATE not set)")
+    if field:
+        if field.endswith("_stamp"):
+            ptype = field[:-len("_stamp")]
+            print((state.get("packages", {}).get(ptype) or {}).get("stamp") or "")
+        elif field.endswith("_path"):
+            ptype = field[:-len("_path")]
+            print((state.get("packages", {}).get(ptype) or {}).get("path") or "")
+        else:
+            print(state.get(field) or "")
+        return 0
+    print(json.dumps(state, indent=2))
+    return 0
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -269,6 +325,25 @@ def build_parser() -> argparse.ArgumentParser:
                  "run-mapping-workpaper", "run-crosswalk-v2"):
         sp = sub.add_parser(name)
         sp.add_argument("--project", required=True, help="Project key (e.g. tropical).")
+        if name in ("run-analysis", "run-mapping-workpaper", "run-crosswalk-v2"):
+            # debug/developer overrides only — the full-fresh runner needs NONE of these.
+            sp.add_argument("--lineage-state", default=None,
+                            help="Path to a full-fresh run lineage state (else CFR_RUN_LINEAGE_STATE).")
+            sp.add_argument("--context-stamp", default=None, help="Debug: pin upstream context stamp.")
+            sp.add_argument("--analysis-stamp", default=None, help="Debug: pin upstream analysis stamp.")
+            sp.add_argument("--mapping-workpaper-stamp", default=None,
+                            help="Debug: pin upstream mapping-workpaper stamp.")
+    # full-fresh run lineage state helpers (used by the runner; no per-command manual stamps needed)
+    for name in ("lineage-init", "lineage-show"):
+        lp = sub.add_parser(name)
+        lp.add_argument("--project", required=True, help="Project key (e.g. tropical).")
+    sub._name_parser_map["lineage-show"].add_argument(
+        "--field", default=None, help="Print a single field (e.g. context_stamp) instead of full JSON.")
+    lrp = sub.add_parser("lineage-record")
+    lrp.add_argument("--project", required=True, help="Project key (e.g. tropical).")
+    lrp.add_argument("--type", required=True,
+                     choices=("context", "analysis", "mapping_workpaper", "crosswalk_v2"),
+                     help="Package type to validate + record into the active run lineage state.")
     sfp = sub.add_parser("schedule-integrate-forecast")
     sfp.add_argument("--project", required=True, help="Project key (e.g. tropical).")
     sfp.add_argument("--data-root", default=None, help="Override the configured forecast data root.")
@@ -408,6 +483,12 @@ def main(argv=None) -> int:
         cfg = {**cfg, "_pinned_context_stamp": _ctx_stamp, "_strict_pin": True}
     if args.command == "validate-crosswalk":
         return cmd_validate_crosswalk(cfg)
+    if args.command == "lineage-init":
+        return cmd_lineage_init(cfg, args.project)
+    if args.command == "lineage-record":
+        return cmd_lineage_record(cfg, args.project, args.type)
+    if args.command == "lineage-show":
+        return cmd_lineage_show(cfg, args.project, getattr(args, "field", None))
     if args.command == "schedule-integrate-forecast":
         return cmd_schedule_integrate_forecast(cfg, args.project, args.data_root,
                                                args.frozen_stamp, args.out_root)
@@ -454,7 +535,10 @@ def main(argv=None) -> int:
     if args.command == "procore-budget-details-parity":
         return cmd_procore_budget_details_parity(cfg, args.project, args.data_root, args.db_path,
                                                  args.strict)
-    return cmd_run_generator(args.command, args.project)
+    overrides = {k: getattr(args, k, None)
+                 for k in ("context_stamp", "analysis_stamp", "mapping_workpaper_stamp")}
+    return cmd_run_generator(args.command, args.project, overrides=overrides,
+                             lineage_state=getattr(args, "lineage_state", None))
 
 
 if __name__ == "__main__":
