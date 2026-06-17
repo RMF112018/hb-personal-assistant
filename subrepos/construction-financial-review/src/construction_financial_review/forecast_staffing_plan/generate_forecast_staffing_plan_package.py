@@ -20,6 +20,7 @@ from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
 
+from ..common import lineage
 from ..common.hashing import sha256_file
 from ..common.io import read_jsonl, write_json, write_jsonl
 from ..common.money import D, money_str
@@ -341,6 +342,7 @@ def _determinism_check(inputs, project_key) -> "OrderedDict":
 def generate(project_key, cfg, data_root=None, frozen_stamp=None, out_root=None,
              with_llm=False, llm_model=None) -> dict:
     data_root = Path(data_root or cfg["default_data_root"])
+    cfg, _ctx_pkg, ctx_lineage = lineage.pin_context_into_cfg(cfg, data_root, project_key)
     stamp = frozen_stamp or datetime.now().strftime("%Y%m%d_%H%M%S")
     generated_ts = frozen_stamp if frozen_stamp else datetime.now().isoformat(timespec="seconds")
     stamp_iso = frozen_stamp or generated_ts
@@ -372,6 +374,7 @@ def generate(project_key, cfg, data_root=None, frozen_stamp=None, out_root=None,
     write_json(out / "audit" / "source_hashes_before_after.json", src_audit)
     write_json(out / "input_inventory.json", OrderedDict([
         ("generation", meta),
+        ("context_lineage", ctx_lineage),
         ("staffing_source_package", bundle["discovery"].get("package_path")),
         ("mapping_file", bundle["mapping_load"]["mapping_file"]),
         ("discovery", OrderedDict([(k, str(v) if v else None) for k, v in inputs["discovery"].items()]))]))

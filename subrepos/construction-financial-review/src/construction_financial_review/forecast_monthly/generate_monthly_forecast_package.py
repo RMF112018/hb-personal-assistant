@@ -24,6 +24,7 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Optional
 
+from ..common import lineage
 from ..common.budget_keys import parse_budget_key
 from ..common.dates import normalize_date
 from ..common.hashing import sha256_file, sha256_text
@@ -838,6 +839,7 @@ def _cadence_reconciliation_proof(inputs, collections, project_key) -> OrderedDi
 def generate(project_key, cfg, data_root=None, frozen_stamp=None, out_root=None,
              with_llm=False, llm_model=None, forecast_start_month=None, control_file=None) -> dict:
     data_root = Path(data_root or cfg["default_data_root"])
+    cfg, _ctx_pkg, ctx_lineage = lineage.pin_context_into_cfg(cfg, data_root, project_key)
     as_of = datetime.now().date()
     inputs = _load_inputs(cfg, data_root, project_key)
 
@@ -903,7 +905,8 @@ def generate(project_key, cfg, data_root=None, frozen_stamp=None, out_root=None,
     write_json(out / "audit" / "dormant_code_suppression_applied.json",
                _dormant_monthly_audit(inputs, collections))
     write_json(out / "audit" / "staffing_plan_applied.json", _staffing_plan_audit(inputs))
-    write_json(out / "input_inventory.json", OrderedDict([("generation", meta), ("calendar", calendar)]))
+    write_json(out / "input_inventory.json", OrderedDict([
+        ("generation", meta), ("context_lineage", ctx_lineage), ("calendar", calendar)]))
     _write_readme(out, project_key, meta, calendar, collections)
     _write_schema(out)
 

@@ -12,9 +12,35 @@ from decimal import Decimal
 
 from ..common.money import D, money_str
 from ..forecast_cost_basis import apply as cost_basis
+from ..forecast_staffing_basis import apply as staffing_basis
 from . import human_acceptance as ha
 
 ZERO, ONE = Decimal("0"), Decimal("1")
+
+
+def _staffing_basis_evidence(key, cost_code, entry, operator_controlled, dormant_suppressed,
+                             integ_final, integ_ctc):
+    """Assemble the flat evidence dict consumed by the staffing-basis classifier.
+
+    current_model_final/ctc are the inbound integrated values (post operator/dormancy); the staffing
+    summary row + mapping/source gating signals come from per_code (the discovered staffing package).
+    """
+    sp = entry.get("staffing_plan") or {}
+    return {
+        "budget_code_key": key,
+        "cost_code": cost_code,
+        "category": entry.get("category") or (key.split(".")[-1] if "." in key else None),
+        "current_model_final": money_str(integ_final),
+        "current_model_ctc": money_str(integ_ctc),
+        "staffing_plan_implied_remaining_cost": sp.get("staffing_plan_implied_remaining_cost"),
+        "staffing_plan_implied_final_cost": sp.get("staffing_plan_implied_final_cost"),
+        "operator_acceptance_status": sp.get("acceptance_status"),
+        "staffing_mapping_status": entry.get("staffing_mapping_status"),
+        "staffing_applied_numeric": entry.get("staffing_applied_numeric"),
+        "staffing_source_validation_passed": entry.get("staffing_source_validation_passed"),
+        "operator_controlled": bool(operator_controlled),
+        "suppressed": bool(dormant_suppressed),
+    }
 
 
 def _cost_basis_evidence(key, entry, rec, mdecision, operator_dollar, operator_model_value,
@@ -110,12 +136,28 @@ def build(project_key, key, entry, sc) -> tuple:
         integrated_ctc = ZERO
         floored = True
 
+    # Operator staffing-plan basis (mapped .LAB, raise-only): AFTER operator controls + dormancy, BEFORE
+    # the BudgetDetails basis (precedence 3 > 4). When the operator-approved LAB mapping + validated
+    # staffing source prove planned remaining labor above the model CTC, the staffing-plan remaining is
+    # the selected deterministic basis. Never lowers a model-supported forecast without explicit per-code
+    # dollar acceptance; .LBN/.MAT never get numeric dollars.
+    operator_controlled = bool(operator_dollar or operator_model_value)
+    sb_ev = _staffing_basis_evidence(key, cost_code, entry, operator_controlled, dormant_suppressed,
+                                     integrated_final, integrated_ctc)
+    integrated_final, integrated_ctc, sb_decision = staffing_basis.apply_staffing_basis_decision(
+        integrated_final, integrated_ctc, actual_floor, sb_ev)
+    staffing_basis_applied = bool(sb_decision.get("staffing_basis_applied"))
+    if staffing_basis_applied:
+        floored = False
+    sb_fields = staffing_basis.staffing_disclosure_fields(sb_decision)
+
     # BudgetDetails projected-cost basis (asymmetric / corrective): authoritative AFTER operator
-    # controls + dormancy. It may RAISE a proven under-forecast up to ERP projected_costs when open
-    # committed exposure is missed; it NEVER lowers a model-supported overrun to ERP. Disclosed as a
+    # controls + dormancy + staffing. It may RAISE a proven under-forecast up to ERP projected_costs when
+    # open committed exposure is missed; it NEVER lowers a model-supported overrun to ERP. Disclosed as a
     # deterministic evidence-based basis, never a hidden probability cap (upper_cap_applied stays False).
     cb_ev = _cost_basis_evidence(key, entry, rec, mdecision, operator_dollar, operator_model_value,
                                  dormant, dormant_suppressed, integrated_ctc)
+    cb_ev["staffing_basis_applied"] = staffing_basis_applied
     integrated_final, integrated_ctc, cb_decision = cost_basis.apply_cost_basis_decision(
         integrated_final, integrated_ctc, actual_floor, cb_ev)
     if cb_decision["cost_basis_status"] == "budgetdetails_projected_cost_basis":
@@ -164,6 +206,7 @@ def build(project_key, key, entry, sc) -> tuple:
         ("dormant_status", (dormant or {}).get("dormant_status")),
         ("dormant_suppression_applied", bool(dormant_suppressed)),
         ("dormant_suppression_reason", (dormant or {}).get("suppression_reason") if dormant_suppressed else None),
+        *sb_fields.items(),
         *cb_fields.items(),
         ("reason_codes", sc["reason_codes"]),
     ])
@@ -178,6 +221,7 @@ def build(project_key, key, entry, sc) -> tuple:
         ("history_final_cost_weight", str(w.quantize(Decimal("0.0001")))),
         ("floored_at_actuals", bool(floored)), ("upper_cap_applied", False),
         ("cost_basis_status", cb_decision["cost_basis_status"]),
+        ("staffing_basis_status", sb_decision["staffing_basis_status"]),
         ("reason_codes", sc["reason_codes"]),
     ])
     ha.stamp(final_rec)
@@ -188,7 +232,7 @@ def build(project_key, key, entry, sc) -> tuple:
         ("floor_respected", bool(integrated_final >= actual_floor)),
         ("upper_cap_applied", False),
     ])
-    return forecast_row, final_rec, floor_audit, integrated_final, integrated_ctc, cb_decision
+    return forecast_row, final_rec, floor_audit, integrated_final, integrated_ctc, cb_decision, sb_decision
 
 
 def _operator_status(decision) -> str:

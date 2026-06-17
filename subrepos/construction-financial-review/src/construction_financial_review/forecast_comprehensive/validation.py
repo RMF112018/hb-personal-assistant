@@ -70,12 +70,23 @@ def build_validation(out, inputs, collections, audit, determinism, safety, meta,
     op_floor_ok = not resolved.get("any_floor_violation")
     op_mapping_ok = not resolved.get("any_ambiguous") and not resolved.get("any_invented")
 
-    # operator staffing plan (advisory; consumed as accepted-package OUTPUT)
+    # operator staffing plan (advisory unless an accepted-LAB-mapping staffing basis is applied)
     staffing_active = bool(inputs.get("staffing_plan_active"))
     sp_items = [i for i in items if i["evidence_family"] == "operator_staffing_plan"]
     sp_evidence_ok = (not staffing_active) or (len(sp_items) > 0)
+    sb_audit = audit.get("staffing_basis_decision_audit") or {}
+    sb_applied_keys = {r["budget_code_key"] for r in (sb_audit.get("rows") or [])
+                       if r.get("staffing_basis_status") == "operator_staffing_plan_basis"}
+    # staffing items still require acceptance EXCEPT codes where the accepted-LAB-mapping basis is applied
     sp_advisory_ok = all(i.get("requires_human_acceptance") and i.get("do_not_auto_apply")
-                         for i in sp_items)
+                         for i in sp_items if i.get("budget_code_key") not in sb_applied_keys)
+    sb_checks = sb_audit.get("validation_checks") or {}
+
+    # full-fresh-run lineage: every present upstream package consumed the same context stamp.
+    # absent audit (non-comprehensive unit contexts) is not-applicable -> pass; the real comprehensive
+    # build always populates it (a computed inconsistency / strict-missing-metadata fails the gate).
+    lineage_audit = audit.get("run_lineage_audit") or {}
+    full_run_lineage_consistent = bool(lineage_audit.get("full_run_lineage_consistent", True))
 
     # actuals export gates (only when the package emits the actuals collection)
     actuals_present = "actuals_monthly_by_budget_code.jsonl" in collections
@@ -131,6 +142,8 @@ def build_validation(out, inputs, collections, audit, determinism, safety, meta,
         ("dormant_suppressed_integrated_final_equals_actual", dorm_integrated_ok),
         ("dormant_suppressed_probability_marked", dorm_prob_ok),
         *((audit.get("cost_basis_decision_audit") or {}).get("validation_checks") or {}).items(),
+        *sb_checks.items(),
+        ("full_run_lineage_consistent", full_run_lineage_consistent),
         *actuals_gates.items(),
         *apf_gates.items(),
         ("meta_files_present", all((out / f).exists() for f in meta_doc)),

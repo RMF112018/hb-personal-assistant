@@ -26,6 +26,7 @@ from pathlib import Path
 import numpy as np
 import scipy
 
+from ..common import lineage
 from ..common.hashing import sha256_file, sha256_text
 from ..common.io import read_json, read_jsonl, write_csv, write_json, write_jsonl
 from ..common.money import D
@@ -586,6 +587,7 @@ def generate(project_key, cfg, data_root=None, frozen_stamp=None, out_root=None,
              with_llm=False, llm_model=None, forecast_start_month=None,
              runs=10000, seed=20260614) -> dict:
     data_root = Path(data_root or cfg["default_data_root"])
+    cfg, _ctx_pkg, ctx_lineage = lineage.pin_context_into_cfg(cfg, data_root, project_key)
     inputs = simulation_inputs.load_inputs(cfg, data_root, project_key, forecast_start_month)
     params = inputs["params"]
 
@@ -647,6 +649,7 @@ def generate(project_key, cfg, data_root=None, frozen_stamp=None, out_root=None,
     write_json(out / "audit" / "operator_probability_value_constraints_audit.json", op_cap_audit)
     write_json(out / "audit" / "source_files_used.json", _source_files(inputs, cfg))
     write_json(out / "input_inventory.json", OrderedDict([("generation", meta),
+                                                          ("context_lineage", ctx_lineage),
                                                           ("forecast_months", inputs["months"])]))
     _write_readme(out, project_key, meta, inputs, collections)
     _write_schema(out)

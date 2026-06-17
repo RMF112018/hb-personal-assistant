@@ -40,7 +40,7 @@ def _sc():
 
 
 def test_intelligence_consumer_history_cannot_reinflate_dormant():
-    f, rec, floor, integ_final, integ_ctc, _cb = intelligence_consumer.build("tropical", KEY, _entry(_dormant()), _sc())
+    f, rec, floor, integ_final, integ_ctc, _cb, _sb = intelligence_consumer.build("tropical", KEY, _entry(_dormant()), _sc())
     assert f["integrated_recommended_final_cost"] == "4278.99"   # history did not lift it
     assert f["integrated_cost_to_complete"] == "0.00"
     assert f["dormant_suppression_applied"] is True
@@ -70,7 +70,7 @@ def test_value_asserting_control_revives_dormant_in_consumers():
     entry = _entry(_dormant(), model_control=mc,
                    prob_final={"simulated_p10": "8000.00", "simulated_p50": "9000.00",
                                "simulated_p80": "9500.00", "simulated_p90": "9800.00", "simulated_p95": "10000.00"})
-    f, rec, floor, integ_final, integ_ctc, _cb = intelligence_consumer.build("tropical", KEY, entry, _sc())
+    f, rec, floor, integ_final, integ_ctc, _cb, _sb = intelligence_consumer.build("tropical", KEY, entry, _sc())
     # operator value control wins over dormancy
     assert integ_final == Decimal("9278.99") and integ_ctc == Decimal("5000.00")
     assert f["dormant_suppression_applied"] is False

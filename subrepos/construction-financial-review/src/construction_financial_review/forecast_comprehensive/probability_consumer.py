@@ -45,6 +45,15 @@ def build(project_key, key, entry, sc, cfg_fc) -> tuple:
     if mdec and mdec.get("changes_deterministic_final"):
         return _model_controlled_probability(project_key, key, cost_code, entry, sc, cfg_fc, mdec)
 
+    # Operator staffing-plan basis: deterministic accepted-LAB-mapping selected final (NOT a cap). Anchor
+    # the accepted distribution to the staffing-selected final, floored at actuals, never capped.
+    sb = entry.get("staffing_basis") or {}
+    if sb.get("staffing_basis_applied") and entry.get("prob_final"):
+        return _basis_anchored_probability(
+            project_key, key, cost_code, entry, sc,
+            {"cost_basis_status": "operator_staffing_plan_basis",
+             "selected_final_cost": sb.get("selected_final_cost")})
+
     # BudgetDetails projected-cost basis: a deterministic evidence-based selected final (NOT a hidden
     # cap). Anchor the accepted distribution UP to the selected final, floored at actuals, never capped
     # (upper_cap_applied stays False). Disclosed as a deterministic basis, not an operator cap.
@@ -174,9 +183,13 @@ def _anchor_row(project_key, key, cost_code, entry, sc, mdec, actual_floor, cont
 
 
 def _basis_anchored_probability(project_key, key, cost_code, entry, sc, cb) -> tuple:
-    """Anchor the accepted distribution to a deterministic BudgetDetails projected-cost selected final."""
+    """Anchor the accepted distribution to a deterministic selected final (BudgetDetails or staffing)."""
     actual_floor = D(entry["actual_cost_to_date"])
     selected_final = D(cb["selected_final_cost"])
+    status = cb.get("cost_basis_status") or "budgetdetails_projected_cost_basis"
+    method = ("operator_staffing_plan_deterministic_basis"
+              if status == "operator_staffing_plan_basis"
+              else "budgetdetails_projected_cost_deterministic_basis")
     pfin = entry["prob_final"]
     p50_base = D(pfin.get("simulated_p50"))
     delta = selected_final - p50_base
@@ -191,8 +204,8 @@ def _basis_anchored_probability(project_key, key, cost_code, entry, sc, cb) -> t
         prev = v
     row = OrderedDict([
         ("project_key", project_key), ("budget_code_key", key), ("cost_code", cost_code),
-        ("probability_method", "budgetdetails_projected_cost_deterministic_basis"),
-        ("probability_status", "budgetdetails_projected_cost_basis"),
+        ("probability_method", method),
+        ("probability_status", status),
         ("actual_cost_to_date", money_str(actual_floor)),
         ("accepted_simulated_p50", money_str(p50_base)),
         ("integrated_sigma_multiplier", "1.0000"), ("integrated_tail_shift_delta", "0.0000"),

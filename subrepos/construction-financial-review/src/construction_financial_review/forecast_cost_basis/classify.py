@@ -128,6 +128,12 @@ def classify_budgetdetails_cost_basis(inp: dict) -> "OrderedDict[str, object]":
         return _finish(status, actual, ZERO, reason=["suppression_authoritative",
                        inp.get("dormant_status") or "dormant"], suppression=True)
 
+    # 2b. an operator staffing-plan basis already governs (precedence 3 > 4): pass through its values,
+    # never override with the BudgetDetails projected-cost basis.
+    if inp.get("staffing_basis_applied"):
+        return _finish(STATUS_EXISTING_MODEL, inbound_final, inbound_ctc,
+                       reason="operator_staffing_plan_basis_governs")
+
     # 3. idempotency: preserve an upstream-applied budgetdetails basis even if inbound now == projected
     if inp.get("upstream_cost_basis_status") == STATUS_BUDGETDETAILS_PROJECTED and projected is not None:
         ctc = projected - actual

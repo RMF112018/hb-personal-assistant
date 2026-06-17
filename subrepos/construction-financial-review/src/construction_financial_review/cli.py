@@ -226,6 +226,23 @@ def cmd_actuals_erp_crosscheck(cfg: dict, project: str, data_root, frozen_stamp,
                    strict=strict)
 
 
+def cmd_procore_budget_details_parity(cfg: dict, project: str, data_root, db_path, strict: bool) -> int:
+    """Body-free parity report for DB-backed Procore Budget Detail Rows."""
+    from .procore_budget_details_db import parity_report
+
+    report = parity_report(cfg, project_key=project, data_root=data_root, db_path=db_path)
+    print(json.dumps(report, indent=2))
+    ok = (
+        bool(report["target_code_queryable"])
+        and bool(report["target_code_selected_view_queryable"])
+        and not report["source_quality_issues"]
+        and not report["raw_payload_body_emitted"]
+    )
+    if strict:
+        ok = ok and bool(report["strict_ok"])
+    return 0 if ok else 3
+
+
 def cmd_run_generator(command: str, project: str) -> int:
     if project != "tropical":
         print(json.dumps({
@@ -367,12 +384,28 @@ def build_parser() -> argparse.ArgumentParser:
     aecp.add_argument("--out-root", default=None, help="Override the output base dir.")
     aecp.add_argument("--strict", action="store_true",
                       help="Fail closed on material variances and configured structural failures.")
+    pbdp = sub.add_parser("procore-budget-details-parity")
+    pbdp.add_argument("--project", required=True, help="Project key (e.g. tropical).")
+    pbdp.add_argument("--data-root", default=None, help="Override the configured forecast data root.")
+    pbdp.add_argument("--db-path", default=None, help="Override the configured HB Personal Assistant DB path.")
+    pbdp.add_argument("--strict", action="store_true",
+                      help="Fail closed on amount mismatches or package-only budget codes.")
+    # --context-stamp pins the upstream context package for a lineage-consistent fresh full run.
+    # Applied to the stages that consume context and participate in the lineage gate.
+    for _p in (fip, fmp, fpp, fcp, fkp, fspp):
+        _p.add_argument("--context-stamp", default=None,
+                        help="Pin upstream context to forecast_context_package_<project>_<stamp> "
+                             "(fail closed if missing; default latest-glob).")
     return ap
 
 
 def main(argv=None) -> int:
     args = build_parser().parse_args(argv)
     cfg = load_project(args.project)
+    # carry an upstream context pin through cfg so every stage resolves the SAME context (fail closed).
+    _ctx_stamp = getattr(args, "context_stamp", None)
+    if _ctx_stamp:
+        cfg = {**cfg, "_pinned_context_stamp": _ctx_stamp, "_strict_pin": True}
     if args.command == "validate-crosswalk":
         return cmd_validate_crosswalk(cfg)
     if args.command == "schedule-integrate-forecast":
@@ -418,6 +451,9 @@ def main(argv=None) -> int:
     if args.command == "actuals-erp-crosscheck":
         return cmd_actuals_erp_crosscheck(cfg, args.project, args.data_root, args.frozen_stamp,
                                           args.out_root, args.strict)
+    if args.command == "procore-budget-details-parity":
+        return cmd_procore_budget_details_parity(cfg, args.project, args.data_root, args.db_path,
+                                                 args.strict)
     return cmd_run_generator(args.command, args.project)
 
 

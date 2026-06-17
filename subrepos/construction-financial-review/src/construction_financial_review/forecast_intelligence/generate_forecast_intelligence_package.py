@@ -24,6 +24,7 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Optional
 
+from ..common import lineage
 from ..common.dates import normalize_date
 from ..common.hashing import sha256_file
 from ..common.io import read_json, read_jsonl, write_json, write_jsonl
@@ -74,6 +75,7 @@ def generate(project_key: str, cfg: dict, data_root: Optional[Path] = None,
              frozen_stamp: Optional[str] = None, out_root: Optional[Path] = None,
              with_llm: bool = False, llm_model: Optional[str] = None) -> dict:
     data_root = Path(data_root or cfg["default_data_root"])
+    cfg, _ctx_pkg, ctx_lineage = lineage.pin_context_into_cfg(cfg, data_root, project_key)
     packages = schedule_io.discover_packages(data_root, cfg)
     context_pkg = packages.get("context_package")
     analysis_pkg = packages.get("analysis_v2_package")
@@ -308,6 +310,7 @@ def generate(project_key: str, cfg: dict, data_root: Optional[Path] = None,
         budget_codes, recommendations, co_agg, bt))
     write_json(out / "input_inventory.json", OrderedDict([
         ("generation", meta),
+        ("context_lineage", ctx_lineage),
         ("inputs", OrderedDict([
             ("forecast_context_package", str(context_pkg)),
             ("forecast_analysis_crosswalk_v2_package", str(analysis_pkg)),

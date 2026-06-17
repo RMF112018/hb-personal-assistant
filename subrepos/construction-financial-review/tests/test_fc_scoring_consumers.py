@@ -31,7 +31,7 @@ def test_contradicted_history_is_downgraded_to_zero():
 def test_intelligence_blend_floored_and_uncapped():
     e = entry()
     sc = scoring.score_code(e, CFG)
-    f_row, rec, floor_audit, integ_final, integ_ctc, _cb = ic.build("tropical", KEY, e, sc)
+    f_row, rec, floor_audit, integ_final, integ_ctc, _cb, _sb = ic.build("tropical", KEY, e, sc)
     # 100000*(1-0.45) + 120000*0.45 = 109000 ; above the 40000 floor; never capped
     assert Decimal(f_row["integrated_recommended_final_cost"]) == Decimal("109000.00")
     assert f_row["upper_cap_applied"] is False

@@ -37,6 +37,9 @@ downgraded, rejected, or missing.
    deterministic **cost-basis** decision (see `forecast_cost_basis.md`) may select the BudgetDetails
    projected-cost basis — corrective/asymmetric, raising a proven under-forecast, never capping an
    overrun to ERP — driving the integrated final/CTC the monthly and probability consumers then consume.
+   Before that, the **staffing basis** (see `forecast_staffing_basis.md`) may select the operator
+   staffing-plan remaining for a mapped `.LAB` code (raise-only). A `full_run_lineage_consistent` gate
+   proves all upstream packages consumed one consistent context (see `common/lineage.py`).
 5. **Monthly** (`monthly_consumer`): accepted monthly base reshaped by the bounded frequency weekday
    vector + a bounded history curve-shape tilt, then allocated to the integrated CTC via the reused
    `monthly_reconcile._allocate`. Reconciles per code **and** at the project total. Six source shares.

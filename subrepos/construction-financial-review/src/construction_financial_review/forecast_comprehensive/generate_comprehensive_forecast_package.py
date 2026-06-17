@@ -20,13 +20,16 @@ from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
 
+from ..common import lineage
 from ..common.hashing import sha256_file
-from ..common.io import read_jsonl, write_csv, write_json, write_jsonl
+from ..common.io import read_json, read_jsonl, write_csv, write_json, write_jsonl
 from ..common.money import D, money_str
 from ..common.safety import safety_scan
 from ..forecast_actuals import actuals_export
 from ..forecast_cost_basis import apply as cost_basis_apply
 from ..forecast_cost_basis import validation as cost_basis_validation
+from ..forecast_staffing_basis import apply as staffing_basis_apply
+from ..forecast_staffing_basis import validation as staffing_basis_validation
 from ..forecast_controls import integration as fctl_integration
 from ..forecast_model_controls import integration as fmc_integration
 from ..forecast_intelligence import db_inventory
@@ -82,7 +85,55 @@ AUDIT_DATA_FILES = (
     "audit/actuals_floor_audit.json",
     "audit/model_evidence_completeness_matrix.json",
     "audit/forecast_cost_basis_decision_audit.json",
+    "audit/forecast_staffing_basis_decision_audit.json",
+    "audit/forecast_run_lineage_audit.json",
 )
+
+# stages whose consumed-context stamp must match the comprehensive context for a consistent fresh run
+_LINEAGE_PTYPES = ("context", "intelligence", "staffing_plan", "monthly", "cost_frequency", "probability")
+
+
+def _run_lineage_audit(project_key, discovery, own_lineage) -> "OrderedDict":
+    """Compare the consumed context stamp across every present upstream package vs the comprehensive
+    context. A genuine inconsistency (a package recorded a DIFFERENT context stamp) always fails. Missing
+    lineage metadata fails closed only under a pinned fresh run (strict); on legacy/ad-hoc runs it is
+    reported but does not by itself fail the gate (the inconsistency check is still authoritative).
+    Absent/not-required packages are not_applicable."""
+    own_stamp = (own_lineage or {}).get("consumed_context_stamp")
+    strict = (own_lineage or {}).get("lineage_source") == "pinned"
+    rows, inconsistent, missing_meta = [], False, False
+    for pt in _LINEAGE_PTYPES:
+        d = discovery.get(pt) or {}
+        if not d.get("present"):
+            rows.append(OrderedDict([("package_type", pt), ("present", False),
+                                     ("consumed_context_stamp", None), ("status", "not_applicable")]))
+            continue
+        path = Path(d["path"])
+        if pt == "context":
+            consumed, has_meta = lineage._stamp_of(path), True
+        else:
+            ii_path = path / "input_inventory.json"
+            ii = read_json(ii_path) if ii_path.exists() else None
+            cl = (ii or {}).get("context_lineage") or {}
+            consumed = cl.get("consumed_context_stamp")
+            has_meta = bool(ii is not None and (ii or {}).get("context_lineage") is not None)
+        if not has_meta:
+            status, missing_meta = "missing_context_lineage_metadata", True
+        elif consumed == own_stamp:
+            status = "consistent"
+        else:
+            status, inconsistent = "inconsistent", True
+        rows.append(OrderedDict([("package_type", pt), ("present", True),
+                                 ("consumed_context_stamp", consumed), ("status", status)]))
+    consistent = (not inconsistent) and (not (strict and missing_meta))
+    return OrderedDict([
+        ("project_key", project_key),
+        ("comprehensive_context_stamp", own_stamp),
+        ("strict_lineage_enforced", bool(strict)),
+        ("full_run_lineage_consistent", bool(consistent)),
+        ("missing_context_lineage_metadata", bool(missing_meta)),
+        ("packages", rows),
+    ])
 
 
 # --------------------------------------------------------------------------- pure deterministic build
@@ -99,6 +150,8 @@ def _build_collections(inputs: dict, project_key: str) -> dict:
     monthly_rows, probability_rows, conflict_rows = [], [], []
     floor_audits, monthly_audits, review_rows, change_rows, risk_rows, warnings = [], [], [], [], [], []
     cost_basis_rows = []
+    staffing_basis_rows = []
+    staffing_basis_applied_keys = set()
     monthly_total_by_key = {}
     project_months = OrderedDict()
     totals = {"accepted_final": ZERO, "integrated_final": ZERO, "integrated_ctc": ZERO, "actual": ZERO}
@@ -109,9 +162,12 @@ def _build_collections(inputs: dict, project_key: str) -> dict:
         sc = scoring.score_code(entry, cfg_fc)
         weights_rows.append(scoring.weights_row(project_key, key, entry, sc))
 
-        f_row, rec_row, floor_audit, integ_final, integ_ctc, cb_decision = intelligence_consumer.build(
-            project_key, key, entry, sc)
+        (f_row, rec_row, floor_audit, integ_final, integ_ctc, cb_decision,
+         sb_decision) = intelligence_consumer.build(project_key, key, entry, sc)
         entry["cost_basis"] = cb_decision   # downstream consumers (probability) read the selected basis
+        entry["staffing_basis"] = sb_decision
+        if sb_decision.get("staffing_basis_applied"):
+            staffing_basis_applied_keys.add(key)
         forecast_rows.append(f_row)
         final_recs.append(rec_row)
         floor_audits.append(floor_audit)
@@ -122,6 +178,9 @@ def _build_collections(inputs: dict, project_key: str) -> dict:
 
         m_row, m_months, m_audit = monthly_consumer.build(project_key, key, entry, sc, integ_ctc)
         if m_row:
+            # disclose the staffing basis on the monthly row (timing logic unchanged; when the basis is
+            # applied the monthly sum already reconciles to the staffing-plan CTC via integ_ctc)
+            m_row["staffing_basis_status"] = sb_decision.get("staffing_basis_status")
             monthly_rows.append(m_row)
             monthly_audits.append(m_audit)
             for mo, c in m_months.items():
@@ -129,6 +188,8 @@ def _build_collections(inputs: dict, project_key: str) -> dict:
             monthly_total_by_key[key] = sum(m_months.values(), ZERO)
         cost_basis_rows.append(cost_basis_apply.build_cost_basis_audit_row(
             cb_decision, monthly_total_after_basis=monthly_total_by_key.get(key)))
+        staffing_basis_rows.append(staffing_basis_apply.build_staffing_basis_audit_row(
+            sb_decision, monthly_total_after_staffing_basis=monthly_total_by_key.get(key)))
 
         p_row, p_contrib = probability_consumer.build(project_key, key, entry, sc, cfg_fc)
         if p_row:
@@ -260,6 +321,37 @@ def _build_collections(inputs: dict, project_key: str) -> dict:
         ("validation_checks", cost_basis_checks),
         ("rows", sorted(cost_basis_rows, key=lambda r: r.get("budget_code_key") or "")),
     ])
+
+    staffing_cfg = (inputs.get("_cfg") or {}).get("forecast_staffing_plan") or {}
+    staffing_present = bool((discovery.get("staffing_plan") or {}).get("present"))
+    staffing_mapping_rows = inputs.get("staffing_mapping_rows") or []
+    staffing_basis_checks = staffing_basis_validation.validate_staffing_basis_decisions(
+        staffing_basis_rows, monthly_total_by_key=monthly_total_by_key)
+    staffing_basis_checks["staffing_package_present_if_config_enabled"] = bool(
+        (not staffing_cfg.get("enabled")) or staffing_present)
+    staffing_basis_checks["staffing_mapping_all_accepted_rows_resolved"] = bool(
+        all(r.get("mapping_status") in ("mapped_operator_approved_lab",
+                                        "resolved_unique_lab_pending_acceptance")
+            for r in staffing_mapping_rows if r.get("override_acceptance_status") == "accepted"))
+    # a staffing-basis code is never simultaneously governed by an accepted value-asserting model control
+    staffing_basis_checks["model_controls_override_staffing"] = bool(
+        all(r.get("operator_model_control_status") != "applied_model_value"
+            for r in forecast_rows if r.get("staffing_basis_status") == "operator_staffing_plan_basis"))
+    audits["audit/forecast_staffing_basis_decision_audit.json"] = OrderedDict([
+        ("project_key", project_key),
+        ("package_stamp", seed if seed is not None else None),
+        ("staffing_active", staffing_present),
+        ("summary_counts_by_staffing_basis_status",
+         dict(Counter(r["staffing_basis_status"] for r in staffing_basis_rows))),
+        ("applied_count", len(staffing_basis_applied_keys)),
+        ("validation_checks", staffing_basis_checks),
+        # audit only staffing-relevant codes (those carrying a staffing cost-code mapping)
+        ("rows", sorted([r for r in staffing_basis_rows if r.get("staffing_mapping_status")],
+                        key=lambda r: r.get("budget_code_key") or "")),
+    ])
+
+    audits["audit/forecast_run_lineage_audit.json"] = _run_lineage_audit(
+        project_key, discovery, inputs.get("context_lineage") or {})
 
     if inputs["frequency_disposition"] != "consumed":
         warnings.append(OrderedDict([
@@ -503,6 +595,7 @@ def load_inputs(cfg, data_root, project_key, frozen_stamp, control_file=None):
         ("model_controls_active", model_active), ("model_controls_bundle", model_bundle),
         ("staffing_plan_active", bool(discovery.get("staffing_plan", {}).get("present"))),
         ("staffing_plan_conflicts", sources.get("staffing_plan_conflicts") or []),
+        ("staffing_mapping_rows", list((sources.get("staffing_mapping_by_cc") or {}).values())),
         ("actuals_monthly_by_key", actuals_load["by_key"]),
         ("actuals_to_date_by_key", actuals_to_date_by_key),
         ("actuals_rec_by_key", actuals_rec_by_key),
@@ -513,8 +606,10 @@ def load_inputs(cfg, data_root, project_key, frozen_stamp, control_file=None):
 def generate(project_key, cfg, data_root=None, frozen_stamp=None, out_root=None,
              with_llm=False, llm_model=None, control_file=None) -> dict:
     data_root = Path(data_root or cfg["default_data_root"])
+    cfg, _ctx_pkg, ctx_lineage = lineage.pin_context_into_cfg(cfg, data_root, project_key)
     inputs = load_inputs(cfg, data_root, project_key, frozen_stamp, control_file=control_file)
     inputs["_cfg"] = cfg
+    inputs["context_lineage"] = ctx_lineage
 
     stamp = frozen_stamp or datetime.now().strftime("%Y%m%d_%H%M%S")
     generated_ts = frozen_stamp if frozen_stamp else datetime.now().isoformat(timespec="seconds")
@@ -552,6 +647,8 @@ def generate(project_key, cfg, data_root=None, frozen_stamp=None, out_root=None,
         ("history_consumption_audit", collections["audit/history_consumption_audit.json"]),
         ("frequency_consumption_audit", collections["audit/frequency_consumption_audit.json"]),
         ("cost_basis_decision_audit", collections["audit/forecast_cost_basis_decision_audit.json"]),
+        ("staffing_basis_decision_audit", collections["audit/forecast_staffing_basis_decision_audit.json"]),
+        ("run_lineage_audit", collections["audit/forecast_run_lineage_audit.json"]),
         ("source_hashes_before_after", src_audit)])
     write_json(out / "audit" / "source_hashes_before_after.json", src_audit)
     write_json(out / "audit" / "source_packages_used.json",
@@ -559,6 +656,7 @@ def generate(project_key, cfg, data_root=None, frozen_stamp=None, out_root=None,
     db_inv = db_inventory.inventory(cfg, project_key)
     write_json(out / "audit" / "db_inventory.json", db_inv)
     write_json(out / "input_inventory.json", OrderedDict([("generation", meta),
+                                                          ("context_lineage", inputs["context_lineage"]),
                                                           ("discovery", inputs["discovery"])]))
     _write_readme(out, project_key, meta, collections)
     _write_schema(out)
