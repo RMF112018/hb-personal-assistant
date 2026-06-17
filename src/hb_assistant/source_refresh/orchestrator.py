@@ -920,6 +920,10 @@ class SourceRefreshOrchestrator:
                 "guardrails": {"live_calls_disabled": True, "writeback": "none"},
             }
         base["projection_reprocess"] = self._summarize_projection_reprocess(reprocess)
+
+        budget_detail = self._reconcile_budget_detail_read_model(scope, freshness)
+        base["budget_detail_read_model"] = budget_detail
+
         if not reprocess.get("ok"):
             self._acc.degraded = True
             self._acc.failures.append(
@@ -929,14 +933,22 @@ class SourceRefreshOrchestrator:
                     "reason": str(reprocess.get("status", "projection_reprocess_failed")),
                 }
             )
+            if not budget_detail.get("ok"):
+                self._acc.failures.append(
+                    {
+                        "stage": "procore_projection.budget_detail_read_model",
+                        "status": "degraded",
+                        "reason": str(
+                            budget_detail.get("status", "budget_detail_reconcile_failed")
+                        ),
+                    }
+                )
             return {
                 **base,
                 "status": "degraded",
-                "reason": str(reprocess.get("status", "projection_reprocess_failed")),
+                "reason": "projection_reprocess_failed",
             }
 
-        budget_detail = self._reconcile_budget_detail_read_model(scope, freshness)
-        base["budget_detail_read_model"] = budget_detail
         if not budget_detail.get("ok"):
             self._acc.degraded = True
             self._acc.failures.append(

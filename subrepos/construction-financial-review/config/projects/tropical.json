@@ -12,6 +12,9 @@
   "owner_sov_scope_crosswalk": "config/crosswalks/tropical/owner_sov_scope_crosswalk_tropical_authoritative_20260614_final.jsonl",
   "budget_amount_field": "budget_amounts.revised_budget",
   "current_projected_cost_field": "budget_amounts.projected_costs",
+  "budget_details": {
+    "budget_view_id": "713474"
+  },
   "materiality_absolute": "25000.00",
   "materiality_percent": "0.10",
   "llm": {

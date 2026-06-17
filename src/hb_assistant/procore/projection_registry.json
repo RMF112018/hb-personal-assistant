@@ -547,6 +547,41 @@
       },
       {
        "category": "money",
+       "column": "budget_impact_budget_modification_amount",
+       "rel": "budget_impact.budget_modification.amount"
+      },
+      {
+       "category": "identity",
+       "column": "budget_impact_budget_modification_budget_modification_id",
+       "rel": "budget_impact.budget_modification.budget_modification_id"
+      },
+      {
+       "category": "title",
+       "column": "budget_impact_budget_modification_notes",
+       "rel": "budget_impact.budget_modification.notes"
+      },
+      {
+       "category": "identity",
+       "column": "budget_impact_budget_modification_transfer_from_id",
+       "rel": "budget_impact.budget_modification.transfer_from.id"
+      },
+      {
+       "category": "title",
+       "column": "budget_impact_budget_modification_transfer_from_name",
+       "rel": "budget_impact.budget_modification.transfer_from.name"
+      },
+      {
+       "category": "identity",
+       "column": "budget_impact_budget_modification_transfer_to_id",
+       "rel": "budget_impact.budget_modification.transfer_to.id"
+      },
+      {
+       "category": "title",
+       "column": "budget_impact_budget_modification_transfer_to_name",
+       "rel": "budget_impact.budget_modification.transfer_to.name"
+      },
+      {
+       "category": "money",
        "column": "budget_impact_source_of_latest_budget_impact",
        "rel": "budget_impact.source_of_latest_budget_impact"
       },
@@ -1361,6 +1396,60 @@
      "dest": "column:$.change_items",
      "path": "$.change_items[].budget_impact.budget_modification",
      "type": "null"
+    },
+    {
+     "category": "money",
+     "dest": "column:$.change_items",
+     "path": "$.change_items[].budget_impact.budget_modification.amount",
+     "type": "string"
+    },
+    {
+     "category": "identity",
+     "dest": "column:$.change_items",
+     "path": "$.change_items[].budget_impact.budget_modification.budget_modification_id",
+     "type": "integer"
+    },
+    {
+     "category": "title",
+     "dest": "column:$.change_items",
+     "path": "$.change_items[].budget_impact.budget_modification.notes",
+     "type": "string"
+    },
+    {
+     "category": "other",
+     "dest": "structural",
+     "path": "$.change_items[].budget_impact.budget_modification.transfer_from",
+     "type": "object"
+    },
+    {
+     "category": "identity",
+     "dest": "column:$.change_items",
+     "path": "$.change_items[].budget_impact.budget_modification.transfer_from.id",
+     "type": "integer"
+    },
+    {
+     "category": "title",
+     "dest": "column:$.change_items",
+     "path": "$.change_items[].budget_impact.budget_modification.transfer_from.name",
+     "type": "string"
+    },
+    {
+     "category": "other",
+     "dest": "structural",
+     "path": "$.change_items[].budget_impact.budget_modification.transfer_to",
+     "type": "object"
+    },
+    {
+     "category": "identity",
+     "dest": "column:$.change_items",
+     "path": "$.change_items[].budget_impact.budget_modification.transfer_to.id",
+     "type": "integer"
+    },
+    {
+     "category": "title",
+     "dest": "column:$.change_items",
+     "path": "$.change_items[].budget_impact.budget_modification.transfer_to.name",
+     "type": "string"
     },
     {
      "category": "money",
