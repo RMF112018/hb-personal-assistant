@@ -14,7 +14,7 @@ from .connection import get_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 54
+LATEST_SCHEMA_VERSION = 57
 
 
 class SQLiteMigrator:
@@ -6137,6 +6137,188 @@ class SQLiteMigrator:
         "CREATE INDEX IF NOT EXISTS ix_daily_brief_change_event_refs_event ON daily_brief_change_event_refs(change_event_id);",
     ]
 
+    # v55 Procore Budget Detail Rows endpoint-specific forecasting read model.
+    # Additive only. These tables intentionally mirror the existing procore_ep_budget_*
+    # metadata/hash/timestamp/guard conventions while adding queryable common amount
+    # fields and normalized dynamic cell values for tenant/view-specific columns.
+    V55_STATEMENTS: list[str] = [
+        """
+        CREATE TABLE IF NOT EXISTS procore_ep_budget_detail_rows (
+          record_key TEXT PRIMARY KEY,
+          raw_payload_id TEXT,
+          endpoint_key TEXT NOT NULL,
+          endpoint_family TEXT,
+          project_key TEXT,
+          project_id TEXT,
+          project_id_hash TEXT,
+          company_id TEXT,
+          company_id_hash TEXT,
+          record_id TEXT NOT NULL,
+          record_id_hash TEXT,
+          parent_record_id TEXT,
+          parent_record_id_hash TEXT,
+          budget_view_id TEXT,
+          budget_row_id TEXT,
+          row_id TEXT,
+          wbs_code_id TEXT,
+          wbs_flat_code TEXT,
+          budget_code TEXT,
+          canonical_budget_code_key TEXT,
+          cost_code_id TEXT,
+          cost_code TEXT,
+          cost_type_id TEXT,
+          cost_type TEXT,
+          line_item_type_id TEXT,
+          description TEXT,
+          original_budget_amount TEXT,
+          revised_budget TEXT,
+          approved_change_orders TEXT,
+          pending_budget_changes TEXT,
+          projected_budget TEXT,
+          committed_costs TEXT,
+          direct_costs TEXT,
+          actual_cost TEXT,
+          projected_costs TEXT,
+          forecast_to_complete TEXT,
+          estimated_cost_at_completion TEXT,
+          projected_over_under TEXT,
+          erp_job_to_date_costs TEXT,
+          payload_sidecar_json TEXT,
+          payload_hash TEXT,
+          source_quality TEXT NOT NULL,
+          payload_seen_first_utc TEXT,
+          payload_seen_last_utc TEXT,
+          is_current INTEGER NOT NULL DEFAULT 1 CHECK(is_current IN (0, 1)),
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0),
+          raw_payload_emitted_to_read_model INTEGER NOT NULL DEFAULT 0 CHECK(raw_payload_emitted_to_read_model = 0),
+          raw_payload_emitted_to_evidence INTEGER NOT NULL DEFAULT 0 CHECK(raw_payload_emitted_to_evidence = 0),
+          FOREIGN KEY(raw_payload_id) REFERENCES procore_endpoint_raw_payloads(raw_payload_id)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS procore_ep_budget_detail_row_cells (
+          cell_key TEXT PRIMARY KEY,
+          record_key TEXT NOT NULL,
+          raw_payload_id TEXT,
+          endpoint_key TEXT NOT NULL,
+          endpoint_family TEXT,
+          project_key TEXT,
+          project_id TEXT,
+          project_id_hash TEXT,
+          company_id TEXT,
+          company_id_hash TEXT,
+          budget_view_id TEXT,
+          budget_row_id TEXT,
+          row_id TEXT,
+          column_id TEXT,
+          column_key TEXT,
+          column_name TEXT,
+          column_label TEXT,
+          field_path TEXT,
+          value_text TEXT,
+          value_decimal_text TEXT,
+          currency_iso_code TEXT,
+          value_json TEXT,
+          payload_hash TEXT,
+          source_quality TEXT NOT NULL,
+          is_current INTEGER NOT NULL DEFAULT 1 CHECK(is_current IN (0, 1)),
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0),
+          raw_payload_emitted_to_read_model INTEGER NOT NULL DEFAULT 0 CHECK(raw_payload_emitted_to_read_model = 0),
+          raw_payload_emitted_to_evidence INTEGER NOT NULL DEFAULT 0 CHECK(raw_payload_emitted_to_evidence = 0),
+          FOREIGN KEY(record_key) REFERENCES procore_ep_budget_detail_rows(record_key),
+          FOREIGN KEY(raw_payload_id) REFERENCES procore_endpoint_raw_payloads(raw_payload_id)
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS procore_ep_budget_detail_columns (
+          record_key TEXT PRIMARY KEY,
+          raw_payload_id TEXT,
+          endpoint_key TEXT NOT NULL,
+          endpoint_family TEXT,
+          project_key TEXT,
+          project_id TEXT,
+          project_id_hash TEXT,
+          company_id TEXT,
+          company_id_hash TEXT,
+          record_id TEXT NOT NULL,
+          record_id_hash TEXT,
+          parent_record_id TEXT,
+          parent_record_id_hash TEXT,
+          budget_view_id TEXT,
+          column_id TEXT,
+          column_key TEXT,
+          name TEXT,
+          label TEXT,
+          data_type TEXT,
+          field_path TEXT,
+          position TEXT,
+          visible TEXT,
+          payload_sidecar_json TEXT,
+          payload_hash TEXT,
+          source_quality TEXT NOT NULL,
+          payload_seen_first_utc TEXT,
+          payload_seen_last_utc TEXT,
+          is_current INTEGER NOT NULL DEFAULT 1 CHECK(is_current IN (0, 1)),
+          created_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_utc TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0),
+          raw_payload_emitted_to_read_model INTEGER NOT NULL DEFAULT 0 CHECK(raw_payload_emitted_to_read_model = 0),
+          raw_payload_emitted_to_evidence INTEGER NOT NULL DEFAULT 0 CHECK(raw_payload_emitted_to_evidence = 0),
+          FOREIGN KEY(raw_payload_id) REFERENCES procore_endpoint_raw_payloads(raw_payload_id)
+        );
+        """,
+        "CREATE INDEX IF NOT EXISTS idx_procore_ep_budget_detail_rows_project_key ON procore_ep_budget_detail_rows(project_key);",
+        "CREATE INDEX IF NOT EXISTS idx_procore_ep_budget_detail_rows_endpoint_key ON procore_ep_budget_detail_rows(endpoint_key);",
+        "CREATE INDEX IF NOT EXISTS idx_procore_ep_budget_detail_rows_raw_payload_id ON procore_ep_budget_detail_rows(raw_payload_id);",
+        "CREATE INDEX IF NOT EXISTS idx_procore_ep_budget_detail_rows_record_id ON procore_ep_budget_detail_rows(record_id);",
+        "CREATE INDEX IF NOT EXISTS idx_procore_ep_budget_detail_rows_parent_record_id ON procore_ep_budget_detail_rows(parent_record_id);",
+        "CREATE INDEX IF NOT EXISTS idx_procore_ep_budget_detail_rows_budget_view_id ON procore_ep_budget_detail_rows(budget_view_id);",
+        "CREATE INDEX IF NOT EXISTS idx_procore_ep_budget_detail_rows_wbs_flat_code ON procore_ep_budget_detail_rows(wbs_flat_code);",
+        "CREATE INDEX IF NOT EXISTS idx_procore_ep_budget_detail_rows_canonical_key ON procore_ep_budget_detail_rows(canonical_budget_code_key);",
+        "CREATE INDEX IF NOT EXISTS idx_procore_ep_budget_detail_rows_cost_code_id ON procore_ep_budget_detail_rows(cost_code_id);",
+        "CREATE INDEX IF NOT EXISTS idx_procore_ep_budget_detail_rows_current_quality ON procore_ep_budget_detail_rows(is_current, source_quality);",
+        "CREATE INDEX IF NOT EXISTS idx_procore_ep_budget_detail_row_cells_record_key ON procore_ep_budget_detail_row_cells(record_key);",
+        "CREATE INDEX IF NOT EXISTS idx_procore_ep_budget_detail_row_cells_project_key ON procore_ep_budget_detail_row_cells(project_key);",
+        "CREATE INDEX IF NOT EXISTS idx_procore_ep_budget_detail_row_cells_budget_view_id ON procore_ep_budget_detail_row_cells(budget_view_id);",
+        "CREATE INDEX IF NOT EXISTS idx_procore_ep_budget_detail_row_cells_column_name ON procore_ep_budget_detail_row_cells(column_name);",
+        "CREATE INDEX IF NOT EXISTS idx_procore_ep_budget_detail_row_cells_field_path ON procore_ep_budget_detail_row_cells(field_path);",
+        "CREATE INDEX IF NOT EXISTS idx_procore_ep_budget_detail_row_cells_current_quality ON procore_ep_budget_detail_row_cells(is_current, source_quality);",
+        "CREATE INDEX IF NOT EXISTS idx_procore_ep_budget_detail_columns_project_key ON procore_ep_budget_detail_columns(project_key);",
+        "CREATE INDEX IF NOT EXISTS idx_procore_ep_budget_detail_columns_endpoint_key ON procore_ep_budget_detail_columns(endpoint_key);",
+        "CREATE INDEX IF NOT EXISTS idx_procore_ep_budget_detail_columns_raw_payload_id ON procore_ep_budget_detail_columns(raw_payload_id);",
+        "CREATE INDEX IF NOT EXISTS idx_procore_ep_budget_detail_columns_record_id ON procore_ep_budget_detail_columns(record_id);",
+        "CREATE INDEX IF NOT EXISTS idx_procore_ep_budget_detail_columns_parent_record_id ON procore_ep_budget_detail_columns(parent_record_id);",
+        "CREATE INDEX IF NOT EXISTS idx_procore_ep_budget_detail_columns_budget_view_id ON procore_ep_budget_detail_columns(budget_view_id);",
+        "CREATE INDEX IF NOT EXISTS idx_procore_ep_budget_detail_columns_name ON procore_ep_budget_detail_columns(name);",
+        "CREATE INDEX IF NOT EXISTS idx_procore_ep_budget_detail_columns_field_path ON procore_ep_budget_detail_columns(field_path);",
+        "CREATE INDEX IF NOT EXISTS idx_procore_ep_budget_detail_columns_current_quality ON procore_ep_budget_detail_columns(is_current, source_quality);",
+    ]
+
+    # v56 Add explicit ERP-direct and JTD amount columns for Budget Detail Rows.
+    # Values are promoted only from deterministic numeric payload/cell values by
+    # the read-model projector; raw dynamic cells remain preserved separately.
+    V56_STATEMENTS: list[str] = [
+        "ALTER TABLE procore_ep_budget_detail_rows ADD COLUMN erp_direct_costs TEXT;",
+        "ALTER TABLE procore_ep_budget_detail_rows ADD COLUMN job_to_date_costs TEXT;",
+    ]
+
+    # v57 Add newly observed Change Event budget-modification impact fields.
+    # Projection tables store raw projected payload scalars as nullable TEXT,
+    # including neighboring amount fields in procore_ep_change_events_change_items.
+    V57_STATEMENTS: list[str] = [
+        "ALTER TABLE procore_ep_change_events_change_items ADD COLUMN budget_impact_budget_modification_amount TEXT;",
+        "ALTER TABLE procore_ep_change_events_change_items ADD COLUMN budget_impact_budget_modification_budget_modification_id TEXT;",
+        "ALTER TABLE procore_ep_change_events_change_items ADD COLUMN budget_impact_budget_modification_notes TEXT;",
+        "ALTER TABLE procore_ep_change_events_change_items ADD COLUMN budget_impact_budget_modification_transfer_from_id TEXT;",
+        "ALTER TABLE procore_ep_change_events_change_items ADD COLUMN budget_impact_budget_modification_transfer_from_name TEXT;",
+        "ALTER TABLE procore_ep_change_events_change_items ADD COLUMN budget_impact_budget_modification_transfer_to_id TEXT;",
+        "ALTER TABLE procore_ep_change_events_change_items ADD COLUMN budget_impact_budget_modification_transfer_to_name TEXT;",
+    ]
+
     # v44 Phase 10 Graph drive-item modified-by raw operational metadata.
     # Additive ADD COLUMN only on construction_drive_items; raw identity JSON is
     # local SQLite operational metadata and must not be emitted in committed evidence.
@@ -7136,6 +7318,51 @@ class SQLiteMigrator:
             if cur.fetchone() is None:
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (54, 'v54_phase_10_daily_brief_new_today_change_events', ?)",
+                    (now,),
+                )
+
+            # v55 Procore Budget Detail Rows endpoint-specific forecasting read model.
+            # Additive, local-only, and body-free outside SQLite raw landing.
+            for stmt in self.V55_STATEMENTS:
+                conn.execute(stmt)
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 55")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (55, 'v55_procore_budget_detail_rows_read_model', ?)",
+                    (now,),
+                )
+
+            # v56 Procore Budget Detail Rows dynamic-cell amount promotion columns.
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 56")
+            if cur.fetchone() is None:
+                existing_cols = {
+                    row[1]
+                    for row in conn.execute("PRAGMA table_info(procore_ep_budget_detail_rows)")
+                }
+                for stmt in self.V56_STATEMENTS:
+                    column_name = stmt.split(" ADD COLUMN ", 1)[1].split()[0]
+                    if column_name not in existing_cols:
+                        conn.execute(stmt)
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (56, 'v56_procore_budget_detail_row_amount_columns', ?)",
+                    (now,),
+                )
+
+            # v57 Procore Change Event budget-modification projection columns.
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 57")
+            if cur.fetchone() is None:
+                existing_cols = {
+                    row[1]
+                    for row in conn.execute(
+                        "PRAGMA table_info(procore_ep_change_events_change_items)"
+                    )
+                }
+                for stmt in self.V57_STATEMENTS:
+                    column_name = stmt.split(" ADD COLUMN ", 1)[1].split()[0]
+                    if column_name not in existing_cols:
+                        conn.execute(stmt)
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (57, 'v57_procore_change_event_budget_modification_columns', ?)",
                     (now,),
                 )
 

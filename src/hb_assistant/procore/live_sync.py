@@ -792,11 +792,6 @@ def run_live_sync(
         sleep_fn(delay)
         return True
 
-    # Ensure V6 schema is present before any count/upsert path runs.
-    from hb_assistant.store.migrator import SQLiteMigrator
-
-    SQLiteMigrator(db_path=str(db_path) if db_path is not None else None).apply()
-
     # 1. Resolve adapter (canonical id or legacy alias)
     adapter = get_adapter(endpoint)
     endpoint_id_resolved = adapter.endpoint_id if adapter else None
@@ -959,6 +954,11 @@ def run_live_sync(
     # Record sync-run start row only for apply mode (smoke mode does no DB writes).
     will_write_db = (mode == "live_apply") and apply and sqlite_only
     if will_write_db:
+        # Apply schema only on the local-write path. Dry-run/live-read mode must
+        # perform zero SQLite writes.
+        from hb_assistant.store.migrator import SQLiteMigrator
+
+        SQLiteMigrator(db_path=str(db_path) if db_path is not None else None).apply()
         record_sync_run_start(
             sync_run_id=sync_run_id,
             endpoint_id=adapter.endpoint_id,
@@ -1379,7 +1379,7 @@ def run_live_sync(
                 child_skipped_count += 1
                 child_incompatible_parent_skipped_count += 1
                 continue
-            if not _should_fetch_child_records(
+            if will_write_db and not _should_fetch_child_records(
                 project_key=project_key,
                 child_endpoint_id=adapter.endpoint_id,
                 parent_id=str(parent_id),
@@ -1957,10 +1957,14 @@ def run_live_sync(
             db_path=db_path,
         )
 
-    sqlite_total = count_procore_live_records(
-        project_key=project_key,
-        endpoint_id=adapter.endpoint_id,
-        db_path=db_path,
+    sqlite_total = (
+        count_procore_live_records(
+            project_key=project_key,
+            endpoint_id=adapter.endpoint_id,
+            db_path=db_path,
+        )
+        if will_write_db
+        else 0
     )
 
     # Count guarded enrichment/projection failures (each entry names a

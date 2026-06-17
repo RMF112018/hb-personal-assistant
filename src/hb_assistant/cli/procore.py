@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import sqlite3
 import sys
 from contextlib import suppress
 from datetime import datetime, timezone
@@ -1398,6 +1399,429 @@ def live_sync(
     else:
         exit_code = 3
     _emit(payload, json_out=json_out, exit_code=exit_code)
+
+
+def _budget_detail_configured_view_ids(project_key: str) -> list[str]:
+    """Best-effort project-config budget-view selection.
+
+    The current Tropical config has no such field; this supports future explicit
+    config without making the command depend on a new schema.
+    """
+    cfg_path = (
+        Path("subrepos")
+        / "construction-financial-review"
+        / "config"
+        / "projects"
+        / f"{project_key}.json"
+    )
+    if not cfg_path.exists():
+        return []
+    try:
+        cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return []
+    candidates: list[Any] = []
+    for container_key in ("procore", "budget_details", "forecast_intelligence"):
+        container = cfg.get(container_key)
+        if isinstance(container, dict):
+            candidates.extend(
+                [
+                    container.get("budget_view_id"),
+                    container.get("budget_detail_budget_view_id"),
+                    container.get("budget_view_ids"),
+                    container.get("budget_detail_budget_view_ids"),
+                ]
+            )
+    candidates.extend(
+        [
+            cfg.get("budget_view_id"),
+            cfg.get("budget_detail_budget_view_id"),
+            cfg.get("budget_view_ids"),
+            cfg.get("budget_detail_budget_view_ids"),
+        ]
+    )
+    out: list[str] = []
+    for value in candidates:
+        if isinstance(value, list):
+            out.extend(str(item) for item in value if item not in (None, ""))
+        elif value not in (None, ""):
+            out.append(str(value))
+    return sorted(set(out))
+
+
+def _budget_detail_db_path(db: Optional[str]) -> Optional[Path]:
+    return Path(db).expanduser() if db else None
+
+
+def _live_budget_view_ids(db_path: Optional[Path], project_key: str) -> list[str]:
+    from hb_assistant.store.connection import open_connection
+
+    with open_connection(db_path) as conn:
+        rows = conn.execute(
+            """
+            SELECT DISTINCT record_id
+            FROM procore_endpoint_raw_payloads
+            WHERE endpoint_key = 'budget-views'
+              AND project_key = ?
+              AND source_quality = 'live_full_payload'
+              AND raw_procore_payload_persisted = 1
+            ORDER BY record_id
+            """,
+            (project_key,),
+        ).fetchall()
+    return [str(row[0]) for row in rows if row[0] not in (None, "")]
+
+
+def _budget_detail_raw_counts(db_path: Optional[Path], project_key: str) -> dict[str, int]:
+    from hb_assistant.store.connection import open_connection
+
+    with open_connection(db_path) as conn:
+        rows = conn.execute(
+            """
+            SELECT endpoint_key, COUNT(*)
+            FROM procore_endpoint_raw_payloads
+            WHERE project_key = ?
+              AND endpoint_key IN ('budget-views', 'budget-detail-columns', 'budget-detail-rows')
+              AND source_quality = 'live_full_payload'
+              AND raw_procore_payload_persisted = 1
+            GROUP BY endpoint_key
+            """,
+            (project_key,),
+        ).fetchall()
+    return {str(row[0]): int(row[1]) for row in rows}
+
+
+def _budget_detail_structured_counts(db_path: Optional[Path], project_key: str) -> dict[str, int]:
+    from hb_assistant.store.connection import open_connection
+
+    tables = (
+        "procore_ep_budget_detail_columns",
+        "procore_ep_budget_detail_rows",
+        "procore_ep_budget_detail_row_cells",
+    )
+    out: dict[str, int] = {}
+    with open_connection(db_path) as conn:
+        for table in tables:
+            try:
+                row = conn.execute(
+                    f"SELECT COUNT(*) FROM {table} WHERE project_key = ?", (project_key,)
+                ).fetchone()
+                out[table] = int(row[0]) if row else 0
+            except sqlite3.Error:
+                out[table] = 0
+    return out
+
+
+def _pagination_exhausted(receipt: dict[str, Any]) -> bool:
+    if receipt.get("state") != "success":
+        return False
+    n1 = receipt.get("n1_fanout") or {}
+    return not bool(n1.get("cap_reached")) and not bool(n1.get("rate_limit_stopped"))
+
+
+@live_app.command("seed-budget-details")
+def live_seed_budget_details(
+    project: str = typer.Option(..., "--project", help="Mapped pilot project key."),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Perform live GET planning with zero SQLite writes."),
+    apply_local_db: bool = typer.Option(False, "--apply-local-db", help="Persist fresh live payloads and read models to local SQLite."),
+    read_only_procore: bool = typer.Option(False, "--read-only-procore", help="Required acknowledgement: Procore access is GET-only."),
+    no_procore_writeback: bool = typer.Option(False, "--no-procore-writeback", help="Required acknowledgement: no Procore mutation/writeback."),
+    confirm_live_get: bool = typer.Option(False, "--confirm-live-get", help="Required for apply; dry-run treats --dry-run + read-only flags as explicit live-read intent."),
+    db: Optional[str] = typer.Option(None, "--db", help="Explicit SQLite DB path."),
+    max_pages: int = typer.Option(1000, "--max-pages", min=1),
+    max_items: int = typer.Option(100000, "--max-items", min=1),
+    wait_on_rate_limit: bool = typer.Option(False, "--wait-on-rate-limit"),
+    json_out: bool = typer.Option(True, "--json/--no-json"),
+) -> None:
+    """Seed Tropical Budget Detail Rows through GET-only Procore reads + local DB projection."""
+    from hb_assistant.procore.budget_detail_read_model import (
+        TARGET_CODE,
+        project_budget_detail_read_model,
+        target_code_summary,
+    )
+    from hb_assistant.procore.live_sync import run_live_sync
+    from hb_assistant.store.migrator import SQLiteMigrator
+
+    if apply_local_db and dry_run:
+        _emit(
+            {
+                "command": "hb-assistant procore live seed-budget-details",
+                "ok": False,
+                "status": "blocked_invalid_mode",
+                "reason": "--dry-run and --apply-local-db are mutually exclusive",
+                "live_procore_get_performed": False,
+                "local_db_write_performed": False,
+                "external_writeback_performed": 0,
+            },
+            json_out=json_out,
+            exit_code=2,
+        )
+        return
+    if not dry_run and not apply_local_db:
+        dry_run = True
+    if not read_only_procore or not no_procore_writeback:
+        _emit(
+            {
+                "command": "hb-assistant procore live seed-budget-details",
+                "ok": False,
+                "status": "blocked_missing_guardrail_ack",
+                "reason": "--read-only-procore and --no-procore-writeback are required",
+                "live_procore_get_performed": False,
+                "local_db_write_performed": False,
+                "external_writeback_performed": 0,
+            },
+            json_out=json_out,
+            exit_code=2,
+        )
+        return
+    if apply_local_db and not confirm_live_get:
+        _emit(
+            {
+                "command": "hb-assistant procore live seed-budget-details",
+                "ok": False,
+                "status": "blocked_confirm_live_get_required",
+                "reason": "--apply-local-db requires --confirm-live-get",
+                "live_procore_get_performed": False,
+                "local_db_write_performed": False,
+                "external_writeback_performed": 0,
+            },
+            json_out=json_out,
+            exit_code=2,
+        )
+        return
+
+    db_path = _budget_detail_db_path(db)
+    do_apply = apply_local_db and not dry_run
+    effective_confirm = confirm_live_get or dry_run
+    mode_hint = "live_apply" if do_apply else "live_dry_run"
+    configured_view_ids = _budget_detail_configured_view_ids(project)
+    receipts: list[dict[str, Any]] = []
+
+    if do_apply:
+        SQLiteMigrator(db_path=str(db_path) if db_path is not None else None).apply()
+
+    view_receipt = run_live_sync(
+        project_key=project,
+        endpoint="budget-views",
+        apply=do_apply,
+        sqlite_only=True,
+        confirm_live_get=effective_confirm,
+        max_pages=max_pages,
+        max_items=max_items,
+        wait_on_rate_limit=wait_on_rate_limit,
+        parent_id=None,
+        mode_hint=mode_hint,
+        db_path=db_path,
+        evidence_path="docs/evidence/procore_budget_detail_rows_read_model/live-seed-receipt.json",
+    )
+    receipts.append(view_receipt)
+    if view_receipt.get("state") != "success":
+        payload = {
+            "command": "hb-assistant procore live seed-budget-details",
+            "ok": False,
+            "status": "fail_closed_budget_views",
+            "project_key": project,
+            "live_procore_get_performed": not bool(view_receipt.get("no_live_call_performed")),
+            "local_db_write_performed": do_apply,
+            "external_writeback_performed": 0,
+            "endpoint_receipts": receipts,
+        }
+        _emit(payload, json_out=json_out, exit_code=3)
+        return
+
+    if do_apply:
+        available_view_ids = _live_budget_view_ids(db_path, project)
+        if configured_view_ids:
+            selected_view_ids = [vid for vid in configured_view_ids if vid in available_view_ids]
+            selection_mode = "configured_budget_view"
+            if not selected_view_ids:
+                _emit(
+                    {
+                        "command": "hb-assistant procore live seed-budget-details",
+                        "ok": False,
+                        "status": "fail_closed_configured_budget_view_not_returned",
+                        "project_key": project,
+                        "configured_budget_view_ids": configured_view_ids,
+                        "available_budget_view_ids": available_view_ids,
+                        "live_procore_get_performed": True,
+                        "local_db_write_performed": do_apply,
+                        "external_writeback_performed": 0,
+                    },
+                    json_out=json_out,
+                    exit_code=3,
+                )
+                return
+        else:
+            selected_view_ids = available_view_ids
+            selection_mode = "all_views_no_configured_view"
+        if not selected_view_ids:
+            _emit(
+                {
+                    "command": "hb-assistant procore live seed-budget-details",
+                    "ok": False,
+                    "status": "fail_closed_no_budget_views",
+                    "project_key": project,
+                    "budget_view_selection_mode": selection_mode,
+                    "live_procore_get_performed": True,
+                    "local_db_write_performed": do_apply,
+                    "external_writeback_performed": 0,
+                },
+                json_out=json_out,
+                exit_code=3,
+            )
+            return
+    else:
+        selected_view_ids = configured_view_ids
+        selection_mode = "configured_budget_view" if configured_view_ids else "dry_run_all_views_ids_not_persisted"
+
+    child_parent_ids = selected_view_ids if selected_view_ids else [None]
+    for endpoint in ("budget-detail-columns", "budget-detail-rows"):
+        for view_id in child_parent_ids:
+            receipt = run_live_sync(
+                project_key=project,
+                endpoint=endpoint,
+                apply=do_apply,
+                sqlite_only=True,
+                confirm_live_get=effective_confirm,
+                max_pages=max_pages,
+                max_items=max_items,
+                wait_on_rate_limit=wait_on_rate_limit,
+                parent_id=view_id,
+                mode_hint=mode_hint,
+                db_path=db_path,
+                evidence_path="docs/evidence/procore_budget_detail_rows_read_model/live-seed-receipt.json",
+            )
+            receipts.append(receipt)
+            if receipt.get("state") != "success":
+                _emit(
+                    {
+                        "command": "hb-assistant procore live seed-budget-details",
+                        "ok": False,
+                        "status": f"fail_closed_{endpoint}",
+                        "project_key": project,
+                        "budget_view_selection_mode": selection_mode,
+                        "selected_budget_view_ids": selected_view_ids,
+                        "live_procore_get_performed": any(
+                            not bool(r.get("no_live_call_performed")) for r in receipts
+                        ),
+                        "local_db_write_performed": do_apply,
+                        "external_writeback_performed": 0,
+                        "endpoint_receipts": receipts,
+                    },
+                    json_out=json_out,
+                    exit_code=3,
+                )
+                return
+
+    projection_receipt: dict[str, Any] = {
+        "mode": "dry_run",
+        "local_db_write_performed": False,
+        "external_writeback_performed": 0,
+    }
+    target_summary: dict[str, Any] = {
+        "target_code": TARGET_CODE,
+        "queryable": False,
+        "budget_view_ids": [],
+    }
+    raw_counts: dict[str, int] = {}
+    structured_counts: dict[str, int] = {}
+    if do_apply:
+        projection_receipt = project_budget_detail_read_model(
+            db_path=db_path,
+            project_key=project,
+            budget_view_ids=selected_view_ids,
+            require_live_full=True,
+            apply=True,
+        )
+        raw_counts = _budget_detail_raw_counts(db_path, project)
+        structured_counts = _budget_detail_structured_counts(db_path, project)
+        target_summary = target_code_summary(db_path=db_path, project_key=project, target_code=TARGET_CODE)
+        if not target_summary.get("queryable"):
+            _emit(
+                {
+                    "command": "hb-assistant procore live seed-budget-details",
+                    "ok": False,
+                    "status": "fail_closed_target_code_missing_after_seed",
+                    "project_key": project,
+                    "target_code": TARGET_CODE,
+                    "budget_view_selection_mode": selection_mode,
+                    "selected_budget_view_ids": selected_view_ids,
+                    "budget_view_ids_containing_target_code": [],
+                    "live_procore_get_performed": True,
+                    "local_db_write_performed": do_apply,
+                    "external_writeback_performed": 0,
+                    "projection_receipt": projection_receipt,
+                    "raw_counts": raw_counts,
+                    "structured_counts": structured_counts,
+                },
+                json_out=json_out,
+                exit_code=3,
+            )
+            return
+
+    pagination = {
+        "budget-views": _pagination_exhausted(view_receipt),
+        "budget-detail-columns": all(
+            _pagination_exhausted(r) for r in receipts if r.get("endpoint_id") == "budget-detail-columns"
+        ),
+        "budget-detail-rows": all(
+            _pagination_exhausted(r) for r in receipts if r.get("endpoint_id") == "budget-detail-rows"
+        ),
+    }
+    ok = all(r.get("state") == "success" for r in receipts) and all(pagination.values()) and (
+        not do_apply or bool(target_summary.get("queryable"))
+    )
+    payload = {
+        "command": "hb-assistant procore live seed-budget-details",
+        "ok": ok,
+        "status": "success" if ok else "fail_closed_pagination_not_exhausted",
+        "project_key": project,
+        "procore_project_id": view_receipt.get("procore_project_id"),
+        "source_quality": "live_full_payload" if do_apply else "not_persisted_dry_run",
+        "redaction_status": "full_business_payload" if do_apply else "not_persisted_dry_run",
+        "security_scrub_status": "transport_secrets_removed" if do_apply else "not_persisted_dry_run",
+        "budget_view_selection_mode": selection_mode,
+        "selected_budget_view_ids": selected_view_ids,
+        "budget_view_ids_containing_target_code": target_summary.get("budget_view_ids", []),
+        "pagination_exhausted": pagination,
+        "live_procore_get_performed": any(
+            not bool(r.get("no_live_call_performed")) for r in receipts
+        ),
+        "local_db_write_performed": do_apply,
+        "external_writeback_performed": 0,
+        "endpoint_keys_called": ["budget-views", "budget-detail-columns", "budget-detail-rows"],
+        "live_procore_calls_count": sum(int(r.get("request_count") or 0) for r in receipts),
+        "budget_view_count": len(selected_view_ids),
+        "budget_detail_column_count": sum(
+            int(r.get("retrieved_count") or 0)
+            for r in receipts
+            if r.get("endpoint_id") == "budget-detail-columns"
+        ),
+        "budget_detail_row_count": sum(
+            int(r.get("retrieved_count") or 0)
+            for r in receipts
+            if r.get("endpoint_id") == "budget-detail-rows"
+        ),
+        "raw_landing_rows_written": sum(int(r.get("raw_payload_rows_written") or 0) for r in receipts),
+        "legacy_replay_used": False,
+        "projection_receipt": projection_receipt,
+        "raw_counts": raw_counts,
+        "structured_counts": structured_counts,
+        "target_code_summary": target_summary,
+        "raw_payload_body_emitted": False,
+        "endpoint_receipt_summary": [
+            {
+                "endpoint_id": r.get("endpoint_id"),
+                "state": r.get("state"),
+                "request_count": r.get("request_count"),
+                "retrieved_count": r.get("retrieved_count"),
+                "raw_payload_rows_written": r.get("raw_payload_rows_written"),
+                "n1_fanout": r.get("n1_fanout"),
+            }
+            for r in receipts
+        ],
+    }
+    _emit(payload, json_out=json_out, exit_code=0 if payload["ok"] else 3)
 
 
 _LIVE_INSPECT_OUTPUT_DIR_OPTION = typer.Option(
