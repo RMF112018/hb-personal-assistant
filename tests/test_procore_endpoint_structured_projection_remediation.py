@@ -76,6 +76,64 @@ _CHANGE_EVENT: dict[str, Any] = {
 }
 
 
+def _change_event_with_budget_modification() -> dict[str, Any]:
+    return {
+        "id": 7002,
+        "number": "CE-7002",
+        "company_id": 42,
+        "project_id": 99,
+        "status": {"id": 1, "name": "Open", "mapped_to_status": "open"},
+        "change_reason": {"id": 2, "change_reason": "Owner Request"},
+        "change_type": {"id": 3, "name": "Budget Transfer", "abbreviation": "BT"},
+        "scope": "in_scope",
+        "title": "Budget transfer",
+        "description": "Transfer budget impact",
+        "created_at": "2026-01-02T00:00:00Z",
+        "updated_at": "2026-01-03T00:00:00Z",
+        "currency_configuration": {"currency_iso_code": "USD"},
+        "custom_fields": {},
+        "change_items": [
+            {
+                "id": 1,
+                "event_id": 7002,
+                "event_number": "CE-7002",
+                "event_title": "Budget transfer",
+                "item_type": "change_event_line_item",
+                "description": "Budget modification line",
+                "created_at": "2026-01-02T00:00:00Z",
+                "updated_at": "2026-01-03T00:00:00Z",
+                "budget_code": {
+                    "id": 555,
+                    "flat_code": "03-100",
+                    "description": "Concrete",
+                    "segment_items": [
+                        {
+                            "id": 11,
+                            "name": "Concrete",
+                            "code": "03",
+                            "path_ids": [11],
+                            "path_codes": ["03"],
+                            "segment": {"id": 4, "name": "Cost Code", "type": "cost_code"},
+                        }
+                    ],
+                },
+                "budget_impact": {
+                    "budget_change": None,
+                    "budget_modification": {
+                        "amount": "2500.00",
+                        "budget_modification_id": 99001,
+                        "notes": "Transfer budget to material line",
+                        "transfer_from": {"id": 301, "name": "Contingency"},
+                        "transfer_to": {"id": 302, "name": "Materials"},
+                    },
+                    "source_of_latest_budget_impact": "budget_modification",
+                    "source_of_stage": "approved",
+                },
+            }
+        ],
+    }
+
+
 def _inventory(payload: dict[str, Any]) -> dict[str, dict[str, list[str]]]:
     paths: dict[str, set[str]] = {}
     for path, typ in pp.iter_path_types(payload):
@@ -139,7 +197,7 @@ def _project(
 
 
 def test_v47_schema_head_and_tables_present(tmp_path: Path) -> None:
-    assert LATEST_SCHEMA_VERSION == 49  # V47 tables + V48 reconciliation + V49 email/calendar
+    assert LATEST_SCHEMA_VERSION >= 49  # V47 tables + V48 reconciliation + later additive heads
     db = tmp_path / "fresh.sqlite"
     assert SQLiteMigrator(db_path=str(db)).apply() == LATEST_SCHEMA_VERSION
     conn = sqlite3.connect(db)
@@ -182,6 +240,50 @@ def test_committed_registry_loads_and_is_complete() -> None:
     # DDL builds and is non-trivial.
     ddl = registry.build_v47_ddl()
     assert sum(1 for s in ddl if s.startswith("CREATE TABLE")) == len(tables)
+
+
+def test_committed_change_events_budget_modification_paths_project(
+    tmp_path: Path,
+) -> None:
+    payload = _change_event_with_budget_modification()
+    db = _db(tmp_path)
+    plan = registry.plan_for(ENDPOINT)
+    assert plan is not None
+
+    receipt = _project(db, payload, source_quality=SOURCE_QUALITY_LIVE_FULL)
+    assert receipt["ok"] is True
+    assert receipt["endpoint_specific_projection_status"] == "ok"
+
+    ci_table = next(c.table for c in plan.child_tables if c.array_path == "$.change_items")
+    conn = sqlite3.connect(db)
+    conn.row_factory = sqlite3.Row
+    crow = conn.execute(f"SELECT * FROM {ci_table} WHERE item_id = '1'").fetchone()
+    conn.close()
+
+    assert crow["budget_impact_budget_modification_amount"] == "2500.00"
+    assert crow["budget_impact_budget_modification_budget_modification_id"] == "99001"
+    assert crow["budget_impact_budget_modification_notes"] == "Transfer budget to material line"
+    assert crow["budget_impact_budget_modification_transfer_from_id"] == "301"
+    assert crow["budget_impact_budget_modification_transfer_from_name"] == "Contingency"
+    assert crow["budget_impact_budget_modification_transfer_to_id"] == "302"
+    assert crow["budget_impact_budget_modification_transfer_to_name"] == "Materials"
+
+
+def test_committed_change_events_budget_modification_audit_clean(tmp_path: Path) -> None:
+    payload = _change_event_with_budget_modification()
+    db = _db(tmp_path)
+    upsert_full_raw_payload_and_structured(
+        db_path=db,
+        endpoint_id=ENDPOINT,
+        project_key="tropical",
+        procore_project_id="99",
+        raw_item=payload,
+        source_quality=SOURCE_QUALITY_LIVE_FULL,
+    )
+    result = audit.projection_audit(db_path=db, endpoint=ENDPOINT)
+    assert result["ok"] is True
+    assert result["unknown_business_field_paths"] == 0
+    assert result["runtime_plan_schema_mismatches"] == 0
 
 
 # --- Test 2: nested-array projection writes child rows + high-value columns --------

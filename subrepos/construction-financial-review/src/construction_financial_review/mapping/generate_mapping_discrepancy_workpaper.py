@@ -17,7 +17,9 @@ Stdlib only. Decimal(str(value)) for all money math. Deterministic sorted output
 """
 
 import json
+import os
 import re
+import sys
 import hashlib
 import shutil
 from pathlib import Path
@@ -25,14 +27,26 @@ from datetime import datetime
 from decimal import Decimal, InvalidOperation, getcontext
 from collections import defaultdict, OrderedDict
 
+# self-contained script (run as `python <file>`): make the package importable for the shared
+# run-lineage resolver regardless of whether PYTHONPATH=src was exported.
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from construction_financial_review.common import run_lineage  # noqa: E402
+
 getcontext().prec = 50
 
 # --------------------------------------------------------------------------------------
-ROOT = Path(
+DEFAULT_ROOT = Path(
     "/Users/bobbyfetting/Library/CloudStorage/SynologyDrive-BFmacSync/Work/"
     "NAS - HB/Projects/2023/TWN - NAS/30_Financials/Forecasts/Data/2026-June"
 )
-CTX = ROOT / "forecast_context_package_tropical_20260614_084510"
+# Resolved at RUNTIME by resolve_inputs() (never at import).
+ROOT = None
+CTX = None
+ANL = None
+OUT = None
+SRC = OrderedDict()
+CONTEXT_LINEAGE = None
+ANALYSIS_LINEAGE = None
 
 PROJECT_NAME = "Tropical World Nursery Senior Living Facility"
 PROJECT_KEY = "tropical"
@@ -44,20 +58,21 @@ MAT_DOLLAR = Decimal("25000")
 MAT_PCT = Decimal("0.10")
 
 STAMP = datetime.now().strftime("%Y%m%d_%H%M%S")
-OUT = ROOT / f"mapping_discrepancy_workpaper_tropical_{STAMP}"
 
 
-def discover_analysis_pkg():
-    default = ROOT / "forecast_analysis_package_tropical_20260614_095847"
-    if default.exists():
-        return default
-    cands = sorted([p for p in ROOT.glob("forecast_analysis_package_tropical_*") if p.is_dir()])
-    if not cands:
-        raise SystemExit("No forecast_analysis_package_tropical_* folder found.")
-    return cands[-1]
-
-
-ANL = discover_analysis_pkg()
+def resolve_inputs():
+    """Resolve upstream context + analysis packages at runtime (full-fresh run state aware)."""
+    global ROOT, CTX, ANL, OUT, SRC, CONTEXT_LINEAGE, ANALYSIS_LINEAGE
+    ROOT = run_lineage.active_data_root(DEFAULT_ROOT)
+    CTX, CONTEXT_LINEAGE = run_lineage.resolve_upstream(
+        "context", data_root=ROOT, project_key=PROJECT_KEY,
+        override_stamp=os.environ.get("CFR_CONTEXT_STAMP"))
+    ANL, ANALYSIS_LINEAGE = run_lineage.resolve_upstream(
+        "analysis", data_root=ROOT, project_key=PROJECT_KEY,
+        override_stamp=os.environ.get("CFR_ANALYSIS_STAMP"))
+    OUT = ROOT / f"mapping_discrepancy_workpaper_tropical_{STAMP}"
+    SRC = _build_src(CTX, ANL)
+    return {"context": CONTEXT_LINEAGE, "analysis": ANALYSIS_LINEAGE}
 
 # Internal / non-subcontract owner descriptor keywords (refinement #1 — MAT is NOT auto-internal)
 INTERNAL_KEYWORDS = re.compile(
@@ -188,7 +203,8 @@ def latest_key(period_to, app_no, sheet_idx):
 # --------------------------------------------------------------------------------------
 # Load inputs
 # --------------------------------------------------------------------------------------
-SRC = OrderedDict([
+def _build_src(CTX, ANL):
+  return OrderedDict([
     ("ctx_budget_codes", CTX / "canonical" / "budget_codes.jsonl"),
     ("ctx_owner_lines", CTX / "canonical" / "owner_pay_app_line_items_mapped.jsonl"),
     ("ctx_owner_totals", CTX / "canonical" / "owner_pay_app_totals.jsonl"),
@@ -219,7 +235,7 @@ SRC = OrderedDict([
     ("anl_top_review", ANL / "summaries" / "top_review_items.json"),
     ("anl_project", ANL / "summaries" / "project_forecast_analysis.json"),
     ("anl_validation", ANL / "validation_report.json"),
-])
+  ])
 
 
 def check_inputs():
@@ -244,6 +260,10 @@ def check_inputs():
 
 # --------------------------------------------------------------------------------------
 def main():
+    resolve_inputs()   # runtime upstream resolution (full-fresh run state aware)
+    print(f"[mapping-workpaper] context: {CONTEXT_LINEAGE['consumed_package']} "
+          f"(src={CONTEXT_LINEAGE['lineage_source']}); analysis: {ANALYSIS_LINEAGE['consumed_package']} "
+          f"(src={ANALYSIS_LINEAGE['lineage_source']})")
     OUT.mkdir(parents=True, exist_ok=False)
     missing, parse_results, ctx_concl, anl_concl = check_inputs()
 
@@ -1023,9 +1043,12 @@ def main():
             if m is not None and m not in ALLOWED_MAPPING_METHODS:
                 no_fuzzy_ok = False
 
+    mapping_workpaper_context_analysis_lineage_consistent = run_lineage.lineage_consistent(
+        [CONTEXT_LINEAGE, ANALYSIS_LINEAGE])
     structural_ok = (not missing and out_valid and keys_ok and mismatch_coverage_ok
                      and true_guard_ok and no_fuzzy_ok and safety["passed"]
-                     and ctx_concl == "forecast_context_ready_with_mapping_gaps")
+                     and ctx_concl == "forecast_context_ready_with_mapping_gaps"
+                     and mapping_workpaper_context_analysis_lineage_consistent)
     has_unresolved = (type_counts.get("unresolved", 0) > 0 or len(review_items) > 0
                       or any(r["requires_human_review"] for r in disc_rows))
     if not structural_ok:
@@ -1043,9 +1066,11 @@ def main():
         ("data_root", str(ROOT)),
         ("context_package", str(CTX)),
         ("analysis_package_selected", str(ANL)),
-        ("analysis_package_selection_method",
-         "default forecast_analysis_package_tropical_20260614_095847 present" if
-         (ANL.name == "forecast_analysis_package_tropical_20260614_095847") else "latest discovered"),
+        ("lineage", OrderedDict([
+            ("consumed_context", CONTEXT_LINEAGE),
+            ("consumed_analysis", ANALYSIS_LINEAGE),
+            ("mapping_workpaper_context_analysis_lineage_consistent",
+             bool(mapping_workpaper_context_analysis_lineage_consistent))])),
         ("input_files", [OrderedDict([("label", kk), ("path", str(p)), ("exists", p.exists()),
                                       ("parse", parse_results.get(kk))]) for kk, p in SRC.items()]),
         ("ignored", [
@@ -1059,6 +1084,10 @@ def main():
         ("project", OrderedDict([("name", PROJECT_NAME), ("project_key", PROJECT_KEY),
                                  ("job", JOB_REF), ("period", PERIOD)])),
         ("generated_stamp", STAMP),
+        ("lineage", OrderedDict([
+            ("consumed_context", CONTEXT_LINEAGE), ("consumed_analysis", ANALYSIS_LINEAGE),
+            ("mapping_workpaper_context_analysis_lineage_consistent",
+             bool(mapping_workpaper_context_analysis_lineage_consistent))])),
         ("input_checks", OrderedDict([
             ("missing_inputs", missing), ("parse_results", parse_results),
             ("context_conclusion", ctx_concl),

@@ -18,7 +18,9 @@ Stdlib only. Decimal(str(value)) money math. Deterministic sorted output. Re-run
 """
 
 import json
+import os
 import re
+import sys
 import hashlib
 import shutil
 import fnmatch
@@ -27,18 +29,33 @@ from datetime import datetime
 from decimal import Decimal, InvalidOperation, getcontext
 from collections import defaultdict, OrderedDict
 
+# self-contained script (run as `python <file>`): make the package importable for the shared
+# run-lineage resolver regardless of whether PYTHONPATH=src was exported.
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from construction_financial_review.common import run_lineage  # noqa: E402
+
 getcontext().prec = 50
 
-ROOT = Path(
+DEFAULT_ROOT = Path(
     "/Users/bobbyfetting/Library/CloudStorage/SynologyDrive-BFmacSync/Work/"
     "NAS - HB/Projects/2023/TWN - NAS/30_Financials/Forecasts/Data/2026-June"
 )
-CTX = ROOT / "forecast_context_package_tropical_20260614_084510"
-ANL = ROOT / "forecast_analysis_package_tropical_20260614_095847"
-WP = ROOT / "mapping_discrepancy_workpaper_tropical_20260614_105720"
-XW_DIR = ROOT / "owner_sov_scope_crosswalk_tropical_authoritative_20260614_final"
-XW_FILE = XW_DIR / "owner_sov_scope_crosswalk_tropical_authoritative_20260614_final.jsonl"
-XW_VALIDATION = XW_DIR / "owner_sov_scope_crosswalk_tropical_authoritative_20260614_final_validation_report.json"
+# Resolved at RUNTIME by resolve_inputs() (never at import).
+ROOT = None
+CTX = None
+ANL = None
+WP = None
+XW_DIR = None
+XW_FILE = None
+XW_VALIDATION = None
+OUT = None
+CONTEXT_LINEAGE = None
+ANALYSIS_LINEAGE = None
+WORKPAPER_LINEAGE = None
+
+# The owner-SOV scope crosswalk is the AUTHORITATIVE, hand-curated static input (consumed verbatim,
+# never inferred). Its `20260614_final` name is a fixed governance artifact — NOT stale run lineage.
+XW_AUTHORITATIVE_NAME = "owner_sov_scope_crosswalk_tropical_authoritative_20260614_final"
 
 PROJECT_NAME = "Tropical World Nursery Senior Living Facility"
 PROJECT_KEY = "tropical"
@@ -52,7 +69,28 @@ OWNER_COMPLETE_PCT = Decimal("0.98")
 EXHAUSTION_PCT = Decimal("0.90")
 
 STAMP = datetime.now().strftime("%Y%m%d_%H%M%S")
-OUT = ROOT / f"forecast_analysis_package_tropical_crosswalk_v2_{STAMP}"
+
+
+def resolve_inputs():
+    """Resolve upstream context + analysis + mapping-workpaper at runtime (full-fresh run state aware).
+    The authoritative owner-SOV crosswalk is a fixed static input, resolved by its governance name."""
+    global ROOT, CTX, ANL, WP, XW_DIR, XW_FILE, XW_VALIDATION, OUT
+    global CONTEXT_LINEAGE, ANALYSIS_LINEAGE, WORKPAPER_LINEAGE
+    ROOT = run_lineage.active_data_root(DEFAULT_ROOT)
+    CTX, CONTEXT_LINEAGE = run_lineage.resolve_upstream(
+        "context", data_root=ROOT, project_key=PROJECT_KEY,
+        override_stamp=os.environ.get("CFR_CONTEXT_STAMP"))
+    ANL, ANALYSIS_LINEAGE = run_lineage.resolve_upstream(
+        "analysis", data_root=ROOT, project_key=PROJECT_KEY,
+        override_stamp=os.environ.get("CFR_ANALYSIS_STAMP"))
+    WP, WORKPAPER_LINEAGE = run_lineage.resolve_upstream(
+        "mapping_workpaper", data_root=ROOT, project_key=PROJECT_KEY,
+        override_stamp=os.environ.get("CFR_MAPPING_WORKPAPER_STAMP"))
+    XW_DIR = ROOT / XW_AUTHORITATIVE_NAME
+    XW_FILE = XW_DIR / f"{XW_AUTHORITATIVE_NAME}.jsonl"
+    XW_VALIDATION = XW_DIR / f"{XW_AUTHORITATIVE_NAME}_validation_report.json"
+    OUT = ROOT / f"forecast_analysis_package_tropical_crosswalk_v2_{STAMP}"
+    return {"context": CONTEXT_LINEAGE, "analysis": ANALYSIS_LINEAGE, "mapping_workpaper": WORKPAPER_LINEAGE}
 
 # --------------------------------------------------------------------------------------
 def read_jsonl(path):
@@ -167,6 +205,10 @@ GR_DESC = "GENERAL REQUIREMENTS"
 
 # --------------------------------------------------------------------------------------
 def main():
+    resolve_inputs()   # runtime upstream resolution (full-fresh run state aware)
+    print(f"[crosswalk-v2] context: {CONTEXT_LINEAGE['consumed_package']} "
+          f"(src={CONTEXT_LINEAGE['lineage_source']}); analysis: {ANALYSIS_LINEAGE['consumed_package']}; "
+          f"workpaper: {WORKPAPER_LINEAGE['consumed_package']}")
     OUT.mkdir(parents=True, exist_ok=False)
 
     # ---- load ----
@@ -877,12 +919,15 @@ def main():
         for r in risks)
     mismatch_trace_ok = len(trace) == len(old_mismatch)
 
+    crosswalk_v2_context_analysis_workpaper_lineage_consistent = run_lineage.lineage_consistent(
+        [CONTEXT_LINEAGE, ANALYSIS_LINEAGE, WORKPAPER_LINEAGE])
     structural_ok = (out_valid and rec_keys_ok and risk_keys_ok and high_conf_numeric_ok
                      and payapp_not_actual_ok and no_critical_struct_mismatch_ok and mismatch_trace_ok
                      and crosswalk_gate_passed and assignment_ok and ten_desc_ok and safety["passed"]
                      and ctx_concl == "forecast_context_ready_with_mapping_gaps"
                      and anl_concl == "forecast_analysis_ready_with_review_items"
-                     and wp_concl == "mapping_discrepancy_workpaper_ready_with_unresolved_items")
+                     and wp_concl == "mapping_discrepancy_workpaper_ready_with_unresolved_items"
+                     and crosswalk_v2_context_analysis_workpaper_lineage_consistent)
     has_review = (action_counts.get("review_required", 0) > 0 or action_counts.get("mapping_required", 0) > 0
                   or len(review_items) > 0 or any(r["severity"] in ("critical", "high", "medium") for r in risks))
     if not (crosswalk_gate_passed and assignment_ok):
@@ -910,6 +955,11 @@ def main():
         ("authoritative_crosswalk_copied", False),
         ("context_package", str(CTX)), ("analysis_package", str(ANL)), ("workpaper", str(WP)),
         ("crosswalk_sha256", sha256_file(XW_FILE)),
+        ("lineage", OrderedDict([
+            ("consumed_context", CONTEXT_LINEAGE), ("consumed_analysis", ANALYSIS_LINEAGE),
+            ("consumed_mapping_workpaper", WORKPAPER_LINEAGE),
+            ("crosswalk_v2_context_analysis_workpaper_lineage_consistent",
+             bool(crosswalk_v2_context_analysis_workpaper_lineage_consistent))])),
     ]))
 
     # ---- validation report ----
@@ -917,6 +967,11 @@ def main():
         ("project", OrderedDict([("name", PROJECT_NAME), ("project_key", PROJECT_KEY),
                                  ("job", JOB_REF), ("period", PERIOD)])),
         ("generated_stamp", STAMP),
+        ("lineage", OrderedDict([
+            ("consumed_context", CONTEXT_LINEAGE), ("consumed_analysis", ANALYSIS_LINEAGE),
+            ("consumed_mapping_workpaper", WORKPAPER_LINEAGE),
+            ("crosswalk_v2_context_analysis_workpaper_lineage_consistent",
+             bool(crosswalk_v2_context_analysis_workpaper_lineage_consistent))])),
         ("input_checks", OrderedDict([
             ("context_conclusion_ok", ctx_concl == "forecast_context_ready_with_mapping_gaps"),
             ("analysis_conclusion_ok", anl_concl == "forecast_analysis_ready_with_review_items"),

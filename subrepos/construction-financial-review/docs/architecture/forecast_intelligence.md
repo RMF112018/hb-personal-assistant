@@ -82,3 +82,11 @@ material recommended>projected with `overrun_projected=false`), `direct_assoc_re
 Code only under this subproject; output only a new timestamped package under the data root. No
 source/Excel/SQLite/external mutation (DB opened read-only). Decimal-only money. Every recommendation
 `requires_human_acceptance`. Accounting actuals are truth and are never overwritten by pay-app values.
+
+## Dormant / closed-code suppression
+
+Before final-cost selection, each code is classified by inactivity + closure evidence
+(`forecast_dormancy`). `CLOSED - DO NOT USE` codes, and codes idle past the lookback window with no
+affirmative remaining-cost evidence, get `recommended_cost_to_complete = 0` / final = actual cost to date
+here, and the decision is emitted as `dormant_code_status_by_budget_code.jsonl` for the monthly and
+comprehensive consumers to enforce. See `docs/architecture/forecast_dormancy.md`.

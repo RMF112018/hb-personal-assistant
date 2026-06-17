@@ -15,6 +15,7 @@ __MACOSX/
 *.zip
 output/
 tmp/
+.cfr_run_state/
 
 # NOTE: the authoritative crosswalk under config/crosswalks/ (*.jsonl, *.csv, *.json)
 # is intentionally tracked and must NOT be ignored.

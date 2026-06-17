@@ -24,6 +24,7 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Optional
 
+from ..common import lineage
 from ..common.budget_keys import parse_budget_key
 from ..common.dates import normalize_date
 from ..common.hashing import sha256_file, sha256_text
@@ -102,6 +103,8 @@ def _load_inputs(cfg, data_root, project_key):
     context_by_key = {r["budget_code_key"]: r for r in context_rows}
     rec_by_key = {r["budget_code_key"]: r
                   for r in read_jsonl(accepted_pkg / "forecast_recommendations_by_budget_code.jsonl")}
+    _dpath = accepted_pkg / "dormant_code_status_by_budget_code.jsonl"
+    dormant_by_key = ({r["budget_code_key"]: r for r in read_jsonl(_dpath)} if _dpath.exists() else {})
     sched_ev_by_key = {r["budget_code_key"]: r
                        for r in read_jsonl(accepted_pkg / "schedule_forecast_evidence_by_budget_code.jsonl")}
     v2_by_key = {r["budget_code_key"]: r
@@ -160,7 +163,8 @@ def _load_inputs(cfg, data_root, project_key):
         "analysis_pkg": analysis_pkg, "schedule_raw_pkg": schedule_raw_pkg, "accepted_pkg": accepted_pkg,
         "schedule_integrated_pkg": _latest_dir(data_root, SCHEDULE_INTEGRATED_GLOB),
         "budget_codes": budget_codes, "context_rows": context_rows, "context_by_key": context_by_key,
-        "rec_by_key": rec_by_key, "sched_ev_by_key": sched_ev_by_key, "v2_by_key": v2_by_key,
+        "rec_by_key": rec_by_key, "dormant_by_key": dormant_by_key,
+        "sched_ev_by_key": sched_ev_by_key, "v2_by_key": v2_by_key,
         "invoice_by_key": dict(invoice_by_key), "open_features_by_key": open_features_by_key,
         "txn_dates_by_key": dict(txn_dates_by_key),
         "cfg_fcf": cfg.get("forecast_cost_frequency") or {},
@@ -251,6 +255,7 @@ def _build_collections(inputs, calendar, project_key) -> dict:
     controls_by_key = inputs.get("controls_by_key") or {}
     staffing_by_key = inputs.get("staffing_by_key") or {}
     model_controls_by_key = inputs.get("model_controls_by_key") or {}
+    dormant_by_key = inputs.get("dormant_by_key") or {}
 
     monthly_rows, owner_rows_src, division_rows_src = [], [], []
     cost_trends, inv_trends, sched_phasings, freq_phasings = [], [], [], []
@@ -343,7 +348,7 @@ def _build_collections(inputs, calendar, project_key) -> dict:
         per_code_months[key] = {}
         for mc in reconcile["month_costs"]:
             row = _monthly_row(reconcile, mc, conf, cost_row, inv_row, assoc_row, start, end, project_key,
-                               sdecision)
+                               sdecision, dormant=dormant_by_key.get(key))
             monthly_rows.append(row)
             owner_rows_src.append((owner_sov, mc["forecast_month"], mc["recommended_month_cost"],
                                    mc["worst_credible_month_cost"]))
@@ -401,7 +406,7 @@ def _build_collections(inputs, calendar, project_key) -> dict:
 
 
 def _monthly_row(reconcile, mc, conf, cost_row, inv_row, assoc_row, start, end, project_key,
-                 staffing_decision=None):
+                 staffing_decision=None, dormant=None):
     ss = reconcile["source_shares"]
     sp_weight = ss.get("staffing_plan_weight", "0.0000")
     sp_numeric_driver = bool(staffing_decision)
@@ -472,6 +477,9 @@ def _monthly_row(reconcile, mc, conf, cost_row, inv_row, assoc_row, start, end, 
         ("operator_schedule_end_basis", reconcile.get("operator_schedule_end_basis")),
         ("operator_controlled_final_cost", reconcile.get("operator_controlled_final_cost")),
         ("operator_controlled_remaining", reconcile.get("operator_controlled_remaining")),
+        # ---- dormant / closed-code disclosure ----
+        ("dormant_status", (dormant or {}).get("dormant_status")),
+        ("dormant_suppression_applied", bool((dormant or {}).get("suppression_applied"))),
         ("requires_human_acceptance", True),
         ("notes", None),
     ])
@@ -721,6 +729,32 @@ def _forecast_model_controls_audit(inputs) -> OrderedDict:
     ])
 
 
+def _dormant_monthly_audit(inputs, collections) -> OrderedDict:
+    """Confirm dormant/closed codes carry zero future monthly forecast (CTC=0 from intelligence)."""
+    dormant_by_key = inputs.get("dormant_by_key") or {}
+    model_controls_by_key = inputs.get("model_controls_by_key") or {}
+    supp = {k for k, v in dormant_by_key.items() if v.get("suppression_applied")}
+    sums = defaultdict(lambda: Decimal("0"))
+    for r in collections["monthly_forecast_by_budget_code.jsonl"]:
+        sums[r["budget_code_key"]] += D(r["recommended_month_cost"])
+    rows = []
+    for k in sorted(supp):
+        revived = k in model_controls_by_key  # a value-asserting accepted operator control may revive
+        rows.append(OrderedDict([
+            ("budget_code_key", k), ("dormant_status", dormant_by_key[k].get("dormant_status")),
+            ("monthly_forecast_sum", money_str(sums.get(k, Decimal("0")))),
+            ("operator_revived", revived),
+            ("future_months_zero", sums.get(k, Decimal("0")) == Decimal("0") or revived)]))
+    return OrderedDict([
+        ("suppressed_count", len(supp)),
+        ("all_suppressed_future_months_zero", all(r["future_months_zero"] for r in rows)),
+        ("rows", rows),
+        ("note", "dormant/closed codes carry CTC=0 from the intelligence layer so monthly phasing "
+                 "allocates zero future cost; a value-asserting accepted operator control may revive a "
+                 "code"),
+    ])
+
+
 def _staffing_plan_audit(inputs) -> OrderedDict:
     """Audit which mapped .LAB codes the operator staffing plan timed, and the plan-implied vs accepted
     deltas. Monthly applies TIMING only (output stays reconciled to the accepted CTC); the plan-implied
@@ -805,6 +839,7 @@ def _cadence_reconciliation_proof(inputs, collections, project_key) -> OrderedDi
 def generate(project_key, cfg, data_root=None, frozen_stamp=None, out_root=None,
              with_llm=False, llm_model=None, forecast_start_month=None, control_file=None) -> dict:
     data_root = Path(data_root or cfg["default_data_root"])
+    cfg, _ctx_pkg, ctx_lineage = lineage.pin_context_into_cfg(cfg, data_root, project_key)
     as_of = datetime.now().date()
     inputs = _load_inputs(cfg, data_root, project_key)
 
@@ -867,8 +902,11 @@ def generate(project_key, cfg, data_root=None, frozen_stamp=None, out_root=None,
     write_json(out / "audit" / "forecast_controls_applied.json", _forecast_controls_audit(inputs))
     write_json(out / "audit" / "forecast_model_controls_applied.json",
                _forecast_model_controls_audit(inputs))
+    write_json(out / "audit" / "dormant_code_suppression_applied.json",
+               _dormant_monthly_audit(inputs, collections))
     write_json(out / "audit" / "staffing_plan_applied.json", _staffing_plan_audit(inputs))
-    write_json(out / "input_inventory.json", OrderedDict([("generation", meta), ("calendar", calendar)]))
+    write_json(out / "input_inventory.json", OrderedDict([
+        ("generation", meta), ("context_lineage", ctx_lineage), ("calendar", calendar)]))
     _write_readme(out, project_key, meta, calendar, collections)
     _write_schema(out)
 
@@ -1056,6 +1094,14 @@ def _validation(out, inputs, collections, calendar, db_inv, safety, meta, determ
         if exp_final < actual or exp_wfinal < actual:
             floor_ok = False
 
+    # dormant / closed-code suppression: a suppressed code (not revived by a value-asserting operator
+    # control) carries zero future monthly forecast.
+    dormant_by_key = inputs.get("dormant_by_key") or {}
+    dormant_months_zero = all(
+        by_code_sum.get(k, [Decimal("0")])[0] == Decimal("0")
+        for k, v in dormant_by_key.items()
+        if v.get("suppression_applied") and k not in model_controls_by_key)
+
     # no current-month double count: current-month forecast must not exceed CTC (actuals excluded)
     no_double = True
     for r in monthly:
@@ -1110,6 +1156,7 @@ def _validation(out, inputs, collections, calendar, db_inv, safety, meta, determ
         ("canonical_only_codes", canonical_only),
         ("final_cost_geq_actuals", floor_ok),
         ("monthly_sums_reconcile_to_ctc_and_final", recon_ok),
+        ("dormant_suppressed_future_months_zero", dormant_months_zero),
         ("no_current_month_double_count", no_double),
         ("invoice_not_written_as_actuals", bool(invoice_not_actuals)),
         ("project_level_schedule_not_driving_code", no_project_drive),

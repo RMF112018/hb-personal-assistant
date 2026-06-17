@@ -37,9 +37,10 @@ def test_validation_passes_and_gates(tmp_path):
     report = read_json(out / "validation_report.json")
     assert report["passed"] is True, report["checks"]
     for gate in ("per_code_completeness_127", "canonical_only_codes", "percentile_monotonicity",
-                 "final_cost_floor_at_actuals", "no_upper_cap_uncapped_upside",
-                 "no_upper_cap_audit_present", "no_code_upper_capped",
-                 "no_cap_source_is_reference_value",
+                 "final_cost_floor_at_actuals", "no_upper_cap_audit_present",
+                 "hidden_or_implicit_upper_caps_absent", "accepted_operator_caps_disclosed",
+                 "accepted_operator_caps_applied", "no_unaccepted_reference_caps",
+                 "operator_probability_value_constraints_audit_present",
                  "revised_budget_probability_present_and_unit_interval",
                  "compatibility_alias_files_present_and_parseable",
                  "forecast_start_month_no_full_ctc_reallocation",
@@ -78,11 +79,50 @@ def test_no_upper_cap_audit_present_and_uncapped(tmp_path):
     assert len(audit) == 127
     refs = {"erp", "revised_budget", "committed", "owner_sov", "procore_pay_app", "prior_output"}
     for a in audit:
+        if a.get("operator_accepted_cap"):
+            # the one disclosed exception: an accepted operator not_to_exceed control (never hidden)
+            assert a["upper_cap_applied"] is True
+            assert a["upper_cap_source"] == "accepted_operator_not_to_exceed"
+            assert a["validation_status"] == "accepted_operator_cap"
+            continue
         assert a["upper_cap_applied"] is False
         assert a["upper_cap_source"] is None
         assert a["reference_values_reported_only"] is True
         assert a["upper_cap_source"] not in refs
         assert a["validation_status"] in {"uncapped_ok", "near_complete_point_mass"}
+
+
+def test_operator_value_constraints_audit_discloses_caps(tmp_path):
+    out = _generate(tmp_path)
+    audit = read_json(out / "audit" / "operator_probability_value_constraints_audit.json")
+    rows = list(read_jsonl(out / "probabilistic_final_cost_by_budget_code.jsonl"))
+    by_key = {r["budget_code_key"] for r in rows}
+    assert audit["binding_cap_count"] >= 1            # Tropical applies accepted not_to_exceed caps
+    # the manual_monthly / explicit_remaining_value exception is NOT in the cap path
+    assert all(rec["budget_code_key"] != "1000.15-16-110.SUB" for rec in audit["records"])
+    for rec in audit["records"]:
+        if not rec["cap_binding"]:
+            continue
+        assert rec["budget_code_key"] in by_key
+        assert rec["value_constraint_policy"] == "not_to_exceed_reference"
+        assert rec["reference_source"] == "projected_cost"
+        assert rec["reference_field"] == "projected_costs"
+        assert rec["probability_treatment"] == "operator_constrained_not_to_exceed"
+        # p50 == p90 == controlled final; actuals floor absolute
+        assert rec["p50"] == rec["p90"] == rec["deterministic_controlled_final"]
+        assert Decimal(rec["deterministic_controlled_final"]) >= Decimal(rec["actual_cost_to_date"])
+        # counterfactual uncapped evidence preserved
+        assert "deterministic_uncapped_final" in rec and "uncapped_p90" in rec
+
+
+def test_manual_monthly_code_unaffected_by_cap_path(tmp_path):
+    out = _generate(tmp_path)
+    rows = {r["budget_code_key"]: r
+            for r in read_jsonl(out / "probabilistic_final_cost_by_budget_code.jsonl")}
+    r = rows.get("1000.15-16-110.SUB")
+    if r is not None:   # canonical in Tropical; guard keeps the assertion robust
+        assert "probability_treatment" not in r          # untouched by the not_to_exceed path
+        assert "operator_value_constraint_policy" not in r
 
 
 def test_project_revised_budget_probability_in_package(tmp_path):

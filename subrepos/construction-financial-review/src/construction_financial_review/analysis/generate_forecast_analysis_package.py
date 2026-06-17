@@ -20,7 +20,9 @@ Deterministic sorted output. Re-runnable.
 """
 
 import json
+import os
 import re
+import sys
 import hashlib
 import shutil
 from pathlib import Path
@@ -28,16 +30,26 @@ from datetime import datetime
 from decimal import Decimal, InvalidOperation, getcontext
 from collections import defaultdict, OrderedDict
 
+# self-contained script (run as `python <file>`): make the package importable for the shared
+# run-lineage resolver regardless of whether PYTHONPATH=src was exported.
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from construction_financial_review.common import run_lineage  # noqa: E402
+
 getcontext().prec = 50
 
 # --------------------------------------------------------------------------------------
 # Paths / constants
 # --------------------------------------------------------------------------------------
-ROOT = Path(
+DEFAULT_ROOT = Path(
     "/Users/bobbyfetting/Library/CloudStorage/SynologyDrive-BFmacSync/Work/"
     "NAS - HB/Projects/2023/TWN - NAS/30_Financials/Forecasts/Data/2026-June"
 )
-INPUT = ROOT / "forecast_context_package_tropical_20260614_084510"
+# Resolved at RUNTIME by resolve_inputs() (never at import): data root + upstream context + outputs.
+ROOT = None
+INPUT = None
+OUT = None
+SRC = {}
+CONTEXT_LINEAGE = None
 
 PROJECT_NAME = "Tropical World Nursery Senior Living Facility"
 PROJECT_KEY = "tropical"
@@ -51,21 +63,35 @@ OWNER_COMPLETE_PCT = Decimal("0.98")
 EXHAUSTION_PCT = Decimal("0.90")
 
 STAMP = datetime.now().strftime("%Y%m%d_%H%M%S")
-OUT = ROOT / f"forecast_analysis_package_tropical_{STAMP}"
 
-SRC = {
-    "bc_context": INPUT / "summaries" / "budget_code_forecast_context.jsonl",
-    "project_context": INPUT / "summaries" / "project_forecast_context.json",
-    "coverage": INPUT / "summaries" / "mapping_coverage_summary.json",
-    "data_gaps": INPUT / "summaries" / "data_gap_register.json",
-    "recon": INPUT / "audit" / "reconciliation_report.json",
-    "ctx_validation": INPUT / "validation_report.json",
-    "budget_codes": INPUT / "canonical" / "budget_codes.jsonl",
-    "ambiguous": INPUT / "mapping" / "ambiguous_mapping_candidates.jsonl",
-    "unmapped_owner": INPUT / "mapping" / "unmapped_owner_pay_app_rows.jsonl",
-    "owner_crosswalk": INPUT / "mapping" / "owner_cost_code_family_crosswalk.jsonl",
-    "unmapped_procore": INPUT / "mapping" / "unmapped_procore_pay_app_rows.jsonl",
-}
+
+def resolve_inputs():
+    """Resolve the upstream context package + output path at runtime (full-fresh run state aware).
+
+    Under an active full-fresh run state, the context is consumed strictly from the state; otherwise
+    latest-glob. A `--context-stamp` debug override rides in as CFR_CONTEXT_STAMP. Never resolves from
+    stale config names or hardcoded package paths.
+    """
+    global ROOT, INPUT, OUT, SRC, CONTEXT_LINEAGE
+    ROOT = run_lineage.active_data_root(DEFAULT_ROOT)
+    INPUT, CONTEXT_LINEAGE = run_lineage.resolve_upstream(
+        "context", data_root=ROOT, project_key=PROJECT_KEY,
+        override_stamp=os.environ.get("CFR_CONTEXT_STAMP"))
+    OUT = ROOT / f"forecast_analysis_package_tropical_{STAMP}"
+    SRC = {
+        "bc_context": INPUT / "summaries" / "budget_code_forecast_context.jsonl",
+        "project_context": INPUT / "summaries" / "project_forecast_context.json",
+        "coverage": INPUT / "summaries" / "mapping_coverage_summary.json",
+        "data_gaps": INPUT / "summaries" / "data_gap_register.json",
+        "recon": INPUT / "audit" / "reconciliation_report.json",
+        "ctx_validation": INPUT / "validation_report.json",
+        "budget_codes": INPUT / "canonical" / "budget_codes.jsonl",
+        "ambiguous": INPUT / "mapping" / "ambiguous_mapping_candidates.jsonl",
+        "unmapped_owner": INPUT / "mapping" / "unmapped_owner_pay_app_rows.jsonl",
+        "owner_crosswalk": INPUT / "mapping" / "owner_cost_code_family_crosswalk.jsonl",
+        "unmapped_procore": INPUT / "mapping" / "unmapped_procore_pay_app_rows.jsonl",
+    }
+    return {"context": CONTEXT_LINEAGE}
 
 # --------------------------------------------------------------------------------------
 # Helpers
@@ -701,9 +727,13 @@ def safety_scan(files):
 # MAIN
 # --------------------------------------------------------------------------------------
 def main():
+    lineage = resolve_inputs()   # runtime upstream resolution (full-fresh run state aware)
+    print(f"[analysis] context: {CONTEXT_LINEAGE['consumed_package']} "
+          f"(source={CONTEXT_LINEAGE['lineage_source']})")
     OUT.mkdir(parents=True, exist_ok=False)
 
     missing, parse_ok, ctx_conclusion, ctx_val = check_inputs()
+    _ = lineage
     project_ctx = read_json(SRC["project_context"])
     coverage_in = read_json(SRC["coverage"])
     recon_in = read_json(SRC["recon"])
@@ -1031,6 +1061,14 @@ def main():
                    for k, p in SRC.items()]),
     ])
     write_json(OUT / "audit" / "source_files_used.json", src_used)
+    write_json(OUT / "input_inventory.json", OrderedDict([
+        ("data_root", str(ROOT)),
+        ("context_package", str(INPUT)),
+        ("lineage", OrderedDict([
+            ("consumed_context", CONTEXT_LINEAGE),
+            ("analysis_context_lineage_consistent",
+             run_lineage.lineage_consistent([CONTEXT_LINEAGE]))])),
+    ]))
     write_json(OUT / "audit" / "source_validation_snapshot.json", OrderedDict([
         ("context_conclusion", ctx_conclusion),
         ("context_row_count_reconciliation_passed", ctx_val.get("row_count_reconciliation", {}).get("passed")),
@@ -1114,9 +1152,11 @@ def main():
         ("note", "Determinism verified by the operator harness; engine uses sorted output and no RNG."),
     ])
 
+    analysis_context_lineage_consistent = run_lineage.lineage_consistent([CONTEXT_LINEAGE])
     structural_ok = (out_valid and rec_count_ok and all_keys_canonical and risk_keys_ok
                      and high_conf_numeric_ok and payapp_not_actual_ok and safety["passed"]
-                     and not missing and input_checks["context_conclusion_ok"])
+                     and not missing and input_checks["context_conclusion_ok"]
+                     and analysis_context_lineage_consistent)
     n_review_items = n_review + n_mapping_req + len(review_items)
     if not structural_ok:
         conclusion = "forecast_analysis_not_ready"
@@ -1133,6 +1173,9 @@ def main():
         ("project", OrderedDict([("name", PROJECT_NAME), ("project_key", PROJECT_KEY),
                                  ("job", JOB_REF), ("period", PERIOD)])),
         ("generated_stamp", STAMP),
+        ("lineage", OrderedDict([
+            ("consumed_context", CONTEXT_LINEAGE),
+            ("analysis_context_lineage_consistent", bool(analysis_context_lineage_consistent))])),
         ("input_checks", input_checks),
         ("output_parse", OrderedDict([("all_passed", out_valid), ("invalid", invalid)])),
         ("row_counts", out_counts),

@@ -385,6 +385,34 @@ def test_seed_projects_includes_tropical_pilot() -> None:
     assert tropical.procore_project_name == "Tropical - S L"
 
 
+def test_seed_projects_include_rybovich_and_caretta() -> None:
+    projects = load_procore_projects()
+    rybovich = projects.get("rybovich")
+    caretta = projects.get("caretta")
+
+    assert rybovich is not None
+    assert rybovich.status == "pilot"
+    assert rybovich.procore_project_id == "3133242"
+    assert rybovich.procore_project_name == "Rybovich Safe Harbor"
+
+    assert caretta is not None
+    assert caretta.status == "pilot"
+    assert caretta.procore_project_id == "2145250"
+    assert caretta.procore_project_name == "Caretta"
+    assert projects.get("Caretta") is None
+
+
+def test_seed_projects_have_unique_keys_and_procore_ids() -> None:
+    projects = load_procore_projects().projects
+    keys = [p.hb_project_key for p in projects]
+    procore_ids = [p.procore_project_id for p in projects if p.procore_project_id]
+
+    assert len(keys) == len(set(keys))
+    assert len(procore_ids) == len(set(procore_ids))
+    assert "caretta" in keys
+    assert "Caretta" not in keys
+
+
 def test_seed_projects_covers_canonical_construction_registry_keys() -> None:
     """Every project_key in sharepoint_onedrive_sources.seed.yaml must have a
     corresponding row in procore_projects.seed.yaml UNLESS it is on the
@@ -728,7 +756,8 @@ def test_cli_mapping_validate_clean_seed_yields_exit_0(runner: CliRunner) -> Non
     p = json.loads(r.output)
     assert p["report"]["ok"] is True
     assert p["report"]["by_status"].get("pending") is None
-    assert p["report"]["by_status"].get("pilot") == 4
+    expected_pilots = sum(1 for project in load_procore_projects().projects if project.status == "pilot")
+    assert p["report"]["by_status"].get("pilot") == expected_pilots
 
 
 # ---------------------------------------------------------------------------

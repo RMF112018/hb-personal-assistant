@@ -43,10 +43,16 @@ def _manifest_ok(pkg: Path) -> tuple[bool, dict]:
 def discover(cfg: dict, data_root: Path) -> OrderedDict:
     """Return an ordered discovery registry keyed by package_type."""
     fc = cfg.get("forecast_comprehensive") or {}
+    # a pinned/resolved context package (cfg["forecast_context_package"]) takes precedence over the
+    # context glob so a fresh full run resolves the SAME context the upstream stages consumed.
+    named_ctx = cfg.get("forecast_context_package")
     out = OrderedDict()
     for cfg_key, ptype, required, default_glob in PACKAGE_SPECS:
         glob = fc.get(cfg_key) or default_glob
-        pkg = _latest_dir(data_root, glob)
+        if ptype == "context" and named_ctx and (Path(data_root) / named_ctx).is_dir():
+            pkg = Path(data_root) / named_ctx
+        else:
+            pkg = _latest_dir(data_root, glob)
         man_ok, manifest = (_manifest_ok(pkg) if pkg else (False, {}))
         out[ptype] = OrderedDict([
             ("package_type", ptype),

@@ -20,6 +20,7 @@ from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
 
+from ..common import lineage
 from ..common.hashing import sha256_file
 from ..common.io import read_jsonl, write_json, write_jsonl
 from ..common.money import D, money_str
@@ -354,8 +355,10 @@ def _manifest(out, project_key, meta, conclusion, validation) -> OrderedDict:
 def generate(project_key, cfg, data_root=None, frozen_stamp=None, out_root=None,
              with_llm=False, llm_model=None) -> dict:
     data_root = Path(data_root or cfg["default_data_root"])
+    cfg, _ctx_pkg, ctx_lineage = lineage.pin_context_into_cfg(cfg, data_root, project_key)
     inputs = frequency_io.load_inputs(cfg, data_root, project_key)
     inputs["_cfg"] = cfg
+    inputs["context_lineage"] = ctx_lineage
     inputs["staffing_plan_by_key"] = _load_staffing_plan(data_root)
 
     stamp = frozen_stamp or datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -398,6 +401,7 @@ def generate(project_key, cfg, data_root=None, frozen_stamp=None, out_root=None,
     db_inv = db_inventory.inventory(cfg, project_key)
     write_json(out / "audit" / "db_inventory.json", db_inv)
     write_json(out / "input_inventory.json", OrderedDict([("generation", meta),
+                                                          ("context_lineage", inputs["context_lineage"]),
                                                           ("forecast_window", inputs["window"]),
                                                           ("source_files", _source_files_audit(inputs))]))
     _write_readme(out, project_key, meta, collections)

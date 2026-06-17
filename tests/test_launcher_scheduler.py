@@ -29,6 +29,7 @@ from hb_assistant.launcher.profiles import (
 )
 from hb_assistant.launcher.service import LauncherService, _hb_executable
 from hb_assistant.launcher.session_state import SessionState
+from hb_assistant.procore.loader import load_procore_projects
 from hb_assistant.scheduler.daily_source_refresh import DailySourceRefreshJob
 from hb_assistant.scheduler.due import compute_next_run, decide_catch_up
 from hb_assistant.scheduler.runner import SchedulerRunner
@@ -860,6 +861,19 @@ def test_production_scheduler_resolves_all_mapped_project_scope() -> None:
     opts = DailySourceRefreshJob(resolve_profile("production")).build_options(date(2026, 6, 7))
     assert opts.procore_project_scope == "all_mapped"
     assert opts.procore_project_keys == ()
+
+
+def test_production_all_mapped_scope_selects_new_procore_projects() -> None:
+    opts = DailySourceRefreshJob(resolve_profile("production")).build_options(date(2026, 6, 7))
+    registry = load_procore_projects()
+
+    scope = SourceRefreshOrchestrator._resolve_procore_project_scope(registry, opts)  # noqa: SLF001
+    selected = {p["project_key"] for p in scope["selected_projects"]}
+    blocking = {p["project_key"]: p["reason"] for p in scope["blocking_rejections"]}
+
+    assert {"tropical", "rybovich", "caretta"} <= selected
+    assert "rybovich" not in blocking
+    assert "caretta" not in blocking
 
 
 def test_scheduled_production_default_local_only() -> None:

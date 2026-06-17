@@ -33,6 +33,63 @@ def _by_key(path: Path) -> dict:
     return {r["budget_code_key"]: r for r in read_jsonl(path)}
 
 
+# Accepted operator value caps consumed from the accepted forecast_monthly package (the single source of
+# truth: monthly already loaded -> map -> resolved the controls via forecast_model_controls and floored
+# them at actuals). Probability re-uses that resolution rather than re-resolving (no schedule re-plumbing,
+# no fail-closed window risk). Only NOT_TO_EXCEED reference caps are consumed here; explicit/manual
+# value-asserted controls (e.g. 1000.15-16-110.SUB manual_monthly) stay OUTSIDE this path, untouched.
+NOT_TO_EXCEED = "not_to_exceed_reference"
+PROJECTED_COST_REFERENCE_SOURCE = "projected_cost"
+PROJECTED_COST_REFERENCE_FIELD = "projected_costs"
+
+
+def load_operator_value_constraints(monthly_pkg: Path, rec_by: dict) -> dict:
+    """Read the accepted monthly package's resolved model controls and return the binding not_to_exceed
+    reference caps as ``{budget_code_key: constraint}``.
+
+    A constraint dict carries the deterministic controlled final/remaining (consumed as the probability
+    anchor), the disclosed reference (projected_cost/projected_costs + value), the uncapped model final
+    (counterfactual), and ``operator_constrained`` (True only when the cap binds AND respects the actuals
+    floor). A reference value below actual cost to date is a floor event: actuals win, the cap is NOT
+    applied, and the row is disclosed (never silently capped below actuals).
+    """
+    path = Path(monthly_pkg) / "audit" / "forecast_model_controls_applied.json"
+    if not path.exists():
+        return {}
+    audit = read_json(path)
+    out: dict = {}
+    for a in audit.get("applied_model_controls") or []:
+        if a.get("value_constraint_policy") != NOT_TO_EXCEED:
+            continue                                     # explicit/manual value controls stay untouched
+        key = a.get("budget_code_key")
+        rec = rec_by.get(key) or {}
+        cf = float(D(a.get("controlled_final_cost")))
+        rem = float(D(a.get("controlled_remaining")))
+        actual = float(D(rec.get("actual_cost_all_source_to_date")))
+        reference_value = float(D(rec.get("current_projected_cost")))     # = budget_amounts.projected_costs
+        binding = bool(a.get("changes_deterministic_final"))
+        floor_event = cf < actual - 0.005               # cap below actuals => actuals win (defensive)
+        if not (binding or floor_event):
+            continue                                     # non-binding cap: no change vs uncapped anchor
+        out[key] = {
+            "budget_code_key": key,
+            "control_id": a.get("control_id"),
+            "model_type": a.get("model_type"),
+            "value_constraint_policy": NOT_TO_EXCEED,
+            "reference_source": PROJECTED_COST_REFERENCE_SOURCE,
+            "reference_field": PROJECTED_COST_REFERENCE_FIELD,
+            "reference_value": reference_value,
+            "actual_cost_to_date": actual,
+            "controlled_final": cf,
+            "controlled_remaining": max(0.0, rem),
+            "uncapped_model_final": float(D(rec.get("recommended_final_cost"))),
+            "cap_binding": bool(binding and not floor_event),
+            "floor_event": bool(floor_event),
+            "operator_constrained": bool(binding and not floor_event),
+        }
+    return out
+
+
 def _method_mape_map(backtest: dict) -> dict:
     out = {}
     for row in backtest.get("summary_by_method") or []:
@@ -134,6 +191,7 @@ def load_inputs(cfg: dict, data_root: Path, project_key: str,
         specs.append(cal)
 
     arrays = _stack(specs, months, params)
+    operator_value_constraints = load_operator_value_constraints(monthly, rec_by)
     project = OrderedDict([
         ("total_actual_to_date", float(D(cashflow.get("total_actual_to_date")))),
         ("total_current_projected_cost", float(D(cashflow.get("total_current_projected_cost")))),
@@ -155,6 +213,7 @@ def load_inputs(cfg: dict, data_root: Path, project_key: str,
         ("specs", specs), ("arrays", arrays), ("project", project),
         ("backtest", backtest), ("cashflow", cashflow),
         ("context_rows", context_rows), ("owner_history", owner_history),
+        ("operator_value_constraints", operator_value_constraints),
     ])
 
 

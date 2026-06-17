@@ -71,6 +71,9 @@ def build_daily_refresh_plan() -> tuple[PlannedEndpoint, ...]:
         PlannedEndpoint("change-events", "list-change-events"),
         PlannedEndpoint("subcontractor-invoices", "list-invoices"),
         PlannedEndpoint("prime-contracts", "list-prime-contracts"),
+        PlannedEndpoint("budget-views", "list-budget-views"),
+        PlannedEndpoint("budget-detail-columns", "list-budget-detail-columns"),
+        PlannedEndpoint("budget-detail-rows", "list-budget-detail-rows"),
         PlannedEndpoint("punch-items", "list-punch-items"),
     ]
     plan.extend(

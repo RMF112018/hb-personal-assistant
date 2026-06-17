@@ -75,7 +75,12 @@ def patched(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
     Defaults: Procore auth ready, no live env, Graph has no token. Returns a dict of
     call recorders so tests can assert what was (not) invoked.
     """
-    calls: dict[str, Any] = {"run_live_sync": [], "calendar": 0, "files": 0}
+    calls: dict[str, Any] = {
+        "run_live_sync": [],
+        "budget_detail_read_model": [],
+        "calendar": 0,
+        "files": 0,
+    }
 
     monkeypatch.setattr(orch, "check_auth_status", _auth_ready)
     monkeypatch.setattr(orch, "load_procore_projects", lambda: _Registry())
@@ -100,6 +105,26 @@ def patched(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
         }
 
     monkeypatch.setattr(orch, "run_live_sync", fake_run_live_sync)
+
+    def fake_budget_detail_read_model(**kw: Any) -> dict[str, Any]:
+        calls["budget_detail_read_model"].append(kw)
+        return {
+            "ok": True,
+            "status": "success",
+            "mode": "apply" if kw.get("apply") else "dry_run",
+            "inspected_raw_rows": 3,
+            "structured_budget_detail_column_rows_inserted_or_updated": 2,
+            "structured_budget_detail_row_rows_inserted_or_updated": 4,
+            "budget_detail_cell_rows_inserted_or_updated": 12,
+            "skipped_missing_record_id": 0,
+            "skipped_lower_quality": 0,
+            "degraded_parse_errors": 0,
+            "local_db_write_performed": bool(kw.get("apply")),
+            "external_writeback_performed": 0,
+            "raw_payload_body_emitted": False,
+        }
+
+    monkeypatch.setattr(orch, "project_budget_detail_read_model", fake_budget_detail_read_model)
 
     # Stand in for the DB count of current live full-payload rows: every plan endpoint for
     # the (default-registry) projects has landed rows, so success endpoints classify as
@@ -389,6 +414,22 @@ def test_sqlite_upsert_counts_reported_apply(
     # Company-level `projects` is fetched once, not once per pilot project.
     projects_calls = [c for c in calls if c.get("endpoint") == "projects"]
     assert len(projects_calls) == 1
+    budget_calls = {
+        c.get("endpoint"): c
+        for c in calls
+        if c.get("endpoint")
+        in {"budget-views", "budget-detail-columns", "budget-detail-rows"}
+    }
+    assert set(budget_calls) == {"budget-views", "budget-detail-columns", "budget-detail-rows"}
+    for call in budget_calls.values():
+        assert call["apply"] is True
+        assert call["sqlite_only"] is True
+        assert call["confirm_live_get"] is True
+        assert call["mode_hint"] == "live_apply"
+        assert Path(call["db_path"]).name == "hb-personal-assistant.sqlite"
+        assert "path_template" not in call
+        assert "parent_id" not in call
+        assert "url" not in call
     # daily-log endpoints carry a bounded date window.
     dl_calls = [c for c in calls if str(c.get("endpoint", "")).startswith("daily-log")]
     assert dl_calls and all(c.get("start_date") and c.get("end_date") for c in dl_calls)
@@ -400,9 +441,52 @@ def test_sqlite_upsert_counts_reported_apply(
     assert proj["projection_reprocess"]["ok"] is True
     assert proj["projection_reprocess"]["primary_rows_written"] == 11
     assert proj["projection_reprocess"]["child_rows_written"] == 7
+    budget_detail = proj["budget_detail_read_model"]
+    assert budget_detail["ok"] is True
+    assert budget_detail["status"] == "success"
+    assert budget_detail["raw_landing_rows_by_endpoint"] == {
+        "budget-views": 5,
+        "budget-detail-columns": 5,
+        "budget-detail-rows": 5,
+    }
+    assert budget_detail["raw_landing_rows_by_project_endpoint"]["tropical"] == {
+        "budget-views": 5,
+        "budget-detail-columns": 5,
+        "budget-detail-rows": 5,
+    }
+    assert budget_detail["configured_budget_view_ids_by_project"]["tropical"] == ["713474"]
+    assert budget_detail["selected_budget_view_ids_by_project"]["tropical"] == ["713474"]
+    assert budget_detail["totals"]["inspected_raw_rows"] == 3
+    assert (
+        budget_detail["totals"]["structured_budget_detail_column_rows_inserted_or_updated"] == 2
+    )
+    assert budget_detail["totals"]["structured_budget_detail_row_rows_inserted_or_updated"] == 4
+    assert budget_detail["totals"]["budget_detail_cell_rows_inserted_or_updated"] == 12
+    assert budget_detail["structured_table_counts"] == {
+        "procore_ep_budget_views": 0,
+        "procore_ep_budget_detail_columns": 0,
+        "procore_ep_budget_detail_rows": 0,
+        "procore_ep_budget_detail_row_cells": 0,
+    }
+    assert budget_detail["guardrails"]["separate_from_projection_reprocess"] is True
+    assert budget_detail["guardrails"]["idempotent_reconciliation"] is True
+    assert budget_detail["guardrails"]["external_writeback_performed"] == 0
+    assert budget_detail["guardrails"]["raw_payload_body_emitted"] is False
+    assert budget_detail["guardrails"]["emits_values"] is False
+    assert patched["budget_detail_read_model"] == [
+        {
+            "db_path": Path(budget_calls["budget-views"]["db_path"]),
+            "project_key": "tropical",
+            "require_live_full": True,
+            "apply": True,
+        }
+    ]
     assert proj["projection_audit"]["ok"] is True
     assert proj["projection_audit"]["unknown_business_field_paths"] == 0
     assert proj["projection_audit"]["runtime_plan_schema_mismatches"] == 0
+    blob = json.dumps(budget_detail)
+    assert not any(tok in blob for tok in FORBIDDEN_RAW)
+    assert "payload_json" not in blob
 
 
 def test_all_mapped_scope_skips_unsafe_and_selects_pilot_active(
@@ -507,6 +591,135 @@ def test_missing_fresh_raw_payloads_prevent_projection_reprocess(
     assert proj["reason"] == "raw_full_payload_freshness_missing"
     assert proj["raw_full_payload_freshness"]["missing_fresh_raw_payload_count"] > 0
     assert called["reprocess"] is False
+
+
+def test_projection_reprocess_failure_still_runs_budget_detail_read_model(
+    patched: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(orch, "live_env_active", lambda: True)
+    audit_called = {"projection_audit": False}
+    monkeypatch.setattr(
+        orch,
+        "backfill_endpoint_specific_from_raw_payloads",
+        lambda **k: {
+            "ok": False,
+            "status": "fail_closed_unknown_path",
+            "endpoint": "budget-detail-rows",
+            "degraded_unknown_projection_fields": 1,
+            "unknown_business_field_sample": ["$.sample"],
+            "primary_rows_written": 0,
+            "child_rows_written": 0,
+            "guardrails": {
+                "live_calls_disabled": True,
+                "writeback": "none",
+                "emits_values": False,
+            },
+        },
+    )
+    monkeypatch.setattr(
+        orch,
+        "projection_audit",
+        lambda **k: audit_called.__setitem__("projection_audit", True) or {"ok": True},
+    )
+
+    _, payload = _run(["--procore-only", "--apply", "--confirm", "--json"])
+    proj = payload["procore_projection_summary"]
+    budget_detail = proj["budget_detail_read_model"]
+
+    assert payload["status"] == "degraded"
+    assert proj["status"] == "degraded"
+    assert proj["reason"] == "projection_reprocess_failed"
+    assert proj["projection_reprocess"]["ok"] is False
+    assert proj["projection_reprocess"]["status"] == "fail_closed_unknown_path"
+    assert budget_detail["ok"] is True
+    assert budget_detail["status"] == "success"
+    assert budget_detail["guardrails"]["external_writeback_performed"] == 0
+    assert budget_detail["guardrails"]["raw_payload_body_emitted"] is False
+    assert budget_detail["guardrails"]["emits_values"] is False
+    assert budget_detail["guardrails"]["counts_only"] is True
+    assert set(budget_detail["structured_table_counts"]) == {
+        "procore_ep_budget_views",
+        "procore_ep_budget_detail_columns",
+        "procore_ep_budget_detail_rows",
+        "procore_ep_budget_detail_row_cells",
+    }
+    assert patched["budget_detail_read_model"] == [
+        {
+            "db_path": Path(patched["run_live_sync"][0]["db_path"]),
+            "project_key": "tropical",
+            "require_live_full": True,
+            "apply": True,
+        }
+    ]
+    stages = [failure["stage"] for failure in payload["failures"]]
+    assert "procore_projection.reprocess" in stages
+    assert "procore_projection.budget_detail_read_model" not in stages
+    assert audit_called["projection_audit"] is False
+    blob = json.dumps(budget_detail)
+    assert not any(tok in blob for tok in FORBIDDEN_RAW)
+    assert "payload_json" not in blob
+
+
+def test_projection_reprocess_failure_records_budget_detail_failure_too(
+    patched: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(orch, "live_env_active", lambda: True)
+    monkeypatch.setattr(
+        orch,
+        "backfill_endpoint_specific_from_raw_payloads",
+        lambda **k: {
+            "ok": False,
+            "status": "fail_closed_unknown_path",
+            "endpoint": "budget-detail-rows",
+            "degraded_unknown_projection_fields": 1,
+            "primary_rows_written": 0,
+            "child_rows_written": 0,
+            "guardrails": {
+                "live_calls_disabled": True,
+                "writeback": "none",
+                "emits_values": False,
+            },
+        },
+    )
+    monkeypatch.setattr(
+        orch,
+        "project_budget_detail_read_model",
+        lambda **k: patched["budget_detail_read_model"].append(k)
+        or {
+            "ok": False,
+            "status": "schema_unavailable",
+            "inspected_raw_rows": 0,
+            "structured_budget_detail_column_rows_inserted_or_updated": 0,
+            "structured_budget_detail_row_rows_inserted_or_updated": 0,
+            "budget_detail_cell_rows_inserted_or_updated": 0,
+            "skipped_missing_record_id": 0,
+            "skipped_lower_quality": 0,
+            "degraded_parse_errors": 0,
+            "local_db_write_performed": False,
+            "external_writeback_performed": 0,
+            "raw_payload_body_emitted": False,
+        },
+    )
+
+    _, payload = _run(["--procore-only", "--apply", "--confirm", "--json"])
+    proj = payload["procore_projection_summary"]
+    budget_detail = proj["budget_detail_read_model"]
+
+    assert payload["status"] == "degraded"
+    assert proj["status"] == "degraded"
+    assert proj["reason"] == "projection_reprocess_failed"
+    assert proj["projection_reprocess"]["ok"] is False
+    assert proj["projection_reprocess"]["status"] == "fail_closed_unknown_path"
+    assert budget_detail["ok"] is False
+    assert budget_detail["status"] == "degraded"
+    assert budget_detail["projects"][0]["status"] == "schema_unavailable"
+    stages = [failure["stage"] for failure in payload["failures"]]
+    assert "procore_projection.reprocess" in stages
+    assert "procore_projection.budget_detail_read_model" in stages
+    assert budget_detail["guardrails"]["external_writeback_performed"] == 0
+    assert budget_detail["guardrails"]["raw_payload_body_emitted"] is False
+    assert budget_detail["guardrails"]["emits_values"] is False
+    assert budget_detail["guardrails"]["counts_only"] is True
 
 
 def _freshness_db(tmp_path: Any, rows: list[tuple[Any, ...]]) -> Any:

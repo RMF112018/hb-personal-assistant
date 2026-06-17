@@ -10,7 +10,7 @@ from __future__ import annotations
 from collections import OrderedDict
 from pathlib import Path
 
-from ..common.io import read_jsonl
+from ..common.io import read_json, read_jsonl
 from . import evidence_schema as es
 
 
@@ -40,6 +40,7 @@ def load_sources(discovery: OrderedDict) -> dict:
     src = {
         "context_by": _by_key(ctx / "summaries" / "budget_code_forecast_context.jsonl") if ctx else {},
         "rec_by": _by_key(intel / "forecast_recommendations_by_budget_code.jsonl") if intel else {},
+        "dormant_by": _by_key(intel / "dormant_code_status_by_budget_code.jsonl") if intel else {},
         "trend_by": _by_key(intel / "trend_evidence_by_budget_code.jsonl") if intel else {},
         "sched_by": _by_key(intel / "schedule_forecast_evidence_by_budget_code.jsonl") if intel else {},
         "conf_by": _by_key(intel / "forecast_confidence_by_budget_code.jsonl") if intel else {},
@@ -63,6 +64,15 @@ def load_sources(discovery: OrderedDict) -> dict:
         "staffing_plan_conflicts": (list(read_jsonl(staffing / "staffing_plan_conflicts.jsonl"))
                                     if staffing and (staffing / "staffing_plan_conflicts.jsonl").exists()
                                     else []),
+        # staffing-basis gating signals: mapping acceptance (keyed by SOURCE cost_code) + validated source
+        "staffing_mapping_by_cc": ({r.get("source_cost_code"): r for r in
+                                    read_jsonl(staffing / "staffing_plan_mapping_by_cost_code.jsonl")}
+                                   if staffing and (staffing / "staffing_plan_mapping_by_cost_code.jsonl").exists()
+                                   else {}),
+        "staffing_source_validation_passed": (
+            bool((read_json(staffing / "staffing_plan_source_inventory.json") or {})
+                 .get("source_validation_passed"))
+            if staffing and (staffing / "staffing_plan_source_inventory.json").exists() else False),
         "_paths": {"context": ctx, "intelligence": intel, "monthly": monthly, "probability": prob,
                    "history_informed": hist, "cost_frequency": freq, "staffing_plan": staffing},
     }
@@ -86,11 +96,14 @@ def build_registry(canonical_keys, sources: dict, project_key: str, controls_ctx
     # operator staffing plan (consumed as accepted-package OUTPUT rows; advisory, never auto-applied)
     staffing_plan_by = sources.get("staffing_plan_by") or {}
     staffing_plan_path = (sources.get("_paths") or {}).get("staffing_plan")
+    staffing_mapping_by_cc = sources.get("staffing_mapping_by_cc") or {}
+    staffing_source_validated = bool(sources.get("staffing_source_validation_passed"))
     sp_conflicts_by_key = {}
     for c in sources.get("staffing_plan_conflicts") or []:
         sp_conflicts_by_key.setdefault(c.get("budget_code_key"), []).append(c)
 
     for key in sorted(canonical_keys):
+        cost_code = key.split(".")[1] if "." in key else None
         ctx = sources["context_by"].get(key, {})
         actuals = (ctx.get("actuals") or {})
         budg = (ctx.get("budget_amounts") or {})
@@ -254,5 +267,10 @@ def build_registry(canonical_keys, sources: dict, project_key: str, controls_ctx
             "owner_pay_app": opa, "sub_pay_app": spa,
             "operator_control": decision, "operator_control_apps": ctrl_apps,
             "staffing_plan": sp_row, "staffing_plan_conflicts": sp_conflicts,
+            "dormant": (sources.get("dormant_by") or {}).get(key),
+            # staffing-basis gating: mapping acceptance (by source cost_code) + validated source
+            "staffing_mapping_status": (staffing_mapping_by_cc.get(cost_code) or {}).get("mapping_status"),
+            "staffing_applied_numeric": bool((staffing_mapping_by_cc.get(cost_code) or {}).get("applied_numeric")),
+            "staffing_source_validation_passed": staffing_source_validated,
         }
     return items, per_code

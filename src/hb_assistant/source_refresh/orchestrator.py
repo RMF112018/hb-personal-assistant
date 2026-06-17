@@ -63,6 +63,7 @@ from hb_assistant.construction.second_brain.retrieval.vector_index import (
 
 # --- Procore surfaces (patchable at this namespace) -------------------------------
 from hb_assistant.procore.auth import check_auth_status
+from hb_assistant.procore.budget_detail_read_model import project_budget_detail_read_model
 from hb_assistant.procore.daily_refresh_plan import (
     UNSUPPORTED_ENDPOINTS,
     build_daily_refresh_plan,
@@ -92,6 +93,19 @@ PROCORE_CANONICAL_TABLES = (
     "procore_live_records",
     "procore_live_sync_runs",
     "procore_live_sync_watermarks",
+)
+
+BUDGET_DETAIL_ENDPOINT_IDS = (
+    "budget-views",
+    "budget-detail-columns",
+    "budget-detail-rows",
+)
+
+BUDGET_DETAIL_STRUCTURED_TABLES = (
+    "procore_ep_budget_views",
+    "procore_ep_budget_detail_columns",
+    "procore_ep_budget_detail_rows",
+    "procore_ep_budget_detail_row_cells",
 )
 
 COMMAND = "construction-agent refresh-sources"
@@ -835,6 +849,7 @@ class SourceRefreshOrchestrator:
                 "primary_rows_written": 0,
                 "child_rows_written": 0,
             },
+            "budget_detail_read_model": self._empty_budget_detail_read_model_summary(),
             "projection_audit": {
                 "ok": False,
                 "unknown_business_field_paths": 0,
@@ -905,6 +920,10 @@ class SourceRefreshOrchestrator:
                 "guardrails": {"live_calls_disabled": True, "writeback": "none"},
             }
         base["projection_reprocess"] = self._summarize_projection_reprocess(reprocess)
+
+        budget_detail = self._reconcile_budget_detail_read_model(scope, freshness)
+        base["budget_detail_read_model"] = budget_detail
+
         if not reprocess.get("ok"):
             self._acc.degraded = True
             self._acc.failures.append(
@@ -914,10 +933,35 @@ class SourceRefreshOrchestrator:
                     "reason": str(reprocess.get("status", "projection_reprocess_failed")),
                 }
             )
+            if not budget_detail.get("ok"):
+                self._acc.failures.append(
+                    {
+                        "stage": "procore_projection.budget_detail_read_model",
+                        "status": "degraded",
+                        "reason": str(
+                            budget_detail.get("status", "budget_detail_reconcile_failed")
+                        ),
+                    }
+                )
             return {
                 **base,
                 "status": "degraded",
-                "reason": str(reprocess.get("status", "projection_reprocess_failed")),
+                "reason": "projection_reprocess_failed",
+            }
+
+        if not budget_detail.get("ok"):
+            self._acc.degraded = True
+            self._acc.failures.append(
+                {
+                    "stage": "procore_projection.budget_detail_read_model",
+                    "status": "degraded",
+                    "reason": str(budget_detail.get("status", "budget_detail_reconcile_failed")),
+                }
+            )
+            return {
+                **base,
+                "status": "degraded",
+                "reason": str(budget_detail.get("status", "budget_detail_reconcile_failed")),
             }
 
         audit = projection_audit(db_path=self.db_path)
@@ -934,6 +978,222 @@ class SourceRefreshOrchestrator:
             return {**base, "status": "degraded", "reason": "projection_audit_not_ok"}
 
         return {**base, "status": "ok", "reason": "projection_pipeline_ok"}
+
+    @staticmethod
+    def _empty_budget_detail_read_model_summary() -> dict[str, Any]:
+        return {
+            "ok": False,
+            "status": "not_run",
+            "mode": "scheduled_reconciliation",
+            "raw_landing_rows_by_endpoint": dict.fromkeys(BUDGET_DETAIL_ENDPOINT_IDS, 0),
+            "raw_landing_rows_by_project_endpoint": {},
+            "structured_table_counts": dict.fromkeys(BUDGET_DETAIL_STRUCTURED_TABLES, 0),
+            "configured_budget_view_ids_by_project": {},
+            "selected_budget_view_ids_by_project": {},
+            "projects": [],
+            "totals": {
+                "inspected_raw_rows": 0,
+                "structured_budget_detail_column_rows_inserted_or_updated": 0,
+                "structured_budget_detail_row_rows_inserted_or_updated": 0,
+                "budget_detail_cell_rows_inserted_or_updated": 0,
+                "skipped_missing_record_id": 0,
+                "skipped_lower_quality": 0,
+                "degraded_parse_errors": 0,
+            },
+            "guardrails": {
+                "idempotent_reconciliation": True,
+                "separate_from_projection_reprocess": True,
+                "live_calls_disabled": True,
+                "writeback": "none",
+                "external_writeback_performed": 0,
+                "raw_payload_body_emitted": False,
+                "emits_values": False,
+                "counts_only": True,
+            },
+        }
+
+    def _reconcile_budget_detail_read_model(
+        self, scope: dict[str, Any], freshness: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Replay Budget Detail read-model projections once per selected project.
+
+        The generic endpoint-specific projection replay may already refresh some
+        Budget Detail tables. This step is reported separately and uses the
+        dedicated projector's upsert path as an idempotent reconciliation pass,
+        not as a second raw-ingestion path.
+        """
+        selected_project_keys = [
+            str(row.get("project_key"))
+            for row in scope.get("selected_projects", []) or []
+            if row.get("project_key")
+        ]
+        raw_by_project_endpoint = freshness.get("raw_rows_by_project_endpoint") or {}
+        filtered_raw_by_project_endpoint: dict[str, dict[str, int]] = {}
+        raw_by_endpoint = dict.fromkeys(BUDGET_DETAIL_ENDPOINT_IDS, 0)
+        for project_key in selected_project_keys:
+            endpoint_counts = raw_by_project_endpoint.get(project_key, {}) or {}
+            filtered = {
+                eid: int(endpoint_counts.get(eid, 0) or 0) for eid in BUDGET_DETAIL_ENDPOINT_IDS
+            }
+            filtered_raw_by_project_endpoint[project_key] = filtered
+            for eid, count in filtered.items():
+                raw_by_endpoint[eid] += count
+
+        totals = self._empty_budget_detail_read_model_summary()["totals"].copy()
+        projects: list[dict[str, Any]] = []
+        configured_by_project: dict[str, list[str]] = {}
+        selected_by_project: dict[str, list[str]] = {}
+        ok = True
+
+        for project_key in selected_project_keys:
+            configured_view_ids = self._configured_budget_detail_view_ids(project_key)
+            configured_by_project[project_key] = configured_view_ids
+            selected_by_project[project_key] = configured_view_ids
+            try:
+                receipt = project_budget_detail_read_model(
+                    db_path=self.db_path,
+                    project_key=project_key,
+                    require_live_full=True,
+                    apply=True,
+                )
+            except Exception as exc:  # noqa: BLE001 - isolate one project, keep receipt body-free
+                receipt = {
+                    "ok": False,
+                    "status": "exception",
+                    "error_kind": type(exc).__name__,
+                    "local_db_write_performed": False,
+                    "external_writeback_performed": 0,
+                    "raw_payload_body_emitted": False,
+                }
+
+            project_ok = bool(receipt.get("ok", False))
+            ok = ok and project_ok
+            for key in totals:
+                totals[key] += int(receipt.get(key, 0) or 0)
+            projects.append(
+                {
+                    "project_key": project_key,
+                    "ok": project_ok,
+                    "status": str(receipt.get("status", "failed")),
+                    "configured_budget_view_ids": configured_view_ids,
+                    "selected_budget_view_ids": configured_view_ids,
+                    "inspected_raw_rows": int(receipt.get("inspected_raw_rows", 0) or 0),
+                    "structured_budget_detail_column_rows_inserted_or_updated": int(
+                        receipt.get(
+                            "structured_budget_detail_column_rows_inserted_or_updated", 0
+                        )
+                        or 0
+                    ),
+                    "structured_budget_detail_row_rows_inserted_or_updated": int(
+                        receipt.get("structured_budget_detail_row_rows_inserted_or_updated", 0)
+                        or 0
+                    ),
+                    "budget_detail_cell_rows_inserted_or_updated": int(
+                        receipt.get("budget_detail_cell_rows_inserted_or_updated", 0) or 0
+                    ),
+                    "skipped_missing_record_id": int(
+                        receipt.get("skipped_missing_record_id", 0) or 0
+                    ),
+                    "skipped_lower_quality": int(receipt.get("skipped_lower_quality", 0) or 0),
+                    "degraded_parse_errors": int(receipt.get("degraded_parse_errors", 0) or 0),
+                    "local_db_write_performed": bool(
+                        receipt.get("local_db_write_performed", False)
+                    ),
+                    "external_writeback_performed": int(
+                        receipt.get("external_writeback_performed", 0) or 0
+                    ),
+                    "raw_payload_body_emitted": bool(
+                        receipt.get("raw_payload_body_emitted", False)
+                    ),
+                }
+            )
+
+        return {
+            "ok": ok,
+            "status": "success" if ok else "degraded",
+            "mode": "scheduled_reconciliation",
+            "raw_landing_rows_by_endpoint": raw_by_endpoint,
+            "raw_landing_rows_by_project_endpoint": filtered_raw_by_project_endpoint,
+            "structured_table_counts": self._budget_detail_structured_table_counts(
+                selected_project_keys
+            ),
+            "configured_budget_view_ids_by_project": configured_by_project,
+            "selected_budget_view_ids_by_project": selected_by_project,
+            "projects": projects,
+            "totals": totals,
+            "guardrails": {
+                "idempotent_reconciliation": True,
+                "separate_from_projection_reprocess": True,
+                "live_calls_disabled": True,
+                "writeback": "none",
+                "external_writeback_performed": 0,
+                "raw_payload_body_emitted": False,
+                "emits_values": False,
+                "counts_only": True,
+            },
+        }
+
+    @staticmethod
+    def _configured_budget_detail_view_ids(project_key: str) -> list[str]:
+        repo_root = Path(__file__).resolve().parents[3]
+        cfg_path = (
+            repo_root
+            / "subrepos"
+            / "construction-financial-review"
+            / "config"
+            / "projects"
+            / f"{project_key}.json"
+        )
+        try:
+            cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return []
+        candidates: list[Any] = []
+        for container_key in ("budget_details", "procore", "forecast_intelligence"):
+            container = cfg.get(container_key)
+            if isinstance(container, dict):
+                candidates.extend(
+                    (
+                        container.get("budget_view_id"),
+                        container.get("budget_detail_budget_view_id"),
+                        container.get("budget_view_ids"),
+                        container.get("budget_detail_budget_view_ids"),
+                    )
+                )
+        candidates.extend(
+            (
+                cfg.get("budget_view_id"),
+                cfg.get("budget_detail_budget_view_id"),
+                cfg.get("budget_view_ids"),
+                cfg.get("budget_detail_budget_view_ids"),
+            )
+        )
+        out: list[str] = []
+        for value in candidates:
+            if isinstance(value, list):
+                out.extend(str(item) for item in value if item not in (None, ""))
+            elif value not in (None, ""):
+                out.append(str(value))
+        return sorted(set(out))
+
+    def _budget_detail_structured_table_counts(self, project_keys: list[str]) -> dict[str, int]:
+        counts = dict.fromkeys(BUDGET_DETAIL_STRUCTURED_TABLES, 0)
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            for table in BUDGET_DETAIL_STRUCTURED_TABLES:
+                try:
+                    if project_keys:
+                        placeholders = ", ".join("?" for _ in project_keys)
+                        sql = f"SELECT COUNT(*) FROM {table} WHERE project_key IN ({placeholders})"
+                        count = conn.execute(sql, tuple(project_keys)).fetchone()[0]
+                    else:
+                        count = conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+                except sqlite3.Error:
+                    count = 0
+                counts[table] = int(count or 0)
+        finally:
+            conn.close()
+        return counts
 
     def _verify_procore_raw_payload_freshness(self, procore_summary: dict[str, Any]) -> dict[str, Any]:
         """Classify each selected project/endpoint's raw-payload landing into one status.
