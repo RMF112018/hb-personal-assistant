@@ -467,7 +467,7 @@ def build_parser() -> argparse.ArgumentParser:
                       help="Fail closed on amount mismatches or package-only budget codes.")
     # --context-stamp pins the upstream context package for a lineage-consistent fresh full run.
     # Applied to the stages that consume context and participate in the lineage gate.
-    for _p in (fip, fmp, fpp, fcp, fkp, fspp):
+    for _p in (fip, fmp, fpp, fcp, fkp, fspp, fmcp):
         _p.add_argument("--context-stamp", default=None,
                         help="Pin upstream context to forecast_context_package_<project>_<stamp> "
                              "(fail closed if missing; default latest-glob).")

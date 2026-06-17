@@ -51,7 +51,7 @@ $PY -m construction_financial_review.cli forecast-intelligence --project tropica
 echo "== Advisory / operator evidence =="
 $PY -m construction_financial_review.cli forecast-history-informed --project tropical
 $PY -m construction_financial_review.cli forecast-controls --project tropical
-$PY -m construction_financial_review.cli forecast-model-controls --project tropical
+$PY -m construction_financial_review.cli forecast-model-controls --project tropical $PIN
 $PY -m construction_financial_review.cli forecast-staffing-plan --project tropical $PIN
 $PY -m construction_financial_review.cli forecast-cost-frequency --project tropical $PIN
 

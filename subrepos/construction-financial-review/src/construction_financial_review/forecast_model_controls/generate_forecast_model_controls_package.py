@@ -21,6 +21,7 @@ from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
 
+from ..common import run_lineage
 from ..common.hashing import sha256_file
 from ..common.io import read_jsonl, write_json, write_jsonl
 from ..common.money import D, dec, money_str
@@ -64,21 +65,25 @@ def _latest_dir(data_root: Path, pattern: str):
     return matches[-1] if matches else None
 
 
-def _discover(cfg: dict, data_root: Path) -> dict:
-    ctx = None
-    named = cfg.get("forecast_context_package")
-    if named and (data_root / named).is_dir():
-        ctx = data_root / named
-    ctx = ctx or _latest_dir(data_root, "forecast_context_package_tropical_*")
-    if not ctx:
-        raise SystemExit(f"ERROR: required context package not found under {data_root}")
-    return {
+def _discover(cfg: dict, data_root: Path, project_key: str):
+    """Return (discovery, context_lineage).
+
+    Context is resolved via the shared run-lineage resolver: explicit context pin (debug) -> active
+    full-fresh run state (CFR_RUN_LINEAGE_STATE) -> latest-glob. It NEVER prefers the stale
+    cfg["forecast_context_package"] named config (which caused model controls to consume a stale context),
+    even in standalone mode. intelligence/monthly/probability/prior_comprehensive stay on latest-glob.
+    """
+    ctx, ctx_lineage = run_lineage.resolve_upstream(
+        "context", data_root=data_root, project_key=project_key,
+        override_stamp=cfg.get("_pinned_context_stamp"))
+    discovery = {
         "context": ctx,
         "intelligence": _latest_dir(data_root, "forecast_accuracy_next_package_tropical_*"),
         "monthly": _latest_dir(data_root, "forecast_monthly_package_tropical_*"),
         "probability": _latest_dir(data_root, "forecast_probability_package_tropical_*"),
         "prior_comprehensive": _latest_dir(data_root, "forecast_comprehensive_package_tropical_*"),
     }
+    return discovery, ctx_lineage
 
 
 def _active_months(monthly_pkg: Path) -> list:
@@ -129,7 +134,7 @@ def _prior_prob_keys(prob_pkg: Path) -> set:
 
 def load_inputs(cfg: dict, data_root: Path, project_key: str, stamp: str, stamp_iso: str | None,
                 override_path: str | None) -> "OrderedDict":
-    discovery = _discover(cfg, data_root)
+    discovery, context_lineage = _discover(cfg, data_root, project_key)
     ctx = discovery["context"]
     budget_codes = list(read_jsonl(ctx / "canonical" / "budget_codes.jsonl"))
     canonical_keys = set(build_canonical_index(budget_codes)["keys"])
@@ -190,6 +195,7 @@ def load_inputs(cfg: dict, data_root: Path, project_key: str, stamp: str, stamp_
 
     return OrderedDict([
         ("project_key", project_key), ("discovery", discovery), ("stamp", stamp),
+        ("context_lineage", context_lineage),
         ("amounts_by_key", amounts_by_key), ("burn_by_key", burn_by_key),
         ("prior_prob_keys", prior_prob_keys), ("calendar_months", calendar_months),
         ("project_schedule", project_schedule),
@@ -482,10 +488,13 @@ def generate(project_key, cfg, data_root=None, frozen_stamp=None, out_root=None,
                              ("unchanged", inputs["source_hashes_before"] == after)])
     write_json(out / "audit" / "source_hashes_before_after.json", src_audit)
     lr = inputs["bundle"]["load_result"]
+    context_lineage_consistent = run_lineage.lineage_consistent([inputs["context_lineage"]])
     write_json(out / "input_inventory.json", OrderedDict([
         ("generation", meta), ("control_file", lr["control_file"]),
         ("control_file_is_override", lr["control_file_is_override"]),
         ("control_file_present", lr["present"]),
+        ("context_lineage", inputs["context_lineage"]),
+        ("forecast_model_controls_context_lineage_consistent", bool(context_lineage_consistent)),
         ("discovery", OrderedDict([(k, str(v) if v else None) for k, v in inputs["discovery"].items()]))]))
     _write_readme(out, project_key, meta, collections)
     _write_schema(out)
@@ -506,7 +515,8 @@ def generate(project_key, cfg, data_root=None, frozen_stamp=None, out_root=None,
         ("probability_anchor_policy_audit", collections["audit/probability_anchor_policy_audit.json"]),
         ("source_hashes_before_after", src_audit)])
     validation = fmc_validation.build_validation(out, lr, inputs["bundle"]["resolved"], collections,
-                                                 audit, determinism, safety, meta, src_audit["unchanged"])
+                                                 audit, determinism, safety, meta, src_audit["unchanged"],
+                                                 context_lineage_consistent=context_lineage_consistent)
     write_json(out / "validation_report.json", validation)
     conclusion = "forecast_model_controls_ready" if validation["passed"] else "forecast_model_controls_not_ready"
     write_json(out / "manifest.json", _manifest(out, project_key, meta, conclusion, validation))

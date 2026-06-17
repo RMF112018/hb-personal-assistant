@@ -41,7 +41,7 @@ def _probability_consistent(prob_rows) -> bool:
 
 
 def build_validation(out, load_result, resolved, collections, audit, determinism, safety, meta,
-                     source_unchanged) -> "OrderedDict":
+                     source_unchanged, *, context_lineage_consistent=True) -> "OrderedDict":
     controls_rows = collections["model_controls_by_budget_code.jsonl"]
     applications = collections["model_control_applications_by_budget_code.jsonl"]
     previews = collections["model_control_monthly_preview_by_budget_code.jsonl"]
@@ -79,6 +79,7 @@ def build_validation(out, load_result, resolved, collections, audit, determinism
         ("probability_assessment_consistent", _probability_consistent(prob_rows)),
         ("no_hidden_cap_without_accepted_control", no_hidden_cap),
         ("control_application_lineage_present", lineage_ok),
+        ("forecast_model_controls_context_lineage_consistent", bool(context_lineage_consistent)),
         ("target_source_resolution_audit_present", bool(audit.get("target_source_resolution_audit"))),
         ("window_resolution_audit_present", bool(audit.get("window_resolution_audit"))),
         ("actuals_floor_audit_present", bool(audit.get("actuals_floor_audit"))),
