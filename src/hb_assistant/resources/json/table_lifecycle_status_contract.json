@@ -1,6 +1,6 @@
 {
   "schema": "table_lifecycle_status_contract/v1",
-  "source": "Seeded from docs/evidence/construction-intelligence-phase-07a-data-quality/01-table-lifecycle-inventory.json (Phase 07A Prompt 00 manual inventory); operationalized for hb-assistant construction-agent data-quality table-inventory (Phase 07B Prompt 01); refreshed to map the V20/V21 Phase 07A data-quality and relationship tables that post-dated the manual inventory (Phase 07C Prompt 01 remediation); extended with the ten V25 Phase 07D cross-source relationship and meeting-prep substrate tables (Phase 07D Prompt 02); extended with the twenty-one V26 Phase 08A second-brain runtime substrate tables (Phase 08A Prompt 02); extended with the nineteen V38 Phase 09 retrieval/memory/agent metadata substrate tables (Phase 09 Prompt 12 \u2014 schema + contracts + table lifecycle; ships empty/placeholder_deferred); extended with the three V39 Phase 09 review-burden tables (Prompt 37 review burden reduction; advisory promotion policy; ships empty/placeholder_deferred); extended with the one V45 Phase 10 email follow-up raw enrichment table (email_followup_enrichments; review-safe model-enriched follow-up metadata; ships empty/placeholder_deferred); extended with the forty-seven V46 Procore structured analytics foundation tables (landing, capture control, endpoint-family bronze, and dimensions; ships empty/placeholder_deferred until local reprocessing or capture). ; extended with the seventy-eight V47 Procore endpoint-specific structured projection tables (procore_ep_* primary + child/detail tables derived from the committed projection registry; ships empty/placeholder_deferred until projection replay from full raw payloads).",
+  "source": "Seeded from docs/evidence/construction-intelligence-phase-07a-data-quality/01-table-lifecycle-inventory.json (Phase 07A Prompt 00 manual inventory); operationalized for hb-assistant construction-agent data-quality table-inventory (Phase 07B Prompt 01); refreshed to map the V20/V21 Phase 07A data-quality and relationship tables that post-dated the manual inventory (Phase 07C Prompt 01 remediation); extended with the ten V25 Phase 07D cross-source relationship and meeting-prep substrate tables (Phase 07D Prompt 02); extended with the twenty-one V26 Phase 08A second-brain runtime substrate tables (Phase 08A Prompt 02); extended with the nineteen V38 Phase 09 retrieval/memory/agent metadata substrate tables (Phase 09 Prompt 12 \u2014 schema + contracts + table lifecycle; ships empty/placeholder_deferred); extended with the three V39 Phase 09 review-burden tables (Prompt 37 review burden reduction; advisory promotion policy; ships empty/placeholder_deferred); extended with the one V45 Phase 10 email follow-up raw enrichment table (email_followup_enrichments; review-safe model-enriched follow-up metadata; ships empty/placeholder_deferred); extended with the forty-seven V46 Procore structured analytics foundation tables (landing, capture control, endpoint-family bronze, and dimensions; ships empty/placeholder_deferred until local reprocessing or capture). ; extended with the seventy-eight V47 Procore endpoint-specific structured projection tables (procore_ep_* primary + child/detail tables derived from the committed projection registry; ships empty/placeholder_deferred until projection replay from full raw payloads). Extended with the thirteen V49 email/calendar structured projection + receipt tables (email_raw_*/calendar_raw_*/email_calendar_* + raw_content_source_quality_snapshots; build_v49_ddl); the three V55 Procore endpoint budget-detail tables (operational/populated from the budget-detail read model); the sixteen V50-V54 Phase 10 daily-brief/candidate/ranking tables (ships empty/placeholder_deferred); and the five V58 forecast DB-transition foundation tables (forecast_projects/runs/source_ingestions/package_manifests/validation_events; operational_empty_expected, intentionally empty until Phase 2+).",
   "statuses": [
     "operational_populated",
     "operational_empty_expected",
@@ -18,7 +18,7 @@
     "phase_owner",
     "blocking_for_phase"
   ],
-  "table_count": 347,
+  "table_count": 384,
   "tables": {
     "construction_data_quality_runs": {
       "table_family": "data_quality_v20v21",
@@ -3142,6 +3142,339 @@
       "blocking_for_phase": "none",
       "v": "V47",
       "notes": "V47 endpoint-specific structured projection child/detail table for the 'projects' endpoint; populated by registry-driven projection replay from full raw payloads."
+    },
+    "email_raw_message_structured": {
+      "table_family": "email_calendar_structured_v49",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "Email/Calendar Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V49",
+      "notes": "V49 email/calendar structured projection: per-message structured rows. Populated by the V49 projection engine (build_v49_ddl)."
+    },
+    "email_raw_message_recipients_structured": {
+      "table_family": "email_calendar_structured_v49",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "Email/Calendar Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V49",
+      "notes": "V49 email/calendar structured projection: per-recipient structured rows. Populated by the V49 projection engine (build_v49_ddl)."
+    },
+    "email_raw_message_attachments_structured": {
+      "table_family": "email_calendar_structured_v49",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "Email/Calendar Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V49",
+      "notes": "V49 email/calendar structured projection: per-attachment structured rows. Populated by the V49 projection engine (build_v49_ddl)."
+    },
+    "email_raw_thread_structured": {
+      "table_family": "email_calendar_structured_v49",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "Email/Calendar Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V49",
+      "notes": "V49 email/calendar structured projection: per-thread structured rows. Populated by the V49 projection engine (build_v49_ddl)."
+    },
+    "email_raw_thread_messages_structured": {
+      "table_family": "email_calendar_structured_v49",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "Email/Calendar Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V49",
+      "notes": "V49 email/calendar structured projection: thread-to-message membership rows. Populated by the V49 projection engine (build_v49_ddl)."
+    },
+    "calendar_raw_event_structured": {
+      "table_family": "email_calendar_structured_v49",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "Email/Calendar Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V49",
+      "notes": "V49 email/calendar structured projection: per-event structured rows. Populated by the V49 projection engine (build_v49_ddl)."
+    },
+    "calendar_raw_event_attendees_structured": {
+      "table_family": "email_calendar_structured_v49",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "Email/Calendar Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V49",
+      "notes": "V49 email/calendar structured projection: per-attendee structured rows. Populated by the V49 projection engine (build_v49_ddl)."
+    },
+    "calendar_raw_event_locations_structured": {
+      "table_family": "email_calendar_structured_v49",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "Email/Calendar Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V49",
+      "notes": "V49 email/calendar structured projection: per-location structured rows. Populated by the V49 projection engine (build_v49_ddl)."
+    },
+    "email_calendar_projection_runs": {
+      "table_family": "email_calendar_structured_v49",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "Email/Calendar Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V49",
+      "notes": "V49 email/calendar structured projection: projection run ledger. Populated by the V49 projection engine (build_v49_ddl)."
+    },
+    "email_calendar_projection_coverage": {
+      "table_family": "email_calendar_structured_v49",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "Email/Calendar Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V49",
+      "notes": "V49 email/calendar structured projection: projection coverage rollup. Populated by the V49 projection engine (build_v49_ddl)."
+    },
+    "calendar_raw_event_recurrence_structured": {
+      "table_family": "email_calendar_structured_v49",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "Email/Calendar Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V49",
+      "notes": "V49 email/calendar structured projection: per-recurrence structured rows. Operational ledger; empty until corresponding records are projected."
+    },
+    "email_calendar_raw_ingestion_runs": {
+      "table_family": "email_calendar_structured_v49",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "Email/Calendar Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V49",
+      "notes": "V49 email/calendar structured projection: raw ingestion run ledger. Operational ledger; empty until corresponding records are projected."
+    },
+    "raw_content_source_quality_snapshots": {
+      "table_family": "email_calendar_structured_v49",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "Email/Calendar Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V49",
+      "notes": "V49 email/calendar structured projection: source-quality snapshot receipts. Operational ledger; empty until corresponding records are projected."
+    },
+    "procore_ep_budget_detail_rows": {
+      "table_family": "procore_ep_budget_detail_v55",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V55",
+      "notes": "V55 Procore endpoint budget-detail row facts; populated from the procore budget-detail read model."
+    },
+    "procore_ep_budget_detail_row_cells": {
+      "table_family": "procore_ep_budget_detail_v55",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V55",
+      "notes": "V55 Procore endpoint budget-detail cell-level values; populated from the procore budget-detail read model."
+    },
+    "procore_ep_budget_detail_columns": {
+      "table_family": "procore_ep_budget_detail_v55",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "Procore Structured Analytics",
+      "blocking_for_phase": "none",
+      "v": "V55",
+      "notes": "V55 Procore endpoint budget-detail column metadata; populated from the procore budget-detail read model."
+    },
+    "candidate_lifecycle_events": {
+      "table_family": "phase10_candidate_v50",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "10",
+      "blocking_for_phase": "none",
+      "v": "V50",
+      "notes": "V50 Phase 10 candidate lifecycle event ledger; ships empty until daily-brief candidate lifecycle runs persist."
+    },
+    "candidate_merge_links": {
+      "table_family": "phase10_candidate_v50",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "10",
+      "blocking_for_phase": "none",
+      "v": "V50",
+      "notes": "V50 Phase 10 candidate merge/consolidation links; ships empty until candidate consolidation runs."
+    },
+    "candidate_suppression_rules": {
+      "table_family": "phase10_candidate_v50",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "10",
+      "blocking_for_phase": "none",
+      "v": "V50",
+      "notes": "V50 Phase 10 candidate suppression rules; ships empty until suppression rules are authored."
+    },
+    "daily_brief_ranking_runs": {
+      "table_family": "phase10_daily_brief_v51",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "10",
+      "blocking_for_phase": "none",
+      "v": "V51",
+      "notes": "V51 Phase 10 daily-brief ranking run ledger; ships empty until ranking runs persist."
+    },
+    "daily_brief_ranked_candidates": {
+      "table_family": "phase10_daily_brief_v51",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "10",
+      "blocking_for_phase": "none",
+      "v": "V51",
+      "notes": "V51 Phase 10 ranked daily-brief candidates; ships empty until ranking runs persist."
+    },
+    "candidate_similarity_edges": {
+      "table_family": "phase10_candidate_v51",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "10",
+      "blocking_for_phase": "none",
+      "v": "V51",
+      "notes": "V51 Phase 10 candidate similarity/clustering edges; ships empty until similarity computation runs."
+    },
+    "daily_brief_assembly_runs": {
+      "table_family": "phase10_daily_brief_v51",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "10",
+      "blocking_for_phase": "none",
+      "v": "V51",
+      "notes": "V51 Phase 10 daily-brief assembly run ledger; ships empty until brief assembly runs."
+    },
+    "daily_brief_assembly_sections": {
+      "table_family": "phase10_daily_brief_v51",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "10",
+      "blocking_for_phase": "none",
+      "v": "V51",
+      "notes": "V51 Phase 10 assembled daily-brief sections; ships empty until brief assembly runs."
+    },
+    "daily_brief_exposure_events": {
+      "table_family": "phase10_daily_brief_v52",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "10",
+      "blocking_for_phase": "none",
+      "v": "V52",
+      "notes": "V52 Phase 10 daily-brief exposure events; ships empty until brief delivery telemetry persists."
+    },
+    "daily_brief_item_outcome_events": {
+      "table_family": "phase10_daily_brief_v52",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "10",
+      "blocking_for_phase": "none",
+      "v": "V52",
+      "notes": "V52 Phase 10 daily-brief item outcome events; ships empty until outcome telemetry persists."
+    },
+    "ranking_policy_eval_runs": {
+      "table_family": "phase10_ranking_eval_v52",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "10",
+      "blocking_for_phase": "none",
+      "v": "V52",
+      "notes": "V52 Phase 10 ranking-policy evaluation run ledger; ships empty until policy evaluations run."
+    },
+    "ranking_policy_eval_items": {
+      "table_family": "phase10_ranking_eval_v52",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "10",
+      "blocking_for_phase": "none",
+      "v": "V52",
+      "notes": "V52 Phase 10 ranking-policy evaluation items; ships empty until policy evaluations run."
+    },
+    "model_profile_eval_results": {
+      "table_family": "phase10_ranking_eval_v52",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "10",
+      "blocking_for_phase": "none",
+      "v": "V52",
+      "notes": "V52 Phase 10 model-profile evaluation results; ships empty until model-profile evaluations run."
+    },
+    "brief_effectiveness_rollups": {
+      "table_family": "phase10_brief_effectiveness_v52",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "10",
+      "blocking_for_phase": "none",
+      "v": "V52",
+      "notes": "V52 Phase 10 brief-effectiveness rollups; ships empty until effectiveness metrics are computed."
+    },
+    "daily_brief_change_events": {
+      "table_family": "phase10_daily_brief_v54",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "10",
+      "blocking_for_phase": "none",
+      "v": "V54",
+      "notes": "V54 Phase 10 daily-brief change events; ships empty until brief change tracking runs."
+    },
+    "daily_brief_change_event_refs": {
+      "table_family": "phase10_daily_brief_v54",
+      "lifecycle_status": "placeholder_deferred",
+      "expected_population_status": "empty",
+      "phase_owner": "10",
+      "blocking_for_phase": "none",
+      "v": "V54",
+      "notes": "V54 Phase 10 daily-brief change-event references; ships empty until brief change tracking runs."
+    },
+    "forecast_projects": {
+      "table_family": "forecast_foundation_v58",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "forecast_db_transition",
+      "blocking_for_phase": "none",
+      "v": "V58",
+      "notes": "V58 foundation table; intentionally empty at introduction; operational foundation for forecast DB-transition project identity/lineage; population begins Phase 2+; empty row count is not a data-quality failure."
+    },
+    "forecast_runs": {
+      "table_family": "forecast_foundation_v58",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "forecast_db_transition",
+      "blocking_for_phase": "none",
+      "v": "V58",
+      "notes": "V58 foundation table; intentionally empty at introduction; operational forecast run ledger (single source for run-lineage resolution); population begins Phase 2+; empty row count is not a data-quality failure."
+    },
+    "forecast_source_ingestions": {
+      "table_family": "forecast_foundation_v58",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "forecast_db_transition",
+      "blocking_for_phase": "none",
+      "v": "V58",
+      "notes": "V58 foundation table; intentionally empty at introduction; operational source-ingestion lineage registry; population begins Phase 2+; empty row count is not a data-quality failure."
+    },
+    "forecast_package_manifests": {
+      "table_family": "forecast_foundation_v58",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "forecast_db_transition",
+      "blocking_for_phase": "none",
+      "v": "V58",
+      "notes": "V58 foundation table; intentionally empty at introduction; operational package/run manifest registry (DB analog of manifest.json); population begins Phase 2+; empty row count is not a data-quality failure."
+    },
+    "forecast_validation_events": {
+      "table_family": "forecast_foundation_v58",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "forecast_db_transition",
+      "blocking_for_phase": "none",
+      "v": "V58",
+      "notes": "V58 foundation table; intentionally empty at introduction; append-only validation/gate event ledger; population begins Phase 2+; empty row count is not a data-quality failure."
     }
   }
 }
