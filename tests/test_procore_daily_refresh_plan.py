@@ -34,6 +34,20 @@ def test_only_projects_is_company_level() -> None:
     assert company == ["projects"]
 
 
+def test_budget_detail_endpoints_are_project_scoped_and_present() -> None:
+    plan = drp.build_daily_refresh_plan()
+    by_id = {pe.canonical_id: pe for pe in plan}
+    for endpoint_id, alias in (
+        ("budget-views", "list-budget-views"),
+        ("budget-detail-columns", "list-budget-detail-columns"),
+        ("budget-detail-rows", "list-budget-detail-rows"),
+    ):
+        pe = by_id[endpoint_id]
+        assert pe.legacy_alias == alias
+        assert pe.company_level is False
+        assert pe.date_windowed is False
+
+
 def test_daily_log_endpoints_are_date_windowed_and_present() -> None:
     plan = drp.build_daily_refresh_plan()
     dl = [pe for pe in plan if pe.legacy_alias == "list-daily-logs"]
@@ -47,6 +61,7 @@ def test_daily_log_endpoints_are_date_windowed_and_present() -> None:
 def test_drawings_is_unsupported_not_in_plan() -> None:
     plan = drp.build_daily_refresh_plan()
     assert all(pe.legacy_alias != "list-drawings" for pe in plan)
+    assert all(pe.canonical_id != "budget-details" for pe in plan)
     assert drp.UNSUPPORTED_ENDPOINTS["list-drawings"] == "skipped_tool_not_enabled"
 
 
