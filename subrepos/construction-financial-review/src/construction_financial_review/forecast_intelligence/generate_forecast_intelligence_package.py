@@ -34,6 +34,7 @@ from ..forecast_accuracy import signals
 from ..forecast_accuracy.llm import narrate
 from ..forecast_actuals import actuals_export
 from ..forecast_accuracy.llm.client import OllamaClient
+from ..forecast_cost_basis import apply as cost_basis_apply
 from ..forecast_dormancy import classify as dormancy_classify
 from ..forecast_dormancy import suppress as dormancy_suppress
 from ..schedule_analysis import schedule_io, schedule_mapping, schedule_rollup
@@ -166,6 +167,7 @@ def generate(project_key: str, cfg: dict, data_root: Optional[Path] = None,
     staffing_future_keys = _load_staffing_future_assignments(
         cfg, data_root, budget_codes, context_by_key, rec_by_key, project_key, stamp)
     dorm_decisions, dorm_audit = [], []
+    cost_basis_rows = []
     recommendations, model_evidence, sched_evidence, trend_rows = [], [], [], []
     remaining_rows, confidences, changes, bundles = [], [], [], []
     for bc in sorted(budget_codes, key=lambda r: r["budget_code_key"]):
@@ -220,6 +222,15 @@ def generate(project_key: str, cfg: dict, data_root: Optional[Path] = None,
             ("contributions", recommendation.get("contributions")),
             ("estimates", ests),
         ]))
+        # BudgetDetails projected-cost basis disclosure (asymmetric/corrective). Operator MODEL
+        # controls are not known at the intelligence layer — they compose authoritatively in the
+        # comprehensive package, which re-applies this decision and wins. Here we correct a proven
+        # under-forecast so forecast_recommendations_by_budget_code.jsonl is not left materially wrong,
+        # and emit pre_cost_basis_model_* + cost_basis_status for downstream idempotency.
+        dorm_dec = decision if dorm_enabled else None
+        cb_decision = _apply_cost_basis_intel(key, bc, recommendation, dorm_dec)
+        cost_basis_rows.append(cost_basis_apply.build_cost_basis_audit_row(cb_decision))
+
         recommendations.append(_recommendation_row(
             recommendation, conf, rec, bc, actuals_export.rec_row_fields(monthly_actuals_by_key.get(key, {}))))
 
@@ -244,6 +255,17 @@ def generate(project_key: str, cfg: dict, data_root: Optional[Path] = None,
     write_jsonl(out / "dormant_code_status_by_budget_code.jsonl", dorm_decisions)
     write_json(out / "audit" / "dormant_code_suppression_audit.json",
                _dormant_audit(project_key, dorm_decisions, dorm_audit, dcfg))
+    _cb_counts = {}
+    for _r in cost_basis_rows:
+        _cb_counts[_r["cost_basis_status"]] = _cb_counts.get(_r["cost_basis_status"], 0) + 1
+    write_json(out / "audit" / "forecast_cost_basis_decision_audit.json", OrderedDict([
+        ("project_key", project_key),
+        ("layer", "forecast_intelligence"),
+        ("summary_counts_by_cost_basis_status", _cb_counts),
+        ("note", "intelligence-layer disclosure; operator model controls compose authoritatively in "
+                 "the comprehensive package, which re-applies this decision and wins"),
+        ("rows", sorted(cost_basis_rows, key=lambda r: r.get("budget_code_key") or "")),
+    ]))
     write_jsonl(out / "forecast_accuracy_next_by_budget_code.jsonl", accuracy_next)
     write_jsonl(out / "forecast_model_evidence_by_budget_code.jsonl", model_evidence)
     write_jsonl(out / "schedule_forecast_evidence_by_budget_code.jsonl", sched_evidence)
@@ -372,6 +394,51 @@ def _load_prior(prior_pkg):
     if bt_file.exists():
         prior_bt_summary = read_json(bt_file).get("summary_by_method")
     return prior_model_rec_by_key, prior_bt_summary
+
+
+def _apply_cost_basis_intel(key, bc, recommendation, dorm_dec):
+    """Apply/disclose the deterministic cost-basis decision on an intelligence recommendation.
+
+    Mutates `recommendation` in place for a budgetdetails_projected_cost_basis selection (raising a
+    proven under-forecast) and stamps pre_cost_basis_model_* + cost_basis_status for downstream
+    idempotency. Operator model controls are unknown here (operator_controlled=False); comprehensive
+    re-applies authoritatively.
+    """
+    amts = bc.get("amounts") or {}
+    model_final = recommendation.get("recommended_final_cost")
+    model_ctc = recommendation.get("recommended_cost_to_complete")
+    suppressed = bool(dorm_dec and dorm_dec.get("suppression_applied"))
+    ev = {
+        "budget_code_key": key,
+        "cost_code": bc.get("cost_code"),
+        "category": bc.get("category"),
+        "actual_cost_to_date": recommendation.get("actual_cost_all_source_to_date"),
+        "pre_cost_basis_model_final": model_final,
+        "pre_cost_basis_model_ctc": model_ctc,
+        "operator_controlled": False,
+        "dormant_suppressed": suppressed,
+        "dormant_status": (dorm_dec or {}).get("dormant_status"),
+        "has_recent_actual_activity": bool(recommendation.get("actuals_month_count_nonzero")),
+    }
+    for f in ("committed_costs", "commitment_invoiced", "erp_direct_costs", "erp_job_to_date_costs",
+              "pending_cost_changes", "projected_costs", "estimated_cost_at_completion",
+              "forecast_to_complete", "revised_budget", "projected_budget"):
+        ev[f] = amts.get(f)
+    _, _, decision = cost_basis_apply.apply_cost_basis_decision(
+        D(model_final), D(model_ctc), D(ev["actual_cost_to_date"] or "0"), ev)
+    recommendation["cost_basis_status"] = decision["cost_basis_status"]
+    recommendation["pre_cost_basis_model_final"] = decision["pre_cost_basis_model_final"]
+    recommendation["pre_cost_basis_model_ctc"] = decision["pre_cost_basis_model_ctc"]
+    if decision["cost_basis_status"] == "budgetdetails_projected_cost_basis":
+        sel_final = decision["selected_final_cost"]
+        sel_ctc = decision["selected_cost_to_complete"]
+        recommendation["recommended_final_cost"] = sel_final
+        recommendation["recommended_cost_to_complete"] = sel_ctc
+        # keep the ceiling monotonic (worst >= recommended) after raising the central estimate
+        if D(recommendation.get("worst_credible_final_cost") or "0") < D(sel_final):
+            recommendation["worst_credible_final_cost"] = sel_final
+            recommendation["worst_credible_cost_to_complete"] = sel_ctc
+    return decision
 
 
 def _recommendation_row(recommendation, conf, v2_rec, bc, actuals_fields=None):

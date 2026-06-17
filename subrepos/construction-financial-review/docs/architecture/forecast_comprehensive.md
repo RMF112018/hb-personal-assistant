@@ -33,7 +33,10 @@ downgraded, rejected, or missing.
    accept/downgrade/reject reason codes + the six `*_consumption_status` fields.
 4. **Intelligence** (`intelligence_consumer`): accepted `recommended_final_cost` is the BASE; history is
    one bounded advisory family (frequency carries **zero** final-cost weight). Integrated final is
-   **floored at actual cost to date and never capped**.
+   **floored at actual cost to date and never capped**. After operator controls + dormancy, the
+   deterministic **cost-basis** decision (see `forecast_cost_basis.md`) may select the BudgetDetails
+   projected-cost basis — corrective/asymmetric, raising a proven under-forecast, never capping an
+   overrun to ERP — driving the integrated final/CTC the monthly and probability consumers then consume.
 5. **Monthly** (`monthly_consumer`): accepted monthly base reshaped by the bounded frequency weekday
    vector + a bounded history curve-shape tilt, then allocated to the integrated CTC via the reused
    `monthly_reconcile._allocate`. Reconciles per code **and** at the project total. Six source shares.

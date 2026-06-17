@@ -25,6 +25,8 @@ from ..common.io import read_jsonl, write_csv, write_json, write_jsonl
 from ..common.money import D, money_str
 from ..common.safety import safety_scan
 from ..forecast_actuals import actuals_export
+from ..forecast_cost_basis import apply as cost_basis_apply
+from ..forecast_cost_basis import validation as cost_basis_validation
 from ..forecast_controls import integration as fctl_integration
 from ..forecast_model_controls import integration as fmc_integration
 from ..forecast_intelligence import db_inventory
@@ -79,6 +81,7 @@ AUDIT_DATA_FILES = (
     "audit/no_upper_cap_audit.json",
     "audit/actuals_floor_audit.json",
     "audit/model_evidence_completeness_matrix.json",
+    "audit/forecast_cost_basis_decision_audit.json",
 )
 
 
@@ -95,6 +98,8 @@ def _build_collections(inputs: dict, project_key: str) -> dict:
     weights_rows, forecast_rows, final_recs = [], [], []
     monthly_rows, probability_rows, conflict_rows = [], [], []
     floor_audits, monthly_audits, review_rows, change_rows, risk_rows, warnings = [], [], [], [], [], []
+    cost_basis_rows = []
+    monthly_total_by_key = {}
     project_months = OrderedDict()
     totals = {"accepted_final": ZERO, "integrated_final": ZERO, "integrated_ctc": ZERO, "actual": ZERO}
     prob_dir_counts = Counter()
@@ -104,8 +109,9 @@ def _build_collections(inputs: dict, project_key: str) -> dict:
         sc = scoring.score_code(entry, cfg_fc)
         weights_rows.append(scoring.weights_row(project_key, key, entry, sc))
 
-        f_row, rec_row, floor_audit, integ_final, integ_ctc = intelligence_consumer.build(
+        f_row, rec_row, floor_audit, integ_final, integ_ctc, cb_decision = intelligence_consumer.build(
             project_key, key, entry, sc)
+        entry["cost_basis"] = cb_decision   # downstream consumers (probability) read the selected basis
         forecast_rows.append(f_row)
         final_recs.append(rec_row)
         floor_audits.append(floor_audit)
@@ -120,6 +126,9 @@ def _build_collections(inputs: dict, project_key: str) -> dict:
             monthly_audits.append(m_audit)
             for mo, c in m_months.items():
                 project_months[mo] = project_months.get(mo, ZERO) + c
+            monthly_total_by_key[key] = sum(m_months.values(), ZERO)
+        cost_basis_rows.append(cost_basis_apply.build_cost_basis_audit_row(
+            cb_decision, monthly_total_after_basis=monthly_total_by_key.get(key)))
 
         p_row, p_contrib = probability_consumer.build(project_key, key, entry, sc, cfg_fc)
         if p_row:
@@ -240,6 +249,17 @@ def _build_collections(inputs: dict, project_key: str) -> dict:
             project_key, discovery, inputs["frequency_disposition"],
             bool(cfg_fc.get("history_enabled", True))),
     }
+
+    cost_basis_checks = cost_basis_validation.validate_cost_basis_decisions(
+        cost_basis_rows, monthly_total_by_key=monthly_total_by_key)
+    audits["audit/forecast_cost_basis_decision_audit.json"] = OrderedDict([
+        ("project_key", project_key),
+        ("package_stamp", seed if seed is not None else None),
+        ("summary_counts_by_cost_basis_status",
+         dict(Counter(r["cost_basis_status"] for r in cost_basis_rows))),
+        ("validation_checks", cost_basis_checks),
+        ("rows", sorted(cost_basis_rows, key=lambda r: r.get("budget_code_key") or "")),
+    ])
 
     if inputs["frequency_disposition"] != "consumed":
         warnings.append(OrderedDict([
@@ -456,6 +476,12 @@ def load_inputs(cfg, data_root, project_key, frozen_stamp, control_file=None):
         amts = amounts_by_key.get(k) or {}
         per_code[k]["committed_costs"] = amts.get("committed_costs")
         per_code[k]["original_budget_amount"] = amts.get("original_budget_amount")
+        # full BudgetDetails amounts for the deterministic cost-basis decision (forecast_cost_basis)
+        for _f in ("commitment_invoiced", "erp_direct_costs", "erp_job_to_date_costs",
+                   "pending_cost_changes", "projected_costs", "estimated_cost_at_completion",
+                   "forecast_to_complete", "revised_budget", "projected_budget"):
+            per_code[k][_f] = amts.get(_f)
+        per_code[k]["category"] = k.split(".")[-1] if "." in k else None
     for k, decision in model_by_key.items():
         if k in per_code:
             per_code[k]["model_control"] = decision
@@ -525,6 +551,7 @@ def generate(project_key, cfg, data_root=None, frozen_stamp=None, out_root=None,
         ("probability_adjustment_audit", collections["audit/probability_adjustment_audit.json"]),
         ("history_consumption_audit", collections["audit/history_consumption_audit.json"]),
         ("frequency_consumption_audit", collections["audit/frequency_consumption_audit.json"]),
+        ("cost_basis_decision_audit", collections["audit/forecast_cost_basis_decision_audit.json"]),
         ("source_hashes_before_after", src_audit)])
     write_json(out / "audit" / "source_hashes_before_after.json", src_audit)
     write_json(out / "audit" / "source_packages_used.json",

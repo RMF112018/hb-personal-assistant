@@ -45,6 +45,13 @@ def build(project_key, key, entry, sc, cfg_fc) -> tuple:
     if mdec and mdec.get("changes_deterministic_final"):
         return _model_controlled_probability(project_key, key, cost_code, entry, sc, cfg_fc, mdec)
 
+    # BudgetDetails projected-cost basis: a deterministic evidence-based selected final (NOT a hidden
+    # cap). Anchor the accepted distribution UP to the selected final, floored at actuals, never capped
+    # (upper_cap_applied stays False). Disclosed as a deterministic basis, not an operator cap.
+    cb = entry.get("cost_basis") or {}
+    if cb.get("cost_basis_status") == "budgetdetails_projected_cost_basis" and entry.get("prob_final"):
+        return _basis_anchored_probability(project_key, key, cost_code, entry, sc, cb)
+
     pfin = entry["prob_final"]
     if not pfin:
         return None, None
@@ -163,6 +170,51 @@ def _anchor_row(project_key, key, cost_code, entry, sc, mdec, actual_floor, cont
     ha.stamp(row)
     contrib = {"p50": adj["simulated_p50"], "p90": adj["simulated_p90"], "p95": adj["simulated_p95"],
                "direction": "operator_anchor"}
+    return row, contrib
+
+
+def _basis_anchored_probability(project_key, key, cost_code, entry, sc, cb) -> tuple:
+    """Anchor the accepted distribution to a deterministic BudgetDetails projected-cost selected final."""
+    actual_floor = D(entry["actual_cost_to_date"])
+    selected_final = D(cb["selected_final_cost"])
+    pfin = entry["prob_final"]
+    p50_base = D(pfin.get("simulated_p50"))
+    delta = selected_final - p50_base
+    adj, prev = OrderedDict(), None
+    for q in QUANTS:
+        v = D(pfin.get(q)) + delta
+        if v < actual_floor:
+            v = actual_floor                                 # floor; never cap
+        if prev is not None and v < prev:
+            v = prev                                         # monotonic
+        adj[q] = v
+        prev = v
+    row = OrderedDict([
+        ("project_key", project_key), ("budget_code_key", key), ("cost_code", cost_code),
+        ("probability_method", "budgetdetails_projected_cost_deterministic_basis"),
+        ("probability_status", "budgetdetails_projected_cost_basis"),
+        ("actual_cost_to_date", money_str(actual_floor)),
+        ("accepted_simulated_p50", money_str(p50_base)),
+        ("integrated_sigma_multiplier", "1.0000"), ("integrated_tail_shift_delta", "0.0000"),
+        ("integrated_uncertainty_direction", "budgetdetails_basis"),
+        ("cadence_timing_widening_applied", False),
+        ("integrated_p10", money_str(adj["simulated_p10"])),
+        ("integrated_p50", money_str(adj["simulated_p50"])),
+        ("integrated_p80", money_str(adj["simulated_p80"])),
+        ("integrated_p90", money_str(adj["simulated_p90"])),
+        ("integrated_p95", money_str(adj["simulated_p95"])),
+        ("history_probability_weight", "0.0000"), ("upper_cap_applied", False),
+        ("operator_final_value_anchor_applied", False),
+        ("cost_basis_status", cb.get("cost_basis_status")),
+        ("cost_basis_selected_final_cost", money_str(selected_final)),
+        ("cost_basis_treatment", "deterministic_evidence_based_basis_not_a_cap"),
+        ("history_consumption_status", sc["history_consumption_status"]),
+        ("frequency_consumption_status", sc["frequency_consumption_status"]),
+        ("probability_consumption_status", "consumed"),
+    ])
+    ha.stamp(row)
+    contrib = {"p50": adj["simulated_p50"], "p90": adj["simulated_p90"], "p95": adj["simulated_p95"],
+               "direction": "budgetdetails_basis"}
     return row, contrib
 
 

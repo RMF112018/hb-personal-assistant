@@ -11,13 +11,48 @@ from collections import OrderedDict
 from decimal import Decimal
 
 from ..common.money import D, money_str
+from ..forecast_cost_basis import apply as cost_basis
 from . import human_acceptance as ha
 
 ZERO, ONE = Decimal("0"), Decimal("1")
 
 
+def _cost_basis_evidence(key, entry, rec, mdecision, operator_dollar, operator_model_value,
+                         dormant, dormant_suppressed, integ_ctc):
+    """Assemble the flat evidence dict consumed by the cost-basis classifier.
+
+    pre_cost_basis_model_final/ctc are the ORIGINAL model outputs (before any basis selection) so the
+    asymmetric guard compares projected against the real model number, not an already-raised value.
+    """
+    rec = rec or {}
+    pre_final = rec.get("pre_cost_basis_model_final", rec.get("recommended_final_cost"))
+    pre_ctc = rec.get("pre_cost_basis_model_ctc", rec.get("recommended_cost_to_complete"))
+    op_monthly = bool(mdecision and (mdecision.get("monthly_allocation") or {}))
+    ev = {
+        "budget_code_key": key,
+        "cost_code": key.split(".")[1] if "." in key else None,
+        "category": entry.get("category") or (key.split(".")[-1] if "." in key else None),
+        "pre_cost_basis_model_final": pre_final,
+        "pre_cost_basis_model_ctc": pre_ctc,
+        "integrated_model_ctc": money_str(integ_ctc),
+        "upstream_cost_basis_status": rec.get("cost_basis_status"),
+        "operator_controlled": bool(operator_dollar or operator_model_value),
+        "dormant_suppressed": bool(dormant_suppressed),
+        "dormant_status": (dormant or {}).get("dormant_status"),
+        "has_schedule_remaining_evidence": bool(entry.get("sched")),
+        "has_recent_actual_activity": bool(rec.get("actuals_month_count_nonzero")),
+        "has_positive_operator_monthly_shape": op_monthly,
+        "has_value_asserting_operator_control": bool(operator_model_value),
+    }
+    for f in ("committed_costs", "commitment_invoiced", "erp_direct_costs", "erp_job_to_date_costs",
+              "pending_cost_changes", "projected_costs", "estimated_cost_at_completion",
+              "forecast_to_complete", "revised_budget", "projected_budget"):
+        ev[f] = entry.get(f)
+    return ev
+
+
 def build(project_key, key, entry, sc) -> tuple:
-    """Return (forecast_row, final_cost_rec, floor_audit_row)."""
+    """Return (forecast_row, final_cost_rec, floor_audit_row, integ_final, integ_ctc, cost_basis_decision)."""
     rec = entry["rec"]
     cost_code = key.split(".")[1] if "." in key else None
     actual_floor = D(entry["actual_cost_to_date"])
@@ -74,7 +109,19 @@ def build(project_key, key, entry, sc) -> tuple:
         integrated_final = actual_floor
         integrated_ctc = ZERO
         floored = True
+
+    # BudgetDetails projected-cost basis (asymmetric / corrective): authoritative AFTER operator
+    # controls + dormancy. It may RAISE a proven under-forecast up to ERP projected_costs when open
+    # committed exposure is missed; it NEVER lowers a model-supported overrun to ERP. Disclosed as a
+    # deterministic evidence-based basis, never a hidden probability cap (upper_cap_applied stays False).
+    cb_ev = _cost_basis_evidence(key, entry, rec, mdecision, operator_dollar, operator_model_value,
+                                 dormant, dormant_suppressed, integrated_ctc)
+    integrated_final, integrated_ctc, cb_decision = cost_basis.apply_cost_basis_decision(
+        integrated_final, integrated_ctc, actual_floor, cb_ev)
+    if cb_decision["cost_basis_status"] == "budgetdetails_projected_cost_basis":
+        floored = False
     delta = integrated_final - accepted_final
+    cb_fields = cost_basis.basis_disclosure_fields(cb_decision)
 
     evidence_summary = OrderedDict([
         ("forecast_intelligence", "accepted_base"),
@@ -117,6 +164,7 @@ def build(project_key, key, entry, sc) -> tuple:
         ("dormant_status", (dormant or {}).get("dormant_status")),
         ("dormant_suppression_applied", bool(dormant_suppressed)),
         ("dormant_suppression_reason", (dormant or {}).get("suppression_reason") if dormant_suppressed else None),
+        *cb_fields.items(),
         ("reason_codes", sc["reason_codes"]),
     ])
     ha.stamp(forecast_row)
@@ -129,6 +177,7 @@ def build(project_key, key, entry, sc) -> tuple:
         ("change_amount", money_str(delta)),
         ("history_final_cost_weight", str(w.quantize(Decimal("0.0001")))),
         ("floored_at_actuals", bool(floored)), ("upper_cap_applied", False),
+        ("cost_basis_status", cb_decision["cost_basis_status"]),
         ("reason_codes", sc["reason_codes"]),
     ])
     ha.stamp(final_rec)
@@ -139,7 +188,7 @@ def build(project_key, key, entry, sc) -> tuple:
         ("floor_respected", bool(integrated_final >= actual_floor)),
         ("upper_cap_applied", False),
     ])
-    return forecast_row, final_rec, floor_audit, integrated_final, integrated_ctc
+    return forecast_row, final_rec, floor_audit, integrated_final, integrated_ctc, cb_decision
 
 
 def _operator_status(decision) -> str:
