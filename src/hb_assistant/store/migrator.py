@@ -14,7 +14,7 @@ from .connection import get_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 57
+LATEST_SCHEMA_VERSION = 58
 
 
 class SQLiteMigrator:
@@ -6319,6 +6319,94 @@ class SQLiteMigrator:
         "ALTER TABLE procore_ep_change_events_change_items ADD COLUMN budget_impact_budget_modification_transfer_to_name TEXT;",
     ]
 
+    # v58 Forecast DB-transition FOUNDATION schema (construction-financial-review).
+    # Additive, local-only, body-free. This first transition migration intentionally
+    # lands ONLY the five lineage/foundation tables — project identity, run registry,
+    # source-file ingestions, package/run manifests, and validation events. Downstream
+    # forecast-domain tables (budget/cost/owner/controls/schedule/staffing/stage outputs/
+    # final-CSV source) are deferred to later additive migrations (v59+) once projection
+    # and read-repository requirements are concrete. Common lineage columns
+    # (project_key, source_package, source_sha256, run_id, created_utc) recur by design
+    # so every later domain row can be traced to a run and a hashed source.
+    V58_STATEMENTS: list[str] = [
+        # Project identity / registry.
+        """
+        CREATE TABLE IF NOT EXISTS forecast_projects (
+          project_key TEXT PRIMARY KEY,
+          project_name TEXT,
+          job_number TEXT,
+          enabled INTEGER NOT NULL DEFAULT 1,
+          created_utc TEXT NOT NULL,
+          updated_utc TEXT
+        );
+        """,
+        # Run registry: one row per full-fresh forecast run; the single source that
+        # later replaces latest-glob / config-pin context resolution.
+        """
+        CREATE TABLE IF NOT EXISTS forecast_runs (
+          run_id TEXT PRIMARY KEY,
+          project_key TEXT NOT NULL,
+          context_package TEXT,
+          status TEXT NOT NULL DEFAULT 'pending',
+          notes TEXT,
+          created_utc TEXT NOT NULL
+        );
+        """,
+        "CREATE INDEX IF NOT EXISTS idx_forecast_runs_project_created ON forecast_runs(project_key, created_utc);",
+        # One row per landed upstream source file (TWN / owner extracts, etc.).
+        """
+        CREATE TABLE IF NOT EXISTS forecast_source_ingestions (
+          ingestion_id TEXT PRIMARY KEY,
+          project_key TEXT NOT NULL,
+          run_id TEXT,
+          source_kind TEXT NOT NULL,
+          source_package TEXT,
+          source_path TEXT,
+          source_sha256 TEXT,
+          row_count INTEGER,
+          created_utc TEXT NOT NULL,
+          UNIQUE (project_key, source_package, source_sha256)
+        );
+        """,
+        "CREATE INDEX IF NOT EXISTS idx_forecast_source_ingestions_project_kind ON forecast_source_ingestions(project_key, source_kind);",
+        "CREATE INDEX IF NOT EXISTS idx_forecast_source_ingestions_run ON forecast_source_ingestions(run_id);",
+        # Package / run manifests: DB analog of manifest.json + input_inventory.json.
+        """
+        CREATE TABLE IF NOT EXISTS forecast_package_manifests (
+          package_id TEXT PRIMARY KEY,
+          project_key TEXT NOT NULL,
+          run_id TEXT,
+          package_type TEXT NOT NULL,
+          package_name TEXT NOT NULL,
+          package_stamp TEXT,
+          upstream_packages TEXT,
+          source_data_hashes TEXT,
+          row_counts TEXT,
+          validation_passed INTEGER,
+          validation_conclusion TEXT,
+          file_path TEXT,
+          created_utc TEXT NOT NULL,
+          UNIQUE (package_name)
+        );
+        """,
+        "CREATE INDEX IF NOT EXISTS idx_forecast_package_manifests_project_type ON forecast_package_manifests(project_key, package_type);",
+        "CREATE INDEX IF NOT EXISTS idx_forecast_package_manifests_run ON forecast_package_manifests(run_id);",
+        # Per-run validation / audit events (append-only gate results).
+        """
+        CREATE TABLE IF NOT EXISTS forecast_validation_events (
+          run_id TEXT NOT NULL,
+          event_seq INTEGER NOT NULL,
+          project_key TEXT NOT NULL,
+          gate_name TEXT NOT NULL,
+          status TEXT NOT NULL,
+          detail TEXT,
+          created_utc TEXT NOT NULL,
+          PRIMARY KEY (run_id, event_seq)
+        );
+        """,
+        "CREATE INDEX IF NOT EXISTS idx_forecast_validation_events_project ON forecast_validation_events(project_key, gate_name);",
+    ]
+
     # v44 Phase 10 Graph drive-item modified-by raw operational metadata.
     # Additive ADD COLUMN only on construction_drive_items; raw identity JSON is
     # local SQLite operational metadata and must not be emitted in committed evidence.
@@ -7363,6 +7451,18 @@ class SQLiteMigrator:
                         conn.execute(stmt)
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (57, 'v57_procore_change_event_budget_modification_columns', ?)",
+                    (now,),
+                )
+
+            # v58 Forecast DB-transition FOUNDATION tables (project identity, run
+            # registry, source ingestions, package manifests, validation events).
+            # Additive CREATE TABLE IF NOT EXISTS only; domain tables deferred to v59+.
+            for stmt in self.V58_STATEMENTS:
+                conn.execute(stmt)
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 58")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (58, 'v58_forecast_db_transition_foundation', ?)",
                     (now,),
                 )
 
