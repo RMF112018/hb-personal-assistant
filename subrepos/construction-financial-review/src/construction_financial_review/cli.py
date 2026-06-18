@@ -385,6 +385,35 @@ def cmd_controlled_context_analysis(*, data_root: str, work_root: str, context_s
     return 0
 
 
+def cmd_db_cutover_readiness(*, data_root: str, work_root: str, context_stamp: str,
+                             db_path: str, project: str) -> int:
+    """Controlled DB-cutover-readiness gate (Phase 10; evidence only).
+
+    Validates readiness prerequisites for the DB-backed context->analysis chain against an EXPLICIT
+    temp/non-live v59 DB and EXPLICIT work root, runs the Phase 9 parity workflow under
+    <work-root>/readiness, and prints a deterministic readiness report. rc 0 = ready for guarded
+    operator use; rc 1 = not-ready evidence (gate ran, parity did not match); rc 3 = controlled
+    refusal (unsafe/missing/ambiguous input). Changes no existing command or production default."""
+    from .workflows.db_cutover_readiness import (
+        DbCutoverReadinessError,
+        run_db_cutover_readiness,
+    )
+    try:
+        # Keep stdout a clean machine-readable JSON channel: workflow chatter -> stderr.
+        with contextlib.redirect_stdout(sys.stderr):
+            report = run_db_cutover_readiness(
+                data_root=Path(data_root), work_root=Path(work_root),
+                context_stamp=context_stamp, db_path=Path(db_path), project_key=project)
+    except DbCutoverReadinessError as exc:
+        print(json.dumps({"command": "db-cutover-readiness", "project": project,
+                          "status": "refused", "reason": str(exc)}, indent=2))
+        return 3
+    out = {"command": "db-cutover-readiness"}
+    out.update(report)
+    print(json.dumps(out, indent=2))
+    return 0 if report.get("decision") == "ready_for_guarded_operator_use" else 1
+
+
 def cmd_run_generator(command: str, project: str, *, overrides: dict | None = None,
                       lineage_state: str | None = None) -> int:
     if project != "tropical":
@@ -653,6 +682,18 @@ def build_parser() -> argparse.ArgumentParser:
     ccap.add_argument("--db-path", default=None,
                       help="Explicit temp SQLite DB path (required for db/parity; refuses the "
                            "live/default DB).")
+    # Phase 10 — controlled DB-cutover-readiness gate (evidence only) over an explicit temp v59 DB.
+    drp = sub.add_parser("db-cutover-readiness")
+    drp.add_argument("--project", required=True, help="Project key (only 'tropical' in Phase 10).")
+    drp.add_argument("--data-root", required=True,
+                     help="Explicit forecast source data root for the readiness run.")
+    drp.add_argument("--work-root", required=True,
+                     help="Explicit work root (outputs under <work-root>/readiness; not under the "
+                          "live data root).")
+    drp.add_argument("--context-stamp", required=True,
+                     help="Deterministic context-package stamp for the run.")
+    drp.add_argument("--db-path", required=True,
+                     help="Explicit temp/non-live v59 SQLite DB path (refuses the live/default DB).")
     # --context-stamp pins the upstream context package for a lineage-consistent fresh full run.
     # Applied to the stages that consume context and participate in the lineage gate.
     for _p in (fip, fmp, fpp, fcp, fkp, fspp):
@@ -734,6 +775,10 @@ def main(argv=None) -> int:
         return cmd_controlled_context_analysis(data_root=args.data_root, work_root=args.work_root,
                                                context_stamp=args.context_stamp, mode=args.mode,
                                                db_path=args.db_path, project=args.project)
+    if args.command == "db-cutover-readiness":
+        return cmd_db_cutover_readiness(data_root=args.data_root, work_root=args.work_root,
+                                        context_stamp=args.context_stamp, db_path=args.db_path,
+                                        project=args.project)
     if args.command == "context-generate":
         return cmd_context_generate(data_root=args.data_root, out_dir=args.out_dir,
                                     stamp=args.stamp, project=args.project,
