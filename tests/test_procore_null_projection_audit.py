@@ -41,6 +41,12 @@ def _make_db(tmp_path: Path) -> Path:
             CREATE TABLE procore_ep_empty (
               empty_business_field TEXT
             );
+
+            CREATE TABLE procore_ep_rfis (
+              record_key TEXT PRIMARY KEY,
+              ball_in_court TEXT,
+              arbitrary_unmapped_null TEXT
+            );
             """
         )
         for idx in range(2):
@@ -65,6 +71,14 @@ def _make_db(tmp_path: Path) -> Path:
                 ) VALUES (?, 'change-events', 'tropical', ?, NULL, NULL, NULL, 0, NULL, 'live_full_payload')
                 """,
                 (f"row-{idx}", str(idx + 1)),
+            )
+            conn.execute(
+                """
+                INSERT INTO procore_ep_rfis (
+                  record_key, ball_in_court, arbitrary_unmapped_null
+                ) VALUES (?, NULL, NULL)
+                """,
+                (f"rfi-{idx}",),
             )
         conn.commit()
     finally:
@@ -129,6 +143,37 @@ def test_required_root_cause_classes_and_row_context(
     support = _by_column(payload, "external_writeback_performed")
     assert support["root_cause_class"] == audit.ROOT_SUPPORT
     assert support["suspected_projection_defect"] is False
+
+
+def test_documented_batch_deferrals_do_not_suppress_arbitrary_unmapped_fields(
+    tmp_path: Path, monkeypatch: Any
+) -> None:
+    _install_fake_registry(monkeypatch)
+    payload = audit.audit_database(_make_db(tmp_path))
+
+    reviewed = [
+        row
+        for row in payload["columns"]
+        if row["table"] == "procore_ep_rfis" and row["column"] == "ball_in_court"
+    ][0]
+    assert reviewed["root_cause_class"] == audit.ROOT_UNMAPPED
+    assert reviewed["explicitly_deferred"] is True
+    assert reviewed["deferred_batch"] == "Batch B"
+    assert reviewed["deferred_disposition"] == (
+        "documented_object_container_or_child_field_decomposition"
+    )
+    assert reviewed["suspected_projection_defect"] is False
+
+    arbitrary = [
+        row
+        for row in payload["columns"]
+        if row["table"] == "procore_ep_rfis" and row["column"] == "arbitrary_unmapped_null"
+    ][0]
+    assert arbitrary["root_cause_class"] == audit.ROOT_UNMAPPED
+    assert arbitrary["explicitly_deferred"] is False
+    assert arbitrary["suspected_projection_defect"] is True
+
+    assert payload["summary"]["explicitly_deferred_fields"] >= 1
 
 
 def test_empty_table_and_body_free_outputs(tmp_path: Path, monkeypatch: Any) -> None:

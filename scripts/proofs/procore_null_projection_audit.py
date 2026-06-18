@@ -37,6 +37,135 @@ ROOT_PATH_PRESENT_NOT_WRITTEN = "registry_path_present_but_projection_not_writin
 ROOT_SOURCE_MISSING = "source_payload_missing_or_endpoint_not_refreshed"
 ROOT_EXPECTED_OPTIONAL = "expected_optional_no_current_project_usage"
 
+DEFERRED_BATCH_B_FIELDS = {
+    ("procore_ep_inspection_items", "item_response"),
+    ("procore_ep_inspection_items", "response"),
+    ("procore_ep_inspection_items", "response_set"),
+    ("procore_ep_rfis", "ball_in_court"),
+    ("procore_ep_rfis", "cost_code"),
+    ("procore_ep_rfis", "location"),
+    ("procore_ep_rfis", "sub_job"),
+    ("procore_ep_submittals", "location"),
+    ("procore_ep_submittals", "submittal_package"),
+    ("procore_ep_submittals", "submittal_workflow_template"),
+    ("procore_ep_daily_log_manpower", "contact"),
+    ("procore_ep_daily_log_manpower", "cost_code"),
+    ("procore_ep_daily_log_manpower", "location"),
+    ("procore_ep_observations", "assignee"),
+    ("procore_ep_observations", "assignee_vendor"),
+    ("procore_ep_observations", "location"),
+    ("procore_ep_observations", "origin"),
+    ("procore_ep_observations", "specification_section"),
+    ("procore_ep_observations", "trade"),
+    ("procore_ep_daily_log_inspections", "location"),
+    ("procore_ep_daily_log_notes", "location"),
+    ("procore_ep_inspections", "closed_by"),
+    ("procore_ep_inspections", "location"),
+    ("procore_ep_inspections", "point_of_contact"),
+    ("procore_ep_inspections", "responsible_contractor"),
+    ("procore_ep_inspections", "specification_section"),
+    ("procore_ep_inspections", "trade"),
+    ("procore_ep_inspections_signature_requests", "signature"),
+    ("procore_ep_observations_assignees", "vendor"),
+}
+
+DEFERRED_BATCH_C_FIELDS = {
+    ("procore_ep_budget_detail_row_cells", "company_id"),
+    ("procore_ep_budget_detail_row_cells", "currency_iso_code"),
+    ("procore_ep_inspection_items_response_set_responses", "company_id"),
+    ("procore_ep_submittals_approvers", "company_id"),
+    ("procore_ep_submittals_approvers_attachments", "company_id"),
+    ("procore_ep_rfis_assignees", "company_id"),
+    ("procore_ep_inspection_items", "company_id"),
+    ("procore_ep_daily_log_dcrs", "company_id"),
+    ("procore_ep_budget_detail_rows", "actual_cost"),
+    ("procore_ep_budget_detail_rows", "company_id"),
+    ("procore_ep_budget_detail_rows", "cost_type"),
+    ("procore_ep_budget_detail_rows", "cost_type_id"),
+    ("procore_ep_budget_detail_rows", "line_item_type_id"),
+    ("procore_ep_rfis", "company_id"),
+    ("procore_ep_rfis_questions", "company_id"),
+    ("procore_ep_submittals", "company_id"),
+    ("procore_ep_daily_log_notes_attachments", "company_id"),
+    ("procore_ep_change_events", "event_origin"),
+    ("procore_ep_subcontractor_invoices", "company_id"),
+    ("procore_ep_subcontractor_invoices_attachments", "company_id"),
+    ("procore_ep_daily_log_manpower", "company_id"),
+    ("procore_ep_daily_log_dcrs_attachments", "company_id"),
+    ("procore_ep_daily_log_manpower_attachments", "company_id"),
+    ("procore_ep_inspections_attachments", "company_id"),
+    ("procore_ep_budget_detail_columns", "company_id"),
+    ("procore_ep_budget_detail_columns", "visible"),
+    ("procore_ep_commitment_contracts", "company_id"),
+    ("procore_ep_observations", "company_id"),
+    ("procore_ep_inspections_distribution_members", "company_id"),
+    ("procore_ep_submittals_ball_in_court", "company_id"),
+    ("procore_ep_subcontractor_invoice_contract_detail_items", "company_id"),
+    ("procore_ep_budget_modifications", "company_id"),
+    ("procore_ep_rfis_ball_in_courts", "company_id"),
+    ("procore_ep_inspection_sections", "company_id"),
+    ("procore_ep_daily_log_weather", "company_id"),
+    ("procore_ep_daily_log_inspections", "company_id"),
+    ("procore_ep_commitment_compliance_insurance_documents__52b7bf", "company_id"),
+    ("procore_ep_inspections_inspectors", "company_id"),
+    ("procore_ep_commitment_change_orders", "change_order_change_reason"),
+    ("procore_ep_commitment_change_orders", "company_id"),
+    ("procore_ep_commitment_change_orders", "designated_reviewer"),
+    ("procore_ep_commitment_change_orders", "received_from"),
+    ("procore_ep_commitment_change_orders", "reviewed_by"),
+    ("procore_ep_meetings", "company_id"),
+    ("procore_ep_meetings", "distributed_by"),
+    ("procore_ep_budget_change_history", "company_id"),
+    ("procore_ep_daily_log_notes", "company_id"),
+    ("procore_ep_inspections", "company_id"),
+    ("procore_ep_commitment_line_items", "company_id"),
+    ("procore_ep_prime_change_orders", "change_order_change_reason"),
+    ("procore_ep_prime_change_orders", "company_id"),
+    ("procore_ep_prime_change_orders", "designated_reviewer"),
+    ("procore_ep_prime_change_orders", "received_from"),
+    ("procore_ep_daily_log_deliveries", "company_id"),
+    ("procore_ep_commitment_compliance_insurance_documents", "company_id"),
+    ("procore_ep_rfqs_change_event_change_event_line_items__0a3e8d", "company_id"),
+    ("procore_ep_rfqs_change_event_change_event_line_items", "company_id"),
+    ("procore_ep_prime_contract_line_items", "company_id"),
+    ("procore_ep_budget_views", "company_id"),
+    ("procore_ep_punch_items_assignees", "company_id"),
+    ("procore_ep_punch_items_assignments", "company_id"),
+    ("procore_ep_rfqs_change_event_attachments", "company_id"),
+    ("procore_ep_purchase_order_line_items_cost_code_line_i_779dbd", "company_id"),
+    ("procore_ep_subcontractor_invoice_change_order_items", "company_id"),
+    ("procore_ep_punch_items", "company_id"),
+    ("procore_ep_punch_items_ball_in_court", "company_id"),
+    ("procore_ep_billing_periods", "company_id"),
+    ("procore_ep_daily_log_deliveries_attachments", "company_id"),
+    ("procore_ep_commitment_attachments", "company_id"),
+    ("procore_ep_daily_log_inspections_attachments", "company_id"),
+    ("procore_ep_projects", "company_id"),
+    ("procore_ep_projects", "project_stage"),
+    ("procore_ep_purchase_order_line_items", "company_id"),
+    ("procore_ep_rfqs_attachments", "company_id"),
+    ("procore_ep_projects_custom_fields_custom_field_163287_value", "company_id"),
+    ("procore_ep_purchase_order_contracts", "assignee"),
+    ("procore_ep_purchase_order_contracts", "company_id"),
+    ("procore_ep_purchase_order_contracts", "custom_fields_custom_field_214072_value"),
+    ("procore_ep_purchase_order_contracts", "custom_fields_custom_field_214078_value"),
+    ("procore_ep_purchase_order_contracts", "custom_fields_custom_field_214087_value"),
+    ("procore_ep_inspections_signature_requests", "company_id"),
+    ("procore_ep_commitment_compliance", "company_id"),
+    ("procore_ep_observations_assignees", "company_id"),
+    ("procore_ep_rfqs", "company_id"),
+    ("procore_ep_prime_contracts", "company_id"),
+    ("procore_ep_projects_custom_fields_custom_field_163290_value", "company_id"),
+    ("procore_ep_projects_custom_fields_custom_field_163293_value", "company_id"),
+    ("procore_ep_daily_log_visitor", "company_id"),
+    ("procore_ep_prime_change_order_line_items", "company_id"),
+    ("procore_ep_projects_custom_fields_custom_field_163296_value", "company_id"),
+    ("procore_ep_projects_custom_fields_custom_field_163299_value", "company_id"),
+    ("procore_ep_projects_custom_fields_custom_field_163302_value", "company_id"),
+    ("procore_ep_projects_custom_fields_custom_field_163305_value", "company_id"),
+    ("procore_ep_purchase_order_contracts_custom_fields_cus_a0fe65", "company_id"),
+}
+
 SUPPORT_TABLES = {
     "procore_endpoint_contracts",
     "procore_endpoint_capture_runs",
@@ -151,6 +280,41 @@ def _is_support_field(table: str, column: str) -> bool:
         or column in EXACT_SUPPORT_COLUMNS
         or column.endswith(SUPPORT_SUFFIXES)
     )
+
+
+def _deferred_disposition(table: str, column: str) -> dict[str, str] | None:
+    key = (table, column)
+    if key in DEFERRED_BATCH_B_FIELDS:
+        return {
+            "batch": "Batch B",
+            "disposition": "documented_object_container_or_child_field_decomposition",
+            "rationale": (
+                "Reviewed high-value operational object/container field; registry projects "
+                "scalar child fields or child rows instead of promoting the bare object "
+                "container column."
+            ),
+        }
+    if key in DEFERRED_BATCH_C_FIELDS:
+        if column == "company_id":
+            disposition = "deferred_broad_company_id_policy"
+            rationale = (
+                "Reviewed broad company_id field; no global company_id propagation/backfill "
+                "is applied without a separately approved table convention proof."
+            )
+        elif table.startswith("procore_ep_budget_detail_"):
+            disposition = "deferred_budget_detail_convenience_or_optional_field"
+            rationale = (
+                "Reviewed Budget Detail field; Batch 2 triage did not prove a stable "
+                "row-level source requiring projection into this convenience column."
+            )
+        else:
+            disposition = "documented_schema_artifact_or_expected_optional"
+            rationale = (
+                "Reviewed Batch C field; current evidence supports documentation/deprecation "
+                "triage rather than a projection mapping in this batch."
+            )
+        return {"batch": "Batch C", "disposition": disposition, "rationale": rationale}
+    return None
 
 
 def _safe_sample_allowed(column: str) -> bool:
@@ -372,11 +536,18 @@ def _root_cause(
     classification: str,
     mapping: ColumnMapping | None,
     presence: PathPresence | None,
+    deferred: dict[str, str] | None = None,
 ) -> tuple[str, str, bool]:
     if total_rows == 0:
         return ROOT_EMPTY_TABLE, "Table has zero rows; nullness does not prove projection failure.", False
     if _is_support_field(table, column):
         return ROOT_SUPPORT, "Metadata, provenance, guardrail, or support-table field.", False
+    if deferred is not None and mapping is None:
+        return (
+            ROOT_UNMAPPED,
+            f"Explicitly deferred with documented rationale: {deferred['rationale']}",
+            False,
+        )
     if mapping is None:
         suspected = classification in {"all_null", "mostly_null", "empty_string_instead_of_null"}
         return (
@@ -466,6 +637,7 @@ def audit_database(
                             conn, mapping.endpoint_key, mapping.json_path
                         )
                     presence = path_presence_cache[cache_key]
+                deferred = _deferred_disposition(table, column)
                 root, note, suspected = _root_cause(
                     table=table,
                     column=column,
@@ -473,6 +645,7 @@ def audit_database(
                     classification=classification,
                     mapping=mapping,
                     presence=presence,
+                    deferred=deferred,
                 )
                 record = {
                     "table": table,
@@ -498,7 +671,11 @@ def audit_database(
                     "raw_payload_path_checked": presence is not None,
                     "raw_payload_values_emitted": False,
                     "safe_metadata_values": _sample_safe_values(conn, table, column),
-                    "recommended_action": _recommended_action(root, suspected),
+                    "explicitly_deferred": deferred is not None,
+                    "deferred_batch": deferred["batch"] if deferred else None,
+                    "deferred_disposition": deferred["disposition"] if deferred else None,
+                    "deferred_rationale": deferred["rationale"] if deferred else None,
+                    "recommended_action": _recommended_action(root, suspected, deferred),
                 }
                 if presence is not None:
                     record["raw_path_presence"] = {
@@ -538,6 +715,7 @@ def audit_database(
         ),
         "support_or_guardrail_fields": sum(1 for r in records if r["root_cause_class"] == ROOT_SUPPORT),
         "empty_tables": sum(1 for t in table_profiles if t["total_rows"] == 0),
+        "explicitly_deferred_fields": sum(1 for r in records if r["explicitly_deferred"]),
         "priority_field_count": len(priority),
     }
     return {
@@ -562,7 +740,14 @@ def audit_database(
     }
 
 
-def _recommended_action(root_cause: str, suspected: bool) -> str:
+def _recommended_action(
+    root_cause: str, suspected: bool, deferred: dict[str, str] | None = None
+) -> str:
+    if deferred is not None:
+        return (
+            "No immediate projection remediation; preserve documented deferral unless "
+            "separate source-path proof approves mapping or deprecation."
+        )
     if root_cause == ROOT_SUPPORT:
         return "No remediation; preserve guardrail/provenance semantics."
     if root_cause == ROOT_EMPTY_TABLE:
@@ -619,6 +804,7 @@ def render_markdown(payload: dict[str, Any]) -> str:
         f"- Expected optional fields: `{summary['expected_optional_fields']}`",
         f"- Support/guardrail fields: `{summary['support_or_guardrail_fields']}`",
         f"- Empty tables: `{summary['empty_tables']}`",
+        f"- Explicitly deferred fields: `{summary['explicitly_deferred_fields']}`",
         "",
         "## High-Priority Remediation Review",
         "",
@@ -653,6 +839,11 @@ def render_markdown(payload: dict[str, Any]) -> str:
             f"rows={row['table_total_rows']}; null_rate={float(row['null_rate']) * 100.0:.1f}%; "
             f"{row['suspected_root_cause']}"
         )
+        if row.get("explicitly_deferred"):
+            lines.append(
+                f"  Deferred: `{row['deferred_batch']}` / `{row['deferred_disposition']}`; "
+                f"{row['deferred_rationale']}"
+            )
         presence = row.get("raw_path_presence")
         if presence:
             lines.append(
