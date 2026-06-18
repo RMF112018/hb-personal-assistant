@@ -103,6 +103,83 @@ def _refuse_if_live_db(db_path: Path) -> None:
         )
 
 
+def _is_live_db(db_path: Path) -> bool:
+    """True if ``db_path`` is the live/default DB (lazy module-ref call; monkeypatchable)."""
+    try:
+        from hb_assistant.construction.forecast import source_domain_engine
+    except ImportError as exc:  # pragma: no cover - environment-dependent
+        raise GuardedDbOperatorRunError(
+            f"cannot verify db_path against the live DB; hb_assistant unavailable: {exc}"
+        ) from exc
+    return source_domain_engine.is_live_db_path(Path(db_path))
+
+
+# Phase 13 certified-equivalence contract (kept local to avoid coupling the operator run to the
+# certification module's import side effects; the values mirror live_db_certification.py).
+_CERT_REPORT_SCHEMA_VERSION = 1
+_CERT_DECISION_MATCH = "certified_match"
+_REQUIRED_CERT_TABLES = (
+    "forecast_budget_details",
+    "forecast_cost_entries",
+    "forecast_monthly_actuals_by_budget_code",
+)
+
+
+def _validate_live_db_certification(
+    *,
+    certification_path: Path | None,
+    live_db_path: Path,
+    source_package: Path,
+    project_key: str,
+) -> dict:
+    """Validate a Phase 13 certified-equivalence report for guarded live-DB opt-in (fail closed).
+
+    Requires: a provided report path that exists and is NOT under the live root; schema version match;
+    decision ``certified_match``; matching project key; the report's ``live_db`` resolves to the same
+    live DB path; the report's ``source_package`` resolves to the same source package; and every
+    required table's ``match`` is true. Returns the loaded report on success.
+    """
+    if certification_path is None:
+        raise GuardedDbOperatorRunError(
+            "guarded live-DB opt-in requires --live-db-certification (a certified_match report)"
+        )
+    certification_path = Path(certification_path)
+    if _is_under(certification_path, _LIVE_ROOT):
+        raise GuardedDbOperatorRunError(
+            f"certification report is at/under the live forecast root (refused): {certification_path}"
+        )
+    report = _load_json(certification_path, what="live-DB certification report")
+    if report.get("schema_version") != _CERT_REPORT_SCHEMA_VERSION:
+        raise GuardedDbOperatorRunError(
+            f"unsupported certification report schema_version: {report.get('schema_version')!r}"
+        )
+    if report.get("decision") != _CERT_DECISION_MATCH:
+        raise GuardedDbOperatorRunError(
+            f"certification decision is not {_CERT_DECISION_MATCH!r} "
+            f"(decision={report.get('decision')!r}); live-DB opt-in refused"
+        )
+    if report.get("project_key") != project_key:
+        raise GuardedDbOperatorRunError(
+            f"certification project_key {report.get('project_key')!r} != {project_key!r}"
+        )
+    if not report.get("live_db") or not _same_path(Path(str(report["live_db"])), live_db_path):
+        raise GuardedDbOperatorRunError("certification live_db does not match the provided db_path")
+    if not report.get("source_package") or not _same_path(
+        Path(str(report["source_package"])), source_package
+    ):
+        raise GuardedDbOperatorRunError(
+            "certification source_package does not match the provided source_package"
+        )
+    tables = report.get("tables") or {}
+    for t in _REQUIRED_CERT_TABLES:
+        entry = tables.get(t)
+        if not isinstance(entry, dict) or entry.get("match") is not True:
+            raise GuardedDbOperatorRunError(
+                f"certification table {t!r} is not a confirmed match; live-DB opt-in refused"
+            )
+    return report
+
+
 def _load_json(path: Path, *, what: str) -> dict:
     """Read a nested evidence JSON file; fail closed on missing/unreadable/non-object content."""
     p = Path(path)
@@ -142,14 +219,24 @@ def run_guarded_db_operator_run(
     context_stamp: str,
     db_path: Path | None = None,
     project_key: str = SUPPORTED_PROJECT_KEY,
+    allow_certified_live_db: bool = False,
+    live_db_certification: Path | None = None,
 ) -> dict[str, Any]:
     """Run the controlled chain and emit a guarded DB operator-run manifest.
 
     Lightweight preflight fails closed (``GuardedDbOperatorRunError``) BEFORE creating any output on:
     non-tropical project; missing/non-dir source package; missing work root or a work root under the
-    live forecast root; empty context stamp; an EXPLICIT ``db_path`` outside the work root or equal to
-    the live/default DB. Deeper temp-DB reuse / pre-existing-DB checks are delegated to Phase 11 (its
-    ``TempDbRehearsalError`` is mapped to a controlled refusal here).
+    live forecast root; empty context stamp; an EXPLICIT ``db_path`` outside the work root. Deeper
+    temp-DB reuse / pre-existing-DB checks are delegated to Phase 11 (its ``TempDbRehearsalError`` is
+    mapped to a controlled refusal here).
+
+    Live-DB opt-in (Phase 13, certified-equivalence): a ``db_path`` that resolves to the live/default
+    DB is refused UNLESS ``allow_certified_live_db`` is set AND a valid ``live_db_certification``
+    (decision ``certified_match`` for this project/live DB/source package, all tables matched) is
+    provided. Even when accepted, the live DB is NEVER threaded into execution: the run builds and
+    executes against a FRESH non-live temp DB (Phase 11 with ``db_path=None``) — certification has
+    proven the live DB's v59 source-domain rows are equivalent — and stamps the manifest with a
+    ``live_db`` evidence block (``used_for_execution=false``, ``equivalent_to_temp_db=true``).
 
     Then runs the Phase 11 rehearsal. If the rehearsal does not pass, returns a successful operator-run
     result with ``status='not_ready'`` and no approved artifacts. If it passes, loads the nested Phase
@@ -181,13 +268,41 @@ def run_guarded_db_operator_run(
         )
     if not context_stamp:
         raise GuardedDbOperatorRunError("context_stamp is required (explicit; no latest-glob)")
+
+    # Resolve the execution db_path and (if opting in) the certified live-DB evidence block. The live
+    # DB is NEVER passed to Phase 11; certified-equivalence always executes against a fresh temp DB.
+    exec_db_path: Path | None = None
+    live_db_block: dict[str, Any] | None = None
     if db_path is not None:
         db_path = Path(db_path)
-        if not _is_under(db_path, work_root):
-            raise GuardedDbOperatorRunError(
-                f"db_path must be under work_root (refused): {db_path} not under {work_root}"
+        if _is_live_db(db_path):
+            if not allow_certified_live_db:
+                raise GuardedDbOperatorRunError(
+                    "db_path resolves to the live/default DB; live-DB opt-in requires "
+                    "allow_certified_live_db + a certified_match certification (refused)"
+                )
+            cert = _validate_live_db_certification(
+                certification_path=live_db_certification,
+                live_db_path=db_path,
+                source_package=source_package,
+                project_key=project_key,
             )
-        _refuse_if_live_db(db_path)
+            assert live_db_certification is not None  # _validate_* raises if it is None
+            live_db_block = {
+                "certified": True,
+                "certification_report": str(Path(live_db_certification)),
+                "live_db_path": str(db_path),
+                "certification_decision": cert["decision"],
+                "equivalent_to_temp_db": True,
+                "used_for_execution": False,
+            }
+            exec_db_path = None  # build a FRESH temp DB; never execute against the live DB
+        else:
+            if not _is_under(db_path, work_root):
+                raise GuardedDbOperatorRunError(
+                    f"db_path must be under work_root (refused): {db_path} not under {work_root}"
+                )
+            exec_db_path = db_path
 
     # --- Phase 11 rehearsal (reused, never reimplemented). ----------------------------------------
     try:
@@ -195,7 +310,7 @@ def run_guarded_db_operator_run(
             source_package=source_package,
             work_root=work_root,
             context_stamp=context_stamp,
-            db_path=db_path,
+            db_path=exec_db_path,
             project_key=project_key,
         )
     except TempDbRehearsalError as exc:
@@ -346,5 +461,9 @@ def run_guarded_db_operator_run(
             "final_integrated_csv_generated": False,
         },
     }
+    # Phase 13 certified-equivalence opt-in: record the live-DB certification as evidence. Execution
+    # used the fresh temp DB above; the live DB was opened read-only only by certification, never here.
+    if live_db_block is not None:
+        report["live_db"] = live_db_block
     report_path = _write_json_deterministic(work_root / MANIFEST_NAME, report)
     return {**report, "report_path": str(report_path)}
