@@ -1,0 +1,486 @@
+{
+  "audit_json": "/Users/bobbyfetting/hb-personal-assistant-worktrees/procore-null-projection-batch1/docs/evidence/procore-null-projection-audit/20260618T070346Z/procore-null-projection-audit.json",
+  "closeout": "No remediation was applied; null projection counts were intentionally unchanged.",
+  "command": "scripts/proofs/procore_budget_financial_source_path_triage.py",
+  "completed_at_utc": "2026-06-18T08:55:30.833454+00:00",
+  "db_path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite",
+  "guardrails": {
+    "budget_detail_refresh_or_reconciliation_called": false,
+    "live_calls_performed": false,
+    "query_only": true,
+    "raw_payload_values_emitted": false,
+    "read_only_sqlite": true,
+    "scheduler_called": false,
+    "schema_registry_projection_migration_changed": false,
+    "source_refresh_orchestrator_called": false,
+    "writeback": "none"
+  },
+  "project_keys": [],
+  "started_at_utc": "2026-06-18T08:55:28.262482+00:00",
+  "summary": {
+    "approve_mapping_patch_next": 2,
+    "dead_column_candidates": 4,
+    "deferred_pending_live_source_evidence": 0,
+    "dynamic_cell_already_handled": 0,
+    "local_evidence_sufficient_fields": 7,
+    "schema_artifacts_to_document": 0,
+    "target_fields": 7
+  },
+  "target_fields": [
+    {
+      "audit_classification": "all_null",
+      "audit_null_rate": 1.0,
+      "audit_root_cause_class": "schema_column_not_in_projection_registry",
+      "cell_currency_evidence": null,
+      "classification": "read_model_convenience_or_dead_column",
+      "column": "actual_cost",
+      "column_exists": true,
+      "dynamic_cell_evidence": {
+        "aliases_checked": [
+          "actualcost",
+          "actualcosts"
+        ],
+        "cell_rows_inspected": 225131,
+        "matching_cell_rows": 0,
+        "matching_currency_non_null_rows": 0,
+        "matching_decimal_rows": 0,
+        "raw_payload_values_emitted": false
+      },
+      "endpoint_family": "budget",
+      "endpoint_key": "budget-detail-rows",
+      "local_evidence_sufficient": true,
+      "next_action": "no_action_dead_column_candidate",
+      "non_null_rows": 0,
+      "null_rate": 1.0,
+      "null_rows": 2496,
+      "path_checks": [
+        {
+          "endpoint_key": "budget-detail-rows",
+          "json_path": "$.actual_cost",
+          "parse_error_count": 0,
+          "path_missing_count": 2496,
+          "path_non_empty_count": 0,
+          "path_present_count": 0,
+          "payload_rows_inspected": 2496,
+          "projects_observed": [
+            "caretta",
+            "rybovich",
+            "the-wellington",
+            "tropical"
+          ],
+          "raw_payload_values_emitted": false,
+          "source_quality_filter_used": "is_current=1 AND raw_procore_payload_persisted=1 AND source_quality='live_full_payload'"
+        }
+      ],
+      "rationale": "Current rows exist, but neither row-level source nor dynamic-cell evidence supports projection.",
+      "raw_payload_values_emitted": false,
+      "table": "procore_ep_budget_detail_rows",
+      "table_exists": true,
+      "table_row_count": 2496
+    },
+    {
+      "audit_classification": "all_null",
+      "audit_null_rate": 1.0,
+      "audit_root_cause_class": "schema_column_not_in_projection_registry",
+      "cell_currency_evidence": null,
+      "classification": "read_model_convenience_or_dead_column",
+      "column": "cost_type",
+      "column_exists": true,
+      "dynamic_cell_evidence": null,
+      "endpoint_family": "budget",
+      "endpoint_key": "budget-detail-rows",
+      "local_evidence_sufficient": true,
+      "next_action": "no_action_dead_column_candidate",
+      "non_null_rows": 0,
+      "null_rate": 1.0,
+      "null_rows": 2496,
+      "path_checks": [
+        {
+          "endpoint_key": "budget-detail-rows",
+          "json_path": "$.cost_type",
+          "parse_error_count": 0,
+          "path_missing_count": 2496,
+          "path_non_empty_count": 0,
+          "path_present_count": 0,
+          "payload_rows_inspected": 2496,
+          "projects_observed": [
+            "caretta",
+            "rybovich",
+            "the-wellington",
+            "tropical"
+          ],
+          "raw_payload_values_emitted": false,
+          "source_quality_filter_used": "is_current=1 AND raw_procore_payload_persisted=1 AND source_quality='live_full_payload'"
+        },
+        {
+          "endpoint_key": "budget-detail-rows",
+          "json_path": "$.line_item_type",
+          "parse_error_count": 0,
+          "path_missing_count": 2496,
+          "path_non_empty_count": 0,
+          "path_present_count": 0,
+          "payload_rows_inspected": 2496,
+          "projects_observed": [
+            "caretta",
+            "rybovich",
+            "the-wellington",
+            "tropical"
+          ],
+          "raw_payload_values_emitted": false,
+          "source_quality_filter_used": "is_current=1 AND raw_procore_payload_persisted=1 AND source_quality='live_full_payload'"
+        }
+      ],
+      "rationale": "Current rows exist, but neither row-level source nor dynamic-cell evidence supports projection.",
+      "raw_payload_values_emitted": false,
+      "table": "procore_ep_budget_detail_rows",
+      "table_exists": true,
+      "table_row_count": 2496
+    },
+    {
+      "audit_classification": "all_null",
+      "audit_null_rate": 1.0,
+      "audit_root_cause_class": "schema_column_not_in_projection_registry",
+      "cell_currency_evidence": null,
+      "classification": "read_model_convenience_or_dead_column",
+      "column": "cost_type_id",
+      "column_exists": true,
+      "dynamic_cell_evidence": null,
+      "endpoint_family": "budget",
+      "endpoint_key": "budget-detail-rows",
+      "local_evidence_sufficient": true,
+      "next_action": "no_action_dead_column_candidate",
+      "non_null_rows": 0,
+      "null_rate": 1.0,
+      "null_rows": 2496,
+      "path_checks": [
+        {
+          "endpoint_key": "budget-detail-rows",
+          "json_path": "$.cost_type_id",
+          "parse_error_count": 0,
+          "path_missing_count": 2496,
+          "path_non_empty_count": 0,
+          "path_present_count": 0,
+          "payload_rows_inspected": 2496,
+          "projects_observed": [
+            "caretta",
+            "rybovich",
+            "the-wellington",
+            "tropical"
+          ],
+          "raw_payload_values_emitted": false,
+          "source_quality_filter_used": "is_current=1 AND raw_procore_payload_persisted=1 AND source_quality='live_full_payload'"
+        },
+        {
+          "endpoint_key": "budget-detail-rows",
+          "json_path": "$.cost_type.id",
+          "parse_error_count": 0,
+          "path_missing_count": 2496,
+          "path_non_empty_count": 0,
+          "path_present_count": 0,
+          "payload_rows_inspected": 2496,
+          "projects_observed": [
+            "caretta",
+            "rybovich",
+            "the-wellington",
+            "tropical"
+          ],
+          "raw_payload_values_emitted": false,
+          "source_quality_filter_used": "is_current=1 AND raw_procore_payload_persisted=1 AND source_quality='live_full_payload'"
+        },
+        {
+          "endpoint_key": "budget-detail-rows",
+          "json_path": "$.line_item_type_id",
+          "parse_error_count": 0,
+          "path_missing_count": 2496,
+          "path_non_empty_count": 0,
+          "path_present_count": 0,
+          "payload_rows_inspected": 2496,
+          "projects_observed": [
+            "caretta",
+            "rybovich",
+            "the-wellington",
+            "tropical"
+          ],
+          "raw_payload_values_emitted": false,
+          "source_quality_filter_used": "is_current=1 AND raw_procore_payload_persisted=1 AND source_quality='live_full_payload'"
+        },
+        {
+          "endpoint_key": "budget-detail-rows",
+          "json_path": "$.line_item_type.id",
+          "parse_error_count": 0,
+          "path_missing_count": 2496,
+          "path_non_empty_count": 0,
+          "path_present_count": 0,
+          "payload_rows_inspected": 2496,
+          "projects_observed": [
+            "caretta",
+            "rybovich",
+            "the-wellington",
+            "tropical"
+          ],
+          "raw_payload_values_emitted": false,
+          "source_quality_filter_used": "is_current=1 AND raw_procore_payload_persisted=1 AND source_quality='live_full_payload'"
+        }
+      ],
+      "rationale": "Current rows exist, but neither row-level source nor dynamic-cell evidence supports projection.",
+      "raw_payload_values_emitted": false,
+      "table": "procore_ep_budget_detail_rows",
+      "table_exists": true,
+      "table_row_count": 2496
+    },
+    {
+      "audit_classification": "all_null",
+      "audit_null_rate": 1.0,
+      "audit_root_cause_class": "schema_column_not_in_projection_registry",
+      "cell_currency_evidence": null,
+      "classification": "read_model_convenience_or_dead_column",
+      "column": "line_item_type_id",
+      "column_exists": true,
+      "dynamic_cell_evidence": null,
+      "endpoint_family": "budget",
+      "endpoint_key": "budget-detail-rows",
+      "local_evidence_sufficient": true,
+      "next_action": "no_action_dead_column_candidate",
+      "non_null_rows": 0,
+      "null_rate": 1.0,
+      "null_rows": 2496,
+      "path_checks": [
+        {
+          "endpoint_key": "budget-detail-rows",
+          "json_path": "$.line_item_type_id",
+          "parse_error_count": 0,
+          "path_missing_count": 2496,
+          "path_non_empty_count": 0,
+          "path_present_count": 0,
+          "payload_rows_inspected": 2496,
+          "projects_observed": [
+            "caretta",
+            "rybovich",
+            "the-wellington",
+            "tropical"
+          ],
+          "raw_payload_values_emitted": false,
+          "source_quality_filter_used": "is_current=1 AND raw_procore_payload_persisted=1 AND source_quality='live_full_payload'"
+        },
+        {
+          "endpoint_key": "budget-detail-rows",
+          "json_path": "$.line_item_type.id",
+          "parse_error_count": 0,
+          "path_missing_count": 2496,
+          "path_non_empty_count": 0,
+          "path_present_count": 0,
+          "payload_rows_inspected": 2496,
+          "projects_observed": [
+            "caretta",
+            "rybovich",
+            "the-wellington",
+            "tropical"
+          ],
+          "raw_payload_values_emitted": false,
+          "source_quality_filter_used": "is_current=1 AND raw_procore_payload_persisted=1 AND source_quality='live_full_payload'"
+        }
+      ],
+      "rationale": "Current rows exist, but neither row-level source nor dynamic-cell evidence supports projection.",
+      "raw_payload_values_emitted": false,
+      "table": "procore_ep_budget_detail_rows",
+      "table_exists": true,
+      "table_row_count": 2496
+    },
+    {
+      "audit_classification": "all_null",
+      "audit_null_rate": 1.0,
+      "audit_root_cause_class": "schema_column_not_in_projection_registry",
+      "cell_currency_evidence": {
+        "cell_rows_inspected": 225131,
+        "currency_non_null_rows": 0,
+        "currency_null_rows": 225131,
+        "raw_payload_values_emitted": false
+      },
+      "classification": "expected_optional",
+      "column": "currency_iso_code",
+      "column_exists": true,
+      "dynamic_cell_evidence": null,
+      "endpoint_family": "budget",
+      "endpoint_key": "budget-detail-rows",
+      "local_evidence_sufficient": true,
+      "next_action": "no_action_expected_optional",
+      "non_null_rows": 0,
+      "null_rate": 1.0,
+      "null_rows": 225131,
+      "path_checks": [
+        {
+          "endpoint_key": "budget-detail-rows",
+          "json_path": "$.currency_iso_code",
+          "parse_error_count": 0,
+          "path_missing_count": 2496,
+          "path_non_empty_count": 0,
+          "path_present_count": 0,
+          "payload_rows_inspected": 2496,
+          "projects_observed": [
+            "caretta",
+            "rybovich",
+            "the-wellington",
+            "tropical"
+          ],
+          "raw_payload_values_emitted": false,
+          "source_quality_filter_used": "is_current=1 AND raw_procore_payload_persisted=1 AND source_quality='live_full_payload'"
+        },
+        {
+          "endpoint_key": "budget-detail-rows",
+          "json_path": "$.currency_code",
+          "parse_error_count": 0,
+          "path_missing_count": 2496,
+          "path_non_empty_count": 0,
+          "path_present_count": 0,
+          "payload_rows_inspected": 2496,
+          "projects_observed": [
+            "caretta",
+            "rybovich",
+            "the-wellington",
+            "tropical"
+          ],
+          "raw_payload_values_emitted": false,
+          "source_quality_filter_used": "is_current=1 AND raw_procore_payload_persisted=1 AND source_quality='live_full_payload'"
+        },
+        {
+          "endpoint_key": "budget-detail-rows",
+          "json_path": "$.currency_configuration.currency_iso_code",
+          "parse_error_count": 0,
+          "path_missing_count": 0,
+          "path_non_empty_count": 0,
+          "path_present_count": 2496,
+          "payload_rows_inspected": 2496,
+          "projects_observed": [
+            "caretta",
+            "rybovich",
+            "the-wellington",
+            "tropical"
+          ],
+          "raw_payload_values_emitted": false,
+          "source_quality_filter_used": "is_current=1 AND raw_procore_payload_persisted=1 AND source_quality='live_full_payload'"
+        }
+      ],
+      "rationale": "Candidate row-level source paths are present only as null or empty values.",
+      "raw_payload_values_emitted": false,
+      "table": "procore_ep_budget_detail_row_cells",
+      "table_exists": true,
+      "table_row_count": 225131
+    },
+    {
+      "audit_classification": "all_null",
+      "audit_null_rate": 1.0,
+      "audit_root_cause_class": "schema_column_not_in_projection_registry",
+      "cell_currency_evidence": null,
+      "classification": "row_level_source_field_exists",
+      "column": "cost_impact_contract_confirmed",
+      "column_exists": true,
+      "dynamic_cell_evidence": null,
+      "endpoint_family": "change_events",
+      "endpoint_key": "change-events",
+      "local_evidence_sufficient": true,
+      "next_action": "approve_mapping_patch_next",
+      "non_null_rows": 0,
+      "null_rate": 1.0,
+      "null_rows": 2816,
+      "path_checks": [
+        {
+          "endpoint_key": "change-events",
+          "json_path": "$.change_items[].cost_impact.contract_confirmed",
+          "parse_error_count": 0,
+          "path_missing_count": 2652,
+          "path_non_empty_count": 0,
+          "path_present_count": 0,
+          "payload_rows_inspected": 2652,
+          "projects_observed": [
+            "caretta",
+            "pga-modern-garage",
+            "rybovich",
+            "tropical"
+          ],
+          "raw_payload_values_emitted": false,
+          "source_quality_filter_used": "is_current=1 AND raw_procore_payload_persisted=1 AND source_quality='live_full_payload'"
+        },
+        {
+          "endpoint_key": "change-events",
+          "json_path": "$.change_items[].cost_impact.contract.confirmed",
+          "parse_error_count": 0,
+          "path_missing_count": 6,
+          "path_non_empty_count": 1973,
+          "path_present_count": 2646,
+          "payload_rows_inspected": 2652,
+          "projects_observed": [
+            "caretta",
+            "pga-modern-garage",
+            "rybovich",
+            "tropical"
+          ],
+          "raw_payload_values_emitted": false,
+          "source_quality_filter_used": "is_current=1 AND raw_procore_payload_persisted=1 AND source_quality='live_full_payload'"
+        }
+      ],
+      "rationale": "A checked cost-impact confirmation path exists with non-empty source data.",
+      "raw_payload_values_emitted": false,
+      "table": "procore_ep_change_events_change_items",
+      "table_exists": true,
+      "table_row_count": 2816
+    },
+    {
+      "audit_classification": "all_null",
+      "audit_null_rate": 1.0,
+      "audit_root_cause_class": "schema_column_not_in_projection_registry",
+      "cell_currency_evidence": null,
+      "classification": "row_level_source_field_exists",
+      "column": "cost_impact_vendor_confirmed",
+      "column_exists": true,
+      "dynamic_cell_evidence": null,
+      "endpoint_family": "change_events",
+      "endpoint_key": "change-events",
+      "local_evidence_sufficient": true,
+      "next_action": "approve_mapping_patch_next",
+      "non_null_rows": 0,
+      "null_rate": 1.0,
+      "null_rows": 2816,
+      "path_checks": [
+        {
+          "endpoint_key": "change-events",
+          "json_path": "$.change_items[].cost_impact.vendor_confirmed",
+          "parse_error_count": 0,
+          "path_missing_count": 2652,
+          "path_non_empty_count": 0,
+          "path_present_count": 0,
+          "payload_rows_inspected": 2652,
+          "projects_observed": [
+            "caretta",
+            "pga-modern-garage",
+            "rybovich",
+            "tropical"
+          ],
+          "raw_payload_values_emitted": false,
+          "source_quality_filter_used": "is_current=1 AND raw_procore_payload_persisted=1 AND source_quality='live_full_payload'"
+        },
+        {
+          "endpoint_key": "change-events",
+          "json_path": "$.change_items[].cost_impact.vendor.confirmed",
+          "parse_error_count": 0,
+          "path_missing_count": 6,
+          "path_non_empty_count": 1973,
+          "path_present_count": 2646,
+          "payload_rows_inspected": 2652,
+          "projects_observed": [
+            "caretta",
+            "pga-modern-garage",
+            "rybovich",
+            "tropical"
+          ],
+          "raw_payload_values_emitted": false,
+          "source_quality_filter_used": "is_current=1 AND raw_procore_payload_persisted=1 AND source_quality='live_full_payload'"
+        }
+      ],
+      "rationale": "A checked cost-impact confirmation path exists with non-empty source data.",
+      "raw_payload_values_emitted": false,
+      "table": "procore_ep_change_events_change_items",
+      "table_exists": true,
+      "table_row_count": 2816
+    }
+  ]
+}
