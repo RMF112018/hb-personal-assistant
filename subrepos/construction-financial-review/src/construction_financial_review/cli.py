@@ -21,6 +21,7 @@ parameterized (deferred work). schedule-integrate-forecast is import-dispatched 
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import os
 import subprocess
@@ -246,6 +247,38 @@ def cmd_procore_budget_details_parity(cfg: dict, project: str, data_root, db_pat
     return 0 if ok else 3
 
 
+def cmd_context_generate(*, data_root: str, out_dir: str, stamp: str, project: str,
+                         db_backed: bool, db_path: str | None) -> int:
+    """Controlled, default-off context-package generation (Phase 6).
+
+    Runs the Phase 5 context generator from EXPLICIT paths in either file-backed mode (default)
+    or DB-backed mode (the three v59 source-domain row sets via the Phase 4 adapter). Prints
+    structured JSON metadata. Fails closed (nonzero) on unsafe/missing DB path, live/default DB,
+    live-root output, or missing DB rows. Does NOT alter run-context or any existing default."""
+    from .context.context_generation_runner import ContextRunnerError, run_context_generation
+    from .context.db_source_adapter import ForecastDbReadError
+    try:
+        # Keep stdout a clean machine-readable JSON channel: the generator's own progress
+        # chatter is redirected to stderr for the duration of the build.
+        with contextlib.redirect_stdout(sys.stderr):
+            meta = run_context_generation(
+                data_root=Path(data_root),
+                out_dir=Path(out_dir),
+                stamp=stamp,
+                db_backed=db_backed,
+                db_path=Path(db_path) if db_path else None,
+                project_key=project,
+            )
+    except (ContextRunnerError, ForecastDbReadError) as exc:
+        print(json.dumps({"command": "context-generate", "project": project,
+                          "status": "refused", "reason": str(exc)}, indent=2))
+        return 3
+    out = {"command": "context-generate", "status": "ok"}
+    out.update(meta)
+    print(json.dumps(out, indent=2))
+    return 0
+
+
 def cmd_run_generator(command: str, project: str, *, overrides: dict | None = None,
                       lineage_state: str | None = None) -> int:
     if project != "tropical":
@@ -465,6 +498,20 @@ def build_parser() -> argparse.ArgumentParser:
     pbdp.add_argument("--db-path", default=None, help="Override the configured HB Personal Assistant DB path.")
     pbdp.add_argument("--strict", action="store_true",
                       help="Fail closed on amount mismatches or package-only budget codes.")
+    # Phase 6 — controlled, default-off DB-backed context generation from explicit paths.
+    cgp = sub.add_parser("context-generate")
+    cgp.add_argument("--project", required=True, help="Project key (only 'tropical' in Phase 6).")
+    cgp.add_argument("--data-root", required=True,
+                     help="Explicit forecast source data root for this controlled run.")
+    cgp.add_argument("--out-dir", required=True,
+                     help="Explicit output package dir (must not exist; not under the live data root).")
+    cgp.add_argument("--stamp", required=True, help="Deterministic output stamp for the run.")
+    cgp.add_argument("--db-backed", action="store_true",
+                     help="Read the three v59 source-domain row sets from SQLite via the Phase 4 "
+                          "adapter (default off: file-backed).")
+    cgp.add_argument("--db-path", default=None,
+                     help="Explicit temp SQLite DB path (required with --db-backed; refuses the "
+                          "live/default DB).")
     # --context-stamp pins the upstream context package for a lineage-consistent fresh full run.
     # Applied to the stages that consume context and participate in the lineage gate.
     for _p in (fip, fmp, fpp, fcp, fkp, fspp):
@@ -535,6 +582,10 @@ def main(argv=None) -> int:
     if args.command == "procore-budget-details-parity":
         return cmd_procore_budget_details_parity(cfg, args.project, args.data_root, args.db_path,
                                                  args.strict)
+    if args.command == "context-generate":
+        return cmd_context_generate(data_root=args.data_root, out_dir=args.out_dir,
+                                    stamp=args.stamp, project=args.project,
+                                    db_backed=args.db_backed, db_path=args.db_path)
     overrides = {k: getattr(args, k, None)
                  for k in ("context_stamp", "analysis_stamp", "mapping_workpaper_stamp")}
     return cmd_run_generator(args.command, args.project, overrides=overrides,
