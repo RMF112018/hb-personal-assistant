@@ -53,6 +53,17 @@ ALLOWED_ACTIONS = {
     "leave_unmapped_expected_optional",
     "schema_migration_needed",
     "deprecation_candidate",
+    "no_mapping_already_populated",
+    "no_mapping_mapped_optional",
+    "repair_projection_write_path",
+}
+SWEEP_CLASSIFICATIONS = {
+    "already_populated",
+    "source_path_exists_not_mapped",
+    "mapped_source_present_projection_not_writing",
+    "source_absent_in_current_payloads",
+    "expected_optional_source_null",
+    "schema_artifact_candidate",
 }
 
 
@@ -63,6 +74,7 @@ class TablePlan:
     role: str
     array_path: str | None
     existing_columns: frozenset[str]
+    column_rels: dict[str, str]
 
 
 def _quote_ident(identifier: str) -> str:
@@ -89,6 +101,7 @@ def _table_plans() -> dict[str, TablePlan]:
             role="primary",
             array_path=None,
             existing_columns=frozenset(column for _rel, column in plan.primary_columns),
+            column_rels={column: rel for rel, column in plan.primary_columns},
         )
         for child in plan.child_tables:
             out[child.table] = TablePlan(
@@ -97,6 +110,7 @@ def _table_plans() -> dict[str, TablePlan]:
                 role="child",
                 array_path=child.array_path,
                 existing_columns=frozenset(column for _rel, column in child.columns),
+                column_rels={column: rel for rel, column in child.columns},
             )
     return out
 
@@ -106,6 +120,40 @@ def _physical_columns(conn: sqlite3.Connection, table: str) -> set[str]:
         return {str(row["name"]) for row in conn.execute(f"PRAGMA table_info({_quote_ident(table)})")}
     except sqlite3.Error:
         return set()
+
+
+def _column_info(conn: sqlite3.Connection, table: str) -> dict[str, dict[str, Any]]:
+    try:
+        return {
+            str(row["name"]): dict(row)
+            for row in conn.execute(f"PRAGMA table_info({_quote_ident(table)})")
+        }
+    except sqlite3.Error:
+        return {}
+
+
+def _column_stats(conn: sqlite3.Connection, table: str, column: str) -> dict[str, Any]:
+    try:
+        row = conn.execute(
+            f"""
+            SELECT
+              COUNT(*) AS total_rows,
+              SUM(CASE WHEN {_quote_ident(column)} IS NULL THEN 1 ELSE 0 END) AS null_rows,
+              SUM(CASE WHEN {_quote_ident(column)} IS NOT NULL THEN 1 ELSE 0 END) AS non_null_rows
+            FROM {_quote_ident(table)}
+            """
+        ).fetchone()
+    except sqlite3.Error:
+        return {"total_rows": None, "null_rows": None, "non_null_rows": None, "null_rate": None}
+    total = int(row["total_rows"] or 0)
+    nulls = int(row["null_rows"] or 0)
+    non_null = int(row["non_null_rows"] or 0)
+    return {
+        "total_rows": total,
+        "null_rows": nulls,
+        "non_null_rows": non_null,
+        "null_rate": round(nulls / total, 6) if total else 0.0,
+    }
 
 
 def _raw_payloads(conn: sqlite3.Connection, endpoint_key: str) -> list[dict[str, Any]]:
@@ -246,6 +294,24 @@ def _basic_candidates(plan: TablePlan, column: str, observed: set[str]) -> list[
     return sorted(dict.fromkeys(candidates))
 
 
+def _registry_path(plan: TablePlan, column: str) -> str | None:
+    rel = plan.column_rels.get(column)
+    if rel is None:
+        return None
+    if plan.array_path:
+        return f"{plan.array_path}[].{rel}"
+    return f"$.{rel}"
+
+
+def _is_date_like_column(column: str) -> bool:
+    return (
+        column in DATE_LEAVES
+        or column.endswith("_at")
+        or column.endswith("_date")
+        or column.endswith("_on")
+    )
+
+
 def _has_decomposition_columns(column: str, physical_columns: set[str]) -> bool:
     prefixes = {column, column.removesuffix("_id").removesuffix("_name").removesuffix("_login")}
     for prefix in prefixes:
@@ -338,6 +404,186 @@ def _selected_fields(current_audit: dict[str, Any]) -> list[dict[str, Any]]:
     return out
 
 
+def _audit_lookup(current_audit: dict[str, Any]) -> dict[tuple[str, str], dict[str, Any]]:
+    return {
+        (str(row.get("table")), str(row.get("column"))): row
+        for row in current_audit.get("columns", [])
+    }
+
+
+def _field_from_physical(
+    *,
+    conn: sqlite3.Connection,
+    table: str,
+    column: str,
+    current_lookup: dict[tuple[str, str], dict[str, Any]],
+) -> dict[str, Any] | None:
+    found = current_lookup.get((table, column))
+    if found is not None:
+        stats = _column_stats(conn, table, column)
+        merged = dict(found)
+        merged.setdefault("table_total_rows", stats["total_rows"])
+        merged.setdefault("total_rows", stats["total_rows"])
+        merged.setdefault("null_rows", stats["null_rows"])
+        merged.setdefault("non_null_rows", stats["non_null_rows"])
+        merged.setdefault("null_rate", stats["null_rate"])
+        return merged
+    info = _column_info(conn, table).get(column)
+    if info is None:
+        return None
+    stats = _column_stats(conn, table, column)
+    return {
+        "table": table,
+        "column": column,
+        "classification": "not_null_profiled",
+        "declared_type": info.get("type"),
+        "root_cause_class": None,
+        "suspected_projection_defect": False,
+        "table_total_rows": stats["total_rows"],
+        "total_rows": stats["total_rows"],
+        "null_rows": stats["null_rows"],
+        "non_null_rows": stats["non_null_rows"],
+        "null_rate": stats["null_rate"],
+    }
+
+
+def _explicit_fields(
+    *,
+    conn: sqlite3.Connection,
+    plans: dict[str, TablePlan],
+    current_lookup: dict[tuple[str, str], dict[str, Any]],
+    field_specs: set[tuple[str, str]],
+    date_field_sweep: bool,
+) -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
+    seen: set[tuple[str, str]] = set()
+    for table, column in sorted(field_specs):
+        field = _field_from_physical(
+            conn=conn, table=table, column=column, current_lookup=current_lookup
+        )
+        if field is not None:
+            out.append(field | {"selection_reason": "explicit_field"})
+            seen.add((table, column))
+    if not date_field_sweep:
+        return out
+    for table in sorted(plans):
+        for column in sorted(_physical_columns(conn, table)):
+            key = (table, column)
+            if key in seen or not _is_date_like_column(column):
+                continue
+            field = _field_from_physical(
+                conn=conn, table=table, column=column, current_lookup=current_lookup
+            )
+            if field is not None:
+                out.append(field | {"selection_reason": "date_field_sweep"})
+                seen.add(key)
+    return out
+
+
+def _sweep_recommendation(
+    *,
+    mapped: bool,
+    non_null_rows: int | None,
+    checks: list[dict[str, Any]],
+) -> tuple[str, str, str]:
+    if non_null_rows and non_null_rows > 0:
+        return "no_mapping_already_populated", "already_populated", "high"
+    best = max(
+        checks,
+        key=lambda c: (
+            c["path_non_empty_count"],
+            c["path_present_count"],
+            not c["object_keys_present"],
+        ),
+        default=None,
+    )
+    if best is not None and best["path_non_empty_count"] > 0:
+        if mapped:
+            return "repair_projection_write_path", "mapped_source_present_projection_not_writing", "high"
+        return "map_scalar_path", "source_path_exists_not_mapped", "high"
+    if best is not None and best["path_present_count"] > 0:
+        return "no_mapping_mapped_optional", "expected_optional_source_null", "high"
+    if mapped:
+        return "leave_unmapped_source_absent", "source_absent_in_current_payloads", "high"
+    return "deprecation_candidate", "schema_artifact_candidate", "medium"
+
+
+def _record_for_field(
+    *,
+    conn: sqlite3.Connection,
+    field: dict[str, Any],
+    plan: TablePlan,
+    payloads: list[dict[str, Any]],
+    observed: set[str],
+    strict: bool,
+    explicit_mode: bool,
+) -> dict[str, Any]:
+    table = str(field.get("table"))
+    column = str(field.get("column"))
+    physical_columns = _physical_columns(conn, table)
+    registry_path = _registry_path(plan, column)
+    candidates = [registry_path] if registry_path else _basic_candidates(plan, column, observed)
+    if not candidates:
+        candidates = _basic_candidates(plan, column, observed)
+    checks = [_path_check(payloads, candidate) for candidate in sorted(dict.fromkeys(candidates))]
+    if explicit_mode:
+        action, classification, confidence = _sweep_recommendation(
+            mapped=registry_path is not None,
+            non_null_rows=field.get("non_null_rows"),
+            checks=checks,
+        )
+    else:
+        action, classification, confidence = _recommend(
+            column=column,
+            declared_type=str(field.get("declared_type") or ""),
+            plan=plan,
+            physical_columns=physical_columns,
+            checks=checks,
+            root_cause=str(field.get("root_cause_class") or ""),
+        )
+    assert action in ALLOWED_ACTIONS
+    if explicit_mode:
+        assert classification in SWEEP_CLASSIFICATIONS
+    child_items = 0
+    if plan.array_path:
+        for payload in payloads:
+            child_items += len(_values_at(payload, plan.array_path + "[]"))
+    object_keys = sorted(
+        {
+            key
+            for check in checks
+            for key in check.get("object_keys_present", [])
+        }
+    )
+    return {
+        "table": table,
+        "column": column,
+        "declared_type": field.get("declared_type"),
+        "row_count": field.get("table_total_rows") or field.get("total_rows"),
+        "null_count": field.get("null_rows"),
+        "non_null_count": field.get("non_null_rows"),
+        "null_rate": field.get("null_rate"),
+        "inferred_endpoint_key": plan.endpoint_key,
+        "endpoint_family": plan.endpoint_family,
+        "current_root_cause_class": field.get("root_cause_class"),
+        "current_null_classification": field.get("classification"),
+        "selection_reason": field.get("selection_reason", "current_audit_candidate"),
+        "inferred_table_role": plan.role,
+        "associated_raw_endpoint_key": plan.endpoint_key,
+        "registry_mapped": registry_path is not None,
+        "registry_json_path": registry_path,
+        "raw_payload_rows_inspected": len(payloads),
+        "raw_child_items_inspected": child_items,
+        "candidate_json_paths_checked": checks,
+        "object_keys_present": object_keys[:40],
+        "recommended_mapping": action,
+        "classification": classification,
+        "confidence": confidence,
+        "strict": strict,
+        "raw_payload_values_emitted": False,
+    }
+
+
 def audit_source_paths(
     *,
     db_path: str | Path,
@@ -345,6 +591,8 @@ def audit_source_paths(
     endpoints: set[str] | None = None,
     tables: set[str] | None = None,
     strict: bool = False,
+    explicit_fields: set[tuple[str, str]] | None = None,
+    date_field_sweep: bool = False,
 ) -> dict[str, Any]:
     started = datetime.now(timezone.utc).isoformat()
     current_audit = json.loads(Path(current_audit_json).read_text(encoding="utf-8"))
@@ -354,9 +602,26 @@ def audit_source_paths(
     observed_cache: dict[str, set[str]] = {}
 
     with connect_readonly(db_path) as conn:
-        for field in _selected_fields(current_audit):
+        current_lookup = _audit_lookup(current_audit)
+        selected = _selected_fields(current_audit)
+        selected.extend(
+            _explicit_fields(
+                conn=conn,
+                plans=plans,
+                current_lookup=current_lookup,
+                field_specs=explicit_fields or set(),
+                date_field_sweep=date_field_sweep,
+            )
+        )
+        seen: set[tuple[str, str, str]] = set()
+        for field in selected:
             table = str(field.get("table"))
             column = str(field.get("column"))
+            reason = str(field.get("selection_reason", "current_audit_candidate"))
+            unique_key = (table, column, reason)
+            if unique_key in seen:
+                continue
+            seen.add(unique_key)
             if tables and table not in tables:
                 continue
             plan = plans.get(table)
@@ -366,44 +631,16 @@ def audit_source_paths(
                 continue
             payloads = payload_cache.setdefault(plan.endpoint_key, _raw_payloads(conn, plan.endpoint_key))
             observed = observed_cache.setdefault(plan.endpoint_key, _observed_paths(payloads))
-            physical_columns = _physical_columns(conn, table)
-            candidates = _basic_candidates(plan, column, observed)
-            checks = [_path_check(payloads, candidate) for candidate in candidates]
-            action, classification, confidence = _recommend(
-                column=column,
-                declared_type=str(field.get("declared_type") or ""),
-                plan=plan,
-                physical_columns=physical_columns,
-                checks=checks,
-                root_cause=str(field.get("root_cause_class") or ""),
-            )
-            assert action in ALLOWED_ACTIONS
-            child_items = 0
-            if plan.array_path:
-                for payload in payloads:
-                    child_items += len(_values_at(payload, plan.array_path + "[]"))
             records.append(
-                {
-                    "table": table,
-                    "column": column,
-                    "declared_type": field.get("declared_type"),
-                    "row_count": field.get("table_total_rows") or field.get("total_rows"),
-                    "null_count": field.get("null_rows"),
-                    "null_rate": field.get("null_rate"),
-                    "inferred_endpoint_key": plan.endpoint_key,
-                    "endpoint_family": plan.endpoint_family,
-                    "current_root_cause_class": field.get("root_cause_class"),
-                    "inferred_table_role": plan.role,
-                    "associated_raw_endpoint_key": plan.endpoint_key,
-                    "raw_payload_rows_inspected": len(payloads),
-                    "raw_child_items_inspected": child_items,
-                    "candidate_json_paths_checked": checks,
-                    "recommended_mapping": action,
-                    "classification": classification,
-                    "confidence": confidence,
-                    "strict": strict,
-                    "raw_payload_values_emitted": False,
-                }
+                _record_for_field(
+                    conn=conn,
+                    field=field,
+                    plan=plan,
+                    payloads=payloads,
+                    observed=observed,
+                    strict=strict,
+                    explicit_mode=reason in {"explicit_field", "date_field_sweep"},
+                )
             )
 
     summary = {
@@ -418,6 +655,12 @@ def audit_source_paths(
             1 for record in records if not str(record["recommended_mapping"]).startswith("map_")
         ),
         "raw_payload_values_emitted": False,
+        "explicit_field_count": sum(
+            1 for record in records if record.get("selection_reason") == "explicit_field"
+        ),
+        "date_field_sweep_count": sum(
+            1 for record in records if record.get("selection_reason") == "date_field_sweep"
+        ),
     }
     return {
         "command": "scripts/proofs/procore_raw_payload_mapping_audit.py",
@@ -426,6 +669,10 @@ def audit_source_paths(
         "started_at_utc": started,
         "completed_at_utc": datetime.now(timezone.utc).isoformat(),
         "strict": strict,
+        "date_field_sweep": date_field_sweep,
+        "explicit_fields": [
+            f"{table}.{column}" for table, column in sorted(explicit_fields or set())
+        ],
         "summary": summary,
         "fields": records,
         "guardrails": {
@@ -448,16 +695,19 @@ def render_markdown(payload: dict[str, Any]) -> str:
         f"- Fields audited: `{summary['fields_audited']}`",
         f"- High-confidence mapping candidates: `{summary['high_confidence_mapping_candidates']}`",
         f"- Left unmapped with source rationale: `{summary['left_unmapped_with_source_rationale']}`",
+        f"- Explicit fields inspected: `{summary['explicit_field_count']}`",
+        f"- Date field sweep records: `{summary['date_field_sweep_count']}`",
         "- Raw payload values emitted: `false`",
         "",
         "## Field Decisions",
         "",
-        "| table | column | endpoint | rows | null rate | action | classification | confidence | paths checked |",
-        "| --- | --- | --- | ---: | ---: | --- | --- | --- | ---: |",
+        "| table | column | endpoint | selection | mapped | rows | null rate | action | classification | confidence | paths checked |",
+        "| --- | --- | --- | --- | --- | ---: | ---: | --- | --- | --- | ---: |",
     ]
     for row in payload["fields"]:
         lines.append(
             f"| {row['table']} | {row['column']} | {row['inferred_endpoint_key']} | "
+            f"{row['selection_reason']} | {row['registry_mapped']} | "
             f"{row['row_count']} | {float(row['null_rate'] or 0):.3f} | "
             f"{row['recommended_mapping']} | {row['classification']} | {row['confidence']} | "
             f"{len(row['candidate_json_paths_checked'])} |"
@@ -488,8 +738,22 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--out-md", required=True)
     parser.add_argument("--endpoint", action="append", dest="endpoints")
     parser.add_argument("--table", action="append", dest="tables")
+    parser.add_argument("--field", action="append", dest="fields")
+    parser.add_argument("--date-field-sweep", action="store_true")
     parser.add_argument("--strict", action="store_true")
     return parser.parse_args()
+
+
+def _parse_fields(values: list[str] | None) -> set[tuple[str, str]]:
+    fields: set[tuple[str, str]] = set()
+    for value in values or []:
+        if "." not in value:
+            raise SystemExit(f"--field must be table.column, got {value!r}")
+        table, column = value.rsplit(".", 1)
+        if not table or not column:
+            raise SystemExit(f"--field must be table.column, got {value!r}")
+        fields.add((table, column))
+    return fields
 
 
 def main() -> int:
@@ -500,6 +764,8 @@ def main() -> int:
         endpoints=set(args.endpoints or []) or None,
         tables=set(args.tables or []) or None,
         strict=args.strict,
+        explicit_fields=_parse_fields(args.fields),
+        date_field_sweep=args.date_field_sweep,
     )
     write_reports(payload, Path(args.out_json), Path(args.out_md))
     print(
