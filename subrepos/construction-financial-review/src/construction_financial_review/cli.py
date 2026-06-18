@@ -445,6 +445,38 @@ def cmd_temp_db_readiness_rehearsal(*, source_package: str, work_root: str, cont
     return 0 if report.get("status") == "passed" else 1
 
 
+def cmd_guarded_db_operator_run(*, source_package: str, work_root: str, context_stamp: str,
+                                db_path: str | None, project: str) -> int:
+    """Controlled guarded DB operator-run package (Phase 12; operator handoff).
+
+    Runs the Phase 11 rehearsal from an EXPLICIT Tropical source package under an EXPLICIT work root,
+    validates the nested DB-backed context/analysis/chain artifacts and the Phase 10/Phase 9 evidence
+    chain, and prints a deterministic guarded operator-run manifest naming the approved artifacts.
+    rc 0 = approved for guarded DB context->analysis use; rc 1 = not-ready evidence (rehearsal ran but
+    returned failed/not_ready); rc 3 = controlled refusal (unsafe/missing/ambiguous input or a
+    structural/provenance inconsistency after a passed rehearsal). Never writes the live DB or live
+    root; changes no existing command or production default."""
+    from .workflows.guarded_db_operator_run import (
+        GuardedDbOperatorRunError,
+        run_guarded_db_operator_run,
+    )
+    try:
+        # Keep stdout a clean machine-readable JSON channel: workflow chatter -> stderr.
+        with contextlib.redirect_stdout(sys.stderr):
+            report = run_guarded_db_operator_run(
+                source_package=Path(source_package), work_root=Path(work_root),
+                context_stamp=context_stamp,
+                db_path=Path(db_path) if db_path else None, project_key=project)
+    except GuardedDbOperatorRunError as exc:
+        print(json.dumps({"command": "guarded-db-operator-run", "project": project,
+                          "status": "refused", "reason": str(exc)}, indent=2))
+        return 3
+    out = {"command": "guarded-db-operator-run"}
+    out.update(report)
+    print(json.dumps(out, indent=2))
+    return 0 if report.get("decision") == "approved_for_guarded_db_context_analysis_use" else 1
+
+
 def cmd_run_generator(command: str, project: str, *, overrides: dict | None = None,
                       lineage_state: str | None = None) -> int:
     if project != "tropical":
@@ -737,6 +769,18 @@ def build_parser() -> argparse.ArgumentParser:
     tdr.add_argument("--db-path", default=None,
                      help="Optional explicit temp DB path (must be under --work-root, non-live, and "
                           "not already exist); derived under <work-root>/temp_dbs/ if omitted.")
+    # Phase 12 — controlled guarded DB operator-run package (operator handoff) atop the rehearsal.
+    gor = sub.add_parser("guarded-db-operator-run")
+    gor.add_argument("--project", required=True, help="Project key (only 'tropical' in Phase 12).")
+    gor.add_argument("--source-package", required=True,
+                     help="Explicit Tropical twn_cost_forecast_json_package directory to project.")
+    gor.add_argument("--work-root", required=True,
+                     help="Explicit non-live work root (rehearsal + manifest under it).")
+    gor.add_argument("--context-stamp", required=True,
+                     help="Deterministic context-package stamp for the operator run.")
+    gor.add_argument("--db-path", default=None,
+                     help="Optional explicit temp DB path (must be under --work-root, non-live, and "
+                          "not already exist); derived under <work-root>/temp_dbs/ if omitted.")
     # --context-stamp pins the upstream context package for a lineage-consistent fresh full run.
     # Applied to the stages that consume context and participate in the lineage gate.
     for _p in (fip, fmp, fpp, fcp, fkp, fspp):
@@ -827,6 +871,11 @@ def main(argv=None) -> int:
                                                work_root=args.work_root,
                                                context_stamp=args.context_stamp,
                                                db_path=args.db_path, project=args.project)
+    if args.command == "guarded-db-operator-run":
+        return cmd_guarded_db_operator_run(source_package=args.source_package,
+                                           work_root=args.work_root,
+                                           context_stamp=args.context_stamp,
+                                           db_path=args.db_path, project=args.project)
     if args.command == "context-generate":
         return cmd_context_generate(data_root=args.data_root, out_dir=args.out_dir,
                                     stamp=args.stamp, project=args.project,
