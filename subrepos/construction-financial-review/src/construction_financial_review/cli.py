@@ -311,6 +311,40 @@ def cmd_final_forecast_generate(*, context_package: str, project: str,
     return 0
 
 
+def cmd_package_chain_manifest(*, context_package: str, analysis_package: str, out: str,
+                               project: str) -> int:
+    """Write a deterministic forecast package-chain manifest from explicit context/analysis paths
+    (Phase 8).
+
+    Resolves each explicit package directory into a validated ForecastPackageRef (no latest-glob),
+    refuses live-root packages, and writes a sorted-key chain manifest. Prints structured JSON
+    metadata; rc 3 on any invalid input. Adds no DB/schema and changes no existing command."""
+    from .common import package_resolution as pr
+    try:
+        context_ref = pr.resolve_explicit_package(
+            package_kind="context", package_path=Path(context_package), project_key=project)
+        analysis_ref = pr.resolve_explicit_package(
+            package_kind="analysis", package_path=Path(analysis_package), project_key=project)
+        chain = pr.build_package_chain(
+            project_key=project, data_root=context_ref.package_path.parent,
+            refs=[context_ref, analysis_ref])
+        manifest_path = pr.write_package_chain_manifest(chain=chain, out_path=Path(out))
+    except pr.PackageResolutionError as exc:
+        print(json.dumps({"command": "package-chain-manifest", "project": project,
+                          "status": "refused", "reason": str(exc)}, indent=2))
+        return 3
+    print(json.dumps({
+        "command": "package-chain-manifest", "status": "ok", "project": project,
+        "manifest_path": str(manifest_path),
+        "packages": {
+            "context": {"package_path": str(context_ref.package_path), "stamp": context_ref.stamp},
+            "analysis": {"package_path": str(analysis_ref.package_path),
+                         "stamp": analysis_ref.stamp},
+        },
+    }, indent=2))
+    return 0
+
+
 def cmd_run_generator(command: str, project: str, *, overrides: dict | None = None,
                       lineage_state: str | None = None) -> int:
     if project != "tropical":
@@ -553,6 +587,15 @@ def build_parser() -> argparse.ArgumentParser:
                           "controlled data root, which must not be under the live forecast root).")
     ffp.add_argument("--run-id", default=None,
                      help="Optional run id recorded in the temp run-lineage state.")
+    # Phase 8 — write a deterministic package-chain manifest from explicit context/analysis paths.
+    pcmp = sub.add_parser("package-chain-manifest")
+    pcmp.add_argument("--project", required=True, help="Project key (only 'tropical' in Phase 8).")
+    pcmp.add_argument("--context-package", required=True,
+                      help="Explicit context package dir (validated; refused under the live root).")
+    pcmp.add_argument("--analysis-package", required=True,
+                      help="Explicit analysis package dir (validated; refused under the live root).")
+    pcmp.add_argument("--out", required=True,
+                      help="Output path for the deterministic package-chain manifest JSON.")
     # --context-stamp pins the upstream context package for a lineage-consistent fresh full run.
     # Applied to the stages that consume context and participate in the lineage gate.
     for _p in (fip, fmp, fpp, fcp, fkp, fspp):
@@ -626,6 +669,10 @@ def main(argv=None) -> int:
     if args.command == "final-forecast-generate":
         return cmd_final_forecast_generate(context_package=args.context_package,
                                            project=args.project, run_id=args.run_id)
+    if args.command == "package-chain-manifest":
+        return cmd_package_chain_manifest(context_package=args.context_package,
+                                          analysis_package=args.analysis_package,
+                                          out=args.out, project=args.project)
     if args.command == "context-generate":
         return cmd_context_generate(data_root=args.data_root, out_dir=args.out_dir,
                                     stamp=args.stamp, project=args.project,
