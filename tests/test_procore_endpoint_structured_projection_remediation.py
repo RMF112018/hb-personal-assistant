@@ -664,3 +664,108 @@ def test_reprocess_apply_succeeds_after_reconcile(
     assert receipt["ok"] is True
     assert receipt["primary_rows_written"] >= 1
     assert audit.projection_schema_audit(db_path=db)["ok"] is True
+
+
+def test_batch1_punch_closed_fields_project_from_current_payload_shapes(tmp_path: Path) -> None:
+    """Batch 1 regression: current punch payloads expose closed_by as an object and
+    assignment attachment item fields. These paths must be allow-listed without adding
+    columns, and closed_at / closed_by must project into the existing columns."""
+    db = _db(tmp_path)
+    conn = sqlite3.connect(db)
+    conn.row_factory = sqlite3.Row
+    payload = {
+        "id": 123,
+        "closed_at": "2026-06-01T12:00:00Z",
+        "closed_by": {
+            "id": 456,
+            "login": "reviewer@example.invalid",
+            "name": "Owner Reviewer",
+            "company_name": "Example Company",
+            "locale": None,
+        },
+        "assignments": [
+            {
+                "id": 1,
+                "approved": True,
+                "attachments": [
+                    {
+                        "id": 2,
+                        "filename": "redacted.pdf",
+                        "url": "https://storage.example.invalid/redacted.pdf",
+                    }
+                ],
+            }
+        ],
+    }
+    try:
+        receipt = eng.project_endpoint_specific(
+            conn,
+            endpoint_id="punch-items",
+            project_key="tropical",
+            procore_project_id="99",
+            record_id="123",
+            parent_record_id=None,
+            payload=payload,
+            raw_payload_id="raw-punch-batch1",
+            payload_hash="hash-punch-batch1",
+            source_quality=SOURCE_QUALITY_LIVE_FULL,
+            fetched_at="2026-06-01T12:00:00Z",
+            now_utc="2026-06-01T12:01:00Z",
+            mode=eng.MODE_ENFORCE,
+        )
+        row = conn.execute(
+            "SELECT closed_at, closed_by FROM procore_ep_punch_items WHERE record_id = '123'"
+        ).fetchone()
+    finally:
+        conn.close()
+
+    assert receipt["ok"] is True
+    assert row["closed_at"] == "2026-06-01T12:00:00Z"
+    assert row["closed_by"] == "Owner Reviewer"
+
+
+def test_batch1_prime_contract_boolean_projects_with_attachment_sidecar_paths(
+    tmp_path: Path,
+) -> None:
+    """Batch 1 regression: current prime-contract payloads include top-level
+    attachment item fields and a boolean show_line_items_to_non_admins value."""
+    db = _db(tmp_path)
+    conn = sqlite3.connect(db)
+    conn.row_factory = sqlite3.Row
+    payload = {
+        "id": 321,
+        "show_line_items_to_non_admins": True,
+        "attachments": [
+            {
+                "id": 654,
+                "filename": "redacted.pdf",
+                "name": "Redacted",
+                "url": "https://storage.example.invalid/redacted.pdf",
+            }
+        ],
+    }
+    try:
+        receipt = eng.project_endpoint_specific(
+            conn,
+            endpoint_id="prime-contracts",
+            project_key="tropical",
+            procore_project_id="99",
+            record_id="321",
+            parent_record_id=None,
+            payload=payload,
+            raw_payload_id="raw-prime-batch1",
+            payload_hash="hash-prime-batch1",
+            source_quality=SOURCE_QUALITY_LIVE_FULL,
+            fetched_at="2026-06-01T12:00:00Z",
+            now_utc="2026-06-01T12:01:00Z",
+            mode=eng.MODE_ENFORCE,
+        )
+        row = conn.execute(
+            "SELECT show_line_items_to_non_admins FROM procore_ep_prime_contracts "
+            "WHERE record_id = '321'"
+        ).fetchone()
+    finally:
+        conn.close()
+
+    assert receipt["ok"] is True
+    assert row["show_line_items_to_non_admins"] == "True"
