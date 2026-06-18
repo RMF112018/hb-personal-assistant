@@ -271,6 +271,36 @@ def test_parity_mode_file_vs_db_match(tmp_path):
     assert raw == json.dumps(json.loads(raw), indent=2, sort_keys=True) + "\n"
 
 
+def test_parity_normalizes_bare_analysis_generated_stamp(tmp_path):
+    """Regression (found in Phase 11): the analysis README.md / forecast_review_summary.md embed the
+    generator's wall-clock stamp as PLAIN TEXT (``generated <stamp>``), not only inside the package
+    dir name. When the file-mode and db-mode analysis subprocesses straddle a 1-second boundary those
+    bare stamps differ; the parity normalizer must neutralize them so parity does not flake on a
+    timestamp-only difference. Two analysis-like packages identical except their bare stamp must
+    compare equal."""
+
+    def _make(mode: str, stamp: str) -> Path:
+        pkg = tmp_path / mode / f"forecast_analysis_package_tropical_{stamp}"
+        pkg.mkdir(parents=True)
+        (pkg / "manifest.json").write_text(
+            json.dumps({"package_name": pkg.name, "generated_stamp": stamp}), encoding="utf-8"
+        )
+        (pkg / "validation_report.json").write_text(json.dumps({"passed": True}), encoding="utf-8")
+        (pkg / "forecast_recommendations_by_budget_code.jsonl").write_text(
+            json.dumps({"budget_code_key": BCK}) + "\n", encoding="utf-8"
+        )
+        # Bare wall-clock stamp + output-path line, exactly like the real analysis markdown.
+        (pkg / "README.md").write_text(
+            f"- Output analysis package: `{pkg}`\n- generated `{stamp}`\n", encoding="utf-8"
+        )
+        return pkg
+
+    a = _make("file", "20260618_074103")
+    b = _make("db", "20260618_074104")  # one second later
+    cmp = wf._compare_packages(a, b)
+    assert cmp["match"] is True, cmp
+
+
 # --- 14-17. CLI -------------------------------------------------------------------------
 
 

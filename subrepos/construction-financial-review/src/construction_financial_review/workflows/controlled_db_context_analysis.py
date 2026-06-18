@@ -318,15 +318,26 @@ def _normalize(obj):
     return obj
 
 
+def _package_stamp(name: str) -> str:
+    """Bare stamp from a package dir name (the suffix after the context/analysis prefix), else ''."""
+    for prefix in (_ANALYSIS_PREFIX, _CONTEXT_PREFIX):
+        if name.startswith(prefix):
+            return name[len(prefix) :]
+    return ""
+
+
 def _load_package_outputs(package_dir: Path) -> dict:
     """Parse + normalize one package's files; neutralize run-location paths/name/stamps only.
 
     Replaces the package's parent (mode) root — which contains both the package path and, for an
-    analysis package, the consumed context-package path — and the package's own dir name (which
-    carries the analysis stamp), then normalizes the approved volatile keys.
+    analysis package, the consumed context-package path — the package's own dir name, and the bare
+    generator-assigned stamp (embedded as plain text in e.g. the analysis README.md /
+    forecast_review_summary.md as ``generated <stamp>``, not only inside the dir name), then
+    normalizes the approved volatile keys.
     """
     package_dir = Path(package_dir)
     mode_root = package_dir.parent
+    stamp = _package_stamp(package_dir.name)
     data: dict = {}
     for p in sorted(package_dir.rglob("*")):
         if not p.is_file():
@@ -334,11 +345,15 @@ def _load_package_outputs(package_dir: Path) -> dict:
         rel = str(p.relative_to(package_dir))
         if Path(rel).name in _SKIP_BASENAMES:
             continue
+        # Replace the full dir name BEFORE the bare stamp so name occurrences become <PKG_NAME> and
+        # only the standalone stamp text (e.g. `generated <stamp>`) collapses to <STAMP>.
         raw = (
             p.read_text(encoding="utf-8")
             .replace(str(mode_root), "<ROOT>")
             .replace(package_dir.name, "<PKG_NAME>")
         )
+        if stamp:
+            raw = raw.replace(stamp, "<STAMP>")
         if rel.endswith(".jsonl"):
             data[rel] = [_normalize(json.loads(ln)) for ln in raw.splitlines() if ln.strip()]
         elif rel.endswith(".json"):
