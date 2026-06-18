@@ -145,11 +145,11 @@ def test_required_root_cause_classes_and_row_context(
     assert support["suspected_projection_defect"] is False
 
 
-def test_documented_batch_deferrals_do_not_suppress_arbitrary_unmapped_fields(
+def test_strict_audit_does_not_suppress_unmapped_fields_by_deferral_list(
     tmp_path: Path, monkeypatch: Any
 ) -> None:
     _install_fake_registry(monkeypatch)
-    payload = audit.audit_database(_make_db(tmp_path))
+    payload = audit.audit_database(_make_db(tmp_path), source_proof_required=True)
 
     reviewed = [
         row
@@ -157,12 +157,9 @@ def test_documented_batch_deferrals_do_not_suppress_arbitrary_unmapped_fields(
         if row["table"] == "procore_ep_rfis" and row["column"] == "ball_in_court"
     ][0]
     assert reviewed["root_cause_class"] == audit.ROOT_UNMAPPED
-    assert reviewed["explicitly_deferred"] is True
-    assert reviewed["deferred_batch"] == "Batch B"
-    assert reviewed["deferred_disposition"] == (
-        "documented_object_container_or_child_field_decomposition"
-    )
-    assert reviewed["suspected_projection_defect"] is False
+    assert reviewed["source_proof_required"] is True
+    assert reviewed["source_proof_status"] == "source_path_exists_not_mapped"
+    assert reviewed["suspected_projection_defect"] is True
 
     arbitrary = [
         row
@@ -170,10 +167,10 @@ def test_documented_batch_deferrals_do_not_suppress_arbitrary_unmapped_fields(
         if row["table"] == "procore_ep_rfis" and row["column"] == "arbitrary_unmapped_null"
     ][0]
     assert arbitrary["root_cause_class"] == audit.ROOT_UNMAPPED
-    assert arbitrary["explicitly_deferred"] is False
+    assert arbitrary["source_proof_required"] is True
     assert arbitrary["suspected_projection_defect"] is True
 
-    assert payload["summary"]["explicitly_deferred_fields"] >= 1
+    assert payload["summary"]["suspected_projection_defects"] >= 2
 
 
 def test_empty_table_and_body_free_outputs(tmp_path: Path, monkeypatch: Any) -> None:
