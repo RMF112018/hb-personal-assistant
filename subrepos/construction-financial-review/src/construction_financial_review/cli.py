@@ -414,6 +414,37 @@ def cmd_db_cutover_readiness(*, data_root: str, work_root: str, context_stamp: s
     return 0 if report.get("decision") == "ready_for_guarded_operator_use" else 1
 
 
+def cmd_temp_db_readiness_rehearsal(*, source_package: str, work_root: str, context_stamp: str,
+                                    db_path: str | None, project: str) -> int:
+    """Controlled temp-DB preparation + readiness rehearsal (Phase 11).
+
+    Prepares a non-live temp v59 DB from an EXPLICIT Tropical source package (migrate + project)
+    under an EXPLICIT work root, runs the Phase 10 readiness gate against it, and prints a
+    deterministic rehearsal report. rc 0 = rehearsal passed (readiness ready); rc 1 = rehearsal
+    failed (readiness not_ready after successful prep); rc 3 = controlled refusal (unsafe/missing/
+    ambiguous input or DB-prep/projection failure). Never writes the live DB or live root; changes
+    no existing command or production default."""
+    from .workflows.temp_db_readiness_rehearsal import (
+        TempDbRehearsalError,
+        run_temp_db_readiness_rehearsal,
+    )
+    try:
+        # Keep stdout a clean machine-readable JSON channel: workflow chatter -> stderr.
+        with contextlib.redirect_stdout(sys.stderr):
+            report = run_temp_db_readiness_rehearsal(
+                source_package=Path(source_package), work_root=Path(work_root),
+                context_stamp=context_stamp,
+                db_path=Path(db_path) if db_path else None, project_key=project)
+    except TempDbRehearsalError as exc:
+        print(json.dumps({"command": "temp-db-readiness-rehearsal", "project": project,
+                          "status": "refused", "reason": str(exc)}, indent=2))
+        return 3
+    out = {"command": "temp-db-readiness-rehearsal"}
+    out.update(report)
+    print(json.dumps(out, indent=2))
+    return 0 if report.get("status") == "passed" else 1
+
+
 def cmd_run_generator(command: str, project: str, *, overrides: dict | None = None,
                       lineage_state: str | None = None) -> int:
     if project != "tropical":
@@ -694,6 +725,18 @@ def build_parser() -> argparse.ArgumentParser:
                      help="Deterministic context-package stamp for the run.")
     drp.add_argument("--db-path", required=True,
                      help="Explicit temp/non-live v59 SQLite DB path (refuses the live/default DB).")
+    # Phase 11 — controlled temp-DB preparation + readiness rehearsal from an explicit source package.
+    tdr = sub.add_parser("temp-db-readiness-rehearsal")
+    tdr.add_argument("--project", required=True, help="Project key (only 'tropical' in Phase 11).")
+    tdr.add_argument("--source-package", required=True,
+                     help="Explicit Tropical twn_cost_forecast_json_package directory to project.")
+    tdr.add_argument("--work-root", required=True,
+                     help="Explicit non-live work root (temp DB + readiness + report under it).")
+    tdr.add_argument("--context-stamp", required=True,
+                     help="Deterministic context-package stamp for the readiness run.")
+    tdr.add_argument("--db-path", default=None,
+                     help="Optional explicit temp DB path (must be under --work-root, non-live, and "
+                          "not already exist); derived under <work-root>/temp_dbs/ if omitted.")
     # --context-stamp pins the upstream context package for a lineage-consistent fresh full run.
     # Applied to the stages that consume context and participate in the lineage gate.
     for _p in (fip, fmp, fpp, fcp, fkp, fspp):
@@ -779,6 +822,11 @@ def main(argv=None) -> int:
         return cmd_db_cutover_readiness(data_root=args.data_root, work_root=args.work_root,
                                         context_stamp=args.context_stamp, db_path=args.db_path,
                                         project=args.project)
+    if args.command == "temp-db-readiness-rehearsal":
+        return cmd_temp_db_readiness_rehearsal(source_package=args.source_package,
+                                               work_root=args.work_root,
+                                               context_stamp=args.context_stamp,
+                                               db_path=args.db_path, project=args.project)
     if args.command == "context-generate":
         return cmd_context_generate(data_root=args.data_root, out_dir=args.out_dir,
                                     stamp=args.stamp, project=args.project,
