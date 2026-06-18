@@ -345,6 +345,46 @@ def cmd_package_chain_manifest(*, context_package: str, analysis_package: str, o
     return 0
 
 
+def cmd_controlled_context_analysis(*, data_root: str, work_root: str, context_stamp: str,
+                                    mode: str, db_path: str | None, project: str) -> int:
+    """Controlled, default-off context->analysis workflow (Phase 9; orchestration only).
+
+    Runs the proven controlled chain end to end from EXPLICIT paths under <work-root>/<mode>:
+    context generation -> analysis generation -> explicit package resolution -> deterministic chain
+    manifest -> operator report. mode is one of file | db | parity. Prints structured JSON metadata
+    (the operator/parity report). Fails closed (rc 3) on any controlled refusal. Adds no DB/schema
+    and changes no existing command or production default."""
+    from .workflows.controlled_db_context_analysis import (
+        ControlledWorkflowError,
+        run_controlled_context_analysis_parity,
+        run_controlled_context_analysis_workflow,
+    )
+    try:
+        # Keep stdout a clean machine-readable JSON channel: the generators' own progress chatter
+        # (and the Phase 7 subprocess) is redirected to stderr for the duration of the run.
+        with contextlib.redirect_stdout(sys.stderr):
+            if mode == "parity":
+                if not db_path:
+                    raise ControlledWorkflowError(
+                        "mode='parity' requires an explicit --db-path (fail closed)")
+                report = run_controlled_context_analysis_parity(
+                    data_root=Path(data_root), work_root=Path(work_root),
+                    context_stamp=context_stamp, db_path=Path(db_path), project_key=project)
+            else:
+                report = run_controlled_context_analysis_workflow(
+                    data_root=Path(data_root), work_root=Path(work_root),
+                    context_stamp=context_stamp, mode=mode,
+                    db_path=Path(db_path) if db_path else None, project_key=project)
+    except ControlledWorkflowError as exc:
+        print(json.dumps({"command": "controlled-context-analysis", "project": project,
+                          "status": "refused", "reason": str(exc)}, indent=2))
+        return 3
+    out = {"command": "controlled-context-analysis", "status": "ok"}
+    out.update(report)
+    print(json.dumps(out, indent=2))
+    return 0
+
+
 def cmd_run_generator(command: str, project: str, *, overrides: dict | None = None,
                       lineage_state: str | None = None) -> int:
     if project != "tropical":
@@ -596,6 +636,23 @@ def build_parser() -> argparse.ArgumentParser:
                       help="Explicit analysis package dir (validated; refused under the live root).")
     pcmp.add_argument("--out", required=True,
                       help="Output path for the deterministic package-chain manifest JSON.")
+    # Phase 9 — controlled, default-off context->analysis workflow (orchestration only) from
+    # explicit paths under <work-root>/<mode>. Modes: file | db | parity.
+    ccap = sub.add_parser("controlled-context-analysis")
+    ccap.add_argument("--project", required=True, help="Project key (only 'tropical' in Phase 9).")
+    ccap.add_argument("--data-root", required=True,
+                      help="Explicit forecast source data root for this controlled run.")
+    ccap.add_argument("--work-root", required=True,
+                      help="Explicit work root (outputs under <work-root>/<mode>; not under the "
+                           "live data root).")
+    ccap.add_argument("--context-stamp", required=True,
+                      help="Deterministic context-package stamp for the run.")
+    ccap.add_argument("--mode", required=True, choices=("file", "db", "parity"),
+                      help="file (default-off DB), db (explicit temp DB), or parity (run both + "
+                           "compare).")
+    ccap.add_argument("--db-path", default=None,
+                      help="Explicit temp SQLite DB path (required for db/parity; refuses the "
+                           "live/default DB).")
     # --context-stamp pins the upstream context package for a lineage-consistent fresh full run.
     # Applied to the stages that consume context and participate in the lineage gate.
     for _p in (fip, fmp, fpp, fcp, fkp, fspp):
@@ -673,6 +730,10 @@ def main(argv=None) -> int:
         return cmd_package_chain_manifest(context_package=args.context_package,
                                           analysis_package=args.analysis_package,
                                           out=args.out, project=args.project)
+    if args.command == "controlled-context-analysis":
+        return cmd_controlled_context_analysis(data_root=args.data_root, work_root=args.work_root,
+                                               context_stamp=args.context_stamp, mode=args.mode,
+                                               db_path=args.db_path, project=args.project)
     if args.command == "context-generate":
         return cmd_context_generate(data_root=args.data_root, out_dir=args.out_dir,
                                     stamp=args.stamp, project=args.project,
