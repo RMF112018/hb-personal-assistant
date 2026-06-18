@@ -67,6 +67,22 @@ _CHANGE_EVENT: dict[str, Any] = {
                 "segment_items": [{"id": 11, "name": "Concrete", "code": "03"}],
             },
             "vendor": {"id": 88, "name": "Acme Concrete LLC"},
+            "cost_impact": {
+                "contract": {
+                    "confirmed": {
+                        "id": 991,
+                        "number": "CCO-991",
+                        "status": "approved",
+                        "title": "Confirmed contract cost",
+                    }
+                },
+                "vendor": {
+                    "confirmed": {
+                        "id": 88,
+                        "name": "Acme Concrete LLC",
+                    }
+                },
+            },
             "disabled_fields": ["foo", "bar"],
         }
     ],
@@ -321,7 +337,6 @@ def test_nested_arrays_project_to_child_tables_with_high_value_columns(
     assert crow["item_id"] == "1"
     assert crow["budget_code_flat_code"] == "03-100"
     assert crow["vendor_name"] == "Acme Concrete LLC"
-
     # grandchild segment_items linked to its parent change_item
     seg_table = next(
         c.table for c in plan.child_tables if c.array_path.endswith("budget_code.segment_items")
@@ -330,6 +345,51 @@ def test_nested_arrays_project_to_child_tables_with_high_value_columns(
     assert seg["parent_item_id"] == "1"
     assert seg["primary_record_key"] == prow["record_key"]
     conn.close()
+
+
+def test_committed_change_event_cost_impact_confirmed_objects_project(
+    tmp_path: Path,
+) -> None:
+    payload = {
+        "id": 7010,
+        "change_items": [
+            {
+                "id": 1,
+                "cost_impact": {
+                    "contract": {
+                        "confirmed": {
+                            "id": 991,
+                            "number": "CCO-991",
+                            "status": "approved",
+                            "title": "Confirmed contract cost",
+                        }
+                    },
+                    "vendor": {
+                        "confirmed": {
+                            "id": 88,
+                            "name": "Acme Concrete LLC",
+                        }
+                    },
+                },
+            }
+        ],
+    }
+    db = _db(tmp_path)
+    receipt = _project(db, payload, source_quality=SOURCE_QUALITY_LIVE_FULL)
+    assert receipt["ok"] is True
+    assert receipt["endpoint_specific_projection_status"] == "ok"
+
+    plan = registry.plan_for(ENDPOINT)
+    assert plan is not None
+    ci_table = next(c.table for c in plan.child_tables if c.array_path == "$.change_items")
+    conn = sqlite3.connect(db)
+    conn.row_factory = sqlite3.Row
+    try:
+        row = conn.execute(f"SELECT * FROM {ci_table} WHERE item_id = '1'").fetchone()
+        assert row["cost_impact_contract_confirmed"] == "Confirmed contract cost"
+        assert row["cost_impact_vendor_confirmed"] == "Acme Concrete LLC"
+    finally:
+        conn.close()
 
 
 def test_every_fixture_path_is_mapped_zero_unknown(

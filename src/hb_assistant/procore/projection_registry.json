@@ -656,6 +656,11 @@
        "rel": "cost_impact.commitment.title"
       },
       {
+       "category": "company",
+       "column": "cost_impact_contract_confirmed",
+       "rel": "cost_impact.contract.confirmed"
+      },
+      {
        "category": "identity",
        "column": "cost_impact_contract_confirmed_id",
        "rel": "cost_impact.contract.confirmed.id"
@@ -789,6 +794,11 @@
        "category": "status",
        "column": "cost_impact_source_of_stage",
        "rel": "cost_impact.source_of_stage"
+      },
+      {
+       "category": "company",
+       "column": "cost_impact_vendor_confirmed",
+       "rel": "cost_impact.vendor.confirmed"
       },
       {
        "category": "identity",
@@ -1585,7 +1595,7 @@
     },
     {
      "category": "company",
-     "dest": "structural",
+     "dest": "column:$.change_items",
      "path": "$.change_items[].cost_impact.contract.confirmed",
      "type": "object"
     },
@@ -1813,7 +1823,7 @@
     },
     {
      "category": "company",
-     "dest": "structural",
+     "dest": "column:$.change_items",
      "path": "$.change_items[].cost_impact.vendor.confirmed",
      "type": "object"
     },
