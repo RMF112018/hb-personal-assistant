@@ -446,12 +446,17 @@ def cmd_temp_db_readiness_rehearsal(*, source_package: str, work_root: str, cont
 
 
 def cmd_guarded_db_operator_run(*, source_package: str, work_root: str, context_stamp: str,
-                                db_path: str | None, project: str) -> int:
-    """Controlled guarded DB operator-run package (Phase 12; operator handoff).
+                                db_path: str | None, project: str,
+                                allow_certified_live_db: bool = False,
+                                live_db_certification: str | None = None) -> int:
+    """Controlled guarded DB operator-run package (Phase 12 + Phase 13 live-DB opt-in).
 
     Runs the Phase 11 rehearsal from an EXPLICIT Tropical source package under an EXPLICIT work root,
     validates the nested DB-backed context/analysis/chain artifacts and the Phase 10/Phase 9 evidence
     chain, and prints a deterministic guarded operator-run manifest naming the approved artifacts.
+    Phase 13 certified-equivalence: a live/default --db-path is refused unless --allow-certified-live-db
+    AND a certified_match --live-db-certification are given; even then execution uses a FRESH temp DB
+    (never the live DB) and the manifest records the live-DB certification as evidence.
     rc 0 = approved for guarded DB context->analysis use; rc 1 = not-ready evidence (rehearsal ran but
     returned failed/not_ready); rc 3 = controlled refusal (unsafe/missing/ambiguous input or a
     structural/provenance inconsistency after a passed rehearsal). Never writes the live DB or live
@@ -466,7 +471,9 @@ def cmd_guarded_db_operator_run(*, source_package: str, work_root: str, context_
             report = run_guarded_db_operator_run(
                 source_package=Path(source_package), work_root=Path(work_root),
                 context_stamp=context_stamp,
-                db_path=Path(db_path) if db_path else None, project_key=project)
+                db_path=Path(db_path) if db_path else None, project_key=project,
+                allow_certified_live_db=allow_certified_live_db,
+                live_db_certification=Path(live_db_certification) if live_db_certification else None)
     except GuardedDbOperatorRunError as exc:
         print(json.dumps({"command": "guarded-db-operator-run", "project": project,
                           "status": "refused", "reason": str(exc)}, indent=2))
@@ -475,6 +482,64 @@ def cmd_guarded_db_operator_run(*, source_package: str, work_root: str, context_
     out.update(report)
     print(json.dumps(out, indent=2))
     return 0 if report.get("decision") == "approved_for_guarded_db_context_analysis_use" else 1
+
+
+def cmd_live_db_provenance_audit(*, work_root: str | None, live_db_path: str | None,
+                                 project: str) -> int:
+    """Strictly read-only provenance audit of the live/default v59 DB (Phase 13).
+
+    Inspects schema version + migration history, required v59 source-domain table presence, and row
+    counts by project_key; never creates/migrates/projects/writes the live DB. rc 0 = v59 source-domain
+    tables present (schema_only/populated_tropical/populated_other_projects); rc 1 = missing_v59_tables;
+    rc 3 = controlled refusal (missing/unreadable/not-the-live DB)."""
+    from .workflows.live_db_certification import (
+        AUDIT_MISSING_TABLES,
+        LiveDbCertificationError,
+        run_live_db_provenance_audit,
+    )
+    try:
+        with contextlib.redirect_stdout(sys.stderr):
+            report = run_live_db_provenance_audit(
+                live_db_path=Path(live_db_path) if live_db_path else None,
+                work_root=Path(work_root) if work_root else None, project_key=project)
+    except LiveDbCertificationError as exc:
+        print(json.dumps({"command": "live-db-provenance-audit", "project": project,
+                          "status": "refused", "reason": str(exc)}, indent=2))
+        return 3
+    out = {"command": "live-db-provenance-audit"}
+    out.update(report)
+    print(json.dumps(out, indent=2))
+    return 1 if report.get("decision") == AUDIT_MISSING_TABLES else 0
+
+
+def cmd_live_db_readonly_certification(*, source_package: str, work_root: str, context_stamp: str,
+                                       live_db_path: str | None, project: str) -> int:
+    """Read-only certification of the live DB against a fresh non-live temp projection (Phase 13).
+
+    Audits the live DB read-only, builds a fresh non-live temp v59 DB from the EXPLICIT Tropical source
+    package, and compares tropical source-domain rows per table (byte-exact raw_json + canonical row
+    digests). Never writes the live DB. rc 0 = certified_match; rc 1 = completed but not certified
+    (schema_only/stale_or_mismatch/uncertified); rc 3 = controlled refusal (unsafe/missing/unreadable/
+    not-the-live DB)."""
+    from .workflows.live_db_certification import (
+        CERT_MATCH,
+        LiveDbCertificationError,
+        run_live_db_readonly_certification,
+    )
+    try:
+        with contextlib.redirect_stdout(sys.stderr):
+            report = run_live_db_readonly_certification(
+                source_package=Path(source_package), work_root=Path(work_root),
+                context_stamp=context_stamp,
+                live_db_path=Path(live_db_path) if live_db_path else None, project_key=project)
+    except LiveDbCertificationError as exc:
+        print(json.dumps({"command": "live-db-readonly-certification", "project": project,
+                          "status": "refused", "reason": str(exc)}, indent=2))
+        return 3
+    out = {"command": "live-db-readonly-certification"}
+    out.update(report)
+    print(json.dumps(out, indent=2))
+    return 0 if report.get("decision") == CERT_MATCH else 1
 
 
 def cmd_run_generator(command: str, project: str, *, overrides: dict | None = None,
@@ -781,6 +846,32 @@ def build_parser() -> argparse.ArgumentParser:
     gor.add_argument("--db-path", default=None,
                      help="Optional explicit temp DB path (must be under --work-root, non-live, and "
                           "not already exist); derived under <work-root>/temp_dbs/ if omitted.")
+    gor.add_argument("--allow-certified-live-db", action="store_true",
+                     help="Phase 13: permit a live/default --db-path ONLY with a certified_match "
+                          "--live-db-certification; execution still uses a fresh non-live temp DB.")
+    gor.add_argument("--live-db-certification", default=None,
+                     help="Phase 13: path to a certified_match live-DB certification report (required "
+                          "when --db-path is the live DB and --allow-certified-live-db is set).")
+    # Phase 13 — read-only live DB provenance audit (no migrate/project/write of the live DB).
+    lpa = sub.add_parser("live-db-provenance-audit")
+    lpa.add_argument("--project", required=True, help="Project key (only 'tropical' in Phase 13).")
+    lpa.add_argument("--work-root", default=None,
+                     help="Optional explicit non-live evidence root to write the audit report under.")
+    lpa.add_argument("--live-db-path", default=None,
+                     help="Optional explicit live DB path (tests only); resolves the default live DB "
+                          "if omitted.")
+    # Phase 13 — read-only certification of the live DB vs a fresh non-live temp projection.
+    lrc = sub.add_parser("live-db-readonly-certification")
+    lrc.add_argument("--project", required=True, help="Project key (only 'tropical' in Phase 13).")
+    lrc.add_argument("--source-package", required=True,
+                     help="Explicit Tropical twn_cost_forecast_json_package directory to project.")
+    lrc.add_argument("--work-root", required=True,
+                     help="Explicit non-live work root (temp DB + certification report under it).")
+    lrc.add_argument("--context-stamp", required=True,
+                     help="Deterministic context-package stamp for the certification run.")
+    lrc.add_argument("--live-db-path", default=None,
+                     help="Optional explicit live DB path (tests only); resolves the default live DB "
+                          "if omitted.")
     # --context-stamp pins the upstream context package for a lineage-consistent fresh full run.
     # Applied to the stages that consume context and participate in the lineage gate.
     for _p in (fip, fmp, fpp, fcp, fkp, fspp):
@@ -875,7 +966,18 @@ def main(argv=None) -> int:
         return cmd_guarded_db_operator_run(source_package=args.source_package,
                                            work_root=args.work_root,
                                            context_stamp=args.context_stamp,
-                                           db_path=args.db_path, project=args.project)
+                                           db_path=args.db_path, project=args.project,
+                                           allow_certified_live_db=args.allow_certified_live_db,
+                                           live_db_certification=args.live_db_certification)
+    if args.command == "live-db-provenance-audit":
+        return cmd_live_db_provenance_audit(work_root=args.work_root,
+                                            live_db_path=args.live_db_path, project=args.project)
+    if args.command == "live-db-readonly-certification":
+        return cmd_live_db_readonly_certification(source_package=args.source_package,
+                                                  work_root=args.work_root,
+                                                  context_stamp=args.context_stamp,
+                                                  live_db_path=args.live_db_path,
+                                                  project=args.project)
     if args.command == "context-generate":
         return cmd_context_generate(data_root=args.data_root, out_dir=args.out_dir,
                                     stamp=args.stamp, project=args.project,
