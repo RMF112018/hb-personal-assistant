@@ -1,0 +1,146 @@
+{
+  "batch_a_fields": [
+    "procore_ep_punch_items.closed_at",
+    "procore_ep_punch_items.closed_by"
+  ],
+  "command": "Batch A copied DB punch-items projection replay proof",
+  "copied_db_after_counts": {
+    "budget_detail_row_cells": 225131,
+    "budget_detail_rows": 2496,
+    "closed_at_non_null": 13,
+    "closed_by_non_null": 13,
+    "punch_items_total_rows": 36
+  },
+  "copied_db_before_counts": {
+    "budget_detail_row_cells": 225131,
+    "budget_detail_rows": 2496,
+    "closed_at_non_null": 0,
+    "closed_by_non_null": 0,
+    "punch_items_total_rows": 23
+  },
+  "copied_db_replay_receipt": {
+    "returncode": 0,
+    "stderr_present": false,
+    "stdout_json": {
+      "by_endpoint": {
+        "punch-items": {
+          "child": 119,
+          "degraded": 0,
+          "primary": 36,
+          "skipped_higher": 0
+        }
+      },
+      "child_rows_written": 119,
+      "command": "hb-assistant procore analytics projection-reprocess",
+      "degraded_unknown_projection_fields": 0,
+      "enforcement": "enforce",
+      "external_writeback_performed": 0,
+      "filters": {
+        "endpoint": "punch-items",
+        "limit": 200000,
+        "project_key": null
+      },
+      "guardrails": {
+        "emits_values": false,
+        "live_calls_disabled": true,
+        "writeback": "none"
+      },
+      "live_procore_calls": 0,
+      "mode": "apply",
+      "ok": true,
+      "primary_rows_written": 36,
+      "raw_full_rows_inspected": 36,
+      "skipped_due_to_higher_quality": 0,
+      "skipped_out_of_scope_endpoint": 0,
+      "source_quality_breakdown": {
+        "live_full_payload": 36
+      }
+    }
+  },
+  "copy_db_path": "/tmp/procore_batch_a_20260618T092120Z.sqlite",
+  "guardrails": {
+    "budget_detail_refresh_or_reconciliation_called": false,
+    "live_calls_made": false,
+    "procore_writeback": false,
+    "raw_payload_values_emitted": false,
+    "registry_or_projection_code_patch_applied": false,
+    "scheduler_called": false,
+    "schema_migration_applied": false,
+    "source_refresh_orchestrator_called": false
+  },
+  "implementation_patch_required": false,
+  "production_db_after_counts": {
+    "budget_detail_row_cells": 225131,
+    "budget_detail_rows": 2496,
+    "closed_at_non_null": 13,
+    "closed_by_non_null": 13,
+    "punch_items_total_rows": 36
+  },
+  "production_db_before_counts": {
+    "budget_detail_row_cells": 225131,
+    "budget_detail_rows": 2496,
+    "closed_at_non_null": 0,
+    "closed_by_non_null": 0,
+    "punch_items_total_rows": 23
+  },
+  "production_db_modified_by_this_proof": true,
+  "production_db_replay_receipt": {
+    "returncode": 0,
+    "stderr_present": false,
+    "stdout_json": {
+      "by_endpoint": {
+        "punch-items": {
+          "child": 119,
+          "degraded": 0,
+          "primary": 36,
+          "skipped_higher": 0
+        }
+      },
+      "child_rows_written": 119,
+      "command": "hb-assistant procore analytics projection-reprocess",
+      "degraded_unknown_projection_fields": 0,
+      "enforcement": "enforce",
+      "external_writeback_performed": 0,
+      "filters": {
+        "endpoint": "punch-items",
+        "limit": 200000,
+        "project_key": null
+      },
+      "guardrails": {
+        "emits_values": false,
+        "live_calls_disabled": true,
+        "writeback": "none"
+      },
+      "live_procore_calls": 0,
+      "mode": "apply",
+      "ok": true,
+      "primary_rows_written": 36,
+      "raw_full_rows_inspected": 36,
+      "skipped_due_to_higher_quality": 0,
+      "skipped_out_of_scope_endpoint": 0,
+      "source_quality_breakdown": {
+        "live_full_payload": 36
+      }
+    }
+  },
+  "source_path_counts": [
+    {
+      "endpoint_key": "punch-items",
+      "json_path": "$.closed_at",
+      "path_missing_count": 0,
+      "path_non_empty_count": 13,
+      "path_present_count": 36,
+      "payload_rows_inspected": 36,
+      "raw_payload_values_emitted": false
+    },
+    {
+      "endpoint_key": "punch-items",
+      "json_path": "$.closed_by",
+      "path_missing_count": 0,
+      "path_non_empty_count": 13,
+      "path_present_count": 36,
+      "payload_rows_inspected": 36,
+      "raw_payload_values_emitted": false
+    }
+  ]
+}

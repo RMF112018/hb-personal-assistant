@@ -1,0 +1,35 @@
+{
+  "batch_a_target_fields": {
+    "procore_ep_punch_items.closed_at": {
+      "classification": "partially_populated",
+      "non_null_rows": 13,
+      "root_cause_class": "source_payload_missing_or_endpoint_not_refreshed",
+      "suspected_projection_defect": false,
+      "table_total_rows": 36
+    },
+    "procore_ep_punch_items.closed_by": {
+      "classification": "partially_populated",
+      "non_null_rows": 13,
+      "root_cause_class": "source_payload_missing_or_endpoint_not_refreshed",
+      "suspected_projection_defect": false,
+      "table_total_rows": 36
+    }
+  },
+  "guardrails": {
+    "live_calls_made": false,
+    "raw_payload_values_emitted": false,
+    "writeback_performed": false
+  },
+  "summary": {
+    "all_null_fields": 579,
+    "columns_audited": 3694,
+    "empty_tables": 4,
+    "expected_optional_fields": 279,
+    "mostly_null_fields": 67,
+    "priority_field_count": 585,
+    "support_or_guardrail_fields": 1040,
+    "suspected_projection_defects": 123,
+    "tables_audited": 86
+  },
+  "suspected_projection_defect_count": 123
+}
