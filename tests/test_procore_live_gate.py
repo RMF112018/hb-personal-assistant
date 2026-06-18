@@ -9,6 +9,8 @@ env-var manipulation goes through ``monkeypatch``.
 from __future__ import annotations
 
 import json
+from pathlib import Path
+from typing import Any
 
 import pytest
 from typer.testing import CliRunner
@@ -19,14 +21,17 @@ from hb_assistant.procore import (
     LIVE_ENV_VAR,
     LiveEnvNotSet,
     assert_live_mapping_strict,
+    direct_live_project_eligibility,
     live_env_active,
     require_live_env,
 )
 from hb_assistant.procore.errors import ProcoreAPIError
+from hb_assistant.procore.live_sync import run_live_sync
 from hb_assistant.procore.models import (
     ProcoreProjectMapping,
     ProcoreProjectsRegistry,
 )
+from hb_assistant.store.migrator import SQLiteMigrator
 
 pytestmark = pytest.mark.usefixtures("isolated_hb_pa_config")
 
@@ -94,6 +99,44 @@ def _registry(rows: list[tuple[str, str, str]]) -> ProcoreProjectsRegistry:
     )
 
 
+def _fresh_db(tmp_path: Path) -> Path:
+    db = tmp_path / "procore-live-gate.sqlite"
+    SQLiteMigrator(db_path=str(db)).apply()
+    return db
+
+
+class _Response:
+    status_code = 200
+    headers: dict[str, str] = {}
+    text = ""
+
+    def __init__(self, payload: Any) -> None:
+        self._payload = payload
+
+    def json(self) -> Any:
+        return self._payload
+
+
+class _Transport:
+    def __init__(self, payload: Any) -> None:
+        self.payload = payload
+        self.calls: list[dict[str, Any]] = []
+
+    def __call__(
+        self,
+        method: str,
+        url: str,
+        headers: dict[str, str],
+        params: dict[str, Any] | None,
+    ) -> _Response:
+        self.calls.append(
+            {"method": method, "url": url, "headers": dict(headers), "params": dict(params or {})}
+        )
+        if len(self.calls) == 1:
+            return _Response(self.payload)
+        return _Response([])
+
+
 def test_assert_live_mapping_strict_passes_for_live_refresh_eligible_statuses() -> None:
     reg = _registry(
         [
@@ -135,6 +178,214 @@ def test_assert_live_mapping_strict_aggregates_multiple_offenders() -> None:
         assert_live_mapping_strict(reg, ["hilltop", "does-not-exist"])
     assert "hilltop" in exc_info.value.message
     assert "does-not-exist" in exc_info.value.message
+
+
+def test_direct_live_project_eligibility_accepts_configured_project_with_valid_id() -> None:
+    reg = _registry([("caretta", "2145250", "deprecated")])
+    result = direct_live_project_eligibility(reg, "caretta")
+
+    assert result.ok is True
+    assert result.procore_project_id == "2145250"
+    assert result.reason_code is None
+
+
+def test_direct_live_project_eligibility_rejects_unmapped_project() -> None:
+    reg = _registry([("caretta", "2145250", "pilot")])
+    result = direct_live_project_eligibility(reg, "missing-project")
+
+    assert result.ok is False
+    assert result.procore_project_id is None
+    assert result.reason_code == "project_not_mapped"
+
+
+def test_direct_live_project_eligibility_rejects_missing_project_id() -> None:
+    reg = _registry([("caretta", "", "pending")])
+    result = direct_live_project_eligibility(reg, "caretta")
+
+    assert result.ok is False
+    assert result.procore_project_id is None
+    assert result.reason_code == "project_missing_procore_project_id"
+
+
+def test_direct_live_sync_allows_mapped_non_tropical_prime_contracts(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setenv(LIVE_ENV_VAR, LIVE_ENV_ENABLER)
+    monkeypatch.setenv("PROCORE_ACCESS_TOKEN", "synthetic-live-token")
+    monkeypatch.setattr(
+        "hb_assistant.procore.live_sync.load_procore_projects",
+        lambda: _registry([("caretta", "2145250", "deprecated")]),
+    )
+    transport = _Transport([{"id": 101, "show_line_items_to_non_admins": True}])
+
+    receipt = run_live_sync(
+        project_key="caretta",
+        endpoint="prime-contracts",
+        apply=True,
+        sqlite_only=True,
+        confirm_live_get=True,
+        max_pages=2,
+        max_items=20,
+        db_path=_fresh_db(tmp_path),
+        transport=transport,
+    )
+
+    assert transport.calls
+    assert receipt["transport_attempted"] is True
+    assert receipt["project_eligibility"] == "ok"
+    assert receipt["endpoint_eligibility"] == "ok"
+    assert receipt["operator_live_authorization"] == "ok"
+    assert "mapping_not_live_eligible" not in receipt["reason_codes"]
+    assert receipt["procore_project_id"] == "2145250"
+
+
+def test_direct_live_sync_allows_mapped_non_tropical_punch_items(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setenv(LIVE_ENV_VAR, LIVE_ENV_ENABLER)
+    monkeypatch.setenv("PROCORE_ACCESS_TOKEN", "synthetic-live-token")
+    monkeypatch.setattr(
+        "hb_assistant.procore.live_sync.load_procore_projects",
+        lambda: _registry([("caretta", "2145250", "deprecated")]),
+    )
+    transport = _Transport([{"id": 202, "status": "open"}])
+
+    receipt = run_live_sync(
+        project_key="caretta",
+        endpoint="punch-items",
+        apply=True,
+        sqlite_only=True,
+        confirm_live_get=True,
+        max_pages=2,
+        max_items=20,
+        db_path=_fresh_db(tmp_path),
+        transport=transport,
+    )
+
+    assert transport.calls
+    assert receipt["transport_attempted"] is True
+    assert receipt["project_eligibility"] == "ok"
+    assert receipt["endpoint_eligibility"] == "ok"
+    assert receipt["operator_live_authorization"] == "ok"
+    assert "mapping_not_live_eligible" not in receipt["reason_codes"]
+
+
+def test_direct_live_sync_rejects_unmapped_project_before_transport(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setenv(LIVE_ENV_VAR, LIVE_ENV_ENABLER)
+    monkeypatch.setenv("PROCORE_ACCESS_TOKEN", "synthetic-live-token")
+    monkeypatch.setattr(
+        "hb_assistant.procore.live_sync.load_procore_projects",
+        lambda: _registry([("caretta", "2145250", "pilot")]),
+    )
+    transport = _Transport([{"id": 101}])
+
+    receipt = run_live_sync(
+        project_key="missing-project",
+        endpoint="prime-contracts",
+        apply=True,
+        sqlite_only=True,
+        confirm_live_get=True,
+        db_path=_fresh_db(tmp_path),
+        transport=transport,
+    )
+
+    assert transport.calls == []
+    assert receipt["transport_attempted"] is False
+    assert receipt["project_eligibility"] == "failed"
+    assert "project_not_mapped" in receipt["reason_codes"]
+    assert "mapping_not_live_eligible" not in receipt["reason_codes"]
+
+
+def test_direct_live_sync_rejects_mapped_project_missing_project_id_before_transport(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setenv(LIVE_ENV_VAR, LIVE_ENV_ENABLER)
+    monkeypatch.setenv("PROCORE_ACCESS_TOKEN", "synthetic-live-token")
+    monkeypatch.setattr(
+        "hb_assistant.procore.live_sync.load_procore_projects",
+        lambda: _registry([("caretta", "", "pending")]),
+    )
+    transport = _Transport([{"id": 101}])
+
+    receipt = run_live_sync(
+        project_key="caretta",
+        endpoint="prime-contracts",
+        apply=True,
+        sqlite_only=True,
+        confirm_live_get=True,
+        db_path=_fresh_db(tmp_path),
+        transport=transport,
+    )
+
+    assert transport.calls == []
+    assert receipt["transport_attempted"] is False
+    assert receipt["project_eligibility"] == "failed"
+    assert "project_missing_procore_project_id" in receipt["reason_codes"]
+    assert "mapping_not_live_eligible" not in receipt["reason_codes"]
+
+
+def test_direct_live_sync_rejects_budget_details_before_transport(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setenv(LIVE_ENV_VAR, LIVE_ENV_ENABLER)
+    monkeypatch.setenv("PROCORE_ACCESS_TOKEN", "synthetic-live-token")
+    monkeypatch.setattr(
+        "hb_assistant.procore.live_sync.load_procore_projects",
+        lambda: _registry([("caretta", "2145250", "deprecated")]),
+    )
+    transport = _Transport([{"id": 101}])
+
+    receipt = run_live_sync(
+        project_key="caretta",
+        endpoint="budget-details",
+        apply=True,
+        sqlite_only=True,
+        confirm_live_get=True,
+        db_path=_fresh_db(tmp_path),
+        transport=transport,
+    )
+
+    assert transport.calls == []
+    assert receipt["transport_attempted"] is False
+    assert receipt["endpoint_eligibility"] == "failed"
+    assert "endpoint_not_live_eligible" in receipt["reason_codes"]
+    assert "mapping_not_live_eligible" not in receipt["reason_codes"]
+
+
+def test_direct_live_sync_reports_operator_authorization_failure_before_transport(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.delenv(LIVE_ENV_VAR, raising=False)
+    monkeypatch.setenv("PROCORE_ACCESS_TOKEN", "synthetic-live-token")
+    monkeypatch.setattr(
+        "hb_assistant.procore.live_sync.load_procore_projects",
+        lambda: _registry([("caretta", "2145250", "pilot")]),
+    )
+    transport = _Transport([{"id": 101}])
+
+    receipt = run_live_sync(
+        project_key="caretta",
+        endpoint="prime-contracts",
+        apply=True,
+        sqlite_only=True,
+        confirm_live_get=False,
+        db_path=_fresh_db(tmp_path),
+        transport=transport,
+    )
+
+    assert transport.calls == []
+    assert receipt["transport_attempted"] is False
+    assert receipt["operator_live_authorization"] == "failed"
+    assert {"live_env_not_set", "confirm_live_get_required"} <= set(receipt["reason_codes"])
+    assert "mapping_not_live_eligible" not in receipt["reason_codes"]
 
 
 # ----------------------------------------------------------------------------

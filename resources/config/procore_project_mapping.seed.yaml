@@ -39,6 +39,18 @@ mappings:
     procore_project_id: "3215931"
     status: pilot
 
+  - hb_project_key: rybovich
+    hb_project_number: null
+    project_name: "Rybovich Safe Harbor"
+    procore_project_id: "3133242"
+    status: pilot
+
+  - hb_project_key: caretta
+    hb_project_number: null
+    project_name: "Caretta"
+    procore_project_id: "2145250"
+    status: pilot
+
   # `hilltop` and `hilltop-gardens` were retired here on 2026-05-29 — both
   # were SharePoint-side aliases for the Procore project already mapped above
   # as `alton-hilltop-pbg` (24-606-01, procore_project_id 2982068). See

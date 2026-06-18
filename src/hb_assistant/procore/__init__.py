@@ -38,6 +38,7 @@ from .live_gate import (
     LIVE_ENV_VAR,
     LiveEnvNotSet,
     assert_live_mapping_strict,
+    direct_live_project_eligibility,
     live_env_active,
     require_live_env,
 )
@@ -127,6 +128,7 @@ __all__ = [
     "check_auth_status",
     "clear_token_cache",
     "default_procore_token_provider",
+    "direct_live_project_eligibility",
     "live_env_active",
     "load_endpoint_contract",
     "load_procore_projects",

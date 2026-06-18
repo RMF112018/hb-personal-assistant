@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import os
 from collections.abc import Iterable
+from dataclasses import dataclass
 
 from hb_assistant.procore.errors import ProcoreAPIError
 from hb_assistant.procore.models import (
@@ -30,6 +31,15 @@ from hb_assistant.procore.models import (
 
 LIVE_ENV_VAR = "HB_PROCORE_LIVE"
 LIVE_ENV_ENABLER = "1"
+
+
+@dataclass(frozen=True)
+class DirectLiveProjectEligibility:
+    """Project gate result for operator-authorized direct endpoint live sync."""
+
+    ok: bool
+    procore_project_id: str | None
+    reason_code: str | None = None
 
 
 class LiveEnvNotSet(ProcoreAPIError):
@@ -97,11 +107,41 @@ def assert_live_mapping_strict(
         )
 
 
+def direct_live_project_eligibility(
+    registry: ProcoreProjectsRegistry,
+    project_key: str,
+) -> DirectLiveProjectEligibility:
+    """Resolve direct endpoint-live project eligibility.
+
+    Unlike scheduled/all-mapped refresh, a direct operator-authorized endpoint sync
+    only requires a configured project row with a valid Procore project id. Project
+    status remains scheduler policy and is intentionally not enforced here.
+    """
+    by_key = {p.hb_project_key: p for p in registry.projects}
+    project = by_key.get(project_key)
+    if project is None:
+        return DirectLiveProjectEligibility(
+            ok=False,
+            procore_project_id=None,
+            reason_code="project_not_mapped",
+        )
+    value = (project.procore_project_id or "").strip()
+    if not value:
+        return DirectLiveProjectEligibility(
+            ok=False,
+            procore_project_id=None,
+            reason_code="project_missing_procore_project_id",
+        )
+    return DirectLiveProjectEligibility(ok=True, procore_project_id=value)
+
+
 __all__ = [
+    "DirectLiveProjectEligibility",
     "LIVE_ENV_ENABLER",
     "LIVE_ENV_VAR",
     "LiveEnvNotSet",
     "assert_live_mapping_strict",
+    "direct_live_project_eligibility",
     "live_env_active",
     "require_live_env",
 ]

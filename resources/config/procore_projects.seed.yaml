@@ -47,6 +47,16 @@ projects:
     procore_project_name: "The Wellington"
     status: pilot
 
+  - hb_project_key: rybovich
+    procore_project_id: "3133242"
+    procore_project_name: "Rybovich Safe Harbor"
+    status: pilot
+
+  - hb_project_key: caretta
+    procore_project_id: "2145250"
+    procore_project_name: "Caretta"
+    status: pilot
+
   # `hilltop` and `hilltop-gardens` were retired here on 2026-05-29; they were
   # two SharePoint-side aliases for the same Procore project (24-606-01,
   # procore_project_id 2982068), which is already mapped above under
