@@ -27,6 +27,14 @@ from datetime import datetime
 from decimal import Decimal, InvalidOperation, getcontext
 from collections import defaultdict, OrderedDict
 
+# Phase 4 read adapter: file-backed by default; DB-backed only when HB_FORECAST_DB_BACKED_READS=1.
+# Dual-mode import — script mode resolves via the script directory (sys.path[0]); the package
+# path is the fallback when this module is imported as part of the CFR package.
+try:
+    from db_source_adapter import load_forecast_source_rows
+except ImportError:  # pragma: no cover - import-path fallback
+    from construction_financial_review.context.db_source_adapter import load_forecast_source_rows
+
 getcontext().prec = 50
 
 # --------------------------------------------------------------------------------------
@@ -231,7 +239,13 @@ HASHES_BEFORE = {str(p): sha256_file(p) for p in SOURCE_PATHS}
 # --------------------------------------------------------------------------------------
 # Load master budget universe
 # --------------------------------------------------------------------------------------
-budget_records = list(read_jsonl(SRC_FILES["budget_details"]))
+budget_records = load_forecast_source_rows(
+    "budget_details",
+    jsonl_path=SRC_FILES["budget_details"],
+    source_package_name=TWN_DIR.name,
+    project_key=PROJECT_KEY,
+    read_jsonl_fn=read_jsonl,
+)
 master = OrderedDict()                       # budget_code_key -> record
 master_keys = set()
 by_cost_code = defaultdict(set)              # cost_code -> {budget_code_key}
@@ -407,7 +421,13 @@ cost_entry_mapped_count = 0
 def emit_cost_entries():
     global june_actual_count, june_actual_total, cost_entries_canonical_total
     global cost_entry_source_count, cost_entry_invalid_count, cost_entry_mapped_count
-    src = list(read_jsonl(SRC_FILES["cost_entries"]))
+    src = load_forecast_source_rows(
+        "cost_entries",
+        jsonl_path=SRC_FILES["cost_entries"],
+        source_package_name=TWN_DIR.name,
+        project_key=PROJECT_KEY,
+        read_jsonl_fn=read_jsonl,
+    )
     cost_entry_source_count = len(src)
     src.sort(key=lambda r: (r.get("source_row") if isinstance(r.get("source_row"), int) else 0))
     rows = []
@@ -478,7 +498,13 @@ monthly_source_count = 0
 
 def emit_monthly_actuals():
     global monthly_actuals_canonical_total, monthly_source_count
-    src = list(read_jsonl(SRC_FILES["monthly_actuals"]))
+    src = load_forecast_source_rows(
+        "monthly_actuals",
+        jsonl_path=SRC_FILES["monthly_actuals"],
+        source_package_name=TWN_DIR.name,
+        project_key=PROJECT_KEY,
+        read_jsonl_fn=read_jsonl,
+    )
     monthly_source_count = len(src)
     src.sort(key=lambda r: (r.get("budget_code_key") or "", r.get("month") or ""))
     rows = []

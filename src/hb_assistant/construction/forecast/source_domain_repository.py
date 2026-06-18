@@ -182,3 +182,50 @@ def read_monthly_actuals_from_db(
         project_key=project_key,
         source_package=source_package,
     )
+
+
+# --- file-order readers -----------------------------------------------------------------
+# Ordered by source_row_number (1-based JSONL line index, unique per package/table = exact
+# file order). These are drop-in replacements for ``list(read_jsonl(path))``: a consumer that
+# expects rows in source-file order (e.g. the CFR context generator's Phase 4 read adapter)
+# gets the same sequence the file-backed reader would yield. The business-key readers above
+# are unchanged.
+
+
+def read_budget_details_in_file_order(
+    conn: sqlite3.Connection, *, project_key: str, source_package: str | None = None
+) -> list[dict[str, Any]]:
+    """Original BudgetDetails JSONL rows in source-file order (source_row_number)."""
+    return _read_raw(
+        conn,
+        "forecast_budget_details",
+        "source_row_number",
+        project_key=project_key,
+        source_package=source_package,
+    )
+
+
+def read_cost_entries_in_file_order(
+    conn: sqlite3.Connection, *, project_key: str, source_package: str | None = None
+) -> list[dict[str, Any]]:
+    """Original CostEntries JSONL rows in source-file order (source_row_number)."""
+    return _read_raw(
+        conn,
+        "forecast_cost_entries",
+        "source_row_number",
+        project_key=project_key,
+        source_package=source_package,
+    )
+
+
+def read_monthly_actuals_in_file_order(
+    conn: sqlite3.Connection, *, project_key: str, source_package: str | None = None
+) -> list[dict[str, Any]]:
+    """Original monthly-actuals JSONL rows in source-file order (source_row_number)."""
+    return _read_raw(
+        conn,
+        "forecast_monthly_actuals_by_budget_code",
+        "source_row_number",
+        project_key=project_key,
+        source_package=source_package,
+    )
