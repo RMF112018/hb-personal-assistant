@@ -19,6 +19,7 @@ Deterministic output (sorted rows/keys). Re-runnable.
 """
 
 import json
+import os
 import re
 import hashlib
 import shutil
@@ -26,6 +27,7 @@ from pathlib import Path
 from datetime import datetime
 from decimal import Decimal, InvalidOperation, getcontext
 from collections import defaultdict, OrderedDict
+from dataclasses import dataclass
 
 # Phase 4 read adapter: file-backed by default; DB-backed only when HB_FORECAST_DB_BACKED_READS=1.
 # Dual-mode import — script mode resolves via the script directory (sys.path[0]); the package
@@ -40,14 +42,12 @@ getcontext().prec = 50
 # --------------------------------------------------------------------------------------
 # Paths / constants
 # --------------------------------------------------------------------------------------
-ROOT = Path(
+# Default production data root. Overridable per run via ContextPackageConfig /
+# CFR_CONTEXT_DATA_ROOT so the generator can run against temp roots in controlled mode.
+_DEFAULT_DATA_ROOT = Path(
     "/Users/bobbyfetting/Library/CloudStorage/SynologyDrive-BFmacSync/Work/"
     "NAS - HB/Projects/2023/TWN - NAS/30_Financials/Forecasts/Data/2026-June"
 )
-
-TWN_DIR = ROOT / "twn_cost_forecast_json_package"
-OWNER_DIR = ROOT / "owner_pay_app_json_package"
-PROCORE_DIR = ROOT / "cost_forecast_agent_db_json_export_tropical_20260614_080344"
 
 PROJECT_NAME = "Tropical World Nursery Senior Living Facility"
 PROJECT_KEY = "tropical"
@@ -58,46 +58,31 @@ JUNE_CUTOFF = "2026-06-01"          # < this = through_may_2026
 JULY_CUTOFF = "2026-07-01"          # < this (and >= june) = june_2026_to_date
 CENTS = Decimal("0.01")
 
-STAMP = datetime.now().strftime("%Y%m%d_%H%M%S")
-OUT = ROOT / f"forecast_context_package_tropical_{STAMP}"
+# ROOT / TWN_DIR / OWNER_DIR / PROCORE_DIR / STAMP / OUT / SRC_FILES / IGNORED are injected
+# per run by _apply_config() inside build_context_package(); they are intentionally NOT module
+# globals at import time, so importing this module performs no path I/O or source reads.
 
-# Source files we read (relative names retained for inventory/manifest)
-SRC_FILES = {
-    "budget_details": TWN_DIR / "data" / "budget_details.jsonl",
-    "cost_entries": TWN_DIR / "data" / "cost_entries.jsonl",
-    "monthly_actuals": TWN_DIR / "data" / "monthly_actuals_by_budget_code.jsonl",
-    "twn_validation": TWN_DIR / "validation_report.json",
-    "twn_manifest": TWN_DIR / "manifest.json",
-    "owner_line_items": OWNER_DIR / "owner_pay_app_line_items.jsonl",
-    "owner_totals": OWNER_DIR / "owner_pay_app_totals.jsonl",
-    "owner_validation": OWNER_DIR / "owner_pay_app_validation_report.json",
-    "owner_sheet_manifest": OWNER_DIR / "owner_pay_app_sheet_manifest.json",
-    "procore_headers": PROCORE_DIR / "procore_subcontractor_payment_app_headers.jsonl",
-    "procore_line_items": PROCORE_DIR / "procore_subcontractor_payment_app_line_items.jsonl",
-    "procore_latest": PROCORE_DIR / "procore_latest_subcontractor_invoice_by_vendor_cost_code.jsonl",
-    "procore_commitments": PROCORE_DIR / "procore_commitments.jsonl",
-    "procore_amount_facts": PROCORE_DIR / "procore_payapp_amount_facts_through_may_2026.jsonl",
-    "procore_mapping_template": PROCORE_DIR / "forecast_mapping_template.json",
-    "procore_validation": PROCORE_DIR / "procore_db_export_validation_report.json",
-}
 
-# Files intentionally ignored for canonical context (recorded in inventory)
-IGNORED = [
-    {"path": str(OWNER_DIR / "owner_pay_app_raw_cells.jsonl"),
-     "reason": "raw cell file — audit/supporting only; never enters agent-facing canonical context"},
-    {"path": str(ROOT / "twn_cost_forecast_json_package.zip"),
-     "reason": "nested zip; extracted folder twn_cost_forecast_json_package/ already present"},
-    {"path": str(ROOT / "TWN-Owner-Pay-Apps.xlsx"),
-     "reason": "source workbook (binary xlsx); structured JSON extraction already provided"},
-    {"path": str(PROCORE_DIR / "generate_export.py"),
-     "reason": "upstream export script; not a data input"},
-    {"path": str(PROCORE_DIR / "queries.sql"),
-     "reason": "upstream export SQL; not a data input"},
-    {"path": str(PROCORE_DIR / "README.md"),
-     "reason": "upstream readme; superseded by this package's README"},
-    {"path": "*.json (array twins of *.jsonl in twn/owner packages)",
-     "reason": "duplicate of the .jsonl streaming variant; .jsonl used as source of truth"},
-]
+@dataclass(frozen=True)
+class ContextPackageConfig:
+    """Inputs/outputs for one context-package build. Defaults reproduce production behavior."""
+
+    data_root: Path
+    out_dir: Path
+    stamp: str
+
+
+def default_config() -> "ContextPackageConfig":
+    """Today's default behavior, with optional env overrides for controlled temp-root runs.
+
+    CFR_CONTEXT_DATA_ROOT overrides the source root; CFR_CONTEXT_OUT_DIR the output package
+    dir; CFR_CONTEXT_STAMP the wall-clock stamp. Unset => identical to historical defaults.
+    """
+    root = Path(os.environ.get("CFR_CONTEXT_DATA_ROOT") or _DEFAULT_DATA_ROOT)
+    stamp = os.environ.get("CFR_CONTEXT_STAMP") or datetime.now().strftime("%Y%m%d_%H%M%S")
+    out_env = os.environ.get("CFR_CONTEXT_OUT_DIR")
+    out_dir = Path(out_env) if out_env else root / f"forecast_context_package_tropical_{stamp}"
+    return ContextPackageConfig(data_root=root, out_dir=out_dir, stamp=stamp)
 
 # --------------------------------------------------------------------------------------
 # Low-level helpers
@@ -232,42 +217,19 @@ def all_source_paths():
     return paths
 
 
-SOURCE_PATHS = all_source_paths()
-HASHES_BEFORE = {str(p): sha256_file(p) for p in SOURCE_PATHS}
-
-
 # --------------------------------------------------------------------------------------
-# Load master budget universe
+# Module-level state containers. Empty initializers run at import (no I/O); the source
+# reads, hashing, and index-building that populate them now live in _load_inputs_and_index()
+# / build_context_package(), and _reset_state() re-initializes every container so a build is
+# re-runnable in one process (file-backed then DB-backed parity runs).
 # --------------------------------------------------------------------------------------
-budget_records = load_forecast_source_rows(
-    "budget_details",
-    jsonl_path=SRC_FILES["budget_details"],
-    source_package_name=TWN_DIR.name,
-    project_key=PROJECT_KEY,
-    read_jsonl_fn=read_jsonl,
-)
 master = OrderedDict()                       # budget_code_key -> record
 master_keys = set()
 by_cost_code = defaultdict(set)              # cost_code -> {budget_code_key}
 by_cost_code_categories = defaultdict(set)   # cost_code -> {category}
 by_family = defaultdict(set)                 # cost_code_family -> {budget_code_key}
 
-for rec in budget_records:
-    key = rec.get("budget_code_key")
-    master[key] = rec
-    master_keys.add(key)
-    parsed = parse_budget_key(key)
-    if parsed:
-        _sj, cc, cat = parsed
-        by_cost_code[cc].add(key)
-        by_cost_code_categories[cc].add(cat)
-        fam = cost_code_family(cc)
-        if fam:
-            by_family[fam].add(key)
-
-# --------------------------------------------------------------------------------------
 # Procore family / cost-code evidence indexes (built from line items + latest)
-# --------------------------------------------------------------------------------------
 procore_family_wbs = defaultdict(set)            # family -> {wbs_flat_code}
 procore_family_mapped_keys = defaultdict(set)    # family -> {budget_code_key mapped from procore}
 
@@ -331,8 +293,6 @@ def build_procore_family_index():
             if wbs in master_keys:
                 procore_family_mapped_keys[fam].add(wbs)
 
-
-build_procore_family_index()
 
 # --------------------------------------------------------------------------------------
 # Mapping-decision accumulator (deduped) + ambiguous + per-source result rows
@@ -1392,9 +1352,160 @@ def safety_scan(files):
 
 
 # ======================================================================================
+# CONFIG + STATE (Phase 5: parameterized, import-safe, re-runnable)
+# ======================================================================================
+def _apply_config(config):
+    """Bind per-run path/stamp/output globals from ``config`` (no I/O)."""
+    global ROOT, TWN_DIR, OWNER_DIR, PROCORE_DIR, STAMP, OUT, SRC_FILES, IGNORED
+    ROOT = config.data_root
+    TWN_DIR = ROOT / "twn_cost_forecast_json_package"
+    OWNER_DIR = ROOT / "owner_pay_app_json_package"
+    PROCORE_DIR = ROOT / "cost_forecast_agent_db_json_export_tropical_20260614_080344"
+    STAMP = config.stamp
+    OUT = config.out_dir
+    SRC_FILES = {
+        "budget_details": TWN_DIR / "data" / "budget_details.jsonl",
+        "cost_entries": TWN_DIR / "data" / "cost_entries.jsonl",
+        "monthly_actuals": TWN_DIR / "data" / "monthly_actuals_by_budget_code.jsonl",
+        "twn_validation": TWN_DIR / "validation_report.json",
+        "twn_manifest": TWN_DIR / "manifest.json",
+        "owner_line_items": OWNER_DIR / "owner_pay_app_line_items.jsonl",
+        "owner_totals": OWNER_DIR / "owner_pay_app_totals.jsonl",
+        "owner_validation": OWNER_DIR / "owner_pay_app_validation_report.json",
+        "owner_sheet_manifest": OWNER_DIR / "owner_pay_app_sheet_manifest.json",
+        "procore_headers": PROCORE_DIR / "procore_subcontractor_payment_app_headers.jsonl",
+        "procore_line_items": PROCORE_DIR / "procore_subcontractor_payment_app_line_items.jsonl",
+        "procore_latest": PROCORE_DIR / "procore_latest_subcontractor_invoice_by_vendor_cost_code.jsonl",
+        "procore_commitments": PROCORE_DIR / "procore_commitments.jsonl",
+        "procore_amount_facts": PROCORE_DIR / "procore_payapp_amount_facts_through_may_2026.jsonl",
+        "procore_mapping_template": PROCORE_DIR / "forecast_mapping_template.json",
+        "procore_validation": PROCORE_DIR / "procore_db_export_validation_report.json",
+    }
+    IGNORED = [
+        {"path": str(OWNER_DIR / "owner_pay_app_raw_cells.jsonl"),
+         "reason": "raw cell file — audit/supporting only; never enters agent-facing canonical context"},
+        {"path": str(ROOT / "twn_cost_forecast_json_package.zip"),
+         "reason": "nested zip; extracted folder twn_cost_forecast_json_package/ already present"},
+        {"path": str(ROOT / "TWN-Owner-Pay-Apps.xlsx"),
+         "reason": "source workbook (binary xlsx); structured JSON extraction already provided"},
+        {"path": str(PROCORE_DIR / "generate_export.py"),
+         "reason": "upstream export script; not a data input"},
+        {"path": str(PROCORE_DIR / "queries.sql"),
+         "reason": "upstream export SQL; not a data input"},
+        {"path": str(PROCORE_DIR / "README.md"),
+         "reason": "upstream readme; superseded by this package's README"},
+        {"path": "*.json (array twins of *.jsonl in twn/owner packages)",
+         "reason": "duplicate of the .jsonl streaming variant; .jsonl used as source of truth"},
+    ]
+
+
+def _reset_state():
+    """Re-initialize every module-level accumulator so a build is re-runnable in one process.
+
+    Mirrors the module-level initializers; the parity test runs build_context_package()
+    file-backed then DB-backed in the same interpreter, so state must be cleared per build.
+    """
+    global master, master_keys, by_cost_code, by_cost_code_categories, by_family
+    global procore_family_wbs, procore_family_mapped_keys, decisions, ambiguous_rows
+    global actuals_by_key, june_actual_count, june_actual_total, cost_entries_canonical_total
+    global cost_entry_source_count, cost_entry_invalid_count, cost_entry_mapped_count
+    global monthly_by_key, monthly_actuals_canonical_total, monthly_source_count
+    global owner_family_seen, owner_counts, owner_method_counts, owner_examples
+    global owner_normalization_improved, owner_evidence, owner_line_source_count
+    global owner_totals_source_count, owner_latest, owner_grand_totals
+    global procore_headers_count, procore_header_max_date, procore_line_source_count
+    global procore_counts, procore_examples, procore_line_max_date
+    global procore_latest_source_count, procore_evidence, procore_commitments_count
+    global commitments_by_id, commitment_rel
+    master = OrderedDict()
+    master_keys = set()
+    by_cost_code = defaultdict(set)
+    by_cost_code_categories = defaultdict(set)
+    by_family = defaultdict(set)
+    procore_family_wbs = defaultdict(set)
+    procore_family_mapped_keys = defaultdict(set)
+    decisions = OrderedDict()
+    ambiguous_rows = []
+    actuals_by_key = defaultdict(lambda: {
+        "all": Decimal("0"), "may": Decimal("0"), "june": Decimal("0"),
+        "count": 0, "latest_date": None,
+    })
+    june_actual_count = 0
+    june_actual_total = Decimal("0")
+    cost_entries_canonical_total = Decimal("0")
+    cost_entry_source_count = 0
+    cost_entry_invalid_count = 0
+    cost_entry_mapped_count = 0
+    monthly_by_key = defaultdict(list)
+    monthly_actuals_canonical_total = Decimal("0")
+    monthly_source_count = 0
+    owner_family_seen = defaultdict(lambda: {
+        "examples": set(), "count": 0, "latest_app": None,
+        "budget_candidates": set(), "procore_wbs": set(),
+    })
+    owner_counts = {"mapped": 0, "ambiguous": 0, "manual_required": 0,
+                    "invalid_budget_code_key": 0, "not_applicable": 0}
+    owner_method_counts = defaultdict(int)
+    owner_examples = defaultdict(list)
+    owner_normalization_improved = 0
+    owner_evidence = defaultdict(list)
+    owner_line_source_count = 0
+    owner_totals_source_count = 0
+    owner_latest = {"sheet": None, "period_to": None, "application_no": None, "sheet_index": -1}
+    owner_grand_totals = []
+    procore_headers_count = 0
+    procore_header_max_date = None
+    procore_line_source_count = 0
+    procore_counts = {"mapped": 0, "ambiguous": 0, "manual_required": 0,
+                      "invalid_budget_code_key": 0, "not_applicable": 0}
+    procore_examples = defaultdict(list)
+    procore_line_max_date = None
+    procore_latest_source_count = 0
+    procore_evidence = defaultdict(list)
+    procore_commitments_count = 0
+    commitments_by_id = {}
+    commitment_rel = defaultdict(lambda: {"commitments": set(), "vendors": set()})
+
+
+def _load_inputs_and_index():
+    """Read sources + build the master/procore indices (the former import-time I/O block)."""
+    global SOURCE_PATHS, HASHES_BEFORE, budget_records
+    SOURCE_PATHS = all_source_paths()
+    HASHES_BEFORE = {str(p): sha256_file(p) for p in SOURCE_PATHS}
+    budget_records = load_forecast_source_rows(
+        "budget_details",
+        jsonl_path=SRC_FILES["budget_details"],
+        source_package_name=TWN_DIR.name,
+        project_key=PROJECT_KEY,
+        read_jsonl_fn=read_jsonl,
+    )
+    for rec in budget_records:
+        key = rec.get("budget_code_key")
+        master[key] = rec
+        master_keys.add(key)
+        parsed = parse_budget_key(key)
+        if parsed:
+            _sj, cc, cat = parsed
+            by_cost_code[cc].add(key)
+            by_cost_code_categories[cc].add(cat)
+            fam = cost_code_family(cc)
+            if fam:
+                by_family[fam].add(key)
+    build_procore_family_index()
+
+
+# ======================================================================================
 # MAIN
 # ======================================================================================
-def main():
+def build_context_package(config):
+    """Build one forecast context package under ``config.out_dir`` and return that path.
+
+    Import-safe + re-runnable: applies config, resets all state, loads inputs, then runs
+    the original generation body unchanged. ``main()`` wraps this with default_config().
+    """
+    _apply_config(config)
+    _reset_state()
+    _load_inputs_and_index()
     OUT.mkdir(parents=True, exist_ok=False)
     build_commitment_relations()
 
@@ -1882,6 +1993,12 @@ def main():
         ("keys_with_procore", len(kp)), ("keys_both", len(both)), ("keys_neither", len(neither)),
         ("out_counts", out_counts),
     ]), indent=2))
+    return OUT
+
+
+def main():
+    """Default production entrypoint: build with today's defaults (env-overridable)."""
+    build_context_package(default_config())
 
 
 def write_readme(out_counts, coverage, cutoff, safety, conclusion, ka, ko, kp, both, neither):
