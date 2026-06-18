@@ -279,6 +279,38 @@ def cmd_context_generate(*, data_root: str, out_dir: str, stamp: str, project: s
     return 0
 
 
+def cmd_final_forecast_generate(*, context_package: str, project: str,
+                                run_id: str | None = None) -> int:
+    """Controlled, default-off final-forecast (analysis) generation from an explicit context package
+    (Phase 7).
+
+    Runs the downstream analysis generator against ONE explicit context package, hard-pinned (no
+    latest-glob) under its own (temp) data root. Prints structured JSON metadata. Fails closed
+    (nonzero) on missing/invalid context package, non-tropical project, live-root data root, or a
+    pre-existing analysis package. Does NOT alter run-analysis or any existing default."""
+    from .analysis.final_forecast_runner import (
+        FinalForecastRunnerError,
+        run_final_forecast_generation,
+    )
+    try:
+        # Keep stdout a clean machine-readable JSON channel: the generator's own progress
+        # chatter is redirected to stderr for the duration of the run.
+        with contextlib.redirect_stdout(sys.stderr):
+            meta = run_final_forecast_generation(
+                context_package=Path(context_package),
+                project_key=project,
+                run_id=run_id,
+            )
+    except FinalForecastRunnerError as exc:
+        print(json.dumps({"command": "final-forecast-generate", "project": project,
+                          "status": "refused", "reason": str(exc)}, indent=2))
+        return 3
+    out = {"command": "final-forecast-generate", "status": "ok"}
+    out.update(meta)
+    print(json.dumps(out, indent=2))
+    return 0
+
+
 def cmd_run_generator(command: str, project: str, *, overrides: dict | None = None,
                       lineage_state: str | None = None) -> int:
     if project != "tropical":
@@ -512,6 +544,15 @@ def build_parser() -> argparse.ArgumentParser:
     cgp.add_argument("--db-path", default=None,
                      help="Explicit temp SQLite DB path (required with --db-backed; refuses the "
                           "live/default DB).")
+    # Phase 7 — controlled, default-off final-forecast (analysis) generation from an explicit
+    # context package. Analysis is inherently deterministic (no LLM), so no deterministic flag.
+    ffp = sub.add_parser("final-forecast-generate")
+    ffp.add_argument("--project", required=True, help="Project key (only 'tropical' in Phase 7).")
+    ffp.add_argument("--context-package", required=True,
+                     help="Explicit context package dir to consume (hard-pinned; its parent is the "
+                          "controlled data root, which must not be under the live forecast root).")
+    ffp.add_argument("--run-id", default=None,
+                     help="Optional run id recorded in the temp run-lineage state.")
     # --context-stamp pins the upstream context package for a lineage-consistent fresh full run.
     # Applied to the stages that consume context and participate in the lineage gate.
     for _p in (fip, fmp, fpp, fcp, fkp, fspp):
@@ -582,6 +623,9 @@ def main(argv=None) -> int:
     if args.command == "procore-budget-details-parity":
         return cmd_procore_budget_details_parity(cfg, args.project, args.data_root, args.db_path,
                                                  args.strict)
+    if args.command == "final-forecast-generate":
+        return cmd_final_forecast_generate(context_package=args.context_package,
+                                           project=args.project, run_id=args.run_id)
     if args.command == "context-generate":
         return cmd_context_generate(data_root=args.data_root, out_dir=args.out_dir,
                                     stamp=args.stamp, project=args.project,
