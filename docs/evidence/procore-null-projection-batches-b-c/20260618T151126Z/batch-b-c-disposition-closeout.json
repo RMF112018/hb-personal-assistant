@@ -1,0 +1,57 @@
+{
+  "branch": "codex/procore-null-projection-batch1",
+  "evidence_dir": "docs/evidence/procore-null-projection-batches-b-c/20260618T151126Z",
+  "guardrails": {
+    "budget_detail_refresh_reconciliation_modified": false,
+    "live_fetch": false,
+    "procore_writeback": false,
+    "projection_registry_modified": false,
+    "push": false,
+    "raw_payload_values_emitted": false,
+    "schema_migration_modified": false,
+    "scheduled_refresh": false,
+    "source_refresh_orchestrator": false
+  },
+  "post_bc_summary": {
+    "all_null_fields": 579,
+    "columns_audited": 3694,
+    "empty_tables": 4,
+    "expected_optional_fields": 279,
+    "explicitly_deferred_fields": 123,
+    "mostly_null_fields": 67,
+    "support_or_guardrail_fields": 1040,
+    "suspected_projection_defects": 0,
+    "tables_audited": 86
+  },
+  "deferred_by_batch": {
+    "Batch B": 29,
+    "Batch C": 94
+  },
+  "deferred_by_disposition": {
+    "deferred_broad_company_id_policy": 74,
+    "deferred_budget_detail_convenience_or_optional_field": 6,
+    "documented_object_container_or_child_field_decomposition": 29,
+    "documented_schema_artifact_or_expected_optional": 14
+  },
+  "budget_detail_counts": {
+    "procore_ep_budget_detail_row_cells": {
+      "rows": 225131,
+      "suspected_projection_defect_columns": 0
+    },
+    "procore_ep_budget_detail_rows": {
+      "rows": 2496,
+      "suspected_projection_defect_columns": 0
+    }
+  },
+  "validation": {
+    "compileall": "pass",
+    "json_tool": "pass",
+    "no_raw_leak_scan": "pass",
+    "projection_audit_change_events": "pass",
+    "projection_audit_prime_contracts": "pass",
+    "projection_audit_punch_items": "pass",
+    "projection_schema_audit": "pass",
+    "pytest_tests_test_procore_null_projection_audit": "pass",
+    "ruff": "pass"
+  }
+}
