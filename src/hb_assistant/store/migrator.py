@@ -14,7 +14,7 @@ from .connection import get_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 58
+LATEST_SCHEMA_VERSION = 59
 
 
 class SQLiteMigrator:
@@ -6407,6 +6407,88 @@ class SQLiteMigrator:
         "CREATE INDEX IF NOT EXISTS idx_forecast_validation_events_project ON forecast_validation_events(project_key, gate_name);",
     ]
 
+    # v59 Forecast DB-transition SOURCE-DOMAIN slice (Phase 3). Three additive tables
+    # projecting the TWN cost-forecast JSONL source rows (BudgetDetails, CostEntries,
+    # monthly actuals by budget code) so selected source data can be read back from
+    # SQLite in the same shape as the JSONL rows (DB read-parity proof). Each table keeps
+    # the exact original row in ``raw_json`` (authoritative for parity) plus extracted
+    # key/lineage columns for indexing. The same lineage columns recur (project_key,
+    # source_package, source_path, source_sha256, source_row_number, run_id) so every
+    # source-domain row traces to a run and a hashed source. Forecast reads stay
+    # file-backed; these tables are intentionally empty until projection is applied.
+    V59_STATEMENTS: list[str] = [
+        # BudgetDetails canonical source rows (one per budget_code_key per package).
+        """
+        CREATE TABLE IF NOT EXISTS forecast_budget_details (
+          project_key TEXT NOT NULL,
+          budget_code_key TEXT NOT NULL,
+          source_package TEXT NOT NULL,
+          cost_code TEXT,
+          category TEXT,
+          source_path TEXT,
+          source_sha256 TEXT,
+          source_row_number INTEGER,
+          run_id TEXT,
+          raw_json TEXT NOT NULL,
+          created_utc TEXT NOT NULL,
+          updated_utc TEXT,
+          PRIMARY KEY (project_key, budget_code_key, source_package)
+        );
+        """,
+        "CREATE INDEX IF NOT EXISTS idx_forecast_budget_details_project ON forecast_budget_details(project_key);",
+        "CREATE INDEX IF NOT EXISTS idx_forecast_budget_details_code ON forecast_budget_details(budget_code_key);",
+        "CREATE INDEX IF NOT EXISTS idx_forecast_budget_details_package ON forecast_budget_details(source_package);",
+        # CostEntries source rows — no business key, so a deterministic cost_entry_id is
+        # derived from (project_key|source_package|source_row_number); UNIQUE on the same
+        # triple keeps re-projection idempotent without collapsing distinct rows.
+        """
+        CREATE TABLE IF NOT EXISTS forecast_cost_entries (
+          cost_entry_id TEXT PRIMARY KEY,
+          project_key TEXT NOT NULL,
+          source_package TEXT NOT NULL,
+          source_row_number INTEGER NOT NULL,
+          budget_code_key TEXT,
+          accounting_month TEXT,
+          source_path TEXT,
+          source_sha256 TEXT,
+          run_id TEXT,
+          raw_json TEXT NOT NULL,
+          created_utc TEXT NOT NULL,
+          updated_utc TEXT,
+          UNIQUE (project_key, source_package, source_row_number)
+        );
+        """,
+        "CREATE INDEX IF NOT EXISTS idx_forecast_cost_entries_project ON forecast_cost_entries(project_key);",
+        "CREATE INDEX IF NOT EXISTS idx_forecast_cost_entries_code ON forecast_cost_entries(budget_code_key);",
+        "CREATE INDEX IF NOT EXISTS idx_forecast_cost_entries_package ON forecast_cost_entries(source_package);",
+        # Monthly actuals by budget code. ``type`` is part of the natural key (repo-truth
+        # correction over the 4-tuple) so a budget_code_key/month carrying more than one
+        # row-type cannot collapse.
+        """
+        CREATE TABLE IF NOT EXISTS forecast_monthly_actuals_by_budget_code (
+          project_key TEXT NOT NULL,
+          budget_code_key TEXT NOT NULL,
+          month TEXT NOT NULL,
+          type TEXT NOT NULL,
+          source_package TEXT NOT NULL,
+          amount REAL,
+          entry_count INTEGER,
+          source_path TEXT,
+          source_sha256 TEXT,
+          source_row_number INTEGER,
+          run_id TEXT,
+          raw_json TEXT NOT NULL,
+          created_utc TEXT NOT NULL,
+          updated_utc TEXT,
+          PRIMARY KEY (project_key, budget_code_key, month, type, source_package)
+        );
+        """,
+        "CREATE INDEX IF NOT EXISTS idx_forecast_monthly_actuals_project ON forecast_monthly_actuals_by_budget_code(project_key);",
+        "CREATE INDEX IF NOT EXISTS idx_forecast_monthly_actuals_code ON forecast_monthly_actuals_by_budget_code(budget_code_key);",
+        "CREATE INDEX IF NOT EXISTS idx_forecast_monthly_actuals_package ON forecast_monthly_actuals_by_budget_code(source_package);",
+        "CREATE INDEX IF NOT EXISTS idx_forecast_monthly_actuals_month ON forecast_monthly_actuals_by_budget_code(month);",
+    ]
+
     # v44 Phase 10 Graph drive-item modified-by raw operational metadata.
     # Additive ADD COLUMN only on construction_drive_items; raw identity JSON is
     # local SQLite operational metadata and must not be emitted in committed evidence.
@@ -7463,6 +7545,19 @@ class SQLiteMigrator:
             if cur.fetchone() is None:
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (58, 'v58_forecast_db_transition_foundation', ?)",
+                    (now,),
+                )
+
+            # v59 Forecast DB-transition SOURCE-DOMAIN slice (Phase 3): three additive
+            # source-row tables (budget details, cost entries, monthly actuals) projecting
+            # TWN cost-forecast JSONL for DB read-parity. Additive CREATE TABLE IF NOT
+            # EXISTS only; forecast model reads remain file-backed.
+            for stmt in self.V59_STATEMENTS:
+                conn.execute(stmt)
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 59")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (59, 'v59_forecast_source_domain', ?)",
                     (now,),
                 )
 

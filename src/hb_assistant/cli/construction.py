@@ -110,6 +110,7 @@ from hb_assistant.construction.fixtures import (
     FixtureHarness,
 )
 from hb_assistant.construction.forecast import projection_engine as forecast_projection
+from hb_assistant.construction.forecast import source_domain_engine as forecast_source_domain
 from hb_assistant.construction.graph import (
     GRAPH_SCOPES,
     ConstructionDeltaCrawler,
@@ -382,6 +383,70 @@ def forecast_project(
         "project": project,
         "receipt": receipt,
         "guardrails": _FORECAST_PROJECTION_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0 if receipt.get("ok") else 1)
+
+
+_FORECAST_SOURCE_DOMAIN_GUARDRAILS = {
+    "external_systems": "read_only",
+    "writeback": "none",
+    "writes": "v59_source_domain_tables_only",
+    "scope": "budget_details/cost_entries/monthly_actuals",
+    "forecast_reads": "file_backed_unchanged",
+    "dry_run_touches_db": False,
+    "apply_requires_explicit_db_path": True,
+    "apply_refuses_live_db": True,
+}
+
+
+@forecast_app.command("source-domain")
+def forecast_source_domain_cmd(
+    project: str = typer.Option("tropical", "--project", help="Project key (default: tropical)."),
+    source_package: str = typer.Option(
+        ...,
+        "--source-package",
+        help="Path to the TWN cost-forecast JSONL package (reads data/*.jsonl read-only).",
+    ),
+    db_path: Optional[str] = typer.Option(
+        None,
+        "--db-path",
+        help="Target SQLite DB for --apply (must be a temp v59 DB; required for --apply; never the live DB).",
+    ),
+    run_id: Optional[str] = typer.Option(
+        None, "--run-id", help="Optional run_id lineage stamp for the projected rows."
+    ),
+    apply: bool = typer.Option(
+        False,
+        "--apply",
+        help="Persist source rows to the v59 tables (default: dry-run; needs --db-path).",
+    ),
+    parity: bool = typer.Option(
+        False,
+        "--parity",
+        help="After --apply, read rows back and prove DB↔JSONL parity (fails closed without --apply).",
+    ),
+    json_out: bool = typer.Option(True, "--json", help="Emit machine-readable JSON (default)."),
+) -> None:
+    """Project selected TWN cost-forecast JSONL source rows (BudgetDetails, CostEntries,
+    monthly actuals) into the three v59 source-domain tables and optionally prove DB-backed
+    read parity. Dry-run (default) plans rows from the JSONL files without touching the DB;
+    --apply writes them idempotently to an explicit temp v59 DB (never the live DB)."""
+    receipt = forecast_source_domain.project_source_domain(
+        source_package=Path(source_package),
+        project_key=project,
+        db_path=Path(db_path) if db_path else None,
+        apply=apply,
+        parity=parity,
+        run_id=run_id,
+    )
+    payload = {
+        "command": "construction-agent forecast source-domain",
+        "apply": apply,
+        "parity": parity,
+        "project": project,
+        "receipt": receipt,
+        "guardrails": _FORECAST_SOURCE_DOMAIN_GUARDRAILS,
     }
     typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
     raise typer.Exit(0 if receipt.get("ok") else 1)
