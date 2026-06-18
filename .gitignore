@@ -190,3 +190,7 @@ config/config.yml
 .code-graph/graph.bin
 /.claude
 /.code-graph
+
+# Local-only read-only audit/evidence outputs and scratch (never committed).
+/local_audit_outputs/
+/tmp/

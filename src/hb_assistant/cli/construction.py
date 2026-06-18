@@ -67,6 +67,7 @@ written, and only when ``--apply`` is set.
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from typing import Any, Optional
 
 import typer
@@ -108,6 +109,7 @@ from hb_assistant.construction.fixtures import (
 from hb_assistant.construction.fixtures import (
     FixtureHarness,
 )
+from hb_assistant.construction.forecast import projection_engine as forecast_projection
 from hb_assistant.construction.graph import (
     GRAPH_SCOPES,
     ConstructionDeltaCrawler,
@@ -316,6 +318,73 @@ def meeting_prep_status(
     }
     typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
     raise typer.Exit(0 if report.get("ok") else 1)
+
+
+forecast_app = typer.Typer(
+    help="Phase 2 forecast JSON/JSONL → SQLite lineage projection (project). Dry-run safe by "
+    "default; --apply writes only the five v58 foundation tables (project/run/source/manifest/"
+    "validation lineage) and requires an explicit --db-path (never the live DB). No domain rows; "
+    "forecast model reads remain file-backed."
+)
+app.add_typer(forecast_app, name="forecast")
+
+_FORECAST_PROJECTION_GUARDRAILS = {
+    "external_systems": "read_only",
+    "writeback": "none",
+    "writes": "v58_foundation_lineage_tables_only",
+    "domain_rows": "not_projected",
+    "forecast_reads": "file_backed_unchanged",
+    "dry_run_touches_db": False,
+    "apply_requires_explicit_db_path": True,
+}
+
+
+def _default_cfr_subproject_root() -> Path:
+    """Repo-relative path to the construction-financial-review subproject."""
+    return Path(__file__).resolve().parents[3] / "subrepos" / "construction-financial-review"
+
+
+@forecast_app.command("project")
+def forecast_project(
+    project: str = typer.Option("tropical", "--project", help="Project key (default: tropical)."),
+    run_state: Optional[str] = typer.Option(
+        None, "--run-state", help="Explicit .cfr_run_state/full_fresh_<project>_<run_id>.json path."
+    ),
+    subproject_root: Optional[str] = typer.Option(
+        None, "--subproject-root", help="CFR subproject root (default: repo subrepos/...)."
+    ),
+    db_path: Optional[str] = typer.Option(
+        None,
+        "--db-path",
+        help="Target SQLite DB for --apply (must be a temp v58 DB; required for --apply).",
+    ),
+    apply: bool = typer.Option(
+        False,
+        "--apply",
+        help="Persist lineage to the v58 tables (default: dry-run; needs --db-path).",
+    ),
+    json_out: bool = typer.Option(True, "--json", help="Emit machine-readable JSON (default)."),
+) -> None:
+    """Project a completed forecast run's lineage (run/project/sources/manifests/validation gates)
+    into the five v58 foundation tables. Dry-run (default) plans rows from package files without
+    touching the DB; --apply writes them idempotently to an explicit temp v58 DB."""
+    root = Path(subproject_root) if subproject_root else _default_cfr_subproject_root()
+    receipt = forecast_projection.project_run(
+        subproject_root=root,
+        project_key=project,
+        run_state_path=Path(run_state) if run_state else None,
+        db_path=Path(db_path) if db_path else None,
+        apply=apply,
+    )
+    payload = {
+        "command": "construction-agent forecast project",
+        "apply": apply,
+        "project": project,
+        "receipt": receipt,
+        "guardrails": _FORECAST_PROJECTION_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0 if receipt.get("ok") else 1)
 
 
 issue_history_app = typer.Typer(
