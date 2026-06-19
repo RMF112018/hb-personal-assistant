@@ -1,0 +1,13 @@
+{
+  "command": "hb-assistant procore analytics projection-schema-audit",
+  "ok": true,
+  "runtime_plan_schema_mismatches": 0,
+  "missing_table_count": 0,
+  "missing_column_count": 0,
+  "mismatches": [],
+  "guardrails": {
+    "live_calls_disabled": true,
+    "writeback": "none",
+    "emits_values": false
+  }
+}
