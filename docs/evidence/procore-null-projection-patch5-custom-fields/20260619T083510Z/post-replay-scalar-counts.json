@@ -1,0 +1,56 @@
+{
+  "fields": [
+    {
+      "bare_column": "custom_fields_custom_field_214072_value",
+      "bare_column_non_null_count": 0,
+      "endpoint_key": "purchase-order-contracts",
+      "raw_payload_values_emitted": false,
+      "row_count": 10,
+      "scalar_columns": [
+        {
+          "column": "custom_fields_custom_field_214072_value_id",
+          "non_null_count": 8
+        }
+      ],
+      "table": "procore_ep_purchase_order_contracts"
+    },
+    {
+      "bare_column": "custom_fields_custom_field_214078_value",
+      "bare_column_non_null_count": 0,
+      "endpoint_key": "purchase-order-contracts",
+      "raw_payload_values_emitted": false,
+      "row_count": 10,
+      "scalar_columns": [
+        {
+          "column": "custom_fields_custom_field_214078_value_company_name",
+          "non_null_count": 7
+        },
+        {
+          "column": "custom_fields_custom_field_214078_value_id",
+          "non_null_count": 8
+        }
+      ],
+      "table": "procore_ep_purchase_order_contracts"
+    },
+    {
+      "bare_column": "custom_fields_custom_field_214087_value",
+      "bare_column_non_null_count": 0,
+      "endpoint_key": "purchase-order-contracts",
+      "raw_payload_values_emitted": false,
+      "row_count": 10,
+      "scalar_columns": [
+        {
+          "column": "custom_fields_custom_field_214087_value_id",
+          "non_null_count": 8
+        }
+      ],
+      "table": "procore_ep_purchase_order_contracts"
+    }
+  ],
+  "generated_at_utc": "2026-06-19T08:35:35Z",
+  "guardrails": {
+    "live_calls_disabled": true,
+    "raw_payload_values_emitted": false,
+    "writeback": "none"
+  }
+}

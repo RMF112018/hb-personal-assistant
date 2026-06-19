@@ -1,0 +1,23 @@
+{
+  "budget_detail_dead_convenience_column": 4,
+  "budget_detail_read_model_schema_artifact": 4,
+  "child_entity_deferred": 5,
+  "company_id_policy_deferred": 4,
+  "covered_custom": 3,
+  "covered_non_custom": 31,
+  "covered_subtype_counts": {
+    "bare_container_custom_field_covered_by_scalar_decomposition": 3,
+    "bare_container_deprecated_covered_by_scalar_decomposition": 31
+  },
+  "covered_total": 34,
+  "date_datetime_mapping_candidates": 0,
+  "deprecation_is_reporting_policy_only": true,
+  "generated_at_utc": "2026-06-19T08:56:40Z",
+  "high_confidence_mapping_candidates": 0,
+  "legacy_non_null_bare_container_warning_count": 6,
+  "partial": 4,
+  "projection_code_repair_candidates": 0,
+  "raw_payload_values_emitted": false,
+  "raw_strict_findings_preserved": true,
+  "source_absent_scalar_leaves": 5
+}

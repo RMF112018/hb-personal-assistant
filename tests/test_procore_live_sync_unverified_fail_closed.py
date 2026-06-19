@@ -69,7 +69,7 @@ def test_unverified_endpoint_returns_not_live_verified_receipt(
     assert receipt["http_method"] == "GET"
 
 
-def test_unknown_endpoint_fails_closed_with_alias_unknown_reason(
+def test_unknown_endpoint_fails_closed_with_endpoint_contract_missing_reason(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv(LIVE_ENV_VAR, LIVE_ENV_ENABLER)
@@ -83,7 +83,7 @@ def test_unknown_endpoint_fails_closed_with_alias_unknown_reason(
         db_path=_db(),
     )
     assert receipt["state"] == "fail_closed_unsupported"
-    assert "endpoint_alias_unknown" in receipt["reason_codes"]
+    assert "endpoint_contract_missing" in receipt["reason_codes"]
     assert receipt["no_live_call_performed"] is True
 
 

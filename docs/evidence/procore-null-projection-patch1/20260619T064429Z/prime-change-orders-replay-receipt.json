@@ -1,0 +1,40 @@
+{
+  "command": "/Users/bobbyfetting/hb-personal-assistant/.venv/bin/hb-assistant procore analytics projection-reprocess --db /tmp/hb-procore-null-projection-patch1-20260619T064429Z.sqlite --endpoint prime-change-orders --apply --json",
+  "returncode": 0,
+  "stderr": "",
+  "stdout_json": {
+    "by_endpoint": {
+      "prime-change-orders": {
+        "child": 0,
+        "degraded": 0,
+        "primary": 63,
+        "skipped_higher": 0
+      }
+    },
+    "child_rows_written": 0,
+    "command": "hb-assistant procore analytics projection-reprocess",
+    "degraded_unknown_projection_fields": 0,
+    "enforcement": "enforce",
+    "external_writeback_performed": 0,
+    "filters": {
+      "endpoint": "prime-change-orders",
+      "limit": 200000,
+      "project_key": null
+    },
+    "guardrails": {
+      "emits_values": false,
+      "live_calls_disabled": true,
+      "writeback": "none"
+    },
+    "live_procore_calls": 0,
+    "mode": "apply",
+    "ok": true,
+    "primary_rows_written": 63,
+    "raw_full_rows_inspected": 63,
+    "skipped_due_to_higher_quality": 0,
+    "skipped_out_of_scope_endpoint": 0,
+    "source_quality_breakdown": {
+      "live_full_payload": 63
+    }
+  }
+}

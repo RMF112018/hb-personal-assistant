@@ -1,0 +1,164 @@
+{
+  "fields": [
+    {
+      "bare_column": "custom_fields_custom_field_214072_value",
+      "comparative_sibling_columns": [
+        {
+          "column": "custom_fields_custom_field_214072_value_label",
+          "registry_json_path": "$.custom_fields.custom_field_214072.value.label",
+          "scope": "out_of_scope_comparative_metadata"
+        }
+      ],
+      "container_path_check": {
+        "json_path": "$.custom_fields.custom_field_214072.value",
+        "object_keys_present": [
+          "id",
+          "label"
+        ],
+        "path_missing_count": 0,
+        "path_non_empty_count": 9,
+        "path_null_or_empty_count": 2,
+        "path_present_count": 11,
+        "raw_payload_values_emitted": false,
+        "shape_counts": {
+          "null": 2,
+          "object": 9
+        }
+      },
+      "endpoint_key": "purchase-order-contracts",
+      "raw_payload_values_emitted": false,
+      "scalar_path_checks": [
+        {
+          "column": "custom_fields_custom_field_214072_value_id",
+          "source_path_check": {
+            "json_path": "$.custom_fields.custom_field_214072.value.id",
+            "object_keys_present": [],
+            "path_missing_count": 2,
+            "path_non_empty_count": 9,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 9,
+            "raw_payload_values_emitted": false,
+            "shape_counts": {
+              "integer": 9
+            }
+          }
+        }
+      ],
+      "table": "procore_ep_purchase_order_contracts"
+    },
+    {
+      "bare_column": "custom_fields_custom_field_214078_value",
+      "comparative_sibling_columns": [
+        {
+          "column": "custom_fields_custom_field_214078_value_label",
+          "registry_json_path": "$.custom_fields.custom_field_214078.value.label",
+          "scope": "out_of_scope_comparative_metadata"
+        }
+      ],
+      "container_path_check": {
+        "json_path": "$.custom_fields.custom_field_214078.value",
+        "object_keys_present": [
+          "company_name",
+          "id",
+          "label"
+        ],
+        "path_missing_count": 0,
+        "path_non_empty_count": 9,
+        "path_null_or_empty_count": 2,
+        "path_present_count": 11,
+        "raw_payload_values_emitted": false,
+        "shape_counts": {
+          "null": 2,
+          "object": 9
+        }
+      },
+      "endpoint_key": "purchase-order-contracts",
+      "raw_payload_values_emitted": false,
+      "scalar_path_checks": [
+        {
+          "column": "custom_fields_custom_field_214078_value_company_name",
+          "source_path_check": {
+            "json_path": "$.custom_fields.custom_field_214078.value.company_name",
+            "object_keys_present": [],
+            "path_missing_count": 2,
+            "path_non_empty_count": 8,
+            "path_null_or_empty_count": 1,
+            "path_present_count": 9,
+            "raw_payload_values_emitted": false,
+            "shape_counts": {
+              "string": 9
+            }
+          }
+        },
+        {
+          "column": "custom_fields_custom_field_214078_value_id",
+          "source_path_check": {
+            "json_path": "$.custom_fields.custom_field_214078.value.id",
+            "object_keys_present": [],
+            "path_missing_count": 2,
+            "path_non_empty_count": 9,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 9,
+            "raw_payload_values_emitted": false,
+            "shape_counts": {
+              "integer": 9
+            }
+          }
+        }
+      ],
+      "table": "procore_ep_purchase_order_contracts"
+    },
+    {
+      "bare_column": "custom_fields_custom_field_214087_value",
+      "comparative_sibling_columns": [
+        {
+          "column": "custom_fields_custom_field_214087_value_label",
+          "registry_json_path": "$.custom_fields.custom_field_214087.value.label",
+          "scope": "out_of_scope_comparative_metadata"
+        }
+      ],
+      "container_path_check": {
+        "json_path": "$.custom_fields.custom_field_214087.value",
+        "object_keys_present": [
+          "id",
+          "label"
+        ],
+        "path_missing_count": 0,
+        "path_non_empty_count": 9,
+        "path_null_or_empty_count": 2,
+        "path_present_count": 11,
+        "raw_payload_values_emitted": false,
+        "shape_counts": {
+          "null": 2,
+          "object": 9
+        }
+      },
+      "endpoint_key": "purchase-order-contracts",
+      "raw_payload_values_emitted": false,
+      "scalar_path_checks": [
+        {
+          "column": "custom_fields_custom_field_214087_value_id",
+          "source_path_check": {
+            "json_path": "$.custom_fields.custom_field_214087.value.id",
+            "object_keys_present": [],
+            "path_missing_count": 2,
+            "path_non_empty_count": 9,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 9,
+            "raw_payload_values_emitted": false,
+            "shape_counts": {
+              "integer": 9
+            }
+          }
+        }
+      ],
+      "table": "procore_ep_purchase_order_contracts"
+    }
+  ],
+  "generated_at_utc": "2026-06-19T08:35:34Z",
+  "guardrails": {
+    "live_calls_disabled": true,
+    "raw_payload_values_emitted": false,
+    "writeback": "none"
+  }
+}

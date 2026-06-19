@@ -30,6 +30,7 @@ from hb_assistant.procore.structured_analytics import (
     upsert_full_raw_payload_and_structured,
 )
 from hb_assistant.store.migrator import LATEST_SCHEMA_VERSION, SQLiteMigrator
+from scripts.proofs import procore_null_projection_audit as null_projection_audit
 
 ENDPOINT = "change-events"
 
@@ -67,6 +68,22 @@ _CHANGE_EVENT: dict[str, Any] = {
                 "segment_items": [{"id": 11, "name": "Concrete", "code": "03"}],
             },
             "vendor": {"id": 88, "name": "Acme Concrete LLC"},
+            "cost_impact": {
+                "contract": {
+                    "confirmed": {
+                        "id": 991,
+                        "number": "CCO-991",
+                        "status": "approved",
+                        "title": "Confirmed contract cost",
+                    }
+                },
+                "vendor": {
+                    "confirmed": {
+                        "id": 88,
+                        "name": "Acme Concrete LLC",
+                    }
+                },
+            },
             "disabled_fields": ["foo", "bar"],
         }
     ],
@@ -321,7 +338,6 @@ def test_nested_arrays_project_to_child_tables_with_high_value_columns(
     assert crow["item_id"] == "1"
     assert crow["budget_code_flat_code"] == "03-100"
     assert crow["vendor_name"] == "Acme Concrete LLC"
-
     # grandchild segment_items linked to its parent change_item
     seg_table = next(
         c.table for c in plan.child_tables if c.array_path.endswith("budget_code.segment_items")
@@ -330,6 +346,51 @@ def test_nested_arrays_project_to_child_tables_with_high_value_columns(
     assert seg["parent_item_id"] == "1"
     assert seg["primary_record_key"] == prow["record_key"]
     conn.close()
+
+
+def test_committed_change_event_cost_impact_confirmed_objects_project(
+    tmp_path: Path,
+) -> None:
+    payload = {
+        "id": 7010,
+        "change_items": [
+            {
+                "id": 1,
+                "cost_impact": {
+                    "contract": {
+                        "confirmed": {
+                            "id": 991,
+                            "number": "CCO-991",
+                            "status": "approved",
+                            "title": "Confirmed contract cost",
+                        }
+                    },
+                    "vendor": {
+                        "confirmed": {
+                            "id": 88,
+                            "name": "Acme Concrete LLC",
+                        }
+                    },
+                },
+            }
+        ],
+    }
+    db = _db(tmp_path)
+    receipt = _project(db, payload, source_quality=SOURCE_QUALITY_LIVE_FULL)
+    assert receipt["ok"] is True
+    assert receipt["endpoint_specific_projection_status"] == "ok"
+
+    plan = registry.plan_for(ENDPOINT)
+    assert plan is not None
+    ci_table = next(c.table for c in plan.child_tables if c.array_path == "$.change_items")
+    conn = sqlite3.connect(db)
+    conn.row_factory = sqlite3.Row
+    try:
+        row = conn.execute(f"SELECT * FROM {ci_table} WHERE item_id = '1'").fetchone()
+        assert row["cost_impact_contract_confirmed"] == "Confirmed contract cost"
+        assert row["cost_impact_vendor_confirmed"] == "Acme Concrete LLC"
+    finally:
+        conn.close()
 
 
 def test_every_fixture_path_is_mapped_zero_unknown(
@@ -664,3 +725,300 @@ def test_reprocess_apply_succeeds_after_reconcile(
     assert receipt["ok"] is True
     assert receipt["primary_rows_written"] >= 1
     assert audit.projection_schema_audit(db_path=db)["ok"] is True
+
+
+def test_batch1_punch_closed_fields_project_from_current_payload_shapes(tmp_path: Path) -> None:
+    """Batch 1 regression: current punch payloads expose closed_by as an object and
+    assignment attachment item fields. These paths must be allow-listed without adding
+    columns, and closed_at / closed_by must project into the existing columns."""
+    db = _db(tmp_path)
+    conn = sqlite3.connect(db)
+    conn.row_factory = sqlite3.Row
+    payload = {
+        "id": 123,
+        "closed_at": "2026-06-01T12:00:00Z",
+        "closed_by": {
+            "id": 456,
+            "login": "reviewer@example.invalid",
+            "name": "Owner Reviewer",
+            "company_name": "Example Company",
+            "locale": None,
+        },
+        "assignments": [
+            {
+                "id": 1,
+                "approved": True,
+                "attachments": [
+                    {
+                        "id": 2,
+                        "filename": "redacted.pdf",
+                        "url": "https://storage.example.invalid/redacted.pdf",
+                    }
+                ],
+            }
+        ],
+    }
+    try:
+        receipt = eng.project_endpoint_specific(
+            conn,
+            endpoint_id="punch-items",
+            project_key="tropical",
+            procore_project_id="99",
+            record_id="123",
+            parent_record_id=None,
+            payload=payload,
+            raw_payload_id="raw-punch-batch1",
+            payload_hash="hash-punch-batch1",
+            source_quality=SOURCE_QUALITY_LIVE_FULL,
+            fetched_at="2026-06-01T12:00:00Z",
+            now_utc="2026-06-01T12:01:00Z",
+            mode=eng.MODE_ENFORCE,
+        )
+        row = conn.execute(
+            "SELECT closed_at, closed_by FROM procore_ep_punch_items WHERE record_id = '123'"
+        ).fetchone()
+    finally:
+        conn.close()
+
+    assert receipt["ok"] is True
+    assert row["closed_at"] == "2026-06-01T12:00:00Z"
+    assert row["closed_by"] == "Owner Reviewer"
+
+
+def test_batch1_prime_contract_boolean_projects_with_attachment_sidecar_paths(
+    tmp_path: Path,
+) -> None:
+    """Batch 1 regression: current prime-contract payloads include top-level
+    attachment item fields and a boolean show_line_items_to_non_admins value."""
+    db = _db(tmp_path)
+    conn = sqlite3.connect(db)
+    conn.row_factory = sqlite3.Row
+    payload = {
+        "id": 321,
+        "show_line_items_to_non_admins": True,
+        "attachments": [
+            {
+                "id": 654,
+                "filename": "redacted.pdf",
+                "name": "Redacted",
+                "url": "https://storage.example.invalid/redacted.pdf",
+            }
+        ],
+    }
+    try:
+        receipt = eng.project_endpoint_specific(
+            conn,
+            endpoint_id="prime-contracts",
+            project_key="tropical",
+            procore_project_id="99",
+            record_id="321",
+            parent_record_id=None,
+            payload=payload,
+            raw_payload_id="raw-prime-batch1",
+            payload_hash="hash-prime-batch1",
+            source_quality=SOURCE_QUALITY_LIVE_FULL,
+            fetched_at="2026-06-01T12:00:00Z",
+            now_utc="2026-06-01T12:01:00Z",
+            mode=eng.MODE_ENFORCE,
+        )
+        row = conn.execute(
+            "SELECT show_line_items_to_non_admins FROM procore_ep_prime_contracts "
+            "WHERE record_id = '321'"
+        ).fetchone()
+    finally:
+        conn.close()
+
+    assert receipt["ok"] is True
+    assert row["show_line_items_to_non_admins"] == "True"
+
+
+def test_patch1_commitment_change_order_scalar_reference_fields_project(
+    tmp_path: Path,
+) -> None:
+    db = _db(tmp_path)
+    conn = sqlite3.connect(db)
+    conn.row_factory = sqlite3.Row
+    payload = {
+        "id": 9001,
+        "change_order_change_reason": {"id": 11, "change_reason": "Owner Request"},
+        "designated_reviewer": {"id": 22, "name": "Design Reviewer"},
+        "received_from": {"id": 33, "name": "Prime Contractor"},
+        "reviewed_by": {"id": 44, "name": "Project Executive"},
+    }
+    try:
+        receipt = eng.project_endpoint_specific(
+            conn,
+            endpoint_id="commitment-change-orders",
+            project_key="tropical",
+            procore_project_id="99",
+            record_id="9001",
+            parent_record_id=None,
+            payload=payload,
+            raw_payload_id="raw-commitment-co-patch1",
+            payload_hash="hash-commitment-co-patch1",
+            source_quality=SOURCE_QUALITY_LIVE_FULL,
+            fetched_at="2026-06-19T00:00:00Z",
+            now_utc="2026-06-19T00:01:00Z",
+            mode=eng.MODE_ENFORCE,
+        )
+        row = conn.execute(
+            """
+            SELECT
+              change_order_change_reason_id,
+              change_order_change_reason_change_reason,
+              designated_reviewer_id,
+              designated_reviewer_name,
+              received_from_id,
+              received_from_name,
+              reviewed_by_id,
+              reviewed_by_name,
+              company_id
+            FROM procore_ep_commitment_change_orders
+            WHERE record_id = '9001'
+            """
+        ).fetchone()
+        table_columns = {
+            column["name"]
+            for column in conn.execute(
+                "PRAGMA table_info(procore_ep_commitment_change_orders)"
+            ).fetchall()
+        }
+        bare_object_values = {}
+        for column in (
+            "change_order_change_reason",
+            "designated_reviewer",
+            "received_from",
+            "reviewed_by",
+        ):
+            if column in table_columns:
+                bare_object_values[column] = conn.execute(
+                    f"SELECT {column} FROM procore_ep_commitment_change_orders "  # noqa: S608
+                    "WHERE record_id = '9001'"
+                ).fetchone()[0]
+    finally:
+        conn.close()
+
+    assert receipt["ok"] is True
+    assert row["change_order_change_reason_id"] == "11"
+    assert row["change_order_change_reason_change_reason"] == "Owner Request"
+    assert row["designated_reviewer_id"] == "22"
+    assert row["designated_reviewer_name"] == "Design Reviewer"
+    assert row["received_from_id"] == "33"
+    assert row["received_from_name"] == "Prime Contractor"
+    assert row["reviewed_by_id"] == "44"
+    assert row["reviewed_by_name"] == "Project Executive"
+    assert all(value is None for value in bare_object_values.values())
+    assert row["company_id"] is None
+
+    payload_after_audit = null_projection_audit.audit_database(db)
+    by_field = {
+        (record["table"], record["column"]): record
+        for record in payload_after_audit["columns"]
+    }
+    for column in (
+        "change_order_change_reason_id",
+        "change_order_change_reason_change_reason",
+        "designated_reviewer_id",
+        "designated_reviewer_name",
+        "received_from_id",
+        "received_from_name",
+        "reviewed_by_id",
+        "reviewed_by_name",
+    ):
+        assert (
+            by_field[("procore_ep_commitment_change_orders", column)][
+                "suspected_projection_defect"
+            ]
+            is False
+        )
+
+
+def test_patch1_prime_change_order_scalar_reference_fields_project(
+    tmp_path: Path,
+) -> None:
+    db = _db(tmp_path)
+    conn = sqlite3.connect(db)
+    conn.row_factory = sqlite3.Row
+    payload = {
+        "id": 9101,
+        "change_order_change_reason": {"id": 55, "change_reason": "Scope Change"},
+        "designated_reviewer": {"id": 66, "name": "Owner Reviewer"},
+        "received_from": {"id": 77, "name": "Architect"},
+    }
+    try:
+        receipt = eng.project_endpoint_specific(
+            conn,
+            endpoint_id="prime-change-orders",
+            project_key="tropical",
+            procore_project_id="99",
+            record_id="9101",
+            parent_record_id=None,
+            payload=payload,
+            raw_payload_id="raw-prime-co-patch1",
+            payload_hash="hash-prime-co-patch1",
+            source_quality=SOURCE_QUALITY_LIVE_FULL,
+            fetched_at="2026-06-19T00:00:00Z",
+            now_utc="2026-06-19T00:01:00Z",
+            mode=eng.MODE_ENFORCE,
+        )
+        row = conn.execute(
+            """
+            SELECT
+              change_order_change_reason_id,
+              change_order_change_reason_change_reason,
+              designated_reviewer_id,
+              designated_reviewer_name,
+              received_from_id,
+              received_from_name,
+              company_id
+            FROM procore_ep_prime_change_orders
+            WHERE record_id = '9101'
+            """
+        ).fetchone()
+        table_columns = {
+            column["name"]
+            for column in conn.execute(
+                "PRAGMA table_info(procore_ep_prime_change_orders)"
+            ).fetchall()
+        }
+        bare_object_values = {}
+        for column in (
+            "change_order_change_reason",
+            "designated_reviewer",
+            "received_from",
+        ):
+            if column in table_columns:
+                bare_object_values[column] = conn.execute(
+                    f"SELECT {column} FROM procore_ep_prime_change_orders "  # noqa: S608
+                    "WHERE record_id = '9101'"
+                ).fetchone()[0]
+    finally:
+        conn.close()
+
+    assert receipt["ok"] is True
+    assert row["change_order_change_reason_id"] == "55"
+    assert row["change_order_change_reason_change_reason"] == "Scope Change"
+    assert row["designated_reviewer_id"] == "66"
+    assert row["designated_reviewer_name"] == "Owner Reviewer"
+    assert row["received_from_id"] == "77"
+    assert row["received_from_name"] == "Architect"
+    assert all(value is None for value in bare_object_values.values())
+    assert row["company_id"] is None
+
+    payload_after_audit = null_projection_audit.audit_database(db)
+    by_field = {
+        (record["table"], record["column"]): record
+        for record in payload_after_audit["columns"]
+    }
+    for column in (
+        "change_order_change_reason_id",
+        "change_order_change_reason_change_reason",
+        "designated_reviewer_id",
+        "designated_reviewer_name",
+        "received_from_id",
+        "received_from_name",
+    ):
+        assert (
+            by_field[("procore_ep_prime_change_orders", column)]["suspected_projection_defect"]
+            is False
+        )

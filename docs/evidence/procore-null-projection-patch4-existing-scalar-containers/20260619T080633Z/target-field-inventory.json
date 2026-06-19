@@ -1,0 +1,2253 @@
+{
+  "db_path": "/tmp/hb-procore-null-projection-patch4-existing-scalar-containers.sqlite",
+  "fields": [
+    {
+      "bare_column": "event_origin",
+      "bare_column_exists": true,
+      "bare_column_non_null_count": 5,
+      "bare_column_registry_mapped": false,
+      "endpoint_key": "change-events",
+      "raw_payload_rows_inspected": 2656,
+      "raw_payload_values_emitted": false,
+      "row_count": 1054,
+      "scalar_columns": [
+        {
+          "column": "event_origin_display_name",
+          "column_exists": true,
+          "registry_json_path": "$.event_origin.display_name",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.event_origin.display_name",
+            "object_keys_present": [],
+            "path_missing_count": 2473,
+            "path_non_empty_count": 183,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 183,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "event_origin_origin_id",
+          "column_exists": true,
+          "registry_json_path": "$.event_origin.origin_id",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.event_origin.origin_id",
+            "object_keys_present": [],
+            "path_missing_count": 2473,
+            "path_non_empty_count": 183,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 183,
+            "raw_payload_values_emitted": false
+          }
+        }
+      ],
+      "table": "procore_ep_change_events"
+    },
+    {
+      "bare_column": "change_order_change_reason",
+      "bare_column_exists": true,
+      "bare_column_non_null_count": 0,
+      "bare_column_registry_mapped": false,
+      "endpoint_key": "commitment-change-orders",
+      "raw_payload_rows_inspected": 100,
+      "raw_payload_values_emitted": false,
+      "row_count": 100,
+      "scalar_columns": [
+        {
+          "column": "change_order_change_reason_id",
+          "column_exists": true,
+          "registry_json_path": "$.change_order_change_reason.id",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.change_order_change_reason.id",
+            "object_keys_present": [],
+            "path_missing_count": 2,
+            "path_non_empty_count": 98,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 98,
+            "raw_payload_values_emitted": false
+          }
+        }
+      ],
+      "table": "procore_ep_commitment_change_orders"
+    },
+    {
+      "bare_column": "designated_reviewer",
+      "bare_column_exists": true,
+      "bare_column_non_null_count": 0,
+      "bare_column_registry_mapped": false,
+      "endpoint_key": "commitment-change-orders",
+      "raw_payload_rows_inspected": 100,
+      "raw_payload_values_emitted": false,
+      "row_count": 100,
+      "scalar_columns": [
+        {
+          "column": "designated_reviewer_id",
+          "column_exists": true,
+          "registry_json_path": "$.designated_reviewer.id",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.designated_reviewer.id",
+            "object_keys_present": [],
+            "path_missing_count": 32,
+            "path_non_empty_count": 68,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 68,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "designated_reviewer_name",
+          "column_exists": true,
+          "registry_json_path": "$.designated_reviewer.name",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.designated_reviewer.name",
+            "object_keys_present": [],
+            "path_missing_count": 32,
+            "path_non_empty_count": 68,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 68,
+            "raw_payload_values_emitted": false
+          }
+        }
+      ],
+      "table": "procore_ep_commitment_change_orders"
+    },
+    {
+      "bare_column": "received_from",
+      "bare_column_exists": true,
+      "bare_column_non_null_count": 0,
+      "bare_column_registry_mapped": false,
+      "endpoint_key": "commitment-change-orders",
+      "raw_payload_rows_inspected": 100,
+      "raw_payload_values_emitted": false,
+      "row_count": 100,
+      "scalar_columns": [
+        {
+          "column": "received_from_id",
+          "column_exists": true,
+          "registry_json_path": "$.received_from.id",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.received_from.id",
+            "object_keys_present": [],
+            "path_missing_count": 79,
+            "path_non_empty_count": 21,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 21,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "received_from_name",
+          "column_exists": true,
+          "registry_json_path": "$.received_from.name",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.received_from.name",
+            "object_keys_present": [],
+            "path_missing_count": 79,
+            "path_non_empty_count": 21,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 21,
+            "raw_payload_values_emitted": false
+          }
+        }
+      ],
+      "table": "procore_ep_commitment_change_orders"
+    },
+    {
+      "bare_column": "reviewed_by",
+      "bare_column_exists": true,
+      "bare_column_non_null_count": 0,
+      "bare_column_registry_mapped": false,
+      "endpoint_key": "commitment-change-orders",
+      "raw_payload_rows_inspected": 100,
+      "raw_payload_values_emitted": false,
+      "row_count": 100,
+      "scalar_columns": [
+        {
+          "column": "reviewed_by_id",
+          "column_exists": true,
+          "registry_json_path": "$.reviewed_by.id",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.reviewed_by.id",
+            "object_keys_present": [],
+            "path_missing_count": 99,
+            "path_non_empty_count": 1,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 1,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "reviewed_by_name",
+          "column_exists": true,
+          "registry_json_path": "$.reviewed_by.name",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.reviewed_by.name",
+            "object_keys_present": [],
+            "path_missing_count": 99,
+            "path_non_empty_count": 1,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 1,
+            "raw_payload_values_emitted": false
+          }
+        }
+      ],
+      "table": "procore_ep_commitment_change_orders"
+    },
+    {
+      "bare_column": "location",
+      "bare_column_exists": true,
+      "bare_column_non_null_count": 0,
+      "bare_column_registry_mapped": false,
+      "endpoint_key": "daily-log-inspections",
+      "raw_payload_rows_inspected": 114,
+      "raw_payload_values_emitted": false,
+      "row_count": 114,
+      "scalar_columns": [
+        {
+          "column": "location_created_at",
+          "column_exists": true,
+          "registry_json_path": "$.location.created_at",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.location.created_at",
+            "object_keys_present": [],
+            "path_missing_count": 54,
+            "path_non_empty_count": 60,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 60,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "location_id",
+          "column_exists": true,
+          "registry_json_path": "$.location.id",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.location.id",
+            "object_keys_present": [],
+            "path_missing_count": 54,
+            "path_non_empty_count": 60,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 60,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "location_name",
+          "column_exists": true,
+          "registry_json_path": "$.location.name",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.location.name",
+            "object_keys_present": [],
+            "path_missing_count": 54,
+            "path_non_empty_count": 60,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 60,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "location_node_name",
+          "column_exists": true,
+          "registry_json_path": "$.location.node_name",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.location.node_name",
+            "object_keys_present": [],
+            "path_missing_count": 54,
+            "path_non_empty_count": 60,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 60,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "location_parent_id",
+          "column_exists": true,
+          "registry_json_path": "$.location.parent_id",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.location.parent_id",
+            "object_keys_present": [],
+            "path_missing_count": 54,
+            "path_non_empty_count": 43,
+            "path_null_or_empty_count": 17,
+            "path_present_count": 60,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "location_updated_at",
+          "column_exists": true,
+          "registry_json_path": "$.location.updated_at",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.location.updated_at",
+            "object_keys_present": [],
+            "path_missing_count": 54,
+            "path_non_empty_count": 60,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 60,
+            "raw_payload_values_emitted": false
+          }
+        }
+      ],
+      "table": "procore_ep_daily_log_inspections"
+    },
+    {
+      "bare_column": "contact",
+      "bare_column_exists": true,
+      "bare_column_non_null_count": 0,
+      "bare_column_registry_mapped": false,
+      "endpoint_key": "daily-log-manpower",
+      "raw_payload_rows_inspected": 921,
+      "raw_payload_values_emitted": false,
+      "row_count": 921,
+      "scalar_columns": [
+        {
+          "column": "contact_email",
+          "column_exists": true,
+          "registry_json_path": "$.contact.email",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.contact.email",
+            "object_keys_present": [],
+            "path_missing_count": 1,
+            "path_non_empty_count": 53,
+            "path_null_or_empty_count": 867,
+            "path_present_count": 920,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "contact_fax_number",
+          "column_exists": true,
+          "registry_json_path": "$.contact.fax_number",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.contact.fax_number",
+            "object_keys_present": [],
+            "path_missing_count": 1,
+            "path_non_empty_count": 464,
+            "path_null_or_empty_count": 456,
+            "path_present_count": 920,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "contact_id",
+          "column_exists": true,
+          "registry_json_path": "$.contact.id",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.contact.id",
+            "object_keys_present": [],
+            "path_missing_count": 1,
+            "path_non_empty_count": 920,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 920,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "contact_login_information_id",
+          "column_exists": true,
+          "registry_json_path": "$.contact.login_information_id",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.contact.login_information_id",
+            "object_keys_present": [],
+            "path_missing_count": 1,
+            "path_non_empty_count": 0,
+            "path_null_or_empty_count": 920,
+            "path_present_count": 920,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "contact_name",
+          "column_exists": true,
+          "registry_json_path": "$.contact.name",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.contact.name",
+            "object_keys_present": [],
+            "path_missing_count": 1,
+            "path_non_empty_count": 920,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 920,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "contact_vendor_name",
+          "column_exists": true,
+          "registry_json_path": "$.contact.vendor_name",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.contact.vendor_name",
+            "object_keys_present": [],
+            "path_missing_count": 1,
+            "path_non_empty_count": 0,
+            "path_null_or_empty_count": 920,
+            "path_present_count": 920,
+            "raw_payload_values_emitted": false
+          }
+        }
+      ],
+      "table": "procore_ep_daily_log_manpower"
+    },
+    {
+      "bare_column": "cost_code",
+      "bare_column_exists": true,
+      "bare_column_non_null_count": 0,
+      "bare_column_registry_mapped": false,
+      "endpoint_key": "daily-log-manpower",
+      "raw_payload_rows_inspected": 921,
+      "raw_payload_values_emitted": false,
+      "row_count": 921,
+      "scalar_columns": [
+        {
+          "column": "cost_code_id",
+          "column_exists": true,
+          "registry_json_path": "$.cost_code.id",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.cost_code.id",
+            "object_keys_present": [],
+            "path_missing_count": 919,
+            "path_non_empty_count": 2,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 2,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "cost_code_long_name",
+          "column_exists": true,
+          "registry_json_path": "$.cost_code.long_name",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.cost_code.long_name",
+            "object_keys_present": [],
+            "path_missing_count": 919,
+            "path_non_empty_count": 2,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 2,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "cost_code_name",
+          "column_exists": true,
+          "registry_json_path": "$.cost_code.name",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.cost_code.name",
+            "object_keys_present": [],
+            "path_missing_count": 919,
+            "path_non_empty_count": 2,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 2,
+            "raw_payload_values_emitted": false
+          }
+        }
+      ],
+      "table": "procore_ep_daily_log_manpower"
+    },
+    {
+      "bare_column": "location",
+      "bare_column_exists": true,
+      "bare_column_non_null_count": 0,
+      "bare_column_registry_mapped": false,
+      "endpoint_key": "daily-log-manpower",
+      "raw_payload_rows_inspected": 921,
+      "raw_payload_values_emitted": false,
+      "row_count": 921,
+      "scalar_columns": [
+        {
+          "column": "location_created_at",
+          "column_exists": true,
+          "registry_json_path": "$.location.created_at",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.location.created_at",
+            "object_keys_present": [],
+            "path_missing_count": 225,
+            "path_non_empty_count": 696,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 696,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "location_id",
+          "column_exists": true,
+          "registry_json_path": "$.location.id",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.location.id",
+            "object_keys_present": [],
+            "path_missing_count": 225,
+            "path_non_empty_count": 696,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 696,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "location_name",
+          "column_exists": true,
+          "registry_json_path": "$.location.name",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.location.name",
+            "object_keys_present": [],
+            "path_missing_count": 225,
+            "path_non_empty_count": 696,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 696,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "location_node_name",
+          "column_exists": true,
+          "registry_json_path": "$.location.node_name",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.location.node_name",
+            "object_keys_present": [],
+            "path_missing_count": 225,
+            "path_non_empty_count": 696,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 696,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "location_parent_id",
+          "column_exists": true,
+          "registry_json_path": "$.location.parent_id",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.location.parent_id",
+            "object_keys_present": [],
+            "path_missing_count": 225,
+            "path_non_empty_count": 192,
+            "path_null_or_empty_count": 504,
+            "path_present_count": 696,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "location_updated_at",
+          "column_exists": true,
+          "registry_json_path": "$.location.updated_at",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.location.updated_at",
+            "object_keys_present": [],
+            "path_missing_count": 225,
+            "path_non_empty_count": 696,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 696,
+            "raw_payload_values_emitted": false
+          }
+        }
+      ],
+      "table": "procore_ep_daily_log_manpower"
+    },
+    {
+      "bare_column": "location",
+      "bare_column_exists": true,
+      "bare_column_non_null_count": 0,
+      "bare_column_registry_mapped": false,
+      "endpoint_key": "daily-log-notes",
+      "raw_payload_rows_inspected": 92,
+      "raw_payload_values_emitted": false,
+      "row_count": 92,
+      "scalar_columns": [
+        {
+          "column": "location_created_at",
+          "column_exists": true,
+          "registry_json_path": "$.location.created_at",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.location.created_at",
+            "object_keys_present": [],
+            "path_missing_count": 66,
+            "path_non_empty_count": 26,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 26,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "location_id",
+          "column_exists": true,
+          "registry_json_path": "$.location.id",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.location.id",
+            "object_keys_present": [],
+            "path_missing_count": 66,
+            "path_non_empty_count": 26,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 26,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "location_name",
+          "column_exists": true,
+          "registry_json_path": "$.location.name",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.location.name",
+            "object_keys_present": [],
+            "path_missing_count": 66,
+            "path_non_empty_count": 26,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 26,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "location_node_name",
+          "column_exists": true,
+          "registry_json_path": "$.location.node_name",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.location.node_name",
+            "object_keys_present": [],
+            "path_missing_count": 66,
+            "path_non_empty_count": 26,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 26,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "location_parent_id",
+          "column_exists": true,
+          "registry_json_path": "$.location.parent_id",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.location.parent_id",
+            "object_keys_present": [],
+            "path_missing_count": 66,
+            "path_non_empty_count": 4,
+            "path_null_or_empty_count": 22,
+            "path_present_count": 26,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "location_updated_at",
+          "column_exists": true,
+          "registry_json_path": "$.location.updated_at",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.location.updated_at",
+            "object_keys_present": [],
+            "path_missing_count": 66,
+            "path_non_empty_count": 26,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 26,
+            "raw_payload_values_emitted": false
+          }
+        }
+      ],
+      "table": "procore_ep_daily_log_notes"
+    },
+    {
+      "bare_column": "closed_by",
+      "bare_column_exists": true,
+      "bare_column_non_null_count": 0,
+      "bare_column_registry_mapped": false,
+      "endpoint_key": "inspections",
+      "raw_payload_rows_inspected": 74,
+      "raw_payload_values_emitted": false,
+      "row_count": 74,
+      "scalar_columns": [
+        {
+          "column": "closed_by_company_name",
+          "column_exists": true,
+          "registry_json_path": "$.closed_by.company_name",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.closed_by.company_name",
+            "object_keys_present": [],
+            "path_missing_count": 63,
+            "path_non_empty_count": 11,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 11,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "closed_by_id",
+          "column_exists": true,
+          "registry_json_path": "$.closed_by.id",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.closed_by.id",
+            "object_keys_present": [],
+            "path_missing_count": 63,
+            "path_non_empty_count": 11,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 11,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "closed_by_login",
+          "column_exists": true,
+          "registry_json_path": "$.closed_by.login",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.closed_by.login",
+            "object_keys_present": [],
+            "path_missing_count": 63,
+            "path_non_empty_count": 11,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 11,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "closed_by_name",
+          "column_exists": true,
+          "registry_json_path": "$.closed_by.name",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.closed_by.name",
+            "object_keys_present": [],
+            "path_missing_count": 63,
+            "path_non_empty_count": 11,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 11,
+            "raw_payload_values_emitted": false
+          }
+        }
+      ],
+      "table": "procore_ep_inspections"
+    },
+    {
+      "bare_column": "location",
+      "bare_column_exists": true,
+      "bare_column_non_null_count": 0,
+      "bare_column_registry_mapped": false,
+      "endpoint_key": "inspections",
+      "raw_payload_rows_inspected": 74,
+      "raw_payload_values_emitted": false,
+      "row_count": 74,
+      "scalar_columns": [
+        {
+          "column": "location_code",
+          "column_exists": true,
+          "registry_json_path": "$.location.code",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.location.code",
+            "object_keys_present": [],
+            "path_missing_count": 14,
+            "path_non_empty_count": 0,
+            "path_null_or_empty_count": 60,
+            "path_present_count": 60,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "location_created_at",
+          "column_exists": true,
+          "registry_json_path": "$.location.created_at",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.location.created_at",
+            "object_keys_present": [],
+            "path_missing_count": 14,
+            "path_non_empty_count": 60,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 60,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "location_id",
+          "column_exists": true,
+          "registry_json_path": "$.location.id",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.location.id",
+            "object_keys_present": [],
+            "path_missing_count": 14,
+            "path_non_empty_count": 60,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 60,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "location_name",
+          "column_exists": true,
+          "registry_json_path": "$.location.name",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.location.name",
+            "object_keys_present": [],
+            "path_missing_count": 14,
+            "path_non_empty_count": 60,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 60,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "location_node_name",
+          "column_exists": true,
+          "registry_json_path": "$.location.node_name",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.location.node_name",
+            "object_keys_present": [],
+            "path_missing_count": 14,
+            "path_non_empty_count": 60,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 60,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "location_parent_id",
+          "column_exists": true,
+          "registry_json_path": "$.location.parent_id",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.location.parent_id",
+            "object_keys_present": [],
+            "path_missing_count": 14,
+            "path_non_empty_count": 2,
+            "path_null_or_empty_count": 58,
+            "path_present_count": 60,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "location_updated_at",
+          "column_exists": true,
+          "registry_json_path": "$.location.updated_at",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.location.updated_at",
+            "object_keys_present": [],
+            "path_missing_count": 14,
+            "path_non_empty_count": 60,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 60,
+            "raw_payload_values_emitted": false
+          }
+        }
+      ],
+      "table": "procore_ep_inspections"
+    },
+    {
+      "bare_column": "point_of_contact",
+      "bare_column_exists": true,
+      "bare_column_non_null_count": 0,
+      "bare_column_registry_mapped": false,
+      "endpoint_key": "inspections",
+      "raw_payload_rows_inspected": 74,
+      "raw_payload_values_emitted": false,
+      "row_count": 74,
+      "scalar_columns": [
+        {
+          "column": "point_of_contact_company_name",
+          "column_exists": true,
+          "registry_json_path": "$.point_of_contact.company_name",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.point_of_contact.company_name",
+            "object_keys_present": [],
+            "path_missing_count": 67,
+            "path_non_empty_count": 7,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 7,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "point_of_contact_id",
+          "column_exists": true,
+          "registry_json_path": "$.point_of_contact.id",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.point_of_contact.id",
+            "object_keys_present": [],
+            "path_missing_count": 67,
+            "path_non_empty_count": 7,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 7,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "point_of_contact_login",
+          "column_exists": true,
+          "registry_json_path": "$.point_of_contact.login",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.point_of_contact.login",
+            "object_keys_present": [],
+            "path_missing_count": 67,
+            "path_non_empty_count": 7,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 7,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "point_of_contact_name",
+          "column_exists": true,
+          "registry_json_path": "$.point_of_contact.name",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.point_of_contact.name",
+            "object_keys_present": [],
+            "path_missing_count": 67,
+            "path_non_empty_count": 7,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 7,
+            "raw_payload_values_emitted": false
+          }
+        }
+      ],
+      "table": "procore_ep_inspections"
+    },
+    {
+      "bare_column": "responsible_contractor",
+      "bare_column_exists": true,
+      "bare_column_non_null_count": 0,
+      "bare_column_registry_mapped": false,
+      "endpoint_key": "inspections",
+      "raw_payload_rows_inspected": 74,
+      "raw_payload_values_emitted": false,
+      "row_count": 74,
+      "scalar_columns": [
+        {
+          "column": "responsible_contractor_id",
+          "column_exists": true,
+          "registry_json_path": "$.responsible_contractor.id",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.responsible_contractor.id",
+            "object_keys_present": [],
+            "path_missing_count": 65,
+            "path_non_empty_count": 9,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 9,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "responsible_contractor_name",
+          "column_exists": true,
+          "registry_json_path": "$.responsible_contractor.name",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.responsible_contractor.name",
+            "object_keys_present": [],
+            "path_missing_count": 65,
+            "path_non_empty_count": 9,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 9,
+            "raw_payload_values_emitted": false
+          }
+        }
+      ],
+      "table": "procore_ep_inspections"
+    },
+    {
+      "bare_column": "specification_section",
+      "bare_column_exists": true,
+      "bare_column_non_null_count": 0,
+      "bare_column_registry_mapped": false,
+      "endpoint_key": "inspections",
+      "raw_payload_rows_inspected": 74,
+      "raw_payload_values_emitted": false,
+      "row_count": 74,
+      "scalar_columns": [
+        {
+          "column": "specification_section_id",
+          "column_exists": true,
+          "registry_json_path": "$.specification_section.id",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.specification_section.id",
+            "object_keys_present": [],
+            "path_missing_count": 72,
+            "path_non_empty_count": 2,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 2,
+            "raw_payload_values_emitted": false
+          }
+        }
+      ],
+      "table": "procore_ep_inspections"
+    },
+    {
+      "bare_column": "trade",
+      "bare_column_exists": true,
+      "bare_column_non_null_count": 0,
+      "bare_column_registry_mapped": false,
+      "endpoint_key": "inspections",
+      "raw_payload_rows_inspected": 74,
+      "raw_payload_values_emitted": false,
+      "row_count": 74,
+      "scalar_columns": [
+        {
+          "column": "trade_id",
+          "column_exists": true,
+          "registry_json_path": "$.trade.id",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.trade.id",
+            "object_keys_present": [],
+            "path_missing_count": 64,
+            "path_non_empty_count": 10,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 10,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "trade_name",
+          "column_exists": true,
+          "registry_json_path": "$.trade.name",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.trade.name",
+            "object_keys_present": [],
+            "path_missing_count": 64,
+            "path_non_empty_count": 10,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 10,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "trade_updated_at",
+          "column_exists": true,
+          "registry_json_path": "$.trade.updated_at",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.trade.updated_at",
+            "object_keys_present": [],
+            "path_missing_count": 64,
+            "path_non_empty_count": 10,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 10,
+            "raw_payload_values_emitted": false
+          }
+        }
+      ],
+      "table": "procore_ep_inspections"
+    },
+    {
+      "bare_column": "distributed_by",
+      "bare_column_exists": true,
+      "bare_column_non_null_count": 0,
+      "bare_column_registry_mapped": false,
+      "endpoint_key": "meetings",
+      "raw_payload_rows_inspected": 103,
+      "raw_payload_values_emitted": false,
+      "row_count": 101,
+      "scalar_columns": [
+        {
+          "column": "distributed_by_id",
+          "column_exists": true,
+          "registry_json_path": "$.distributed_by.id",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.distributed_by.id",
+            "object_keys_present": [],
+            "path_missing_count": 16,
+            "path_non_empty_count": 87,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 87,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "distributed_by_login",
+          "column_exists": true,
+          "registry_json_path": "$.distributed_by.login",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.distributed_by.login",
+            "object_keys_present": [],
+            "path_missing_count": 16,
+            "path_non_empty_count": 87,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 87,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "distributed_by_name",
+          "column_exists": true,
+          "registry_json_path": "$.distributed_by.name",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.distributed_by.name",
+            "object_keys_present": [],
+            "path_missing_count": 16,
+            "path_non_empty_count": 87,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 87,
+            "raw_payload_values_emitted": false
+          }
+        }
+      ],
+      "table": "procore_ep_meetings"
+    },
+    {
+      "bare_column": "assignee",
+      "bare_column_exists": true,
+      "bare_column_non_null_count": 0,
+      "bare_column_registry_mapped": false,
+      "endpoint_key": "observations",
+      "raw_payload_rows_inspected": 215,
+      "raw_payload_values_emitted": false,
+      "row_count": 215,
+      "scalar_columns": [
+        {
+          "column": "assignee_id",
+          "column_exists": true,
+          "registry_json_path": "$.assignee.id",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.assignee.id",
+            "object_keys_present": [],
+            "path_missing_count": 6,
+            "path_non_empty_count": 209,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 209,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "assignee_name",
+          "column_exists": true,
+          "registry_json_path": "$.assignee.name",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.assignee.name",
+            "object_keys_present": [],
+            "path_missing_count": 6,
+            "path_non_empty_count": 209,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 209,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "assignee_vendor_id",
+          "column_exists": true,
+          "registry_json_path": "$.assignee.vendor.id",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.assignee.vendor.id",
+            "object_keys_present": [],
+            "path_missing_count": 8,
+            "path_non_empty_count": 207,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 207,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "assignee_vendor_name",
+          "column_exists": true,
+          "registry_json_path": "$.assignee.vendor.name",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.assignee.vendor.name",
+            "object_keys_present": [],
+            "path_missing_count": 8,
+            "path_non_empty_count": 207,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 207,
+            "raw_payload_values_emitted": false
+          }
+        }
+      ],
+      "table": "procore_ep_observations"
+    },
+    {
+      "bare_column": "assignee_vendor",
+      "bare_column_exists": true,
+      "bare_column_non_null_count": 0,
+      "bare_column_registry_mapped": false,
+      "endpoint_key": "observations",
+      "raw_payload_rows_inspected": 215,
+      "raw_payload_values_emitted": false,
+      "row_count": 215,
+      "scalar_columns": [
+        {
+          "column": "assignee_vendor_id",
+          "column_exists": true,
+          "registry_json_path": "$.assignee.vendor.id",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.assignee.vendor.id",
+            "object_keys_present": [],
+            "path_missing_count": 8,
+            "path_non_empty_count": 207,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 207,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "assignee_vendor_name",
+          "column_exists": true,
+          "registry_json_path": "$.assignee.vendor.name",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.assignee.vendor.name",
+            "object_keys_present": [],
+            "path_missing_count": 8,
+            "path_non_empty_count": 207,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 207,
+            "raw_payload_values_emitted": false
+          }
+        }
+      ],
+      "table": "procore_ep_observations"
+    },
+    {
+      "bare_column": "location",
+      "bare_column_exists": true,
+      "bare_column_non_null_count": 0,
+      "bare_column_registry_mapped": false,
+      "endpoint_key": "observations",
+      "raw_payload_rows_inspected": 215,
+      "raw_payload_values_emitted": false,
+      "row_count": 215,
+      "scalar_columns": [
+        {
+          "column": "location_created_at",
+          "column_exists": true,
+          "registry_json_path": "$.location.created_at",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.location.created_at",
+            "object_keys_present": [],
+            "path_missing_count": 70,
+            "path_non_empty_count": 145,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 145,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "location_id",
+          "column_exists": true,
+          "registry_json_path": "$.location.id",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.location.id",
+            "object_keys_present": [],
+            "path_missing_count": 70,
+            "path_non_empty_count": 145,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 145,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "location_name",
+          "column_exists": true,
+          "registry_json_path": "$.location.name",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.location.name",
+            "object_keys_present": [],
+            "path_missing_count": 70,
+            "path_non_empty_count": 145,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 145,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "location_node_name",
+          "column_exists": true,
+          "registry_json_path": "$.location.node_name",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.location.node_name",
+            "object_keys_present": [],
+            "path_missing_count": 70,
+            "path_non_empty_count": 145,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 145,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "location_parent_id",
+          "column_exists": true,
+          "registry_json_path": "$.location.parent_id",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.location.parent_id",
+            "object_keys_present": [],
+            "path_missing_count": 70,
+            "path_non_empty_count": 133,
+            "path_null_or_empty_count": 12,
+            "path_present_count": 145,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "location_updated_at",
+          "column_exists": true,
+          "registry_json_path": "$.location.updated_at",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.location.updated_at",
+            "object_keys_present": [],
+            "path_missing_count": 70,
+            "path_non_empty_count": 145,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 145,
+            "raw_payload_values_emitted": false
+          }
+        }
+      ],
+      "table": "procore_ep_observations"
+    },
+    {
+      "bare_column": "origin",
+      "bare_column_exists": true,
+      "bare_column_non_null_count": 0,
+      "bare_column_registry_mapped": false,
+      "endpoint_key": "observations",
+      "raw_payload_rows_inspected": 215,
+      "raw_payload_values_emitted": false,
+      "row_count": 215,
+      "scalar_columns": [
+        {
+          "column": "origin_payload_checklist_item_id",
+          "column_exists": true,
+          "registry_json_path": "$.origin.payload.checklist_item_id",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.origin.payload.checklist_item_id",
+            "object_keys_present": [],
+            "path_missing_count": 214,
+            "path_non_empty_count": 1,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 1,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "origin_payload_checklist_list_id",
+          "column_exists": true,
+          "registry_json_path": "$.origin.payload.checklist_list_id",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.origin.payload.checklist_list_id",
+            "object_keys_present": [],
+            "path_missing_count": 214,
+            "path_non_empty_count": 1,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 1,
+            "raw_payload_values_emitted": false
+          }
+        }
+      ],
+      "table": "procore_ep_observations"
+    },
+    {
+      "bare_column": "specification_section",
+      "bare_column_exists": true,
+      "bare_column_non_null_count": 0,
+      "bare_column_registry_mapped": false,
+      "endpoint_key": "observations",
+      "raw_payload_rows_inspected": 215,
+      "raw_payload_values_emitted": false,
+      "row_count": 215,
+      "scalar_columns": [
+        {
+          "column": "specification_section_current_revision_id",
+          "column_exists": true,
+          "registry_json_path": "$.specification_section.current_revision_id",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.specification_section.current_revision_id",
+            "object_keys_present": [],
+            "path_missing_count": 206,
+            "path_non_empty_count": 9,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 9,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "specification_section_id",
+          "column_exists": true,
+          "registry_json_path": "$.specification_section.id",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.specification_section.id",
+            "object_keys_present": [],
+            "path_missing_count": 206,
+            "path_non_empty_count": 9,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 9,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "specification_section_number",
+          "column_exists": true,
+          "registry_json_path": "$.specification_section.number",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.specification_section.number",
+            "object_keys_present": [],
+            "path_missing_count": 206,
+            "path_non_empty_count": 9,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 9,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "specification_section_viewable_document_id",
+          "column_exists": true,
+          "registry_json_path": "$.specification_section.viewable_document_id",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.specification_section.viewable_document_id",
+            "object_keys_present": [],
+            "path_missing_count": 206,
+            "path_non_empty_count": 0,
+            "path_null_or_empty_count": 9,
+            "path_present_count": 9,
+            "raw_payload_values_emitted": false
+          }
+        }
+      ],
+      "table": "procore_ep_observations"
+    },
+    {
+      "bare_column": "trade",
+      "bare_column_exists": true,
+      "bare_column_non_null_count": 0,
+      "bare_column_registry_mapped": false,
+      "endpoint_key": "observations",
+      "raw_payload_rows_inspected": 215,
+      "raw_payload_values_emitted": false,
+      "row_count": 215,
+      "scalar_columns": [
+        {
+          "column": "trade_id",
+          "column_exists": true,
+          "registry_json_path": "$.trade.id",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.trade.id",
+            "object_keys_present": [],
+            "path_missing_count": 54,
+            "path_non_empty_count": 161,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 161,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "trade_name",
+          "column_exists": true,
+          "registry_json_path": "$.trade.name",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.trade.name",
+            "object_keys_present": [],
+            "path_missing_count": 54,
+            "path_non_empty_count": 161,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 161,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "trade_updated_at",
+          "column_exists": true,
+          "registry_json_path": "$.trade.updated_at",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.trade.updated_at",
+            "object_keys_present": [],
+            "path_missing_count": 54,
+            "path_non_empty_count": 161,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 161,
+            "raw_payload_values_emitted": false
+          }
+        }
+      ],
+      "table": "procore_ep_observations"
+    },
+    {
+      "bare_column": "change_order_change_reason",
+      "bare_column_exists": true,
+      "bare_column_non_null_count": 0,
+      "bare_column_registry_mapped": false,
+      "endpoint_key": "prime-change-orders",
+      "raw_payload_rows_inspected": 63,
+      "raw_payload_values_emitted": false,
+      "row_count": 63,
+      "scalar_columns": [
+        {
+          "column": "change_order_change_reason_id",
+          "column_exists": true,
+          "registry_json_path": "$.change_order_change_reason.id",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.change_order_change_reason.id",
+            "object_keys_present": [],
+            "path_missing_count": 3,
+            "path_non_empty_count": 60,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 60,
+            "raw_payload_values_emitted": false
+          }
+        }
+      ],
+      "table": "procore_ep_prime_change_orders"
+    },
+    {
+      "bare_column": "designated_reviewer",
+      "bare_column_exists": true,
+      "bare_column_non_null_count": 0,
+      "bare_column_registry_mapped": false,
+      "endpoint_key": "prime-change-orders",
+      "raw_payload_rows_inspected": 63,
+      "raw_payload_values_emitted": false,
+      "row_count": 63,
+      "scalar_columns": [
+        {
+          "column": "designated_reviewer_id",
+          "column_exists": true,
+          "registry_json_path": "$.designated_reviewer.id",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.designated_reviewer.id",
+            "object_keys_present": [],
+            "path_missing_count": 44,
+            "path_non_empty_count": 19,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 19,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "designated_reviewer_name",
+          "column_exists": true,
+          "registry_json_path": "$.designated_reviewer.name",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.designated_reviewer.name",
+            "object_keys_present": [],
+            "path_missing_count": 44,
+            "path_non_empty_count": 19,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 19,
+            "raw_payload_values_emitted": false
+          }
+        }
+      ],
+      "table": "procore_ep_prime_change_orders"
+    },
+    {
+      "bare_column": "received_from",
+      "bare_column_exists": true,
+      "bare_column_non_null_count": 0,
+      "bare_column_registry_mapped": false,
+      "endpoint_key": "prime-change-orders",
+      "raw_payload_rows_inspected": 63,
+      "raw_payload_values_emitted": false,
+      "row_count": 63,
+      "scalar_columns": [
+        {
+          "column": "received_from_id",
+          "column_exists": true,
+          "registry_json_path": "$.received_from.id",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.received_from.id",
+            "object_keys_present": [],
+            "path_missing_count": 27,
+            "path_non_empty_count": 36,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 36,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "received_from_name",
+          "column_exists": true,
+          "registry_json_path": "$.received_from.name",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.received_from.name",
+            "object_keys_present": [],
+            "path_missing_count": 27,
+            "path_non_empty_count": 36,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 36,
+            "raw_payload_values_emitted": false
+          }
+        }
+      ],
+      "table": "procore_ep_prime_change_orders"
+    },
+    {
+      "bare_column": "project_stage",
+      "bare_column_exists": true,
+      "bare_column_non_null_count": 0,
+      "bare_column_registry_mapped": false,
+      "endpoint_key": "projects",
+      "raw_payload_rows_inspected": 14,
+      "raw_payload_values_emitted": false,
+      "row_count": 14,
+      "scalar_columns": [
+        {
+          "column": "project_stage_id",
+          "column_exists": true,
+          "registry_json_path": "$.project_stage.id",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.project_stage.id",
+            "object_keys_present": [],
+            "path_missing_count": 2,
+            "path_non_empty_count": 12,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 12,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "project_stage_name",
+          "column_exists": true,
+          "registry_json_path": "$.project_stage.name",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.project_stage.name",
+            "object_keys_present": [],
+            "path_missing_count": 2,
+            "path_non_empty_count": 12,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 12,
+            "raw_payload_values_emitted": false
+          }
+        }
+      ],
+      "table": "procore_ep_projects"
+    },
+    {
+      "bare_column": "assignee",
+      "bare_column_exists": true,
+      "bare_column_non_null_count": 0,
+      "bare_column_registry_mapped": false,
+      "endpoint_key": "purchase-order-contracts",
+      "raw_payload_rows_inspected": 10,
+      "raw_payload_values_emitted": false,
+      "row_count": 10,
+      "scalar_columns": [
+        {
+          "column": "assignee_id",
+          "column_exists": true,
+          "registry_json_path": "$.assignee.id",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.assignee.id",
+            "object_keys_present": [],
+            "path_missing_count": 5,
+            "path_non_empty_count": 5,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 5,
+            "raw_payload_values_emitted": false
+          }
+        }
+      ],
+      "table": "procore_ep_purchase_order_contracts"
+    },
+    {
+      "bare_column": "ball_in_court",
+      "bare_column_exists": true,
+      "bare_column_non_null_count": 54,
+      "bare_column_registry_mapped": false,
+      "endpoint_key": "rfis",
+      "raw_payload_rows_inspected": 2008,
+      "raw_payload_values_emitted": false,
+      "row_count": 1967,
+      "scalar_columns": [
+        {
+          "column": "ball_in_court_id",
+          "column_exists": true,
+          "registry_json_path": "$.ball_in_court.id",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.ball_in_court.id",
+            "object_keys_present": [],
+            "path_missing_count": 1860,
+            "path_non_empty_count": 148,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 148,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "ball_in_court_login",
+          "column_exists": true,
+          "registry_json_path": "$.ball_in_court.login",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.ball_in_court.login",
+            "object_keys_present": [],
+            "path_missing_count": 1860,
+            "path_non_empty_count": 148,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 148,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "ball_in_court_name",
+          "column_exists": true,
+          "registry_json_path": "$.ball_in_court.name",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.ball_in_court.name",
+            "object_keys_present": [],
+            "path_missing_count": 1860,
+            "path_non_empty_count": 148,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 148,
+            "raw_payload_values_emitted": false
+          }
+        }
+      ],
+      "table": "procore_ep_rfis"
+    },
+    {
+      "bare_column": "cost_code",
+      "bare_column_exists": true,
+      "bare_column_non_null_count": 30,
+      "bare_column_registry_mapped": false,
+      "endpoint_key": "rfis",
+      "raw_payload_rows_inspected": 2008,
+      "raw_payload_values_emitted": false,
+      "row_count": 1967,
+      "scalar_columns": [
+        {
+          "column": "cost_code_id",
+          "column_exists": true,
+          "registry_json_path": "$.cost_code.id",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.cost_code.id",
+            "object_keys_present": [],
+            "path_missing_count": 1978,
+            "path_non_empty_count": 30,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 30,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "cost_code_name",
+          "column_exists": true,
+          "registry_json_path": "$.cost_code.name",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.cost_code.name",
+            "object_keys_present": [],
+            "path_missing_count": 1978,
+            "path_non_empty_count": 30,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 30,
+            "raw_payload_values_emitted": false
+          }
+        }
+      ],
+      "table": "procore_ep_rfis"
+    },
+    {
+      "bare_column": "location",
+      "bare_column_exists": true,
+      "bare_column_non_null_count": 76,
+      "bare_column_registry_mapped": false,
+      "endpoint_key": "rfis",
+      "raw_payload_rows_inspected": 2008,
+      "raw_payload_values_emitted": false,
+      "row_count": 1967,
+      "scalar_columns": [
+        {
+          "column": "location_created_at",
+          "column_exists": true,
+          "registry_json_path": "$.location.created_at",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.location.created_at",
+            "object_keys_present": [],
+            "path_missing_count": 1799,
+            "path_non_empty_count": 209,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 209,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "location_id",
+          "column_exists": true,
+          "registry_json_path": "$.location.id",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.location.id",
+            "object_keys_present": [],
+            "path_missing_count": 1799,
+            "path_non_empty_count": 209,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 209,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "location_name",
+          "column_exists": true,
+          "registry_json_path": "$.location.name",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.location.name",
+            "object_keys_present": [],
+            "path_missing_count": 1799,
+            "path_non_empty_count": 209,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 209,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "location_node_name",
+          "column_exists": true,
+          "registry_json_path": "$.location.node_name",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.location.node_name",
+            "object_keys_present": [],
+            "path_missing_count": 1799,
+            "path_non_empty_count": 209,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 209,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "location_parent_id",
+          "column_exists": true,
+          "registry_json_path": "$.location.parent_id",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.location.parent_id",
+            "object_keys_present": [],
+            "path_missing_count": 1799,
+            "path_non_empty_count": 6,
+            "path_null_or_empty_count": 203,
+            "path_present_count": 209,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "location_updated_at",
+          "column_exists": true,
+          "registry_json_path": "$.location.updated_at",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.location.updated_at",
+            "object_keys_present": [],
+            "path_missing_count": 1799,
+            "path_non_empty_count": 209,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 209,
+            "raw_payload_values_emitted": false
+          }
+        }
+      ],
+      "table": "procore_ep_rfis"
+    },
+    {
+      "bare_column": "sub_job",
+      "bare_column_exists": true,
+      "bare_column_non_null_count": 63,
+      "bare_column_registry_mapped": false,
+      "endpoint_key": "rfis",
+      "raw_payload_rows_inspected": 2008,
+      "raw_payload_values_emitted": false,
+      "row_count": 1967,
+      "scalar_columns": [
+        {
+          "column": "sub_job_code",
+          "column_exists": true,
+          "registry_json_path": "$.sub_job.code",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.sub_job.code",
+            "object_keys_present": [],
+            "path_missing_count": 1934,
+            "path_non_empty_count": 74,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 74,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "sub_job_id",
+          "column_exists": true,
+          "registry_json_path": "$.sub_job.id",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.sub_job.id",
+            "object_keys_present": [],
+            "path_missing_count": 1934,
+            "path_non_empty_count": 74,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 74,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "sub_job_name",
+          "column_exists": true,
+          "registry_json_path": "$.sub_job.name",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.sub_job.name",
+            "object_keys_present": [],
+            "path_missing_count": 1934,
+            "path_non_empty_count": 74,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 74,
+            "raw_payload_values_emitted": false
+          }
+        }
+      ],
+      "table": "procore_ep_rfis"
+    },
+    {
+      "bare_column": "location",
+      "bare_column_exists": true,
+      "bare_column_non_null_count": 32,
+      "bare_column_registry_mapped": false,
+      "endpoint_key": "submittals",
+      "raw_payload_rows_inspected": 1900,
+      "raw_payload_values_emitted": false,
+      "row_count": 1760,
+      "scalar_columns": [
+        {
+          "column": "location_created_at",
+          "column_exists": true,
+          "registry_json_path": "$.location.created_at",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.location.created_at",
+            "object_keys_present": [],
+            "path_missing_count": 1716,
+            "path_non_empty_count": 184,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 184,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "location_id",
+          "column_exists": true,
+          "registry_json_path": "$.location.id",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.location.id",
+            "object_keys_present": [],
+            "path_missing_count": 1716,
+            "path_non_empty_count": 184,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 184,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "location_name",
+          "column_exists": true,
+          "registry_json_path": "$.location.name",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.location.name",
+            "object_keys_present": [],
+            "path_missing_count": 1716,
+            "path_non_empty_count": 184,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 184,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "location_node_name",
+          "column_exists": true,
+          "registry_json_path": "$.location.node_name",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.location.node_name",
+            "object_keys_present": [],
+            "path_missing_count": 1716,
+            "path_non_empty_count": 184,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 184,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "location_parent_id",
+          "column_exists": true,
+          "registry_json_path": "$.location.parent_id",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.location.parent_id",
+            "object_keys_present": [],
+            "path_missing_count": 1716,
+            "path_non_empty_count": 0,
+            "path_null_or_empty_count": 184,
+            "path_present_count": 184,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "location_updated_at",
+          "column_exists": true,
+          "registry_json_path": "$.location.updated_at",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.location.updated_at",
+            "object_keys_present": [],
+            "path_missing_count": 1716,
+            "path_non_empty_count": 184,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 184,
+            "raw_payload_values_emitted": false
+          }
+        }
+      ],
+      "table": "procore_ep_submittals"
+    },
+    {
+      "bare_column": "submittal_package",
+      "bare_column_exists": true,
+      "bare_column_non_null_count": 0,
+      "bare_column_registry_mapped": false,
+      "endpoint_key": "submittals",
+      "raw_payload_rows_inspected": 1900,
+      "raw_payload_values_emitted": false,
+      "row_count": 1760,
+      "scalar_columns": [
+        {
+          "column": "submittal_package_created_by_id",
+          "column_exists": true,
+          "registry_json_path": "$.submittal_package.created_by.id",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.submittal_package.created_by.id",
+            "object_keys_present": [],
+            "path_missing_count": 1627,
+            "path_non_empty_count": 273,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 273,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "submittal_package_created_by_login",
+          "column_exists": true,
+          "registry_json_path": "$.submittal_package.created_by.login",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.submittal_package.created_by.login",
+            "object_keys_present": [],
+            "path_missing_count": 1627,
+            "path_non_empty_count": 273,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 273,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "submittal_package_created_by_name",
+          "column_exists": true,
+          "registry_json_path": "$.submittal_package.created_by.name",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.submittal_package.created_by.name",
+            "object_keys_present": [],
+            "path_missing_count": 1627,
+            "path_non_empty_count": 273,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 273,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "submittal_package_id",
+          "column_exists": true,
+          "registry_json_path": "$.submittal_package.id",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.submittal_package.id",
+            "object_keys_present": [],
+            "path_missing_count": 1627,
+            "path_non_empty_count": 273,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 273,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "submittal_package_number",
+          "column_exists": true,
+          "registry_json_path": "$.submittal_package.number",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.submittal_package.number",
+            "object_keys_present": [],
+            "path_missing_count": 1627,
+            "path_non_empty_count": 273,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 273,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "submittal_package_specification_section_id",
+          "column_exists": true,
+          "registry_json_path": "$.submittal_package.specification_section_id",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.submittal_package.specification_section_id",
+            "object_keys_present": [],
+            "path_missing_count": 1627,
+            "path_non_empty_count": 130,
+            "path_null_or_empty_count": 143,
+            "path_present_count": 273,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "submittal_package_updated_at",
+          "column_exists": true,
+          "registry_json_path": "$.submittal_package.updated_at",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.submittal_package.updated_at",
+            "object_keys_present": [],
+            "path_missing_count": 1627,
+            "path_non_empty_count": 273,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 273,
+            "raw_payload_values_emitted": false
+          }
+        }
+      ],
+      "table": "procore_ep_submittals"
+    },
+    {
+      "bare_column": "submittal_workflow_template",
+      "bare_column_exists": true,
+      "bare_column_non_null_count": 0,
+      "bare_column_registry_mapped": false,
+      "endpoint_key": "submittals",
+      "raw_payload_rows_inspected": 1900,
+      "raw_payload_values_emitted": false,
+      "row_count": 1760,
+      "scalar_columns": [
+        {
+          "column": "submittal_workflow_template_applied_at",
+          "column_exists": true,
+          "registry_json_path": "$.submittal_workflow_template_applied_at",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.submittal_workflow_template_applied_at",
+            "object_keys_present": [],
+            "path_missing_count": 0,
+            "path_non_empty_count": 101,
+            "path_null_or_empty_count": 1799,
+            "path_present_count": 1900,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "submittal_workflow_template_id",
+          "column_exists": true,
+          "registry_json_path": "$.submittal_workflow_template.id",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.submittal_workflow_template.id",
+            "object_keys_present": [],
+            "path_missing_count": 1799,
+            "path_non_empty_count": 101,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 101,
+            "raw_payload_values_emitted": false
+          }
+        },
+        {
+          "column": "submittal_workflow_template_name",
+          "column_exists": true,
+          "registry_json_path": "$.submittal_workflow_template.name",
+          "registry_mapped": true,
+          "source_path_check": {
+            "json_path": "$.submittal_workflow_template.name",
+            "object_keys_present": [],
+            "path_missing_count": 1799,
+            "path_non_empty_count": 101,
+            "path_null_or_empty_count": 0,
+            "path_present_count": 101,
+            "raw_payload_values_emitted": false
+          }
+        }
+      ],
+      "table": "procore_ep_submittals"
+    }
+  ],
+  "generated_at_utc": "2026-06-19T08:08:51Z",
+  "guardrails": {
+    "live_calls_disabled": true,
+    "raw_payload_values_emitted": false,
+    "writeback": "none"
+  },
+  "inventory_json": "docs/evidence/procore-null-projection-patch3-design/20260619T074626Z/object-container-field-inventory.json",
+  "target_field_count": 35
+}

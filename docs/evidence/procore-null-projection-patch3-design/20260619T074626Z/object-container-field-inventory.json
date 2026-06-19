@@ -1,0 +1,2211 @@
+{
+  "body_free": true,
+  "fields": [
+    {
+      "candidate_path_counts": [
+        {
+          "json_path": "$.event_origin",
+          "object_keys_present": [
+            "display_name",
+            "origin_id",
+            "origin_type",
+            "web_page_url"
+          ],
+          "path_missing_count": 0,
+          "path_non_empty_count": 183,
+          "path_null_or_empty_count": 2473,
+          "path_present_count": 2656,
+          "raw_payload_values_emitted": false
+        }
+      ],
+      "child_table_indicators": [],
+      "column": "event_origin",
+      "endpoint_family": "change_management",
+      "endpoint_key": "change-events",
+      "evidence_basis": "Raw payload path is an object/container; whole-object projection into bare scalar column is disallowed.",
+      "existing_scalar_decomposition_columns": [
+        "event_origin_display_name",
+        "event_origin_origin_id"
+      ],
+      "future_recommendation": "reuse_existing_scalar_decomposition_columns",
+      "null_rate": 0.995256,
+      "object_keys_present": [
+        "display_name",
+        "origin_id",
+        "origin_type",
+        "web_page_url"
+      ],
+      "post_proof_decision_class": "object_container_requires_decomposition_or_deprecation",
+      "post_proof_next_action": "approve_decomposition_schema_design_next_or_deprecation",
+      "raw_detection": {
+        "classification": "mostly_null",
+        "root_cause_class": "schema_column_not_in_projection_registry",
+        "suspected_projection_defect": true
+      },
+      "raw_payload_rows_inspected": 2656,
+      "raw_payload_values_emitted": false,
+      "registry_json_path": null,
+      "registry_mapped": false,
+      "row_count": 1054,
+      "table": "procore_ep_change_events"
+    },
+    {
+      "candidate_path_counts": [
+        {
+          "json_path": "$.change_order_change_reason",
+          "object_keys_present": [
+            "change_reason",
+            "id"
+          ],
+          "path_missing_count": 0,
+          "path_non_empty_count": 98,
+          "path_null_or_empty_count": 2,
+          "path_present_count": 100,
+          "raw_payload_values_emitted": false
+        }
+      ],
+      "child_table_indicators": [],
+      "column": "change_order_change_reason",
+      "endpoint_family": "commitments",
+      "endpoint_key": "commitment-change-orders",
+      "evidence_basis": "Raw payload path is an object/container; whole-object projection into bare scalar column is disallowed.",
+      "existing_scalar_decomposition_columns": [
+        "change_order_change_reason_id"
+      ],
+      "future_recommendation": "reuse_existing_scalar_decomposition_columns",
+      "null_rate": 1.0,
+      "object_keys_present": [
+        "change_reason",
+        "id"
+      ],
+      "post_proof_decision_class": "object_container_requires_decomposition_or_deprecation",
+      "post_proof_next_action": "approve_decomposition_schema_design_next_or_deprecation",
+      "raw_detection": {
+        "classification": "all_null",
+        "root_cause_class": "schema_column_not_in_projection_registry",
+        "suspected_projection_defect": true
+      },
+      "raw_payload_rows_inspected": 100,
+      "raw_payload_values_emitted": false,
+      "registry_json_path": null,
+      "registry_mapped": false,
+      "row_count": 100,
+      "table": "procore_ep_commitment_change_orders"
+    },
+    {
+      "candidate_path_counts": [
+        {
+          "json_path": "$.designated_reviewer",
+          "object_keys_present": [
+            "id",
+            "name"
+          ],
+          "path_missing_count": 0,
+          "path_non_empty_count": 68,
+          "path_null_or_empty_count": 32,
+          "path_present_count": 100,
+          "raw_payload_values_emitted": false
+        }
+      ],
+      "child_table_indicators": [],
+      "column": "designated_reviewer",
+      "endpoint_family": "commitments",
+      "endpoint_key": "commitment-change-orders",
+      "evidence_basis": "Raw payload path is an object/container; whole-object projection into bare scalar column is disallowed.",
+      "existing_scalar_decomposition_columns": [
+        "designated_reviewer_id",
+        "designated_reviewer_name"
+      ],
+      "future_recommendation": "reuse_existing_scalar_decomposition_columns",
+      "null_rate": 1.0,
+      "object_keys_present": [
+        "id",
+        "name"
+      ],
+      "post_proof_decision_class": "object_container_requires_decomposition_or_deprecation",
+      "post_proof_next_action": "approve_decomposition_schema_design_next_or_deprecation",
+      "raw_detection": {
+        "classification": "all_null",
+        "root_cause_class": "schema_column_not_in_projection_registry",
+        "suspected_projection_defect": true
+      },
+      "raw_payload_rows_inspected": 100,
+      "raw_payload_values_emitted": false,
+      "registry_json_path": null,
+      "registry_mapped": false,
+      "row_count": 100,
+      "table": "procore_ep_commitment_change_orders"
+    },
+    {
+      "candidate_path_counts": [
+        {
+          "json_path": "$.received_from",
+          "object_keys_present": [
+            "id",
+            "name"
+          ],
+          "path_missing_count": 0,
+          "path_non_empty_count": 21,
+          "path_null_or_empty_count": 79,
+          "path_present_count": 100,
+          "raw_payload_values_emitted": false
+        }
+      ],
+      "child_table_indicators": [],
+      "column": "received_from",
+      "endpoint_family": "commitments",
+      "endpoint_key": "commitment-change-orders",
+      "evidence_basis": "Raw payload path is an object/container; whole-object projection into bare scalar column is disallowed.",
+      "existing_scalar_decomposition_columns": [
+        "received_from_id",
+        "received_from_name"
+      ],
+      "future_recommendation": "reuse_existing_scalar_decomposition_columns",
+      "null_rate": 1.0,
+      "object_keys_present": [
+        "id",
+        "name"
+      ],
+      "post_proof_decision_class": "object_container_requires_decomposition_or_deprecation",
+      "post_proof_next_action": "approve_decomposition_schema_design_next_or_deprecation",
+      "raw_detection": {
+        "classification": "all_null",
+        "root_cause_class": "schema_column_not_in_projection_registry",
+        "suspected_projection_defect": true
+      },
+      "raw_payload_rows_inspected": 100,
+      "raw_payload_values_emitted": false,
+      "registry_json_path": null,
+      "registry_mapped": false,
+      "row_count": 100,
+      "table": "procore_ep_commitment_change_orders"
+    },
+    {
+      "candidate_path_counts": [
+        {
+          "json_path": "$.reviewed_by",
+          "object_keys_present": [
+            "id",
+            "name"
+          ],
+          "path_missing_count": 0,
+          "path_non_empty_count": 1,
+          "path_null_or_empty_count": 99,
+          "path_present_count": 100,
+          "raw_payload_values_emitted": false
+        }
+      ],
+      "child_table_indicators": [],
+      "column": "reviewed_by",
+      "endpoint_family": "commitments",
+      "endpoint_key": "commitment-change-orders",
+      "evidence_basis": "Raw payload path is an object/container; whole-object projection into bare scalar column is disallowed.",
+      "existing_scalar_decomposition_columns": [
+        "reviewed_by_id",
+        "reviewed_by_name"
+      ],
+      "future_recommendation": "reuse_existing_scalar_decomposition_columns",
+      "null_rate": 1.0,
+      "object_keys_present": [
+        "id",
+        "name"
+      ],
+      "post_proof_decision_class": "object_container_requires_decomposition_or_deprecation",
+      "post_proof_next_action": "approve_decomposition_schema_design_next_or_deprecation",
+      "raw_detection": {
+        "classification": "all_null",
+        "root_cause_class": "schema_column_not_in_projection_registry",
+        "suspected_projection_defect": true
+      },
+      "raw_payload_rows_inspected": 100,
+      "raw_payload_values_emitted": false,
+      "registry_json_path": null,
+      "registry_mapped": false,
+      "row_count": 100,
+      "table": "procore_ep_commitment_change_orders"
+    },
+    {
+      "candidate_path_counts": [
+        {
+          "json_path": "$.location",
+          "object_keys_present": [
+            "created_at",
+            "id",
+            "name",
+            "node_name",
+            "parent_id",
+            "updated_at"
+          ],
+          "path_missing_count": 0,
+          "path_non_empty_count": 60,
+          "path_null_or_empty_count": 54,
+          "path_present_count": 114,
+          "raw_payload_values_emitted": false
+        }
+      ],
+      "child_table_indicators": [],
+      "column": "location",
+      "endpoint_family": "daily_logs",
+      "endpoint_key": "daily-log-inspections",
+      "evidence_basis": "Raw payload path is an object/container; whole-object projection into bare scalar column is disallowed.",
+      "existing_scalar_decomposition_columns": [
+        "location_created_at",
+        "location_id",
+        "location_name",
+        "location_node_name",
+        "location_parent_id",
+        "location_updated_at"
+      ],
+      "future_recommendation": "reuse_existing_scalar_decomposition_columns",
+      "null_rate": 1.0,
+      "object_keys_present": [
+        "created_at",
+        "id",
+        "name",
+        "node_name",
+        "parent_id",
+        "updated_at"
+      ],
+      "post_proof_decision_class": "object_container_requires_decomposition_or_deprecation",
+      "post_proof_next_action": "approve_decomposition_schema_design_next_or_deprecation",
+      "raw_detection": {
+        "classification": "all_null",
+        "root_cause_class": "schema_column_not_in_projection_registry",
+        "suspected_projection_defect": true
+      },
+      "raw_payload_rows_inspected": 114,
+      "raw_payload_values_emitted": false,
+      "registry_json_path": null,
+      "registry_mapped": false,
+      "row_count": 114,
+      "table": "procore_ep_daily_log_inspections"
+    },
+    {
+      "candidate_path_counts": [
+        {
+          "json_path": "$.contact",
+          "object_keys_present": [
+            "business_phone",
+            "business_phone_extension",
+            "email",
+            "email_address",
+            "fax_number",
+            "id",
+            "job_title",
+            "login_information_id",
+            "mobile_phone",
+            "name",
+            "vendor_name"
+          ],
+          "path_missing_count": 0,
+          "path_non_empty_count": 920,
+          "path_null_or_empty_count": 1,
+          "path_present_count": 921,
+          "raw_payload_values_emitted": false
+        }
+      ],
+      "child_table_indicators": [],
+      "column": "contact",
+      "endpoint_family": "daily_logs",
+      "endpoint_key": "daily-log-manpower",
+      "evidence_basis": "Raw payload path is an object/container; whole-object projection into bare scalar column is disallowed.",
+      "existing_scalar_decomposition_columns": [
+        "contact_email",
+        "contact_fax_number",
+        "contact_id",
+        "contact_login_information_id",
+        "contact_name",
+        "contact_vendor_name"
+      ],
+      "future_recommendation": "reuse_existing_scalar_decomposition_columns",
+      "null_rate": 1.0,
+      "object_keys_present": [
+        "business_phone",
+        "business_phone_extension",
+        "email",
+        "email_address",
+        "fax_number",
+        "id",
+        "job_title",
+        "login_information_id",
+        "mobile_phone",
+        "name",
+        "vendor_name"
+      ],
+      "post_proof_decision_class": "object_container_requires_decomposition_or_deprecation",
+      "post_proof_next_action": "approve_decomposition_schema_design_next_or_deprecation",
+      "raw_detection": {
+        "classification": "all_null",
+        "root_cause_class": "schema_column_not_in_projection_registry",
+        "suspected_projection_defect": true
+      },
+      "raw_payload_rows_inspected": 921,
+      "raw_payload_values_emitted": false,
+      "registry_json_path": null,
+      "registry_mapped": false,
+      "row_count": 921,
+      "table": "procore_ep_daily_log_manpower"
+    },
+    {
+      "candidate_path_counts": [
+        {
+          "json_path": "$.cost_code",
+          "object_keys_present": [
+            "id",
+            "long_name",
+            "name"
+          ],
+          "path_missing_count": 0,
+          "path_non_empty_count": 2,
+          "path_null_or_empty_count": 919,
+          "path_present_count": 921,
+          "raw_payload_values_emitted": false
+        }
+      ],
+      "child_table_indicators": [],
+      "column": "cost_code",
+      "endpoint_family": "daily_logs",
+      "endpoint_key": "daily-log-manpower",
+      "evidence_basis": "Raw payload path is an object/container; whole-object projection into bare scalar column is disallowed.",
+      "existing_scalar_decomposition_columns": [
+        "cost_code_id",
+        "cost_code_long_name",
+        "cost_code_name"
+      ],
+      "future_recommendation": "reuse_existing_scalar_decomposition_columns",
+      "null_rate": 1.0,
+      "object_keys_present": [
+        "id",
+        "long_name",
+        "name"
+      ],
+      "post_proof_decision_class": "object_container_requires_decomposition_or_deprecation",
+      "post_proof_next_action": "approve_decomposition_schema_design_next_or_deprecation",
+      "raw_detection": {
+        "classification": "all_null",
+        "root_cause_class": "schema_column_not_in_projection_registry",
+        "suspected_projection_defect": true
+      },
+      "raw_payload_rows_inspected": 921,
+      "raw_payload_values_emitted": false,
+      "registry_json_path": null,
+      "registry_mapped": false,
+      "row_count": 921,
+      "table": "procore_ep_daily_log_manpower"
+    },
+    {
+      "candidate_path_counts": [
+        {
+          "json_path": "$.location",
+          "object_keys_present": [
+            "created_at",
+            "id",
+            "name",
+            "node_name",
+            "parent_id",
+            "updated_at"
+          ],
+          "path_missing_count": 0,
+          "path_non_empty_count": 696,
+          "path_null_or_empty_count": 225,
+          "path_present_count": 921,
+          "raw_payload_values_emitted": false
+        }
+      ],
+      "child_table_indicators": [],
+      "column": "location",
+      "endpoint_family": "daily_logs",
+      "endpoint_key": "daily-log-manpower",
+      "evidence_basis": "Raw payload path is an object/container; whole-object projection into bare scalar column is disallowed.",
+      "existing_scalar_decomposition_columns": [
+        "location_created_at",
+        "location_id",
+        "location_name",
+        "location_node_name",
+        "location_parent_id",
+        "location_updated_at"
+      ],
+      "future_recommendation": "reuse_existing_scalar_decomposition_columns",
+      "null_rate": 1.0,
+      "object_keys_present": [
+        "created_at",
+        "id",
+        "name",
+        "node_name",
+        "parent_id",
+        "updated_at"
+      ],
+      "post_proof_decision_class": "object_container_requires_decomposition_or_deprecation",
+      "post_proof_next_action": "approve_decomposition_schema_design_next_or_deprecation",
+      "raw_detection": {
+        "classification": "all_null",
+        "root_cause_class": "schema_column_not_in_projection_registry",
+        "suspected_projection_defect": true
+      },
+      "raw_payload_rows_inspected": 921,
+      "raw_payload_values_emitted": false,
+      "registry_json_path": null,
+      "registry_mapped": false,
+      "row_count": 921,
+      "table": "procore_ep_daily_log_manpower"
+    },
+    {
+      "candidate_path_counts": [
+        {
+          "json_path": "$.location",
+          "object_keys_present": [
+            "created_at",
+            "id",
+            "name",
+            "node_name",
+            "parent_id",
+            "updated_at"
+          ],
+          "path_missing_count": 0,
+          "path_non_empty_count": 26,
+          "path_null_or_empty_count": 66,
+          "path_present_count": 92,
+          "raw_payload_values_emitted": false
+        }
+      ],
+      "child_table_indicators": [],
+      "column": "location",
+      "endpoint_family": "daily_logs",
+      "endpoint_key": "daily-log-notes",
+      "evidence_basis": "Raw payload path is an object/container; whole-object projection into bare scalar column is disallowed.",
+      "existing_scalar_decomposition_columns": [
+        "location_created_at",
+        "location_id",
+        "location_name",
+        "location_node_name",
+        "location_parent_id",
+        "location_updated_at"
+      ],
+      "future_recommendation": "reuse_existing_scalar_decomposition_columns",
+      "null_rate": 1.0,
+      "object_keys_present": [
+        "created_at",
+        "id",
+        "name",
+        "node_name",
+        "parent_id",
+        "updated_at"
+      ],
+      "post_proof_decision_class": "object_container_requires_decomposition_or_deprecation",
+      "post_proof_next_action": "approve_decomposition_schema_design_next_or_deprecation",
+      "raw_detection": {
+        "classification": "all_null",
+        "root_cause_class": "schema_column_not_in_projection_registry",
+        "suspected_projection_defect": true
+      },
+      "raw_payload_rows_inspected": 92,
+      "raw_payload_values_emitted": false,
+      "registry_json_path": null,
+      "registry_mapped": false,
+      "row_count": 92,
+      "table": "procore_ep_daily_log_notes"
+    },
+    {
+      "candidate_path_counts": [
+        {
+          "json_path": "$.item_response",
+          "object_keys_present": [
+            "item_id",
+            "item_type",
+            "payload",
+            "responded_at",
+            "responder",
+            "status"
+          ],
+          "path_missing_count": 0,
+          "path_non_empty_count": 2528,
+          "path_null_or_empty_count": 835,
+          "path_present_count": 3363,
+          "raw_payload_values_emitted": false
+        }
+      ],
+      "child_table_indicators": [],
+      "column": "item_response",
+      "endpoint_family": "inspections",
+      "endpoint_key": "inspection-items",
+      "evidence_basis": "Raw payload path is an object/container; whole-object projection into bare scalar column is disallowed.",
+      "existing_scalar_decomposition_columns": [
+        "item_response_item_id",
+        "item_response_item_type_id",
+        "item_response_item_type_name",
+        "item_response_payload_response_option_id",
+        "item_response_payload_response_option_name",
+        "item_response_responded_at",
+        "item_response_responder_id",
+        "item_response_responder_login",
+        "item_response_responder_name"
+      ],
+      "future_recommendation": "represent_only_in_child_table",
+      "null_rate": 1.0,
+      "object_keys_present": [
+        "item_id",
+        "item_type",
+        "payload",
+        "responded_at",
+        "responder",
+        "status"
+      ],
+      "post_proof_decision_class": "object_container_requires_decomposition_or_deprecation",
+      "post_proof_next_action": "approve_decomposition_schema_design_next_or_deprecation",
+      "raw_detection": {
+        "classification": "all_null",
+        "root_cause_class": "schema_column_not_in_projection_registry",
+        "suspected_projection_defect": true
+      },
+      "raw_payload_rows_inspected": 3363,
+      "raw_payload_values_emitted": false,
+      "registry_json_path": null,
+      "registry_mapped": false,
+      "row_count": 3363,
+      "table": "procore_ep_inspection_items"
+    },
+    {
+      "candidate_path_counts": [
+        {
+          "json_path": "$.response",
+          "object_keys_present": [
+            "corresponding_status",
+            "id",
+            "name"
+          ],
+          "path_missing_count": 0,
+          "path_non_empty_count": 2526,
+          "path_null_or_empty_count": 837,
+          "path_present_count": 3363,
+          "raw_payload_values_emitted": false
+        }
+      ],
+      "child_table_indicators": [
+        "procore_ep_inspection_items_response_set_responses"
+      ],
+      "column": "response",
+      "endpoint_family": "inspections",
+      "endpoint_key": "inspection-items",
+      "evidence_basis": "Raw payload path is an object/container; whole-object projection into bare scalar column is disallowed.",
+      "existing_scalar_decomposition_columns": [
+        "response_id",
+        "response_name",
+        "response_set_created_at",
+        "response_set_id",
+        "response_set_name",
+        "response_set_updated_at"
+      ],
+      "future_recommendation": "represent_only_in_child_table",
+      "null_rate": 1.0,
+      "object_keys_present": [
+        "corresponding_status",
+        "id",
+        "name"
+      ],
+      "post_proof_decision_class": "object_container_requires_decomposition_or_deprecation",
+      "post_proof_next_action": "approve_decomposition_schema_design_next_or_deprecation",
+      "raw_detection": {
+        "classification": "all_null",
+        "root_cause_class": "schema_column_not_in_projection_registry",
+        "suspected_projection_defect": true
+      },
+      "raw_payload_rows_inspected": 3363,
+      "raw_payload_values_emitted": false,
+      "registry_json_path": null,
+      "registry_mapped": false,
+      "row_count": 3363,
+      "table": "procore_ep_inspection_items"
+    },
+    {
+      "candidate_path_counts": [
+        {
+          "json_path": "$.response_set",
+          "object_keys_present": [
+            "active",
+            "created_at",
+            "deletable",
+            "id",
+            "name",
+            "procore_standard",
+            "responses",
+            "updated_at"
+          ],
+          "path_missing_count": 0,
+          "path_non_empty_count": 3356,
+          "path_null_or_empty_count": 7,
+          "path_present_count": 3363,
+          "raw_payload_values_emitted": false
+        }
+      ],
+      "child_table_indicators": [
+        "procore_ep_inspection_items_response_set_responses"
+      ],
+      "column": "response_set",
+      "endpoint_family": "inspections",
+      "endpoint_key": "inspection-items",
+      "evidence_basis": "Raw payload path is an object/container; whole-object projection into bare scalar column is disallowed.",
+      "existing_scalar_decomposition_columns": [
+        "response_set_created_at",
+        "response_set_id",
+        "response_set_name",
+        "response_set_updated_at"
+      ],
+      "future_recommendation": "represent_only_in_child_table",
+      "null_rate": 1.0,
+      "object_keys_present": [
+        "active",
+        "created_at",
+        "deletable",
+        "id",
+        "name",
+        "procore_standard",
+        "responses",
+        "updated_at"
+      ],
+      "post_proof_decision_class": "object_container_requires_decomposition_or_deprecation",
+      "post_proof_next_action": "approve_decomposition_schema_design_next_or_deprecation",
+      "raw_detection": {
+        "classification": "all_null",
+        "root_cause_class": "schema_column_not_in_projection_registry",
+        "suspected_projection_defect": true
+      },
+      "raw_payload_rows_inspected": 3363,
+      "raw_payload_values_emitted": false,
+      "registry_json_path": null,
+      "registry_mapped": false,
+      "row_count": 3363,
+      "table": "procore_ep_inspection_items"
+    },
+    {
+      "candidate_path_counts": [
+        {
+          "json_path": "$.closed_by",
+          "object_keys_present": [
+            "company_name",
+            "id",
+            "login",
+            "name"
+          ],
+          "path_missing_count": 0,
+          "path_non_empty_count": 11,
+          "path_null_or_empty_count": 63,
+          "path_present_count": 74,
+          "raw_payload_values_emitted": false
+        }
+      ],
+      "child_table_indicators": [],
+      "column": "closed_by",
+      "endpoint_family": "inspections",
+      "endpoint_key": "inspections",
+      "evidence_basis": "Raw payload path is an object/container; whole-object projection into bare scalar column is disallowed.",
+      "existing_scalar_decomposition_columns": [
+        "closed_by_company_name",
+        "closed_by_id",
+        "closed_by_login",
+        "closed_by_name"
+      ],
+      "future_recommendation": "reuse_existing_scalar_decomposition_columns",
+      "null_rate": 1.0,
+      "object_keys_present": [
+        "company_name",
+        "id",
+        "login",
+        "name"
+      ],
+      "post_proof_decision_class": "object_container_requires_decomposition_or_deprecation",
+      "post_proof_next_action": "approve_decomposition_schema_design_next_or_deprecation",
+      "raw_detection": {
+        "classification": "all_null",
+        "root_cause_class": "schema_column_not_in_projection_registry",
+        "suspected_projection_defect": true
+      },
+      "raw_payload_rows_inspected": 74,
+      "raw_payload_values_emitted": false,
+      "registry_json_path": null,
+      "registry_mapped": false,
+      "row_count": 74,
+      "table": "procore_ep_inspections"
+    },
+    {
+      "candidate_path_counts": [
+        {
+          "json_path": "$.location",
+          "object_keys_present": [
+            "code",
+            "created_at",
+            "id",
+            "name",
+            "node_name",
+            "parent_id",
+            "updated_at"
+          ],
+          "path_missing_count": 0,
+          "path_non_empty_count": 60,
+          "path_null_or_empty_count": 14,
+          "path_present_count": 74,
+          "raw_payload_values_emitted": false
+        }
+      ],
+      "child_table_indicators": [],
+      "column": "location",
+      "endpoint_family": "inspections",
+      "endpoint_key": "inspections",
+      "evidence_basis": "Raw payload path is an object/container; whole-object projection into bare scalar column is disallowed.",
+      "existing_scalar_decomposition_columns": [
+        "location_code",
+        "location_created_at",
+        "location_id",
+        "location_name",
+        "location_node_name",
+        "location_parent_id",
+        "location_updated_at"
+      ],
+      "future_recommendation": "reuse_existing_scalar_decomposition_columns",
+      "null_rate": 1.0,
+      "object_keys_present": [
+        "code",
+        "created_at",
+        "id",
+        "name",
+        "node_name",
+        "parent_id",
+        "updated_at"
+      ],
+      "post_proof_decision_class": "object_container_requires_decomposition_or_deprecation",
+      "post_proof_next_action": "approve_decomposition_schema_design_next_or_deprecation",
+      "raw_detection": {
+        "classification": "all_null",
+        "root_cause_class": "schema_column_not_in_projection_registry",
+        "suspected_projection_defect": true
+      },
+      "raw_payload_rows_inspected": 74,
+      "raw_payload_values_emitted": false,
+      "registry_json_path": null,
+      "registry_mapped": false,
+      "row_count": 74,
+      "table": "procore_ep_inspections"
+    },
+    {
+      "candidate_path_counts": [
+        {
+          "json_path": "$.point_of_contact",
+          "object_keys_present": [
+            "company_name",
+            "id",
+            "login",
+            "name"
+          ],
+          "path_missing_count": 0,
+          "path_non_empty_count": 7,
+          "path_null_or_empty_count": 67,
+          "path_present_count": 74,
+          "raw_payload_values_emitted": false
+        }
+      ],
+      "child_table_indicators": [],
+      "column": "point_of_contact",
+      "endpoint_family": "inspections",
+      "endpoint_key": "inspections",
+      "evidence_basis": "Raw payload path is an object/container; whole-object projection into bare scalar column is disallowed.",
+      "existing_scalar_decomposition_columns": [
+        "point_of_contact_company_name",
+        "point_of_contact_id",
+        "point_of_contact_login",
+        "point_of_contact_name"
+      ],
+      "future_recommendation": "reuse_existing_scalar_decomposition_columns",
+      "null_rate": 1.0,
+      "object_keys_present": [
+        "company_name",
+        "id",
+        "login",
+        "name"
+      ],
+      "post_proof_decision_class": "object_container_requires_decomposition_or_deprecation",
+      "post_proof_next_action": "approve_decomposition_schema_design_next_or_deprecation",
+      "raw_detection": {
+        "classification": "all_null",
+        "root_cause_class": "schema_column_not_in_projection_registry",
+        "suspected_projection_defect": true
+      },
+      "raw_payload_rows_inspected": 74,
+      "raw_payload_values_emitted": false,
+      "registry_json_path": null,
+      "registry_mapped": false,
+      "row_count": 74,
+      "table": "procore_ep_inspections"
+    },
+    {
+      "candidate_path_counts": [
+        {
+          "json_path": "$.responsible_contractor",
+          "object_keys_present": [
+            "id",
+            "name"
+          ],
+          "path_missing_count": 0,
+          "path_non_empty_count": 9,
+          "path_null_or_empty_count": 65,
+          "path_present_count": 74,
+          "raw_payload_values_emitted": false
+        }
+      ],
+      "child_table_indicators": [],
+      "column": "responsible_contractor",
+      "endpoint_family": "inspections",
+      "endpoint_key": "inspections",
+      "evidence_basis": "Raw payload path is an object/container; whole-object projection into bare scalar column is disallowed.",
+      "existing_scalar_decomposition_columns": [
+        "responsible_contractor_id",
+        "responsible_contractor_name"
+      ],
+      "future_recommendation": "reuse_existing_scalar_decomposition_columns",
+      "null_rate": 1.0,
+      "object_keys_present": [
+        "id",
+        "name"
+      ],
+      "post_proof_decision_class": "object_container_requires_decomposition_or_deprecation",
+      "post_proof_next_action": "approve_decomposition_schema_design_next_or_deprecation",
+      "raw_detection": {
+        "classification": "all_null",
+        "root_cause_class": "schema_column_not_in_projection_registry",
+        "suspected_projection_defect": true
+      },
+      "raw_payload_rows_inspected": 74,
+      "raw_payload_values_emitted": false,
+      "registry_json_path": null,
+      "registry_mapped": false,
+      "row_count": 74,
+      "table": "procore_ep_inspections"
+    },
+    {
+      "candidate_path_counts": [
+        {
+          "json_path": "$.specification_section",
+          "object_keys_present": [
+            "description",
+            "id",
+            "latest_revision_url",
+            "section"
+          ],
+          "path_missing_count": 0,
+          "path_non_empty_count": 2,
+          "path_null_or_empty_count": 72,
+          "path_present_count": 74,
+          "raw_payload_values_emitted": false
+        }
+      ],
+      "child_table_indicators": [],
+      "column": "specification_section",
+      "endpoint_family": "inspections",
+      "endpoint_key": "inspections",
+      "evidence_basis": "Raw payload path is an object/container; whole-object projection into bare scalar column is disallowed.",
+      "existing_scalar_decomposition_columns": [
+        "specification_section_id"
+      ],
+      "future_recommendation": "reuse_existing_scalar_decomposition_columns",
+      "null_rate": 1.0,
+      "object_keys_present": [
+        "description",
+        "id",
+        "latest_revision_url",
+        "section"
+      ],
+      "post_proof_decision_class": "object_container_requires_decomposition_or_deprecation",
+      "post_proof_next_action": "approve_decomposition_schema_design_next_or_deprecation",
+      "raw_detection": {
+        "classification": "all_null",
+        "root_cause_class": "schema_column_not_in_projection_registry",
+        "suspected_projection_defect": true
+      },
+      "raw_payload_rows_inspected": 74,
+      "raw_payload_values_emitted": false,
+      "registry_json_path": null,
+      "registry_mapped": false,
+      "row_count": 74,
+      "table": "procore_ep_inspections"
+    },
+    {
+      "candidate_path_counts": [
+        {
+          "json_path": "$.trade",
+          "object_keys_present": [
+            "active",
+            "id",
+            "name",
+            "updated_at"
+          ],
+          "path_missing_count": 0,
+          "path_non_empty_count": 10,
+          "path_null_or_empty_count": 64,
+          "path_present_count": 74,
+          "raw_payload_values_emitted": false
+        }
+      ],
+      "child_table_indicators": [],
+      "column": "trade",
+      "endpoint_family": "inspections",
+      "endpoint_key": "inspections",
+      "evidence_basis": "Raw payload path is an object/container; whole-object projection into bare scalar column is disallowed.",
+      "existing_scalar_decomposition_columns": [
+        "trade_id",
+        "trade_name",
+        "trade_updated_at"
+      ],
+      "future_recommendation": "reuse_existing_scalar_decomposition_columns",
+      "null_rate": 1.0,
+      "object_keys_present": [
+        "active",
+        "id",
+        "name",
+        "updated_at"
+      ],
+      "post_proof_decision_class": "object_container_requires_decomposition_or_deprecation",
+      "post_proof_next_action": "approve_decomposition_schema_design_next_or_deprecation",
+      "raw_detection": {
+        "classification": "all_null",
+        "root_cause_class": "schema_column_not_in_projection_registry",
+        "suspected_projection_defect": true
+      },
+      "raw_payload_rows_inspected": 74,
+      "raw_payload_values_emitted": false,
+      "registry_json_path": null,
+      "registry_mapped": false,
+      "row_count": 74,
+      "table": "procore_ep_inspections"
+    },
+    {
+      "candidate_path_counts": [
+        {
+          "json_path": "$.signature",
+          "object_keys_present": [],
+          "path_missing_count": 74,
+          "path_non_empty_count": 0,
+          "path_null_or_empty_count": 0,
+          "path_present_count": 0,
+          "raw_payload_values_emitted": false
+        },
+        {
+          "json_path": "$.signature_requests[].signature",
+          "object_keys_present": [
+            "attachment",
+            "captured_at",
+            "captured_by",
+            "id"
+          ],
+          "path_missing_count": 66,
+          "path_non_empty_count": 4,
+          "path_null_or_empty_count": 4,
+          "path_present_count": 8,
+          "raw_payload_values_emitted": false
+        }
+      ],
+      "child_table_indicators": [],
+      "column": "signature",
+      "endpoint_family": "inspections",
+      "endpoint_key": "inspections",
+      "evidence_basis": "Raw payload path is an object/container; whole-object projection into bare scalar column is disallowed.",
+      "existing_scalar_decomposition_columns": [
+        "signature_attachment_id",
+        "signature_attachment_name",
+        "signature_captured_at",
+        "signature_captured_by_id",
+        "signature_captured_by_login",
+        "signature_captured_by_name",
+        "signature_id"
+      ],
+      "future_recommendation": "represent_only_in_entity_dimension",
+      "null_rate": 1.0,
+      "object_keys_present": [
+        "attachment",
+        "captured_at",
+        "captured_by",
+        "id"
+      ],
+      "post_proof_decision_class": "object_container_requires_decomposition_or_deprecation",
+      "post_proof_next_action": "approve_decomposition_schema_design_next_or_deprecation",
+      "raw_detection": {
+        "classification": "all_null",
+        "root_cause_class": "schema_column_not_in_projection_registry",
+        "suspected_projection_defect": true
+      },
+      "raw_payload_rows_inspected": 74,
+      "raw_payload_values_emitted": false,
+      "registry_json_path": null,
+      "registry_mapped": false,
+      "row_count": 8,
+      "table": "procore_ep_inspections_signature_requests"
+    },
+    {
+      "candidate_path_counts": [
+        {
+          "json_path": "$.distributed_by",
+          "object_keys_present": [
+            "id",
+            "login",
+            "name"
+          ],
+          "path_missing_count": 0,
+          "path_non_empty_count": 81,
+          "path_null_or_empty_count": 16,
+          "path_present_count": 97,
+          "raw_payload_values_emitted": false
+        }
+      ],
+      "child_table_indicators": [],
+      "column": "distributed_by",
+      "endpoint_family": "meetings",
+      "endpoint_key": "meetings",
+      "evidence_basis": "Raw payload path is an object/container; whole-object projection into bare scalar column is disallowed.",
+      "existing_scalar_decomposition_columns": [
+        "distributed_by_id",
+        "distributed_by_login",
+        "distributed_by_name"
+      ],
+      "future_recommendation": "reuse_existing_scalar_decomposition_columns",
+      "null_rate": 1.0,
+      "object_keys_present": [
+        "id",
+        "login",
+        "name"
+      ],
+      "post_proof_decision_class": "object_container_requires_decomposition_or_deprecation",
+      "post_proof_next_action": "approve_decomposition_schema_design_next_or_deprecation",
+      "raw_detection": {
+        "classification": "all_null",
+        "root_cause_class": "schema_column_not_in_projection_registry",
+        "suspected_projection_defect": true
+      },
+      "raw_payload_rows_inspected": 97,
+      "raw_payload_values_emitted": false,
+      "registry_json_path": null,
+      "registry_mapped": false,
+      "row_count": 97,
+      "table": "procore_ep_meetings"
+    },
+    {
+      "candidate_path_counts": [
+        {
+          "json_path": "$.assignee",
+          "object_keys_present": [
+            "id",
+            "name",
+            "vendor"
+          ],
+          "path_missing_count": 0,
+          "path_non_empty_count": 209,
+          "path_null_or_empty_count": 6,
+          "path_present_count": 215,
+          "raw_payload_values_emitted": false
+        }
+      ],
+      "child_table_indicators": [
+        "procore_ep_observations_assignees"
+      ],
+      "column": "assignee",
+      "endpoint_family": "observations",
+      "endpoint_key": "observations",
+      "evidence_basis": "Raw payload path is an object/container; whole-object projection into bare scalar column is disallowed.",
+      "existing_scalar_decomposition_columns": [
+        "assignee_id",
+        "assignee_name",
+        "assignee_vendor_id",
+        "assignee_vendor_name"
+      ],
+      "future_recommendation": "reuse_existing_scalar_decomposition_columns",
+      "null_rate": 1.0,
+      "object_keys_present": [
+        "id",
+        "name",
+        "vendor"
+      ],
+      "post_proof_decision_class": "object_container_requires_decomposition_or_deprecation",
+      "post_proof_next_action": "approve_decomposition_schema_design_next_or_deprecation",
+      "raw_detection": {
+        "classification": "all_null",
+        "root_cause_class": "schema_column_not_in_projection_registry",
+        "suspected_projection_defect": true
+      },
+      "raw_payload_rows_inspected": 215,
+      "raw_payload_values_emitted": false,
+      "registry_json_path": null,
+      "registry_mapped": false,
+      "row_count": 215,
+      "table": "procore_ep_observations"
+    },
+    {
+      "candidate_path_counts": [
+        {
+          "json_path": "$.assignee.vendor",
+          "object_keys_present": [
+            "id",
+            "name"
+          ],
+          "path_missing_count": 6,
+          "path_non_empty_count": 207,
+          "path_null_or_empty_count": 2,
+          "path_present_count": 209,
+          "raw_payload_values_emitted": false
+        },
+        {
+          "json_path": "$.assignee_vendor",
+          "object_keys_present": [],
+          "path_missing_count": 215,
+          "path_non_empty_count": 0,
+          "path_null_or_empty_count": 0,
+          "path_present_count": 0,
+          "raw_payload_values_emitted": false
+        }
+      ],
+      "child_table_indicators": [],
+      "column": "assignee_vendor",
+      "endpoint_family": "observations",
+      "endpoint_key": "observations",
+      "evidence_basis": "Raw payload path is an object/container; whole-object projection into bare scalar column is disallowed.",
+      "existing_scalar_decomposition_columns": [
+        "assignee_vendor_id",
+        "assignee_vendor_name"
+      ],
+      "future_recommendation": "reuse_existing_scalar_decomposition_columns",
+      "null_rate": 1.0,
+      "object_keys_present": [
+        "id",
+        "name"
+      ],
+      "post_proof_decision_class": "object_container_requires_decomposition_or_deprecation",
+      "post_proof_next_action": "approve_decomposition_schema_design_next_or_deprecation",
+      "raw_detection": {
+        "classification": "all_null",
+        "root_cause_class": "schema_column_not_in_projection_registry",
+        "suspected_projection_defect": true
+      },
+      "raw_payload_rows_inspected": 215,
+      "raw_payload_values_emitted": false,
+      "registry_json_path": null,
+      "registry_mapped": false,
+      "row_count": 215,
+      "table": "procore_ep_observations"
+    },
+    {
+      "candidate_path_counts": [
+        {
+          "json_path": "$.location",
+          "object_keys_present": [
+            "created_at",
+            "id",
+            "name",
+            "node_name",
+            "parent_id",
+            "updated_at"
+          ],
+          "path_missing_count": 0,
+          "path_non_empty_count": 145,
+          "path_null_or_empty_count": 70,
+          "path_present_count": 215,
+          "raw_payload_values_emitted": false
+        }
+      ],
+      "child_table_indicators": [],
+      "column": "location",
+      "endpoint_family": "observations",
+      "endpoint_key": "observations",
+      "evidence_basis": "Raw payload path is an object/container; whole-object projection into bare scalar column is disallowed.",
+      "existing_scalar_decomposition_columns": [
+        "location_created_at",
+        "location_id",
+        "location_name",
+        "location_node_name",
+        "location_parent_id",
+        "location_updated_at"
+      ],
+      "future_recommendation": "reuse_existing_scalar_decomposition_columns",
+      "null_rate": 1.0,
+      "object_keys_present": [
+        "created_at",
+        "id",
+        "name",
+        "node_name",
+        "parent_id",
+        "updated_at"
+      ],
+      "post_proof_decision_class": "object_container_requires_decomposition_or_deprecation",
+      "post_proof_next_action": "approve_decomposition_schema_design_next_or_deprecation",
+      "raw_detection": {
+        "classification": "all_null",
+        "root_cause_class": "schema_column_not_in_projection_registry",
+        "suspected_projection_defect": true
+      },
+      "raw_payload_rows_inspected": 215,
+      "raw_payload_values_emitted": false,
+      "registry_json_path": null,
+      "registry_mapped": false,
+      "row_count": 215,
+      "table": "procore_ep_observations"
+    },
+    {
+      "candidate_path_counts": [
+        {
+          "json_path": "$.origin",
+          "object_keys_present": [
+            "payload",
+            "type"
+          ],
+          "path_missing_count": 0,
+          "path_non_empty_count": 1,
+          "path_null_or_empty_count": 214,
+          "path_present_count": 215,
+          "raw_payload_values_emitted": false
+        }
+      ],
+      "child_table_indicators": [],
+      "column": "origin",
+      "endpoint_family": "observations",
+      "endpoint_key": "observations",
+      "evidence_basis": "Raw payload path is an object/container; whole-object projection into bare scalar column is disallowed.",
+      "existing_scalar_decomposition_columns": [
+        "origin_payload_checklist_item_id",
+        "origin_payload_checklist_list_id"
+      ],
+      "future_recommendation": "reuse_existing_scalar_decomposition_columns",
+      "null_rate": 1.0,
+      "object_keys_present": [
+        "payload",
+        "type"
+      ],
+      "post_proof_decision_class": "object_container_requires_decomposition_or_deprecation",
+      "post_proof_next_action": "approve_decomposition_schema_design_next_or_deprecation",
+      "raw_detection": {
+        "classification": "all_null",
+        "root_cause_class": "schema_column_not_in_projection_registry",
+        "suspected_projection_defect": true
+      },
+      "raw_payload_rows_inspected": 215,
+      "raw_payload_values_emitted": false,
+      "registry_json_path": null,
+      "registry_mapped": false,
+      "row_count": 215,
+      "table": "procore_ep_observations"
+    },
+    {
+      "candidate_path_counts": [
+        {
+          "json_path": "$.specification_section",
+          "object_keys_present": [
+            "current_revision_id",
+            "description",
+            "id",
+            "latest_revision_url",
+            "number",
+            "viewable_document_id"
+          ],
+          "path_missing_count": 0,
+          "path_non_empty_count": 9,
+          "path_null_or_empty_count": 206,
+          "path_present_count": 215,
+          "raw_payload_values_emitted": false
+        }
+      ],
+      "child_table_indicators": [],
+      "column": "specification_section",
+      "endpoint_family": "observations",
+      "endpoint_key": "observations",
+      "evidence_basis": "Raw payload path is an object/container; whole-object projection into bare scalar column is disallowed.",
+      "existing_scalar_decomposition_columns": [
+        "specification_section_current_revision_id",
+        "specification_section_id",
+        "specification_section_number",
+        "specification_section_viewable_document_id"
+      ],
+      "future_recommendation": "reuse_existing_scalar_decomposition_columns",
+      "null_rate": 1.0,
+      "object_keys_present": [
+        "current_revision_id",
+        "description",
+        "id",
+        "latest_revision_url",
+        "number",
+        "viewable_document_id"
+      ],
+      "post_proof_decision_class": "object_container_requires_decomposition_or_deprecation",
+      "post_proof_next_action": "approve_decomposition_schema_design_next_or_deprecation",
+      "raw_detection": {
+        "classification": "all_null",
+        "root_cause_class": "schema_column_not_in_projection_registry",
+        "suspected_projection_defect": true
+      },
+      "raw_payload_rows_inspected": 215,
+      "raw_payload_values_emitted": false,
+      "registry_json_path": null,
+      "registry_mapped": false,
+      "row_count": 215,
+      "table": "procore_ep_observations"
+    },
+    {
+      "candidate_path_counts": [
+        {
+          "json_path": "$.trade",
+          "object_keys_present": [
+            "active",
+            "id",
+            "name",
+            "updated_at"
+          ],
+          "path_missing_count": 0,
+          "path_non_empty_count": 161,
+          "path_null_or_empty_count": 54,
+          "path_present_count": 215,
+          "raw_payload_values_emitted": false
+        }
+      ],
+      "child_table_indicators": [],
+      "column": "trade",
+      "endpoint_family": "observations",
+      "endpoint_key": "observations",
+      "evidence_basis": "Raw payload path is an object/container; whole-object projection into bare scalar column is disallowed.",
+      "existing_scalar_decomposition_columns": [
+        "trade_id",
+        "trade_name",
+        "trade_updated_at"
+      ],
+      "future_recommendation": "reuse_existing_scalar_decomposition_columns",
+      "null_rate": 1.0,
+      "object_keys_present": [
+        "active",
+        "id",
+        "name",
+        "updated_at"
+      ],
+      "post_proof_decision_class": "object_container_requires_decomposition_or_deprecation",
+      "post_proof_next_action": "approve_decomposition_schema_design_next_or_deprecation",
+      "raw_detection": {
+        "classification": "all_null",
+        "root_cause_class": "schema_column_not_in_projection_registry",
+        "suspected_projection_defect": true
+      },
+      "raw_payload_rows_inspected": 215,
+      "raw_payload_values_emitted": false,
+      "registry_json_path": null,
+      "registry_mapped": false,
+      "row_count": 215,
+      "table": "procore_ep_observations"
+    },
+    {
+      "candidate_path_counts": [
+        {
+          "json_path": "$.assignee.vendor",
+          "object_keys_present": [
+            "id",
+            "name"
+          ],
+          "path_missing_count": 6,
+          "path_non_empty_count": 207,
+          "path_null_or_empty_count": 2,
+          "path_present_count": 209,
+          "raw_payload_values_emitted": false
+        },
+        {
+          "json_path": "$.assignees[].vendor",
+          "object_keys_present": [
+            "id",
+            "name"
+          ],
+          "path_missing_count": 208,
+          "path_non_empty_count": 5,
+          "path_null_or_empty_count": 2,
+          "path_present_count": 7,
+          "raw_payload_values_emitted": false
+        },
+        {
+          "json_path": "$.vendor",
+          "object_keys_present": [],
+          "path_missing_count": 215,
+          "path_non_empty_count": 0,
+          "path_null_or_empty_count": 0,
+          "path_present_count": 0,
+          "raw_payload_values_emitted": false
+        }
+      ],
+      "child_table_indicators": [],
+      "column": "vendor",
+      "endpoint_family": "observations",
+      "endpoint_key": "observations",
+      "evidence_basis": "Raw payload path is an object/container; whole-object projection into bare scalar column is disallowed.",
+      "existing_scalar_decomposition_columns": [
+        "vendor_id",
+        "vendor_name"
+      ],
+      "future_recommendation": "represent_only_in_entity_dimension",
+      "null_rate": 1.0,
+      "object_keys_present": [
+        "id",
+        "name"
+      ],
+      "post_proof_decision_class": "object_container_requires_decomposition_or_deprecation",
+      "post_proof_next_action": "approve_decomposition_schema_design_next_or_deprecation",
+      "raw_detection": {
+        "classification": "all_null",
+        "root_cause_class": "schema_column_not_in_projection_registry",
+        "suspected_projection_defect": true
+      },
+      "raw_payload_rows_inspected": 215,
+      "raw_payload_values_emitted": false,
+      "registry_json_path": null,
+      "registry_mapped": false,
+      "row_count": 7,
+      "table": "procore_ep_observations_assignees"
+    },
+    {
+      "candidate_path_counts": [
+        {
+          "json_path": "$.change_order_change_reason",
+          "object_keys_present": [
+            "change_reason",
+            "id"
+          ],
+          "path_missing_count": 0,
+          "path_non_empty_count": 60,
+          "path_null_or_empty_count": 3,
+          "path_present_count": 63,
+          "raw_payload_values_emitted": false
+        }
+      ],
+      "child_table_indicators": [],
+      "column": "change_order_change_reason",
+      "endpoint_family": "owner_contracts",
+      "endpoint_key": "prime-change-orders",
+      "evidence_basis": "Raw payload path is an object/container; whole-object projection into bare scalar column is disallowed.",
+      "existing_scalar_decomposition_columns": [
+        "change_order_change_reason_id"
+      ],
+      "future_recommendation": "reuse_existing_scalar_decomposition_columns",
+      "null_rate": 1.0,
+      "object_keys_present": [
+        "change_reason",
+        "id"
+      ],
+      "post_proof_decision_class": "object_container_requires_decomposition_or_deprecation",
+      "post_proof_next_action": "approve_decomposition_schema_design_next_or_deprecation",
+      "raw_detection": {
+        "classification": "all_null",
+        "root_cause_class": "schema_column_not_in_projection_registry",
+        "suspected_projection_defect": true
+      },
+      "raw_payload_rows_inspected": 63,
+      "raw_payload_values_emitted": false,
+      "registry_json_path": null,
+      "registry_mapped": false,
+      "row_count": 63,
+      "table": "procore_ep_prime_change_orders"
+    },
+    {
+      "candidate_path_counts": [
+        {
+          "json_path": "$.designated_reviewer",
+          "object_keys_present": [
+            "id",
+            "name"
+          ],
+          "path_missing_count": 0,
+          "path_non_empty_count": 19,
+          "path_null_or_empty_count": 44,
+          "path_present_count": 63,
+          "raw_payload_values_emitted": false
+        }
+      ],
+      "child_table_indicators": [],
+      "column": "designated_reviewer",
+      "endpoint_family": "owner_contracts",
+      "endpoint_key": "prime-change-orders",
+      "evidence_basis": "Raw payload path is an object/container; whole-object projection into bare scalar column is disallowed.",
+      "existing_scalar_decomposition_columns": [
+        "designated_reviewer_id",
+        "designated_reviewer_name"
+      ],
+      "future_recommendation": "reuse_existing_scalar_decomposition_columns",
+      "null_rate": 1.0,
+      "object_keys_present": [
+        "id",
+        "name"
+      ],
+      "post_proof_decision_class": "object_container_requires_decomposition_or_deprecation",
+      "post_proof_next_action": "approve_decomposition_schema_design_next_or_deprecation",
+      "raw_detection": {
+        "classification": "all_null",
+        "root_cause_class": "schema_column_not_in_projection_registry",
+        "suspected_projection_defect": true
+      },
+      "raw_payload_rows_inspected": 63,
+      "raw_payload_values_emitted": false,
+      "registry_json_path": null,
+      "registry_mapped": false,
+      "row_count": 63,
+      "table": "procore_ep_prime_change_orders"
+    },
+    {
+      "candidate_path_counts": [
+        {
+          "json_path": "$.received_from",
+          "object_keys_present": [
+            "id",
+            "name"
+          ],
+          "path_missing_count": 0,
+          "path_non_empty_count": 36,
+          "path_null_or_empty_count": 27,
+          "path_present_count": 63,
+          "raw_payload_values_emitted": false
+        }
+      ],
+      "child_table_indicators": [],
+      "column": "received_from",
+      "endpoint_family": "owner_contracts",
+      "endpoint_key": "prime-change-orders",
+      "evidence_basis": "Raw payload path is an object/container; whole-object projection into bare scalar column is disallowed.",
+      "existing_scalar_decomposition_columns": [
+        "received_from_id",
+        "received_from_name"
+      ],
+      "future_recommendation": "reuse_existing_scalar_decomposition_columns",
+      "null_rate": 1.0,
+      "object_keys_present": [
+        "id",
+        "name"
+      ],
+      "post_proof_decision_class": "object_container_requires_decomposition_or_deprecation",
+      "post_proof_next_action": "approve_decomposition_schema_design_next_or_deprecation",
+      "raw_detection": {
+        "classification": "all_null",
+        "root_cause_class": "schema_column_not_in_projection_registry",
+        "suspected_projection_defect": true
+      },
+      "raw_payload_rows_inspected": 63,
+      "raw_payload_values_emitted": false,
+      "registry_json_path": null,
+      "registry_mapped": false,
+      "row_count": 63,
+      "table": "procore_ep_prime_change_orders"
+    },
+    {
+      "candidate_path_counts": [
+        {
+          "json_path": "$.project_stage",
+          "object_keys_present": [
+            "id",
+            "is_concept_stage",
+            "name"
+          ],
+          "path_missing_count": 0,
+          "path_non_empty_count": 12,
+          "path_null_or_empty_count": 2,
+          "path_present_count": 14,
+          "raw_payload_values_emitted": false
+        }
+      ],
+      "child_table_indicators": [],
+      "column": "project_stage",
+      "endpoint_family": "foundation",
+      "endpoint_key": "projects",
+      "evidence_basis": "Raw payload path is an object/container; whole-object projection into bare scalar column is disallowed.",
+      "existing_scalar_decomposition_columns": [
+        "project_stage_id",
+        "project_stage_name"
+      ],
+      "future_recommendation": "reuse_existing_scalar_decomposition_columns",
+      "null_rate": 1.0,
+      "object_keys_present": [
+        "id",
+        "is_concept_stage",
+        "name"
+      ],
+      "post_proof_decision_class": "object_container_requires_decomposition_or_deprecation",
+      "post_proof_next_action": "approve_decomposition_schema_design_next_or_deprecation",
+      "raw_detection": {
+        "classification": "all_null",
+        "root_cause_class": "schema_column_not_in_projection_registry",
+        "suspected_projection_defect": true
+      },
+      "raw_payload_rows_inspected": 14,
+      "raw_payload_values_emitted": false,
+      "registry_json_path": null,
+      "registry_mapped": false,
+      "row_count": 14,
+      "table": "procore_ep_projects"
+    },
+    {
+      "candidate_path_counts": [
+        {
+          "json_path": "$.assignee",
+          "object_keys_present": [
+            "id"
+          ],
+          "path_missing_count": 0,
+          "path_non_empty_count": 5,
+          "path_null_or_empty_count": 5,
+          "path_present_count": 10,
+          "raw_payload_values_emitted": false
+        }
+      ],
+      "child_table_indicators": [],
+      "column": "assignee",
+      "endpoint_family": "purchase_orders",
+      "endpoint_key": "purchase-order-contracts",
+      "evidence_basis": "Raw payload path is an object/container; whole-object projection into bare scalar column is disallowed.",
+      "existing_scalar_decomposition_columns": [
+        "assignee_id"
+      ],
+      "future_recommendation": "reuse_existing_scalar_decomposition_columns",
+      "null_rate": 1.0,
+      "object_keys_present": [
+        "id"
+      ],
+      "post_proof_decision_class": "object_container_requires_decomposition_or_deprecation",
+      "post_proof_next_action": "approve_decomposition_schema_design_next_or_deprecation",
+      "raw_detection": {
+        "classification": "all_null",
+        "root_cause_class": "schema_column_not_in_projection_registry",
+        "suspected_projection_defect": true
+      },
+      "raw_payload_rows_inspected": 10,
+      "raw_payload_values_emitted": false,
+      "registry_json_path": null,
+      "registry_mapped": false,
+      "row_count": 10,
+      "table": "procore_ep_purchase_order_contracts"
+    },
+    {
+      "candidate_path_counts": [
+        {
+          "json_path": "$.custom_fields.custom_field_214072.value",
+          "object_keys_present": [
+            "id",
+            "label"
+          ],
+          "path_missing_count": 0,
+          "path_non_empty_count": 8,
+          "path_null_or_empty_count": 2,
+          "path_present_count": 10,
+          "raw_payload_values_emitted": false
+        },
+        {
+          "json_path": "$.custom_fields_custom_field_214072_value",
+          "object_keys_present": [],
+          "path_missing_count": 10,
+          "path_non_empty_count": 0,
+          "path_null_or_empty_count": 0,
+          "path_present_count": 0,
+          "raw_payload_values_emitted": false
+        }
+      ],
+      "child_table_indicators": [],
+      "column": "custom_fields_custom_field_214072_value",
+      "endpoint_family": "purchase_orders",
+      "endpoint_key": "purchase-order-contracts",
+      "evidence_basis": "Raw payload path is an object/container; whole-object projection into bare scalar column is disallowed.",
+      "existing_scalar_decomposition_columns": [
+        "custom_fields_custom_field_214072_value_id"
+      ],
+      "future_recommendation": "needs_additional_source_sample",
+      "null_rate": 1.0,
+      "object_keys_present": [
+        "id",
+        "label"
+      ],
+      "post_proof_decision_class": "object_container_requires_decomposition_or_deprecation",
+      "post_proof_next_action": "approve_decomposition_schema_design_next_or_deprecation",
+      "raw_detection": {
+        "classification": "all_null",
+        "root_cause_class": "schema_column_not_in_projection_registry",
+        "suspected_projection_defect": true
+      },
+      "raw_payload_rows_inspected": 10,
+      "raw_payload_values_emitted": false,
+      "registry_json_path": null,
+      "registry_mapped": false,
+      "row_count": 10,
+      "table": "procore_ep_purchase_order_contracts"
+    },
+    {
+      "candidate_path_counts": [
+        {
+          "json_path": "$.custom_fields.custom_field_214078.value",
+          "object_keys_present": [
+            "company_name",
+            "id",
+            "label"
+          ],
+          "path_missing_count": 0,
+          "path_non_empty_count": 8,
+          "path_null_or_empty_count": 2,
+          "path_present_count": 10,
+          "raw_payload_values_emitted": false
+        },
+        {
+          "json_path": "$.custom_fields_custom_field_214078_value",
+          "object_keys_present": [],
+          "path_missing_count": 10,
+          "path_non_empty_count": 0,
+          "path_null_or_empty_count": 0,
+          "path_present_count": 0,
+          "raw_payload_values_emitted": false
+        }
+      ],
+      "child_table_indicators": [],
+      "column": "custom_fields_custom_field_214078_value",
+      "endpoint_family": "purchase_orders",
+      "endpoint_key": "purchase-order-contracts",
+      "evidence_basis": "Raw payload path is an object/container; whole-object projection into bare scalar column is disallowed.",
+      "existing_scalar_decomposition_columns": [
+        "custom_fields_custom_field_214078_value_company_name",
+        "custom_fields_custom_field_214078_value_id"
+      ],
+      "future_recommendation": "needs_additional_source_sample",
+      "null_rate": 1.0,
+      "object_keys_present": [
+        "company_name",
+        "id",
+        "label"
+      ],
+      "post_proof_decision_class": "object_container_requires_decomposition_or_deprecation",
+      "post_proof_next_action": "approve_decomposition_schema_design_next_or_deprecation",
+      "raw_detection": {
+        "classification": "all_null",
+        "root_cause_class": "schema_column_not_in_projection_registry",
+        "suspected_projection_defect": true
+      },
+      "raw_payload_rows_inspected": 10,
+      "raw_payload_values_emitted": false,
+      "registry_json_path": null,
+      "registry_mapped": false,
+      "row_count": 10,
+      "table": "procore_ep_purchase_order_contracts"
+    },
+    {
+      "candidate_path_counts": [
+        {
+          "json_path": "$.custom_fields.custom_field_214087.value",
+          "object_keys_present": [
+            "id",
+            "label"
+          ],
+          "path_missing_count": 0,
+          "path_non_empty_count": 8,
+          "path_null_or_empty_count": 2,
+          "path_present_count": 10,
+          "raw_payload_values_emitted": false
+        },
+        {
+          "json_path": "$.custom_fields_custom_field_214087_value",
+          "object_keys_present": [],
+          "path_missing_count": 10,
+          "path_non_empty_count": 0,
+          "path_null_or_empty_count": 0,
+          "path_present_count": 0,
+          "raw_payload_values_emitted": false
+        }
+      ],
+      "child_table_indicators": [],
+      "column": "custom_fields_custom_field_214087_value",
+      "endpoint_family": "purchase_orders",
+      "endpoint_key": "purchase-order-contracts",
+      "evidence_basis": "Raw payload path is an object/container; whole-object projection into bare scalar column is disallowed.",
+      "existing_scalar_decomposition_columns": [
+        "custom_fields_custom_field_214087_value_id"
+      ],
+      "future_recommendation": "needs_additional_source_sample",
+      "null_rate": 1.0,
+      "object_keys_present": [
+        "id",
+        "label"
+      ],
+      "post_proof_decision_class": "object_container_requires_decomposition_or_deprecation",
+      "post_proof_next_action": "approve_decomposition_schema_design_next_or_deprecation",
+      "raw_detection": {
+        "classification": "all_null",
+        "root_cause_class": "schema_column_not_in_projection_registry",
+        "suspected_projection_defect": true
+      },
+      "raw_payload_rows_inspected": 10,
+      "raw_payload_values_emitted": false,
+      "registry_json_path": null,
+      "registry_mapped": false,
+      "row_count": 10,
+      "table": "procore_ep_purchase_order_contracts"
+    },
+    {
+      "candidate_path_counts": [
+        {
+          "json_path": "$.ball_in_court",
+          "object_keys_present": [
+            "id",
+            "locale",
+            "login",
+            "name"
+          ],
+          "path_missing_count": 0,
+          "path_non_empty_count": 148,
+          "path_null_or_empty_count": 1860,
+          "path_present_count": 2008,
+          "raw_payload_values_emitted": false
+        }
+      ],
+      "child_table_indicators": [
+        "procore_ep_rfis_ball_in_courts"
+      ],
+      "column": "ball_in_court",
+      "endpoint_family": "rfis",
+      "endpoint_key": "rfis",
+      "evidence_basis": "Raw payload path is an object/container; whole-object projection into bare scalar column is disallowed.",
+      "existing_scalar_decomposition_columns": [
+        "ball_in_court_id",
+        "ball_in_court_login",
+        "ball_in_court_name"
+      ],
+      "future_recommendation": "reuse_existing_scalar_decomposition_columns",
+      "null_rate": 0.972547,
+      "object_keys_present": [
+        "id",
+        "locale",
+        "login",
+        "name"
+      ],
+      "post_proof_decision_class": "object_container_requires_decomposition_or_deprecation",
+      "post_proof_next_action": "approve_decomposition_schema_design_next_or_deprecation",
+      "raw_detection": {
+        "classification": "mostly_null",
+        "root_cause_class": "schema_column_not_in_projection_registry",
+        "suspected_projection_defect": true
+      },
+      "raw_payload_rows_inspected": 2008,
+      "raw_payload_values_emitted": false,
+      "registry_json_path": null,
+      "registry_mapped": false,
+      "row_count": 1967,
+      "table": "procore_ep_rfis"
+    },
+    {
+      "candidate_path_counts": [
+        {
+          "json_path": "$.cost_code",
+          "object_keys_present": [
+            "id",
+            "name"
+          ],
+          "path_missing_count": 0,
+          "path_non_empty_count": 30,
+          "path_null_or_empty_count": 1978,
+          "path_present_count": 2008,
+          "raw_payload_values_emitted": false
+        }
+      ],
+      "child_table_indicators": [],
+      "column": "cost_code",
+      "endpoint_family": "rfis",
+      "endpoint_key": "rfis",
+      "evidence_basis": "Raw payload path is an object/container; whole-object projection into bare scalar column is disallowed.",
+      "existing_scalar_decomposition_columns": [
+        "cost_code_id",
+        "cost_code_name"
+      ],
+      "future_recommendation": "reuse_existing_scalar_decomposition_columns",
+      "null_rate": 0.984748,
+      "object_keys_present": [
+        "id",
+        "name"
+      ],
+      "post_proof_decision_class": "object_container_requires_decomposition_or_deprecation",
+      "post_proof_next_action": "approve_decomposition_schema_design_next_or_deprecation",
+      "raw_detection": {
+        "classification": "mostly_null",
+        "root_cause_class": "schema_column_not_in_projection_registry",
+        "suspected_projection_defect": true
+      },
+      "raw_payload_rows_inspected": 2008,
+      "raw_payload_values_emitted": false,
+      "registry_json_path": null,
+      "registry_mapped": false,
+      "row_count": 1967,
+      "table": "procore_ep_rfis"
+    },
+    {
+      "candidate_path_counts": [
+        {
+          "json_path": "$.location",
+          "object_keys_present": [
+            "created_at",
+            "id",
+            "name",
+            "node_name",
+            "parent_id",
+            "updated_at"
+          ],
+          "path_missing_count": 0,
+          "path_non_empty_count": 209,
+          "path_null_or_empty_count": 1799,
+          "path_present_count": 2008,
+          "raw_payload_values_emitted": false
+        }
+      ],
+      "child_table_indicators": [],
+      "column": "location",
+      "endpoint_family": "rfis",
+      "endpoint_key": "rfis",
+      "evidence_basis": "Raw payload path is an object/container; whole-object projection into bare scalar column is disallowed.",
+      "existing_scalar_decomposition_columns": [
+        "location_created_at",
+        "location_id",
+        "location_name",
+        "location_node_name",
+        "location_parent_id",
+        "location_updated_at"
+      ],
+      "future_recommendation": "reuse_existing_scalar_decomposition_columns",
+      "null_rate": 0.961362,
+      "object_keys_present": [
+        "created_at",
+        "id",
+        "name",
+        "node_name",
+        "parent_id",
+        "updated_at"
+      ],
+      "post_proof_decision_class": "object_container_requires_decomposition_or_deprecation",
+      "post_proof_next_action": "approve_decomposition_schema_design_next_or_deprecation",
+      "raw_detection": {
+        "classification": "mostly_null",
+        "root_cause_class": "schema_column_not_in_projection_registry",
+        "suspected_projection_defect": true
+      },
+      "raw_payload_rows_inspected": 2008,
+      "raw_payload_values_emitted": false,
+      "registry_json_path": null,
+      "registry_mapped": false,
+      "row_count": 1967,
+      "table": "procore_ep_rfis"
+    },
+    {
+      "candidate_path_counts": [
+        {
+          "json_path": "$.sub_job",
+          "object_keys_present": [
+            "code",
+            "id",
+            "name"
+          ],
+          "path_missing_count": 0,
+          "path_non_empty_count": 74,
+          "path_null_or_empty_count": 1934,
+          "path_present_count": 2008,
+          "raw_payload_values_emitted": false
+        }
+      ],
+      "child_table_indicators": [],
+      "column": "sub_job",
+      "endpoint_family": "rfis",
+      "endpoint_key": "rfis",
+      "evidence_basis": "Raw payload path is an object/container; whole-object projection into bare scalar column is disallowed.",
+      "existing_scalar_decomposition_columns": [
+        "sub_job_code",
+        "sub_job_id",
+        "sub_job_name"
+      ],
+      "future_recommendation": "reuse_existing_scalar_decomposition_columns",
+      "null_rate": 0.967972,
+      "object_keys_present": [
+        "code",
+        "id",
+        "name"
+      ],
+      "post_proof_decision_class": "object_container_requires_decomposition_or_deprecation",
+      "post_proof_next_action": "approve_decomposition_schema_design_next_or_deprecation",
+      "raw_detection": {
+        "classification": "mostly_null",
+        "root_cause_class": "schema_column_not_in_projection_registry",
+        "suspected_projection_defect": true
+      },
+      "raw_payload_rows_inspected": 2008,
+      "raw_payload_values_emitted": false,
+      "registry_json_path": null,
+      "registry_mapped": false,
+      "row_count": 1967,
+      "table": "procore_ep_rfis"
+    },
+    {
+      "candidate_path_counts": [
+        {
+          "json_path": "$.location",
+          "object_keys_present": [
+            "created_at",
+            "id",
+            "name",
+            "node_name",
+            "parent_id",
+            "updated_at"
+          ],
+          "path_missing_count": 0,
+          "path_non_empty_count": 184,
+          "path_null_or_empty_count": 1716,
+          "path_present_count": 1900,
+          "raw_payload_values_emitted": false
+        }
+      ],
+      "child_table_indicators": [],
+      "column": "location",
+      "endpoint_family": "submittals",
+      "endpoint_key": "submittals",
+      "evidence_basis": "Raw payload path is an object/container; whole-object projection into bare scalar column is disallowed.",
+      "existing_scalar_decomposition_columns": [
+        "location_created_at",
+        "location_id",
+        "location_name",
+        "location_node_name",
+        "location_parent_id",
+        "location_updated_at"
+      ],
+      "future_recommendation": "reuse_existing_scalar_decomposition_columns",
+      "null_rate": 0.981818,
+      "object_keys_present": [
+        "created_at",
+        "id",
+        "name",
+        "node_name",
+        "parent_id",
+        "updated_at"
+      ],
+      "post_proof_decision_class": "object_container_requires_decomposition_or_deprecation",
+      "post_proof_next_action": "approve_decomposition_schema_design_next_or_deprecation",
+      "raw_detection": {
+        "classification": "mostly_null",
+        "root_cause_class": "schema_column_not_in_projection_registry",
+        "suspected_projection_defect": true
+      },
+      "raw_payload_rows_inspected": 1900,
+      "raw_payload_values_emitted": false,
+      "registry_json_path": null,
+      "registry_mapped": false,
+      "row_count": 1760,
+      "table": "procore_ep_submittals"
+    },
+    {
+      "candidate_path_counts": [
+        {
+          "json_path": "$.submittal_package",
+          "object_keys_present": [
+            "attachments",
+            "attachments_count",
+            "created_by",
+            "description",
+            "id",
+            "number",
+            "specification_section_id",
+            "submittal_ids",
+            "title",
+            "updated_at"
+          ],
+          "path_missing_count": 0,
+          "path_non_empty_count": 273,
+          "path_null_or_empty_count": 1627,
+          "path_present_count": 1900,
+          "raw_payload_values_emitted": false
+        }
+      ],
+      "child_table_indicators": [],
+      "column": "submittal_package",
+      "endpoint_family": "submittals",
+      "endpoint_key": "submittals",
+      "evidence_basis": "Raw payload path is an object/container; whole-object projection into bare scalar column is disallowed.",
+      "existing_scalar_decomposition_columns": [
+        "submittal_package_created_by_id",
+        "submittal_package_created_by_login",
+        "submittal_package_created_by_name",
+        "submittal_package_id",
+        "submittal_package_number",
+        "submittal_package_specification_section_id",
+        "submittal_package_updated_at"
+      ],
+      "future_recommendation": "reuse_existing_scalar_decomposition_columns",
+      "null_rate": 1.0,
+      "object_keys_present": [
+        "attachments",
+        "attachments_count",
+        "created_by",
+        "description",
+        "id",
+        "number",
+        "specification_section_id",
+        "submittal_ids",
+        "title",
+        "updated_at"
+      ],
+      "post_proof_decision_class": "object_container_requires_decomposition_or_deprecation",
+      "post_proof_next_action": "approve_decomposition_schema_design_next_or_deprecation",
+      "raw_detection": {
+        "classification": "all_null",
+        "root_cause_class": "schema_column_not_in_projection_registry",
+        "suspected_projection_defect": true
+      },
+      "raw_payload_rows_inspected": 1900,
+      "raw_payload_values_emitted": false,
+      "registry_json_path": null,
+      "registry_mapped": false,
+      "row_count": 1760,
+      "table": "procore_ep_submittals"
+    },
+    {
+      "candidate_path_counts": [
+        {
+          "json_path": "$.submittal_workflow_template",
+          "object_keys_present": [
+            "id",
+            "name"
+          ],
+          "path_missing_count": 0,
+          "path_non_empty_count": 101,
+          "path_null_or_empty_count": 1799,
+          "path_present_count": 1900,
+          "raw_payload_values_emitted": false
+        }
+      ],
+      "child_table_indicators": [],
+      "column": "submittal_workflow_template",
+      "endpoint_family": "submittals",
+      "endpoint_key": "submittals",
+      "evidence_basis": "Raw payload path is an object/container; whole-object projection into bare scalar column is disallowed.",
+      "existing_scalar_decomposition_columns": [
+        "submittal_workflow_template_applied_at",
+        "submittal_workflow_template_id",
+        "submittal_workflow_template_name"
+      ],
+      "future_recommendation": "reuse_existing_scalar_decomposition_columns",
+      "null_rate": 1.0,
+      "object_keys_present": [
+        "id",
+        "name"
+      ],
+      "post_proof_decision_class": "object_container_requires_decomposition_or_deprecation",
+      "post_proof_next_action": "approve_decomposition_schema_design_next_or_deprecation",
+      "raw_detection": {
+        "classification": "all_null",
+        "root_cause_class": "schema_column_not_in_projection_registry",
+        "suspected_projection_defect": true
+      },
+      "raw_payload_rows_inspected": 1900,
+      "raw_payload_values_emitted": false,
+      "registry_json_path": null,
+      "registry_mapped": false,
+      "row_count": 1760,
+      "table": "procore_ep_submittals"
+    }
+  ],
+  "generated_at_utc": "2026-06-19T07:50:18Z",
+  "object_container_field_count": 43,
+  "raw_payload_values_emitted": false,
+  "recommendation_counts": {
+    "needs_additional_source_sample": 3,
+    "represent_only_in_child_table": 3,
+    "represent_only_in_entity_dimension": 2,
+    "reuse_existing_scalar_decomposition_columns": 35
+  },
+  "source_audit_json": "docs/evidence/procore-null-projection-patch2/20260619T071034Z/post-patch2-null-projection-audit.json",
+  "source_raw_mapping_json": "docs/evidence/procore-null-projection-patch2/20260619T071034Z/post-patch2-raw-payload-mapping-audit.json"
+}

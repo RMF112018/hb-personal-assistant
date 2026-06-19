@@ -656,6 +656,11 @@
        "rel": "cost_impact.commitment.title"
       },
       {
+       "category": "company",
+       "column": "cost_impact_contract_confirmed",
+       "rel": "cost_impact.contract.confirmed"
+      },
+      {
        "category": "identity",
        "column": "cost_impact_contract_confirmed_id",
        "rel": "cost_impact.contract.confirmed.id"
@@ -789,6 +794,11 @@
        "category": "status",
        "column": "cost_impact_source_of_stage",
        "rel": "cost_impact.source_of_stage"
+      },
+      {
+       "category": "company",
+       "column": "cost_impact_vendor_confirmed",
+       "rel": "cost_impact.vendor.confirmed"
       },
       {
        "category": "identity",
@@ -1585,7 +1595,7 @@
     },
     {
      "category": "company",
-     "dest": "structural",
+     "dest": "column:$.change_items",
      "path": "$.change_items[].cost_impact.contract.confirmed",
      "type": "object"
     },
@@ -1813,7 +1823,7 @@
     },
     {
      "category": "company",
-     "dest": "structural",
+     "dest": "column:$.change_items",
      "path": "$.change_items[].cost_impact.vendor.confirmed",
      "type": "object"
     },
@@ -11415,16 +11425,16 @@
   "prime-contracts": {
    "child_tables": [],
    "coverage": {
-    "business_field_paths": 123,
+    "business_field_paths": 127,
     "child": 0,
     "column": 90,
     "excluded": 0,
     "over_sidecar_threshold": true,
-    "sidecar": 33,
+    "sidecar": 37,
     "sidecar_justification": "Sidecar holds only secondary nested contractor/vendor company-profile attributes (address, phone, logo, website, labor_union, project_ids[], profile attachments). High-value contract financials and vendor/contractor identity are first-class columns; these profile attributes are polymorphic company-directory metadata with no contract-analytics value.",
     "sidecar_justified": true,
-    "sidecar_only_pct": 26.8,
-    "structural": 9
+    "sidecar_only_pct": 29.1,
+    "structural": 10
    },
    "endpoint_family": "owner_contracts",
    "path_map": [
@@ -11487,6 +11497,36 @@
      "dest": "sidecar:primary",
      "path": "$.attachments",
      "type": "array"
+    },
+    {
+     "category": "other",
+     "dest": "structural",
+     "path": "$.attachments[]",
+     "type": "object"
+    },
+    {
+     "category": "attachment",
+     "dest": "sidecar:primary",
+     "path": "$.attachments[].filename",
+     "type": "string"
+    },
+    {
+     "category": "identity",
+     "dest": "sidecar:primary",
+     "path": "$.attachments[].id",
+     "type": "integer"
+    },
+    {
+     "category": "title",
+     "dest": "sidecar:primary",
+     "path": "$.attachments[].name",
+     "type": "string"
+    },
+    {
+     "category": "attachment",
+     "dest": "sidecar:primary",
+     "path": "$.attachments[].url",
+     "type": "string"
     },
     {
      "category": "date",
@@ -14145,15 +14185,15 @@
     }
    ],
    "coverage": {
-    "business_field_paths": 89,
+    "business_field_paths": 97,
     "child": 3,
     "column": 80,
     "excluded": 0,
     "over_sidecar_threshold": false,
-    "sidecar": 6,
+    "sidecar": 14,
     "sidecar_justified": true,
-    "sidecar_only_pct": 6.7,
-    "structural": 12
+    "sidecar_only_pct": 14.4,
+    "structural": 13
    },
    "endpoint_family": "punch_items",
    "path_map": [
@@ -14228,6 +14268,30 @@
      "dest": "sidecar:child:$.assignments",
      "path": "$.assignments[].attachments",
      "type": "array"
+    },
+    {
+     "category": "other",
+     "dest": "structural",
+     "path": "$.assignments[].attachments[]",
+     "type": "object"
+    },
+    {
+     "category": "attachment",
+     "dest": "sidecar:child:$.assignments",
+     "path": "$.assignments[].attachments[].filename",
+     "type": "string"
+    },
+    {
+     "category": "identity",
+     "dest": "sidecar:child:$.assignments",
+     "path": "$.assignments[].attachments[].id",
+     "type": "integer"
+    },
+    {
+     "category": "attachment",
+     "dest": "sidecar:child:$.assignments",
+     "path": "$.assignments[].attachments[].url",
+     "type": "string"
     },
     {
      "category": "title",
@@ -14402,6 +14466,36 @@
      "dest": "column:primary",
      "path": "$.closed_by",
      "type": "null"
+    },
+    {
+     "category": "company",
+     "dest": "sidecar:primary",
+     "path": "$.closed_by.company_name",
+     "type": "string"
+    },
+    {
+     "category": "identity",
+     "dest": "sidecar:primary",
+     "path": "$.closed_by.id",
+     "type": "integer"
+    },
+    {
+     "category": "other",
+     "dest": "sidecar:primary",
+     "path": "$.closed_by.locale",
+     "type": "null"
+    },
+    {
+     "category": "person",
+     "dest": "sidecar:primary",
+     "path": "$.closed_by.login",
+     "type": "string"
+    },
+    {
+     "category": "title",
+     "dest": "sidecar:primary",
+     "path": "$.closed_by.name",
+     "type": "string"
     },
     {
      "category": "identity",

@@ -1,0 +1,47 @@
+{
+  "command": "/Users/bobbyfetting/hb-personal-assistant/.venv/bin/hb-assistant procore analytics projection-audit --endpoint commitment-change-orders --json",
+  "returncode": 0,
+  "stderr": "",
+  "stdout_json": {
+    "command": "hb-assistant procore analytics projection-audit",
+    "endpoint_count": 1,
+    "endpoints": [
+      {
+        "child_table_count": 0,
+        "coverage": {
+          "business_field_paths": 41,
+          "child": 0,
+          "column": 41,
+          "excluded": 0,
+          "over_sidecar_threshold": false,
+          "sidecar": 0,
+          "sidecar_justified": true,
+          "sidecar_only_pct": 0.0,
+          "structural": 8
+        },
+        "endpoint_id": "commitment-change-orders",
+        "known_paths": 49,
+        "observed_paths": 49,
+        "primary_table": "procore_ep_commitment_change_orders",
+        "registry_present": true,
+        "status": "ok",
+        "unknown_business_field_paths": 0,
+        "unknown_sample": [],
+        "unmapped_nested_business_fields": 0,
+        "unmapped_primary_business_fields": 0
+      }
+    ],
+    "endpoints_over_sidecar_threshold": [],
+    "endpoints_over_sidecar_threshold_unjustified": [],
+    "guardrails": {
+      "emits_values": false,
+      "live_calls_disabled": true,
+      "writeback": "none"
+    },
+    "ok": true,
+    "runtime_plan_schema_mismatches": 0,
+    "unknown_business_field_paths": 0,
+    "unmapped_nested_business_fields": 0,
+    "unmapped_primary_business_fields": 0
+  }
+}

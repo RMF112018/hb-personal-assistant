@@ -29,7 +29,7 @@ from hb_assistant.procore.errors import (
     ProcoreRateLimitError,
 )
 from hb_assistant.procore.live_gate import (
-    assert_live_mapping_strict,
+    direct_live_project_eligibility,
     live_env_active,
 )
 from hb_assistant.procore.loader import load_procore_projects
@@ -485,6 +485,19 @@ def _resolve_procore_project_id(project_key: str) -> Optional[str]:
     return None
 
 
+def _safe_count_procore_live_records(
+    *, project_key: str, endpoint_id: str, db_path: Optional[Path]
+) -> int:
+    try:
+        return count_procore_live_records(
+            project_key=project_key,
+            endpoint_id=endpoint_id,
+            db_path=db_path,
+        )
+    except Exception:  # noqa: BLE001 -- fail-closed receipts must not open transport
+        return 0
+
+
 def _resolve_path(adapter: EndpointAdapter, procore_project_id: str) -> str:
     """Substitute the project_id and company_id parameters.
 
@@ -665,6 +678,24 @@ def _build_receipt(
     raw_persist_skipped_higher_quality: int = 0,
     full_raw_persistence_enabled: bool = False,
 ) -> Dict[str, Any]:
+    operator_failed_reasons = {
+        "live_env_not_set",
+        "confirm_live_get_required",
+        "apply_required",
+        "sqlite_only_required",
+    }
+    project_failed_reasons = {
+        "project_not_mapped",
+        "project_missing_procore_project_id",
+        "project_mapping_registry_unavailable",
+    }
+    endpoint_failed_reasons = {
+        "endpoint_contract_missing",
+        "endpoint_not_live_eligible",
+        "endpoint_alias_unknown",
+        "endpoint_unverified_for_live",
+    }
+    reason_set = set(reason_codes)
     return {
         "receipt_id": receipt_id,
         "sync_run_id": sync_run_id,
@@ -702,6 +733,12 @@ def _build_receipt(
         "raw_persist_error_count": raw_persist_error_count,
         "raw_persist_skipped_due_to_higher_quality": raw_persist_skipped_higher_quality,
         "raw_payload_body_emitted_to_stdout": False,
+        "operator_live_authorization": (
+            "failed" if reason_set & operator_failed_reasons else "ok"
+        ),
+        "project_eligibility": "failed" if reason_set & project_failed_reasons else "ok",
+        "endpoint_eligibility": "failed" if reason_set & endpoint_failed_reasons else "ok",
+        "transport_attempted": not no_live_call_performed,
         "ok": status == "success" and raw_persist_error_count == 0,
         "state": state,
         "status": status,
@@ -797,7 +834,7 @@ def run_live_sync(
     endpoint_id_resolved = adapter.endpoint_id if adapter else None
     legacy_alias = adapter.legacy_endpoint_alias if adapter else None
     if adapter is None:
-        reason_codes.append("endpoint_alias_unknown")
+        reason_codes.append("endpoint_contract_missing")
         return _build_receipt(
             receipt_id=receipt_id,
             sync_run_id=sync_run_id,
@@ -848,18 +885,18 @@ def run_live_sync(
     if not confirm_live_get:
         reason_codes.append("confirm_live_get_required")
 
-    # 4. Gate: mapped pilot project + non-empty procore_project_id
+    # 4. Gate: configured/mapped project + non-empty Procore project id.
+    # Scheduled/all-mapped refresh remains stricter via assert_live_mapping_strict;
+    # direct endpoint sync only requires a configured mapping and explicit operator gates.
     procore_project_id: Optional[str] = None
     try:
         registry = load_procore_projects()
-        assert_live_mapping_strict(registry, [project_key])
-        procore_project_id = _resolve_procore_project_id(project_key)
-        if not procore_project_id:
-            reason_codes.append("procore_project_id_unresolved")
-    except ProcoreAPIError:
-        reason_codes.append("mapping_not_live_eligible")
+        project_gate = direct_live_project_eligibility(registry, project_key)
+        procore_project_id = project_gate.procore_project_id
+        if not project_gate.ok and project_gate.reason_code:
+            reason_codes.append(project_gate.reason_code)
     except Exception:  # noqa: BLE001
-        reason_codes.append("mapping_registry_unavailable")
+        reason_codes.append("project_mapping_registry_unavailable")
 
     # 5. If any gate failed, fail-closed before transport/normalization.
     if reason_codes:
@@ -890,6 +927,7 @@ def run_live_sync(
 
     # 6. Unverified endpoint -> structured fail-closed receipt (no API call).
     if not adapter.live_verified:
+        reason_codes.append("endpoint_not_live_eligible")
         reason_codes.append("endpoint_unverified_for_live")
         if adapter.verification_reason:
             reason_codes.append(adapter.verification_reason)
@@ -910,7 +948,7 @@ def run_live_sync(
             retrieved_count=0,
             normalized_count=0,
             sqlite_upserted_count=0,
-            sqlite_total_count_after=count_procore_live_records(
+            sqlite_total_count_after=_safe_count_procore_live_records(
                 project_key=project_key,
                 endpoint_id=adapter.endpoint_id,
                 db_path=db_path,

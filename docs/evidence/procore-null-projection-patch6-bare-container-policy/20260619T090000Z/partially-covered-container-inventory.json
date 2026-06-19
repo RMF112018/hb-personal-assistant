@@ -1,0 +1,304 @@
+{
+  "fields": [
+    {
+      "bare_column_non_null_count": 0,
+      "column": "contact",
+      "endpoint_key": "daily-log-manpower",
+      "legacy_non_null_bare_container_values_present": false,
+      "policy_bucket": "bare_container_partially_covered_scalar_source_absent",
+      "post_proof_decision": {
+        "decision_class": "bare_container_partially_covered_scalar_source_absent",
+        "decision_status": "source_coverage_review_needed",
+        "deprecation_candidate": true,
+        "evidence_basis": "docs/evidence/procore-null-projection-patch4-existing-scalar-containers/20260619T080633Z/classification-summary.json; source-absent scalar leaves are not counted as covered.",
+        "legacy_non_null_bare_container_values_present": false,
+        "mapping_candidate": false,
+        "next_action": "review_scalar_source_coverage_before_schema_decision",
+        "projection_code_repair_candidate": false,
+        "suppress_from_actionable_mapping_rollup": true
+      },
+      "raw_detection": {
+        "raw_field_status": "bare_container_null_or_suspicious",
+        "raw_finding_preserved": true
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 53,
+          "column": "contact_email",
+          "registry_json_path": "$.contact.email",
+          "source_non_empty_count": 53,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 464,
+          "column": "contact_fax_number",
+          "registry_json_path": "$.contact.fax_number",
+          "source_non_empty_count": 464,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 920,
+          "column": "contact_id",
+          "registry_json_path": "$.contact.id",
+          "source_non_empty_count": 920,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 0,
+          "column": "contact_login_information_id",
+          "registry_json_path": "$.contact.login_information_id",
+          "source_non_empty_count": 0,
+          "status": "source_absent_for_specific_scalar_column"
+        },
+        {
+          "after_replay_non_null_count": 920,
+          "column": "contact_name",
+          "registry_json_path": "$.contact.name",
+          "source_non_empty_count": 920,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 0,
+          "column": "contact_vendor_name",
+          "registry_json_path": "$.contact.vendor_name",
+          "source_non_empty_count": 0,
+          "status": "source_absent_for_specific_scalar_column"
+        }
+      ],
+      "source_absent_scalar_columns": [
+        {
+          "column": "contact_login_information_id",
+          "registry_json_path": "$.contact.login_information_id",
+          "status": "source_absent_for_specific_scalar_column"
+        },
+        {
+          "column": "contact_vendor_name",
+          "registry_json_path": "$.contact.vendor_name",
+          "status": "source_absent_for_specific_scalar_column"
+        }
+      ],
+      "table": "procore_ep_daily_log_manpower"
+    },
+    {
+      "bare_column_non_null_count": 0,
+      "column": "location",
+      "endpoint_key": "inspections",
+      "legacy_non_null_bare_container_values_present": false,
+      "policy_bucket": "bare_container_partially_covered_scalar_source_absent",
+      "post_proof_decision": {
+        "decision_class": "bare_container_partially_covered_scalar_source_absent",
+        "decision_status": "source_coverage_review_needed",
+        "deprecation_candidate": true,
+        "evidence_basis": "docs/evidence/procore-null-projection-patch4-existing-scalar-containers/20260619T080633Z/classification-summary.json; source-absent scalar leaves are not counted as covered.",
+        "legacy_non_null_bare_container_values_present": false,
+        "mapping_candidate": false,
+        "next_action": "review_scalar_source_coverage_before_schema_decision",
+        "projection_code_repair_candidate": false,
+        "suppress_from_actionable_mapping_rollup": true
+      },
+      "raw_detection": {
+        "raw_field_status": "bare_container_null_or_suspicious",
+        "raw_finding_preserved": true
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 0,
+          "column": "location_code",
+          "registry_json_path": "$.location.code",
+          "source_non_empty_count": 0,
+          "status": "source_absent_for_specific_scalar_column"
+        },
+        {
+          "after_replay_non_null_count": 60,
+          "column": "location_created_at",
+          "registry_json_path": "$.location.created_at",
+          "source_non_empty_count": 60,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 60,
+          "column": "location_id",
+          "registry_json_path": "$.location.id",
+          "source_non_empty_count": 60,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 60,
+          "column": "location_name",
+          "registry_json_path": "$.location.name",
+          "source_non_empty_count": 60,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 60,
+          "column": "location_node_name",
+          "registry_json_path": "$.location.node_name",
+          "source_non_empty_count": 60,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 2,
+          "column": "location_parent_id",
+          "registry_json_path": "$.location.parent_id",
+          "source_non_empty_count": 2,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 60,
+          "column": "location_updated_at",
+          "registry_json_path": "$.location.updated_at",
+          "source_non_empty_count": 60,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "source_absent_scalar_columns": [
+        {
+          "column": "location_code",
+          "registry_json_path": "$.location.code",
+          "status": "source_absent_for_specific_scalar_column"
+        }
+      ],
+      "table": "procore_ep_inspections"
+    },
+    {
+      "bare_column_non_null_count": 0,
+      "column": "specification_section",
+      "endpoint_key": "observations",
+      "legacy_non_null_bare_container_values_present": false,
+      "policy_bucket": "bare_container_partially_covered_scalar_source_absent",
+      "post_proof_decision": {
+        "decision_class": "bare_container_partially_covered_scalar_source_absent",
+        "decision_status": "source_coverage_review_needed",
+        "deprecation_candidate": true,
+        "evidence_basis": "docs/evidence/procore-null-projection-patch4-existing-scalar-containers/20260619T080633Z/classification-summary.json; source-absent scalar leaves are not counted as covered.",
+        "legacy_non_null_bare_container_values_present": false,
+        "mapping_candidate": false,
+        "next_action": "review_scalar_source_coverage_before_schema_decision",
+        "projection_code_repair_candidate": false,
+        "suppress_from_actionable_mapping_rollup": true
+      },
+      "raw_detection": {
+        "raw_field_status": "bare_container_null_or_suspicious",
+        "raw_finding_preserved": true
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 9,
+          "column": "specification_section_current_revision_id",
+          "registry_json_path": "$.specification_section.current_revision_id",
+          "source_non_empty_count": 9,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 9,
+          "column": "specification_section_id",
+          "registry_json_path": "$.specification_section.id",
+          "source_non_empty_count": 9,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 9,
+          "column": "specification_section_number",
+          "registry_json_path": "$.specification_section.number",
+          "source_non_empty_count": 9,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 0,
+          "column": "specification_section_viewable_document_id",
+          "registry_json_path": "$.specification_section.viewable_document_id",
+          "source_non_empty_count": 0,
+          "status": "source_absent_for_specific_scalar_column"
+        }
+      ],
+      "source_absent_scalar_columns": [
+        {
+          "column": "specification_section_viewable_document_id",
+          "registry_json_path": "$.specification_section.viewable_document_id",
+          "status": "source_absent_for_specific_scalar_column"
+        }
+      ],
+      "table": "procore_ep_observations"
+    },
+    {
+      "bare_column_non_null_count": 32,
+      "column": "location",
+      "endpoint_key": "submittals",
+      "legacy_non_null_bare_container_values_present": true,
+      "policy_bucket": "bare_container_partially_covered_scalar_source_absent",
+      "post_proof_decision": {
+        "decision_class": "bare_container_partially_covered_scalar_source_absent",
+        "decision_status": "source_coverage_review_needed",
+        "deprecation_candidate": true,
+        "evidence_basis": "docs/evidence/procore-null-projection-patch4-existing-scalar-containers/20260619T080633Z/classification-summary.json; source-absent scalar leaves are not counted as covered.",
+        "legacy_non_null_bare_container_values_present": true,
+        "mapping_candidate": false,
+        "next_action": "review_scalar_source_coverage_before_schema_decision",
+        "projection_code_repair_candidate": false,
+        "suppress_from_actionable_mapping_rollup": true
+      },
+      "raw_detection": {
+        "raw_field_status": "bare_container_null_or_suspicious",
+        "raw_finding_preserved": true
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 82,
+          "column": "location_created_at",
+          "registry_json_path": "$.location.created_at",
+          "source_non_empty_count": 184,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 82,
+          "column": "location_id",
+          "registry_json_path": "$.location.id",
+          "source_non_empty_count": 184,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 82,
+          "column": "location_name",
+          "registry_json_path": "$.location.name",
+          "source_non_empty_count": 184,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 82,
+          "column": "location_node_name",
+          "registry_json_path": "$.location.node_name",
+          "source_non_empty_count": 184,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 0,
+          "column": "location_parent_id",
+          "registry_json_path": "$.location.parent_id",
+          "source_non_empty_count": 0,
+          "status": "source_absent_for_specific_scalar_column"
+        },
+        {
+          "after_replay_non_null_count": 82,
+          "column": "location_updated_at",
+          "registry_json_path": "$.location.updated_at",
+          "source_non_empty_count": 184,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "source_absent_scalar_columns": [
+        {
+          "column": "location_parent_id",
+          "registry_json_path": "$.location.parent_id",
+          "status": "source_absent_for_specific_scalar_column"
+        }
+      ],
+      "table": "procore_ep_submittals"
+    }
+  ],
+  "generated_at_utc": "2026-06-19T08:56:40Z",
+  "raw_payload_values_emitted": false
+}

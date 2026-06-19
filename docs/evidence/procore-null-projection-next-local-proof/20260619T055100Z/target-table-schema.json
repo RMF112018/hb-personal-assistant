@@ -1,0 +1,6701 @@
+{
+  "procore_ep_budget_detail_columns": [
+    {
+      "cid": 0,
+      "name": "record_key",
+      "notnull": 0,
+      "pk": 1,
+      "type": "TEXT"
+    },
+    {
+      "cid": 1,
+      "name": "raw_payload_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 2,
+      "name": "endpoint_key",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 3,
+      "name": "endpoint_family",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 4,
+      "name": "project_key",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 5,
+      "name": "project_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 6,
+      "name": "project_id_hash",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 7,
+      "name": "company_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 8,
+      "name": "company_id_hash",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 9,
+      "name": "record_id",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 10,
+      "name": "record_id_hash",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 11,
+      "name": "parent_record_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 12,
+      "name": "parent_record_id_hash",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 13,
+      "name": "budget_view_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 14,
+      "name": "column_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 15,
+      "name": "column_key",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 16,
+      "name": "name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 17,
+      "name": "label",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 18,
+      "name": "data_type",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 19,
+      "name": "field_path",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 20,
+      "name": "position",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 21,
+      "name": "visible",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 22,
+      "name": "payload_sidecar_json",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 23,
+      "name": "payload_hash",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 24,
+      "name": "source_quality",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 25,
+      "name": "payload_seen_first_utc",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 26,
+      "name": "payload_seen_last_utc",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 27,
+      "name": "is_current",
+      "notnull": 1,
+      "pk": 0,
+      "type": "INTEGER"
+    },
+    {
+      "cid": 28,
+      "name": "created_utc",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 29,
+      "name": "updated_utc",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 30,
+      "name": "external_writeback_performed",
+      "notnull": 1,
+      "pk": 0,
+      "type": "INTEGER"
+    },
+    {
+      "cid": 31,
+      "name": "raw_payload_emitted_to_read_model",
+      "notnull": 1,
+      "pk": 0,
+      "type": "INTEGER"
+    },
+    {
+      "cid": 32,
+      "name": "raw_payload_emitted_to_evidence",
+      "notnull": 1,
+      "pk": 0,
+      "type": "INTEGER"
+    }
+  ],
+  "procore_ep_budget_detail_row_cells": [
+    {
+      "cid": 0,
+      "name": "cell_key",
+      "notnull": 0,
+      "pk": 1,
+      "type": "TEXT"
+    },
+    {
+      "cid": 1,
+      "name": "record_key",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 2,
+      "name": "raw_payload_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 3,
+      "name": "endpoint_key",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 4,
+      "name": "endpoint_family",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 5,
+      "name": "project_key",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 6,
+      "name": "project_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 7,
+      "name": "project_id_hash",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 8,
+      "name": "company_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 9,
+      "name": "company_id_hash",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 10,
+      "name": "budget_view_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 11,
+      "name": "budget_row_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 12,
+      "name": "row_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 13,
+      "name": "column_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 14,
+      "name": "column_key",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 15,
+      "name": "column_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 16,
+      "name": "column_label",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 17,
+      "name": "field_path",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 18,
+      "name": "value_text",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 19,
+      "name": "value_decimal_text",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 20,
+      "name": "currency_iso_code",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 21,
+      "name": "value_json",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 22,
+      "name": "payload_hash",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 23,
+      "name": "source_quality",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 24,
+      "name": "is_current",
+      "notnull": 1,
+      "pk": 0,
+      "type": "INTEGER"
+    },
+    {
+      "cid": 25,
+      "name": "created_utc",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 26,
+      "name": "updated_utc",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 27,
+      "name": "external_writeback_performed",
+      "notnull": 1,
+      "pk": 0,
+      "type": "INTEGER"
+    },
+    {
+      "cid": 28,
+      "name": "raw_payload_emitted_to_read_model",
+      "notnull": 1,
+      "pk": 0,
+      "type": "INTEGER"
+    },
+    {
+      "cid": 29,
+      "name": "raw_payload_emitted_to_evidence",
+      "notnull": 1,
+      "pk": 0,
+      "type": "INTEGER"
+    }
+  ],
+  "procore_ep_budget_detail_rows": [
+    {
+      "cid": 0,
+      "name": "record_key",
+      "notnull": 0,
+      "pk": 1,
+      "type": "TEXT"
+    },
+    {
+      "cid": 1,
+      "name": "raw_payload_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 2,
+      "name": "endpoint_key",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 3,
+      "name": "endpoint_family",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 4,
+      "name": "project_key",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 5,
+      "name": "project_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 6,
+      "name": "project_id_hash",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 7,
+      "name": "company_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 8,
+      "name": "company_id_hash",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 9,
+      "name": "record_id",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 10,
+      "name": "record_id_hash",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 11,
+      "name": "parent_record_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 12,
+      "name": "parent_record_id_hash",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 13,
+      "name": "budget_view_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 14,
+      "name": "budget_row_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 15,
+      "name": "row_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 16,
+      "name": "wbs_code_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 17,
+      "name": "wbs_flat_code",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 18,
+      "name": "budget_code",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 19,
+      "name": "canonical_budget_code_key",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 20,
+      "name": "cost_code_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 21,
+      "name": "cost_code",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 22,
+      "name": "cost_type_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 23,
+      "name": "cost_type",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 24,
+      "name": "line_item_type_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 25,
+      "name": "description",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 26,
+      "name": "original_budget_amount",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 27,
+      "name": "revised_budget",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 28,
+      "name": "approved_change_orders",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 29,
+      "name": "pending_budget_changes",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 30,
+      "name": "projected_budget",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 31,
+      "name": "committed_costs",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 32,
+      "name": "direct_costs",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 33,
+      "name": "actual_cost",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 34,
+      "name": "projected_costs",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 35,
+      "name": "forecast_to_complete",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 36,
+      "name": "estimated_cost_at_completion",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 37,
+      "name": "projected_over_under",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 38,
+      "name": "erp_job_to_date_costs",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 39,
+      "name": "payload_sidecar_json",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 40,
+      "name": "payload_hash",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 41,
+      "name": "source_quality",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 42,
+      "name": "payload_seen_first_utc",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 43,
+      "name": "payload_seen_last_utc",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 44,
+      "name": "is_current",
+      "notnull": 1,
+      "pk": 0,
+      "type": "INTEGER"
+    },
+    {
+      "cid": 45,
+      "name": "created_utc",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 46,
+      "name": "updated_utc",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 47,
+      "name": "external_writeback_performed",
+      "notnull": 1,
+      "pk": 0,
+      "type": "INTEGER"
+    },
+    {
+      "cid": 48,
+      "name": "raw_payload_emitted_to_read_model",
+      "notnull": 1,
+      "pk": 0,
+      "type": "INTEGER"
+    },
+    {
+      "cid": 49,
+      "name": "raw_payload_emitted_to_evidence",
+      "notnull": 1,
+      "pk": 0,
+      "type": "INTEGER"
+    },
+    {
+      "cid": 50,
+      "name": "erp_direct_costs",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 51,
+      "name": "job_to_date_costs",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    }
+  ],
+  "procore_ep_commitment_change_orders": [
+    {
+      "cid": 0,
+      "name": "record_key",
+      "notnull": 0,
+      "pk": 1,
+      "type": "TEXT"
+    },
+    {
+      "cid": 1,
+      "name": "raw_payload_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 2,
+      "name": "endpoint_key",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 3,
+      "name": "endpoint_family",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 4,
+      "name": "project_key",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 5,
+      "name": "project_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 6,
+      "name": "project_id_hash",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 7,
+      "name": "company_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 8,
+      "name": "company_id_hash",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 9,
+      "name": "record_id",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 10,
+      "name": "record_id_hash",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 11,
+      "name": "parent_record_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 12,
+      "name": "parent_record_id_hash",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 13,
+      "name": "batch_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 14,
+      "name": "billing_schedule_of_values_status",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 15,
+      "name": "change_order_change_reason",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 16,
+      "name": "change_order_change_reason_change_reason",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 17,
+      "name": "change_order_change_reason_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 18,
+      "name": "contract_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 19,
+      "name": "created_at",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 20,
+      "name": "created_by_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 21,
+      "name": "created_by_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 22,
+      "name": "currency_configuration_currency_iso_code",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 23,
+      "name": "description",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 24,
+      "name": "designated_reviewer",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 25,
+      "name": "designated_reviewer_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 26,
+      "name": "designated_reviewer_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 27,
+      "name": "due_date",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 28,
+      "name": "enable_ssov",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 29,
+      "name": "executed",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 30,
+      "name": "field_change",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 31,
+      "name": "grand_total",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 32,
+      "name": "invoiced_date",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 33,
+      "name": "legacy_package_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 34,
+      "name": "legacy_request_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 35,
+      "name": "location_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 36,
+      "name": "number",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 37,
+      "name": "paid",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 38,
+      "name": "paid_date",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 39,
+      "name": "private",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 40,
+      "name": "received_from",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 41,
+      "name": "received_from_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 42,
+      "name": "received_from_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 43,
+      "name": "reference",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 44,
+      "name": "review_notes",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 45,
+      "name": "reviewed_at",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 46,
+      "name": "reviewed_by",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 47,
+      "name": "reviewed_by_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 48,
+      "name": "reviewed_by_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 49,
+      "name": "revision",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 50,
+      "name": "schedule_impact_amount",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 51,
+      "name": "signature_required",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 52,
+      "name": "signed_change_order_received_date",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 53,
+      "name": "status",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 54,
+      "name": "title",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 55,
+      "name": "type",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 56,
+      "name": "updated_at",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 57,
+      "name": "payload_sidecar_json",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 58,
+      "name": "payload_hash",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 59,
+      "name": "source_quality",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 60,
+      "name": "payload_seen_first_utc",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 61,
+      "name": "payload_seen_last_utc",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 62,
+      "name": "is_current",
+      "notnull": 1,
+      "pk": 0,
+      "type": "INTEGER"
+    },
+    {
+      "cid": 63,
+      "name": "created_utc",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 64,
+      "name": "updated_utc",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 65,
+      "name": "external_writeback_performed",
+      "notnull": 1,
+      "pk": 0,
+      "type": "INTEGER"
+    },
+    {
+      "cid": 66,
+      "name": "raw_payload_emitted_to_read_model",
+      "notnull": 1,
+      "pk": 0,
+      "type": "INTEGER"
+    },
+    {
+      "cid": 67,
+      "name": "raw_payload_emitted_to_evidence",
+      "notnull": 1,
+      "pk": 0,
+      "type": "INTEGER"
+    }
+  ],
+  "procore_ep_daily_log_inspections": [
+    {
+      "cid": 0,
+      "name": "record_key",
+      "notnull": 0,
+      "pk": 1,
+      "type": "TEXT"
+    },
+    {
+      "cid": 1,
+      "name": "raw_payload_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 2,
+      "name": "endpoint_key",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 3,
+      "name": "endpoint_family",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 4,
+      "name": "project_key",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 5,
+      "name": "project_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 6,
+      "name": "project_id_hash",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 7,
+      "name": "company_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 8,
+      "name": "company_id_hash",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 9,
+      "name": "record_id",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 10,
+      "name": "record_id_hash",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 11,
+      "name": "parent_record_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 12,
+      "name": "parent_record_id_hash",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 13,
+      "name": "area",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 14,
+      "name": "comments",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 15,
+      "name": "created_at",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 16,
+      "name": "created_by_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 17,
+      "name": "created_by_login",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 18,
+      "name": "created_by_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 19,
+      "name": "created_by_collaborator",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 20,
+      "name": "date",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 21,
+      "name": "datetime",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 22,
+      "name": "deleted_at",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 23,
+      "name": "end_hour",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 24,
+      "name": "end_minute",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 25,
+      "name": "inspecting_entity",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 26,
+      "name": "inspection_type",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 27,
+      "name": "inspector_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 28,
+      "name": "location",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 29,
+      "name": "location_created_at",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 30,
+      "name": "location_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 31,
+      "name": "location_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 32,
+      "name": "location_node_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 33,
+      "name": "location_parent_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 34,
+      "name": "location_updated_at",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 35,
+      "name": "position",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 36,
+      "name": "start_hour",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 37,
+      "name": "start_minute",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 38,
+      "name": "status",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 39,
+      "name": "updated_at",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 40,
+      "name": "vendor",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 41,
+      "name": "payload_sidecar_json",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 42,
+      "name": "payload_hash",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 43,
+      "name": "source_quality",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 44,
+      "name": "payload_seen_first_utc",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 45,
+      "name": "payload_seen_last_utc",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 46,
+      "name": "is_current",
+      "notnull": 1,
+      "pk": 0,
+      "type": "INTEGER"
+    },
+    {
+      "cid": 47,
+      "name": "created_utc",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 48,
+      "name": "updated_utc",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 49,
+      "name": "external_writeback_performed",
+      "notnull": 1,
+      "pk": 0,
+      "type": "INTEGER"
+    },
+    {
+      "cid": 50,
+      "name": "raw_payload_emitted_to_read_model",
+      "notnull": 1,
+      "pk": 0,
+      "type": "INTEGER"
+    },
+    {
+      "cid": 51,
+      "name": "raw_payload_emitted_to_evidence",
+      "notnull": 1,
+      "pk": 0,
+      "type": "INTEGER"
+    }
+  ],
+  "procore_ep_daily_log_manpower": [
+    {
+      "cid": 0,
+      "name": "record_key",
+      "notnull": 0,
+      "pk": 1,
+      "type": "TEXT"
+    },
+    {
+      "cid": 1,
+      "name": "raw_payload_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 2,
+      "name": "endpoint_key",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 3,
+      "name": "endpoint_family",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 4,
+      "name": "project_key",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 5,
+      "name": "project_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 6,
+      "name": "project_id_hash",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 7,
+      "name": "company_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 8,
+      "name": "company_id_hash",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 9,
+      "name": "record_id",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 10,
+      "name": "record_id_hash",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 11,
+      "name": "parent_record_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 12,
+      "name": "parent_record_id_hash",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 13,
+      "name": "contact",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 14,
+      "name": "contact_email",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 15,
+      "name": "contact_email_address",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 16,
+      "name": "contact_fax_number",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 17,
+      "name": "contact_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 18,
+      "name": "contact_job_title",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 19,
+      "name": "contact_login_information_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 20,
+      "name": "contact_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 21,
+      "name": "contact_vendor_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 22,
+      "name": "cost_code",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 23,
+      "name": "cost_code_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 24,
+      "name": "cost_code_long_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 25,
+      "name": "cost_code_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 26,
+      "name": "created_at",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 27,
+      "name": "created_by_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 28,
+      "name": "created_by_login",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 29,
+      "name": "created_by_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 30,
+      "name": "created_by_collaborator",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 31,
+      "name": "date",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 32,
+      "name": "datetime",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 33,
+      "name": "deleted_at",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 34,
+      "name": "location",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 35,
+      "name": "location_created_at",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 36,
+      "name": "location_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 37,
+      "name": "location_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 38,
+      "name": "location_node_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 39,
+      "name": "location_parent_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 40,
+      "name": "location_updated_at",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 41,
+      "name": "man_hours",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 42,
+      "name": "notes",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 43,
+      "name": "num_hours",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 44,
+      "name": "num_workers",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 45,
+      "name": "position",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 46,
+      "name": "status",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 47,
+      "name": "trade",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 48,
+      "name": "updated_at",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 49,
+      "name": "vendor_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 50,
+      "name": "vendor_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 51,
+      "name": "payload_sidecar_json",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 52,
+      "name": "payload_hash",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 53,
+      "name": "source_quality",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 54,
+      "name": "payload_seen_first_utc",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 55,
+      "name": "payload_seen_last_utc",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 56,
+      "name": "is_current",
+      "notnull": 1,
+      "pk": 0,
+      "type": "INTEGER"
+    },
+    {
+      "cid": 57,
+      "name": "created_utc",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 58,
+      "name": "updated_utc",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 59,
+      "name": "external_writeback_performed",
+      "notnull": 1,
+      "pk": 0,
+      "type": "INTEGER"
+    },
+    {
+      "cid": 60,
+      "name": "raw_payload_emitted_to_read_model",
+      "notnull": 1,
+      "pk": 0,
+      "type": "INTEGER"
+    },
+    {
+      "cid": 61,
+      "name": "raw_payload_emitted_to_evidence",
+      "notnull": 1,
+      "pk": 0,
+      "type": "INTEGER"
+    }
+  ],
+  "procore_ep_daily_log_notes": [
+    {
+      "cid": 0,
+      "name": "record_key",
+      "notnull": 0,
+      "pk": 1,
+      "type": "TEXT"
+    },
+    {
+      "cid": 1,
+      "name": "raw_payload_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 2,
+      "name": "endpoint_key",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 3,
+      "name": "endpoint_family",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 4,
+      "name": "project_key",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 5,
+      "name": "project_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 6,
+      "name": "project_id_hash",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 7,
+      "name": "company_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 8,
+      "name": "company_id_hash",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 9,
+      "name": "record_id",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 10,
+      "name": "record_id_hash",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 11,
+      "name": "parent_record_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 12,
+      "name": "parent_record_id_hash",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 13,
+      "name": "comment",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 14,
+      "name": "created_at",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 15,
+      "name": "created_by_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 16,
+      "name": "created_by_login",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 17,
+      "name": "created_by_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 18,
+      "name": "created_by_collaborator",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 19,
+      "name": "daily_log_header_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 20,
+      "name": "date",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 21,
+      "name": "datetime",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 22,
+      "name": "deleted_at",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 23,
+      "name": "is_issue_day",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 24,
+      "name": "location",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 25,
+      "name": "location_created_at",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 26,
+      "name": "location_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 27,
+      "name": "location_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 28,
+      "name": "location_node_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 29,
+      "name": "location_parent_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 30,
+      "name": "location_updated_at",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 31,
+      "name": "position",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 32,
+      "name": "status",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 33,
+      "name": "updated_at",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 34,
+      "name": "vendor",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 35,
+      "name": "payload_sidecar_json",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 36,
+      "name": "payload_hash",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 37,
+      "name": "source_quality",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 38,
+      "name": "payload_seen_first_utc",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 39,
+      "name": "payload_seen_last_utc",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 40,
+      "name": "is_current",
+      "notnull": 1,
+      "pk": 0,
+      "type": "INTEGER"
+    },
+    {
+      "cid": 41,
+      "name": "created_utc",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 42,
+      "name": "updated_utc",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 43,
+      "name": "external_writeback_performed",
+      "notnull": 1,
+      "pk": 0,
+      "type": "INTEGER"
+    },
+    {
+      "cid": 44,
+      "name": "raw_payload_emitted_to_read_model",
+      "notnull": 1,
+      "pk": 0,
+      "type": "INTEGER"
+    },
+    {
+      "cid": 45,
+      "name": "raw_payload_emitted_to_evidence",
+      "notnull": 1,
+      "pk": 0,
+      "type": "INTEGER"
+    }
+  ],
+  "procore_ep_inspections": [
+    {
+      "cid": 0,
+      "name": "record_key",
+      "notnull": 0,
+      "pk": 1,
+      "type": "TEXT"
+    },
+    {
+      "cid": 1,
+      "name": "raw_payload_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 2,
+      "name": "endpoint_key",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 3,
+      "name": "endpoint_family",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 4,
+      "name": "project_key",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 5,
+      "name": "project_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 6,
+      "name": "project_id_hash",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 7,
+      "name": "company_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 8,
+      "name": "company_id_hash",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 9,
+      "name": "record_id",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 10,
+      "name": "record_id_hash",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 11,
+      "name": "parent_record_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 12,
+      "name": "parent_record_id_hash",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 13,
+      "name": "closed_at",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 14,
+      "name": "closed_by",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 15,
+      "name": "closed_by_company_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 16,
+      "name": "closed_by_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 17,
+      "name": "closed_by_login",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 18,
+      "name": "closed_by_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 19,
+      "name": "closed_observations_count",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 20,
+      "name": "conforming_item_count",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 21,
+      "name": "created_at",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 22,
+      "name": "created_by_company_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 23,
+      "name": "created_by_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 24,
+      "name": "created_by_login",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 25,
+      "name": "created_by_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 26,
+      "name": "deficient_item_count",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 27,
+      "name": "deleted",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 28,
+      "name": "description",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 29,
+      "name": "due_at",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 30,
+      "name": "equipment",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 31,
+      "name": "equipment_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 32,
+      "name": "identifier",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 33,
+      "name": "inspected_item_count",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 34,
+      "name": "inspection_date",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 35,
+      "name": "inspection_type_created_at",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 36,
+      "name": "inspection_type_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 37,
+      "name": "inspection_type_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 38,
+      "name": "inspection_type_updated_at",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 39,
+      "name": "item_count",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 40,
+      "name": "list_template_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 41,
+      "name": "list_template_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 42,
+      "name": "location",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 43,
+      "name": "location_code",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 44,
+      "name": "location_created_at",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 45,
+      "name": "location_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 46,
+      "name": "location_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 47,
+      "name": "location_node_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 48,
+      "name": "location_parent_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 49,
+      "name": "location_updated_at",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 50,
+      "name": "managed_equipment_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 51,
+      "name": "name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 52,
+      "name": "neutral_item_count",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 53,
+      "name": "not_applicable_item_count",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 54,
+      "name": "number",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 55,
+      "name": "observations_count",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 56,
+      "name": "overdue",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 57,
+      "name": "point_of_contact",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 58,
+      "name": "point_of_contact_company_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 59,
+      "name": "point_of_contact_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 60,
+      "name": "point_of_contact_login",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 61,
+      "name": "point_of_contact_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 62,
+      "name": "private",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 63,
+      "name": "reinspected_by_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 64,
+      "name": "reinspected_from_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 65,
+      "name": "respondable_item_count",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 66,
+      "name": "responsible_contractor",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 67,
+      "name": "responsible_contractor_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 68,
+      "name": "responsible_contractor_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 69,
+      "name": "schedule",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 70,
+      "name": "specification_section",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 71,
+      "name": "specification_section_description",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 72,
+      "name": "specification_section_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 73,
+      "name": "status",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 74,
+      "name": "template_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 75,
+      "name": "trade",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 76,
+      "name": "trade_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 77,
+      "name": "trade_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 78,
+      "name": "trade_updated_at",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 79,
+      "name": "updated_at",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 80,
+      "name": "payload_sidecar_json",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 81,
+      "name": "payload_hash",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 82,
+      "name": "source_quality",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 83,
+      "name": "payload_seen_first_utc",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 84,
+      "name": "payload_seen_last_utc",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 85,
+      "name": "is_current",
+      "notnull": 1,
+      "pk": 0,
+      "type": "INTEGER"
+    },
+    {
+      "cid": 86,
+      "name": "created_utc",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 87,
+      "name": "updated_utc",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 88,
+      "name": "external_writeback_performed",
+      "notnull": 1,
+      "pk": 0,
+      "type": "INTEGER"
+    },
+    {
+      "cid": 89,
+      "name": "raw_payload_emitted_to_read_model",
+      "notnull": 1,
+      "pk": 0,
+      "type": "INTEGER"
+    },
+    {
+      "cid": 90,
+      "name": "raw_payload_emitted_to_evidence",
+      "notnull": 1,
+      "pk": 0,
+      "type": "INTEGER"
+    }
+  ],
+  "procore_ep_meetings": [
+    {
+      "cid": 0,
+      "name": "record_key",
+      "notnull": 0,
+      "pk": 1,
+      "type": "TEXT"
+    },
+    {
+      "cid": 1,
+      "name": "raw_payload_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 2,
+      "name": "endpoint_key",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 3,
+      "name": "endpoint_family",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 4,
+      "name": "project_key",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 5,
+      "name": "project_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 6,
+      "name": "project_id_hash",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 7,
+      "name": "company_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 8,
+      "name": "company_id_hash",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 9,
+      "name": "record_id",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 10,
+      "name": "record_id_hash",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 11,
+      "name": "parent_record_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 12,
+      "name": "parent_record_id_hash",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 13,
+      "name": "created_at",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 14,
+      "name": "created_by_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 15,
+      "name": "description",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 16,
+      "name": "distributed_at",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 17,
+      "name": "distributed_by",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 18,
+      "name": "distributed_by_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 19,
+      "name": "distributed_by_login",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 20,
+      "name": "distributed_by_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 21,
+      "name": "ends_at",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 22,
+      "name": "is_private",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 23,
+      "name": "last_distributed_event",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 24,
+      "name": "location",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 25,
+      "name": "meeting_template_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 26,
+      "name": "meeting_topics_count",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 27,
+      "name": "mode",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 28,
+      "name": "occurred",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 29,
+      "name": "parent_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 30,
+      "name": "position",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 31,
+      "name": "starts_at",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 32,
+      "name": "title",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 33,
+      "name": "updated_at",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 34,
+      "name": "payload_sidecar_json",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 35,
+      "name": "payload_hash",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 36,
+      "name": "source_quality",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 37,
+      "name": "payload_seen_first_utc",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 38,
+      "name": "payload_seen_last_utc",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 39,
+      "name": "is_current",
+      "notnull": 1,
+      "pk": 0,
+      "type": "INTEGER"
+    },
+    {
+      "cid": 40,
+      "name": "created_utc",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 41,
+      "name": "updated_utc",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 42,
+      "name": "external_writeback_performed",
+      "notnull": 1,
+      "pk": 0,
+      "type": "INTEGER"
+    },
+    {
+      "cid": 43,
+      "name": "raw_payload_emitted_to_read_model",
+      "notnull": 1,
+      "pk": 0,
+      "type": "INTEGER"
+    },
+    {
+      "cid": 44,
+      "name": "raw_payload_emitted_to_evidence",
+      "notnull": 1,
+      "pk": 0,
+      "type": "INTEGER"
+    }
+  ],
+  "procore_ep_observations": [
+    {
+      "cid": 0,
+      "name": "record_key",
+      "notnull": 0,
+      "pk": 1,
+      "type": "TEXT"
+    },
+    {
+      "cid": 1,
+      "name": "raw_payload_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 2,
+      "name": "endpoint_key",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 3,
+      "name": "endpoint_family",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 4,
+      "name": "project_key",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 5,
+      "name": "project_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 6,
+      "name": "project_id_hash",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 7,
+      "name": "company_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 8,
+      "name": "company_id_hash",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 9,
+      "name": "record_id",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 10,
+      "name": "record_id_hash",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 11,
+      "name": "parent_record_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 12,
+      "name": "parent_record_id_hash",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 13,
+      "name": "assignee",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 14,
+      "name": "assignee_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 15,
+      "name": "assignee_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 16,
+      "name": "assignee_vendor",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 17,
+      "name": "assignee_vendor_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 18,
+      "name": "assignee_vendor_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 19,
+      "name": "category_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 20,
+      "name": "closed_at",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 21,
+      "name": "created_at",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 22,
+      "name": "created_by_company_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 23,
+      "name": "created_by_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 24,
+      "name": "created_by_login",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 25,
+      "name": "created_by_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 26,
+      "name": "date_notified",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 27,
+      "name": "deleted_at",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 28,
+      "name": "description",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 29,
+      "name": "description_rich_text",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 30,
+      "name": "due_date",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 31,
+      "name": "location",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 32,
+      "name": "location_created_at",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 33,
+      "name": "location_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 34,
+      "name": "location_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 35,
+      "name": "location_node_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 36,
+      "name": "location_parent_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 37,
+      "name": "location_updated_at",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 38,
+      "name": "name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 39,
+      "name": "number",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 40,
+      "name": "origin",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 41,
+      "name": "origin_payload_checklist_item_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 42,
+      "name": "origin_payload_checklist_list_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 43,
+      "name": "permissions",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 44,
+      "name": "personal",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 45,
+      "name": "priority",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 46,
+      "name": "specification_section",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 47,
+      "name": "specification_section_current_revision_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 48,
+      "name": "specification_section_description",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 49,
+      "name": "specification_section_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 50,
+      "name": "specification_section_number",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 51,
+      "name": "specification_section_viewable_document_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 52,
+      "name": "status",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 53,
+      "name": "trade",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 54,
+      "name": "trade_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 55,
+      "name": "trade_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 56,
+      "name": "trade_updated_at",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 57,
+      "name": "type_company_active",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 58,
+      "name": "type_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 59,
+      "name": "type_localized_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 60,
+      "name": "type_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 61,
+      "name": "type_name_translations",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 62,
+      "name": "type_observations_category_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 63,
+      "name": "type_observations_category_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 64,
+      "name": "type_observations_category_updated_at",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 65,
+      "name": "updated_at",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 66,
+      "name": "payload_sidecar_json",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 67,
+      "name": "payload_hash",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 68,
+      "name": "source_quality",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 69,
+      "name": "payload_seen_first_utc",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 70,
+      "name": "payload_seen_last_utc",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 71,
+      "name": "is_current",
+      "notnull": 1,
+      "pk": 0,
+      "type": "INTEGER"
+    },
+    {
+      "cid": 72,
+      "name": "created_utc",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 73,
+      "name": "updated_utc",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 74,
+      "name": "external_writeback_performed",
+      "notnull": 1,
+      "pk": 0,
+      "type": "INTEGER"
+    },
+    {
+      "cid": 75,
+      "name": "raw_payload_emitted_to_read_model",
+      "notnull": 1,
+      "pk": 0,
+      "type": "INTEGER"
+    },
+    {
+      "cid": 76,
+      "name": "raw_payload_emitted_to_evidence",
+      "notnull": 1,
+      "pk": 0,
+      "type": "INTEGER"
+    }
+  ],
+  "procore_ep_prime_change_orders": [
+    {
+      "cid": 0,
+      "name": "record_key",
+      "notnull": 0,
+      "pk": 1,
+      "type": "TEXT"
+    },
+    {
+      "cid": 1,
+      "name": "raw_payload_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 2,
+      "name": "endpoint_key",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 3,
+      "name": "endpoint_family",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 4,
+      "name": "project_key",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 5,
+      "name": "project_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 6,
+      "name": "project_id_hash",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 7,
+      "name": "company_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 8,
+      "name": "company_id_hash",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 9,
+      "name": "record_id",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 10,
+      "name": "record_id_hash",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 11,
+      "name": "parent_record_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 12,
+      "name": "parent_record_id_hash",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 13,
+      "name": "batch_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 14,
+      "name": "billing_schedule_of_values_status",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 15,
+      "name": "change_order_change_reason",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 16,
+      "name": "change_order_change_reason_change_reason",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 17,
+      "name": "change_order_change_reason_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 18,
+      "name": "contract_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 19,
+      "name": "created_at",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 20,
+      "name": "created_by_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 21,
+      "name": "created_by_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 22,
+      "name": "currency_configuration_currency_iso_code",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 23,
+      "name": "description",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 24,
+      "name": "designated_reviewer",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 25,
+      "name": "designated_reviewer_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 26,
+      "name": "designated_reviewer_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 27,
+      "name": "due_date",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 28,
+      "name": "enable_ssov",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 29,
+      "name": "executed",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 30,
+      "name": "field_change",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 31,
+      "name": "grand_total",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 32,
+      "name": "invoiced_date",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 33,
+      "name": "legacy_package_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 34,
+      "name": "legacy_request_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 35,
+      "name": "location_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 36,
+      "name": "number",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 37,
+      "name": "paid",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 38,
+      "name": "paid_date",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 39,
+      "name": "private",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 40,
+      "name": "received_from",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 41,
+      "name": "received_from_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 42,
+      "name": "received_from_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 43,
+      "name": "reference",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 44,
+      "name": "reviewed_at",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 45,
+      "name": "reviewed_by",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 46,
+      "name": "revised_substantial_completion_date",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 47,
+      "name": "revision",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 48,
+      "name": "schedule_impact_amount",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 49,
+      "name": "signature_required",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 50,
+      "name": "signed_change_order_received_date",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 51,
+      "name": "status",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 52,
+      "name": "title",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 53,
+      "name": "type",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 54,
+      "name": "updated_at",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 55,
+      "name": "payload_sidecar_json",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 56,
+      "name": "payload_hash",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 57,
+      "name": "source_quality",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 58,
+      "name": "payload_seen_first_utc",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 59,
+      "name": "payload_seen_last_utc",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 60,
+      "name": "is_current",
+      "notnull": 1,
+      "pk": 0,
+      "type": "INTEGER"
+    },
+    {
+      "cid": 61,
+      "name": "created_utc",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 62,
+      "name": "updated_utc",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 63,
+      "name": "external_writeback_performed",
+      "notnull": 1,
+      "pk": 0,
+      "type": "INTEGER"
+    },
+    {
+      "cid": 64,
+      "name": "raw_payload_emitted_to_read_model",
+      "notnull": 1,
+      "pk": 0,
+      "type": "INTEGER"
+    },
+    {
+      "cid": 65,
+      "name": "raw_payload_emitted_to_evidence",
+      "notnull": 1,
+      "pk": 0,
+      "type": "INTEGER"
+    }
+  ],
+  "procore_ep_purchase_order_contracts": [
+    {
+      "cid": 0,
+      "name": "record_key",
+      "notnull": 0,
+      "pk": 1,
+      "type": "TEXT"
+    },
+    {
+      "cid": 1,
+      "name": "raw_payload_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 2,
+      "name": "endpoint_key",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 3,
+      "name": "endpoint_family",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 4,
+      "name": "project_key",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 5,
+      "name": "project_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 6,
+      "name": "project_id_hash",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 7,
+      "name": "company_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 8,
+      "name": "company_id_hash",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 9,
+      "name": "record_id",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 10,
+      "name": "record_id_hash",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 11,
+      "name": "parent_record_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 12,
+      "name": "parent_record_id_hash",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 13,
+      "name": "accounting_method",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 14,
+      "name": "allow_change_orders_ssov",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 15,
+      "name": "approval_letter_date",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 16,
+      "name": "approved_change_orders",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 17,
+      "name": "assignee",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 18,
+      "name": "assignee_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 19,
+      "name": "bill_to_address",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 20,
+      "name": "billing_schedule_of_values_status",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 21,
+      "name": "contract_date",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 22,
+      "name": "created_at",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 23,
+      "name": "created_by_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 24,
+      "name": "currency_configuration_currency_iso_code",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 25,
+      "name": "custom_fields_custom_field_214050_value",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 26,
+      "name": "custom_fields_custom_field_214051_value",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 27,
+      "name": "custom_fields_custom_field_214052_value",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 28,
+      "name": "custom_fields_custom_field_214053_value",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 29,
+      "name": "custom_fields_custom_field_214054_value",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 30,
+      "name": "custom_fields_custom_field_214055_value",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 31,
+      "name": "custom_fields_custom_field_214056_value",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 32,
+      "name": "custom_fields_custom_field_214057_value",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 33,
+      "name": "custom_fields_custom_field_214058_value",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 34,
+      "name": "custom_fields_custom_field_214059_value",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 35,
+      "name": "custom_fields_custom_field_214060_value",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 36,
+      "name": "custom_fields_custom_field_214061_value",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 37,
+      "name": "custom_fields_custom_field_214062_value",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 38,
+      "name": "custom_fields_custom_field_214063_value",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 39,
+      "name": "custom_fields_custom_field_214064_value",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 40,
+      "name": "custom_fields_custom_field_214065_value",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 41,
+      "name": "custom_fields_custom_field_214066_value",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 42,
+      "name": "custom_fields_custom_field_214067_value",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 43,
+      "name": "custom_fields_custom_field_214068_value",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 44,
+      "name": "custom_fields_custom_field_214069_value",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 45,
+      "name": "custom_fields_custom_field_214070_value",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 46,
+      "name": "custom_fields_custom_field_214071_value",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 47,
+      "name": "custom_fields_custom_field_214072_value",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 48,
+      "name": "custom_fields_custom_field_214072_value_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 49,
+      "name": "custom_fields_custom_field_214072_value_label",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 50,
+      "name": "custom_fields_custom_field_214074_value",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 51,
+      "name": "custom_fields_custom_field_214075_value",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 52,
+      "name": "custom_fields_custom_field_214076_value",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 53,
+      "name": "custom_fields_custom_field_214077_value",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 54,
+      "name": "custom_fields_custom_field_214078_value",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 55,
+      "name": "custom_fields_custom_field_214078_value_company_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 56,
+      "name": "custom_fields_custom_field_214078_value_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 57,
+      "name": "custom_fields_custom_field_214078_value_label",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 58,
+      "name": "custom_fields_custom_field_214079_value",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 59,
+      "name": "custom_fields_custom_field_214081_value",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 60,
+      "name": "custom_fields_custom_field_214082_value",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 61,
+      "name": "custom_fields_custom_field_214083_value",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 62,
+      "name": "custom_fields_custom_field_214084_value",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 63,
+      "name": "custom_fields_custom_field_214085_value",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 64,
+      "name": "custom_fields_custom_field_214086_value",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 65,
+      "name": "custom_fields_custom_field_214087_value",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 66,
+      "name": "custom_fields_custom_field_214087_value_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 67,
+      "name": "custom_fields_custom_field_214087_value_label",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 68,
+      "name": "custom_fields_custom_field_214088_value",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 69,
+      "name": "custom_fields_custom_field_214089_value",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 70,
+      "name": "custom_fields_custom_field_214090_value",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 71,
+      "name": "custom_fields_custom_field_214091_value",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 72,
+      "name": "custom_fields_custom_field_214092_value",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 73,
+      "name": "custom_fields_custom_field_214095_value",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 74,
+      "name": "custom_fields_custom_field_214096_value",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 75,
+      "name": "deleted_at",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 76,
+      "name": "delivery_date",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 77,
+      "name": "description",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 78,
+      "name": "draft_change_orders_amount",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 79,
+      "name": "enable_ssov",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 80,
+      "name": "executed",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 81,
+      "name": "execution_date",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 82,
+      "name": "grand_total",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 83,
+      "name": "has_change_order_packages",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 84,
+      "name": "has_potential_change_orders",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 85,
+      "name": "issued_on_date",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 86,
+      "name": "letter_of_intent_date",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 87,
+      "name": "number",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 88,
+      "name": "origin_code",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 89,
+      "name": "origin_data",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 90,
+      "name": "origin_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 91,
+      "name": "payment_terms",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 92,
+      "name": "pending_change_orders",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 93,
+      "name": "pending_revised_contract",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 94,
+      "name": "percentage_paid",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 95,
+      "name": "private",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 96,
+      "name": "project_id_col",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 97,
+      "name": "project_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 98,
+      "name": "project_origin_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 99,
+      "name": "remaining_balance_outstanding",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 100,
+      "name": "requisitions_are_enabled",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 101,
+      "name": "retainage_percent",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 102,
+      "name": "returned_date",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 103,
+      "name": "revised_contract",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 104,
+      "name": "ship_to_address",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 105,
+      "name": "ship_via",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 106,
+      "name": "show_line_items_to_non_admins",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 107,
+      "name": "signed_contract_received_date",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 108,
+      "name": "status",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 109,
+      "name": "title",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 110,
+      "name": "total_draw_requests_amount",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 111,
+      "name": "total_payments",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 112,
+      "name": "total_requisitions_amount",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 113,
+      "name": "updated_at",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 114,
+      "name": "vendor_company",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 115,
+      "name": "vendor_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 116,
+      "name": "vendor_origin_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 117,
+      "name": "payload_sidecar_json",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 118,
+      "name": "payload_hash",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 119,
+      "name": "source_quality",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 120,
+      "name": "payload_seen_first_utc",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 121,
+      "name": "payload_seen_last_utc",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 122,
+      "name": "is_current",
+      "notnull": 1,
+      "pk": 0,
+      "type": "INTEGER"
+    },
+    {
+      "cid": 123,
+      "name": "created_utc",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 124,
+      "name": "updated_utc",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 125,
+      "name": "external_writeback_performed",
+      "notnull": 1,
+      "pk": 0,
+      "type": "INTEGER"
+    },
+    {
+      "cid": 126,
+      "name": "raw_payload_emitted_to_read_model",
+      "notnull": 1,
+      "pk": 0,
+      "type": "INTEGER"
+    },
+    {
+      "cid": 127,
+      "name": "raw_payload_emitted_to_evidence",
+      "notnull": 1,
+      "pk": 0,
+      "type": "INTEGER"
+    }
+  ],
+  "procore_ep_rfis": [
+    {
+      "cid": 0,
+      "name": "record_key",
+      "notnull": 0,
+      "pk": 1,
+      "type": "TEXT"
+    },
+    {
+      "cid": 1,
+      "name": "raw_payload_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 2,
+      "name": "endpoint_key",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 3,
+      "name": "endpoint_family",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 4,
+      "name": "project_key",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 5,
+      "name": "project_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 6,
+      "name": "project_id_hash",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 7,
+      "name": "company_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 8,
+      "name": "company_id_hash",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 9,
+      "name": "record_id",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 10,
+      "name": "record_id_hash",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 11,
+      "name": "parent_record_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 12,
+      "name": "parent_record_id_hash",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 13,
+      "name": "assignee",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 14,
+      "name": "assignee_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 15,
+      "name": "assignee_login",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 16,
+      "name": "assignee_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 17,
+      "name": "ball_in_court",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 18,
+      "name": "ball_in_court_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 19,
+      "name": "ball_in_court_login",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 20,
+      "name": "ball_in_court_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 21,
+      "name": "connect_export_origin",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 22,
+      "name": "cost_code",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 23,
+      "name": "cost_code_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 24,
+      "name": "cost_code_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 25,
+      "name": "cost_impact_status",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 26,
+      "name": "cost_impact_value",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 27,
+      "name": "created_at",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 28,
+      "name": "created_by_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 29,
+      "name": "created_by_login",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 30,
+      "name": "created_by_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 31,
+      "name": "current_revision",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 32,
+      "name": "due_date",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 33,
+      "name": "full_number",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 34,
+      "name": "has_revisions",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 35,
+      "name": "initiated_at",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 36,
+      "name": "link",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 37,
+      "name": "location",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 38,
+      "name": "location_created_at",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 39,
+      "name": "location_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 40,
+      "name": "location_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 41,
+      "name": "location_node_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 42,
+      "name": "location_parent_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 43,
+      "name": "location_updated_at",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 44,
+      "name": "location_id_2",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 45,
+      "name": "number",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 46,
+      "name": "prefix",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 47,
+      "name": "priority_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 48,
+      "name": "priority_value",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 49,
+      "name": "private",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 50,
+      "name": "project_stage",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 51,
+      "name": "project_stage_default_stage",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 52,
+      "name": "project_stage_formatted_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 53,
+      "name": "project_stage_formatted_parent_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 54,
+      "name": "project_stage_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 55,
+      "name": "project_stage_is_concept_stage",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 56,
+      "name": "project_stage_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 57,
+      "name": "project_stage_parent_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 58,
+      "name": "proposed_solution",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 59,
+      "name": "received_from",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 60,
+      "name": "received_from_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 61,
+      "name": "received_from_login",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 62,
+      "name": "received_from_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 63,
+      "name": "reference",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 64,
+      "name": "responsible_contractor",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 65,
+      "name": "responsible_contractor_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 66,
+      "name": "responsible_contractor_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 67,
+      "name": "revision",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 68,
+      "name": "rfi_manager_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 69,
+      "name": "rfi_manager_login",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 70,
+      "name": "rfi_manager_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 71,
+      "name": "schedule_impact_status",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 72,
+      "name": "schedule_impact_value",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 73,
+      "name": "source_rfi_header_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 74,
+      "name": "specification_section_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 75,
+      "name": "status",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 76,
+      "name": "sub_job",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 77,
+      "name": "sub_job_code",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 78,
+      "name": "sub_job_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 79,
+      "name": "sub_job_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 80,
+      "name": "subject",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 81,
+      "name": "time_resolved",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 82,
+      "name": "translated_status",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 83,
+      "name": "updated_at",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 84,
+      "name": "payload_sidecar_json",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 85,
+      "name": "payload_hash",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 86,
+      "name": "source_quality",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 87,
+      "name": "payload_seen_first_utc",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 88,
+      "name": "payload_seen_last_utc",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 89,
+      "name": "is_current",
+      "notnull": 1,
+      "pk": 0,
+      "type": "INTEGER"
+    },
+    {
+      "cid": 90,
+      "name": "created_utc",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 91,
+      "name": "updated_utc",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 92,
+      "name": "external_writeback_performed",
+      "notnull": 1,
+      "pk": 0,
+      "type": "INTEGER"
+    },
+    {
+      "cid": 93,
+      "name": "raw_payload_emitted_to_read_model",
+      "notnull": 1,
+      "pk": 0,
+      "type": "INTEGER"
+    },
+    {
+      "cid": 94,
+      "name": "raw_payload_emitted_to_evidence",
+      "notnull": 1,
+      "pk": 0,
+      "type": "INTEGER"
+    }
+  ],
+  "procore_ep_submittals": [
+    {
+      "cid": 0,
+      "name": "record_key",
+      "notnull": 0,
+      "pk": 1,
+      "type": "TEXT"
+    },
+    {
+      "cid": 1,
+      "name": "raw_payload_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 2,
+      "name": "endpoint_key",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 3,
+      "name": "endpoint_family",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 4,
+      "name": "project_key",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 5,
+      "name": "project_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 6,
+      "name": "project_id_hash",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 7,
+      "name": "company_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 8,
+      "name": "company_id_hash",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 9,
+      "name": "record_id",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 10,
+      "name": "record_id_hash",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 11,
+      "name": "parent_record_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 12,
+      "name": "parent_record_id_hash",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 13,
+      "name": "attachments_count",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 14,
+      "name": "buffer_time",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 15,
+      "name": "closed_at",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 16,
+      "name": "created_at",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 17,
+      "name": "created_by_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 18,
+      "name": "created_by_login",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 19,
+      "name": "created_by_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 20,
+      "name": "current_revision",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 21,
+      "name": "custom_fields_custom_field_77760_value",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 22,
+      "name": "custom_fields_custom_field_77761_value",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 23,
+      "name": "custom_fields_custom_field_77761_value_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 24,
+      "name": "custom_fields_custom_field_77761_value_label",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 25,
+      "name": "custom_fields_custom_field_77762_value",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 26,
+      "name": "custom_fields_custom_field_77762_value_company_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 27,
+      "name": "custom_fields_custom_field_77762_value_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 28,
+      "name": "custom_fields_custom_field_77762_value_label",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 29,
+      "name": "custom_fields_custom_field_77763_value",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 30,
+      "name": "custom_fields_custom_field_77764_value",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 31,
+      "name": "distributed_at",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 32,
+      "name": "due_date",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 33,
+      "name": "for_record_only",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 34,
+      "name": "formatted_number",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 35,
+      "name": "is_rejected",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 36,
+      "name": "issue_date",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 37,
+      "name": "location",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 38,
+      "name": "location_created_at",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 39,
+      "name": "location_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 40,
+      "name": "location_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 41,
+      "name": "location_node_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 42,
+      "name": "location_parent_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 43,
+      "name": "location_updated_at",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 44,
+      "name": "number",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 45,
+      "name": "open_date",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 46,
+      "name": "private",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 47,
+      "name": "received_date",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 48,
+      "name": "received_from",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 49,
+      "name": "received_from_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 50,
+      "name": "received_from_login",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 51,
+      "name": "received_from_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 52,
+      "name": "rejected_submittal_log_approver_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 53,
+      "name": "required_on_site_date",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 54,
+      "name": "responsible_contractor",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 55,
+      "name": "responsible_contractor_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 56,
+      "name": "responsible_contractor_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 57,
+      "name": "revision",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 58,
+      "name": "scheduled_task",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 59,
+      "name": "specification_section",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 60,
+      "name": "specification_section_current_revision_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 61,
+      "name": "specification_section_description",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 62,
+      "name": "specification_section_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 63,
+      "name": "specification_section_label",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 64,
+      "name": "specification_section_number",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 65,
+      "name": "specification_section_specification_area_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 66,
+      "name": "specification_section_specification_area_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 67,
+      "name": "specification_section_viewable_document_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 68,
+      "name": "status_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 69,
+      "name": "status_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 70,
+      "name": "status_status",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 71,
+      "name": "sub_job",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 72,
+      "name": "submit_by",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 73,
+      "name": "submittal_manager_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 74,
+      "name": "submittal_manager_login",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 75,
+      "name": "submittal_manager_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 76,
+      "name": "submittal_package",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 77,
+      "name": "submittal_workflow_template",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 78,
+      "name": "submittal_workflow_template_applied_at",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 79,
+      "name": "title",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 80,
+      "name": "type",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 81,
+      "name": "type_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 82,
+      "name": "type_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 83,
+      "name": "type_translated_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 84,
+      "name": "updated_at",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 85,
+      "name": "payload_sidecar_json",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 86,
+      "name": "payload_hash",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 87,
+      "name": "source_quality",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 88,
+      "name": "payload_seen_first_utc",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 89,
+      "name": "payload_seen_last_utc",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 90,
+      "name": "is_current",
+      "notnull": 1,
+      "pk": 0,
+      "type": "INTEGER"
+    },
+    {
+      "cid": 91,
+      "name": "created_utc",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 92,
+      "name": "updated_utc",
+      "notnull": 1,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 93,
+      "name": "external_writeback_performed",
+      "notnull": 1,
+      "pk": 0,
+      "type": "INTEGER"
+    },
+    {
+      "cid": 94,
+      "name": "raw_payload_emitted_to_read_model",
+      "notnull": 1,
+      "pk": 0,
+      "type": "INTEGER"
+    },
+    {
+      "cid": 95,
+      "name": "raw_payload_emitted_to_evidence",
+      "notnull": 1,
+      "pk": 0,
+      "type": "INTEGER"
+    },
+    {
+      "cid": 96,
+      "name": "submittal_package_attachments_count",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 97,
+      "name": "submittal_package_created_by_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 98,
+      "name": "submittal_package_created_by_login",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 99,
+      "name": "submittal_package_created_by_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 100,
+      "name": "submittal_package_description",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 101,
+      "name": "submittal_package_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 102,
+      "name": "submittal_package_number",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 103,
+      "name": "submittal_package_specification_section_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 104,
+      "name": "submittal_package_title",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 105,
+      "name": "submittal_package_updated_at",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 106,
+      "name": "submittal_workflow_template_id",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    },
+    {
+      "cid": 107,
+      "name": "submittal_workflow_template_name",
+      "notnull": 0,
+      "pk": 0,
+      "type": "TEXT"
+    }
+  ]
+}

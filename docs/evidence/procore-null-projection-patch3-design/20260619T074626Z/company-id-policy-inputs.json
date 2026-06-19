@@ -1,0 +1,402 @@
+{
+  "body_free": true,
+  "company_id_policy_field_count": 4,
+  "fields": [
+    {
+      "candidate_path_counts": [
+        {
+          "json_path": "$.company",
+          "object_keys_present": [
+            "id",
+            "name"
+          ],
+          "path_missing_count": 0,
+          "path_non_empty_count": 14,
+          "path_null_or_empty_count": 0,
+          "path_present_count": 14,
+          "raw_payload_values_emitted": false
+        },
+        {
+          "json_path": "$.company.id",
+          "object_keys_present": [],
+          "path_missing_count": 0,
+          "path_non_empty_count": 14,
+          "path_null_or_empty_count": 0,
+          "path_present_count": 14,
+          "raw_payload_values_emitted": false
+        },
+        {
+          "json_path": "$.company_id",
+          "object_keys_present": [],
+          "path_missing_count": 14,
+          "path_non_empty_count": 0,
+          "path_null_or_empty_count": 0,
+          "path_present_count": 0,
+          "raw_payload_values_emitted": false
+        },
+        {
+          "json_path": "$.project.company.id",
+          "object_keys_present": [],
+          "path_missing_count": 14,
+          "path_non_empty_count": 0,
+          "path_null_or_empty_count": 0,
+          "path_present_count": 0,
+          "raw_payload_values_emitted": false
+        },
+        {
+          "json_path": "$.project.company_id",
+          "object_keys_present": [],
+          "path_missing_count": 14,
+          "path_non_empty_count": 0,
+          "path_null_or_empty_count": 0,
+          "path_present_count": 0,
+          "raw_payload_values_emitted": false
+        }
+      ],
+      "column": "company_id",
+      "eligible_derivation_sources": [
+        "explicit_request_context",
+        "project_registry",
+        "documented_company_scoped_endpoint_context"
+      ],
+      "endpoint_family": "foundation",
+      "endpoint_key": "projects",
+      "evidence_basis": "Standard company_id requires repository-wide derivation policy and table convention proof.",
+      "null_rate": 1.0,
+      "policy_recommendation": "defer_until_repository_wide_company_id_policy_approved",
+      "post_proof_decision_class": "company_id_policy_deferred",
+      "post_proof_next_action": "defer_company_id_policy",
+      "prohibited_derivation_sources": [
+        "nested_vendor_id",
+        "nested_business_party_id",
+        "neighboring_company_like_paths_without_context_proof"
+      ],
+      "raw_detection": {
+        "classification": "all_null",
+        "root_cause_class": "schema_column_not_in_projection_registry",
+        "suspected_projection_defect": true
+      },
+      "raw_payload_rows_inspected": 14,
+      "raw_payload_values_emitted": false,
+      "required_future_provenance_fields": [
+        "company_id_source",
+        "company_id_source_kind",
+        "company_id_source_ref"
+      ],
+      "row_count": 14,
+      "table": "procore_ep_projects"
+    },
+    {
+      "candidate_path_counts": [
+        {
+          "json_path": "$.company",
+          "object_keys_present": [
+            "id",
+            "name"
+          ],
+          "path_missing_count": 0,
+          "path_non_empty_count": 12,
+          "path_null_or_empty_count": 0,
+          "path_present_count": 12,
+          "raw_payload_values_emitted": false
+        },
+        {
+          "json_path": "$.company.id",
+          "object_keys_present": [],
+          "path_missing_count": 0,
+          "path_non_empty_count": 12,
+          "path_null_or_empty_count": 0,
+          "path_present_count": 12,
+          "raw_payload_values_emitted": false
+        },
+        {
+          "json_path": "$.company_id",
+          "object_keys_present": [],
+          "path_missing_count": 12,
+          "path_non_empty_count": 0,
+          "path_null_or_empty_count": 0,
+          "path_present_count": 0,
+          "raw_payload_values_emitted": false
+        },
+        {
+          "json_path": "$.project.company.id",
+          "object_keys_present": [],
+          "path_missing_count": 12,
+          "path_non_empty_count": 0,
+          "path_null_or_empty_count": 0,
+          "path_present_count": 0,
+          "raw_payload_values_emitted": false
+        },
+        {
+          "json_path": "$.project.company_id",
+          "object_keys_present": [],
+          "path_missing_count": 12,
+          "path_non_empty_count": 0,
+          "path_null_or_empty_count": 0,
+          "path_present_count": 0,
+          "raw_payload_values_emitted": false
+        }
+      ],
+      "column": "company_id",
+      "eligible_derivation_sources": [
+        "explicit_request_context",
+        "project_registry",
+        "documented_company_scoped_endpoint_context"
+      ],
+      "endpoint_family": "purchase_orders",
+      "endpoint_key": "purchase-order-line-items",
+      "evidence_basis": "Standard company_id requires repository-wide derivation policy and table convention proof.",
+      "null_rate": 1.0,
+      "policy_recommendation": "defer_until_repository_wide_company_id_policy_approved",
+      "post_proof_decision_class": "company_id_policy_deferred",
+      "post_proof_next_action": "defer_company_id_policy",
+      "prohibited_derivation_sources": [
+        "nested_vendor_id",
+        "nested_business_party_id",
+        "neighboring_company_like_paths_without_context_proof"
+      ],
+      "raw_detection": {
+        "classification": "all_null",
+        "root_cause_class": "schema_column_not_in_projection_registry",
+        "suspected_projection_defect": true
+      },
+      "raw_payload_rows_inspected": 12,
+      "raw_payload_values_emitted": false,
+      "required_future_provenance_fields": [
+        "company_id_source",
+        "company_id_source_kind",
+        "company_id_source_ref"
+      ],
+      "row_count": 12,
+      "table": "procore_ep_purchase_order_line_items"
+    },
+    {
+      "candidate_path_counts": [
+        {
+          "json_path": "$.change_event.change_event_line_items[].cost_type.company_id",
+          "object_keys_present": [],
+          "path_missing_count": 0,
+          "path_non_empty_count": 7,
+          "path_null_or_empty_count": 0,
+          "path_present_count": 7,
+          "raw_payload_values_emitted": false
+        },
+        {
+          "json_path": "$.change_event.change_order_change_reason.company_id",
+          "object_keys_present": [],
+          "path_missing_count": 0,
+          "path_non_empty_count": 7,
+          "path_null_or_empty_count": 0,
+          "path_present_count": 7,
+          "raw_payload_values_emitted": false
+        },
+        {
+          "json_path": "$.company.id",
+          "object_keys_present": [],
+          "path_missing_count": 7,
+          "path_non_empty_count": 0,
+          "path_null_or_empty_count": 0,
+          "path_present_count": 0,
+          "raw_payload_values_emitted": false
+        },
+        {
+          "json_path": "$.company_id",
+          "object_keys_present": [],
+          "path_missing_count": 7,
+          "path_non_empty_count": 0,
+          "path_null_or_empty_count": 0,
+          "path_present_count": 0,
+          "raw_payload_values_emitted": false
+        },
+        {
+          "json_path": "$.project.company.id",
+          "object_keys_present": [],
+          "path_missing_count": 7,
+          "path_non_empty_count": 0,
+          "path_null_or_empty_count": 0,
+          "path_present_count": 0,
+          "raw_payload_values_emitted": false
+        },
+        {
+          "json_path": "$.project.company_id",
+          "object_keys_present": [],
+          "path_missing_count": 7,
+          "path_non_empty_count": 0,
+          "path_null_or_empty_count": 0,
+          "path_present_count": 0,
+          "raw_payload_values_emitted": false
+        }
+      ],
+      "column": "company_id",
+      "eligible_derivation_sources": [
+        "explicit_request_context",
+        "project_registry",
+        "documented_company_scoped_endpoint_context"
+      ],
+      "endpoint_family": "change_management",
+      "endpoint_key": "rfqs",
+      "evidence_basis": "Standard company_id requires repository-wide derivation policy and table convention proof.",
+      "null_rate": 1.0,
+      "policy_recommendation": "defer_until_repository_wide_company_id_policy_approved",
+      "post_proof_decision_class": "company_id_policy_deferred",
+      "post_proof_next_action": "defer_company_id_policy",
+      "prohibited_derivation_sources": [
+        "nested_vendor_id",
+        "nested_business_party_id",
+        "neighboring_company_like_paths_without_context_proof"
+      ],
+      "raw_detection": {
+        "classification": "all_null",
+        "root_cause_class": "schema_column_not_in_projection_registry",
+        "suspected_projection_defect": true
+      },
+      "raw_payload_rows_inspected": 7,
+      "raw_payload_values_emitted": false,
+      "required_future_provenance_fields": [
+        "company_id_source",
+        "company_id_source_kind",
+        "company_id_source_ref"
+      ],
+      "row_count": 7,
+      "table": "procore_ep_rfqs"
+    },
+    {
+      "candidate_path_counts": [
+        {
+          "json_path": "$.change_event.change_event_line_items[].company.id",
+          "object_keys_present": [],
+          "path_missing_count": 7,
+          "path_non_empty_count": 0,
+          "path_null_or_empty_count": 0,
+          "path_present_count": 0,
+          "raw_payload_values_emitted": false
+        },
+        {
+          "json_path": "$.change_event.change_event_line_items[].company_id",
+          "object_keys_present": [],
+          "path_missing_count": 7,
+          "path_non_empty_count": 0,
+          "path_null_or_empty_count": 0,
+          "path_present_count": 0,
+          "raw_payload_values_emitted": false
+        },
+        {
+          "json_path": "$.change_event.change_event_line_items[].cost_type.company_id",
+          "object_keys_present": [],
+          "path_missing_count": 0,
+          "path_non_empty_count": 7,
+          "path_null_or_empty_count": 0,
+          "path_present_count": 7,
+          "raw_payload_values_emitted": false
+        },
+        {
+          "json_path": "$.change_event.change_event_line_items[].project.company_id",
+          "object_keys_present": [],
+          "path_missing_count": 7,
+          "path_non_empty_count": 0,
+          "path_null_or_empty_count": 0,
+          "path_present_count": 0,
+          "raw_payload_values_emitted": false
+        },
+        {
+          "json_path": "$.change_event.change_order_change_reason.company_id",
+          "object_keys_present": [],
+          "path_missing_count": 0,
+          "path_non_empty_count": 7,
+          "path_null_or_empty_count": 0,
+          "path_present_count": 7,
+          "raw_payload_values_emitted": false
+        },
+        {
+          "json_path": "$.company.id",
+          "object_keys_present": [],
+          "path_missing_count": 7,
+          "path_non_empty_count": 0,
+          "path_null_or_empty_count": 0,
+          "path_present_count": 0,
+          "raw_payload_values_emitted": false
+        },
+        {
+          "json_path": "$.company_id",
+          "object_keys_present": [],
+          "path_missing_count": 7,
+          "path_non_empty_count": 0,
+          "path_null_or_empty_count": 0,
+          "path_present_count": 0,
+          "raw_payload_values_emitted": false
+        },
+        {
+          "json_path": "$.project.company.id",
+          "object_keys_present": [],
+          "path_missing_count": 7,
+          "path_non_empty_count": 0,
+          "path_null_or_empty_count": 0,
+          "path_present_count": 0,
+          "raw_payload_values_emitted": false
+        },
+        {
+          "json_path": "$.project.company_id",
+          "object_keys_present": [],
+          "path_missing_count": 7,
+          "path_non_empty_count": 0,
+          "path_null_or_empty_count": 0,
+          "path_present_count": 0,
+          "raw_payload_values_emitted": false
+        }
+      ],
+      "column": "company_id",
+      "eligible_derivation_sources": [
+        "explicit_request_context",
+        "project_registry",
+        "documented_company_scoped_endpoint_context"
+      ],
+      "endpoint_family": "change_management",
+      "endpoint_key": "rfqs",
+      "evidence_basis": "Standard company_id requires repository-wide derivation policy and table convention proof.",
+      "null_rate": 1.0,
+      "policy_recommendation": "defer_until_repository_wide_company_id_policy_approved",
+      "post_proof_decision_class": "company_id_policy_deferred",
+      "post_proof_next_action": "defer_company_id_policy",
+      "prohibited_derivation_sources": [
+        "nested_vendor_id",
+        "nested_business_party_id",
+        "neighboring_company_like_paths_without_context_proof"
+      ],
+      "raw_detection": {
+        "classification": "all_null",
+        "root_cause_class": "schema_column_not_in_projection_registry",
+        "suspected_projection_defect": true
+      },
+      "raw_payload_rows_inspected": 7,
+      "raw_payload_values_emitted": false,
+      "required_future_provenance_fields": [
+        "company_id_source",
+        "company_id_source_kind",
+        "company_id_source_ref"
+      ],
+      "row_count": 52,
+      "table": "procore_ep_rfqs_change_event_change_event_line_items"
+    }
+  ],
+  "generated_at_utc": "2026-06-19T07:50:18Z",
+  "policy_summary": {
+    "future_implementation_requires": [
+      "rollback_rules",
+      "backfill_rules",
+      "copied_db_proof_before_production_apply"
+    ],
+    "future_provenance_required_unless_equivalent_repo_truth_exists": [
+      "company_id_source",
+      "company_id_source_kind",
+      "company_id_source_ref"
+    ],
+    "nested_company_vendor_business_party_ids": "remain_in_generated_nested_columns_or_entity_reference_dimensions",
+    "standard_company_id_allowed_sources": [
+      "explicit_request_context",
+      "project_registry",
+      "documented_company_scoped_endpoint_context"
+    ]
+  },
+  "raw_payload_values_emitted": false,
+  "source_audit_json": "docs/evidence/procore-null-projection-patch2/20260619T071034Z/post-patch2-null-projection-audit.json"
+}

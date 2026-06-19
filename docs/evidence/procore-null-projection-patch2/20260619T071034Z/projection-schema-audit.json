@@ -1,0 +1,18 @@
+{
+  "command": "/Users/bobbyfetting/hb-personal-assistant/.venv/bin/hb-assistant procore analytics projection-schema-audit --json",
+  "returncode": 0,
+  "stderr": "",
+  "stdout_json": {
+    "command": "hb-assistant procore analytics projection-schema-audit",
+    "guardrails": {
+      "emits_values": false,
+      "live_calls_disabled": true,
+      "writeback": "none"
+    },
+    "mismatches": [],
+    "missing_column_count": 0,
+    "missing_table_count": 0,
+    "ok": true,
+    "runtime_plan_schema_mismatches": 0
+  }
+}

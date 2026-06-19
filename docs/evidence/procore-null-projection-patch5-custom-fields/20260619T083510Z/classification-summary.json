@@ -1,0 +1,169 @@
+{
+  "fields": [
+    {
+      "bare_column": "custom_fields_custom_field_214072_value",
+      "bare_column_non_null_after_replay": 0,
+      "comparative_sibling_columns": [
+        {
+          "column": "custom_fields_custom_field_214072_value_label",
+          "registry_json_path": "$.custom_fields.custom_field_214072.value.label",
+          "scope": "out_of_scope_comparative_metadata"
+        }
+      ],
+      "container_path_check": {
+        "json_path": "$.custom_fields.custom_field_214072.value",
+        "object_keys_present": [
+          "id",
+          "label"
+        ],
+        "path_missing_count": 0,
+        "path_non_empty_count": 9,
+        "path_null_or_empty_count": 2,
+        "path_present_count": 11,
+        "raw_payload_values_emitted": false,
+        "shape_counts": {
+          "null": 2,
+          "object": 9
+        }
+      },
+      "endpoint_key": "purchase-order-contracts",
+      "post_proof_decision": {
+        "decision_class": "covered_by_existing_scalar_decomposition_columns",
+        "decision_status": "custom_field_container_body_free_proof",
+        "evidence_basis": "Patch 5 copied-DB replay and body-free source-shape proof.",
+        "mapping_candidate": false,
+        "next_action": "no_action_existing_scalar_decomposition_verified"
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 8,
+          "after_reset_non_null_count": 0,
+          "column": "custom_fields_custom_field_214072_value_id",
+          "registry_json_path": "$.custom_fields.custom_field_214072.value.id",
+          "source_non_empty_count": 9,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_purchase_order_contracts"
+    },
+    {
+      "bare_column": "custom_fields_custom_field_214078_value",
+      "bare_column_non_null_after_replay": 0,
+      "comparative_sibling_columns": [
+        {
+          "column": "custom_fields_custom_field_214078_value_label",
+          "registry_json_path": "$.custom_fields.custom_field_214078.value.label",
+          "scope": "out_of_scope_comparative_metadata"
+        }
+      ],
+      "container_path_check": {
+        "json_path": "$.custom_fields.custom_field_214078.value",
+        "object_keys_present": [
+          "company_name",
+          "id",
+          "label"
+        ],
+        "path_missing_count": 0,
+        "path_non_empty_count": 9,
+        "path_null_or_empty_count": 2,
+        "path_present_count": 11,
+        "raw_payload_values_emitted": false,
+        "shape_counts": {
+          "null": 2,
+          "object": 9
+        }
+      },
+      "endpoint_key": "purchase-order-contracts",
+      "post_proof_decision": {
+        "decision_class": "covered_by_existing_scalar_decomposition_columns",
+        "decision_status": "custom_field_container_body_free_proof",
+        "evidence_basis": "Patch 5 copied-DB replay and body-free source-shape proof.",
+        "mapping_candidate": false,
+        "next_action": "no_action_existing_scalar_decomposition_verified"
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 7,
+          "after_reset_non_null_count": 0,
+          "column": "custom_fields_custom_field_214078_value_company_name",
+          "registry_json_path": "$.custom_fields.custom_field_214078.value.company_name",
+          "source_non_empty_count": 8,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 8,
+          "after_reset_non_null_count": 0,
+          "column": "custom_fields_custom_field_214078_value_id",
+          "registry_json_path": "$.custom_fields.custom_field_214078.value.id",
+          "source_non_empty_count": 9,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_purchase_order_contracts"
+    },
+    {
+      "bare_column": "custom_fields_custom_field_214087_value",
+      "bare_column_non_null_after_replay": 0,
+      "comparative_sibling_columns": [
+        {
+          "column": "custom_fields_custom_field_214087_value_label",
+          "registry_json_path": "$.custom_fields.custom_field_214087.value.label",
+          "scope": "out_of_scope_comparative_metadata"
+        }
+      ],
+      "container_path_check": {
+        "json_path": "$.custom_fields.custom_field_214087.value",
+        "object_keys_present": [
+          "id",
+          "label"
+        ],
+        "path_missing_count": 0,
+        "path_non_empty_count": 9,
+        "path_null_or_empty_count": 2,
+        "path_present_count": 11,
+        "raw_payload_values_emitted": false,
+        "shape_counts": {
+          "null": 2,
+          "object": 9
+        }
+      },
+      "endpoint_key": "purchase-order-contracts",
+      "post_proof_decision": {
+        "decision_class": "covered_by_existing_scalar_decomposition_columns",
+        "decision_status": "custom_field_container_body_free_proof",
+        "evidence_basis": "Patch 5 copied-DB replay and body-free source-shape proof.",
+        "mapping_candidate": false,
+        "next_action": "no_action_existing_scalar_decomposition_verified"
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 8,
+          "after_reset_non_null_count": 0,
+          "column": "custom_fields_custom_field_214087_value_id",
+          "registry_json_path": "$.custom_fields.custom_field_214087.value.id",
+          "source_non_empty_count": 9,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_purchase_order_contracts"
+    }
+  ],
+  "generated_at_utc": "2026-06-19T08:35:35Z",
+  "guardrails": {
+    "live_calls_disabled": true,
+    "raw_payload_values_emitted": false,
+    "writeback": "none"
+  },
+  "high_confidence_mapping_candidates": 0,
+  "parent_status_counts": {
+    "covered_by_existing_scalar_decomposition_columns": 3
+  },
+  "scalar_status_counts": {
+    "already_replays_existing_scalar_columns": 4
+  },
+  "target_container_count": 3,
+  "target_scalar_count": 4
+}

@@ -1,0 +1,833 @@
+{
+  "raw_values_emitted": false,
+  "targets": {
+    "budget-detail-columns": {
+      "paths": {
+        "aggregatable": {
+          "non_empty": 458,
+          "present": 458,
+          "samples": [
+            {
+              "raw_payload_ref": "5832d44cdbed2a41",
+              "shape": {
+                "type": "bool"
+              }
+            },
+            {
+              "raw_payload_ref": "28f991dd585a81e4",
+              "shape": {
+                "type": "bool"
+              }
+            },
+            {
+              "raw_payload_ref": "5d485c4cf236192e",
+              "shape": {
+                "type": "bool"
+              }
+            },
+            {
+              "raw_payload_ref": "c32367d2ff94700a",
+              "shape": {
+                "type": "bool"
+              }
+            },
+            {
+              "raw_payload_ref": "7e4a41ba5d5de626",
+              "shape": {
+                "type": "bool"
+              }
+            }
+          ]
+        },
+        "filterable": {
+          "non_empty": 458,
+          "present": 458,
+          "samples": [
+            {
+              "raw_payload_ref": "d051d49612f679cd",
+              "shape": {
+                "type": "bool"
+              }
+            },
+            {
+              "raw_payload_ref": "0b4c400e006afb66",
+              "shape": {
+                "type": "bool"
+              }
+            },
+            {
+              "raw_payload_ref": "833faaaec03b0238",
+              "shape": {
+                "type": "bool"
+              }
+            },
+            {
+              "raw_payload_ref": "8894c8e62f840ce5",
+              "shape": {
+                "type": "bool"
+              }
+            },
+            {
+              "raw_payload_ref": "dd9cd55be7890fec",
+              "shape": {
+                "type": "bool"
+              }
+            }
+          ]
+        },
+        "groupable": {
+          "non_empty": 458,
+          "present": 458,
+          "samples": [
+            {
+              "raw_payload_ref": "eb0f19d4a3be3dd6",
+              "shape": {
+                "type": "bool"
+              }
+            },
+            {
+              "raw_payload_ref": "3a59d2799a1f4e51",
+              "shape": {
+                "type": "bool"
+              }
+            },
+            {
+              "raw_payload_ref": "449fcc424d94da92",
+              "shape": {
+                "type": "bool"
+              }
+            },
+            {
+              "raw_payload_ref": "d994c1816f4e2ed2",
+              "shape": {
+                "type": "bool"
+              }
+            },
+            {
+              "raw_payload_ref": "4894bf692b440f9d",
+              "shape": {
+                "type": "bool"
+              }
+            }
+          ]
+        },
+        "name": {
+          "non_empty": 458,
+          "present": 458,
+          "samples": [
+            {
+              "raw_payload_ref": "d903d7c340bbdefb",
+              "shape": {
+                "len": 22,
+                "looks_like_datetime": false,
+                "type": "str"
+              }
+            },
+            {
+              "raw_payload_ref": "dfac244e3e1009e6",
+              "shape": {
+                "len": 20,
+                "looks_like_datetime": false,
+                "type": "str"
+              }
+            },
+            {
+              "raw_payload_ref": "a97209635f291a74",
+              "shape": {
+                "len": 13,
+                "looks_like_datetime": false,
+                "type": "str"
+              }
+            },
+            {
+              "raw_payload_ref": "bc0e0e3bebccddc4",
+              "shape": {
+                "len": 5,
+                "looks_like_datetime": false,
+                "type": "str"
+              }
+            },
+            {
+              "raw_payload_ref": "8d0b8ddcb4883fe4",
+              "shape": {
+                "len": 11,
+                "looks_like_datetime": false,
+                "type": "str"
+              }
+            }
+          ]
+        },
+        "position": {
+          "non_empty": 458,
+          "present": 458,
+          "samples": [
+            {
+              "raw_payload_ref": "24ffcd385a84c9ef",
+              "shape": {
+                "type": "int"
+              }
+            },
+            {
+              "raw_payload_ref": "d2c60941fda61b61",
+              "shape": {
+                "type": "int"
+              }
+            },
+            {
+              "raw_payload_ref": "9a767624d3fc8d03",
+              "shape": {
+                "type": "int"
+              }
+            },
+            {
+              "raw_payload_ref": "3541ca7c92a53948",
+              "shape": {
+                "type": "int"
+              }
+            },
+            {
+              "raw_payload_ref": "a98c6c0ea3ac81c5",
+              "shape": {
+                "type": "int"
+              }
+            }
+          ]
+        },
+        "type": {
+          "non_empty": 458,
+          "present": 458,
+          "samples": [
+            {
+              "raw_payload_ref": "2c7c08a89dd8cd31",
+              "shape": {
+                "len": 8,
+                "looks_like_datetime": false,
+                "type": "str"
+              }
+            },
+            {
+              "raw_payload_ref": "e020979d1fc494b8",
+              "shape": {
+                "len": 8,
+                "looks_like_datetime": false,
+                "type": "str"
+              }
+            },
+            {
+              "raw_payload_ref": "4fe32f365a525bba",
+              "shape": {
+                "len": 6,
+                "looks_like_datetime": false,
+                "type": "str"
+              }
+            },
+            {
+              "raw_payload_ref": "2e71eda51d3b72f0",
+              "shape": {
+                "len": 6,
+                "looks_like_datetime": false,
+                "type": "str"
+              }
+            },
+            {
+              "raw_payload_ref": "7d4eb5e330c18669",
+              "shape": {
+                "len": 6,
+                "looks_like_datetime": false,
+                "type": "str"
+              }
+            }
+          ]
+        },
+        "visible": {
+          "missing": 458,
+          "samples": []
+        }
+      },
+      "rows_inspected": 458
+    },
+    "budget-detail-rows": {
+      "paths": {
+        "actual_cost": {
+          "missing": 1000,
+          "samples": []
+        },
+        "cost_type": {
+          "missing": 1000,
+          "samples": []
+        },
+        "cost_type.id": {
+          "missing": 1000,
+          "samples": []
+        },
+        "cost_type.name": {
+          "missing": 1000,
+          "samples": []
+        },
+        "currency_configuration.currency_iso_code": {
+          "missing": 1000,
+          "samples": []
+        },
+        "currency_iso_code": {
+          "missing": 1000,
+          "samples": []
+        },
+        "line_item_type": {
+          "missing": 1000,
+          "samples": []
+        },
+        "line_item_type.id": {
+          "missing": 1000,
+          "samples": []
+        },
+        "line_item_type.name": {
+          "missing": 1000,
+          "samples": []
+        }
+      },
+      "rows_inspected": 1000
+    },
+    "commitment-change-orders": {
+      "paths": {
+        "change_order_change_reason.change_reason": {
+          "missing": 102,
+          "non_empty": 98,
+          "present": 98,
+          "samples": [
+            {
+              "raw_payload_ref": "eb4b2624e160997c",
+              "shape": {
+                "len": 5,
+                "looks_like_datetime": false,
+                "type": "str"
+              }
+            },
+            {
+              "raw_payload_ref": "1d0bfbe00bfa341d",
+              "shape": {
+                "len": 5,
+                "looks_like_datetime": false,
+                "type": "str"
+              }
+            },
+            {
+              "raw_payload_ref": "dbb1cc09a9860f6f",
+              "shape": {
+                "len": 9,
+                "looks_like_datetime": false,
+                "type": "str"
+              }
+            },
+            {
+              "raw_payload_ref": "e321f9fa433b14d3",
+              "shape": {
+                "len": 5,
+                "looks_like_datetime": false,
+                "type": "str"
+              }
+            },
+            {
+              "raw_payload_ref": "a0ffb1090a67f3dd",
+              "shape": {
+                "len": 14,
+                "looks_like_datetime": false,
+                "type": "str"
+              }
+            }
+          ]
+        },
+        "change_order_change_reason.id": {
+          "missing": 102,
+          "non_empty": 98,
+          "present": 98,
+          "samples": [
+            {
+              "raw_payload_ref": "45c818b6c5eafa4c",
+              "shape": {
+                "type": "int"
+              }
+            },
+            {
+              "raw_payload_ref": "03dacace9f44f644",
+              "shape": {
+                "type": "int"
+              }
+            },
+            {
+              "raw_payload_ref": "76204a63caabf59d",
+              "shape": {
+                "type": "int"
+              }
+            },
+            {
+              "raw_payload_ref": "a7dd75d1b9727d5c",
+              "shape": {
+                "type": "int"
+              }
+            },
+            {
+              "raw_payload_ref": "283fdbf1c7ec11ad",
+              "shape": {
+                "type": "int"
+              }
+            }
+          ]
+        },
+        "designated_reviewer.id": {
+          "missing": 132,
+          "non_empty": 68,
+          "present": 68,
+          "samples": [
+            {
+              "raw_payload_ref": "1d82e596ab2150db",
+              "shape": {
+                "type": "int"
+              }
+            },
+            {
+              "raw_payload_ref": "f90698a78875bb89",
+              "shape": {
+                "type": "int"
+              }
+            },
+            {
+              "raw_payload_ref": "76276f39d1bc14f3",
+              "shape": {
+                "type": "int"
+              }
+            },
+            {
+              "raw_payload_ref": "034c5c1fb7972dd1",
+              "shape": {
+                "type": "int"
+              }
+            },
+            {
+              "raw_payload_ref": "26700764691ce80b",
+              "shape": {
+                "type": "int"
+              }
+            }
+          ]
+        },
+        "designated_reviewer.name": {
+          "missing": 132,
+          "non_empty": 68,
+          "present": 68,
+          "samples": [
+            {
+              "raw_payload_ref": "e4268f9ef4f85f2a",
+              "shape": {
+                "len": 11,
+                "looks_like_datetime": false,
+                "type": "str"
+              }
+            },
+            {
+              "raw_payload_ref": "ddca48e3fbd294d2",
+              "shape": {
+                "len": 11,
+                "looks_like_datetime": false,
+                "type": "str"
+              }
+            },
+            {
+              "raw_payload_ref": "8e37e340d9078652",
+              "shape": {
+                "len": 11,
+                "looks_like_datetime": false,
+                "type": "str"
+              }
+            },
+            {
+              "raw_payload_ref": "86a3bd2df0fd4e96",
+              "shape": {
+                "len": 11,
+                "looks_like_datetime": false,
+                "type": "str"
+              }
+            },
+            {
+              "raw_payload_ref": "d3634b3d7fd59493",
+              "shape": {
+                "len": 14,
+                "looks_like_datetime": false,
+                "type": "str"
+              }
+            }
+          ]
+        },
+        "received_from.id": {
+          "missing": 179,
+          "non_empty": 21,
+          "present": 21,
+          "samples": [
+            {
+              "raw_payload_ref": "5205a13c0a2e3668",
+              "shape": {
+                "type": "int"
+              }
+            },
+            {
+              "raw_payload_ref": "41c1f37874db7c68",
+              "shape": {
+                "type": "int"
+              }
+            },
+            {
+              "raw_payload_ref": "e07eb40e38eb080d",
+              "shape": {
+                "type": "int"
+              }
+            },
+            {
+              "raw_payload_ref": "bf0bdb167b737931",
+              "shape": {
+                "type": "int"
+              }
+            },
+            {
+              "raw_payload_ref": "c5f12603e353d2c9",
+              "shape": {
+                "type": "int"
+              }
+            }
+          ]
+        },
+        "received_from.name": {
+          "missing": 179,
+          "non_empty": 21,
+          "present": 21,
+          "samples": [
+            {
+              "raw_payload_ref": "19d9f7163693e344",
+              "shape": {
+                "len": 12,
+                "looks_like_datetime": false,
+                "type": "str"
+              }
+            },
+            {
+              "raw_payload_ref": "60364e4b6c5412cb",
+              "shape": {
+                "len": 16,
+                "looks_like_datetime": false,
+                "type": "str"
+              }
+            },
+            {
+              "raw_payload_ref": "bd95855b2b9db41a",
+              "shape": {
+                "len": 10,
+                "looks_like_datetime": false,
+                "type": "str"
+              }
+            },
+            {
+              "raw_payload_ref": "34f4cc61953132a2",
+              "shape": {
+                "len": 10,
+                "looks_like_datetime": false,
+                "type": "str"
+              }
+            },
+            {
+              "raw_payload_ref": "a3cd8762487c8df3",
+              "shape": {
+                "len": 13,
+                "looks_like_datetime": false,
+                "type": "str"
+              }
+            }
+          ]
+        },
+        "reviewed_by.id": {
+          "missing": 199,
+          "non_empty": 1,
+          "present": 1,
+          "samples": [
+            {
+              "raw_payload_ref": "d1a63be33b50c158",
+              "shape": {
+                "type": "int"
+              }
+            }
+          ]
+        },
+        "reviewed_by.name": {
+          "missing": 199,
+          "non_empty": 1,
+          "present": 1,
+          "samples": [
+            {
+              "raw_payload_ref": "528414edc26e2cb7",
+              "shape": {
+                "len": 13,
+                "looks_like_datetime": false,
+                "type": "str"
+              }
+            }
+          ]
+        }
+      },
+      "rows_inspected": 200
+    },
+    "prime-change-orders": {
+      "paths": {
+        "change_order_change_reason.change_reason": {
+          "missing": 67,
+          "non_empty": 60,
+          "present": 60,
+          "samples": [
+            {
+              "raw_payload_ref": "be2ba16b3e650459",
+              "shape": {
+                "len": 5,
+                "looks_like_datetime": false,
+                "type": "str"
+              }
+            },
+            {
+              "raw_payload_ref": "4f5a5cb5efc9d6b6",
+              "shape": {
+                "len": 5,
+                "looks_like_datetime": false,
+                "type": "str"
+              }
+            },
+            {
+              "raw_payload_ref": "84f682a22aa382e7",
+              "shape": {
+                "len": 5,
+                "looks_like_datetime": false,
+                "type": "str"
+              }
+            },
+            {
+              "raw_payload_ref": "59d02c02aa779b8d",
+              "shape": {
+                "len": 14,
+                "looks_like_datetime": false,
+                "type": "str"
+              }
+            },
+            {
+              "raw_payload_ref": "a74327d2dcea0b51",
+              "shape": {
+                "len": 5,
+                "looks_like_datetime": false,
+                "type": "str"
+              }
+            }
+          ]
+        },
+        "change_order_change_reason.id": {
+          "missing": 67,
+          "non_empty": 60,
+          "present": 60,
+          "samples": [
+            {
+              "raw_payload_ref": "6d077c3e588cdb31",
+              "shape": {
+                "type": "int"
+              }
+            },
+            {
+              "raw_payload_ref": "441e9821e9911516",
+              "shape": {
+                "type": "int"
+              }
+            },
+            {
+              "raw_payload_ref": "d9dcf3546c2f550a",
+              "shape": {
+                "type": "int"
+              }
+            },
+            {
+              "raw_payload_ref": "829979593804a183",
+              "shape": {
+                "type": "int"
+              }
+            },
+            {
+              "raw_payload_ref": "31b549937ea416d0",
+              "shape": {
+                "type": "int"
+              }
+            }
+          ]
+        },
+        "designated_reviewer.id": {
+          "missing": 108,
+          "non_empty": 19,
+          "present": 19,
+          "samples": [
+            {
+              "raw_payload_ref": "7f0e997c6a37f73b",
+              "shape": {
+                "type": "int"
+              }
+            },
+            {
+              "raw_payload_ref": "b7c7ea2a8b1e0b2b",
+              "shape": {
+                "type": "int"
+              }
+            },
+            {
+              "raw_payload_ref": "41d5e3f0ab244742",
+              "shape": {
+                "type": "int"
+              }
+            },
+            {
+              "raw_payload_ref": "2e7f7f3de29bf62e",
+              "shape": {
+                "type": "int"
+              }
+            },
+            {
+              "raw_payload_ref": "f0f62b05ee53e621",
+              "shape": {
+                "type": "int"
+              }
+            }
+          ]
+        },
+        "designated_reviewer.name": {
+          "missing": 108,
+          "non_empty": 19,
+          "present": 19,
+          "samples": [
+            {
+              "raw_payload_ref": "b6b6293e8d107689",
+              "shape": {
+                "len": 11,
+                "looks_like_datetime": false,
+                "type": "str"
+              }
+            },
+            {
+              "raw_payload_ref": "008eddc4beeca54b",
+              "shape": {
+                "len": 14,
+                "looks_like_datetime": false,
+                "type": "str"
+              }
+            },
+            {
+              "raw_payload_ref": "5a45f715b6d94ea4",
+              "shape": {
+                "len": 14,
+                "looks_like_datetime": false,
+                "type": "str"
+              }
+            },
+            {
+              "raw_payload_ref": "47f3eef65bd8b8e2",
+              "shape": {
+                "len": 14,
+                "looks_like_datetime": false,
+                "type": "str"
+              }
+            },
+            {
+              "raw_payload_ref": "62b09583b287d1ef",
+              "shape": {
+                "len": 11,
+                "looks_like_datetime": false,
+                "type": "str"
+              }
+            }
+          ]
+        },
+        "received_from.id": {
+          "missing": 91,
+          "non_empty": 36,
+          "present": 36,
+          "samples": [
+            {
+              "raw_payload_ref": "d5312a73ff4b6095",
+              "shape": {
+                "type": "int"
+              }
+            },
+            {
+              "raw_payload_ref": "ad12eaade9aed9e5",
+              "shape": {
+                "type": "int"
+              }
+            },
+            {
+              "raw_payload_ref": "6ed2e4cd03792ac0",
+              "shape": {
+                "type": "int"
+              }
+            },
+            {
+              "raw_payload_ref": "5399e24f66aa709b",
+              "shape": {
+                "type": "int"
+              }
+            },
+            {
+              "raw_payload_ref": "11fd6febfa57ba32",
+              "shape": {
+                "type": "int"
+              }
+            }
+          ]
+        },
+        "received_from.name": {
+          "missing": 91,
+          "non_empty": 36,
+          "present": 36,
+          "samples": [
+            {
+              "raw_payload_ref": "452f76671b7372b0",
+              "shape": {
+                "len": 13,
+                "looks_like_datetime": false,
+                "type": "str"
+              }
+            },
+            {
+              "raw_payload_ref": "2d0bff3e441fc04f",
+              "shape": {
+                "len": 13,
+                "looks_like_datetime": false,
+                "type": "str"
+              }
+            },
+            {
+              "raw_payload_ref": "f2892ef7ff5d74f9",
+              "shape": {
+                "len": 8,
+                "looks_like_datetime": false,
+                "type": "str"
+              }
+            },
+            {
+              "raw_payload_ref": "f829350cdb922d4f",
+              "shape": {
+                "len": 8,
+                "looks_like_datetime": false,
+                "type": "str"
+              }
+            },
+            {
+              "raw_payload_ref": "7b5e8de601e73c08",
+              "shape": {
+                "len": 10,
+                "looks_like_datetime": false,
+                "type": "str"
+              }
+            }
+          ]
+        }
+      },
+      "rows_inspected": 127
+    }
+  }
+}
