@@ -12,6 +12,7 @@ import json
 from collections import OrderedDict
 from pathlib import Path
 
+from ..common.config_root import resolve_config_base
 from . import control_schema as cs
 
 DEFAULT_CONTROL_FILE = "config/forecast_controls/tropical/code_forecast_controls.jsonl"
@@ -24,7 +25,8 @@ def controls_config(cfg: dict) -> dict:
 def control_file_path(cfg: dict, subproject_root: Path) -> Path:
     rel = controls_config(cfg).get("control_file") or DEFAULT_CONTROL_FILE
     p = Path(rel)
-    return p if p.is_absolute() else (Path(subproject_root) / rel)
+    # Phase 16: CFR_CONFIG_ROOT (opt-in) overrides the base; unset -> subproject_root (unchanged).
+    return p if p.is_absolute() else (resolve_config_base(subproject_root) / rel)
 
 
 def _parse_lines(path: Path):

@@ -268,6 +268,7 @@ def run_db_certified_final_output(
     require_guarded_operator_check: bool = True,
     generate_final_csv: bool = False,
     run_id: str | None = None,
+    config_snapshot_root: Path | None = None,
 ) -> dict[str, Any]:
     """Generate DB-certified final forecast outputs under ``work_root`` from Phase 14 certified evidence.
 
@@ -447,6 +448,11 @@ def run_db_certified_final_output(
         "phase14_evidence": phase14_evidence,
         "safety": safety,
     }
+    # Phase 16: optional config-snapshot lineage metadata ONLY (the chain does not consume config).
+    if config_snapshot_root is not None:
+        from ..config_registry import config_snapshot_lineage_block
+
+        base_report["config_snapshot"] = config_snapshot_lineage_block(Path(config_snapshot_root))
 
     # --- Controlled CSV refusal (out of scope; no synthesis). -------------------------------------
     if generate_final_csv:

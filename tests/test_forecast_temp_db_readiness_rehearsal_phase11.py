@@ -68,7 +68,7 @@ def test_rehearsal_succeeds_derived_db(tmp_path):
     # derived DB path under <work>/temp_dbs/
     assert report["db"]["path"] == str(work / "temp_dbs" / "forecast_source_domain_tropical.sqlite")
     assert Path(report["db"]["path"]).is_file()
-    assert report["db"]["schema_version"] == 59
+    assert report["db"]["schema_version"] == 60  # Phase 16: migrator now at v60
     for t in (
         "forecast_budget_details",
         "forecast_cost_entries",
@@ -110,7 +110,7 @@ def test_rehearsal_report_includes_required_sections(tmp_path):
     report = run_temp_db_readiness_rehearsal(
         source_package=sp, work_root=tmp_path / "work", context_stamp=STAMP
     )
-    assert report["db"]["schema_version"] == 59  # migration status
+    assert report["db"]["schema_version"] == 60  # Phase 16: migrator now at v60  # migration status
     assert report["db"]["live_db_refused"] is True
     assert report["projection"]["applied"] is True  # projection status
     assert set(report["projection"]["required_tables"]) == {

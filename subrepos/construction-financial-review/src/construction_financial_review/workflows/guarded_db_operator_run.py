@@ -221,6 +221,7 @@ def run_guarded_db_operator_run(
     project_key: str = SUPPORTED_PROJECT_KEY,
     allow_certified_live_db: bool = False,
     live_db_certification: Path | None = None,
+    config_snapshot_root: Path | None = None,
 ) -> dict[str, Any]:
     """Run the controlled chain and emit a guarded DB operator-run manifest.
 
@@ -341,6 +342,10 @@ def run_guarded_db_operator_run(
                 "final_integrated_csv_generated": False,
             },
         }
+        if config_snapshot_root is not None:
+            from ..config_registry import config_snapshot_lineage_block
+
+            report["config_snapshot"] = config_snapshot_lineage_block(Path(config_snapshot_root))
         report_path = _write_json_deterministic(work_root / MANIFEST_NAME, report)
         return {**report, "report_path": str(report_path)}
 
@@ -465,5 +470,10 @@ def run_guarded_db_operator_run(
     # used the fresh temp DB above; the live DB was opened read-only only by certification, never here.
     if live_db_block is not None:
         report["live_db"] = live_db_block
+    # Phase 16: optional config-snapshot lineage metadata ONLY (the chain does not consume config).
+    if config_snapshot_root is not None:
+        from ..config_registry import config_snapshot_lineage_block
+
+        report["config_snapshot"] = config_snapshot_lineage_block(Path(config_snapshot_root))
     report_path = _write_json_deterministic(work_root / MANIFEST_NAME, report)
     return {**report, "report_path": str(report_path)}

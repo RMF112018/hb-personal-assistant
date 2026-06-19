@@ -13,6 +13,7 @@ from collections import OrderedDict, defaultdict
 from decimal import Decimal
 from pathlib import Path
 
+from ..common.config_root import resolve_config_base
 from ..common.money import D
 from . import staffing_schema as ss
 
@@ -26,7 +27,8 @@ def staffing_config(cfg: dict) -> dict:
 def mapping_file_path(cfg: dict, subproject_root: Path) -> Path:
     rel = staffing_config(cfg).get("mapping_file") or DEFAULT_MAPPING_FILE
     p = Path(rel)
-    return p if p.is_absolute() else (Path(subproject_root) / rel)
+    # Phase 16: CFR_CONFIG_ROOT (opt-in) overrides the base; unset -> subproject_root (unchanged).
+    return p if p.is_absolute() else (resolve_config_base(subproject_root) / rel)
 
 
 def _parse_lines(path: Path):
