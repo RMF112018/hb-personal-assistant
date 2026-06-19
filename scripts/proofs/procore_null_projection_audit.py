@@ -459,7 +459,7 @@ def _source_proof_decisions(
     decisions: dict[tuple[str, str], dict[str, Any]] = {}
     for row in payload.get("fields", []):
         table = row.get("table")
-        column = row.get("column")
+        column = row.get("column") or row.get("bare_column")
         decision = row.get("post_proof_decision")
         if isinstance(table, str) and isinstance(column, str) and isinstance(decision, dict):
             decisions[(table, column)] = decision
@@ -558,6 +558,33 @@ def _post_proof_decision_from_raw(
     }
 
 
+def _normalized_post_proof_decision(decision: dict[str, Any]) -> dict[str, Any]:
+    normalized = dict(decision)
+    mapping_candidate = bool(normalized.get("mapping_candidate"))
+    decision_class = str(normalized.get("decision_class") or "")
+    normalized.setdefault(
+        "projection_code_repair_candidate",
+        decision_class == "mapped_source_present_projection_not_writing",
+    )
+    normalized.setdefault(
+        "deprecation_candidate",
+        decision_class
+        in {
+            "bare_container_deprecated_covered_by_scalar_decomposition",
+            "bare_container_custom_field_covered_by_scalar_decomposition",
+            "bare_container_partially_covered_scalar_source_absent",
+            "object_container_requires_decomposition_or_deprecation",
+            "budget_detail_dead_convenience_column",
+            "budget_detail_read_model_schema_artifact",
+        },
+    )
+    normalized.setdefault(
+        "suppress_from_actionable_mapping_rollup",
+        not mapping_candidate,
+    )
+    return normalized
+
+
 def audit_database(
     db_path: str | Path,
     *,
@@ -613,7 +640,7 @@ def audit_database(
                     root_cause=root,
                     suspected=suspected,
                 )
-                post_proof_decision = source_decisions.get(
+                post_proof_decision = _normalized_post_proof_decision(source_decisions.get(
                     (table, column),
                     _post_proof_decision_from_raw(
                         table=table,
@@ -622,7 +649,7 @@ def audit_database(
                         suspected=suspected,
                         classification=classification,
                     ),
-                )
+                ))
                 record = {
                     "table": table,
                     "column": column,
@@ -713,6 +740,18 @@ def audit_database(
         == "patch1_scalar_decomposition_verified"
         and r["post_proof_decision"]["mapping_candidate"] is True
     )
+    projection_code_repair_candidates = sum(
+        1
+        for r in records
+        if r["post_proof_decision"].get("projection_code_repair_candidate") is True
+    )
+    actionable_mapping_candidates = sum(
+        1
+        for r in records
+        if r["post_proof_decision"]["mapping_candidate"] is True
+        and r["post_proof_decision"].get("suppress_from_actionable_mapping_rollup")
+        is not True
+    )
     summary = {
         "tables_audited": len(table_profiles),
         "columns_audited": len(records),
@@ -721,6 +760,8 @@ def audit_database(
         "suspected_projection_defects": sum(1 for r in records if r["suspected_projection_defect"]),
         "raw_suspected_projection_defects": raw_suspected_projection_defects,
         "high_confidence_scalar_mapping_candidates": high_confidence_scalar_mapping_candidates,
+        "actionable_mapping_candidates": actionable_mapping_candidates,
+        "projection_code_repair_candidates": projection_code_repair_candidates,
         "date_datetime_mapping_candidates": date_datetime_mapping_candidates,
         "patch1_scalar_decomposition_defects": patch1_scalar_decomposition_defects,
         "post_proof_decision_class_counts": dict(sorted(decision_class_counts.items())),

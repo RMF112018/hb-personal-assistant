@@ -1,0 +1,1624 @@
+{
+  "fields": [
+    {
+      "bare_column_non_null_count": 5,
+      "column": "event_origin",
+      "endpoint_key": "change-events",
+      "legacy_non_null_bare_container_values_present": true,
+      "policy_bucket": "bare_container_deprecated_covered_by_scalar_decomposition",
+      "policy_subtype": "bare_container_deprecated_covered_by_scalar_decomposition",
+      "post_proof_decision": {
+        "decision_class": "bare_container_deprecated_covered_by_scalar_decomposition",
+        "decision_status": "reporting_policy_deprecation_candidate",
+        "deprecation_candidate": true,
+        "evidence_basis": "docs/evidence/procore-null-projection-patch4-existing-scalar-containers/20260619T080633Z/classification-summary.json; reporting/audit-policy deprecation only, not a physical column migration.",
+        "legacy_non_null_bare_container_values_present": true,
+        "mapping_candidate": false,
+        "next_action": "no_action_existing_scalar_decomposition_verified",
+        "projection_code_repair_candidate": false,
+        "suppress_from_actionable_mapping_rollup": true
+      },
+      "raw_detection": {
+        "raw_field_status": "bare_container_null_or_suspicious",
+        "raw_finding_preserved": true
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 143,
+          "column": "event_origin_display_name",
+          "registry_json_path": "$.event_origin.display_name",
+          "source_non_empty_count": 183,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 143,
+          "column": "event_origin_origin_id",
+          "registry_json_path": "$.event_origin.origin_id",
+          "source_non_empty_count": 183,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_change_events"
+    },
+    {
+      "bare_column_non_null_count": 0,
+      "column": "change_order_change_reason",
+      "endpoint_key": "commitment-change-orders",
+      "legacy_non_null_bare_container_values_present": false,
+      "policy_bucket": "bare_container_deprecated_covered_by_scalar_decomposition",
+      "policy_subtype": "bare_container_deprecated_covered_by_scalar_decomposition",
+      "post_proof_decision": {
+        "decision_class": "bare_container_deprecated_covered_by_scalar_decomposition",
+        "decision_status": "reporting_policy_deprecation_candidate",
+        "deprecation_candidate": true,
+        "evidence_basis": "docs/evidence/procore-null-projection-patch4-existing-scalar-containers/20260619T080633Z/classification-summary.json; reporting/audit-policy deprecation only, not a physical column migration.",
+        "legacy_non_null_bare_container_values_present": false,
+        "mapping_candidate": false,
+        "next_action": "no_action_existing_scalar_decomposition_verified",
+        "projection_code_repair_candidate": false,
+        "suppress_from_actionable_mapping_rollup": true
+      },
+      "raw_detection": {
+        "raw_field_status": "bare_container_null_or_suspicious",
+        "raw_finding_preserved": true
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 98,
+          "column": "change_order_change_reason_id",
+          "registry_json_path": "$.change_order_change_reason.id",
+          "source_non_empty_count": 98,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_commitment_change_orders"
+    },
+    {
+      "bare_column_non_null_count": 0,
+      "column": "designated_reviewer",
+      "endpoint_key": "commitment-change-orders",
+      "legacy_non_null_bare_container_values_present": false,
+      "policy_bucket": "bare_container_deprecated_covered_by_scalar_decomposition",
+      "policy_subtype": "bare_container_deprecated_covered_by_scalar_decomposition",
+      "post_proof_decision": {
+        "decision_class": "bare_container_deprecated_covered_by_scalar_decomposition",
+        "decision_status": "reporting_policy_deprecation_candidate",
+        "deprecation_candidate": true,
+        "evidence_basis": "docs/evidence/procore-null-projection-patch4-existing-scalar-containers/20260619T080633Z/classification-summary.json; reporting/audit-policy deprecation only, not a physical column migration.",
+        "legacy_non_null_bare_container_values_present": false,
+        "mapping_candidate": false,
+        "next_action": "no_action_existing_scalar_decomposition_verified",
+        "projection_code_repair_candidate": false,
+        "suppress_from_actionable_mapping_rollup": true
+      },
+      "raw_detection": {
+        "raw_field_status": "bare_container_null_or_suspicious",
+        "raw_finding_preserved": true
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 68,
+          "column": "designated_reviewer_id",
+          "registry_json_path": "$.designated_reviewer.id",
+          "source_non_empty_count": 68,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 68,
+          "column": "designated_reviewer_name",
+          "registry_json_path": "$.designated_reviewer.name",
+          "source_non_empty_count": 68,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_commitment_change_orders"
+    },
+    {
+      "bare_column_non_null_count": 0,
+      "column": "received_from",
+      "endpoint_key": "commitment-change-orders",
+      "legacy_non_null_bare_container_values_present": false,
+      "policy_bucket": "bare_container_deprecated_covered_by_scalar_decomposition",
+      "policy_subtype": "bare_container_deprecated_covered_by_scalar_decomposition",
+      "post_proof_decision": {
+        "decision_class": "bare_container_deprecated_covered_by_scalar_decomposition",
+        "decision_status": "reporting_policy_deprecation_candidate",
+        "deprecation_candidate": true,
+        "evidence_basis": "docs/evidence/procore-null-projection-patch4-existing-scalar-containers/20260619T080633Z/classification-summary.json; reporting/audit-policy deprecation only, not a physical column migration.",
+        "legacy_non_null_bare_container_values_present": false,
+        "mapping_candidate": false,
+        "next_action": "no_action_existing_scalar_decomposition_verified",
+        "projection_code_repair_candidate": false,
+        "suppress_from_actionable_mapping_rollup": true
+      },
+      "raw_detection": {
+        "raw_field_status": "bare_container_null_or_suspicious",
+        "raw_finding_preserved": true
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 21,
+          "column": "received_from_id",
+          "registry_json_path": "$.received_from.id",
+          "source_non_empty_count": 21,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 21,
+          "column": "received_from_name",
+          "registry_json_path": "$.received_from.name",
+          "source_non_empty_count": 21,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_commitment_change_orders"
+    },
+    {
+      "bare_column_non_null_count": 0,
+      "column": "reviewed_by",
+      "endpoint_key": "commitment-change-orders",
+      "legacy_non_null_bare_container_values_present": false,
+      "policy_bucket": "bare_container_deprecated_covered_by_scalar_decomposition",
+      "policy_subtype": "bare_container_deprecated_covered_by_scalar_decomposition",
+      "post_proof_decision": {
+        "decision_class": "bare_container_deprecated_covered_by_scalar_decomposition",
+        "decision_status": "reporting_policy_deprecation_candidate",
+        "deprecation_candidate": true,
+        "evidence_basis": "docs/evidence/procore-null-projection-patch4-existing-scalar-containers/20260619T080633Z/classification-summary.json; reporting/audit-policy deprecation only, not a physical column migration.",
+        "legacy_non_null_bare_container_values_present": false,
+        "mapping_candidate": false,
+        "next_action": "no_action_existing_scalar_decomposition_verified",
+        "projection_code_repair_candidate": false,
+        "suppress_from_actionable_mapping_rollup": true
+      },
+      "raw_detection": {
+        "raw_field_status": "bare_container_null_or_suspicious",
+        "raw_finding_preserved": true
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 1,
+          "column": "reviewed_by_id",
+          "registry_json_path": "$.reviewed_by.id",
+          "source_non_empty_count": 1,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 1,
+          "column": "reviewed_by_name",
+          "registry_json_path": "$.reviewed_by.name",
+          "source_non_empty_count": 1,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_commitment_change_orders"
+    },
+    {
+      "bare_column_non_null_count": 0,
+      "column": "location",
+      "endpoint_key": "daily-log-inspections",
+      "legacy_non_null_bare_container_values_present": false,
+      "policy_bucket": "bare_container_deprecated_covered_by_scalar_decomposition",
+      "policy_subtype": "bare_container_deprecated_covered_by_scalar_decomposition",
+      "post_proof_decision": {
+        "decision_class": "bare_container_deprecated_covered_by_scalar_decomposition",
+        "decision_status": "reporting_policy_deprecation_candidate",
+        "deprecation_candidate": true,
+        "evidence_basis": "docs/evidence/procore-null-projection-patch4-existing-scalar-containers/20260619T080633Z/classification-summary.json; reporting/audit-policy deprecation only, not a physical column migration.",
+        "legacy_non_null_bare_container_values_present": false,
+        "mapping_candidate": false,
+        "next_action": "no_action_existing_scalar_decomposition_verified",
+        "projection_code_repair_candidate": false,
+        "suppress_from_actionable_mapping_rollup": true
+      },
+      "raw_detection": {
+        "raw_field_status": "bare_container_null_or_suspicious",
+        "raw_finding_preserved": true
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 60,
+          "column": "location_created_at",
+          "registry_json_path": "$.location.created_at",
+          "source_non_empty_count": 60,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 60,
+          "column": "location_id",
+          "registry_json_path": "$.location.id",
+          "source_non_empty_count": 60,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 60,
+          "column": "location_name",
+          "registry_json_path": "$.location.name",
+          "source_non_empty_count": 60,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 60,
+          "column": "location_node_name",
+          "registry_json_path": "$.location.node_name",
+          "source_non_empty_count": 60,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 43,
+          "column": "location_parent_id",
+          "registry_json_path": "$.location.parent_id",
+          "source_non_empty_count": 43,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 60,
+          "column": "location_updated_at",
+          "registry_json_path": "$.location.updated_at",
+          "source_non_empty_count": 60,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_daily_log_inspections"
+    },
+    {
+      "bare_column_non_null_count": 0,
+      "column": "cost_code",
+      "endpoint_key": "daily-log-manpower",
+      "legacy_non_null_bare_container_values_present": false,
+      "policy_bucket": "bare_container_deprecated_covered_by_scalar_decomposition",
+      "policy_subtype": "bare_container_deprecated_covered_by_scalar_decomposition",
+      "post_proof_decision": {
+        "decision_class": "bare_container_deprecated_covered_by_scalar_decomposition",
+        "decision_status": "reporting_policy_deprecation_candidate",
+        "deprecation_candidate": true,
+        "evidence_basis": "docs/evidence/procore-null-projection-patch4-existing-scalar-containers/20260619T080633Z/classification-summary.json; reporting/audit-policy deprecation only, not a physical column migration.",
+        "legacy_non_null_bare_container_values_present": false,
+        "mapping_candidate": false,
+        "next_action": "no_action_existing_scalar_decomposition_verified",
+        "projection_code_repair_candidate": false,
+        "suppress_from_actionable_mapping_rollup": true
+      },
+      "raw_detection": {
+        "raw_field_status": "bare_container_null_or_suspicious",
+        "raw_finding_preserved": true
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 2,
+          "column": "cost_code_id",
+          "registry_json_path": "$.cost_code.id",
+          "source_non_empty_count": 2,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 2,
+          "column": "cost_code_long_name",
+          "registry_json_path": "$.cost_code.long_name",
+          "source_non_empty_count": 2,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 2,
+          "column": "cost_code_name",
+          "registry_json_path": "$.cost_code.name",
+          "source_non_empty_count": 2,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_daily_log_manpower"
+    },
+    {
+      "bare_column_non_null_count": 0,
+      "column": "location",
+      "endpoint_key": "daily-log-manpower",
+      "legacy_non_null_bare_container_values_present": false,
+      "policy_bucket": "bare_container_deprecated_covered_by_scalar_decomposition",
+      "policy_subtype": "bare_container_deprecated_covered_by_scalar_decomposition",
+      "post_proof_decision": {
+        "decision_class": "bare_container_deprecated_covered_by_scalar_decomposition",
+        "decision_status": "reporting_policy_deprecation_candidate",
+        "deprecation_candidate": true,
+        "evidence_basis": "docs/evidence/procore-null-projection-patch4-existing-scalar-containers/20260619T080633Z/classification-summary.json; reporting/audit-policy deprecation only, not a physical column migration.",
+        "legacy_non_null_bare_container_values_present": false,
+        "mapping_candidate": false,
+        "next_action": "no_action_existing_scalar_decomposition_verified",
+        "projection_code_repair_candidate": false,
+        "suppress_from_actionable_mapping_rollup": true
+      },
+      "raw_detection": {
+        "raw_field_status": "bare_container_null_or_suspicious",
+        "raw_finding_preserved": true
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 696,
+          "column": "location_created_at",
+          "registry_json_path": "$.location.created_at",
+          "source_non_empty_count": 696,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 696,
+          "column": "location_id",
+          "registry_json_path": "$.location.id",
+          "source_non_empty_count": 696,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 696,
+          "column": "location_name",
+          "registry_json_path": "$.location.name",
+          "source_non_empty_count": 696,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 696,
+          "column": "location_node_name",
+          "registry_json_path": "$.location.node_name",
+          "source_non_empty_count": 696,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 192,
+          "column": "location_parent_id",
+          "registry_json_path": "$.location.parent_id",
+          "source_non_empty_count": 192,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 696,
+          "column": "location_updated_at",
+          "registry_json_path": "$.location.updated_at",
+          "source_non_empty_count": 696,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_daily_log_manpower"
+    },
+    {
+      "bare_column_non_null_count": 0,
+      "column": "location",
+      "endpoint_key": "daily-log-notes",
+      "legacy_non_null_bare_container_values_present": false,
+      "policy_bucket": "bare_container_deprecated_covered_by_scalar_decomposition",
+      "policy_subtype": "bare_container_deprecated_covered_by_scalar_decomposition",
+      "post_proof_decision": {
+        "decision_class": "bare_container_deprecated_covered_by_scalar_decomposition",
+        "decision_status": "reporting_policy_deprecation_candidate",
+        "deprecation_candidate": true,
+        "evidence_basis": "docs/evidence/procore-null-projection-patch4-existing-scalar-containers/20260619T080633Z/classification-summary.json; reporting/audit-policy deprecation only, not a physical column migration.",
+        "legacy_non_null_bare_container_values_present": false,
+        "mapping_candidate": false,
+        "next_action": "no_action_existing_scalar_decomposition_verified",
+        "projection_code_repair_candidate": false,
+        "suppress_from_actionable_mapping_rollup": true
+      },
+      "raw_detection": {
+        "raw_field_status": "bare_container_null_or_suspicious",
+        "raw_finding_preserved": true
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 26,
+          "column": "location_created_at",
+          "registry_json_path": "$.location.created_at",
+          "source_non_empty_count": 26,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 26,
+          "column": "location_id",
+          "registry_json_path": "$.location.id",
+          "source_non_empty_count": 26,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 26,
+          "column": "location_name",
+          "registry_json_path": "$.location.name",
+          "source_non_empty_count": 26,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 26,
+          "column": "location_node_name",
+          "registry_json_path": "$.location.node_name",
+          "source_non_empty_count": 26,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 4,
+          "column": "location_parent_id",
+          "registry_json_path": "$.location.parent_id",
+          "source_non_empty_count": 4,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 26,
+          "column": "location_updated_at",
+          "registry_json_path": "$.location.updated_at",
+          "source_non_empty_count": 26,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_daily_log_notes"
+    },
+    {
+      "bare_column_non_null_count": 0,
+      "column": "closed_by",
+      "endpoint_key": "inspections",
+      "legacy_non_null_bare_container_values_present": false,
+      "policy_bucket": "bare_container_deprecated_covered_by_scalar_decomposition",
+      "policy_subtype": "bare_container_deprecated_covered_by_scalar_decomposition",
+      "post_proof_decision": {
+        "decision_class": "bare_container_deprecated_covered_by_scalar_decomposition",
+        "decision_status": "reporting_policy_deprecation_candidate",
+        "deprecation_candidate": true,
+        "evidence_basis": "docs/evidence/procore-null-projection-patch4-existing-scalar-containers/20260619T080633Z/classification-summary.json; reporting/audit-policy deprecation only, not a physical column migration.",
+        "legacy_non_null_bare_container_values_present": false,
+        "mapping_candidate": false,
+        "next_action": "no_action_existing_scalar_decomposition_verified",
+        "projection_code_repair_candidate": false,
+        "suppress_from_actionable_mapping_rollup": true
+      },
+      "raw_detection": {
+        "raw_field_status": "bare_container_null_or_suspicious",
+        "raw_finding_preserved": true
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 11,
+          "column": "closed_by_company_name",
+          "registry_json_path": "$.closed_by.company_name",
+          "source_non_empty_count": 11,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 11,
+          "column": "closed_by_id",
+          "registry_json_path": "$.closed_by.id",
+          "source_non_empty_count": 11,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 11,
+          "column": "closed_by_login",
+          "registry_json_path": "$.closed_by.login",
+          "source_non_empty_count": 11,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 11,
+          "column": "closed_by_name",
+          "registry_json_path": "$.closed_by.name",
+          "source_non_empty_count": 11,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_inspections"
+    },
+    {
+      "bare_column_non_null_count": 0,
+      "column": "point_of_contact",
+      "endpoint_key": "inspections",
+      "legacy_non_null_bare_container_values_present": false,
+      "policy_bucket": "bare_container_deprecated_covered_by_scalar_decomposition",
+      "policy_subtype": "bare_container_deprecated_covered_by_scalar_decomposition",
+      "post_proof_decision": {
+        "decision_class": "bare_container_deprecated_covered_by_scalar_decomposition",
+        "decision_status": "reporting_policy_deprecation_candidate",
+        "deprecation_candidate": true,
+        "evidence_basis": "docs/evidence/procore-null-projection-patch4-existing-scalar-containers/20260619T080633Z/classification-summary.json; reporting/audit-policy deprecation only, not a physical column migration.",
+        "legacy_non_null_bare_container_values_present": false,
+        "mapping_candidate": false,
+        "next_action": "no_action_existing_scalar_decomposition_verified",
+        "projection_code_repair_candidate": false,
+        "suppress_from_actionable_mapping_rollup": true
+      },
+      "raw_detection": {
+        "raw_field_status": "bare_container_null_or_suspicious",
+        "raw_finding_preserved": true
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 7,
+          "column": "point_of_contact_company_name",
+          "registry_json_path": "$.point_of_contact.company_name",
+          "source_non_empty_count": 7,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 7,
+          "column": "point_of_contact_id",
+          "registry_json_path": "$.point_of_contact.id",
+          "source_non_empty_count": 7,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 7,
+          "column": "point_of_contact_login",
+          "registry_json_path": "$.point_of_contact.login",
+          "source_non_empty_count": 7,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 7,
+          "column": "point_of_contact_name",
+          "registry_json_path": "$.point_of_contact.name",
+          "source_non_empty_count": 7,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_inspections"
+    },
+    {
+      "bare_column_non_null_count": 0,
+      "column": "responsible_contractor",
+      "endpoint_key": "inspections",
+      "legacy_non_null_bare_container_values_present": false,
+      "policy_bucket": "bare_container_deprecated_covered_by_scalar_decomposition",
+      "policy_subtype": "bare_container_deprecated_covered_by_scalar_decomposition",
+      "post_proof_decision": {
+        "decision_class": "bare_container_deprecated_covered_by_scalar_decomposition",
+        "decision_status": "reporting_policy_deprecation_candidate",
+        "deprecation_candidate": true,
+        "evidence_basis": "docs/evidence/procore-null-projection-patch4-existing-scalar-containers/20260619T080633Z/classification-summary.json; reporting/audit-policy deprecation only, not a physical column migration.",
+        "legacy_non_null_bare_container_values_present": false,
+        "mapping_candidate": false,
+        "next_action": "no_action_existing_scalar_decomposition_verified",
+        "projection_code_repair_candidate": false,
+        "suppress_from_actionable_mapping_rollup": true
+      },
+      "raw_detection": {
+        "raw_field_status": "bare_container_null_or_suspicious",
+        "raw_finding_preserved": true
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 9,
+          "column": "responsible_contractor_id",
+          "registry_json_path": "$.responsible_contractor.id",
+          "source_non_empty_count": 9,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 9,
+          "column": "responsible_contractor_name",
+          "registry_json_path": "$.responsible_contractor.name",
+          "source_non_empty_count": 9,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_inspections"
+    },
+    {
+      "bare_column_non_null_count": 0,
+      "column": "specification_section",
+      "endpoint_key": "inspections",
+      "legacy_non_null_bare_container_values_present": false,
+      "policy_bucket": "bare_container_deprecated_covered_by_scalar_decomposition",
+      "policy_subtype": "bare_container_deprecated_covered_by_scalar_decomposition",
+      "post_proof_decision": {
+        "decision_class": "bare_container_deprecated_covered_by_scalar_decomposition",
+        "decision_status": "reporting_policy_deprecation_candidate",
+        "deprecation_candidate": true,
+        "evidence_basis": "docs/evidence/procore-null-projection-patch4-existing-scalar-containers/20260619T080633Z/classification-summary.json; reporting/audit-policy deprecation only, not a physical column migration.",
+        "legacy_non_null_bare_container_values_present": false,
+        "mapping_candidate": false,
+        "next_action": "no_action_existing_scalar_decomposition_verified",
+        "projection_code_repair_candidate": false,
+        "suppress_from_actionable_mapping_rollup": true
+      },
+      "raw_detection": {
+        "raw_field_status": "bare_container_null_or_suspicious",
+        "raw_finding_preserved": true
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 2,
+          "column": "specification_section_id",
+          "registry_json_path": "$.specification_section.id",
+          "source_non_empty_count": 2,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_inspections"
+    },
+    {
+      "bare_column_non_null_count": 0,
+      "column": "trade",
+      "endpoint_key": "inspections",
+      "legacy_non_null_bare_container_values_present": false,
+      "policy_bucket": "bare_container_deprecated_covered_by_scalar_decomposition",
+      "policy_subtype": "bare_container_deprecated_covered_by_scalar_decomposition",
+      "post_proof_decision": {
+        "decision_class": "bare_container_deprecated_covered_by_scalar_decomposition",
+        "decision_status": "reporting_policy_deprecation_candidate",
+        "deprecation_candidate": true,
+        "evidence_basis": "docs/evidence/procore-null-projection-patch4-existing-scalar-containers/20260619T080633Z/classification-summary.json; reporting/audit-policy deprecation only, not a physical column migration.",
+        "legacy_non_null_bare_container_values_present": false,
+        "mapping_candidate": false,
+        "next_action": "no_action_existing_scalar_decomposition_verified",
+        "projection_code_repair_candidate": false,
+        "suppress_from_actionable_mapping_rollup": true
+      },
+      "raw_detection": {
+        "raw_field_status": "bare_container_null_or_suspicious",
+        "raw_finding_preserved": true
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 10,
+          "column": "trade_id",
+          "registry_json_path": "$.trade.id",
+          "source_non_empty_count": 10,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 10,
+          "column": "trade_name",
+          "registry_json_path": "$.trade.name",
+          "source_non_empty_count": 10,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 10,
+          "column": "trade_updated_at",
+          "registry_json_path": "$.trade.updated_at",
+          "source_non_empty_count": 10,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_inspections"
+    },
+    {
+      "bare_column_non_null_count": 0,
+      "column": "distributed_by",
+      "endpoint_key": "meetings",
+      "legacy_non_null_bare_container_values_present": false,
+      "policy_bucket": "bare_container_deprecated_covered_by_scalar_decomposition",
+      "policy_subtype": "bare_container_deprecated_covered_by_scalar_decomposition",
+      "post_proof_decision": {
+        "decision_class": "bare_container_deprecated_covered_by_scalar_decomposition",
+        "decision_status": "reporting_policy_deprecation_candidate",
+        "deprecation_candidate": true,
+        "evidence_basis": "docs/evidence/procore-null-projection-patch4-existing-scalar-containers/20260619T080633Z/classification-summary.json; reporting/audit-policy deprecation only, not a physical column migration.",
+        "legacy_non_null_bare_container_values_present": false,
+        "mapping_candidate": false,
+        "next_action": "no_action_existing_scalar_decomposition_verified",
+        "projection_code_repair_candidate": false,
+        "suppress_from_actionable_mapping_rollup": true
+      },
+      "raw_detection": {
+        "raw_field_status": "bare_container_null_or_suspicious",
+        "raw_finding_preserved": true
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 85,
+          "column": "distributed_by_id",
+          "registry_json_path": "$.distributed_by.id",
+          "source_non_empty_count": 87,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 85,
+          "column": "distributed_by_login",
+          "registry_json_path": "$.distributed_by.login",
+          "source_non_empty_count": 87,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 85,
+          "column": "distributed_by_name",
+          "registry_json_path": "$.distributed_by.name",
+          "source_non_empty_count": 87,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_meetings"
+    },
+    {
+      "bare_column_non_null_count": 0,
+      "column": "assignee",
+      "endpoint_key": "observations",
+      "legacy_non_null_bare_container_values_present": false,
+      "policy_bucket": "bare_container_deprecated_covered_by_scalar_decomposition",
+      "policy_subtype": "bare_container_deprecated_covered_by_scalar_decomposition",
+      "post_proof_decision": {
+        "decision_class": "bare_container_deprecated_covered_by_scalar_decomposition",
+        "decision_status": "reporting_policy_deprecation_candidate",
+        "deprecation_candidate": true,
+        "evidence_basis": "docs/evidence/procore-null-projection-patch4-existing-scalar-containers/20260619T080633Z/classification-summary.json; reporting/audit-policy deprecation only, not a physical column migration.",
+        "legacy_non_null_bare_container_values_present": false,
+        "mapping_candidate": false,
+        "next_action": "no_action_existing_scalar_decomposition_verified",
+        "projection_code_repair_candidate": false,
+        "suppress_from_actionable_mapping_rollup": true
+      },
+      "raw_detection": {
+        "raw_field_status": "bare_container_null_or_suspicious",
+        "raw_finding_preserved": true
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 209,
+          "column": "assignee_id",
+          "registry_json_path": "$.assignee.id",
+          "source_non_empty_count": 209,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 209,
+          "column": "assignee_name",
+          "registry_json_path": "$.assignee.name",
+          "source_non_empty_count": 209,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 207,
+          "column": "assignee_vendor_id",
+          "registry_json_path": "$.assignee.vendor.id",
+          "source_non_empty_count": 207,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 207,
+          "column": "assignee_vendor_name",
+          "registry_json_path": "$.assignee.vendor.name",
+          "source_non_empty_count": 207,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_observations"
+    },
+    {
+      "bare_column_non_null_count": 0,
+      "column": "assignee_vendor",
+      "endpoint_key": "observations",
+      "legacy_non_null_bare_container_values_present": false,
+      "policy_bucket": "bare_container_deprecated_covered_by_scalar_decomposition",
+      "policy_subtype": "bare_container_deprecated_covered_by_scalar_decomposition",
+      "post_proof_decision": {
+        "decision_class": "bare_container_deprecated_covered_by_scalar_decomposition",
+        "decision_status": "reporting_policy_deprecation_candidate",
+        "deprecation_candidate": true,
+        "evidence_basis": "docs/evidence/procore-null-projection-patch4-existing-scalar-containers/20260619T080633Z/classification-summary.json; reporting/audit-policy deprecation only, not a physical column migration.",
+        "legacy_non_null_bare_container_values_present": false,
+        "mapping_candidate": false,
+        "next_action": "no_action_existing_scalar_decomposition_verified",
+        "projection_code_repair_candidate": false,
+        "suppress_from_actionable_mapping_rollup": true
+      },
+      "raw_detection": {
+        "raw_field_status": "bare_container_null_or_suspicious",
+        "raw_finding_preserved": true
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 207,
+          "column": "assignee_vendor_id",
+          "registry_json_path": "$.assignee.vendor.id",
+          "source_non_empty_count": 207,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 207,
+          "column": "assignee_vendor_name",
+          "registry_json_path": "$.assignee.vendor.name",
+          "source_non_empty_count": 207,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_observations"
+    },
+    {
+      "bare_column_non_null_count": 0,
+      "column": "location",
+      "endpoint_key": "observations",
+      "legacy_non_null_bare_container_values_present": false,
+      "policy_bucket": "bare_container_deprecated_covered_by_scalar_decomposition",
+      "policy_subtype": "bare_container_deprecated_covered_by_scalar_decomposition",
+      "post_proof_decision": {
+        "decision_class": "bare_container_deprecated_covered_by_scalar_decomposition",
+        "decision_status": "reporting_policy_deprecation_candidate",
+        "deprecation_candidate": true,
+        "evidence_basis": "docs/evidence/procore-null-projection-patch4-existing-scalar-containers/20260619T080633Z/classification-summary.json; reporting/audit-policy deprecation only, not a physical column migration.",
+        "legacy_non_null_bare_container_values_present": false,
+        "mapping_candidate": false,
+        "next_action": "no_action_existing_scalar_decomposition_verified",
+        "projection_code_repair_candidate": false,
+        "suppress_from_actionable_mapping_rollup": true
+      },
+      "raw_detection": {
+        "raw_field_status": "bare_container_null_or_suspicious",
+        "raw_finding_preserved": true
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 145,
+          "column": "location_created_at",
+          "registry_json_path": "$.location.created_at",
+          "source_non_empty_count": 145,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 145,
+          "column": "location_id",
+          "registry_json_path": "$.location.id",
+          "source_non_empty_count": 145,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 145,
+          "column": "location_name",
+          "registry_json_path": "$.location.name",
+          "source_non_empty_count": 145,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 145,
+          "column": "location_node_name",
+          "registry_json_path": "$.location.node_name",
+          "source_non_empty_count": 145,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 133,
+          "column": "location_parent_id",
+          "registry_json_path": "$.location.parent_id",
+          "source_non_empty_count": 133,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 145,
+          "column": "location_updated_at",
+          "registry_json_path": "$.location.updated_at",
+          "source_non_empty_count": 145,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_observations"
+    },
+    {
+      "bare_column_non_null_count": 0,
+      "column": "origin",
+      "endpoint_key": "observations",
+      "legacy_non_null_bare_container_values_present": false,
+      "policy_bucket": "bare_container_deprecated_covered_by_scalar_decomposition",
+      "policy_subtype": "bare_container_deprecated_covered_by_scalar_decomposition",
+      "post_proof_decision": {
+        "decision_class": "bare_container_deprecated_covered_by_scalar_decomposition",
+        "decision_status": "reporting_policy_deprecation_candidate",
+        "deprecation_candidate": true,
+        "evidence_basis": "docs/evidence/procore-null-projection-patch4-existing-scalar-containers/20260619T080633Z/classification-summary.json; reporting/audit-policy deprecation only, not a physical column migration.",
+        "legacy_non_null_bare_container_values_present": false,
+        "mapping_candidate": false,
+        "next_action": "no_action_existing_scalar_decomposition_verified",
+        "projection_code_repair_candidate": false,
+        "suppress_from_actionable_mapping_rollup": true
+      },
+      "raw_detection": {
+        "raw_field_status": "bare_container_null_or_suspicious",
+        "raw_finding_preserved": true
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 1,
+          "column": "origin_payload_checklist_item_id",
+          "registry_json_path": "$.origin.payload.checklist_item_id",
+          "source_non_empty_count": 1,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 1,
+          "column": "origin_payload_checklist_list_id",
+          "registry_json_path": "$.origin.payload.checklist_list_id",
+          "source_non_empty_count": 1,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_observations"
+    },
+    {
+      "bare_column_non_null_count": 0,
+      "column": "trade",
+      "endpoint_key": "observations",
+      "legacy_non_null_bare_container_values_present": false,
+      "policy_bucket": "bare_container_deprecated_covered_by_scalar_decomposition",
+      "policy_subtype": "bare_container_deprecated_covered_by_scalar_decomposition",
+      "post_proof_decision": {
+        "decision_class": "bare_container_deprecated_covered_by_scalar_decomposition",
+        "decision_status": "reporting_policy_deprecation_candidate",
+        "deprecation_candidate": true,
+        "evidence_basis": "docs/evidence/procore-null-projection-patch4-existing-scalar-containers/20260619T080633Z/classification-summary.json; reporting/audit-policy deprecation only, not a physical column migration.",
+        "legacy_non_null_bare_container_values_present": false,
+        "mapping_candidate": false,
+        "next_action": "no_action_existing_scalar_decomposition_verified",
+        "projection_code_repair_candidate": false,
+        "suppress_from_actionable_mapping_rollup": true
+      },
+      "raw_detection": {
+        "raw_field_status": "bare_container_null_or_suspicious",
+        "raw_finding_preserved": true
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 161,
+          "column": "trade_id",
+          "registry_json_path": "$.trade.id",
+          "source_non_empty_count": 161,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 161,
+          "column": "trade_name",
+          "registry_json_path": "$.trade.name",
+          "source_non_empty_count": 161,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 161,
+          "column": "trade_updated_at",
+          "registry_json_path": "$.trade.updated_at",
+          "source_non_empty_count": 161,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_observations"
+    },
+    {
+      "bare_column_non_null_count": 0,
+      "column": "change_order_change_reason",
+      "endpoint_key": "prime-change-orders",
+      "legacy_non_null_bare_container_values_present": false,
+      "policy_bucket": "bare_container_deprecated_covered_by_scalar_decomposition",
+      "policy_subtype": "bare_container_deprecated_covered_by_scalar_decomposition",
+      "post_proof_decision": {
+        "decision_class": "bare_container_deprecated_covered_by_scalar_decomposition",
+        "decision_status": "reporting_policy_deprecation_candidate",
+        "deprecation_candidate": true,
+        "evidence_basis": "docs/evidence/procore-null-projection-patch4-existing-scalar-containers/20260619T080633Z/classification-summary.json; reporting/audit-policy deprecation only, not a physical column migration.",
+        "legacy_non_null_bare_container_values_present": false,
+        "mapping_candidate": false,
+        "next_action": "no_action_existing_scalar_decomposition_verified",
+        "projection_code_repair_candidate": false,
+        "suppress_from_actionable_mapping_rollup": true
+      },
+      "raw_detection": {
+        "raw_field_status": "bare_container_null_or_suspicious",
+        "raw_finding_preserved": true
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 60,
+          "column": "change_order_change_reason_id",
+          "registry_json_path": "$.change_order_change_reason.id",
+          "source_non_empty_count": 60,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_prime_change_orders"
+    },
+    {
+      "bare_column_non_null_count": 0,
+      "column": "designated_reviewer",
+      "endpoint_key": "prime-change-orders",
+      "legacy_non_null_bare_container_values_present": false,
+      "policy_bucket": "bare_container_deprecated_covered_by_scalar_decomposition",
+      "policy_subtype": "bare_container_deprecated_covered_by_scalar_decomposition",
+      "post_proof_decision": {
+        "decision_class": "bare_container_deprecated_covered_by_scalar_decomposition",
+        "decision_status": "reporting_policy_deprecation_candidate",
+        "deprecation_candidate": true,
+        "evidence_basis": "docs/evidence/procore-null-projection-patch4-existing-scalar-containers/20260619T080633Z/classification-summary.json; reporting/audit-policy deprecation only, not a physical column migration.",
+        "legacy_non_null_bare_container_values_present": false,
+        "mapping_candidate": false,
+        "next_action": "no_action_existing_scalar_decomposition_verified",
+        "projection_code_repair_candidate": false,
+        "suppress_from_actionable_mapping_rollup": true
+      },
+      "raw_detection": {
+        "raw_field_status": "bare_container_null_or_suspicious",
+        "raw_finding_preserved": true
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 19,
+          "column": "designated_reviewer_id",
+          "registry_json_path": "$.designated_reviewer.id",
+          "source_non_empty_count": 19,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 19,
+          "column": "designated_reviewer_name",
+          "registry_json_path": "$.designated_reviewer.name",
+          "source_non_empty_count": 19,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_prime_change_orders"
+    },
+    {
+      "bare_column_non_null_count": 0,
+      "column": "received_from",
+      "endpoint_key": "prime-change-orders",
+      "legacy_non_null_bare_container_values_present": false,
+      "policy_bucket": "bare_container_deprecated_covered_by_scalar_decomposition",
+      "policy_subtype": "bare_container_deprecated_covered_by_scalar_decomposition",
+      "post_proof_decision": {
+        "decision_class": "bare_container_deprecated_covered_by_scalar_decomposition",
+        "decision_status": "reporting_policy_deprecation_candidate",
+        "deprecation_candidate": true,
+        "evidence_basis": "docs/evidence/procore-null-projection-patch4-existing-scalar-containers/20260619T080633Z/classification-summary.json; reporting/audit-policy deprecation only, not a physical column migration.",
+        "legacy_non_null_bare_container_values_present": false,
+        "mapping_candidate": false,
+        "next_action": "no_action_existing_scalar_decomposition_verified",
+        "projection_code_repair_candidate": false,
+        "suppress_from_actionable_mapping_rollup": true
+      },
+      "raw_detection": {
+        "raw_field_status": "bare_container_null_or_suspicious",
+        "raw_finding_preserved": true
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 36,
+          "column": "received_from_id",
+          "registry_json_path": "$.received_from.id",
+          "source_non_empty_count": 36,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 36,
+          "column": "received_from_name",
+          "registry_json_path": "$.received_from.name",
+          "source_non_empty_count": 36,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_prime_change_orders"
+    },
+    {
+      "bare_column_non_null_count": 0,
+      "column": "project_stage",
+      "endpoint_key": "projects",
+      "legacy_non_null_bare_container_values_present": false,
+      "policy_bucket": "bare_container_deprecated_covered_by_scalar_decomposition",
+      "policy_subtype": "bare_container_deprecated_covered_by_scalar_decomposition",
+      "post_proof_decision": {
+        "decision_class": "bare_container_deprecated_covered_by_scalar_decomposition",
+        "decision_status": "reporting_policy_deprecation_candidate",
+        "deprecation_candidate": true,
+        "evidence_basis": "docs/evidence/procore-null-projection-patch4-existing-scalar-containers/20260619T080633Z/classification-summary.json; reporting/audit-policy deprecation only, not a physical column migration.",
+        "legacy_non_null_bare_container_values_present": false,
+        "mapping_candidate": false,
+        "next_action": "no_action_existing_scalar_decomposition_verified",
+        "projection_code_repair_candidate": false,
+        "suppress_from_actionable_mapping_rollup": true
+      },
+      "raw_detection": {
+        "raw_field_status": "bare_container_null_or_suspicious",
+        "raw_finding_preserved": true
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 12,
+          "column": "project_stage_id",
+          "registry_json_path": "$.project_stage.id",
+          "source_non_empty_count": 12,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 12,
+          "column": "project_stage_name",
+          "registry_json_path": "$.project_stage.name",
+          "source_non_empty_count": 12,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_projects"
+    },
+    {
+      "bare_column_non_null_count": 0,
+      "column": "assignee",
+      "endpoint_key": "purchase-order-contracts",
+      "legacy_non_null_bare_container_values_present": false,
+      "policy_bucket": "bare_container_deprecated_covered_by_scalar_decomposition",
+      "policy_subtype": "bare_container_deprecated_covered_by_scalar_decomposition",
+      "post_proof_decision": {
+        "decision_class": "bare_container_deprecated_covered_by_scalar_decomposition",
+        "decision_status": "reporting_policy_deprecation_candidate",
+        "deprecation_candidate": true,
+        "evidence_basis": "docs/evidence/procore-null-projection-patch4-existing-scalar-containers/20260619T080633Z/classification-summary.json; reporting/audit-policy deprecation only, not a physical column migration.",
+        "legacy_non_null_bare_container_values_present": false,
+        "mapping_candidate": false,
+        "next_action": "no_action_existing_scalar_decomposition_verified",
+        "projection_code_repair_candidate": false,
+        "suppress_from_actionable_mapping_rollup": true
+      },
+      "raw_detection": {
+        "raw_field_status": "bare_container_null_or_suspicious",
+        "raw_finding_preserved": true
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 5,
+          "column": "assignee_id",
+          "registry_json_path": "$.assignee.id",
+          "source_non_empty_count": 5,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_purchase_order_contracts"
+    },
+    {
+      "bare_column_non_null_count": 0,
+      "column": "custom_fields_custom_field_214072_value",
+      "endpoint_key": "purchase-order-contracts",
+      "legacy_non_null_bare_container_values_present": false,
+      "policy_bucket": "bare_container_deprecated_covered_by_scalar_decomposition",
+      "policy_subtype": "bare_container_custom_field_covered_by_scalar_decomposition",
+      "post_proof_decision": {
+        "decision_class": "bare_container_custom_field_covered_by_scalar_decomposition",
+        "decision_status": "reporting_policy_deprecation_candidate",
+        "deprecation_candidate": true,
+        "evidence_basis": "docs/evidence/procore-null-projection-patch5-custom-fields/20260619T083510Z/classification-summary.json; reporting/audit-policy deprecation only, not a physical column migration.",
+        "legacy_non_null_bare_container_values_present": false,
+        "mapping_candidate": false,
+        "next_action": "no_action_existing_scalar_decomposition_verified",
+        "projection_code_repair_candidate": false,
+        "suppress_from_actionable_mapping_rollup": true
+      },
+      "raw_detection": {
+        "raw_field_status": "bare_container_null_or_suspicious",
+        "raw_finding_preserved": true
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 8,
+          "column": "custom_fields_custom_field_214072_value_id",
+          "registry_json_path": "$.custom_fields.custom_field_214072.value.id",
+          "source_non_empty_count": 9,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_purchase_order_contracts"
+    },
+    {
+      "bare_column_non_null_count": 0,
+      "column": "custom_fields_custom_field_214078_value",
+      "endpoint_key": "purchase-order-contracts",
+      "legacy_non_null_bare_container_values_present": false,
+      "policy_bucket": "bare_container_deprecated_covered_by_scalar_decomposition",
+      "policy_subtype": "bare_container_custom_field_covered_by_scalar_decomposition",
+      "post_proof_decision": {
+        "decision_class": "bare_container_custom_field_covered_by_scalar_decomposition",
+        "decision_status": "reporting_policy_deprecation_candidate",
+        "deprecation_candidate": true,
+        "evidence_basis": "docs/evidence/procore-null-projection-patch5-custom-fields/20260619T083510Z/classification-summary.json; reporting/audit-policy deprecation only, not a physical column migration.",
+        "legacy_non_null_bare_container_values_present": false,
+        "mapping_candidate": false,
+        "next_action": "no_action_existing_scalar_decomposition_verified",
+        "projection_code_repair_candidate": false,
+        "suppress_from_actionable_mapping_rollup": true
+      },
+      "raw_detection": {
+        "raw_field_status": "bare_container_null_or_suspicious",
+        "raw_finding_preserved": true
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 7,
+          "column": "custom_fields_custom_field_214078_value_company_name",
+          "registry_json_path": "$.custom_fields.custom_field_214078.value.company_name",
+          "source_non_empty_count": 8,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 8,
+          "column": "custom_fields_custom_field_214078_value_id",
+          "registry_json_path": "$.custom_fields.custom_field_214078.value.id",
+          "source_non_empty_count": 9,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_purchase_order_contracts"
+    },
+    {
+      "bare_column_non_null_count": 0,
+      "column": "custom_fields_custom_field_214087_value",
+      "endpoint_key": "purchase-order-contracts",
+      "legacy_non_null_bare_container_values_present": false,
+      "policy_bucket": "bare_container_deprecated_covered_by_scalar_decomposition",
+      "policy_subtype": "bare_container_custom_field_covered_by_scalar_decomposition",
+      "post_proof_decision": {
+        "decision_class": "bare_container_custom_field_covered_by_scalar_decomposition",
+        "decision_status": "reporting_policy_deprecation_candidate",
+        "deprecation_candidate": true,
+        "evidence_basis": "docs/evidence/procore-null-projection-patch5-custom-fields/20260619T083510Z/classification-summary.json; reporting/audit-policy deprecation only, not a physical column migration.",
+        "legacy_non_null_bare_container_values_present": false,
+        "mapping_candidate": false,
+        "next_action": "no_action_existing_scalar_decomposition_verified",
+        "projection_code_repair_candidate": false,
+        "suppress_from_actionable_mapping_rollup": true
+      },
+      "raw_detection": {
+        "raw_field_status": "bare_container_null_or_suspicious",
+        "raw_finding_preserved": true
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 8,
+          "column": "custom_fields_custom_field_214087_value_id",
+          "registry_json_path": "$.custom_fields.custom_field_214087.value.id",
+          "source_non_empty_count": 9,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_purchase_order_contracts"
+    },
+    {
+      "bare_column_non_null_count": 54,
+      "column": "ball_in_court",
+      "endpoint_key": "rfis",
+      "legacy_non_null_bare_container_values_present": true,
+      "policy_bucket": "bare_container_deprecated_covered_by_scalar_decomposition",
+      "policy_subtype": "bare_container_deprecated_covered_by_scalar_decomposition",
+      "post_proof_decision": {
+        "decision_class": "bare_container_deprecated_covered_by_scalar_decomposition",
+        "decision_status": "reporting_policy_deprecation_candidate",
+        "deprecation_candidate": true,
+        "evidence_basis": "docs/evidence/procore-null-projection-patch4-existing-scalar-containers/20260619T080633Z/classification-summary.json; reporting/audit-policy deprecation only, not a physical column migration.",
+        "legacy_non_null_bare_container_values_present": true,
+        "mapping_candidate": false,
+        "next_action": "no_action_existing_scalar_decomposition_verified",
+        "projection_code_repair_candidate": false,
+        "suppress_from_actionable_mapping_rollup": true
+      },
+      "raw_detection": {
+        "raw_field_status": "bare_container_null_or_suspicious",
+        "raw_finding_preserved": true
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 121,
+          "column": "ball_in_court_id",
+          "registry_json_path": "$.ball_in_court.id",
+          "source_non_empty_count": 148,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 121,
+          "column": "ball_in_court_login",
+          "registry_json_path": "$.ball_in_court.login",
+          "source_non_empty_count": 148,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 121,
+          "column": "ball_in_court_name",
+          "registry_json_path": "$.ball_in_court.name",
+          "source_non_empty_count": 148,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_rfis"
+    },
+    {
+      "bare_column_non_null_count": 30,
+      "column": "cost_code",
+      "endpoint_key": "rfis",
+      "legacy_non_null_bare_container_values_present": true,
+      "policy_bucket": "bare_container_deprecated_covered_by_scalar_decomposition",
+      "policy_subtype": "bare_container_deprecated_covered_by_scalar_decomposition",
+      "post_proof_decision": {
+        "decision_class": "bare_container_deprecated_covered_by_scalar_decomposition",
+        "decision_status": "reporting_policy_deprecation_candidate",
+        "deprecation_candidate": true,
+        "evidence_basis": "docs/evidence/procore-null-projection-patch4-existing-scalar-containers/20260619T080633Z/classification-summary.json; reporting/audit-policy deprecation only, not a physical column migration.",
+        "legacy_non_null_bare_container_values_present": true,
+        "mapping_candidate": false,
+        "next_action": "no_action_existing_scalar_decomposition_verified",
+        "projection_code_repair_candidate": false,
+        "suppress_from_actionable_mapping_rollup": true
+      },
+      "raw_detection": {
+        "raw_field_status": "bare_container_null_or_suspicious",
+        "raw_finding_preserved": true
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 30,
+          "column": "cost_code_id",
+          "registry_json_path": "$.cost_code.id",
+          "source_non_empty_count": 30,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 30,
+          "column": "cost_code_name",
+          "registry_json_path": "$.cost_code.name",
+          "source_non_empty_count": 30,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_rfis"
+    },
+    {
+      "bare_column_non_null_count": 76,
+      "column": "location",
+      "endpoint_key": "rfis",
+      "legacy_non_null_bare_container_values_present": true,
+      "policy_bucket": "bare_container_deprecated_covered_by_scalar_decomposition",
+      "policy_subtype": "bare_container_deprecated_covered_by_scalar_decomposition",
+      "post_proof_decision": {
+        "decision_class": "bare_container_deprecated_covered_by_scalar_decomposition",
+        "decision_status": "reporting_policy_deprecation_candidate",
+        "deprecation_candidate": true,
+        "evidence_basis": "docs/evidence/procore-null-projection-patch4-existing-scalar-containers/20260619T080633Z/classification-summary.json; reporting/audit-policy deprecation only, not a physical column migration.",
+        "legacy_non_null_bare_container_values_present": true,
+        "mapping_candidate": false,
+        "next_action": "no_action_existing_scalar_decomposition_verified",
+        "projection_code_repair_candidate": false,
+        "suppress_from_actionable_mapping_rollup": true
+      },
+      "raw_detection": {
+        "raw_field_status": "bare_container_null_or_suspicious",
+        "raw_finding_preserved": true
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 197,
+          "column": "location_created_at",
+          "registry_json_path": "$.location.created_at",
+          "source_non_empty_count": 209,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 197,
+          "column": "location_id",
+          "registry_json_path": "$.location.id",
+          "source_non_empty_count": 209,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 197,
+          "column": "location_name",
+          "registry_json_path": "$.location.name",
+          "source_non_empty_count": 209,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 197,
+          "column": "location_node_name",
+          "registry_json_path": "$.location.node_name",
+          "source_non_empty_count": 209,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 5,
+          "column": "location_parent_id",
+          "registry_json_path": "$.location.parent_id",
+          "source_non_empty_count": 6,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 197,
+          "column": "location_updated_at",
+          "registry_json_path": "$.location.updated_at",
+          "source_non_empty_count": 209,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_rfis"
+    },
+    {
+      "bare_column_non_null_count": 63,
+      "column": "sub_job",
+      "endpoint_key": "rfis",
+      "legacy_non_null_bare_container_values_present": true,
+      "policy_bucket": "bare_container_deprecated_covered_by_scalar_decomposition",
+      "policy_subtype": "bare_container_deprecated_covered_by_scalar_decomposition",
+      "post_proof_decision": {
+        "decision_class": "bare_container_deprecated_covered_by_scalar_decomposition",
+        "decision_status": "reporting_policy_deprecation_candidate",
+        "deprecation_candidate": true,
+        "evidence_basis": "docs/evidence/procore-null-projection-patch4-existing-scalar-containers/20260619T080633Z/classification-summary.json; reporting/audit-policy deprecation only, not a physical column migration.",
+        "legacy_non_null_bare_container_values_present": true,
+        "mapping_candidate": false,
+        "next_action": "no_action_existing_scalar_decomposition_verified",
+        "projection_code_repair_candidate": false,
+        "suppress_from_actionable_mapping_rollup": true
+      },
+      "raw_detection": {
+        "raw_field_status": "bare_container_null_or_suspicious",
+        "raw_finding_preserved": true
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 71,
+          "column": "sub_job_code",
+          "registry_json_path": "$.sub_job.code",
+          "source_non_empty_count": 74,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 71,
+          "column": "sub_job_id",
+          "registry_json_path": "$.sub_job.id",
+          "source_non_empty_count": 74,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 71,
+          "column": "sub_job_name",
+          "registry_json_path": "$.sub_job.name",
+          "source_non_empty_count": 74,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_rfis"
+    },
+    {
+      "bare_column_non_null_count": 0,
+      "column": "submittal_package",
+      "endpoint_key": "submittals",
+      "legacy_non_null_bare_container_values_present": false,
+      "policy_bucket": "bare_container_deprecated_covered_by_scalar_decomposition",
+      "policy_subtype": "bare_container_deprecated_covered_by_scalar_decomposition",
+      "post_proof_decision": {
+        "decision_class": "bare_container_deprecated_covered_by_scalar_decomposition",
+        "decision_status": "reporting_policy_deprecation_candidate",
+        "deprecation_candidate": true,
+        "evidence_basis": "docs/evidence/procore-null-projection-patch4-existing-scalar-containers/20260619T080633Z/classification-summary.json; reporting/audit-policy deprecation only, not a physical column migration.",
+        "legacy_non_null_bare_container_values_present": false,
+        "mapping_candidate": false,
+        "next_action": "no_action_existing_scalar_decomposition_verified",
+        "projection_code_repair_candidate": false,
+        "suppress_from_actionable_mapping_rollup": true
+      },
+      "raw_detection": {
+        "raw_field_status": "bare_container_null_or_suspicious",
+        "raw_finding_preserved": true
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 149,
+          "column": "submittal_package_created_by_id",
+          "registry_json_path": "$.submittal_package.created_by.id",
+          "source_non_empty_count": 273,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 149,
+          "column": "submittal_package_created_by_login",
+          "registry_json_path": "$.submittal_package.created_by.login",
+          "source_non_empty_count": 273,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 149,
+          "column": "submittal_package_created_by_name",
+          "registry_json_path": "$.submittal_package.created_by.name",
+          "source_non_empty_count": 273,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 149,
+          "column": "submittal_package_id",
+          "registry_json_path": "$.submittal_package.id",
+          "source_non_empty_count": 273,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 149,
+          "column": "submittal_package_number",
+          "registry_json_path": "$.submittal_package.number",
+          "source_non_empty_count": 273,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 110,
+          "column": "submittal_package_specification_section_id",
+          "registry_json_path": "$.submittal_package.specification_section_id",
+          "source_non_empty_count": 130,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 149,
+          "column": "submittal_package_updated_at",
+          "registry_json_path": "$.submittal_package.updated_at",
+          "source_non_empty_count": 273,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_submittals"
+    },
+    {
+      "bare_column_non_null_count": 0,
+      "column": "submittal_workflow_template",
+      "endpoint_key": "submittals",
+      "legacy_non_null_bare_container_values_present": false,
+      "policy_bucket": "bare_container_deprecated_covered_by_scalar_decomposition",
+      "policy_subtype": "bare_container_deprecated_covered_by_scalar_decomposition",
+      "post_proof_decision": {
+        "decision_class": "bare_container_deprecated_covered_by_scalar_decomposition",
+        "decision_status": "reporting_policy_deprecation_candidate",
+        "deprecation_candidate": true,
+        "evidence_basis": "docs/evidence/procore-null-projection-patch4-existing-scalar-containers/20260619T080633Z/classification-summary.json; reporting/audit-policy deprecation only, not a physical column migration.",
+        "legacy_non_null_bare_container_values_present": false,
+        "mapping_candidate": false,
+        "next_action": "no_action_existing_scalar_decomposition_verified",
+        "projection_code_repair_candidate": false,
+        "suppress_from_actionable_mapping_rollup": true
+      },
+      "raw_detection": {
+        "raw_field_status": "bare_container_null_or_suspicious",
+        "raw_finding_preserved": true
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 65,
+          "column": "submittal_workflow_template_applied_at",
+          "registry_json_path": "$.submittal_workflow_template_applied_at",
+          "source_non_empty_count": 101,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 65,
+          "column": "submittal_workflow_template_id",
+          "registry_json_path": "$.submittal_workflow_template.id",
+          "source_non_empty_count": 101,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 65,
+          "column": "submittal_workflow_template_name",
+          "registry_json_path": "$.submittal_workflow_template.name",
+          "source_non_empty_count": 101,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_submittals"
+    }
+  ],
+  "generated_at_utc": "2026-06-19T08:56:40Z",
+  "raw_payload_values_emitted": false
+}

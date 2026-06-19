@@ -1,0 +1,11 @@
+{
+  "command": "hb-assistant procore analytics no-raw-leak-scan",
+  "findings": [],
+  "guardrails": {
+    "live_calls_disabled": true,
+    "writeback": "none"
+  },
+  "ok": true,
+  "returncode": 0,
+  "unsafe_finding_count": 0
+}

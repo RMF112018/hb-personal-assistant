@@ -1,0 +1,10 @@
+{
+  "covered_bare_containers_suppressed_from_actionable_mapping_rollup": 34,
+  "covered_bare_containers_visible_in_disposition_evidence": 34,
+  "date_datetime_mapping_candidates": 0,
+  "generated_at_utc": "2026-06-19T08:56:40Z",
+  "high_confidence_mapping_candidates": 0,
+  "projection_code_repair_candidates": 0,
+  "raw_payload_values_emitted": false,
+  "raw_strict_findings_preserved": true
+}

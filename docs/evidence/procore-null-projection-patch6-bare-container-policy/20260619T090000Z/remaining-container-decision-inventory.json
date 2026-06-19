@@ -1,0 +1,104 @@
+{
+  "budget_detail_dead_convenience_column": 4,
+  "budget_detail_read_model_schema_artifact": 4,
+  "company_id_policy_deferred": 4,
+  "fields": [
+    {
+      "column": "item_response",
+      "endpoint_key": "inspection-items",
+      "future_recommendation": "represent_only_in_child_table",
+      "policy_bucket": "bare_container_child_table_or_entity_only_deferred",
+      "post_proof_decision": {
+        "decision_class": "bare_container_child_table_or_entity_only_deferred",
+        "decision_status": "design_deferred",
+        "deprecation_candidate": false,
+        "evidence_basis": "Patch 3 design package; not an existing scalar mapping repair.",
+        "legacy_non_null_bare_container_values_present": false,
+        "mapping_candidate": false,
+        "next_action": "approve_child_table_or_entity_design_next",
+        "projection_code_repair_candidate": false,
+        "suppress_from_actionable_mapping_rollup": true
+      },
+      "raw_payload_values_emitted": false,
+      "table": "procore_ep_inspection_items"
+    },
+    {
+      "column": "response",
+      "endpoint_key": "inspection-items",
+      "future_recommendation": "represent_only_in_child_table",
+      "policy_bucket": "bare_container_child_table_or_entity_only_deferred",
+      "post_proof_decision": {
+        "decision_class": "bare_container_child_table_or_entity_only_deferred",
+        "decision_status": "design_deferred",
+        "deprecation_candidate": false,
+        "evidence_basis": "Patch 3 design package; not an existing scalar mapping repair.",
+        "legacy_non_null_bare_container_values_present": false,
+        "mapping_candidate": false,
+        "next_action": "approve_child_table_or_entity_design_next",
+        "projection_code_repair_candidate": false,
+        "suppress_from_actionable_mapping_rollup": true
+      },
+      "raw_payload_values_emitted": false,
+      "table": "procore_ep_inspection_items"
+    },
+    {
+      "column": "response_set",
+      "endpoint_key": "inspection-items",
+      "future_recommendation": "represent_only_in_child_table",
+      "policy_bucket": "bare_container_child_table_or_entity_only_deferred",
+      "post_proof_decision": {
+        "decision_class": "bare_container_child_table_or_entity_only_deferred",
+        "decision_status": "design_deferred",
+        "deprecation_candidate": false,
+        "evidence_basis": "Patch 3 design package; not an existing scalar mapping repair.",
+        "legacy_non_null_bare_container_values_present": false,
+        "mapping_candidate": false,
+        "next_action": "approve_child_table_or_entity_design_next",
+        "projection_code_repair_candidate": false,
+        "suppress_from_actionable_mapping_rollup": true
+      },
+      "raw_payload_values_emitted": false,
+      "table": "procore_ep_inspection_items"
+    },
+    {
+      "column": "signature",
+      "endpoint_key": "inspections",
+      "future_recommendation": "represent_only_in_entity_dimension",
+      "policy_bucket": "bare_container_child_table_or_entity_only_deferred",
+      "post_proof_decision": {
+        "decision_class": "bare_container_child_table_or_entity_only_deferred",
+        "decision_status": "design_deferred",
+        "deprecation_candidate": false,
+        "evidence_basis": "Patch 3 design package; not an existing scalar mapping repair.",
+        "legacy_non_null_bare_container_values_present": false,
+        "mapping_candidate": false,
+        "next_action": "approve_child_table_or_entity_design_next",
+        "projection_code_repair_candidate": false,
+        "suppress_from_actionable_mapping_rollup": true
+      },
+      "raw_payload_values_emitted": false,
+      "table": "procore_ep_inspections_signature_requests"
+    },
+    {
+      "column": "vendor",
+      "endpoint_key": "observations",
+      "future_recommendation": "represent_only_in_entity_dimension",
+      "policy_bucket": "bare_container_child_table_or_entity_only_deferred",
+      "post_proof_decision": {
+        "decision_class": "bare_container_child_table_or_entity_only_deferred",
+        "decision_status": "design_deferred",
+        "deprecation_candidate": false,
+        "evidence_basis": "Patch 3 design package; not an existing scalar mapping repair.",
+        "legacy_non_null_bare_container_values_present": false,
+        "mapping_candidate": false,
+        "next_action": "approve_child_table_or_entity_design_next",
+        "projection_code_repair_candidate": false,
+        "suppress_from_actionable_mapping_rollup": true
+      },
+      "raw_payload_values_emitted": false,
+      "table": "procore_ep_observations_assignees"
+    }
+  ],
+  "generated_at_utc": "2026-06-19T08:56:40Z",
+  "raw_payload_values_emitted": false
+}
