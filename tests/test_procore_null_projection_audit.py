@@ -116,6 +116,16 @@ def test_required_root_cause_classes_and_row_context(
     assert amount["classification"] == "all_null"
     assert amount["root_cause_class"] == audit.ROOT_PATH_PRESENT_NOT_WRITTEN
     assert amount["suspected_projection_defect"] is True
+    assert amount["raw_detection"] == {
+        "classification": "all_null",
+        "root_cause_class": audit.ROOT_PATH_PRESENT_NOT_WRITTEN,
+        "suspected_projection_defect": True,
+    }
+    assert (
+        amount["post_proof_decision"]["decision_class"]
+        == "mapped_source_present_projection_not_writing"
+    )
+    assert amount["post_proof_decision"]["mapping_candidate"] is True
     assert amount["raw_path_presence"] == {
         "endpoint_key": "change-events",
         "json_path": "$.amount",
@@ -139,6 +149,12 @@ def test_required_root_cause_classes_and_row_context(
     unmapped = _by_column(payload, "unmapped_all_null")
     assert unmapped["root_cause_class"] == audit.ROOT_UNMAPPED
     assert unmapped["suspected_projection_defect"] is True
+    assert unmapped["raw_detection"]["suspected_projection_defect"] is True
+    assert (
+        unmapped["post_proof_decision"]["decision_class"]
+        == "raw_unresolved_schema_interest_field"
+    )
+    assert unmapped["post_proof_decision"]["mapping_candidate"] is False
 
     support = _by_column(payload, "external_writeback_performed")
     assert support["root_cause_class"] == audit.ROOT_SUPPORT
@@ -171,6 +187,79 @@ def test_strict_audit_does_not_suppress_unmapped_fields_by_deferral_list(
     assert arbitrary["suspected_projection_defect"] is True
 
     assert payload["summary"]["suspected_projection_defects"] >= 2
+    assert payload["summary"]["raw_suspected_projection_defects"] >= 2
+
+
+def test_source_proof_decision_layer_does_not_suppress_raw_detection(
+    tmp_path: Path, monkeypatch: Any
+) -> None:
+    _install_fake_registry(monkeypatch)
+    proof = {
+        "fields": [
+            {
+                "table": "procore_ep_rfis",
+                "column": "ball_in_court",
+                "post_proof_decision": {
+                    "decision_class": "object_container_requires_decomposition_or_deprecation",
+                    "decision_status": "design_decision_required",
+                    "mapping_candidate": False,
+                    "next_action": "approve_decomposition_schema_design_next_or_deprecation",
+                    "evidence_basis": "Synthetic source proof found object/container shape.",
+                },
+            }
+        ]
+    }
+    proof_path = tmp_path / "source-proof.json"
+    proof_path.write_text(json.dumps(proof), encoding="utf-8")
+
+    payload = audit.audit_database(
+        _make_db(tmp_path),
+        source_proof_required=True,
+        source_proof_json=proof_path,
+    )
+
+    reviewed = [
+        row
+        for row in payload["columns"]
+        if row["table"] == "procore_ep_rfis" and row["column"] == "ball_in_court"
+    ][0]
+    assert reviewed["raw_detection"]["root_cause_class"] == audit.ROOT_UNMAPPED
+    assert reviewed["raw_detection"]["suspected_projection_defect"] is True
+    assert reviewed["suspected_projection_defect"] is True
+    assert (
+        reviewed["post_proof_decision"]["decision_class"]
+        == "object_container_requires_decomposition_or_deprecation"
+    )
+    assert reviewed["post_proof_decision"]["mapping_candidate"] is False
+    assert payload["summary"]["raw_suspected_projection_defects"] >= 2
+    assert (
+        payload["summary"]["post_proof_decision_class_counts"][
+            "object_container_requires_decomposition_or_deprecation"
+        ]
+        == 1
+    )
+
+
+def test_budget_detail_fallback_decisions_are_no_action_without_suppressing_raw() -> None:
+    actual_cost = audit._post_proof_decision_from_raw(  # noqa: SLF001
+        table="procore_ep_budget_detail_rows",
+        column="actual_cost",
+        root_cause=audit.ROOT_UNMAPPED,
+        suspected=True,
+        classification="all_null",
+    )
+    assert actual_cost["decision_class"] == "budget_detail_dead_convenience_column"
+    assert actual_cost["mapping_candidate"] is False
+
+    visible = audit._post_proof_decision_from_raw(  # noqa: SLF001
+        table="procore_ep_budget_detail_columns",
+        column="visible",
+        root_cause=audit.ROOT_UNMAPPED,
+        suspected=True,
+        classification="all_null",
+    )
+    assert visible["decision_class"] == "budget_detail_read_model_schema_artifact"
+    assert visible["mapping_candidate"] is False
 
 
 def test_empty_table_and_body_free_outputs(tmp_path: Path, monkeypatch: Any) -> None:

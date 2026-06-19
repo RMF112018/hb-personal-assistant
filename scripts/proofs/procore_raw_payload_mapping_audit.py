@@ -65,6 +65,42 @@ SWEEP_CLASSIFICATIONS = {
     "expected_optional_source_null",
     "schema_artifact_candidate",
 }
+PATCH1_SCALAR_FIELDS = {
+    ("procore_ep_commitment_change_orders", "change_order_change_reason_id"),
+    ("procore_ep_commitment_change_orders", "change_order_change_reason_change_reason"),
+    ("procore_ep_commitment_change_orders", "designated_reviewer_id"),
+    ("procore_ep_commitment_change_orders", "designated_reviewer_name"),
+    ("procore_ep_commitment_change_orders", "received_from_id"),
+    ("procore_ep_commitment_change_orders", "received_from_name"),
+    ("procore_ep_commitment_change_orders", "reviewed_by_id"),
+    ("procore_ep_commitment_change_orders", "reviewed_by_name"),
+    ("procore_ep_prime_change_orders", "change_order_change_reason_id"),
+    ("procore_ep_prime_change_orders", "change_order_change_reason_change_reason"),
+    ("procore_ep_prime_change_orders", "designated_reviewer_id"),
+    ("procore_ep_prime_change_orders", "designated_reviewer_name"),
+    ("procore_ep_prime_change_orders", "received_from_id"),
+    ("procore_ep_prime_change_orders", "received_from_name"),
+}
+COMPANY_ID_POLICY_FIELDS = {
+    ("procore_ep_projects", "company_id"),
+    ("procore_ep_purchase_order_line_items", "company_id"),
+    ("procore_ep_rfqs", "company_id"),
+    ("procore_ep_rfqs_change_event_change_event_line_items", "company_id"),
+}
+BUDGET_DETAIL_DEAD_CONVENIENCE_FIELDS = {
+    ("procore_ep_budget_detail_rows", "actual_cost"),
+    ("procore_ep_budget_detail_rows", "cost_type"),
+    ("procore_ep_budget_detail_rows", "cost_type_id"),
+    ("procore_ep_budget_detail_rows", "line_item_type_id"),
+}
+BUDGET_DETAIL_OPTIONAL_FIELDS = {
+    ("procore_ep_budget_detail_row_cells", "currency_iso_code"),
+}
+BUDGET_DETAIL_READ_MODEL_ARTIFACT_FIELDS = {
+    ("procore_ep_budget_detail_columns", "company_id"),
+    ("procore_ep_budget_detail_columns", "visible"),
+}
+SCALAR_MAPPING_ACTIONS = {"map_scalar_path", "map_object_id", "map_object_name"}
 
 
 @dataclass(frozen=True)
@@ -508,6 +544,135 @@ def _sweep_recommendation(
     return "deprecation_candidate", "schema_artifact_candidate", "medium"
 
 
+def _raw_detection_for_field(field: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "classification": field.get("classification"),
+        "root_cause_class": field.get("root_cause_class"),
+        "suspected_projection_defect": bool(field.get("suspected_projection_defect")),
+    }
+
+
+def _post_proof_decision(
+    *,
+    table: str,
+    column: str,
+    action: str,
+    classification: str,
+    confidence: str,
+    selection_reason: str,
+) -> dict[str, Any]:
+    key = (table, column)
+    if key in PATCH1_SCALAR_FIELDS:
+        return {
+            "decision_class": "patch1_scalar_decomposition_verified",
+            "decision_status": "resolved_by_existing_mapping_and_replay_proof",
+            "mapping_candidate": False,
+            "next_action": "no_action_patch1_scalar_decomposition_verified",
+            "evidence_basis": "Patch 1 copied-DB reset replay evidence.",
+        }
+    if key in BUDGET_DETAIL_DEAD_CONVENIENCE_FIELDS:
+        return {
+            "decision_class": "budget_detail_dead_convenience_column",
+            "decision_status": "no_action",
+            "mapping_candidate": False,
+            "next_action": "no_action_dead_column_candidate",
+            "evidence_basis": "Batch 2 Budget Detail source-path triage found no row-level or dynamic-cell source support.",
+        }
+    if key in BUDGET_DETAIL_OPTIONAL_FIELDS:
+        return {
+            "decision_class": "expected_optional_no_action",
+            "decision_status": "no_action",
+            "mapping_candidate": False,
+            "next_action": "no_action_expected_optional",
+            "evidence_basis": "Batch 2 triage found no approved required cell-level currency source proof.",
+        }
+    if key in BUDGET_DETAIL_READ_MODEL_ARTIFACT_FIELDS:
+        return {
+            "decision_class": "budget_detail_read_model_schema_artifact",
+            "decision_status": "documentation_or_deprecation_decision",
+            "mapping_candidate": False,
+            "next_action": "document_schema_artifact",
+            "evidence_basis": "Budget Detail read-model artifact; no approved source-path proof supports mapping.",
+        }
+    if key in COMPANY_ID_POLICY_FIELDS or (
+        column == "company_id" and classification == "company_id_requires_derivation_policy"
+    ):
+        return {
+            "decision_class": "company_id_policy_deferred",
+            "decision_status": "policy_deferred",
+            "mapping_candidate": False,
+            "next_action": "defer_company_id_policy",
+            "evidence_basis": "Standard company_id requires repository-wide derivation policy and table convention proof.",
+        }
+    if classification == "object_container_requires_decomposition":
+        return {
+            "decision_class": "object_container_requires_decomposition_or_deprecation",
+            "decision_status": "design_decision_required",
+            "mapping_candidate": False,
+            "next_action": "approve_decomposition_schema_design_next_or_deprecation",
+            "evidence_basis": "Raw payload path is an object/container; whole-object projection into bare scalar column is disallowed.",
+        }
+    if classification == "source_absent_in_current_payloads":
+        return {
+            "decision_class": "source_absent_in_current_payloads",
+            "decision_status": "no_current_mapping_action",
+            "mapping_candidate": False,
+            "next_action": "no_action_source_absent_current_payloads",
+            "evidence_basis": "Current local live_full_payload rows do not contain a non-empty source path.",
+        }
+    if classification in {
+        "expected_optional_source_null",
+        "source_path_observed_for_non_unmapped_field",
+        "already_populated",
+    }:
+        return {
+            "decision_class": "expected_optional_no_action",
+            "decision_status": "no_current_mapping_action",
+            "mapping_candidate": False,
+            "next_action": "no_action_expected_optional",
+            "evidence_basis": "Current source proof indicates optional, already mapped, or already populated behavior.",
+        }
+    if action in SCALAR_MAPPING_ACTIONS and confidence == "high":
+        return {
+            "decision_class": "high_confidence_scalar_mapping_candidate",
+            "decision_status": "unresolved_mapping_candidate",
+            "mapping_candidate": True,
+            "next_action": "approve_mapping_patch_next",
+            "evidence_basis": "Non-empty scalar source path exists with compatible destination but no mapping/projection proof.",
+        }
+    if action == "repair_projection_write_path" and confidence == "high":
+        return {
+            "decision_class": "mapped_source_present_projection_not_writing",
+            "decision_status": "unresolved_projection_write_candidate",
+            "mapping_candidate": True,
+            "next_action": "repair_projection_write_path_next",
+            "evidence_basis": "Mapped source path is non-empty but the destination is not populated.",
+        }
+    if selection_reason == "date_field_sweep":
+        return {
+            "decision_class": "date_sweep_clear",
+            "decision_status": "no_current_mapping_action",
+            "mapping_candidate": False,
+            "next_action": "no_action_date_sweep_clear",
+            "evidence_basis": "Date/datetime sweep found no source-backed unmapped date mapping requirement for this field.",
+        }
+    if classification == "schema_artifact_candidate":
+        return {
+            "decision_class": "no_current_mapping_action",
+            "decision_status": "schema_artifact_candidate",
+            "mapping_candidate": False,
+            "next_action": "document_schema_artifact",
+            "evidence_basis": "No current source-path proof supports mapping this schema column.",
+        }
+    return {
+        "decision_class": "no_current_mapping_action",
+        "decision_status": "no_current_mapping_action",
+        "mapping_candidate": False,
+        "next_action": "no_action",
+        "evidence_basis": "No current high-confidence scalar mapping action is supported by source proof.",
+    }
+
+
 def _record_for_field(
     *,
     conn: sqlite3.Connection,
@@ -555,6 +720,15 @@ def _record_for_field(
             for key in check.get("object_keys_present", [])
         }
     )
+    selection_reason = field.get("selection_reason", "current_audit_candidate")
+    post_proof_decision = _post_proof_decision(
+        table=table,
+        column=column,
+        action=action,
+        classification=classification,
+        confidence=confidence,
+        selection_reason=str(selection_reason),
+    )
     return {
         "table": table,
         "column": column,
@@ -567,7 +741,7 @@ def _record_for_field(
         "endpoint_family": plan.endpoint_family,
         "current_root_cause_class": field.get("root_cause_class"),
         "current_null_classification": field.get("classification"),
-        "selection_reason": field.get("selection_reason", "current_audit_candidate"),
+        "selection_reason": selection_reason,
         "inferred_table_role": plan.role,
         "associated_raw_endpoint_key": plan.endpoint_key,
         "registry_mapped": registry_path is not None,
@@ -580,6 +754,8 @@ def _record_for_field(
         "classification": classification,
         "confidence": confidence,
         "strict": strict,
+        "raw_detection": _raw_detection_for_field(field),
+        "post_proof_decision": post_proof_decision,
         "raw_payload_values_emitted": False,
     }
 
@@ -643,17 +819,49 @@ def audit_source_paths(
                 )
             )
 
+    unique_records = {
+        (record["table"], record["column"]): record
+        for record in records
+    }
+    decision_class_counts = Counter(
+        record["post_proof_decision"]["decision_class"]
+        for record in unique_records.values()
+    )
+    high_confidence_scalar_mapping_candidates = sum(
+        1
+        for record in unique_records.values()
+        if record["post_proof_decision"]["mapping_candidate"] is True
+        and record["post_proof_decision"]["decision_class"]
+        == "high_confidence_scalar_mapping_candidate"
+    )
+    date_datetime_mapping_candidates = sum(
+        1
+        for record in unique_records.values()
+        if record.get("selection_reason") == "date_field_sweep"
+        and record["post_proof_decision"]["mapping_candidate"] is True
+    )
+    patch1_scalar_decomposition_defects = sum(
+        1
+        for record in unique_records.values()
+        if (record["table"], record["column"]) in PATCH1_SCALAR_FIELDS
+        and record["post_proof_decision"]["mapping_candidate"] is True
+    )
     summary = {
         "fields_audited": len(records),
+        "unique_fields_audited": len(unique_records),
         "high_confidence_mapping_candidates": sum(
             1
             for record in records
             if record["confidence"] == "high"
             and str(record["recommended_mapping"]).startswith("map_")
         ),
+        "high_confidence_scalar_mapping_candidates": high_confidence_scalar_mapping_candidates,
+        "date_datetime_mapping_candidates": date_datetime_mapping_candidates,
+        "patch1_scalar_decomposition_defects": patch1_scalar_decomposition_defects,
         "left_unmapped_with_source_rationale": sum(
             1 for record in records if not str(record["recommended_mapping"]).startswith("map_")
         ),
+        "post_proof_decision_class_counts": dict(sorted(decision_class_counts.items())),
         "raw_payload_values_emitted": False,
         "explicit_field_count": sum(
             1 for record in records if record.get("selection_reason") == "explicit_field"
@@ -693,7 +901,12 @@ def render_markdown(payload: dict[str, Any]) -> str:
         "## Summary",
         "",
         f"- Fields audited: `{summary['fields_audited']}`",
-        f"- High-confidence mapping candidates: `{summary['high_confidence_mapping_candidates']}`",
+        f"- Raw high-confidence mapping candidates: `{summary['high_confidence_mapping_candidates']}`",
+        "- High-confidence scalar mapping candidates after source proof: "
+        f"`{summary['high_confidence_scalar_mapping_candidates']}`",
+        f"- Date/datetime mapping candidates: `{summary['date_datetime_mapping_candidates']}`",
+        "- Patch 1 scalar decomposition defects: "
+        f"`{summary['patch1_scalar_decomposition_defects']}`",
         f"- Left unmapped with source rationale: `{summary['left_unmapped_with_source_rationale']}`",
         f"- Explicit fields inspected: `{summary['explicit_field_count']}`",
         f"- Date field sweep records: `{summary['date_field_sweep_count']}`",
@@ -701,15 +914,17 @@ def render_markdown(payload: dict[str, Any]) -> str:
         "",
         "## Field Decisions",
         "",
-        "| table | column | endpoint | selection | mapped | rows | null rate | action | classification | confidence | paths checked |",
-        "| --- | --- | --- | --- | --- | ---: | ---: | --- | --- | --- | ---: |",
+        "| table | column | endpoint | selection | mapped | rows | null rate | action | classification | decision class | mapping candidate | paths checked |",
+        "| --- | --- | --- | --- | --- | ---: | ---: | --- | --- | --- | --- | ---: |",
     ]
     for row in payload["fields"]:
+        decision = row["post_proof_decision"]
         lines.append(
             f"| {row['table']} | {row['column']} | {row['inferred_endpoint_key']} | "
             f"{row['selection_reason']} | {row['registry_mapped']} | "
             f"{row['row_count']} | {float(row['null_rate'] or 0):.3f} | "
-            f"{row['recommended_mapping']} | {row['classification']} | {row['confidence']} | "
+            f"{row['recommended_mapping']} | {row['classification']} | "
+            f"{decision['decision_class']} | {decision['mapping_candidate']} | "
             f"{len(row['candidate_json_paths_checked'])} |"
         )
     lines += [
@@ -732,15 +947,17 @@ def write_reports(payload: dict[str, Any], json_out: Path, md_out: Path) -> None
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--db-path", default=str(DEFAULT_DB_PATH))
-    parser.add_argument("--current-audit-json", required=True)
-    parser.add_argument("--out-json", required=True)
-    parser.add_argument("--out-md", required=True)
+    parser.add_argument("--db-path", "--db", dest="db_path", default=str(DEFAULT_DB_PATH))
+    parser.add_argument("--current-audit-json")
+    parser.add_argument("--out")
+    parser.add_argument("--out-json")
+    parser.add_argument("--out-md")
     parser.add_argument("--endpoint", action="append", dest="endpoints")
     parser.add_argument("--table", action="append", dest="tables")
     parser.add_argument("--field", action="append", dest="fields")
     parser.add_argument("--date-field-sweep", action="store_true")
     parser.add_argument("--strict", action="store_true")
+    parser.add_argument("--json", action="store_true", dest="emit_json")
     return parser.parse_args()
 
 
@@ -758,29 +975,55 @@ def _parse_fields(values: list[str] | None) -> set[tuple[str, str]]:
 
 def main() -> int:
     args = parse_args()
+    out_dir = Path(args.out) if args.out else None
+    current_audit_json = (
+        args.current_audit_json
+        or (
+            str(out_dir / "post-patch2-null-projection-audit.json")
+            if out_dir is not None
+            else None
+        )
+    )
+    if current_audit_json is None:
+        raise SystemExit("--current-audit-json is required unless --out is provided")
+    out_json = Path(
+        args.out_json
+        or (
+            out_dir / "post-patch2-raw-payload-mapping-audit.json"
+            if out_dir is not None
+            else "raw-payload-mapping-audit.json"
+        )
+    )
+    out_md = Path(
+        args.out_md
+        or (
+            out_dir / "post-patch2-raw-payload-mapping-audit.md"
+            if out_dir is not None
+            else "raw-payload-mapping-audit.md"
+        )
+    )
     payload = audit_source_paths(
         db_path=args.db_path,
-        current_audit_json=args.current_audit_json,
+        current_audit_json=current_audit_json,
         endpoints=set(args.endpoints or []) or None,
         tables=set(args.tables or []) or None,
         strict=args.strict,
         explicit_fields=_parse_fields(args.fields),
         date_field_sweep=args.date_field_sweep,
     )
-    write_reports(payload, Path(args.out_json), Path(args.out_md))
-    print(
-        json.dumps(
-            {
-                "ok": True,
-                "summary": payload["summary"],
-                "json_out": args.out_json,
-                "markdown_out": args.out_md,
-                "guardrails": payload["guardrails"],
-            },
-            indent=2,
-            sort_keys=True,
-        )
+    write_reports(payload, out_json, out_md)
+    output = (
+        payload
+        if args.emit_json
+        else {
+            "ok": True,
+            "summary": payload["summary"],
+            "json_out": str(out_json),
+            "markdown_out": str(out_md),
+            "guardrails": payload["guardrails"],
+        }
     )
+    print(json.dumps(output, indent=2, sort_keys=True))
     return 0
 
 

@@ -36,6 +36,25 @@ No schema, registry, migration, projection, scheduled-refresh, live-fetch, write
 - Copied-DB reset replay repopulated these scalar fields from existing registry mappings and current local raw payloads.
 - Bare object/container columns with the same object names remain governed by the `Object/container columns need decomposition or deprecation, not bare-object projection` decision below.
 
+## Patch 2 Classification Addendum
+
+- Patch 2 evidence: `docs/evidence/procore-null-projection-patch2/20260619T071034Z/`
+- Raw strict detector count preserved: `123`
+- High-confidence raw-payload-backed scalar mapping candidates: `0`
+- Date/datetime mapping candidates: `0`
+- Patch 1 scalar decomposition defects: `0`
+- Patch 2 does not mark the raw `123` findings fixed. It adds post-proof dispositions showing the remaining items are not current high-confidence scalar mapping defects.
+- Post-proof decision counts:
+  - `object_container_requires_decomposition_or_deprecation`: `43`
+  - `source_absent_in_current_payloads`: `67`
+  - `company_id_policy_deferred`: `4`
+  - `budget_detail_dead_convenience_column`: `4`
+  - `budget_detail_read_model_schema_artifact`: `4`
+  - `expected_optional_no_action`: `463`
+  - `patch1_scalar_decomposition_verified`: `14`
+- Budget Detail read-model artifact count is `4` in Patch 2 because current strict audit also includes Budget Detail row/cell `company_id` columns; they remain no-action artifacts and were not backfilled or derived.
+- Raw detector fields remain present as `raw_detection.*`; post-proof closeout fields are emitted separately as `post_proof_decision.*`.
+
 ## Decision Matrix
 
 | Decision bucket | Count | Affected families / tables | Evidence basis | Schema decision | Next action |

@@ -48,7 +48,30 @@ def _db(tmp_path: Path) -> Path:
 
             CREATE TABLE procore_ep_budget_detail_rows (
               record_key TEXT PRIMARY KEY,
-              actual_cost TEXT
+              actual_cost TEXT,
+              cost_type TEXT
+            );
+
+            CREATE TABLE procore_ep_budget_detail_row_cells (
+              record_key TEXT PRIMARY KEY,
+              currency_iso_code TEXT
+            );
+
+            CREATE TABLE procore_ep_budget_detail_columns (
+              record_key TEXT PRIMARY KEY,
+              visible TEXT,
+              company_id TEXT
+            );
+
+            CREATE TABLE procore_ep_projects (
+              record_key TEXT PRIMARY KEY,
+              company_id TEXT
+            );
+
+            CREATE TABLE procore_ep_commitment_change_orders (
+              record_key TEXT PRIMARY KEY,
+              change_order_change_reason_id TEXT,
+              change_order_change_reason_change_reason TEXT
             );
             """
         )
@@ -65,6 +88,13 @@ def _db(tmp_path: Path) -> Path:
                 "assignees": [{"id": 9, "response_required": True}],
             },
             "budget-detail-rows": {"id": 3, "name": "Synthetic Budget Row"},
+            "budget-detail-row-cells": {"id": 4, "value": "100"},
+            "budget-detail-columns": {"id": 5, "name": "Actual Cost", "position": 1},
+            "projects": {"id": 6, "company": {"id": 5280}},
+            "commitment-change-orders": {
+                "id": 7,
+                "change_order_change_reason": {"id": 8, "change_reason": "Synthetic Reason"},
+            },
         }
         for endpoint, payload in payloads.items():
             conn.execute(
@@ -88,6 +118,18 @@ def _current_audit(tmp_path: Path) -> Path:
         ("procore_ep_rfis", "ball_in_court", "all_null", "TEXT", 1),
         ("procore_ep_rfis_assignees", "response_required", "all_null", "TEXT", 1),
         ("procore_ep_budget_detail_rows", "actual_cost", "all_null", "TEXT", 1),
+        ("procore_ep_budget_detail_rows", "cost_type", "all_null", "TEXT", 1),
+        ("procore_ep_budget_detail_row_cells", "currency_iso_code", "all_null", "TEXT", 1),
+        ("procore_ep_budget_detail_columns", "visible", "all_null", "TEXT", 1),
+        ("procore_ep_budget_detail_columns", "company_id", "all_null", "TEXT", 1),
+        ("procore_ep_projects", "company_id", "all_null", "TEXT", 1),
+        (
+            "procore_ep_commitment_change_orders",
+            "change_order_change_reason_id",
+            "all_null",
+            "TEXT",
+            1,
+        ),
     ]
     payload = {
         "columns": [
@@ -178,6 +220,32 @@ def _install_registry(monkeypatch: Any, *, punch_mapped: bool = False) -> None:
             primary_columns=(),
             child_tables=(),
         ),
+        "budget-detail-row-cells": SimpleNamespace(
+            endpoint_family="budget-detail",
+            primary_table="procore_ep_budget_detail_row_cells",
+            primary_columns=(),
+            child_tables=(),
+        ),
+        "budget-detail-columns": SimpleNamespace(
+            endpoint_family="budget-detail",
+            primary_table="procore_ep_budget_detail_columns",
+            primary_columns=(),
+            child_tables=(),
+        ),
+        "projects": SimpleNamespace(
+            endpoint_family="projects",
+            primary_table="procore_ep_projects",
+            primary_columns=(),
+            child_tables=(),
+        ),
+        "commitment-change-orders": SimpleNamespace(
+            endpoint_family="commitments",
+            primary_table="procore_ep_commitment_change_orders",
+            primary_columns=(
+                ("change_order_change_reason.id", "change_order_change_reason_id"),
+            ),
+            child_tables=(),
+        ),
     }
     monkeypatch.setattr(audit.projection_registry, "load_registry", lambda: plans)
 
@@ -203,6 +271,12 @@ def test_source_path_audit_is_body_free_and_classifies_mapping_shapes(
     closed_at = _by_column(payload, "procore_ep_punch_items", "closed_at")
     assert closed_at["recommended_mapping"] == "map_scalar_path"
     assert closed_at["confidence"] == "high"
+    assert closed_at["raw_detection"]["suspected_projection_defect"] is True
+    assert (
+        closed_at["post_proof_decision"]["decision_class"]
+        == "high_confidence_scalar_mapping_candidate"
+    )
+    assert closed_at["post_proof_decision"]["mapping_candidate"] is True
     assert any(
         check["json_path"] == "$.closed_at" and check["path_non_empty_count"] == 1
         for check in closed_at["candidate_json_paths_checked"]
@@ -211,6 +285,11 @@ def test_source_path_audit_is_body_free_and_classifies_mapping_shapes(
     ball_in_court = _by_column(payload, "procore_ep_rfis", "ball_in_court")
     assert ball_in_court["recommended_mapping"] == "deprecation_candidate"
     assert ball_in_court["classification"] == "object_container_requires_decomposition"
+    assert (
+        ball_in_court["post_proof_decision"]["decision_class"]
+        == "object_container_requires_decomposition_or_deprecation"
+    )
+    assert ball_in_court["post_proof_decision"]["mapping_candidate"] is False
 
     child = _by_column(payload, "procore_ep_rfis_assignees", "response_required")
     assert child["recommended_mapping"] == "map_child_table"
@@ -223,12 +302,51 @@ def test_source_path_audit_is_body_free_and_classifies_mapping_shapes(
     budget = _by_column(payload, "procore_ep_budget_detail_rows", "actual_cost")
     assert budget["recommended_mapping"] == "leave_unmapped_source_absent"
     assert budget["classification"] == "source_absent_in_current_payloads"
+    assert (
+        budget["post_proof_decision"]["decision_class"]
+        == "budget_detail_dead_convenience_column"
+    )
+    assert budget["post_proof_decision"]["mapping_candidate"] is False
+
+    cell_currency = _by_column(
+        payload, "procore_ep_budget_detail_row_cells", "currency_iso_code"
+    )
+    assert (
+        cell_currency["post_proof_decision"]["decision_class"]
+        == "expected_optional_no_action"
+    )
+
+    visible = _by_column(payload, "procore_ep_budget_detail_columns", "visible")
+    assert (
+        visible["post_proof_decision"]["decision_class"]
+        == "budget_detail_read_model_schema_artifact"
+    )
+
+    company_id = _by_column(payload, "procore_ep_projects", "company_id")
+    assert (
+        company_id["post_proof_decision"]["decision_class"]
+        == "company_id_policy_deferred"
+    )
+    assert company_id["post_proof_decision"]["mapping_candidate"] is False
+
+    patch1 = _by_column(
+        payload,
+        "procore_ep_commitment_change_orders",
+        "change_order_change_reason_id",
+    )
+    assert (
+        patch1["post_proof_decision"]["decision_class"]
+        == "patch1_scalar_decomposition_verified"
+    )
+    assert patch1["post_proof_decision"]["mapping_candidate"] is False
+    assert payload["summary"]["patch1_scalar_decomposition_defects"] == 0
 
     dumped = json.dumps(payload)
     assert "Synthetic Reviewer" not in dumped
     assert "reviewer@example.invalid" not in dumped
     assert "sample_value" not in dumped
     assert payload["summary"]["raw_payload_values_emitted"] is False
+    assert payload["summary"]["high_confidence_scalar_mapping_candidates"] == 1
 
 
 def test_explicit_fields_include_already_mapped_populated_punch_fields(
@@ -286,6 +404,7 @@ def test_date_field_sweep_classifies_date_like_columns(tmp_path: Path, monkeypat
     ][0]
     assert closed_at["registry_mapped"] is True
     assert closed_at["classification"] == "mapped_source_present_projection_not_writing"
+    assert closed_at["post_proof_decision"]["mapping_candidate"] is True
 
     due_date = [
         row
@@ -296,6 +415,7 @@ def test_date_field_sweep_classifies_date_like_columns(tmp_path: Path, monkeypat
     ][0]
     assert due_date["registry_mapped"] is False
     assert due_date["classification"] == "source_path_exists_not_mapped"
+    assert due_date["post_proof_decision"]["mapping_candidate"] is True
     assert any(
         check["json_path"] == "$.due_date" and check["path_non_empty_count"] == 1
         for check in due_date["candidate_json_paths_checked"]

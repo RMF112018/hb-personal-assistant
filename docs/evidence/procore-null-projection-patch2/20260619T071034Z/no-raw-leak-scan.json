@@ -1,0 +1,15 @@
+{
+  "command": "/Users/bobbyfetting/hb-personal-assistant/.venv/bin/hb-assistant procore analytics no-raw-leak-scan --path docs/evidence/procore-null-projection-patch2/20260619T071034Z --json",
+  "returncode": 0,
+  "stderr": "",
+  "stdout_json": {
+    "command": "hb-assistant procore analytics no-raw-leak-scan",
+    "findings": [],
+    "guardrails": {
+      "live_calls_disabled": true,
+      "writeback": "none"
+    },
+    "ok": true,
+    "unsafe_finding_count": 0
+  }
+}

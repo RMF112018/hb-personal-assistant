@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import json
 import sqlite3
+from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -100,6 +101,25 @@ SENSITIVE_NAME_PARTS = (
     "secret",
     "password",
 )
+SCALAR_MAPPING_DECISION_CLASSES = {
+    "high_confidence_scalar_mapping_candidate",
+    "mapped_source_present_projection_not_writing",
+}
+BUDGET_DETAIL_DEAD_CONVENIENCE_FIELDS = {
+    ("procore_ep_budget_detail_rows", "actual_cost"),
+    ("procore_ep_budget_detail_rows", "cost_type"),
+    ("procore_ep_budget_detail_rows", "cost_type_id"),
+    ("procore_ep_budget_detail_rows", "line_item_type_id"),
+}
+BUDGET_DETAIL_OPTIONAL_FIELDS = {
+    ("procore_ep_budget_detail_row_cells", "currency_iso_code"),
+}
+BUDGET_DETAIL_READ_MODEL_ARTIFACT_FIELDS = {
+    ("procore_ep_budget_detail_columns", "company_id"),
+    ("procore_ep_budget_detail_columns", "visible"),
+    ("procore_ep_budget_detail_rows", "company_id"),
+    ("procore_ep_budget_detail_row_cells", "company_id"),
+}
 
 
 @dataclass(frozen=True)
@@ -427,6 +447,117 @@ def _root_cause(
     )
 
 
+def _source_proof_decisions(
+    source_proof_json: str | Path | None,
+) -> dict[tuple[str, str], dict[str, Any]]:
+    if source_proof_json is None:
+        return {}
+    path = Path(source_proof_json)
+    if not path.exists():
+        return {}
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    decisions: dict[tuple[str, str], dict[str, Any]] = {}
+    for row in payload.get("fields", []):
+        table = row.get("table")
+        column = row.get("column")
+        decision = row.get("post_proof_decision")
+        if isinstance(table, str) and isinstance(column, str) and isinstance(decision, dict):
+            decisions[(table, column)] = decision
+    return decisions
+
+
+def _raw_detection_record(
+    *, classification: str, root_cause: str, suspected: bool
+) -> dict[str, Any]:
+    return {
+        "classification": classification,
+        "root_cause_class": root_cause,
+        "suspected_projection_defect": suspected,
+    }
+
+
+def _post_proof_decision_from_raw(
+    *,
+    table: str,
+    column: str,
+    root_cause: str,
+    suspected: bool,
+    classification: str,
+) -> dict[str, Any]:
+    key = (table, column)
+    if key in BUDGET_DETAIL_DEAD_CONVENIENCE_FIELDS:
+        return {
+            "decision_class": "budget_detail_dead_convenience_column",
+            "decision_status": "no_action",
+            "mapping_candidate": False,
+            "next_action": "no_action_dead_column_candidate",
+            "evidence_basis": "Batch 2 Budget Detail source-path triage found no row-level or dynamic-cell source support.",
+        }
+    if key in BUDGET_DETAIL_OPTIONAL_FIELDS:
+        return {
+            "decision_class": "expected_optional_no_action",
+            "decision_status": "no_action",
+            "mapping_candidate": False,
+            "next_action": "no_action_expected_optional",
+            "evidence_basis": "Batch 2 triage found no approved required cell-level currency source proof.",
+        }
+    if key in BUDGET_DETAIL_READ_MODEL_ARTIFACT_FIELDS:
+        return {
+            "decision_class": "budget_detail_read_model_schema_artifact",
+            "decision_status": "documentation_or_deprecation_decision",
+            "mapping_candidate": False,
+            "next_action": "document_schema_artifact",
+            "evidence_basis": "Budget Detail read-model artifact; no approved source-path proof supports mapping.",
+        }
+    if root_cause == ROOT_PATH_PRESENT_NOT_WRITTEN:
+        return {
+            "decision_class": "mapped_source_present_projection_not_writing",
+            "decision_status": "raw_detector_requires_source_proof",
+            "mapping_candidate": True,
+            "next_action": "repair_projection_write_path_next",
+            "evidence_basis": "Raw null detector found mapped non-empty source path not writing.",
+        }
+    if root_cause == ROOT_UNMAPPED and suspected:
+        return {
+            "decision_class": "raw_unresolved_schema_interest_field",
+            "decision_status": "source_proof_required",
+            "mapping_candidate": False,
+            "next_action": "run_source_path_proof_before_mapping",
+            "evidence_basis": "Raw null detector found unmapped null-heavy field; source proof is required before remediation.",
+        }
+    if root_cause == ROOT_EMPTY_TABLE:
+        return {
+            "decision_class": "empty_table_no_projection_evidence",
+            "decision_status": "no_current_mapping_action",
+            "mapping_candidate": False,
+            "next_action": "no_action_empty_table_no_projection_evidence",
+            "evidence_basis": "Table has zero rows.",
+        }
+    if root_cause == ROOT_SUPPORT:
+        return {
+            "decision_class": "support_or_guardrail_field",
+            "decision_status": "no_action",
+            "mapping_candidate": False,
+            "next_action": "no_action_support_or_guardrail",
+            "evidence_basis": "Metadata, provenance, or guardrail field.",
+        }
+    if root_cause in {ROOT_EXPECTED_OPTIONAL, ROOT_PATH_ABSENT}:
+        return {
+            "decision_class": "expected_optional_no_action",
+            "decision_status": "no_current_mapping_action",
+            "mapping_candidate": False,
+            "next_action": "no_action_expected_optional",
+            "evidence_basis": "Raw detector found optional or absent current source behavior.",
+        }
+    return {
+        "decision_class": "no_current_mapping_action",
+        "decision_status": "no_current_mapping_action",
+        "mapping_candidate": False,
+        "next_action": "no_action",
+        "evidence_basis": f"Raw population class `{classification}` does not indicate current mapping action.",
+    }
+
+
 def audit_database(
     db_path: str | Path,
     *,
@@ -434,8 +565,10 @@ def audit_database(
     min_null_rate: float = 0.95,
     include_mostly_null: bool = False,
     source_proof_required: bool = False,
+    source_proof_json: str | Path | None = None,
 ) -> dict[str, Any]:
     started = datetime.now(timezone.utc).isoformat()
+    source_decisions = _source_proof_decisions(source_proof_json)
     with connect_readonly(db_path) as conn:
         mappings = _registry_mappings()
         tables = _discover_tables(conn, table_prefixes)
@@ -475,6 +608,21 @@ def audit_database(
                     mapping=mapping,
                     presence=presence,
                 )
+                raw_detection = _raw_detection_record(
+                    classification=classification,
+                    root_cause=root,
+                    suspected=suspected,
+                )
+                post_proof_decision = source_decisions.get(
+                    (table, column),
+                    _post_proof_decision_from_raw(
+                        table=table,
+                        column=column,
+                        root_cause=root,
+                        suspected=suspected,
+                        classification=classification,
+                    ),
+                )
                 record = {
                     "table": table,
                     "column": column,
@@ -491,6 +639,8 @@ def audit_database(
                     "classification": classification,
                     "root_cause_class": root,
                     "suspected_projection_defect": suspected,
+                    "raw_detection": raw_detection,
+                    "post_proof_decision": post_proof_decision,
                     "suspected_root_cause": note,
                     "endpoint_key": mapping.endpoint_key if mapping else None,
                     "endpoint_family": mapping.endpoint_family if mapping else None,
@@ -534,12 +684,46 @@ def audit_database(
             )
 
     priority = _priority_records(records, include_mostly_null=include_mostly_null)
+    decision_class_counts = Counter(
+        str(r["post_proof_decision"]["decision_class"]) for r in records
+    )
+    raw_suspected_projection_defects = sum(
+        1 for r in records if r["raw_detection"]["suspected_projection_defect"]
+    )
+    high_confidence_scalar_mapping_candidates = sum(
+        1
+        for r in records
+        if r["post_proof_decision"]["mapping_candidate"] is True
+        and r["post_proof_decision"]["decision_class"]
+        in SCALAR_MAPPING_DECISION_CLASSES
+    )
+    date_datetime_mapping_candidates = sum(
+        1
+        for r in records
+        if r["post_proof_decision"]["mapping_candidate"] is True
+        and any(
+            str(r["column"]).endswith(suffix)
+            for suffix in ("_at", "_date", "_on")
+        )
+    )
+    patch1_scalar_decomposition_defects = sum(
+        1
+        for r in records
+        if r["post_proof_decision"]["decision_class"]
+        == "patch1_scalar_decomposition_verified"
+        and r["post_proof_decision"]["mapping_candidate"] is True
+    )
     summary = {
         "tables_audited": len(table_profiles),
         "columns_audited": len(records),
         "all_null_fields": sum(1 for r in records if r["classification"] == "all_null"),
         "mostly_null_fields": sum(1 for r in records if r["classification"] == "mostly_null"),
         "suspected_projection_defects": sum(1 for r in records if r["suspected_projection_defect"]),
+        "raw_suspected_projection_defects": raw_suspected_projection_defects,
+        "high_confidence_scalar_mapping_candidates": high_confidence_scalar_mapping_candidates,
+        "date_datetime_mapping_candidates": date_datetime_mapping_candidates,
+        "patch1_scalar_decomposition_defects": patch1_scalar_decomposition_defects,
+        "post_proof_decision_class_counts": dict(sorted(decision_class_counts.items())),
         "expected_optional_fields": sum(
             1 for r in records if r["root_cause_class"] == ROOT_EXPECTED_OPTIONAL
         ),
@@ -556,6 +740,7 @@ def audit_database(
         "min_null_rate": min_null_rate,
         "include_mostly_null": include_mostly_null,
         "source_proof_required": source_proof_required,
+        "source_proof_json": str(source_proof_json) if source_proof_json else None,
         "summary": summary,
         "priority_fields": priority,
         "tables": table_profiles,
@@ -644,7 +829,12 @@ def render_markdown(payload: dict[str, Any]) -> str:
         f"- Columns audited: `{summary['columns_audited']}`",
         f"- All-null fields: `{summary['all_null_fields']}`",
         f"- Mostly-null fields: `{summary['mostly_null_fields']}`",
-        f"- Suspected projection defects: `{summary['suspected_projection_defects']}`",
+        f"- Raw suspected projection defects: `{summary['raw_suspected_projection_defects']}`",
+        "- High-confidence scalar mapping candidates after source proof: "
+        f"`{summary['high_confidence_scalar_mapping_candidates']}`",
+        f"- Date/datetime mapping candidates: `{summary['date_datetime_mapping_candidates']}`",
+        "- Patch 1 scalar decomposition defects: "
+        f"`{summary['patch1_scalar_decomposition_defects']}`",
         f"- Expected optional fields: `{summary['expected_optional_fields']}`",
         f"- Support/guardrail fields: `{summary['support_or_guardrail_fields']}`",
         f"- Empty tables: `{summary['empty_tables']}`",
@@ -652,21 +842,24 @@ def render_markdown(payload: dict[str, Any]) -> str:
         "",
         "## High-Priority Remediation Review",
         "",
-        "| table | column | table rows | null % | classification | root cause | endpoint | recommendation |",
-        "| --- | --- | ---: | ---: | --- | --- | --- | --- |",
+        "| table | column | table rows | null % | classification | raw root cause | decision class | mapping candidate | endpoint | recommendation |",
+        "| --- | --- | ---: | ---: | --- | --- | --- | --- | --- | --- |",
     ]
     for row in payload["priority_fields"][:200]:
+        decision = row["post_proof_decision"]
         lines.append(
             "| {table} | {column} | {rows} | {null_pct:.1f} | {classification} | "
-            "{root} | {endpoint} | {action} |".format(
+            "{root} | {decision_class} | {mapping_candidate} | {endpoint} | {action} |".format(
                 table=row["table"],
                 column=row["column"],
                 rows=row["table_total_rows"],
                 null_pct=float(row["null_rate"]) * 100.0,
                 classification=row["classification"],
                 root=row["root_cause_class"],
+                decision_class=decision["decision_class"],
+                mapping_candidate=decision["mapping_candidate"],
                 endpoint=row.get("endpoint_key") or "",
-                action=row["recommended_action"],
+                action=decision["next_action"],
             )
         )
     if not payload["priority_fields"]:
@@ -680,6 +873,7 @@ def render_markdown(payload: dict[str, Any]) -> str:
     for row in payload["priority_fields"][:200]:
         lines.append(
             f"- `{row['table']}.{row['column']}`: `{row['root_cause_class']}`; "
+            f"decision=`{row['post_proof_decision']['decision_class']}`; "
             f"rows={row['table_total_rows']}; null_rate={float(row['null_rate']) * 100.0:.1f}%; "
             f"{row['suspected_root_cause']}"
         )
@@ -737,11 +931,14 @@ def _default_evidence_paths() -> tuple[Path, Path]:
 def parse_args() -> argparse.Namespace:
     json_default, markdown_default = _default_evidence_paths()
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--db-path", default=str(DEFAULT_DB_PATH))
+    parser.add_argument("--db-path", "--db", dest="db_path", default=str(DEFAULT_DB_PATH))
     parser.add_argument("--table-prefix", action="append", dest="table_prefixes")
     parser.add_argument("--min-null-rate", type=float, default=0.95)
     parser.add_argument("--include-mostly-null", action="store_true")
     parser.add_argument("--source-proof-required", action="store_true")
+    parser.add_argument("--source-proof-json")
+    parser.add_argument("--out")
+    parser.add_argument("--json", action="store_true", dest="emit_json")
     parser.add_argument("--json-out", default=str(json_default))
     parser.add_argument("--markdown-out", default=str(markdown_default))
     return parser.parse_args()
@@ -750,27 +947,38 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     prefixes = tuple(args.table_prefixes or DEFAULT_PREFIXES)
+    out_dir = Path(args.out) if args.out else None
+    json_out = Path(
+        out_dir / "post-patch2-null-projection-audit.json"
+        if out_dir is not None
+        else args.json_out
+    )
+    markdown_out = Path(
+        out_dir / "post-patch2-null-projection-audit.md"
+        if out_dir is not None
+        else args.markdown_out
+    )
     payload = audit_database(
         args.db_path,
         table_prefixes=prefixes,
         min_null_rate=args.min_null_rate,
         include_mostly_null=args.include_mostly_null,
         source_proof_required=args.source_proof_required,
+        source_proof_json=args.source_proof_json,
     )
-    write_reports(payload, Path(args.json_out), Path(args.markdown_out))
-    print(
-        json.dumps(
-            {
-                "ok": True,
-                "json_out": args.json_out,
-                "markdown_out": args.markdown_out,
-                "summary": payload["summary"],
-                "guardrails": payload["guardrails"],
-            },
-            indent=2,
-            sort_keys=True,
-        )
+    write_reports(payload, json_out, markdown_out)
+    output = (
+        payload
+        if args.emit_json
+        else {
+            "ok": True,
+            "json_out": str(json_out),
+            "markdown_out": str(markdown_out),
+            "summary": payload["summary"],
+            "guardrails": payload["guardrails"],
+        }
     )
+    print(json.dumps(output, indent=2, sort_keys=True))
     return 0
 
 
