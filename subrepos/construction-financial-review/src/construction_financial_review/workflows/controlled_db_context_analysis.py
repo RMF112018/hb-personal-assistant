@@ -84,6 +84,7 @@ def run_controlled_context_analysis_workflow(
     project_key: str = SUPPORTED_PROJECT_KEY,
     run_id: str | None = None,
     chain_manifest_name: str = DEFAULT_CHAIN_MANIFEST_NAME,
+    config_snapshot_root: Path | None = None,
 ) -> dict[str, Any]:
     """Run the controlled context->analysis chain once, in ``file`` or ``db`` mode.
 
@@ -205,6 +206,11 @@ def run_controlled_context_analysis_workflow(
         },
         "status": "ok",
     }
+    # Phase 16: optional config-snapshot lineage metadata ONLY (the chain does not consume config).
+    if config_snapshot_root is not None:
+        from ..config_registry import config_snapshot_lineage_block
+
+        report["config_snapshot"] = config_snapshot_lineage_block(Path(config_snapshot_root))
     report_path = mode_dir / WORKFLOW_REPORT_NAME
     _write_json_deterministic(report_path, report)
     return {**report, "report_path": str(report_path)}

@@ -293,7 +293,7 @@ def test_creates_and_verifies_backup(tmp_path, monkeypatch):
     report = _run_success(tmp_path, monkeypatch)
     b = report["backup"]
     assert Path(b["path"]).is_file()
-    assert b["verified_readable"] is True and b["schema_version"] == 59
+    assert b["verified_readable"] is True and b["schema_version"] == 60  # Phase 16: migrator now at v60
     assert b["size_bytes"] > 0 and len(b["sha256"]) == 64
 
 

@@ -169,7 +169,7 @@ def test_v37_tables_classified_in_lifecycle_contract() -> None:
         db = Path(td) / "v37.db"
         _migrate(db)
         report = build_table_inventory_report(db_path=str(db))
-        assert report["contract_table_count"] == 387
+        assert report["contract_table_count"] == 391  # Phase 16: +4 v60 config registry tables (was 387)
         by_name = {t["table_name"]: t for t in report["tables"]}
         for t in _V37_TABLES:
             assert t in by_name, f"{t} absent from live inventory"

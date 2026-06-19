@@ -1,6 +1,6 @@
 {
   "schema": "table_lifecycle_status_contract/v1",
-  "source": "Seeded from docs/evidence/construction-intelligence-phase-07a-data-quality/01-table-lifecycle-inventory.json (Phase 07A Prompt 00 manual inventory); operationalized for hb-assistant construction-agent data-quality table-inventory (Phase 07B Prompt 01); refreshed to map the V20/V21 Phase 07A data-quality and relationship tables that post-dated the manual inventory (Phase 07C Prompt 01 remediation); extended with the ten V25 Phase 07D cross-source relationship and meeting-prep substrate tables (Phase 07D Prompt 02); extended with the twenty-one V26 Phase 08A second-brain runtime substrate tables (Phase 08A Prompt 02); extended with the nineteen V38 Phase 09 retrieval/memory/agent metadata substrate tables (Phase 09 Prompt 12 \u2014 schema + contracts + table lifecycle; ships empty/placeholder_deferred); extended with the three V39 Phase 09 review-burden tables (Prompt 37 review burden reduction; advisory promotion policy; ships empty/placeholder_deferred); extended with the one V45 Phase 10 email follow-up raw enrichment table (email_followup_enrichments; review-safe model-enriched follow-up metadata; ships empty/placeholder_deferred); extended with the forty-seven V46 Procore structured analytics foundation tables (landing, capture control, endpoint-family bronze, and dimensions; ships empty/placeholder_deferred until local reprocessing or capture). ; extended with the seventy-eight V47 Procore endpoint-specific structured projection tables (procore_ep_* primary + child/detail tables derived from the committed projection registry; ships empty/placeholder_deferred until projection replay from full raw payloads). Extended with the thirteen V49 email/calendar structured projection + receipt tables (email_raw_*/calendar_raw_*/email_calendar_* + raw_content_source_quality_snapshots; build_v49_ddl); the three V55 Procore endpoint budget-detail tables (operational/populated from the budget-detail read model); the sixteen V50-V54 Phase 10 daily-brief/candidate/ranking tables (ships empty/placeholder_deferred); and the five V58 forecast DB-transition foundation tables (forecast_projects/runs/source_ingestions/package_manifests/validation_events; operational_empty_expected, intentionally empty until Phase 2+); extended with the three V59 forecast DB-transition source-domain tables (forecast_budget_details/cost_entries/monthly_actuals_by_budget_code; Phase 3 JSON/JSONL projection + DB read parity; operational_empty_expected, intentionally empty until projection is applied; forecast behavior remains file-backed).",
+  "source": "Seeded from docs/evidence/construction-intelligence-phase-07a-data-quality/01-table-lifecycle-inventory.json (Phase 07A Prompt 00 manual inventory); operationalized for hb-assistant construction-agent data-quality table-inventory (Phase 07B Prompt 01); refreshed to map the V20/V21 Phase 07A data-quality and relationship tables that post-dated the manual inventory (Phase 07C Prompt 01 remediation); extended with the ten V25 Phase 07D cross-source relationship and meeting-prep substrate tables (Phase 07D Prompt 02); extended with the twenty-one V26 Phase 08A second-brain runtime substrate tables (Phase 08A Prompt 02); extended with the nineteen V38 Phase 09 retrieval/memory/agent metadata substrate tables (Phase 09 Prompt 12 \u2014 schema + contracts + table lifecycle; ships empty/placeholder_deferred); extended with the three V39 Phase 09 review-burden tables (Prompt 37 review burden reduction; advisory promotion policy; ships empty/placeholder_deferred); extended with the one V45 Phase 10 email follow-up raw enrichment table (email_followup_enrichments; review-safe model-enriched follow-up metadata; ships empty/placeholder_deferred); extended with the forty-seven V46 Procore structured analytics foundation tables (landing, capture control, endpoint-family bronze, and dimensions; ships empty/placeholder_deferred until local reprocessing or capture). ; extended with the seventy-eight V47 Procore endpoint-specific structured projection tables (procore_ep_* primary + child/detail tables derived from the committed projection registry; ships empty/placeholder_deferred until projection replay from full raw payloads). Extended with the thirteen V49 email/calendar structured projection + receipt tables (email_raw_*/calendar_raw_*/email_calendar_* + raw_content_source_quality_snapshots; build_v49_ddl); the three V55 Procore endpoint budget-detail tables (operational/populated from the budget-detail read model); the sixteen V50-V54 Phase 10 daily-brief/candidate/ranking tables (ships empty/placeholder_deferred); and the five V58 forecast DB-transition foundation tables (forecast_projects/runs/source_ingestions/package_manifests/validation_events; operational_empty_expected, intentionally empty until Phase 2+); extended with the three V59 forecast DB-transition source-domain tables (forecast_budget_details/cost_entries/monthly_actuals_by_budget_code; Phase 3 JSON/JSONL projection + DB read parity; operational_empty_expected, intentionally empty until projection is applied; forecast behavior remains file-backed); extended with the four V60 forecast DB-transition config-registry tables (forecast_config_sources/config_items/config_snapshots/config_snapshot_items; Phase 16 governed config import/export/snapshot/materialize; operational_empty_expected, intentionally empty until config is imported; forecast behavior remains file-backed).",
   "statuses": [
     "operational_populated",
     "operational_empty_expected",
@@ -18,7 +18,7 @@
     "phase_owner",
     "blocking_for_phase"
   ],
-  "table_count": 387,
+  "table_count": 391,
   "tables": {
     "construction_data_quality_runs": {
       "table_family": "data_quality_v20v21",
@@ -3502,6 +3502,42 @@
       "blocking_for_phase": "none",
       "v": "V59",
       "notes": "V59 source-domain tables for Phase 3 JSON/JSONL projection and DB read parity; intentionally empty until projection is applied; existing forecast behavior remains file-backed."
+    },
+    "forecast_config_sources": {
+      "table_family": "forecast_config_registry_v60",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "forecast_db_transition",
+      "blocking_for_phase": "none",
+      "v": "V60",
+      "notes": "V60 config registry tables for Phase 16 governed forecast config (import/export/snapshot/materialize); intentionally empty until config is imported; existing forecast behavior remains file-backed."
+    },
+    "forecast_config_items": {
+      "table_family": "forecast_config_registry_v60",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "forecast_db_transition",
+      "blocking_for_phase": "none",
+      "v": "V60",
+      "notes": "V60 config registry tables for Phase 16 governed forecast config (import/export/snapshot/materialize); intentionally empty until config is imported; existing forecast behavior remains file-backed."
+    },
+    "forecast_config_snapshots": {
+      "table_family": "forecast_config_registry_v60",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "forecast_db_transition",
+      "blocking_for_phase": "none",
+      "v": "V60",
+      "notes": "V60 config registry tables for Phase 16 governed forecast config (import/export/snapshot/materialize); intentionally empty until config is imported; existing forecast behavior remains file-backed."
+    },
+    "forecast_config_snapshot_items": {
+      "table_family": "forecast_config_registry_v60",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "forecast_db_transition",
+      "blocking_for_phase": "none",
+      "v": "V60",
+      "notes": "V60 config registry tables for Phase 16 governed forecast config (import/export/snapshot/materialize); intentionally empty until config is imported; existing forecast behavior remains file-backed."
     }
   }
 }

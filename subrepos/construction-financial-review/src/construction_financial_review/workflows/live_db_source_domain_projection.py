@@ -117,9 +117,10 @@ def _backup_live_db(*, live_db_path: Path, work_root: Path, wal_size: int) -> di
         schema_version = _schema_version(conn)
     finally:
         conn.close()
-    if schema_version != REQUIRED_SCHEMA_VERSION:
+    # Phase 16: accept v59+ (the live/temp DB may be at v60 after the config-registry migration).
+    if schema_version < REQUIRED_SCHEMA_VERSION:
         raise LiveDbSourceDomainProjectionError(
-            f"backup verification failed: schema version {schema_version} != {REQUIRED_SCHEMA_VERSION}"
+            f"backup verification failed: schema version {schema_version} < {REQUIRED_SCHEMA_VERSION}"
         )
     return {
         "path": str(backup_path),
@@ -201,9 +202,10 @@ def run_controlled_live_db_source_domain_projection(
     pre_write_audit = cert.run_live_db_provenance_audit(
         live_db_path=live_db_path, project_key=project_key
     )
-    if pre_write_audit["schema"]["schema_version"] != REQUIRED_SCHEMA_VERSION:
+    # Phase 16: accept v59+ (the live DB may be at v60 after the config-registry migration).
+    if pre_write_audit["schema"]["schema_version"] < REQUIRED_SCHEMA_VERSION:
         raise LiveDbSourceDomainProjectionError(
-            f"live DB schema version {pre_write_audit['schema']['schema_version']} != "
+            f"live DB schema version {pre_write_audit['schema']['schema_version']} < "
             f"{REQUIRED_SCHEMA_VERSION}"
         )
     if not all(

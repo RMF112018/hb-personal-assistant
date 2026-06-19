@@ -14,7 +14,7 @@ from .connection import get_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 59
+LATEST_SCHEMA_VERSION = 60
 
 
 class SQLiteMigrator:
@@ -6489,6 +6489,102 @@ class SQLiteMigrator:
         "CREATE INDEX IF NOT EXISTS idx_forecast_monthly_actuals_month ON forecast_monthly_actuals_by_budget_code(month);",
     ]
 
+    # v60 Forecast CONFIG REGISTRY slice (Phase 16): four additive governed-config
+    # tables (sources, items, snapshots, snapshot_items) holding the operator-approved
+    # forecast config (project / controls / model_controls / staffing / crosswalk) as
+    # raw+canonical JSON with effective/status metadata, immutable run-usable snapshots,
+    # and snapshot membership. Additive CREATE TABLE IF NOT EXISTS only; intentionally
+    # empty until config is imported; existing forecast behavior remains file-backed.
+    V60_STATEMENTS: list[str] = [
+        # One row per imported config source file / logical config source.
+        """
+        CREATE TABLE IF NOT EXISTS forecast_config_sources (
+          config_source_id TEXT PRIMARY KEY,
+          project_key TEXT NOT NULL,
+          config_domain TEXT NOT NULL,
+          config_name TEXT NOT NULL,
+          source_path TEXT NOT NULL,
+          source_format TEXT NOT NULL,
+          source_sha256 TEXT NOT NULL,
+          content_sha256 TEXT NOT NULL,
+          row_count INTEGER NOT NULL,
+          imported_at_utc TEXT NOT NULL,
+          import_run_id TEXT NOT NULL,
+          is_active INTEGER NOT NULL DEFAULT 1,
+          created_utc TEXT NOT NULL,
+          updated_utc TEXT NOT NULL,
+          UNIQUE (project_key, config_domain, config_name, content_sha256)
+        );
+        """,
+        "CREATE INDEX IF NOT EXISTS idx_forecast_config_sources_project ON forecast_config_sources(project_key);",
+        "CREATE INDEX IF NOT EXISTS idx_forecast_config_sources_domain ON forecast_config_sources(config_domain);",
+        "CREATE INDEX IF NOT EXISTS idx_forecast_config_sources_name ON forecast_config_sources(config_name);",
+        # One row per config item/record (JSON object, JSONL line, or CSV row).
+        """
+        CREATE TABLE IF NOT EXISTS forecast_config_items (
+          config_item_id TEXT PRIMARY KEY,
+          config_source_id TEXT NOT NULL,
+          project_key TEXT NOT NULL,
+          config_domain TEXT NOT NULL,
+          config_name TEXT NOT NULL,
+          item_key TEXT NOT NULL,
+          item_order INTEGER NOT NULL,
+          effective_from TEXT,
+          effective_to TEXT,
+          status TEXT NOT NULL DEFAULT 'active',
+          raw_json TEXT NOT NULL,
+          canonical_json_sha256 TEXT NOT NULL,
+          created_utc TEXT NOT NULL,
+          updated_utc TEXT NOT NULL,
+          FOREIGN KEY (config_source_id) REFERENCES forecast_config_sources(config_source_id),
+          UNIQUE (project_key, config_domain, config_name, item_key, canonical_json_sha256)
+        );
+        """,
+        "CREATE INDEX IF NOT EXISTS idx_forecast_config_items_source ON forecast_config_items(config_source_id);",
+        "CREATE INDEX IF NOT EXISTS idx_forecast_config_items_project ON forecast_config_items(project_key);",
+        "CREATE INDEX IF NOT EXISTS idx_forecast_config_items_domain ON forecast_config_items(config_domain);",
+        "CREATE INDEX IF NOT EXISTS idx_forecast_config_items_name ON forecast_config_items(config_name);",
+        "CREATE INDEX IF NOT EXISTS idx_forecast_config_items_status ON forecast_config_items(status);",
+        # Immutable run-usable config snapshot header.
+        """
+        CREATE TABLE IF NOT EXISTS forecast_config_snapshots (
+          config_snapshot_id TEXT PRIMARY KEY,
+          project_key TEXT NOT NULL,
+          snapshot_name TEXT NOT NULL,
+          snapshot_created_utc TEXT NOT NULL,
+          snapshot_reason TEXT NOT NULL,
+          source_mode TEXT NOT NULL,
+          item_count INTEGER NOT NULL,
+          snapshot_sha256 TEXT NOT NULL,
+          created_by TEXT,
+          created_utc TEXT NOT NULL,
+          UNIQUE (project_key, snapshot_name, snapshot_sha256)
+        );
+        """,
+        "CREATE INDEX IF NOT EXISTS idx_forecast_config_snapshots_project ON forecast_config_snapshots(project_key);",
+        "CREATE INDEX IF NOT EXISTS idx_forecast_config_snapshots_name ON forecast_config_snapshots(snapshot_name);",
+        # Immutable list of items included in a snapshot.
+        """
+        CREATE TABLE IF NOT EXISTS forecast_config_snapshot_items (
+          config_snapshot_id TEXT NOT NULL,
+          config_item_id TEXT NOT NULL,
+          project_key TEXT NOT NULL,
+          config_domain TEXT NOT NULL,
+          config_name TEXT NOT NULL,
+          item_key TEXT NOT NULL,
+          item_order INTEGER NOT NULL,
+          raw_json TEXT NOT NULL,
+          canonical_json_sha256 TEXT NOT NULL,
+          PRIMARY KEY (config_snapshot_id, config_item_id),
+          FOREIGN KEY (config_snapshot_id) REFERENCES forecast_config_snapshots(config_snapshot_id),
+          FOREIGN KEY (config_item_id) REFERENCES forecast_config_items(config_item_id)
+        );
+        """,
+        "CREATE INDEX IF NOT EXISTS idx_forecast_config_snapshot_items_snapshot ON forecast_config_snapshot_items(config_snapshot_id);",
+        "CREATE INDEX IF NOT EXISTS idx_forecast_config_snapshot_items_project ON forecast_config_snapshot_items(project_key);",
+        "CREATE INDEX IF NOT EXISTS idx_forecast_config_snapshot_items_domain ON forecast_config_snapshot_items(config_domain);",
+    ]
+
     # v44 Phase 10 Graph drive-item modified-by raw operational metadata.
     # Additive ADD COLUMN only on construction_drive_items; raw identity JSON is
     # local SQLite operational metadata and must not be emitted in committed evidence.
@@ -7558,6 +7654,19 @@ class SQLiteMigrator:
             if cur.fetchone() is None:
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (59, 'v59_forecast_source_domain', ?)",
+                    (now,),
+                )
+
+            # v60 Forecast DB-transition CONFIG-REGISTRY slice (Phase 16): four additive
+            # governed-config tables (sources, items, snapshots, snapshot_items) for the
+            # operator-approved forecast config. Additive CREATE TABLE IF NOT EXISTS only;
+            # intentionally empty until config is imported; forecast reads remain file-backed.
+            for stmt in self.V60_STATEMENTS:
+                conn.execute(stmt)
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 60")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (60, 'v60_forecast_config_registry', ?)",
                     (now,),
                 )
 

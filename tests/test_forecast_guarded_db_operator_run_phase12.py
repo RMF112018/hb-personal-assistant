@@ -80,7 +80,7 @@ def test_operator_run_succeeds_derived_db(tmp_path):
     assert report["temp_db"]["path"] == str(
         work / "temp_dbs" / "forecast_source_domain_tropical.sqlite"
     )
-    assert report["temp_db"]["schema_version"] == 59
+    assert report["temp_db"]["schema_version"] == 60  # Phase 16: migrator now at v60
     assert Path(report["report_path"]).is_file()
 
 

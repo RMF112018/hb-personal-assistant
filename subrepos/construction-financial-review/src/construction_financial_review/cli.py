@@ -30,6 +30,7 @@ from datetime import datetime
 from pathlib import Path
 
 from .common import run_lineage
+from .common.config_root import resolve_config_base
 from .common.io import read_json
 from .mapping import validate_owner_sov_scope_crosswalk as xwval
 
@@ -46,7 +47,8 @@ GENERATORS = {
 
 
 def load_project(project: str) -> dict:
-    cfg = CONFIG_PROJECTS / f"{project}.json"
+    # Phase 16: CFR_CONFIG_ROOT (opt-in) overrides the base; unset -> SUBPROJECT_ROOT (unchanged).
+    cfg = resolve_config_base(SUBPROJECT_ROOT) / "config" / "projects" / f"{project}.json"
     if not cfg.exists():
         raise SystemExit(f"ERROR: no project config at {cfg}")
     return read_json(cfg)
@@ -56,7 +58,9 @@ def _resolve_crosswalk(cfg: dict) -> Path:
     rel = cfg.get("owner_sov_scope_crosswalk")
     if not rel:
         raise SystemExit("ERROR: project config missing 'owner_sov_scope_crosswalk'")
-    p = (SUBPROJECT_ROOT / rel) if not Path(rel).is_absolute() else Path(rel)
+    # Phase 16: CFR_CONFIG_ROOT (opt-in) overrides the base; unset -> SUBPROJECT_ROOT (unchanged).
+    base = resolve_config_base(SUBPROJECT_ROOT)
+    p = (base / rel) if not Path(rel).is_absolute() else Path(rel)
     if not p.exists():
         raise SystemExit(f"ERROR: crosswalk not found at {p}")
     return p
@@ -72,15 +76,151 @@ def _resolve_context_package(cfg: dict):
     return None
 
 
-def cmd_validate_crosswalk(cfg: dict) -> int:
+def _run_validate_crosswalk(cfg: dict, *, config_source: str) -> dict:
     crosswalk = _resolve_crosswalk(cfg)
     context_pkg = _resolve_context_package(cfg)
     canonical, procore = xwval._load_universes(str(context_pkg) if context_pkg else None)
     report = xwval.validate(crosswalk, canonical, procore)
     report["project_key"] = cfg.get("project_key")
     report["context_package_used_for_coverage"] = str(context_pkg) if context_pkg else None
-    print(json.dumps(report, indent=2))
-    return 0 if report["passed"] else 1
+    report["config_source"] = config_source
+    report["crosswalk_path"] = str(crosswalk)
+    return report
+
+
+def cmd_validate_crosswalk(cfg: dict, *, config_source: str = "file", config_db_path: str | None = None,
+                           config_snapshot_id: str | None = None,
+                           config_snapshot_root: str | None = None) -> int:
+    """Validate the authoritative owner-SOV crosswalk (Phase 16: optional DB-snapshot config source).
+
+    db_snapshot materializes the snapshot under --config-snapshot-root, points CFR_CONFIG_ROOT at it
+    (scoped, restored), runs the existing resolver/validator, and proves parity vs file-backed."""
+    if config_source == "file":
+        report = _run_validate_crosswalk(cfg, config_source="file")
+        print(json.dumps(report, indent=2))
+        return 0 if report["passed"] else 1
+    # db_snapshot
+    from .common.config_root import ENV_CONFIG_ROOT
+    from .config_registry import ConfigRegistryError, materialize_forecast_config_snapshot
+    if not (config_db_path and config_snapshot_id and config_snapshot_root):
+        print(json.dumps({"command": "validate-crosswalk", "status": "refused",
+                          "reason": "db_snapshot requires --config-db-path, --config-snapshot-id, "
+                                    "--config-snapshot-root"}, indent=2))
+        return 3
+    try:
+        with contextlib.redirect_stdout(sys.stderr):
+            file_report = _run_validate_crosswalk(cfg, config_source="file")
+            mat = materialize_forecast_config_snapshot(
+                db_path=Path(config_db_path), config_snapshot_id=config_snapshot_id,
+                out_root=Path(config_snapshot_root))
+            mat_root = mat["materialized_config_root"]
+            prev = os.environ.get(ENV_CONFIG_ROOT)
+            os.environ[ENV_CONFIG_ROOT] = mat_root
+            try:
+                db_report = _run_validate_crosswalk(cfg, config_source="db_snapshot")
+            finally:
+                if prev is None:
+                    os.environ.pop(ENV_CONFIG_ROOT, None)
+                else:
+                    os.environ[ENV_CONFIG_ROOT] = prev
+    except (ConfigRegistryError, SystemExit) as exc:
+        print(json.dumps({"command": "validate-crosswalk", "status": "refused",
+                          "reason": str(exc)}, indent=2))
+        return 3
+    parity = {k: file_report[k] for k in ("passed", "row_count") if k in file_report}
+    db_parity = {k: db_report[k] for k in ("passed", "row_count") if k in db_report}
+    parity_pass = parity == db_parity and file_report.get("passed") is not None
+    out = {"command": "validate-crosswalk", "config_source": "db_snapshot",
+           "config_snapshot_id": config_snapshot_id, "materialized_config_root": mat_root,
+           "file_vs_db_parity": "pass" if parity_pass else "fail",
+           "report": db_report}
+    print(json.dumps(out, indent=2))
+    if not parity_pass:
+        return 1
+    return 0 if db_report["passed"] else 1
+
+
+def cmd_forecast_config_import(*, project: str, config_root: str, db_path: str,
+                               import_run_id: str | None, allow_live_db_write: bool) -> int:
+    """Import file-backed forecast config into the v60 registry DB (Phase 16)."""
+    from .config_registry import ConfigRegistryError, import_forecast_config_to_db
+    try:
+        with contextlib.redirect_stdout(sys.stderr):
+            report = import_forecast_config_to_db(
+                config_root=Path(config_root), db_path=Path(db_path), project_key=project,
+                import_run_id=import_run_id, allow_live_db_write=allow_live_db_write)
+    except ConfigRegistryError as exc:
+        print(json.dumps({"command": "forecast-config-import", "project": project,
+                          "status": "refused", "reason": str(exc)}, indent=2))
+        return 3
+    out = {"command": "forecast-config-import", "status": "ok"}
+    out.update(report)
+    print(json.dumps(out, indent=2))
+    return 0
+
+
+def cmd_forecast_config_snapshot(*, project: str, db_path: str, snapshot_name: str,
+                                 snapshot_reason: str, out_root: str) -> int:
+    """Create an immutable config snapshot and materialize it under out-root (Phase 16)."""
+    from .config_registry import (
+        ConfigRegistryError,
+        create_forecast_config_snapshot,
+        materialize_forecast_config_snapshot,
+    )
+    try:
+        with contextlib.redirect_stdout(sys.stderr):
+            snap = create_forecast_config_snapshot(
+                db_path=Path(db_path), project_key=project, snapshot_name=snapshot_name,
+                snapshot_reason=snapshot_reason)
+            mat = materialize_forecast_config_snapshot(
+                db_path=Path(db_path), config_snapshot_id=snap["config_snapshot_id"],
+                out_root=Path(out_root))
+    except ConfigRegistryError as exc:
+        print(json.dumps({"command": "forecast-config-snapshot", "project": project,
+                          "status": "refused", "reason": str(exc)}, indent=2))
+        return 3
+    out = {"command": "forecast-config-snapshot", "status": "ok", "snapshot": snap,
+           "materialized": mat}
+    print(json.dumps(out, indent=2))
+    return 0
+
+
+def cmd_forecast_config_export(*, project: str, db_path: str, snapshot_id: str | None,
+                               out_root: str) -> int:
+    """Export DB config back to a file-compatible tree under out-root (Phase 16)."""
+    from .config_registry import ConfigRegistryError, export_forecast_config_from_db
+    try:
+        with contextlib.redirect_stdout(sys.stderr):
+            report = export_forecast_config_from_db(
+                db_path=Path(db_path), out_root=Path(out_root), project_key=project,
+                config_snapshot_id=snapshot_id)
+    except ConfigRegistryError as exc:
+        print(json.dumps({"command": "forecast-config-export", "project": project,
+                          "status": "refused", "reason": str(exc)}, indent=2))
+        return 3
+    out = {"command": "forecast-config-export", "status": "ok"}
+    out.update(report)
+    print(json.dumps(out, indent=2))
+    return 0
+
+
+def cmd_forecast_config_db_parity(*, project: str, config_root: str, work_root: str,
+                                  db_path: str | None) -> int:
+    """Prove reader-layer config parity: repo file config == DB import/snapshot/materialize (Phase 16)."""
+    from .config_registry import ConfigRegistryError, run_forecast_config_db_parity
+    try:
+        with contextlib.redirect_stdout(sys.stderr):
+            report = run_forecast_config_db_parity(
+                config_root=Path(config_root), work_root=Path(work_root), project_key=project,
+                db_path=Path(db_path) if db_path else None)
+    except ConfigRegistryError as exc:
+        print(json.dumps({"command": "forecast-config-db-parity", "project": project,
+                          "status": "refused", "reason": str(exc)}, indent=2))
+        return 3
+    out = {"command": "forecast-config-db-parity"}
+    out.update(report)
+    print(json.dumps(out, indent=2))
+    return 0 if report.get("status") == "pass" else 1
 
 
 def cmd_schedule_integrate_forecast(cfg: dict, project: str, data_root, frozen_stamp, out_root) -> int:
@@ -708,6 +848,16 @@ def build_parser() -> argparse.ArgumentParser:
                  "run-mapping-workpaper", "run-crosswalk-v2"):
         sp = sub.add_parser(name)
         sp.add_argument("--project", required=True, help="Project key (e.g. tropical).")
+        if name == "validate-crosswalk":
+            # Phase 16: optionally resolve config from a DB config snapshot (default: file-backed).
+            sp.add_argument("--config-source", choices=("file", "db_snapshot"), default="file",
+                            help="Config source for the crosswalk (default: file-backed repo config).")
+            sp.add_argument("--config-db-path", default=None,
+                            help="Explicit non-live registry DB path (with --config-source db_snapshot).")
+            sp.add_argument("--config-snapshot-id", default=None,
+                            help="Config snapshot id to materialize (with --config-source db_snapshot).")
+            sp.add_argument("--config-snapshot-root", default=None,
+                            help="Explicit non-live work root to materialize the snapshot under.")
         if name in ("run-analysis", "run-mapping-workpaper", "run-crosswalk-v2"):
             # debug/developer overrides only — the full-fresh runner needs NONE of these.
             sp.add_argument("--lineage-state", default=None,
@@ -1001,6 +1151,38 @@ def build_parser() -> argparse.ArgumentParser:
     dfo.add_argument("--generate-final-csv", action="store_true",
                      help="Request the final integrated CSV — controlled refusal (rc 1); out of scope.")
     dfo.add_argument("--run-id", default=None, help="Optional run id recorded in the report.")
+    # Phase 16 — governed forecast config registry (import / snapshot / export / parity).
+    fci = sub.add_parser("forecast-config-import")
+    fci.add_argument("--project", required=True, help="Project key (only 'tropical' in Phase 16).")
+    fci.add_argument("--config-root", required=True,
+                     help="Directory containing the config/ subtree (or the config/ dir itself).")
+    fci.add_argument("--db-path", required=True,
+                     help="Explicit registry DB path (non-live temp; live requires --allow-live-db-write).")
+    fci.add_argument("--import-run-id", default=None, help="Optional deterministic import run id.")
+    fci.add_argument("--allow-live-db-write", action="store_true",
+                     help="Required gate to import into the live/default DB (refused otherwise).")
+    fcs = sub.add_parser("forecast-config-snapshot")
+    fcs.add_argument("--project", required=True, help="Project key (only 'tropical' in Phase 16).")
+    fcs.add_argument("--db-path", required=True, help="Explicit registry DB path.")
+    fcs.add_argument("--snapshot-name", required=True, help="Snapshot name.")
+    fcs.add_argument("--snapshot-reason", required=True, help="Operator reason for the snapshot.")
+    fcs.add_argument("--out-root", required=True,
+                     help="Explicit non-live work root to materialize the snapshot under.")
+    fce = sub.add_parser("forecast-config-export")
+    fce.add_argument("--project", required=True, help="Project key (only 'tropical' in Phase 16).")
+    fce.add_argument("--db-path", required=True, help="Explicit registry DB path.")
+    fce.add_argument("--snapshot-id", default=None,
+                     help="Snapshot id to export (default: active items).")
+    fce.add_argument("--out-root", required=True,
+                     help="Explicit non-live out root (never the repo config/ dir).")
+    fcp16 = sub.add_parser("forecast-config-db-parity")
+    fcp16.add_argument("--project", required=True, help="Project key (only 'tropical' in Phase 16).")
+    fcp16.add_argument("--config-root", required=True,
+                       help="Directory containing the config/ subtree (or the config/ dir itself).")
+    fcp16.add_argument("--work-root", required=True,
+                       help="Explicit non-live work root for the temp registry DB + materialization.")
+    fcp16.add_argument("--db-path", default=None,
+                       help="Optional explicit non-live registry DB path (refuses the live DB).")
     # --context-stamp pins the upstream context package for a lineage-consistent fresh full run.
     # Applied to the stages that consume context and participate in the lineage gate.
     for _p in (fip, fmp, fpp, fcp, fkp, fspp):
@@ -1018,7 +1200,27 @@ def main(argv=None) -> int:
     if _ctx_stamp:
         cfg = {**cfg, "_pinned_context_stamp": _ctx_stamp, "_strict_pin": True}
     if args.command == "validate-crosswalk":
-        return cmd_validate_crosswalk(cfg)
+        return cmd_validate_crosswalk(
+            cfg, config_source=getattr(args, "config_source", "file"),
+            config_db_path=getattr(args, "config_db_path", None),
+            config_snapshot_id=getattr(args, "config_snapshot_id", None),
+            config_snapshot_root=getattr(args, "config_snapshot_root", None))
+    if args.command == "forecast-config-import":
+        return cmd_forecast_config_import(
+            project=args.project, config_root=args.config_root, db_path=args.db_path,
+            import_run_id=args.import_run_id, allow_live_db_write=args.allow_live_db_write)
+    if args.command == "forecast-config-snapshot":
+        return cmd_forecast_config_snapshot(
+            project=args.project, db_path=args.db_path, snapshot_name=args.snapshot_name,
+            snapshot_reason=args.snapshot_reason, out_root=args.out_root)
+    if args.command == "forecast-config-export":
+        return cmd_forecast_config_export(
+            project=args.project, db_path=args.db_path, snapshot_id=args.snapshot_id,
+            out_root=args.out_root)
+    if args.command == "forecast-config-db-parity":
+        return cmd_forecast_config_db_parity(
+            project=args.project, config_root=args.config_root, work_root=args.work_root,
+            db_path=args.db_path)
     if args.command == "lineage-init":
         return cmd_lineage_init(cfg, args.project)
     if args.command == "lineage-record":
