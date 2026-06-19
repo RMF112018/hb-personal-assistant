@@ -542,6 +542,56 @@ def cmd_live_db_readonly_certification(*, source_package: str, work_root: str, c
     return 0 if report.get("decision") == CERT_MATCH else 1
 
 
+def cmd_live_db_source_domain_project(*, source_package: str, work_root: str, context_stamp: str,
+                                      live_db_path: str | None, allow_live_db_write: bool,
+                                      allow_replace_existing: bool, run_guarded_operator_check: bool,
+                                      expect_budget_details: int | None,
+                                      expect_cost_entries: int | None,
+                                      expect_monthly: int | None, project: str) -> int:
+    """Controlled live-DB source-domain projection (Phase 14; first gated live write).
+
+    Builds a fresh non-live temp projection, BACKS UP the live DB, then in one transaction replaces only
+    project_key='tropical' rows in the three v59 source-domain tables with rows copied from the temp DB,
+    and reruns Phase 13 certification. Requires --allow-live-db-write. Optional --expect-* gate the temp
+    projection counts (exact match before any write). rc 0 = certified_match; rc 1 = post-write
+    certification not matched / not-ready (backup recorded for manual restore); rc 3 = controlled refusal
+    (unsafe input / nonzero-WAL / schema or column mismatch / count mismatch / backup or transaction
+    failure). Never migrates or directly projects the live DB; changes no production default."""
+    from .workflows.live_db_source_domain_projection import (
+        DECISION_CERTIFIED,
+        LiveDbSourceDomainProjectionError,
+        run_controlled_live_db_source_domain_projection,
+    )
+    expected = {
+        k: v
+        for k, v in (
+            ("forecast_budget_details", expect_budget_details),
+            ("forecast_cost_entries", expect_cost_entries),
+            ("forecast_monthly_actuals_by_budget_code", expect_monthly),
+        )
+        if v is not None
+    }
+    try:
+        # Keep stdout a clean machine-readable JSON channel: workflow chatter -> stderr.
+        with contextlib.redirect_stdout(sys.stderr):
+            report = run_controlled_live_db_source_domain_projection(
+                source_package=Path(source_package), work_root=Path(work_root),
+                context_stamp=context_stamp,
+                live_db_path=Path(live_db_path) if live_db_path else None, project_key=project,
+                allow_live_db_write=allow_live_db_write,
+                allow_replace_existing=allow_replace_existing,
+                run_guarded_operator_check=run_guarded_operator_check,
+                expected_counts=expected or None)
+    except LiveDbSourceDomainProjectionError as exc:
+        print(json.dumps({"command": "live-db-source-domain-project", "project": project,
+                          "status": "refused", "reason": str(exc)}, indent=2))
+        return 3
+    out = {"command": "live-db-source-domain-project"}
+    out.update(report)
+    print(json.dumps(out, indent=2))
+    return 0 if report.get("decision") == DECISION_CERTIFIED else 1
+
+
 def cmd_run_generator(command: str, project: str, *, overrides: dict | None = None,
                       lineage_state: str | None = None) -> int:
     if project != "tropical":
@@ -872,6 +922,30 @@ def build_parser() -> argparse.ArgumentParser:
     lrc.add_argument("--live-db-path", default=None,
                      help="Optional explicit live DB path (tests only); resolves the default live DB "
                           "if omitted.")
+    # Phase 14 — controlled live-DB source-domain projection (first gated live write).
+    lsp = sub.add_parser("live-db-source-domain-project")
+    lsp.add_argument("--project", required=True, help="Project key (only 'tropical' in Phase 14).")
+    lsp.add_argument("--source-package", required=True,
+                     help="Explicit Tropical twn_cost_forecast_json_package directory to project.")
+    lsp.add_argument("--work-root", required=True,
+                     help="Explicit non-live work root (temp DB + backup + report + sub-runs under it).")
+    lsp.add_argument("--context-stamp", required=True,
+                     help="Deterministic context-package stamp for the run.")
+    lsp.add_argument("--live-db-path", default=None,
+                     help="Optional explicit live DB path (tests only); resolves the default live DB "
+                          "if omitted.")
+    lsp.add_argument("--allow-live-db-write", action="store_true",
+                     help="Required gate to actually write the live DB (refused otherwise).")
+    lsp.add_argument("--allow-replace-existing", action="store_true",
+                     help="Permit replacing existing tropical source-domain rows (tropical only).")
+    lsp.add_argument("--run-guarded-operator-check", action="store_true",
+                     help="After certification, run the Phase 12 certified-equivalence guarded check.")
+    lsp.add_argument("--expect-budget-details", type=int, default=None,
+                     help="Optional exact expected temp count for forecast_budget_details.")
+    lsp.add_argument("--expect-cost-entries", type=int, default=None,
+                     help="Optional exact expected temp count for forecast_cost_entries.")
+    lsp.add_argument("--expect-monthly", type=int, default=None,
+                     help="Optional exact expected temp count for forecast_monthly_actuals_by_budget_code.")
     # --context-stamp pins the upstream context package for a lineage-consistent fresh full run.
     # Applied to the stages that consume context and participate in the lineage gate.
     for _p in (fip, fmp, fpp, fcp, fkp, fspp):
@@ -978,6 +1052,16 @@ def main(argv=None) -> int:
                                                   context_stamp=args.context_stamp,
                                                   live_db_path=args.live_db_path,
                                                   project=args.project)
+    if args.command == "live-db-source-domain-project":
+        return cmd_live_db_source_domain_project(
+            source_package=args.source_package, work_root=args.work_root,
+            context_stamp=args.context_stamp, live_db_path=args.live_db_path,
+            allow_live_db_write=args.allow_live_db_write,
+            allow_replace_existing=args.allow_replace_existing,
+            run_guarded_operator_check=args.run_guarded_operator_check,
+            expect_budget_details=args.expect_budget_details,
+            expect_cost_entries=args.expect_cost_entries,
+            expect_monthly=args.expect_monthly, project=args.project)
     if args.command == "context-generate":
         return cmd_context_generate(data_root=args.data_root, out_dir=args.out_dir,
                                     stamp=args.stamp, project=args.project,
