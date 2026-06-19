@@ -592,6 +592,43 @@ def cmd_live_db_source_domain_project(*, source_package: str, work_root: str, co
     return 0 if report.get("decision") == DECISION_CERTIFIED else 1
 
 
+def cmd_db_certified_final_output(*, phase14_report: str, source_package: str, work_root: str,
+                                  context_stamp: str, live_db_path: str | None,
+                                  require_guarded_operator_check: bool, generate_final_csv: bool,
+                                  run_id: str | None, project: str) -> int:
+    """Controlled DB-certified final forecast output generation (Phase 15).
+
+    Uses Phase 14 certified evidence as an eligibility gate, reruns Phase 13 read-only certification
+    (require certified_match + counts consistent with Phase 14), then runs the Phase 12 guarded operator
+    run under <work-root>/guarded (a fresh non-live temp DB drives the chain; the live DB is never
+    executed against) and copies the approved DB-certified analysis package under <work-root>/final_output.
+    --generate-final-csv is a controlled refusal (rc 1): Phase 15 does not synthesize the true integrated
+    CSV (produced by forecast_comprehensive/monthly/probability, deferred). rc 0 = ready; rc 1 = not-ready
+    (incl. CSV requested); rc 3 = controlled refusal (unsafe input / missing or mismatched certification)."""
+    from .workflows.db_certified_final_output import (
+        DECISION_READY,
+        DbCertifiedFinalOutputError,
+        run_db_certified_final_output,
+    )
+    try:
+        # Keep stdout a clean machine-readable JSON channel: workflow chatter -> stderr.
+        with contextlib.redirect_stdout(sys.stderr):
+            report = run_db_certified_final_output(
+                phase14_report=Path(phase14_report), source_package=Path(source_package),
+                work_root=Path(work_root), context_stamp=context_stamp,
+                live_db_path=Path(live_db_path) if live_db_path else None, project_key=project,
+                require_guarded_operator_check=require_guarded_operator_check,
+                generate_final_csv=generate_final_csv, run_id=run_id)
+    except DbCertifiedFinalOutputError as exc:
+        print(json.dumps({"command": "db-certified-final-output", "project": project,
+                          "status": "refused", "reason": str(exc)}, indent=2))
+        return 3
+    out = {"command": "db-certified-final-output"}
+    out.update(report)
+    print(json.dumps(out, indent=2))
+    return 0 if report.get("decision") == DECISION_READY else 1
+
+
 def cmd_run_generator(command: str, project: str, *, overrides: dict | None = None,
                       lineage_state: str | None = None) -> int:
     if project != "tropical":
@@ -946,6 +983,24 @@ def build_parser() -> argparse.ArgumentParser:
                      help="Optional exact expected temp count for forecast_cost_entries.")
     lsp.add_argument("--expect-monthly", type=int, default=None,
                      help="Optional exact expected temp count for forecast_monthly_actuals_by_budget_code.")
+    # Phase 15 — controlled DB-certified final forecast output generation (no production default flip).
+    dfo = sub.add_parser("db-certified-final-output")
+    dfo.add_argument("--project", required=True, help="Project key (only 'tropical' in Phase 15).")
+    dfo.add_argument("--phase14-report", required=True,
+                     help="Explicit Phase 14 live-DB source-domain projection report (certified evidence).")
+    dfo.add_argument("--source-package", required=True,
+                     help="Explicit Tropical twn_cost_forecast_json_package directory (must match Phase 14).")
+    dfo.add_argument("--work-root", required=True,
+                     help="Explicit non-live work root (guarded run + final_output + report under it).")
+    dfo.add_argument("--context-stamp", required=True,
+                     help="Deterministic context-package stamp for the run.")
+    dfo.add_argument("--live-db-path", default=None,
+                     help="Optional explicit live DB path for read-only verification (must match Phase 14).")
+    dfo.add_argument("--require-guarded-operator-check", action="store_true", default=True,
+                     help="Require the guarded operator run to approve the DB-backed chain (default on).")
+    dfo.add_argument("--generate-final-csv", action="store_true",
+                     help="Request the final integrated CSV — controlled refusal (rc 1); out of scope.")
+    dfo.add_argument("--run-id", default=None, help="Optional run id recorded in the report.")
     # --context-stamp pins the upstream context package for a lineage-consistent fresh full run.
     # Applied to the stages that consume context and participate in the lineage gate.
     for _p in (fip, fmp, fpp, fcp, fkp, fspp):
@@ -1062,6 +1117,14 @@ def main(argv=None) -> int:
             expect_budget_details=args.expect_budget_details,
             expect_cost_entries=args.expect_cost_entries,
             expect_monthly=args.expect_monthly, project=args.project)
+    if args.command == "db-certified-final-output":
+        return cmd_db_certified_final_output(
+            phase14_report=args.phase14_report, source_package=args.source_package,
+            work_root=args.work_root, context_stamp=args.context_stamp,
+            live_db_path=args.live_db_path,
+            require_guarded_operator_check=args.require_guarded_operator_check,
+            generate_final_csv=args.generate_final_csv, run_id=args.run_id,
+            project=args.project)
     if args.command == "context-generate":
         return cmd_context_generate(data_root=args.data_root, out_dir=args.out_dir,
                                     stamp=args.stamp, project=args.project,
