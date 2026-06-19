@@ -15,6 +15,27 @@
 
 No schema, registry, migration, projection, scheduled-refresh, live-fetch, writeback, Budget Detail refresh/reconciliation, broad replay, production apply, or push was performed for this matrix.
 
+## Patch 1 Verification Addendum
+
+- Patch 1 evidence: `docs/evidence/procore-null-projection-patch1/20260619T064429Z/`
+- Verified scalar decomposition fields are not remaining unresolved schema decisions:
+  - `procore_ep_commitment_change_orders.change_order_change_reason_id`
+  - `procore_ep_commitment_change_orders.change_order_change_reason_change_reason`
+  - `procore_ep_commitment_change_orders.designated_reviewer_id`
+  - `procore_ep_commitment_change_orders.designated_reviewer_name`
+  - `procore_ep_commitment_change_orders.received_from_id`
+  - `procore_ep_commitment_change_orders.received_from_name`
+  - `procore_ep_commitment_change_orders.reviewed_by_id`
+  - `procore_ep_commitment_change_orders.reviewed_by_name`
+  - `procore_ep_prime_change_orders.change_order_change_reason_id`
+  - `procore_ep_prime_change_orders.change_order_change_reason_change_reason`
+  - `procore_ep_prime_change_orders.designated_reviewer_id`
+  - `procore_ep_prime_change_orders.designated_reviewer_name`
+  - `procore_ep_prime_change_orders.received_from_id`
+  - `procore_ep_prime_change_orders.received_from_name`
+- Copied-DB reset replay repopulated these scalar fields from existing registry mappings and current local raw payloads.
+- Bare object/container columns with the same object names remain governed by the `Object/container columns need decomposition or deprecation, not bare-object projection` decision below.
+
 ## Decision Matrix
 
 | Decision bucket | Count | Affected families / tables | Evidence basis | Schema decision | Next action |

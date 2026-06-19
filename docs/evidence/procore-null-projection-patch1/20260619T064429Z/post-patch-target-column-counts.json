@@ -1,0 +1,139 @@
+{
+  "copy_db": "/tmp/hb-procore-null-projection-patch1-20260619T064429Z.sqlite",
+  "counts": {
+    "budget_detail_guardrail": {
+      "procore_ep_budget_detail_columns": {
+        "columns": {
+          "company_id": 0,
+          "visible": 0
+        },
+        "row_count": 276
+      },
+      "procore_ep_budget_detail_row_cells": {
+        "columns": {
+          "company_id": 0,
+          "currency_iso_code": 0
+        },
+        "row_count": 225131
+      },
+      "procore_ep_budget_detail_rows": {
+        "columns": {
+          "actual_cost": 0,
+          "company_id": 0,
+          "cost_type": 0,
+          "cost_type_id": 0,
+          "line_item_type_id": 0
+        },
+        "row_count": 2496
+      }
+    },
+    "commitment_change_orders": {
+      "bare_object_or_deferred_columns": {
+        "change_order_change_reason": {
+          "non_null_count": 0,
+          "null_count": 100
+        },
+        "company_id": {
+          "non_null_count": 0,
+          "null_count": 100
+        },
+        "designated_reviewer": {
+          "non_null_count": 0,
+          "null_count": 100
+        },
+        "received_from": {
+          "non_null_count": 0,
+          "null_count": 100
+        },
+        "reviewed_by": {
+          "non_null_count": 0,
+          "null_count": 100
+        }
+      },
+      "columns": {
+        "change_order_change_reason_change_reason": {
+          "non_null_count": 98,
+          "null_count": 2
+        },
+        "change_order_change_reason_id": {
+          "non_null_count": 98,
+          "null_count": 2
+        },
+        "designated_reviewer_id": {
+          "non_null_count": 68,
+          "null_count": 32
+        },
+        "designated_reviewer_name": {
+          "non_null_count": 68,
+          "null_count": 32
+        },
+        "received_from_id": {
+          "non_null_count": 21,
+          "null_count": 79
+        },
+        "received_from_name": {
+          "non_null_count": 21,
+          "null_count": 79
+        },
+        "reviewed_by_id": {
+          "non_null_count": 1,
+          "null_count": 99
+        },
+        "reviewed_by_name": {
+          "non_null_count": 1,
+          "null_count": 99
+        }
+      },
+      "row_count": 100,
+      "table": "procore_ep_commitment_change_orders"
+    },
+    "prime_change_orders": {
+      "bare_object_or_deferred_columns": {
+        "change_order_change_reason": {
+          "non_null_count": 0,
+          "null_count": 63
+        },
+        "company_id": {
+          "non_null_count": 0,
+          "null_count": 63
+        },
+        "designated_reviewer": {
+          "non_null_count": 0,
+          "null_count": 63
+        },
+        "received_from": {
+          "non_null_count": 0,
+          "null_count": 63
+        }
+      },
+      "columns": {
+        "change_order_change_reason_change_reason": {
+          "non_null_count": 60,
+          "null_count": 3
+        },
+        "change_order_change_reason_id": {
+          "non_null_count": 60,
+          "null_count": 3
+        },
+        "designated_reviewer_id": {
+          "non_null_count": 19,
+          "null_count": 44
+        },
+        "designated_reviewer_name": {
+          "non_null_count": 19,
+          "null_count": 44
+        },
+        "received_from_id": {
+          "non_null_count": 36,
+          "null_count": 27
+        },
+        "received_from_name": {
+          "non_null_count": 36,
+          "null_count": 27
+        }
+      },
+      "row_count": 63,
+      "table": "procore_ep_prime_change_orders"
+    }
+  }
+}

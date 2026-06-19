@@ -1,0 +1,38 @@
+{
+  "budget_detail_modified": false,
+  "classification": "test_and_evidence_only_existing_mapping_proven_by_copied_db_replay",
+  "company_id_modified": false,
+  "copy_db_proof": {
+    "integrity_check": "ok",
+    "post_counts_file": "post-patch-target-column-counts.json",
+    "pre_counts_file": "pre-patch-target-column-counts.json",
+    "quick_check": "ok",
+    "reset_counts_file": "reset-target-column-counts.json"
+  },
+  "live_procore_calls": false,
+  "patch": "procore-null-projection-patch1-change-order-scalar-decomposition",
+  "raw_payload_values_emitted": false,
+  "scheduler_called": false,
+  "source_paths": {
+    "commitment-change-orders": {
+      "procore_ep_commitment_change_orders.change_order_change_reason_change_reason": "$.change_order_change_reason.change_reason",
+      "procore_ep_commitment_change_orders.change_order_change_reason_id": "$.change_order_change_reason.id",
+      "procore_ep_commitment_change_orders.designated_reviewer_id": "$.designated_reviewer.id",
+      "procore_ep_commitment_change_orders.designated_reviewer_name": "$.designated_reviewer.name",
+      "procore_ep_commitment_change_orders.received_from_id": "$.received_from.id",
+      "procore_ep_commitment_change_orders.received_from_name": "$.received_from.name",
+      "procore_ep_commitment_change_orders.reviewed_by_id": "$.reviewed_by.id",
+      "procore_ep_commitment_change_orders.reviewed_by_name": "$.reviewed_by.name"
+    },
+    "prime-change-orders": {
+      "procore_ep_prime_change_orders.change_order_change_reason_change_reason": "$.change_order_change_reason.change_reason",
+      "procore_ep_prime_change_orders.change_order_change_reason_id": "$.change_order_change_reason.id",
+      "procore_ep_prime_change_orders.designated_reviewer_id": "$.designated_reviewer.id",
+      "procore_ep_prime_change_orders.designated_reviewer_name": "$.designated_reviewer.name",
+      "procore_ep_prime_change_orders.received_from_id": "$.received_from.id",
+      "procore_ep_prime_change_orders.received_from_name": "$.received_from.name"
+    }
+  },
+  "source_refresh_orchestrator_called": false,
+  "writeback_called": false
+}

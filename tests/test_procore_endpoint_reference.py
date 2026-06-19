@@ -99,17 +99,17 @@ def test_no_hb_number_patterns_in_procore_ids():
 # separation. The seed used to carry two pending rows (`hilltop`,
 # `hilltop-gardens`) that nagged the mapping_consistent validate gate. Both
 # were retired on 2026-05-29 — they are two SharePoint-side aliases for the
-# Procore project already mapped as `alton-hilltop-pbg`. The seed now carries
-# only pilot rows; the HB-number / Procore-ID separation invariant remains.
+# Procore project already mapped as `alton-hilltop-pbg`. The seed carries only
+# configured pilot rows; the HB-number / Procore-ID separation invariant remains.
 def test_procore_projects_5280_pilots_only_post_consolidation():
-    """Validate 5280 context, 4 numeric-ID pilots, 0 pending after the
+    """Validate 5280 context, mapped numeric-ID pilots, 0 pending after the
     2026-05-29 retirement of hilltop / hilltop-gardens. HB-number vs Procore-ID
     separation invariant still pinned."""
     from hb_assistant.procore.loader import load_procore_projects
 
     reg = load_procore_projects()
     projs = reg.projects if hasattr(reg, "projects") else reg
-    assert len(projs) == 4
+    assert len(projs) == 6
     pending_keys = [
         getattr(p, "hb_project_key", getattr(p, "project_key", ""))
         for p in projs
