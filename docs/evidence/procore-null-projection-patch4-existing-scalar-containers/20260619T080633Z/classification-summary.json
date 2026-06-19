@@ -1,0 +1,1532 @@
+{
+  "field_count": 35,
+  "fields": [
+    {
+      "bare_column": "event_origin",
+      "bare_column_non_null_after_replay": 5,
+      "endpoint_key": "change-events",
+      "post_proof_decision": {
+        "decision_class": "covered_by_existing_scalar_decomposition_columns",
+        "decision_status": "no_whole_object_projection",
+        "evidence_basis": "Existing scalar destination columns replayed from source-backed registry paths.",
+        "mapping_candidate": false,
+        "next_action": "no_action_existing_scalar_decomposition_verified"
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 143,
+          "after_reset_non_null_count": 0,
+          "column": "event_origin_display_name",
+          "registry_json_path": "$.event_origin.display_name",
+          "source_non_empty_count": 183,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 143,
+          "after_reset_non_null_count": 0,
+          "column": "event_origin_origin_id",
+          "registry_json_path": "$.event_origin.origin_id",
+          "source_non_empty_count": 183,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_change_events"
+    },
+    {
+      "bare_column": "change_order_change_reason",
+      "bare_column_non_null_after_replay": 0,
+      "endpoint_key": "commitment-change-orders",
+      "post_proof_decision": {
+        "decision_class": "covered_by_existing_scalar_decomposition_columns",
+        "decision_status": "no_whole_object_projection",
+        "evidence_basis": "Existing scalar destination columns replayed from source-backed registry paths.",
+        "mapping_candidate": false,
+        "next_action": "no_action_existing_scalar_decomposition_verified"
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 98,
+          "after_reset_non_null_count": 0,
+          "column": "change_order_change_reason_id",
+          "registry_json_path": "$.change_order_change_reason.id",
+          "source_non_empty_count": 98,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_commitment_change_orders"
+    },
+    {
+      "bare_column": "designated_reviewer",
+      "bare_column_non_null_after_replay": 0,
+      "endpoint_key": "commitment-change-orders",
+      "post_proof_decision": {
+        "decision_class": "covered_by_existing_scalar_decomposition_columns",
+        "decision_status": "no_whole_object_projection",
+        "evidence_basis": "Existing scalar destination columns replayed from source-backed registry paths.",
+        "mapping_candidate": false,
+        "next_action": "no_action_existing_scalar_decomposition_verified"
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 68,
+          "after_reset_non_null_count": 0,
+          "column": "designated_reviewer_id",
+          "registry_json_path": "$.designated_reviewer.id",
+          "source_non_empty_count": 68,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 68,
+          "after_reset_non_null_count": 0,
+          "column": "designated_reviewer_name",
+          "registry_json_path": "$.designated_reviewer.name",
+          "source_non_empty_count": 68,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_commitment_change_orders"
+    },
+    {
+      "bare_column": "received_from",
+      "bare_column_non_null_after_replay": 0,
+      "endpoint_key": "commitment-change-orders",
+      "post_proof_decision": {
+        "decision_class": "covered_by_existing_scalar_decomposition_columns",
+        "decision_status": "no_whole_object_projection",
+        "evidence_basis": "Existing scalar destination columns replayed from source-backed registry paths.",
+        "mapping_candidate": false,
+        "next_action": "no_action_existing_scalar_decomposition_verified"
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 21,
+          "after_reset_non_null_count": 0,
+          "column": "received_from_id",
+          "registry_json_path": "$.received_from.id",
+          "source_non_empty_count": 21,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 21,
+          "after_reset_non_null_count": 0,
+          "column": "received_from_name",
+          "registry_json_path": "$.received_from.name",
+          "source_non_empty_count": 21,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_commitment_change_orders"
+    },
+    {
+      "bare_column": "reviewed_by",
+      "bare_column_non_null_after_replay": 0,
+      "endpoint_key": "commitment-change-orders",
+      "post_proof_decision": {
+        "decision_class": "covered_by_existing_scalar_decomposition_columns",
+        "decision_status": "no_whole_object_projection",
+        "evidence_basis": "Existing scalar destination columns replayed from source-backed registry paths.",
+        "mapping_candidate": false,
+        "next_action": "no_action_existing_scalar_decomposition_verified"
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 1,
+          "after_reset_non_null_count": 0,
+          "column": "reviewed_by_id",
+          "registry_json_path": "$.reviewed_by.id",
+          "source_non_empty_count": 1,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 1,
+          "after_reset_non_null_count": 0,
+          "column": "reviewed_by_name",
+          "registry_json_path": "$.reviewed_by.name",
+          "source_non_empty_count": 1,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_commitment_change_orders"
+    },
+    {
+      "bare_column": "location",
+      "bare_column_non_null_after_replay": 0,
+      "endpoint_key": "daily-log-inspections",
+      "post_proof_decision": {
+        "decision_class": "covered_by_existing_scalar_decomposition_columns",
+        "decision_status": "no_whole_object_projection",
+        "evidence_basis": "Existing scalar destination columns replayed from source-backed registry paths.",
+        "mapping_candidate": false,
+        "next_action": "no_action_existing_scalar_decomposition_verified"
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 60,
+          "after_reset_non_null_count": 0,
+          "column": "location_created_at",
+          "registry_json_path": "$.location.created_at",
+          "source_non_empty_count": 60,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 60,
+          "after_reset_non_null_count": 0,
+          "column": "location_id",
+          "registry_json_path": "$.location.id",
+          "source_non_empty_count": 60,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 60,
+          "after_reset_non_null_count": 0,
+          "column": "location_name",
+          "registry_json_path": "$.location.name",
+          "source_non_empty_count": 60,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 60,
+          "after_reset_non_null_count": 0,
+          "column": "location_node_name",
+          "registry_json_path": "$.location.node_name",
+          "source_non_empty_count": 60,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 43,
+          "after_reset_non_null_count": 0,
+          "column": "location_parent_id",
+          "registry_json_path": "$.location.parent_id",
+          "source_non_empty_count": 43,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 60,
+          "after_reset_non_null_count": 0,
+          "column": "location_updated_at",
+          "registry_json_path": "$.location.updated_at",
+          "source_non_empty_count": 60,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_daily_log_inspections"
+    },
+    {
+      "bare_column": "contact",
+      "bare_column_non_null_after_replay": 0,
+      "endpoint_key": "daily-log-manpower",
+      "post_proof_decision": {
+        "decision_class": "partially_covered_existing_scalar_columns",
+        "decision_status": "no_whole_object_projection",
+        "evidence_basis": "At least one scalar destination lacked source-backed replay proof.",
+        "mapping_candidate": false,
+        "next_action": "review_scalar_source_coverage_before_schema_decision"
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 53,
+          "after_reset_non_null_count": 0,
+          "column": "contact_email",
+          "registry_json_path": "$.contact.email",
+          "source_non_empty_count": 53,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 464,
+          "after_reset_non_null_count": 0,
+          "column": "contact_fax_number",
+          "registry_json_path": "$.contact.fax_number",
+          "source_non_empty_count": 464,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 920,
+          "after_reset_non_null_count": 0,
+          "column": "contact_id",
+          "registry_json_path": "$.contact.id",
+          "source_non_empty_count": 920,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 0,
+          "after_reset_non_null_count": 0,
+          "column": "contact_login_information_id",
+          "registry_json_path": "$.contact.login_information_id",
+          "source_non_empty_count": 0,
+          "status": "source_absent_for_specific_scalar_column"
+        },
+        {
+          "after_replay_non_null_count": 920,
+          "after_reset_non_null_count": 0,
+          "column": "contact_name",
+          "registry_json_path": "$.contact.name",
+          "source_non_empty_count": 920,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 0,
+          "after_reset_non_null_count": 0,
+          "column": "contact_vendor_name",
+          "registry_json_path": "$.contact.vendor_name",
+          "source_non_empty_count": 0,
+          "status": "source_absent_for_specific_scalar_column"
+        }
+      ],
+      "table": "procore_ep_daily_log_manpower"
+    },
+    {
+      "bare_column": "cost_code",
+      "bare_column_non_null_after_replay": 0,
+      "endpoint_key": "daily-log-manpower",
+      "post_proof_decision": {
+        "decision_class": "covered_by_existing_scalar_decomposition_columns",
+        "decision_status": "no_whole_object_projection",
+        "evidence_basis": "Existing scalar destination columns replayed from source-backed registry paths.",
+        "mapping_candidate": false,
+        "next_action": "no_action_existing_scalar_decomposition_verified"
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 2,
+          "after_reset_non_null_count": 0,
+          "column": "cost_code_id",
+          "registry_json_path": "$.cost_code.id",
+          "source_non_empty_count": 2,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 2,
+          "after_reset_non_null_count": 0,
+          "column": "cost_code_long_name",
+          "registry_json_path": "$.cost_code.long_name",
+          "source_non_empty_count": 2,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 2,
+          "after_reset_non_null_count": 0,
+          "column": "cost_code_name",
+          "registry_json_path": "$.cost_code.name",
+          "source_non_empty_count": 2,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_daily_log_manpower"
+    },
+    {
+      "bare_column": "location",
+      "bare_column_non_null_after_replay": 0,
+      "endpoint_key": "daily-log-manpower",
+      "post_proof_decision": {
+        "decision_class": "covered_by_existing_scalar_decomposition_columns",
+        "decision_status": "no_whole_object_projection",
+        "evidence_basis": "Existing scalar destination columns replayed from source-backed registry paths.",
+        "mapping_candidate": false,
+        "next_action": "no_action_existing_scalar_decomposition_verified"
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 696,
+          "after_reset_non_null_count": 0,
+          "column": "location_created_at",
+          "registry_json_path": "$.location.created_at",
+          "source_non_empty_count": 696,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 696,
+          "after_reset_non_null_count": 0,
+          "column": "location_id",
+          "registry_json_path": "$.location.id",
+          "source_non_empty_count": 696,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 696,
+          "after_reset_non_null_count": 0,
+          "column": "location_name",
+          "registry_json_path": "$.location.name",
+          "source_non_empty_count": 696,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 696,
+          "after_reset_non_null_count": 0,
+          "column": "location_node_name",
+          "registry_json_path": "$.location.node_name",
+          "source_non_empty_count": 696,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 192,
+          "after_reset_non_null_count": 0,
+          "column": "location_parent_id",
+          "registry_json_path": "$.location.parent_id",
+          "source_non_empty_count": 192,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 696,
+          "after_reset_non_null_count": 0,
+          "column": "location_updated_at",
+          "registry_json_path": "$.location.updated_at",
+          "source_non_empty_count": 696,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_daily_log_manpower"
+    },
+    {
+      "bare_column": "location",
+      "bare_column_non_null_after_replay": 0,
+      "endpoint_key": "daily-log-notes",
+      "post_proof_decision": {
+        "decision_class": "covered_by_existing_scalar_decomposition_columns",
+        "decision_status": "no_whole_object_projection",
+        "evidence_basis": "Existing scalar destination columns replayed from source-backed registry paths.",
+        "mapping_candidate": false,
+        "next_action": "no_action_existing_scalar_decomposition_verified"
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 26,
+          "after_reset_non_null_count": 0,
+          "column": "location_created_at",
+          "registry_json_path": "$.location.created_at",
+          "source_non_empty_count": 26,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 26,
+          "after_reset_non_null_count": 0,
+          "column": "location_id",
+          "registry_json_path": "$.location.id",
+          "source_non_empty_count": 26,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 26,
+          "after_reset_non_null_count": 0,
+          "column": "location_name",
+          "registry_json_path": "$.location.name",
+          "source_non_empty_count": 26,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 26,
+          "after_reset_non_null_count": 0,
+          "column": "location_node_name",
+          "registry_json_path": "$.location.node_name",
+          "source_non_empty_count": 26,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 4,
+          "after_reset_non_null_count": 0,
+          "column": "location_parent_id",
+          "registry_json_path": "$.location.parent_id",
+          "source_non_empty_count": 4,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 26,
+          "after_reset_non_null_count": 0,
+          "column": "location_updated_at",
+          "registry_json_path": "$.location.updated_at",
+          "source_non_empty_count": 26,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_daily_log_notes"
+    },
+    {
+      "bare_column": "closed_by",
+      "bare_column_non_null_after_replay": 0,
+      "endpoint_key": "inspections",
+      "post_proof_decision": {
+        "decision_class": "covered_by_existing_scalar_decomposition_columns",
+        "decision_status": "no_whole_object_projection",
+        "evidence_basis": "Existing scalar destination columns replayed from source-backed registry paths.",
+        "mapping_candidate": false,
+        "next_action": "no_action_existing_scalar_decomposition_verified"
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 11,
+          "after_reset_non_null_count": 0,
+          "column": "closed_by_company_name",
+          "registry_json_path": "$.closed_by.company_name",
+          "source_non_empty_count": 11,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 11,
+          "after_reset_non_null_count": 0,
+          "column": "closed_by_id",
+          "registry_json_path": "$.closed_by.id",
+          "source_non_empty_count": 11,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 11,
+          "after_reset_non_null_count": 0,
+          "column": "closed_by_login",
+          "registry_json_path": "$.closed_by.login",
+          "source_non_empty_count": 11,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 11,
+          "after_reset_non_null_count": 0,
+          "column": "closed_by_name",
+          "registry_json_path": "$.closed_by.name",
+          "source_non_empty_count": 11,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_inspections"
+    },
+    {
+      "bare_column": "location",
+      "bare_column_non_null_after_replay": 0,
+      "endpoint_key": "inspections",
+      "post_proof_decision": {
+        "decision_class": "partially_covered_existing_scalar_columns",
+        "decision_status": "no_whole_object_projection",
+        "evidence_basis": "At least one scalar destination lacked source-backed replay proof.",
+        "mapping_candidate": false,
+        "next_action": "review_scalar_source_coverage_before_schema_decision"
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 0,
+          "after_reset_non_null_count": 0,
+          "column": "location_code",
+          "registry_json_path": "$.location.code",
+          "source_non_empty_count": 0,
+          "status": "source_absent_for_specific_scalar_column"
+        },
+        {
+          "after_replay_non_null_count": 60,
+          "after_reset_non_null_count": 0,
+          "column": "location_created_at",
+          "registry_json_path": "$.location.created_at",
+          "source_non_empty_count": 60,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 60,
+          "after_reset_non_null_count": 0,
+          "column": "location_id",
+          "registry_json_path": "$.location.id",
+          "source_non_empty_count": 60,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 60,
+          "after_reset_non_null_count": 0,
+          "column": "location_name",
+          "registry_json_path": "$.location.name",
+          "source_non_empty_count": 60,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 60,
+          "after_reset_non_null_count": 0,
+          "column": "location_node_name",
+          "registry_json_path": "$.location.node_name",
+          "source_non_empty_count": 60,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 2,
+          "after_reset_non_null_count": 0,
+          "column": "location_parent_id",
+          "registry_json_path": "$.location.parent_id",
+          "source_non_empty_count": 2,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 60,
+          "after_reset_non_null_count": 0,
+          "column": "location_updated_at",
+          "registry_json_path": "$.location.updated_at",
+          "source_non_empty_count": 60,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_inspections"
+    },
+    {
+      "bare_column": "point_of_contact",
+      "bare_column_non_null_after_replay": 0,
+      "endpoint_key": "inspections",
+      "post_proof_decision": {
+        "decision_class": "covered_by_existing_scalar_decomposition_columns",
+        "decision_status": "no_whole_object_projection",
+        "evidence_basis": "Existing scalar destination columns replayed from source-backed registry paths.",
+        "mapping_candidate": false,
+        "next_action": "no_action_existing_scalar_decomposition_verified"
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 7,
+          "after_reset_non_null_count": 0,
+          "column": "point_of_contact_company_name",
+          "registry_json_path": "$.point_of_contact.company_name",
+          "source_non_empty_count": 7,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 7,
+          "after_reset_non_null_count": 0,
+          "column": "point_of_contact_id",
+          "registry_json_path": "$.point_of_contact.id",
+          "source_non_empty_count": 7,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 7,
+          "after_reset_non_null_count": 0,
+          "column": "point_of_contact_login",
+          "registry_json_path": "$.point_of_contact.login",
+          "source_non_empty_count": 7,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 7,
+          "after_reset_non_null_count": 0,
+          "column": "point_of_contact_name",
+          "registry_json_path": "$.point_of_contact.name",
+          "source_non_empty_count": 7,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_inspections"
+    },
+    {
+      "bare_column": "responsible_contractor",
+      "bare_column_non_null_after_replay": 0,
+      "endpoint_key": "inspections",
+      "post_proof_decision": {
+        "decision_class": "covered_by_existing_scalar_decomposition_columns",
+        "decision_status": "no_whole_object_projection",
+        "evidence_basis": "Existing scalar destination columns replayed from source-backed registry paths.",
+        "mapping_candidate": false,
+        "next_action": "no_action_existing_scalar_decomposition_verified"
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 9,
+          "after_reset_non_null_count": 0,
+          "column": "responsible_contractor_id",
+          "registry_json_path": "$.responsible_contractor.id",
+          "source_non_empty_count": 9,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 9,
+          "after_reset_non_null_count": 0,
+          "column": "responsible_contractor_name",
+          "registry_json_path": "$.responsible_contractor.name",
+          "source_non_empty_count": 9,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_inspections"
+    },
+    {
+      "bare_column": "specification_section",
+      "bare_column_non_null_after_replay": 0,
+      "endpoint_key": "inspections",
+      "post_proof_decision": {
+        "decision_class": "covered_by_existing_scalar_decomposition_columns",
+        "decision_status": "no_whole_object_projection",
+        "evidence_basis": "Existing scalar destination columns replayed from source-backed registry paths.",
+        "mapping_candidate": false,
+        "next_action": "no_action_existing_scalar_decomposition_verified"
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 2,
+          "after_reset_non_null_count": 0,
+          "column": "specification_section_id",
+          "registry_json_path": "$.specification_section.id",
+          "source_non_empty_count": 2,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_inspections"
+    },
+    {
+      "bare_column": "trade",
+      "bare_column_non_null_after_replay": 0,
+      "endpoint_key": "inspections",
+      "post_proof_decision": {
+        "decision_class": "covered_by_existing_scalar_decomposition_columns",
+        "decision_status": "no_whole_object_projection",
+        "evidence_basis": "Existing scalar destination columns replayed from source-backed registry paths.",
+        "mapping_candidate": false,
+        "next_action": "no_action_existing_scalar_decomposition_verified"
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 10,
+          "after_reset_non_null_count": 0,
+          "column": "trade_id",
+          "registry_json_path": "$.trade.id",
+          "source_non_empty_count": 10,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 10,
+          "after_reset_non_null_count": 0,
+          "column": "trade_name",
+          "registry_json_path": "$.trade.name",
+          "source_non_empty_count": 10,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 10,
+          "after_reset_non_null_count": 0,
+          "column": "trade_updated_at",
+          "registry_json_path": "$.trade.updated_at",
+          "source_non_empty_count": 10,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_inspections"
+    },
+    {
+      "bare_column": "distributed_by",
+      "bare_column_non_null_after_replay": 0,
+      "endpoint_key": "meetings",
+      "post_proof_decision": {
+        "decision_class": "covered_by_existing_scalar_decomposition_columns",
+        "decision_status": "no_whole_object_projection",
+        "evidence_basis": "Existing scalar destination columns replayed from source-backed registry paths.",
+        "mapping_candidate": false,
+        "next_action": "no_action_existing_scalar_decomposition_verified"
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 85,
+          "after_reset_non_null_count": 0,
+          "column": "distributed_by_id",
+          "registry_json_path": "$.distributed_by.id",
+          "source_non_empty_count": 87,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 85,
+          "after_reset_non_null_count": 0,
+          "column": "distributed_by_login",
+          "registry_json_path": "$.distributed_by.login",
+          "source_non_empty_count": 87,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 85,
+          "after_reset_non_null_count": 0,
+          "column": "distributed_by_name",
+          "registry_json_path": "$.distributed_by.name",
+          "source_non_empty_count": 87,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_meetings"
+    },
+    {
+      "bare_column": "assignee",
+      "bare_column_non_null_after_replay": 0,
+      "endpoint_key": "observations",
+      "post_proof_decision": {
+        "decision_class": "covered_by_existing_scalar_decomposition_columns",
+        "decision_status": "no_whole_object_projection",
+        "evidence_basis": "Existing scalar destination columns replayed from source-backed registry paths.",
+        "mapping_candidate": false,
+        "next_action": "no_action_existing_scalar_decomposition_verified"
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 209,
+          "after_reset_non_null_count": 0,
+          "column": "assignee_id",
+          "registry_json_path": "$.assignee.id",
+          "source_non_empty_count": 209,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 209,
+          "after_reset_non_null_count": 0,
+          "column": "assignee_name",
+          "registry_json_path": "$.assignee.name",
+          "source_non_empty_count": 209,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 207,
+          "after_reset_non_null_count": 0,
+          "column": "assignee_vendor_id",
+          "registry_json_path": "$.assignee.vendor.id",
+          "source_non_empty_count": 207,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 207,
+          "after_reset_non_null_count": 0,
+          "column": "assignee_vendor_name",
+          "registry_json_path": "$.assignee.vendor.name",
+          "source_non_empty_count": 207,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_observations"
+    },
+    {
+      "bare_column": "assignee_vendor",
+      "bare_column_non_null_after_replay": 0,
+      "endpoint_key": "observations",
+      "post_proof_decision": {
+        "decision_class": "covered_by_existing_scalar_decomposition_columns",
+        "decision_status": "no_whole_object_projection",
+        "evidence_basis": "Existing scalar destination columns replayed from source-backed registry paths.",
+        "mapping_candidate": false,
+        "next_action": "no_action_existing_scalar_decomposition_verified"
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 207,
+          "after_reset_non_null_count": 0,
+          "column": "assignee_vendor_id",
+          "registry_json_path": "$.assignee.vendor.id",
+          "source_non_empty_count": 207,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 207,
+          "after_reset_non_null_count": 0,
+          "column": "assignee_vendor_name",
+          "registry_json_path": "$.assignee.vendor.name",
+          "source_non_empty_count": 207,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_observations"
+    },
+    {
+      "bare_column": "location",
+      "bare_column_non_null_after_replay": 0,
+      "endpoint_key": "observations",
+      "post_proof_decision": {
+        "decision_class": "covered_by_existing_scalar_decomposition_columns",
+        "decision_status": "no_whole_object_projection",
+        "evidence_basis": "Existing scalar destination columns replayed from source-backed registry paths.",
+        "mapping_candidate": false,
+        "next_action": "no_action_existing_scalar_decomposition_verified"
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 145,
+          "after_reset_non_null_count": 0,
+          "column": "location_created_at",
+          "registry_json_path": "$.location.created_at",
+          "source_non_empty_count": 145,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 145,
+          "after_reset_non_null_count": 0,
+          "column": "location_id",
+          "registry_json_path": "$.location.id",
+          "source_non_empty_count": 145,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 145,
+          "after_reset_non_null_count": 0,
+          "column": "location_name",
+          "registry_json_path": "$.location.name",
+          "source_non_empty_count": 145,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 145,
+          "after_reset_non_null_count": 0,
+          "column": "location_node_name",
+          "registry_json_path": "$.location.node_name",
+          "source_non_empty_count": 145,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 133,
+          "after_reset_non_null_count": 0,
+          "column": "location_parent_id",
+          "registry_json_path": "$.location.parent_id",
+          "source_non_empty_count": 133,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 145,
+          "after_reset_non_null_count": 0,
+          "column": "location_updated_at",
+          "registry_json_path": "$.location.updated_at",
+          "source_non_empty_count": 145,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_observations"
+    },
+    {
+      "bare_column": "origin",
+      "bare_column_non_null_after_replay": 0,
+      "endpoint_key": "observations",
+      "post_proof_decision": {
+        "decision_class": "covered_by_existing_scalar_decomposition_columns",
+        "decision_status": "no_whole_object_projection",
+        "evidence_basis": "Existing scalar destination columns replayed from source-backed registry paths.",
+        "mapping_candidate": false,
+        "next_action": "no_action_existing_scalar_decomposition_verified"
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 1,
+          "after_reset_non_null_count": 0,
+          "column": "origin_payload_checklist_item_id",
+          "registry_json_path": "$.origin.payload.checklist_item_id",
+          "source_non_empty_count": 1,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 1,
+          "after_reset_non_null_count": 0,
+          "column": "origin_payload_checklist_list_id",
+          "registry_json_path": "$.origin.payload.checklist_list_id",
+          "source_non_empty_count": 1,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_observations"
+    },
+    {
+      "bare_column": "specification_section",
+      "bare_column_non_null_after_replay": 0,
+      "endpoint_key": "observations",
+      "post_proof_decision": {
+        "decision_class": "partially_covered_existing_scalar_columns",
+        "decision_status": "no_whole_object_projection",
+        "evidence_basis": "At least one scalar destination lacked source-backed replay proof.",
+        "mapping_candidate": false,
+        "next_action": "review_scalar_source_coverage_before_schema_decision"
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 9,
+          "after_reset_non_null_count": 0,
+          "column": "specification_section_current_revision_id",
+          "registry_json_path": "$.specification_section.current_revision_id",
+          "source_non_empty_count": 9,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 9,
+          "after_reset_non_null_count": 0,
+          "column": "specification_section_id",
+          "registry_json_path": "$.specification_section.id",
+          "source_non_empty_count": 9,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 9,
+          "after_reset_non_null_count": 0,
+          "column": "specification_section_number",
+          "registry_json_path": "$.specification_section.number",
+          "source_non_empty_count": 9,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 0,
+          "after_reset_non_null_count": 0,
+          "column": "specification_section_viewable_document_id",
+          "registry_json_path": "$.specification_section.viewable_document_id",
+          "source_non_empty_count": 0,
+          "status": "source_absent_for_specific_scalar_column"
+        }
+      ],
+      "table": "procore_ep_observations"
+    },
+    {
+      "bare_column": "trade",
+      "bare_column_non_null_after_replay": 0,
+      "endpoint_key": "observations",
+      "post_proof_decision": {
+        "decision_class": "covered_by_existing_scalar_decomposition_columns",
+        "decision_status": "no_whole_object_projection",
+        "evidence_basis": "Existing scalar destination columns replayed from source-backed registry paths.",
+        "mapping_candidate": false,
+        "next_action": "no_action_existing_scalar_decomposition_verified"
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 161,
+          "after_reset_non_null_count": 0,
+          "column": "trade_id",
+          "registry_json_path": "$.trade.id",
+          "source_non_empty_count": 161,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 161,
+          "after_reset_non_null_count": 0,
+          "column": "trade_name",
+          "registry_json_path": "$.trade.name",
+          "source_non_empty_count": 161,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 161,
+          "after_reset_non_null_count": 0,
+          "column": "trade_updated_at",
+          "registry_json_path": "$.trade.updated_at",
+          "source_non_empty_count": 161,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_observations"
+    },
+    {
+      "bare_column": "change_order_change_reason",
+      "bare_column_non_null_after_replay": 0,
+      "endpoint_key": "prime-change-orders",
+      "post_proof_decision": {
+        "decision_class": "covered_by_existing_scalar_decomposition_columns",
+        "decision_status": "no_whole_object_projection",
+        "evidence_basis": "Existing scalar destination columns replayed from source-backed registry paths.",
+        "mapping_candidate": false,
+        "next_action": "no_action_existing_scalar_decomposition_verified"
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 60,
+          "after_reset_non_null_count": 0,
+          "column": "change_order_change_reason_id",
+          "registry_json_path": "$.change_order_change_reason.id",
+          "source_non_empty_count": 60,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_prime_change_orders"
+    },
+    {
+      "bare_column": "designated_reviewer",
+      "bare_column_non_null_after_replay": 0,
+      "endpoint_key": "prime-change-orders",
+      "post_proof_decision": {
+        "decision_class": "covered_by_existing_scalar_decomposition_columns",
+        "decision_status": "no_whole_object_projection",
+        "evidence_basis": "Existing scalar destination columns replayed from source-backed registry paths.",
+        "mapping_candidate": false,
+        "next_action": "no_action_existing_scalar_decomposition_verified"
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 19,
+          "after_reset_non_null_count": 0,
+          "column": "designated_reviewer_id",
+          "registry_json_path": "$.designated_reviewer.id",
+          "source_non_empty_count": 19,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 19,
+          "after_reset_non_null_count": 0,
+          "column": "designated_reviewer_name",
+          "registry_json_path": "$.designated_reviewer.name",
+          "source_non_empty_count": 19,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_prime_change_orders"
+    },
+    {
+      "bare_column": "received_from",
+      "bare_column_non_null_after_replay": 0,
+      "endpoint_key": "prime-change-orders",
+      "post_proof_decision": {
+        "decision_class": "covered_by_existing_scalar_decomposition_columns",
+        "decision_status": "no_whole_object_projection",
+        "evidence_basis": "Existing scalar destination columns replayed from source-backed registry paths.",
+        "mapping_candidate": false,
+        "next_action": "no_action_existing_scalar_decomposition_verified"
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 36,
+          "after_reset_non_null_count": 0,
+          "column": "received_from_id",
+          "registry_json_path": "$.received_from.id",
+          "source_non_empty_count": 36,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 36,
+          "after_reset_non_null_count": 0,
+          "column": "received_from_name",
+          "registry_json_path": "$.received_from.name",
+          "source_non_empty_count": 36,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_prime_change_orders"
+    },
+    {
+      "bare_column": "project_stage",
+      "bare_column_non_null_after_replay": 0,
+      "endpoint_key": "projects",
+      "post_proof_decision": {
+        "decision_class": "covered_by_existing_scalar_decomposition_columns",
+        "decision_status": "no_whole_object_projection",
+        "evidence_basis": "Existing scalar destination columns replayed from source-backed registry paths.",
+        "mapping_candidate": false,
+        "next_action": "no_action_existing_scalar_decomposition_verified"
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 12,
+          "after_reset_non_null_count": 0,
+          "column": "project_stage_id",
+          "registry_json_path": "$.project_stage.id",
+          "source_non_empty_count": 12,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 12,
+          "after_reset_non_null_count": 0,
+          "column": "project_stage_name",
+          "registry_json_path": "$.project_stage.name",
+          "source_non_empty_count": 12,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_projects"
+    },
+    {
+      "bare_column": "assignee",
+      "bare_column_non_null_after_replay": 0,
+      "endpoint_key": "purchase-order-contracts",
+      "post_proof_decision": {
+        "decision_class": "covered_by_existing_scalar_decomposition_columns",
+        "decision_status": "no_whole_object_projection",
+        "evidence_basis": "Existing scalar destination columns replayed from source-backed registry paths.",
+        "mapping_candidate": false,
+        "next_action": "no_action_existing_scalar_decomposition_verified"
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 5,
+          "after_reset_non_null_count": 0,
+          "column": "assignee_id",
+          "registry_json_path": "$.assignee.id",
+          "source_non_empty_count": 5,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_purchase_order_contracts"
+    },
+    {
+      "bare_column": "ball_in_court",
+      "bare_column_non_null_after_replay": 54,
+      "endpoint_key": "rfis",
+      "post_proof_decision": {
+        "decision_class": "covered_by_existing_scalar_decomposition_columns",
+        "decision_status": "no_whole_object_projection",
+        "evidence_basis": "Existing scalar destination columns replayed from source-backed registry paths.",
+        "mapping_candidate": false,
+        "next_action": "no_action_existing_scalar_decomposition_verified"
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 121,
+          "after_reset_non_null_count": 0,
+          "column": "ball_in_court_id",
+          "registry_json_path": "$.ball_in_court.id",
+          "source_non_empty_count": 148,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 121,
+          "after_reset_non_null_count": 0,
+          "column": "ball_in_court_login",
+          "registry_json_path": "$.ball_in_court.login",
+          "source_non_empty_count": 148,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 121,
+          "after_reset_non_null_count": 0,
+          "column": "ball_in_court_name",
+          "registry_json_path": "$.ball_in_court.name",
+          "source_non_empty_count": 148,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_rfis"
+    },
+    {
+      "bare_column": "cost_code",
+      "bare_column_non_null_after_replay": 30,
+      "endpoint_key": "rfis",
+      "post_proof_decision": {
+        "decision_class": "covered_by_existing_scalar_decomposition_columns",
+        "decision_status": "no_whole_object_projection",
+        "evidence_basis": "Existing scalar destination columns replayed from source-backed registry paths.",
+        "mapping_candidate": false,
+        "next_action": "no_action_existing_scalar_decomposition_verified"
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 30,
+          "after_reset_non_null_count": 0,
+          "column": "cost_code_id",
+          "registry_json_path": "$.cost_code.id",
+          "source_non_empty_count": 30,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 30,
+          "after_reset_non_null_count": 0,
+          "column": "cost_code_name",
+          "registry_json_path": "$.cost_code.name",
+          "source_non_empty_count": 30,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_rfis"
+    },
+    {
+      "bare_column": "location",
+      "bare_column_non_null_after_replay": 76,
+      "endpoint_key": "rfis",
+      "post_proof_decision": {
+        "decision_class": "covered_by_existing_scalar_decomposition_columns",
+        "decision_status": "no_whole_object_projection",
+        "evidence_basis": "Existing scalar destination columns replayed from source-backed registry paths.",
+        "mapping_candidate": false,
+        "next_action": "no_action_existing_scalar_decomposition_verified"
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 197,
+          "after_reset_non_null_count": 0,
+          "column": "location_created_at",
+          "registry_json_path": "$.location.created_at",
+          "source_non_empty_count": 209,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 197,
+          "after_reset_non_null_count": 0,
+          "column": "location_id",
+          "registry_json_path": "$.location.id",
+          "source_non_empty_count": 209,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 197,
+          "after_reset_non_null_count": 0,
+          "column": "location_name",
+          "registry_json_path": "$.location.name",
+          "source_non_empty_count": 209,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 197,
+          "after_reset_non_null_count": 0,
+          "column": "location_node_name",
+          "registry_json_path": "$.location.node_name",
+          "source_non_empty_count": 209,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 5,
+          "after_reset_non_null_count": 0,
+          "column": "location_parent_id",
+          "registry_json_path": "$.location.parent_id",
+          "source_non_empty_count": 6,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 197,
+          "after_reset_non_null_count": 0,
+          "column": "location_updated_at",
+          "registry_json_path": "$.location.updated_at",
+          "source_non_empty_count": 209,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_rfis"
+    },
+    {
+      "bare_column": "sub_job",
+      "bare_column_non_null_after_replay": 63,
+      "endpoint_key": "rfis",
+      "post_proof_decision": {
+        "decision_class": "covered_by_existing_scalar_decomposition_columns",
+        "decision_status": "no_whole_object_projection",
+        "evidence_basis": "Existing scalar destination columns replayed from source-backed registry paths.",
+        "mapping_candidate": false,
+        "next_action": "no_action_existing_scalar_decomposition_verified"
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 71,
+          "after_reset_non_null_count": 0,
+          "column": "sub_job_code",
+          "registry_json_path": "$.sub_job.code",
+          "source_non_empty_count": 74,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 71,
+          "after_reset_non_null_count": 0,
+          "column": "sub_job_id",
+          "registry_json_path": "$.sub_job.id",
+          "source_non_empty_count": 74,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 71,
+          "after_reset_non_null_count": 0,
+          "column": "sub_job_name",
+          "registry_json_path": "$.sub_job.name",
+          "source_non_empty_count": 74,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_rfis"
+    },
+    {
+      "bare_column": "location",
+      "bare_column_non_null_after_replay": 32,
+      "endpoint_key": "submittals",
+      "post_proof_decision": {
+        "decision_class": "partially_covered_existing_scalar_columns",
+        "decision_status": "no_whole_object_projection",
+        "evidence_basis": "At least one scalar destination lacked source-backed replay proof.",
+        "mapping_candidate": false,
+        "next_action": "review_scalar_source_coverage_before_schema_decision"
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 82,
+          "after_reset_non_null_count": 0,
+          "column": "location_created_at",
+          "registry_json_path": "$.location.created_at",
+          "source_non_empty_count": 184,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 82,
+          "after_reset_non_null_count": 0,
+          "column": "location_id",
+          "registry_json_path": "$.location.id",
+          "source_non_empty_count": 184,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 82,
+          "after_reset_non_null_count": 0,
+          "column": "location_name",
+          "registry_json_path": "$.location.name",
+          "source_non_empty_count": 184,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 82,
+          "after_reset_non_null_count": 0,
+          "column": "location_node_name",
+          "registry_json_path": "$.location.node_name",
+          "source_non_empty_count": 184,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 0,
+          "after_reset_non_null_count": 0,
+          "column": "location_parent_id",
+          "registry_json_path": "$.location.parent_id",
+          "source_non_empty_count": 0,
+          "status": "source_absent_for_specific_scalar_column"
+        },
+        {
+          "after_replay_non_null_count": 82,
+          "after_reset_non_null_count": 0,
+          "column": "location_updated_at",
+          "registry_json_path": "$.location.updated_at",
+          "source_non_empty_count": 184,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_submittals"
+    },
+    {
+      "bare_column": "submittal_package",
+      "bare_column_non_null_after_replay": 0,
+      "endpoint_key": "submittals",
+      "post_proof_decision": {
+        "decision_class": "covered_by_existing_scalar_decomposition_columns",
+        "decision_status": "no_whole_object_projection",
+        "evidence_basis": "Existing scalar destination columns replayed from source-backed registry paths.",
+        "mapping_candidate": false,
+        "next_action": "no_action_existing_scalar_decomposition_verified"
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 149,
+          "after_reset_non_null_count": 0,
+          "column": "submittal_package_created_by_id",
+          "registry_json_path": "$.submittal_package.created_by.id",
+          "source_non_empty_count": 273,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 149,
+          "after_reset_non_null_count": 0,
+          "column": "submittal_package_created_by_login",
+          "registry_json_path": "$.submittal_package.created_by.login",
+          "source_non_empty_count": 273,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 149,
+          "after_reset_non_null_count": 0,
+          "column": "submittal_package_created_by_name",
+          "registry_json_path": "$.submittal_package.created_by.name",
+          "source_non_empty_count": 273,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 149,
+          "after_reset_non_null_count": 0,
+          "column": "submittal_package_id",
+          "registry_json_path": "$.submittal_package.id",
+          "source_non_empty_count": 273,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 149,
+          "after_reset_non_null_count": 0,
+          "column": "submittal_package_number",
+          "registry_json_path": "$.submittal_package.number",
+          "source_non_empty_count": 273,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 110,
+          "after_reset_non_null_count": 0,
+          "column": "submittal_package_specification_section_id",
+          "registry_json_path": "$.submittal_package.specification_section_id",
+          "source_non_empty_count": 130,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 149,
+          "after_reset_non_null_count": 0,
+          "column": "submittal_package_updated_at",
+          "registry_json_path": "$.submittal_package.updated_at",
+          "source_non_empty_count": 273,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_submittals"
+    },
+    {
+      "bare_column": "submittal_workflow_template",
+      "bare_column_non_null_after_replay": 0,
+      "endpoint_key": "submittals",
+      "post_proof_decision": {
+        "decision_class": "covered_by_existing_scalar_decomposition_columns",
+        "decision_status": "no_whole_object_projection",
+        "evidence_basis": "Existing scalar destination columns replayed from source-backed registry paths.",
+        "mapping_candidate": false,
+        "next_action": "no_action_existing_scalar_decomposition_verified"
+      },
+      "raw_payload_values_emitted": false,
+      "scalar_columns": [
+        {
+          "after_replay_non_null_count": 65,
+          "after_reset_non_null_count": 0,
+          "column": "submittal_workflow_template_applied_at",
+          "registry_json_path": "$.submittal_workflow_template_applied_at",
+          "source_non_empty_count": 101,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 65,
+          "after_reset_non_null_count": 0,
+          "column": "submittal_workflow_template_id",
+          "registry_json_path": "$.submittal_workflow_template.id",
+          "source_non_empty_count": 101,
+          "status": "already_replays_existing_scalar_columns"
+        },
+        {
+          "after_replay_non_null_count": 65,
+          "after_reset_non_null_count": 0,
+          "column": "submittal_workflow_template_name",
+          "registry_json_path": "$.submittal_workflow_template.name",
+          "source_non_empty_count": 101,
+          "status": "already_replays_existing_scalar_columns"
+        }
+      ],
+      "table": "procore_ep_submittals"
+    }
+  ],
+  "generated_at_utc": "2026-06-19T08:09:06Z",
+  "guardrails": {
+    "live_calls_disabled": true,
+    "raw_payload_values_emitted": false,
+    "writeback": "none"
+  },
+  "high_confidence_mapping_candidates": 0,
+  "parent_status_counts": {
+    "covered_by_existing_scalar_decomposition_columns": 31,
+    "partially_covered_existing_scalar_columns": 4
+  },
+  "scalar_status_counts": {
+    "already_replays_existing_scalar_columns": 114,
+    "source_absent_for_specific_scalar_column": 5
+  }
+}

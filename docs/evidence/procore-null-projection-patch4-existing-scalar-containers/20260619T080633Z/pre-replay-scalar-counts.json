@@ -1,0 +1,836 @@
+{
+  "fields": [
+    {
+      "bare_column": "event_origin",
+      "bare_column_non_null_count": 5,
+      "endpoint_key": "change-events",
+      "raw_payload_values_emitted": false,
+      "row_count": 1054,
+      "scalar_columns": [
+        {
+          "column": "event_origin_display_name",
+          "non_null_count": 143
+        },
+        {
+          "column": "event_origin_origin_id",
+          "non_null_count": 143
+        }
+      ],
+      "table": "procore_ep_change_events"
+    },
+    {
+      "bare_column": "change_order_change_reason",
+      "bare_column_non_null_count": 0,
+      "endpoint_key": "commitment-change-orders",
+      "raw_payload_values_emitted": false,
+      "row_count": 100,
+      "scalar_columns": [
+        {
+          "column": "change_order_change_reason_id",
+          "non_null_count": 98
+        }
+      ],
+      "table": "procore_ep_commitment_change_orders"
+    },
+    {
+      "bare_column": "designated_reviewer",
+      "bare_column_non_null_count": 0,
+      "endpoint_key": "commitment-change-orders",
+      "raw_payload_values_emitted": false,
+      "row_count": 100,
+      "scalar_columns": [
+        {
+          "column": "designated_reviewer_id",
+          "non_null_count": 68
+        },
+        {
+          "column": "designated_reviewer_name",
+          "non_null_count": 68
+        }
+      ],
+      "table": "procore_ep_commitment_change_orders"
+    },
+    {
+      "bare_column": "received_from",
+      "bare_column_non_null_count": 0,
+      "endpoint_key": "commitment-change-orders",
+      "raw_payload_values_emitted": false,
+      "row_count": 100,
+      "scalar_columns": [
+        {
+          "column": "received_from_id",
+          "non_null_count": 21
+        },
+        {
+          "column": "received_from_name",
+          "non_null_count": 21
+        }
+      ],
+      "table": "procore_ep_commitment_change_orders"
+    },
+    {
+      "bare_column": "reviewed_by",
+      "bare_column_non_null_count": 0,
+      "endpoint_key": "commitment-change-orders",
+      "raw_payload_values_emitted": false,
+      "row_count": 100,
+      "scalar_columns": [
+        {
+          "column": "reviewed_by_id",
+          "non_null_count": 1
+        },
+        {
+          "column": "reviewed_by_name",
+          "non_null_count": 1
+        }
+      ],
+      "table": "procore_ep_commitment_change_orders"
+    },
+    {
+      "bare_column": "location",
+      "bare_column_non_null_count": 0,
+      "endpoint_key": "daily-log-inspections",
+      "raw_payload_values_emitted": false,
+      "row_count": 114,
+      "scalar_columns": [
+        {
+          "column": "location_created_at",
+          "non_null_count": 60
+        },
+        {
+          "column": "location_id",
+          "non_null_count": 60
+        },
+        {
+          "column": "location_name",
+          "non_null_count": 60
+        },
+        {
+          "column": "location_node_name",
+          "non_null_count": 60
+        },
+        {
+          "column": "location_parent_id",
+          "non_null_count": 43
+        },
+        {
+          "column": "location_updated_at",
+          "non_null_count": 60
+        }
+      ],
+      "table": "procore_ep_daily_log_inspections"
+    },
+    {
+      "bare_column": "contact",
+      "bare_column_non_null_count": 0,
+      "endpoint_key": "daily-log-manpower",
+      "raw_payload_values_emitted": false,
+      "row_count": 921,
+      "scalar_columns": [
+        {
+          "column": "contact_email",
+          "non_null_count": 53
+        },
+        {
+          "column": "contact_fax_number",
+          "non_null_count": 464
+        },
+        {
+          "column": "contact_id",
+          "non_null_count": 920
+        },
+        {
+          "column": "contact_login_information_id",
+          "non_null_count": 0
+        },
+        {
+          "column": "contact_name",
+          "non_null_count": 920
+        },
+        {
+          "column": "contact_vendor_name",
+          "non_null_count": 0
+        }
+      ],
+      "table": "procore_ep_daily_log_manpower"
+    },
+    {
+      "bare_column": "cost_code",
+      "bare_column_non_null_count": 0,
+      "endpoint_key": "daily-log-manpower",
+      "raw_payload_values_emitted": false,
+      "row_count": 921,
+      "scalar_columns": [
+        {
+          "column": "cost_code_id",
+          "non_null_count": 2
+        },
+        {
+          "column": "cost_code_long_name",
+          "non_null_count": 2
+        },
+        {
+          "column": "cost_code_name",
+          "non_null_count": 2
+        }
+      ],
+      "table": "procore_ep_daily_log_manpower"
+    },
+    {
+      "bare_column": "location",
+      "bare_column_non_null_count": 0,
+      "endpoint_key": "daily-log-manpower",
+      "raw_payload_values_emitted": false,
+      "row_count": 921,
+      "scalar_columns": [
+        {
+          "column": "location_created_at",
+          "non_null_count": 696
+        },
+        {
+          "column": "location_id",
+          "non_null_count": 696
+        },
+        {
+          "column": "location_name",
+          "non_null_count": 696
+        },
+        {
+          "column": "location_node_name",
+          "non_null_count": 696
+        },
+        {
+          "column": "location_parent_id",
+          "non_null_count": 192
+        },
+        {
+          "column": "location_updated_at",
+          "non_null_count": 696
+        }
+      ],
+      "table": "procore_ep_daily_log_manpower"
+    },
+    {
+      "bare_column": "location",
+      "bare_column_non_null_count": 0,
+      "endpoint_key": "daily-log-notes",
+      "raw_payload_values_emitted": false,
+      "row_count": 92,
+      "scalar_columns": [
+        {
+          "column": "location_created_at",
+          "non_null_count": 26
+        },
+        {
+          "column": "location_id",
+          "non_null_count": 26
+        },
+        {
+          "column": "location_name",
+          "non_null_count": 26
+        },
+        {
+          "column": "location_node_name",
+          "non_null_count": 26
+        },
+        {
+          "column": "location_parent_id",
+          "non_null_count": 4
+        },
+        {
+          "column": "location_updated_at",
+          "non_null_count": 26
+        }
+      ],
+      "table": "procore_ep_daily_log_notes"
+    },
+    {
+      "bare_column": "closed_by",
+      "bare_column_non_null_count": 0,
+      "endpoint_key": "inspections",
+      "raw_payload_values_emitted": false,
+      "row_count": 74,
+      "scalar_columns": [
+        {
+          "column": "closed_by_company_name",
+          "non_null_count": 11
+        },
+        {
+          "column": "closed_by_id",
+          "non_null_count": 11
+        },
+        {
+          "column": "closed_by_login",
+          "non_null_count": 11
+        },
+        {
+          "column": "closed_by_name",
+          "non_null_count": 11
+        }
+      ],
+      "table": "procore_ep_inspections"
+    },
+    {
+      "bare_column": "location",
+      "bare_column_non_null_count": 0,
+      "endpoint_key": "inspections",
+      "raw_payload_values_emitted": false,
+      "row_count": 74,
+      "scalar_columns": [
+        {
+          "column": "location_code",
+          "non_null_count": 0
+        },
+        {
+          "column": "location_created_at",
+          "non_null_count": 60
+        },
+        {
+          "column": "location_id",
+          "non_null_count": 60
+        },
+        {
+          "column": "location_name",
+          "non_null_count": 60
+        },
+        {
+          "column": "location_node_name",
+          "non_null_count": 60
+        },
+        {
+          "column": "location_parent_id",
+          "non_null_count": 2
+        },
+        {
+          "column": "location_updated_at",
+          "non_null_count": 60
+        }
+      ],
+      "table": "procore_ep_inspections"
+    },
+    {
+      "bare_column": "point_of_contact",
+      "bare_column_non_null_count": 0,
+      "endpoint_key": "inspections",
+      "raw_payload_values_emitted": false,
+      "row_count": 74,
+      "scalar_columns": [
+        {
+          "column": "point_of_contact_company_name",
+          "non_null_count": 7
+        },
+        {
+          "column": "point_of_contact_id",
+          "non_null_count": 7
+        },
+        {
+          "column": "point_of_contact_login",
+          "non_null_count": 7
+        },
+        {
+          "column": "point_of_contact_name",
+          "non_null_count": 7
+        }
+      ],
+      "table": "procore_ep_inspections"
+    },
+    {
+      "bare_column": "responsible_contractor",
+      "bare_column_non_null_count": 0,
+      "endpoint_key": "inspections",
+      "raw_payload_values_emitted": false,
+      "row_count": 74,
+      "scalar_columns": [
+        {
+          "column": "responsible_contractor_id",
+          "non_null_count": 9
+        },
+        {
+          "column": "responsible_contractor_name",
+          "non_null_count": 9
+        }
+      ],
+      "table": "procore_ep_inspections"
+    },
+    {
+      "bare_column": "specification_section",
+      "bare_column_non_null_count": 0,
+      "endpoint_key": "inspections",
+      "raw_payload_values_emitted": false,
+      "row_count": 74,
+      "scalar_columns": [
+        {
+          "column": "specification_section_id",
+          "non_null_count": 2
+        }
+      ],
+      "table": "procore_ep_inspections"
+    },
+    {
+      "bare_column": "trade",
+      "bare_column_non_null_count": 0,
+      "endpoint_key": "inspections",
+      "raw_payload_values_emitted": false,
+      "row_count": 74,
+      "scalar_columns": [
+        {
+          "column": "trade_id",
+          "non_null_count": 10
+        },
+        {
+          "column": "trade_name",
+          "non_null_count": 10
+        },
+        {
+          "column": "trade_updated_at",
+          "non_null_count": 10
+        }
+      ],
+      "table": "procore_ep_inspections"
+    },
+    {
+      "bare_column": "distributed_by",
+      "bare_column_non_null_count": 0,
+      "endpoint_key": "meetings",
+      "raw_payload_values_emitted": false,
+      "row_count": 101,
+      "scalar_columns": [
+        {
+          "column": "distributed_by_id",
+          "non_null_count": 85
+        },
+        {
+          "column": "distributed_by_login",
+          "non_null_count": 85
+        },
+        {
+          "column": "distributed_by_name",
+          "non_null_count": 85
+        }
+      ],
+      "table": "procore_ep_meetings"
+    },
+    {
+      "bare_column": "assignee",
+      "bare_column_non_null_count": 0,
+      "endpoint_key": "observations",
+      "raw_payload_values_emitted": false,
+      "row_count": 215,
+      "scalar_columns": [
+        {
+          "column": "assignee_id",
+          "non_null_count": 209
+        },
+        {
+          "column": "assignee_name",
+          "non_null_count": 209
+        },
+        {
+          "column": "assignee_vendor_id",
+          "non_null_count": 207
+        },
+        {
+          "column": "assignee_vendor_name",
+          "non_null_count": 207
+        }
+      ],
+      "table": "procore_ep_observations"
+    },
+    {
+      "bare_column": "assignee_vendor",
+      "bare_column_non_null_count": 0,
+      "endpoint_key": "observations",
+      "raw_payload_values_emitted": false,
+      "row_count": 215,
+      "scalar_columns": [
+        {
+          "column": "assignee_vendor_id",
+          "non_null_count": 207
+        },
+        {
+          "column": "assignee_vendor_name",
+          "non_null_count": 207
+        }
+      ],
+      "table": "procore_ep_observations"
+    },
+    {
+      "bare_column": "location",
+      "bare_column_non_null_count": 0,
+      "endpoint_key": "observations",
+      "raw_payload_values_emitted": false,
+      "row_count": 215,
+      "scalar_columns": [
+        {
+          "column": "location_created_at",
+          "non_null_count": 145
+        },
+        {
+          "column": "location_id",
+          "non_null_count": 145
+        },
+        {
+          "column": "location_name",
+          "non_null_count": 145
+        },
+        {
+          "column": "location_node_name",
+          "non_null_count": 145
+        },
+        {
+          "column": "location_parent_id",
+          "non_null_count": 133
+        },
+        {
+          "column": "location_updated_at",
+          "non_null_count": 145
+        }
+      ],
+      "table": "procore_ep_observations"
+    },
+    {
+      "bare_column": "origin",
+      "bare_column_non_null_count": 0,
+      "endpoint_key": "observations",
+      "raw_payload_values_emitted": false,
+      "row_count": 215,
+      "scalar_columns": [
+        {
+          "column": "origin_payload_checklist_item_id",
+          "non_null_count": 1
+        },
+        {
+          "column": "origin_payload_checklist_list_id",
+          "non_null_count": 1
+        }
+      ],
+      "table": "procore_ep_observations"
+    },
+    {
+      "bare_column": "specification_section",
+      "bare_column_non_null_count": 0,
+      "endpoint_key": "observations",
+      "raw_payload_values_emitted": false,
+      "row_count": 215,
+      "scalar_columns": [
+        {
+          "column": "specification_section_current_revision_id",
+          "non_null_count": 9
+        },
+        {
+          "column": "specification_section_id",
+          "non_null_count": 9
+        },
+        {
+          "column": "specification_section_number",
+          "non_null_count": 9
+        },
+        {
+          "column": "specification_section_viewable_document_id",
+          "non_null_count": 0
+        }
+      ],
+      "table": "procore_ep_observations"
+    },
+    {
+      "bare_column": "trade",
+      "bare_column_non_null_count": 0,
+      "endpoint_key": "observations",
+      "raw_payload_values_emitted": false,
+      "row_count": 215,
+      "scalar_columns": [
+        {
+          "column": "trade_id",
+          "non_null_count": 161
+        },
+        {
+          "column": "trade_name",
+          "non_null_count": 161
+        },
+        {
+          "column": "trade_updated_at",
+          "non_null_count": 161
+        }
+      ],
+      "table": "procore_ep_observations"
+    },
+    {
+      "bare_column": "change_order_change_reason",
+      "bare_column_non_null_count": 0,
+      "endpoint_key": "prime-change-orders",
+      "raw_payload_values_emitted": false,
+      "row_count": 63,
+      "scalar_columns": [
+        {
+          "column": "change_order_change_reason_id",
+          "non_null_count": 60
+        }
+      ],
+      "table": "procore_ep_prime_change_orders"
+    },
+    {
+      "bare_column": "designated_reviewer",
+      "bare_column_non_null_count": 0,
+      "endpoint_key": "prime-change-orders",
+      "raw_payload_values_emitted": false,
+      "row_count": 63,
+      "scalar_columns": [
+        {
+          "column": "designated_reviewer_id",
+          "non_null_count": 19
+        },
+        {
+          "column": "designated_reviewer_name",
+          "non_null_count": 19
+        }
+      ],
+      "table": "procore_ep_prime_change_orders"
+    },
+    {
+      "bare_column": "received_from",
+      "bare_column_non_null_count": 0,
+      "endpoint_key": "prime-change-orders",
+      "raw_payload_values_emitted": false,
+      "row_count": 63,
+      "scalar_columns": [
+        {
+          "column": "received_from_id",
+          "non_null_count": 36
+        },
+        {
+          "column": "received_from_name",
+          "non_null_count": 36
+        }
+      ],
+      "table": "procore_ep_prime_change_orders"
+    },
+    {
+      "bare_column": "project_stage",
+      "bare_column_non_null_count": 0,
+      "endpoint_key": "projects",
+      "raw_payload_values_emitted": false,
+      "row_count": 14,
+      "scalar_columns": [
+        {
+          "column": "project_stage_id",
+          "non_null_count": 12
+        },
+        {
+          "column": "project_stage_name",
+          "non_null_count": 12
+        }
+      ],
+      "table": "procore_ep_projects"
+    },
+    {
+      "bare_column": "assignee",
+      "bare_column_non_null_count": 0,
+      "endpoint_key": "purchase-order-contracts",
+      "raw_payload_values_emitted": false,
+      "row_count": 10,
+      "scalar_columns": [
+        {
+          "column": "assignee_id",
+          "non_null_count": 5
+        }
+      ],
+      "table": "procore_ep_purchase_order_contracts"
+    },
+    {
+      "bare_column": "ball_in_court",
+      "bare_column_non_null_count": 54,
+      "endpoint_key": "rfis",
+      "raw_payload_values_emitted": false,
+      "row_count": 1967,
+      "scalar_columns": [
+        {
+          "column": "ball_in_court_id",
+          "non_null_count": 112
+        },
+        {
+          "column": "ball_in_court_login",
+          "non_null_count": 112
+        },
+        {
+          "column": "ball_in_court_name",
+          "non_null_count": 112
+        }
+      ],
+      "table": "procore_ep_rfis"
+    },
+    {
+      "bare_column": "cost_code",
+      "bare_column_non_null_count": 30,
+      "endpoint_key": "rfis",
+      "raw_payload_values_emitted": false,
+      "row_count": 1967,
+      "scalar_columns": [
+        {
+          "column": "cost_code_id",
+          "non_null_count": 30
+        },
+        {
+          "column": "cost_code_name",
+          "non_null_count": 30
+        }
+      ],
+      "table": "procore_ep_rfis"
+    },
+    {
+      "bare_column": "location",
+      "bare_column_non_null_count": 76,
+      "endpoint_key": "rfis",
+      "raw_payload_values_emitted": false,
+      "row_count": 1967,
+      "scalar_columns": [
+        {
+          "column": "location_created_at",
+          "non_null_count": 197
+        },
+        {
+          "column": "location_id",
+          "non_null_count": 197
+        },
+        {
+          "column": "location_name",
+          "non_null_count": 197
+        },
+        {
+          "column": "location_node_name",
+          "non_null_count": 197
+        },
+        {
+          "column": "location_parent_id",
+          "non_null_count": 5
+        },
+        {
+          "column": "location_updated_at",
+          "non_null_count": 197
+        }
+      ],
+      "table": "procore_ep_rfis"
+    },
+    {
+      "bare_column": "sub_job",
+      "bare_column_non_null_count": 63,
+      "endpoint_key": "rfis",
+      "raw_payload_values_emitted": false,
+      "row_count": 1967,
+      "scalar_columns": [
+        {
+          "column": "sub_job_code",
+          "non_null_count": 71
+        },
+        {
+          "column": "sub_job_id",
+          "non_null_count": 71
+        },
+        {
+          "column": "sub_job_name",
+          "non_null_count": 71
+        }
+      ],
+      "table": "procore_ep_rfis"
+    },
+    {
+      "bare_column": "location",
+      "bare_column_non_null_count": 32,
+      "endpoint_key": "submittals",
+      "raw_payload_values_emitted": false,
+      "row_count": 1760,
+      "scalar_columns": [
+        {
+          "column": "location_created_at",
+          "non_null_count": 84
+        },
+        {
+          "column": "location_id",
+          "non_null_count": 84
+        },
+        {
+          "column": "location_name",
+          "non_null_count": 84
+        },
+        {
+          "column": "location_node_name",
+          "non_null_count": 84
+        },
+        {
+          "column": "location_parent_id",
+          "non_null_count": 0
+        },
+        {
+          "column": "location_updated_at",
+          "non_null_count": 84
+        }
+      ],
+      "table": "procore_ep_submittals"
+    },
+    {
+      "bare_column": "submittal_package",
+      "bare_column_non_null_count": 0,
+      "endpoint_key": "submittals",
+      "raw_payload_values_emitted": false,
+      "row_count": 1760,
+      "scalar_columns": [
+        {
+          "column": "submittal_package_created_by_id",
+          "non_null_count": 151
+        },
+        {
+          "column": "submittal_package_created_by_login",
+          "non_null_count": 151
+        },
+        {
+          "column": "submittal_package_created_by_name",
+          "non_null_count": 151
+        },
+        {
+          "column": "submittal_package_id",
+          "non_null_count": 151
+        },
+        {
+          "column": "submittal_package_number",
+          "non_null_count": 151
+        },
+        {
+          "column": "submittal_package_specification_section_id",
+          "non_null_count": 110
+        },
+        {
+          "column": "submittal_package_updated_at",
+          "non_null_count": 151
+        }
+      ],
+      "table": "procore_ep_submittals"
+    },
+    {
+      "bare_column": "submittal_workflow_template",
+      "bare_column_non_null_count": 0,
+      "endpoint_key": "submittals",
+      "raw_payload_values_emitted": false,
+      "row_count": 1760,
+      "scalar_columns": [
+        {
+          "column": "submittal_workflow_template_applied_at",
+          "non_null_count": 65
+        },
+        {
+          "column": "submittal_workflow_template_id",
+          "non_null_count": 65
+        },
+        {
+          "column": "submittal_workflow_template_name",
+          "non_null_count": 65
+        }
+      ],
+      "table": "procore_ep_submittals"
+    }
+  ],
+  "generated_at_utc": "2026-06-19T08:08:51Z",
+  "guardrails": {
+    "live_calls_disabled": true,
+    "raw_payload_values_emitted": false,
+    "writeback": "none"
+  }
+}

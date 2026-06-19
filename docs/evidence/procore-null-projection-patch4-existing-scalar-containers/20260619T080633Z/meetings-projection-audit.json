@@ -1,0 +1,42 @@
+{
+  "command": "hb-assistant procore analytics projection-audit",
+  "ok": true,
+  "endpoint_count": 1,
+  "unmapped_primary_business_fields": 0,
+  "unmapped_nested_business_fields": 0,
+  "unknown_business_field_paths": 0,
+  "runtime_plan_schema_mismatches": 0,
+  "endpoints_over_sidecar_threshold": [],
+  "endpoints_over_sidecar_threshold_unjustified": [],
+  "endpoints": [
+    {
+      "endpoint_id": "meetings",
+      "status": "ok",
+      "registry_present": true,
+      "primary_table": "procore_ep_meetings",
+      "child_table_count": 0,
+      "observed_paths": 23,
+      "known_paths": 23,
+      "unmapped_primary_business_fields": 0,
+      "unmapped_nested_business_fields": 0,
+      "unknown_business_field_paths": 0,
+      "unknown_sample": [],
+      "coverage": {
+        "business_field_paths": 21,
+        "child": 0,
+        "column": 21,
+        "excluded": 0,
+        "over_sidecar_threshold": false,
+        "sidecar": 0,
+        "sidecar_justified": true,
+        "sidecar_only_pct": 0.0,
+        "structural": 2
+      }
+    }
+  ],
+  "guardrails": {
+    "live_calls_disabled": true,
+    "writeback": "none",
+    "emits_values": false
+  }
+}

@@ -1,0 +1,478 @@
+{
+  "generated_at_utc": "2026-06-19T08:09:06Z",
+  "guardrails": {
+    "live_calls_disabled": true,
+    "raw_payload_values_emitted": false,
+    "writeback": "none"
+  },
+  "receipts": {
+    "change-events": {
+      "by_endpoint": {
+        "change-events": {
+          "child": 52834,
+          "degraded": 0,
+          "primary": 2656,
+          "skipped_higher": 0
+        }
+      },
+      "child_rows_written": 52834,
+      "command": "hb-assistant procore analytics projection-reprocess",
+      "degraded_unknown_projection_fields": 0,
+      "enforcement": "enforce",
+      "external_writeback_performed": 0,
+      "filters": {
+        "endpoint": "change-events",
+        "limit": 200000,
+        "project_key": null
+      },
+      "guardrails": {
+        "emits_values": false,
+        "live_calls_disabled": true,
+        "writeback": "none"
+      },
+      "live_procore_calls": 0,
+      "mode": "apply",
+      "ok": true,
+      "primary_rows_written": 2656,
+      "raw_full_rows_inspected": 2656,
+      "returncode": 0,
+      "skipped_due_to_higher_quality": 0,
+      "skipped_out_of_scope_endpoint": 0,
+      "source_quality_breakdown": {
+        "live_full_payload": 2656
+      }
+    },
+    "commitment-change-orders": {
+      "by_endpoint": {
+        "commitment-change-orders": {
+          "child": 0,
+          "degraded": 0,
+          "primary": 100,
+          "skipped_higher": 0
+        }
+      },
+      "child_rows_written": 0,
+      "command": "hb-assistant procore analytics projection-reprocess",
+      "degraded_unknown_projection_fields": 0,
+      "enforcement": "enforce",
+      "external_writeback_performed": 0,
+      "filters": {
+        "endpoint": "commitment-change-orders",
+        "limit": 200000,
+        "project_key": null
+      },
+      "guardrails": {
+        "emits_values": false,
+        "live_calls_disabled": true,
+        "writeback": "none"
+      },
+      "live_procore_calls": 0,
+      "mode": "apply",
+      "ok": true,
+      "primary_rows_written": 100,
+      "raw_full_rows_inspected": 100,
+      "returncode": 0,
+      "skipped_due_to_higher_quality": 0,
+      "skipped_out_of_scope_endpoint": 0,
+      "source_quality_breakdown": {
+        "live_full_payload": 100
+      }
+    },
+    "daily-log-inspections": {
+      "by_endpoint": {
+        "daily-log-inspections": {
+          "child": 14,
+          "degraded": 0,
+          "primary": 114,
+          "skipped_higher": 0
+        }
+      },
+      "child_rows_written": 14,
+      "command": "hb-assistant procore analytics projection-reprocess",
+      "degraded_unknown_projection_fields": 0,
+      "enforcement": "enforce",
+      "external_writeback_performed": 0,
+      "filters": {
+        "endpoint": "daily-log-inspections",
+        "limit": 200000,
+        "project_key": null
+      },
+      "guardrails": {
+        "emits_values": false,
+        "live_calls_disabled": true,
+        "writeback": "none"
+      },
+      "live_procore_calls": 0,
+      "mode": "apply",
+      "ok": true,
+      "primary_rows_written": 114,
+      "raw_full_rows_inspected": 114,
+      "returncode": 0,
+      "skipped_due_to_higher_quality": 0,
+      "skipped_out_of_scope_endpoint": 0,
+      "source_quality_breakdown": {
+        "live_full_payload": 114
+      }
+    },
+    "daily-log-manpower": {
+      "by_endpoint": {
+        "daily-log-manpower": {
+          "child": 781,
+          "degraded": 0,
+          "primary": 921,
+          "skipped_higher": 0
+        }
+      },
+      "child_rows_written": 781,
+      "command": "hb-assistant procore analytics projection-reprocess",
+      "degraded_unknown_projection_fields": 0,
+      "enforcement": "enforce",
+      "external_writeback_performed": 0,
+      "filters": {
+        "endpoint": "daily-log-manpower",
+        "limit": 200000,
+        "project_key": null
+      },
+      "guardrails": {
+        "emits_values": false,
+        "live_calls_disabled": true,
+        "writeback": "none"
+      },
+      "live_procore_calls": 0,
+      "mode": "apply",
+      "ok": true,
+      "primary_rows_written": 921,
+      "raw_full_rows_inspected": 921,
+      "returncode": 0,
+      "skipped_due_to_higher_quality": 0,
+      "skipped_out_of_scope_endpoint": 0,
+      "source_quality_breakdown": {
+        "live_full_payload": 921
+      }
+    },
+    "daily-log-notes": {
+      "by_endpoint": {
+        "daily-log-notes": {
+          "child": 1188,
+          "degraded": 0,
+          "primary": 92,
+          "skipped_higher": 0
+        }
+      },
+      "child_rows_written": 1188,
+      "command": "hb-assistant procore analytics projection-reprocess",
+      "degraded_unknown_projection_fields": 0,
+      "enforcement": "enforce",
+      "external_writeback_performed": 0,
+      "filters": {
+        "endpoint": "daily-log-notes",
+        "limit": 200000,
+        "project_key": null
+      },
+      "guardrails": {
+        "emits_values": false,
+        "live_calls_disabled": true,
+        "writeback": "none"
+      },
+      "live_procore_calls": 0,
+      "mode": "apply",
+      "ok": true,
+      "primary_rows_written": 92,
+      "raw_full_rows_inspected": 92,
+      "returncode": 0,
+      "skipped_due_to_higher_quality": 0,
+      "skipped_out_of_scope_endpoint": 0,
+      "source_quality_breakdown": {
+        "live_full_payload": 92
+      }
+    },
+    "inspections": {
+      "by_endpoint": {
+        "inspections": {
+          "child": 685,
+          "degraded": 0,
+          "primary": 74,
+          "skipped_higher": 0
+        }
+      },
+      "child_rows_written": 685,
+      "command": "hb-assistant procore analytics projection-reprocess",
+      "degraded_unknown_projection_fields": 0,
+      "enforcement": "enforce",
+      "external_writeback_performed": 0,
+      "filters": {
+        "endpoint": "inspections",
+        "limit": 200000,
+        "project_key": null
+      },
+      "guardrails": {
+        "emits_values": false,
+        "live_calls_disabled": true,
+        "writeback": "none"
+      },
+      "live_procore_calls": 0,
+      "mode": "apply",
+      "ok": true,
+      "primary_rows_written": 74,
+      "raw_full_rows_inspected": 74,
+      "returncode": 0,
+      "skipped_due_to_higher_quality": 0,
+      "skipped_out_of_scope_endpoint": 0,
+      "source_quality_breakdown": {
+        "live_full_payload": 74
+      }
+    },
+    "meetings": {
+      "by_endpoint": {
+        "meetings": {
+          "child": 0,
+          "degraded": 0,
+          "primary": 103,
+          "skipped_higher": 0
+        }
+      },
+      "child_rows_written": 0,
+      "command": "hb-assistant procore analytics projection-reprocess",
+      "degraded_unknown_projection_fields": 0,
+      "enforcement": "enforce",
+      "external_writeback_performed": 0,
+      "filters": {
+        "endpoint": "meetings",
+        "limit": 200000,
+        "project_key": null
+      },
+      "guardrails": {
+        "emits_values": false,
+        "live_calls_disabled": true,
+        "writeback": "none"
+      },
+      "live_procore_calls": 0,
+      "mode": "apply",
+      "ok": true,
+      "primary_rows_written": 103,
+      "raw_full_rows_inspected": 103,
+      "returncode": 0,
+      "skipped_due_to_higher_quality": 0,
+      "skipped_out_of_scope_endpoint": 0,
+      "source_quality_breakdown": {
+        "live_full_payload": 103
+      }
+    },
+    "observations": {
+      "by_endpoint": {
+        "observations": {
+          "child": 7,
+          "degraded": 0,
+          "primary": 215,
+          "skipped_higher": 0
+        }
+      },
+      "child_rows_written": 7,
+      "command": "hb-assistant procore analytics projection-reprocess",
+      "degraded_unknown_projection_fields": 0,
+      "enforcement": "enforce",
+      "external_writeback_performed": 0,
+      "filters": {
+        "endpoint": "observations",
+        "limit": 200000,
+        "project_key": null
+      },
+      "guardrails": {
+        "emits_values": false,
+        "live_calls_disabled": true,
+        "writeback": "none"
+      },
+      "live_procore_calls": 0,
+      "mode": "apply",
+      "ok": true,
+      "primary_rows_written": 215,
+      "raw_full_rows_inspected": 215,
+      "returncode": 0,
+      "skipped_due_to_higher_quality": 0,
+      "skipped_out_of_scope_endpoint": 0,
+      "source_quality_breakdown": {
+        "live_full_payload": 215
+      }
+    },
+    "prime-change-orders": {
+      "by_endpoint": {
+        "prime-change-orders": {
+          "child": 0,
+          "degraded": 0,
+          "primary": 63,
+          "skipped_higher": 0
+        }
+      },
+      "child_rows_written": 0,
+      "command": "hb-assistant procore analytics projection-reprocess",
+      "degraded_unknown_projection_fields": 0,
+      "enforcement": "enforce",
+      "external_writeback_performed": 0,
+      "filters": {
+        "endpoint": "prime-change-orders",
+        "limit": 200000,
+        "project_key": null
+      },
+      "guardrails": {
+        "emits_values": false,
+        "live_calls_disabled": true,
+        "writeback": "none"
+      },
+      "live_procore_calls": 0,
+      "mode": "apply",
+      "ok": true,
+      "primary_rows_written": 63,
+      "raw_full_rows_inspected": 63,
+      "returncode": 0,
+      "skipped_due_to_higher_quality": 0,
+      "skipped_out_of_scope_endpoint": 0,
+      "source_quality_breakdown": {
+        "live_full_payload": 63
+      }
+    },
+    "projects": {
+      "by_endpoint": {
+        "projects": {
+          "child": 28,
+          "degraded": 0,
+          "primary": 14,
+          "skipped_higher": 0
+        }
+      },
+      "child_rows_written": 28,
+      "command": "hb-assistant procore analytics projection-reprocess",
+      "degraded_unknown_projection_fields": 0,
+      "enforcement": "enforce",
+      "external_writeback_performed": 0,
+      "filters": {
+        "endpoint": "projects",
+        "limit": 200000,
+        "project_key": null
+      },
+      "guardrails": {
+        "emits_values": false,
+        "live_calls_disabled": true,
+        "writeback": "none"
+      },
+      "live_procore_calls": 0,
+      "mode": "apply",
+      "ok": true,
+      "primary_rows_written": 14,
+      "raw_full_rows_inspected": 14,
+      "returncode": 0,
+      "skipped_due_to_higher_quality": 0,
+      "skipped_out_of_scope_endpoint": 0,
+      "source_quality_breakdown": {
+        "live_full_payload": 14
+      }
+    },
+    "purchase-order-contracts": {
+      "by_endpoint": {
+        "purchase-order-contracts": {
+          "child": 1,
+          "degraded": 0,
+          "primary": 10,
+          "skipped_higher": 0
+        }
+      },
+      "child_rows_written": 1,
+      "command": "hb-assistant procore analytics projection-reprocess",
+      "degraded_unknown_projection_fields": 0,
+      "enforcement": "enforce",
+      "external_writeback_performed": 0,
+      "filters": {
+        "endpoint": "purchase-order-contracts",
+        "limit": 200000,
+        "project_key": null
+      },
+      "guardrails": {
+        "emits_values": false,
+        "live_calls_disabled": true,
+        "writeback": "none"
+      },
+      "live_procore_calls": 0,
+      "mode": "apply",
+      "ok": true,
+      "primary_rows_written": 10,
+      "raw_full_rows_inspected": 10,
+      "returncode": 0,
+      "skipped_due_to_higher_quality": 0,
+      "skipped_out_of_scope_endpoint": 0,
+      "source_quality_breakdown": {
+        "live_full_payload": 10
+      }
+    },
+    "rfis": {
+      "by_endpoint": {
+        "rfis": {
+          "child": 5697,
+          "degraded": 0,
+          "primary": 2008,
+          "skipped_higher": 0
+        }
+      },
+      "child_rows_written": 5697,
+      "command": "hb-assistant procore analytics projection-reprocess",
+      "degraded_unknown_projection_fields": 0,
+      "enforcement": "enforce",
+      "external_writeback_performed": 0,
+      "filters": {
+        "endpoint": "rfis",
+        "limit": 200000,
+        "project_key": null
+      },
+      "guardrails": {
+        "emits_values": false,
+        "live_calls_disabled": true,
+        "writeback": "none"
+      },
+      "live_procore_calls": 0,
+      "mode": "apply",
+      "ok": true,
+      "primary_rows_written": 2008,
+      "raw_full_rows_inspected": 2008,
+      "returncode": 0,
+      "skipped_due_to_higher_quality": 0,
+      "skipped_out_of_scope_endpoint": 0,
+      "source_quality_breakdown": {
+        "live_full_payload": 2008
+      }
+    },
+    "submittals": {
+      "by_endpoint": {
+        "submittals": {
+          "child": 14983,
+          "degraded": 0,
+          "primary": 1900,
+          "skipped_higher": 0
+        }
+      },
+      "child_rows_written": 14983,
+      "command": "hb-assistant procore analytics projection-reprocess",
+      "degraded_unknown_projection_fields": 0,
+      "enforcement": "enforce",
+      "external_writeback_performed": 0,
+      "filters": {
+        "endpoint": "submittals",
+        "limit": 200000,
+        "project_key": null
+      },
+      "guardrails": {
+        "emits_values": false,
+        "live_calls_disabled": true,
+        "writeback": "none"
+      },
+      "live_procore_calls": 0,
+      "mode": "apply",
+      "ok": true,
+      "primary_rows_written": 1900,
+      "raw_full_rows_inspected": 1900,
+      "returncode": 0,
+      "skipped_due_to_higher_quality": 0,
+      "skipped_out_of_scope_endpoint": 0,
+      "source_quality_breakdown": {
+        "live_full_payload": 1900
+      }
+    }
+  }
+}
