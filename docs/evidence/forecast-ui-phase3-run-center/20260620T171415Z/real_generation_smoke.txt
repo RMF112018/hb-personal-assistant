@@ -1,0 +1,8 @@
+status: succeeded
+packages: ['Context', 'Analysis']
+checks: 8 / 8
+no_live_writes: True
+guardrails: {'writes_isolated_work_root': True, 'no_live_db_write': True, 'no_live_data_root_write': True, 'no_llm': True, 'no_live_endpoint_calls': True, 'local_first': True}
+display_label: Context → analysis forecast — Jun 20, 2026 1:14 PM
+redaction_leaks_in_payload: []
+runs_listed: 1

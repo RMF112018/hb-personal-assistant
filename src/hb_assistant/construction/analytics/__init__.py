@@ -7,6 +7,7 @@ from .daily_brief import DailyBriefService
 from .environment_status import EnvironmentStatusService
 from .forecast_catalog import ForecastCatalogError, ForecastCatalogService
 from .forecast_config_catalog import ForecastConfigCatalogService, ForecastConfigError
+from .forecast_run_service import ForecastRunError, ForecastRunService
 from .project_keywords import ProjectKeywordsService
 from .service import AnalyticsService
 from .source_refresh_control import SourceRefreshControlService
@@ -23,6 +24,8 @@ __all__ = [
     "ForecastCatalogService",
     "ForecastConfigCatalogService",
     "ForecastConfigError",
+    "ForecastRunError",
+    "ForecastRunService",
     "ProjectKeywordsService",
     "require_operator_role",
     "role_dependency",

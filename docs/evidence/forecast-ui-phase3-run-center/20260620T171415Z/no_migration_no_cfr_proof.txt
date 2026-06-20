@@ -1,0 +1,5 @@
+store/migrator changes:
+  (clean — no migration)
+17:LATEST_SCHEMA_VERSION = 60
+CFR subrepo changes:
+  (clean — zero CFR changes)

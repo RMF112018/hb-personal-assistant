@@ -708,6 +708,19 @@ export function getForecastConfigItem(snapshotId: string, itemId: string) {
   );
 }
 
+/* Forecast Run Center — isolated context→analysis generation (Implementation Phase 3).
+ * POST triggers a deterministic generation into an isolated work-root (operator); GET reads runs.
+ * Responses are advisory metadata only (no paths, run stamps, or internals). */
+export function startForecastRun() {
+  return fetchJson('/api/forecast/runs', { method: 'POST' });
+}
+export function getForecastRuns() {
+  return fetchJson('/api/forecast/runs');
+}
+export function getForecastRun(runId: string) {
+  return fetchJson(`/api/forecast/runs/${encodeURIComponent(runId)}`);
+}
+
 /* Convenience aggregate for pages that prefer a single object. */
 export const api = {
   getToday,
@@ -800,6 +813,10 @@ export const api = {
   getForecastConfigSnapshot,
   getForecastConfigDomain,
   getForecastConfigItem,
+  // Forecast Run Center (Implementation Phase 3).
+  startForecastRun,
+  getForecastRuns,
+  getForecastRun,
 };
 
 export default api;

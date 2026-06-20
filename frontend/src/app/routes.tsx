@@ -17,6 +17,7 @@ import { MyItemsPage } from '../pages/MyItemsPage'
 import { ForecastingPage } from '../pages/ForecastingPage'
 import { ForecastPackagePage } from '../pages/ForecastPackagePage'
 import { ForecastConfigPage } from '../pages/ForecastConfigPage'
+import { ForecastRunCenterPage } from '../pages/ForecastRunCenterPage'
 import { DataHealthPage } from '../pages/DataHealthPage'
 import { SettingsPage } from '../pages/SettingsPage'
 import { GetStartedPage } from '../pages/GetStartedPage'
@@ -149,6 +150,12 @@ const router = createBrowserRouter([
         path: 'forecasting/config',
         element: <ForecastConfigPage />,
         handle: { title: 'Forecast Configuration' },
+      },
+      // Forecast Run Center (Implementation Phase 3). Static segment before :packageId.
+      {
+        path: 'forecasting/runs',
+        element: <ForecastRunCenterPage />,
+        handle: { title: 'Forecast Run Center' },
       },
       {
         path: 'forecasting/:packageId',
