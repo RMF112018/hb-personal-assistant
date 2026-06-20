@@ -253,14 +253,19 @@ def test_consumed_accounting_evidence_backed(tmp_path, monkeypatch):
     assert rep["consumed_snapshot_item_count"] == 3  # 1 row each, from materialized metadata
 
 
-def test_path_embedding_set_empty_raw_diff_confirmed(tmp_path, monkeypatch):
+_EVIDENCE_FILE = "integrated_evidence_registry_by_budget_code.jsonl"
+
+
+def test_path_embedding_enumerates_only_evidence_registry(tmp_path, monkeypatch):
     db, snap, data_root, cfg_root = _setup(tmp_path, monkeypatch)
     rep = _run(tmp_path, db, snap["config_snapshot_id"], data_root, cfg_root)
-    assert p20._PATH_EMBEDDING_FILES == ()
-    assert (
-        rep["comparison"]["path_embedding_files"] == []
-        and rep["comparison"]["raw_diff_inspected"] is True
-    )
+    # Phase 20a: exactly one path-embedding file (records the resolved control source_package_path).
+    assert p20._PATH_EMBEDDING_FILES == (_EVIDENCE_FILE,)
+    assert rep["comparison"]["path_embedding_files"] == [_EVIDENCE_FILE]
+    assert rep["comparison"]["raw_diff_inspected"] is True
+    # With the reduced fixture (integrations disabled) the evidence file is byte-identical, so the run
+    # still parity-passes and no semantic file differs.
+    assert rep["decision"] == p20.DECISION_READY
     fp = Path(rep["file_backed_output_package"])
     dp = Path(rep["db_snapshot_backed_output_package"])
     shared = {str(p.relative_to(fp)) for p in fp.rglob("*") if p.is_file()}
@@ -272,8 +277,83 @@ def test_path_embedding_set_empty_raw_diff_confirmed(tmp_path, monkeypatch):
     assert raw == []
 
 
+def _evidence_packages(tmp_path, *, db_row):
+    """Two minimal packages whose evidence registry rows differ only by config root (+ a manifest each).
+
+    file-backed: source_package_path under <fake source config root>; db-backed: under <fake materialized
+    root>. ``db_row`` lets the negative test also change a semantic field on the DB side.
+    """
+    src_root, mat_root = "/fake/src", "/fake/mat"
+    file_row = {
+        "budget_code_key": CODE,
+        "evidence_family": "operator_forecast_control",
+        "source_package_path": f"{src_root}/config/forecast_controls/tropical/c.jsonl",
+        "signal": "stop_month",
+        "value": "2026-08",
+        "recommended_final_cost": "1000.00",
+    }
+    fp, dp = tmp_path / "file_backed" / "pkg", tmp_path / "db_backed" / "pkg"
+    for pkg, row in ((fp, file_row), (dp, db_row)):
+        pkg.mkdir(parents=True)
+        _w(pkg / _EVIDENCE_FILE, [row])
+        _w(
+            pkg / "manifest.json",
+            {
+                "output_files": [
+                    {
+                        "path": _EVIDENCE_FILE,
+                        "row_count": 1,
+                        "size_bytes": (pkg / _EVIDENCE_FILE).stat().st_size,
+                        "sha256": "x",
+                    }
+                ]
+            },
+        )
+    replacements = [
+        (str(dp), "<OUTPUT_PACKAGE>"),
+        (str(fp), "<OUTPUT_PACKAGE>"),
+        (mat_root, "<CONFIG_ROOT>"),
+        (src_root, "<CONFIG_ROOT>"),
+    ]
+    return fp, dp, replacements, src_root, mat_root
+
+
+def test_evidence_registry_config_root_path_normalized(tmp_path):
+    # rows differ ONLY by the config-root path token -> parity passes after normalization
+    mat_root = "/fake/mat"
+    db_row = {
+        "budget_code_key": CODE,
+        "evidence_family": "operator_forecast_control",
+        "source_package_path": f"{mat_root}/config/forecast_controls/tropical/c.jsonl",
+        "signal": "stop_month",
+        "value": "2026-08",
+        "recommended_final_cost": "1000.00",
+    }
+    fp, dp, replacements, _s, _m = _evidence_packages(tmp_path, db_row=db_row)
+    diffs = p20._compare_packages(file_pkg=fp, db_pkg=dp, replacements=replacements)
+    assert diffs == []
+
+
+def test_evidence_registry_non_path_change_fails_parity(tmp_path):
+    # a NON-path (semantic) change in the same file must still fail parity
+    mat_root = "/fake/mat"
+    db_row = {
+        "budget_code_key": CODE,
+        "evidence_family": "operator_forecast_control",
+        "source_package_path": f"{mat_root}/config/forecast_controls/tropical/c.jsonl",
+        "signal": "stop_month",
+        "value": "2026-08",
+        "recommended_final_cost": "2000.00",
+    }  # changed
+    fp, dp, replacements, _s, _m = _evidence_packages(tmp_path, db_row=db_row)
+    diffs = p20._compare_packages(file_pkg=fp, db_pkg=dp, replacements=replacements)
+    assert any(d["file"] == _EVIDENCE_FILE for d in diffs)
+
+
 def test_db_inventory_not_path_normalized():
+    # only the evidence registry is path-normalized; inventory stays semantic/byte-exact
     assert "audit/db_inventory.json" not in p20._PATH_EMBEDDING_FILES
+    assert p20._PATH_EMBEDDING_FILES == (_EVIDENCE_FILE,)
 
 
 # --- amendment #1: DB-backed run resolves the MATERIALIZED control files ----------------

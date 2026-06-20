@@ -31,10 +31,29 @@ between the registry and an integrated cutover.
 - **Required predecessors (fail closed):** `context`, `intelligence` (`forecast_accuracy_next_package_*`),
   `monthly`. **Optional:** probability, history_informed, cost_frequency, crosswalk_v2, schedule_integrated,
   staffing_plan.
-- **Embedded absolute paths** (`input_inventory.json`, `audit/source_packages_used.json`, the evidence
-  registry) are **data_root package paths** — identical across both runs. A **mandatory raw file-backed vs
-  DB-backed diff** confirmed the path-embedding set is **EMPTY** (`_PATH_EMBEDDING_FILES = ()`): every output
-  file is byte-identical across the two runs.
+- **Embedded absolute paths:** `input_inventory.json` and `audit/source_packages_used.json` embed **data_root
+  package paths** — identical across both runs. `integrated_evidence_registry_by_budget_code.jsonl` embeds the
+  resolved operator-control **config** path in `source_package_path` (see Phase 20a). The mandatory raw diff was
+  empty in the reduced CI fixture (operator integrations disabled → no controls-evidence rows emitted).
+
+### Phase 20a — config-root path normalization for the evidence registry
+
+The first **live** operator proof returned a controlled `not_ready` / `config_parity_mismatch` (live DB
+unchanged, all safety gates passed). Root cause: with the real **enabled** operator config,
+`integrated_evidence_registry_by_budget_code.jsonl` records, per `forecast_controls` /
+`forecast_model_controls` evidence row, the **resolved control source path** in `source_package_path` —
+file-backed under the repo config root, DB-backed under the materialized config root. This is a legitimate
+**config-root path token**, not a semantic forecast/math difference. (The reduced CI fixture disables the
+operator integrations, so those rows are not emitted there and the file was byte-identical — hence the initial
+empty set.)
+
+Phase 20a narrowly enumerates that one file in `_PATH_EMBEDDING_FILES` so it is compared after
+**path-token-only** normalization (`<CONFIG_ROOT>` for the source/materialized config roots, `<OUTPUT_PACKAGE>`
+for the package roots), reusing the existing `_compare_packages`/`_compare_text` machinery (which also excludes
+that file's `size_bytes`/`sha256` from `manifest.json` and neutralizes its sha in `validation_report.json`).
+**Only the config-root path token is normalized** — the evidence file's non-path fields (values, weights,
+signals, lineage) are still compared exactly, and a non-path change still fails parity (covered by tests). This
+is **proof-comparison logic only — no generator behavior change**.
 
 ## Decisions
 
@@ -83,7 +102,8 @@ require_item_count=194, preflight_stability_seconds=2.0)`. Self-contained adapta
   (`CFR_CONFIG_ROOT`=materialized, scoped); each run's resolved controls/model-controls paths are recorded, and
   `db_snapshot_backed.reads_materialized_config` asserts the DB-backed run resolves those files **under the
   materialized root** (proving it reads the snapshot, not the repo). Byte-exact comparison; mandatory raw-diff →
-  `_PATH_EMBEDDING_FILES = ()`. Factual `predecessor_packages.{required,optional,read,generated:[]}` and
+  `_PATH_EMBEDDING_FILES = ("integrated_evidence_registry_by_budget_code.jsonl",)` (config-root path token only;
+  see Phase 20a). Factual `predecessor_packages.{required,optional,read,generated:[]}` and
   `standard_comprehensive_package_csvs` reported from the actual run.
 
 ### Additive CLI — `forecast-comprehensive-db-config-proof`
@@ -98,7 +118,8 @@ Deterministic CI: reduced self-consistent config root (project + disabled contro
 snapshot=5 > consumed=3) imported to a temp v60 DB; a data_root with the required context+intelligence+monthly
 packages **and a cost-frequency package**; `cli.SUBPROJECT_ROOT` + the comprehensive generator's `SUBPROJECT_ROOT`
 monkeypatched; `db_inventory.resolve_db_path` neutralized; frozen stamp. Tests prove parity ready; evidence-backed
-consumed accounting; empty raw-diff path-embedding set; **the DB-backed run resolves the materialized control
+consumed accounting; the evidence-registry path-token normalization (Phase 20a: passes when `source_package_path`
+differs only by config root, fails on a non-path change); **the DB-backed run resolves the materialized control
 files** (report evidence + a monkeypatch recording the generator's resolution of the materialized model-control
 file); the cost_frequency guard (refuse/pass/never-generate/data_root-unchanged); package CSVs present + byte-exact
 + a CSV diff fails parity; factual optional-predecessor reporting (probability absent → false); `audit/db_inventory.json`

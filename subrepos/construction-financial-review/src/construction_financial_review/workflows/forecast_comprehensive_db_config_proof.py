@@ -87,15 +87,25 @@ _OPTIONAL_PACKAGE_GLOBS = (
 _COST_FREQUENCY_GLOB = "forecast_cost_frequency_package_tropical_*"
 
 # Output files that LEGITIMATELY embed an absolute config-root/output-package path. Established by MANDATORY
-# raw file-backed vs DB-backed diff inspection (see ADR 276). Every other output file — INCLUDING the
-# standard package CSVs (actuals_plus_forecast_monthly_*.csv etc.) — is compared BYTE-EXACT. Start empty;
-# enumerate ONLY files the raw diff proves embed a config/output path, and normalize ONLY the path token.
-_PATH_EMBEDDING_FILES: tuple[str, ...] = ()
+# raw file-backed vs DB-backed diff inspection (see ADR 276 / Phase 20a). Every other output file — INCLUDING
+# the standard package CSVs (actuals_plus_forecast_monthly_*.csv etc.) — is compared BYTE-EXACT. Only files the
+# raw diff proves embed a config/output path are enumerated here, and ONLY the path token is normalized.
+#
+# integrated_evidence_registry_by_budget_code.jsonl records, per evidence row, the RESOLVED operator-control
+# source path in ``source_package_path`` (forecast_controls / forecast_model_controls evidence resolves the
+# control file through resolve_config_base): file-backed -> <source_config_root>/config/..., DB-backed ->
+# <materialized_config_root>/config/... — a config-root path token, NOT a semantic forecast/math difference.
+# (The reduced CI fixture disables the operator integrations, so those rows are not emitted there and the file
+# is byte-identical; the real enabled-config live proof surfaced the embedding — Phase 20a.)
+_PATH_EMBEDDING_FILES: tuple[str, ...] = ("integrated_evidence_registry_by_budget_code.jsonl",)
 _NORMALIZED_RULES = [
     "raw file-backed vs DB-backed diff inspected (mandatory); only files that embed an absolute "
     "config-root/output path are enumerated in _PATH_EMBEDDING_FILES and compared after PATH normalization "
     "(<OUTPUT_PACKAGE>/<CONFIG_ROOT>) only",
-    "NO forecast/monthly/probability value, row count, warning count, validation status, manifest "
+    "integrated_evidence_registry_by_budget_code.jsonl is path-embedded because it records the resolved "
+    "operator-control source_package_path; ONLY the config-root path token is normalized (its non-path "
+    "evidence fields — values, weights, signals, lineage — are still compared exactly)",
+    "NO forecast/actuals/monthly/probability value, row count, warning count, validation status, manifest "
     "conclusion, audit/db_inventory.json content, CSV math, source-package lineage, or package-consumption "
     "result is ever normalized; standard package CSVs are compared byte-exact",
 ]
