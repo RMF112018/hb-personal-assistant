@@ -318,6 +318,45 @@ def cmd_forecast_probability_db_config_proof(*, project: str, live_db_path: str,
     return 0 if report.get("decision") == DECISION_READY else 1
 
 
+def cmd_forecast_comprehensive_db_config_proof(*, project: str, live_db_path: str,
+                                               config_snapshot_id: str, work_root: str,
+                                               run_stamp: str | None, data_root: str | None,
+                                               source_config_root: str | None,
+                                               expect_item_count: int | None,
+                                               require_live_snapshot: bool,
+                                               preflight_stability_seconds: float) -> int:
+    """Phase 20: prove forecast_comprehensive consumes the DB config snapshot with parity vs file-backed.
+
+    Reads the live DB read-only (pinned) to materialize the Phase 16 snapshot, runs the deterministic
+    integrated generator file-backed (CFR_CONFIG_ROOT unset) and DB-backed (CFR_CONFIG_ROOT = materialized
+    root, scoped) with the same stamp, and compares. Reads context/intelligence/monthly (+cost-frequency)
+    packages read-only; refuses if the cost-frequency package is missing while frequency_enabled (never
+    generates it). No comprehensive-internal generator/CSV-cutover/LLM. Never writes/migrates/imports the
+    live DB; no --allow-live-db-write. rc 0 parity ready / 1 parity mismatch / 3 controlled refusal."""
+    from .workflows.forecast_comprehensive_db_config_proof import (
+        DECISION_READY,
+        ForecastComprehensiveDbConfigProofError,
+        run_forecast_comprehensive_db_config_proof,
+    )
+    try:
+        with contextlib.redirect_stdout(sys.stderr):
+            report = run_forecast_comprehensive_db_config_proof(
+                project_key=project, live_db_path=Path(live_db_path),
+                config_snapshot_id=config_snapshot_id, work_root=Path(work_root), run_stamp=run_stamp,
+                data_root=Path(data_root) if data_root else None,
+                source_config_root=Path(source_config_root) if source_config_root else None,
+                require_item_count=expect_item_count, require_live_snapshot=require_live_snapshot,
+                preflight_stability_seconds=preflight_stability_seconds)
+    except ForecastComprehensiveDbConfigProofError as exc:
+        print(json.dumps({"command": "forecast-comprehensive-db-config-proof", "project": project,
+                          "status": "refused", "reason": str(exc)}, indent=2))
+        return 3
+    out = {"command": "forecast-comprehensive-db-config-proof"}
+    out.update(report)
+    print(json.dumps(out, indent=2))
+    return 0 if report.get("decision") == DECISION_READY else 1
+
+
 def cmd_forecast_config_db_parity(*, project: str, config_root: str, work_root: str,
                                   db_path: str | None) -> int:
     """Prove reader-layer config parity: repo file config == DB import/snapshot/materialize (Phase 16)."""
@@ -1369,6 +1408,31 @@ def build_parser() -> argparse.ArgumentParser:
     fpp19.add_argument("--seed", type=int, default=20260614, help="Deterministic RNG seed (default 20260614).")
     fpp19.add_argument("--forecast-start-month", default=None,
                        help="Override the forecast start month (YYYY-MM); default the monthly window.")
+    # Phase 20 — DB-backed config consumer proof for forecast_comprehensive (read-only on the live DB).
+    fcp20 = sub.add_parser("forecast-comprehensive-db-config-proof")
+    fcp20.add_argument("--project", required=True, help="Project key (only 'tropical' in Phase 20).")
+    fcp20.add_argument("--live-db-path", required=True,
+                       help="Live (v60) DB holding the Phase 16 config snapshot; opened READ-ONLY.")
+    fcp20.add_argument("--config-snapshot-id", required=True,
+                       help="Phase 16 config snapshot id to materialize and consume.")
+    fcp20.add_argument("--work-root", required=True,
+                       help="Explicit work root (materialized config + both output packages); must be "
+                            "OUTSIDE the live forecast root, source config tree, live DB directory, and "
+                            "the data root / source packages.")
+    fcp20.add_argument("--run-stamp", default=None,
+                       help="Deterministic frozen stamp shared by both runs (default 20260101_000000).")
+    fcp20.add_argument("--data-root", default=None,
+                       help="Forecast data root (read-only INPUT; may be the live forecast root); must hold "
+                            "context+intelligence+monthly (+cost-frequency if frequency_enabled). Default cfg.")
+    fcp20.add_argument("--source-config-root", default=None,
+                       help="Override the file-backed config base; default the CFR subproject root.")
+    fcp20.add_argument("--expect-item-count", type=int, default=194,
+                       help="Required snapshot item count (live Phase 16 baseline 194; use -1 to skip).")
+    fcp20.add_argument("--no-require-live-snapshot", action="store_true",
+                       help="Dev/test only: accept a non-live v60 DB (default requires the live DB).")
+    fcp20.add_argument("--preflight-stability-seconds", type=float, default=2.0,
+                       help="Live-DB quiescence preflight window: refuse (rc 3) if the live DB moved "
+                            "(default 2.0).")
     # --context-stamp pins the upstream context package for a lineage-consistent fresh full run.
     # Applied to the stages that consume context and participate in the lineage gate.
     for _p in (fip, fmp, fpp, fcp, fkp, fspp):
@@ -1434,6 +1498,15 @@ def main(argv=None) -> int:
             require_live_snapshot=not args.no_require_live_snapshot,
             preflight_stability_seconds=args.preflight_stability_seconds,
             runs=args.runs, seed=args.seed, forecast_start_month=args.forecast_start_month)
+    if args.command == "forecast-comprehensive-db-config-proof":
+        return cmd_forecast_comprehensive_db_config_proof(
+            project=args.project, live_db_path=args.live_db_path,
+            config_snapshot_id=args.config_snapshot_id, work_root=args.work_root,
+            run_stamp=args.run_stamp, data_root=args.data_root,
+            source_config_root=args.source_config_root,
+            expect_item_count=(None if args.expect_item_count == -1 else args.expect_item_count),
+            require_live_snapshot=not args.no_require_live_snapshot,
+            preflight_stability_seconds=args.preflight_stability_seconds)
     if args.command == "lineage-init":
         return cmd_lineage_init(cfg, args.project)
     if args.command == "lineage-record":
