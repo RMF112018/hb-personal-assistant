@@ -13,12 +13,18 @@ from pathlib import Path
 import numpy as np
 
 from ..common.budget_keys import parse_budget_key
+from ..common.config_root import resolve_config_base
 from ..common.io import read_json, read_jsonl
 from ..common.money import D
 from ..forecast_accuracy import signals
 from ..mapping import crosswalk as xwalk
 from ..schedule_analysis import schedule_io
 from . import distributions as dist
+
+# The construction-financial-review subproject root that holds the ``config/`` subtree. A module-level
+# constant (not an inline ``parents[3]``) so the owner-SOV crosswalk resolves through the
+# CFR_CONFIG_ROOT-aware bridge and is monkeypatchable in the Phase 19 DB-config consumer proof.
+SUBPROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 ACCEPTED_GLOB = "forecast_accuracy_next_package_tropical_*"
 MONTHLY_GLOB = "forecast_monthly_package_tropical_*"
@@ -227,8 +233,9 @@ def _owner_scope_by_key(cfg: dict, canonical_keys: list) -> dict:
     rel = cfg.get("owner_sov_scope_crosswalk")
     if not rel:
         return {}
-    root = Path(__file__).resolve().parents[3]
-    path = (root / rel) if not Path(rel).is_absolute() else Path(rel)
+    # Phase 16/19: resolve through the CFR_CONFIG_ROOT-aware bridge (opt-in override; unset ->
+    # SUBPROJECT_ROOT, byte-identical to the prior hardcoded behavior).
+    path = Path(rel) if Path(rel).is_absolute() else (resolve_config_base(SUBPROJECT_ROOT) / rel)
     if not path.exists():
         return {}
     try:
