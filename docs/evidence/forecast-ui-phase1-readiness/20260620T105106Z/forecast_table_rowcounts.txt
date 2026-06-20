@@ -1,0 +1,12 @@
+forecast_projects                             0
+forecast_runs                                 0
+forecast_source_ingestions                    0
+forecast_package_manifests                    0
+forecast_validation_events                    0
+forecast_budget_details                       127
+forecast_cost_entries                         6324
+forecast_monthly_actuals_by_budget_code       1081
+forecast_config_sources                       6
+forecast_config_items                         194
+forecast_config_snapshots                     1
+forecast_config_snapshot_items                194

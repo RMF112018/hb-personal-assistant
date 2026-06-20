@@ -10,6 +10,7 @@ export type NavItem = {
 export const PRIMARY_NAV: NavItem[] = [
   { label: 'My Dashboard', route: '/my-dashboard' },
   { label: 'Projects', route: '/projects' },
+  { label: 'Forecasting', route: '/forecasting' },
 ]
 
 export const SUPPORT_NAV: NavItem[] = [
@@ -48,6 +49,8 @@ export function getRouteTitleForPath(path: string): string {
   if (path.startsWith('/projects')) return 'Projects'
   // My Dashboard is the canonical route for the former My Items work queue; legacy /my-items aliases here.
   if (path.startsWith('/my-dashboard') || path.startsWith('/my-items')) return 'My Dashboard'
+  if (path.startsWith('/forecasting/')) return 'Forecast Package'
+  if (path.startsWith('/forecasting')) return 'Forecasting'
   if (path.startsWith('/admin')) return 'Data Health'
   if (path.startsWith('/settings')) return 'Settings'
   // Prompt D

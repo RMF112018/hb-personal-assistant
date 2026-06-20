@@ -1,0 +1,10 @@
+branch: main
+head: 24ef6e2a Merge pull request #52 from RMF112018/feature/forecast-comprehensive-db-config-phase20a
+--- status --short ---
+?? docs/evidence/forecast-ui-phase1-readiness/
+?? docs/evidence/phase19-forecast-probability-db-config-live-proof/
+?? docs/evidence/phase20-forecast-comprehensive-db-config-live-proof/
+?? docs/evidence/procore-budget-detail-null-field-investigation-deep/
+?? docs/evidence/procore-budget-detail-null-field-investigation/
+?? docs/evidence/procore-budget-detail-raw-version-collapse/
+?? docs/evidence/procore-budget-detail-row-field-projection-audit/

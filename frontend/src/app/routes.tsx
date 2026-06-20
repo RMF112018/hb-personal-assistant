@@ -14,6 +14,8 @@ import { ProjectMeetingsPage } from '../pages/ProjectMeetingsPage'
 import { ProjectFieldOperationsPage } from '../pages/ProjectFieldOperationsPage'
 import { ProjectCostTimePage } from '../pages/ProjectCostTimePage'
 import { MyItemsPage } from '../pages/MyItemsPage'
+import { ForecastingPage } from '../pages/ForecastingPage'
+import { ForecastPackagePage } from '../pages/ForecastPackagePage'
 import { DataHealthPage } from '../pages/DataHealthPage'
 import { SettingsPage } from '../pages/SettingsPage'
 import { GetStartedPage } from '../pages/GetStartedPage'
@@ -133,6 +135,17 @@ const router = createBrowserRouter([
         path: 'my-items',
         element: <MyItemsPage />,
         handle: { title: 'My Items' },
+      },
+      // Forecasting — read-only package browser (Implementation Phase 1). Additive.
+      {
+        path: 'forecasting',
+        element: <ForecastingPage />,
+        handle: { title: 'Forecasting' },
+      },
+      {
+        path: 'forecasting/:packageId',
+        element: <ForecastPackagePage />,
+        handle: { title: 'Forecast Package' },
       },
       {
         path: 'admin',

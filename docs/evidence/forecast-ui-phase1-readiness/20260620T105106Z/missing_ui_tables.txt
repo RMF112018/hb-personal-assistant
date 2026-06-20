@@ -1,0 +1,29 @@
+Tables matching forecast_% in live DB:
+forecast_budget_details
+forecast_config_items
+forecast_config_snapshot_items
+forecast_config_snapshots
+forecast_config_sources
+forecast_cost_entries
+forecast_monthly_actuals_by_budget_code
+forecast_package_manifests
+forecast_projects
+forecast_runs
+forecast_source_ingestions
+forecast_validation_events
+
+Absence check of 14 UI-support tables (live DB):
+forecast_file_imports                    present_in_db=0
+forecast_import_receipts                 present_in_db=0
+forecast_mapping_templates               present_in_db=0
+forecast_config_profiles                 present_in_db=0
+forecast_run_requests                    present_in_db=0
+forecast_run_status                      present_in_db=0
+forecast_run_artifacts                   present_in_db=0
+forecast_model_engine_runs               present_in_db=0
+forecast_external_forecasts              present_in_db=0
+forecast_accuracy_results                present_in_db=0
+forecast_anomaly_findings                present_in_db=0
+forecast_comparison_results              present_in_db=0
+forecast_review_items                    present_in_db=0
+forecast_evidence_packages               present_in_db=0
