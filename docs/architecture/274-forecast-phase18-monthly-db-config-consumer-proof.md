@@ -146,6 +146,54 @@ mechanism; the real 194-item consumption is the deferred operator run.
 - No schema change (stays v60); no lifecycle-count change; no `hb_assistant` change. File-backed monthly remains
   the default and fully tested. The live DB is read-only only.
 
+## Phase 18a — live-DB stability hardening (follow-up; branch `feature/forecast-monthly-db-stability-hardening-phase18a`)
+
+### The failed first live operator proof
+
+The first **real** Phase 18 live proof returned `status: not_ready`, `decision: not_ready`,
+`comparison.result: fail`. Root cause: the live app DB was being **written during the proof** by an external
+process — the HB morning automation / Procore live-sync path (`com.hb.personal-assistant.morning` launchd agent
+→ `hb-assistant run morning` → `SourceRefreshOrchestrator` → Procore `run_live_sync` → `store/procore_financials.py`
+upserts). Observed: `procore_api_sync_state` 44909→44921 and `procore_financial_amount_facts` 289924→289983
+between the file-backed and DB-backed runs, and the live DB file hash drifted (`6ec1f96…` → `e4a2597…`). Because
+`forecast_monthly` reads those tables `mode=ro` into `audit/db_inventory.json`, the two runs differed and parity
+correctly failed. **This was a correct detection of live-DB volatility — not a Phase 18 completion.**
+
+### Gap and fix
+
+The original proof only *declared* `safety.live_db_written: False`; it never **measured** the live DB and had no
+quiescence preflight. Phase 18a replaces the declaration with measured evidence and fails closed on instability:
+
+- **Pinned read-only connection.** A single `cert._ro_conn` (`mode=ro`) is held open across the whole proof, so
+  the reused Phase 16 `materialize` (which opens the registry DB read-write) is never the *last* connection and
+  cannot trigger a WAL checkpoint-on-close = a write. Validated in tests on a WAL-mode temp DB: materialize + both
+  runs leave the main-file sha256 unchanged. Live access stays strictly read-only.
+- **`_live_db_state` fingerprint.** Physical fingerprints of the **main, `-wal`, and `-shm`** files
+  (`exists`/`path`/`size_bytes`/`mtime_ns`/`sha256`; absent siblings recorded with explicit nulls) — so a
+  WAL-committed write not yet checkpointed into the main file is still detected — plus a logical fingerprint from
+  the pinned connection: `schema_version`, `PRAGMA data_version` (changes when another connection commits —
+  instability evidence, not proof this workflow wrote), and the `db_inventory` table row counts + digest.
+- **Preflight quiescence gate** (before materialize): sample `_live_db_state` twice over
+  `--preflight-stability-seconds` (default 2.0). Any physical OR logical change → `ForecastMonthlyDbConfigProofError`
+  → **rc 3** refusal (`live_db_not_quiescent`). Pre-materialize, so the file hash is reliable here.
+- **Measured before/after.** Capture `_live_db_state` before (the stable post-window sample) and after the two
+  runs into a `live_db_integrity` report block (`physical`/`logical`, `preflight_samples`, `before`, `after`,
+  `unchanged`, `drift`). A before/after change → `decision=not_ready` (**rc 1**), `not_ready_reason=
+  live_db_mutated_during_run`, independent of the file comparison. The `safety` block's
+  `live_db_unchanged_during_run` / `live_db_preflight_stable` are now populated from this measured evidence.
+- **`audit/db_inventory.json` stays byte-exact.** It is deliberately NOT in `_PATH_EMBEDDING_FILES`; its drift
+  remains a real parity failure (`not_ready_reason=config_parity_mismatch`) — the correct signal in the failed run.
+
+### Deferred quiesce-then-rerun (after this hardening PR merges)
+
+Stop the writer (`launchctl bootout gui/$(id -u) ~/Library/LaunchAgents/com.hb.personal-assistant.morning.plist`
+or `hb-assistant automation uninstall-launchd --apply`); confirm no in-progress sync (`procore_live_sync_runs`
+`status='in_progress'`) and no running `hb-assistant`/app; then re-run the proof against the live DB + snapshot
+`c3b4a67d22db47c74e696ae562fbf1c555e365fc66bb003a7b3312754415b698`, `--expect-item-count 194`, requiring
+`decision=forecast_monthly_db_config_parity_ready`. The hardened preflight now refuses early if the DB is still
+moving. **Do not re-run the real live proof until this hardening PR is merged.** No schema/lifecycle/`hb_assistant`
+change; live DB read-only only.
+
 ## Deferred (unchanged by Phase 18)
 
 DB-backed config as a production default; broader consumers (comprehensive/probability); integrated CSV;

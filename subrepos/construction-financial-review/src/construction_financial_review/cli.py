@@ -244,7 +244,8 @@ def cmd_forecast_monthly_db_config_proof(*, project: str, live_db_path: str,
                                          run_stamp: str | None, data_root: str | None,
                                          source_config_root: str | None,
                                          expect_item_count: int | None,
-                                         require_live_snapshot: bool) -> int:
+                                         require_live_snapshot: bool,
+                                         preflight_stability_seconds: float) -> int:
     """Phase 18: prove forecast_monthly consumes the DB config snapshot with parity vs file-backed.
 
     Reads the live DB read-only to materialize the Phase 16 snapshot, runs the deterministic monthly
@@ -264,7 +265,8 @@ def cmd_forecast_monthly_db_config_proof(*, project: str, live_db_path: str,
                 config_snapshot_id=config_snapshot_id, work_root=Path(work_root), run_stamp=run_stamp,
                 data_root=Path(data_root) if data_root else None,
                 source_config_root=Path(source_config_root) if source_config_root else None,
-                require_item_count=expect_item_count, require_live_snapshot=require_live_snapshot)
+                require_item_count=expect_item_count, require_live_snapshot=require_live_snapshot,
+                preflight_stability_seconds=preflight_stability_seconds)
     except ForecastMonthlyDbConfigProofError as exc:
         print(json.dumps({"command": "forecast-monthly-db-config-proof", "project": project,
                           "status": "refused", "reason": str(exc)}, indent=2))
@@ -1294,6 +1296,9 @@ def build_parser() -> argparse.ArgumentParser:
                        help="Required snapshot item count (live Phase 16 baseline 194; use -1 to skip).")
     fmp18.add_argument("--no-require-live-snapshot", action="store_true",
                        help="Dev/test only: accept a non-live v60 DB (default requires the live DB).")
+    fmp18.add_argument("--preflight-stability-seconds", type=float, default=2.0,
+                       help="Live-DB quiescence preflight window: sample the live DB at the start and end "
+                            "of this window and refuse (rc 3) if it moved (default 2.0).")
     # --context-stamp pins the upstream context package for a lineage-consistent fresh full run.
     # Applied to the stages that consume context and participate in the lineage gate.
     for _p in (fip, fmp, fpp, fcp, fkp, fspp):
@@ -1347,7 +1352,8 @@ def main(argv=None) -> int:
             run_stamp=args.run_stamp, data_root=args.data_root,
             source_config_root=args.source_config_root,
             expect_item_count=(None if args.expect_item_count == -1 else args.expect_item_count),
-            require_live_snapshot=not args.no_require_live_snapshot)
+            require_live_snapshot=not args.no_require_live_snapshot,
+            preflight_stability_seconds=args.preflight_stability_seconds)
     if args.command == "lineage-init":
         return cmd_lineage_init(cfg, args.project)
     if args.command == "lineage-record":

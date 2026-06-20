@@ -31,7 +31,10 @@ the read-only live-DB check.
 
 from __future__ import annotations
 
+import hashlib
+import json
 import os
+import time
 from pathlib import Path
 from typing import Any
 
@@ -52,6 +55,11 @@ DB_BACKED_SUBDIR = "db_snapshot_backed"
 DECISION_READY = "forecast_monthly_db_config_parity_ready"
 DECISION_NOT_READY = "not_ready"
 DEFAULT_RUN_STAMP = "20260101_000000"
+# Default preflight quiescence window (seconds); the live proof samples the live DB at the start and end
+# of this window and refuses if anything moved. Tests pass 0.0 for a deterministic back-to-back sample.
+DEFAULT_PREFLIGHT_STABILITY_SECONDS = 2.0
+NOT_READY_REASON_LIVE_DB_MUTATED = "live_db_mutated_during_run"
+NOT_READY_REASON_CONFIG_PARITY = "config_parity_mismatch"
 
 # The live Phase 16 baseline (documented; gated only when require_item_count is provided).
 LIVE_BASELINE_ITEM_COUNT = 194
@@ -139,6 +147,90 @@ def _table_exists(conn: Any, name: str) -> bool:
         "SELECT 1 FROM sqlite_master WHERE type='table' AND name=? LIMIT 1", (name,)
     ).fetchone()
     return row is not None
+
+
+def _db_inventory_tables() -> tuple[str, ...]:
+    """The procore_* tables forecast_monthly's db_inventory reads (the volatile set to fingerprint)."""
+    from ..forecast_intelligence.db_inventory import DEFAULT_TABLES
+
+    return tuple(DEFAULT_TABLES)
+
+
+def _file_fingerprint(path: Path) -> dict[str, Any]:
+    """Read-only fingerprint of a single file (size, mtime_ns, sha256). Pure stat + byte read; never opens
+    a SQLite connection, so it cannot trigger a checkpoint. Absent files record explicit nulls."""
+    p = Path(path)
+    if not p.exists():
+        return {
+            "exists": False,
+            "path": str(p),
+            "size_bytes": None,
+            "mtime_ns": None,
+            "sha256": None,
+        }
+    st = p.stat()
+    return {
+        "exists": True,
+        "path": str(p),
+        "size_bytes": int(st.st_size),
+        "mtime_ns": int(st.st_mtime_ns),
+        "sha256": sha256_file(p),
+    }
+
+
+def _live_db_state(
+    live_db_path: Path, ro_conn: Any, *, db_inventory_tables: tuple[str, ...]
+) -> dict:
+    """Combined PHYSICAL + LOGICAL read-only fingerprint of the live DB (no writes, no checkpoint).
+
+    Physical: the main SQLite file plus its ``-wal`` / ``-shm`` siblings (each: exists/size/mtime_ns/sha256)
+    — so a WAL-committed write that has not yet checkpointed into the main file is still detected.
+    Logical (via the pinned ``mode=ro`` connection): schema version, ``PRAGMA data_version`` (changes when
+    ANOTHER connection commits — instability evidence, NOT proof this workflow wrote), and the row counts +
+    digest of the db_inventory tables. A change in EITHER physical or logical state is instability.
+    """
+    main = Path(live_db_path)
+    physical = {
+        "main": _file_fingerprint(main),
+        "wal": _file_fingerprint(Path(str(main) + "-wal")),
+        "shm": _file_fingerprint(Path(str(main) + "-shm")),
+    }
+    sv = ro_conn.execute("SELECT MAX(version) FROM schema_migrations").fetchone()
+    schema_version = int(sv[0]) if sv and sv[0] is not None else 0
+    dv = ro_conn.execute("PRAGMA data_version").fetchone()
+    data_version = int(dv[0]) if dv and dv[0] is not None else 0
+    counts: dict[str, int | None] = {}
+    for t in db_inventory_tables:
+        if _table_exists(ro_conn, t):
+            r = ro_conn.execute(f"SELECT COUNT(*) FROM {t}").fetchone()  # noqa: S608 — table from module constant
+            counts[t] = int(r[0]) if r and r[0] is not None else 0
+        else:
+            counts[t] = None
+    digest = hashlib.sha256(
+        json.dumps(
+            {"schema_version": schema_version, "data_version": data_version, "counts": counts},
+            sort_keys=True,
+        ).encode("utf-8")
+    ).hexdigest()
+    logical = {
+        "schema_version": schema_version,
+        "data_version": data_version,
+        "db_inventory_table_counts": counts,
+        "db_inventory_digest": digest,
+    }
+    return {"physical": physical, "logical": logical}
+
+
+def _state_drift(a: dict, b: dict) -> list[str]:
+    """Return the list of changed state components between two _live_db_state snapshots (empty == stable)."""
+    changed: list[str] = []
+    for f in ("main", "wal", "shm"):
+        if a["physical"][f] != b["physical"][f]:
+            changed.append(f"physical.{f}")
+    for k in ("schema_version", "data_version", "db_inventory_digest"):
+        if a["logical"][k] != b["logical"][k]:
+            changed.append(f"logical.{k}")
+    return changed
 
 
 def _normalize(text: str, replacements: list[tuple[str, str]]) -> str:
@@ -333,8 +425,17 @@ def run_forecast_monthly_db_config_proof(
     source_config_root: Path | None = None,
     require_live_snapshot: bool = True,
     require_item_count: int | None = LIVE_BASELINE_ITEM_COUNT,
+    preflight_stability_seconds: float = DEFAULT_PREFLIGHT_STABILITY_SECONDS,
 ) -> dict[str, Any]:
     """Prove forecast_monthly consumes the DB config snapshot with parity vs file-backed config.
+
+    Phase 18a hardening: a single ``mode=ro`` connection is pinned open across the whole proof (so the
+    reused Phase 16 materialize cannot be the last connection and trigger a checkpoint = a write). A
+    PREFLIGHT samples the live DB (physical main/-wal/-shm fingerprints + logical schema/data_version/
+    db_inventory counts) twice over ``preflight_stability_seconds`` and FAILS CLOSED (rc 3,
+    ``live_db_not_quiescent``) if anything moved. The before/after states are measured and recorded; a
+    before/after drift forces ``decision=not_ready`` (rc 1, ``live_db_mutated_during_run``). ``safety`` is
+    populated from this measured evidence, not declared. ``audit/db_inventory.json`` stays byte-exact.
 
     Fails closed (``ForecastMonthlyDbConfigProofError`` -> CLI rc 3) before any output on: non-tropical
     project; a work root at/under the live forecast root / source config tree / live DB directory; a live
@@ -368,131 +469,156 @@ def run_forecast_monthly_db_config_proof(
             cr._is_live_db(live_db_path),
             f"live_db_path is not the live/default DB (require_live_snapshot=True): {live_db_path}",
         )
-    conn = cert._ro_conn(live_db_path)
+    db_inventory_tables = _db_inventory_tables()
+    # Pin ONE read-only connection open across the entire proof so the reused Phase 16 materialize (which
+    # opens the registry DB read-write) is never the last connection -> it cannot trigger a checkpoint
+    # (= a write) on a WAL-mode live DB. PRAGMA data_version is also read from this same pinned connection.
+    pin = cert._ro_conn(live_db_path)
     try:
-        vrow = conn.execute("SELECT MAX(version) FROM schema_migrations").fetchone()
+        vrow = pin.execute("SELECT MAX(version) FROM schema_migrations").fetchone()
         schema_version = int(vrow[0]) if vrow and vrow[0] is not None else 0
         _require(
             schema_version >= REQUIRED_SCHEMA_VERSION,
             f"live DB schema version {schema_version} < {REQUIRED_SCHEMA_VERSION} (config registry)",
         )
         for t in REQUIRED_CONFIG_TABLES:
-            _require(_table_exists(conn, t), f"live DB missing config registry table: {t}")
+            _require(_table_exists(pin, t), f"live DB missing config registry table: {t}")
         # --- Gate 5-6: snapshot row. --------------------------------------------------------------
-        row = conn.execute(
+        row = pin.execute(
             "SELECT project_key, item_count FROM forecast_config_snapshots WHERE config_snapshot_id = ?",
             (config_snapshot_id,),
         ).fetchone()
         _require(row is not None, f"config_snapshot_id not found: {config_snapshot_id}")
         _require(row[0] == project_key, f"snapshot project_key {row[0]!r} != {project_key!r}")
         snapshot_item_count = int(row[1])
-    finally:
-        conn.close()
-    if require_item_count is not None:
+        if require_item_count is not None:
+            _require(
+                snapshot_item_count == require_item_count,
+                f"snapshot item_count {snapshot_item_count} != required {require_item_count}",
+            )
+
+        # --- Gate 7: source config root (default: the CFR subproject root). ------------------------
+        if source_config_root is None:
+            from .. import config_registry as _cr  # the package root holds the config/ subtree
+
+            source_config_root = Path(_cr.__file__).resolve().parents[2]
+        source_config_root = Path(source_config_root)
+        _require(source_config_root.exists(), f"source_config_root not found: {source_config_root}")
+
+        # --- Gate 2 (cont.): work root must not be under any forbidden parent. ---------------------
+        # data_root MAY be the live forecast root (read-only input) and is NOT checked here. Only the
+        # generated artifacts (all under work_root) must live outside these trees.
         _require(
-            snapshot_item_count == require_item_count,
-            f"snapshot item_count {snapshot_item_count} != required {require_item_count}",
+            not _is_under(work_root, _LIVE_ROOT),
+            f"work_root is at/under the live forecast root (refused): {work_root}",
         )
-
-    # --- Gate 7: source config root (default: the CFR subproject root). ----------------------------
-    if source_config_root is None:
-        from .. import config_registry as _cr  # the package root holds the config/ subtree
-
-        source_config_root = Path(_cr.__file__).resolve().parents[2]
-    source_config_root = Path(source_config_root)
-    _require(source_config_root.exists(), f"source_config_root not found: {source_config_root}")
-
-    # --- Gate 2 (cont.): work root must not be under any forbidden parent. -------------------------
-    # data_root MAY be the live forecast root (read-only input) and is NOT checked here. Only the
-    # generated artifacts (all under work_root) must live outside these trees.
-    _require(
-        not _is_under(work_root, _LIVE_ROOT),
-        f"work_root is at/under the live forecast root (refused): {work_root}",
-    )
-    _require(
-        not _is_under(work_root, source_config_root),
-        f"work_root is at/under the source config tree (refused): {work_root}",
-    )
-    _require(
-        not _is_under(work_root, live_db_path.parent),
-        f"work_root is at/under the live DB directory (refused): {work_root}",
-    )
-
-    # --- Gate 8: required monthly predecessor packages present under the data root. ----------------
-    # Load cfg once with CFR_CONFIG_ROOT unset (repo project json) only to resolve the default data root.
-    prev_env = os.environ.pop(ENV_CONFIG_ROOT, None)
-    try:
-        base_cfg = _load_project_cfg(project_key)
-    finally:
-        if prev_env is not None:
-            os.environ[ENV_CONFIG_ROOT] = prev_env
-    eff_data_root = (
-        Path(data_root) if data_root is not None else Path(base_cfg["default_data_root"])
-    )
-    _require(
-        eff_data_root.exists() and eff_data_root.is_dir(),
-        f"data_root not found or not a directory: {eff_data_root}",
-    )
-    for label, glob in _REQUIRED_PACKAGE_GLOBS:
         _require(
-            any(p.is_dir() for p in eff_data_root.glob(glob)),
-            f"required {label} not found under data_root: {eff_data_root} (glob {glob!r})",
+            not _is_under(work_root, source_config_root),
+            f"work_root is at/under the source config tree (refused): {work_root}",
+        )
+        _require(
+            not _is_under(work_root, live_db_path.parent),
+            f"work_root is at/under the live DB directory (refused): {work_root}",
         )
 
-    # --- Materialize the snapshot (read-only on the live DB; never writes repo config/). ----------
-    try:
-        mat = cr.materialize_forecast_config_snapshot(
-            db_path=live_db_path,
-            config_snapshot_id=config_snapshot_id,
-            out_root=work_root / MATERIALIZE_SUBDIR,
+        # --- Gate 8: required monthly predecessor packages present under the data root. ------------
+        # Load cfg once with CFR_CONFIG_ROOT unset (repo project json) only to resolve the data root.
+        prev_env = os.environ.pop(ENV_CONFIG_ROOT, None)
+        try:
+            base_cfg = _load_project_cfg(project_key)
+        finally:
+            if prev_env is not None:
+                os.environ[ENV_CONFIG_ROOT] = prev_env
+        eff_data_root = (
+            Path(data_root) if data_root is not None else Path(base_cfg["default_data_root"])
         )
-    except cr.ConfigRegistryError as exc:
-        raise ForecastMonthlyDbConfigProofError(f"snapshot materialization failed: {exc}") from exc
-    materialized_config_root = mat["materialized_config_root"]
-    # Consumed-config accounting: only the domains forecast_monthly reads through the bridge.
-    consumed: dict[str, dict[str, Any]] = {}
-    for rel_path, rc in mat["row_counts"].items():
-        for prefix, domain in _CONSUMED_DOMAIN_PREFIXES.items():
-            if rel_path.startswith(prefix):
-                entry = consumed.setdefault(domain, {"files": [], "item_count": 0})
-                entry["files"].append(rel_path)
-                entry["item_count"] += int(rc)
-    consumed_config_domains = sorted(consumed)
-    consumed_files = sorted(f for d in consumed.values() for f in d["files"])
-    consumed_item_count = sum(d["item_count"] for d in consumed.values())
+        _require(
+            eff_data_root.exists() and eff_data_root.is_dir(),
+            f"data_root not found or not a directory: {eff_data_root}",
+        )
+        for label, glob in _REQUIRED_PACKAGE_GLOBS:
+            _require(
+                any(p.is_dir() for p in eff_data_root.glob(glob)),
+                f"required {label} not found under data_root: {eff_data_root} (glob {glob!r})",
+            )
 
-    # --- File-backed run: CFR_CONFIG_ROOT UNSET (proves default preserved); cfg from repo config. -
-    _require(
-        os.environ.get(ENV_CONFIG_ROOT) in (None, ""),
-        "CFR_CONFIG_ROOT must be unset for the file-backed run (default preservation)",
-    )
-    file_cfg = _load_project_cfg(project_key)
-    file_meta = _run_monthly(
-        cfg=file_cfg,
-        data_root=eff_data_root,
-        run_stamp=run_stamp,
-        out_root=work_root / FILE_BACKED_SUBDIR,
-    )
-    file_pkg = Path(file_meta["output_package"])
+        # --- Preflight quiescence gate (BEFORE materialize; pre-materialize so file hash is reliable).
+        preflight_a = _live_db_state(live_db_path, pin, db_inventory_tables=db_inventory_tables)
+        if preflight_stability_seconds > 0:
+            time.sleep(preflight_stability_seconds)
+        preflight_b = _live_db_state(live_db_path, pin, db_inventory_tables=db_inventory_tables)
+        pf_drift = _state_drift(preflight_a, preflight_b)
+        _require(
+            not pf_drift,
+            f"live DB not quiescent (live_db_not_quiescent): {pf_drift} changed during a "
+            f"{preflight_stability_seconds}s preflight window; refusing to run against a moving live DB",
+        )
+        live_db_before = preflight_b  # the stable post-window state
 
-    # --- DB-backed run: scoped CFR_CONFIG_ROOT = materialized root; cfg reloaded from the snapshot. -
-    prev = os.environ.get(ENV_CONFIG_ROOT)
-    os.environ[ENV_CONFIG_ROOT] = materialized_config_root
-    try:
-        db_cfg = _load_project_cfg(project_key)  # project domain consumed from the snapshot
-        db_meta = _run_monthly(
-            cfg=db_cfg,
+        # --- Materialize the snapshot (read-only on the live DB; never writes repo config/). -------
+        try:
+            mat = cr.materialize_forecast_config_snapshot(
+                db_path=live_db_path,
+                config_snapshot_id=config_snapshot_id,
+                out_root=work_root / MATERIALIZE_SUBDIR,
+            )
+        except cr.ConfigRegistryError as exc:
+            raise ForecastMonthlyDbConfigProofError(
+                f"snapshot materialization failed: {exc}"
+            ) from exc
+        materialized_config_root = mat["materialized_config_root"]
+        # Consumed-config accounting: only the domains forecast_monthly reads through the bridge.
+        consumed: dict[str, dict[str, Any]] = {}
+        for rel_path, rc in mat["row_counts"].items():
+            for prefix, domain in _CONSUMED_DOMAIN_PREFIXES.items():
+                if rel_path.startswith(prefix):
+                    entry = consumed.setdefault(domain, {"files": [], "item_count": 0})
+                    entry["files"].append(rel_path)
+                    entry["item_count"] += int(rc)
+        consumed_config_domains = sorted(consumed)
+        consumed_files = sorted(f for d in consumed.values() for f in d["files"])
+        consumed_item_count = sum(d["item_count"] for d in consumed.values())
+
+        # --- File-backed run: CFR_CONFIG_ROOT UNSET (proves default preserved); cfg from repo config.
+        _require(
+            os.environ.get(ENV_CONFIG_ROOT) in (None, ""),
+            "CFR_CONFIG_ROOT must be unset for the file-backed run (default preservation)",
+        )
+        file_cfg = _load_project_cfg(project_key)
+        file_meta = _run_monthly(
+            cfg=file_cfg,
             data_root=eff_data_root,
             run_stamp=run_stamp,
-            out_root=work_root / DB_BACKED_SUBDIR,
+            out_root=work_root / FILE_BACKED_SUBDIR,
         )
+        file_pkg = Path(file_meta["output_package"])
+
+        # --- DB-backed run: scoped CFR_CONFIG_ROOT = materialized root; cfg reloaded from snapshot. -
+        prev = os.environ.get(ENV_CONFIG_ROOT)
+        os.environ[ENV_CONFIG_ROOT] = materialized_config_root
+        try:
+            db_cfg = _load_project_cfg(project_key)  # project domain consumed from the snapshot
+            db_meta = _run_monthly(
+                cfg=db_cfg,
+                data_root=eff_data_root,
+                run_stamp=run_stamp,
+                out_root=work_root / DB_BACKED_SUBDIR,
+            )
+        finally:
+            if prev is None:
+                os.environ.pop(ENV_CONFIG_ROOT, None)
+            else:
+                os.environ[ENV_CONFIG_ROOT] = prev
+        db_pkg = Path(db_meta["output_package"])
+        env_restored = os.environ.get(ENV_CONFIG_ROOT) in (None, "")
+
+        # --- After-state (still under the pinned read-only connection). ----------------------------
+        live_db_after = _live_db_state(live_db_path, pin, db_inventory_tables=db_inventory_tables)
     finally:
-        if prev is None:
-            os.environ.pop(ENV_CONFIG_ROOT, None)
-        else:
-            os.environ[ENV_CONFIG_ROOT] = prev
-    db_pkg = Path(db_meta["output_package"])
-    env_restored = os.environ.get(ENV_CONFIG_ROOT) in (None, "")
+        pin.close()
+
+    live_db_drift = _state_drift(live_db_before, live_db_after)
+    live_db_unchanged = not live_db_drift
 
     # --- Compare (byte-exact except enumerated path-embedding files). -----------------------------
     replacements = [
@@ -503,14 +629,27 @@ def run_forecast_monthly_db_config_proof(
     ]
     diffs = _compare_packages(file_pkg=file_pkg, db_pkg=db_pkg, replacements=replacements)
     parity_pass = not diffs
-    status = "ready" if parity_pass else DECISION_NOT_READY
-    decision = DECISION_READY if parity_pass else DECISION_NOT_READY
+    # A measured before/after live-DB drift fails closed independently of the file comparison: the proof's
+    # inputs moved underneath it, so the result is not trustworthy (not_ready, distinct from a config diff).
+    if not live_db_unchanged:
+        status = DECISION_NOT_READY
+        decision = DECISION_NOT_READY
+        not_ready_reason: str | None = NOT_READY_REASON_LIVE_DB_MUTATED
+    elif parity_pass:
+        status = "ready"
+        decision = DECISION_READY
+        not_ready_reason = None
+    else:
+        status = DECISION_NOT_READY
+        decision = DECISION_NOT_READY
+        not_ready_reason = NOT_READY_REASON_CONFIG_PARITY
 
     report = {
         "schema_version": REPORT_SCHEMA_VERSION,
         "project_key": project_key,
         "status": status,
         "decision": decision,
+        "not_ready_reason": not_ready_reason,
         "live_db_path": str(live_db_path),
         "db_schema_version": schema_version,
         "config_snapshot_id": config_snapshot_id,
@@ -547,12 +686,26 @@ def run_forecast_monthly_db_config_proof(
             "differences": diffs,
             "normalized_rules": _NORMALIZED_RULES,
         },
+        "live_db_integrity": {
+            "preflight_stable": True,  # we only reach the report if the preflight gate passed
+            "preflight_stability_seconds": preflight_stability_seconds,
+            "preflight_samples": [preflight_a, preflight_b],
+            "before": live_db_before,
+            "after": live_db_after,
+            "unchanged": live_db_unchanged,
+            "drift": live_db_drift,
+        },
         "safety": {
+            # Structural: the proof opens the live DB only via a mode=ro pinned connection and issues no
+            # DML/DDL, migration, or import. These are now CORROBORATED by the measured live_db_integrity
+            # before/after below (live_db_unchanged_during_run), not merely declared.
             "live_db_written": False,
             "live_db_migrated": False,
             "live_db_imported": False,
             "live_db_snapshot_read": True,
             "monthly_db_inventory_read": True,
+            "live_db_preflight_stable": True,  # measured: preflight gate passed
+            "live_db_unchanged_during_run": live_db_unchanged,  # measured before/after equality
             "source_config_mutated": False,
             "source_package_mutated": False,
             "production_defaults_changed": False,
@@ -576,11 +729,16 @@ def run_forecast_monthly_db_config_proof(
 
 def _write_summary(path: Path, report: dict) -> Path:
     cmp = report["comparison"]
+    integ = report["live_db_integrity"]
     lines = [
-        "# Forecast Monthly — DB-Backed Config Consumer Proof (Phase 18)",
+        "# Forecast Monthly — DB-Backed Config Consumer Proof (Phase 18 / 18a hardening)",
         "",
         f"- status: {report['status']}",
         f"- decision: {report['decision']}",
+        f"- not_ready_reason: {report['not_ready_reason']}",
+        f"- live_db_preflight_stable: {integ['preflight_stable']} "
+        f"(window {integ['preflight_stability_seconds']}s)",
+        f"- live_db_unchanged_during_run: {integ['unchanged']} (drift: {integ['drift']})",
         f"- live_db_path: {report['live_db_path']} (read-only)",
         f"- db_schema_version: {report['db_schema_version']}",
         f"- config_snapshot_id: {report['config_snapshot_id']}",
