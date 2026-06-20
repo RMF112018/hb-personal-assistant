@@ -1,0 +1,2 @@
+CFR readiness gate (subrepos/construction-financial-review):
+565 passed in ~74s (no CFR edits)

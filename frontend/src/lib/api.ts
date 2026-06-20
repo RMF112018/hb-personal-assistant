@@ -721,6 +721,49 @@ export function getForecastRun(runId: string) {
   return fetchJson(`/api/forecast/runs/${encodeURIComponent(runId)}`);
 }
 
+/* External-Forecast Evaluation — upload an operator forecast, map it, and compare it against
+ * actuals / budget / ERP-JTD / backend-model / prior baselines (Implementation Phase 4).
+ * Upload is base64-in-JSON (no multipart). POST routes are operator-gated; results are viewer
+ * reads. Responses are redacted business metadata only — no paths, run stamps, or internals. */
+export function previewExternalForecast(
+  filename: string,
+  contentB64: string,
+  sourceSystem = 'excel',
+  period?: string | null,
+) {
+  return fetchJson('/api/forecast/external/preview', {
+    method: 'POST',
+    body: JSON.stringify({
+      filename,
+      content_b64: contentB64,
+      source_system: sourceSystem,
+      period: period ?? null,
+    }),
+  });
+}
+export function proposeExternalMapping(importId: string, projectKey = 'tropical') {
+  return fetchJson('/api/forecast/external/mapping', {
+    method: 'POST',
+    body: JSON.stringify({ import_id: importId, project_key: projectKey }),
+  });
+}
+export function evaluateExternalForecast(
+  importId: string,
+  columnRoles: Record<string, string>,
+  projectKey = 'tropical',
+) {
+  return fetchJson('/api/forecast/external/evaluate', {
+    method: 'POST',
+    body: JSON.stringify({ import_id: importId, column_roles: columnRoles, project_key: projectKey }),
+  });
+}
+export function getExternalEvaluations() {
+  return fetchJson('/api/forecast/external/evaluations');
+}
+export function getExternalEvaluation(evalId: string) {
+  return fetchJson(`/api/forecast/external/evaluations/${encodeURIComponent(evalId)}`);
+}
+
 /* Convenience aggregate for pages that prefer a single object. */
 export const api = {
   getToday,
@@ -817,6 +860,12 @@ export const api = {
   startForecastRun,
   getForecastRuns,
   getForecastRun,
+  // External-Forecast Evaluation (Implementation Phase 4).
+  previewExternalForecast,
+  proposeExternalMapping,
+  evaluateExternalForecast,
+  getExternalEvaluations,
+  getExternalEvaluation,
 };
 
 export default api;

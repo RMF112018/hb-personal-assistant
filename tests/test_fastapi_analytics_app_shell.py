@@ -176,6 +176,12 @@ def test_openapi_exposes_only_shell_routes(tmp_path: Path) -> None:
         # Forecast Run Center — isolated context->analysis generation (Implementation Phase 3)
         "/api/forecast/runs",
         "/api/forecast/runs/{run_id}",
+        # External-Forecast Evaluation — upload/map/evaluate + read results (Implementation Phase 4)
+        "/api/forecast/external/preview",
+        "/api/forecast/external/mapping",
+        "/api/forecast/external/evaluate",
+        "/api/forecast/external/evaluations",
+        "/api/forecast/external/evaluations/{eval_id}",
     }
     assert response.json()["info"]["title"] == "HB Personal Assistant Analytics UI Shell"
 
