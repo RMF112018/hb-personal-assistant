@@ -689,6 +689,25 @@ export function getForecastPackageRows(packageId: string) {
   return fetchJson(`/api/forecast/packages/${encodeURIComponent(packageId)}/forecast-rows`);
 }
 
+/* Forecast configuration — read-only viewer over the v60 config snapshot (Implementation Phase 2).
+ * Read-only metadata: business config settings only (no paths, run stamps, endpoints, or internals). */
+export function getForecastConfigSnapshots() {
+  return fetchJson('/api/forecast/config/snapshots');
+}
+export function getForecastConfigSnapshot(snapshotId: string) {
+  return fetchJson(`/api/forecast/config/snapshots/${encodeURIComponent(snapshotId)}`);
+}
+export function getForecastConfigDomain(snapshotId: string, domain: string) {
+  return fetchJson(
+    `/api/forecast/config/snapshots/${encodeURIComponent(snapshotId)}/domains/${encodeURIComponent(domain)}`,
+  );
+}
+export function getForecastConfigItem(snapshotId: string, itemId: string) {
+  return fetchJson(
+    `/api/forecast/config/snapshots/${encodeURIComponent(snapshotId)}/items/${encodeURIComponent(itemId)}`,
+  );
+}
+
 /* Convenience aggregate for pages that prefer a single object. */
 export const api = {
   getToday,
@@ -776,6 +795,11 @@ export const api = {
   getForecastPackageManifest,
   getForecastPackageReviewItems,
   getForecastPackageRows,
+  // Forecast configuration viewer (Implementation Phase 2). Read-only metadata.
+  getForecastConfigSnapshots,
+  getForecastConfigSnapshot,
+  getForecastConfigDomain,
+  getForecastConfigItem,
 };
 
 export default api;

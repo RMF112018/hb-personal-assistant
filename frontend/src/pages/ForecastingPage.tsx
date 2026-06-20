@@ -76,7 +76,12 @@ export function ForecastingPage() {
   return (
     <div>
       <div className="card">
-        <div className="section-title">Forecasting</div>
+        <div className="flex items-center justify-between gap-3">
+          <div className="section-title">Forecasting</div>
+          <Link to="/forecasting/config" className="text-sm underline">
+            View configuration
+          </Link>
+        </div>
         <p className="text-sm">
           Forecast packages generated for{' '}
           <span className="font-medium">{project.project_name || project.project_key || 'this project'}</span>
