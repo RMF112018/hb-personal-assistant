@@ -1,0 +1,9 @@
+Generators write to: out_base = out_root if out_root else data_root; then out_base/<name>_<key>_<stamp>/
+
+50:        out = subprocess.run(["git", *args], cwd=str(SUBPROJECT_ROOT),
+65:             frozen_stamp: Optional[str] = None, out_root: Optional[Path] = None,
+79:    out_base = Path(out_root) if out_root else data_root
+80:    out = out_base / f"forecast_accuracy_package_tropical_{stamp}"
+511:def run(project_key: str, cfg: dict, data_root=None, frozen_stamp=None, out_root=None,
+514:                   Path(out_root) if out_root else None, with_llm, llm_model)
+537:    return run(args.project, cfg, args.data_root, args.frozen_stamp, args.out_root,

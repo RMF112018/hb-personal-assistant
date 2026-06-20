@@ -159,6 +159,15 @@ def test_openapi_exposes_only_shell_routes(tmp_path: Path) -> None:
         "/api/sources/refresh/local",
         "/api/sources/refresh/live",
         "/api/scheduler/daily-source-refresh/status",
+        # Forecasting — read-only package browser (Implementation Phase 1; additive, viewer-safe reads)
+        "/api/forecast/projects",
+        "/api/forecast/projects/{project_key}/periods",
+        "/api/forecast/projects/{project_key}/periods/{period}/packages",
+        "/api/forecast/packages/{package_id}/summary",
+        "/api/forecast/packages/{package_id}/validation",
+        "/api/forecast/packages/{package_id}/manifest",
+        "/api/forecast/packages/{package_id}/review-items",
+        "/api/forecast/packages/{package_id}/forecast-rows",
     }
     assert response.json()["info"]["title"] == "HB Personal Assistant Analytics UI Shell"
 

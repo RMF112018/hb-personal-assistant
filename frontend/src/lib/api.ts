@@ -631,6 +631,64 @@ export function getSchedulerStatus() {
   return fetchJson<SchedulerStatus>('/api/scheduler/daily-source-refresh/status');
 }
 
+/* Forecasting — read-only package browser (Implementation Phase 1).
+ * Pure reads over deterministic forecast packages the backend has already produced.
+ * Responses are advisory metadata only: the service exposes friendly labels + an opaque
+ * package id, and never returns filesystem paths, run stamps, directory names, or internals.
+ */
+export interface ForecastProject {
+  project_key: string;
+  project_name?: string | null;
+  job_reference?: string | null;
+}
+
+export interface ForecastPeriod {
+  period: string;
+  package_count?: number;
+}
+
+export interface ForecastPackage {
+  package_id: string;
+  package_type: string;
+  display_label: string;
+  status: string; // validated | attention | invalid | unsupported | unknown
+  project_key?: string | null;
+  period?: string | null;
+  job_reference?: string | null;
+  generated_display?: string | null;
+  validation_total?: number;
+  validation_passed?: number;
+  validation_failed?: number;
+  output_file_count?: number;
+}
+
+export function getForecastProjects() {
+  return fetchJson('/api/forecast/projects');
+}
+export function getForecastPeriods(projectKey: string) {
+  return fetchJson(`/api/forecast/projects/${encodeURIComponent(projectKey)}/periods`);
+}
+export function getForecastPackages(projectKey: string, period: string) {
+  return fetchJson(
+    `/api/forecast/projects/${encodeURIComponent(projectKey)}/periods/${encodeURIComponent(period)}/packages`,
+  );
+}
+export function getForecastPackageSummary(packageId: string) {
+  return fetchJson(`/api/forecast/packages/${encodeURIComponent(packageId)}/summary`);
+}
+export function getForecastPackageValidation(packageId: string) {
+  return fetchJson(`/api/forecast/packages/${encodeURIComponent(packageId)}/validation`);
+}
+export function getForecastPackageManifest(packageId: string) {
+  return fetchJson(`/api/forecast/packages/${encodeURIComponent(packageId)}/manifest`);
+}
+export function getForecastPackageReviewItems(packageId: string) {
+  return fetchJson(`/api/forecast/packages/${encodeURIComponent(packageId)}/review-items`);
+}
+export function getForecastPackageRows(packageId: string) {
+  return fetchJson(`/api/forecast/packages/${encodeURIComponent(packageId)}/forecast-rows`);
+}
+
 /* Convenience aggregate for pages that prefer a single object. */
 export const api = {
   getToday,
@@ -709,6 +767,15 @@ export const api = {
   refreshSourcesLive,
   refreshSources,
   getSchedulerStatus,
+  // Forecasting — read-only package browser (Implementation Phase 1). Pure metadata reads.
+  getForecastProjects,
+  getForecastPeriods,
+  getForecastPackages,
+  getForecastPackageSummary,
+  getForecastPackageValidation,
+  getForecastPackageManifest,
+  getForecastPackageReviewItems,
+  getForecastPackageRows,
 };
 
 export default api;

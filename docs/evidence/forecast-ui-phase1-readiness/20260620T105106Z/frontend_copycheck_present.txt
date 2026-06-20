@@ -1,0 +1,1 @@
+-rw-r--r--  1 bobbyfetting  staff  4032 Jun  7 08:14 scripts/proofs/frontend_display_copy_check.py

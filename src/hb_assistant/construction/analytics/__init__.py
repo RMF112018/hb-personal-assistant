@@ -5,6 +5,7 @@ from .auth_onboarding import AuthOnboardingService
 from .connection_setup import ConnectionSetupService
 from .daily_brief import DailyBriefService
 from .environment_status import EnvironmentStatusService
+from .forecast_catalog import ForecastCatalogError, ForecastCatalogService
 from .project_keywords import ProjectKeywordsService
 from .service import AnalyticsService
 from .source_refresh_control import SourceRefreshControlService
@@ -17,6 +18,8 @@ __all__ = [
     "create_app",
     "DailyBriefService",
     "EnvironmentStatusService",
+    "ForecastCatalogError",
+    "ForecastCatalogService",
     "ProjectKeywordsService",
     "require_operator_role",
     "role_dependency",

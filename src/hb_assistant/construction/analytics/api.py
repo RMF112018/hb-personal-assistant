@@ -1242,4 +1242,86 @@ def create_app(*, db_path: str | None = None) -> Any:
             guardrails=dq.get("guardrails"),
         )
 
+    # Forecasting — read-only package browser (Implementation Phase 1).
+    # All routes are viewer-readable and delegate to ForecastCatalogService, which performs
+    # pure file reads over explicitly configured package roots (env HB_FORECAST_PACKAGE_ROOTS).
+    # Zero DB access, zero writes. Errors are mapped to safe codes with NO path/internal leakage.
+    def _forecast_service() -> Any:
+        from fastapi import HTTPException
+
+        from hb_assistant.construction.analytics.forecast_catalog import (
+            ForecastCatalogError,
+            ForecastCatalogService,
+            resolve_package_roots_from_env,
+        )
+
+        roots = resolve_package_roots_from_env()
+        try:
+            return ForecastCatalogService(package_roots=roots, db_path=db_path)
+        except ForecastCatalogError:
+            # Misconfigured / unset roots — fail closed with a generic, path-free message.
+            raise HTTPException(status_code=503, detail="forecast_packages_not_configured")
+
+    def _forecast_call(fn: Any, *args: Any) -> dict[str, Any]:
+        from fastapi import HTTPException
+
+        from hb_assistant.construction.analytics.forecast_catalog import ForecastCatalogError
+
+        try:
+            return fn(*args)
+        except ForecastCatalogError as exc:
+            if str(exc).startswith("unknown package_id"):
+                raise HTTPException(status_code=404, detail="forecast_package_not_found")
+            raise HTTPException(status_code=500, detail="forecast_catalog_error")
+
+    @app.get("/api/forecast/projects")
+    def forecast_projects(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        svc = _forecast_service()
+        return _forecast_call(svc.list_projects)
+
+    @app.get("/api/forecast/projects/{project_key}/periods")
+    def forecast_periods(project_key: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        svc = _forecast_service()
+        return _forecast_call(svc.list_periods, project_key)
+
+    @app.get("/api/forecast/projects/{project_key}/periods/{period}/packages")
+    def forecast_packages(
+        project_key: str, period: str, role: dict[str, str] = role_dep
+    ) -> dict[str, Any]:
+        del role
+        svc = _forecast_service()
+        return _forecast_call(svc.list_packages, project_key, period)
+
+    @app.get("/api/forecast/packages/{package_id}/summary")
+    def forecast_package_summary(package_id: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        svc = _forecast_service()
+        return _forecast_call(svc.read_package_summary, package_id)
+
+    @app.get("/api/forecast/packages/{package_id}/validation")
+    def forecast_package_validation(package_id: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        svc = _forecast_service()
+        return _forecast_call(svc.read_validation_status, package_id)
+
+    @app.get("/api/forecast/packages/{package_id}/manifest")
+    def forecast_package_manifest(package_id: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        svc = _forecast_service()
+        return _forecast_call(svc.read_manifest, package_id)
+
+    @app.get("/api/forecast/packages/{package_id}/review-items")
+    def forecast_package_review_items(package_id: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        svc = _forecast_service()
+        return _forecast_call(svc.read_review_items, package_id)
+
+    @app.get("/api/forecast/packages/{package_id}/forecast-rows")
+    def forecast_package_rows(package_id: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        svc = _forecast_service()
+        return _forecast_call(svc.read_forecast_rows, package_id)
+
     return app
