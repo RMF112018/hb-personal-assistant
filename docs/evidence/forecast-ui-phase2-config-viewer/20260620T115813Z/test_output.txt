@@ -1,0 +1,4 @@
+=== backend (config service + routes + Phase 1 regression + app-shell allowlist) ===
+21 passed, 1 warning in 8.91s
+=== ruff (new files) ===
+All checks passed!

@@ -16,6 +16,7 @@ import { ProjectCostTimePage } from '../pages/ProjectCostTimePage'
 import { MyItemsPage } from '../pages/MyItemsPage'
 import { ForecastingPage } from '../pages/ForecastingPage'
 import { ForecastPackagePage } from '../pages/ForecastPackagePage'
+import { ForecastConfigPage } from '../pages/ForecastConfigPage'
 import { DataHealthPage } from '../pages/DataHealthPage'
 import { SettingsPage } from '../pages/SettingsPage'
 import { GetStartedPage } from '../pages/GetStartedPage'
@@ -141,6 +142,13 @@ const router = createBrowserRouter([
         path: 'forecasting',
         element: <ForecastingPage />,
         handle: { title: 'Forecasting' },
+      },
+      // Forecast configuration viewer (Implementation Phase 2). Read-only. Declared before
+      // the :packageId route so the literal 'config' segment is not captured as a package id.
+      {
+        path: 'forecasting/config',
+        element: <ForecastConfigPage />,
+        handle: { title: 'Forecast Configuration' },
       },
       {
         path: 'forecasting/:packageId',

@@ -1,0 +1,11 @@
+store/migrator unchanged:
+  (clean — no migration)
+LATEST_SCHEMA_VERSION:
+17:LATEST_SCHEMA_VERSION = 60
+CFR subrepo changes:
+  (clean — zero CFR changes)
+config tables already existed at v60 (no new tables added by Phase 2):
+forecast_config_items
+forecast_config_snapshot_items
+forecast_config_snapshots
+forecast_config_sources

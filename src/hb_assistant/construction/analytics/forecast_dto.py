@@ -205,6 +205,7 @@ _LEAK_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("run_stamp", re.compile(r"\d{8}_\d{6}")),
     ("module_path", re.compile(r"construction_financial_review\.")),
     ("cli_command", re.compile(r"python3?\s+-m|--project\s")),
+    ("internal_endpoint", re.compile(r"https?://(?:localhost|127\.0\.0\.1)")),
 )
 
 

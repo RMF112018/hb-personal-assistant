@@ -1324,4 +1324,55 @@ def create_app(*, db_path: str | None = None) -> Any:
         svc = _forecast_service()
         return _forecast_call(svc.read_forecast_rows, package_id)
 
+    # Forecast configuration — read-only viewer over the v60 config-registry snapshot
+    # (Implementation Phase 2). Read-only DB access (mode=ro); viewer-readable; fail-closed.
+    def _forecast_config_service() -> Any:
+        from hb_assistant.construction.analytics.forecast_config_catalog import (
+            ForecastConfigCatalogService,
+        )
+
+        return ForecastConfigCatalogService(db_path=db_path)
+
+    def _forecast_config_call(fn: Any, *args: Any) -> dict[str, Any]:
+        from fastapi import HTTPException
+
+        from hb_assistant.construction.analytics.forecast_config_catalog import ForecastConfigError
+
+        try:
+            return fn(*args)
+        except ForecastConfigError as exc:
+            msg = str(exc)
+            if msg.startswith("unknown snapshot_id"):
+                raise HTTPException(status_code=404, detail="forecast_config_snapshot_not_found")
+            if msg.startswith("unknown item_id"):
+                raise HTTPException(status_code=404, detail="forecast_config_item_not_found")
+            # DB missing / schema too low / tables absent — fail closed, path-free.
+            raise HTTPException(status_code=503, detail="forecast_config_not_available")
+
+    @app.get("/api/forecast/config/snapshots")
+    def forecast_config_snapshots(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        return _forecast_config_call(_forecast_config_service().list_snapshots)
+
+    @app.get("/api/forecast/config/snapshots/{snapshot_id}")
+    def forecast_config_snapshot(snapshot_id: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        return _forecast_config_call(_forecast_config_service().read_snapshot, snapshot_id)
+
+    @app.get("/api/forecast/config/snapshots/{snapshot_id}/domains/{config_domain}")
+    def forecast_config_domain(
+        snapshot_id: str, config_domain: str, role: dict[str, str] = role_dep
+    ) -> dict[str, Any]:
+        del role
+        return _forecast_config_call(
+            _forecast_config_service().read_domain, snapshot_id, config_domain
+        )
+
+    @app.get("/api/forecast/config/snapshots/{snapshot_id}/items/{item_id}")
+    def forecast_config_item(
+        snapshot_id: str, item_id: str, role: dict[str, str] = role_dep
+    ) -> dict[str, Any]:
+        del role
+        return _forecast_config_call(_forecast_config_service().read_item, snapshot_id, item_id)
+
     return app

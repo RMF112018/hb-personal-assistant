@@ -1,0 +1,9 @@
+snapshot: tropical-phase16-live-config-20260619T085305Z | created: Jun 19, 2026 | item_count: 194
+guardrails: {'read_only': True, 'no_db_write': True, 'db_access': 'read_only', 'local_first': True, 'no_cli_shellout': True, 'no_live_endpoint_calls': True, 'no_external_writeback': True}
+  domain forecast_controls        items=64   sources=1 leaks=0
+  domain forecast_model_controls  items=5    sources=1 leaks=0
+  domain forecast_staffing        items=8    sources=1 leaks=0
+  domain owner_sov_crosswalk      items=116  sources=2 leaks=0
+  domain project                  items=1    sources=1 leaks=0
+TOTAL redaction leaks across all domain payloads: 0
+project domain exposed fields (whitelist only): ['budget_amount_field', 'budget_view_id', 'current_projected_cost_field', 'forecast_period', 'job_reference', 'materiality_absolute', 'materiality_percent', 'project_name']

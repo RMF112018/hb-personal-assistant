@@ -168,6 +168,11 @@ def test_openapi_exposes_only_shell_routes(tmp_path: Path) -> None:
         "/api/forecast/packages/{package_id}/manifest",
         "/api/forecast/packages/{package_id}/review-items",
         "/api/forecast/packages/{package_id}/forecast-rows",
+        # Forecast configuration — read-only viewer over the v60 config snapshot (Implementation Phase 2)
+        "/api/forecast/config/snapshots",
+        "/api/forecast/config/snapshots/{snapshot_id}",
+        "/api/forecast/config/snapshots/{snapshot_id}/domains/{config_domain}",
+        "/api/forecast/config/snapshots/{snapshot_id}/items/{item_id}",
     }
     assert response.json()["info"]["title"] == "HB Personal Assistant Analytics UI Shell"
 
