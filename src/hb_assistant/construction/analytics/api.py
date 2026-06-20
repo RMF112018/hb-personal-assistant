@@ -1375,4 +1375,39 @@ def create_app(*, db_path: str | None = None) -> Any:
         del role
         return _forecast_config_call(_forecast_config_service().read_item, snapshot_id, item_id)
 
+    # Forecast Run Center — isolated context->analysis generation (Implementation Phase 3).
+    # POST executes + writes (isolated work-root only) → operator role. GET reads runs → viewer.
+    def _forecast_run_service() -> Any:
+        from hb_assistant.construction.analytics.forecast_run_service import ForecastRunService
+
+        return ForecastRunService()
+
+    def _forecast_run_call(fn: Any, *args: Any) -> dict[str, Any]:
+        from fastapi import HTTPException
+
+        from hb_assistant.construction.analytics.forecast_run_service import ForecastRunError
+
+        try:
+            return fn(*args)
+        except ForecastRunError as exc:
+            if str(exc).startswith("unknown run_id"):
+                raise HTTPException(status_code=404, detail="forecast_run_not_found")
+            # not configured / invalid roots / CFR source unavailable — fail closed, path-free.
+            raise HTTPException(status_code=503, detail="forecast_runs_not_configured")
+
+    @app.post("/api/forecast/runs")
+    def forecast_run_create(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        require_operator_role(role)  # generation executes + writes (isolated work-root)
+        return _forecast_run_call(_forecast_run_service().start_run)
+
+    @app.get("/api/forecast/runs")
+    def forecast_runs_list(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        return _forecast_run_call(_forecast_run_service().list_runs)
+
+    @app.get("/api/forecast/runs/{run_id}")
+    def forecast_run_detail(run_id: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        return _forecast_run_call(_forecast_run_service().read_run, run_id)
+
     return app

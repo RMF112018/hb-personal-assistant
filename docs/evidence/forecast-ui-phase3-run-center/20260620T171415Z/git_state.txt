@@ -1,0 +1,17 @@
+branch: feature/forecast-ui-phase2-config-viewer
+head: 2f4e3165 feat(forecast-ui): add read-only forecast configuration viewer
+--- phase 3 changed files ---
+ M frontend/src/app/routes.tsx
+ M frontend/src/lib/api.ts
+ M frontend/src/navigation/navigationModel.ts
+ M frontend/src/pages/ForecastingPage.tsx
+ M src/hb_assistant/construction/analytics/__init__.py
+ M src/hb_assistant/construction/analytics/api.py
+ M tests/test_fastapi_analytics_app_shell.py
+?? docs/evidence/forecast-ui-phase3-run-center/
+?? frontend/src/pages/ForecastRunCenterPage.test.tsx
+?? frontend/src/pages/ForecastRunCenterPage.tsx
+?? src/hb_assistant/construction/analytics/forecast_run_dto.py
+?? src/hb_assistant/construction/analytics/forecast_run_service.py
+?? tests/test_fastapi_forecast_run.py
+?? tests/test_forecast_run_service.py

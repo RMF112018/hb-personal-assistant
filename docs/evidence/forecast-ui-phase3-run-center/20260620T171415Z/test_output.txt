@@ -1,0 +1,4 @@
+=== backend (run service + routes + app-shell allowlist), excl integration ===
+20 passed, 1 deselected, 1 warning in 5.40s
+=== ruff (new files) ===
+All checks passed!

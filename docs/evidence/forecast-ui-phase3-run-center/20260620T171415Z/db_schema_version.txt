@@ -1,0 +1,3 @@
+schema_version=60
+wal_bytes=0
+note: Phase 3 file-mode generation performs NO DB access (read or write).
