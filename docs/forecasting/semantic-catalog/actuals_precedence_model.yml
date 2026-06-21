@@ -1,0 +1,37 @@
+version: 1
+use_cases:
+  eac_etc_reconciliation:
+    precedence:
+      - forecast_monthly_actuals_by_budget_code  # periodized training
+      - procore_ep_budget_detail_rows.actual_cost  # cumulative rollup primary
+      - procore_ep_budget_detail_rows.job_to_date_costs
+      - procore_ep_budget_detail_rows.direct_costs
+      - procore_ep_budget_detail_rows.erp_job_to_date_costs
+      - procore_ep_budget_detail_rows.erp_direct_costs
+    rule: pick_one_per_budget_code_not_sum_cumulative_sources
+
+  invoice_progress:
+    precedence:
+      - procore_ep_subcontractor_invoice_contract_detail_items.total_completed_and_stored_to_date
+      - procore_ep_subcontractor_invoice_change_order_items.total_completed_and_stored_to_date
+    rule: detail_facts_for_progress_not_budget_rollups
+
+  cash_flow_payment_timing:
+    precedence:
+      - procore_ep_subcontractor_invoices.payment_date
+      - procore_ep_billing_periods.end_date
+    rule: invoice_dates_override_period_fallback
+
+  anomaly_detection:
+    precedence:
+      - compare budget_detail.actual_cost vs sum(invoice_details) by budget_code
+      - flag when delta exceeds materiality threshold
+    rule: reconciliation_not_double_count
+
+erp_fields:
+  policy: explicit_sidecar
+  note: ERP actuals are not interchangeable with Procore actuals without source tag
+
+monthly_vs_cumulative:
+  policy: never_assume_equivalent
+  reconciliation: required_join_on_project_key_budget_code_period

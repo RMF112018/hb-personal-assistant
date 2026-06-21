@@ -1,0 +1,60 @@
+family: purchase_order
+confidence: medium
+evidence_package_ref: docs/evidence/forecasting-db-complete-evidence/20260621T114232Z/02-targeted-sql-profiles/07-join-cardinality-results.json
+
+tables:
+  procore_ep_purchase_order_contracts:
+    grain: one_row_per_po_contract_record_id
+    primary_key: record_key
+    natural_keys: [record_id, project_key + record_id]
+    row_count_evidence: 11
+    projection_owner: procore/projection_engine.py + projection_registry.json
+    enrichment_owner: store/procore_commitment_projection.py
+
+  procore_ep_purchase_order_line_items:
+    grain: one_row_per_line_item_record_id
+    primary_key: record_key
+    parent_key_candidates:
+      - column: holder_id
+        parent_table: procore_ep_purchase_order_contracts
+        parent_column: record_id
+        matched_rows: 16
+        confidence: high
+        evidence_basis: row-profile-supported
+      - column: holder_id
+        parent_table: procore_ep_commitment_contracts
+        parent_column: record_id
+        matched_rows: 12
+        confidence: high
+        evidence_basis: row-profile-supported
+        note: polymorphic_holder_commitment_not_po_contract
+      - column: parent_record_id
+        parent_table: procore_ep_purchase_order_contracts
+        parent_column: record_id
+        matched_rows: 16
+        confidence: high
+        evidence_basis: row-profile-supported
+
+canonical_parent_key:
+  recommendation: holder_id
+  resolution_order:
+    - join purchase_order_contracts.record_id
+    - else join commitment_contracts.record_id (polymorphic holder)
+  confidence: medium
+  evidence_basis: row-profile-supported
+
+exposure_model_recommendation:
+  fact_entity: fact_purchase_order_exposure
+  fold_into_commitment: false
+  rationale: >
+    PO line items with commitment holders are explainable polymorphic holders,
+    not projection defects. Repo commitment_projection already dedupes PO contracts
+    that share contract_id with commitments. Model should route holder-resolved
+    lines to commitment exposure when parent resolves to commitment_contracts.
+  unresolved_count: 0
+
+status_inclusion:
+  included: [approved, complete, closed]
+  pending: [open, processing, draft, pending]
+  excluded: [void, cancelled, canceled, deleted]
+  unresolved: [null, blank, unknown]
