@@ -20,32 +20,15 @@ _DEFAULT_PERCENT_THRESHOLD = Decimal("0.005")
 
 _APPROVED_CCO_STATUSES = ("approved", "complete", "closed", "executed")
 
-# Budget calculated-column roles (see docs/forecasting/semantic-catalog/budget_column_roles.yml).
-_BUDGET_COLUMN_OVERLAP_CHECKS: tuple[tuple[str, tuple[str, ...], str], ...] = (
-    (
-        "revised_budget_with_pending_changes",
-        ("revised_budget", "pending_budget_changes"),
-        "calculated_rollup_may_include_pending",
-    ),
-    (
-        "projected_costs_with_committed_and_direct",
-        ("projected_costs", "committed_costs", "direct_costs"),
-        "calculated_cost_projection_may_include_components",
-    ),
-    (
-        "eac_with_projected_costs",
-        ("estimated_cost_at_completion", "projected_costs"),
-        "terminal_rollup_vs_component",
-    ),
-)
-
-_PARITY_PAIR_CONFIGS: tuple[dict[str, str], ...] = (
+_PARITY_PAIR_CONFIGS: tuple[dict[str, Any], ...] = (
     {
         "ep_table": "procore_ep_commitment_contracts",
         "target_table": "procore_financial_contracts",
         "family": "commitment",
         "ep_key": "record_id",
         "target_key": "contract_id",
+        "amount_field": "grand_total",
+        "updated_field": "updated_at",
     },
     {
         "ep_table": "procore_ep_purchase_order_contracts",
@@ -53,6 +36,9 @@ _PARITY_PAIR_CONFIGS: tuple[dict[str, str], ...] = (
         "family": "purchase_order",
         "ep_key": "record_id",
         "target_key": "contract_id",
+        "amount_field": "grand_total",
+        "updated_field": "updated_at",
+        "expected_financial_only": ["commitment_backed_po"],
     },
 )
 
@@ -311,9 +297,18 @@ def run_double_count_gate(
                 )
 
         if _table_exists(conn, "procore_ep_budget_detail_rows"):
+            from hb_assistant.forecasting.budget_column_roles import overlap_checks
+
             cols = _table_columns(conn, "procore_ep_budget_detail_rows")
-            for check_name, column_names, basis in _BUDGET_COLUMN_OVERLAP_CHECKS:
-                if not all(col in cols for col in column_names):
+            for check in overlap_checks():
+                if not isinstance(check, dict):
+                    continue
+                check_name = str(check.get("name") or "")
+                column_names = tuple(check.get("columns") or ())
+                basis = str(check.get("basis") or "budget_column_overlap")
+                formula_status = str(check.get("procore_formula_status") or "unresolved")
+                base_severity = str(check.get("severity") or "warning")
+                if not check_name or not column_names or not all(col in cols for col in column_names):
                     continue
                 populated = " AND ".join(_column_populated(col) for col in column_names)
                 q_name = f"budget_column_overlap_{check_name}"
@@ -327,22 +322,23 @@ def run_double_count_gate(
                     """
                 ).fetchall()
                 queries.append({"name": q_name, "ok": True, "row_count": len(rows)})
-                severity = "info" if check_name == "eac_with_projected_costs" else "warning"
                 for row in rows:
                     findings.append(
                         {
                             "query": q_name,
                             "project_key": row["project_key"],
                             "budget_code_key": row["budget_code_key"],
-                            "severity": _severity_for_mode(mode, severity),
+                            "severity": _severity_for_mode(mode, base_severity),
                             "basis": basis,
                             "column_roles": list(column_names),
                             "row_count": int(row["row_count"]),
                             "message": (
-                                "Budget calculated columns coexist with workflow-stage columns; "
-                                "do not add workflow amounts on top of rollups without precedence proof."
+                                "Budget columns coexist per Procore standard view; "
+                                "do not add component workflow amounts on top of calculated rollups."
+                                if formula_status == "proven"
+                                else "Budget column coexistence unresolved; apply precedence before summing."
                             ),
-                            "procore_formula_proof": "unresolved",
+                            "procore_formula_status": formula_status,
                         }
                     )
 
@@ -533,6 +529,28 @@ def _parity_key_sets(
     return ep_keys, fin_keys
 
 
+def _is_commitment_backed_po(conn: sqlite3.Connection, project_key: str, contract_id: str) -> bool:
+    row = conn.execute(
+        """
+        SELECT 1 FROM procore_financial_contracts
+        WHERE project_key = ? AND contract_id = ? AND contract_family = 'commitment'
+        LIMIT 1
+        """,
+        (project_key, contract_id),
+    ).fetchone()
+    if row:
+        return True
+    ep_row = conn.execute(
+        """
+        SELECT 1 FROM procore_ep_commitment_contracts
+        WHERE project_key = ? AND CAST(record_id AS TEXT) = ?
+        LIMIT 1
+        """,
+        (project_key, contract_id),
+    ).fetchone()
+    return ep_row is not None
+
+
 def _status_mismatch_count(
     conn: sqlite3.Connection,
     *,
@@ -561,19 +579,100 @@ def _status_mismatch_count(
     return int(row["mismatch_count"] or 0)
 
 
-def run_projection_parity_gate(*, db_path: str | Path) -> dict[str, Any]:
-    """Report count- and key-level mismatches between procore_ep_* and procore_financial_* layers."""
+def _amount_mismatch_report(
+    conn: sqlite3.Connection,
+    *,
+    ep_table: str,
+    target_table: str,
+    family: str,
+    ep_key: str,
+    target_key: str,
+    amount_field: str,
+) -> tuple[int, list[str]]:
+    ep_cols = _table_columns(conn, ep_table)
+    fin_cols = _table_columns(conn, target_table)
+    if amount_field not in ep_cols or amount_field not in fin_cols:
+        return 0, []
+    count_row = conn.execute(
+        f"""
+        SELECT COUNT(*) AS mismatch_count
+        FROM {ep_table} ep
+        JOIN {target_table} fin
+          ON fin.project_key = ep.project_key
+         AND CAST(fin.{target_key} AS TEXT) = CAST(ep.{ep_key} AS TEXT)
+         AND fin.contract_family = ?
+        WHERE COALESCE(TRIM(ep.{amount_field}), '') <> COALESCE(TRIM(fin.{amount_field}), '')
+        """,
+        (family,),
+    ).fetchone()
+    count = int(count_row["mismatch_count"] or 0)
+    rows = conn.execute(
+        f"""
+        SELECT ep.project_key, CAST(ep.{ep_key} AS TEXT) AS record_key
+        FROM {ep_table} ep
+        JOIN {target_table} fin
+          ON fin.project_key = ep.project_key
+         AND CAST(fin.{target_key} AS TEXT) = CAST(ep.{ep_key} AS TEXT)
+         AND fin.contract_family = ?
+        WHERE COALESCE(TRIM(ep.{amount_field}), '') <> COALESCE(TRIM(fin.{amount_field}), '')
+        LIMIT ?
+        """,
+        (family, _KEY_SAMPLE_LIMIT),
+    ).fetchall()
+    return count, [_hash_key(f"{r['project_key']}:{r['record_key']}") for r in rows]
+
+
+def _updated_field_mismatch_count(
+    conn: sqlite3.Connection,
+    *,
+    ep_table: str,
+    target_table: str,
+    family: str,
+    ep_key: str,
+    target_key: str,
+    ep_updated: str,
+    fin_updated: str,
+) -> int:
+    ep_cols = _table_columns(conn, ep_table)
+    fin_cols = _table_columns(conn, target_table)
+    fin_field = "updated_at_utc" if "updated_at_utc" in fin_cols else fin_updated
+    ep_field = ep_updated if ep_updated in ep_cols else ("updated_utc" if "updated_utc" in ep_cols else None)
+    if not ep_field or fin_field not in fin_cols:
+        return 0
+    row = conn.execute(
+        f"""
+        SELECT COUNT(*) AS mismatch_count
+        FROM {ep_table} ep
+        JOIN {target_table} fin
+          ON fin.project_key = ep.project_key
+         AND CAST(fin.{target_key} AS TEXT) = CAST(ep.{ep_key} AS TEXT)
+         AND fin.contract_family = ?
+        WHERE COALESCE(TRIM(ep.{ep_field}), '') <> COALESCE(TRIM(fin.{fin_field}), '')
+        """,
+        (family,),
+    ).fetchone()
+    return int(row["mismatch_count"] or 0)
+
+
+def run_projection_parity_gate(
+    *,
+    db_path: str | Path,
+    mode: GateMode = "warn",
+) -> dict[str, Any]:
+    """Report count-, key-, and selected-field mismatches between projection layers."""
     path = str(db_path)
     findings: list[dict[str, Any]] = []
     pairs_checked = 0
 
     with _connect_ro(path) as conn:
         for cfg in _PARITY_PAIR_CONFIGS:
-            ep_table = cfg["ep_table"]
-            fin_table = cfg["target_table"]
-            family = cfg["family"]
-            ep_key = cfg["ep_key"]
-            target_key = cfg["target_key"]
+            ep_table = str(cfg["ep_table"])
+            fin_table = str(cfg["target_table"])
+            family = str(cfg["family"])
+            ep_key = str(cfg["ep_key"])
+            target_key = str(cfg["target_key"])
+            amount_field = str(cfg.get("amount_field") or "grand_total")
+            updated_field = str(cfg.get("updated_field") or "updated_at")
 
             if not _table_exists(conn, ep_table) or not _table_exists(conn, fin_table):
                 findings.append(
@@ -594,19 +693,6 @@ def run_projection_parity_gate(*, db_path: str | Path) -> dict[str, Any]:
                 f"SELECT COUNT(*) FROM {fin_table} WHERE contract_family = ?",
                 (family,),
             ).fetchone()[0]
-            if ep_count != fin_count:
-                findings.append(
-                    {
-                        "family": family,
-                        "severity": "warning",
-                        "basis": "row_count_mismatch",
-                        "source_table": ep_table,
-                        "ep_row_count": ep_count,
-                        "target_table": fin_table,
-                        "financial_row_count": fin_count,
-                        "message": "Dual projection layers diverge; investigate before modeling.",
-                    }
-                )
 
             ep_keys, fin_keys = _parity_key_sets(
                 conn,
@@ -616,57 +702,140 @@ def run_projection_parity_gate(*, db_path: str | Path) -> dict[str, Any]:
                 ep_key=ep_key,
                 target_key=target_key,
             )
-            if ep_keys or fin_keys:
-                source_only = sorted(ep_keys - fin_keys)
-                target_only = sorted(fin_keys - ep_keys)
-                if source_only:
-                    findings.append(
-                        {
-                            "source_table": ep_table,
-                            "target_table": fin_table,
-                            "family": family,
-                            "check": "missing_target_keys",
-                            "severity": "warning",
-                            "count": len(source_only),
-                            "sample_key_hashes": [
-                                _hash_key(f"{pk}:{rk}") for pk, rk in source_only[:_KEY_SAMPLE_LIMIT]
-                            ],
-                        }
-                    )
-                if target_only:
-                    findings.append(
-                        {
-                            "source_table": ep_table,
-                            "target_table": fin_table,
-                            "family": family,
-                            "check": "missing_source_keys",
-                            "severity": "warning",
-                            "count": len(target_only),
-                            "sample_key_hashes": [
-                                _hash_key(f"{pk}:{rk}") for pk, rk in target_only[:_KEY_SAMPLE_LIMIT]
-                            ],
-                        }
-                    )
+            source_only = sorted(ep_keys - fin_keys)
+            target_only = sorted(fin_keys - ep_keys)
+            expected_target_only: list[tuple[str, str]] = []
+            unexpected_target_only: list[tuple[str, str]] = []
+            for pk, rk in target_only:
+                if family == "purchase_order" and _is_commitment_backed_po(conn, pk, rk):
+                    expected_target_only.append((pk, rk))
+                else:
+                    unexpected_target_only.append((pk, rk))
 
-                status_mismatches = _status_mismatch_count(
-                    conn,
-                    ep_table=ep_table,
-                    target_table=fin_table,
-                    family=family,
-                    ep_key=ep_key,
-                    target_key=target_key,
+            adjusted_fin_count = fin_count - len(expected_target_only)
+            if ep_count != adjusted_fin_count:
+                findings.append(
+                    {
+                        "family": family,
+                        "severity": "warning",
+                        "basis": "row_count_mismatch",
+                        "source_table": ep_table,
+                        "ep_row_count": ep_count,
+                        "target_table": fin_table,
+                        "financial_row_count": fin_count,
+                        "financial_row_count_adjusted": adjusted_fin_count,
+                        "expected_financial_only_count": len(expected_target_only),
+                        "message": "Dual projection layers diverge after expected-drift adjustment.",
+                    }
                 )
-                if status_mismatches:
-                    findings.append(
-                        {
-                            "source_table": ep_table,
-                            "target_table": fin_table,
-                            "family": family,
-                            "check": "status_field_mismatch",
-                            "severity": "warning",
-                            "count": status_mismatches,
-                        }
-                    )
+
+            if source_only:
+                findings.append(
+                    {
+                        "source_table": ep_table,
+                        "target_table": fin_table,
+                        "family": family,
+                        "check": "missing_target_keys",
+                        "severity": _severity_for_mode(mode, "warning"),
+                        "count": len(source_only),
+                        "sample_key_hashes": [
+                            _hash_key(f"{pk}:{rk}") for pk, rk in source_only[:_KEY_SAMPLE_LIMIT]
+                        ],
+                    }
+                )
+            if expected_target_only:
+                findings.append(
+                    {
+                        "source_table": ep_table,
+                        "target_table": fin_table,
+                        "family": family,
+                        "check": "expected_financial_only_keys",
+                        "classification": "commitment_backed_po",
+                        "severity": "info",
+                        "count": len(expected_target_only),
+                        "sample_key_hashes": [
+                            _hash_key(f"{pk}:{rk}") for pk, rk in expected_target_only[:_KEY_SAMPLE_LIMIT]
+                        ],
+                    }
+                )
+            if unexpected_target_only:
+                findings.append(
+                    {
+                        "source_table": ep_table,
+                        "target_table": fin_table,
+                        "family": family,
+                        "check": "missing_source_keys",
+                        "severity": _severity_for_mode(mode, "warning"),
+                        "count": len(unexpected_target_only),
+                        "sample_key_hashes": [
+                            _hash_key(f"{pk}:{rk}") for pk, rk in unexpected_target_only[:_KEY_SAMPLE_LIMIT]
+                        ],
+                    }
+                )
+
+            status_mismatches = _status_mismatch_count(
+                conn,
+                ep_table=ep_table,
+                target_table=fin_table,
+                family=family,
+                ep_key=ep_key,
+                target_key=target_key,
+            )
+            if status_mismatches:
+                findings.append(
+                    {
+                        "source_table": ep_table,
+                        "target_table": fin_table,
+                        "family": family,
+                        "check": "status_field_mismatch",
+                        "severity": _severity_for_mode(mode, "warning"),
+                        "count": status_mismatches,
+                    }
+                )
+
+            amount_count, amount_samples = _amount_mismatch_report(
+                conn,
+                ep_table=ep_table,
+                target_table=fin_table,
+                family=family,
+                ep_key=ep_key,
+                target_key=target_key,
+                amount_field=amount_field,
+            )
+            if amount_count:
+                findings.append(
+                    {
+                        "source_table": ep_table,
+                        "target_table": fin_table,
+                        "family": family,
+                        "check": "amount_field_mismatch",
+                        "severity": _severity_for_mode(mode, "warning"),
+                        "count": amount_count,
+                        "sample_key_hashes": amount_samples,
+                    }
+                )
+
+            updated_mismatches = _updated_field_mismatch_count(
+                conn,
+                ep_table=ep_table,
+                target_table=fin_table,
+                family=family,
+                ep_key=ep_key,
+                target_key=target_key,
+                ep_updated=updated_field,
+                fin_updated="updated_at_utc",
+            )
+            if updated_mismatches:
+                findings.append(
+                    {
+                        "source_table": ep_table,
+                        "target_table": fin_table,
+                        "family": family,
+                        "check": "updated_field_mismatch",
+                        "severity": "info",
+                        "count": updated_mismatches,
+                    }
+                )
 
     warning_count = sum(1 for f in findings if f.get("severity") == "warning")
     error_count = sum(1 for f in findings if f.get("severity") == "error")
@@ -676,6 +845,7 @@ def run_projection_parity_gate(*, db_path: str | Path) -> dict[str, Any]:
         "gate": "forecast_projection_parity",
         "db_path": path,
         "checked_at_utc": _utc_now(),
+        "mode": mode,
         "pairs_checked": pairs_checked,
         "finding_count": len(findings),
         "warning_count": warning_count,
@@ -751,7 +921,7 @@ def run_all_forecasting_gates(
     full_reports = [
         run_double_count_gate(db_path=db_path, mode=mode),
         run_actuals_reconciliation_gate(db_path=db_path, mode=mode),
-        run_projection_parity_gate(db_path=db_path),
+        run_projection_parity_gate(db_path=db_path, mode=mode),
         run_cost_type_guard_gate(db_path=db_path),
     ]
     abbreviated = [_abbreviate_gate_report(r) for r in full_reports]

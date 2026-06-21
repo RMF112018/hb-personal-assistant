@@ -1,69 +1,218 @@
-version: 1
+version: 2
 evidence_package_ref: docs/evidence/forecasting-db-complete-evidence/20260621T130542Z/
-procore_formula_proof: unresolved
+procore_doc_primary: https://support.procore.com/faq/what-are-procores-standard-budget-views
 notes:
-  - Procore budget calculated-column inclusion rules are not fully proven from local evidence.
-  - Gate reports overlap as warnings; do not hard-fail without formula proof.
-  - Forecast model logic must not add workflow-stage facts on top of calculated rollups.
+  - Column types and formulas below cite Procore Standard Budget View (official support doc).
+  - Budget view configuration can add custom/dynamic columns; unmapped columns remain unresolved.
+  - Gate must not hard-fail on formula uncertainty; strict mode promotes only actionable mismatches.
 
 budget_column_roles:
   original_budget_amount:
     role: baseline_budget
+    source_type: source
     additive_behavior: base
-    source_column: procore_ep_budget_detail_rows.original_budget_amount
+    procore_formula_status: proven
+    procore_doc_reference: https://support.procore.com/faq/what-are-procores-standard-budget-views
+    local_schema_evidence: procore_ep_budget_detail_rows.original_budget_amount
+    double_count_rule: safe_additive_baseline
+    strict_mode_behavior: pass
+    caveat: Original budget per budget code; not a rollup.
+
   approved_budget_changes:
-    role: workflow_stage_change
-    additive_behavior: add_to_baseline_only_when_revised_budget_empty
-    caveat: may already be included in revised_budget depending on budget view
-  pending_budget_changes:
-    role: workflow_stage_change
-    additive_behavior: do_not_add_when_revised_or_projected_budget_populated
-    caveat: pending changes may be reflected in projected_budget column
+    role: approved_change_input
+    source_type: source
+    additive_behavior: included_in_revised_budget_when_populated
+    procore_formula_status: partially_proven
+    procore_doc_reference: https://support.procore.com/faq/what-are-procores-standard-budget-views
+    local_schema_evidence: procore_ep_budget_detail_rows.approved_budget_changes
+    double_count_rule: do_not_add_when_revised_budget_populated
+    strict_mode_behavior: warn
+    caveat: Procore doc names column Approved COs (commitment COs); local column name may differ.
+
   revised_budget:
     role: calculated_budget_rollup
+    source_type: calculated
     additive_behavior: do_not_add_approved_changes_again
-    must_not_add: [approved_budget_changes, approved_cco_amount_if_included]
+    procore_formula_status: proven
+    procore_doc_reference: https://support.procore.com/faq/what-are-procores-standard-budget-views
+    local_schema_evidence: procore_ep_budget_detail_rows.revised_budget
+    double_count_rule: terminal_rollup_for_budget_side
+    strict_mode_behavior: warn_on_component_coexistence
+    caveat: Procore formula = Budget Modifications + Approved COs.
+
+  pending_budget_changes:
+    role: pending_change_input
+    source_type: source
+    additive_behavior: included_in_projected_budget_when_populated
+    procore_formula_status: proven
+    procore_doc_reference: https://support.procore.com/faq/what-are-procores-standard-budget-views
+    local_schema_evidence: procore_ep_budget_detail_rows.pending_budget_changes
+    double_count_rule: do_not_add_when_projected_budget_populated
+    strict_mode_behavior: warn
+    caveat: Pending prime contract change orders.
+
   projected_budget:
     role: calculated_budget_projection
+    source_type: calculated
     additive_behavior: do_not_add_pending_changes_again
-    must_not_add: [pending_budget_changes]
+    procore_formula_status: proven
+    procore_doc_reference: https://support.procore.com/faq/what-are-procores-standard-budget-views
+    local_schema_evidence: procore_ep_budget_detail_rows.projected_budget
+    double_count_rule: terminal_rollup_for_budget_projection
+    strict_mode_behavior: warn_on_component_coexistence
+    caveat: Procore formula = Revised Budget + Pending Budget Changes.
+
   committed_costs:
     role: workflow_stage_cost
-    additive_behavior: add_only_when_not_in_projected_costs
+    source_type: source
+    additive_behavior: included_in_projected_costs_when_populated
+    procore_formula_status: proven
+    procore_doc_reference: https://support.procore.com/faq/what-are-procores-standard-budget-views
+    local_schema_evidence: procore_ep_budget_detail_rows.committed_costs
+    double_count_rule: do_not_add_when_projected_costs_populated
+    strict_mode_behavior: warn
+    caveat: Approved subcontracts/POs and approved COs per Procore status rules.
+
   direct_costs:
     role: workflow_stage_cost
-    additive_behavior: add_only_when_not_in_projected_costs
+    source_type: source
+    additive_behavior: included_in_projected_costs_when_populated
+    procore_formula_status: proven
+    procore_doc_reference: https://support.procore.com/faq/what-are-procores-standard-budget-views
+    local_schema_evidence: procore_ep_budget_detail_rows.direct_costs
+    double_count_rule: do_not_add_when_projected_costs_populated
+    strict_mode_behavior: warn
+
   job_to_date_costs:
-    role: cumulative_actual_proxy
+    role: calculated_actual_rollup
+    source_type: calculated
     additive_behavior: reconcile_not_sum_with_actual_cost
+    procore_formula_status: proven
+    procore_doc_reference: https://support.procore.com/faq/what-are-procores-standard-budget-views
+    local_schema_evidence: procore_ep_budget_detail_rows.job_to_date_costs
+    double_count_rule: direct_costs_plus_invoices_not_additive_with_jtd
+    strict_mode_behavior: info
+    caveat: Procore formula = Direct Costs + Subcontractor Invoices.
+
+  actual_cost:
+    role: cumulative_actual_proxy
+    source_type: unresolved
+    additive_behavior: reconcile_with_jtd_and_invoice_sources
+    procore_formula_status: unresolved
+    procore_doc_reference: null
+    local_schema_evidence: procore_ep_budget_detail_rows.actual_cost
+    double_count_rule: precedence_required_vs_invoice_detail
+    strict_mode_behavior: warn
+    caveat: Local rollup column; exact Procore mapping to Job to Date Costs not proven here.
+
   pending_cost_changes:
     role: workflow_stage_cost
-    additive_behavior: do_not_add_when_projected_costs_populated
+    source_type: source
+    additive_behavior: included_in_projected_costs_when_populated
+    procore_formula_status: proven
+    procore_doc_reference: https://support.procore.com/faq/what-are-procores-standard-budget-views
+    local_schema_evidence: procore_ep_budget_detail_rows.pending_cost_changes
+    double_count_rule: do_not_add_when_projected_costs_populated
+    strict_mode_behavior: warn
+
   projected_costs:
     role: calculated_cost_projection
+    source_type: calculated
     additive_behavior: do_not_add_committed_direct_pending_costs_again
-    must_not_add: [committed_costs, direct_costs, pending_cost_changes]
+    procore_formula_status: proven
+    procore_doc_reference: https://support.procore.com/faq/what-are-procores-standard-budget-views
+    local_schema_evidence: procore_ep_budget_detail_rows.projected_costs
+    double_count_rule: terminal_rollup_for_cost_projection
+    strict_mode_behavior: warn_on_component_coexistence
+    caveat: Procore formula = Committed Costs + Direct Costs + Pending Cost Changes.
+
   forecast_to_complete:
     role: calculated_forecast_component
+    source_type: calculated
     additive_behavior: component_of_eac_not_additive_with_eac
+    procore_formula_status: partially_proven
+    procore_doc_reference: https://support.procore.com/products/online/user-guide/project-level/budget/tutorials/use-the-forecast-to-complete-feature
+    local_schema_evidence: procore_ep_budget_detail_rows.forecast_to_complete
+    double_count_rule: do_not_add_to_eac_again
+    strict_mode_behavior: info
+    caveat: Procore doc references Projected Budget minus project costs; method may vary by configuration.
+
   estimated_cost_at_completion:
     role: calculated_eac
+    source_type: calculated
     additive_behavior: terminal_rollup_for_eac_reconciliation
-    must_not_add: [projected_costs, committed_costs, direct_costs, actual_cost]
+    procore_formula_status: proven
+    procore_doc_reference: https://support.procore.com/faq/what-are-procores-standard-budget-views
+    local_schema_evidence: procore_ep_budget_detail_rows.estimated_cost_at_completion
+    double_count_rule: do_not_add_projected_costs_or_ftc_again
+    strict_mode_behavior: info_on_component_coexistence
+    caveat: Procore formula = Projected Costs + Forecast to Complete.
+
   projected_over_under:
     role: calculated_variance
+    source_type: calculated
     additive_behavior: derived_do_not_add_inputs
+    procore_formula_status: proven
+    procore_doc_reference: https://support.procore.com/faq/what-are-procores-standard-budget-views
+    local_schema_evidence: procore_ep_budget_detail_rows.projected_over_under
+    double_count_rule: derived_only
+    strict_mode_behavior: pass
+    caveat: Procore formula = Projected Budget - Estimated Cost at Completion.
+
+  erp_direct_costs:
+    role: erp_sidecar
+    source_type: configured_source
+    additive_behavior: reconcile_not_sum_with_procore_direct_costs
+    procore_formula_status: unresolved
+    procore_doc_reference: null
+    local_schema_evidence: procore_ep_budget_detail_rows.erp_direct_costs
+    double_count_rule: erp_sidecar_precedence
+    strict_mode_behavior: info
+
+  erp_job_to_date_costs:
+    role: erp_sidecar
+    source_type: configured_source
+    additive_behavior: reconcile_not_sum_with_procore_jtd
+    procore_formula_status: unresolved
+    procore_doc_reference: null
+    local_schema_evidence: procore_ep_budget_detail_rows.erp_job_to_date_costs
+    double_count_rule: erp_sidecar_precedence
+    strict_mode_behavior: info
 
 overlap_checks:
+  - name: revised_budget_with_approved_changes
+    columns: [revised_budget, approved_budget_changes]
+    severity: info
+    basis: proven_revised_includes_approved_cos
+    procore_formula_status: proven
   - name: revised_budget_with_pending_changes
     columns: [revised_budget, pending_budget_changes]
     severity: warning
-    basis: calculated_rollup_may_include_pending
+    basis: pending_not_in_revised_budget_may_still_coexist
+    procore_formula_status: partially_proven
+  - name: projected_budget_with_pending_changes
+    columns: [projected_budget, pending_budget_changes]
+    severity: info
+    basis: proven_projected_budget_includes_pending
+    procore_formula_status: proven
   - name: projected_costs_with_committed_and_direct
     columns: [projected_costs, committed_costs, direct_costs]
-    severity: warning
-    basis: calculated_cost_projection_may_include_components
-  - name: eac_with_projected_costs
-    columns: [estimated_cost_at_completion, projected_costs]
     severity: info
-    basis: terminal_rollup_vs_component
+    basis: proven_projected_costs_includes_components
+    procore_formula_status: proven
+  - name: projected_costs_with_pending_cost_changes
+    columns: [projected_costs, pending_cost_changes]
+    severity: info
+    basis: proven_projected_costs_includes_pending
+    procore_formula_status: proven
+  - name: eac_with_projected_costs_and_ftc
+    columns: [estimated_cost_at_completion, projected_costs, forecast_to_complete]
+    severity: info
+    basis: proven_eac_includes_projected_costs_and_ftc
+    procore_formula_status: proven
+
+po_projection_drift:
+  expected_financial_only_classifications:
+    - commitment_backed_po
+  parity_gate_suppress_warning_for:
+    - commitment_backed_po

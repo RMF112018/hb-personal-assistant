@@ -50,4 +50,6 @@ precedence_rules:
 
 validation_query: validation_queries/double_count_prevention.sql
 budget_column_roles_ref: budget_column_roles.yml
-procore_formula_proof: unresolved
+procore_formula_proof: partially_proven
+procore_doc_reference: https://support.procore.com/faq/what-are-procores-standard-budget-views
+po_projection_drift_ref: docs/evidence/forecasting-db-audit-20260621/purchase-order-projection-drift-audit.md
