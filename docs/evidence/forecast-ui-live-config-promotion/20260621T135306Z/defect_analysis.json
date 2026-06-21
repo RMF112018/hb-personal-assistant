@@ -1,0 +1,15 @@
+{
+  "actual_snapshot_items_rows": 194,
+  "consequence": "db-config-backed generation refuses (config_fidelity_failed: materialized config does not round-trip; resnap item_count=190 != stored header 194)",
+  "defect": "promoted snapshot internally inconsistent + drops forecast_model_controls items",
+  "header_item_count": 194,
+  "header_minus_rows": 0,
+  "phase16_model_controls_count": 5,
+  "promoted_model_controls_count": 1,
+  "promoted_model_controls_items": [
+    "tropical-example-explicit-final-pending"
+  ],
+  "promoted_snapshot_id": "da947f849f2013d7aea2be1d8a42a608d931404dd1d3cb19c995107431960d16",
+  "proposal_edited_config_model_controls_count": 5,
+  "where_lost": "during promotion import->snapshot->copy into live DB (proposal edited_config had all 5; live promoted snapshot has 1)"
+}

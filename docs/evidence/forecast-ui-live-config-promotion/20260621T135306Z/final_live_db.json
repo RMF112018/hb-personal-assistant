@@ -1,0 +1,25 @@
+{
+  "captured": "final post-write",
+  "data_version": 2,
+  "main": {
+    "exists": true,
+    "mtime_ns": 1782050152757466542,
+    "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite",
+    "sha256": "9cdf3c75e89ab18d62456c658f7b00d0347bd3fd2483eb5ad4eb442953e4fbc9",
+    "size_bytes": 3530186752
+  },
+  "shm": {
+    "exists": true,
+    "mtime_ns": 1782050227145255638,
+    "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite-shm",
+    "sha256": "fd4c9fda9cd3f9ae7c962b0ddf37232294d55580e1aa165aa06129b8549389eb",
+    "size_bytes": 32768
+  },
+  "wal": {
+    "exists": true,
+    "mtime_ns": 1782050152759986409,
+    "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite-wal",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "size_bytes": 0
+  }
+}
