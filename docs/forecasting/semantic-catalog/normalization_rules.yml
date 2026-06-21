@@ -1,0 +1,64 @@
+amount:
+  classifier: src/hb_assistant/forecasting/field_classifiers.py::classify_amount_field
+  rules:
+    true_monetary_amount: {normalize: decimal, aggregate: true}
+    quantity: {normalize: decimal, aggregate: true}
+    percentage: {normalize: decimal_ratio, aggregate: true, document_basis: required}
+    count: {normalize: integer, aggregate: false}
+    boolean_flag: {normalize: boolean, aggregate: false}
+    enum_status_dimension: {normalize: normalized_text, aggregate: false}
+    identifier_key: {normalize: text_identity, aggregate: false}
+    excluded_false_positive: {normalize: none, aggregate: false}
+  known_false_positives:
+    - budget_impact_source_of_latest_budget_impact
+    - cost_impact_source_of_stage
+    - contract_invoicing_method
+    - allow_payment_applications
+    - display_work_retainage
+  known_true_monetary:
+    - grand_total
+    - latest_cost_values_amount
+    - scheduled_value
+    - subcontractor_claimed_amount
+    - job_to_date_costs
+    - actual_cost
+
+date:
+  classifier: src/hb_assistant/forecasting/field_classifiers.py::classify_date_field
+  rules:
+    created_timestamp: {parse: iso8601, timezone: preserve}
+    updated_timestamp: {parse: iso8601, timezone: preserve}
+    non_date_to_date_metric: {parse: false, treat_as: amount}
+  known_non_dates:
+    - total_completed_and_stored_to_date
+    - job_to_date_costs
+    - erp_job_to_date_costs
+    - work_completed_from_previous_application
+  time_axis_by_family:
+    budget_detail: {event_date: updated_utc, fallback: created_utc}
+    commitment: {event_date: updated_at, fallback: created_at}
+    purchase_order: {event_date: delivery_date, fallback: updated_at}
+    commitment_change_order: {event_date: signed_change_order_received_date, fallback: updated_at}
+    prime_contract: {event_date: updated_at, fallback: created_at}
+    prime_change_order: {event_date: signed_change_order_received_date, fallback: updated_at}
+    change_event: {event_date: updated_at, fallback: created_at}
+    rfq: {event_date: updated_at, fallback: created_at}
+    subcontractor_invoice: {event_date: billing_date, fallback: period_end}
+    billing_period: {event_date: end_date, fallback: start_date}
+    monthly_actuals: {event_date: forecast_month, fallback: created_utc}
+    external_forecast_rows: {event_date: forecast_month, fallback: created_utc}
+    forecast_runs: {event_date: created_utc, fallback: updated_utc}
+
+boolean:
+  classifier: src/hb_assistant/forecasting/field_classifiers.py::normalize_boolean_value
+  truthy: ["1", "true", "True", "yes", "y", "t"]
+  falsy: ["0", "false", "False", "no", "n", "f"]
+  unknown_policy: do_not_assume_false
+
+status:
+  classifier: src/hb_assistant/forecasting/field_classifiers.py::normalize_status_group
+  inclusion_matrix:
+    included_actual_approved: [approved, complete, closed, executed, paid]
+    pending_probability_weighted: [open, pending, draft, processing, review]
+    excluded_void: [void, cancelled, canceled, deleted, rejected]
+    unresolved: [null, blank, unknown_raw_values]

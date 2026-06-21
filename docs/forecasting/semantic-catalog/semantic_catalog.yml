@@ -1,0 +1,157 @@
+version: 1
+generated_at: "2026-06-21"
+authority:
+  evidence_package: docs/evidence/forecasting-db-complete-evidence-20260621T114232Z.tgz
+  evidence_extracted: docs/evidence/forecasting-db-complete-evidence/20260621T114232Z/
+  field_classifiers: src/hb_assistant/forecasting/field_classifiers.py
+  evidence_generator: scripts/generate_forecasting_db_complete_evidence.sh
+
+entities:
+  - name: dim_project
+    source_tables: [procore_ep_projects]
+    grain: one_row_per_project_key
+    confidence: high
+    evidence_basis: [schema-supported, row-profile-supported]
+
+  - name: dim_budget_code
+    source_tables: [procore_ep_budget_detail_rows, procore_ep_budget_detail_row_cells]
+    grain: project_key + budget_code_key
+    confidence: high
+    evidence_basis: [row-profile-supported]
+    validation_query: validation_queries/budget_relationships.sql
+
+  - name: dim_wbs_code
+    source_tables: [procore_ep_budget_detail_rows, procore_ep_change_events_change_items]
+    grain: project_key + wbs_code_id
+    confidence: medium
+    evidence_basis: [row-profile-supported]
+    caveat: category/category_id not mapped to cost_type without explicit proof
+
+  - name: dim_cost_code
+    source_tables: [procore_ep_budget_detail_rows, procore_ep_commitment_line_items]
+    confidence: medium
+    evidence_basis: [schema-supported, row-profile-supported]
+
+  - name: dim_cost_type
+    source_tables: [procore_ep_budget_detail_rows]
+    confidence: low
+    evidence_basis: [schema-supported]
+    caveat: cost_type null rates high in evidence; do not infer from category
+
+  - name: dim_vendor
+    source_tables: [procore_ep_commitment_contracts, procore_ep_purchase_order_contracts]
+    confidence: medium
+    evidence_basis: [row-profile-supported]
+
+  - name: dim_contract
+    source_tables: [procore_ep_commitment_contracts, procore_ep_prime_contracts, procore_ep_purchase_order_contracts]
+    confidence: high
+    evidence_basis: [schema-supported, row-profile-supported, repo-code-supported]
+
+  - name: dim_status
+    source_tables: [procore_ep_* status columns]
+    confidence: medium
+    evidence_basis: [row-profile-supported]
+    validation_query: validation_queries/status_normalization.sql
+
+  - name: dim_billing_period
+    source_tables: [procore_ep_billing_periods]
+    grain: record_id
+    confidence: high
+    evidence_basis: [row-profile-supported]
+
+  - name: fact_budget_detail
+    source_tables: [procore_ep_budget_detail_rows, procore_ep_budget_detail_row_cells]
+    grain: budget_view_id + budget_code + column
+    confidence: high
+    evidence_basis: [row-profile-supported, repo-code-supported]
+    date_basis: [updated_utc, created_utc]
+    amount_basis: [cell values via row cells; rollup columns on rows]
+    forecast_relevance: primary_eac_etc_source
+
+  - name: fact_budget_change
+    source_tables: [procore_ep_budget_modifications, procore_ep_budget_change_history]
+    confidence: medium
+    evidence_basis: [row-profile-supported]
+    status_inclusion: pending_unless_approved
+
+  - name: fact_commitment_exposure
+    source_tables: [procore_ep_commitment_contracts, procore_ep_commitment_line_items, procore_ep_commitment_change_orders]
+    confidence: high
+    evidence_basis: [row-profile-supported, repo-code-supported]
+    join_strategy: parent_record_id -> commitment_contracts.record_id
+    double_count_rule: exclude_when_po_duplicate_same_contract_id
+
+  - name: fact_purchase_order_exposure
+    source_tables: [procore_ep_purchase_order_contracts, procore_ep_purchase_order_line_items]
+    confidence: medium
+    evidence_basis: [row-profile-supported, repo-code-supported]
+    join_strategy:
+      primary: holder_id -> purchase_order_contracts.record_id
+      polymorphic_fallback: holder_id -> commitment_contracts.record_id
+    join_confidence: medium
+    relationship_evidence_basis: row-profile-supported
+    caveat: 12/28 line items use commitment holder; fold into commitment exposure per repo dedup policy
+    validation_query: validation_queries/purchase_order_relationships.sql
+    recommendation: separate_fact_with_commitment_fallback_not_folded
+
+  - name: fact_prime_contract_revenue
+    source_tables: [procore_ep_prime_contracts, procore_ep_prime_contract_line_items]
+    confidence: high
+    evidence_basis: [row-profile-supported]
+
+  - name: fact_prime_change_order_revenue
+    source_tables: [procore_ep_prime_change_orders, procore_ep_prime_change_order_line_items]
+    confidence: high
+    evidence_basis: [row-profile-supported]
+
+  - name: fact_change_event_exposure
+    source_tables: [procore_ep_change_events, procore_ep_change_events_change_items]
+    confidence: high
+    evidence_basis: [row-profile-supported]
+    double_count_rule: potential_exposure_only_until_cco_pco_approved
+
+  - name: fact_rfq_exposure
+    source_tables: [procore_ep_rfqs, procore_ep_rfqs_change_event_change_event_line_items]
+    confidence: medium
+    evidence_basis: [row-profile-supported]
+    double_count_rule: quoted_exposure; superseded by CCO when commitment_pco_cost populated
+
+  - name: fact_subcontractor_invoice_actuals
+    source_tables: [procore_ep_subcontractor_invoices, procore_ep_subcontractor_invoice_contract_detail_items, procore_ep_subcontractor_invoice_change_order_items]
+    confidence: high
+    evidence_basis: [row-profile-supported]
+    validation_query: validation_queries/invoice_relationships.sql
+
+  - name: fact_forecast_monthly_actuals
+    source_tables: [forecast_monthly_actuals_by_budget_code]
+    confidence: medium
+    evidence_basis: [schema-supported, repo-code-supported]
+    caveat: periodized; not equivalent to cumulative budget actuals without reconciliation
+
+  - name: fact_forecast_snapshot
+    source_tables: [forecast_config_snapshots, forecast_runs, forecast_packages]
+    confidence: medium
+    evidence_basis: [schema-supported, repo-code-supported]
+
+  - name: fact_external_forecast
+    source_tables: [forecast_external_forecasts, forecast_external_forecast_rows, forecast_external_forecast_mappings]
+    confidence: low
+    evidence_basis: [schema-supported, repo-code-supported]
+    caveat: live DB tables empty by design; rows in isolated eval.sqlite only
+
+  - name: fact_forecast_actuals_comparison
+    source_tables: [forecast_comparison_results, forecast_accuracy_results]
+    confidence: low
+    evidence_basis: [schema-supported, repo-code-supported]
+    caveat: empty on live DB; populated by ForecastExternalEvalService per eval run
+
+  - name: fact_forecast_anomaly
+    source_tables: [forecast_anomaly_findings]
+    confidence: low
+    evidence_basis: [repo-code-supported]
+
+  - name: fact_forecast_review_item
+    source_tables: [forecast_review_items]
+    confidence: low
+    evidence_basis: [repo-code-supported]
