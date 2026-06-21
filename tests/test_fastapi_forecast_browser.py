@@ -56,6 +56,42 @@ def _root_with_package(tmp_path: Path) -> Path:
     (pkg / "manifest.json").write_text(json.dumps(MANIFEST), encoding="utf-8")
     (pkg / "validation_report.json").write_text(json.dumps(VALIDATION), encoding="utf-8")
     (pkg / "integrated_final_cost_recommendations.jsonl").write_text(json.dumps(ROW), encoding="utf-8")
+    # Phase 5 review-surface files.
+    (pkg / "integrated_monthly_forecast_by_budget_code.jsonl").write_text(
+        json.dumps(
+            {
+                "cost_code": "03-01-025",
+                "budget_code_key": "0000.03-01-025.MAT",
+                "integrated_cost_to_complete": "2401.29",
+                "monthly_costs": [{"forecast_month": "2026-06", "integrated_month_cost": "282.07"}],
+            }
+        ),
+        encoding="utf-8",
+    )
+    (pkg / "integrated_monthly_project_forecast.jsonl").write_text(
+        json.dumps({"forecast_month": "2026-06", "integrated_month_cost": "282.07"}), encoding="utf-8"
+    )
+    (pkg / "integrated_probability_by_budget_code.jsonl").write_text(
+        json.dumps(
+            {"budget_code_key": "0000.03-01-025.MAT", "integrated_p50": "3561.74", "integrated_p95": "8812.82"}
+        ),
+        encoding="utf-8",
+    )
+    (pkg / "integrated_risk_register.jsonl").write_text(
+        json.dumps(
+            {
+                "cost_code": "03-01-025",
+                "integrated_recommended_final_cost": "3561.74",
+                "integrated_minus_accepted_final_cost": "128.05",
+                "max_conflict_severity": "high",
+            }
+        ),
+        encoding="utf-8",
+    )
+    (pkg / "top_overrun_risks.json").write_text(
+        json.dumps([{"cost_code": "03-01-413", "integrated_minus_accepted_final_cost": "15000.00"}]),
+        encoding="utf-8",
+    )
     return root
 
 
@@ -86,12 +122,37 @@ def test_full_read_only_flow(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) ->
     ).json()
     pid = packages["packages"][0]["package_id"]
 
-    for suffix in ("summary", "validation", "manifest", "review-items", "forecast-rows"):
+    for suffix in (
+        "summary",
+        "validation",
+        "manifest",
+        "review-items",
+        "forecast-rows",
+        "monthly",
+        "probability",
+        "risk-register",
+        "top-risks",
+    ):
         resp = client.get(f"/api/forecast/packages/{pid}/{suffix}", headers=_h())
         assert resp.status_code == 200, suffix
         body = resp.json()
         assert body["guardrails"]["read_only"] is True
         assert find_redaction_leaks(body) == [], f"leak in {suffix}: {find_redaction_leaks(body)}"
+
+    # The Phase 5 surfaces carry real data from the fixture.
+    assert client.get(f"/api/forecast/packages/{pid}/probability", headers=_h()).json()["rows"][0][
+        "p95"
+    ] == "8812.82"
+    assert client.get(f"/api/forecast/packages/{pid}/top-risks", headers=_h()).json()[
+        "top_risks_available"
+    ] is True
+
+
+def test_unknown_package_id_404_review_surface(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    client = _client(tmp_path, monkeypatch)
+    resp = client.get("/api/forecast/packages/0000000000000000/risk-register", headers=_h())
+    assert resp.status_code == 404
+    assert resp.json()["detail"] == "forecast_package_not_found"
 
 
 def test_responses_contain_no_dev_internals(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
