@@ -29,6 +29,9 @@ MAPE_PASS = Decimal("0.15")
 MAPE_FAIL = Decimal("0.30")
 BIAS_ABS_PASS = Decimal("0.10")
 COVERAGE_PASS = Decimal("0.90")
+# Recalibration is "recommended" only if it cuts MAPE by at least this much without losing coverage.
+RECAL_MIN_MAPE_IMPROVEMENT = Decimal("0.05")
+RECAL_COVERAGE_TOL = Decimal("0.05")
 
 VERDICT_PASS = "pass"
 VERDICT_REVIEW = "review_recommended"
@@ -153,6 +156,20 @@ def run_forecast_accuracy_gate(
     coverage = dec(rb.get("worst_credible_coverage_rate"))
     verdict, notes = _decide(cohort_size, mape, bias, coverage)
 
+    # Completion-stage recalibration effect (what flipping the production p75 stage-gate ON would buy).
+    # The verdict above stays on the baseline (production, flag-off) metrics.
+    recal = rb.get("recalibrated") or {}
+    mape_impr = dec(recal.get("mape_improvement"))
+    bias_impr = dec(recal.get("bias_abs_improvement"))
+    recal_cov = dec(recal.get("recalibrated_worst_credible_coverage_rate"))
+    recalibration_recommended = bool(
+        mape_impr is not None
+        and mape_impr >= RECAL_MIN_MAPE_IMPROVEMENT
+        and bias_impr is not None
+        and bias_impr >= Decimal("0")
+        and (recal_cov is None or coverage is None or recal_cov >= coverage - RECAL_COVERAGE_TOL)
+    )
+
     report = {
         "schema_version": REPORT_SCHEMA_VERSION,
         "project_key": project_key,
@@ -177,6 +194,21 @@ def run_forecast_accuracy_gate(
             "naive_erp_mape": rb.get("naive_erp_mape"),
             "reconciled_minus_naive_delta": rb.get("reconciled_minus_naive_delta"),
             "per_target_mape": rb.get("per_target_mape"),
+        },
+        "recalibration_effect": {
+            "production_flag_default": "off",
+            "recalibration_recommended": recalibration_recommended,
+            "baseline_mape": rb.get("reconciled_final_mape"),
+            "recalibrated_mape": recal.get("recalibrated_final_mape"),
+            "mape_improvement": recal.get("mape_improvement"),
+            "baseline_mean_bias": rb.get("reconciled_final_mean_bias"),
+            "recalibrated_mean_bias": recal.get("recalibrated_final_mean_bias"),
+            "bias_abs_improvement": recal.get("bias_abs_improvement"),
+            "baseline_coverage": rb.get("worst_credible_coverage_rate"),
+            "recalibrated_coverage": recal.get("recalibrated_worst_credible_coverage_rate"),
+            "recalibrated_per_target_mape": recal.get("recalibrated_per_target_mape"),
+            "note": "Effect of flipping the completion-stage p75 stage-gate ON; the verdict above is on "
+            "the baseline (production) metrics. recalibration_recommended is advisory.",
         },
         "verdict_notes": notes,
         "reconstruction_fidelity_caveats": rb.get("reconstruction_fidelity_caveats"),

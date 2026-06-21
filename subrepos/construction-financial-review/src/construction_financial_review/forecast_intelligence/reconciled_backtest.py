@@ -78,6 +78,9 @@ def _asof_bundle(m: dict, budget_amounts: dict) -> dict:
         else None,
         "owner_sov_value": None,
         "trend_signal": None,
+        # As-of completion fraction, so the (opt-in) p75 stage-gate is exercised in the backtest.
+        # Does not affect the baseline (stage-gate off) recommended value.
+        "owner_latest_percent_complete": str(m["owner_pct_to_t"]),
     }
 
 
@@ -101,6 +104,11 @@ def run_reconciled_backtest(
     naive_apes: list[Decimal] = []
     per_target: dict[str, list] = {str(t): [] for t in bts.ASOF_TARGETS}
     cohort_keys = set()
+    # Recalibrated variant (p75 stage-gate ON) — the before/after the gate reports.
+    recal_apes: list[Decimal] = []
+    recal_biases: list[Decimal] = []
+    recal_within_ceiling = 0
+    recal_per_target: dict[str, list] = {str(t): [] for t in bts.ASOF_TARGETS}
 
     for ctx in context_rows:
         key = ctx.get("budget_code_key")
@@ -113,12 +121,12 @@ def run_reconciled_backtest(
             if not ests:
                 continue
             bundle = _asof_bundle(m, ctx.get("budget_amounts") or {})
-            recommendation = reconcile_final.select_final(
-                key, project_key, ests, bundle, calibration
-            )
             realized = m["realized_final"]
             if realized <= 0:
                 continue
+            recommendation = reconcile_final.select_final(
+                key, project_key, ests, bundle, calibration
+            )
             recommended = D(recommendation["recommended_final_cost"])
             worst = D(recommendation["worst_credible_final_cost"])
             ape = (recommended - realized).copy_abs() / realized
@@ -129,6 +137,19 @@ def run_reconciled_backtest(
             within_ceiling += 1 if in_ceiling else 0
             per_target[str(target)].append(ape)
             cohort_keys.add(key)
+
+            # Recalibrated variant: same inputs, p75 stage-gate ON.
+            recal = reconcile_final.select_final(
+                key, project_key, ests, bundle, calibration, p75_stage_gate=True
+            )
+            recal_recommended = D(recal["recommended_final_cost"])
+            recal_worst = D(recal["worst_credible_final_cost"])
+            recal_ape = (recal_recommended - realized).copy_abs() / realized
+            recal_bias = (recal_recommended - realized) / realized
+            recal_apes.append(recal_ape)
+            recal_biases.append(recal_bias)
+            recal_within_ceiling += 1 if realized <= recal_worst else 0
+            recal_per_target[str(target)].append(recal_ape)
 
             erp = m.get("erp_projected")
             naive_ape = None
@@ -152,6 +173,9 @@ def run_reconciled_backtest(
                         ("reconciled_signed_bias", _q4(bias)),
                         ("realized_within_worst_ceiling", in_ceiling),
                         ("erp_naive_abs_pct_error", naive_ape),
+                        ("recalibrated_recommended_final_cost", money_str(recal_recommended)),
+                        ("recalibrated_abs_pct_error", _q4(recal_ape)),
+                        ("recalibrated_signed_bias", _q4(recal_bias)),
                         ("reconciliation_basis", recommendation.get("reconciliation_basis")),
                     ]
                 )
@@ -162,6 +186,16 @@ def run_reconciled_backtest(
     rec_mape = _mean(rec_apes)
     rec_bias = _mean(rec_biases)
     naive_mape = _mean(naive_apes)
+    recal_mape = _mean(recal_apes)
+    recal_bias = _mean(recal_biases)
+    mape_improvement = (
+        (rec_mape - recal_mape) if (rec_mape is not None and recal_mape is not None) else None
+    )
+    bias_abs_improvement = (
+        (abs(rec_bias) - abs(recal_bias))
+        if (rec_bias is not None and recal_bias is not None)
+        else None
+    )
 
     # Best single method (from backtest_strong's per-method summary) for the blending-value comparison.
     best_method = best_method_mape = None
@@ -204,6 +238,28 @@ def run_reconciled_backtest(
         "per_target_mape": OrderedDict(
             (t, _q4(mv)) for t, v in per_target.items() if v and (mv := _mean(v)) is not None
         ),
+        "recalibrated": {
+            "stage_gate_lo": str(reconcile_final.STAGE_GATE_LO),
+            "stage_gate_hi": str(reconcile_final.STAGE_GATE_HI),
+            "recalibrated_final_mape": _q4(recal_mape) if recal_mape is not None else None,
+            "recalibrated_final_mean_bias": _q4(recal_bias) if recal_bias is not None else None,
+            "recalibrated_worst_credible_coverage_rate": _q4(
+                Decimal(recal_within_ceiling) / Decimal(n_obs)
+            )
+            if n_obs
+            else None,
+            "mape_improvement": _q4(mape_improvement) if mape_improvement is not None else None,
+            "bias_abs_improvement": _q4(bias_abs_improvement)
+            if bias_abs_improvement is not None
+            else None,
+            "recalibrated_per_target_mape": OrderedDict(
+                (t, _q4(mv))
+                for t, v in recal_per_target.items()
+                if v and (mv := _mean(v)) is not None
+            ),
+            "note": "p75 overrun-bump stage-gate ON (ramped 0 at/below LO completion -> full at/above "
+            "HI or unknown). Production flag default-off; this measures what flipping it would buy.",
+        },
         "detail_rows": detail,
         "methodology": (
             "Reconstruct each near-complete code's state at 40/60/80% owner progress (backtest_strong "

@@ -50,6 +50,12 @@ PRIOR_ACCURACY_GLOB = "forecast_accuracy_package_tropical_*"
 
 CONCLUSION_OVERRUNS = "forecast_intelligence_ready_with_overrun_risks"
 CONCLUSION_READY = "forecast_intelligence_ready"
+
+# Completion-stage recalibration flip-point. Default OFF -> production reconciled forecast unchanged.
+# Flipping to True enables tempering the p75 overrun bump at low completion (gated on the accuracy-gate
+# evidence under docs/evidence/forecast-completion-stage-recalibration/). The reconciled backtest
+# measures both baseline and recalibrated regardless of this flag.
+_P75_STAGE_GATE = False
 CONCLUSION_NOT_READY = "forecast_intelligence_not_ready"
 
 LLM_SUBSET_CAP = 60
@@ -190,7 +196,8 @@ def generate(project_key: str, cfg: dict, data_root: Optional[Path] = None,
                                             cashflow_totals.get(key), assoc, tr, data_date,
                                             project_finish, project_key)
         ests = estimators_uncapped.estimate_all(bundle)
-        recommendation = reconcile_final.select_final(key, project_key, ests, bundle, calibration)
+        recommendation = reconcile_final.select_final(key, project_key, ests, bundle, calibration,
+                                                      p75_stage_gate=_P75_STAGE_GATE)
 
         # dormant / closed-code suppression (authoritative decision; emitted as the status file)
         if dorm_enabled:

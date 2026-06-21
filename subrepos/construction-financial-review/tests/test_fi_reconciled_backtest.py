@@ -68,6 +68,18 @@ def test_reconciled_backtest_scores_near_complete_code():
         assert d["realized_within_worst_ceiling"] in (True, False)
 
 
+def test_reconciled_backtest_emits_recalibrated_block():
+    ctx, owner = _near_complete_ctx()
+    out = rb.run_reconciled_backtest([ctx], owner, "tropical", {}, METHOD_SUMMARY)
+    r = out["recalibrated"]
+    assert "recalibrated_final_mape" in r
+    assert "mape_improvement" in r and "bias_abs_improvement" in r
+    assert r["stage_gate_lo"] and r["stage_gate_hi"]
+    for d in out["detail_rows"]:
+        assert "recalibrated_recommended_final_cost" in d
+        assert "recalibrated_abs_pct_error" in d
+
+
 def test_reconciled_backtest_deterministic():
     ctx, owner = _near_complete_ctx()
     a = rb.run_reconciled_backtest([ctx], owner, "tropical", {}, METHOD_SUMMARY)
