@@ -210,8 +210,13 @@ def _write_root_blocker(raw: str | None, data_root_raw: str | None) -> str | Non
         return BLOCKER_UNDER_LIVE_DATA_ROOT
     if p.exists():
         return None if p.is_dir() else BLOCKER_NOT_A_DIRECTORY
-    parent = p.parent
-    if parent.exists() and parent.is_dir() and os.access(parent, os.W_OK):
+    # Not existing: creatable iff the nearest EXISTING ancestor is a writable directory. Walk up the
+    # chain so a write root with missing-but-creatable parents (e.g. an auto-default under app-support
+    # whose container does not exist yet) is correctly creatable — this mirrors mkdir(parents=True).
+    ancestor = p.parent
+    while not ancestor.exists() and ancestor.parent != ancestor:
+        ancestor = ancestor.parent
+    if ancestor.exists() and ancestor.is_dir() and os.access(ancestor, os.W_OK):
         return None
     return BLOCKER_NOT_CREATABLE
 

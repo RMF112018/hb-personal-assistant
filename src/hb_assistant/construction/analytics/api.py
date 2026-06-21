@@ -7,6 +7,7 @@ dependency factory so the base package remains FastAPI-free.
 from __future__ import annotations
 
 import json
+from contextlib import asynccontextmanager
 from enum import Enum
 from pathlib import Path
 from typing import Any
@@ -331,6 +332,24 @@ def require_admin_role(role: dict[str, str]) -> dict[str, str]:
     return role
 
 
+@asynccontextmanager
+async def _forecast_lifespan(app: Any) -> Any:
+    """Startup bootstrap: ensure configured forecast write-roots exist before serving.
+
+    Informative and fail-closed — it creates ONLY configured+valid write-roots and never raises
+    (a bootstrap failure must never block app startup, mirroring the optional-surface degrade
+    posture). With nothing configured (the test/manual default) it is a no-op: no directories are
+    created and no read-roots are ever touched.
+    """
+    try:
+        from hb_assistant.construction.analytics.forecast_bootstrap import ensure_forecast_roots
+
+        ensure_forecast_roots()
+    except Exception:
+        pass
+    yield
+
+
 def create_app(*, db_path: str | None = None) -> Any:
     """Create the optional FastAPI app shell.
 
@@ -342,6 +361,7 @@ def create_app(*, db_path: str | None = None) -> Any:
 
     require_role = role_dependency()
     app = FastAPI(
+        lifespan=_forecast_lifespan,
         title="HB Personal Assistant Analytics UI Shell",
         version="0.1.0-prompt-14b",
         description=(

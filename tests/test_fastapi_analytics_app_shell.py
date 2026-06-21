@@ -35,6 +35,31 @@ def _client(tmp_path: Path) -> TestClient:
     return TestClient(create_app(db_path=db))
 
 
+def test_startup_lifespan_is_noop_when_unconfigured(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The forecast lifespan hook runs on ASGI startup (TestClient context-manager form) but, with
+    no HB_FORECAST_* env and no settings file, creates nothing under the (isolated) app-support."""
+    from hb_assistant.config.path_policy import PathPolicy
+
+    for v in (
+        "HB_FORECAST_RUNS_ROOT",
+        "HB_FORECAST_EVAL_ROOT",
+        "HB_FORECAST_CONFIG_EDIT_ROOT",
+        "HB_FORECAST_DATA_ROOT",
+    ):
+        monkeypatch.delenv(v, raising=False)
+
+    forecast_dir = PathPolicy().get_app_support() / "analytics" / "forecast"
+    db = str(tmp_path / "api.sqlite")
+    SQLiteMigrator(db_path=db).apply()
+
+    with TestClient(create_app(db_path=db)) as client:  # context-manager triggers lifespan startup
+        assert client.get("/health").status_code == 200
+
+    assert not forecast_dir.exists()
+
+
 def test_health_is_metadata_only_and_chat_disabled(tmp_path: Path) -> None:
     client = _client(tmp_path)
     response = client.get("/health")

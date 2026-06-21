@@ -1,0 +1,10 @@
+ M src/hb_assistant/construction/analytics/api.py
+ M src/hb_assistant/construction/analytics/forecast_runtime_config.py
+ M src/hb_assistant/launcher/service.py
+ M tests/test_fastapi_analytics_app_shell.py
+ M tests/test_launcher_scheduler.py
+?? docs/architecture/278-forecast-ui-launch-bootstrap.md
+?? docs/evidence/forecast-ui-launch-bootstrap/20260621T070000Z/
+?? docs/runbooks/forecast-ui-launch-bootstrap.md
+?? src/hb_assistant/construction/analytics/forecast_bootstrap.py
+?? tests/test_forecast_bootstrap.py

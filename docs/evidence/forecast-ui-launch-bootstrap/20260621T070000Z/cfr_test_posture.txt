@@ -1,0 +1,2 @@
+CFR subrepo suite (read-only confirmation; no CFR change in this phase):
+565 passed in 72.64s (0:01:12)
