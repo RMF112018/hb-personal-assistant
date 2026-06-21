@@ -1,0 +1,182 @@
+{
+  "command": "forecast-db-config-backed-generate",
+  "report_schema_version": 1,
+  "project_key": "tropical",
+  "generator_kind": "comprehensive",
+  "status": "generated",
+  "config_snapshot_consumed": true,
+  "config_snapshot_id": "c3b4a67d22db47c74e696ae562fbf1c555e365fc66bb003a7b3312754415b698",
+  "snapshot_name": "tropical-phase16-live-config-20260619T085305Z",
+  "snapshot_item_count": 194,
+  "consumed_config_domains": [
+    "forecast_controls",
+    "forecast_model_controls",
+    "project"
+  ],
+  "consumed_config_files": [
+    "config/forecast_controls/tropical/code_forecast_controls.jsonl",
+    "config/forecast_model_controls/tropical/code_forecast_model_controls.jsonl",
+    "config/projects/tropical.json"
+  ],
+  "consumed_by_domain": {
+    "project": {
+      "file": "config/projects/tropical.json",
+      "item_count": 1
+    },
+    "forecast_controls": {
+      "file": "config/forecast_controls/tropical/code_forecast_controls.jsonl",
+      "item_count": 64
+    },
+    "forecast_model_controls": {
+      "file": "config/forecast_model_controls/tropical/code_forecast_model_controls.jsonl",
+      "item_count": 5
+    }
+  },
+  "fidelity_gate": {
+    "passed": true,
+    "snapshot_sha256_match": true,
+    "item_count_match": true
+  },
+  "materialized_config_root": "/tmp/fdcg_proof/comprehensive/db_snapshot_config/materialized_config",
+  "config_snapshot_manifest": "/tmp/fdcg_proof/comprehensive/db_snapshot_config/config_snapshot_manifest.json",
+  "db_schema_version": 61,
+  "live_db_path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite",
+  "data_root": "/Users/bobbyfetting/Library/CloudStorage/SynologyDrive-BFmacSync/Work/NAS - HB/Projects/2023/TWN - NAS/30_Financials/Forecasts/Data/2026-June",
+  "source_config_root": "/Users/bobbyfetting/hb-personal-assistant/subrepos/construction-financial-review",
+  "run_stamp": "20260101_000000",
+  "output_package": "/tmp/fdcg_proof/comprehensive/db_config_backed/forecast_comprehensive_package_tropical_20260101_000000",
+  "validation_passed": true,
+  "reads_materialized_config": true,
+  "cfr_config_root_restored": true,
+  "package_csvs": [
+    "actuals_monthly_by_budget_code.csv",
+    "actuals_monthly_by_cost_code.csv",
+    "actuals_plus_forecast_monthly_by_budget_code.csv",
+    "actuals_plus_forecast_monthly_by_cost_code.csv"
+  ],
+  "predecessor_packages": {
+    "required": [
+      "context",
+      "intelligence",
+      "monthly"
+    ],
+    "optional": [
+      "probability",
+      "history_informed",
+      "cost_frequency",
+      "crosswalk_v2",
+      "schedule_integrated",
+      "staffing_plan"
+    ],
+    "read": [
+      "context",
+      "cost_frequency",
+      "crosswalk_v2",
+      "history_informed",
+      "intelligence",
+      "monthly",
+      "probability",
+      "schedule_integrated",
+      "staffing_plan"
+    ],
+    "generated": []
+  },
+  "file_equivalence": null,
+  "live_db_integrity": {
+    "preflight_stable": true,
+    "preflight_stability_seconds": 2.0,
+    "before": {
+      "physical": {
+        "main": {
+          "exists": true,
+          "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite",
+          "size_bytes": 3529723904,
+          "mtime_ns": 1782033480624434076,
+          "sha256": "99614d4ca8c4d53ba23a70a3df4c797fbf3cd8d1d9625d4488252da46377645a"
+        },
+        "wal": {
+          "exists": true,
+          "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite-wal",
+          "size_bytes": 189454112,
+          "mtime_ns": 1782047325358431935,
+          "sha256": "06798b9cba16679845fb408ef2c84d3c1f890cd126cd8838d1b005d61d9ec832"
+        },
+        "shm": {
+          "exists": true,
+          "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite-shm",
+          "size_bytes": 393216,
+          "mtime_ns": 1782046529201506892,
+          "sha256": "e724a518aac9fd7de2ee108e96d48ca29ae7999598883ff781447d589c861619"
+        }
+      },
+      "logical": {
+        "schema_version": 61,
+        "data_version": 2,
+        "db_inventory_table_counts": {
+          "procore_financial_change_orders": 507,
+          "procore_financial_contracts": 266,
+          "procore_financial_subcontractor_invoices": 1002,
+          "procore_financial_invoice_items": 71113,
+          "procore_financial_amount_facts": 446963,
+          "procore_financial_budget_rows": 3044
+        },
+        "db_inventory_digest": "c9700950fe6bba35149a1bf8e8b604a1bbe648039f48a64e1fbccf249813c9f6"
+      }
+    },
+    "after": {
+      "physical": {
+        "main": {
+          "exists": true,
+          "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite",
+          "size_bytes": 3529723904,
+          "mtime_ns": 1782033480624434076,
+          "sha256": "99614d4ca8c4d53ba23a70a3df4c797fbf3cd8d1d9625d4488252da46377645a"
+        },
+        "wal": {
+          "exists": true,
+          "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite-wal",
+          "size_bytes": 189454112,
+          "mtime_ns": 1782047325358431935,
+          "sha256": "06798b9cba16679845fb408ef2c84d3c1f890cd126cd8838d1b005d61d9ec832"
+        },
+        "shm": {
+          "exists": true,
+          "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite-shm",
+          "size_bytes": 393216,
+          "mtime_ns": 1782046529201506892,
+          "sha256": "e724a518aac9fd7de2ee108e96d48ca29ae7999598883ff781447d589c861619"
+        }
+      },
+      "logical": {
+        "schema_version": 61,
+        "data_version": 2,
+        "db_inventory_table_counts": {
+          "procore_financial_change_orders": 507,
+          "procore_financial_contracts": 266,
+          "procore_financial_subcontractor_invoices": 1002,
+          "procore_financial_invoice_items": 71113,
+          "procore_financial_amount_facts": 446963,
+          "procore_financial_budget_rows": 3044
+        },
+        "db_inventory_digest": "c9700950fe6bba35149a1bf8e8b604a1bbe648039f48a64e1fbccf249813c9f6"
+      }
+    },
+    "unchanged": true,
+    "drift": []
+  },
+  "safety": {
+    "live_db_written": false,
+    "live_db_migrated": false,
+    "live_db_imported": false,
+    "live_db_opened_read_only": true,
+    "source_config_mutated": false,
+    "source_package_mutated": false,
+    "production_defaults_changed": false,
+    "cfr_config_root_default_changed": false,
+    "config_snapshot_consumed": true,
+    "forecast_comprehensive_run": true,
+    "predecessor_generators_run": false,
+    "model_backed_llm_or_ollama_run": false
+  },
+  "report_path": "/tmp/fdcg_proof/comprehensive/forecast_db_config_backed_generation_report.json"
+}
