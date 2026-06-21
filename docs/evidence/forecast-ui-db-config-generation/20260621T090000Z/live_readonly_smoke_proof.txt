@@ -1,0 +1,1 @@
+SMOKE_OK {'snapshot_name': 'tropical-phase16-live-config-20260619T085305Z', 'stored_item_count': 194, 'materialized_files': 6, 'fidelity_passed': True, 'live_db_byte_unchanged': True}

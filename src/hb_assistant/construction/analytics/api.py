@@ -1634,6 +1634,61 @@ def create_app(*, db_path: str | None = None) -> Any:
         del role
         return _forecast_run_call(_forecast_run_service().list_runs)
 
+    # DB-config-backed generation: generate the comprehensive package CONSUMING the live config
+    # snapshot (so a promoted config drives generation). Default-OFF opt-in; live config DB read-only;
+    # writes only the isolated work-root. Registered BEFORE the {run_id} catch-all so "db-config" wins.
+    def _forecast_db_config_run_service() -> Any:
+        from hb_assistant.construction.analytics.forecast_db_config_run_service import (
+            ForecastDbConfigRunService,
+        )
+        from hb_assistant.construction.analytics.forecast_runtime_config import (
+            resolve_cfr_src,
+            resolve_data_root,
+            resolve_db_config_run_enabled,
+            resolve_runs_root,
+        )
+
+        return ForecastDbConfigRunService(
+            data_root=resolve_data_root(None),
+            runs_root=resolve_runs_root(None),
+            cfr_src=resolve_cfr_src(None),
+            db_config_run_enabled=resolve_db_config_run_enabled(None),
+        )
+
+    def _forecast_db_config_run_call(fn: Any, *args: Any) -> dict[str, Any]:
+        from fastapi import HTTPException
+
+        from hb_assistant.construction.analytics.forecast_db_config_run_service import (
+            ForecastDbConfigRunError,
+        )
+
+        try:
+            return fn(*args)
+        except ForecastDbConfigRunError as exc:
+            if str(exc).startswith("unknown run_id"):
+                raise HTTPException(status_code=404, detail="forecast_db_config_run_not_found")
+            if str(exc).startswith("db_config_run disabled"):
+                raise HTTPException(status_code=503, detail="forecast_db_config_run_disabled")
+            # not configured / config DB not ready — fail closed, path-free.
+            raise HTTPException(status_code=503, detail="forecast_db_config_run_not_configured")
+
+    @app.post("/api/forecast/runs/db-config")
+    def forecast_db_config_run_create(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        require_operator_role(role)  # executes + writes isolated work-root; reads live config DB ro
+        return _forecast_db_config_run_call(_forecast_db_config_run_service().start_db_config_run)
+
+    @app.get("/api/forecast/runs/db-config")
+    def forecast_db_config_runs_list(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        return _forecast_db_config_run_call(_forecast_db_config_run_service().list_db_config_runs)
+
+    @app.get("/api/forecast/runs/db-config/{run_id}")
+    def forecast_db_config_run_detail(run_id: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        return _forecast_db_config_run_call(
+            _forecast_db_config_run_service().read_db_config_run, run_id
+        )
+
     @app.get("/api/forecast/runs/{run_id}")
     def forecast_run_detail(run_id: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
         del role

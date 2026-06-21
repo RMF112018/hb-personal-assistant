@@ -574,29 +574,25 @@ def _emit_config_tree(grouped: list[dict[str, Any]], dest_base: Path) -> list[di
     return files
 
 
-def materialize_forecast_config_snapshot(
-    *,
-    db_path: Path,
-    config_snapshot_id: str,
-    out_root: Path,
+def _materialize_from_conn(
+    conn: sqlite3.Connection, *, config_snapshot_id: str, out_root: Path
 ) -> dict[str, Any]:
-    """Materialize a snapshot to a file-compatible config root + manifest under ``out_root``."""
-    db_path = Path(db_path)
+    """Shared core: read a snapshot from an OPEN connection and emit the file tree + manifest.
+
+    The connection's open mode (read-write vs ``mode=ro``) is the caller's choice; this body only
+    SELECTs, so a read-only connection is sufficient (and required for the live DB).
+    """
     out_root = Path(out_root)
     materialized_root = out_root / MATERIALIZED_DIRNAME
-    conn = sqlite3.connect(str(db_path))
-    try:
-        _require_v60(conn)
-        snap = conn.execute(
-            "SELECT project_key, snapshot_name, item_count, snapshot_sha256 FROM "
-            "forecast_config_snapshots WHERE config_snapshot_id = ?",
-            (config_snapshot_id,),
-        ).fetchone()
-        if snap is None:
-            raise ConfigRegistryError(f"config_snapshot_id not found: {config_snapshot_id}")
-        grouped = _snapshot_grouped(conn, config_snapshot_id)
-    finally:
-        conn.close()
+    _require_v60(conn)
+    snap = conn.execute(
+        "SELECT project_key, snapshot_name, item_count, snapshot_sha256 FROM "
+        "forecast_config_snapshots WHERE config_snapshot_id = ?",
+        (config_snapshot_id,),
+    ).fetchone()
+    if snap is None:
+        raise ConfigRegistryError(f"config_snapshot_id not found: {config_snapshot_id}")
+    grouped = _snapshot_grouped(conn, config_snapshot_id)
     if not grouped:
         raise ConfigRegistryError(f"snapshot has no items: {config_snapshot_id}")
     files = _emit_config_tree(grouped, materialized_root)
@@ -614,6 +610,52 @@ def materialize_forecast_config_snapshot(
     manifest_path = out_root / SNAPSHOT_MANIFEST_NAME
     write_json(manifest_path, manifest)
     return {**manifest, "manifest_path": str(manifest_path)}
+
+
+def materialize_forecast_config_snapshot(
+    *,
+    db_path: Path,
+    config_snapshot_id: str,
+    out_root: Path,
+) -> dict[str, Any]:
+    """Materialize a snapshot to a file-compatible config root + manifest under ``out_root``.
+
+    Opens the DB read-write. For the LIVE config DB use
+    :func:`materialize_forecast_config_snapshot_readonly` instead.
+    """
+    conn = sqlite3.connect(str(Path(db_path)))
+    try:
+        return _materialize_from_conn(
+            conn, config_snapshot_id=config_snapshot_id, out_root=out_root
+        )
+    finally:
+        conn.close()
+
+
+def materialize_forecast_config_snapshot_readonly(
+    *,
+    db_path: Path,
+    config_snapshot_id: str,
+    out_root: Path,
+) -> dict[str, Any]:
+    """Read-only materialize: open the DB with ``mode=ro`` (never writes/creates ``-wal``/``-shm``).
+
+    Use this to consume the LIVE config DB — materialize only SELECTs, so a read-only connection is
+    sufficient and safe against the multi-GB live database.
+    """
+    p = Path(db_path)
+    if not p.exists():
+        raise ConfigRegistryError(f"config DB not found: {p}")
+    try:
+        conn = sqlite3.connect(f"{p.resolve().as_uri()}?mode=ro", uri=True)
+    except sqlite3.Error as exc:
+        raise ConfigRegistryError(f"config DB could not be opened read-only: {p}") from exc
+    try:
+        return _materialize_from_conn(
+            conn, config_snapshot_id=config_snapshot_id, out_root=out_root
+        )
+    finally:
+        conn.close()
 
 
 def export_forecast_config_from_db(

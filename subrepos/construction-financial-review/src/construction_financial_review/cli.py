@@ -357,6 +357,45 @@ def cmd_forecast_comprehensive_db_config_proof(*, project: str, live_db_path: st
     return 0 if report.get("decision") == DECISION_READY else 1
 
 
+def cmd_forecast_db_config_backed_generate(*, project: str, live_db_path: str,
+                                           config_snapshot_id: str | None, work_root: str,
+                                           run_stamp: str | None, data_root: str | None,
+                                           source_config_root: str | None,
+                                           require_live_snapshot: bool,
+                                           prove_file_equivalence: bool,
+                                           preflight_stability_seconds: float) -> int:
+    """Generate the comprehensive forecast package CONSUMING the live DB config snapshot.
+
+    Materializes the chosen (default latest) live config snapshot READ-ONLY, gates on materialization
+    fidelity (round-trip digest match), then runs the deterministic integrated generator with
+    CFR_CONFIG_ROOT = materialized root so a PROMOTED config snapshot drives generation. Never writes/
+    migrates/imports the live DB. rc 0 generated / 1 generated-but-validation-failed / 3 controlled
+    refusal."""
+    from .workflows.forecast_db_config_backed_generation import (
+        STATUS_GENERATED,
+        ForecastDbConfigGenerationError,
+        run_forecast_db_config_backed_generation,
+    )
+    try:
+        with contextlib.redirect_stdout(sys.stderr):
+            report = run_forecast_db_config_backed_generation(
+                project_key=project, live_db_path=Path(live_db_path),
+                config_snapshot_id=config_snapshot_id, work_root=Path(work_root), run_stamp=run_stamp,
+                data_root=Path(data_root) if data_root else None,
+                source_config_root=Path(source_config_root) if source_config_root else None,
+                require_live_snapshot=require_live_snapshot,
+                prove_file_equivalence=prove_file_equivalence,
+                preflight_stability_seconds=preflight_stability_seconds)
+    except ForecastDbConfigGenerationError as exc:
+        print(json.dumps({"command": "forecast-db-config-backed-generate", "project": project,
+                          "status": "refused", "reason": str(exc)}, indent=2))
+        return 3
+    out = {"command": "forecast-db-config-backed-generate"}
+    out.update(report)
+    print(json.dumps(out, indent=2))
+    return 0 if report.get("status") == STATUS_GENERATED else 1
+
+
 def cmd_forecast_config_db_parity(*, project: str, config_root: str, work_root: str,
                                   db_path: str | None) -> int:
     """Prove reader-layer config parity: repo file config == DB import/snapshot/materialize (Phase 16)."""
@@ -1487,6 +1526,30 @@ def build_parser() -> argparse.ArgumentParser:
     fcp20.add_argument("--preflight-stability-seconds", type=float, default=2.0,
                        help="Live-DB quiescence preflight window: refuse (rc 3) if the live DB moved "
                             "(default 2.0).")
+
+    fdcg = sub.add_parser("forecast-db-config-backed-generate")
+    fdcg.add_argument("--project", default="tropical", help="Project key (only 'tropical').")
+    fdcg.add_argument("--live-db-path", required=True,
+                      help="Live (v60) DB holding the config snapshot; opened READ-ONLY.")
+    fdcg.add_argument("--config-snapshot-id", default=None,
+                      help="Config snapshot id to consume (default: the latest live snapshot).")
+    fdcg.add_argument("--work-root", required=True,
+                      help="Explicit work root (materialized config + output package); must be OUTSIDE "
+                           "the live forecast root, source config tree, live DB directory, and data root.")
+    fdcg.add_argument("--run-stamp", default=None,
+                      help="Deterministic frozen stamp (default 20260101_000000).")
+    fdcg.add_argument("--data-root", default=None,
+                      help="Forecast data root (read-only INPUT); must hold context+intelligence+monthly "
+                           "(+cost-frequency if frequency_enabled). Default from cfg.")
+    fdcg.add_argument("--source-config-root", default=None,
+                      help="Override the file-backed config base; default the CFR subproject root.")
+    fdcg.add_argument("--no-require-live-snapshot", action="store_true",
+                      help="Dev/test only: accept a non-live v60 DB (default requires the live DB).")
+    fdcg.add_argument("--prove-file-equivalence", action="store_true",
+                      help="Evidence only: also run file-backed and compare (default off; meaningful only "
+                           "when config has not diverged from the on-disk files).")
+    fdcg.add_argument("--preflight-stability-seconds", type=float, default=2.0,
+                      help="Live-DB quiescence preflight window (default 2.0).")
     # --context-stamp pins the upstream context package for a lineage-consistent fresh full run.
     # Applied to the stages that consume context and participate in the lineage gate.
     for _p in (fip, fmp, fpp, fcp, fkp, fspp):
@@ -1560,6 +1623,15 @@ def main(argv=None) -> int:
             source_config_root=args.source_config_root,
             expect_item_count=(None if args.expect_item_count == -1 else args.expect_item_count),
             require_live_snapshot=not args.no_require_live_snapshot,
+            preflight_stability_seconds=args.preflight_stability_seconds)
+    if args.command == "forecast-db-config-backed-generate":
+        return cmd_forecast_db_config_backed_generate(
+            project=args.project, live_db_path=args.live_db_path,
+            config_snapshot_id=args.config_snapshot_id, work_root=args.work_root,
+            run_stamp=args.run_stamp, data_root=args.data_root,
+            source_config_root=args.source_config_root,
+            require_live_snapshot=not args.no_require_live_snapshot,
+            prove_file_equivalence=args.prove_file_equivalence,
             preflight_stability_seconds=args.preflight_stability_seconds)
     if args.command == "lineage-init":
         return cmd_lineage_init(cfg, args.project)

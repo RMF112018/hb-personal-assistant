@@ -130,8 +130,25 @@ def test_status_valid_when_fully_configured(cfg_path: Path, tmp_path: Path) -> N
         "config_edit": True,
         # config_promotion additionally requires the explicit opt-in (off by default here).
         "config_promotion": False,
+        # db_config_run additionally requires the explicit opt-in (off by default here).
+        "db_config_run": False,
     }
     assert find_redaction_leaks(status) == []
+
+
+def test_db_config_run_enabled_precedence(cfg_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv(rc.ENV_DB_CONFIG_RUN_ENABLED, raising=False)
+    assert rc.resolve_db_config_run_enabled() is False  # default OFF
+    _write(cfg_path, db_config_run_enabled=True)
+    assert rc.resolve_db_config_run_enabled() is True  # settings-file beats default
+    monkeypatch.setenv(rc.ENV_DB_CONFIG_RUN_ENABLED, "0")
+    assert rc.resolve_db_config_run_enabled() is False  # env beats settings
+    assert rc.resolve_db_config_run_enabled(True) is True  # explicit beats all
+
+
+def test_save_persists_db_config_run_flag(cfg_path: Path) -> None:
+    rc.save_runtime_config({"db_config_run_enabled": True})
+    assert json.loads(cfg_path.read_text(encoding="utf-8"))["db_config_run_enabled"] is True
 
 
 # -- save: fail-closed write-root cross-check ---------------------------------

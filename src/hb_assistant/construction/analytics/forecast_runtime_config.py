@@ -54,6 +54,10 @@ ENV_CONFIG_EDIT_ROOT = "HB_FORECAST_CONFIG_EDIT_ROOT"
 # Phase E2 promotion opt-in (default OFF). A boolean flag (NOT a path root) that must be explicitly
 # enabled before any config-edit proposal can be promoted to the live config DB.
 ENV_PROMOTION_ENABLED = "HB_FORECAST_PROMOTION_ENABLED"
+
+# DB-config-backed generation opt-in (default OFF). A boolean flag (NOT a path root) gating whether the
+# Run Center may generate the comprehensive package CONSUMING the live DB config snapshot.
+ENV_DB_CONFIG_RUN_ENABLED = "HB_FORECAST_DB_CONFIG_RUN_ENABLED"
 _TRUTHY = {"1", "true", "yes", "on"}
 
 # Whitelisted keys. An unknown key in the on-disk file can never inject behaviour.
@@ -66,6 +70,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "cfr_src": None,  # str|None; absolute existing dir; optional (defaults to subrepo path)
     "config_edit_root": None,  # str|None; absolute, creatable, MUST be outside data_root (write)
     "promotion_enabled": False,  # bool flag (NOT a path); gates the Phase E2 live config promotion
+    "db_config_run_enabled": False,  # bool flag (NOT a path); gates DB-config-backed comprehensive generation
     "schema_version": 1,  # LOCAL file version only — NOT the DB schema; do not conflate
 }
 
@@ -181,6 +186,16 @@ def resolve_promotion_enabled(explicit: bool | str | None = None) -> bool:
     if env is not None:
         return env.strip().lower() in _TRUTHY
     return bool(_load_config().get("promotion_enabled"))
+
+
+def resolve_db_config_run_enabled(explicit: bool | str | None = None) -> bool:
+    """Resolve the DB-config-backed generation opt-in (explicit > env > settings-file > default False)."""
+    if explicit is not None:
+        return explicit is True or str(explicit).strip().lower() in _TRUTHY
+    env = os.environ.get(ENV_DB_CONFIG_RUN_ENABLED)
+    if env is not None:
+        return env.strip().lower() in _TRUTHY
+    return bool(_load_config().get("db_config_run_enabled"))
 
 
 # -- non-mutating validation (status + save) ----------------------------------
@@ -348,6 +363,12 @@ def build_runtime_status() -> dict[str, Any]:
         "config_promotion": (
             config_edit_blocker is None and db_blocker is None and resolve_promotion_enabled()
         ),
+        # DB-config-backed generation: comprehensive consumes the live config snapshot (held in the
+        # live app DB, not the runtime db_path). Needs the data root (predecessor packages) + engine
+        # valid AND the explicit opt-in (default OFF).
+        "db_config_run": (
+            data_blocker is None and cfr_blocker is None and resolve_db_config_run_enabled()
+        ),
     }
 
     return {
@@ -355,6 +376,7 @@ def build_runtime_status() -> dict[str, Any]:
         "roots": roots,
         "surfaces_ready": surfaces_ready,
         "promotion": {"enabled": resolve_promotion_enabled()},
+        "db_config_run": {"enabled": resolve_db_config_run_enabled()},
         "guardrails": {
             "read_only": True,
             "local_first": True,
@@ -410,6 +432,11 @@ def save_runtime_config(updates: dict[str, Any]) -> dict[str, Any]:
         cfg["promotion_enabled"] = bool(
             updates["promotion_enabled"] is True
             or str(updates["promotion_enabled"]).strip().lower() in _TRUTHY
+        )
+    if "db_config_run_enabled" in updates and updates["db_config_run_enabled"] is not None:
+        cfg["db_config_run_enabled"] = bool(
+            updates["db_config_run_enabled"] is True
+            or str(updates["db_config_run_enabled"]).strip().lower() in _TRUTHY
         )
 
     # Effective data root for the write-root cross-check (settings value, since this is the

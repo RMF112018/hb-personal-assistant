@@ -1,0 +1,2 @@
+CFR subrepo full suite (config_registry RO helper added; proofs unchanged):
+565 passed in 69.53s (0:01:09)

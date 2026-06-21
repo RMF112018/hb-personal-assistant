@@ -772,6 +772,16 @@ export function getForecastRuns() {
 export function getForecastRun(runId: string) {
   return fetchJson(`/api/forecast/runs/${encodeURIComponent(runId)}`);
 }
+/* DB-config-backed generation: comprehensive package consuming the live config snapshot (operator). */
+export function startForecastDbConfigRun() {
+  return fetchJson('/api/forecast/runs/db-config', { method: 'POST' });
+}
+export function getForecastDbConfigRuns() {
+  return fetchJson('/api/forecast/runs/db-config');
+}
+export function getForecastDbConfigRun(runId: string) {
+  return fetchJson(`/api/forecast/runs/db-config/${encodeURIComponent(runId)}`);
+}
 
 /* External-Forecast Evaluation — upload an operator forecast, map it, and compare it against
  * actuals / budget / ERP-JTD / backend-model / prior baselines (Implementation Phase 4).
@@ -948,6 +958,10 @@ export const api = {
   startForecastRun,
   getForecastRuns,
   getForecastRun,
+  // DB-config-backed comprehensive generation (consumes the live config snapshot).
+  startForecastDbConfigRun,
+  getForecastDbConfigRuns,
+  getForecastDbConfigRun,
   // External-Forecast Evaluation (Implementation Phase 4).
   previewExternalForecast,
   proposeExternalMapping,
