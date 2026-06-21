@@ -172,6 +172,7 @@ def generate(project_key: str, cfg: dict, data_root: Optional[Path] = None,
     cost_basis_rows = []
     recommendations, model_evidence, sched_evidence, trend_rows = [], [], [], []
     remaining_rows, confidences, changes, bundles = [], [], [], []
+    ts_shadow_inputs = []  # (key, timeseries_eac estimate, recommended_final_cost, completed series)
     for bc in sorted(budget_codes, key=lambda r: r["budget_code_key"]):
         key = bc["budget_code_key"]
         ctx = context_by_key.get(key, {"budget_code_key": key, "sub_job": bc.get("sub_job"),
@@ -202,6 +203,10 @@ def generate(project_key: str, cfg: dict, data_root: Optional[Path] = None,
             if decision["suppression_applied"]:
                 recommendation, before = dormancy_suppress.suppress_recommendation(recommendation, decision)
             dorm_audit.append(dormancy_suppress.audit_row(decision, before))
+
+        ts_est = next((e for e in ests if e["method"] == "timeseries_eac"), None)
+        ts_shadow_inputs.append((key, ts_est, recommendation.get("recommended_final_cost"),
+                                 bundle.get("monthly_actuals_completed")))
 
         conf = confidence_intel.score(bundle, recommendation)
         change = change_explanation.explain_change(recommendation, prior_model_rec_by_key.get(key),
@@ -270,6 +275,10 @@ def generate(project_key: str, cfg: dict, data_root: Optional[Path] = None,
     ]))
     write_jsonl(out / "forecast_accuracy_next_by_budget_code.jsonl", accuracy_next)
     write_jsonl(out / "forecast_model_evidence_by_budget_code.jsonl", model_evidence)
+    # SHADOW time-series comparison + holdout backtest (evidence only; never changes the forecast).
+    ts_comparison, ts_backtest = _timeseries_shadow_artifacts(project_key, ts_shadow_inputs)
+    write_jsonl(out / "statsforecast_shadow_comparison.jsonl", ts_comparison)
+    write_json(out / "audit" / "statsforecast_shadow_backtest.json", ts_backtest)
     write_jsonl(out / "schedule_forecast_evidence_by_budget_code.jsonl", sched_evidence)
     write_jsonl(out / "trend_evidence_by_budget_code.jsonl", trend_rows)
     write_jsonl(out / "remaining_work_evidence_by_budget_code.jsonl", remaining_rows)
@@ -552,6 +561,96 @@ def _dormant_audit(project_key, decisions, audit_rows, dcfg) -> OrderedDict:
                  "actuals are never reduced and final never falls below actuals; overridden only by "
                  "affirmative remaining evidence or a value-asserting accepted operator control"),
     ])
+
+
+def _timeseries_shadow_artifacts(project_key, ts_shadow_inputs):
+    """SHADOW time-series comparison + deterministic holdout backtest (evidence only).
+
+    Returns ``(comparison_rows, backtest_summary)``. The comparison contrasts the shadow
+    ``timeseries_eac`` against the central recommended final cost per code; the backtest holds out the
+    last h completed months, fits the engine on the prefix, and scores it against a naive baseline.
+    Nothing here changes the forecast — it is the go/no-go evidence for promoting the estimator into
+    the weighted ensemble (PR 3).
+    """
+    from . import timeseries_engine
+
+    def _money2(x):
+        return money_str(Decimal(str(round(float(x), 2))))
+
+    def _pct4(x):
+        return str(Decimal(str(round(float(x), 6))).quantize(Decimal("0.0001")))
+
+    comparison, bt_rows = [], []
+    for key, ts_est, rec_final, series in sorted(ts_shadow_inputs, key=lambda t: t[0] or ""):
+        if ts_est is not None and ts_est.get("applicable") and dec(ts_est.get("eac")) is not None:
+            ts_eac = D(ts_est["eac"])
+            rec = dec(rec_final)
+            delta = (ts_eac - rec) if rec is not None else None
+            pct = (delta / rec) if (rec is not None and rec != 0 and delta is not None) else None
+            comparison.append(OrderedDict([
+                ("project_key", project_key),
+                ("budget_code_key", key),
+                ("timeseries_eac", ts_est["eac"]),
+                ("recommended_final_cost", money_str(rec) if rec is not None else None),
+                ("delta_timeseries_minus_recommended", money_str(delta) if delta is not None else None),
+                ("delta_pct", str(pct.quantize(Decimal("0.0001"))) if pct is not None else None),
+                ("backend", (ts_est.get("inputs") or {}).get("backend")),
+            ]))
+        vals = [float(D(p.get("amount"))) for p in (series or [])]
+        n = len(vals)
+        if n < 4:
+            continue
+        h = 1 if n < 6 else (2 if n < 9 else 3)
+        if n - h < 3:
+            continue
+        prefix, holdout = vals[:-h], vals[-h:]
+        actual_holdout = sum(holdout)
+        if actual_holdout == 0:
+            continue  # undefined percent error; excluded from accuracy aggregation
+        engine_pred = timeseries_engine.forecast_etc(prefix, h)["etc"]
+        naive_pred = prefix[-1] * h
+        eng_ape = abs(engine_pred - actual_holdout) / abs(actual_holdout)
+        nai_ape = abs(naive_pred - actual_holdout) / abs(actual_holdout)
+        bt_rows.append(OrderedDict([
+            ("budget_code_key", key),
+            ("n_completed_months", n),
+            ("holdout_months", h),
+            ("actual_holdout", _money2(actual_holdout)),
+            ("engine_pred", _money2(engine_pred)),
+            ("naive_pred", _money2(naive_pred)),
+            ("engine_abs_pct_error", _pct4(eng_ape)),
+            ("naive_abs_pct_error", _pct4(nai_ape)),
+            ("engine_wins", eng_ape <= nai_ape),
+        ]))
+
+    def _median_pct(rows, field):
+        xs = sorted(float(r[field]) for r in rows)
+        if not xs:
+            return None
+        m = len(xs) // 2
+        med = xs[m] if len(xs) % 2 else (xs[m - 1] + xs[m]) / 2
+        return _pct4(med)
+
+    total = len(bt_rows)
+    wins = sum(1 for r in bt_rows if r["engine_wins"])
+    summary = OrderedDict([
+        ("project_key", project_key),
+        ("backend", timeseries_engine.BACKEND_LABEL),
+        ("backtest_scheme", "holdout last h completed months (h=1 if <6 obs, 2 if <9, 3 else); fit "
+                            "the engine on the prefix, predict h and sum vs the actual held-out "
+                            "months; naive baseline = last observed month repeated h. Codes with <4 "
+                            "completed months or zero held-out actuals are excluded."),
+        ("eligible_code_count", total),
+        ("engine_median_abs_pct_error", _median_pct(bt_rows, "engine_abs_pct_error")),
+        ("naive_median_abs_pct_error", _median_pct(bt_rows, "naive_abs_pct_error")),
+        ("engine_better_or_equal_count", wins),
+        ("engine_better_or_equal_rate",
+         str((Decimal(wins) / Decimal(total)).quantize(Decimal("0.0001"))) if total else None),
+        ("per_code", bt_rows),
+        ("note", "SHADOW evidence only; timeseries_eac is NOT in INDEPENDENT_METHODS and never "
+                 "changes the central forecast. Promotion to the weighted ensemble is gated on this."),
+    ])
+    return comparison, summary
 
 
 def _accuracy_next_row(r):
