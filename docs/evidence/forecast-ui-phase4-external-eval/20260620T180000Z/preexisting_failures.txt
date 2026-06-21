@@ -1,0 +1,8 @@
+Pre-existing / known-flaky tests (NOT caused by Phase 4); verified:
+- test_forecast_model_controls_db_config_phase17::test_live_db_and_source_config_not_mutated
+    -> passes in ISOLATION (documented test-isolation artifact).
+- test_forecast_final_runner_phase7::test_final_output_parity_file_vs_db_backed_context
+    -> passes in ISOLATION (documented ~1/8 parity flake).
+- test_fastapi_analytics_environment_status::test_environment_live_flags_off_by_default
+- test_fastapi_analytics_source_refresh_surfaces::test_live_refresh_fails_closed
+    -> environment-sensitive (ambient enable_live_reads=True); modules NOT in the Phase 4 diff.

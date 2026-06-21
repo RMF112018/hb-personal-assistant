@@ -16,6 +16,9 @@ import { ProjectCostTimePage } from '../pages/ProjectCostTimePage'
 import { MyItemsPage } from '../pages/MyItemsPage'
 import { ForecastingPage } from '../pages/ForecastingPage'
 import { ForecastPackagePage } from '../pages/ForecastPackagePage'
+import { ForecastConfigPage } from '../pages/ForecastConfigPage'
+import { ForecastRunCenterPage } from '../pages/ForecastRunCenterPage'
+import { ForecastExternalEvalPage } from '../pages/ForecastExternalEvalPage'
 import { DataHealthPage } from '../pages/DataHealthPage'
 import { SettingsPage } from '../pages/SettingsPage'
 import { GetStartedPage } from '../pages/GetStartedPage'
@@ -141,6 +144,25 @@ const router = createBrowserRouter([
         path: 'forecasting',
         element: <ForecastingPage />,
         handle: { title: 'Forecasting' },
+      },
+      // Forecast configuration viewer (Implementation Phase 2). Read-only. Declared before
+      // the :packageId route so the literal 'config' segment is not captured as a package id.
+      {
+        path: 'forecasting/config',
+        element: <ForecastConfigPage />,
+        handle: { title: 'Forecast Configuration' },
+      },
+      // Forecast Run Center (Implementation Phase 3). Static segment before :packageId.
+      {
+        path: 'forecasting/runs',
+        element: <ForecastRunCenterPage />,
+        handle: { title: 'Forecast Run Center' },
+      },
+      // External-Forecast Evaluation (Implementation Phase 4). Static segment before :packageId.
+      {
+        path: 'forecasting/external',
+        element: <ForecastExternalEvalPage />,
+        handle: { title: 'External Forecast Evaluation' },
       },
       {
         path: 'forecasting/:packageId',

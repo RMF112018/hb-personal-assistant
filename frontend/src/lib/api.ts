@@ -689,6 +689,81 @@ export function getForecastPackageRows(packageId: string) {
   return fetchJson(`/api/forecast/packages/${encodeURIComponent(packageId)}/forecast-rows`);
 }
 
+/* Forecast configuration — read-only viewer over the v60 config snapshot (Implementation Phase 2).
+ * Read-only metadata: business config settings only (no paths, run stamps, endpoints, or internals). */
+export function getForecastConfigSnapshots() {
+  return fetchJson('/api/forecast/config/snapshots');
+}
+export function getForecastConfigSnapshot(snapshotId: string) {
+  return fetchJson(`/api/forecast/config/snapshots/${encodeURIComponent(snapshotId)}`);
+}
+export function getForecastConfigDomain(snapshotId: string, domain: string) {
+  return fetchJson(
+    `/api/forecast/config/snapshots/${encodeURIComponent(snapshotId)}/domains/${encodeURIComponent(domain)}`,
+  );
+}
+export function getForecastConfigItem(snapshotId: string, itemId: string) {
+  return fetchJson(
+    `/api/forecast/config/snapshots/${encodeURIComponent(snapshotId)}/items/${encodeURIComponent(itemId)}`,
+  );
+}
+
+/* Forecast Run Center — isolated context→analysis generation (Implementation Phase 3).
+ * POST triggers a deterministic generation into an isolated work-root (operator); GET reads runs.
+ * Responses are advisory metadata only (no paths, run stamps, or internals). */
+export function startForecastRun() {
+  return fetchJson('/api/forecast/runs', { method: 'POST' });
+}
+export function getForecastRuns() {
+  return fetchJson('/api/forecast/runs');
+}
+export function getForecastRun(runId: string) {
+  return fetchJson(`/api/forecast/runs/${encodeURIComponent(runId)}`);
+}
+
+/* External-Forecast Evaluation — upload an operator forecast, map it, and compare it against
+ * actuals / budget / ERP-JTD / backend-model / prior baselines (Implementation Phase 4).
+ * Upload is base64-in-JSON (no multipart). POST routes are operator-gated; results are viewer
+ * reads. Responses are redacted business metadata only — no paths, run stamps, or internals. */
+export function previewExternalForecast(
+  filename: string,
+  contentB64: string,
+  sourceSystem = 'excel',
+  period?: string | null,
+) {
+  return fetchJson('/api/forecast/external/preview', {
+    method: 'POST',
+    body: JSON.stringify({
+      filename,
+      content_b64: contentB64,
+      source_system: sourceSystem,
+      period: period ?? null,
+    }),
+  });
+}
+export function proposeExternalMapping(importId: string, projectKey = 'tropical') {
+  return fetchJson('/api/forecast/external/mapping', {
+    method: 'POST',
+    body: JSON.stringify({ import_id: importId, project_key: projectKey }),
+  });
+}
+export function evaluateExternalForecast(
+  importId: string,
+  columnRoles: Record<string, string>,
+  projectKey = 'tropical',
+) {
+  return fetchJson('/api/forecast/external/evaluate', {
+    method: 'POST',
+    body: JSON.stringify({ import_id: importId, column_roles: columnRoles, project_key: projectKey }),
+  });
+}
+export function getExternalEvaluations() {
+  return fetchJson('/api/forecast/external/evaluations');
+}
+export function getExternalEvaluation(evalId: string) {
+  return fetchJson(`/api/forecast/external/evaluations/${encodeURIComponent(evalId)}`);
+}
+
 /* Convenience aggregate for pages that prefer a single object. */
 export const api = {
   getToday,
@@ -776,6 +851,21 @@ export const api = {
   getForecastPackageManifest,
   getForecastPackageReviewItems,
   getForecastPackageRows,
+  // Forecast configuration viewer (Implementation Phase 2). Read-only metadata.
+  getForecastConfigSnapshots,
+  getForecastConfigSnapshot,
+  getForecastConfigDomain,
+  getForecastConfigItem,
+  // Forecast Run Center (Implementation Phase 3).
+  startForecastRun,
+  getForecastRuns,
+  getForecastRun,
+  // External-Forecast Evaluation (Implementation Phase 4).
+  previewExternalForecast,
+  proposeExternalMapping,
+  evaluateExternalForecast,
+  getExternalEvaluations,
+  getExternalEvaluation,
 };
 
 export default api;

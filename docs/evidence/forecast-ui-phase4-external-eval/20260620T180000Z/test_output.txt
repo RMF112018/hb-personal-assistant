@@ -1,0 +1,7 @@
+Phase 4 validation (captured 20260620T180000Z, .venv/bin/python):
+
+New backend + app-shell suite:
+33 passed, 1 warning in 11.12s
+
+Ruff on new backend + test files: All checks passed
+Frontend: typecheck clean, copycheck clean, build OK, new page test 2/2 (pre-existing SettingsPage x5 fail, unrelated)

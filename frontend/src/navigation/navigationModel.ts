@@ -49,6 +49,9 @@ export function getRouteTitleForPath(path: string): string {
   if (path.startsWith('/projects')) return 'Projects'
   // My Dashboard is the canonical route for the former My Items work queue; legacy /my-items aliases here.
   if (path.startsWith('/my-dashboard') || path.startsWith('/my-items')) return 'My Dashboard'
+  if (path.startsWith('/forecasting/config')) return 'Forecast Configuration'
+  if (path.startsWith('/forecasting/runs')) return 'Forecast Run Center'
+  if (path.startsWith('/forecasting/external')) return 'External Forecast Evaluation'
   if (path.startsWith('/forecasting/')) return 'Forecast Package'
   if (path.startsWith('/forecasting')) return 'Forecasting'
   if (path.startsWith('/admin')) return 'Data Health'

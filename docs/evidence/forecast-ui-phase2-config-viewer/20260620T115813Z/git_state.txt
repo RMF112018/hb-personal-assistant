@@ -1,0 +1,18 @@
+branch: feature/forecast-ui-phase1-read-only-browser
+head: 4bd4e436 feat(forecast-ui): add read-only forecast package browser
+--- status --short (Phase 2 files only) ---
+ M frontend/src/app/routes.tsx
+ M frontend/src/lib/api.ts
+ M frontend/src/navigation/navigationModel.ts
+ M frontend/src/pages/ForecastingPage.tsx
+ M src/hb_assistant/construction/analytics/__init__.py
+ M src/hb_assistant/construction/analytics/api.py
+ M src/hb_assistant/construction/analytics/forecast_dto.py
+ M tests/test_fastapi_analytics_app_shell.py
+?? docs/evidence/forecast-ui-phase2-config-viewer/
+?? frontend/src/pages/ForecastConfigPage.test.tsx
+?? frontend/src/pages/ForecastConfigPage.tsx
+?? src/hb_assistant/construction/analytics/forecast_config_catalog.py
+?? src/hb_assistant/construction/analytics/forecast_config_dto.py
+?? tests/test_fastapi_forecast_config.py
+?? tests/test_forecast_config_catalog.py

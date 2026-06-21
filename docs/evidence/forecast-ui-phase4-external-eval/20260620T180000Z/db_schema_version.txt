@@ -1,0 +1,5 @@
+captured (mode=ro): 20260620T180000Z
+schema_version: 60
+v61 target tables present: []
+all v61 targets absent: True
+WAL bytes: 0

@@ -128,7 +128,7 @@ def test_audit_reads_synthetic_live_readonly(tmp_path, monkeypatch):
     _flag_live(monkeypatch, live)
     report = run_live_db_provenance_audit(live_db_path=live, project_key="tropical")
     assert report["decision"] == "populated_tropical"
-    assert report["schema"]["schema_version"] == 60  # Phase 16: migrator now at v60
+    assert report["schema"]["schema_version"] == 61  # Phase 4: migrator now at v61 (synthetic temp DB)
     assert report["schema"]["required_tables_present"] == dict.fromkeys(REQUIRED_TABLES, True)
     assert report["safety"]["read_only"] is True
 
@@ -141,7 +141,7 @@ def test_audit_reports_migration_rows(tmp_path, monkeypatch):
     report = run_live_db_provenance_audit(live_db_path=live, project_key="tropical")
     migs = report["schema"]["migrations"]
     assert migs and {"version", "name", "applied_at"} <= set(migs[0])
-    assert max(m["version"] for m in migs) == 60  # Phase 16: migrator now at v60
+    assert max(m["version"] for m in migs) == 61  # Phase 4: migrator now at v61 (synthetic temp DB)
 
 
 def test_audit_reports_counts_by_project_key(tmp_path, monkeypatch):
