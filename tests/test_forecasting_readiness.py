@@ -30,7 +30,7 @@ def test_evaluate_forecast_semantic_gates_shape(tmp_path: Path) -> None:
     assert report["ok"] is True
     assert report["mode"] == "warn"
     assert "summary" in report
-    assert report["summary"]["gate_count"] == 4
-    assert len(report["gates"]) == 4
+    assert report["summary"]["gate_count"] == 5
+    assert len(report["gates"]) == 5
     assert all("gate" in g and "ok" in g for g in report["gates"])
     assert report["gate_status"] in ("pass", "warning", "fail_blocking")
