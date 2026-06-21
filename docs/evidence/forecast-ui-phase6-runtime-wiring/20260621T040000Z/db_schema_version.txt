@@ -1,0 +1,7 @@
+Live DB schema version + WAL (read-only mode=ro), captured 2026-06-21T07:56:01Z
+Observed BEFORE this session the live DB was already at v61 (Phase 4's v61 migration was applied to the live DB by some earlier operation — NOT by Phase 6). Phase 6 performs zero live writes.
+    "db_schema_version": 61,
+    "wal_size": 0
+    "db_schema_version": 61,
+    "wal_size": 0
+  "live_untouched": true

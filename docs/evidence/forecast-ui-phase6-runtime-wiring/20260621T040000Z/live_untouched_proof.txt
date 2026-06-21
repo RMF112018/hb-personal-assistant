@@ -1,0 +1,30 @@
+{
+  "surfaces": {
+    "runtime_status": 200,
+    "catalog_projects": 200,
+    "catalog_periods": 200,
+    "catalog_packages": 200,
+    "review_summary": 200,
+    "review_monthly": 200,
+    "review_risk_register": 200,
+    "config_snapshots": 200,
+    "run_center_list": 200,
+    "external_eval_list": 200
+  },
+  "selected_period": "2026-June",
+  "selected_package_id_redacted_hash": "282265dbf377",
+  "project_count": 1,
+  "redaction_leaks": [],
+  "before": {
+    "data_root_sha": "02225d43155a728d15d0ea2754885a6c208f48297223f22b35b220326b824b6f",
+    "db_schema_version": 61,
+    "wal_size": 0
+  },
+  "after": {
+    "data_root_sha": "02225d43155a728d15d0ea2754885a6c208f48297223f22b35b220326b824b6f",
+    "db_schema_version": 61,
+    "wal_size": 0
+  },
+  "live_untouched": true
+}
+SMOKE_OK

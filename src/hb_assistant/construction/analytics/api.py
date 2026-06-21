@@ -41,6 +41,15 @@ class ForecastExternalEvaluateRequest(BaseModel):
     project_key: str = "tropical"
 
 
+class ForecastRuntimeConfigRequest(BaseModel):
+    package_roots: list[str] | None = None
+    data_root: str | None = None
+    runs_root: str | None = None
+    eval_root: str | None = None
+    db_path: str | None = None
+    cfr_src: str | None = None
+
+
 class ProcoreOAuthExchangeRequest(BaseModel):
     code: str
 
@@ -1270,12 +1279,18 @@ def create_app(*, db_path: str | None = None) -> Any:
         from hb_assistant.construction.analytics.forecast_catalog import (
             ForecastCatalogError,
             ForecastCatalogService,
-            resolve_package_roots_from_env,
+        )
+        from hb_assistant.construction.analytics.forecast_runtime_config import (
+            resolve_db_path,
+            resolve_package_roots,
         )
 
-        roots = resolve_package_roots_from_env()
+        # Runtime wiring (Phase 6): explicit create_app arg > env > settings-file > None.
+        roots = resolve_package_roots(None)
         try:
-            return ForecastCatalogService(package_roots=roots, db_path=db_path)
+            return ForecastCatalogService(
+                package_roots=roots, db_path=resolve_db_path(db_path)
+            )
         except ForecastCatalogError:
             # Misconfigured / unset roots — fail closed with a generic, path-free message.
             raise HTTPException(status_code=503, detail="forecast_packages_not_configured")
@@ -1373,8 +1388,9 @@ def create_app(*, db_path: str | None = None) -> Any:
         from hb_assistant.construction.analytics.forecast_config_catalog import (
             ForecastConfigCatalogService,
         )
+        from hb_assistant.construction.analytics.forecast_runtime_config import resolve_db_path
 
-        return ForecastConfigCatalogService(db_path=db_path)
+        return ForecastConfigCatalogService(db_path=resolve_db_path(db_path))
 
     def _forecast_config_call(fn: Any, *args: Any) -> dict[str, Any]:
         from fastapi import HTTPException
@@ -1422,8 +1438,14 @@ def create_app(*, db_path: str | None = None) -> Any:
     # POST executes + writes (isolated work-root only) → operator role. GET reads runs → viewer.
     def _forecast_run_service() -> Any:
         from hb_assistant.construction.analytics.forecast_run_service import ForecastRunService
+        from hb_assistant.construction.analytics.forecast_runtime_config import (
+            resolve_data_root,
+            resolve_runs_root,
+        )
 
-        return ForecastRunService()
+        return ForecastRunService(
+            data_root=resolve_data_root(None), runs_root=resolve_runs_root(None)
+        )
 
     def _forecast_run_call(fn: Any, *args: Any) -> dict[str, Any]:
         from fastapi import HTTPException
@@ -1457,6 +1479,45 @@ def create_app(*, db_path: str | None = None) -> Any:
     # actuals/budget/ERP-JTD/backend-model/prior baselines (Implementation Phase 4). POST routes
     # upload/map/evaluate and write only to the isolated eval-root → operator role; GET reads
     # results → viewer. Nothing is written to the live DB or live data root.
+    # Runtime wiring (Phase 6): resolve eval_root / db_path / package_roots via env > settings-file.
+    def _external_resolved() -> dict[str, Any]:
+        from hb_assistant.construction.analytics.forecast_runtime_config import (
+            resolve_db_path,
+            resolve_eval_root_value,
+            resolve_package_roots,
+        )
+
+        return {
+            "eval_root": resolve_eval_root_value(None),
+            "db_path": resolve_db_path(None),
+            "package_roots": resolve_package_roots(None),
+        }
+
+    def _external_ingest_service() -> Any:
+        from hb_assistant.construction.analytics.forecast_external_ingest import (
+            ForecastExternalIngestService,
+        )
+
+        return ForecastExternalIngestService(eval_root=_external_resolved()["eval_root"])
+
+    def _external_mapping_service() -> Any:
+        from hb_assistant.construction.analytics.forecast_external_mapping import (
+            ForecastExternalMappingService,
+        )
+
+        r = _external_resolved()
+        return ForecastExternalMappingService(eval_root=r["eval_root"], db_path=r["db_path"])
+
+    def _external_eval_service() -> Any:
+        from hb_assistant.construction.analytics.forecast_external_eval_service import (
+            ForecastExternalEvalService,
+        )
+
+        r = _external_resolved()
+        return ForecastExternalEvalService(
+            eval_root=r["eval_root"], db_path=r["db_path"], package_roots=r["package_roots"]
+        )
+
     def _forecast_external_call(fn: Any, *args: Any) -> dict[str, Any]:
         from fastapi import HTTPException
 
@@ -1486,12 +1547,8 @@ def create_app(*, db_path: str | None = None) -> Any:
         request: ForecastExternalPreviewRequest, role: dict[str, str] = role_dep
     ) -> dict[str, Any]:
         require_operator_role(role)  # ingests an untrusted file into the isolated eval-root
-        from hb_assistant.construction.analytics.forecast_external_ingest import (
-            ForecastExternalIngestService,
-        )
-
         return _forecast_external_call(
-            ForecastExternalIngestService().preview,
+            _external_ingest_service().preview,
             request.filename,
             request.content_b64,
             request.source_system,
@@ -1503,12 +1560,8 @@ def create_app(*, db_path: str | None = None) -> Any:
         request: ForecastExternalMappingRequest, role: dict[str, str] = role_dep
     ) -> dict[str, Any]:
         require_operator_role(role)
-        from hb_assistant.construction.analytics.forecast_external_mapping import (
-            ForecastExternalMappingService,
-        )
-
         return _forecast_external_call(
-            ForecastExternalMappingService().propose_mapping,
+            _external_mapping_service().propose_mapping,
             request.import_id,
             request.project_key,
         )
@@ -1518,12 +1571,8 @@ def create_app(*, db_path: str | None = None) -> Any:
         request: ForecastExternalEvaluateRequest, role: dict[str, str] = role_dep
     ) -> dict[str, Any]:
         require_operator_role(role)  # runs the evaluation + writes the isolated eval package/DB
-        from hb_assistant.construction.analytics.forecast_external_eval_service import (
-            ForecastExternalEvalService,
-        )
-
         return _forecast_external_call(
-            ForecastExternalEvalService().evaluate,
+            _external_eval_service().evaluate,
             request.import_id,
             request.column_roles,
             request.project_key,
@@ -1532,21 +1581,54 @@ def create_app(*, db_path: str | None = None) -> Any:
     @app.get("/api/forecast/external/evaluations")
     def forecast_external_evaluations_list(role: dict[str, str] = role_dep) -> dict[str, Any]:
         del role
-        from hb_assistant.construction.analytics.forecast_external_eval_service import (
-            ForecastExternalEvalService,
-        )
-
-        return _forecast_external_call(ForecastExternalEvalService().list_evaluations)
+        return _forecast_external_call(_external_eval_service().list_evaluations)
 
     @app.get("/api/forecast/external/evaluations/{eval_id}")
     def forecast_external_evaluation_detail(
         eval_id: str, role: dict[str, str] = role_dep
     ) -> dict[str, Any]:
         del role
-        from hb_assistant.construction.analytics.forecast_external_eval_service import (
-            ForecastExternalEvalService,
+        return _forecast_external_call(_external_eval_service().read_evaluation, eval_id)
+
+    # Forecast runtime configuration (Implementation Phase 6). Wires the HB_FORECAST_* roots into
+    # the live app via a persistent app-support settings file. GET status is viewer-readable and
+    # redaction-safe (booleans + coded blockers, no paths). GET config echoes the raw configured
+    # paths and is ADMIN-only (the single deliberate carve-out from the no-path-echo convention).
+    # POST config validates + persists (operator), returning the redaction-safe status.
+    @app.get("/api/forecast/runtime/status")
+    def forecast_runtime_status(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        from hb_assistant.construction.analytics.forecast_runtime_config import (
+            build_runtime_status,
         )
 
-        return _forecast_external_call(ForecastExternalEvalService().read_evaluation, eval_id)
+        return build_runtime_status()
+
+    @app.get("/api/forecast/runtime/config")
+    def forecast_runtime_config_read(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        require_admin_role(role)  # echoes raw filesystem paths — admin-only carve-out
+        from hb_assistant.construction.analytics.forecast_runtime_config import (
+            read_runtime_config_admin,
+        )
+
+        return read_runtime_config_admin()
+
+    @app.post("/api/forecast/runtime/config")
+    def forecast_runtime_config_write(
+        request: ForecastRuntimeConfigRequest, role: dict[str, str] = role_dep
+    ) -> dict[str, Any]:
+        require_operator_role(role)  # mutates persisted runtime config
+        from fastapi import HTTPException
+
+        from hb_assistant.construction.analytics.forecast_runtime_config import (
+            ForecastRuntimeConfigError,
+            save_runtime_config,
+        )
+
+        try:
+            return save_runtime_config(request.model_dump(exclude_none=True))
+        except ForecastRuntimeConfigError as exc:
+            # Path-free blocker code ("<root>:<blocker>"); never persisted on failure.
+            raise HTTPException(status_code=400, detail=f"forecast_runtime_invalid:{exc}")
 
     return app

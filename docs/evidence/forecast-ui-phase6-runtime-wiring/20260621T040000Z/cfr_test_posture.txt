@@ -1,0 +1,3 @@
+construction-financial-review subrepo suite: 565 passed in 80.86s.
+Phase 6 makes ZERO changes to the CFR subrepo; the suite is unchanged from prior phases.
+Command: PYTHONPATH=<repo>/src .venv/bin/python -m pytest -q   (run inside subrepos/construction-financial-review)

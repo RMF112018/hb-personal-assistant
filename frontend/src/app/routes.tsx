@@ -19,6 +19,7 @@ import { ForecastPackagePage } from '../pages/ForecastPackagePage'
 import { ForecastConfigPage } from '../pages/ForecastConfigPage'
 import { ForecastRunCenterPage } from '../pages/ForecastRunCenterPage'
 import { ForecastExternalEvalPage } from '../pages/ForecastExternalEvalPage'
+import { ForecastRuntimeSettingsPage } from '../pages/ForecastRuntimeSettingsPage'
 import { DataHealthPage } from '../pages/DataHealthPage'
 import { SettingsPage } from '../pages/SettingsPage'
 import { GetStartedPage } from '../pages/GetStartedPage'
@@ -163,6 +164,12 @@ const router = createBrowserRouter([
         path: 'forecasting/external',
         element: <ForecastExternalEvalPage />,
         handle: { title: 'External Forecast Evaluation' },
+      },
+      // Forecast Runtime Settings (Implementation Phase 6). Static segment before :packageId.
+      {
+        path: 'forecasting/runtime',
+        element: <ForecastRuntimeSettingsPage />,
+        handle: { title: 'Forecast Runtime Settings' },
       },
       {
         path: 'forecasting/:packageId',
