@@ -19,6 +19,7 @@ export function ForecastRunCenterPage() {
 
   const [generating, setGenerating] = useState(false)
   const [genError, setGenError] = useState<string | null>(null)
+  const [genUnconfigured, setGenUnconfigured] = useState(false)
   const [selectedId, setSelectedId] = useState<string | undefined>(undefined)
 
   const { data: detailResp } = useQuery({
@@ -30,11 +31,13 @@ export function ForecastRunCenterPage() {
   async function onGenerate() {
     setGenerating(true)
     setGenError(null)
+    setGenUnconfigured(false)
     try {
       await api.startForecastRun()
       await refetch()
     } catch (e: any) {
       const status = e?.status
+      setGenUnconfigured(status === 503)
       setGenError(
         status === 503
           ? 'Forecast generation is not configured in this environment yet.'
@@ -72,7 +75,19 @@ export function ForecastRunCenterPage() {
           Generates a deterministic context → analysis forecast into an isolated work area. The live
           project data and database are never changed.
         </p>
-        {genError && <p className="text-sm text-rose-300 mt-2">{genError}</p>}
+        {genError && (
+          <p className="text-sm text-rose-300 mt-2">
+            {genError}
+            {genUnconfigured && (
+              <>
+                {' '}
+                <Link to="/forecasting/runtime" className="underline">
+                  Configure data sources →
+                </Link>
+              </>
+            )}
+          </p>
+        )}
       </div>
 
       <div className="card mt-3">

@@ -1,0 +1,8 @@
+=== copycheck ===
+copycheck: no forbidden production terms found in frontend/src production sources
+=== build ===
+✓ built in 485ms
+=== vitest (full) ===
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+ Test Files  1 failed | 22 passed (23)
+      Tests  5 failed | 97 passed (102)

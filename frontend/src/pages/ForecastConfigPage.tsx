@@ -55,10 +55,10 @@ export function ForecastConfigPage() {
 
   if (error) {
     const status = (error as any)?.status
-    const message =
-      status === 503
-        ? 'Forecast configuration is not available in this environment yet.'
-        : 'We could not load forecast configuration right now.'
+    const isUnconfigured = status === 503
+    const message = isUnconfigured
+      ? 'Forecast configuration is not available in this environment yet.'
+      : 'We could not load forecast configuration right now.'
     return (
       <div className="card">
         <div className="text-xs mb-2">
@@ -66,7 +66,17 @@ export function ForecastConfigPage() {
             ← Back to forecast packages
           </Link>
         </div>
-        <EmptyState title="Configuration unavailable" hint={message} />
+        <EmptyState
+          title="Configuration unavailable"
+          hint={message}
+          actions={
+            isUnconfigured ? (
+              <Link to="/forecasting/runtime" className="underline">
+                Configure data sources →
+              </Link>
+            ) : undefined
+          }
+        />
       </div>
     )
   }

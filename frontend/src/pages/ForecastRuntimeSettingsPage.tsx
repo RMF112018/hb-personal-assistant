@@ -10,25 +10,7 @@ import { useQuery } from '@tanstack/react-query'
 
 import { StatusPill } from './ForecastingPage'
 import { api, getLocalUiRole } from '../lib/api'
-
-const ROOT_LABELS: Record<string, string> = {
-  package_roots: 'Forecast packages',
-  data_root: 'Source data folder',
-  runs_root: 'Run output folder',
-  eval_root: 'Evaluation output folder',
-  db_path: 'Source database',
-  cfr_src: 'Engine source',
-  config_edit_root: 'Config proposal output folder',
-}
-
-const BLOCKER_COPY: Record<string, string> = {
-  not_configured: 'Not configured',
-  not_absolute: 'Path must be absolute',
-  missing: 'Path does not exist',
-  not_a_directory: 'Not a directory',
-  under_live_data_root: 'Must be outside the live data folder',
-  not_creatable: 'Folder cannot be created',
-}
+import { BLOCKER_COPY, ROOT_LABELS } from '../components/forecast/forecastRuntimeCopy'
 
 const PATH_FIELDS: { key: string; label: string; placeholder: string }[] = [
   { key: 'data_root', label: 'Source data folder', placeholder: 'Absolute path to the live forecast data folder' },

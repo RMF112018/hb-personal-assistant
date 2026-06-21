@@ -169,6 +169,72 @@ def test_save_refuses_config_edit_root_under_data_root(cfg_path: Path, tmp_path:
     assert not cfg_path.exists()
 
 
+# -- db_path advisory probe (redaction-safe, non-blocking) --------------------
+
+
+def _make_config_db(path: Path, *, version: int = 61, snapshots: int = 2) -> None:
+    import sqlite3
+
+    conn = sqlite3.connect(str(path))
+    try:
+        conn.execute("CREATE TABLE schema_migrations (version INTEGER)")
+        conn.executemany("INSERT INTO schema_migrations (version) VALUES (?)", [(v,) for v in range(1, version + 1)])
+        conn.execute("CREATE TABLE forecast_config_snapshots (config_snapshot_id TEXT)")
+        conn.executemany(
+            "INSERT INTO forecast_config_snapshots (config_snapshot_id) VALUES (?)",
+            [(f"snap-{i}",) for i in range(snapshots)],
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def test_db_advisory_present_for_valid_config_db(cfg_path: Path, tmp_path: Path) -> None:
+    db = tmp_path / "config.sqlite"
+    _make_config_db(db, version=61, snapshots=2)
+    _write(cfg_path, db_path=str(db))
+
+    status = rc.build_runtime_status()
+    db_root = status["roots"]["db_path"]
+    assert db_root["valid"] is True
+    assert db_root["schema_version"] == 61
+    assert db_root["config_snapshot_count"] == 2
+    # Advisory is ints only — the whole status payload (real /private|/tmp db path) must not leak.
+    assert find_redaction_leaks(status) == []
+
+
+def test_db_advisory_absent_when_db_missing_or_unrecognized(cfg_path: Path, tmp_path: Path) -> None:
+    # Missing → not even configured-valid; no advisory keys.
+    _write(cfg_path, db_path=str(tmp_path / "nope.sqlite"))
+    missing = rc.build_runtime_status()["roots"]["db_path"]
+    assert "schema_version" not in missing and "config_snapshot_count" not in missing
+
+    # Exists but is not a recognizable HB DB (no schema_migrations) → graceful empty advisory.
+    junk = tmp_path / "junk.sqlite"
+    junk.write_text("not a database", encoding="utf-8")
+    _write(cfg_path, db_path=str(junk))
+    bad = rc.build_runtime_status()["roots"]["db_path"]
+    assert bad["valid"] is True  # existence-level validity is unchanged
+    assert "schema_version" not in bad and "config_snapshot_count" not in bad
+
+
+def test_db_advisory_keeps_root_keyset_stable(cfg_path: Path, tmp_path: Path) -> None:
+    db = tmp_path / "config.sqlite"
+    _make_config_db(db)
+    _write(cfg_path, db_path=str(db))
+    status = rc.build_runtime_status()
+    # The advisory is additive INSIDE db_path; the root key set is unchanged.
+    assert set(status["roots"]) == {
+        "package_roots",
+        "data_root",
+        "runs_root",
+        "eval_root",
+        "db_path",
+        "cfr_src",
+        "config_edit_root",
+    }
+
+
 def test_save_allows_db_path_under_data_root(cfg_path: Path, tmp_path: Path) -> None:
     # db_path is read-only (mode=ro) and not a write hazard, so it is NOT write-guarded.
     data = tmp_path / "data"

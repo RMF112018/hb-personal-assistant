@@ -1,0 +1,12 @@
+ M docs/runbooks/forecast-ui-launch-bootstrap.md
+ M frontend/src/pages/ForecastConfigPage.tsx
+ M frontend/src/pages/ForecastExternalEvalPage.tsx
+ M frontend/src/pages/ForecastRunCenterPage.tsx
+ M frontend/src/pages/ForecastRuntimeSettingsPage.tsx
+ M frontend/src/pages/ForecastingPage.tsx
+ M src/hb_assistant/construction/analytics/forecast_runtime_config.py
+ M tests/test_forecast_runtime_config.py
+?? docs/architecture/279-forecast-ui-read-root-onboarding.md
+?? docs/evidence/forecast-ui-read-root-onboarding/20260621T080000Z/
+?? frontend/src/components/forecast/
+?? frontend/src/hooks/useForecastReadiness.ts

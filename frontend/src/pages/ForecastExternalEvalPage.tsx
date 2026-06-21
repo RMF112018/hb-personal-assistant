@@ -40,6 +40,7 @@ export function ForecastExternalEvalPage() {
   const [period, setPeriod] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [unconfigured, setUnconfigured] = useState(false)
   const [preview, setPreview] = useState<any | null>(null)
   const [roles, setRoles] = useState<Record<string, string>>({})
   const [result, setResult] = useState<any | null>(null)
@@ -61,6 +62,7 @@ export function ForecastExternalEvalPage() {
   async function onUpload(file: File) {
     setBusy(true)
     setError(null)
+    setUnconfigured(false)
     setResult(null)
     try {
       const b64 = await readFileAsBase64(file)
@@ -69,6 +71,7 @@ export function ForecastExternalEvalPage() {
       const mapping = await api.proposeExternalMapping(prev.import_id)
       setRoles({ ...(mapping.proposed_column_roles || {}) })
     } catch (e: any) {
+      setUnconfigured(e?.status === 503)
       setError(friendlyError(e))
     } finally {
       setBusy(false)
@@ -79,11 +82,13 @@ export function ForecastExternalEvalPage() {
     if (!preview) return
     setBusy(true)
     setError(null)
+    setUnconfigured(false)
     try {
       const res = await api.evaluateExternalForecast(preview.import_id, roles)
       setResult(res)
       await refetch()
     } catch (e: any) {
+      setUnconfigured(e?.status === 503)
       setError(friendlyError(e))
     } finally {
       setBusy(false)
@@ -143,7 +148,19 @@ export function ForecastExternalEvalPage() {
             className="text-sm"
           />
         </div>
-        {error && <p className="text-sm text-rose-300 mt-2">{error}</p>}
+        {error && (
+          <p className="text-sm text-rose-300 mt-2">
+            {error}
+            {unconfigured && (
+              <>
+                {' '}
+                <Link to="/forecasting/runtime" className="underline">
+                  Configure data sources →
+                </Link>
+              </>
+            )}
+          </p>
+        )}
       </div>
 
       {/* Step 2 — map columns */}

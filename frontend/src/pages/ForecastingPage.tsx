@@ -8,6 +8,7 @@ import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 
 import { EmptyState } from '../components/ui/EmptyState'
+import { ForecastReadinessPanel } from '../components/forecast/ForecastReadinessPanel'
 import { api } from '../lib/api'
 
 const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
@@ -58,14 +59,27 @@ export function ForecastingPage() {
 
   if (projError) {
     const status = (projError as any)?.status
-    const message =
-      status === 503
-        ? 'Forecast packages are not configured for this environment yet.'
-        : 'We could not load forecast packages right now.'
+    const isUnconfigured = status === 503
+    const message = isUnconfigured
+      ? 'Forecast packages are not configured for this environment yet.'
+      : 'We could not load forecast packages right now.'
     return (
-      <div className="card">
-        <div className="section-title">Forecasting</div>
-        <EmptyState title="Forecast packages unavailable" hint={message} />
+      <div>
+        {isUnconfigured && <ForecastReadinessPanel />}
+        <div className={isUnconfigured ? 'card mt-3' : 'card'}>
+          <div className="section-title">Forecasting</div>
+          <EmptyState
+            title="Forecast packages unavailable"
+            hint={message}
+            actions={
+              isUnconfigured ? (
+                <Link to="/forecasting/runtime" className="underline">
+                  Configure data sources →
+                </Link>
+              ) : undefined
+            }
+          />
+        </div>
       </div>
     )
   }
@@ -75,7 +89,8 @@ export function ForecastingPage() {
 
   return (
     <div>
-      <div className="card">
+      <ForecastReadinessPanel />
+      <div className="card mt-3">
         <div className="flex items-center justify-between gap-3">
           <div className="section-title">Forecasting</div>
           <div className="flex gap-3">
@@ -87,6 +102,9 @@ export function ForecastingPage() {
             </Link>
             <Link to="/forecasting/config" className="text-sm underline">
               View configuration
+            </Link>
+            <Link to="/forecasting/runtime" className="text-sm underline">
+              Data sources
             </Link>
           </div>
         </div>
