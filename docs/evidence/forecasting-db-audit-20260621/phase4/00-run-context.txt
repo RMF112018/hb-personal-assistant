@@ -1,0 +1,23 @@
+branch=feature/forecasting-db-audit-20260621
+head=29f21489e8aa8ae2ccc6e97e52e20aea2540cd59
+stamp=20260621T134328Z
+ M docs/evidence/construction-intelligence-phase-08c-financial-readiness/exposure-mart-preview.json
+ M docs/evidence/construction-intelligence-phase-08c-financial-readiness/financial-readiness-agent-proof.json
+ M docs/evidence/construction-intelligence-phase-08c-financial-readiness/financial-source-coverage-matrix.json
+ M docs/evidence/construction-intelligence-phase-08c-financial-readiness/forecast-readiness-gates.md
+ M docs/evidence/construction-intelligence-phase-08c-financial-readiness/forecast-readiness-proof.json
+ M docs/forecasting/semantic-catalog/budget_column_roles.yml
+ M src/hb_assistant/construction/analytics/forecast_external_eval_service.py
+ M src/hb_assistant/forecasting/__init__.py
+ M src/hb_assistant/forecasting/gates.py
+ M src/hb_assistant/forecasting/project_eligibility.py
+ M tests/test_forecasting_gates.py
+ M tests/test_forecasting_project_eligibility.py
+ M tests/test_forecasting_projection_parity_keys.py
+?? docs/evidence/forecasting-db-audit-20260621/phase4-baseline-summary.md
+?? docs/evidence/forecasting-db-audit-20260621/phase4/
+?? docs/evidence/forecasting-db-audit-20260621/procore-budget-formula-proof.md
+?? docs/evidence/forecasting-db-audit-20260621/purchase-order-projection-drift-evidence.json
+?? docs/evidence/forecasting-db-complete-evidence-20260621T132108Z.tgz
+?? docs/evidence/forecasting-db-complete-evidence-20260621T132108Z.tgz.sha256
+?? docs/evidence/forecasting-db-complete-evidence-20260621T132934Z.tgz

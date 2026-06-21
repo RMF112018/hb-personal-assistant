@@ -108,17 +108,47 @@ def test_double_count_budget_column_role_overlap(tmp_path: Path) -> None:
         """
         CREATE TABLE procore_ep_budget_detail_rows (
           project_key TEXT, budget_code TEXT,
-          revised_budget TEXT, pending_budget_changes TEXT,
-          projected_costs TEXT, committed_costs TEXT, direct_costs TEXT
+          revised_budget TEXT, approved_budget_changes TEXT, pending_budget_changes TEXT,
+          projected_budget TEXT, projected_costs TEXT, committed_costs TEXT, direct_costs TEXT,
+          pending_cost_changes TEXT, estimated_cost_at_completion TEXT, forecast_to_complete TEXT
         );
         INSERT INTO procore_ep_budget_detail_rows
-          VALUES ('testproj', '01-100', '50000.00', '2500.00', '40000.00', '10000.00', '5000.00');
+          VALUES ('testproj', '01-100', '50000.00', '1000.00', '2500.00', '52000.00',
+                  '40000.00', '10000.00', '5000.00', '500.00', '45000.00', '5000.00');
         """
     )
     conn.commit()
     conn.close()
     report = run_double_count_gate(db_path=db, mode="warn")
     bases = {f.get("basis") for f in report["findings"]}
-    assert "calculated_rollup_may_include_pending" in bases
-    assert "calculated_cost_projection_may_include_components" in bases
-    assert all(f.get("procore_formula_proof") == "unresolved" for f in report["findings"] if "column_roles" in f)
+    assert "proven_projected_costs_includes_components" in bases
+    assert "proven_eac_includes_projected_costs_and_ftc" in bases
+    proven = [f for f in report["findings"] if f.get("procore_formula_status") == "proven"]
+    assert proven
+    assert all(f.get("severity") == "info" for f in proven)
+
+
+def test_double_count_unresolved_formula_stays_warning_not_error(tmp_path: Path) -> None:
+    db = tmp_path / "unresolved.sqlite"
+    conn = sqlite3.connect(str(db))
+    conn.executescript(
+        """
+        CREATE TABLE procore_ep_budget_detail_rows (
+          project_key TEXT, budget_code TEXT,
+          revised_budget TEXT, pending_budget_changes TEXT
+        );
+        INSERT INTO procore_ep_budget_detail_rows
+          VALUES ('testproj', '01-100', '50000.00', '2500.00');
+        """
+    )
+    conn.commit()
+    conn.close()
+    warn_report = run_double_count_gate(db_path=db, mode="warn")
+    pending_findings = [
+        f
+        for f in warn_report["findings"]
+        if f.get("basis") == "pending_not_in_revised_budget_may_still_coexist"
+    ]
+    assert pending_findings
+    assert all(f["severity"] == "warning" for f in pending_findings)
+    assert pending_findings[0].get("procore_formula_status") == "partially_proven"

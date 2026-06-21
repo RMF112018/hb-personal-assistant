@@ -58,6 +58,13 @@ scripts/run_forecasting_gates_live_copy_evidence.sh
 ```
 
 Produces safe JSON under `docs/evidence/forecasting-gates-live-copy-YYYYMMDDTHHMMSSZ/` (DB copy gitignored).
+
+## Phase 4 additions
+
+- `budget_column_roles.yml` v2 — Procore formula status per column (see `docs/evidence/forecasting-db-audit-20260621/procore-budget-formula-proof.md`)
+- PO projection drift audit script: `scripts/audit_po_projection_drift.py`
+- CI/readiness: `docs/forecasting/forecast-gates-ci-readiness.md`
+- External eval workflow: `docs/forecasting/external-forecast-evaluation-workflow.md`
 ```
 
 ### Double-count gate (`forecast_double_count_prevention`)

@@ -47,7 +47,7 @@ from hb_assistant.construction.analytics.forecast_external_mapping import (
 )
 from hb_assistant.forecasting.project_eligibility import (
     assert_eval_project_eligible,
-    load_eval_project_allowlist,
+    resolve_eligible_eval_projects,
 )
 from hb_assistant.store.migrator import SQLiteMigrator
 
@@ -131,7 +131,7 @@ class ForecastExternalEvalService:
         project_key: str = _DEFAULT_PROJECT,
         model_package_dir: str | None = None,
     ) -> dict[str, Any]:
-        assert_eval_project_eligible(project_key)
+        assert_eval_project_eligible(project_key, db_path=self._db_path_override)
         evals_root = self._evals_root()
         record = self._ingest.read_import_record(import_id)
         eval_id = uuid.uuid4().hex[:12]
@@ -415,7 +415,9 @@ class ForecastExternalEvalService:
         manifest = {
             "package_kind": "external_forecast_evaluation",
             "project_key": project_key,
-            "eligible_projects": sorted(load_eval_project_allowlist()),
+            "eligible_projects": sorted(
+                resolve_eligible_eval_projects(db_path=self._db_path_override)["projects"]
+            ),
             "schema_version": 1,
             "files": files,
             "file_count": len(files),

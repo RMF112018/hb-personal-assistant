@@ -23,6 +23,8 @@ from hb_assistant.forecasting.project_eligibility import (
     assert_eval_project_eligible,
     is_eval_project_eligible,
     load_eval_project_allowlist,
+    load_forecast_projects_enabled,
+    resolve_eligible_eval_projects,
 )
 from hb_assistant.forecasting.readiness import evaluate_forecast_semantic_gates
 
@@ -44,4 +46,6 @@ __all__ = [
     "assert_eval_project_eligible",
     "is_eval_project_eligible",
     "load_eval_project_allowlist",
+    "load_forecast_projects_enabled",
+    "resolve_eligible_eval_projects",
 ]
