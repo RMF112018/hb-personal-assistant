@@ -35,7 +35,9 @@ Repo-owned semantic layer design artifacts for forecasting DB evidence and futur
 | `forecast_internal_semantics.yml` | Internal/external forecast tables |
 | `normalization_rules.yml` | Amount/date/boolean/status rules |
 | `double_count_prevention_model.yml` | Exposure lifecycle precedence |
-| `actuals_precedence_model.yml` | Actuals source hierarchy |
+| `actuals_precedence_model.yml` | Actuals source hierarchy (v2 actual bases) |
+| `budget_column_roles.yml` | Standard budget column roles and overlap checks |
+| `budget_dynamic_columns.yml` | Custom/dynamic budget-view column classification |
 
 ## Runnable gates
 
@@ -59,6 +61,13 @@ scripts/run_forecasting_gates_live_copy_evidence.sh
 
 Produces safe JSON under `docs/evidence/forecasting-gates-live-copy-YYYYMMDDTHHMMSSZ/` (DB copy gitignored).
 
+## Phase 5 additions
+
+- `actuals_precedence_model.yml` v2 — seven explicit actual bases (cumulative, ERP sidecar, invoice, monthly, payment)
+- `budget_dynamic_columns.yml` + `forecast_budget_dynamic_columns` gate
+- Projection parity: prime, change event, subcontractor invoice; RFQ unsupported documented
+- `.github/workflows/forecasting-semantic-gates.yml` + `scripts/ci_forecasting_semantic_gates.sh`
+
 ## Phase 4 additions
 
 - `budget_column_roles.yml` v2 — Procore formula status per column (see `docs/evidence/forecasting-db-audit-20260621/procore-budget-formula-proof.md`)
@@ -77,11 +86,17 @@ Produces safe JSON under `docs/evidence/forecasting-gates-live-copy-YYYYMMDDTHHM
 
 ### Actuals reconciliation gate (`forecast_actuals_reconciliation`)
 
-**Checks:** cumulative budget actual vs monthly actuals; Procore vs ERP job-to-date; invoice detail exceeding budget cumulative.
+**Bases:** `budget_actual_cumulative`, `budget_job_to_date_cumulative`, `erp_actual_sidecar`, `direct_cost_rollup`, `invoice_progress_fact`, `monthly_periodized_actual`, `payment_cash_flow_fact`.
+
+**Checks:** population summary; JTD vs ERP aggregate variance (warning); monthly vs cumulative; invoice/budget coexistence; payment timing population.
 
 **Thresholds:** `--absolute-threshold` (default `100.00`), `--percent-threshold` (default `0.005`).
 
 **Does not:** add all actual fields together; treat ERP as interchangeable with Procore without explicit sidecar tagging.
+
+### Budget dynamic columns gate (`forecast_budget_dynamic_columns`)
+
+**Checks:** classifies budget-view columns; warns on unmapped numeric cells; excludes text/notes from monetary parsing.
 
 ## Validation SQL
 
@@ -93,4 +108,5 @@ Run SQL under `validation_queries/` against the local SQLite DB (read-only). Nev
 | `actuals_reconciliation.sql` | Cumulative vs periodized vs ERP |
 | `purchase_order_relationships.sql` | PO polymorphic holder classification |
 | `projection_parity.sql` | `procore_ep_*` vs `procore_financial_*` counts |
+| `budget_dynamic_columns.sql` | Dynamic column definitions and cell population |
 | `cost_type_mapping_guard.sql` | Cost-type null rate; category ≠ cost_type |

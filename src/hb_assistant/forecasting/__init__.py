@@ -11,6 +11,7 @@ from hb_assistant.forecasting.field_classifiers import (
 from hb_assistant.forecasting.gates import (
     run_actuals_reconciliation_gate,
     run_all_forecasting_gates,
+    run_budget_dynamic_columns_gate,
     run_cost_type_guard_gate,
     run_double_count_gate,
     run_projection_parity_gate,
@@ -40,6 +41,7 @@ __all__ = [
     "run_double_count_gate",
     "run_actuals_reconciliation_gate",
     "run_projection_parity_gate",
+    "run_budget_dynamic_columns_gate",
     "run_cost_type_guard_gate",
     "run_all_forecasting_gates",
     "evaluate_forecast_semantic_gates",

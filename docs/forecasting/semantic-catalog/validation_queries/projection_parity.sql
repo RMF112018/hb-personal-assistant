@@ -8,6 +8,22 @@ SELECT 'purchase_order_contracts' AS family,
        (SELECT COUNT(*) FROM procore_ep_purchase_order_contracts) AS ep_rows,
        (SELECT COUNT(*) FROM procore_financial_contracts WHERE contract_family = 'purchase_order') AS financial_rows;
 
+SELECT 'prime_contracts' AS family,
+       (SELECT COUNT(*) FROM procore_ep_prime_contracts) AS ep_rows,
+       (SELECT COUNT(*) FROM procore_financial_contracts WHERE contract_family = 'owner') AS financial_rows;
+
+SELECT 'change_events' AS family,
+       (SELECT COUNT(*) FROM procore_ep_change_events) AS ep_rows,
+       (SELECT COUNT(*) FROM procore_financial_change_events) AS financial_rows;
+
+SELECT 'subcontractor_invoices' AS family,
+       (SELECT COUNT(*) FROM procore_ep_subcontractor_invoices) AS ep_rows,
+       (SELECT COUNT(*) FROM procore_financial_subcontractor_invoices) AS financial_rows;
+
+SELECT 'rfqs' AS family,
+       (SELECT COUNT(*) FROM procore_ep_rfqs) AS ep_rows,
+       (SELECT COUNT(*) FROM procore_financial_rfqs) AS financial_rows;
+
 -- Financial-only PO keys that are commitment-backed (expected enrichment)
 SELECT fin.project_key,
        fin.contract_id,

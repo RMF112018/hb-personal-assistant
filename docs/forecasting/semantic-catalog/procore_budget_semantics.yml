@@ -27,6 +27,11 @@ entities:
     join_confidence: high
     evidence_basis: [row-profile-supported]
     forecast_relevance: dynamic_budget_view_cell_evidence
+    dynamic_columns_ref: budget_dynamic_columns.yml
+    gate: forecast_budget_dynamic_columns
+    caveats:
+      - Unmapped numeric custom columns are review_required; never silent model inputs.
+      - Row cells are source evidence; standard rollups live on budget_detail_rows.
 
   fact_budget_change:
     source_tables: [procore_ep_budget_modifications, procore_ep_budget_change_history]

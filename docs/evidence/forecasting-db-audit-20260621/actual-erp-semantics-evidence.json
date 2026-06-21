@@ -1,0 +1,91 @@
+{
+  "db_path": "docs/evidence/forecasting-gates-live-copy-20260621T133000Z/live-copy.sqlite",
+  "budget_detail_population": {
+    "total_rows": 3044,
+    "actual_cost_populated": 0,
+    "actual_cost_null_rate": 1.0,
+    "direct_costs_populated": 522,
+    "job_to_date_costs_populated": 1566,
+    "erp_direct_costs_populated": 956,
+    "erp_job_to_date_costs_populated": 956,
+    "distinct_projects": 6,
+    "distinct_budget_codes": 372
+  },
+  "per_project_population": [
+    {
+      "project_key": "alton-hilltop-pbg",
+      "actual_cost_rows": 0,
+      "jtd_rows": 54,
+      "erp_jtd_rows": 36,
+      "direct_rows": 18
+    },
+    {
+      "project_key": "caretta",
+      "actual_cost_rows": 0,
+      "jtd_rows": 543,
+      "erp_jtd_rows": 362,
+      "direct_rows": 181
+    },
+    {
+      "project_key": "pga-modern-garage",
+      "actual_cost_rows": 0,
+      "jtd_rows": 264,
+      "erp_jtd_rows": 88,
+      "direct_rows": 88
+    },
+    {
+      "project_key": "rybovich",
+      "actual_cost_rows": 0,
+      "jtd_rows": 309,
+      "erp_jtd_rows": 206,
+      "direct_rows": 103
+    },
+    {
+      "project_key": "the-wellington",
+      "actual_cost_rows": 0,
+      "jtd_rows": 15,
+      "erp_jtd_rows": 10,
+      "direct_rows": 5
+    },
+    {
+      "project_key": "tropical",
+      "actual_cost_rows": 0,
+      "jtd_rows": 381,
+      "erp_jtd_rows": 254,
+      "direct_rows": 127
+    }
+  ],
+  "erp_vs_jtd_aggregate_variance": [],
+  "invoice_coverage": {
+    "invoice_count": 1002,
+    "projects": 4,
+    "payment_date_pop": 0,
+    "claimed_pop": 1002,
+    "detail_items": 51428,
+    "detail_projects": 2,
+    "detail_distinct_cost_codes": 72
+  },
+  "monthly_actual_coverage": {
+    "monthly_rows": 1081,
+    "projects": 1,
+    "budget_codes": 108
+  },
+  "forecast_cost_entries_coverage": {
+    "entry_rows": 6324,
+    "projects": 1,
+    "budget_codes": 108
+  },
+  "reconciliation_posture": {
+    "actual_cost": "unresolved_local_column_zero_population; do not use as primary cumulative actual on live copy",
+    "job_to_date_costs": "procore_calculated_rollup_direct_plus_invoices_per_procore_doc",
+    "erp_job_to_date_costs": "erp_sidecar_not_interchangeable_with_procore_jtd",
+    "invoice_progress": "detail_facts_compare_only_not_additive_with_budget_rollups",
+    "monthly_actuals": "periodized_training_source_separate_from_cumulative",
+    "payment_timing": "cash_flow_fact_not_earned_actual_cost",
+    "never_add_together": [
+      "budget_cumulative_actual + invoice_detail_progress",
+      "procore_job_to_date + erp_job_to_date",
+      "monthly_periodized + cumulative_without_period_reconciliation"
+    ]
+  }
+}

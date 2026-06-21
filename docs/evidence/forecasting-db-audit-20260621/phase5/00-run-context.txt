@@ -1,0 +1,3 @@
+phase5 evidence run 2026-06-21T13:58:01Z
+branch: feature/forecasting-db-audit-20260621
+head: 86f31c6206ecac54f941534c517dbb2b6a18c47c

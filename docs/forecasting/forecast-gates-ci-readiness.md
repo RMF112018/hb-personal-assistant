@@ -64,4 +64,8 @@ python3 scripts/audit_po_projection_drift.py --db-path $COPY --json-out docs/evi
 
 ## GitHub Actions
 
-No `.github/workflows` present in repo. CI commands documented here for local/launchd verification. Add workflow only when repo adopts shared CI pattern.
+Workflow: `.github/workflows/forecasting-semantic-gates.yml` (Phase 5)
+
+Local equivalent: `bash scripts/ci_forecasting_semantic_gates.sh`
+
+Both run the CI-safe test suite above; neither requires live DB, Procore, or SchemaCrawler.

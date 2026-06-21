@@ -21,6 +21,8 @@ REQUIRED_YAML = [
     "normalization_rules.yml",
     "double_count_prevention_model.yml",
     "actuals_precedence_model.yml",
+    "budget_column_roles.yml",
+    "budget_dynamic_columns.yml",
 ]
 
 
@@ -40,5 +42,6 @@ def test_validation_sql_files_exist() -> None:
         "actuals_reconciliation.sql",
         "projection_parity.sql",
         "cost_type_mapping_guard.sql",
+        "budget_dynamic_columns.sql",
     ):
         assert (sql_dir / name).exists(), name

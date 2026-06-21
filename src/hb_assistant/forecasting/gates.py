@@ -25,6 +25,8 @@ _PARITY_PAIR_CONFIGS: tuple[dict[str, Any], ...] = (
         "ep_table": "procore_ep_commitment_contracts",
         "target_table": "procore_financial_contracts",
         "family": "commitment",
+        "parity_kind": "contract_family",
+        "contract_family": "commitment",
         "ep_key": "record_id",
         "target_key": "contract_id",
         "amount_field": "grand_total",
@@ -34,11 +36,61 @@ _PARITY_PAIR_CONFIGS: tuple[dict[str, Any], ...] = (
         "ep_table": "procore_ep_purchase_order_contracts",
         "target_table": "procore_financial_contracts",
         "family": "purchase_order",
+        "parity_kind": "contract_family",
+        "contract_family": "purchase_order",
         "ep_key": "record_id",
         "target_key": "contract_id",
         "amount_field": "grand_total",
         "updated_field": "updated_at",
         "expected_financial_only": ["commitment_backed_po"],
+    },
+    {
+        "ep_table": "procore_ep_prime_contracts",
+        "target_table": "procore_financial_contracts",
+        "family": "prime",
+        "parity_kind": "contract_family",
+        "contract_family": "owner",
+        "ep_key": "record_id",
+        "target_key": "contract_id",
+        "amount_field": "grand_total",
+        "updated_field": "updated_at",
+        "ep_status_field": "status",
+    },
+    {
+        "ep_table": "procore_ep_change_events",
+        "target_table": "procore_financial_change_events",
+        "family": "change_event",
+        "parity_kind": "direct_id",
+        "ep_key": "record_id",
+        "target_key": "change_event_id",
+        "updated_field": "updated_at",
+        "ep_status_field": "status_name",
+        "target_status_field": "status",
+    },
+    {
+        "ep_table": "procore_ep_subcontractor_invoices",
+        "target_table": "procore_financial_subcontractor_invoices",
+        "family": "subcontractor_invoice",
+        "parity_kind": "direct_id",
+        "ep_key": "record_id",
+        "target_key": "invoice_id",
+        "amount_field": "total_claimed_amount",
+        "updated_field": "updated_at",
+        "ep_status_field": "status",
+    },
+    {
+        "ep_table": "procore_ep_rfqs",
+        "target_table": "procore_financial_rfqs",
+        "family": "rfq",
+        "parity_kind": "direct_id",
+        "ep_key": "record_id",
+        "target_key": "rfq_id",
+        "updated_field": "updated_at",
+        "parity_availability": "unsupported_ep_scope_subset",
+        "unsupported_reason": (
+            "Financial RFQ projection scope exceeds current EP rfqs endpoint sync; "
+            "parity counts are informational only until EP coverage aligns."
+        ),
     },
 )
 
@@ -360,6 +412,42 @@ def run_double_count_gate(
     }
 
 
+def _actuals_population_summary(conn: sqlite3.Connection) -> dict[str, Any] | None:
+    if not _table_exists(conn, "procore_ep_budget_detail_rows"):
+        return None
+    cols = _table_columns(conn, "procore_ep_budget_detail_rows")
+    field_names = (
+        "actual_cost",
+        "direct_costs",
+        "job_to_date_costs",
+        "erp_direct_costs",
+        "erp_job_to_date_costs",
+    )
+    select_parts = ["COUNT(*) AS total"]
+    for field in field_names:
+        if field in cols:
+            select_parts.append(
+                f"SUM(CASE WHEN {_column_populated(field)} THEN 1 ELSE 0 END) AS {field}_pop"
+            )
+    row = conn.execute(
+        f"SELECT {', '.join(select_parts)} FROM procore_ep_budget_detail_rows"
+    ).fetchone()
+    total = int(row["total"] or 0)
+    actual_pop = int(row["actual_cost_pop"] or 0) if "actual_cost" in cols else 0
+    summary: dict[str, Any] = {
+        "total_rows": total,
+        "actual_cost_populated": actual_pop,
+        "actual_cost_null_rate": round(1 - (actual_pop / total), 4) if total and "actual_cost" in cols else None,
+        "direct_costs_populated": int(row["direct_costs_pop"] or 0) if "direct_costs" in cols else None,
+        "job_to_date_costs_populated": int(row["job_to_date_costs_pop"] or 0) if "job_to_date_costs" in cols else None,
+        "erp_direct_costs_populated": int(row["erp_direct_costs_pop"] or 0) if "erp_direct_costs" in cols else None,
+        "erp_job_to_date_costs_populated": int(row["erp_job_to_date_costs_pop"] or 0)
+        if "erp_job_to_date_costs" in cols
+        else None,
+    }
+    return summary
+
+
 def run_actuals_reconciliation_gate(
     *,
     db_path: str | Path,
@@ -374,23 +462,131 @@ def run_actuals_reconciliation_gate(
     findings: list[dict[str, Any]] = []
 
     with _connect_ro(path) as conn:
-        if _table_exists(conn, "procore_ep_budget_detail_rows") and _table_exists(
-            conn, "forecast_monthly_actuals_by_budget_code"
+        population = _actuals_population_summary(conn)
+        if population:
+            findings.append(
+                {
+                    "basis": "budget_actual_cumulative",
+                    "severity": "info",
+                    "population": population,
+                    "note": (
+                        "actual_cost population on budget rows; zero population means use "
+                        "job_to_date_costs or monthly actuals with explicit basis tagging."
+                    ),
+                }
+            )
+            null_rate = population.get("actual_cost_null_rate")
+            if null_rate is not None and null_rate >= 0.99:
+                findings.append(
+                    {
+                        "basis": "budget_actual_cumulative",
+                        "severity": "info",
+                        "message": "actual_cost column unpopulated on live copy; unresolved Procore mapping.",
+                        "procore_formula_status": "unresolved",
+                    }
+                )
+
+        budget_cols = (
+            _table_columns(conn, "procore_ep_budget_detail_rows")
+            if _table_exists(conn, "procore_ep_budget_detail_rows")
+            else set()
+        )
+        if (
+            _table_exists(conn, "procore_ep_budget_detail_rows")
+            and "job_to_date_costs" in budget_cols
+            and "erp_job_to_date_costs" in budget_cols
         ):
-            rows = conn.execute(
+            agg_rows = conn.execute(
+                f"""
+                SELECT project_key,
+                       COUNT(*) AS compared_rows,
+                       SUM(ABS(CAST(job_to_date_costs AS REAL) - CAST(erp_job_to_date_costs AS REAL))) AS abs_diff_sum
+                FROM procore_ep_budget_detail_rows
+                WHERE {_column_populated('job_to_date_costs')}
+                  AND {_column_populated('erp_job_to_date_costs')}
+                GROUP BY project_key
                 """
+            ).fetchall()
+            for agg in agg_rows:
+                compared = int(agg["compared_rows"] or 0)
+                if compared == 0:
+                    continue
+                diff_sum = _parse_decimal(agg["abs_diff_sum"])
+                if diff_sum is None:
+                    continue
+                avg_diff = diff_sum / Decimal(compared)
+                if avg_diff > abs_thr:
+                    findings.append(
+                        {
+                            "project_key": agg["project_key"],
+                            "basis": "erp_actual_sidecar",
+                            "severity": "warning",
+                            "compared_rows": compared,
+                            "aggregate_average_difference": str(avg_diff),
+                            "note": (
+                                "ERP job-to-date differs materially from Procore job-to-date; "
+                                "compare only, do not sum or substitute."
+                            ),
+                        }
+                    )
+
+        if (
+            _table_exists(conn, "procore_ep_budget_detail_rows")
+            and _table_exists(conn, "forecast_monthly_actuals_by_budget_code")
+            and "job_to_date_costs" in budget_cols
+        ):
+            jtd_rows = conn.execute(
+                f"""
                 SELECT b.project_key, b.budget_code AS budget_code_key,
-                       b.actual_cost, m.amount AS monthly_amount
+                       b.job_to_date_costs, m.amount AS monthly_amount
                 FROM procore_ep_budget_detail_rows b
                 JOIN forecast_monthly_actuals_by_budget_code m
                   ON m.project_key = b.project_key
                  AND m.budget_code_key = b.budget_code
-                WHERE b.actual_cost IS NOT NULL AND TRIM(b.actual_cost) <> ''
+                WHERE {_column_populated('job_to_date_costs')}
                   AND m.amount IS NOT NULL AND TRIM(m.amount) <> ''
                 LIMIT 500
                 """
             ).fetchall()
-            for row in rows:
+            for row in jtd_rows:
+                cumulative = _parse_decimal(row["job_to_date_costs"])
+                monthly = _parse_decimal(row["monthly_amount"])
+                if cumulative is None or monthly is None:
+                    continue
+                diff = abs(cumulative - monthly)
+                pct = (diff / cumulative) if cumulative != 0 else Decimal(0)
+                if diff > abs_thr and pct > pct_thr:
+                    findings.append(
+                        {
+                            "project_key": row["project_key"],
+                            "budget_code_key": row["budget_code_key"],
+                            "basis": "monthly_periodized_actual",
+                            "difference": str(diff),
+                            "percent_difference": str(pct),
+                            "severity": _severity_for_mode(mode, "warning"),
+                            "note": (
+                                "Cumulative job-to-date differs from a single monthly actual row; "
+                                "reconcile by period, do not add."
+                            ),
+                        }
+                    )
+
+            actual_rows: list[sqlite3.Row] = []
+            if "actual_cost" in budget_cols:
+                actual_rows = conn.execute(
+                    f"""
+                    SELECT b.project_key, b.budget_code AS budget_code_key,
+                           b.actual_cost, m.amount AS monthly_amount
+                    FROM procore_ep_budget_detail_rows b
+                    JOIN forecast_monthly_actuals_by_budget_code m
+                      ON m.project_key = b.project_key
+                     AND m.budget_code_key = b.budget_code
+                    WHERE {_column_populated('actual_cost')}
+                      AND m.amount IS NOT NULL AND TRIM(m.amount) <> ''
+                    LIMIT 500
+                    """
+                ).fetchall()
+            for row in actual_rows:
                 cumulative = _parse_decimal(row["actual_cost"])
                 monthly = _parse_decimal(row["monthly_amount"])
                 if cumulative is None or monthly is None:
@@ -402,22 +598,26 @@ def run_actuals_reconciliation_gate(
                         {
                             "project_key": row["project_key"],
                             "budget_code_key": row["budget_code_key"],
-                            "basis": "budget_actual_vs_monthly_actuals",
+                            "basis": "budget_actual_cumulative",
                             "difference": str(diff),
                             "percent_difference": str(pct),
                             "severity": _severity_for_mode(mode, "warning"),
-                            "note": "Cumulative budget actual differs materially from monthly actual; not equivalent without period reconciliation.",
+                            "note": "Cumulative budget actual differs materially from monthly actual.",
                         }
                     )
 
-        if _table_exists(conn, "procore_ep_budget_detail_rows"):
+        if (
+            _table_exists(conn, "procore_ep_budget_detail_rows")
+            and "actual_cost" in budget_cols
+            and "erp_job_to_date_costs" in budget_cols
+        ):
             rows = conn.execute(
-                """
+                f"""
                 SELECT project_key, budget_code AS budget_code_key,
                        actual_cost, erp_job_to_date_costs
                 FROM procore_ep_budget_detail_rows
-                WHERE actual_cost IS NOT NULL AND TRIM(actual_cost) <> ''
-                  AND erp_job_to_date_costs IS NOT NULL AND TRIM(erp_job_to_date_costs) <> ''
+                WHERE {_column_populated('actual_cost')}
+                  AND {_column_populated('erp_job_to_date_costs')}
                 LIMIT 500
                 """
             ).fetchall()
@@ -433,10 +633,10 @@ def run_actuals_reconciliation_gate(
                         {
                             "project_key": row["project_key"],
                             "budget_code_key": row["budget_code_key"],
-                            "basis": "procore_actual_vs_erp_job_to_date",
+                            "basis": "erp_actual_sidecar",
                             "difference": str(diff),
                             "percent_difference": str(pct),
-                            "severity": "info",
+                            "severity": "warning",
                             "note": "ERP and Procore cumulative actuals differ; treat ERP as explicit sidecar.",
                         }
                     )
@@ -445,27 +645,62 @@ def run_actuals_reconciliation_gate(
         if _table_exists(conn, "procore_ep_budget_detail_rows") and _table_exists(conn, invoice_table):
             budget_cols = _table_columns(conn, "procore_ep_budget_detail_rows")
             invoice_cols = _table_columns(conn, invoice_table)
+            jtd_field = "job_to_date_costs" if "job_to_date_costs" in budget_cols else "actual_cost"
+            invoice_key = _pick_column(invoice_cols, ("detail_line_item_id", "line_item_id", "record_id"))
             if (
-                _columns_available(budget_cols, ("budget_code_id", "actual_cost", "budget_code", "project_key"))
-                and _columns_available(
-                    invoice_cols, ("cost_code_id", "total_completed_and_stored_to_date")
-                )
+                invoice_key
+                and _columns_available(budget_cols, ("budget_code_id", jtd_field, "budget_code", "project_key"))
+                and _columns_available(invoice_cols, ("cost_code_id", "total_completed_and_stored_to_date"))
             ):
                 rows = conn.execute(
                     f"""
                     SELECT b.project_key, b.budget_code AS budget_code_key,
-                           b.actual_cost, SUM(CAST(i.total_completed_and_stored_to_date AS REAL)) AS invoice_progress_sum
+                           COUNT(DISTINCT b.record_key) AS budget_rows,
+                           COUNT(DISTINCT i.{invoice_key}) AS invoice_detail_rows
                     FROM procore_ep_budget_detail_rows b
                     JOIN {invoice_table} i
                       ON CAST(i.cost_code_id AS TEXT) = CAST(b.budget_code_id AS TEXT)
-                    WHERE b.actual_cost IS NOT NULL AND TRIM(b.actual_cost) <> ''
-                    GROUP BY b.project_key, b.budget_code, b.actual_cost
+                    WHERE {_column_populated(jtd_field)}
+                      AND i.total_completed_and_stored_to_date IS NOT NULL
+                      AND TRIM(i.total_completed_and_stored_to_date) <> ''
+                    GROUP BY b.project_key, b.budget_code
                     LIMIT 200
                     """
                 ).fetchall()
             else:
                 rows = []
             for row in rows:
+                findings.append(
+                    {
+                        "project_key": row["project_key"],
+                        "budget_code_key": row["budget_code_key"],
+                        "basis": "invoice_progress_fact",
+                        "severity": _severity_for_mode(mode, "warning"),
+                        "budget_rows": int(row["budget_rows"]),
+                        "invoice_detail_rows": int(row["invoice_detail_rows"]),
+                        "note": (
+                            "Budget cumulative rollup and invoice detail progress coexist; "
+                            "compare only unless double-counting is proven safe."
+                        ),
+                    }
+                )
+
+            if _columns_available(budget_cols, ("budget_code_id", "actual_cost", "budget_code", "project_key")):
+                amount_rows = conn.execute(
+                    f"""
+                    SELECT b.project_key, b.budget_code AS budget_code_key,
+                           b.actual_cost, SUM(CAST(i.total_completed_and_stored_to_date AS REAL)) AS invoice_progress_sum
+                    FROM procore_ep_budget_detail_rows b
+                    JOIN {invoice_table} i
+                      ON CAST(i.cost_code_id AS TEXT) = CAST(b.budget_code_id AS TEXT)
+                    WHERE {_column_populated('actual_cost')}
+                    GROUP BY b.project_key, b.budget_code, b.actual_cost
+                    LIMIT 200
+                    """
+                ).fetchall()
+            else:
+                amount_rows = []
+            for row in amount_rows:
                 budget_actual = _parse_decimal(row["actual_cost"])
                 invoice_sum = _parse_decimal(row["invoice_progress_sum"])
                 if budget_actual is None or invoice_sum is None:
@@ -475,12 +710,60 @@ def run_actuals_reconciliation_gate(
                         {
                             "project_key": row["project_key"],
                             "budget_code_key": row["budget_code_key"],
-                            "basis": "invoice_detail_exceeds_budget_cumulative",
+                            "basis": "invoice_progress_fact",
                             "difference": str(invoice_sum - budget_actual),
                             "severity": _severity_for_mode(mode, "warning"),
-                            "note": "Invoice detail progress exceeds budget cumulative actual; verify precedence, do not add both.",
+                            "note": "Invoice detail progress exceeds budget cumulative actual; do not add both.",
                         }
                     )
+
+        if _table_exists(conn, "procore_ep_subcontractor_invoices"):
+            pay_row = conn.execute(
+                """
+                SELECT COUNT(*) AS total,
+                       SUM(CASE WHEN payment_date IS NOT NULL AND TRIM(payment_date) <> '' THEN 1 ELSE 0 END) AS payment_pop
+                FROM procore_ep_subcontractor_invoices
+                """
+            ).fetchone()
+            total = int(pay_row["total"] or 0)
+            payment_pop = int(pay_row["payment_pop"] or 0)
+            findings.append(
+                {
+                    "basis": "payment_cash_flow_fact",
+                    "severity": "info",
+                    "invoice_count": total,
+                    "payment_date_populated": payment_pop,
+                    "payment_date_null_rate": round(1 - (payment_pop / total), 4) if total else 1.0,
+                    "note": "Payment dates are cash-flow timing facts, not earned actual cost rollups.",
+                }
+            )
+
+        if (
+            _table_exists(conn, "procore_ep_budget_detail_rows")
+            and "direct_costs" in budget_cols
+            and "job_to_date_costs" in budget_cols
+        ):
+            direct_rows = conn.execute(
+                f"""
+                SELECT project_key, COUNT(*) AS rows_with_both
+                FROM procore_ep_budget_detail_rows
+                WHERE {_column_populated('direct_costs')} AND {_column_populated('job_to_date_costs')}
+                GROUP BY project_key
+                """
+            ).fetchall()
+            for row in direct_rows:
+                findings.append(
+                    {
+                        "project_key": row["project_key"],
+                        "basis": "direct_cost_rollup",
+                        "severity": "info",
+                        "rows_with_direct_and_jtd": int(row["rows_with_both"]),
+                        "note": (
+                            "direct_costs is a workflow-stage component; job_to_date_costs is a calculated "
+                            "rollup per Procore doc (Direct Costs + Subcontractor Invoices)."
+                        ),
+                    }
+                )
 
     error_count = sum(1 for f in findings if f["severity"] == "error")
     warning_count = sum(1 for f in findings if f["severity"] == "warning")
@@ -506,9 +789,10 @@ def _parity_key_sets(
     *,
     ep_table: str,
     target_table: str,
-    family: str,
     ep_key: str,
     target_key: str,
+    parity_kind: str = "contract_family",
+    contract_family: str | None = None,
 ) -> tuple[set[tuple[str, str]], set[tuple[str, str]]]:
     ep_cols = _table_columns(conn, ep_table)
     fin_cols = _table_columns(conn, target_table)
@@ -518,12 +802,18 @@ def _parity_key_sets(
         f"SELECT project_key, CAST({ep_key} AS TEXT) AS record_key FROM {ep_table} "
         f"WHERE {ep_key} IS NOT NULL AND TRIM(CAST({ep_key} AS TEXT)) <> ''"
     ).fetchall()
-    fin_rows = conn.execute(
-        f"SELECT project_key, CAST({target_key} AS TEXT) AS record_key FROM {target_table} "
-        f"WHERE contract_family = ? AND {target_key} IS NOT NULL "
-        f"AND TRIM(CAST({target_key} AS TEXT)) <> ''",
-        (family,),
-    ).fetchall()
+    if parity_kind == "contract_family" and contract_family:
+        fin_rows = conn.execute(
+            f"SELECT project_key, CAST({target_key} AS TEXT) AS record_key FROM {target_table} "
+            f"WHERE contract_family = ? AND {target_key} IS NOT NULL "
+            f"AND TRIM(CAST({target_key} AS TEXT)) <> ''",
+            (contract_family,),
+        ).fetchall()
+    else:
+        fin_rows = conn.execute(
+            f"SELECT project_key, CAST({target_key} AS TEXT) AS record_key FROM {target_table} "
+            f"WHERE {target_key} IS NOT NULL AND TRIM(CAST({target_key} AS TEXT)) <> ''"
+        ).fetchall()
     ep_keys = {(str(r["project_key"]), str(r["record_key"])) for r in ep_rows}
     fin_keys = {(str(r["project_key"]), str(r["record_key"])) for r in fin_rows}
     return ep_keys, fin_keys
@@ -559,11 +849,21 @@ def _status_mismatch_count(
     family: str,
     ep_key: str,
     target_key: str,
+    parity_kind: str = "contract_family",
+    contract_family: str | None = None,
+    ep_status_field: str | None = None,
+    target_status_field: str | None = None,
 ) -> int:
     ep_cols = _table_columns(conn, ep_table)
     fin_cols = _table_columns(conn, target_table)
-    if "status" not in ep_cols or "status" not in fin_cols:
+    ep_status = _pick_column(ep_cols, (ep_status_field or "status", "status_name", "status_mapped_to_status"))
+    fin_status = _pick_column(fin_cols, (target_status_field or "status",))
+    if not ep_status or not fin_status:
         return 0
+    family_clause = "AND fin.contract_family = ?" if parity_kind == "contract_family" and contract_family else ""
+    params: list[Any] = []
+    if family_clause:
+        params.append(contract_family)
     row = conn.execute(
         f"""
         SELECT COUNT(*) AS mismatch_count
@@ -571,10 +871,10 @@ def _status_mismatch_count(
         JOIN {target_table} fin
           ON fin.project_key = ep.project_key
          AND CAST(fin.{target_key} AS TEXT) = CAST(ep.{ep_key} AS TEXT)
-         AND fin.contract_family = ?
-        WHERE COALESCE(LOWER(TRIM(ep.status)), '') <> COALESCE(LOWER(TRIM(fin.status)), '')
+         {family_clause}
+        WHERE COALESCE(LOWER(TRIM(ep.{ep_status})), '') <> COALESCE(LOWER(TRIM(fin.{fin_status})), '')
         """,
-        (family,),
+        params,
     ).fetchone()
     return int(row["mismatch_count"] or 0)
 
@@ -587,12 +887,22 @@ def _amount_mismatch_report(
     family: str,
     ep_key: str,
     target_key: str,
-    amount_field: str,
+    amount_field: str | None,
+    parity_kind: str = "contract_family",
+    contract_family: str | None = None,
+    target_amount_field: str | None = None,
 ) -> tuple[int, list[str]]:
+    if not amount_field:
+        return 0, []
     ep_cols = _table_columns(conn, ep_table)
     fin_cols = _table_columns(conn, target_table)
-    if amount_field not in ep_cols or amount_field not in fin_cols:
+    fin_amount = target_amount_field or amount_field
+    if amount_field not in ep_cols or fin_amount not in fin_cols:
         return 0, []
+    family_clause = "AND fin.contract_family = ?" if parity_kind == "contract_family" and contract_family else ""
+    params: list[Any] = []
+    if family_clause:
+        params.append(contract_family)
     count_row = conn.execute(
         f"""
         SELECT COUNT(*) AS mismatch_count
@@ -600,12 +910,14 @@ def _amount_mismatch_report(
         JOIN {target_table} fin
           ON fin.project_key = ep.project_key
          AND CAST(fin.{target_key} AS TEXT) = CAST(ep.{ep_key} AS TEXT)
-         AND fin.contract_family = ?
-        WHERE COALESCE(TRIM(ep.{amount_field}), '') <> COALESCE(TRIM(fin.{amount_field}), '')
+         {family_clause}
+        WHERE COALESCE(TRIM(ep.{amount_field}), '') <> COALESCE(TRIM(fin.{fin_amount}), '')
         """,
-        (family,),
+        params,
     ).fetchone()
     count = int(count_row["mismatch_count"] or 0)
+    sample_params = list(params)
+    sample_params.append(_KEY_SAMPLE_LIMIT)
     rows = conn.execute(
         f"""
         SELECT ep.project_key, CAST(ep.{ep_key} AS TEXT) AS record_key
@@ -613,11 +925,11 @@ def _amount_mismatch_report(
         JOIN {target_table} fin
           ON fin.project_key = ep.project_key
          AND CAST(fin.{target_key} AS TEXT) = CAST(ep.{ep_key} AS TEXT)
-         AND fin.contract_family = ?
-        WHERE COALESCE(TRIM(ep.{amount_field}), '') <> COALESCE(TRIM(fin.{amount_field}), '')
+         {family_clause}
+        WHERE COALESCE(TRIM(ep.{amount_field}), '') <> COALESCE(TRIM(fin.{fin_amount}), '')
         LIMIT ?
         """,
-        (family, _KEY_SAMPLE_LIMIT),
+        sample_params,
     ).fetchall()
     return count, [_hash_key(f"{r['project_key']}:{r['record_key']}") for r in rows]
 
@@ -632,6 +944,8 @@ def _updated_field_mismatch_count(
     target_key: str,
     ep_updated: str,
     fin_updated: str,
+    parity_kind: str = "contract_family",
+    contract_family: str | None = None,
 ) -> int:
     ep_cols = _table_columns(conn, ep_table)
     fin_cols = _table_columns(conn, target_table)
@@ -639,6 +953,10 @@ def _updated_field_mismatch_count(
     ep_field = ep_updated if ep_updated in ep_cols else ("updated_utc" if "updated_utc" in ep_cols else None)
     if not ep_field or fin_field not in fin_cols:
         return 0
+    family_clause = "AND fin.contract_family = ?" if parity_kind == "contract_family" and contract_family else ""
+    params: list[Any] = []
+    if family_clause:
+        params.append(contract_family)
     row = conn.execute(
         f"""
         SELECT COUNT(*) AS mismatch_count
@@ -646,10 +964,10 @@ def _updated_field_mismatch_count(
         JOIN {target_table} fin
           ON fin.project_key = ep.project_key
          AND CAST(fin.{target_key} AS TEXT) = CAST(ep.{ep_key} AS TEXT)
-         AND fin.contract_family = ?
+         {family_clause}
         WHERE COALESCE(TRIM(ep.{ep_field}), '') <> COALESCE(TRIM(fin.{fin_field}), '')
         """,
-        (family,),
+        params,
     ).fetchone()
     return int(row["mismatch_count"] or 0)
 
@@ -663,16 +981,22 @@ def run_projection_parity_gate(
     path = str(db_path)
     findings: list[dict[str, Any]] = []
     pairs_checked = 0
+    pairs_unsupported = 0
 
     with _connect_ro(path) as conn:
         for cfg in _PARITY_PAIR_CONFIGS:
             ep_table = str(cfg["ep_table"])
             fin_table = str(cfg["target_table"])
             family = str(cfg["family"])
+            parity_kind = str(cfg.get("parity_kind") or "contract_family")
+            contract_family = str(cfg.get("contract_family") or family)
             ep_key = str(cfg["ep_key"])
             target_key = str(cfg["target_key"])
-            amount_field = str(cfg.get("amount_field") or "grand_total")
+            amount_field = cfg.get("amount_field")
+            if amount_field is not None:
+                amount_field = str(amount_field)
             updated_field = str(cfg.get("updated_field") or "updated_at")
+            parity_availability = cfg.get("parity_availability")
 
             if not _table_exists(conn, ep_table) or not _table_exists(conn, fin_table):
                 findings.append(
@@ -689,18 +1013,38 @@ def run_projection_parity_gate(
 
             pairs_checked += 1
             ep_count = conn.execute(f"SELECT COUNT(*) FROM {ep_table}").fetchone()[0]
-            fin_count = conn.execute(
-                f"SELECT COUNT(*) FROM {fin_table} WHERE contract_family = ?",
-                (family,),
-            ).fetchone()[0]
+            if parity_kind == "contract_family":
+                fin_count = conn.execute(
+                    f"SELECT COUNT(*) FROM {fin_table} WHERE contract_family = ?",
+                    (contract_family,),
+                ).fetchone()[0]
+            else:
+                fin_count = conn.execute(f"SELECT COUNT(*) FROM {fin_table}").fetchone()[0]
+
+            if parity_availability:
+                pairs_unsupported += 1
+                findings.append(
+                    {
+                        "family": family,
+                        "severity": "info",
+                        "basis": "parity_unsupported",
+                        "parity_availability": parity_availability,
+                        "source_table": ep_table,
+                        "target_table": fin_table,
+                        "ep_row_count": ep_count,
+                        "financial_row_count": fin_count,
+                        "message": str(cfg.get("unsupported_reason") or "Parity pair not fully supported."),
+                    }
+                )
 
             ep_keys, fin_keys = _parity_key_sets(
                 conn,
                 ep_table=ep_table,
                 target_table=fin_table,
-                family=family,
                 ep_key=ep_key,
                 target_key=target_key,
+                parity_kind=parity_kind,
+                contract_family=contract_family,
             )
             source_only = sorted(ep_keys - fin_keys)
             target_only = sorted(fin_keys - ep_keys)
@@ -713,11 +1057,12 @@ def run_projection_parity_gate(
                     unexpected_target_only.append((pk, rk))
 
             adjusted_fin_count = fin_count - len(expected_target_only)
-            if ep_count != adjusted_fin_count:
+            count_mismatch_severity = "info" if parity_availability else "warning"
+            if ep_count != adjusted_fin_count and not parity_availability:
                 findings.append(
                     {
                         "family": family,
-                        "severity": "warning",
+                        "severity": count_mismatch_severity,
                         "basis": "row_count_mismatch",
                         "source_table": ep_table,
                         "ep_row_count": ep_count,
@@ -780,6 +1125,10 @@ def run_projection_parity_gate(
                 family=family,
                 ep_key=ep_key,
                 target_key=target_key,
+                parity_kind=parity_kind,
+                contract_family=contract_family,
+                ep_status_field=cfg.get("ep_status_field"),
+                target_status_field=cfg.get("target_status_field"),
             )
             if status_mismatches:
                 findings.append(
@@ -801,6 +1150,9 @@ def run_projection_parity_gate(
                 ep_key=ep_key,
                 target_key=target_key,
                 amount_field=amount_field,
+                parity_kind=parity_kind,
+                contract_family=contract_family,
+                target_amount_field=cfg.get("target_amount_field"),
             )
             if amount_count:
                 findings.append(
@@ -824,6 +1176,8 @@ def run_projection_parity_gate(
                 target_key=target_key,
                 ep_updated=updated_field,
                 fin_updated="updated_at_utc",
+                parity_kind=parity_kind,
+                contract_family=contract_family,
             )
             if updated_mismatches:
                 findings.append(
@@ -847,6 +1201,166 @@ def run_projection_parity_gate(
         "checked_at_utc": _utc_now(),
         "mode": mode,
         "pairs_checked": pairs_checked,
+        "pairs_unsupported": pairs_unsupported,
+        "finding_count": len(findings),
+        "warning_count": warning_count,
+        "error_count": error_count,
+        "findings": findings,
+    }
+
+
+def run_budget_dynamic_columns_gate(
+    *,
+    db_path: str | Path,
+    mode: GateMode = "warn",
+) -> dict[str, Any]:
+    """Classify budget-view dynamic columns; block silent model consumption of unknown numerics."""
+    from hb_assistant.forecasting.budget_column_roles import (
+        load_budget_column_roles,
+        procore_label_to_role_key,
+    )
+    from hb_assistant.forecasting.field_classifiers import classify_amount_field
+
+    path = str(db_path)
+    findings: list[dict[str, Any]] = []
+    classification_counts: dict[str, int] = {}
+
+    with _connect_ro(path) as conn:
+        if not _table_exists(conn, "procore_ep_budget_detail_columns"):
+            return {
+                "ok": True,
+                "gate": "forecast_budget_dynamic_columns",
+                "db_path": path,
+                "checked_at_utc": _utc_now(),
+                "mode": mode,
+                "finding_count": 0,
+                "warning_count": 0,
+                "error_count": 0,
+                "findings": [],
+                "message": "Budget detail columns table missing; gate skipped.",
+            }
+
+        roles = load_budget_column_roles().get("budget_column_roles", {})
+        if not isinstance(roles, dict):
+            roles = {}
+
+        columns = conn.execute(
+            """
+            SELECT budget_view_id, column_id, column_key, name, label, data_type
+            FROM procore_ep_budget_detail_columns
+            WHERE is_current = 1
+            GROUP BY budget_view_id, column_id, column_key, name, label, data_type
+            """
+        ).fetchall()
+
+        cell_counts: dict[tuple[str, str], int] = {}
+        if _table_exists(conn, "procore_ep_budget_detail_row_cells"):
+            for row in conn.execute(
+                """
+                SELECT column_key, column_name,
+                       SUM(CASE WHEN value_decimal_text IS NOT NULL AND TRIM(value_decimal_text) <> '' THEN 1 ELSE 0 END) AS numeric_cells
+                FROM procore_ep_budget_detail_row_cells
+                WHERE is_current = 1
+                GROUP BY column_key, column_name
+                """
+            ).fetchall():
+                cell_counts[(str(row["column_key"] or ""), str(row["column_name"] or ""))] = int(
+                    row["numeric_cells"] or 0
+                )
+
+        for col in columns:
+            column_key = str(col["column_key"] or "")
+            name = str(col["name"] or "")
+            label = str(col["label"] or "")
+            data_type = str(col["data_type"] or "")
+            role_key = procore_label_to_role_key(column_key or name or label)
+
+            if role_key and role_key in roles:
+                role_meta = roles[role_key]
+                source_type = str(role_meta.get("source_type") or "")
+                classification = (
+                    "known_calculated_rollup" if source_type == "calculated" else "standard_known_column"
+                )
+            elif data_type in ("standard",) and (column_key or name).lower() in {
+                "budget code",
+                "description",
+                "detail type",
+                "item",
+                "vendor",
+            }:
+                classification = "custom_status_or_dimension"
+            elif "note" in (column_key or name or label).lower():
+                classification = "custom_text_or_note"
+            else:
+                amount_kind = classify_amount_field(
+                    table="procore_ep_budget_detail_row_cells",
+                    column=name or column_key,
+                    declared_type="TEXT",
+                )
+                kind = str(amount_kind.get("kind") or "")
+                if kind == "true_monetary_amount":
+                    classification = "custom_numeric_candidate"
+                elif kind in ("enum_status_dimension", "text_description", "identifier_key"):
+                    classification = "custom_status_or_dimension"
+                elif data_type in ("source", "budget_forecast"):
+                    classification = "review_required"
+                else:
+                    classification = "review_required"
+
+            classification_counts[classification] = classification_counts.get(classification, 0) + 1
+            numeric_cells = cell_counts.get((column_key, name), 0)
+
+            if classification in ("custom_numeric_candidate", "review_required") and numeric_cells > 0:
+                findings.append(
+                    {
+                        "budget_view_id": col["budget_view_id"],
+                        "column_key": column_key,
+                        "column_name": name,
+                        "classification": classification,
+                        "numeric_cell_count": numeric_cells,
+                        "severity": _severity_for_mode(mode, "warning"),
+                        "message": (
+                            "Unmapped budget-view column has numeric cells; "
+                            "requires catalog entry before model input."
+                        ),
+                    }
+                )
+            elif classification == "custom_text_or_note":
+                findings.append(
+                    {
+                        "budget_view_id": col["budget_view_id"],
+                        "column_key": column_key,
+                        "classification": classification,
+                        "severity": "info",
+                        "message": "Text/note column excluded from monetary parsing.",
+                    }
+                )
+
+        unmapped_numeric = sum(
+            1 for f in findings if f.get("classification") in ("custom_numeric_candidate", "review_required")
+        )
+        if unmapped_numeric:
+            findings.insert(
+                0,
+                {
+                    "basis": "dynamic_column_summary",
+                    "severity": "info",
+                    "classification_counts": classification_counts,
+                    "unmapped_numeric_columns": unmapped_numeric,
+                    "message": "Unknown/custom columns must not become model inputs without catalog validation.",
+                },
+            )
+
+    warning_count = sum(1 for f in findings if f.get("severity") == "warning")
+    error_count = sum(1 for f in findings if f.get("severity") == "error")
+
+    return {
+        "ok": error_count == 0,
+        "gate": "forecast_budget_dynamic_columns",
+        "db_path": path,
+        "checked_at_utc": _utc_now(),
+        "mode": mode,
+        "classification_counts": classification_counts,
         "finding_count": len(findings),
         "warning_count": warning_count,
         "error_count": error_count,
@@ -922,6 +1436,7 @@ def run_all_forecasting_gates(
         run_double_count_gate(db_path=db_path, mode=mode),
         run_actuals_reconciliation_gate(db_path=db_path, mode=mode),
         run_projection_parity_gate(db_path=db_path, mode=mode),
+        run_budget_dynamic_columns_gate(db_path=db_path, mode=mode),
         run_cost_type_guard_gate(db_path=db_path),
     ]
     abbreviated = [_abbreviate_gate_report(r) for r in full_reports]

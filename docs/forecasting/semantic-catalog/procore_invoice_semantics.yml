@@ -21,6 +21,10 @@ entities:
       - total_completed_and_stored_to_date
       - subcontractor_claimed_amount
       - work_completed_this_period
+    actual_bases:
+      invoice_progress_fact: detail line progress metrics
+      payment_cash_flow_fact: billing_date and payment_date timing
+      budget_job_to_date_cumulative: Procore rollup that may include invoice actuals per proven formula
     status_inclusion: {included: [approved, paid, complete], pending: [draft, pending], excluded: [void]}
     forecast_relevance: actualization_progress_cash_flow
     caveats:
