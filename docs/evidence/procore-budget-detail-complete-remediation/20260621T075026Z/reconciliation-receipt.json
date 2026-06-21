@@ -1,0 +1,18 @@
+{
+  "command": "hb-assistant procore analytics reconcile-full-raw-landing",
+  "ok": true,
+  "status": "success",
+  "db_path": "/tmp/hb-budget-detail-complete-remediation-proof.sqlite",
+  "company_rows_repaired": 100574,
+  "stable_keys_reconciled": 1398,
+  "rows_marked_current": 0,
+  "rows_marked_non_current": 3782,
+  "raw_payload_body_emitted": false,
+  "local_db_write_performed": true,
+  "external_writeback_performed": 0,
+  "guardrails": {
+    "explicit_db_required": true,
+    "live_calls_disabled": true,
+    "writeback": "none"
+  }
+}

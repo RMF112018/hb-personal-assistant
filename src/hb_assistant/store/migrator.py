@@ -14,7 +14,7 @@ from .connection import get_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 61
+LATEST_SCHEMA_VERSION = 62
 
 
 class SQLiteMigrator:
@@ -6168,6 +6168,9 @@ class SQLiteMigrator:
           cost_code TEXT,
           cost_type_id TEXT,
           cost_type TEXT,
+          category TEXT,
+          category_id TEXT,
+          category_id_hash TEXT,
           line_item_type_id TEXT,
           description TEXT,
           original_budget_amount TEXT,
@@ -6304,6 +6307,14 @@ class SQLiteMigrator:
     V56_STATEMENTS: list[str] = [
         "ALTER TABLE procore_ep_budget_detail_rows ADD COLUMN erp_direct_costs TEXT;",
         "ALTER TABLE procore_ep_budget_detail_rows ADD COLUMN job_to_date_costs TEXT;",
+    ]
+
+    # v62 Preserve Budget Detail source category/category_id explicitly. These are
+    # source fields, not compatibility aliases for cost_type/cost_type_id.
+    V62_STATEMENTS: list[str] = [
+        "ALTER TABLE procore_ep_budget_detail_rows ADD COLUMN category TEXT;",
+        "ALTER TABLE procore_ep_budget_detail_rows ADD COLUMN category_id TEXT;",
+        "ALTER TABLE procore_ep_budget_detail_rows ADD COLUMN category_id_hash TEXT;",
     ]
 
     # v57 Add newly observed Change Event budget-modification impact fields.
@@ -7843,6 +7854,25 @@ class SQLiteMigrator:
             if cur.fetchone() is None:
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (61, 'v61_forecast_external_forecasts', ?)",
+                    (now,),
+                )
+
+            # v62 Budget Detail Rows source category preservation. Additive and
+            # idempotent; check existing columns before each ALTER so copied/live DBs
+            # with partial manual repairs can still migrate safely.
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 62")
+            if cur.fetchone() is None:
+                existing_cols = {
+                    row[1]
+                    for row in conn.execute("PRAGMA table_info(procore_ep_budget_detail_rows)")
+                }
+                for stmt in self.V62_STATEMENTS:
+                    column_name = stmt.split(" ADD COLUMN ", 1)[1].split()[0]
+                    if column_name not in existing_cols:
+                        conn.execute(stmt)
+                        existing_cols.add(column_name)
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (62, 'v62_procore_budget_detail_category_columns', ?)",
                     (now,),
                 )
 

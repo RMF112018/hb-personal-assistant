@@ -72,6 +72,8 @@ _DIRECT_AMOUNT_ALIASES: dict[str, tuple[str, ...]] = {
         "projected_over_under_budget",
     ),
 }
+# ``actual_cost`` intentionally has no aliases here. Current copied-DB evidence
+# has no literal Actual Cost source; Direct/JTD/ERP values are distinct concepts.
 _CELL_AMOUNT_ALIASES: dict[str, str] = {
     "revisedbudget": "revised_budget",
     "projectedbudget": "projected_budget",
@@ -197,6 +199,14 @@ def _normalize_amount_label(value: str | None) -> str | None:
     return normalized or None
 
 
+def _normalize_field_identity(value: str | None) -> str | None:
+    if not value:
+        return None
+    terminal = _terminal_field_path(value)
+    normalized = re.sub(r"[^a-z0-9]+", "_", terminal.strip().lower()).strip("_")
+    return normalized or None
+
+
 def _terminal_field_path(path: str | None) -> str | None:
     if not path:
         return None
@@ -266,6 +276,12 @@ def _cost_type(payload: dict[str, Any]) -> tuple[str | None, str | None]:
             cost_type.get("abbreviation") or cost_type.get("code") or cost_type.get("name")
         )
     return _scalar(_path(payload, "cost_type_id", "line_item_type_id")), _scalar(cost_type)
+
+
+def _category(payload: dict[str, Any]) -> tuple[str | None, str | None]:
+    # Budget Detail exposes category/category_id as source fields. They are not
+    # compatibility aliases for cost_type/cost_type_id.
+    return _scalar(_path(payload, "category_id")), _scalar(_path(payload, "category"))
 
 
 def _record_id(endpoint_key: str, payload: dict[str, Any], row: sqlite3.Row) -> str | None:
@@ -411,6 +427,7 @@ def _project_row(
 
     cost_code_id, cost_code = _cost_code(payload)
     cost_type_id, cost_type = _cost_type(payload)
+    category_id, category = _category(payload)
     wbs_id = _scalar(_path(payload, "wbs_code.id", "wbs_code_id"))
     wbs_flat = _wbs_flat_code(payload)
     canonical = _canonical_budget_code_key(payload)
@@ -463,6 +480,17 @@ def _project_row(
         promoted_field = _promoted_amount_field(cell)
         if promoted_field and value_decimal_text is not None and not common_amounts.get(promoted_field):
             common_amounts[promoted_field] = value_decimal_text
+        if category is None or category_id is None:
+            exact_fields = {
+                _normalize_field_identity(field_path),
+                _normalize_field_identity(cell["column_key"]),
+                _normalize_field_identity(cell["column_name"]),
+                _normalize_field_identity(cell["column_label"]),
+            }
+            if category is None and "category" in exact_fields:
+                category = value_text
+            if category_id is None and "category_id" in exact_fields:
+                category_id = value_text
         cells_to_write.append(cell)
     sidecar_keys = {
         "id",
@@ -476,6 +504,8 @@ def _project_row(
         "cost_code_id",
         "cost_type",
         "cost_type_id",
+        "category",
+        "category_id",
         "line_item_type",
         "line_item_type_id",
         "description",
@@ -495,6 +525,9 @@ def _project_row(
         "cost_code": cost_code,
         "cost_type_id": cost_type_id,
         "cost_type": cost_type,
+        "category": category,
+        "category_id": category_id,
+        "category_id_hash": _hash(category_id) if category_id else None,
         "line_item_type_id": _scalar(_path(payload, "line_item_type_id")),
         "description": _scalar(_path(payload, "description", "wbs_code.description")),
         **common_amounts,

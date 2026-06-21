@@ -25,6 +25,7 @@ def _insert_raw(
     project_key: str = "tropical",
     parent_id: str | None = "5885",
     source_quality: str = "live_full_payload",
+    company_id: str | None = "5280",
 ) -> str:
     raw_id = _raw_payload_id(endpoint, record_id, parent_id)
     payload_json = json.dumps(payload, sort_keys=True, separators=(",", ":"))
@@ -33,13 +34,13 @@ def _insert_raw(
         """
         INSERT INTO procore_endpoint_raw_payloads (
           raw_payload_id, capture_run_id, endpoint_key, endpoint_family, endpoint_version,
-          project_id, project_id_hash, project_key, record_type, record_id, record_id_hash,
+          company_id, company_id_hash, project_id, project_id_hash, project_key, record_type, record_id, record_id_hash,
           parent_record_id, parent_record_id_hash, source_ref_hash, request_fingerprint_hash,
           payload_hash, payload_json, payload_size_bytes, payload_captured_at_utc,
           payload_seen_first_utc, payload_seen_last_utc, is_current, redaction_status,
           security_scrub_status, source_quality, raw_procore_payload_persisted,
           external_writeback_performed
-        ) VALUES (?, 'run', ?, 'budget', 'live_v1', '2525840', 'pidhash', ?, ?, ?, ?,
+        ) VALUES (?, 'run', ?, 'budget', 'live_v1', ?, ?, '2525840', 'pidhash', ?, ?, ?, ?,
                   ?, ?, ?, ?, ?, ?, ?, '2026-06-17T00:00:00+00:00',
                   '2026-06-17T00:00:00+00:00', '2026-06-17T00:00:00+00:00', 1,
                   ?, ?, ?, ?, 0)
@@ -47,6 +48,8 @@ def _insert_raw(
         (
             raw_id,
             endpoint,
+            company_id,
+            f"company-hash-{company_id}" if company_id else None,
             project_key,
             endpoint,
             record_id,
@@ -88,6 +91,9 @@ def test_v55_budget_detail_tables_and_guards(tmp_path: Path) -> None:
             if table == "procore_ep_budget_detail_rows":
                 assert "erp_direct_costs" in cols
                 assert "job_to_date_costs" in cols
+                assert "category" in cols
+                assert "category_id" in cols
+                assert "category_id_hash" in cols
             indexes = {row[1] for row in conn.execute(f"PRAGMA index_list({table})")}
             assert indexes
     finally:
@@ -143,6 +149,103 @@ def test_projector_extracts_rows_cells_and_target_idempotently(tmp_path: Path) -
     assert summary["queryable"] is True
     assert summary["amount_field_presence"]["projected_costs"] == 1
     assert summary["raw_payload_body_emitted"] is False
+
+
+def test_projector_preserves_category_without_cost_type_compatibility_mapping(
+    tmp_path: Path,
+) -> None:
+    db = tmp_path / "store.sqlite"
+    SQLiteMigrator(str(db)).apply()
+    conn = sqlite3.connect(db)
+    try:
+        _insert_raw(
+            conn,
+            endpoint="budget-detail-rows",
+            record_id="r-category",
+            payload={
+                "id": "r-category",
+                "wbs_code": {"flat_code": "1000.15-01-426.MAT"},
+                "category": "Materials",
+                "category_id": "MAT",
+                "direct_costs": "123.45",
+                "job_to_date_costs": "234.56",
+                "erp_job_to_date_costs": "345.67",
+                "erp_direct_costs": "456.78",
+            },
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    project_budget_detail_read_model(db_path=db, project_key="tropical", apply=True)
+    conn = sqlite3.connect(db)
+    conn.row_factory = sqlite3.Row
+    try:
+        row = conn.execute(
+            """
+            SELECT company_id, company_id_hash, category, category_id, category_id_hash,
+                   cost_type, cost_type_id, actual_cost, line_item_type_id
+            FROM procore_ep_budget_detail_rows
+            """
+        ).fetchone()
+    finally:
+        conn.close()
+    assert row["company_id"] == "5280"
+    assert row["company_id_hash"]
+    assert row["category"] == "Materials"
+    assert row["category_id"] == "MAT"
+    assert row["category_id_hash"]
+    assert row["cost_type"] is None
+    assert row["cost_type_id"] is None
+    assert row["actual_cost"] is None
+    assert row["line_item_type_id"] is None
+
+
+def test_projector_category_fallback_requires_exact_cell_identity(tmp_path: Path) -> None:
+    db = tmp_path / "store.sqlite"
+    SQLiteMigrator(str(db)).apply()
+    conn = sqlite3.connect(db)
+    try:
+        for record_id, name, label in (
+            ("col-category", "category_cell", "Category"),
+            ("col-category-id", "category_id_cell", "Category ID"),
+            ("col-not-category", "category_description_cell", "Category Description"),
+        ):
+            _insert_raw(
+                conn,
+                endpoint="budget-detail-columns",
+                record_id=record_id,
+                payload={"id": record_id, "name": name, "label": label},
+            )
+        _insert_raw(
+            conn,
+            endpoint="budget-detail-rows",
+            record_id="r-category-fallback",
+            payload={
+                "id": "r-category-fallback",
+                "wbs_code": {"flat_code": "1000.15-01-426.MAT"},
+                "category_cell": "Materials",
+                "category_id_cell": "MAT",
+                "category_description_cell": "Must not win",
+            },
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    project_budget_detail_read_model(db_path=db, project_key="tropical", apply=True)
+    conn = sqlite3.connect(db)
+    conn.row_factory = sqlite3.Row
+    try:
+        row = conn.execute(
+            "SELECT category, category_id, cost_type, cost_type_id FROM procore_ep_budget_detail_rows"
+        ).fetchone()
+    finally:
+        conn.close()
+    assert row["category"] == "Materials"
+    assert row["category_id"] == "MAT"
+    assert row["cost_type"] is None
+    assert row["cost_type_id"] is None
 
 
 def test_projector_promotes_numeric_dynamic_cells_to_wide_amounts(tmp_path: Path) -> None:
@@ -342,3 +445,24 @@ def test_seed_command_requires_explicit_guardrails() -> None:
     payload = json.loads(result.stdout)
     assert payload["local_db_write_performed"] is False
     assert payload["external_writeback_performed"] == 0
+
+
+def test_project_budget_detail_read_model_command_requires_db_and_apply(tmp_path: Path) -> None:
+    runner = CliRunner()
+    missing_db = runner.invoke(
+        app,
+        ["analytics", "project-budget-detail-read-model", "--apply", "--json"],
+        catch_exceptions=False,
+    )
+    assert missing_db.exit_code == 2
+    assert json.loads(missing_db.stdout)["status"] == "blocked_explicit_db_required"
+
+    db = tmp_path / "store.sqlite"
+    SQLiteMigrator(str(db)).apply()
+    missing_apply = runner.invoke(
+        app,
+        ["analytics", "project-budget-detail-read-model", "--db", str(db), "--json"],
+        catch_exceptions=False,
+    )
+    assert missing_apply.exit_code == 2
+    assert json.loads(missing_apply.stdout)["status"] == "blocked_apply_required"

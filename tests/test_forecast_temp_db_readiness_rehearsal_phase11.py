@@ -19,6 +19,7 @@ import pytest
 
 # hb_assistant is imported by the rehearsal's lazy DB-prep path; the live-DB test monkeypatches it.
 from hb_assistant.construction.forecast import source_domain_engine as dbeng
+from hb_assistant.store.migrator import LATEST_SCHEMA_VERSION
 
 CFR_SRC = Path(__file__).resolve().parents[1] / "subrepos/construction-financial-review/src"
 if str(CFR_SRC) not in sys.path:
@@ -68,7 +69,7 @@ def test_rehearsal_succeeds_derived_db(tmp_path):
     # derived DB path under <work>/temp_dbs/
     assert report["db"]["path"] == str(work / "temp_dbs" / "forecast_source_domain_tropical.sqlite")
     assert Path(report["db"]["path"]).is_file()
-    assert report["db"]["schema_version"] == 61  # Phase 4: migrator now at v61 (synthetic temp DB)
+    assert report["db"]["schema_version"] == LATEST_SCHEMA_VERSION
     for t in (
         "forecast_budget_details",
         "forecast_cost_entries",
@@ -110,7 +111,7 @@ def test_rehearsal_report_includes_required_sections(tmp_path):
     report = run_temp_db_readiness_rehearsal(
         source_package=sp, work_root=tmp_path / "work", context_stamp=STAMP
     )
-    assert report["db"]["schema_version"] == 61  # Phase 4: migrator now at v61 (synthetic temp DB)  # migration status
+    assert report["db"]["schema_version"] == LATEST_SCHEMA_VERSION
     assert report["db"]["live_db_refused"] is True
     assert report["projection"]["applied"] is True  # projection status
     assert set(report["projection"]["required_tables"]) == {

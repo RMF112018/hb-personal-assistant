@@ -24,6 +24,7 @@ from hb_assistant.procore.structured_analytics import (
     SOURCE_QUALITY_LEGACY,
     SOURCE_QUALITY_LIVE_FULL,
     backfill_from_live_records,
+    reconcile_full_raw_landing,
     upsert_full_raw_payload_and_structured,
 )
 from hb_assistant.store.migrator import LATEST_SCHEMA_VERSION, SQLiteMigrator
@@ -254,6 +255,197 @@ def test_placeholder_strings_do_not_populate_scalars(tmp_path: Path) -> None:
     # The stored full payload still preserves the literal placeholders (not mutated).
     assert "[redacted]" in payload_json
     assert "[scrubbed]" in payload_json
+
+
+def test_full_payload_writes_and_refreshes_company_context(tmp_path: Path) -> None:
+    db = _db(tmp_path)
+    upsert_full_raw_payload_and_structured(
+        db_path=db,
+        endpoint_id="prime-change-orders",
+        project_key="tropical",
+        procore_project_id="2525840",
+        raw_item=_RICH_CHANGE_ORDER,
+        company_id="5280",
+        source_quality=SOURCE_QUALITY_LIVE_FULL,
+    )
+    upsert_full_raw_payload_and_structured(
+        db_path=db,
+        endpoint_id="prime-change-orders",
+        project_key="tropical",
+        procore_project_id="2525840",
+        raw_item=_RICH_CHANGE_ORDER,
+        company_id="9999",
+        source_quality=SOURCE_QUALITY_LIVE_FULL,
+    )
+    conn = sqlite3.connect(db)
+    conn.row_factory = sqlite3.Row
+    try:
+        raw = conn.execute(
+            """
+            SELECT company_id, company_id_hash
+            FROM procore_endpoint_raw_payloads
+            WHERE raw_procore_payload_persisted = 1
+            """
+        ).fetchone()
+        structured = conn.execute(
+            "SELECT company_id, company_id_hash FROM procore_raw_change_orders"
+        ).fetchone()
+    finally:
+        conn.close()
+    assert raw["company_id"] == "9999"
+    assert raw["company_id_hash"]
+    assert structured["company_id"] == "9999"
+    assert structured["company_id_hash"]
+
+
+def test_full_raw_current_version_history_has_single_current_row(tmp_path: Path) -> None:
+    db = _db(tmp_path)
+    upsert_full_raw_payload_and_structured(
+        db_path=db,
+        endpoint_id="rfis",
+        project_key="tropical",
+        procore_project_id="2525840",
+        raw_item={"id": "R1", "number": "RFI-R1", "status": "open"},
+        company_id="5280",
+        source_quality=SOURCE_QUALITY_LIVE_FULL,
+        fetched_at_utc="2026-06-20T00:00:00+00:00",
+    )
+    upsert_full_raw_payload_and_structured(
+        db_path=db,
+        endpoint_id="rfis",
+        project_key="tropical",
+        procore_project_id="2525840",
+        raw_item={"id": "R1", "number": "RFI-R1", "status": "closed"},
+        company_id="5280",
+        source_quality=SOURCE_QUALITY_LIVE_FULL,
+        fetched_at_utc="2026-06-21T00:00:00+00:00",
+    )
+    upsert_full_raw_payload_and_structured(
+        db_path=db,
+        endpoint_id="rfis",
+        project_key="other-project",
+        procore_project_id="2525841",
+        raw_item={"id": "R1", "number": "RFI-R1", "status": "other"},
+        company_id="5280",
+        source_quality=SOURCE_QUALITY_LIVE_FULL,
+    )
+    conn = sqlite3.connect(db)
+    try:
+        tropical_versions, tropical_current = conn.execute(
+            """
+            SELECT COUNT(*), SUM(CASE WHEN is_current = 1 THEN 1 ELSE 0 END)
+            FROM procore_endpoint_raw_payloads
+            WHERE endpoint_key = 'rfis'
+              AND project_key = 'tropical'
+              AND record_id = 'R1'
+              AND raw_procore_payload_persisted = 1
+            """
+        ).fetchone()
+        other_current = conn.execute(
+            """
+            SELECT SUM(CASE WHEN is_current = 1 THEN 1 ELSE 0 END)
+            FROM procore_endpoint_raw_payloads
+            WHERE endpoint_key = 'rfis'
+              AND project_key = 'other-project'
+              AND record_id = 'R1'
+              AND raw_procore_payload_persisted = 1
+            """
+        ).fetchone()[0]
+    finally:
+        conn.close()
+    assert tropical_versions == 2
+    assert tropical_current == 1
+    assert other_current == 1
+
+
+def test_reconcile_full_raw_landing_requires_explicit_db_and_apply(tmp_path: Path) -> None:
+    assert reconcile_full_raw_landing(db_path=None, apply=True)["status"] == "blocked_explicit_db_required"
+    db = _db(tmp_path)
+    assert reconcile_full_raw_landing(db_path=db, apply=False)["status"] == "blocked_apply_required"
+
+
+def test_reconcile_full_raw_landing_cli_requires_db_and_apply(tmp_path: Path) -> None:
+    from typer.testing import CliRunner
+
+    from hb_assistant.cli.procore import app
+
+    runner = CliRunner()
+    missing_db = runner.invoke(
+        app,
+        ["analytics", "reconcile-full-raw-landing", "--apply", "--json"],
+        catch_exceptions=False,
+    )
+    assert missing_db.exit_code == 2
+    assert json.loads(missing_db.stdout)["status"] == "blocked_explicit_db_required"
+
+    db = _db(tmp_path)
+    missing_apply = runner.invoke(
+        app,
+        ["analytics", "reconcile-full-raw-landing", "--db", str(db), "--json"],
+        catch_exceptions=False,
+    )
+    assert missing_apply.exit_code == 2
+    assert json.loads(missing_apply.stdout)["status"] == "blocked_apply_required"
+
+
+def test_reconcile_full_raw_landing_repairs_company_and_currentness(tmp_path: Path) -> None:
+    db = _db(tmp_path)
+    conn = sqlite3.connect(db)
+    try:
+        conn.execute(
+            """
+            INSERT INTO procore_live_sync_runs (
+              sync_run_id, company_id, project_key, procore_project_id, endpoint_id,
+              command_endpoint, mode, started_at_utc, completed_at_utc, status, state
+            ) VALUES ('run-repair', '5280', 'tropical', '2525840', 'rfis', 'rfis', 'test',
+              '2026-06-20T00:00:00Z', '2026-06-20T00:00:01Z', 'ok', 'completed')
+            """
+        )
+        for raw_id, payload_hash, seen_last in (
+            ("raw-old", "hash-old", "2026-06-20T00:00:00+00:00"),
+            ("raw-new", "hash-new", "2026-06-21T00:00:00+00:00"),
+        ):
+            conn.execute(
+                """
+                INSERT INTO procore_endpoint_raw_payloads (
+                  raw_payload_id, capture_run_id, endpoint_key, endpoint_family,
+                  endpoint_version, project_id, project_id_hash, project_key,
+                  record_type, record_id, record_id_hash, source_ref_hash,
+                  request_fingerprint_hash, payload_hash, payload_json,
+                  payload_size_bytes, payload_captured_at_utc,
+                  payload_seen_first_utc, payload_seen_last_utc, is_current,
+                  redaction_status, security_scrub_status, source_quality,
+                  raw_procore_payload_persisted, external_writeback_performed
+                ) VALUES (?, 'run-repair', 'rfis', 'field', 'live_v1', '2525840', 'pidhash',
+                  'tropical', 'rfis', 'R1', 'rid', 'source', 'request', ?, '{}', 2,
+                  ?, ?, ?, 1, 'full_business_payload', 'transport_secrets_removed',
+                  ?, 1, 0)
+                """,
+                (raw_id, payload_hash, seen_last, seen_last, seen_last, SOURCE_QUALITY_LIVE_FULL),
+            )
+        conn.commit()
+    finally:
+        conn.close()
+
+    receipt = reconcile_full_raw_landing(db_path=db, apply=True)
+    assert receipt["ok"] is True
+    assert receipt["company_rows_repaired"] == 2
+    assert receipt["stable_keys_reconciled"] == 1
+    conn = sqlite3.connect(db)
+    try:
+        current = conn.execute(
+            "SELECT raw_payload_id FROM procore_endpoint_raw_payloads WHERE is_current = 1"
+        ).fetchall()
+        company_count = conn.execute(
+            """
+            SELECT COUNT(*) FROM procore_endpoint_raw_payloads
+            WHERE company_id = '5280' AND company_id_hash IS NOT NULL
+            """
+        ).fetchone()[0]
+    finally:
+        conn.close()
+    assert current == [("raw-new",)]
+    assert company_count == 2
 
 
 # --- Source-quality precedence ---------------------------------------------------
@@ -551,15 +743,17 @@ def test_live_sync_writes_full_raw_and_structured_no_body_in_receipt(
 
     conn = sqlite3.connect(db)
     raw_rows = conn.execute(
-        "SELECT payload_json, source_quality, raw_procore_payload_persisted "
+        "SELECT payload_json, source_quality, raw_procore_payload_persisted, company_id, company_id_hash "
         "FROM procore_endpoint_raw_payloads WHERE endpoint_key = 'rfis'"
     ).fetchall()
     struct_n = conn.execute("SELECT COUNT(*) FROM procore_raw_rfis").fetchone()[0]
     conn.close()
     assert len(raw_rows) == 2
-    for payload_json, sq, persisted in raw_rows:
+    for payload_json, sq, persisted, company_id, company_id_hash in raw_rows:
         assert sq == SOURCE_QUALITY_LIVE_FULL
         assert persisted == 1
+        assert company_id == "5280"
+        assert company_id_hash
         assert "LIVE-SECRET-TOKEN" not in payload_json  # transport secret stripped
     assert struct_n == 2
 

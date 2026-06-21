@@ -1,0 +1,13 @@
+[{"field":"approved_change_orders","wide_rows":2522,"matching_nonempty_cells":2522,"missing_wide_for_cell":0,"value_mismatch_count":0},
+{"field":"committed_costs","wide_rows":1478,"matching_nonempty_cells":1478,"missing_wide_for_cell":0,"value_mismatch_count":0},
+{"field":"direct_costs","wide_rows":522,"matching_nonempty_cells":522,"missing_wide_for_cell":0,"value_mismatch_count":0},
+{"field":"erp_direct_costs","wide_rows":956,"matching_nonempty_cells":956,"missing_wide_for_cell":0,"value_mismatch_count":0},
+{"field":"erp_job_to_date_costs","wide_rows":956,"matching_nonempty_cells":956,"missing_wide_for_cell":0,"value_mismatch_count":0},
+{"field":"estimated_cost_at_completion","wide_rows":2522,"matching_nonempty_cells":2522,"missing_wide_for_cell":0,"value_mismatch_count":0},
+{"field":"forecast_to_complete","wide_rows":1044,"matching_nonempty_cells":1044,"missing_wide_for_cell":0,"value_mismatch_count":0},
+{"field":"job_to_date_costs","wide_rows":1566,"matching_nonempty_cells":1566,"missing_wide_for_cell":0,"value_mismatch_count":0},
+{"field":"pending_budget_changes","wide_rows":1478,"matching_nonempty_cells":1478,"missing_wide_for_cell":0,"value_mismatch_count":0},
+{"field":"projected_budget","wide_rows":2522,"matching_nonempty_cells":2522,"missing_wide_for_cell":0,"value_mismatch_count":0},
+{"field":"projected_costs","wide_rows":2522,"matching_nonempty_cells":2522,"missing_wide_for_cell":0,"value_mismatch_count":0},
+{"field":"projected_over_under","wide_rows":2522,"matching_nonempty_cells":2522,"missing_wide_for_cell":0,"value_mismatch_count":0},
+{"field":"revised_budget","wide_rows":2522,"matching_nonempty_cells":2522,"missing_wide_for_cell":0,"value_mismatch_count":0}]

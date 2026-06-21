@@ -263,6 +263,86 @@ def analytics_no_raw_leak_scan(
     _emit(payload, json_out=json_out, exit_code=0 if payload["ok"] else 3)
 
 
+@analytics_app.command("reconcile-full-raw-landing")
+def analytics_reconcile_full_raw_landing(
+    db: Optional[str] = typer.Option(None, "--db", help="Explicit copied SQLite DB path."),
+    apply: bool = typer.Option(False, "--apply", help="Apply copied-DB reconciliation repairs."),
+    json_out: bool = typer.Option(True, "--json/--no-json"),
+) -> None:
+    """Repair full raw company provenance/currentness on an explicit copied DB only."""
+    from hb_assistant.procore.structured_analytics import reconcile_full_raw_landing
+
+    payload = reconcile_full_raw_landing(db_path=db, apply=apply)
+    _emit(payload, json_out=json_out, exit_code=0 if payload["ok"] else 2)
+
+
+@analytics_app.command("project-budget-detail-read-model")
+def analytics_project_budget_detail_read_model(
+    db: Optional[str] = typer.Option(None, "--db", help="Explicit copied SQLite DB path."),
+    project_key: Optional[str] = typer.Option(None, "--project-key"),
+    budget_view_id: list[str] = typer.Option(  # noqa: B008
+        [],
+        "--budget-view-id",
+        help="Optional Budget Detail parent/view id to replay. Repeat for multiple views.",
+    ),
+    apply: bool = typer.Option(False, "--apply", help="Apply copied-DB read-model replay."),
+    json_out: bool = typer.Option(True, "--json/--no-json"),
+) -> None:
+    """Replay Budget Detail endpoint-specific read model on an explicit copied DB only."""
+    from hb_assistant.procore.budget_detail_read_model import project_budget_detail_read_model
+
+    if db is None:
+        _emit(
+            {
+                "command": "hb-assistant procore analytics project-budget-detail-read-model",
+                "ok": False,
+                "status": "blocked_explicit_db_required",
+                "reason": "--db is required; this command never defaults to the live app DB",
+                "local_db_write_performed": False,
+                "external_writeback_performed": 0,
+            },
+            json_out=json_out,
+            exit_code=2,
+        )
+        return
+    if not apply:
+        _emit(
+            {
+                "command": "hb-assistant procore analytics project-budget-detail-read-model",
+                "ok": False,
+                "status": "blocked_apply_required",
+                "reason": "--apply is required for copied-DB replay",
+                "db_path": db,
+                "local_db_write_performed": False,
+                "external_writeback_performed": 0,
+            },
+            json_out=json_out,
+            exit_code=2,
+        )
+        return
+    payload = project_budget_detail_read_model(
+        db_path=db,
+        project_key=project_key,
+        budget_view_ids=budget_view_id or None,
+        require_live_full=True,
+        apply=True,
+    )
+    payload.update(
+        {
+            "command": "hb-assistant procore analytics project-budget-detail-read-model",
+            "db_path": db,
+            "external_writeback_performed": 0,
+            "raw_payload_body_emitted": False,
+            "guardrails": {
+                "explicit_db_required": True,
+                "live_calls_disabled": True,
+                "writeback": "none",
+            },
+        }
+    )
+    _emit(payload, json_out=json_out, exit_code=0 if payload.get("ok") else 3)
+
+
 @analytics_app.command("projection-inventory")
 def analytics_projection_inventory(
     db: Optional[str] = typer.Option(None, "--db", help="Explicit SQLite DB path."),

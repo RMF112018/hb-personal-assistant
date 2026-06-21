@@ -1,0 +1,22 @@
+{
+  "inspected_raw_rows": 3443,
+  "structured_budget_detail_row_rows_inserted_or_updated": 3044,
+  "budget_detail_cell_rows_inserted_or_updated": 273950,
+  "structured_budget_detail_column_rows_inserted_or_updated": 399,
+  "skipped_missing_record_id": 0,
+  "skipped_lower_quality": 0,
+  "degraded_parse_errors": 0,
+  "raw_payload_body_emitted": false,
+  "external_writeback_performed": 0,
+  "ok": true,
+  "status": "success",
+  "mode": "apply",
+  "local_db_write_performed": true,
+  "command": "hb-assistant procore analytics project-budget-detail-read-model",
+  "db_path": "/tmp/hb-budget-detail-complete-remediation-proof.sqlite",
+  "guardrails": {
+    "explicit_db_required": true,
+    "live_calls_disabled": true,
+    "writeback": "none"
+  }
+}

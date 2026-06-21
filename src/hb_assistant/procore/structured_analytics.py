@@ -847,6 +847,7 @@ def _structured_values_from_payload(
     endpoint_id: str,
     project_key: str | None,
     procore_project_id: str | None,
+    company_id: str | None,
     record_id: str,
     parent_id: str | None,
     payload: dict[str, Any],
@@ -865,14 +866,15 @@ def _structured_values_from_payload(
     """
     adapter = endpoint_registry.get(endpoint_id)
     family = adapter.family if adapter else endpoint_id
+    company_id_clean = str(company_id).strip() if company_id not in (None, "") else None
     return {
         "record_key": structured_record_key(endpoint_id, project_key, record_id, parent_id),
         "raw_payload_id": raw_payload_id,
         "source_ref_hash": source_hash,
         "endpoint_key": endpoint_id,
         "endpoint_family": family,
-        "company_id": None,
-        "company_id_hash": None,
+        "company_id": company_id_clean,
+        "company_id_hash": _hash(company_id_clean) if company_id_clean else None,
         "project_id": procore_project_id,
         "project_id_hash": _hash(procore_project_id),
         "project_key": project_key,
@@ -921,6 +923,7 @@ def _insert_full_raw_payload(
     capture_run_id: str,
     endpoint_id: str,
     endpoint_family: str,
+    company_id: str | None,
     procore_project_id: str | None,
     project_key: str | None,
     record_id: str,
@@ -934,6 +937,7 @@ def _insert_full_raw_payload(
     source_quality: str,
     now_utc: str,
 ) -> None:
+    company_id_clean = str(company_id).strip() if company_id not in (None, "") else None
     conn.execute(
         """
         INSERT INTO procore_endpoint_raw_payloads (
@@ -948,11 +952,13 @@ def _insert_full_raw_payload(
           raw_procore_payload_persisted, external_writeback_performed,
           created_utc, updated_utc
         ) VALUES (
-          ?, ?, ?, ?, 'live_v1', NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1,
+          ?, ?, ?, ?, 'live_v1', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1,
           'full_business_payload', 'transport_secrets_removed', 1, 0, 0, 'local_analytics', 1, ?,
           1, 0, ?, ?
         )
         ON CONFLICT(raw_payload_id) DO UPDATE SET
+          company_id=excluded.company_id,
+          company_id_hash=excluded.company_id_hash,
           payload_json=excluded.payload_json,
           payload_hash=excluded.payload_hash,
           payload_size_bytes=excluded.payload_size_bytes,
@@ -969,6 +975,8 @@ def _insert_full_raw_payload(
             capture_run_id,
             endpoint_id,
             endpoint_family,
+            company_id_clean,
+            _hash(company_id_clean) if company_id_clean else None,
             procore_project_id,
             _hash(procore_project_id),
             project_key,
@@ -992,6 +1000,66 @@ def _insert_full_raw_payload(
     )
 
 
+def _enforce_one_current_full_raw_payload(
+    conn: sqlite3.Connection,
+    *,
+    raw_payload_id: str,
+    endpoint_id: str,
+    project_key: str | None,
+    record_id: str,
+    parent_id: str | None,
+) -> None:
+    """Make the just-written full raw row the only current row for its stable key."""
+    conn.execute(
+        """
+        UPDATE procore_endpoint_raw_payloads
+        SET is_current = 0, updated_utc = CURRENT_TIMESTAMP
+        WHERE raw_procore_payload_persisted = 1
+          AND endpoint_key = ?
+          AND project_key IS ?
+          AND parent_record_id IS ?
+          AND record_id = ?
+          AND raw_payload_id <> ?
+        """,
+        (endpoint_id, project_key, parent_id, record_id, raw_payload_id),
+    )
+    conn.execute(
+        """
+        UPDATE procore_endpoint_raw_payloads
+        SET is_current = 1
+        WHERE raw_payload_id = ?
+        """,
+        (raw_payload_id,),
+    )
+    row = conn.execute(
+        """
+        SELECT
+          SUM(CASE WHEN is_current = 1 THEN 1 ELSE 0 END) AS current_count,
+          SUM(CASE WHEN raw_payload_id = ? AND is_current = 1 THEN 1 ELSE 0 END) AS incoming_current
+        FROM procore_endpoint_raw_payloads
+        WHERE raw_procore_payload_persisted = 1
+          AND endpoint_key = ?
+          AND project_key IS ?
+          AND parent_record_id IS ?
+          AND record_id = ?
+        """,
+        (raw_payload_id, endpoint_id, project_key, parent_id, record_id),
+    ).fetchone()
+    if row is None or row["current_count"] != 1 or row["incoming_current"] != 1:
+        raise RuntimeError("full raw current-version invariant failed")
+
+
+def _run_in_savepoint(conn: sqlite3.Connection, name: str, callback: Any) -> None:
+    conn.execute(f"SAVEPOINT {name}")
+    try:
+        callback(conn)
+    except Exception:
+        conn.execute(f"ROLLBACK TO {name}")
+        conn.execute(f"RELEASE {name}")
+        raise
+    conn.execute(f"RELEASE {name}")
+
+
 def upsert_full_raw_payload_and_structured(
     *,
     db_path: str | Path | None = None,
@@ -1000,6 +1068,7 @@ def upsert_full_raw_payload_and_structured(
     project_key: str | None,
     procore_project_id: str | None,
     raw_item: Any,
+    company_id: str | None = None,
     parent_procore_id: str | None = None,
     record_id: str | None = None,
     fetched_at_utc: str | None = None,
@@ -1073,6 +1142,7 @@ def upsert_full_raw_payload_and_structured(
             capture_run_id=capture_run_id or f"live-full-{now_utc[:10]}",
             endpoint_id=endpoint_id,
             endpoint_family=family,
+            company_id=company_id,
             procore_project_id=procore_project_id,
             project_key=project_key,
             record_id=resolved_id,
@@ -1086,6 +1156,14 @@ def upsert_full_raw_payload_and_structured(
             source_quality=source_quality,
             now_utc=now_utc,
         )
+        _enforce_one_current_full_raw_payload(
+            active,
+            raw_payload_id=raw_payload_id,
+            endpoint_id=endpoint_id,
+            project_key=project_key,
+            record_id=resolved_id,
+            parent_id=parent_id,
+        )
         receipt["raw_payload_rows_written"] = 1
         receipt["raw_procore_payload_persisted"] = 1
         if table is None:
@@ -1095,6 +1173,7 @@ def upsert_full_raw_payload_and_structured(
                 endpoint_id=endpoint_id,
                 project_key=project_key,
                 procore_project_id=procore_project_id,
+                company_id=company_id,
                 record_id=resolved_id,
                 parent_id=parent_id,
                 payload=payload,
@@ -1131,7 +1210,11 @@ def upsert_full_raw_payload_and_structured(
             )
 
     if conn is not None:
-        _do(conn)
+        if conn.in_transaction:
+            _run_in_savepoint(conn, "full_raw_payload_upsert", _do)
+        else:
+            with transaction(conn):
+                _do(conn)
     else:
         with open_connection(Path(db_path) if db_path is not None else None) as active, transaction(active):
             _do(active)
@@ -1207,6 +1290,7 @@ def backfill_from_raw_payloads(
                     endpoint_id=endpoint_id,
                     project_key=row["project_key"],
                     procore_project_id=row["project_id"],
+                    company_id=row["company_id"],
                     record_id=record_id,
                     parent_id=parent_id,
                     payload=payload,
@@ -1620,6 +1704,156 @@ def ranking_diagnostics(
     }
 
 
+def reconcile_full_raw_landing(*, db_path: str | Path | None, apply: bool = False) -> dict[str, Any]:
+    """Repair copied full-raw landing provenance/currentness without reading live app defaults."""
+    if db_path is None:
+        return {
+            "command": "hb-assistant procore analytics reconcile-full-raw-landing",
+            "ok": False,
+            "status": "blocked_explicit_db_required",
+            "reason": "--db is required; this command never defaults to the live app DB",
+            "local_db_write_performed": False,
+            "external_writeback_performed": 0,
+        }
+    if not apply:
+        return {
+            "command": "hb-assistant procore analytics reconcile-full-raw-landing",
+            "ok": False,
+            "status": "blocked_apply_required",
+            "reason": "--apply is required for reconciliation",
+            "db_path": str(db_path),
+            "local_db_write_performed": False,
+            "external_writeback_performed": 0,
+        }
+
+    conn = get_connection(Path(db_path))
+    try:
+        company_rows_repaired = 0
+        stable_keys_reconciled = 0
+        rows_marked_current = 0
+        rows_marked_non_current = 0
+        with transaction(conn):
+            rows = conn.execute(
+                """
+                SELECT p.raw_payload_id, r.company_id
+                FROM procore_endpoint_raw_payloads p
+                JOIN procore_live_sync_runs r
+                  ON r.sync_run_id = p.capture_run_id
+                WHERE p.raw_procore_payload_persisted = 1
+                  AND (p.company_id IS NULL OR TRIM(p.company_id) = '')
+                  AND r.company_id IS NOT NULL
+                  AND TRIM(r.company_id) <> ''
+                """
+            ).fetchall()
+            for row in rows:
+                company_id = str(row["company_id"]).strip()
+                conn.execute(
+                    """
+                    UPDATE procore_endpoint_raw_payloads
+                    SET company_id = ?, company_id_hash = ?, updated_utc = CURRENT_TIMESTAMP
+                    WHERE raw_payload_id = ?
+                    """,
+                    (company_id, _hash(company_id), row["raw_payload_id"]),
+                )
+                company_rows_repaired += 1
+
+            stable_keys = conn.execute(
+                """
+                SELECT endpoint_key, project_key, parent_record_id, record_id
+                FROM procore_endpoint_raw_payloads
+                WHERE raw_procore_payload_persisted = 1
+                GROUP BY endpoint_key, project_key, parent_record_id, record_id
+                """
+            ).fetchall()
+            for key in stable_keys:
+                versions = conn.execute(
+                    """
+                    SELECT raw_payload_id, is_current, payload_seen_last_utc, updated_utc
+                    FROM procore_endpoint_raw_payloads
+                    WHERE raw_procore_payload_persisted = 1
+                      AND endpoint_key = ?
+                      AND project_key IS ?
+                      AND parent_record_id IS ?
+                      AND record_id = ?
+                    """,
+                    (
+                        key["endpoint_key"],
+                        key["project_key"],
+                        key["parent_record_id"],
+                        key["record_id"],
+                    ),
+                ).fetchall()
+                if not versions:
+                    continue
+                winner = max(
+                    versions,
+                    key=lambda row: (
+                        row["payload_seen_last_utc"] or "",
+                        row["updated_utc"] or "",
+                        row["raw_payload_id"] or "",
+                    ),
+                )
+                changed = False
+                for version in versions:
+                    target_current = 1 if version["raw_payload_id"] == winner["raw_payload_id"] else 0
+                    if version["is_current"] == target_current:
+                        continue
+                    conn.execute(
+                        """
+                        UPDATE procore_endpoint_raw_payloads
+                        SET is_current = ?, updated_utc = CURRENT_TIMESTAMP
+                        WHERE raw_payload_id = ?
+                        """,
+                        (target_current, version["raw_payload_id"]),
+                    )
+                    changed = True
+                    if target_current:
+                        rows_marked_current += 1
+                    else:
+                        rows_marked_non_current += 1
+                current_count = conn.execute(
+                    """
+                    SELECT SUM(CASE WHEN is_current = 1 THEN 1 ELSE 0 END)
+                    FROM procore_endpoint_raw_payloads
+                    WHERE raw_procore_payload_persisted = 1
+                      AND endpoint_key = ?
+                      AND project_key IS ?
+                      AND parent_record_id IS ?
+                      AND record_id = ?
+                    """,
+                    (
+                        key["endpoint_key"],
+                        key["project_key"],
+                        key["parent_record_id"],
+                        key["record_id"],
+                    ),
+                ).fetchone()[0]
+                if current_count != 1:
+                    raise RuntimeError("full raw reconciliation invariant failed")
+                if changed:
+                    stable_keys_reconciled += 1
+        return {
+            "command": "hb-assistant procore analytics reconcile-full-raw-landing",
+            "ok": True,
+            "status": "success",
+            "db_path": str(db_path),
+            "company_rows_repaired": company_rows_repaired,
+            "stable_keys_reconciled": stable_keys_reconciled,
+            "rows_marked_current": rows_marked_current,
+            "rows_marked_non_current": rows_marked_non_current,
+            "raw_payload_body_emitted": False,
+            "local_db_write_performed": True,
+            "external_writeback_performed": 0,
+            "guardrails": {
+                "explicit_db_required": True,
+                "live_calls_disabled": True,
+                "writeback": "none",
+            },
+        }
+    finally:
+        conn.close()
+
+
 def no_raw_leak_scan(paths: Iterable[str | Path]) -> dict[str, Any]:
     patterns = [
         "Bear" + "er" + r"\s+[A-Za-z0-9._-]+",
@@ -1694,6 +1928,7 @@ __all__ = [
     "no_raw_leak_scan",
     "payload_has_forbidden_security_artifact",
     "ranking_diagnostics",
+    "reconcile_full_raw_landing",
     "scrub_payload",
     "scrub_transport_secrets",
     "structured_counts",

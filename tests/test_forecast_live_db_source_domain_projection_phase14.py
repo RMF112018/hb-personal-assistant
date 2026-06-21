@@ -20,7 +20,7 @@ from pathlib import Path
 import pytest
 
 from hb_assistant.construction.forecast import source_domain_engine as dbeng
-from hb_assistant.store.migrator import SQLiteMigrator
+from hb_assistant.store.migrator import LATEST_SCHEMA_VERSION, SQLiteMigrator
 
 CFR_SRC = Path(__file__).resolve().parents[1] / "subrepos/construction-financial-review/src"
 if str(CFR_SRC) not in sys.path:
@@ -293,7 +293,7 @@ def test_creates_and_verifies_backup(tmp_path, monkeypatch):
     report = _run_success(tmp_path, monkeypatch)
     b = report["backup"]
     assert Path(b["path"]).is_file()
-    assert b["verified_readable"] is True and b["schema_version"] == 61  # Phase 4: migrator now at v61 (synthetic temp DB)
+    assert b["verified_readable"] is True and b["schema_version"] == LATEST_SCHEMA_VERSION
     assert b["size_bytes"] > 0 and len(b["sha256"]) == 64
 
 
