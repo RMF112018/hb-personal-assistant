@@ -1,0 +1,10 @@
+Phase E2 suites are fully green:
+  tests/test_forecast_live_db_config_registry_promotion_phaseE2.py (8 workflow tests)
+  + tests/test_fastapi_forecast_config_promotion.py (6 route/service tests)
+  + app-shell/runtime regression  → 37 passed (focused).
+  CFR subrepo: 565 passed, unchanged (Phase E2 adds a workflow + CLI; the workflow's tests are repo-root).
+  Frontend: typecheck/copycheck/build clean; proposals page test 6/6.
+
+Pre-existing failures NOT caused by Phase E2 (unchanged from prior phases):
+  - frontend SettingsPage.test.tsx x5 (documented pre-existing).
+  - backend env-sensitive: test_environment_live_flags_off_by_default, test_live_refresh_fails_closed.

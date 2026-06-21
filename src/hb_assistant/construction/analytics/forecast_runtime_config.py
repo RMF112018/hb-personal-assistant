@@ -50,6 +50,11 @@ _CONFIG_NAME = "forecast_runtime_config.json"
 # isolated config-edit proposals are written under it, so it must be outside the live data root.
 ENV_CONFIG_EDIT_ROOT = "HB_FORECAST_CONFIG_EDIT_ROOT"
 
+# Phase E2 promotion opt-in (default OFF). A boolean flag (NOT a path root) that must be explicitly
+# enabled before any config-edit proposal can be promoted to the live config DB.
+ENV_PROMOTION_ENABLED = "HB_FORECAST_PROMOTION_ENABLED"
+_TRUTHY = {"1", "true", "yes", "on"}
+
 # Whitelisted keys. An unknown key in the on-disk file can never inject behaviour.
 DEFAULT_CONFIG: dict[str, Any] = {
     "package_roots": [],  # list[str]; absolute existing dirs (read-only)
@@ -59,6 +64,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "db_path": None,  # str|None; read-only source-domain DB; not write-guarded
     "cfr_src": None,  # str|None; absolute existing dir; optional (defaults to subrepo path)
     "config_edit_root": None,  # str|None; absolute, creatable, MUST be outside data_root (write)
+    "promotion_enabled": False,  # bool flag (NOT a path); gates the Phase E2 live config promotion
     "schema_version": 1,  # LOCAL file version only — NOT the DB schema; do not conflate
 }
 
@@ -164,6 +170,16 @@ def resolve_config_edit_root_value(explicit: str | None = None) -> str | None:
     return _first(
         explicit, os.environ.get(ENV_CONFIG_EDIT_ROOT), _load_config().get("config_edit_root")
     )
+
+
+def resolve_promotion_enabled(explicit: bool | str | None = None) -> bool:
+    """Resolve the Phase E2 promotion opt-in (explicit > env > settings-file > default False)."""
+    if explicit is not None:
+        return explicit is True or str(explicit).strip().lower() in _TRUTHY
+    env = os.environ.get(ENV_PROMOTION_ENABLED)
+    if env is not None:
+        return env.strip().lower() in _TRUTHY
+    return bool(_load_config().get("promotion_enabled"))
 
 
 # -- non-mutating validation (status + save) ----------------------------------
@@ -285,12 +301,17 @@ def build_runtime_status() -> dict[str, Any]:
         ),
         # Config-edit proposals seed from the live DB (db_path) and write under config_edit_root.
         "config_edit": config_edit_blocker is None and db_blocker is None,
+        # Config promotion (Phase E2) additionally requires the explicit opt-in (default OFF).
+        "config_promotion": (
+            config_edit_blocker is None and db_blocker is None and resolve_promotion_enabled()
+        ),
     }
 
     return {
         "surface": _SURFACE,
         "roots": roots,
         "surfaces_ready": surfaces_ready,
+        "promotion": {"enabled": resolve_promotion_enabled()},
         "guardrails": {
             "read_only": True,
             "local_first": True,
@@ -341,6 +362,12 @@ def save_runtime_config(updates: dict[str, Any]) -> dict[str, Any]:
     for key in _WRITABLE_KEYS:
         if key in updates and updates[key] is not None:
             cfg[key] = updates[key]
+    # Boolean flags (not path roots → no path validation). Phase E2 promotion opt-in.
+    if "promotion_enabled" in updates and updates["promotion_enabled"] is not None:
+        cfg["promotion_enabled"] = bool(
+            updates["promotion_enabled"] is True
+            or str(updates["promotion_enabled"]).strip().lower() in _TRUTHY
+        )
 
     # Effective data root for the write-root cross-check (settings value, since this is the
     # persisted config; env is a per-process override that must not weaken the persisted guard).

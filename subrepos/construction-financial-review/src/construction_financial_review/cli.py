@@ -885,6 +885,43 @@ def cmd_live_db_source_domain_project(*, source_package: str, work_root: str, co
     return 0 if report.get("decision") == DECISION_CERTIFIED else 1
 
 
+def cmd_forecast_config_registry_promote(*, edited_config_root: str, work_root: str,
+                                         context_stamp: str, live_db_path: str | None,
+                                         allow_live_db_write: bool, snapshot_name: str,
+                                         snapshot_reason: str, expect_item_count: int | None,
+                                         project: str) -> int:
+    """Gated certified promotion of an approved config-edit proposal into the live config DB (Phase E2).
+
+    Builds the snapshot in a fresh non-live temp DB (avoiding the active-item duplication trap), BACKS UP
+    the live DB, then in one transaction ADDITIVELY copies the new snapshot (+ backing sources/items)
+    into the live DB and certifies the promoted snapshot byte/canonical-equivalent while asserting every
+    pre-existing snapshot is unchanged. Requires --allow-live-db-write. rc 0 = certified; rc 1 =
+    post-write certification not matched / not-ready (backup recorded); rc 3 = controlled refusal."""
+    from .workflows.live_db_config_registry_promotion import (
+        DECISION_CERTIFIED,
+        LiveDbConfigRegistryPromotionError,
+        run_live_db_config_registry_promotion,
+    )
+
+    try:
+        with contextlib.redirect_stdout(sys.stderr):
+            report = run_live_db_config_registry_promotion(
+                edited_config_root=Path(edited_config_root), work_root=Path(work_root),
+                context_stamp=context_stamp,
+                live_db_path=Path(live_db_path) if live_db_path else None, project_key=project,
+                allow_live_db_write=allow_live_db_write, snapshot_name=snapshot_name,
+                snapshot_reason=snapshot_reason,
+                expected_item_count=expect_item_count)
+    except LiveDbConfigRegistryPromotionError as exc:
+        print(json.dumps({"command": "forecast-config-registry-promote", "project": project,
+                          "status": "refused", "reason": str(exc)}, indent=2))
+        return 3
+    out = {"command": "forecast-config-registry-promote"}
+    out.update(report)
+    print(json.dumps(out, indent=2))
+    return 0 if report.get("decision") == DECISION_CERTIFIED else 1
+
+
 def cmd_db_certified_final_output(*, phase14_report: str, source_package: str, work_root: str,
                                   context_stamp: str, live_db_path: str | None,
                                   require_guarded_operator_check: bool, generate_final_csv: bool,
@@ -1286,6 +1323,23 @@ def build_parser() -> argparse.ArgumentParser:
                      help="Optional exact expected temp count for forecast_cost_entries.")
     lsp.add_argument("--expect-monthly", type=int, default=None,
                      help="Optional exact expected temp count for forecast_monthly_actuals_by_budget_code.")
+    # Phase E2 — gated certified promotion of an approved config-edit proposal into the live config DB.
+    pcp = sub.add_parser("forecast-config-registry-promote")
+    pcp.add_argument("--project", required=True, help="Project key (only 'tropical').")
+    pcp.add_argument("--edited-config-root", required=True,
+                     help="Explicit edited config tree (the approved proposal's edited_config dir).")
+    pcp.add_argument("--work-root", required=True,
+                     help="Explicit non-live work root (temp DB + backup + report under it).")
+    pcp.add_argument("--context-stamp", required=True, help="Deterministic stamp for the run.")
+    pcp.add_argument("--snapshot-name", required=True, help="Name for the promoted snapshot.")
+    pcp.add_argument("--snapshot-reason", required=True, help="Reason recorded on the promoted snapshot.")
+    pcp.add_argument("--live-db-path", default=None,
+                     help="Optional explicit live DB path (tests only); resolves the default live DB "
+                          "if omitted.")
+    pcp.add_argument("--allow-live-db-write", action="store_true",
+                     help="Required gate to actually write the live config DB (refused otherwise).")
+    pcp.add_argument("--expect-item-count", type=int, default=None,
+                     help="Optional exact expected snapshot item_count (binds promotion to the approval).")
     # Phase 15 — controlled DB-certified final forecast output generation (no production default flip).
     dfo = sub.add_parser("db-certified-final-output")
     dfo.add_argument("--project", required=True, help="Project key (only 'tropical' in Phase 15).")
@@ -1605,6 +1659,13 @@ def main(argv=None) -> int:
             expect_budget_details=args.expect_budget_details,
             expect_cost_entries=args.expect_cost_entries,
             expect_monthly=args.expect_monthly, project=args.project)
+    if args.command == "forecast-config-registry-promote":
+        return cmd_forecast_config_registry_promote(
+            edited_config_root=args.edited_config_root, work_root=args.work_root,
+            context_stamp=args.context_stamp, live_db_path=args.live_db_path,
+            allow_live_db_write=args.allow_live_db_write, snapshot_name=args.snapshot_name,
+            snapshot_reason=args.snapshot_reason, expect_item_count=args.expect_item_count,
+            project=args.project)
     if args.command == "db-certified-final-output":
         return cmd_db_certified_final_output(
             phase14_report=args.phase14_report, source_package=args.source_package,

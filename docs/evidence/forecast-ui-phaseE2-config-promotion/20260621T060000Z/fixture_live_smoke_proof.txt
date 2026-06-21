@@ -1,0 +1,40 @@
+{
+  "decision": "live_db_config_registry_certified",
+  "status": "ready",
+  "promoted_snapshot_id": "5999dd4a682f887d80cbc31e1638dd0a7b91e65bce54d778e79c246409997153",
+  "item_count": 2,
+  "snapshots_before": 0,
+  "snapshots_after": 1,
+  "promotion_certification": {
+    "decision": "certified_match",
+    "promoted_snapshot": {
+      "raw_json_digest_live": "1d66976ac94f66d6ae0578e1fe06155fb4c1b5b5bdede94d4d2ce8cf28ac1e8b",
+      "raw_json_digest_temp": "1d66976ac94f66d6ae0578e1fe06155fb4c1b5b5bdede94d4d2ce8cf28ac1e8b",
+      "canonical_digest_live": "5e90e9bf62d13e318c3ee4b450ff79c0dff511e606c303881a4383a2b6a5b54f",
+      "canonical_digest_temp": "5e90e9bf62d13e318c3ee4b450ff79c0dff511e606c303881a4383a2b6a5b54f",
+      "live_rows": 2,
+      "temp_rows": 2,
+      "match": true
+    },
+    "pre_existing_snapshots_preserved": true,
+    "added_exactly_one_snapshot": true
+  },
+  "backup": {
+    "size_bytes": 7553024,
+    "sha256": "25f84a579a3f41141cf55e9b25f76b99b4b0bc2e6546be642b2ab1dc3d45dae9",
+    "verified_readable": true,
+    "schema_version": 61
+  },
+  "safety": {
+    "live_db_written": true,
+    "live_db_migrated": false,
+    "live_snapshot_created_directly": false,
+    "built_via_temp_db": true,
+    "additive_only": true,
+    "non_tropical_preserved": true,
+    "live_root_written": false,
+    "generation_changed": false,
+    "production_defaults_changed": false
+  }
+}
+SMOKE_OK

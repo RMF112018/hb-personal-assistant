@@ -35,6 +35,16 @@ export function ForecastConfigEditProposalsPage() {
     queryFn: () => api.getForecastConfigEdits(),
   })
 
+  const { data: runtimeResp } = useQuery({
+    queryKey: ['forecast', 'runtime', 'status'],
+    queryFn: () => api.getForecastRuntimeStatus(),
+  })
+  const promotionEnabled = Boolean(runtimeResp?.promotion?.enabled)
+
+  const [promotingId, setPromotingId] = useState<string | null>(null)
+  const [promoteResult, setPromoteResult] = useState<any | null>(null)
+  const [promoteError, setPromoteError] = useState<string | null>(null)
+
   const [domain, setDomain] = useState('project')
   const [op, setOp] = useState<'modify' | 'add'>('modify')
   const [itemKey, setItemKey] = useState('')
@@ -81,6 +91,33 @@ export function ForecastConfigEditProposalsPage() {
       )
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  async function onPromote(editId: string) {
+    if (!window.confirm('Promote this proposal to the live configuration? A backup is made first.')) {
+      return
+    }
+    setPromotingId(editId)
+    setPromoteError(null)
+    setPromoteResult(null)
+    try {
+      const result = await api.promoteForecastConfigEdit(editId, true)
+      setPromoteResult(result)
+      await refetch()
+    } catch (e: any) {
+      const message = String(e?.message || '')
+      setPromoteError(
+        message.includes('forecast_config_promotion_disabled')
+          ? 'Live promotion is turned off in this environment.'
+          : message.includes('forecast_config_promotion_not_eligible')
+            ? 'This proposal is not eligible (it must pass the parity check).'
+            : message.includes('forecast_config_promotion_edit_not_found')
+              ? 'That proposal could not be found.'
+              : 'The promotion could not be completed.',
+      )
+    } finally {
+      setPromotingId(null)
     }
   }
 
@@ -223,6 +260,7 @@ export function ForecastConfigEditProposalsPage() {
                   <th className="py-2 pr-3">Created</th>
                   <th className="py-2 pr-3">Parity</th>
                   <th className="py-2 pr-3">Changes</th>
+                  <th className="py-2 pr-3">Live config</th>
                 </tr>
               </thead>
               <tbody>
@@ -234,12 +272,49 @@ export function ForecastConfigEditProposalsPage() {
                       <StatusPill status={e.parity_status === 'pass' ? 'validated' : 'attention'} />
                     </td>
                     <td className="py-2 pr-3 text-[var(--hb-muted)]">{e.changed_count ?? 0}</td>
+                    <td className="py-2 pr-3">
+                      {canEdit && promotionEnabled && e.parity_status === 'pass' && e.status === 'succeeded' ? (
+                        <button
+                          type="button"
+                          onClick={() => onPromote(e.edit_id)}
+                          disabled={promotingId === e.edit_id}
+                          className="rounded border border-[var(--hb-accent)] px-2 py-1 text-xs disabled:opacity-50"
+                        >
+                          {promotingId === e.edit_id ? 'Promoting…' : 'Promote to live'}
+                        </button>
+                      ) : (
+                        <span className="text-xs text-[var(--hb-muted)]">—</span>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         )}
+        {!promotionEnabled && (
+          <p className="text-xs text-[var(--hb-muted)] mt-2">
+            Live promotion is turned off in this environment.
+          </p>
+        )}
+        <p className="text-xs text-[var(--hb-muted)] mt-1">
+          Promoting updates the recorded current configuration (the system-of-record shown in the
+          viewer). It does not change how forecasts are generated.
+        </p>
+        {promoteResult && (
+          <div className="mt-2 text-sm">
+            <StatusPill status={promoteResult.status === 'promoted' ? 'validated' : 'attention'} />{' '}
+            <span className="ml-1">
+              {promoteResult.status === 'promoted'
+                ? 'Promoted to live configuration.'
+                : 'Promotion did not certify.'}
+            </span>
+            {promoteResult.backup_created && (
+              <span className="text-emerald-300 ml-2">A backup of the live configuration was made.</span>
+            )}
+          </div>
+        )}
+        {promoteError && <p className="text-sm text-rose-300 mt-2">{promoteError}</p>}
       </div>
     </div>
   )

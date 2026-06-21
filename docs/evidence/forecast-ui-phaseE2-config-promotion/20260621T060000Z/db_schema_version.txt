@@ -1,0 +1,8 @@
+Phase E2 makes NO schema change and NO migration. It writes the EXISTING v60 config-registry tables
+(forecast_config_sources/items/snapshots/snapshot_items) — ADDITIVELY (one new snapshot) — and only
+inside the single backed-up transaction. Committed LATEST_SCHEMA_VERSION stays 61.
+
+The CI-safe proof is the fixture-live smoke (a synthetic config DB treated as "live" via a
+monkeypatched is_live_db_path; WAL truncated to 0). The real live config DB is NEVER touched in tests.
+A real promotion against the actual live DB is a separate, authorized, human-gated op (HB_FORECAST_
+PROMOTION_ENABLED=1 + UI confirm, or the CLI forecast-config-registry-promote --allow-live-db-write).

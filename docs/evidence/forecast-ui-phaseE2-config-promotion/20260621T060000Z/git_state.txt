@@ -1,0 +1,22 @@
+Phase E2 — Config Promotion (certified live write)
+Branch: feature/forecast-ui-phaseE2-config-promotion (off origin/main, committed schema v61)
+Status at capture: UNCOMMITTED (awaiting authorization).
+
+Phase E2 files (the ONLY files this work touches):
+  NEW  subrepos/construction-financial-review/.../workflows/live_db_config_registry_promotion.py
+  MOD  subrepos/construction-financial-review/.../cli.py                    (forecast-config-registry-promote)
+  NEW  src/hb_assistant/construction/analytics/forecast_config_promotion_service.py
+  MOD  src/hb_assistant/construction/analytics/forecast_runtime_config.py   (HB_FORECAST_PROMOTION_ENABLED opt-in)
+  MOD  src/hb_assistant/construction/analytics/api.py                        (promote DTO + factory + route)
+  NEW  docs/architecture/277-forecast-phaseE2-config-registry-promotion.md
+  NEW  tests/test_forecast_live_db_config_registry_promotion_phaseE2.py
+  NEW  tests/test_fastapi_forecast_config_promotion.py
+  MOD  tests/test_fastapi_analytics_app_shell.py                             (+promote path)
+  MOD  tests/test_forecast_runtime_config.py                                 (config_promotion surface)
+  MOD  frontend/src/lib/api.ts                                               (promote method)
+  NEW/MOD frontend/src/pages/ForecastConfigEditProposalsPage.tsx (+ .test.tsx)  (promote action)
+  NEW  docs/evidence/forecast-ui-phaseE2-config-promotion/<stamp>/
+
+No migration: committed LATEST_SCHEMA_VERSION stays 61. The working tree may carry unrelated churn
+(recurring phase-08b/08c evidence side-effects) — commit Phase E2 with an EXPLICIT pathspec; never
+git add -A / git commit -a.

@@ -750,6 +750,16 @@ export function getForecastConfigEdit(editId: string) {
   return fetchJson(`/api/forecast/config/edits/${encodeURIComponent(editId)}`);
 }
 
+/* Forecast config promotion — certified live write (Implementation Phase E2). Promotes an approved
+ * (parity-passed) proposal into the live config DB as a new snapshot. Gated by a default-OFF opt-in
+ * + an explicit confirm; backed up; operator/admin. Updates the recorded current config, not generation. */
+export function promoteForecastConfigEdit(editId: string, confirm: boolean) {
+  return fetchJson(`/api/forecast/config/edits/${encodeURIComponent(editId)}/promote`, {
+    method: 'POST',
+    body: JSON.stringify({ confirm }),
+  });
+}
+
 /* Forecast Run Center — isolated context→analysis generation (Implementation Phase 3).
  * POST triggers a deterministic generation into an isolated work-root (operator); GET reads runs.
  * Responses are advisory metadata only (no paths, run stamps, or internals). */
@@ -932,6 +942,8 @@ export const api = {
   proposeForecastConfigEdit,
   getForecastConfigEdits,
   getForecastConfigEdit,
+  // Forecast config promotion — certified live write (Implementation Phase E2).
+  promoteForecastConfigEdit,
   // Forecast Run Center (Implementation Phase 3).
   startForecastRun,
   getForecastRuns,
