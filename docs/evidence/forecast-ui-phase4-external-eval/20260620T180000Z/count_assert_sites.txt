@@ -1,0 +1,19 @@
+Contract + 16 assert sites at table_count/== 391 (move 391 -> 399):
+
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:21:  "table_count": 391,
+tests/test_data_quality_table_inventory.py:77:        assert report["contract_table_count"] == 391  # Phase 16: +4 v60 config registry tables (was 387)
+tests/test_forecast_config_registry_phase16.py:154:    assert build_table_inventory_report(db_path=None)["contract_table_count"] == 391
+tests/test_forecast_config_registry_phase16.py:160:    assert contract["table_count"] == 391
+tests/test_forecast_db_read_repositories_phase3.py:165:    assert contract["table_count"] == 391  # Phase 16: +4 v60 config registry tables (was 387)
+tests/test_phase_07d_data_quality_gates.py:274:    assert build_table_inventory_report()["contract_table_count"] == 391  # Phase 16: +4 v60 config registry tables (was 387)
+tests/test_phase_08a_schema_v26.py:285:        assert report["contract_table_count"] == 391  # Phase 16: +4 v60 config registry tables (was 387)
+tests/test_phase_08b_schema_v28.py:113:        assert report["contract_table_count"] == 391  # Phase 16: +4 v60 config registry tables (was 387)
+tests/test_phase_08b_schema_v29.py:119:        assert report["contract_table_count"] == 391  # Phase 16: +4 v60 config registry tables (was 387)
+tests/test_phase_08b_schema_v30.py:118:        assert report["contract_table_count"] == 391  # Phase 16: +4 v60 config registry tables (was 387)
+tests/test_phase_08b_schema_v31.py:157:        assert report["contract_table_count"] == 391  # Phase 16: +4 v60 config registry tables (was 387)
+tests/test_phase_08b_schema_v32.py:159:        assert report["contract_table_count"] == 391  # Phase 16: +4 v60 config registry tables (was 387)
+tests/test_phase_08b_schema_v33.py:159:        assert report["contract_table_count"] == 391  # Phase 16: +4 v60 config registry tables (was 387)
+tests/test_phase_08b_schema_v34.py:158:        assert report["contract_table_count"] == 391  # Phase 16: +4 v60 config registry tables (was 387)
+tests/test_phase_08c_schema_v35.py:137:        assert report["contract_table_count"] == 391  # Phase 16: +4 v60 config registry tables (was 387)
+tests/test_phase_08d_schema_v37.py:172:        assert report["contract_table_count"] == 391  # Phase 16: +4 v60 config registry tables (was 387)
+tests/test_phase_09_schema_v38.py:145:        assert report["contract_table_count"] == 391  # Phase 16: +4 v60 config registry tables (was 387)

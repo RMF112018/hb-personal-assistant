@@ -14,7 +14,7 @@ from .connection import get_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 60
+LATEST_SCHEMA_VERSION = 61
 
 
 class SQLiteMigrator:
@@ -6585,6 +6585,166 @@ class SQLiteMigrator:
         "CREATE INDEX IF NOT EXISTS idx_forecast_config_snapshot_items_domain ON forecast_config_snapshot_items(config_domain);",
     ]
 
+    # v61 Forecast EXTERNAL-FORECAST EVALUATION slice (Phase 4): eight additive tables
+    # giving the forecasting product a first-class representation of operator-supplied
+    # external forecasts (Excel/CSV upload) and their evaluation against baselines —
+    # never silently mixed with backend model forecasts (forecast_origin discriminator:
+    # external rows are 'external', backend rows are 'model'). Additive CREATE TABLE IF
+    # NOT EXISTS only; intentionally empty on the live DB until an external forecast is
+    # imported (real rows are written only to an isolated per-run eval SQLite under the
+    # eval-root, never the live DB). Forecast model reads remain file-backed.
+    V61_STATEMENTS: list[str] = [
+        # One row per uploaded/imported external forecast (header + file fingerprint).
+        """
+        CREATE TABLE IF NOT EXISTS forecast_external_forecasts (
+          external_forecast_id TEXT PRIMARY KEY,
+          project_key TEXT NOT NULL,
+          source_system TEXT NOT NULL,
+          forecast_origin TEXT NOT NULL DEFAULT 'external',
+          period TEXT NOT NULL,
+          source_filename TEXT NOT NULL,
+          file_sha256 TEXT NOT NULL,
+          content_sha256 TEXT NOT NULL,
+          byte_count INTEGER NOT NULL,
+          row_count INTEGER NOT NULL,
+          import_run_id TEXT NOT NULL,
+          imported_at_utc TEXT NOT NULL,
+          created_utc TEXT NOT NULL,
+          UNIQUE (project_key, period, content_sha256)
+        );
+        """,
+        "CREATE INDEX IF NOT EXISTS idx_forecast_external_forecasts_project ON forecast_external_forecasts(project_key);",
+        "CREATE INDEX IF NOT EXISTS idx_forecast_external_forecasts_period ON forecast_external_forecasts(period);",
+        "CREATE INDEX IF NOT EXISTS idx_forecast_external_forecasts_source ON forecast_external_forecasts(source_system);",
+        # One row per external-forecast line item (cost code x month value/EAC/remaining).
+        """
+        CREATE TABLE IF NOT EXISTS forecast_external_forecast_rows (
+          external_forecast_row_id TEXT PRIMARY KEY,
+          external_forecast_id TEXT NOT NULL,
+          project_key TEXT NOT NULL,
+          budget_code_key TEXT NOT NULL,
+          month TEXT,
+          value TEXT,
+          eac TEXT,
+          remaining TEXT,
+          confidence TEXT,
+          notes TEXT,
+          row_order INTEGER NOT NULL,
+          created_utc TEXT NOT NULL,
+          FOREIGN KEY (external_forecast_id) REFERENCES forecast_external_forecasts(external_forecast_id)
+        );
+        """,
+        "CREATE INDEX IF NOT EXISTS idx_forecast_external_rows_forecast ON forecast_external_forecast_rows(external_forecast_id);",
+        "CREATE INDEX IF NOT EXISTS idx_forecast_external_rows_project ON forecast_external_forecast_rows(project_key);",
+        "CREATE INDEX IF NOT EXISTS idx_forecast_external_rows_code ON forecast_external_forecast_rows(budget_code_key);",
+        # Raw label -> canonical budget-code/month mapping with confidence + status.
+        """
+        CREATE TABLE IF NOT EXISTS forecast_external_forecast_mappings (
+          external_forecast_mapping_id TEXT PRIMARY KEY,
+          external_forecast_id TEXT NOT NULL,
+          project_key TEXT NOT NULL,
+          raw_label TEXT NOT NULL,
+          canonical_budget_code_key TEXT,
+          canonical_month TEXT,
+          mapping_confidence TEXT,
+          mapping_status TEXT NOT NULL DEFAULT 'unmapped',
+          created_utc TEXT NOT NULL,
+          FOREIGN KEY (external_forecast_id) REFERENCES forecast_external_forecasts(external_forecast_id)
+        );
+        """,
+        "CREATE INDEX IF NOT EXISTS idx_forecast_external_mappings_forecast ON forecast_external_forecast_mappings(external_forecast_id);",
+        "CREATE INDEX IF NOT EXISTS idx_forecast_external_mappings_project ON forecast_external_forecast_mappings(project_key);",
+        "CREATE INDEX IF NOT EXISTS idx_forecast_external_mappings_status ON forecast_external_forecast_mappings(mapping_status);",
+        # Accuracy metric per (external forecast x baseline x metric).
+        """
+        CREATE TABLE IF NOT EXISTS forecast_accuracy_results (
+          accuracy_result_id TEXT PRIMARY KEY,
+          external_forecast_id TEXT NOT NULL,
+          project_key TEXT NOT NULL,
+          baseline TEXT NOT NULL,
+          metric TEXT NOT NULL,
+          metric_value TEXT NOT NULL,
+          sample_n INTEGER NOT NULL,
+          created_utc TEXT NOT NULL,
+          FOREIGN KEY (external_forecast_id) REFERENCES forecast_external_forecasts(external_forecast_id)
+        );
+        """,
+        "CREATE INDEX IF NOT EXISTS idx_forecast_accuracy_results_forecast ON forecast_accuracy_results(external_forecast_id);",
+        "CREATE INDEX IF NOT EXISTS idx_forecast_accuracy_results_project ON forecast_accuracy_results(project_key);",
+        "CREATE INDEX IF NOT EXISTS idx_forecast_accuracy_results_baseline ON forecast_accuracy_results(baseline);",
+        # Per code x baseline comparison (external vs baseline gap, absolute + percent).
+        """
+        CREATE TABLE IF NOT EXISTS forecast_comparison_results (
+          comparison_result_id TEXT PRIMARY KEY,
+          external_forecast_id TEXT NOT NULL,
+          project_key TEXT NOT NULL,
+          budget_code_key TEXT NOT NULL,
+          baseline TEXT NOT NULL,
+          external_value TEXT,
+          baseline_value TEXT,
+          gap_absolute TEXT,
+          gap_percent TEXT,
+          created_utc TEXT NOT NULL,
+          FOREIGN KEY (external_forecast_id) REFERENCES forecast_external_forecasts(external_forecast_id)
+        );
+        """,
+        "CREATE INDEX IF NOT EXISTS idx_forecast_comparison_results_forecast ON forecast_comparison_results(external_forecast_id);",
+        "CREATE INDEX IF NOT EXISTS idx_forecast_comparison_results_project ON forecast_comparison_results(project_key);",
+        "CREATE INDEX IF NOT EXISTS idx_forecast_comparison_results_code ON forecast_comparison_results(budget_code_key);",
+        "CREATE INDEX IF NOT EXISTS idx_forecast_comparison_results_baseline ON forecast_comparison_results(baseline);",
+        # Deterministic anomaly findings with severity + evidence.
+        """
+        CREATE TABLE IF NOT EXISTS forecast_anomaly_findings (
+          anomaly_finding_id TEXT PRIMARY KEY,
+          external_forecast_id TEXT NOT NULL,
+          project_key TEXT NOT NULL,
+          budget_code_key TEXT,
+          flag_code TEXT NOT NULL,
+          severity TEXT NOT NULL,
+          evidence_json TEXT NOT NULL,
+          created_utc TEXT NOT NULL,
+          FOREIGN KEY (external_forecast_id) REFERENCES forecast_external_forecasts(external_forecast_id)
+        );
+        """,
+        "CREATE INDEX IF NOT EXISTS idx_forecast_anomaly_findings_forecast ON forecast_anomaly_findings(external_forecast_id);",
+        "CREATE INDEX IF NOT EXISTS idx_forecast_anomaly_findings_project ON forecast_anomaly_findings(project_key);",
+        "CREATE INDEX IF NOT EXISTS idx_forecast_anomaly_findings_severity ON forecast_anomaly_findings(severity);",
+        # Human-review queue items derived from anomalies / material gaps.
+        """
+        CREATE TABLE IF NOT EXISTS forecast_review_items (
+          review_item_id TEXT PRIMARY KEY,
+          external_forecast_id TEXT NOT NULL,
+          project_key TEXT NOT NULL,
+          budget_code_key TEXT,
+          reason_code TEXT NOT NULL,
+          severity TEXT NOT NULL,
+          status TEXT NOT NULL DEFAULT 'open',
+          detail TEXT,
+          created_utc TEXT NOT NULL,
+          FOREIGN KEY (external_forecast_id) REFERENCES forecast_external_forecasts(external_forecast_id)
+        );
+        """,
+        "CREATE INDEX IF NOT EXISTS idx_forecast_review_items_forecast ON forecast_review_items(external_forecast_id);",
+        "CREATE INDEX IF NOT EXISTS idx_forecast_review_items_project ON forecast_review_items(project_key);",
+        "CREATE INDEX IF NOT EXISTS idx_forecast_review_items_status ON forecast_review_items(status);",
+        # Evidence-package ledger (one row per emitted evaluation package).
+        """
+        CREATE TABLE IF NOT EXISTS forecast_evidence_packages (
+          evidence_package_id TEXT PRIMARY KEY,
+          external_forecast_id TEXT NOT NULL,
+          project_key TEXT NOT NULL,
+          package_kind TEXT NOT NULL,
+          manifest_sha256 TEXT NOT NULL,
+          file_count INTEGER NOT NULL,
+          created_utc TEXT NOT NULL,
+          FOREIGN KEY (external_forecast_id) REFERENCES forecast_external_forecasts(external_forecast_id),
+          UNIQUE (project_key, manifest_sha256)
+        );
+        """,
+        "CREATE INDEX IF NOT EXISTS idx_forecast_evidence_packages_forecast ON forecast_evidence_packages(external_forecast_id);",
+        "CREATE INDEX IF NOT EXISTS idx_forecast_evidence_packages_project ON forecast_evidence_packages(project_key);",
+    ]
+
     # v44 Phase 10 Graph drive-item modified-by raw operational metadata.
     # Additive ADD COLUMN only on construction_drive_items; raw identity JSON is
     # local SQLite operational metadata and must not be emitted in committed evidence.
@@ -7667,6 +7827,22 @@ class SQLiteMigrator:
             if cur.fetchone() is None:
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (60, 'v60_forecast_config_registry', ?)",
+                    (now,),
+                )
+
+            # v61 Forecast EXTERNAL-FORECAST EVALUATION slice (Phase 4): eight additive
+            # tables representing operator-supplied external forecasts (Excel/CSV) and
+            # their evaluation against baselines (actuals/budget/ERP-JTD/model/prior),
+            # kept distinct from backend model forecasts via forecast_origin. Additive
+            # CREATE TABLE IF NOT EXISTS only; intentionally empty on the live DB (real
+            # rows are written to an isolated per-run eval SQLite, never the live DB);
+            # forecast reads remain file-backed.
+            for stmt in self.V61_STATEMENTS:
+                conn.execute(stmt)
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 61")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (61, 'v61_forecast_external_forecasts', ?)",
                     (now,),
                 )
 

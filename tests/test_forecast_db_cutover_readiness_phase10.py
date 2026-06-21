@@ -143,7 +143,7 @@ def test_report_includes_db_checks(tmp_path):
     checks = report["db_checks"]
     assert checks["db_exists"] is True
     assert checks["live_db_refused"] is True
-    assert checks["schema_version"] == 60  # Phase 16: migrator now at v60
+    assert checks["schema_version"] == 61  # Phase 4: migrator now at v61 (synthetic temp DB)
     assert checks["required_tables_present"] is True
     assert checks["required_tables_nonempty"] is True
 

@@ -1,0 +1,7 @@
+Real smoke (live DB read-only + live Tropical data root), 20260620T180000Z:
+- HB_FORECAST_DB_PATH = live DB (opened mode=ro); HB_FORECAST_PACKAGE_ROOTS = live 2026-June data root; HB_FORECAST_EVAL_ROOT = /tmp isolated.
+- BEFORE: schema_version 60, v61 tables [], WAL 0 bytes.
+- Evaluation: status succeeded; baselines compared = actuals, current budget, ERP job-to-date, backend model EAC, P50, P80; redaction leaks = [].
+- AFTER : schema_version 60, v61 tables [], WAL 0 bytes  => LIVE DB UNCHANGED.
+- Live data-root directory listing SHA identical before/after => DATA ROOT UNTOUCHED.
+- Evidence package + per-run eval SQLite written under the /tmp eval-root ONLY.

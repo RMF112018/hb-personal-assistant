@@ -1,0 +1,6 @@
+branch: feature/forecast-ui-phase4-external-eval
+
+recent commits:
+7fd66a74 feat(forecast-ui): add Forecast Run Center (isolated context→analysis generation)
+2f4e3165 feat(forecast-ui): add read-only forecast configuration viewer
+4bd4e436 feat(forecast-ui): add read-only forecast package browser

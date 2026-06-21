@@ -82,6 +82,9 @@ export function ForecastingPage() {
             <Link to="/forecasting/runs" className="text-sm underline">
               Run a forecast
             </Link>
+            <Link to="/forecasting/external" className="text-sm underline">
+              Evaluate external forecast
+            </Link>
             <Link to="/forecasting/config" className="text-sm underline">
               View configuration
             </Link>

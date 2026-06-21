@@ -162,7 +162,7 @@ def test_lifecycle_contract_count_and_classification() -> None:
         / "src/hb_assistant/resources/json/table_lifecycle_status_contract.json"
     )
     contract = json.loads(contract_path.read_text(encoding="utf-8"))
-    assert contract["table_count"] == 391  # Phase 16: +4 v60 config registry tables (was 387)
+    assert contract["table_count"] == 399  # Phase 4: +8 v61 external-forecast tables (was 391)
     assert contract["table_count"] == len(contract["tables"])
     for t in V59_SOURCE_DOMAIN_TABLES:
         entry = contract["tables"][t]

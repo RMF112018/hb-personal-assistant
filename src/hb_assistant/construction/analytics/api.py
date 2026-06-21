@@ -23,6 +23,24 @@ class GraphDeviceLoginCompleteRequest(BaseModel):
     flow_id: str
 
 
+class ForecastExternalPreviewRequest(BaseModel):
+    filename: str
+    content_b64: str
+    source_system: str = "excel"
+    period: str | None = None
+
+
+class ForecastExternalMappingRequest(BaseModel):
+    import_id: str
+    project_key: str = "tropical"
+
+
+class ForecastExternalEvaluateRequest(BaseModel):
+    import_id: str
+    column_roles: dict[str, str]
+    project_key: str = "tropical"
+
+
 class ProcoreOAuthExchangeRequest(BaseModel):
     code: str
 
@@ -1409,5 +1427,101 @@ def create_app(*, db_path: str | None = None) -> Any:
     def forecast_run_detail(run_id: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
         del role
         return _forecast_run_call(_forecast_run_service().read_run, run_id)
+
+    # External-Forecast Evaluation — upload an operator forecast, map it, and compare it against
+    # actuals/budget/ERP-JTD/backend-model/prior baselines (Implementation Phase 4). POST routes
+    # upload/map/evaluate and write only to the isolated eval-root → operator role; GET reads
+    # results → viewer. Nothing is written to the live DB or live data root.
+    def _forecast_external_call(fn: Any, *args: Any) -> dict[str, Any]:
+        from fastapi import HTTPException
+
+        from hb_assistant.construction.analytics.forecast_external_ingest import (
+            ForecastExternalError,
+        )
+
+        try:
+            return fn(*args)
+        except ForecastExternalError as exc:
+            msg = str(exc)
+            if msg.startswith("unknown import_id") or msg.startswith("unknown eval_id"):
+                raise HTTPException(status_code=404, detail="forecast_external_not_found")
+            if (
+                "not configured" in msg
+                or "absolute path" in msg
+                or "could not be created" in msg
+                or "opened read-only" in msg
+            ):
+                # misconfigured environment — fail closed, path-free.
+                raise HTTPException(status_code=503, detail="forecast_external_not_configured")
+            # invalid/untrusted input (bad base64, unsupported type, unmapped columns, …).
+            raise HTTPException(status_code=400, detail="forecast_external_invalid_input")
+
+    @app.post("/api/forecast/external/preview")
+    def forecast_external_preview(
+        request: ForecastExternalPreviewRequest, role: dict[str, str] = role_dep
+    ) -> dict[str, Any]:
+        require_operator_role(role)  # ingests an untrusted file into the isolated eval-root
+        from hb_assistant.construction.analytics.forecast_external_ingest import (
+            ForecastExternalIngestService,
+        )
+
+        return _forecast_external_call(
+            ForecastExternalIngestService().preview,
+            request.filename,
+            request.content_b64,
+            request.source_system,
+            request.period,
+        )
+
+    @app.post("/api/forecast/external/mapping")
+    def forecast_external_mapping(
+        request: ForecastExternalMappingRequest, role: dict[str, str] = role_dep
+    ) -> dict[str, Any]:
+        require_operator_role(role)
+        from hb_assistant.construction.analytics.forecast_external_mapping import (
+            ForecastExternalMappingService,
+        )
+
+        return _forecast_external_call(
+            ForecastExternalMappingService().propose_mapping,
+            request.import_id,
+            request.project_key,
+        )
+
+    @app.post("/api/forecast/external/evaluate")
+    def forecast_external_evaluate(
+        request: ForecastExternalEvaluateRequest, role: dict[str, str] = role_dep
+    ) -> dict[str, Any]:
+        require_operator_role(role)  # runs the evaluation + writes the isolated eval package/DB
+        from hb_assistant.construction.analytics.forecast_external_eval_service import (
+            ForecastExternalEvalService,
+        )
+
+        return _forecast_external_call(
+            ForecastExternalEvalService().evaluate,
+            request.import_id,
+            request.column_roles,
+            request.project_key,
+        )
+
+    @app.get("/api/forecast/external/evaluations")
+    def forecast_external_evaluations_list(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        from hb_assistant.construction.analytics.forecast_external_eval_service import (
+            ForecastExternalEvalService,
+        )
+
+        return _forecast_external_call(ForecastExternalEvalService().list_evaluations)
+
+    @app.get("/api/forecast/external/evaluations/{eval_id}")
+    def forecast_external_evaluation_detail(
+        eval_id: str, role: dict[str, str] = role_dep
+    ) -> dict[str, Any]:
+        del role
+        from hb_assistant.construction.analytics.forecast_external_eval_service import (
+            ForecastExternalEvalService,
+        )
+
+        return _forecast_external_call(ForecastExternalEvalService().read_evaluation, eval_id)
 
     return app
