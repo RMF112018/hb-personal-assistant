@@ -1,0 +1,15 @@
+data_root (== default_data_root == LIVE_ROOT): /Users/bobbyfetting/Library/CloudStorage/SynologyDrive-BFmacSync/Work/NAS - HB/Projects/2023/TWN - NAS/30_Financials/Forecasts/Data/2026-June
+frequency_enabled: True (comprehensive additionally requires cost_frequency)
+
+Required predecessor package presence (latest match):
+  forecast_context_package_tropical_*                count=24  latest=forecast_context_package_tropical_20260617_152650
+  forecast_accuracy_next_package_tropical_*          count=24  latest=forecast_accuracy_next_package_tropical_20260617_152655
+  forecast_monthly_package_tropical_*                count=19  latest=forecast_monthly_package_tropical_20260617_152658
+  forecast_analysis_package_tropical_crosswalk_v2_*  count=24  latest=forecast_analysis_package_tropical_crosswalk_v2_20260617_152654
+  forecast_cost_frequency_package_tropical_*         count=18  latest=forecast_cost_frequency_package_tropical_20260617_152657
+
+Per-kind required globs:
+  comprehensive : context, accuracy_next(intelligence), monthly, +cost_frequency(frequency_enabled)
+  model_controls: (none - self-discovers)
+  monthly       : context, analysis_crosswalk_v2, accuracy_next(intelligence)
+  probability   : accuracy_next(intelligence), monthly
