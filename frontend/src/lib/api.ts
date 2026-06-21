@@ -779,6 +779,30 @@ export function getExternalEvaluation(evalId: string) {
   return fetchJson(`/api/forecast/external/evaluations/${encodeURIComponent(evalId)}`);
 }
 
+/* Forecast runtime configuration — wires the data roots into the live app (Implementation Phase 6).
+ * Status is viewer-readable and redaction-safe (booleans + coded blockers, never paths). The raw
+ * configured paths are admin-only (getForecastRuntimeConfig). Saving validates + persists. */
+export interface ForecastRuntimeConfigInput {
+  package_roots?: string[] | null;
+  data_root?: string | null;
+  runs_root?: string | null;
+  eval_root?: string | null;
+  db_path?: string | null;
+  cfr_src?: string | null;
+}
+export function getForecastRuntimeStatus() {
+  return fetchJson('/api/forecast/runtime/status');
+}
+export function getForecastRuntimeConfig() {
+  return fetchJson('/api/forecast/runtime/config');
+}
+export function saveForecastRuntimeConfig(payload: ForecastRuntimeConfigInput) {
+  return fetchJson('/api/forecast/runtime/config', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
 /* Convenience aggregate for pages that prefer a single object. */
 export const api = {
   getToday,
@@ -886,6 +910,10 @@ export const api = {
   evaluateExternalForecast,
   getExternalEvaluations,
   getExternalEvaluation,
+  // Forecast runtime configuration (Implementation Phase 6).
+  getForecastRuntimeStatus,
+  getForecastRuntimeConfig,
+  saveForecastRuntimeConfig,
 };
 
 export default api;

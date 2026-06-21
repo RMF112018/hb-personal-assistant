@@ -1,0 +1,25 @@
+Phase 6 — Forecast UI Runtime Config Wiring
+Branch: feature/forecast-ui-phase6-runtime-wiring (off feature/forecast-ui-phase5-review-surfaces @ 9612205e)
+Status at evidence capture: UNCOMMITTED (awaiting explicit authorization).
+
+Phase 6 files (the ONLY files this work touches):
+  NEW  src/hb_assistant/construction/analytics/forecast_runtime_config.py
+  MOD  src/hb_assistant/construction/analytics/api.py            (forecast service factories + 3 runtime routes + request DTO)
+  NEW  tests/test_forecast_runtime_config.py
+  NEW  tests/test_fastapi_forecast_runtime.py
+  MOD  tests/test_fastapi_analytics_app_shell.py                 (+2 runtime route paths in the exact-set allowlist)
+  MOD  frontend/src/lib/api.ts                                   (3 runtime methods)
+  NEW  frontend/src/pages/ForecastRuntimeSettingsPage.tsx
+  NEW  frontend/src/pages/ForecastRuntimeSettingsPage.test.tsx
+  MOD  frontend/src/app/routes.tsx                               (static forecasting/runtime route before :packageId)
+  MOD  frontend/src/navigation/navigationModel.ts               (route title)
+  NEW  docs/evidence/forecast-ui-phase6-runtime-wiring/<stamp>/
+
+EXPLICITLY EXCLUDED — pre-existing uncommitted changes present in the working tree at session start
+(a separate Procore budget-detail workstream + recurring evidence test side-effects; NOT Phase 6,
+NOT to be staged in the Phase 6 commit):
+  src/hb_assistant/store/migrator.py                 (uncommitted v62_procore_budget_detail_category_columns)
+  src/hb_assistant/procore/budget_detail_read_model.py, live_sync.py, structured_analytics.py
+  src/hb_assistant/cli/procore.py
+  tests/test_procore_budget_detail_read_model.py, tests/test_procore_full_raw_payload_ingestion.py
+  docs/evidence/construction-intelligence-phase-08b-*/**, -phase-08c-*/**  (broad-test-run side effects)

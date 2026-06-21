@@ -52,6 +52,7 @@ export function getRouteTitleForPath(path: string): string {
   if (path.startsWith('/forecasting/config')) return 'Forecast Configuration'
   if (path.startsWith('/forecasting/runs')) return 'Forecast Run Center'
   if (path.startsWith('/forecasting/external')) return 'External Forecast Evaluation'
+  if (path.startsWith('/forecasting/runtime')) return 'Forecast Runtime Settings'
   if (path.startsWith('/forecasting/')) return 'Forecast Package'
   if (path.startsWith('/forecasting')) return 'Forecasting'
   if (path.startsWith('/admin')) return 'Data Health'

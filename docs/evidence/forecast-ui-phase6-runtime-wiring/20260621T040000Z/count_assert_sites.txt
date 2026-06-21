@@ -1,0 +1,9 @@
+Phase 6 makes NO schema change and NO table-count change.
+- LATEST_SCHEMA_VERSION: NOT modified by Phase 6.
+- table_lifecycle_status_contract.json table_count: NOT modified by Phase 6.
+- The settings file's "schema_version": 1 is a LOCAL file version only, unrelated to the DB schema.
+
+Note: the working tree contains an UNCOMMITTED v62 migration (v62_procore_budget_detail_category_columns)
+from a separate Procore workstream. It is NOT part of Phase 6 and is excluded from the Phase 6 commit.
+That uncommitted v62 is why CFR phase10-14 synthetic-DB tests that hardcode `schema_version == 61`
+fail under a broad run (62 == 61) — pre-existing, unrelated to Phase 6 (see preexisting_failures.txt).

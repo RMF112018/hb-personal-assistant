@@ -1,0 +1,24 @@
+Pre-existing / environment failures observed under a broad backend run
+(`pytest -k "forecast or analytics" -m "not integration"`). NONE are caused by Phase 6.
+
+(1) Documented env-sensitive (handoff-known; ambient enable_live_reads):
+    tests/test_fastapi_analytics_environment_status.py::test_environment_live_flags_off_by_default
+    tests/test_fastapi_analytics_source_refresh_surfaces.py::test_live_refresh_fails_closed
+
+(2) Caused by the UNCOMMITTED v62 Procore migration already in the working tree at session start
+    (synthetic DBs built by the migrator now report schema_version 62; these CFR phase tests
+    hardcode `== 61`, so `62 == 61` fails). Unrelated to Phase 6 — Phase 6 never touches the
+    migrator or these workflows:
+      tests/test_forecast_db_cutover_readiness_phase10.py::test_report_includes_db_checks
+      tests/test_forecast_temp_db_readiness_rehearsal_phase11.py::test_rehearsal_succeeds_derived_db
+      tests/test_forecast_temp_db_readiness_rehearsal_phase11.py::test_rehearsal_report_includes_required_sections
+      tests/test_forecast_guarded_db_operator_run_phase12.py::test_operator_run_succeeds_derived_db
+      tests/test_forecast_live_db_certification_phase13.py::test_audit_reads_synthetic_live_readonly
+      tests/test_forecast_live_db_certification_phase13.py::test_audit_reports_migration_rows
+      tests/test_forecast_live_db_source_domain_projection_phase14.py::test_creates_and_verifies_backup
+
+Phase 6's own suites are fully green:
+  tests/test_forecast_runtime_config.py + tests/test_fastapi_forecast_runtime.py
+  + tests/test_fastapi_analytics_app_shell.py  → 22 passed
+  Env-var-contract regression (catalog/run/external/browser): all green.
+  CFR subrepo: 565 passed.
