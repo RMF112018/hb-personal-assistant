@@ -1,0 +1,3 @@
+Pre-existing frontend failures (NOT this phase): src/pages/SettingsPage.test.tsx × 5
+("guided setup" suite). Unrelated to forecast onboarding; documented in prior handoffs.
+Full vitest: 5 failed | 97 passed (102) — all 5 are the SettingsPage suite.

@@ -34,6 +34,16 @@ The **read-roots** point at the live Tropical inputs and are NEVER auto-invented
 - `db_path` → source-domain / config DB (config viewer, config-edit, external-eval)
 - `cfr_src` → optional; defaults to the bundled subrepo
 
+### Read-root onboarding (ADR 279)
+
+Until the read-roots are set, the Forecasting landing shows a **"Set up forecast data sources"**
+readiness panel (a checklist of the missing read-roots, what each unlocks, and a *Configure data
+sources* link to `/forecasting/runtime`), and each forecast surface's not-configured state shows the
+same CTA. Once set, the panel shows meaningful confirmation rather than just "exists": *"N forecast
+packages found"* and *"Source database ready · schema vNN, M config snapshots"* (a non-blocking
+read-only advisory — integers only, never paths). Configure the roots on the
+**Forecast Runtime Settings** page (operator/admin); a viewer sees status only.
+
 ## Launch
 
 ```bash

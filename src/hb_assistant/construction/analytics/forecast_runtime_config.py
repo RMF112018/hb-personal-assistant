@@ -27,6 +27,7 @@ from __future__ import annotations
 import contextlib
 import json
 import os
+import sqlite3
 from pathlib import Path
 from typing import Any
 
@@ -227,6 +228,41 @@ def _db_blocker(raw: str | None) -> str | None:
     return None if Path(raw).exists() else BLOCKER_MISSING
 
 
+def _db_advisory(raw: str | None) -> dict[str, Any]:
+    """Non-blocking, read-only advisory for a configured db_path.
+
+    Returns INTEGERS ONLY (schema_version + config_snapshot_count) — never a path or snapshot name —
+    so the status payload stays redaction-safe. Opens ``mode=ro`` and returns ``{}`` on ANY error
+    (missing/locked/old-schema/config-tables-absent) so a bad DB never breaks the status read. Mirrors
+    the proven probe in forecast_config_catalog (schema_migrations MAX(version) + config snapshot
+    count) without importing the heavier catalog service.
+    """
+    if not raw:
+        return {}
+    p = Path(raw)
+    if not p.exists():
+        return {}
+    try:
+        conn = sqlite3.connect(f"{p.resolve().as_uri()}?mode=ro", uri=True)
+    except sqlite3.Error:
+        return {}
+    try:
+        out: dict[str, Any] = {}
+        try:
+            row = conn.execute("SELECT MAX(version) AS v FROM schema_migrations").fetchone()
+        except sqlite3.Error:
+            return {}  # not a recognizable HB DB → no advisory at all
+        if row is not None and row[0] is not None:
+            out["schema_version"] = int(row[0])
+        with contextlib.suppress(sqlite3.Error):
+            # config table may be absent on an older DB; omit the count rather than fail.
+            crow = conn.execute("SELECT COUNT(*) FROM forecast_config_snapshots").fetchone()
+            out["config_snapshot_count"] = int(crow[0]) if crow and crow[0] is not None else 0
+        return out
+    finally:
+        conn.close()
+
+
 def _source(env_val: Any, settings_val: Any, *, default: bool = False) -> str | None:
     if env_val:
         return "env"
@@ -292,7 +328,9 @@ def build_runtime_status() -> dict[str, Any]:
         "data_root": _root(data_blocker, _source(data_env, data_settings)),
         "runs_root": _root(runs_blocker, _source(runs_env, runs_settings)),
         "eval_root": _root(eval_blocker, _source(eval_env, eval_settings)),
-        "db_path": _root(db_blocker, _source(db_env, db_settings)),
+        # db_path carries a redaction-safe advisory (ints only) so onboarding can confirm the DB
+        # actually holds config content, not just that the file exists.
+        "db_path": _root(db_blocker, _source(db_env, db_settings), **_db_advisory(db_raw)),
         "cfr_src": _root(cfr_blocker, _source(cfr_env, cfr_settings, default=True)),
         "config_edit_root": _root(config_edit_blocker, _source(cedit_env, cedit_settings)),
     }
