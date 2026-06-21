@@ -206,7 +206,8 @@ def generate(project_key: str, cfg: dict, data_root: Optional[Path] = None,
 
         ts_est = next((e for e in ests if e["method"] == "timeseries_eac"), None)
         ts_shadow_inputs.append((key, ts_est, recommendation.get("recommended_final_cost"),
-                                 bundle.get("monthly_actuals_completed")))
+                                 bundle.get("monthly_actuals_completed"),
+                                 bundle.get("actual_cost_all_source_to_date")))
 
         conf = confidence_intel.score(bundle, recommendation)
         change = change_explanation.explain_change(recommendation, prior_model_rec_by_key.get(key),
@@ -566,12 +567,12 @@ def _dormant_audit(project_key, decisions, audit_rows, dcfg) -> OrderedDict:
 def _timeseries_shadow_artifacts(project_key, ts_shadow_inputs):
     """SHADOW time-series comparison + deterministic holdout backtest (evidence only).
 
-    Returns ``(comparison_rows, backtest_summary)``. The comparison contrasts the shadow
-    ``timeseries_eac`` against the central recommended final cost per code; the backtest holds out the
-    last h completed months, fits the engine on the prefix, and scores it against a naive baseline.
-    Nothing here changes the forecast — it is the go/no-go evidence for promoting the estimator into
-    the weighted ensemble (PR 3).
+    Uses the isolated statsforecast runtime when ``CFR_MODEL_ENGINE_PYTHON`` is configured and
+    available (one batched subprocess call); otherwise the in-process classical ensemble — byte
+    identical to a runtime-absent run. Each artifact records its ``backend``. Nothing here changes
+    the central forecast; it is the go/no-go evidence for promoting the estimator (next PR).
     """
+    from . import model_engine_adapter as mea
     from . import timeseries_engine
 
     def _money2(x):
@@ -580,34 +581,75 @@ def _timeseries_shadow_artifacts(project_key, ts_shadow_inputs):
     def _pct4(x):
         return str(Decimal(str(round(float(x), 6))).quantize(Decimal("0.0001")))
 
+    # Deterministic per-code plan (sorted): parse series, horizon, and the holdout split.
+    plan = []
+    for key, ts_est, rec_final, series, actual in sorted(ts_shadow_inputs, key=lambda t: t[0] or ""):
+        vals = [float(D(p.get("amount"))) for p in (series or [])]
+        n = len(vals)
+        horizon = int((ts_est or {}).get("inputs", {}).get("horizon_months") or 0)
+        h = prefix = actual_holdout = None
+        if n >= 4:
+            hh = 1 if n < 6 else (2 if n < 9 else 3)
+            if n - hh >= 3:
+                ah = sum(vals[-hh:])
+                if ah != 0:
+                    h, prefix, actual_holdout = hh, vals[:-hh], ah
+        plan.append((key, ts_est, rec_final, vals, actual, n, horizon, h, prefix, actual_holdout))
+
+    # Try the isolated runtime once (batched: full-horizon for the comparison + holdout prefixes for
+    # the backtest). Any unavailability falls back to the classical in-process engine.
+    use_runtime = False
+    runtime_full: dict = {}
+    runtime_holdout: dict = {}
+    backend = timeseries_engine.BACKEND_LABEL
+    runtime_ok, _reason = mea.available()
+    if runtime_ok:
+        reqs = []
+        for (key, ts_est, _rf, vals, _a, n, horizon, h, prefix, _ah) in plan:
+            if ts_est is not None and ts_est.get("applicable") and horizon > 0 and n >= 3:
+                reqs.append({"id": key + "|full", "series": vals, "horizon": horizon})
+            if h is not None:
+                reqs.append({"id": key + "|holdout", "series": prefix, "horizon": h})
+        if reqs:
+            try:
+                resp = mea.forecast_batch(reqs)
+                for rid, r in (resp.get("results") or {}).items():
+                    if rid.endswith("|full"):
+                        runtime_full[rid[: -len("|full")]] = r.get("etc")
+                    elif rid.endswith("|holdout"):
+                        runtime_holdout[rid[: -len("|holdout")]] = r.get("etc")
+                backend = resp.get("backend") or backend
+                use_runtime = True
+            except mea.ModelEngineUnavailable:
+                use_runtime = False
+
     comparison, bt_rows = [], []
-    for key, ts_est, rec_final, series in sorted(ts_shadow_inputs, key=lambda t: t[0] or ""):
+    for (key, ts_est, rec_final, vals, actual, n, horizon, h, prefix, actual_holdout) in plan:
         if ts_est is not None and ts_est.get("applicable") and dec(ts_est.get("eac")) is not None:
-            ts_eac = D(ts_est["eac"])
+            if use_runtime and runtime_full.get(key) is not None:
+                act = D(actual)
+                raw = act + Decimal(str(round(float(runtime_full[key]), 2)))
+                ts_eac = raw if raw >= act else act
+            else:
+                ts_eac = D(ts_est["eac"])
             rec = dec(rec_final)
             delta = (ts_eac - rec) if rec is not None else None
             pct = (delta / rec) if (rec is not None and rec != 0 and delta is not None) else None
             comparison.append(OrderedDict([
                 ("project_key", project_key),
                 ("budget_code_key", key),
-                ("timeseries_eac", ts_est["eac"]),
+                ("timeseries_eac", money_str(ts_eac)),
                 ("recommended_final_cost", money_str(rec) if rec is not None else None),
                 ("delta_timeseries_minus_recommended", money_str(delta) if delta is not None else None),
                 ("delta_pct", str(pct.quantize(Decimal("0.0001"))) if pct is not None else None),
-                ("backend", (ts_est.get("inputs") or {}).get("backend")),
+                ("backend", backend),
             ]))
-        vals = [float(D(p.get("amount"))) for p in (series or [])]
-        n = len(vals)
-        if n < 4:
+        if h is None:
             continue
-        h = 1 if n < 6 else (2 if n < 9 else 3)
-        if n - h < 3:
-            continue
-        prefix, holdout = vals[:-h], vals[-h:]
-        actual_holdout = sum(holdout)
-        if actual_holdout == 0:
-            continue  # undefined percent error; excluded from accuracy aggregation
-        engine_pred = timeseries_engine.forecast_etc(prefix, h)["etc"]
+        if use_runtime and runtime_holdout.get(key) is not None:
+            engine_pred = float(runtime_holdout[key])
+        else:
+            engine_pred = timeseries_engine.forecast_etc(prefix, h)["etc"]
         naive_pred = prefix[-1] * h
         eng_ape = abs(engine_pred - actual_holdout) / abs(actual_holdout)
         nai_ape = abs(naive_pred - actual_holdout) / abs(actual_holdout)
@@ -635,7 +677,7 @@ def _timeseries_shadow_artifacts(project_key, ts_shadow_inputs):
     wins = sum(1 for r in bt_rows if r["engine_wins"])
     summary = OrderedDict([
         ("project_key", project_key),
-        ("backend", timeseries_engine.BACKEND_LABEL),
+        ("backend", backend),
         ("backtest_scheme", "holdout last h completed months (h=1 if <6 obs, 2 if <9, 3 else); fit "
                             "the engine on the prefix, predict h and sum vs the actual held-out "
                             "months; naive baseline = last observed month repeated h. Codes with <4 "
