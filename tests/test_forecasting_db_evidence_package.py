@@ -108,10 +108,9 @@ def test_po_join_cardinality_flags_commitment_fallback() -> None:
 @pytest.mark.integration
 def test_evidence_script_dry_run_imports_classifiers() -> None:
     """Verify the embedded Python can import field classifiers without running full package."""
-    code = """
+    code = f"""
 import sys
-from pathlib import Path
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+sys.path.insert(0, {str(REPO_ROOT / "src")!r})
 from hb_assistant.forecasting.field_classifiers import classify_amount_field
 r = classify_amount_field(table="t", column="grand_total")
 assert r["approved_for_aggregation"] is True

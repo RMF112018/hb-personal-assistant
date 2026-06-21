@@ -1,0 +1,20 @@
+{
+  "ok": true,
+  "gate": "forecast_cost_type_guard",
+  "db_path": "docs/evidence/forecasting-gates-live-copy-20260621T133000Z/live-copy.sqlite",
+  "checked_at_utc": "2026-06-21T13:31:16+00:00",
+  "finding_count": 1,
+  "warning_count": 1,
+  "error_count": 0,
+  "findings": [
+    {
+      "table": "procore_ep_budget_detail_rows",
+      "severity": "warning",
+      "cost_type_populated": 0,
+      "cost_type_null_rate": 1.0,
+      "category_populated": 0,
+      "message": "category/category_id must not be mapped to cost_type without row-level evidence.",
+      "category_to_cost_type_mapping": "forbidden_unresolved"
+    }
+  ]
+}

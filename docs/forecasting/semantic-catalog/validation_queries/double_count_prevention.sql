@@ -46,3 +46,13 @@ LEFT JOIN rfq_cost r
 WHERE ce.ce_amount_populated > 0
 ORDER BY risk_flag DESC, ce.project_key
 LIMIT 500;
+
+-- Budget calculated-column coexistence (warning-only; Procore formula proof unresolved).
+SELECT
+  project_key,
+  budget_code AS budget_code_key,
+  'revised_budget_with_pending_changes' AS overlap_check
+FROM procore_ep_budget_detail_rows
+WHERE revised_budget IS NOT NULL AND TRIM(revised_budget) <> '' AND TRIM(revised_budget) <> '0'
+  AND pending_budget_changes IS NOT NULL AND TRIM(pending_budget_changes) <> '' AND TRIM(pending_budget_changes) <> '0'
+LIMIT 200;

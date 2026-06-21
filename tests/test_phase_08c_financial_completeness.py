@@ -406,7 +406,7 @@ def test_evaluate_forecast_readiness_gates_produces_readiness_report_and_proof_n
     p = Path(fr["proof_path"])
     assert p.exists()
     proof = json.loads(p.read_text())
-    assert len(proof.get("gates", [])) == 8
+    assert len(proof.get("gates", [])) == 9
     gnames = [g["gate_name"] for g in proof["gates"]]
     for name in [
         "amount_normalization",
@@ -417,8 +417,10 @@ def test_evaluate_forecast_readiness_gates_produces_readiness_report_and_proof_n
         "review_backlog",
         "no_writeback_no_raw_proof",
         "advisory_labeling",
+        "forecast_semantic_gates",
     ]:
         assert name in gnames
+    assert "semantic_forecast_gates" in proof
     for g in proof["gates"]:
         assert g["gate_status"] in ("pass", "warning", "fail_blocking", "deferred_not_blocking")
     assert proof["stop_checks"]["forecast_decision_made"] is False

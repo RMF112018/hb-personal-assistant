@@ -19,6 +19,12 @@ from hb_assistant.forecasting.normalization import (
     normalize_amount_field,
     normalize_date_field,
 )
+from hb_assistant.forecasting.project_eligibility import (
+    assert_eval_project_eligible,
+    is_eval_project_eligible,
+    load_eval_project_allowlist,
+)
+from hb_assistant.forecasting.readiness import evaluate_forecast_semantic_gates
 
 __all__ = [
     "AmountFieldKind",
@@ -34,4 +40,8 @@ __all__ = [
     "run_projection_parity_gate",
     "run_cost_type_guard_gate",
     "run_all_forecasting_gates",
+    "evaluate_forecast_semantic_gates",
+    "assert_eval_project_eligible",
+    "is_eval_project_eligible",
+    "load_eval_project_allowlist",
 ]

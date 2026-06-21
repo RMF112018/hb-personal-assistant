@@ -96,3 +96,29 @@ def test_all_gates_runs_without_error(tmp_path: Path) -> None:
     report = run_all_forecasting_gates(db_path=db)
     assert "gates" in report
     assert len(report["gates"]) == 4
+    assert "summary" in report
+    assert report["summary"]["gate_count"] == 4
+    assert all("finding_count" in g for g in report["gates"])
+
+
+def test_double_count_budget_column_role_overlap(tmp_path: Path) -> None:
+    db = tmp_path / "budget_overlap.sqlite"
+    conn = sqlite3.connect(str(db))
+    conn.executescript(
+        """
+        CREATE TABLE procore_ep_budget_detail_rows (
+          project_key TEXT, budget_code TEXT,
+          revised_budget TEXT, pending_budget_changes TEXT,
+          projected_costs TEXT, committed_costs TEXT, direct_costs TEXT
+        );
+        INSERT INTO procore_ep_budget_detail_rows
+          VALUES ('testproj', '01-100', '50000.00', '2500.00', '40000.00', '10000.00', '5000.00');
+        """
+    )
+    conn.commit()
+    conn.close()
+    report = run_double_count_gate(db_path=db, mode="warn")
+    bases = {f.get("basis") for f in report["findings"]}
+    assert "calculated_rollup_may_include_pending" in bases
+    assert "calculated_cost_projection_may_include_components" in bases
+    assert all(f.get("procore_formula_proof") == "unresolved" for f in report["findings"] if "column_roles" in f)

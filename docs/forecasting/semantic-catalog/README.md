@@ -45,6 +45,19 @@ Read-only SQLite gates (JSON output):
 hb-assistant construction-agent forecast double-count-gate --db-path /path/to/db.sqlite --json
 hb-assistant construction-agent forecast actuals-reconciliation-gate --db-path /path/to/db.sqlite --json
 hb-assistant construction-agent forecast gates --db-path /path/to/db.sqlite --json
+
+## External forecast project eligibility
+
+External evaluation projects are controlled by `HB_FORECAST_EVAL_PROJECT_ALLOWLIST` (comma-separated).
+Built-in defaults: `tropical`, `fixtureproj`. Unknown projects fail closed with `ForecastExternalError`.
+
+## Live-copy gate evidence
+
+```bash
+scripts/run_forecasting_gates_live_copy_evidence.sh
+```
+
+Produces safe JSON under `docs/evidence/forecasting-gates-live-copy-YYYYMMDDTHHMMSSZ/` (DB copy gitignored).
 ```
 
 ### Double-count gate (`forecast_double_count_prevention`)

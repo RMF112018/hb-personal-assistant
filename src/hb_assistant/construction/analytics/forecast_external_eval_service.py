@@ -45,13 +45,17 @@ from hb_assistant.construction.analytics.forecast_external_ingest import (
 from hb_assistant.construction.analytics.forecast_external_mapping import (
     ForecastExternalMappingService,
 )
+from hb_assistant.forecasting.project_eligibility import (
+    assert_eval_project_eligible,
+    load_eval_project_allowlist,
+)
 from hb_assistant.store.migrator import SQLiteMigrator
 
 _SURFACE = "analytics.forecast_external"
 _EVALS_DIRNAME = "evaluations"
 _EVAL_RECORD = "eval_record.json"
 _EVAL_DB = "eval.sqlite"
-_SUPPORTED_PROJECT = "tropical"
+_DEFAULT_PROJECT = "tropical"
 _COMPREHENSIVE_PREFIX = "forecast_comprehensive_package_"
 
 
@@ -124,9 +128,10 @@ class ForecastExternalEvalService:
         self,
         import_id: str,
         column_roles: dict[str, str],
-        project_key: str = _SUPPORTED_PROJECT,
+        project_key: str = _DEFAULT_PROJECT,
         model_package_dir: str | None = None,
     ) -> dict[str, Any]:
+        assert_eval_project_eligible(project_key)
         evals_root = self._evals_root()
         record = self._ingest.read_import_record(import_id)
         eval_id = uuid.uuid4().hex[:12]
@@ -151,10 +156,24 @@ class ForecastExternalEvalService:
             )
 
             pkg = self._write_package(
-                eval_dir, record, mapping, comparison, anomalies, created_stamp
+                eval_dir,
+                record,
+                mapping,
+                comparison,
+                anomalies,
+                created_stamp,
+                project_key=project_key,
             )
             self._project_eval_db(
-                eval_dir, eval_id, record, mapping, comparison, anomalies, pkg, created_stamp
+                eval_dir,
+                eval_id,
+                record,
+                mapping,
+                comparison,
+                anomalies,
+                pkg,
+                created_stamp,
+                project_key=project_key,
             )
             stored = {
                 "eval_id": eval_id,
@@ -335,8 +354,10 @@ class ForecastExternalEvalService:
         comparison: dict[str, Any],
         anomalies: dict[str, Any],
         stamp: str,
+        *,
+        project_key: str,
     ) -> dict[str, Any]:
-        pkg_dir = eval_dir / f"external_forecast_evaluation_package_tropical_{stamp}"
+        pkg_dir = eval_dir / f"external_forecast_evaluation_package_{project_key}_{stamp}"
         pkg_dir.mkdir(parents=True, exist_ok=True)
 
         import_receipt = {
@@ -393,7 +414,8 @@ class ForecastExternalEvalService:
         files = sorted(p.name for p in pkg_dir.iterdir() if p.is_file())
         manifest = {
             "package_kind": "external_forecast_evaluation",
-            "project_key": "tropical",
+            "project_key": project_key,
+            "eligible_projects": sorted(load_eval_project_allowlist()),
             "schema_version": 1,
             "files": files,
             "file_count": len(files),
@@ -414,6 +436,8 @@ class ForecastExternalEvalService:
         anomalies: dict[str, Any],
         pkg: dict[str, Any],
         stamp: str,
+        *,
+        project_key: str,
     ) -> None:
         """Project results into an ISOLATED per-run SQLite (v61 tables only) — never the live DB."""
         db_path = eval_dir / _EVAL_DB
@@ -422,7 +446,7 @@ class ForecastExternalEvalService:
             for stmt in SQLiteMigrator.V61_STATEMENTS:
                 conn.execute(stmt)
             now = stamp
-            project = "tropical"
+            project = project_key
             ef_id = eval_id
             conn.execute(
                 "INSERT INTO forecast_external_forecasts (external_forecast_id, project_key, "
