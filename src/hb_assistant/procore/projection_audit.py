@@ -31,6 +31,24 @@ from .structured_analytics import RAW_LANDING_TABLE
 
 # Endpoints present in the registry are the mandatory in-scope set: they have full raw
 # payloads and must reach zero unmapped/unknown business field paths.
+CUSTOM_READ_MODEL_MANAGED_ENDPOINTS = {
+    "budget-detail-columns": {
+        "managed_read_model": "procore_budget_detail_read_model",
+        "managed_tables": [
+            "procore_ep_budget_detail_columns",
+            "procore_ep_budget_detail_rows",
+            "procore_ep_budget_detail_row_cells",
+        ],
+    },
+    "budget-detail-rows": {
+        "managed_read_model": "procore_budget_detail_read_model",
+        "managed_tables": [
+            "procore_ep_budget_detail_columns",
+            "procore_ep_budget_detail_rows",
+            "procore_ep_budget_detail_row_cells",
+        ],
+    },
+}
 
 
 def _is_empty(value: Any) -> bool:
@@ -223,6 +241,22 @@ def projection_audit(
             unknown_business = [p for p in unknown if _is_business_field(p, stats)]
             primary = [p for p in unknown_business if not pp.under_array(p)]
             nested = [p for p in unknown_business if pp.under_array(p)]
+            if ep in CUSTOM_READ_MODEL_MANAGED_ENDPOINTS:
+                rows.append(
+                    {
+                        "endpoint_id": ep,
+                        "status": "custom_read_model_managed",
+                        "registry_present": False,
+                        "observed_paths": len(observed),
+                        "business_field_paths": len(unknown_business),
+                        "unmapped_primary_business_fields": 0,
+                        "unmapped_nested_business_fields": 0,
+                        "unknown_business_field_paths": 0,
+                        "inventory_sample": unknown_business[:25],
+                        **CUSTOM_READ_MODEL_MANAGED_ENDPOINTS[ep],
+                    }
+                )
+                continue
             total_unmapped_primary += len(primary)
             total_unmapped_nested += len(nested)
             total_unknown += len(unknown_business)
@@ -271,7 +305,9 @@ def projection_audit(
     schema_mismatches = runtime_plan_schema_mismatches(db_path)
     ok = (
         total_unknown == 0
-        and all(r["registry_present"] for r in rows)
+        and all(
+            r["registry_present"] or r["status"] == "custom_read_model_managed" for r in rows
+        )
         and not over_threshold_unjustified
         and not schema_mismatches
     )

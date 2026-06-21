@@ -303,6 +303,123 @@ def test_committed_change_events_budget_modification_audit_clean(tmp_path: Path)
     assert result["runtime_plan_schema_mismatches"] == 0
 
 
+def _endpoint_row(result: dict[str, Any], endpoint_id: str) -> dict[str, Any]:
+    return next(row for row in result["endpoints"] if row["endpoint_id"] == endpoint_id)
+
+
+def test_budget_detail_columns_audit_is_custom_read_model_managed(tmp_path: Path) -> None:
+    db = _db(tmp_path)
+    upsert_full_raw_payload_and_structured(
+        db_path=db,
+        endpoint_id="budget-detail-columns",
+        project_key="tropical",
+        procore_project_id="99",
+        raw_item={"id": "col-1", "name": "Projected Costs", "label": "Projected Costs"},
+        parent_procore_id="view-1",
+        source_quality=SOURCE_QUALITY_LIVE_FULL,
+    )
+
+    result = audit.projection_audit(db_path=db, endpoint="budget-detail-columns")
+    row = _endpoint_row(result, "budget-detail-columns")
+
+    assert result["ok"] is True
+    assert result["unmapped_primary_business_fields"] == 0
+    assert result["unmapped_nested_business_fields"] == 0
+    assert result["unknown_business_field_paths"] == 0
+    assert row["status"] == "custom_read_model_managed"
+    assert row["registry_present"] is False
+    assert row["managed_read_model"] == "procore_budget_detail_read_model"
+    assert "procore_ep_budget_detail_columns" in row["managed_tables"]
+
+
+def test_budget_detail_rows_audit_is_custom_read_model_managed(tmp_path: Path) -> None:
+    db = _db(tmp_path)
+    upsert_full_raw_payload_and_structured(
+        db_path=db,
+        endpoint_id="budget-detail-rows",
+        project_key="tropical",
+        procore_project_id="99",
+        raw_item={
+            "id": "row-1",
+            "wbs_code": {"id": 1, "flat_code": "1000.15-01-426.MAT"},
+            "projected_costs": "12.00",
+        },
+        parent_procore_id="view-1",
+        source_quality=SOURCE_QUALITY_LIVE_FULL,
+    )
+
+    result = audit.projection_audit(db_path=db, endpoint="budget-detail-rows")
+    row = _endpoint_row(result, "budget-detail-rows")
+
+    assert result["ok"] is True
+    assert result["unmapped_primary_business_fields"] == 0
+    assert result["unmapped_nested_business_fields"] == 0
+    assert result["unknown_business_field_paths"] == 0
+    assert row["status"] == "custom_read_model_managed"
+    assert row["registry_present"] is False
+    assert row["managed_read_model"] == "procore_budget_detail_read_model"
+    assert "procore_ep_budget_detail_rows" in row["managed_tables"]
+
+
+def test_budget_detail_combined_audit_does_not_count_custom_read_model_paths(
+    tmp_path: Path,
+) -> None:
+    db = _db(tmp_path)
+    upsert_full_raw_payload_and_structured(
+        db_path=db,
+        endpoint_id="budget-detail-columns",
+        project_key="tropical",
+        procore_project_id="99",
+        raw_item={"id": "col-1", "name": "Projected Costs"},
+        parent_procore_id="view-1",
+        source_quality=SOURCE_QUALITY_LIVE_FULL,
+    )
+    upsert_full_raw_payload_and_structured(
+        db_path=db,
+        endpoint_id="budget-detail-rows",
+        project_key="tropical",
+        procore_project_id="99",
+        raw_item={"id": "row-1", "projected_costs": "12.00"},
+        parent_procore_id="view-1",
+        source_quality=SOURCE_QUALITY_LIVE_FULL,
+    )
+
+    result = audit.projection_audit(db_path=db)
+    by_endpoint = {row["endpoint_id"]: row for row in result["endpoints"]}
+
+    assert result["ok"] is True
+    assert result["unmapped_primary_business_fields"] == 0
+    assert result["unmapped_nested_business_fields"] == 0
+    assert result["unknown_business_field_paths"] == 0
+    assert by_endpoint["budget-detail-columns"]["status"] == "custom_read_model_managed"
+    assert by_endpoint["budget-detail-rows"]["status"] == "custom_read_model_managed"
+    assert "no_registry_plan" not in {
+        by_endpoint["budget-detail-columns"]["status"],
+        by_endpoint["budget-detail-rows"]["status"],
+    }
+
+
+def test_non_managed_endpoint_without_registry_plan_still_fails_closed(tmp_path: Path) -> None:
+    db = _db(tmp_path)
+    upsert_full_raw_payload_and_structured(
+        db_path=db,
+        endpoint_id="synthetic-no-registry-plan",
+        project_key="tropical",
+        procore_project_id="99",
+        raw_item={"id": "record-1", "business_field": "value"},
+        source_quality=SOURCE_QUALITY_LIVE_FULL,
+    )
+
+    result = audit.projection_audit(db_path=db, endpoint="synthetic-no-registry-plan")
+    row = _endpoint_row(result, "synthetic-no-registry-plan")
+
+    assert result["ok"] is False
+    assert result["unmapped_primary_business_fields"] >= 1
+    assert result["unknown_business_field_paths"] >= 1
+    assert row["status"] == "no_registry_plan"
+    assert row["registry_present"] is False
+
+
 # --- Test 2: nested-array projection writes child rows + high-value columns --------
 
 
