@@ -1,0 +1,16 @@
+# Changed (tracked, vs origin/main):
+frontend/src/lib/api.ts
+frontend/src/pages/ForecastRunCenterPage.test.tsx
+frontend/src/pages/ForecastRunCenterPage.tsx
+src/hb_assistant/construction/analytics/api.py
+src/hb_assistant/construction/analytics/forecast_db_config_run_dto.py
+src/hb_assistant/construction/analytics/forecast_db_config_run_service.py
+subrepos/construction-financial-review/src/construction_financial_review/cli.py
+subrepos/construction-financial-review/src/construction_financial_review/workflows/forecast_db_config_backed_generation.py
+tests/test_fastapi_forecast_db_config_run.py
+
+# New (untracked) in scope:
+  docs/architecture/281-forecast-ui-db-config-backed-generation-all-generators.md
+  docs/evidence/forecast-ui-db-config-all-generators/
+  subrepos/construction-financial-review/src/construction_financial_review/workflows/forecast_db_config_backed_core.py
+  tests/test_forecast_db_config_backed_generation_kinds.py
