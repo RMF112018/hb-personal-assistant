@@ -133,6 +133,9 @@ def classify_amount(
     field_path: str,
     currency_code: Optional[str] = None,
     policy: Optional[dict] = None,
+    table: Optional[str] = None,
+    column: Optional[str] = None,
+    declared_type: Optional[str] = None,
 ) -> dict[str, Any]:
     """Classify per phase_08c_amount_normalization_contract + policy.
 
@@ -140,7 +143,23 @@ def classify_amount(
     minor_units (or None), rejection_reason (or None), confidence_label,
     review_tier (from policy or default), source_value_hash, advisory_only=1.
     Uses Decimal-only paths; float at boundary -> rejected.
+
+    When ``table`` and ``column`` are provided, the forecasting field classifier
+    guard runs first to prevent false-positive numeric treatment.
     """
+    if table and column:
+        from hb_assistant.forecasting.normalization import normalize_amount_field
+
+        return normalize_amount_field(
+            source_value,
+            table=table,
+            column=column,
+            field_path=field_path,
+            declared_type=declared_type,
+            currency_code=currency_code,
+            policy=policy,
+        )
+
     status = "parseable"
     reason = None
     canonical = None

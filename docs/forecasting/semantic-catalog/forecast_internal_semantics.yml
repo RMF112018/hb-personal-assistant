@@ -1,0 +1,38 @@
+family: forecast_internal
+confidence: medium
+
+entities:
+  fact_forecast_snapshot:
+    source_tables: [forecast_config_snapshots, forecast_runs, forecast_packages, forecast_package_manifests]
+    grain: run / package / snapshot
+    evidence_basis: [schema-supported, repo-code-supported]
+    forecast_relevance: generated_model_outputs_lineage
+
+  fact_external_forecast:
+    source_tables: [forecast_external_forecasts, forecast_external_forecast_rows, forecast_external_forecast_mappings]
+    grain: external_forecast_id + row
+    confidence: low
+    evidence_basis: [schema-supported, repo-code-supported]
+    caveats:
+      - Live DB tables intentionally empty by design.
+      - Rows persist in isolated per-run eval.sqlite under HB_FORECAST_EVAL_ROOT.
+    fixture_path: tests/fixtures/forecasting/external_forecast_sample.csv
+
+  fact_forecast_actuals_comparison:
+    source_tables: [forecast_comparison_results, forecast_accuracy_results]
+    confidence: low
+    evidence_basis: [repo-code-supported]
+    fixture_path: tests/fixtures/forecasting/
+
+  fact_forecast_anomaly:
+    source_tables: [forecast_anomaly_findings]
+    confidence: low
+
+  fact_forecast_review_item:
+    source_tables: [forecast_review_items]
+    confidence: low
+
+  fact_forecast_monthly_actuals:
+    source_tables: [forecast_monthly_actuals_by_budget_code, forecast_cost_entries]
+    confidence: medium
+    caveats: [Periodized actuals; reconcile vs cumulative budget actuals before modeling]

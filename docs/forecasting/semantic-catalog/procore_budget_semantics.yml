@@ -1,0 +1,36 @@
+family: budget
+confidence: high
+evidence_package_ref: docs/evidence/forecasting-db-complete-evidence/20260621T130542Z/
+
+entities:
+  fact_budget_detail:
+    source_tables: [procore_ep_budget_detail_rows, procore_ep_budget_views]
+    grain: budget_view_id + budget_code per row
+    primary_key: record_key
+    parent_keys: [budget_view_id -> procore_ep_budget_views.record_id]
+    join_confidence: high
+    evidence_basis: [row-profile-supported, repo-code-supported]
+    date_basis: [updated_utc, created_utc]
+    amount_basis: [rollup columns on rows; not all are independent exposures]
+    status_inclusion: {is_current: "1 only"}
+    forecast_relevance: primary_eac_etc_anchor
+    caveats:
+      - Budget calculated columns may already include approved change orders, pending changes, direct costs, job-to-date costs, or projected costs depending on budget view configuration.
+      - Do not add workflow-stage amounts on top of calculated rollups without precedence logic.
+    validation_query: validation_queries/budget_relationships.sql
+
+  fact_budget_row_cell:
+    source_tables: [procore_ep_budget_detail_row_cells, procore_ep_budget_detail_columns]
+    grain: row record_key + column_id
+    primary_key: record_key
+    join_confidence: high
+    evidence_basis: [row-profile-supported]
+    forecast_relevance: dynamic_budget_view_cell_evidence
+
+  fact_budget_change:
+    source_tables: [procore_ep_budget_modifications, procore_ep_budget_change_history]
+    grain: one modification or history event per record
+    confidence: medium
+    status_inclusion: {pending: [draft, pending], included: [approved], excluded: [void, cancelled]}
+    forecast_relevance: budget_adjustment_events
+    caveats: [Supersede change-event exposure when approved and reflected in budget rollup]
