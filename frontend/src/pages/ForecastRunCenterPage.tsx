@@ -11,8 +11,16 @@ import { useQuery } from '@tanstack/react-query'
 import { EmptyState } from '../components/ui/EmptyState'
 import { StatusPill } from './ForecastingPage'
 import { api } from '../lib/api'
+import type { ForecastGeneratorKind } from '../lib/api'
 
 type Selected = { id: string; source: 'file' | 'live_config' }
+
+const GENERATOR_KINDS: { value: ForecastGeneratorKind; label: string }[] = [
+  { value: 'comprehensive', label: 'Comprehensive' },
+  { value: 'model_controls', label: 'Model controls' },
+  { value: 'monthly', label: 'Monthly' },
+  { value: 'probability', label: 'Probabilistic' },
+]
 
 export function ForecastRunCenterPage() {
   const { data: runsResp, isLoading, error, refetch } = useQuery({
@@ -31,6 +39,7 @@ export function ForecastRunCenterPage() {
   const [genDb, setGenDb] = useState(false)
   const [dbError, setDbError] = useState<string | null>(null)
   const [dbDisabled, setDbDisabled] = useState(false)
+  const [genKind, setGenKind] = useState<ForecastGeneratorKind>('comprehensive')
 
   const [selected, setSelected] = useState<Selected | undefined>(undefined)
 
@@ -67,7 +76,7 @@ export function ForecastRunCenterPage() {
     setDbError(null)
     setDbDisabled(false)
     try {
-      await api.startForecastDbConfigRun()
+      await api.startForecastDbConfigRun(genKind)
       await refetchDb()
     } catch (e: any) {
       setDbDisabled(e?.status === 503)
@@ -131,14 +140,33 @@ export function ForecastRunCenterPage() {
       <div className="card mt-3">
         <div className="flex items-center justify-between gap-3">
           <div className="section-title">Generate from live config</div>
-          <button
-            type="button"
-            onClick={onGenerateDbConfig}
-            disabled={genDb}
-            className="rounded border border-[var(--hb-accent)] px-3 py-1.5 text-sm disabled:opacity-50"
-          >
-            {genDb ? 'Generating…' : 'Generate from live config'}
-          </button>
+          <div className="flex items-center gap-2">
+            <label htmlFor="db-config-kind" className="text-sm text-[var(--hb-muted)]">
+              Forecast
+            </label>
+            <select
+              id="db-config-kind"
+              aria-label="Forecast type"
+              value={genKind}
+              onChange={(e) => setGenKind(e.target.value as ForecastGeneratorKind)}
+              disabled={genDb}
+              className="rounded border border-[var(--hb-border)] bg-transparent px-2 py-1.5 text-sm disabled:opacity-50"
+            >
+              {GENERATOR_KINDS.map((k) => (
+                <option key={k.value} value={k.value}>
+                  {k.label}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={onGenerateDbConfig}
+              disabled={genDb}
+              className="rounded border border-[var(--hb-accent)] px-3 py-1.5 text-sm disabled:opacity-50"
+            >
+              {genDb ? 'Generating…' : 'Generate from live config'}
+            </button>
+          </div>
         </div>
         <p className="text-sm text-[var(--hb-muted)]">
           Generates the comprehensive forecast using the current promoted configuration from the

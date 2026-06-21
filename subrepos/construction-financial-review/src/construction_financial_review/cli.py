@@ -357,35 +357,41 @@ def cmd_forecast_comprehensive_db_config_proof(*, project: str, live_db_path: st
     return 0 if report.get("decision") == DECISION_READY else 1
 
 
-def cmd_forecast_db_config_backed_generate(*, project: str, live_db_path: str,
+def cmd_forecast_db_config_backed_generate(*, project: str, generator_kind: str, live_db_path: str,
                                            config_snapshot_id: str | None, work_root: str,
                                            run_stamp: str | None, data_root: str | None,
                                            source_config_root: str | None,
                                            require_live_snapshot: bool,
                                            prove_file_equivalence: bool,
-                                           preflight_stability_seconds: float) -> int:
-    """Generate the comprehensive forecast package CONSUMING the live DB config snapshot.
+                                           preflight_stability_seconds: float,
+                                           runs: int, seed: int,
+                                           forecast_start_month: str | None) -> int:
+    """Generate a forecast package CONSUMING the live DB config snapshot.
 
-    Materializes the chosen (default latest) live config snapshot READ-ONLY, gates on materialization
-    fidelity (round-trip digest match), then runs the deterministic integrated generator with
+    ``--generator-kind`` selects which generator (comprehensive [default] / model_controls / monthly /
+    probability). Materializes the chosen (default latest) live config snapshot READ-ONLY, gates on
+    materialization fidelity (round-trip digest match), then runs the deterministic generator with
     CFR_CONFIG_ROOT = materialized root so a PROMOTED config snapshot drives generation. Never writes/
-    migrates/imports the live DB. rc 0 generated / 1 generated-but-validation-failed / 3 controlled
+    migrates/imports the live DB. ``--runs`` / ``--seed`` / ``--forecast-start-month`` apply to the
+    probability generator only. rc 0 generated / 1 generated-but-validation-failed / 3 controlled
     refusal."""
     from .workflows.forecast_db_config_backed_generation import (
         STATUS_GENERATED,
         ForecastDbConfigGenerationError,
-        run_forecast_db_config_backed_generation,
+        run_forecast_db_config_backed_generation_for_kind,
     )
     try:
         with contextlib.redirect_stdout(sys.stderr):
-            report = run_forecast_db_config_backed_generation(
+            report = run_forecast_db_config_backed_generation_for_kind(
+                generator_kind=generator_kind,
                 project_key=project, live_db_path=Path(live_db_path),
                 config_snapshot_id=config_snapshot_id, work_root=Path(work_root), run_stamp=run_stamp,
                 data_root=Path(data_root) if data_root else None,
                 source_config_root=Path(source_config_root) if source_config_root else None,
                 require_live_snapshot=require_live_snapshot,
                 prove_file_equivalence=prove_file_equivalence,
-                preflight_stability_seconds=preflight_stability_seconds)
+                preflight_stability_seconds=preflight_stability_seconds,
+                runs=runs, seed=seed, forecast_start_month=forecast_start_month)
     except ForecastDbConfigGenerationError as exc:
         print(json.dumps({"command": "forecast-db-config-backed-generate", "project": project,
                           "status": "refused", "reason": str(exc)}, indent=2))
@@ -1529,6 +1535,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     fdcg = sub.add_parser("forecast-db-config-backed-generate")
     fdcg.add_argument("--project", default="tropical", help="Project key (only 'tropical').")
+    fdcg.add_argument("--generator-kind", default="comprehensive",
+                      choices=["comprehensive", "model_controls", "monthly", "probability"],
+                      help="Which generator to run from the live config snapshot (default comprehensive).")
     fdcg.add_argument("--live-db-path", required=True,
                       help="Live (v60) DB holding the config snapshot; opened READ-ONLY.")
     fdcg.add_argument("--config-snapshot-id", default=None,
@@ -1550,6 +1559,12 @@ def build_parser() -> argparse.ArgumentParser:
                            "when config has not diverged from the on-disk files).")
     fdcg.add_argument("--preflight-stability-seconds", type=float, default=2.0,
                       help="Live-DB quiescence preflight window (default 2.0).")
+    fdcg.add_argument("--runs", type=int, default=10000,
+                      help="Probability generator only: Monte-Carlo run count (default 10000).")
+    fdcg.add_argument("--seed", type=int, default=20260614,
+                      help="Probability generator only: deterministic seed (default 20260614).")
+    fdcg.add_argument("--forecast-start-month", default=None,
+                      help="Probability/monthly generators only: forecast start month override.")
     # --context-stamp pins the upstream context package for a lineage-consistent fresh full run.
     # Applied to the stages that consume context and participate in the lineage gate.
     for _p in (fip, fmp, fpp, fcp, fkp, fspp):
@@ -1626,13 +1641,16 @@ def main(argv=None) -> int:
             preflight_stability_seconds=args.preflight_stability_seconds)
     if args.command == "forecast-db-config-backed-generate":
         return cmd_forecast_db_config_backed_generate(
-            project=args.project, live_db_path=args.live_db_path,
+            project=args.project, generator_kind=args.generator_kind,
+            live_db_path=args.live_db_path,
             config_snapshot_id=args.config_snapshot_id, work_root=args.work_root,
             run_stamp=args.run_stamp, data_root=args.data_root,
             source_config_root=args.source_config_root,
             require_live_snapshot=not args.no_require_live_snapshot,
             prove_file_equivalence=args.prove_file_equivalence,
-            preflight_stability_seconds=args.preflight_stability_seconds)
+            preflight_stability_seconds=args.preflight_stability_seconds,
+            runs=args.runs, seed=args.seed,
+            forecast_start_month=args.forecast_start_month)
     if args.command == "lineage-init":
         return cmd_lineage_init(cfg, args.project)
     if args.command == "lineage-record":

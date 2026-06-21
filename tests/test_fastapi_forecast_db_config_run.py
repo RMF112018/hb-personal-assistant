@@ -64,6 +64,7 @@ def _install_fake_workflow(monkeypatch: pytest.MonkeyPatch, *, report_fn=_fake_r
         "construction_financial_review.workflows.forecast_db_config_backed_generation"
     )
     mod.run_forecast_db_config_backed_generation = report_fn  # type: ignore[attr-defined]
+    mod.run_forecast_db_config_backed_generation_for_kind = report_fn  # type: ignore[attr-defined]
     mod.ForecastDbConfigGenerationError = _FakeError  # type: ignore[attr-defined]
     monkeypatch.setitem(sys.modules, "construction_financial_review", pkg)
     monkeypatch.setitem(sys.modules, "construction_financial_review.workflows", wf)
@@ -156,6 +157,44 @@ def test_unknown_run_404(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Non
     resp = client.get("/api/forecast/runs/db-config/nope", headers=_viewer())
     assert resp.status_code == 404
     assert resp.json()["detail"] == "forecast_db_config_run_not_found"
+
+
+def test_default_post_is_comprehensive(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    client = _configured_client(tmp_path, monkeypatch)
+    body = client.post("/api/forecast/runs/db-config", headers=_op()).json()
+    assert body["kind"] == "comprehensive"
+    assert body["display_label"].startswith("Comprehensive forecast from live config")
+    assert find_redaction_leaks(body) == []
+
+
+def test_post_generator_kind_threads_through(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    client = _configured_client(tmp_path, monkeypatch)
+    created = client.post(
+        "/api/forecast/runs/db-config", headers=_op(), json={"generator_kind": "monthly"}
+    )
+    assert created.status_code == 200
+    body = created.json()
+    assert body["kind"] == "monthly"
+    assert body["display_label"].startswith("Monthly forecast from live config")
+    assert find_redaction_leaks(body) == []
+    run_id = body["run_id"]
+
+    # The kind round-trips through list + detail, and remains redaction-clean.
+    listed = client.get("/api/forecast/runs/db-config", headers=_viewer()).json()
+    item = next(r for r in listed["runs"] if r["run_id"] == run_id)
+    assert item["kind"] == "monthly"
+    detail = client.get(f"/api/forecast/runs/db-config/{run_id}", headers=_viewer()).json()
+    assert detail["kind"] == "monthly"
+    assert find_redaction_leaks(listed) == [] and find_redaction_leaks(detail) == []
+
+
+def test_post_invalid_kind_400(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    client = _configured_client(tmp_path, monkeypatch)
+    resp = client.post(
+        "/api/forecast/runs/db-config", headers=_op(), json={"generator_kind": "bogus"}
+    )
+    assert resp.status_code == 400
+    assert resp.json()["detail"] == "forecast_db_config_run_bad_kind"
 
 
 def test_workflow_refusal_recorded_as_failed_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

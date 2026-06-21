@@ -1,0 +1,12 @@
+--- vitest (ForecastRunCenterPage) ---
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+   Start at  08:22:45
+   Duration  804ms (transform 74ms, setup 47ms, collect 128ms, tests 99ms, environment 334ms, prepare 58ms)
+
+--- tsc ---
+tsc rc=0
+--- full vitest summary ---
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+ Test Files  1 failed | 22 passed (23)
+      Tests  5 failed | 99 passed (104)

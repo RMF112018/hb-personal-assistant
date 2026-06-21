@@ -1,0 +1,2 @@
+LATEST_SCHEMA_VERSION (committed):
+src/hb_assistant/store/migrator.py:17:LATEST_SCHEMA_VERSION = 61

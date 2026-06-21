@@ -357,7 +357,7 @@ def create_app(*, db_path: str | None = None) -> Any:
     status. Future analytics route adapters should call ``AnalyticsService``
     directly and reuse ``role_dependency``.
     """
-    from fastapi import Depends, FastAPI
+    from fastapi import Body, Depends, FastAPI
 
     require_role = role_dependency()
     app = FastAPI(
@@ -373,6 +373,7 @@ def create_app(*, db_path: str | None = None) -> Any:
         ),
     )
     role_dep = Depends(require_role)
+    optional_json_body = Body(default=None)  # bound to a var so call isn't in an arg default (B008)
 
     @app.get("/health")
     def health(role: dict[str, str] = role_dep) -> dict[str, Any]:
@@ -1673,9 +1674,21 @@ def create_app(*, db_path: str | None = None) -> Any:
             raise HTTPException(status_code=503, detail="forecast_db_config_run_not_configured")
 
     @app.post("/api/forecast/runs/db-config")
-    def forecast_db_config_run_create(role: dict[str, str] = role_dep) -> dict[str, Any]:
+    def forecast_db_config_run_create(
+        payload: dict[str, Any] | None = optional_json_body,
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        from fastapi import HTTPException
+
         require_operator_role(role)  # executes + writes isolated work-root; reads live config DB ro
-        return _forecast_db_config_run_call(_forecast_db_config_run_service().start_db_config_run)
+        # Optional body {"generator_kind": ...}; absent/empty body defaults to comprehensive (back-compat).
+        generator_kind = (payload or {}).get("generator_kind", "comprehensive")
+        if generator_kind not in ("comprehensive", "model_controls", "monthly", "probability"):
+            raise HTTPException(status_code=400, detail="forecast_db_config_run_bad_kind")
+        service = _forecast_db_config_run_service()
+        return _forecast_db_config_run_call(
+            lambda: service.start_db_config_run(generator_kind=generator_kind)
+        )
 
     @app.get("/api/forecast/runs/db-config")
     def forecast_db_config_runs_list(role: dict[str, str] = role_dep) -> dict[str, Any]:

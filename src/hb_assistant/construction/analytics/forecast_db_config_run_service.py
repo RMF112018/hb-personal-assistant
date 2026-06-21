@@ -34,6 +34,7 @@ from hb_assistant.construction.analytics.forecast_run_service import (
 _SURFACE = "analytics.forecast_db_config_run"
 _RECORD_NAME = "db_config_run_record.json"
 _SUPPORTED_PROJECT = "tropical"
+_SUPPORTED_GENERATOR_KINDS = ("comprehensive", "model_controls", "monthly", "probability")
 
 # Coded refusal reasons surfaced as path-free messages (the CFR workflow's first ":"-token is reused).
 _FRIENDLY_REASONS: dict[str, str] = {
@@ -47,6 +48,7 @@ _FRIENDLY_REASONS: dict[str, str] = {
         "The cost-frequency forecast is required but hasn't been generated yet."
     ),
     "live_db_not_quiescent": "The forecast database is being updated right now; try again shortly.",
+    "generator_refused": "The forecast could not be generated from the current configuration.",
 }
 
 
@@ -99,10 +101,16 @@ class ForecastDbConfigRunService:
         return p
 
     def start_db_config_run(
-        self, project_key: str = _SUPPORTED_PROJECT, *, snapshot_id: str | None = None
+        self,
+        project_key: str = _SUPPORTED_PROJECT,
+        *,
+        snapshot_id: str | None = None,
+        generator_kind: str = "comprehensive",
     ) -> dict[str, Any]:
         if not self._enabled:
             raise ForecastDbConfigRunError("db_config_run disabled")
+        if generator_kind not in _SUPPORTED_GENERATOR_KINDS:
+            raise ForecastDbConfigRunError(f"unsupported_generator_kind: {generator_kind!r}")
         try:
             data_root = self._base._data_root()
             runs_root = self._base._runs_root()
@@ -120,17 +128,19 @@ class ForecastDbConfigRunService:
             "run_id": run_id,
             "created_stamp": created_stamp,
             "project_key": project_key,
+            "generator_kind": generator_kind,
             "mode": "db_config",
         }
         try:
             from construction_financial_review.workflows.forecast_db_config_backed_generation import (
                 ForecastDbConfigGenerationError,
-                run_forecast_db_config_backed_generation,
+                run_forecast_db_config_backed_generation_for_kind,
             )
 
             try:
                 with contextlib.redirect_stdout(io.StringIO()):
-                    report = run_forecast_db_config_backed_generation(
+                    report = run_forecast_db_config_backed_generation_for_kind(
+                        generator_kind=generator_kind,
                         project_key=project_key,
                         live_db_path=live_db,
                         work_root=work_root,
