@@ -772,9 +772,15 @@ export function getForecastRuns() {
 export function getForecastRun(runId: string) {
   return fetchJson(`/api/forecast/runs/${encodeURIComponent(runId)}`);
 }
-/* DB-config-backed generation: comprehensive package consuming the live config snapshot (operator). */
-export function startForecastDbConfigRun() {
-  return fetchJson('/api/forecast/runs/db-config', { method: 'POST' });
+/* DB-config-backed generation: a forecast package consuming the live config snapshot (operator).
+ * generatorKind selects which generator (comprehensive [default] / model_controls / monthly /
+ * probability); the default keeps existing callers backward-compatible. */
+export type ForecastGeneratorKind = 'comprehensive' | 'model_controls' | 'monthly' | 'probability';
+export function startForecastDbConfigRun(generatorKind: ForecastGeneratorKind = 'comprehensive') {
+  return fetchJson('/api/forecast/runs/db-config', {
+    method: 'POST',
+    body: JSON.stringify({ generator_kind: generatorKind }),
+  });
 }
 export function getForecastDbConfigRuns() {
   return fetchJson('/api/forecast/runs/db-config');

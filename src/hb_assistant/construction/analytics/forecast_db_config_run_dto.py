@@ -22,6 +22,7 @@ class DbConfigRunListItemDTO:
     display_label: str
     status: str
     source: str = "live_config"  # distinguishes these runs from file-config runs in the UI
+    kind: str = "comprehensive"  # which generator (comprehensive/model_controls/monthly/probability)
     generated_display: str | None = None
 
     def public(self) -> dict[str, Any]:
@@ -34,6 +35,7 @@ class DbConfigRunSummaryDTO:
     display_label: str
     status: str  # generated | generated_validation_failed | failed
     source: str = "live_config"
+    kind: str = "comprehensive"
     generated_display: str | None = None
     config_snapshot_consumed: bool = False
     snapshot_display: str | None = None  # friendly snapshot NAME (never the id in visible text)
@@ -49,9 +51,21 @@ class DbConfigRunSummaryDTO:
         return asdict(self)
 
 
+_KIND_LABELS: dict[str, str] = {
+    "comprehensive": "Comprehensive forecast from live config",
+    "model_controls": "Model controls forecast from live config",
+    "monthly": "Monthly forecast from live config",
+    "probability": "Probabilistic forecast from live config",
+}
+
+
+def _kind(record: dict[str, Any]) -> str:
+    return str(record.get("generator_kind") or "comprehensive")
+
+
 def _label(record: dict[str, Any]) -> str:
     friendly = friendly_datetime_from_stamp(record.get("created_stamp"))
-    base = "Comprehensive forecast from live config"
+    base = _KIND_LABELS.get(_kind(record), _KIND_LABELS["comprehensive"])
     return f"{base} — {friendly}" if friendly else base
 
 
@@ -62,6 +76,7 @@ def db_config_run_record_to_summary(record: dict[str, Any]) -> DbConfigRunSummar
         run_id=str(record.get("run_id") or ""),
         display_label=_label(record),
         status=status,
+        kind=_kind(record),
         generated_display=friendly_datetime_from_stamp(record.get("created_stamp")),
         config_snapshot_consumed=bool(record.get("config_snapshot_consumed")),
         snapshot_display=record.get("snapshot_display"),
@@ -80,5 +95,6 @@ def db_config_run_record_to_list_item(record: dict[str, Any]) -> DbConfigRunList
         run_id=str(record.get("run_id") or ""),
         display_label=_label(record),
         status=record.get("status") or "failed",
+        kind=_kind(record),
         generated_display=friendly_datetime_from_stamp(record.get("created_stamp")),
     )

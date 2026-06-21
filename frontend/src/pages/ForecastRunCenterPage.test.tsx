@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -8,6 +8,19 @@ const useQueryMock = vi.fn()
 
 vi.mock('@tanstack/react-query', () => ({
   useQuery: (options: { queryKey: unknown[] }) => useQueryMock(options),
+}))
+
+const startDbConfigMock = vi.fn().mockResolvedValue({})
+
+vi.mock('../lib/api', () => ({
+  api: {
+    getForecastRuns: vi.fn(),
+    getForecastDbConfigRuns: vi.fn(),
+    getForecastDbConfigRun: vi.fn(),
+    getForecastRun: vi.fn(),
+    startForecastRun: vi.fn().mockResolvedValue({}),
+    startForecastDbConfigRun: (...args: unknown[]) => startDbConfigMock(...args),
+  },
 }))
 
 function mockData() {
@@ -64,6 +77,7 @@ function renderPage() {
 describe('ForecastRunCenterPage', () => {
   beforeEach(() => {
     useQueryMock.mockReset()
+    startDbConfigMock.mockClear()
   })
 
   it('renders the generate action and run history', () => {
@@ -89,6 +103,18 @@ describe('ForecastRunCenterPage', () => {
     ).toBeInTheDocument()
     expect(screen.getByText('Live config')).toBeInTheDocument()
     expect(screen.getByText('File config')).toBeInTheDocument()
+  })
+
+  it('offers all four generator kinds and passes the selected kind to the API', async () => {
+    mockData()
+    renderPage()
+    const select = screen.getByLabelText('Forecast type') as HTMLSelectElement
+    const optionValues = Array.from(select.options).map((o) => o.value)
+    expect(optionValues).toEqual(['comprehensive', 'model_controls', 'monthly', 'probability'])
+
+    fireEvent.change(select, { target: { value: 'monthly' } })
+    fireEvent.click(screen.getByRole('button', { name: /Generate from live config/i }))
+    await waitFor(() => expect(startDbConfigMock).toHaveBeenCalledWith('monthly'))
   })
 
   it('does not render raw stamps or filesystem paths', () => {
