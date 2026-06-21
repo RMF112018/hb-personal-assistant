@@ -128,6 +128,8 @@ def test_status_valid_when_fully_configured(cfg_path: Path, tmp_path: Path) -> N
         "run_center": True,
         "external_eval": True,
         "config_edit": True,
+        # config_promotion additionally requires the explicit opt-in (off by default here).
+        "config_promotion": False,
     }
     assert find_redaction_leaks(status) == []
 

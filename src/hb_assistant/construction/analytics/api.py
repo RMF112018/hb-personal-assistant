@@ -47,6 +47,10 @@ class ForecastConfigEditRequest(BaseModel):
     project_key: str = "tropical"
 
 
+class ForecastConfigPromoteRequest(BaseModel):
+    confirm: bool = False
+
+
 class ForecastRuntimeConfigRequest(BaseModel):
     package_roots: list[str] | None = None
     data_root: str | None = None
@@ -1520,6 +1524,58 @@ def create_app(*, db_path: str | None = None) -> Any:
         del role
         return _forecast_config_edit_call(
             _forecast_config_edit_service().read_edit_manifest, edit_id
+        )
+
+    # Forecast config promotion — certified live write (Implementation Phase E2). Promotes an approved
+    # (parity-passed) proposal into the live config DB as a new snapshot, gated by a default-OFF opt-in
+    # + an explicit per-request confirm + the byte-backed CFR workflow. POST=operator.
+    def _forecast_config_promotion_service() -> Any:
+        from hb_assistant.construction.analytics.forecast_config_promotion_service import (
+            ForecastConfigPromotionService,
+        )
+        from hb_assistant.construction.analytics.forecast_runtime_config import (
+            resolve_cfr_src,
+            resolve_config_edit_root_value,
+            resolve_db_path,
+            resolve_promotion_enabled,
+        )
+
+        return ForecastConfigPromotionService(
+            config_edit_root=resolve_config_edit_root_value(None),
+            db_path=resolve_db_path(db_path),
+            cfr_src=resolve_cfr_src(None),
+            promotion_enabled=resolve_promotion_enabled(None),
+        )
+
+    def _forecast_config_promotion_call(fn: Any, *args: Any) -> dict[str, Any]:
+        from fastapi import HTTPException
+
+        from hb_assistant.construction.analytics.forecast_config_promotion_service import (
+            ForecastConfigPromotionError,
+        )
+
+        try:
+            return fn(*args)
+        except ForecastConfigPromotionError as exc:
+            msg = str(exc)
+            if msg.startswith("unknown edit_id"):
+                raise HTTPException(status_code=404, detail="forecast_config_promotion_edit_not_found")
+            if msg == "promotion disabled":
+                raise HTTPException(status_code=503, detail="forecast_config_promotion_disabled")
+            if msg == "not confirmed":
+                raise HTTPException(status_code=400, detail="forecast_config_promotion_not_confirmed")
+            if msg.startswith("proposal not eligible"):
+                raise HTTPException(status_code=400, detail="forecast_config_promotion_not_eligible")
+            # CFR workflow refusal / live-write failure — fail closed, path-free.
+            raise HTTPException(status_code=500, detail="forecast_config_promotion_failed")
+
+    @app.post("/api/forecast/config/edits/{edit_id}/promote")
+    def forecast_config_edit_promote(
+        edit_id: str, request: ForecastConfigPromoteRequest, role: dict[str, str] = role_dep
+    ) -> dict[str, Any]:
+        require_operator_role(role)  # the first analytics live-DB write (gated + confirmed + backed up)
+        return _forecast_config_promotion_call(
+            _forecast_config_promotion_service().promote_config_edit, edit_id, request.confirm
         )
 
     # Forecast Run Center — isolated context->analysis generation (Implementation Phase 3).
