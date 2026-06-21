@@ -1,0 +1,360 @@
+{
+  "command": "live-db-provenance-audit",
+  "schema_version": 1,
+  "project_key": "tropical",
+  "decision": "populated_tropical",
+  "live_db": {
+    "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite",
+    "exists": true,
+    "size_bytes": 3529723904,
+    "mtime_epoch": 1782050895,
+    "wal_exists": true,
+    "wal_size_bytes": 0,
+    "shm_exists": true,
+    "shm_size_bytes": 32768
+  },
+  "schema": {
+    "schema_version": 61,
+    "required_schema_version": 59,
+    "migrations": [
+      {
+        "version": 1,
+        "name": "v1_initial_schema",
+        "applied_at": "2026-05-25T09:23:55.285578+00:00"
+      },
+      {
+        "version": 2,
+        "name": "v2_construction_delta",
+        "applied_at": "2026-05-27T12:21:25.455424+00:00"
+      },
+      {
+        "version": 3,
+        "name": "v3_construction_review_queue",
+        "applied_at": "2026-05-27T13:01:57.594462+00:00"
+      },
+      {
+        "version": 4,
+        "name": "v4_construction_model_decisions",
+        "applied_at": "2026-05-27T13:18:50.251071+00:00"
+      },
+      {
+        "version": 5,
+        "name": "v5_construction_canonical_alignment",
+        "applied_at": "2026-05-27T16:12:37.839752+00:00"
+      },
+      {
+        "version": 6,
+        "name": "v6_procore_live_sync",
+        "applied_at": "2026-05-28T16:40:42.787040+00:00"
+      },
+      {
+        "version": 7,
+        "name": "v7_procore_history_and_enrichment",
+        "applied_at": "2026-05-29T13:19:39.101675+00:00"
+      },
+      {
+        "version": 8,
+        "name": "v8_procore_financials",
+        "applied_at": "2026-05-29T20:04:24.968130+00:00"
+      },
+      {
+        "version": 9,
+        "name": "v9_procore_billing_and_subcontractor_invoices",
+        "applied_at": "2026-05-29T20:04:24.968130+00:00"
+      },
+      {
+        "version": 10,
+        "name": "v10_email_intelligence_active_policy_and_mailbox_source_registry",
+        "applied_at": "2026-05-30T06:58:35.019329+00:00"
+      },
+      {
+        "version": 11,
+        "name": "v11_email_operational_intelligence_schema",
+        "applied_at": "2026-05-30T06:58:35.019329+00:00"
+      },
+      {
+        "version": 12,
+        "name": "v12_email_encrypted_body_vault_refs",
+        "applied_at": "2026-05-30T08:08:22.450829+00:00"
+      },
+      {
+        "version": 13,
+        "name": "v13_email_review_body_capture_decision",
+        "applied_at": "2026-05-30T09:19:37.960364+00:00"
+      },
+      {
+        "version": 14,
+        "name": "v14_email_model_classifications",
+        "applied_at": "2026-05-30T10:34:02.888189+00:00"
+      },
+      {
+        "version": 15,
+        "name": "v15_construction_drive_items_rich_metadata",
+        "applied_at": "2026-05-30T12:42:08.825569+00:00"
+      },
+      {
+        "version": 16,
+        "name": "v16_construction_graph_link_resolution",
+        "applied_at": "2026-05-30T13:05:22.815988+00:00"
+      },
+      {
+        "version": 17,
+        "name": "v17_construction_drive_items_project_matching",
+        "applied_at": "2026-05-30T14:08:30.760158+00:00"
+      },
+      {
+        "version": 18,
+        "name": "v18_construction_file_ingestion_decisions",
+        "applied_at": "2026-05-30T15:13:28.872100+00:00"
+      },
+      {
+        "version": 19,
+        "name": "v19_construction_download_and_extraction_receipts",
+        "applied_at": "2026-05-30T15:30:21.137090+00:00"
+      },
+      {
+        "version": 20,
+        "name": "v20_data_quality_and_source_record_map",
+        "applied_at": "2026-05-31T09:02:43.080453+00:00"
+      },
+      {
+        "version": 21,
+        "name": "v21_agent_ready_query_marts",
+        "applied_at": "2026-05-31T09:33:33.898097+00:00"
+      },
+      {
+        "version": 22,
+        "name": "v22_mart_raw_body_guardrail",
+        "applied_at": "2026-05-31T10:54:58.381939+00:00"
+      },
+      {
+        "version": 23,
+        "name": "v23_calendar_email_thread_intelligence",
+        "applied_at": "2026-05-31T11:37:01.122865+00:00"
+      },
+      {
+        "version": 24,
+        "name": "v24_document_intelligence_schema",
+        "applied_at": "2026-05-31T19:34:50.012755+00:00"
+      },
+      {
+        "version": 25,
+        "name": "v25_cross_source_relationship_meeting_prep_schema",
+        "applied_at": "2026-06-01T09:32:58.312938+00:00"
+      },
+      {
+        "version": 26,
+        "name": "v26_second_brain_phase_08a_schema",
+        "applied_at": "2026-06-02T08:15:25.231375+00:00"
+      },
+      {
+        "version": 27,
+        "name": "v27_daily_brief_handoff_lines",
+        "applied_at": "2026-06-02T19:21:19.845823+00:00"
+      },
+      {
+        "version": 28,
+        "name": "v28_agent_receipts",
+        "applied_at": "2026-06-02T19:48:58.326605+00:00"
+      },
+      {
+        "version": 29,
+        "name": "v29_run_registry_and_steps",
+        "applied_at": "2026-06-02T21:12:53.357237+00:00"
+      },
+      {
+        "version": 30,
+        "name": "v30_retry_receipts",
+        "applied_at": "2026-06-02T21:27:40.227363+00:00"
+      },
+      {
+        "version": 31,
+        "name": "v31_daily_brief_delivery_receipts",
+        "applied_at": "2026-06-02T22:53:14.647007+00:00"
+      },
+      {
+        "version": 32,
+        "name": "v32_daily_brief_html_render_receipts",
+        "applied_at": "2026-06-02T23:18:03.080093+00:00"
+      },
+      {
+        "version": 33,
+        "name": "v33_daily_brief_notification_receipts",
+        "applied_at": "2026-06-02T23:38:11.255218+00:00"
+      },
+      {
+        "version": 34,
+        "name": "v34_daily_brief_open_receipts",
+        "applied_at": "2026-06-03T06:00:01.314016+00:00"
+      },
+      {
+        "version": 35,
+        "name": "v35_phase_08c_financial_fact_normalization_and_readiness",
+        "applied_at": "2026-06-03T13:30:32.215898+00:00"
+      },
+      {
+        "version": 36,
+        "name": "v36_phase_08c_review_required_confidence_label",
+        "applied_at": "2026-06-03T17:01:14.754848+00:00"
+      },
+      {
+        "version": 37,
+        "name": "v37_phase_08d_mcp_bridge_schema",
+        "applied_at": "2026-06-03T21:42:52.027890+00:00"
+      },
+      {
+        "version": 38,
+        "name": "v38_phase_09_retrieval_memory_agent_schema",
+        "applied_at": "2026-06-04T19:52:09.551383+00:00"
+      },
+      {
+        "version": 39,
+        "name": "v39_phase_09_review_burden_reduction",
+        "applied_at": "2026-06-05T13:24:17.523926+00:00"
+      },
+      {
+        "version": 40,
+        "name": "v40_construction_project_keyword_registry",
+        "applied_at": "2026-06-06T11:29:56.366635+00:00"
+      },
+      {
+        "version": 41,
+        "name": "v41_phase_10_local_action_intelligence",
+        "applied_at": "2026-06-07T21:25:34.249042+00:00"
+      },
+      {
+        "version": 42,
+        "name": "v42_phase_10a_raw_content_tables",
+        "applied_at": "2026-06-07T21:25:34.249042+00:00"
+      },
+      {
+        "version": 43,
+        "name": "v43_phase_10a_candidate_review",
+        "applied_at": "2026-06-09T00:00:02.753553+00:00"
+      },
+      {
+        "version": 44,
+        "name": "v44_graph_drive_item_modified_by_metadata",
+        "applied_at": "2026-06-09T13:26:04.368079+00:00"
+      },
+      {
+        "version": 45,
+        "name": "v45_email_followup_enrichments",
+        "applied_at": "2026-06-10T02:20:57.808491+00:00"
+      },
+      {
+        "version": 46,
+        "name": "v46_procore_structured_analytics_foundation",
+        "applied_at": "2026-06-10T16:23:59.901777+00:00"
+      },
+      {
+        "version": 47,
+        "name": "v47_procore_endpoint_specific_structured_projections",
+        "applied_at": "2026-06-10T19:47:14.173640+00:00"
+      },
+      {
+        "version": 48,
+        "name": "v48_procore_projection_column_reconciliation",
+        "applied_at": "2026-06-10T21:43:54.493356+00:00"
+      },
+      {
+        "version": 49,
+        "name": "v49_email_calendar_full_raw_content_and_projections",
+        "applied_at": "2026-06-10T22:54:43.042612+00:00"
+      },
+      {
+        "version": 50,
+        "name": "v50_phase_10_candidate_lifecycle_overlay",
+        "applied_at": "2026-06-12T00:00:03.617115+00:00"
+      },
+      {
+        "version": 51,
+        "name": "v51_phase_10_candidate_ranking_and_daily_brief_assembly",
+        "applied_at": "2026-06-12T00:00:03.617115+00:00"
+      },
+      {
+        "version": 52,
+        "name": "v52_phase_10_daily_brief_effectiveness_telemetry",
+        "applied_at": "2026-06-12T00:00:03.617115+00:00"
+      },
+      {
+        "version": 53,
+        "name": "v53_reconcile_ranking_policy_eval_items_ranking_run_id",
+        "applied_at": "2026-06-13T00:00:02.202165+00:00"
+      },
+      {
+        "version": 54,
+        "name": "v54_phase_10_daily_brief_new_today_change_events",
+        "applied_at": "2026-06-13T00:00:02.202165+00:00"
+      },
+      {
+        "version": 55,
+        "name": "v55_procore_budget_detail_rows_read_model",
+        "applied_at": "2026-06-17T07:43:47.877282+00:00"
+      },
+      {
+        "version": 56,
+        "name": "v56_procore_budget_detail_row_amount_columns",
+        "applied_at": "2026-06-17T08:08:11.040061+00:00"
+      },
+      {
+        "version": 57,
+        "name": "v57_procore_change_event_budget_modification_columns",
+        "applied_at": "2026-06-17T14:19:08.520968+00:00"
+      },
+      {
+        "version": 58,
+        "name": "v58_forecast_db_transition_foundation",
+        "applied_at": "2026-06-18T00:00:03.282156+00:00"
+      },
+      {
+        "version": 59,
+        "name": "v59_forecast_source_domain",
+        "applied_at": "2026-06-18T07:49:31.892278+00:00"
+      },
+      {
+        "version": 60,
+        "name": "v60_forecast_config_registry",
+        "applied_at": "2026-06-19T08:53:44.855540+00:00"
+      },
+      {
+        "version": 61,
+        "name": "v61_forecast_external_forecasts",
+        "applied_at": "2026-06-21T00:00:04.006641+00:00"
+      }
+    ],
+    "required_tables_present": {
+      "forecast_budget_details": true,
+      "forecast_cost_entries": true,
+      "forecast_monthly_actuals_by_budget_code": true
+    }
+  },
+  "source_domain": {
+    "distinct_project_keys": [
+      "tropical"
+    ],
+    "by_table": {
+      "forecast_budget_details": {
+        "tropical_rows": 127,
+        "total_rows": 127
+      },
+      "forecast_cost_entries": {
+        "tropical_rows": 6324,
+        "total_rows": 6324
+      },
+      "forecast_monthly_actuals_by_budget_code": {
+        "tropical_rows": 1081,
+        "total_rows": 1081
+      }
+    },
+    "tropical_total": 7532,
+    "all_projects_total": 7532
+  },
+  "safety": {
+    "live_db_written": false,
+    "live_db_migrated": false,
+    "live_db_projected": false,
+    "read_only": true
+  },
+  "report_path": "/tmp/fdcg_promo/audit_restore/live_db_provenance_audit_report.json"
+}

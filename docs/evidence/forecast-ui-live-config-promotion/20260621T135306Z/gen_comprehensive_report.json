@@ -1,0 +1,6 @@
+{
+  "command": "forecast-db-config-backed-generate",
+  "project": "tropical",
+  "status": "refused",
+  "reason": "config_fidelity_failed: materialized config does not round-trip to the snapshot digest"
+}

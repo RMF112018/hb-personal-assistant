@@ -1,0 +1,9 @@
+{
+  "backup_path": "/tmp/fdcg_promo/config-edit/promotions/30143beb454c/20260621_095547/backups/hb-personal-assistant.before-phaseE2-config-promotion.sqlite",
+  "exists": true,
+  "mtime_ns": 1782048816288363255,
+  "path": "/tmp/fdcg_promo/config-edit/promotions/30143beb454c/20260621_095547/backups/hb-personal-assistant.before-phaseE2-config-promotion.sqlite",
+  "schema_version": 61,
+  "sha256": "15b380facdee02a7ecfefb6141d7ee580e881c75141942450eaa93abb8434a3e",
+  "size_bytes": 3529723904
+}
