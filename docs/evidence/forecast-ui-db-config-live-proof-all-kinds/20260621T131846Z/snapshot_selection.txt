@@ -1,0 +1,6 @@
+schema_version: 61
+latest tropical snapshot (default selection):
+  config_snapshot_id: c3b4a67d22db47c74e696ae562fbf1c555e365fc66bb003a7b3312754415b698
+  item_count: 194
+  snapshot_sha256: d42f2db68635cb35c2067e10c3b5d685df0b84927fb24c13a5931b33e613847a
+  snapshot_name: tropical-phase16-live-config-20260619T085305Z
