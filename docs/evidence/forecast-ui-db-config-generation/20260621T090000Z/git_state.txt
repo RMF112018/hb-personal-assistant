@@ -1,0 +1,22 @@
+ A docs/architecture/280-forecast-ui-db-config-backed-generation.md
+ A docs/evidence/forecast-ui-db-config-generation/20260621T090000Z/cfr_test_posture.txt
+ A docs/evidence/forecast-ui-db-config-generation/20260621T090000Z/cfr_workflow_tests.txt
+ A docs/evidence/forecast-ui-db-config-generation/20260621T090000Z/db_schema_version.txt
+ A docs/evidence/forecast-ui-db-config-generation/20260621T090000Z/frontend_proof.txt
+ A docs/evidence/forecast-ui-db-config-generation/20260621T090000Z/hb_focused_tests.txt
+ A docs/evidence/forecast-ui-db-config-generation/20260621T090000Z/live_readonly_smoke_proof.txt
+ M frontend/src/lib/api.ts
+ M frontend/src/pages/ForecastRunCenterPage.test.tsx
+ M frontend/src/pages/ForecastRunCenterPage.tsx
+ M src/hb_assistant/construction/analytics/api.py
+ A src/hb_assistant/construction/analytics/forecast_db_config_run_dto.py
+ A src/hb_assistant/construction/analytics/forecast_db_config_run_service.py
+ M src/hb_assistant/construction/analytics/forecast_runtime_config.py
+ M subrepos/construction-financial-review/src/construction_financial_review/cli.py
+ M subrepos/construction-financial-review/src/construction_financial_review/config_registry.py
+ A subrepos/construction-financial-review/src/construction_financial_review/workflows/forecast_db_config_backed_generation.py
+ M tests/test_fastapi_analytics_app_shell.py
+ A tests/test_fastapi_forecast_db_config_run.py
+ A tests/test_forecast_db_config_backed_generation.py
+ M tests/test_forecast_runtime_config.py
+?? docs/evidence/forecast-ui-db-config-generation/20260621T090000Z/git_state.txt

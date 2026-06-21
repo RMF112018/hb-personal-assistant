@@ -211,6 +211,8 @@ def test_openapi_exposes_only_shell_routes(tmp_path: Path) -> None:
         "/api/forecast/config/edits/{edit_id}/promote",
         # Forecast Run Center — isolated context->analysis generation (Implementation Phase 3)
         "/api/forecast/runs",
+        "/api/forecast/runs/db-config",
+        "/api/forecast/runs/db-config/{run_id}",
         "/api/forecast/runs/{run_id}",
         # External-Forecast Evaluation — upload/map/evaluate + read results (Implementation Phase 4)
         "/api/forecast/external/preview",
