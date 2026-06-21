@@ -1,0 +1,17 @@
+SMOKE_OK {
+  "write_roots_created": [
+    "runs",
+    "eval",
+    "config-edit"
+  ],
+  "data_root_empty": true,
+  "surfaces_ready": {
+    "catalog": false,
+    "config": false,
+    "run_center": true,
+    "external_eval": false,
+    "config_edit": false,
+    "config_promotion": false
+  },
+  "redaction_leaks": []
+}

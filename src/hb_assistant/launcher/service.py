@@ -9,6 +9,8 @@ than failing the launch.
 
 from __future__ import annotations
 
+import json
+import os
 import shutil
 import sys
 from pathlib import Path
@@ -44,19 +46,85 @@ class LauncherService:
 
         Dev children get an HB_PA_CONFIG pointing at a dev config file so they resolve
         the isolated dev app-support root; production children inherit the current env.
+        Both environments additionally get default forecast WRITE-roots (see
+        ``_forecast_default_env``) so the launched app serves the write-backed forecast
+        surfaces out of the box.
         """
-        if self.profile.environment != "dev":
+        env: dict[str, str] = {}
+        if self.profile.environment == "dev":
+            cfg_path = self.profile.app_support_root / "launcher-dev-config.yml"
+            if not cfg_path.exists():
+                cfg_path.parent.mkdir(parents=True, exist_ok=True)
+                vault = self.profile.path_policy.get_vault_root()
+                cfg_path.write_text(
+                    "paths:\n"
+                    f"  application_support_root: {self.profile.app_support_root}\n"
+                    f"  obsidian_vault: {vault}\n"
+                )
+            env["HB_PA_CONFIG"] = str(cfg_path)
+        env.update(self._forecast_default_env())
+        return env
+
+    def _forecast_settings(self) -> dict[str, Any]:
+        """Read this profile's forecast settings file (whitelist-tolerant; {} on any error)."""
+        p = self.profile.app_support_root / "analytics" / "forecast_runtime_config.json"
+        if not p.exists():
             return {}
-        cfg_path = self.profile.app_support_root / "launcher-dev-config.yml"
-        if not cfg_path.exists():
-            cfg_path.parent.mkdir(parents=True, exist_ok=True)
-            vault = self.profile.path_policy.get_vault_root()
-            cfg_path.write_text(
-                "paths:\n"
-                f"  application_support_root: {self.profile.app_support_root}\n"
-                f"  obsidian_vault: {vault}\n"
-            )
-        return {"HB_PA_CONFIG": str(cfg_path)}
+        try:
+            data = json.loads(p.read_text(encoding="utf-8"))
+        except Exception:
+            return {}
+        return data if isinstance(data, dict) else {}
+
+    def _forecast_default_env(self) -> dict[str, str]:
+        """Default the 3 forecast WRITE-roots under this profile's app-support when unconfigured.
+
+        Read-roots (package_roots / data_root / db_path) are NEVER defaulted — they point at live
+        inputs that must be configured explicitly. A default is injected only when the key is set
+        neither in the inherited process env nor in the profile's settings file, so an operator's
+        explicit configuration always wins. The directories themselves are created at app startup by
+        the backend's forecast lifespan hook (the single mutation site).
+        """
+        from hb_assistant.construction.analytics.forecast_external_ingest import ENV_EVAL_ROOT
+        from hb_assistant.construction.analytics.forecast_run_service import ENV_RUNS_ROOT
+        from hb_assistant.construction.analytics.forecast_runtime_config import ENV_CONFIG_EDIT_ROOT
+
+        base = self.profile.app_support_root / "analytics" / "forecast"
+        settings = self._forecast_settings()
+        mapping = (
+            (ENV_RUNS_ROOT, "runs_root", base / "runs"),
+            (ENV_EVAL_ROOT, "eval_root", base / "eval"),
+            (ENV_CONFIG_EDIT_ROOT, "config_edit_root", base / "config-edit"),
+        )
+        out: dict[str, str] = {}
+        for env_key, settings_key, default_path in mapping:
+            if os.environ.get(env_key) or settings.get(settings_key):
+                continue
+            out[env_key] = str(default_path)
+        return out
+
+    def _forecast_readiness(self) -> dict[str, Any]:
+        """Run the forecast bootstrap under the child env and return its redaction-safe report.
+
+        Non-fatal: a failure degrades to a coded ``unavailable`` status (path-free) and never
+        blocks the launch. The child env is applied to ``os.environ`` only for the duration of the
+        call so the parent launcher process resolves roots exactly as the spawned backend will.
+        """
+        overrides = self._child_env()
+        saved = {k: os.environ.get(k) for k in overrides}
+        try:
+            os.environ.update(overrides)
+            from hb_assistant.construction.analytics.forecast_bootstrap import ensure_forecast_roots
+
+            return ensure_forecast_roots()
+        except Exception as exc:
+            return {"status": "unavailable", "error_class": type(exc).__name__}
+        finally:
+            for k, v in saved.items():
+                if v is None:
+                    os.environ.pop(k, None)
+                else:
+                    os.environ[k] = v
 
     def build_specs(self) -> list[ManagedProcessSpec]:
         repo_root = str(self.profile.path_policy.resolve_repo_root())
@@ -228,6 +296,10 @@ class LauncherService:
         result = self.status(reconcile=not plan_only)
         if preflight_block is not None:
             result["preflight"] = preflight_block
+        # Forecast launch bootstrap: ensure write-roots + report readiness. Skipped for plan-only so
+        # a dry plan stays side-effect-free. Non-fatal; the block is redaction-safe.
+        if not plan_only:
+            result["forecast_readiness"] = self._forecast_readiness()
         return result
 
     def open_session(
