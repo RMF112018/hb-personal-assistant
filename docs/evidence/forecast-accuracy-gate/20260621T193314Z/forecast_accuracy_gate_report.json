@@ -1,0 +1,40 @@
+{
+  "methodology": "Reconstruct each near-complete code's state at 40/60/80% owner progress (backtest_strong cohort + as-of truncation), feed the as-of per-method EACs through the real reconcile_final.select_final (same calibration weights production uses), and score the blended recommended_final_cost vs realized actual-to-date. MAPE/bias = mean over observations; coverage = fraction with realized <= worst_credible; naive baseline = trust the ERP projected cost. Negative blend_minus_best / reconciled_minus_naive => the production blend adds value.",
+  "metrics": {
+    "best_single_method": "commitment_exposure_eac",
+    "best_single_method_mape": "0.0739",
+    "blend_minus_best_method_delta": "0.3386",
+    "cohort_size": 10,
+    "naive_erp_mape": "0.0526",
+    "observation_count": 29,
+    "per_target_mape": {
+      "0.40": "0.5951",
+      "0.60": "0.3635",
+      "0.80": "0.2642"
+    },
+    "reconciled_final_mape": "0.4125",
+    "reconciled_final_mean_bias": "0.3296",
+    "reconciled_minus_naive_delta": "0.3600",
+    "worst_credible_coverage_rate": "0.8966"
+  },
+  "package_scored": "/tmp/accgate/forecast_accuracy_next_package_tropical_20260101_000000",
+  "project_key": "tropical",
+  "reconstruction_fidelity_caveats": [
+    "Uniform 'medium' reliability for as-of estimates; calibration weights carry per-method differentiation (production assigns varied reliability).",
+    "Neutral trend signal (no reconstructed supports_overrun bump beyond the ERP-exceedance path); owner SOV value not reconstructed.",
+    "Schedule method has no history and is absent (same as backtest_strong).",
+    "Realized truth = current actual-to-date, valid only for the owner>=95% near-complete cohort."
+  ],
+  "schema_version": 1,
+  "thresholds": {
+    "bias_abs_pass": "0.10",
+    "coverage_pass": "0.90",
+    "mape_fail": "0.30",
+    "mape_pass": "0.15",
+    "min_cohort": 8
+  },
+  "verdict": "not_ready",
+  "verdict_notes": [
+    "reconciled MAPE 0.4125 exceeds fail threshold 0.30"
+  ]
+}

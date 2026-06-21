@@ -784,6 +784,35 @@ def cmd_model_engines_readiness(*, context_package: str, db_path: str, work_root
     return 0 if report.get("decision") == DECISION_READY else 1
 
 
+def cmd_forecast_accuracy_gate(*, package: str | None, data_root: str | None, work_root: str,
+                               project: str) -> int:
+    """Production-forecast accuracy/trust gate (verdict over an existing intelligence package).
+
+    Reads the reconciled as-of backtest emitted by forecast-intelligence and prints a deterministic
+    go/no-go verdict on whether the production reconciled forecast is accurate + unbiased enough to
+    trust. Evidence only. rc 0 = pass; rc 1 = review/not-ready/insufficient evidence (gate ran);
+    rc 3 = controlled refusal (unsafe/missing input)."""
+    from .workflows.forecast_accuracy_gate import (
+        VERDICT_PASS,
+        ForecastAccuracyGateError,
+        run_forecast_accuracy_gate,
+    )
+    try:
+        with contextlib.redirect_stdout(sys.stderr):
+            report = run_forecast_accuracy_gate(
+                package=Path(package) if package else None,
+                data_root=Path(data_root) if data_root else None,
+                work_root=Path(work_root), project_key=project)
+    except ForecastAccuracyGateError as exc:
+        print(json.dumps({"command": "forecast-accuracy-gate", "project": project,
+                          "status": "refused", "reason": str(exc)}, indent=2))
+        return 3
+    out = {"command": "forecast-accuracy-gate"}
+    out.update(report)
+    print(json.dumps(out, indent=2))
+    return 0 if report.get("verdict") == VERDICT_PASS else 1
+
+
 def cmd_temp_db_readiness_rehearsal(*, source_package: str, work_root: str, context_stamp: str,
                                     db_path: str | None, project: str) -> int:
     """Controlled temp-DB preparation + readiness rehearsal (Phase 11).
@@ -1341,6 +1370,18 @@ def build_parser() -> argparse.ArgumentParser:
                           "not under the live data root).")
     mer.add_argument("--gate-mode", default="warn", choices=("warn", "strict"),
                      help="Forecasting semantic-gate mode (default: warn).")
+    # Production-forecast accuracy/trust gate — verdict over an existing intelligence package.
+    fag = sub.add_parser("forecast-accuracy-gate")
+    fag.add_argument("--project", required=True, help="Project key (only 'tropical').")
+    fag.add_argument("--package", default=None,
+                     help="Explicit forecast_accuracy_next_package_* directory to score "
+                          "(else use --data-root to discover the latest).")
+    fag.add_argument("--data-root", default=None,
+                     help="Data root to discover the latest forecast_accuracy_next_package_<project>_* "
+                          "(used when --package is omitted).")
+    fag.add_argument("--work-root", required=True,
+                     help="Explicit work root (report under <work-root>/forecast_accuracy_gate; "
+                          "not under the live data root).")
     # Phase 11 — controlled temp-DB preparation + readiness rehearsal from an explicit source package.
     tdr = sub.add_parser("temp-db-readiness-rehearsal")
     tdr.add_argument("--project", required=True, help="Project key (only 'tropical' in Phase 11).")
@@ -1769,6 +1810,9 @@ def main(argv=None) -> int:
         return cmd_model_engines_readiness(context_package=args.context_package,
                                            db_path=args.db_path, work_root=args.work_root,
                                            project=args.project, gate_mode=args.gate_mode)
+    if args.command == "forecast-accuracy-gate":
+        return cmd_forecast_accuracy_gate(package=args.package, data_root=args.data_root,
+                                          work_root=args.work_root, project=args.project)
     if args.command == "temp-db-readiness-rehearsal":
         return cmd_temp_db_readiness_rehearsal(source_package=args.source_package,
                                                work_root=args.work_root,

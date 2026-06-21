@@ -41,7 +41,7 @@ from ..forecast_dormancy import suppress as dormancy_suppress
 from ..schedule_analysis import schedule_io, schedule_mapping, schedule_rollup
 from . import (backtest_strong, change_explanation, confidence_intel, db_inventory,
                estimators_uncapped, evidence, overrun_register, reconcile_final,
-               schedule_association, trend)
+               reconciled_backtest, schedule_association, trend)
 
 SUBPROJECT_ROOT = Path(__file__).resolve().parents[3]
 GENERATOR_NAME = "construction_financial_review.forecast_intelligence.generate_forecast_intelligence_package"
@@ -289,6 +289,9 @@ def generate(project_key: str, cfg: dict, data_root: Optional[Path] = None,
     write_jsonl(out / "data_quality_warnings.jsonl", warnings)
     write_json(out / "model_backtest_results.json", _backtest_results(bt))
     write_json(out / "model_calibration_summary.json", _calibration_summary(bt))
+    # As-of backtest of the PRODUCTION reconciled forecast (trust gate scoring; evidence only).
+    write_json(out / "reconciled_forecast_backtest.json", reconciled_backtest.run_reconciled_backtest(
+        context_rows, owner_history, project_key, calibration, bt.get("summary_by_method")))
     write_jsonl(out / "llm" / "forecast_narratives.jsonl", narratives)
     write_jsonl(out / "llm" / "llm_receipts.jsonl", receipts)
 
