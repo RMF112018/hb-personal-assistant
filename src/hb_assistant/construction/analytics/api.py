@@ -1342,6 +1342,31 @@ def create_app(*, db_path: str | None = None) -> Any:
         svc = _forecast_service()
         return _forecast_call(svc.read_forecast_rows, package_id)
 
+    # Forecast Review surfaces (Implementation Phase 5). Read-only over package files.
+    @app.get("/api/forecast/packages/{package_id}/monthly")
+    def forecast_package_monthly(package_id: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        svc = _forecast_service()
+        return _forecast_call(svc.read_monthly_forecast, package_id)
+
+    @app.get("/api/forecast/packages/{package_id}/probability")
+    def forecast_package_probability(package_id: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        svc = _forecast_service()
+        return _forecast_call(svc.read_probability, package_id)
+
+    @app.get("/api/forecast/packages/{package_id}/risk-register")
+    def forecast_package_risk_register(package_id: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        svc = _forecast_service()
+        return _forecast_call(svc.read_risk_register, package_id)
+
+    @app.get("/api/forecast/packages/{package_id}/top-risks")
+    def forecast_package_top_risks(package_id: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        svc = _forecast_service()
+        return _forecast_call(svc.read_top_risks, package_id)
+
     # Forecast configuration — read-only viewer over the v60 config-registry snapshot
     # (Implementation Phase 2). Read-only DB access (mode=ro); viewer-readable; fail-closed.
     def _forecast_config_service() -> Any:

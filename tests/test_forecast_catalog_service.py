@@ -92,6 +92,11 @@ def _write_package(
     rows: list[dict] | None = None,
     review: list[dict] | None = None,
     raw_rows_text: str | None = None,
+    monthly: list[dict] | None = None,
+    monthly_project: list[dict] | None = None,
+    probability: list[dict] | None = None,
+    risk_register: list[dict] | None = None,
+    top_risks: list[dict] | None = None,
 ) -> Path:
     pkg = root / dir_name
     pkg.mkdir(parents=True)
@@ -109,6 +114,24 @@ def _write_package(
         (pkg / "integrated_human_review_queue.jsonl").write_text(
             "\n".join(json.dumps(r) for r in review), encoding="utf-8"
         )
+    if monthly is not None:
+        (pkg / "integrated_monthly_forecast_by_budget_code.jsonl").write_text(
+            "\n".join(json.dumps(r) for r in monthly), encoding="utf-8"
+        )
+    if monthly_project is not None:
+        (pkg / "integrated_monthly_project_forecast.jsonl").write_text(
+            "\n".join(json.dumps(r) for r in monthly_project), encoding="utf-8"
+        )
+    if probability is not None:
+        (pkg / "integrated_probability_by_budget_code.jsonl").write_text(
+            "\n".join(json.dumps(r) for r in probability), encoding="utf-8"
+        )
+    if risk_register is not None:
+        (pkg / "integrated_risk_register.jsonl").write_text(
+            "\n".join(json.dumps(r) for r in risk_register), encoding="utf-8"
+        )
+    if top_risks is not None:
+        (pkg / "top_overrun_risks.json").write_text(json.dumps(top_risks), encoding="utf-8")
     return pkg
 
 
@@ -121,8 +144,63 @@ def populated_root(tmp_path: Path) -> Path:
         dir_name=f"forecast_comprehensive_package_tropical_{STAMP}",
         rows=FINAL_COST_ROWS,
         review=REVIEW_ROWS,
+        monthly=MONTHLY_ROWS,
+        monthly_project=MONTHLY_PROJECT_ROWS,
+        probability=PROBABILITY_ROWS,
+        risk_register=RISK_ROWS,
+        top_risks=TOP_RISK_ROWS,
     )
     return root
+
+
+# Phase 5 review-surface fixtures.
+MONTHLY_ROWS = [
+    {
+        "cost_code": "03-01-025",
+        "budget_code_key": "0000.03-01-025.MAT",
+        "integrated_cost_to_complete": "2401.29",
+        "monthly_costs": [
+            {"forecast_month": "2026-06", "integrated_month_cost": "282.07"},
+            {"forecast_month": "2026-07", "integrated_month_cost": "423.84"},
+        ],
+    }
+]
+MONTHLY_PROJECT_ROWS = [
+    {"forecast_month": "2026-06", "integrated_month_cost": "282.07"},
+    {"forecast_month": "2026-07", "integrated_month_cost": "423.84"},
+]
+PROBABILITY_ROWS = [
+    {
+        "cost_code": "03-01-025",
+        "budget_code_key": "0000.03-01-025.MAT",
+        "actual_cost_to_date": "1032.40",
+        "integrated_p10": "2103.22",
+        "integrated_p50": "3561.74",
+        "integrated_p80": "5487.45",
+        "integrated_p90": "7006.87",
+        "integrated_p95": "8812.82",
+    }
+]
+RISK_ROWS = [
+    {
+        "cost_code": "03-01-025",
+        "budget_code_key": "0000.03-01-025.MAT",
+        "integrated_recommended_final_cost": "3561.74",
+        "integrated_minus_accepted_final_cost": "128.05",
+        "conflict_count": 2,
+        "max_conflict_severity": "high",
+        "review_priority": "medium",
+    }
+]
+TOP_RISK_ROWS = [
+    {
+        "cost_code": "03-01-413",
+        "budget_code_key": "0000.03-01-413.LAB",
+        "integrated_recommended_final_cost": "120000.00",
+        "integrated_minus_accepted_final_cost": "15000.00",
+        "integrated_direction": "over",
+    }
+]
 
 
 # -- happy path ---------------------------------------------------------------
@@ -173,6 +251,87 @@ def test_summary_validation_manifest_rows_review(populated_root: Path) -> None:
     review = svc.read_review_items(pid)
     assert review["item_count"] == 1
     assert review["items"][0]["review_priority"] == "medium"
+
+
+# -- Phase 5 review surfaces --------------------------------------------------
+
+
+def test_review_surfaces_read_and_redact(populated_root: Path) -> None:
+    svc = ForecastCatalogService(package_roots=[populated_root])
+    pid = svc.list_packages("tropical")["packages"][0]["package_id"]
+
+    monthly = svc.read_monthly_forecast(pid)
+    assert monthly["monthly_available"] is True
+    assert monthly["row_count"] == 1
+    assert monthly["rows"][0]["cost_to_complete"] == "2401.29"
+    assert monthly["rows"][0]["months"][0] == {"forecast_month": "2026-06", "amount": "282.07"}
+    assert monthly["project_monthly"] == [
+        {"forecast_month": "2026-06", "amount": "282.07"},
+        {"forecast_month": "2026-07", "amount": "423.84"},
+    ]
+    assert find_redaction_leaks(monthly) == []
+
+    prob = svc.read_probability(pid)
+    assert prob["probability_available"] is True
+    assert prob["rows"][0]["p50"] == "3561.74"
+    assert prob["rows"][0]["p95"] == "8812.82"
+    assert prob["rows"][0]["actual_cost_to_date"] == "1032.40"
+    assert find_redaction_leaks(prob) == []
+
+    risk = svc.read_risk_register(pid)
+    assert risk["risk_register_available"] is True
+    assert risk["rows"][0]["max_conflict_severity"] == "high"
+    assert risk["rows"][0]["variance_amount"] == "128.05"
+    assert risk["rows"][0]["conflict_count"] == 2
+    assert find_redaction_leaks(risk) == []
+
+    top = svc.read_top_risks(pid)
+    assert top["top_risks_available"] is True
+    assert top["rows"][0]["overrun_amount"] == "15000.00"
+    assert top["rows"][0]["direction"] == "over"
+    assert find_redaction_leaks(top) == []
+
+
+def test_review_surfaces_absent_files_degrade_gracefully(tmp_path: Path) -> None:
+    # A non-comprehensive package carries none of the review-surface files.
+    root = tmp_path / "2026-June"
+    root.mkdir()
+    _write_package(
+        root,
+        dir_name=f"forecast_context_package_tropical_{STAMP}",
+        rows=None,
+        review=None,
+    )
+    svc = ForecastCatalogService(package_roots=[root])
+    pid = svc.list_packages("tropical")["packages"][0]["package_id"]
+    assert svc.read_monthly_forecast(pid)["monthly_available"] is False
+    assert svc.read_probability(pid)["probability_available"] is False
+    assert svc.read_risk_register(pid)["risk_register_available"] is False
+    assert svc.read_top_risks(pid)["top_risks_available"] is False
+    # All still return well-formed, leak-free payloads with empty rows.
+    for payload in (
+        svc.read_monthly_forecast(pid),
+        svc.read_probability(pid),
+        svc.read_risk_register(pid),
+        svc.read_top_risks(pid),
+    ):
+        assert payload["row_count"] == 0
+        assert payload["rows"] == []
+        assert find_redaction_leaks(payload) == []
+
+
+def test_top_risks_ignores_non_list_json(tmp_path: Path) -> None:
+    # top_overrun_risks.json must be a JSON array; a stray object must not crash the reader.
+    root = tmp_path / "2026-June"
+    root.mkdir()
+    pkg = _write_package(root, dir_name=f"forecast_comprehensive_package_tropical_{STAMP}")
+    (pkg / "top_overrun_risks.json").write_text('{"not": "a list"}', encoding="utf-8")
+    svc = ForecastCatalogService(package_roots=[root])
+    pid = svc.list_packages("tropical")["packages"][0]["package_id"]
+    out = svc.read_top_risks(pid)
+    assert out["top_risks_available"] is True
+    assert out["rows"] == []
+    assert find_redaction_leaks(out) == []
 
 
 # -- correction #5: fail-closed roots -----------------------------------------
