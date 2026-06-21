@@ -1,0 +1,8 @@
+# Isolated model-engine runtime (Python 3.12) — NEVER installed into the 3.14 core venv.
+# statsforecast pins scipy<1.16; on Python 3.12 that resolves to prebuilt wheels (no source build).
+# Pinned for byte-deterministic forecasts across runs.
+statsforecast==2.0.3
+scipy>=1.14,<1.16
+numpy>=2.1,<3
+numba>=0.61
+pandas>=2.2
