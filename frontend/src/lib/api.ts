@@ -723,6 +723,33 @@ export function getForecastConfigItem(snapshotId: string, itemId: string) {
   );
 }
 
+/* Forecast config editing — isolated proposals (Implementation Phase E). An operator proposes edits
+ * to a chosen snapshot; the backend seeds from the live snapshot (read-only), applies edits in an
+ * isolated config-edit root, runs the CFR import→snapshot→materialize→parity pipeline, and returns a
+ * redacted report (parity pass/fail + changed summary). No live-DB writes. POST=operator, GET=viewer. */
+export interface ForecastConfigEdit {
+  domain: string;
+  op?: 'modify' | 'add';
+  item_key: string;
+  fields: Record<string, unknown>;
+}
+export function proposeForecastConfigEdit(payload: {
+  base_snapshot_id: string;
+  edits: ForecastConfigEdit[];
+  project_key?: string;
+}) {
+  return fetchJson('/api/forecast/config/edits', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+export function getForecastConfigEdits() {
+  return fetchJson('/api/forecast/config/edits');
+}
+export function getForecastConfigEdit(editId: string) {
+  return fetchJson(`/api/forecast/config/edits/${encodeURIComponent(editId)}`);
+}
+
 /* Forecast Run Center — isolated context→analysis generation (Implementation Phase 3).
  * POST triggers a deterministic generation into an isolated work-root (operator); GET reads runs.
  * Responses are advisory metadata only (no paths, run stamps, or internals). */
@@ -789,6 +816,7 @@ export interface ForecastRuntimeConfigInput {
   eval_root?: string | null;
   db_path?: string | null;
   cfr_src?: string | null;
+  config_edit_root?: string | null;
 }
 export function getForecastRuntimeStatus() {
   return fetchJson('/api/forecast/runtime/status');
@@ -900,6 +928,10 @@ export const api = {
   getForecastConfigSnapshot,
   getForecastConfigDomain,
   getForecastConfigItem,
+  // Forecast config editing — isolated proposals (Implementation Phase E).
+  proposeForecastConfigEdit,
+  getForecastConfigEdits,
+  getForecastConfigEdit,
   // Forecast Run Center (Implementation Phase 3).
   startForecastRun,
   getForecastRuns,

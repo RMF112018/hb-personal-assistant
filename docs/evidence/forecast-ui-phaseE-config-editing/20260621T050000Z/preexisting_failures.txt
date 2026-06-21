@@ -1,0 +1,11 @@
+Phase E suites are fully green:
+  tests/test_forecast_config_edit_service.py (11) + tests/test_fastapi_forecast_config_edit.py (7)
+  + runtime/app-shell/config-viewer regression  → 41 passed (focused) / 56 passed (with config viewer).
+  CFR subrepo: 565 passed (Phase E imports CFR, changes none).
+  Frontend: typecheck/copycheck/build clean; new page test 3/3.
+
+Pre-existing failures NOT caused by Phase E (unchanged from prior phases):
+  - frontend SettingsPage.test.tsx x5 (documented pre-existing).
+  - backend env-sensitive: test_environment_live_flags_off_by_default, test_live_refresh_fails_closed.
+  - CFR phase10-14 == 61 asserts fail ONLY under a broad run due to the working tree's uncommitted
+    v62 Procore migration (synthetic temp DB reports 62) — unrelated to Phase E.

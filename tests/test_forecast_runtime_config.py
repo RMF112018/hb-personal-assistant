@@ -24,6 +24,7 @@ ENV_VARS = (
     "HB_FORECAST_EVAL_ROOT",
     "HB_FORECAST_DB_PATH",
     "HB_FORECAST_CFR_SRC",
+    "HB_FORECAST_CONFIG_EDIT_ROOT",
 )
 
 
@@ -117,6 +118,7 @@ def test_status_valid_when_fully_configured(cfg_path: Path, tmp_path: Path) -> N
         eval_root=str(eval_root),
         db_path=str(db),
         cfr_src=str(cfr),
+        config_edit_root=str(tmp_path / "config_edits"),
     )
     status = rc.build_runtime_status()
     assert all(r["valid"] for r in status["roots"].values())
@@ -125,6 +127,7 @@ def test_status_valid_when_fully_configured(cfg_path: Path, tmp_path: Path) -> N
         "config": True,
         "run_center": True,
         "external_eval": True,
+        "config_edit": True,
     }
     assert find_redaction_leaks(status) == []
 
@@ -151,6 +154,16 @@ def test_save_refuses_eval_root_under_settings_only_data_root(
     with pytest.raises(rc.ForecastRuntimeConfigError) as exc:
         rc.save_runtime_config({"data_root": str(data), "eval_root": str(data / "ev")})
     assert exc.value.args[0] == f"eval_root:{rc.BLOCKER_UNDER_LIVE_DATA_ROOT}"
+    assert not cfg_path.exists()
+
+
+def test_save_refuses_config_edit_root_under_data_root(cfg_path: Path, tmp_path: Path) -> None:
+    # The Phase E config-edit root is a write root and must not sit under the live data root.
+    data = tmp_path / "data"
+    data.mkdir()
+    with pytest.raises(rc.ForecastRuntimeConfigError) as exc:
+        rc.save_runtime_config({"data_root": str(data), "config_edit_root": str(data / "edits")})
+    assert exc.value.args[0] == f"config_edit_root:{rc.BLOCKER_UNDER_LIVE_DATA_ROOT}"
     assert not cfg_path.exists()
 
 

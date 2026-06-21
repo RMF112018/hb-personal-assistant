@@ -41,6 +41,12 @@ class ForecastExternalEvaluateRequest(BaseModel):
     project_key: str = "tropical"
 
 
+class ForecastConfigEditRequest(BaseModel):
+    base_snapshot_id: str
+    edits: list[dict[str, Any]]
+    project_key: str = "tropical"
+
+
 class ForecastRuntimeConfigRequest(BaseModel):
     package_roots: list[str] | None = None
     data_root: str | None = None
@@ -48,6 +54,7 @@ class ForecastRuntimeConfigRequest(BaseModel):
     eval_root: str | None = None
     db_path: str | None = None
     cfr_src: str | None = None
+    config_edit_root: str | None = None
 
 
 class ProcoreOAuthExchangeRequest(BaseModel):
@@ -1433,6 +1440,87 @@ def create_app(*, db_path: str | None = None) -> Any:
     ) -> dict[str, Any]:
         del role
         return _forecast_config_call(_forecast_config_service().read_item, snapshot_id, item_id)
+
+    # Forecast config editing — isolated proposals (Implementation Phase E). An operator proposes
+    # edits; the service seeds from a chosen live snapshot (mode=ro), applies edits in an isolated
+    # config-edit root, runs the CFR import→snapshot→materialize→parity pipeline in an isolated temp
+    # DB, and returns a redacted report. ZERO live-DB / live-data-root writes. POST=operator, GET=viewer.
+    def _forecast_config_edit_service() -> Any:
+        from hb_assistant.construction.analytics.forecast_config_edit_service import (
+            ForecastConfigEditService,
+        )
+        from hb_assistant.construction.analytics.forecast_runtime_config import (
+            resolve_cfr_src,
+            resolve_config_edit_root_value,
+            resolve_db_path,
+        )
+
+        return ForecastConfigEditService(
+            config_edit_root=resolve_config_edit_root_value(None),
+            db_path=resolve_db_path(db_path),
+            cfr_src=resolve_cfr_src(None),
+        )
+
+    def _forecast_config_edit_call(fn: Any, *args: Any) -> dict[str, Any]:
+        from fastapi import HTTPException
+
+        from hb_assistant.construction.analytics.forecast_config_edit_service import (
+            ForecastConfigEditError,
+        )
+
+        try:
+            return fn(*args)
+        except ForecastConfigEditError as exc:
+            msg = str(exc)
+            if msg.startswith("unknown snapshot_id"):
+                raise HTTPException(status_code=404, detail="forecast_config_snapshot_not_found")
+            if msg.startswith("unknown edit_id"):
+                raise HTTPException(status_code=404, detail="forecast_config_edit_not_found")
+            if (
+                msg.startswith("invalid input")
+                or "deprecated" in msg
+                or msg.startswith("unsupported project_key")
+                or "not editable" in msg
+                or "not a decimal" in msg
+                or "must be" in msg
+                or "value rejected" in msg
+                or msg.startswith("unknown item_key")
+                or "has no config items" in msg
+            ):
+                raise HTTPException(status_code=400, detail="forecast_config_edit_invalid_input")
+            # not configured / under data root / CFR unavailable / DB not ro-openable — fail closed.
+            raise HTTPException(status_code=503, detail="forecast_config_edit_not_configured")
+
+    @app.post("/api/forecast/config/edits")
+    def forecast_config_edit_create(
+        request: ForecastConfigEditRequest, role: dict[str, str] = role_dep
+    ) -> dict[str, Any]:
+        require_operator_role(role)  # proposes a write into the isolated config-edit root
+        return _forecast_config_edit_call(
+            _forecast_config_edit_service().propose_config_edit,
+            request.base_snapshot_id,
+            request.edits,
+            request.project_key,
+        )
+
+    @app.get("/api/forecast/config/edits")
+    def forecast_config_edits_list(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        return _forecast_config_edit_call(_forecast_config_edit_service().list_edits)
+
+    @app.get("/api/forecast/config/edits/{edit_id}")
+    def forecast_config_edit_detail(edit_id: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        return _forecast_config_edit_call(_forecast_config_edit_service().read_edit, edit_id)
+
+    @app.get("/api/forecast/config/edits/{edit_id}/manifest")
+    def forecast_config_edit_manifest(
+        edit_id: str, role: dict[str, str] = role_dep
+    ) -> dict[str, Any]:
+        del role
+        return _forecast_config_edit_call(
+            _forecast_config_edit_service().read_edit_manifest, edit_id
+        )
 
     # Forecast Run Center — isolated context->analysis generation (Implementation Phase 3).
     # POST executes + writes (isolated work-root only) → operator role. GET reads runs → viewer.

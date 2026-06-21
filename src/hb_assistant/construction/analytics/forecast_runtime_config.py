@@ -45,6 +45,11 @@ from hb_assistant.construction.analytics.forecast_run_service import (
 _SURFACE = "analytics.forecast_runtime"
 _CONFIG_NAME = "forecast_runtime_config.json"
 
+# Phase E config-edit root. Defined here (the config module owns the resolution layer); the
+# config-edit service imports this name so there is exactly one spelling. It is a WRITE root:
+# isolated config-edit proposals are written under it, so it must be outside the live data root.
+ENV_CONFIG_EDIT_ROOT = "HB_FORECAST_CONFIG_EDIT_ROOT"
+
 # Whitelisted keys. An unknown key in the on-disk file can never inject behaviour.
 DEFAULT_CONFIG: dict[str, Any] = {
     "package_roots": [],  # list[str]; absolute existing dirs (read-only)
@@ -53,6 +58,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "eval_root": None,  # str|None; absolute, creatable, MUST be outside data_root
     "db_path": None,  # str|None; read-only source-domain DB; not write-guarded
     "cfr_src": None,  # str|None; absolute existing dir; optional (defaults to subrepo path)
+    "config_edit_root": None,  # str|None; absolute, creatable, MUST be outside data_root (write)
     "schema_version": 1,  # LOCAL file version only — NOT the DB schema; do not conflate
 }
 
@@ -154,6 +160,12 @@ def resolve_cfr_src(explicit: str | None = None) -> str | None:
     return _first(explicit, os.environ.get(ENV_CFR_SRC), _load_config().get("cfr_src"))
 
 
+def resolve_config_edit_root_value(explicit: str | None = None) -> str | None:
+    return _first(
+        explicit, os.environ.get(ENV_CONFIG_EDIT_ROOT), _load_config().get("config_edit_root")
+    )
+
+
 # -- non-mutating validation (status + save) ----------------------------------
 
 
@@ -230,6 +242,8 @@ def build_runtime_status() -> dict[str, Any]:
     db_raw = _first(db_env, db_settings)
     cfr_env, cfr_settings = os.environ.get(ENV_CFR_SRC), cfg.get("cfr_src")
     cfr_raw = _first(cfr_env, cfr_settings)
+    cedit_env, cedit_settings = os.environ.get(ENV_CONFIG_EDIT_ROOT), cfg.get("config_edit_root")
+    cedit_raw = _first(cedit_env, cedit_settings)
 
     data_blocker = _existing_dir_blocker(data_raw)
     runs_blocker = _write_root_blocker(runs_raw, data_raw)
@@ -237,6 +251,7 @@ def build_runtime_status() -> dict[str, Any]:
     db_blocker = _db_blocker(db_raw)
     # cfr_src is optional: unset means "use the bundled subrepo default" (valid).
     cfr_blocker = _existing_dir_blocker(cfr_raw) if cfr_raw else None
+    config_edit_blocker = _write_root_blocker(cedit_raw, data_raw)
 
     def _root(blocker: str | None, source: str | None, **extra: Any) -> dict[str, Any]:
         return {
@@ -258,6 +273,7 @@ def build_runtime_status() -> dict[str, Any]:
         "eval_root": _root(eval_blocker, _source(eval_env, eval_settings)),
         "db_path": _root(db_blocker, _source(db_env, db_settings)),
         "cfr_src": _root(cfr_blocker, _source(cfr_env, cfr_settings, default=True)),
+        "config_edit_root": _root(config_edit_blocker, _source(cedit_env, cedit_settings)),
     }
 
     surfaces_ready = {
@@ -267,6 +283,8 @@ def build_runtime_status() -> dict[str, Any]:
         "external_eval": (
             pkg_blocker is None and eval_blocker is None and db_blocker is None
         ),
+        # Config-edit proposals seed from the live DB (db_path) and write under config_edit_root.
+        "config_edit": config_edit_blocker is None and db_blocker is None,
     }
 
     return {
@@ -301,7 +319,15 @@ def read_runtime_config_admin() -> dict[str, Any]:
 
 # -- write (fail-closed) ------------------------------------------------------
 
-_WRITABLE_KEYS = ("package_roots", "data_root", "runs_root", "eval_root", "db_path", "cfr_src")
+_WRITABLE_KEYS = (
+    "package_roots",
+    "data_root",
+    "runs_root",
+    "eval_root",
+    "db_path",
+    "cfr_src",
+    "config_edit_root",
+)
 
 
 def save_runtime_config(updates: dict[str, Any]) -> dict[str, Any]:
@@ -335,6 +361,9 @@ def save_runtime_config(updates: dict[str, Any]) -> dict[str, Any]:
         _refuse("runs_root", _write_root_blocker(cfg.get("runs_root"), data_raw))
     if cfg.get("eval_root"):
         _refuse("eval_root", _write_root_blocker(cfg.get("eval_root"), data_raw))
+    if cfg.get("config_edit_root"):
+        # Same write-root cross-check: a config-edit root must not sit under the data root.
+        _refuse("config_edit_root", _write_root_blocker(cfg.get("config_edit_root"), data_raw))
     if cfg.get("db_path"):
         _refuse("db_path", _db_blocker(cfg.get("db_path")))
     if cfg.get("cfr_src"):

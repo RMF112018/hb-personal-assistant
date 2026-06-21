@@ -59,6 +59,7 @@ def test_status_viewer_readable_and_redaction_safe(client: TestClient) -> None:
         "eval_root",
         "db_path",
         "cfr_src",
+        "config_edit_root",
     }
     assert find_redaction_leaks(body) == []
 

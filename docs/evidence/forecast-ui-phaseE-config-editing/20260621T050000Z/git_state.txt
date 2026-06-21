@@ -1,0 +1,22 @@
+Phase E — Forecast Config Editing (isolated proposal)
+Branch: feature/forecast-ui-phaseE-config-editing (off origin/main, committed schema v61)
+Status at capture: UNCOMMITTED (awaiting authorization).
+
+Phase E files (the ONLY files this work touches):
+  NEW  src/hb_assistant/construction/analytics/forecast_config_edit_dto.py
+  NEW  src/hb_assistant/construction/analytics/forecast_config_edit_service.py
+  MOD  src/hb_assistant/construction/analytics/forecast_runtime_config.py   (config_edit_root 7th write-root)
+  MOD  src/hb_assistant/construction/analytics/api.py                        (request DTO + factory + 4 routes)
+  NEW  tests/test_forecast_config_edit_service.py
+  NEW  tests/test_fastapi_forecast_config_edit.py
+  MOD  tests/test_fastapi_analytics_app_shell.py                             (+3 edit route paths)
+  MOD  tests/test_forecast_runtime_config.py, tests/test_fastapi_forecast_runtime.py  (7th root)
+  MOD  frontend/src/lib/api.ts                                               (3 edit methods + input type)
+  NEW  frontend/src/pages/ForecastConfigEditProposalsPage.tsx (+ .test.tsx)
+  MOD  frontend/src/pages/ForecastConfigPage.tsx                             (propose link + deprecation note)
+  MOD  frontend/src/pages/ForecastRuntimeSettingsPage.tsx                    (config_edit_root row + chip)
+  MOD  frontend/src/app/routes.tsx, frontend/src/navigation/navigationModel.ts
+  NEW  docs/evidence/forecast-ui-phaseE-config-editing/<stamp>/
+
+EXPLICITLY EXCLUDED — pre-existing uncommitted Procore budget-detail workstream (migrator v62,
+procore/*, cli/procore.py, test_procore_*) + recurring phase-08b/08c evidence churn. NOT Phase E.

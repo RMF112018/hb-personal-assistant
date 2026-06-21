@@ -18,6 +18,7 @@ const ROOT_LABELS: Record<string, string> = {
   eval_root: 'Evaluation output folder',
   db_path: 'Source database',
   cfr_src: 'Engine source',
+  config_edit_root: 'Config proposal output folder',
 }
 
 const BLOCKER_COPY: Record<string, string> = {
@@ -35,6 +36,7 @@ const PATH_FIELDS: { key: string; label: string; placeholder: string }[] = [
   { key: 'eval_root', label: 'Evaluation output folder', placeholder: 'Absolute path (must be OUTSIDE the source data folder)' },
   { key: 'db_path', label: 'Source database', placeholder: 'Absolute path to the read-only source database' },
   { key: 'cfr_src', label: 'Engine source', placeholder: 'Optional — defaults to the bundled engine' },
+  { key: 'config_edit_root', label: 'Config proposal output folder', placeholder: 'Absolute path (must be OUTSIDE the source data folder)' },
 ]
 
 export function ForecastRuntimeSettingsPage() {
@@ -157,7 +159,7 @@ export function ForecastRuntimeSettingsPage() {
       <div className="card mt-3">
         <div className="section-title">Surfaces ready</div>
         <div className="flex flex-wrap gap-2 text-sm">
-          {['catalog', 'config', 'run_center', 'external_eval'].map((k) => (
+          {['catalog', 'config', 'run_center', 'external_eval', 'config_edit'].map((k) => (
             <span key={k} className="flex items-center gap-1">
               <StatusPill status={surfaces[k] ? 'validated' : 'attention'} />
               <span className="text-[var(--hb-muted)]">{k.replace('_', ' ')}</span>
