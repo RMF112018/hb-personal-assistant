@@ -1,0 +1,5 @@
+Phase E makes NO schema change and NO migration. Config edits write the existing v60 config tables
+ONLY in an isolated temp DB (CFR import auto-migrates the temp DB; tests assert nothing about a
+specific LATEST_SCHEMA_VERSION). Committed migrator LATEST_SCHEMA_VERSION stays 61.
+The working tree's v62 is the unrelated uncommitted Procore migration — NOT Phase E, excluded.
+table_lifecycle_status_contract.json table_count: unchanged.

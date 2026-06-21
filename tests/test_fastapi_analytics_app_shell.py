@@ -178,6 +178,10 @@ def test_openapi_exposes_only_shell_routes(tmp_path: Path) -> None:
         "/api/forecast/config/snapshots/{snapshot_id}",
         "/api/forecast/config/snapshots/{snapshot_id}/domains/{config_domain}",
         "/api/forecast/config/snapshots/{snapshot_id}/items/{item_id}",
+        # Forecast config editing — isolated proposals (Implementation Phase E)
+        "/api/forecast/config/edits",
+        "/api/forecast/config/edits/{edit_id}",
+        "/api/forecast/config/edits/{edit_id}/manifest",
         # Forecast Run Center — isolated context->analysis generation (Implementation Phase 3)
         "/api/forecast/runs",
         "/api/forecast/runs/{run_id}",

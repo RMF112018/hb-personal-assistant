@@ -1,0 +1,24 @@
+{
+  "base_snapshot_id_prefix": "c3b4a67d22db47c7",
+  "status": "succeeded",
+  "parity_status": "pass",
+  "snapshot_item_count": 194,
+  "changed_items": [
+    {
+      "domain": "project",
+      "item_key": "tropical",
+      "op": "modified",
+      "changed_fields": [
+        "project_name"
+      ],
+      "values": {
+        "project_name": "TWN (proposal smoke)"
+      }
+    }
+  ],
+  "redaction_leaks": [],
+  "live_db_sha_before": "c15cf9b72b9328d655e454630dfc039bbfacf5362df8ab452451ed2cf483ffc9",
+  "live_db_sha_after": "c15cf9b72b9328d655e454630dfc039bbfacf5362df8ab452451ed2cf483ffc9",
+  "live_db_untouched": true
+}
+SMOKE_OK

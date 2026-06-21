@@ -82,7 +82,12 @@ export function ForecastConfigPage() {
       </div>
 
       <div className="card">
-        <div className="section-title">Forecast configuration</div>
+        <div className="flex items-center justify-between gap-3">
+          <div className="section-title">Forecast configuration</div>
+          <Link to="/forecasting/config/proposals" className="text-sm underline">
+            Propose / view edits
+          </Link>
+        </div>
         <p className="text-sm text-[var(--hb-muted)]">
           {snap.snapshot_name ? `${snap.snapshot_name}` : 'Current configuration'}
           {snap.created_display ? ` · Captured ${snap.created_display}` : ''}
@@ -115,6 +120,11 @@ export function ForecastConfigPage() {
       {domain && (
         <div className="card mt-3">
           <div className="section-title">{domainResp?.display_label || 'Settings'}</div>
+          {domain === 'forecast_controls' && (
+            <p className="text-xs text-amber-300 mb-2">
+              Deprecated — superseded by Model controls. Shown read-only; not editable.
+            </p>
+          )}
           {items.length === 0 ? (
             <EmptyState title="No items" hint="This configuration area has no items." />
           ) : (

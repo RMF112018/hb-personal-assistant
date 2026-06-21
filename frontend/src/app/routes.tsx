@@ -17,6 +17,7 @@ import { MyItemsPage } from '../pages/MyItemsPage'
 import { ForecastingPage } from '../pages/ForecastingPage'
 import { ForecastPackagePage } from '../pages/ForecastPackagePage'
 import { ForecastConfigPage } from '../pages/ForecastConfigPage'
+import { ForecastConfigEditProposalsPage } from '../pages/ForecastConfigEditProposalsPage'
 import { ForecastRunCenterPage } from '../pages/ForecastRunCenterPage'
 import { ForecastExternalEvalPage } from '../pages/ForecastExternalEvalPage'
 import { ForecastRuntimeSettingsPage } from '../pages/ForecastRuntimeSettingsPage'
@@ -152,6 +153,12 @@ const router = createBrowserRouter([
         path: 'forecasting/config',
         element: <ForecastConfigPage />,
         handle: { title: 'Forecast Configuration' },
+      },
+      // Forecast Config Edit Proposals (Implementation Phase E). Static segment before :packageId.
+      {
+        path: 'forecasting/config/proposals',
+        element: <ForecastConfigEditProposalsPage />,
+        handle: { title: 'Config Edit Proposals' },
       },
       // Forecast Run Center (Implementation Phase 3). Static segment before :packageId.
       {
