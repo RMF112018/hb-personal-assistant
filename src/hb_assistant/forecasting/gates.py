@@ -6,6 +6,7 @@ exported — only keys, counts, and aggregate numeric differences.
 
 from __future__ import annotations
 
+import hashlib
 import sqlite3
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
@@ -18,6 +19,44 @@ _DEFAULT_ABSOLUTE_THRESHOLD = Decimal("100.00")
 _DEFAULT_PERCENT_THRESHOLD = Decimal("0.005")
 
 _APPROVED_CCO_STATUSES = ("approved", "complete", "closed", "executed")
+
+# Budget calculated-column roles (see docs/forecasting/semantic-catalog/budget_column_roles.yml).
+_BUDGET_COLUMN_OVERLAP_CHECKS: tuple[tuple[str, tuple[str, ...], str], ...] = (
+    (
+        "revised_budget_with_pending_changes",
+        ("revised_budget", "pending_budget_changes"),
+        "calculated_rollup_may_include_pending",
+    ),
+    (
+        "projected_costs_with_committed_and_direct",
+        ("projected_costs", "committed_costs", "direct_costs"),
+        "calculated_cost_projection_may_include_components",
+    ),
+    (
+        "eac_with_projected_costs",
+        ("estimated_cost_at_completion", "projected_costs"),
+        "terminal_rollup_vs_component",
+    ),
+)
+
+_PARITY_PAIR_CONFIGS: tuple[dict[str, str], ...] = (
+    {
+        "ep_table": "procore_ep_commitment_contracts",
+        "target_table": "procore_financial_contracts",
+        "family": "commitment",
+        "ep_key": "record_id",
+        "target_key": "contract_id",
+    },
+    {
+        "ep_table": "procore_ep_purchase_order_contracts",
+        "target_table": "procore_financial_contracts",
+        "family": "purchase_order",
+        "ep_key": "record_id",
+        "target_key": "contract_id",
+    },
+)
+
+_KEY_SAMPLE_LIMIT = 10
 
 
 def _utc_now() -> str:
@@ -58,6 +97,40 @@ def _severity_for_mode(mode: GateMode, base: str) -> str:
     if mode == "strict" and base == "warning":
         return "error"
     return base
+
+
+def _column_populated(column: str) -> str:
+    return f"{column} IS NOT NULL AND TRIM({column}) <> '' AND TRIM({column}) <> '0'"
+
+
+def _abbreviate_gate_report(report: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "gate": report.get("gate"),
+        "ok": report.get("ok"),
+        "finding_count": report.get("finding_count", 0),
+        "warning_count": report.get("warning_count", 0),
+        "error_count": report.get("error_count", 0),
+    }
+
+
+def _hash_key(value: str) -> str:
+    return hashlib.sha256(value.encode()).hexdigest()[:16]
+
+
+def _table_columns(conn: sqlite3.Connection, table: str) -> set[str]:
+    rows = conn.execute(f"PRAGMA table_info({table})").fetchall()
+    return {str(row[1]) for row in rows}
+
+
+def _pick_column(columns: set[str], candidates: tuple[str, ...]) -> str | None:
+    for name in candidates:
+        if name in columns:
+            return name
+    return None
+
+
+def _columns_available(columns: set[str], required: tuple[str, ...]) -> bool:
+    return all(name in columns for name in required)
 
 
 def run_double_count_gate(
@@ -159,25 +232,38 @@ def run_double_count_gate(
                     }
                 )
 
-        if _table_exists(conn, "procore_ep_budget_detail_rows") and _table_exists(
-            conn, "procore_ep_subcontractor_invoice_contract_detail_items"
-        ):
+        invoice_table = "procore_ep_subcontractor_invoice_contract_detail_items"
+        if _table_exists(conn, "procore_ep_budget_detail_rows") and _table_exists(conn, invoice_table):
+            budget_cols = _table_columns(conn, "procore_ep_budget_detail_rows")
+            invoice_cols = _table_columns(conn, invoice_table)
+            invoice_key = _pick_column(
+                invoice_cols, ("detail_line_item_id", "line_item_id", "record_id")
+            )
             q_name = "budget_actual_plus_invoice_detail_same_code"
-            rows = conn.execute(
-                """
-                SELECT b.project_key, b.budget_code AS budget_code_key,
-                       COUNT(DISTINCT b.record_key) AS budget_rows,
-                       COUNT(DISTINCT i.line_item_id) AS invoice_detail_rows
-                FROM procore_ep_budget_detail_rows b
-                JOIN procore_ep_subcontractor_invoice_contract_detail_items i
-                  ON CAST(i.cost_code_id AS TEXT) = CAST(b.budget_code_id AS TEXT)
-                WHERE b.actual_cost IS NOT NULL AND TRIM(b.actual_cost) <> ''
-                  AND i.total_completed_and_stored_to_date IS NOT NULL
-                  AND TRIM(i.total_completed_and_stored_to_date) <> ''
-                GROUP BY b.project_key, b.budget_code
-                LIMIT 200
-                """
-            ).fetchall()
+            if (
+                invoice_key
+                and "cost_code_id" in invoice_cols
+                and "total_completed_and_stored_to_date" in invoice_cols
+                and "budget_code_id" in budget_cols
+                and "actual_cost" in budget_cols
+            ):
+                rows = conn.execute(
+                    f"""
+                    SELECT b.project_key, b.budget_code AS budget_code_key,
+                           COUNT(DISTINCT b.record_key) AS budget_rows,
+                           COUNT(DISTINCT i.{invoice_key}) AS invoice_detail_rows
+                    FROM procore_ep_budget_detail_rows b
+                    JOIN {invoice_table} i
+                      ON CAST(i.cost_code_id AS TEXT) = CAST(b.budget_code_id AS TEXT)
+                    WHERE b.actual_cost IS NOT NULL AND TRIM(b.actual_cost) <> ''
+                      AND i.total_completed_and_stored_to_date IS NOT NULL
+                      AND TRIM(i.total_completed_and_stored_to_date) <> ''
+                    GROUP BY b.project_key, b.budget_code
+                    LIMIT 200
+                    """
+                ).fetchall()
+            else:
+                rows = []
             queries.append({"name": q_name, "ok": True, "row_count": len(rows)})
             for row in rows:
                 findings.append(
@@ -223,6 +309,42 @@ def run_double_count_gate(
                         "message": "Budget modifications and change events coexist; verify budget calculated column precedence.",
                     }
                 )
+
+        if _table_exists(conn, "procore_ep_budget_detail_rows"):
+            cols = _table_columns(conn, "procore_ep_budget_detail_rows")
+            for check_name, column_names, basis in _BUDGET_COLUMN_OVERLAP_CHECKS:
+                if not all(col in cols for col in column_names):
+                    continue
+                populated = " AND ".join(_column_populated(col) for col in column_names)
+                q_name = f"budget_column_overlap_{check_name}"
+                rows = conn.execute(
+                    f"""
+                    SELECT project_key, budget_code AS budget_code_key, COUNT(*) AS row_count
+                    FROM procore_ep_budget_detail_rows
+                    WHERE {populated}
+                    GROUP BY project_key, budget_code
+                    LIMIT 200
+                    """
+                ).fetchall()
+                queries.append({"name": q_name, "ok": True, "row_count": len(rows)})
+                severity = "info" if check_name == "eac_with_projected_costs" else "warning"
+                for row in rows:
+                    findings.append(
+                        {
+                            "query": q_name,
+                            "project_key": row["project_key"],
+                            "budget_code_key": row["budget_code_key"],
+                            "severity": _severity_for_mode(mode, severity),
+                            "basis": basis,
+                            "column_roles": list(column_names),
+                            "row_count": int(row["row_count"]),
+                            "message": (
+                                "Budget calculated columns coexist with workflow-stage columns; "
+                                "do not add workflow amounts on top of rollups without precedence proof."
+                            ),
+                            "procore_formula_proof": "unresolved",
+                        }
+                    )
 
     error_count = sum(1 for f in findings if f["severity"] == "error")
     warning_count = sum(1 for f in findings if f["severity"] == "warning")
@@ -323,21 +445,30 @@ def run_actuals_reconciliation_gate(
                         }
                     )
 
-        if _table_exists(conn, "procore_ep_budget_detail_rows") and _table_exists(
-            conn, "procore_ep_subcontractor_invoice_contract_detail_items"
-        ):
-            rows = conn.execute(
-                """
-                SELECT b.project_key, b.budget_code AS budget_code_key,
-                       b.actual_cost, SUM(CAST(i.total_completed_and_stored_to_date AS REAL)) AS invoice_progress_sum
-                FROM procore_ep_budget_detail_rows b
-                JOIN procore_ep_subcontractor_invoice_contract_detail_items i
-                  ON CAST(i.cost_code_id AS TEXT) = CAST(b.budget_code_id AS TEXT)
-                WHERE b.actual_cost IS NOT NULL AND TRIM(b.actual_cost) <> ''
-                GROUP BY b.project_key, b.budget_code, b.actual_cost
-                LIMIT 200
-                """
-            ).fetchall()
+        invoice_table = "procore_ep_subcontractor_invoice_contract_detail_items"
+        if _table_exists(conn, "procore_ep_budget_detail_rows") and _table_exists(conn, invoice_table):
+            budget_cols = _table_columns(conn, "procore_ep_budget_detail_rows")
+            invoice_cols = _table_columns(conn, invoice_table)
+            if (
+                _columns_available(budget_cols, ("budget_code_id", "actual_cost", "budget_code", "project_key"))
+                and _columns_available(
+                    invoice_cols, ("cost_code_id", "total_completed_and_stored_to_date")
+                )
+            ):
+                rows = conn.execute(
+                    f"""
+                    SELECT b.project_key, b.budget_code AS budget_code_key,
+                           b.actual_cost, SUM(CAST(i.total_completed_and_stored_to_date AS REAL)) AS invoice_progress_sum
+                    FROM procore_ep_budget_detail_rows b
+                    JOIN {invoice_table} i
+                      ON CAST(i.cost_code_id AS TEXT) = CAST(b.budget_code_id AS TEXT)
+                    WHERE b.actual_cost IS NOT NULL AND TRIM(b.actual_cost) <> ''
+                    GROUP BY b.project_key, b.budget_code, b.actual_cost
+                    LIMIT 200
+                    """
+                ).fetchall()
+            else:
+                rows = []
             for row in rows:
                 budget_actual = _parse_decimal(row["actual_cost"])
                 invoice_sum = _parse_decimal(row["invoice_progress_sum"])
@@ -374,33 +505,94 @@ def run_actuals_reconciliation_gate(
     }
 
 
+def _parity_key_sets(
+    conn: sqlite3.Connection,
+    *,
+    ep_table: str,
+    target_table: str,
+    family: str,
+    ep_key: str,
+    target_key: str,
+) -> tuple[set[tuple[str, str]], set[tuple[str, str]]]:
+    ep_cols = _table_columns(conn, ep_table)
+    fin_cols = _table_columns(conn, target_table)
+    if ep_key not in ep_cols or target_key not in fin_cols:
+        return set(), set()
+    ep_rows = conn.execute(
+        f"SELECT project_key, CAST({ep_key} AS TEXT) AS record_key FROM {ep_table} "
+        f"WHERE {ep_key} IS NOT NULL AND TRIM(CAST({ep_key} AS TEXT)) <> ''"
+    ).fetchall()
+    fin_rows = conn.execute(
+        f"SELECT project_key, CAST({target_key} AS TEXT) AS record_key FROM {target_table} "
+        f"WHERE contract_family = ? AND {target_key} IS NOT NULL "
+        f"AND TRIM(CAST({target_key} AS TEXT)) <> ''",
+        (family,),
+    ).fetchall()
+    ep_keys = {(str(r["project_key"]), str(r["record_key"])) for r in ep_rows}
+    fin_keys = {(str(r["project_key"]), str(r["record_key"])) for r in fin_rows}
+    return ep_keys, fin_keys
+
+
+def _status_mismatch_count(
+    conn: sqlite3.Connection,
+    *,
+    ep_table: str,
+    target_table: str,
+    family: str,
+    ep_key: str,
+    target_key: str,
+) -> int:
+    ep_cols = _table_columns(conn, ep_table)
+    fin_cols = _table_columns(conn, target_table)
+    if "status" not in ep_cols or "status" not in fin_cols:
+        return 0
+    row = conn.execute(
+        f"""
+        SELECT COUNT(*) AS mismatch_count
+        FROM {ep_table} ep
+        JOIN {target_table} fin
+          ON fin.project_key = ep.project_key
+         AND CAST(fin.{target_key} AS TEXT) = CAST(ep.{ep_key} AS TEXT)
+         AND fin.contract_family = ?
+        WHERE COALESCE(LOWER(TRIM(ep.status)), '') <> COALESCE(LOWER(TRIM(fin.status)), '')
+        """,
+        (family,),
+    ).fetchone()
+    return int(row["mismatch_count"] or 0)
+
+
 def run_projection_parity_gate(*, db_path: str | Path) -> dict[str, Any]:
-    """Report row-count mismatches between procore_ep_* and procore_financial_* layers."""
+    """Report count- and key-level mismatches between procore_ep_* and procore_financial_* layers."""
     path = str(db_path)
-    pairs = [
-        ("procore_ep_commitment_contracts", "procore_financial_contracts", "commitment"),
-        ("procore_ep_purchase_order_contracts", "procore_financial_contracts", "purchase_order"),
-    ]
     findings: list[dict[str, Any]] = []
+    pairs_checked = 0
 
     with _connect_ro(path) as conn:
-        for ep_table, fin_table, family in pairs:
+        for cfg in _PARITY_PAIR_CONFIGS:
+            ep_table = cfg["ep_table"]
+            fin_table = cfg["target_table"]
+            family = cfg["family"]
+            ep_key = cfg["ep_key"]
+            target_key = cfg["target_key"]
+
             if not _table_exists(conn, ep_table) or not _table_exists(conn, fin_table):
                 findings.append(
                     {
                         "family": family,
                         "severity": "info",
                         "basis": "table_missing",
-                        "ep_table": ep_table,
-                        "financial_table": fin_table,
+                        "source_table": ep_table,
+                        "target_table": fin_table,
                         "message": "One or both projection layers missing; parity not evaluated.",
                     }
                 )
                 continue
+
+            pairs_checked += 1
             ep_count = conn.execute(f"SELECT COUNT(*) FROM {ep_table}").fetchone()[0]
             fin_count = conn.execute(
                 f"SELECT COUNT(*) FROM {fin_table} WHERE contract_family = ?",
-                (family if family != "commitment" else "commitment",),
+                (family,),
             ).fetchone()[0]
             if ep_count != fin_count:
                 findings.append(
@@ -408,20 +600,86 @@ def run_projection_parity_gate(*, db_path: str | Path) -> dict[str, Any]:
                         "family": family,
                         "severity": "warning",
                         "basis": "row_count_mismatch",
-                        "ep_table": ep_table,
+                        "source_table": ep_table,
                         "ep_row_count": ep_count,
-                        "financial_table": fin_table,
+                        "target_table": fin_table,
                         "financial_row_count": fin_count,
                         "message": "Dual projection layers diverge; investigate before modeling.",
                     }
                 )
 
+            ep_keys, fin_keys = _parity_key_sets(
+                conn,
+                ep_table=ep_table,
+                target_table=fin_table,
+                family=family,
+                ep_key=ep_key,
+                target_key=target_key,
+            )
+            if ep_keys or fin_keys:
+                source_only = sorted(ep_keys - fin_keys)
+                target_only = sorted(fin_keys - ep_keys)
+                if source_only:
+                    findings.append(
+                        {
+                            "source_table": ep_table,
+                            "target_table": fin_table,
+                            "family": family,
+                            "check": "missing_target_keys",
+                            "severity": "warning",
+                            "count": len(source_only),
+                            "sample_key_hashes": [
+                                _hash_key(f"{pk}:{rk}") for pk, rk in source_only[:_KEY_SAMPLE_LIMIT]
+                            ],
+                        }
+                    )
+                if target_only:
+                    findings.append(
+                        {
+                            "source_table": ep_table,
+                            "target_table": fin_table,
+                            "family": family,
+                            "check": "missing_source_keys",
+                            "severity": "warning",
+                            "count": len(target_only),
+                            "sample_key_hashes": [
+                                _hash_key(f"{pk}:{rk}") for pk, rk in target_only[:_KEY_SAMPLE_LIMIT]
+                            ],
+                        }
+                    )
+
+                status_mismatches = _status_mismatch_count(
+                    conn,
+                    ep_table=ep_table,
+                    target_table=fin_table,
+                    family=family,
+                    ep_key=ep_key,
+                    target_key=target_key,
+                )
+                if status_mismatches:
+                    findings.append(
+                        {
+                            "source_table": ep_table,
+                            "target_table": fin_table,
+                            "family": family,
+                            "check": "status_field_mismatch",
+                            "severity": "warning",
+                            "count": status_mismatches,
+                        }
+                    )
+
+    warning_count = sum(1 for f in findings if f.get("severity") == "warning")
+    error_count = sum(1 for f in findings if f.get("severity") == "error")
+
     return {
-        "ok": all(f["severity"] != "error" for f in findings),
+        "ok": error_count == 0,
         "gate": "forecast_projection_parity",
         "db_path": path,
         "checked_at_utc": _utc_now(),
+        "pairs_checked": pairs_checked,
         "finding_count": len(findings),
+        "warning_count": warning_count,
+        "error_count": error_count,
         "findings": findings,
     }
 
@@ -433,11 +691,22 @@ def run_cost_type_guard_gate(*, db_path: str | Path) -> dict[str, Any]:
 
     with _connect_ro(path) as conn:
         if _table_exists(conn, "procore_ep_budget_detail_rows"):
+            cols = _table_columns(conn, "procore_ep_budget_detail_rows")
+            cost_type_expr = (
+                "SUM(CASE WHEN cost_type IS NOT NULL AND TRIM(cost_type) <> '' THEN 1 ELSE 0 END)"
+                if "cost_type" in cols
+                else "0"
+            )
+            category_expr = (
+                "SUM(CASE WHEN category IS NOT NULL AND TRIM(category) <> '' THEN 1 ELSE 0 END)"
+                if "category" in cols
+                else "0"
+            )
             row = conn.execute(
-                """
+                f"""
                 SELECT COUNT(*) AS total,
-                       SUM(CASE WHEN cost_type IS NOT NULL AND TRIM(cost_type) <> '' THEN 1 ELSE 0 END) AS populated,
-                       SUM(CASE WHEN category IS NOT NULL AND TRIM(category) <> '' THEN 1 ELSE 0 END) AS category_populated
+                       {cost_type_expr} AS populated,
+                       {category_expr} AS category_populated
                 FROM procore_ep_budget_detail_rows
                 """
             ).fetchone()
@@ -457,12 +726,17 @@ def run_cost_type_guard_gate(*, db_path: str | Path) -> dict[str, Any]:
                 }
             )
 
+    warning_count = sum(1 for f in findings if f.get("severity") == "warning")
+    error_count = sum(1 for f in findings if f.get("severity") == "error")
+
     return {
-        "ok": True,
+        "ok": error_count == 0,
         "gate": "forecast_cost_type_guard",
         "db_path": path,
         "checked_at_utc": _utc_now(),
         "finding_count": len(findings),
+        "warning_count": warning_count,
+        "error_count": error_count,
         "findings": findings,
     }
 
@@ -471,18 +745,32 @@ def run_all_forecasting_gates(
     *,
     db_path: str | Path,
     mode: GateMode = "warn",
+    include_full_reports: bool = False,
 ) -> dict[str, Any]:
     """Run all forecasting gates and return a combined report."""
-    reports = [
+    full_reports = [
         run_double_count_gate(db_path=db_path, mode=mode),
         run_actuals_reconciliation_gate(db_path=db_path, mode=mode),
         run_projection_parity_gate(db_path=db_path),
         run_cost_type_guard_gate(db_path=db_path),
     ]
-    return {
-        "ok": all(r.get("ok") for r in reports),
+    abbreviated = [_abbreviate_gate_report(r) for r in full_reports]
+    warning_count = sum(g["warning_count"] for g in abbreviated)
+    error_count = sum(g["error_count"] for g in abbreviated)
+    passed_count = sum(1 for g in abbreviated if g["ok"])
+    result: dict[str, Any] = {
+        "ok": all(r.get("ok") for r in full_reports),
         "checked_at_utc": _utc_now(),
         "db_path": str(db_path),
         "mode": mode,
-        "gates": reports,
+        "gates": abbreviated,
+        "summary": {
+            "gate_count": len(abbreviated),
+            "passed_count": passed_count,
+            "warning_count": warning_count,
+            "error_count": error_count,
+        },
     }
+    if include_full_reports:
+        result["full_reports"] = full_reports
+    return result

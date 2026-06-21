@@ -50,6 +50,23 @@ def fixture_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> dict[str, Pa
     return {"eval_root": eval_root, "db": db}
 
 
+def test_external_eval_project_eligibility_for_fixtureproj(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from hb_assistant.construction.analytics.forecast_external_ingest import ForecastExternalError
+    from hb_assistant.forecasting.project_eligibility import (
+        assert_eval_project_eligible,
+        load_eval_project_allowlist,
+    )
+
+    assert_eval_project_eligible("fixtureproj")
+    assert_eval_project_eligible("tropical")
+    monkeypatch.setenv("HB_FORECAST_EVAL_PROJECT_ALLOWLIST", "fixtureproj,customproj")
+    assert "customproj" in load_eval_project_allowlist()
+    with pytest.raises(ForecastExternalError, match="not eligible"):
+        assert_eval_project_eligible("tropical")
+
+
 def test_external_forecast_fixture_ingest_and_mapping(fixture_env: dict[str, Path]) -> None:
     csv_text = FIXTURE_CSV.read_text(encoding="utf-8")
     ingest = ForecastExternalIngestService()

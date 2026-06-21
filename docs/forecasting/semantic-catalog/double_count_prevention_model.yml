@@ -49,3 +49,5 @@ precedence_rules:
     evidence_basis: repo-code-supported
 
 validation_query: validation_queries/double_count_prevention.sql
+budget_column_roles_ref: budget_column_roles.yml
+procore_formula_proof: unresolved

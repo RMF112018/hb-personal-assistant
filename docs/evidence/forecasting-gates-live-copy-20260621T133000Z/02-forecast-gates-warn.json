@@ -1,0 +1,42 @@
+{
+  "ok": true,
+  "checked_at_utc": "2026-06-21T13:31:15+00:00",
+  "db_path": "docs/evidence/forecasting-gates-live-copy-20260621T133000Z/live-copy.sqlite",
+  "mode": "warn",
+  "gates": [
+    {
+      "gate": "forecast_double_count_prevention",
+      "ok": true,
+      "finding_count": 790,
+      "warning_count": 587,
+      "error_count": 0
+    },
+    {
+      "gate": "forecast_actuals_reconciliation",
+      "ok": true,
+      "finding_count": 0,
+      "warning_count": 0,
+      "error_count": 0
+    },
+    {
+      "gate": "forecast_projection_parity",
+      "ok": true,
+      "finding_count": 2,
+      "warning_count": 2,
+      "error_count": 0
+    },
+    {
+      "gate": "forecast_cost_type_guard",
+      "ok": true,
+      "finding_count": 1,
+      "warning_count": 1,
+      "error_count": 0
+    }
+  ],
+  "summary": {
+    "gate_count": 4,
+    "passed_count": 4,
+    "warning_count": 590,
+    "error_count": 0
+  }
+}

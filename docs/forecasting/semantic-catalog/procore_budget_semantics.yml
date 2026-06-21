@@ -18,6 +18,7 @@ entities:
       - Budget calculated columns may already include approved change orders, pending changes, direct costs, job-to-date costs, or projected costs depending on budget view configuration.
       - Do not add workflow-stage amounts on top of calculated rollups without precedence logic.
     validation_query: validation_queries/budget_relationships.sql
+    budget_column_roles_ref: budget_column_roles.yml
 
   fact_budget_row_cell:
     source_tables: [procore_ep_budget_detail_row_cells, procore_ep_budget_detail_columns]

@@ -1,0 +1,69 @@
+version: 1
+evidence_package_ref: docs/evidence/forecasting-db-complete-evidence/20260621T130542Z/
+procore_formula_proof: unresolved
+notes:
+  - Procore budget calculated-column inclusion rules are not fully proven from local evidence.
+  - Gate reports overlap as warnings; do not hard-fail without formula proof.
+  - Forecast model logic must not add workflow-stage facts on top of calculated rollups.
+
+budget_column_roles:
+  original_budget_amount:
+    role: baseline_budget
+    additive_behavior: base
+    source_column: procore_ep_budget_detail_rows.original_budget_amount
+  approved_budget_changes:
+    role: workflow_stage_change
+    additive_behavior: add_to_baseline_only_when_revised_budget_empty
+    caveat: may already be included in revised_budget depending on budget view
+  pending_budget_changes:
+    role: workflow_stage_change
+    additive_behavior: do_not_add_when_revised_or_projected_budget_populated
+    caveat: pending changes may be reflected in projected_budget column
+  revised_budget:
+    role: calculated_budget_rollup
+    additive_behavior: do_not_add_approved_changes_again
+    must_not_add: [approved_budget_changes, approved_cco_amount_if_included]
+  projected_budget:
+    role: calculated_budget_projection
+    additive_behavior: do_not_add_pending_changes_again
+    must_not_add: [pending_budget_changes]
+  committed_costs:
+    role: workflow_stage_cost
+    additive_behavior: add_only_when_not_in_projected_costs
+  direct_costs:
+    role: workflow_stage_cost
+    additive_behavior: add_only_when_not_in_projected_costs
+  job_to_date_costs:
+    role: cumulative_actual_proxy
+    additive_behavior: reconcile_not_sum_with_actual_cost
+  pending_cost_changes:
+    role: workflow_stage_cost
+    additive_behavior: do_not_add_when_projected_costs_populated
+  projected_costs:
+    role: calculated_cost_projection
+    additive_behavior: do_not_add_committed_direct_pending_costs_again
+    must_not_add: [committed_costs, direct_costs, pending_cost_changes]
+  forecast_to_complete:
+    role: calculated_forecast_component
+    additive_behavior: component_of_eac_not_additive_with_eac
+  estimated_cost_at_completion:
+    role: calculated_eac
+    additive_behavior: terminal_rollup_for_eac_reconciliation
+    must_not_add: [projected_costs, committed_costs, direct_costs, actual_cost]
+  projected_over_under:
+    role: calculated_variance
+    additive_behavior: derived_do_not_add_inputs
+
+overlap_checks:
+  - name: revised_budget_with_pending_changes
+    columns: [revised_budget, pending_budget_changes]
+    severity: warning
+    basis: calculated_rollup_may_include_pending
+  - name: projected_costs_with_committed_and_direct
+    columns: [projected_costs, committed_costs, direct_costs]
+    severity: warning
+    basis: calculated_cost_projection_may_include_components
+  - name: eac_with_projected_costs
+    columns: [estimated_cost_at_completion, projected_costs]
+    severity: info
+    basis: terminal_rollup_vs_component

@@ -1586,6 +1586,42 @@ def evaluate_forecast_readiness_gates(
         }
     )
 
+    semantic_forecast_gates: dict[str, Any] = {}
+    resolved_db_path = db_path
+    if resolved_db_path is None:
+        from hb_assistant.config.path_policy import PathPolicy
+
+        resolved_db_path = str(PathPolicy().get_db_path())
+    try:
+        from hb_assistant.forecasting.readiness import evaluate_forecast_semantic_gates
+
+        semantic_forecast_gates = evaluate_forecast_semantic_gates(
+            db_path=resolved_db_path,
+            mode="warn",
+        )
+        sem_summary = semantic_forecast_gates.get("summary", {})
+        sem_gate_status = semantic_forecast_gates.get("gate_status", "warning")
+        gates.append(
+            {
+                "gate_name": "forecast_semantic_gates",
+                "gate_status": sem_gate_status,
+                "semantic_gate_count": sem_summary.get("gate_count", 0),
+                "passed_count": sem_summary.get("passed_count", 0),
+                "warning_count": sem_summary.get("warning_count", 0),
+                "error_count": sem_summary.get("error_count", 0),
+                "gates": semantic_forecast_gates.get("gates", []),
+                "note": semantic_forecast_gates.get("readiness_note"),
+            }
+        )
+    except Exception as exc:
+        gates.append(
+            {
+                "gate_name": "forecast_semantic_gates",
+                "gate_status": "warning",
+                "reason": str(exc),
+            }
+        )
+
     # overall
     by_gs = dict.fromkeys(gate_status_values, 0)
     for g in gates:
@@ -1679,6 +1715,7 @@ def evaluate_forecast_readiness_gates(
             ),
         },
         "advisory_status": "advisory review aid only. This is a readiness report. It does not generate or recommend any forecast.",
+        "semantic_forecast_gates": semantic_forecast_gates,
         "schema_version": 35,
         "contract": fr_contract.get("contract_name", "phase_08c_forecast_readiness_contract"),
     }
@@ -1738,6 +1775,7 @@ def evaluate_forecast_readiness_gates(
         "md_path": str(md_path),
         "summary": proof["summary"],
         "gates": gates,
+        "semantic_forecast_gates": semantic_forecast_gates,
         "advisory_only": True,
         "guardrails": proof["guardrails"],
         "note": "readiness report only; no forecasts computed or recommended",
