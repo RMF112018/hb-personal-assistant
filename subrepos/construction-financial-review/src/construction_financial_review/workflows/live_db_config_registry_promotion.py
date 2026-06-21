@@ -28,7 +28,11 @@ import sqlite3
 from pathlib import Path
 from typing import Any
 
-from ..config_registry import create_forecast_config_snapshot, import_forecast_config_to_db
+from ..config_registry import (
+    create_forecast_config_snapshot,
+    import_forecast_config_to_db,
+    materialize_forecast_config_snapshot_readonly,
+)
 from . import live_db_certification as cert
 
 SUPPORTED_PROJECT_KEY = "tropical"
@@ -303,14 +307,46 @@ def run_live_db_config_registry_promotion(
                 f"promoted snapshot already present in the live DB (refusing double-promote): {promoted_id}"
             )
         conn.execute("BEGIN IMMEDIATE")
+        si_table = "forecast_config_snapshot_items"
+        si_idx = {c: i for i, c in enumerate(temp_columns[si_table])}
         for t in CONFIG_TABLES:
-            cols = temp_columns[t]
-            collist = ", ".join(cols)
-            placeholders = ", ".join("?" * len(cols))
-            conn.executemany(
-                f"INSERT OR IGNORE INTO {t} ({collist}) VALUES ({placeholders})", temp_rows[t]
-            )
-            write_result[t] = {"inserted": len(temp_rows[t])}
+            col_names = temp_columns[t]
+            collist = ", ".join(col_names)
+            placeholders = ", ".join("?" * len(col_names))
+            if t == si_table:
+                # Re-resolve each snapshot item's config_item_id to the live row that WINS the
+                # content-dedup UNIQUE(project, domain, name, item_key, canonical_sha). Editing one item
+                # in a file changes that file's content_sha, hence its source_id, hence EVERY item's
+                # config_item_id; the unchanged items' new ids then collide on that UNIQUE and are
+                # INSERT OR IGNORE'd away, so copying the temp config_item_id verbatim would dangle
+                # (ADR 283). Resolving by content key keeps every snapshot item reachable. The snapshot
+                # digest is content-based (not id-based) and materialize groups by source_path, so the
+                # mix of reused (unchanged) + new (edited) item ids still round-trips faithfully.
+                rows: list[tuple] = []
+                for row in temp_rows[t]:
+                    live_item = conn.execute(
+                        "SELECT config_item_id FROM forecast_config_items WHERE project_key=? AND "
+                        "config_domain=? AND config_name=? AND item_key=? AND canonical_json_sha256=?",
+                        (
+                            row[si_idx["project_key"]],
+                            row[si_idx["config_domain"]],
+                            row[si_idx["config_name"]],
+                            row[si_idx["item_key"]],
+                            row[si_idx["canonical_json_sha256"]],
+                        ),
+                    ).fetchone()
+                    if live_item is None:
+                        raise LiveDbConfigRegistryPromotionError(
+                            "snapshot item has no backing config item in the live DB after copy "
+                            f"(item_key {row[si_idx['item_key']]!r}); refusing to commit"
+                        )
+                    new_row = list(row)
+                    new_row[si_idx["config_item_id"]] = live_item[0]
+                    rows.append(tuple(new_row))
+            else:
+                rows = list(temp_rows[t])
+            conn.executemany(f"INSERT OR IGNORE INTO {t} ({collist}) VALUES ({placeholders})", rows)
+            write_result[t] = {"inserted": len(rows)}
         promoted_count = conn.execute(
             "SELECT COUNT(*) FROM forecast_config_snapshot_items WHERE config_snapshot_id = ?",
             (promoted_id,),
@@ -319,6 +355,21 @@ def run_live_db_config_registry_promotion(
             raise LiveDbConfigRegistryPromotionError(
                 f"in-transaction verification failed: promoted snapshot_items {promoted_count} != "
                 f"temp {temp_snapshot_item_count}"
+            )
+        # Reachability guard (fail closed BEFORE commit): every promoted snapshot item must join to a
+        # present config item AND that item's source. An orphan here means generation could not
+        # materialize the snapshot (the ADR 283 failure), so refuse rather than commit a broken snapshot.
+        orphans = conn.execute(
+            "SELECT COUNT(*) FROM forecast_config_snapshot_items si WHERE si.config_snapshot_id=? "
+            "AND NOT EXISTS (SELECT 1 FROM forecast_config_items ci "
+            "JOIN forecast_config_sources s ON s.config_source_id=ci.config_source_id "
+            "WHERE ci.config_item_id=si.config_item_id)",
+            (promoted_id,),
+        ).fetchone()[0]
+        if int(orphans) != 0:
+            raise LiveDbConfigRegistryPromotionError(
+                f"reachability check failed: {orphans} promoted snapshot_items are orphaned from their "
+                "config source (refusing to commit)"
             )
         snapshots_after_total = conn.execute(
             "SELECT COUNT(*) FROM forecast_config_snapshots"
@@ -361,7 +412,43 @@ def run_live_db_config_registry_promotion(
         and len(headers_after) == snapshots_before + 1
         and promoted_id in headers_after
     )
-    certified = promoted_match and preserved and added_exactly_one
+    # Round-trip cert: materialize the live promoted snapshot read-only -> reimport into a fresh temp
+    # DB -> resnap, and require it reproduces the stored item_count + snapshot_sha256 (the SAME invariant
+    # the DB-config generation fidelity gate enforces). A snapshot that generation could not consume
+    # (e.g. orphaned items, ADR 283) can therefore never certify. Post-commit, so a failure -> not_ready
+    # (backup recorded for manual restore), never a crash.
+    roundtrip: dict[str, Any] = {"match": False}
+    try:
+        rt_mat = materialize_forecast_config_snapshot_readonly(
+            db_path=live_db_path, config_snapshot_id=promoted_id, out_root=work_root / "roundtrip"
+        )
+        rt_db = work_root / TEMP_DB_SUBDIR / "config_registry_promotion_roundtrip.sqlite"
+        import_forecast_config_to_db(
+            config_root=Path(rt_mat["materialized_config_root"]),
+            db_path=rt_db,
+            project_key=project_key,
+            import_run_id=f"promote_roundtrip_{context_stamp}",
+        )
+        rt_snap = create_forecast_config_snapshot(
+            db_path=rt_db,
+            project_key=project_key,
+            snapshot_name="promotion_roundtrip",
+            snapshot_reason="post-write materialize round-trip",
+        )
+        roundtrip = {
+            "match": (
+                int(rt_snap["item_count"]) == temp_item_count
+                and str(rt_snap["snapshot_sha256"]) == str(temp_snap["snapshot_sha256"])
+            ),
+            "resnap_item_count": int(rt_snap["item_count"]),
+            "stored_item_count": temp_item_count,
+            "resnap_sha256": str(rt_snap["snapshot_sha256"]),
+            "stored_sha256": str(temp_snap["snapshot_sha256"]),
+        }
+    except Exception as exc:  # noqa: BLE001 — post-commit round-trip failure -> not_ready, not a crash
+        roundtrip = {"match": False, "error": type(exc).__name__}
+    roundtrip_match = bool(roundtrip["match"])
+    certified = promoted_match and preserved and added_exactly_one and roundtrip_match
     decision = DECISION_CERTIFIED if certified else DECISION_NOT_READY
     status = "ready" if certified else "not_ready"
 
@@ -408,6 +495,7 @@ def run_live_db_config_registry_promotion(
             },
             "pre_existing_snapshots_preserved": preserved,
             "added_exactly_one_snapshot": added_exactly_one,
+            "round_trip": roundtrip,
         },
         "safety": {
             "live_db_written": True,

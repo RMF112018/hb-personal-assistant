@@ -1,0 +1,124 @@
+{
+  "backup": {
+    "path": "/tmp/fdcg_promo2/config-edit/promotions/b4b30f830d40/20260621_104035/backups/hb-personal-assistant.before-phaseE2-config-promotion.sqlite",
+    "schema_version": 61,
+    "sha256": "15b380facdee02a7ecfefb6141d7ee580e881c75141942450eaa93abb8434a3e",
+    "size_bytes": 3529723904,
+    "verified_readable": true
+  },
+  "context_stamp": "20260621_104035",
+  "decision": "live_db_config_registry_certified",
+  "edited_config_root": "/tmp/fdcg_promo2/config-edit/edits/b4b30f830d40/edited_config",
+  "expected": {
+    "hashes_by_domain": {
+      "forecast_controls": "8f34383f09cc67e90f79a76bf92be223de76f3f218713217a7a2562f63b594f6",
+      "forecast_model_controls": "46d259b0b721d7ef8526925f529fe9ef6a73d09cd975439a9df9e89989acdb81",
+      "forecast_staffing": "de7efcd8624260e5128126b087e3c26f24c2bb663dae995078429b502dcc6f5b",
+      "owner_sov_crosswalk": "8d667157f41509f1e0dacbc033a7ca8816759854ce3699514f3e3bc23a1e00b8",
+      "project": "2782ac94afe3de9cdb035a71ffdc0c4153c1453b1769cf3c213563e4e06d38de"
+    },
+    "item_count": 194
+  },
+  "hashes_by_domain": {
+    "forecast_controls": "8f34383f09cc67e90f79a76bf92be223de76f3f218713217a7a2562f63b594f6",
+    "forecast_model_controls": "46d259b0b721d7ef8526925f529fe9ef6a73d09cd975439a9df9e89989acdb81",
+    "forecast_staffing": "de7efcd8624260e5128126b087e3c26f24c2bb663dae995078429b502dcc6f5b",
+    "owner_sov_crosswalk": "8d667157f41509f1e0dacbc033a7ca8816759854ce3699514f3e3bc23a1e00b8",
+    "project": "2782ac94afe3de9cdb035a71ffdc0c4153c1453b1769cf3c213563e4e06d38de"
+  },
+  "item_count": 194,
+  "live_db": {
+    "after": {
+      "exists": true,
+      "mtime_epoch": 1782052839,
+      "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite",
+      "shm_exists": false,
+      "shm_size_bytes": 0,
+      "size_bytes": 3530186752,
+      "wal_exists": false,
+      "wal_size_bytes": 0
+    },
+    "before": {
+      "exists": true,
+      "mtime_epoch": 1782050895,
+      "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite",
+      "shm_exists": true,
+      "shm_size_bytes": 32768,
+      "size_bytes": 3529723904,
+      "wal_exists": true,
+      "wal_size_bytes": 0
+    },
+    "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite"
+  },
+  "pre_write_audit": {
+    "config_tables_present": true,
+    "schema_version": 61,
+    "snapshots_before": 1
+  },
+  "project_key": "tropical",
+  "promoted_snapshot_id": "cbae0702dbfa994143766271410e28d51e06e7b684e226774753126d02286159",
+  "promotion_certification": {
+    "added_exactly_one_snapshot": true,
+    "decision": "certified_match",
+    "pre_existing_snapshots_preserved": true,
+    "promoted_snapshot": {
+      "canonical_digest_live": "7e59524efc76e1d6968847c1bbd8d00cdf2402341fc4ff796565a6bfefefa84b",
+      "canonical_digest_temp": "7e59524efc76e1d6968847c1bbd8d00cdf2402341fc4ff796565a6bfefefa84b",
+      "live_rows": 194,
+      "match": true,
+      "raw_json_digest_live": "9d63a24ef6e065b244eaa93377d88f4d57094402ba05efd824a72a083fa80ce5",
+      "raw_json_digest_temp": "9d63a24ef6e065b244eaa93377d88f4d57094402ba05efd824a72a083fa80ce5",
+      "temp_rows": 194
+    },
+    "round_trip": {
+      "match": true,
+      "resnap_item_count": 194,
+      "resnap_sha256": "cd73fd14e8a293aad548b17e9c964abb15b70371798ed61bbc3422c3dda558c0",
+      "stored_item_count": 194,
+      "stored_sha256": "cd73fd14e8a293aad548b17e9c964abb15b70371798ed61bbc3422c3dda558c0"
+    }
+  },
+  "safety": {
+    "additive_only": true,
+    "built_via_temp_db": true,
+    "generation_changed": false,
+    "live_db_migrated": false,
+    "live_db_written": true,
+    "live_root_written": false,
+    "live_snapshot_created_directly": false,
+    "non_tropical_preserved": true,
+    "production_defaults_changed": false
+  },
+  "schema_version": 1,
+  "snapshot_name": "promotion_b4b30f830d40",
+  "snapshot_reason": "certified live promotion of approved config-edit proposal",
+  "snapshots_after": 2,
+  "snapshots_before": 1,
+  "status": "ready",
+  "temp_db": {
+    "digests": {
+      "canonical_digest": "7e59524efc76e1d6968847c1bbd8d00cdf2402341fc4ff796565a6bfefefa84b",
+      "raw_json_digest": "9d63a24ef6e065b244eaa93377d88f4d57094402ba05efd824a72a083fa80ce5"
+    },
+    "path": "/tmp/fdcg_promo2/config-edit/promotions/b4b30f830d40/20260621_104035/temp_dbs/config_registry_promotion.sqlite",
+    "promoted_snapshot_item_count": 194
+  },
+  "work_root": "/tmp/fdcg_promo2/config-edit/promotions/b4b30f830d40/20260621_104035",
+  "write_result": {
+    "by_table": {
+      "forecast_config_items": {
+        "inserted": 194
+      },
+      "forecast_config_snapshot_items": {
+        "inserted": 194
+      },
+      "forecast_config_snapshots": {
+        "inserted": 1
+      },
+      "forecast_config_sources": {
+        "inserted": 6
+      }
+    },
+    "transaction_committed": true
+  }
+}

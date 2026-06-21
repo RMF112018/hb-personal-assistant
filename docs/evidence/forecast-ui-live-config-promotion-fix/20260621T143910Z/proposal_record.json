@@ -1,0 +1,64 @@
+{
+  "base_snapshot_id": "c3b4a67d22db47c74e696ae562fbf1c555e365fc66bb003a7b3312754415b698",
+  "changed_items": [
+    {
+      "changed_fields": [
+        "explicit_value_amount"
+      ],
+      "domain": "forecast_model_controls",
+      "item_key": "tropical-example-explicit-final-pending",
+      "op": "modified",
+      "values": {
+        "explicit_value_amount": "3250000.00"
+      }
+    }
+  ],
+  "created_stamp": "20260621_104034",
+  "edit_id": "b4b30f830d40",
+  "parity": {
+    "differing_domains": [],
+    "domains": {
+      "forecast_controls/code_forecast_controls.jsonl": {
+        "db_count": 64,
+        "file_count": 64,
+        "match": true
+      },
+      "forecast_model_controls/code_forecast_model_controls.jsonl": {
+        "db_count": 5,
+        "file_count": 5,
+        "match": true
+      },
+      "forecast_staffing/staffing_budget_code_mapping.jsonl": {
+        "db_count": 8,
+        "file_count": 8,
+        "match": true
+      },
+      "owner_sov_crosswalk/owner_sov_scope_crosswalk_tropical_authoritative_20260614_final.csv": {
+        "db_count": 58,
+        "file_count": 58,
+        "match": true
+      },
+      "owner_sov_crosswalk/owner_sov_scope_crosswalk_tropical_authoritative_20260614_final.jsonl": {
+        "db_count": 58,
+        "file_count": 58,
+        "match": true
+      },
+      "project/tropical.json": {
+        "db_count": 1,
+        "file_count": 1,
+        "match": true
+      }
+    },
+    "status": "pass"
+  },
+  "project_key": "tropical",
+  "snapshot_hashes_by_domain": {
+    "forecast_controls": "8f34383f09cc67e90f79a76bf92be223de76f3f218713217a7a2562f63b594f6",
+    "forecast_model_controls": "46d259b0b721d7ef8526925f529fe9ef6a73d09cd975439a9df9e89989acdb81",
+    "forecast_staffing": "de7efcd8624260e5128126b087e3c26f24c2bb663dae995078429b502dcc6f5b",
+    "owner_sov_crosswalk": "8d667157f41509f1e0dacbc033a7ca8816759854ce3699514f3e3bc23a1e00b8",
+    "project": "2782ac94afe3de9cdb035a71ffdc0c4153c1453b1769cf3c213563e4e06d38de"
+  },
+  "snapshot_item_count": 194,
+  "status": "succeeded"
+}

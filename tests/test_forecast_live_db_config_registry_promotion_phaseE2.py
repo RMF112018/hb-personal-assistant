@@ -205,3 +205,104 @@ def test_active_item_duplication_guard(ctx, tmp_path: Path) -> None:
     report = _run(ctx)
     assert report["item_count"] == ctx["item_count"]  # not doubled
     assert report["decision"] == promo.DECISION_CERTIFIED
+
+
+# -- colliding-source regression (ADR 283 defect → ADR 284 fix) ---------------
+
+
+def _build_multi_config_tree(root: Path, controls: dict[str, str]) -> None:
+    """A config tree with MULTIPLE model_controls items in one jsonl file (+ a project)."""
+    cfg = root / "config"
+    (cfg / "projects").mkdir(parents=True)
+    (cfg / "forecast_model_controls" / "tropical").mkdir(parents=True)
+    (cfg / "projects" / "tropical.json").write_text(
+        json.dumps({"project_key": "tropical", "project_name": "TWN", "materiality_absolute": "25000.00"}),
+        encoding="utf-8",
+    )
+    lines = "".join(
+        json.dumps({"project_key": "tropical", "control_id": k, "explicit_value_amount": v}) + "\n"
+        for k, v in controls.items()
+    )
+    (cfg / "forecast_model_controls" / "tropical" / "code_forecast_model_controls.jsonl").write_text(
+        lines, encoding="utf-8"
+    )
+
+
+def _orphan_count(live: Path, snapshot_id: str) -> int:
+    conn = cert._ro_conn(live)
+    try:
+        return int(
+            conn.execute(
+                "SELECT COUNT(*) FROM forecast_config_snapshot_items si WHERE si.config_snapshot_id=? "
+                "AND NOT EXISTS (SELECT 1 FROM forecast_config_items ci "
+                "JOIN forecast_config_sources s ON s.config_source_id=ci.config_source_id "
+                "WHERE ci.config_item_id=si.config_item_id)",
+                (snapshot_id,),
+            ).fetchone()[0]
+        )
+    finally:
+        conn.close()
+
+
+def _promote(live: Path, edited: Path, work: Path, tmp_path: Path, name: str, stamp: str) -> dict:
+    ic, h = _expected(edited, tmp_path / f"exp_{name}", name)
+    return promo.run_live_db_config_registry_promotion(
+        edited_config_root=edited, work_root=work, context_stamp=stamp, live_db_path=live,
+        allow_live_db_write=True, snapshot_name=name, snapshot_reason="r",
+        expected_item_count=ic, expected_hashes_by_domain=h,
+    )
+
+
+def test_colliding_source_same_path_different_content(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Promoting an edit into a live DB that already holds a content-identical prior snapshot must NOT
+    orphan the unchanged items. Reproduces the ADR 283 defect (4-of-5 model_controls orphaned)."""
+    live = tmp_path / "live.sqlite"
+    _build_live_config_db(live)
+    monkeypatch.setattr(dbeng, "is_live_db_path", lambda p: Path(p).resolve() == live.resolve())
+
+    # First promotion: BASE config (3 model_controls items + project) into the live DB.
+    base = tmp_path / "base_config"
+    _build_multi_config_tree(base, {"C-001": "1000.00", "C-002": "2000.00", "C-003": "3000.00"})
+    _promote(live, base, tmp_path / "work_base", tmp_path, "promotion_base", "20260101_000000")
+    _checkpoint(live)
+
+    # Second promotion: EDITED config — same source_path, only C-002 changed (1 of 3).
+    edited = tmp_path / "edited_config"
+    _build_multi_config_tree(edited, {"C-001": "1000.00", "C-002": "2500.00", "C-003": "3000.00"})
+    report = _promote(live, edited, tmp_path / "work_edited", tmp_path, "promotion_edited", "20260101_000001")
+    promoted_id = report["promoted_snapshot_id"]
+
+    # (a) No orphaned snapshot_items — the unchanged C-001/C-003 must resolve to a present item+source.
+    assert _orphan_count(live, promoted_id) == 0
+    assert report["item_count"] == 4  # C-001, C-002, C-003 + project
+
+    # (b) The promoted snapshot round-trips: materialize -> reimport -> resnap == stored digest+count.
+    from construction_financial_review.config_registry import (
+        materialize_forecast_config_snapshot_readonly,
+    )
+
+    mat = materialize_forecast_config_snapshot_readonly(
+        db_path=live, config_snapshot_id=promoted_id, out_root=tmp_path / "mat"
+    )
+    rdb = tmp_path / "round.sqlite"
+    import_forecast_config_to_db(
+        config_root=Path(mat["materialized_config_root"]), db_path=rdb, project_key="tropical"
+    )
+    resnap = create_forecast_config_snapshot(
+        db_path=rdb, project_key="tropical", snapshot_name="rt", snapshot_reason="rt"
+    )
+    conn = cert._ro_conn(live)
+    try:
+        stored = conn.execute(
+            "SELECT item_count, snapshot_sha256 FROM forecast_config_snapshots WHERE config_snapshot_id=?",
+            (promoted_id,),
+        ).fetchone()
+    finally:
+        conn.close()
+    assert int(resnap["item_count"]) == int(stored[0])
+    assert str(resnap["snapshot_sha256"]) == str(stored[1])
+
+    # (c) Certified (the round-trip cert passes once the copy preserves linkage).
+    assert report["decision"] == promo.DECISION_CERTIFIED
+    assert report["snapshots_before"] == 1
+    assert report["snapshots_after"] == 2

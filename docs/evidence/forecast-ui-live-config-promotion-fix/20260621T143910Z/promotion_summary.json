@@ -1,0 +1,22 @@
+{
+  "backup_created": true,
+  "certification": {
+    "decision": "certified_match",
+    "non_tropical_preserved": true
+  },
+  "created_display": "Jun 21, 2026 10:40 AM",
+  "edit_id": "b4b30f830d40",
+  "guardrails": {
+    "additive_snapshot_only": true,
+    "backup_created": true,
+    "lineage_only_not_generation": true,
+    "local_first": true,
+    "no_live_data_root_write": true,
+    "no_llm": true,
+    "writes_live_config_db": true
+  },
+  "item_count": 194,
+  "promoted_snapshot_id": "cbae0702dbfa994143766271410e28d51e06e7b684e226774753126d02286159",
+  "status": "promoted",
+  "surface": "analytics.forecast_config_promotion.promote"
+}
