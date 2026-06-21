@@ -689,6 +689,21 @@ export function getForecastPackageRows(packageId: string) {
   return fetchJson(`/api/forecast/packages/${encodeURIComponent(packageId)}/forecast-rows`);
 }
 
+/* Forecast Review surfaces — read-only model forecast detail (Implementation Phase 5).
+ * Monthly trend, probability/confidence bands, risk register, and top overrun risks per package. */
+export function getForecastPackageMonthly(packageId: string) {
+  return fetchJson(`/api/forecast/packages/${encodeURIComponent(packageId)}/monthly`);
+}
+export function getForecastPackageProbability(packageId: string) {
+  return fetchJson(`/api/forecast/packages/${encodeURIComponent(packageId)}/probability`);
+}
+export function getForecastPackageRiskRegister(packageId: string) {
+  return fetchJson(`/api/forecast/packages/${encodeURIComponent(packageId)}/risk-register`);
+}
+export function getForecastPackageTopRisks(packageId: string) {
+  return fetchJson(`/api/forecast/packages/${encodeURIComponent(packageId)}/top-risks`);
+}
+
 /* Forecast configuration — read-only viewer over the v60 config snapshot (Implementation Phase 2).
  * Read-only metadata: business config settings only (no paths, run stamps, endpoints, or internals). */
 export function getForecastConfigSnapshots() {
@@ -851,6 +866,11 @@ export const api = {
   getForecastPackageManifest,
   getForecastPackageReviewItems,
   getForecastPackageRows,
+  // Forecast Review surfaces (Implementation Phase 5). Read-only model forecast detail.
+  getForecastPackageMonthly,
+  getForecastPackageProbability,
+  getForecastPackageRiskRegister,
+  getForecastPackageTopRisks,
   // Forecast configuration viewer (Implementation Phase 2). Read-only metadata.
   getForecastConfigSnapshots,
   getForecastConfigSnapshot,

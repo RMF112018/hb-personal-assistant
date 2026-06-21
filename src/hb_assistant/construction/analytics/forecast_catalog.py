@@ -30,11 +30,16 @@ from hb_assistant.construction.analytics.forecast_dto import (
     ForecastRowDTO,
     ManifestDTO,
     ManifestFileDTO,
+    MonthlyForecastRowDTO,
+    MonthlyPointDTO,
     PackageDTO,
     PackageSummaryDTO,
     PeriodDTO,
+    ProbabilityRowDTO,
     ProjectDTO,
     ReviewItemDTO,
+    RiskRegisterRowDTO,
+    TopRiskDTO,
     ValidationDTO,
     friendly_datetime_from_stamp,
 )
@@ -77,6 +82,13 @@ _SUMMARY_CANDIDATES: tuple[str, ...] = (
     "project_comprehensive_forecast_summary.json",
     "project_forecast_accuracy_summary.json",
 )
+
+# Phase 5 review-surface source files (present in comprehensive packages; a subset elsewhere).
+_MONTHLY_BY_CODE_FILE = "integrated_monthly_forecast_by_budget_code.jsonl"
+_MONTHLY_PROJECT_FILE = "integrated_monthly_project_forecast.jsonl"
+_PROBABILITY_FILE = "integrated_probability_by_budget_code.jsonl"
+_RISK_REGISTER_FILE = "integrated_risk_register.jsonl"
+_TOP_RISKS_FILE = "top_overrun_risks.json"
 
 _SURFACE = "analytics.forecast_catalog"
 _MAX_ROWS = 2000  # defensive cap so a huge JSONL can't blow up a response
@@ -548,5 +560,167 @@ class ForecastCatalogService:
             "items_available": source_present,
             "item_count": len(items),
             "items": [i.public() for i in items],
+            "guardrails": _guardrails(),
+        }
+
+    # -- Phase 5 review surfaces (read-only) ----------------------------------
+
+    def _read_json_list(self, path: Path, limit: int) -> list[dict[str, Any]]:
+        """Read a JSON array of objects (defensively capped); [] on absence/parse error."""
+        try:
+            with path.open("r", encoding="utf-8", errors="replace") as fh:
+                data = json.load(fh)
+        except (OSError, ValueError, UnicodeDecodeError):
+            return []
+        if not isinstance(data, list):
+            return []
+        return [obj for obj in data[:limit] if isinstance(obj, dict)]
+
+    @staticmethod
+    def _money(row: dict[str, Any], *keys: str) -> str | None:
+        for k in keys:
+            v = row.get(k)
+            if v is not None:
+                return str(v)
+        return None
+
+    def read_monthly_forecast(self, package_id: str) -> dict[str, Any]:
+        ref = self._require(package_id)
+        rows: list[MonthlyForecastRowDTO] = []
+        by_code = ref.path / _MONTHLY_BY_CODE_FILE
+        source_present = by_code.exists()
+        truncated = False
+        if source_present:
+            raw, _skipped = self._read_jsonl(by_code, _MAX_ROWS)
+            truncated = len(raw) >= _MAX_ROWS
+            for r in raw:
+                mc = r.get("monthly_costs")
+                points: list[MonthlyPointDTO] = []
+                if isinstance(mc, list):
+                    for m in mc:
+                        if isinstance(m, dict):
+                            points.append(
+                                MonthlyPointDTO(
+                                    forecast_month=m.get("forecast_month"),
+                                    amount=self._money(m, "integrated_month_cost", "amount"),
+                                )
+                            )
+                rows.append(
+                    MonthlyForecastRowDTO(
+                        cost_code=r.get("cost_code"),
+                        budget_code_key=r.get("budget_code_key"),
+                        cost_to_complete=self._money(r, "integrated_cost_to_complete", "cost_to_complete"),
+                        months=points,
+                    )
+                )
+        # Project-level monthly trend (small; one point per month).
+        project_monthly: list[dict[str, Any]] = []
+        proj_path = ref.path / _MONTHLY_PROJECT_FILE
+        if proj_path.exists():
+            praw, _ = self._read_jsonl(proj_path, _MAX_ROWS)
+            for p in praw:
+                project_monthly.append(
+                    MonthlyPointDTO(
+                        forecast_month=p.get("forecast_month"),
+                        amount=self._money(p, "integrated_month_cost", "amount"),
+                    ).public()
+                )
+        return {
+            "surface": _SURFACE + ".monthly",
+            "package_id": ref.package_id,
+            "monthly_available": source_present,
+            "row_count": len(rows),
+            "truncated": truncated,
+            "project_monthly": project_monthly,
+            "rows": [r.public() for r in rows],
+            "guardrails": _guardrails(),
+        }
+
+    def read_probability(self, package_id: str) -> dict[str, Any]:
+        ref = self._require(package_id)
+        path = ref.path / _PROBABILITY_FILE
+        source_present = path.exists()
+        rows: list[ProbabilityRowDTO] = []
+        truncated = False
+        if source_present:
+            raw, _ = self._read_jsonl(path, _MAX_ROWS)
+            truncated = len(raw) >= _MAX_ROWS
+            for r in raw:
+                rows.append(
+                    ProbabilityRowDTO(
+                        cost_code=r.get("cost_code"),
+                        budget_code_key=r.get("budget_code_key"),
+                        actual_cost_to_date=self._money(r, "actual_cost_to_date"),
+                        p10=self._money(r, "integrated_p10"),
+                        p50=self._money(r, "integrated_p50"),
+                        p80=self._money(r, "integrated_p80"),
+                        p90=self._money(r, "integrated_p90"),
+                        p95=self._money(r, "integrated_p95"),
+                    )
+                )
+        return {
+            "surface": _SURFACE + ".probability",
+            "package_id": ref.package_id,
+            "probability_available": source_present,
+            "row_count": len(rows),
+            "truncated": truncated,
+            "rows": [r.public() for r in rows],
+            "guardrails": _guardrails(),
+        }
+
+    def read_risk_register(self, package_id: str) -> dict[str, Any]:
+        ref = self._require(package_id)
+        path = ref.path / _RISK_REGISTER_FILE
+        source_present = path.exists()
+        rows: list[RiskRegisterRowDTO] = []
+        truncated = False
+        if source_present:
+            raw, _ = self._read_jsonl(path, _MAX_ROWS)
+            truncated = len(raw) >= _MAX_ROWS
+            for r in raw:
+                cc = r.get("conflict_count")
+                rows.append(
+                    RiskRegisterRowDTO(
+                        cost_code=r.get("cost_code"),
+                        budget_code_key=r.get("budget_code_key"),
+                        recommended_final_cost=self._money(r, "integrated_recommended_final_cost"),
+                        variance_amount=self._money(r, "integrated_minus_accepted_final_cost"),
+                        conflict_count=cc if isinstance(cc, int) else None,
+                        max_conflict_severity=r.get("max_conflict_severity"),
+                        review_priority=r.get("review_priority"),
+                    )
+                )
+        return {
+            "surface": _SURFACE + ".risk_register",
+            "package_id": ref.package_id,
+            "risk_register_available": source_present,
+            "row_count": len(rows),
+            "truncated": truncated,
+            "rows": [r.public() for r in rows],
+            "guardrails": _guardrails(),
+        }
+
+    def read_top_risks(self, package_id: str) -> dict[str, Any]:
+        ref = self._require(package_id)
+        path = ref.path / _TOP_RISKS_FILE
+        source_present = path.exists()
+        rows: list[TopRiskDTO] = []
+        if source_present:
+            for r in self._read_json_list(path, _MAX_ROWS):
+                rows.append(
+                    TopRiskDTO(
+                        cost_code=r.get("cost_code"),
+                        budget_code_key=r.get("budget_code_key"),
+                        recommended_final_cost=self._money(r, "integrated_recommended_final_cost"),
+                        overrun_amount=self._money(r, "integrated_minus_accepted_final_cost"),
+                        direction=r.get("integrated_direction"),
+                    )
+                )
+        return {
+            "surface": _SURFACE + ".top_risks",
+            "package_id": ref.package_id,
+            "top_risks_available": source_present,
+            "row_count": len(rows),
+            "rows": [r.public() for r in rows],
             "guardrails": _guardrails(),
         }

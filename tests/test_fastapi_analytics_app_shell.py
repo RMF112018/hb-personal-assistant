@@ -168,6 +168,11 @@ def test_openapi_exposes_only_shell_routes(tmp_path: Path) -> None:
         "/api/forecast/packages/{package_id}/manifest",
         "/api/forecast/packages/{package_id}/review-items",
         "/api/forecast/packages/{package_id}/forecast-rows",
+        # Forecast Review surfaces (Implementation Phase 5)
+        "/api/forecast/packages/{package_id}/monthly",
+        "/api/forecast/packages/{package_id}/probability",
+        "/api/forecast/packages/{package_id}/risk-register",
+        "/api/forecast/packages/{package_id}/top-risks",
         # Forecast configuration — read-only viewer over the v60 config snapshot (Implementation Phase 2)
         "/api/forecast/config/snapshots",
         "/api/forecast/config/snapshots/{snapshot_id}",

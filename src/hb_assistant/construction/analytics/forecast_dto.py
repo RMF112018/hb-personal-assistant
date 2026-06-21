@@ -197,6 +197,76 @@ class ReviewItemDTO:
         return asdict(self)
 
 
+# --- Phase 5 review surfaces (read-only) --------------------------------------
+# Money fields are pass-through 2dp Decimal strings from the package files (never floats).
+
+
+@dataclass(frozen=True)
+class MonthlyPointDTO:
+    forecast_month: str | None = None  # e.g. "2026-06"
+    amount: str | None = None
+
+    def public(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass(frozen=True)
+class MonthlyForecastRowDTO:
+    cost_code: str | None = None
+    budget_code_key: str | None = None
+    cost_to_complete: str | None = None
+    months: list[MonthlyPointDTO] = field(default_factory=list)
+
+    def public(self) -> dict[str, Any]:
+        return {
+            "cost_code": self.cost_code,
+            "budget_code_key": self.budget_code_key,
+            "cost_to_complete": self.cost_to_complete,
+            "months": [m.public() for m in self.months],
+        }
+
+
+@dataclass(frozen=True)
+class ProbabilityRowDTO:
+    cost_code: str | None = None
+    budget_code_key: str | None = None
+    actual_cost_to_date: str | None = None
+    p10: str | None = None
+    p50: str | None = None
+    p80: str | None = None
+    p90: str | None = None
+    p95: str | None = None
+
+    def public(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass(frozen=True)
+class RiskRegisterRowDTO:
+    cost_code: str | None = None
+    budget_code_key: str | None = None
+    recommended_final_cost: str | None = None
+    variance_amount: str | None = None  # integrated_minus_accepted_final_cost
+    conflict_count: int | None = None
+    max_conflict_severity: str | None = None
+    review_priority: str | None = None
+
+    def public(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass(frozen=True)
+class TopRiskDTO:
+    cost_code: str | None = None
+    budget_code_key: str | None = None
+    recommended_final_cost: str | None = None
+    overrun_amount: str | None = None  # integrated_minus_accepted_final_cost
+    direction: str | None = None
+
+    def public(self) -> dict[str, Any]:
+        return asdict(self)
+
+
 # --- redaction self-check -----------------------------------------------------
 
 # Patterns that indicate a dev-internal leaked into a user-facing payload.
