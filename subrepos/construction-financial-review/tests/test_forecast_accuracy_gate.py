@@ -32,6 +32,16 @@ def _rb(cohort, mape, bias, coverage):
         "naive_erp_mape": "0.0500",
         "reconciled_minus_naive_delta": "0.0700",
         "per_target_mape": {"0.40": "0.10"},
+        "recalibrated": {
+            "stage_gate_lo": "0.5",
+            "stage_gate_hi": "0.8",
+            "recalibrated_final_mape": "0.2000",
+            "recalibrated_final_mean_bias": "0.1500",
+            "recalibrated_worst_credible_coverage_rate": coverage,
+            "mape_improvement": "0.2125",
+            "bias_abs_improvement": "0.1796",
+            "recalibrated_per_target_mape": {"0.40": "0.30"},
+        },
         "methodology": "x",
         "reconstruction_fidelity_caveats": ["c"],
     }
@@ -39,6 +49,21 @@ def _rb(cohort, mape, bias, coverage):
 
 def _run(tmp_path, pkg, **kw):
     return gate.run_forecast_accuracy_gate(package=pkg, work_root=tmp_path / "wr", **kw)
+
+
+def test_recalibration_effect_block(tmp_path):
+    # not_ready on baseline, but the recalibration block reports the improvement + recommends it.
+    pkg = _pkg(tmp_path, _rb(12, "0.4125", "0.3296", "0.8966"))
+    r = _run(tmp_path, pkg)
+    assert (
+        r["verdict"] == gate.VERDICT_NOT_READY
+    )  # verdict stays on baseline (production, flag-off)
+    eff = r["recalibration_effect"]
+    assert eff["production_flag_default"] == "off"
+    assert (
+        eff["recalibration_recommended"] is True
+    )  # MAPE improves 0.2125, bias improves, coverage held
+    assert eff["baseline_mape"] == "0.4125" and eff["recalibrated_mape"] == "0.2000"
 
 
 def test_verdict_pass(tmp_path):
