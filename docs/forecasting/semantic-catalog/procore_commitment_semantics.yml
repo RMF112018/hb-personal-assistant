@@ -1,0 +1,28 @@
+family: commitment
+confidence: high
+evidence_package_ref: docs/evidence/forecasting-db-complete-evidence/20260621T130542Z/
+
+entities:
+  fact_commitment_exposure:
+    source_tables:
+      - procore_ep_commitment_contracts
+      - procore_ep_commitment_line_items
+      - procore_ep_commitment_change_orders
+    grain: contract / line item / change order
+    primary_key: record_key
+    parent_keys:
+      - parent_record_id -> commitment_contracts.record_id
+      - contract_id -> commitment_contracts.record_id (change orders)
+    join_confidence: high
+    evidence_basis: [row-profile-supported, repo-code-supported]
+    date_basis: [updated_at, signed_change_order_received_date]
+    amount_basis: [grand_total, line_item amount, change_order amounts]
+    status_inclusion:
+      included: [approved, complete, closed, executed]
+      pending: [draft, pending, open, processing]
+      excluded: [void, cancelled, deleted]
+    forecast_relevance: committed_cost_exposure
+    caveats:
+      - PO line items with commitment holder_id route here per polymorphic holder evidence.
+      - PO contracts sharing contract_id deduped in commitment_projection.
+    validation_query: validation_queries/commitment_relationships.sql

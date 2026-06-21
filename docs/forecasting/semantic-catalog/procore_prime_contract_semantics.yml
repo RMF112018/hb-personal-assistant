@@ -1,0 +1,23 @@
+family: prime_contract
+confidence: high
+evidence_package_ref: docs/evidence/forecasting-db-complete-evidence/20260621T130542Z/
+
+entities:
+  fact_prime_contract_revenue:
+    source_tables: [procore_ep_prime_contracts, procore_ep_prime_contract_line_items]
+    grain: prime contract / line item
+    primary_key: record_key
+    parent_keys: [parent_record_id -> prime_contracts.record_id]
+    join_confidence: high
+    evidence_basis: [row-profile-supported]
+    forecast_relevance: owner_side_revenue_baseline
+    caveats: [Not direct cost actuals; owner/revenue exposure only]
+
+  fact_prime_change_order_revenue:
+    source_tables: [procore_ep_prime_change_orders, procore_ep_prime_change_order_line_items]
+    grain: prime change order / line item
+    join_confidence: high
+    evidence_basis: [row-profile-supported]
+    status_inclusion: {included: [approved, complete], pending: [draft, pending], excluded: [void]}
+    forecast_relevance: approved_owner_revenue_changes
+    validation_query: validation_queries/prime_contract_relationships.sql

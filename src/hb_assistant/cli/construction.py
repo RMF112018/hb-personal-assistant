@@ -452,6 +452,78 @@ def forecast_source_domain_cmd(
     raise typer.Exit(0 if receipt.get("ok") else 1)
 
 
+_FORECAST_GATES_GUARDRAILS = {
+    "external_systems": "read_only",
+    "writeback": "none",
+    "db_access": "sqlite_read_only",
+    "no_raw_payload_export": True,
+}
+
+
+@forecast_app.command("double-count-gate")
+def forecast_double_count_gate_cmd(
+    db_path: str = typer.Option(..., "--db-path", help="SQLite DB path (read-only)."),
+    mode: str = typer.Option("warn", "--mode", help="warn or strict."),
+    json_out: bool = typer.Option(True, "--json", help="Emit machine-readable JSON."),
+) -> None:
+    """Run forecasting double-count prevention gate (read-only SQLite)."""
+    from hb_assistant.forecasting.gates import run_double_count_gate
+
+    report = run_double_count_gate(db_path=db_path, mode=mode)  # type: ignore[arg-type]
+    payload = {
+        "command": "construction-agent forecast double-count-gate",
+        "report": report,
+        "guardrails": _FORECAST_GATES_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0 if report.get("ok") else 1)
+
+
+@forecast_app.command("actuals-reconciliation-gate")
+def forecast_actuals_reconciliation_gate_cmd(
+    db_path: str = typer.Option(..., "--db-path", help="SQLite DB path (read-only)."),
+    absolute_threshold: str = typer.Option("100.00", "--absolute-threshold"),
+    percent_threshold: str = typer.Option("0.005", "--percent-threshold"),
+    mode: str = typer.Option("warn", "--mode", help="warn or strict."),
+    json_out: bool = typer.Option(True, "--json", help="Emit machine-readable JSON."),
+) -> None:
+    """Run actuals reconciliation gate with materiality thresholds (read-only SQLite)."""
+    from hb_assistant.forecasting.gates import run_actuals_reconciliation_gate
+
+    report = run_actuals_reconciliation_gate(
+        db_path=db_path,
+        absolute_threshold=absolute_threshold,
+        percent_threshold=percent_threshold,
+        mode=mode,  # type: ignore[arg-type]
+    )
+    payload = {
+        "command": "construction-agent forecast actuals-reconciliation-gate",
+        "report": report,
+        "guardrails": _FORECAST_GATES_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0 if report.get("ok") else 1)
+
+
+@forecast_app.command("gates")
+def forecast_all_gates_cmd(
+    db_path: str = typer.Option(..., "--db-path", help="SQLite DB path (read-only)."),
+    mode: str = typer.Option("warn", "--mode", help="warn or strict."),
+    json_out: bool = typer.Option(True, "--json", help="Emit machine-readable JSON."),
+) -> None:
+    """Run all forecasting semantic gates (double-count, actuals, parity, cost-type guard)."""
+    from hb_assistant.forecasting.gates import run_all_forecasting_gates
+
+    report = run_all_forecasting_gates(db_path=db_path, mode=mode)  # type: ignore[arg-type]
+    payload = {
+        "command": "construction-agent forecast gates",
+        "report": report,
+        "guardrails": _FORECAST_GATES_GUARDRAILS,
+    }
+    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+    raise typer.Exit(0 if report.get("ok") else 1)
+
+
 issue_history_app = typer.Typer(
     help="Phase 07D project issue-history materialization (build/status). Dry-run safe by default; "
     "--apply writes local SQLite issue-history families only — advisory, grouped by "

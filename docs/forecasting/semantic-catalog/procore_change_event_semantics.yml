@@ -1,0 +1,28 @@
+family: change_event
+confidence: high
+evidence_package_ref: docs/evidence/forecasting-db-complete-evidence/20260621T130542Z/
+
+entities:
+  fact_change_event_exposure:
+    source_tables: [procore_ep_change_events, procore_ep_change_events_change_items]
+    grain: change event / change item
+    primary_key: record_key
+    parent_keys: [primary_record_key -> change_events.record_key]
+    join_confidence: high
+    evidence_basis: [row-profile-supported]
+    amount_basis: [latest_cost_values_amount, cost_impact_estimate_amount]
+    status_inclusion: {pending: [open, pending, draft], excluded: [void, cancelled]}
+    forecast_relevance: potential_exposure_risk_opportunity
+    caveats:
+      - Treat as pending exposure until superseded by RFQ quote, CCO, PCO, or approved budget change.
+      - Do not count alongside approved CCO/PCO without lifecycle state handling.
+    validation_query: validation_queries/change_event_relationships.sql
+
+  fact_rfq_exposure:
+    source_tables: [procore_ep_rfqs, procore_ep_rfqs_change_event_change_event_line_items]
+    grain: RFQ / RFQ line bridge
+    join_confidence: medium
+    evidence_basis: [row-profile-supported]
+    amount_basis: [latest_quote_amount, rfq_amount, estimated_cost_amount]
+    forecast_relevance: quoted_exposure
+    caveats: [Superseded by approved commitment change order when commitment_pco_cost populated]

@@ -44,7 +44,7 @@ def test_existing_tarball_missing_completion_file_documents_known_gap(existing_t
 def test_script_packaging_order_writes_completion_before_tar() -> None:
     text = SCRIPT.read_text(encoding="utf-8")
     pre_tar = text.index('packaging_step=pre_tar')
-    tar_cmd = text.index('tar -czf "$TGZ"')
+    tar_cmd = text.index('tar --exclude')
     manifest = text.index('97-file-manifest.txt')
     assert pre_tar < manifest < tar_cmd
 
@@ -52,6 +52,12 @@ def test_script_packaging_order_writes_completion_before_tar() -> None:
 def test_script_has_checksum_sidecar() -> None:
     text = SCRIPT.read_text(encoding="utf-8")
     assert "CHECKSUM_SIDEcar" in text or ".sha256" in text
+
+
+def test_script_excludes_appledouble_and_uses_copyfile_disable() -> None:
+    text = SCRIPT.read_text(encoding="utf-8")
+    assert "COPYFILE_DISABLE=1" in text
+    assert "--exclude='._*'" in text or '--exclude="._*"' in text
 
 
 @pytest.mark.parametrize(

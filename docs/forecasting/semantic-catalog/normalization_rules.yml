@@ -1,5 +1,11 @@
+runtime_integration:
+  module: src/hb_assistant/forecasting/normalization.py
+  financial_wrapper: src/hb_assistant/procore/normalizers/financial.py::classify_amount
+  usage: Pass table and column to classify_amount for classifier guard at runtime
+
 amount:
   classifier: src/hb_assistant/forecasting/field_classifiers.py::classify_amount_field
+  runtime: src/hb_assistant/forecasting/normalization.py::normalize_amount_field
   rules:
     true_monetary_amount: {normalize: decimal, aggregate: true}
     quantity: {normalize: decimal, aggregate: true}

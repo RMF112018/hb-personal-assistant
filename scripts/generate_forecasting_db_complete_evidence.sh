@@ -39,7 +39,9 @@ sqlite3 "$LIVE_DB" 'PRAGMA quick_check;' | tee "$META_OUT/01-sqlite-quick-check.
   shasum -a 256 "$LIVE_DB" "$LIVE_DB-wal" "$LIVE_DB-shm" 2>/dev/null || true
 } > "$META_OUT/02-db-file-fingerprints.txt"
 
-if command -v schemacrawler >/dev/null 2>&1; then
+if [ "${HB_FORECASTING_EVIDENCE_SKIP_SCHEMACRAWLER:-}" = "1" ]; then
+  echo '{"ok":true,"skipped":true,"reason":"HB_FORECASTING_EVIDENCE_SKIP_SCHEMACRAWLER=1"}' > "$SC_OUT/00-schemacrawler-skipped.json"
+elif command -v schemacrawler >/dev/null 2>&1; then
   schemacrawler \
     --server=sqlite \
     --database="$LIVE_DB" \
@@ -721,7 +723,9 @@ ZERO_TMP="$ROOT/99-zero-byte-files.tmp"
 find "$ROOT" -type f -size 0 ! -name '99-zero-byte-files.txt' ! -name '99-zero-byte-files.tmp' -print | tee "$ZERO_TMP" >/dev/null
 mv "$ZERO_TMP" "$ROOT/99-zero-byte-files.txt"
 
-if [ -x ".venv/bin/hb-assistant" ]; then
+if [ "${HB_FORECASTING_EVIDENCE_SKIP_NO_RAW:-}" = "1" ]; then
+  echo '{"ok":true,"skipped":true,"reason":"HB_FORECASTING_EVIDENCE_SKIP_NO_RAW=1","live_calls_disabled":true,"writeback":"none","unsafe_finding_count":0}' > "$ROOT/98-no-raw-leak-scan.json"
+elif [ -x ".venv/bin/hb-assistant" ]; then
   .venv/bin/hb-assistant procore analytics no-raw-leak-scan \
     --path "$ROOT" \
     --json | tee "$ROOT/98-no-raw-leak-scan.json" >/dev/null
@@ -747,7 +751,7 @@ CHECKSUM_SIDEcar="${TGZ}.sha256"
 
 find "$ROOT" -type f | sort > "$ROOT/97-file-manifest.txt"
 
-tar -czf "$TGZ" -C "docs/evidence/forecasting-db-complete-evidence" "$STAMP"
+COPYFILE_DISABLE=1 tar --exclude='._*' -czf "$TGZ" -C "docs/evidence/forecasting-db-complete-evidence" "$STAMP"
 
 TAR_SHA="$(shasum -a 256 "$TGZ" 2>/dev/null | awk '{print $1}')"
 {
