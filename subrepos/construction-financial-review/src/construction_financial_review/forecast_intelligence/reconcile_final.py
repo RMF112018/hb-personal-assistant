@@ -27,6 +27,7 @@ METHOD_FAMILY = {
     "trend_projection_eac": "trend",
     "commitment_exposure_eac": "commitment_exposure",
     "cpi_blend_eac": "calibrated_model",
+    "timeseries_eac": "timeseries",
 }
 
 

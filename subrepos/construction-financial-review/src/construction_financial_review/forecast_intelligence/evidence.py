@@ -45,6 +45,16 @@ def assemble_evidence(ctx: dict, rec: dict, sched_rollup: Optional[dict], owner_
     bundle["late_cost_emergence"] = trend.get("late_cost_emergence")
     bundle["credits_deductive_pattern"] = trend.get("credits_deductive_pattern")
 
+    # Completed monthly actuals series (CostEntries truth) for the SHADOW time-series estimator.
+    # Completed buckets only ("through_may_2026"), sorted ascending by month. Deterministic.
+    monthly_actuals = (ctx.get("actuals") or {}).get("monthly_actuals") or []
+    completed = sorted(
+        ((m.get("month"), m.get("amount_decimal_string")) for m in monthly_actuals
+         if m.get("actual_period_bucket") == "through_may_2026" and m.get("month")),
+        key=lambda t: t[0])
+    bundle["monthly_actuals_completed"] = [
+        OrderedDict([("month", mo), ("amount", amt)]) for mo, amt in completed]
+
     # Schedule association block.
     bundle["schedule_association"] = assoc.get("schedule_association")
     bundle["schedule_confidence"] = assoc.get("schedule_confidence")
