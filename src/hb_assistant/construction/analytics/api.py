@@ -1597,6 +1597,50 @@ def create_app(*, db_path: str | None = None) -> Any:
         del role
         return _forecast_config_call(_forecast_config_service().read_item, snapshot_id, item_id)
 
+    # --- Phase 4: DB-backed read-model for v63 run-output + v66 decision-support -----------
+    # Read-only; navigates by the hash-based output_id (never the stamp-format run_id);
+    # graceful-empty until the Phase-3 gated live write has populated the tables.
+    def _forecast_readmodel_service() -> Any:
+        from hb_assistant.construction.analytics.forecast_run_readmodel import (
+            ForecastRunReadModelService,
+        )
+        from hb_assistant.construction.analytics.forecast_runtime_config import resolve_db_path
+
+        return ForecastRunReadModelService(db_path=resolve_db_path(db_path))
+
+    def _forecast_readmodel_call(fn: Any, *args: Any) -> dict[str, Any]:
+        from fastapi import HTTPException
+
+        from hb_assistant.construction.analytics.forecast_run_readmodel import (
+            ForecastRunReadModelError,
+        )
+
+        try:
+            return fn(*args)
+        except ForecastRunReadModelError as exc:
+            if str(exc).startswith("unknown output_id"):
+                raise HTTPException(status_code=404, detail="forecast_output_not_found")
+            raise HTTPException(status_code=503, detail="forecast_run_output_not_available")
+
+    @app.get("/api/forecast/db/projects/{project_key}/outputs")
+    def forecast_db_outputs(project_key: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        return _forecast_readmodel_call(_forecast_readmodel_service().list_outputs, project_key)
+
+    @app.get("/api/forecast/db/outputs/{output_id}")
+    def forecast_db_output(output_id: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        return _forecast_readmodel_call(_forecast_readmodel_service().read_output, output_id)
+
+    @app.get("/api/forecast/db/outputs/{output_id}/decision-support")
+    def forecast_db_decision_support(
+        output_id: str, role: dict[str, str] = role_dep
+    ) -> dict[str, Any]:
+        del role
+        return _forecast_readmodel_call(
+            _forecast_readmodel_service().read_decision_support, output_id
+        )
+
     # Forecast config editing — isolated proposals (Implementation Phase E). An operator proposes
     # edits; the service seeds from a chosen live snapshot (mode=ro), applies edits in an isolated
     # config-edit root, runs the CFR import→snapshot→materialize→parity pipeline in an isolated temp
