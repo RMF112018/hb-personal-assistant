@@ -8,27 +8,34 @@ from construction_financial_review.forecast_intelligence import reconciled_backt
 
 
 def test_asof_reliabilities_use_real_rules():
-    # owner < 0.50 -> low; trend months < 6 -> low; commitment + cpi always low.
+    # owner < 0.50 -> low; trend months < 6 -> low; procore < 0.50 -> low; commitment + cpi always low.
     r = rb._asof_reliabilities(
-        Decimal("0.40"), {"months_of_completed_actuals": 4, "cost_volatility_cov": "0.20"}
+        Decimal("0.40"),
+        {"months_of_completed_actuals": 4, "cost_volatility_cov": "0.20"},
+        Decimal("0.30"),
     )
     assert r == {
         "owner_progress_eac": "low",
+        "procore_progress_eac": "low",
         "trend_projection_eac": "low",
         "commitment_exposure_eac": "low",
         "cpi_blend_eac": "low",
     }
-    # owner >= 0.50 -> medium; trend months>=6 & cov<=0.75 -> medium.
+    # owner >= 0.50 -> medium; trend months>=6 & cov<=0.75 -> medium; procore >= 0.50 -> medium.
     r2 = rb._asof_reliabilities(
-        Decimal("0.60"), {"months_of_completed_actuals": 8, "cost_volatility_cov": "0.30"}
+        Decimal("0.60"),
+        {"months_of_completed_actuals": 8, "cost_volatility_cov": "0.30"},
+        Decimal("0.55"),
     )
     assert r2["owner_progress_eac"] == "medium"
     assert r2["trend_projection_eac"] == "medium"
-    # high volatility -> trend low even with enough months.
+    assert r2["procore_progress_eac"] == "medium"
+    # high volatility -> trend low even with enough months; procore None -> low.
     r3 = rb._asof_reliabilities(
-        Decimal("0.60"), {"months_of_completed_actuals": 8, "cost_volatility_cov": "0.90"}
+        Decimal("0.60"), {"months_of_completed_actuals": 8, "cost_volatility_cov": "0.90"}, None
     )
     assert r3["trend_projection_eac"] == "low"
+    assert r3["procore_progress_eac"] == "low"
 
 
 def test_asof_estimates_carry_supplied_reliability():
@@ -92,10 +99,61 @@ def _near_complete_ctx(key="0000.10-20-030.SUB"):
     return ctx, {key: owner_rows}
 
 
+def _procore_hist(key="0000.10-20-030.SUB"):
+    # one commitment billing each month; completed rises so as-of pct ~ owner targets.
+    rows = [
+        {
+            "period_end": "2025-01-25",
+            "commitment_id": 1,
+            "total_completed_and_stored_to_date": "40000",
+            "scheduled_value": "100000",
+        },
+        {
+            "period_end": "2025-02-25",
+            "commitment_id": 1,
+            "total_completed_and_stored_to_date": "60000",
+            "scheduled_value": "100000",
+        },
+        {
+            "period_end": "2025-03-25",
+            "commitment_id": 1,
+            "total_completed_and_stored_to_date": "80000",
+            "scheduled_value": "100000",
+        },
+    ]
+    return {key: rows}
+
+
 METHOD_SUMMARY = [
     {"method": "commitment_exposure_eac", "mape": "0.0700"},
     {"method": "owner_progress_eac", "mape": "0.2500"},
 ]
+
+
+def test_method_coverage_discloses_5_of_6_and_omitted_schedule():
+    ctx, owner = _near_complete_ctx()
+    out = rb.run_reconciled_backtest([ctx], owner, "tropical", {}, METHOD_SUMMARY)
+    mc = out["method_coverage"]
+    assert mc["production_independent_method_count"] == 6
+    assert mc["reconstructed_count"] == 5
+    assert "procore_progress_eac" in mc["reconstructed_independent_methods"]
+    assert mc["omitted_independent_methods"][0]["method"] == "schedule_remaining_work_eac"
+    assert mc["omitted_independent_methods"][0]["reason"]
+    assert mc["shadow_methods_excluded"] == ["timeseries_eac"]
+
+
+def test_reconciled_backtest_reconstructs_procore_when_history_present():
+    ctx, owner = _near_complete_ctx()
+    out = rb.run_reconciled_backtest([ctx], owner, "tropical", {}, METHOD_SUMMARY, _procore_hist())
+    # procore_progress now contributes a standalone as-of accuracy (was absent before).
+    assert "procore_progress_eac" in out["method_coverage"]["per_method_asof_mape"]
+
+
+def test_reconciled_backtest_deterministic_with_procore():
+    ctx, owner = _near_complete_ctx()
+    a = rb.run_reconciled_backtest([ctx], owner, "tropical", {}, METHOD_SUMMARY, _procore_hist())
+    b = rb.run_reconciled_backtest([ctx], owner, "tropical", {}, METHOD_SUMMARY, _procore_hist())
+    assert a == b
 
 
 def test_reconciled_backtest_scores_near_complete_code():

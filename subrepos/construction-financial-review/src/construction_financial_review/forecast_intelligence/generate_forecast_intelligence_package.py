@@ -117,6 +117,7 @@ def generate(project_key: str, cfg: dict, data_root: Optional[Path] = None,
     recs = list(read_jsonl(analysis_pkg / "forecast_recommendations_by_budget_code.jsonl"))
     rec_by_key = {r["budget_code_key"]: r for r in recs}
     owner_history = signals.load_owner_history(context_pkg)
+    procore_history = signals.load_procore_history(context_pkg)
 
     # monthly actuals (CostEntries/Sage only) for the actuals export + recommendation-row fields
     actuals_load = actuals_export.load_costentries_monthly(context_pkg)
@@ -303,7 +304,8 @@ def generate(project_key: str, cfg: dict, data_root: Optional[Path] = None,
     write_json(out / "model_calibration_summary.json", _calibration_summary(bt))
     # As-of backtest of the PRODUCTION reconciled forecast (trust gate scoring; evidence only).
     write_json(out / "reconciled_forecast_backtest.json", reconciled_backtest.run_reconciled_backtest(
-        context_rows, owner_history, project_key, calibration, bt.get("summary_by_method")))
+        context_rows, owner_history, project_key, calibration, bt.get("summary_by_method"),
+        procore_history))
     write_jsonl(out / "llm" / "forecast_narratives.jsonl", narratives)
     write_jsonl(out / "llm" / "llm_receipts.jsonl", receipts)
 
