@@ -991,6 +991,56 @@ def cmd_live_db_source_domain_project(*, source_package: str, work_root: str, co
     return 0 if report.get("decision") == DECISION_CERTIFIED else 1
 
 
+def cmd_live_db_run_output_project(*, analysis_package: str, source_package: str, work_root: str,
+                                   context_stamp: str, run_id: str, live_db_path: str | None,
+                                   allow_live_db_write: bool, allow_replace_existing: bool,
+                                   monthly_package: str | None, probability_package: str | None,
+                                   comprehensive_package: str | None, staffing_package: str | None,
+                                   accuracy_package: str | None, expect_outputs: int | None,
+                                   expect_budget_codes: int | None, project: str) -> int:
+    """Controlled live-DB run-output + decision-support projection (Phase 3; gated live write).
+
+    Builds a fresh non-live temp projection (v59 -> forecast_runs anchor -> v63 -> v66), BACKS UP the
+    live DB, then in one transaction replaces only project_key='tropical' rows in the run-graph tables
+    with rows copied from the temp DB, and certifies live == a fresh reprojection. Requires
+    --allow-live-db-write. rc 0 = certified; rc 1 = post-write certification not matched (backup
+    recorded); rc 3 = controlled refusal. Never migrates/directly-projects the live DB; v59 is read,
+    not written; changes no production default."""
+    from .workflows.live_db_run_output_projection import (
+        DECISION_CERTIFIED,
+        LiveDbRunOutputProjectionError,
+        run_controlled_live_db_run_output_projection,
+    )
+
+    def _p(v: str | None):
+        return Path(v) if v else None
+
+    expected = {
+        k: v for k, v in (("forecast_outputs", expect_outputs),
+                          ("forecast_output_budget_codes", expect_budget_codes)) if v is not None
+    }
+    try:
+        with contextlib.redirect_stdout(sys.stderr):
+            report = run_controlled_live_db_run_output_projection(
+                analysis_package=Path(analysis_package), source_package=Path(source_package),
+                work_root=Path(work_root), context_stamp=context_stamp, run_id=run_id,
+                live_db_path=_p(live_db_path), project_key=project,
+                allow_live_db_write=allow_live_db_write,
+                allow_replace_existing=allow_replace_existing,
+                expected_counts=expected or None,
+                monthly_package=_p(monthly_package), probability_package=_p(probability_package),
+                comprehensive_package=_p(comprehensive_package), staffing_package=_p(staffing_package),
+                accuracy_package=_p(accuracy_package))
+    except LiveDbRunOutputProjectionError as exc:
+        print(json.dumps({"command": "live-db-run-output-project", "project": project,
+                          "status": "refused", "reason": str(exc)}, indent=2))
+        return 3
+    out = {"command": "live-db-run-output-project"}
+    out.update(report)
+    print(json.dumps(out, indent=2))
+    return 0 if report.get("decision") == DECISION_CERTIFIED else 1
+
+
 def cmd_forecast_config_registry_promote(*, edited_config_root: str, work_root: str,
                                          context_stamp: str, live_db_path: str | None,
                                          allow_live_db_write: bool, snapshot_name: str,
@@ -1456,6 +1506,32 @@ def build_parser() -> argparse.ArgumentParser:
                      help="Optional exact expected temp count for forecast_cost_entries.")
     lsp.add_argument("--expect-monthly", type=int, default=None,
                      help="Optional exact expected temp count for forecast_monthly_actuals_by_budget_code.")
+    # Phase 3 (DB-native remediation) — gated live write of the run graph (run anchor + v63 + v66).
+    lro = sub.add_parser("live-db-run-output-project")
+    lro.add_argument("--project", required=True, help="Project key (only 'tropical').")
+    lro.add_argument("--analysis-package", required=True,
+                     help="Explicit forecast analysis package directory (the run-output spine).")
+    lro.add_argument("--source-package", required=True,
+                     help="Explicit twn_cost_forecast_json_package (re-projects v59 in the temp DBs).")
+    lro.add_argument("--work-root", required=True,
+                     help="Explicit non-live work root (temp DBs + backup + report under it).")
+    lro.add_argument("--context-stamp", required=True, help="Deterministic context stamp for the run.")
+    lro.add_argument("--run-id", required=True, help="forecast_runs anchor key for this run.")
+    lro.add_argument("--live-db-path", default=None,
+                     help="Optional explicit live DB path (tests only); resolves the default if omitted.")
+    lro.add_argument("--allow-live-db-write", action="store_true",
+                     help="Required gate to actually write the live DB (refused otherwise).")
+    lro.add_argument("--allow-replace-existing", action="store_true",
+                     help="Permit replacing existing tropical run-output/decision-support rows.")
+    lro.add_argument("--monthly-package", default=None, help="Optional forecast_monthly package.")
+    lro.add_argument("--probability-package", default=None, help="Optional forecast_probability package.")
+    lro.add_argument("--comprehensive-package", default=None, help="Optional forecast_comprehensive package.")
+    lro.add_argument("--staffing-package", default=None, help="Optional forecast_staffing_plan package.")
+    lro.add_argument("--accuracy-package", default=None, help="Optional forecast_accuracy package.")
+    lro.add_argument("--expect-outputs", type=int, default=None,
+                     help="Optional exact expected temp count for forecast_outputs.")
+    lro.add_argument("--expect-budget-codes", type=int, default=None,
+                     help="Optional exact expected temp count for forecast_output_budget_codes.")
     # Phase E2 — gated certified promotion of an approved config-edit proposal into the live config DB.
     pcp = sub.add_parser("forecast-config-registry-promote")
     pcp.add_argument("--project", required=True, help="Project key (only 'tropical').")
@@ -1844,6 +1920,16 @@ def main(argv=None) -> int:
             expect_budget_details=args.expect_budget_details,
             expect_cost_entries=args.expect_cost_entries,
             expect_monthly=args.expect_monthly, project=args.project)
+    if args.command == "live-db-run-output-project":
+        return cmd_live_db_run_output_project(
+            analysis_package=args.analysis_package, source_package=args.source_package,
+            work_root=args.work_root, context_stamp=args.context_stamp, run_id=args.run_id,
+            live_db_path=args.live_db_path, allow_live_db_write=args.allow_live_db_write,
+            allow_replace_existing=args.allow_replace_existing,
+            monthly_package=args.monthly_package, probability_package=args.probability_package,
+            comprehensive_package=args.comprehensive_package, staffing_package=args.staffing_package,
+            accuracy_package=args.accuracy_package, expect_outputs=args.expect_outputs,
+            expect_budget_codes=args.expect_budget_codes, project=args.project)
     if args.command == "forecast-config-registry-promote":
         return cmd_forecast_config_registry_promote(
             edited_config_root=args.edited_config_root, work_root=args.work_root,
