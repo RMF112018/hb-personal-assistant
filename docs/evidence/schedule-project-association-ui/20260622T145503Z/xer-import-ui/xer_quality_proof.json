@@ -1,0 +1,20 @@
+{
+  "id": 12,
+  "evaluation_run_id": "sq-c0f21d4c1be4",
+  "project_key": "tropical",
+  "schedule_version_key": "tropical|1|2026-06-01 08:00",
+  "metric_code": "dcma_critical_path_test",
+  "metric_name": "Critical path test",
+  "metric_family": "dcma",
+  "numerator": "0",
+  "denominator": "1",
+  "value": "0.0",
+  "unit": "ratio",
+  "threshold_warning": "0.1",
+  "threshold_fail": "0.25",
+  "status": "measured_from_xer_driving_path",
+  "not_measurable_reason": null,
+  "evidence_json": "{\"method\": \"xer_driving_path_consistency\", \"critical_path_source\": \"xer_driving_path_flag\", \"driving_path_count\": 1, \"explicit_float_checked\": 1, \"non_driving_near_zero_float_count\": 0, \"threshold_status\": \"passed_threshold\", \"float_threshold\": 0.0}",
+  "related_finding_codes_json": "[]",
+  "created_at": "2026-06-22 15:35:09"
+}

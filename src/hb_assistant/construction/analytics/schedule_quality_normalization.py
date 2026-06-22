@@ -65,12 +65,14 @@ def normalize_duration_days(
     duration_value: Any,
     duration_unit: Any,
     hours_per_day: float = DEFAULT_HOURS_PER_DAY,
+    source_format: str | None = None,
 ) -> float | None:
     try:
         raw = float(duration_value)
     except (TypeError, ValueError):
         return None
-    unit = str(duration_unit or "d").strip().lower()
+    default_unit = "h" if source_format == "primavera_xer" else "d"
+    unit = str(duration_unit or default_unit).strip().lower()
     if unit in {"d", "day", "days"}:
         return raw
     if unit in {"h", "hr", "hour", "hours"}:

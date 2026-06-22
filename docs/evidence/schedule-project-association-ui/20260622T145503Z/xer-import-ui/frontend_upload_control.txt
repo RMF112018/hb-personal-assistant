@@ -1,0 +1,12 @@
+Schedule Imports upload control (after fix)
+
+accept=".xml,.pmxml,.xer,.csv"
+
+Label:
+Upload Primavera XER, Primavera XML/PMXML, Microsoft Project XML, or mapped CSV — max 50 MB
+
+Subtitle:
+Upload Primavera XER, XML/PMXML, Microsoft Project XML, or mapped CSV schedules after preview and operator confirmation.
+
+Unsupported format error:
+Unsupported schedule format. Use Primavera XER, Primavera XML/PMXML, Microsoft Project XML, or CSV with operator mapping.

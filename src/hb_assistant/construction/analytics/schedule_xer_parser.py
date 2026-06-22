@@ -6,6 +6,7 @@ import hashlib
 import json
 from typing import Any
 
+from .schedule_critical_path_analytics import classify_xer_critical_activities
 from .schedule_file_parser import ParsedScheduleBundle, ScheduleImportError
 from .schedule_float_derivation import apply_derived_float_to_activities
 from .schedule_source_posture import apply_source_posture
@@ -137,18 +138,23 @@ def parse_xer_bytes(data: bytes) -> ParsedScheduleBundle:
         tf_h = _float_or_none(task.get("total_float_hr_cnt"))
         ff_h = _float_or_none(task.get("free_float_hr_cnt"))
         driving = _truthy_y(task.get("driving_path_flag"))
+        status_code = str(task.get("status_code") or "")
+        act_start_raw = task.get("act_start_date")
+        act_end_raw = task.get("act_end_date")
         act = {
             "activity_id": task_code,
             "source_activity_object_id": str(task_id),
             "activity_name": task.get("task_name"),
             "activity_type": task.get("task_type"),
-            "activity_status": task.get("status_code"),
+            "activity_status": status_code or None,
             "wbs_id": task.get("wbs_id"),
             "calendar_id": cal_id,
             "planned_start": task.get("early_start_date") or task.get("target_start_date"),
             "planned_finish": task.get("early_end_date") or task.get("target_end_date"),
-            "start_date": task.get("act_start_date") or task.get("restart_date"),
-            "finish_date": task.get("act_end_date") or task.get("reend_date"),
+            "start_date": act_start_raw or task.get("restart_date"),
+            "finish_date": act_end_raw or task.get("reend_date"),
+            "actual_start": act_start_raw or None,
+            "actual_finish": act_end_raw or None,
             "early_start": task.get("early_start_date"),
             "early_finish": task.get("early_end_date"),
             "late_start": task.get("late_start_date"),
@@ -177,6 +183,7 @@ def parse_xer_bytes(data: bytes) -> ParsedScheduleBundle:
             "percent_complete": task.get("phys_complete_pct"),
             "duration_original": task.get("target_drtn_hr_cnt"),
             "duration_remaining": task.get("remain_drtn_hr_cnt"),
+            "duration_unit": "hour",
             "is_milestone": str(task.get("task_type") or "").endswith("Mile"),
         }
         act["source_row_hash"] = _row_hash(act)
@@ -269,14 +276,42 @@ def parse_xer_bytes(data: bytes) -> ParsedScheduleBundle:
         options=schedule_options,
         calendars=calendars,
     )
+    source_critical_basis = classify_xer_critical_activities(
+        activities,
+        critical_path_type=project.get("critical_path_type"),
+        threshold_hours=project.get("critical_drtn_hr_cnt"),
+    )
     capabilities = apply_source_posture(
-        activities, source_format="primavera_xer", schedule_options=schedule_options
+        activities,
+        source_format="primavera_xer",
+        schedule_options=schedule_options,
+        source_critical_basis=source_critical_basis,
     )
 
+    source_metadata = {
+        k: project.get(k)
+        for k in (
+            "proj_id",
+            "proj_short_name",
+            "proj_name",
+            "plan_start_date",
+            "plan_end_date",
+            "last_recalc_date",
+            "critical_path_type",
+            "critical_drtn_hr_cnt",
+        )
+        if project.get(k)
+    }
     bundle = ParsedScheduleBundle(
         source_capabilities=capabilities,
         schedule_id=str(project.get("proj_id") or project.get("proj_short_name") or "xer-import"),
         schedule_name=project.get("proj_short_name") or project.get("proj_id"),
+        source_project_id=str(project.get("proj_id") or "") or None,
+        source_project_name=project.get("proj_name"),
+        source_project_short_name=project.get("proj_short_name"),
+        source_project_metadata_json=json.dumps(source_metadata, sort_keys=True, default=str)
+        if source_metadata
+        else None,
         data_date=project.get("last_recalc_date") or project.get("add_date"),
         planned_start=project.get("plan_start_date"),
         scheduled_finish=project.get("plan_end_date") or project.get("scd_end_date"),

@@ -1,0 +1,29 @@
+{
+  "dcma_invalid_dates": {
+    "display_mode": "finding_count",
+    "total_findings": 0,
+    "primary_denominator_basis": "completed_activities",
+    "ui_display": "0 findings · basis: completed activities"
+  },
+  "dcma_critical_path_test": {
+    "critical_path_test_method": "source_export_driving_path_proxy",
+    "driving_path_activity_count": 269,
+    "eligible_driving_path_activity_count": 32,
+    "driving_path_float_consistency_violation_count": 0,
+    "cpm_recalculation": "not_implemented",
+    "ui_display": "0 violations / 32 eligible · 269 XER driving-path flags"
+  },
+  "dcma_high_duration": {
+    "method": "normalized_working_days",
+    "sample": {
+      "duration_raw": "80",
+      "duration_unit": "hour",
+      "duration_normalized_days": 10.0,
+      "threshold_days": 44.0
+    }
+  },
+  "gao_resource_cost_loading": {
+    "schedule_coding_coverage_count": "distinct activity_id from procore_ep_schedule_activity_code_assignments",
+    "code_assignment_row_count": "total assignment rows (e.g. 5171 on TWNU18)"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "utc_stamp": "20260622T164417Z",
+  "evidence_dir": "/Users/bobbyfetting/hb-personal-assistant/docs/evidence/schedule-xer-supersede-commit-repair/20260622T164417Z",
+  "normal_preview_status": 409,
+  "supersede_preview_status": 200,
+  "commit_without_supersede_status": 409,
+  "supersede_commit_status": 200,
+  "supersede_performed": true,
+  "backend_tests_exit": 0,
+  "frontend_tests_exit": 0,
+  "frontend_build_exit": 0
+}

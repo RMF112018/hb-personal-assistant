@@ -7,13 +7,16 @@ import {
   ScheduleTd,
   ScheduleTh,
 } from '../components/schedule/SchedulePageChrome'
-import { DEFAULT_SCHEDULE_PROJECT } from '../components/schedule/ScheduleVersionPicker'
+import {
+  ScheduleProjectPicker,
+  useScheduleProjectParam,
+} from '../components/schedule/ScheduleProjectPicker'
 import { EmptyState } from '../components/ui/EmptyState'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../lib/api'
 
 export function ScheduleCostWeightingPage() {
-  const projectKey = DEFAULT_SCHEDULE_PROJECT
+  const [projectKey, setProjectKey] = useScheduleProjectParam()
   const { data, isLoading, error } = useQuery({
     queryKey: ['schedules', 'weighting', projectKey],
     queryFn: () => api.getScheduleCostWeighting(projectKey),
@@ -31,6 +34,10 @@ export function ScheduleCostWeightingPage() {
         title="Cost weighting"
         subtitle="Approved schedule-to-cost weighting outputs. Entries appear only after operator-approved mapping runs."
       />
+
+      <div className="forecast-panel p-4 mb-3 max-w-md">
+        <ScheduleProjectPicker value={projectKey} onChange={setProjectKey} />
+      </div>
 
       <p className="text-sm text-[var(--hb-muted)] mb-3">
         Weighting is gated: unapproved mapping runs cannot feed downstream forecast weighting.

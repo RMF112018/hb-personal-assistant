@@ -12,6 +12,7 @@ from fastapi.testclient import TestClient
 from hb_assistant.construction.analytics import create_app
 from hb_assistant.construction.analytics.forecast_dto import find_redaction_leaks
 from hb_assistant.store.migrator import SQLiteMigrator
+from tests.schedule_project_test_helpers import seed_procore_ep_project
 
 MINIMAL = Path(__file__).resolve().parent / "fixtures" / "schedules" / "xml" / "minimal_schedule.xml"
 GMA = Path(__file__).resolve().parent / "fixtures" / "schedules" / "xml" / "gma_sample.xml"
@@ -42,6 +43,7 @@ def _commit(client: TestClient, fixture: Path, filename: str) -> str:
 def test_version_diff_across_imports(tmp_path: Path) -> None:
     db = tmp_path / "diff.db"
     SQLiteMigrator(db_path=str(db)).apply()
+    seed_procore_ep_project(db, project_key="tropical", display_name="Tropical Wind")
     client = TestClient(create_app(db_path=str(db)))
 
     from_v = _commit(client, MINIMAL, "minimal_a.xml")
@@ -82,6 +84,7 @@ def test_twnu_import_counts_when_zip_present(
 
     db = tmp_path / f"{filename}.db"
     SQLiteMigrator(db_path=str(db)).apply()
+    seed_procore_ep_project(db, project_key="tropical", display_name="Tropical Wind")
     client = TestClient(create_app(db_path=str(db)))
 
     preview = client.post(

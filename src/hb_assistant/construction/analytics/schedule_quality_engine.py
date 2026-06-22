@@ -19,9 +19,18 @@ from .schedule_quality_normalization import (
     normalize_relationship_type,
     relationship_type_distribution,
 )
+from .schedule_critical_path_analytics import (
+    METRIC_STATUS_AVAILABLE_XER_DRIVING,
+    METRIC_STATUS_AVAILABLE_XER_TOTFLOAT,
+    METRIC_STATUS_PARTIAL_XER_FLOAT,
+    compute_source_critical_path_analytics,
+    resolve_analytics_status,
+)
 from .schedule_quality_profiles import (
     DCMA_METRIC_SPECS,
     DISCLAIMER_VERSION,
+    SOURCE_EXPORT_METRIC_SPECS,
+    SUPPLEMENTAL_METRIC_SPECS,
     AssessmentProfile,
     get_profile,
 )
@@ -44,6 +53,7 @@ METRIC_STATUS_NOT_MEASURABLE_RECALC = "not_measurable_requires_recalculation"
 METRIC_STATUS_XER_DRIVING_PATH = "measured_from_xer_driving_path"
 METRIC_STATUS_MSP_CRITICAL = "measured_from_msp_critical_flag"
 METRIC_STATUS_EXPLICIT_FLOAT = "measured_from_explicit_source_float"
+METRIC_STATUS_SOURCE_EXPORT_PROXY = "measured_from_source_export_proxy"
 
 MEASURED_STATUSES = (
     METRIC_STATUS_PASS,
@@ -74,6 +84,8 @@ class EvaluationContext:
     prior_diff: dict[str, Any] | None = None
     import_meta: dict[str, Any] | None = None
     schedule_options: dict[str, Any] | None = None
+    code_assignments: list[dict[str, Any]] = field(default_factory=list)
+    udf_values: list[dict[str, Any]] = field(default_factory=list)
 
 
 def _parse_threshold(value: Any) -> float:
@@ -107,6 +119,10 @@ class ScheduleQualityDataLoader:
         import_meta = self._activity_repo.get_version_summary(schedule_version_key)
         wbs_nodes = self._load_table("procore_ep_schedule_wbs_nodes", schedule_version_key)
         calendars = self._load_table("procore_ep_schedule_calendars", schedule_version_key)
+        code_assignments = self._load_table(
+            "procore_ep_schedule_activity_code_assignments", schedule_version_key
+        )
+        udf_values = self._load_table("procore_ep_schedule_udf_values", schedule_version_key)
         schedule_table_id = None
         data_date = None
         if activities:
@@ -126,6 +142,8 @@ class ScheduleQualityDataLoader:
                 "calculate_float_based_on_finish_date": import_meta.get(
                     "calculate_float_based_on_finish_date"
                 ),
+                "critical_path_type": import_meta.get("critical_path_type"),
+                "critical_float_threshold": import_meta.get("critical_float_threshold"),
             }
         return {
             "activities": activities,
@@ -137,6 +155,8 @@ class ScheduleQualityDataLoader:
             "schedule_table_id": schedule_table_id,
             "data_date": data_date,
             "prior_diff": prior_diff,
+            "code_assignments": code_assignments,
+            "udf_values": udf_values,
         }
 
     def _load_table(self, table: str, schedule_version_key: str) -> list[dict[str, Any]]:
@@ -178,6 +198,9 @@ class ScheduleQualityAssessmentEngine:
             metrics.append(metric)
             findings.extend(metric_findings)
 
+        metrics.extend(self._evaluate_source_export_metrics(ctx))
+        metrics.extend(self._evaluate_supplemental_metrics(ctx))
+
         gao_summary: dict[str, dict[str, Any]] = {}
         for category in profile.gao_categories:
             summary, cat_findings = self._evaluate_gao_category(ctx, category)
@@ -216,6 +239,83 @@ class ScheduleQualityAssessmentEngine:
         }
         return evaluators[code](ctx, code, spec)
 
+    def _evaluate_source_export_metrics(
+        self, ctx: EvaluationContext
+    ) -> list[dict[str, Any]]:
+        source_fmt = self._import_source_format(ctx)
+        if source_fmt != "primavera_xer":
+            return []
+        spec = SOURCE_EXPORT_METRIC_SPECS["source_critical_path_available"]
+        metric, _ = self._metric_source_critical_path_available(
+            ctx,
+            "source_critical_path_available",
+            spec,
+        )
+        return [metric]
+
+    def _evaluate_supplemental_metrics(
+        self, ctx: EvaluationContext
+    ) -> list[dict[str, Any]]:
+        supplemental: list[dict[str, Any]] = []
+        source_fmt = self._import_source_format(ctx)
+        if source_fmt != "primavera_xer":
+            return supplemental
+        driving = [a for a in ctx.activities if a.get("source_driving_path_flag")]
+        if not driving:
+            return supplemental
+        spec = SUPPLEMENTAL_METRIC_SPECS["source_driving_path_integrity_proxy"]
+        metric, _ = self._metric_source_driving_path_integrity_proxy(
+            ctx,
+            "source_driving_path_integrity_proxy",
+            spec,
+            driving,
+        )
+        supplemental.append(metric)
+        return supplemental
+
+    def _metric_source_critical_path_available(
+        self,
+        ctx: EvaluationContext,
+        code: str,
+        spec: dict[str, Any],
+    ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+        analytics = compute_source_critical_path_analytics(
+            ctx.import_meta,
+            ctx.activities,
+            schedule_options=ctx.schedule_options,
+        )
+        status = resolve_analytics_status(analytics)
+        critical_count = int(analytics.get("source_critical_activity_count") or 0)
+        coverage_denom = int(analytics.get("source_critical_coverage_denominator") or 0)
+        return (
+            self._base_metric(
+                ctx,
+                code=code,
+                spec=spec,
+                status=status,
+                numerator=critical_count,
+                denominator=coverage_denom or len(ctx.activities),
+                value=critical_count,
+                metric_family="source_export",
+                not_measurable_reason=(
+                    None
+                    if status
+                    in (
+                        METRIC_STATUS_AVAILABLE_XER_DRIVING,
+                        METRIC_STATUS_AVAILABLE_XER_TOTFLOAT,
+                        METRIC_STATUS_PARTIAL_XER_FLOAT,
+                    )
+                    else "no source-export critical path basis recognized"
+                ),
+                evidence={
+                    **analytics,
+                    "display_name_override": "Source critical path analytics",
+                    "not_a_dcma_critical_path_test": True,
+                },
+            ),
+            [],
+        )
+
     def _base_metric(
         self,
         ctx: EvaluationContext,
@@ -229,6 +329,7 @@ class ScheduleQualityAssessmentEngine:
         not_measurable_reason: str | None = None,
         evidence: dict[str, Any] | None = None,
         related_codes: list[str] | None = None,
+        metric_family: str = "dcma",
     ) -> dict[str, Any]:
         return {
             "evaluation_run_id": ctx.evaluation_run_id,
@@ -236,7 +337,7 @@ class ScheduleQualityAssessmentEngine:
             "schedule_version_key": ctx.schedule_version_key,
             "metric_code": code,
             "metric_name": spec["metric_name"],
-            "metric_family": "dcma",
+            "metric_family": metric_family,
             "numerator": str(numerator) if numerator is not None else None,
             "denominator": str(denominator) if denominator is not None else None,
             "value": str(value) if value is not None else None,
@@ -488,7 +589,11 @@ class ScheduleQualityAssessmentEngine:
                 numerator=fs_count,
                 denominator=len(rels),
                 value=round(ratio, 4),
-                evidence={"distribution": distribution},
+                evidence={
+                    "distribution": distribution,
+                    "numerator_basis": "fs_relationship_count",
+                    "denominator_basis": "all_relationships",
+                },
             ),
             [],
         )
@@ -548,6 +653,55 @@ class ScheduleQualityAssessmentEngine:
         if ctx.import_meta:
             return str(ctx.import_meta.get("source_format") or "")
         return ""
+
+    def _coding_coverage(self, ctx: EvaluationContext) -> dict[str, int]:
+        coded = {
+            str(c["activity_id"])
+            for c in ctx.code_assignments
+            if c.get("activity_id") is not None
+        }
+        udf_coded = {
+            str(u["activity_id"]) for u in ctx.udf_values if u.get("activity_id") is not None
+        }
+        direct_cost_code = sum(1 for a in ctx.activities if a.get("cost_code"))
+        return {
+            "schedule_coding_coverage_count": len(coded),
+            "udf_coverage_count": len(udf_coded),
+            "activity_code_coverage_count": len(coded) or direct_cost_code,
+            "code_assignment_row_count": len(ctx.code_assignments),
+            "udf_row_count": len(ctx.udf_values),
+        }
+
+    def _activity_percent_complete(self, activity: dict[str, Any]) -> float | None:
+        pc = activity.get("percent_complete")
+        if pc is None or str(pc).strip() == "":
+            return None
+        try:
+            return float(pc)
+        except (TypeError, ValueError):
+            return None
+
+    def _is_completed_activity(self, activity: dict[str, Any]) -> bool:
+        status = str(activity.get("activity_status") or "")
+        if status == "TK_Complete":
+            return True
+        pct = self._activity_percent_complete(activity)
+        return pct is not None and pct >= 100.0
+
+    def _is_started_activity(self, activity: dict[str, Any]) -> bool:
+        status = str(activity.get("activity_status") or "")
+        if status in {"TK_Active", "TK_Complete"}:
+            return True
+        pct = self._activity_percent_complete(activity)
+        return pct is not None and pct > 0.0
+
+    def _canonical_actual_start(self, activity: dict[str, Any]) -> str | None:
+        raw = activity.get("actual_start")
+        return str(raw) if raw else None
+
+    def _canonical_actual_finish(self, activity: dict[str, Any]) -> str | None:
+        raw = activity.get("actual_finish")
+        return str(raw) if raw else None
 
     def _explicit_float_days(self, activity: dict[str, Any]) -> float | None:
         raw = activity.get("explicit_total_float_days")
@@ -655,6 +809,7 @@ class ScheduleQualityAssessmentEngine:
     def _metric_high_duration(
         self, ctx: EvaluationContext, code: str, spec: dict[str, Any]
     ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+        source_format = self._import_source_format(ctx)
         normalized: list[dict[str, Any]] = []
         for act in ctx.activities:
             if act.get("duration_original") is None:
@@ -664,17 +819,22 @@ class ScheduleQualityAssessmentEngine:
                 duration_value=act.get("duration_original"),
                 duration_unit=act.get("duration_unit"),
                 hours_per_day=hpd,
+                source_format=source_format or None,
             )
             if days is None:
                 continue
             normalized.append(
                 {
                     "activity_id": act.get("activity_id"),
-                    "raw_duration_value": act.get("duration_original"),
-                    "raw_duration_unit": act.get("duration_unit"),
-                    "normalized_duration_days": days,
+                    "duration_raw": act.get("duration_original"),
+                    "duration_unit": act.get("duration_unit") or (
+                        "hour" if source_format == "primavera_xer" else None
+                    ),
+                    "calendar_id": act.get("calendar_id"),
                     "hours_per_day": hpd,
                     "hours_per_day_source": "calendar" if act.get("calendar_id") else "default_8h",
+                    "duration_normalized_days": days,
+                    "threshold_days": HIGH_DURATION_DAYS,
                 }
             )
         if not normalized:
@@ -688,7 +848,7 @@ class ScheduleQualityAssessmentEngine:
                 ),
                 [],
             )
-        bad_items = [n for n in normalized if n["normalized_duration_days"] > HIGH_DURATION_DAYS]
+        bad_items = [n for n in normalized if n["duration_normalized_days"] > HIGH_DURATION_DAYS]
         ratio = len(bad_items) / len(normalized)
         return (
             self._base_metric(
@@ -700,7 +860,11 @@ class ScheduleQualityAssessmentEngine:
                 denominator=len(normalized),
                 value=round(ratio, 4),
                 evidence={
+                    "method": "normalized_working_days",
+                    "numerator_basis": "activities_exceeding_duration_threshold",
+                    "denominator_basis": "activities_with_duration",
                     "threshold_days": HIGH_DURATION_DAYS,
+                    "source_format": source_format or None,
                     "sample_failures": bad_items[:MAX_EVIDENCE_IDS],
                 },
             ),
@@ -711,76 +875,121 @@ class ScheduleQualityAssessmentEngine:
         self, ctx: EvaluationContext, code: str, spec: dict[str, Any]
     ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
         findings: list[dict[str, Any]] = []
-        bad = 0
-        checked = 0
+        subcategory_defs = {
+            "completed_missing_actual_finish": "completed_activities",
+            "started_missing_actual_start": "started_activities",
+            "actual_finish_before_start": "activities_with_actual_dates",
+            "actual_start_after_data_date": "activities_with_actual_start",
+            "actual_finish_after_data_date": "activities_with_actual_finish",
+            "early_late_ordering": "activities_with_early_late_dates",
+        }
+        subcategories: dict[str, dict[str, Any]] = {
+            key: {"findings": 0, "denominator": 0, "denominator_basis": basis}
+            for key, basis in subcategory_defs.items()
+        }
+        seen: dict[str, set[str]] = {key: set() for key in subcategory_defs}
+
+        def _record(
+            subcategory: str,
+            *,
+            activity_id: str | None,
+            finding_code: str,
+            severity: str,
+            summary: str,
+        ) -> None:
+            aid = str(activity_id) if activity_id is not None else ""
+            if aid and aid in seen[subcategory]:
+                return
+            if aid:
+                seen[subcategory].add(aid)
+            subcategories[subcategory]["findings"] += 1
+            findings.append(
+                self._finding(
+                    ctx,
+                    finding_code=finding_code,
+                    severity=severity,
+                    finding_type="invalid_dates",
+                    category="dcma",
+                    metric_code=code,
+                    activity_id=activity_id,
+                    summary=summary,
+                )
+            )
+
         for act in ctx.activities:
             aid = act.get("activity_id")
-            if act.get("actual_start") and act.get("actual_finish"):
-                checked += 1
-                if str(act["actual_finish"]) < str(act["actual_start"]):
-                    bad += 1
-                    findings.append(
-                        self._finding(
-                            ctx,
-                            finding_code="actual_finish_before_start",
-                            severity="critical",
-                            finding_type="invalid_dates",
-                            category="dcma",
-                            metric_code=code,
-                            activity_id=aid,
-                            summary="Actual finish precedes actual start",
-                        )
-                    )
-            if ctx.data_date and act.get("actual_start"):
-                checked += 1
-                if str(act["actual_start"]) > str(ctx.data_date):
-                    bad += 1
-                    findings.append(
-                        self._finding(
-                            ctx,
-                            finding_code="actual_after_data_date",
-                            severity="warning",
-                            finding_type="invalid_dates",
-                            category="dcma",
-                            metric_code=code,
-                            activity_id=aid,
-                            summary="Actual start is after schedule data date",
-                        )
-                    )
-            pc = act.get("percent_complete")
-            try:
-                pct = float(pc) if pc is not None else None
-            except (TypeError, ValueError):
-                pct = None
-            if pct is not None and pct >= 100 and not act.get("actual_finish"):
-                bad += 1
-                findings.append(
-                    self._finding(
-                        ctx,
+            actual_start = self._canonical_actual_start(act)
+            actual_finish = self._canonical_actual_finish(act)
+
+            if self._is_completed_activity(act):
+                subcategories["completed_missing_actual_finish"]["denominator"] += 1
+                if not actual_finish:
+                    _record(
+                        "completed_missing_actual_finish",
+                        activity_id=aid,
                         finding_code="completed_missing_actual_finish",
                         severity="warning",
-                        finding_type="invalid_dates",
-                        category="dcma",
-                        metric_code=code,
-                        activity_id=aid,
                         summary="Completed activity missing actual finish",
                     )
-                )
-            if pct is not None and pct > 0 and not act.get("actual_start"):
-                bad += 1
-                findings.append(
-                    self._finding(
-                        ctx,
+
+            if self._is_started_activity(act):
+                subcategories["started_missing_actual_start"]["denominator"] += 1
+                if not actual_start:
+                    _record(
+                        "started_missing_actual_start",
+                        activity_id=aid,
                         finding_code="started_missing_actual_start",
                         severity="warning",
-                        finding_type="invalid_dates",
-                        category="dcma",
-                        metric_code=code,
-                        activity_id=aid,
                         summary="Started activity missing actual start",
                     )
-                )
-        if checked == 0 and not ctx.activities:
+
+            if actual_start and actual_finish:
+                subcategories["actual_finish_before_start"]["denominator"] += 1
+                if actual_finish < actual_start:
+                    _record(
+                        "actual_finish_before_start",
+                        activity_id=aid,
+                        finding_code="actual_finish_before_start",
+                        severity="critical",
+                        summary="Actual finish precedes actual start",
+                    )
+
+            if ctx.data_date and actual_start:
+                subcategories["actual_start_after_data_date"]["denominator"] += 1
+                if actual_start > str(ctx.data_date):
+                    _record(
+                        "actual_start_after_data_date",
+                        activity_id=aid,
+                        finding_code="actual_start_after_data_date",
+                        severity="warning",
+                        summary="Actual start is after schedule data date",
+                    )
+
+            if ctx.data_date and actual_finish:
+                subcategories["actual_finish_after_data_date"]["denominator"] += 1
+                if actual_finish > str(ctx.data_date):
+                    _record(
+                        "actual_finish_after_data_date",
+                        activity_id=aid,
+                        finding_code="actual_finish_after_data_date",
+                        severity="warning",
+                        summary="Actual finish is after schedule data date",
+                    )
+
+            early_start = act.get("early_start")
+            late_start = act.get("late_start")
+            if early_start and late_start:
+                subcategories["early_late_ordering"]["denominator"] += 1
+                if str(early_start) > str(late_start):
+                    _record(
+                        "early_late_ordering",
+                        activity_id=aid,
+                        finding_code="early_late_ordering",
+                        severity="warning",
+                        summary="Early start is after late start",
+                    )
+
+        if not ctx.activities:
             return (
                 self._base_metric(
                     ctx,
@@ -791,17 +1000,52 @@ class ScheduleQualityAssessmentEngine:
                 ),
                 findings,
             )
-        denom = max(checked, len(ctx.activities))
-        ratio = bad / denom if denom else 0.0
+
+        total_findings = sum(s["findings"] for s in subcategories.values())
+        primary_key = max(
+            subcategory_defs,
+            key=lambda k: (
+                subcategories[k]["findings"],
+                subcategories[k]["denominator"],
+            ),
+        )
+        primary = subcategories[primary_key]
+        primary_findings = int(primary["findings"])
+        primary_denominator = int(primary["denominator"]) or len(ctx.activities)
+        ratio = (
+            primary_findings / primary_denominator if primary_denominator else 0.0
+        )
+        if primary_findings > primary_denominator:
+            primary_findings = primary_denominator
+            ratio = 1.0
+
+        measurable = any(s["denominator"] > 0 for s in subcategories.values())
+        status = (
+            self._status_from_ratio(ratio, spec)
+            if measurable and primary_denominator
+            else METRIC_STATUS_MEASURED
+        )
+
         return (
             self._base_metric(
                 ctx,
                 code=code,
                 spec=spec,
-                status=self._status_from_ratio(ratio, spec) if checked else METRIC_STATUS_MEASURED,
-                numerator=bad,
-                denominator=denom,
-                value=round(ratio, 4),
+                status=status,
+                numerator=primary_findings,
+                denominator=primary_denominator,
+                value=round(ratio, 4) if primary_denominator else 0.0,
+                evidence={
+                    "display_mode": "finding_count",
+                    "method": "subcategory_date_checks",
+                    "subcategories": subcategories,
+                    "total_findings": total_findings,
+                    "primary_subcategory": primary_key,
+                    "primary_denominator": primary_denominator,
+                    "primary_denominator_basis": primary["denominator_basis"],
+                    "numerator_basis": "primary_subcategory_findings",
+                    "denominator_basis": primary["denominator_basis"],
+                },
             ),
             findings,
         )
@@ -822,14 +1066,21 @@ class ScheduleQualityAssessmentEngine:
                 [],
             )
         posture = cost_resource_posture(ctx.import_meta)
-        code_coverage = sum(1 for a in acts if a.get("cost_code"))
+        coding = self._coding_coverage(ctx)
         resource_loaded = sum(
             1 for a in acts if a.get("resource_id") or a.get("resource_name")
         )
         cost_loaded = sum(1 for a in acts if a.get("cost_loaded_amount"))
+        import_meta = ctx.import_meta or {}
         evidence = {
             "schedule_posture": posture,
-            "activity_code_coverage_count": code_coverage,
+            "activity_code_coverage_count": coding["activity_code_coverage_count"],
+            "schedule_coding_coverage_count": coding["schedule_coding_coverage_count"],
+            "udf_coverage_count": coding["udf_coverage_count"],
+            "code_assignment_row_count": coding["code_assignment_row_count"],
+            "udf_row_count": coding["udf_row_count"],
+            "import_code_count": import_meta.get("code_count"),
+            "import_udf_count": import_meta.get("udf_count"),
             "resource_loading_count": resource_loaded,
             "cost_loading_count": cost_loaded,
         }
@@ -878,13 +1129,9 @@ class ScheduleQualityAssessmentEngine:
             [],
         )
 
-    def _metric_critical_path_xer_driving(
-        self,
-        ctx: EvaluationContext,
-        code: str,
-        spec: dict[str, Any],
-        driving: list[dict[str, Any]],
-    ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    def _driving_path_proxy_stats(
+        self, ctx: EvaluationContext, driving: list[dict[str, Any]]
+    ) -> dict[str, Any]:
         threshold = _parse_threshold(
             (ctx.import_meta or {}).get("critical_float_threshold")
             or (ctx.schedule_options or {}).get("critical_activity_float_threshold")
@@ -892,16 +1139,58 @@ class ScheduleQualityAssessmentEngine:
         mismatches = 0
         checked = 0
         non_driving_zero = 0
+        eligible_by_status: dict[str, int] = {}
         for a in ctx.activities:
             tf = self._explicit_float_days(a)
             if tf is None:
                 continue
             if a.get("source_driving_path_flag"):
                 checked += 1
+                status = str(a.get("activity_status") or "unknown")
+                eligible_by_status[status] = eligible_by_status.get(status, 0) + 1
                 if tf > threshold + 0.01:
                     mismatches += 1
             elif tf <= threshold + 0.01 and tf >= -0.01:
                 non_driving_zero += 1
+        driving_count = len(driving)
+        ratio = mismatches / checked if checked else 0.0
+        return {
+            "method": "source_export_proxy",
+            "critical_path_source": "xer_driving_path_flag",
+            "cpm_recalculation": "not_implemented",
+            "dcma_critical_path_test": "not_applicable",
+            "caveat": "not a DCMA critical path test; CPM recalculation not implemented",
+            "source_driving_path_available": driving_count > 0,
+            "driving_path_activity_count": driving_count,
+            "driving_path_count": driving_count,
+            "eligible_driving_path_activity_count": checked,
+            "eligible_denominator_basis": "driving_path_flag_with_explicit_float",
+            "eligible_by_activity_status": eligible_by_status,
+            "explicit_float_checked": checked,
+            "driving_path_float_consistency_violation_count": mismatches,
+            "proxy_violation_count": mismatches,
+            "non_driving_near_zero_float_count": non_driving_zero,
+            "numerator_basis": "driving_path_float_consistency_violations",
+            "denominator_basis": "driving_path_flag_with_explicit_float",
+            "threshold_status": self._status_from_ratio(
+                ratio,
+                SUPPLEMENTAL_METRIC_SPECS["source_driving_path_integrity_proxy"],
+            )
+            if checked
+            else METRIC_STATUS_NOT_MEASURABLE,
+            "float_threshold": threshold,
+            "ratio": round(ratio, 4) if checked else None,
+        }
+
+    def _metric_source_driving_path_integrity_proxy(
+        self,
+        ctx: EvaluationContext,
+        code: str,
+        spec: dict[str, Any],
+        driving: list[dict[str, Any]],
+    ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+        stats = self._driving_path_proxy_stats(ctx, driving)
+        checked = int(stats["eligible_driving_path_activity_count"])
         if checked == 0:
             return (
                 self._base_metric(
@@ -910,27 +1199,25 @@ class ScheduleQualityAssessmentEngine:
                     spec=spec,
                     status=METRIC_STATUS_NOT_MEASURABLE,
                     not_measurable_reason="no explicit float on driving-path activities",
+                    metric_family="supplemental",
+                    evidence=stats,
                 ),
                 [],
             )
-        ratio = mismatches / checked
+        mismatches = int(stats["driving_path_float_consistency_violation_count"])
         return (
             self._base_metric(
                 ctx,
                 code=code,
                 spec=spec,
-                status=METRIC_STATUS_XER_DRIVING_PATH,
+                status=METRIC_STATUS_SOURCE_EXPORT_PROXY,
                 numerator=mismatches,
                 denominator=checked,
-                value=round(ratio, 4),
+                value=stats["ratio"],
+                metric_family="supplemental",
                 evidence={
-                    "method": "xer_driving_path_consistency",
-                    "critical_path_source": "xer_driving_path_flag",
-                    "driving_path_count": len(driving),
-                    "explicit_float_checked": checked,
-                    "non_driving_near_zero_float_count": non_driving_zero,
-                    "threshold_status": self._status_from_ratio(ratio, spec),
-                    "float_threshold": threshold,
+                    **stats,
+                    "display_name_override": "Source driving path integrity (proxy)",
                 },
             ),
             [],
@@ -987,12 +1274,25 @@ class ScheduleQualityAssessmentEngine:
         self, ctx: EvaluationContext, code: str, spec: dict[str, Any]
     ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
         source_fmt = self._import_source_format(ctx)
-        driving = [a for a in ctx.activities if a.get("source_driving_path_flag")]
-        if source_fmt == "primavera_xer" and driving:
-            return self._metric_critical_path_xer_driving(ctx, code, spec, driving)
-        msp_critical = [a for a in ctx.activities if a.get("source_critical_flag")]
-        if source_fmt == "ms_project_xml" and msp_critical:
-            return self._metric_critical_path_msp_critical(ctx, code, spec, msp_critical)
+        if source_fmt in {"primavera_xer", "ms_project_xml"}:
+            return (
+                self._base_metric(
+                    ctx,
+                    code=code,
+                    spec=spec,
+                    status=METRIC_STATUS_NOT_MEASURABLE_RECALC,
+                    not_measurable_reason=(
+                        "CPM recalculation not implemented; source-export critical path "
+                        "data is available separately"
+                    ),
+                    evidence={
+                        "method": "requires_cpm_recalculation",
+                        "cpm_recalculation": "not_implemented",
+                        "source_format": source_fmt,
+                    },
+                ),
+                [],
+            )
         if self._is_p6_derived_only(ctx):
             return (
                 self._base_metric(
@@ -1121,16 +1421,21 @@ class ScheduleQualityAssessmentEngine:
                 reason = "no duration fields"
         elif category == "resource_cost_loading":
             schedule_posture = cost_resource_posture(ctx.import_meta)
+            coding = self._coding_coverage(ctx)
+            import_meta = ctx.import_meta or {}
+            coding_payload = {
+                "schedule_posture": schedule_posture,
+                "activity_code_coverage_count": coding["activity_code_coverage_count"],
+                "schedule_coding_coverage_count": coding["schedule_coding_coverage_count"],
+                "udf_coverage_count": coding["udf_coverage_count"],
+                "code_assignment_row_count": coding["code_assignment_row_count"],
+                "udf_row_count": coding["udf_row_count"],
+                "import_code_count": import_meta.get("code_count"),
+                "import_udf_count": import_meta.get("udf_count"),
+            }
             if schedule_posture in {"not_cost_loaded", "unknown"}:
                 posture = "not_cost_resource_loaded"
-                reason = json.dumps(
-                    {
-                        "schedule_posture": schedule_posture,
-                        "activity_code_coverage_count": sum(
-                            1 for a in ctx.activities if a.get("cost_code")
-                        ),
-                    }
-                )
+                reason = json.dumps(coding_payload)
             elif not any(
                 a.get("cost_loaded_amount") or a.get("resource_id") for a in ctx.activities
             ):
@@ -1152,21 +1457,27 @@ class ScheduleQualityAssessmentEngine:
                 )
         elif category == "critical_path_validity":
             source_fmt = self._import_source_format(ctx)
-            driving = [a for a in ctx.activities if a.get("source_driving_path_flag")]
-            explicit_float = [a for a in ctx.activities if self._explicit_float_days(a) is not None]
-            if source_fmt == "primavera_xer" and driving:
-                posture = METRIC_STATUS_XER_DRIVING_PATH
-                reason = json.dumps(
-                    {
-                        "critical_path_source": "xer_driving_path_flag",
-                        "driving_path_count": len(driving),
-                        "explicit_float_count": len(explicit_float),
-                        "longest_path_driving_path": {
-                            "posture": "xer_export_driving_path",
-                            "reason": "XER driving_path_flag export; not forensic delay analysis",
-                        },
-                    }
+            if source_fmt == "primavera_xer":
+                analytics = compute_source_critical_path_analytics(
+                    ctx.import_meta,
+                    ctx.activities,
+                    schedule_options=ctx.schedule_options,
                 )
+                driving_count = int(analytics.get("source_driving_path_count") or 0)
+                if analytics.get("source_critical_basis") != "missing" or driving_count > 0:
+                    posture = "xer_export_critical_path_analytics"
+                    reason = json.dumps(
+                        {
+                            **analytics,
+                            "longest_path_driving_path": {
+                                "posture": "xer_export_critical_path_analytics",
+                                "reason": "XER export critical path metadata; not forensic delay analysis",
+                            },
+                        }
+                    )
+                else:
+                    posture = "not_measurable"
+                    reason = "no XER critical path export data"
             elif source_fmt == "ms_project_xml" and any(
                 a.get("source_critical_flag") for a in ctx.activities
             ):
@@ -1369,20 +1680,22 @@ class ScheduleQualityAssessmentEngine:
             and m["status"] == METRIC_STATUS_NOT_MEASURABLE_RECALC
             for m in dcma
         )
-        has_xer_driving = any(
-            m["metric_code"] == "dcma_critical_path_test"
-            and m["status"] == METRIC_STATUS_XER_DRIVING_PATH
-            for m in dcma
-        )
-        has_msp_critical = any(
-            m["metric_code"] == "dcma_critical_path_test"
-            and m["status"] == METRIC_STATUS_MSP_CRITICAL
-            for m in dcma
+        has_source_critical_analytics = any(
+            m.get("metric_code") == "source_critical_path_available"
+            and m.get("status")
+            in (
+                METRIC_STATUS_AVAILABLE_XER_DRIVING,
+                METRIC_STATUS_AVAILABLE_XER_TOTFLOAT,
+                METRIC_STATUS_PARTIAL_XER_FLOAT,
+            )
+            for m in metrics
         )
         source_fmt = self._import_source_format(ctx)
-        if has_xer_driving or source_fmt == "primavera_xer":
-            critical_path_analytics = "available_source_export_driving_path"
-        elif has_msp_critical or source_fmt == "ms_project_xml":
+        if has_source_critical_analytics:
+            critical_path_analytics = "available_source_export_critical_path"
+        elif source_fmt == "primavera_xer":
+            critical_path_analytics = "unavailable_requires_cpm_recalculation"
+        elif source_fmt == "ms_project_xml":
             critical_path_analytics = "available_msp_critical_slack"
         elif has_critical_path_recalc:
             critical_path_analytics = "unavailable_requires_cpm_recalculation"
@@ -1493,5 +1806,7 @@ def run_evaluation_for_run(
         prior_diff=data.get("prior_diff"),
         import_meta=data.get("import_meta"),
         schedule_options=data.get("schedule_options"),
+        code_assignments=data.get("code_assignments") or [],
+        udf_values=data.get("udf_values") or [],
     )
     return ScheduleQualityAssessmentEngine().evaluate(ctx)

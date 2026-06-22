@@ -102,6 +102,150 @@ describe('ScheduleQualityPage', () => {
     expect(screen.getByText(/not forensic delay analysis/i)).toBeInTheDocument()
   })
 
+  it('formats XER quality metrics without impossible ratios', async () => {
+    getScheduleQualityMock.mockResolvedValue({
+      schedule_version_key: 'tropical|1069|2026-05-26 08:00',
+      status: 'completed',
+      source_format: 'primavera_xer',
+      assessment_profile: 'dcma_14_point_plus_gao',
+      metrics: [
+        {
+          metric_family: 'dcma',
+          metric_code: 'dcma_invalid_dates',
+          metric_name: 'Invalid dates',
+          numerator: 0,
+          denominator: 701,
+          value: 0,
+          unit: 'ratio',
+          status: 'passed_threshold',
+          evidence_json: JSON.stringify({
+            display_mode: 'finding_count',
+            total_findings: 0,
+            primary_denominator_basis: 'completed_activities',
+          }),
+        },
+        {
+          metric_family: 'dcma',
+          metric_code: 'dcma_critical_path_test',
+          metric_name: 'Critical path test',
+          status: 'not_measurable_requires_recalculation',
+          not_measurable_reason:
+            'CPM recalculation not implemented; source-export critical path data is available separately',
+        },
+        {
+          metric_family: 'source_export',
+          metric_code: 'source_critical_path_available',
+          metric_name: 'Source critical path available',
+          numerator: 664,
+          denominator: 1378,
+          status: 'available_xer_total_float_threshold',
+          evidence_json: JSON.stringify({
+            source_critical_basis: 'xer_total_float_threshold',
+            source_critical_path_type: 'CT_TotFloat',
+            source_critical_activity_count: 664,
+            source_driving_path_count: 269,
+            explicit_float_activity_count: 677,
+            driving_path_with_explicit_float_count: 32,
+            activity_count: 1378,
+            source_critical_float_threshold_hours: 0,
+            caveat:
+              'Completed activities may have blank float fields in XER; driving_path_flag counts are separate export evidence.',
+          }),
+        },
+        {
+          metric_family: 'supplemental',
+          metric_code: 'source_driving_path_integrity_proxy',
+          metric_name: 'Source driving path integrity (proxy)',
+          numerator: 0,
+          denominator: 32,
+          status: 'measured_from_source_export_proxy',
+          evidence_json: JSON.stringify({
+            display_name_override: 'Source driving path integrity (proxy)',
+            proxy_violation_count: 0,
+            eligible_driving_path_activity_count: 32,
+            driving_path_activity_count: 269,
+            eligible_denominator_basis: 'driving_path_flag_with_explicit_float',
+            method: 'source_export_proxy',
+          }),
+        },
+        {
+          metric_family: 'dcma',
+          metric_code: 'dcma_relationship_types',
+          metric_name: 'Relationship types',
+          numerator: 2235,
+          denominator: 3718,
+          value: 0.6011,
+          status: 'passed_threshold',
+          evidence_json: JSON.stringify({
+            distribution: { FS: 2235, FF: 1357, SS: 125, SF: 1 },
+          }),
+        },
+      ],
+      gao_category_summary: {},
+      top_findings: [],
+    })
+
+    renderPage('tropical|1069|2026-05-26 08:00')
+
+    expect(await screen.findByText('0 findings')).toBeInTheDocument()
+    expect(screen.queryByText('1410/1378')).not.toBeInTheDocument()
+    expect(screen.getByText(/not_measurable_requires_recalculation/i)).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: 'Source critical path analytics' }),
+    ).toBeInTheDocument()
+    expect(screen.getByText(/Basis: XER total float threshold/i)).toBeInTheDocument()
+    expect(screen.getByText(/Driving path flags: 269 \/ 1378/i)).toBeInTheDocument()
+    expect(screen.getByText(/Source-export supplemental checks/i)).toBeInTheDocument()
+    expect(screen.getByText(/Source driving path integrity \(proxy\)/i)).toBeInTheDocument()
+    expect(screen.getByText(/0 violations \/ 32 eligible/i)).toBeInTheDocument()
+    expect(screen.getByText(/269 XER driving-path flags/i)).toBeInTheDocument()
+    expect(screen.getByText(/not a DCMA critical path test/i)).toBeInTheDocument()
+    expect(screen.getByText(/FS 2235 \/ 3718 \(60\.1%\)/i)).toBeInTheDocument()
+  })
+
+  it('renders CT_DrivPath source critical path analytics copy', async () => {
+    getScheduleQualityMock.mockResolvedValue({
+      schedule_version_key: 'pga-modern-garage|61340|2025-12-15 08:00',
+      status: 'completed',
+      source_format: 'primavera_xer',
+      metrics: [
+        {
+          metric_family: 'dcma',
+          metric_code: 'dcma_critical_path_test',
+          metric_name: 'Critical path test',
+          status: 'not_measurable_requires_recalculation',
+        },
+        {
+          metric_family: 'source_export',
+          metric_code: 'source_critical_path_available',
+          numerator: 150,
+          denominator: 1081,
+          status: 'available_xer_driving_path',
+          evidence_json: JSON.stringify({
+            source_critical_basis: 'xer_driving_path_flag',
+            source_critical_path_type: 'CT_DrivPath',
+            source_critical_activity_count: 150,
+            source_driving_path_count: 150,
+            explicit_float_activity_count: 1081,
+            driving_path_with_explicit_float_count: 150,
+            activity_count: 1081,
+          }),
+        },
+      ],
+      gao_category_summary: {},
+      top_findings: [],
+    })
+
+    renderPage('pga-modern-garage|61340|2025-12-15 08:00')
+
+    expect(
+      await screen.findByRole('heading', { name: 'Source critical path analytics' }),
+    ).toBeInTheDocument()
+    expect(screen.getByText(/Basis: XER driving path flag/i)).toBeInTheDocument()
+    expect(screen.getByText(/Driving path activities: 150 \/ 1081/i)).toBeInTheDocument()
+    expect(screen.getByText(/Explicit float coverage: 1081 \/ 1081/i)).toBeInTheDocument()
+  })
+
   it('shows pending state hint when no DCMA metrics yet', async () => {
     getScheduleQualityMock.mockResolvedValue({
       status: 'pending',

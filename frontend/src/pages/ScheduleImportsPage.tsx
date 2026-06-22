@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 import {
   ScheduleActionButton,
@@ -8,7 +8,11 @@ import {
   ScheduleShell,
   ScheduleSubnav,
 } from '../components/schedule/SchedulePageChrome'
-import { DEFAULT_SCHEDULE_PROJECT } from '../components/schedule/ScheduleVersionPicker'
+import {
+  ScheduleProjectContext,
+  ScheduleProjectPicker,
+  useScheduleProjects,
+} from '../components/schedule/ScheduleProjectPicker'
 import { api, ScheduleApiError, ScheduleNetworkError } from '../lib/api'
 
 const MAX_UPLOAD_BYTES = 50 * 1024 * 1024
@@ -33,11 +37,21 @@ function scheduleErrorMessage(err: unknown): string {
       case 'schedule_multipart_unavailable':
         return 'Schedule import upload is unavailable. Reinstall analytics-ui dependencies (python-multipart) and restart the backend.'
       case 'unsupported_schedule_format':
-        return 'Unsupported schedule format. Use Primavera XML (.xml, .pmxml) or CSV.'
+        return 'Unsupported schedule format. Use Primavera XER, Primavera XML/PMXML, Microsoft Project XML, or CSV with operator mapping.'
       case 'schedule_parse_failed':
-        return 'Could not parse the schedule file. Check that it is valid Primavera XML or CSV.'
+        return 'Could not parse the schedule file. Check that it is valid Primavera XER, Primavera XML/PMXML, Microsoft Project XML, or mapped CSV.'
+      case 'schedule_project_required':
+        return 'Select an existing project before uploading or committing a schedule.'
+      case 'schedule_project_unknown':
+        return 'Selected project is not available for schedule import.'
       case 'schedule_import_invalid':
         return err.message || 'Schedule import request was invalid.'
+      case 'schedule_project_mismatch':
+        return 'Selected project no longer matches the preview. Re-upload the file for the intended project.'
+      case 'schedule_import_persistence_failed':
+        return 'Schedule import could not be saved completely. No partial version was committed.'
+      case 'duplicate_schedule_version':
+        return 'This schedule version already exists. Preview supersede before committing.'
       default:
         return err.message || 'Schedule import failed.'
     }
@@ -46,21 +60,39 @@ function scheduleErrorMessage(err: unknown): string {
 }
 
 export function ScheduleImportsPage() {
-  const [projectKey] = useState(DEFAULT_SCHEDULE_PROJECT)
+  const [projectKey, setProjectKey] = useState('')
   const [busy, setBusy] = useState(false)
   const [busyAction, setBusyAction] = useState<'preview' | 'commit' | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [duplicate, setDuplicate] = useState<DuplicateInfo | null>(null)
   const [preview, setPreview] = useState<Record<string, unknown> | null>(null)
+  const [previewProjectKey, setPreviewProjectKey] = useState('')
+  const [previewIsSupersede, setPreviewIsSupersede] = useState(false)
   const [committed, setCommitted] = useState<Record<string, unknown> | null>(null)
+  const { data: projectsData } = useScheduleProjects()
 
-  async function onUpload(file: File) {
+  useEffect(() => {
+    if (!previewProjectKey || projectKey === previewProjectKey) return
+    setPreview(null)
+    setPreviewProjectKey('')
+    setPreviewIsSupersede(false)
+    setDuplicate(null)
+  }, [projectKey, previewProjectKey])
+
+  async function onUpload(file: File, confirmSupersede = false) {
+    if (!projectKey) {
+      setError('Select an existing project before uploading a schedule file.')
+      return
+    }
     setBusy(true)
     setBusyAction('preview')
     setError(null)
-    setDuplicate(null)
-    setCommitted(null)
-    setPreview(null)
+    if (!confirmSupersede) {
+      setDuplicate(null)
+      setCommitted(null)
+      setPreview(null)
+      setPreviewIsSupersede(false)
+    }
     if (file.size > MAX_UPLOAD_BYTES) {
       setError('This file exceeds the 50 MB upload limit.')
       setBusy(false)
@@ -68,8 +100,19 @@ export function ScheduleImportsPage() {
       return
     }
     try {
-      const resp = await api.uploadScheduleImportPreview(file, projectKey)
-      setPreview(resp as Record<string, unknown>)
+      const resp = await api.uploadScheduleImportPreview(
+        file,
+        projectKey,
+        null,
+        confirmSupersede,
+      )
+      const body = resp as Record<string, unknown>
+      setPreview(body)
+      setPreviewProjectKey(String(body.project_key ?? projectKey))
+      setPreviewIsSupersede(confirmSupersede)
+      if (!confirmSupersede) {
+        setDuplicate(null)
+      }
     } catch (err) {
       if (err instanceof ScheduleApiError && err.code === 'duplicate_schedule_version') {
         const p = err.payload
@@ -88,14 +131,20 @@ export function ScheduleImportsPage() {
     }
   }
 
-  async function onCommit() {
-    if (!preview?.import_id) return
+  async function onCommit(confirmSupersede = false) {
+    if (!preview?.import_id || !previewProjectKey) return
     setBusy(true)
     setBusyAction('commit')
     setError(null)
     try {
-      const resp = await api.commitScheduleImport(String(preview.import_id), projectKey)
+      const resp = await api.commitScheduleImport(
+        String(preview.import_id),
+        previewProjectKey,
+        null,
+        confirmSupersede,
+      )
       setCommitted(resp as Record<string, unknown>)
+      setDuplicate(null)
     } catch (err) {
       if (err instanceof ScheduleApiError && err.code === 'duplicate_schedule_version') {
         const p = err.payload
@@ -105,6 +154,7 @@ export function ScheduleImportsPage() {
           relationship_count: Number(p.relationship_count ?? 0),
           view_path: String(p.view_path ?? '/schedules/versions'),
         })
+        setError(scheduleErrorMessage(err))
       } else {
         setError(scheduleErrorMessage(err))
       }
@@ -124,18 +174,33 @@ export function ScheduleImportsPage() {
       <ScheduleSubnav />
       <SchedulePageHeader
         title="Schedule imports"
-        subtitle="Upload Primavera XML or CSV schedules into the local database after preview and operator confirmation."
+        subtitle="Upload Primavera XER, XML/PMXML, Microsoft Project XML, or mapped CSV schedules after preview and operator confirmation."
         actions={<ScheduleActionLink to="/schedules/versions">View versions</ScheduleActionLink>}
       />
 
-      <div className="forecast-panel p-4 space-y-4">
+      <div className="forecast-panel p-4 space-y-4 max-w-xl">
+        <ScheduleProjectPicker
+          value={projectKey}
+          onChange={setProjectKey}
+          required
+          importSelectableOnly
+        />
+        {projectKey ? (
+          <ScheduleProjectContext
+            projectKey={projectKey}
+            projects={projectsData?.projects}
+          />
+        ) : null}
+
         <label className="block text-sm">
-          <span className="text-[var(--hb-muted)]">Schedule file (.xml, .csv) — max 50 MB</span>
+          <span className="text-[var(--hb-muted)]">
+            Upload Primavera XER, Primavera XML/PMXML, Microsoft Project XML, or mapped CSV — max 50 MB
+          </span>
           <input
             type="file"
-            accept=".xml,.csv,.pmxml"
+            accept=".xml,.pmxml,.xer,.csv"
             className="mt-2 block w-full text-sm"
-            disabled={busy}
+            disabled={busy || !projectKey}
             onChange={(e) => {
               const f = e.target.files?.[0]
               if (f) void onUpload(f)
@@ -151,21 +216,45 @@ export function ScheduleImportsPage() {
 
         {duplicate ? (
           <div className="rounded border border-[var(--hb-border)] p-3 text-sm space-y-2">
-            <p className="font-medium">This schedule version is already imported.</p>
-            <p className="text-[var(--hb-muted)]">
-              Version: {duplicate.schedule_version_key}
-            </p>
+            <p className="font-medium">This schedule version is already imported for this project.</p>
+            <ScheduleProjectContext
+              projectKey={projectKey}
+              projects={projectsData?.projects}
+            />
+            <p className="text-[var(--hb-muted)]">Version: {duplicate.schedule_version_key}</p>
             <p>
               Activities: {duplicate.activity_count} · Relationships: {duplicate.relationship_count}
             </p>
-            <ScheduleActionLink to={duplicate.view_path}>View existing activities</ScheduleActionLink>
+            <div className="flex flex-wrap gap-2">
+              <ScheduleActionLink to={duplicate.view_path}>View existing activities</ScheduleActionLink>
+              <ScheduleActionButton
+                onClick={() => {
+                  const input = document.querySelector('input[type="file"]') as HTMLInputElement | null
+                  const file = input?.files?.[0]
+                  if (file) void onUpload(file, true)
+                }}
+                disabled={busy}
+              >
+                Preview supersede
+              </ScheduleActionButton>
+            </div>
           </div>
         ) : null}
 
         {preview ? (
           <div className="space-y-2 text-sm">
+            <ScheduleProjectContext
+              projectKey={previewProjectKey}
+              projects={projectsData?.projects}
+            />
             {preview.schedule_name ? (
               <p className="font-medium">{String(preview.schedule_name)}</p>
+            ) : null}
+            {preview.source_project_short_name ? (
+              <p className="text-xs text-[var(--hb-muted)]">
+                Source schedule: {String(preview.source_project_short_name)}
+                {preview.source_project_id ? ` (${String(preview.source_project_id)})` : ''}
+              </p>
             ) : null}
             <p className="text-[var(--hb-muted)]">
               Format: {String(preview.source_format)} · Cost loaded: {String(preview.cost_loaded_status)}
@@ -190,18 +279,34 @@ export function ScheduleImportsPage() {
             {Boolean(preview.requires_column_mapping) ? (
               <p className="text-[var(--hb-muted)]">CSV uploads require column mapping before commit.</p>
             ) : null}
-            <ScheduleActionButton onClick={() => void onCommit()} disabled={busy}>
-              {busy && busyAction === 'commit' ? 'Committing…' : 'Commit import to database'}
+            {previewIsSupersede ? (
+              <p className="text-amber-700">
+                This import will supersede the existing schedule version for this project.
+              </p>
+            ) : null}
+            <ScheduleActionButton
+              onClick={() => void onCommit(previewIsSupersede)}
+              disabled={busy || !previewProjectKey || projectKey !== previewProjectKey}
+            >
+              {busy && busyAction === 'commit'
+                ? 'Committing…'
+                : previewIsSupersede
+                  ? 'Commit supersede import to database'
+                  : 'Commit import to database'}
             </ScheduleActionButton>
           </div>
         ) : null}
 
         {committed ? (
-          <div className="rounded border border-[var(--hb-border)] p-3 text-sm">
+          <div className="rounded border border-[var(--hb-border)] p-3 text-sm space-y-2">
             <p className="font-medium">Import committed</p>
+            <ScheduleProjectContext
+              projectKey={String(committed.project_key ?? projectKey)}
+              projects={projectsData?.projects}
+            />
             <p>Version: {String(committed.schedule_version_key)}</p>
             <ScheduleActionLink
-              to={`/schedules/activities?version=${encodeURIComponent(String(committed.schedule_version_key))}`}
+              to={`/schedules/activities?version=${encodeURIComponent(String(committed.schedule_version_key))}&project=${encodeURIComponent(String(committed.project_key ?? projectKey))}`}
             >
               Browse activities
             </ScheduleActionLink>

@@ -1,0 +1,28 @@
+{
+  "note": "Broken catalog shape before identity fix (MAX aggregation + no project_key in labels)",
+  "catalog_status": "ok",
+  "projects": [
+    {
+      "project_key": "alton-hilltop-pbg",
+      "display_name": "25-745-01 - RYBOVICH-SAFE HARBOR",
+      "project_number": "25-745-01",
+      "procore_project_id": "2982068",
+      "ui_label_before": "25-745-01 - RYBOVICH-SAFE HARBOR · #25-745-01 · Procore 2982068"
+    },
+    {
+      "project_key": "caretta",
+      "display_name": "25-745-01 - RYBOVICH-SAFE HARBOR",
+      "project_number": "25-745-01",
+      "procore_project_id": "2145250",
+      "ui_label_before": "25-745-01 - RYBOVICH-SAFE HARBOR · #25-745-01 · Procore 2145250"
+    },
+    {
+      "project_key": "rybovich",
+      "display_name": "25-745-01 - RYBOVICH-SAFE HARBOR",
+      "project_number": "25-745-01",
+      "procore_project_id": "3133242",
+      "ui_label_before": "25-745-01 - RYBOVICH-SAFE HARBOR · #25-745-01 · Procore 3133242"
+    }
+  ],
+  "defect": "Six selectable options appeared identical except for trailing Procore ID because MAX(display_name) picked the same lexicographic winner for every project_key and labels omitted project_key."
+}

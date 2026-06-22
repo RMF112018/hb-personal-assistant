@@ -1,0 +1,15 @@
+{
+  "commit": {
+    "import_id": "2d2742d34212",
+    "project_key": "tropical",
+    "project_display_name": "Tropical Wind",
+    "schedule_version_key": "tropical|1|2026-06-01 08:00",
+    "activity_count": 2,
+    "cost_loaded_status": "not_cost_loaded",
+    "quality_evaluation_status": "pending",
+    "evaluation_run_id": "sq-4274293655c9",
+    "committed_at": "2026-06-22T15:35:07.518846+00:00",
+    "superseded_import_id": null
+  },
+  "activity_count": 2
+}

@@ -14,6 +14,7 @@ def apply_source_posture(
     *,
     source_format: str,
     schedule_options: dict[str, Any] | None = None,
+    source_critical_basis: str | None = None,
 ) -> dict[str, Any]:
     """Set float_source / critical_path_source on each activity; return capability summary."""
     fmt = str(source_format or "")
@@ -31,15 +32,17 @@ def apply_source_posture(
                 explicit_float += 1
             else:
                 act["float_source"] = "missing"
+            if act.get("source_critical_flag"):
+                critical_flag += 1
             if _truthy_y(act.get("source_driving_path_flag")):
-                act["critical_path_source"] = "xer_driving_path_flag"
                 driving_path += 1
-            elif act.get("derived_float_basis"):
-                act["float_source"] = "p6_derived_finish"
-                act["critical_path_source"] = "p6_derived_float_only"
-                derived_float += 1
-            else:
-                act["critical_path_source"] = "missing"
+            if not act.get("critical_path_source"):
+                if act.get("derived_float_basis"):
+                    act["float_source"] = "p6_derived_finish"
+                    act["critical_path_source"] = "p6_derived_float_only"
+                    derived_float += 1
+                else:
+                    act["critical_path_source"] = "missing"
         elif fmt == "ms_project_xml":
             if act.get("explicit_total_float_hours") is not None:
                 act["float_source"] = "msp_explicit"
@@ -68,7 +71,9 @@ def apply_source_posture(
         "explicit_float_count": explicit_float,
         "driving_path_count": driving_path,
         "critical_flag_count": critical_flag,
+        "source_critical_activity_count": critical_flag,
         "derived_float_count": derived_float,
+        "source_critical_basis": source_critical_basis or opts.get("source_critical_basis"),
         "cpm_recalculation": "not_implemented",
         "schedule_options_present": bool(opts),
     }

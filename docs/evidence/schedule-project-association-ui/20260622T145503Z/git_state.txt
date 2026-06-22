@@ -1,0 +1,59 @@
+branch: feature/schedule-project-association-ui
+base: origin/main @ 69bb5737
+ .../components/schedule/ScheduleVersionPicker.tsx  |  19 +-
+ frontend/src/lib/api.ts                            |  52 +++++-
+ frontend/src/lib/errorCopy.ts                      | 136 ++++++++++++++
+ frontend/src/lib/scheduleCapabilityCopy.ts         |  11 +-
+ frontend/src/pages/ScheduleActivitiesPage.tsx      |  21 ++-
+ frontend/src/pages/ScheduleCostMappingPage.tsx     |  10 +-
+ frontend/src/pages/ScheduleCostWeightingPage.tsx   |  11 +-
+ frontend/src/pages/ScheduleImportsPage.test.tsx    |  42 ++++-
+ frontend/src/pages/ScheduleImportsPage.tsx         | 107 +++++++++--
+ frontend/src/pages/ScheduleQualityPage.tsx         |  57 +++++-
+ frontend/src/pages/ScheduleVersionDiffPage.tsx     |  12 +-
+ frontend/src/pages/ScheduleVersionsPage.tsx        | 103 +++++++++-
+ src/hb_assistant/construction/analytics/api.py     |  87 ++++++++-
+ .../construction/analytics/schedule_dto.py         |   5 +
+ .../analytics/schedule_import_service.py           | 208 +++++++++++++++------
+ .../analytics/schedule_quality_service.py          |  78 +++++++-
+ .../store/schedule_activity_repository.py          |  23 +--
+ .../store/schedule_quality_repository.py           |  35 +++-
+ tests/test_schedule_cost_mapping_controls.py       |   2 +
+ tests/test_schedule_critical_path_quality.py       |   3 +
+ tests/test_schedule_import_api.py                  |  10 +
+ tests/test_schedule_quality_api.py                 |   2 +
+ tests/test_schedule_quality_engine.py              |   2 +
+ tests/test_schedule_quality_weighting_gate.py      |   2 +
+ tests/test_schedule_version_diff.py                |   3 +
+ 25 files changed, 894 insertions(+), 147 deletions(-)
+
+ M frontend/src/components/schedule/ScheduleVersionPicker.tsx
+ M frontend/src/lib/api.ts
+A  frontend/src/lib/errorCopy.ts
+ M frontend/src/lib/scheduleCapabilityCopy.ts
+ M frontend/src/pages/ScheduleActivitiesPage.tsx
+ M frontend/src/pages/ScheduleCostMappingPage.tsx
+ M frontend/src/pages/ScheduleCostWeightingPage.tsx
+ M frontend/src/pages/ScheduleImportsPage.test.tsx
+ M frontend/src/pages/ScheduleImportsPage.tsx
+ M frontend/src/pages/ScheduleQualityPage.tsx
+ M frontend/src/pages/ScheduleVersionDiffPage.tsx
+ M frontend/src/pages/ScheduleVersionsPage.tsx
+ M src/hb_assistant/construction/analytics/api.py
+ M src/hb_assistant/construction/analytics/schedule_dto.py
+ M src/hb_assistant/construction/analytics/schedule_import_service.py
+ M src/hb_assistant/construction/analytics/schedule_quality_service.py
+ M src/hb_assistant/store/schedule_activity_repository.py
+ M src/hb_assistant/store/schedule_quality_repository.py
+ M tests/test_schedule_cost_mapping_controls.py
+ M tests/test_schedule_critical_path_quality.py
+ M tests/test_schedule_import_api.py
+ M tests/test_schedule_quality_api.py
+ M tests/test_schedule_quality_engine.py
+ M tests/test_schedule_quality_weighting_gate.py
+ M tests/test_schedule_version_diff.py
+?? docs/evidence/schedule-project-association-ui/
+?? frontend/src/components/schedule/ScheduleProjectPicker.tsx
+?? src/hb_assistant/construction/analytics/schedule_project_catalog.py
+?? tests/schedule_project_test_helpers.py
+?? tests/test_schedule_project_association.py

@@ -12,9 +12,10 @@ import {
   ScheduleTh,
 } from '../components/schedule/SchedulePageChrome'
 import {
-  DEFAULT_SCHEDULE_PROJECT,
-  ScheduleVersionPicker,
-} from '../components/schedule/ScheduleVersionPicker'
+  ScheduleProjectPicker,
+  useScheduleProjectParam,
+} from '../components/schedule/ScheduleProjectPicker'
+import { ScheduleVersionPicker } from '../components/schedule/ScheduleVersionPicker'
 import { api } from '../lib/api'
 
 const OBJECTIVES = [
@@ -25,7 +26,7 @@ const OBJECTIVES = [
 ]
 
 export function ScheduleCostMappingPage() {
-  const projectKey = DEFAULT_SCHEDULE_PROJECT
+  const [projectKey, setProjectKey] = useScheduleProjectParam()
   const queryClient = useQueryClient()
   const [objective, setObjective] = useState('association_only')
   const [versionKey, setVersionKey] = useState('')
@@ -108,6 +109,7 @@ export function ScheduleCostMappingPage() {
       />
 
       <div className="forecast-panel p-4 space-y-4 text-sm">
+        <ScheduleProjectPicker value={projectKey} onChange={setProjectKey} className="max-w-md" />
         <ScheduleVersionPicker projectKey={projectKey} value={versionKey} onChange={setVersionKey} />
 
         <p className="font-medium">What are you trying to accomplish with this schedule mapping?</p>

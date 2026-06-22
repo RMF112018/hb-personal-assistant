@@ -1,0 +1,4 @@
+{
+  "evidence_contains_secrets": false,
+  "notes": "Evidence contains aggregate counts and metric status only."
+}

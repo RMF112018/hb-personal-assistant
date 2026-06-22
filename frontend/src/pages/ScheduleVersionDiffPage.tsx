@@ -9,15 +9,16 @@ import {
   ScheduleSubnav,
 } from '../components/schedule/SchedulePageChrome'
 import {
-  DEFAULT_SCHEDULE_PROJECT,
-  useScheduleVersions,
-} from '../components/schedule/ScheduleVersionPicker'
+  ScheduleProjectPicker,
+  useScheduleProjectParam,
+} from '../components/schedule/ScheduleProjectPicker'
+import { useScheduleVersions } from '../components/schedule/ScheduleVersionPicker'
 import { EmptyState } from '../components/ui/EmptyState'
 import { api } from '../lib/api'
 
 export function ScheduleVersionDiffPage() {
-  const projectKey = DEFAULT_SCHEDULE_PROJECT
-  const { data: versionsData } = useScheduleVersions(projectKey)
+  const [projectKey, setProjectKey] = useScheduleProjectParam()
+  const { data: versionsData } = useScheduleVersions(projectKey || undefined)
   const versions = Array.isArray(versionsData) ? (versionsData as Record<string, unknown>[]) : []
 
   const [fromVersion, setFromVersion] = useState('')
@@ -50,6 +51,7 @@ export function ScheduleVersionDiffPage() {
       />
 
       <div className="forecast-panel p-4 space-y-3 max-w-2xl text-sm">
+        <ScheduleProjectPicker value={projectKey} onChange={setProjectKey} />
         <label className="block">
           <span className="text-[var(--hb-muted)]">From version</span>
           <select
