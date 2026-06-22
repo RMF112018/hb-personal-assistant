@@ -1300,3 +1300,37 @@ def timedelta_days(n: int) -> Any:
     from datetime import timedelta
 
     return timedelta(days=n)
+
+
+# -- forecast launch bootstrap: launcher write-root defaults -------------------
+
+
+@pytest.mark.parametrize("environment", ["dev", "production"])
+def test_child_env_injects_forecast_write_root_defaults(
+    environment: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Both environments default the 3 forecast WRITE-roots under app-support; read-roots never."""
+    for v in ("HB_FORECAST_RUNS_ROOT", "HB_FORECAST_EVAL_ROOT", "HB_FORECAST_CONFIG_EDIT_ROOT"):
+        monkeypatch.delenv(v, raising=False)
+    profile = resolve_profile(environment)  # type: ignore[arg-type]
+    env = LauncherService(profile)._child_env()
+
+    base = profile.app_support_root / "analytics" / "forecast"
+    assert env["HB_FORECAST_RUNS_ROOT"] == str(base / "runs")
+    assert env["HB_FORECAST_EVAL_ROOT"] == str(base / "eval")
+    assert env["HB_FORECAST_CONFIG_EDIT_ROOT"] == str(base / "config-edit")
+    # Read-roots are never auto-defaulted.
+    for read_root_key in ("HB_FORECAST_DATA_ROOT", "HB_FORECAST_DB_PATH", "HB_FORECAST_PACKAGE_ROOTS"):
+        assert read_root_key not in env
+
+
+def test_child_env_respects_preexisting_forecast_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """An operator-set HB_FORECAST_RUNS_ROOT is never overridden by the launcher default."""
+    monkeypatch.setenv("HB_FORECAST_RUNS_ROOT", "/operator/runs")
+    monkeypatch.delenv("HB_FORECAST_EVAL_ROOT", raising=False)
+    profile = resolve_profile("dev")
+    env = LauncherService(profile)._child_env()
+
+    assert "HB_FORECAST_RUNS_ROOT" not in env  # inherited env wins → no default injected
+    base = profile.app_support_root / "analytics" / "forecast"
+    assert env["HB_FORECAST_EVAL_ROOT"] == str(base / "eval")  # the unset one still gets a default

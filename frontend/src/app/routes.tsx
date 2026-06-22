@@ -3,6 +3,7 @@ import {
   RouterProvider,
   Outlet,
   useNavigate,
+  Navigate,
 } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 
@@ -21,6 +22,14 @@ import { ForecastConfigEditProposalsPage } from '../pages/ForecastConfigEditProp
 import { ForecastRunCenterPage } from '../pages/ForecastRunCenterPage'
 import { ForecastExternalEvalPage } from '../pages/ForecastExternalEvalPage'
 import { ForecastRuntimeSettingsPage } from '../pages/ForecastRuntimeSettingsPage'
+import { ScheduleImportsPage } from '../pages/ScheduleImportsPage'
+import { ScheduleVersionsPage } from '../pages/ScheduleVersionsPage'
+import { ScheduleActivitiesPage } from '../pages/ScheduleActivitiesPage'
+import { ScheduleActivitiesRedirect } from '../pages/ScheduleActivitiesRedirect'
+import { ScheduleCostMappingPage } from '../pages/ScheduleCostMappingPage'
+import { ScheduleQualityPage } from '../pages/ScheduleQualityPage'
+import { ScheduleVersionDiffPage } from '../pages/ScheduleVersionDiffPage'
+import { ScheduleCostWeightingPage } from '../pages/ScheduleCostWeightingPage'
 import { DataHealthPage } from '../pages/DataHealthPage'
 import { SettingsPage } from '../pages/SettingsPage'
 import { GetStartedPage } from '../pages/GetStartedPage'
@@ -177,6 +186,63 @@ const router = createBrowserRouter([
         path: 'forecasting/runtime',
         element: <ForecastRuntimeSettingsPage />,
         handle: { title: 'Forecast Runtime Settings' },
+      },
+      // Schedule Intelligence (V62) — first-class module at /schedules/*.
+      {
+        path: 'schedules',
+        element: <Navigate to="/schedules/imports" replace />,
+      },
+      {
+        path: 'schedules/imports',
+        element: <ScheduleImportsPage />,
+        handle: { title: 'Schedule Imports' },
+      },
+      {
+        path: 'schedules/versions',
+        element: <ScheduleVersionsPage />,
+        handle: { title: 'Schedule Versions' },
+      },
+      {
+        path: 'schedules/activities',
+        element: <ScheduleActivitiesPage />,
+        handle: { title: 'Schedule Activities' },
+      },
+      {
+        path: 'schedules/quality',
+        element: <ScheduleQualityPage />,
+        handle: { title: 'Schedule Quality' },
+      },
+      {
+        path: 'schedules/version-diff',
+        element: <ScheduleVersionDiffPage />,
+        handle: { title: 'Schedule Version Diff' },
+      },
+      {
+        path: 'schedules/cost-mapping',
+        element: <ScheduleCostMappingPage />,
+        handle: { title: 'Schedule Cost Mapping' },
+      },
+      {
+        path: 'schedules/cost-weighting',
+        element: <ScheduleCostWeightingPage />,
+        handle: { title: 'Schedule Cost Weighting' },
+      },
+      // Legacy forecasting-nested schedule routes → /schedules/*.
+      {
+        path: 'forecasting/schedules/imports',
+        element: <Navigate to="/schedules/imports" replace />,
+      },
+      {
+        path: 'forecasting/schedules/versions',
+        element: <Navigate to="/schedules/versions" replace />,
+      },
+      {
+        path: 'forecasting/schedules/cost-mapping',
+        element: <Navigate to="/schedules/cost-mapping" replace />,
+      },
+      {
+        path: 'forecasting/schedules/versions/:scheduleVersionKey/activities',
+        element: <ScheduleActivitiesRedirect />,
       },
       {
         path: 'forecasting/:packageId',

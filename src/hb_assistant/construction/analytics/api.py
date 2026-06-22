@@ -7,11 +7,28 @@ dependency factory so the base package remains FastAPI-free.
 from __future__ import annotations
 
 import json
+from contextlib import asynccontextmanager
 from enum import Enum
 from pathlib import Path
-from typing import Any
+import logging
+from typing import Annotated, Any
 
 from pydantic import BaseModel
+
+try:
+    from fastapi import File as FastAPIFile
+    from fastapi import Form as FastAPIForm
+    from fastapi import UploadFile as FastAPIUploadFile
+    from starlette.datastructures import UploadFile as StarletteUploadFile
+    from starlette.requests import Request as StarletteRequest
+except ImportError:  # pragma: no cover - analytics-ui optional
+    FastAPIFile = Any  # type: ignore[misc,assignment]
+    FastAPIForm = Any  # type: ignore[misc,assignment]
+    FastAPIUploadFile = Any  # type: ignore[misc,assignment]
+    StarletteRequest = Any  # type: ignore[misc,assignment]
+    StarletteUploadFile = Any  # type: ignore[misc,assignment]
+
+_logger = logging.getLogger(__name__)
 
 from hb_assistant.config.path_policy import PathPolicy  # Prompt 20 prefs + daily_brief config path
 from hb_assistant.store.migrator import LATEST_SCHEMA_VERSION, SQLiteMigrator
@@ -59,6 +76,29 @@ class ForecastRuntimeConfigRequest(BaseModel):
     db_path: str | None = None
     cfr_src: str | None = None
     config_edit_root: str | None = None
+
+
+class ForecastRuntimeResetRequest(BaseModel):
+    confirm: bool = False
+
+
+class ScheduleImportCommitRequest(BaseModel):
+    import_id: str
+    project_key: str = "tropical"
+    confirm: bool = False
+    column_roles: dict[str, str] | None = None
+
+
+class ScheduleCostMappingRunRequest(BaseModel):
+    project_key: str
+    schedule_version_key: str
+    operator_objective: str = "association_only"
+
+
+class ScheduleCostMappingReviewRequest(BaseModel):
+    operator_status: str
+    operator_notes: str | None = None
+    candidate_cost_code: str | None = None
 
 
 class ProcoreOAuthExchangeRequest(BaseModel):
@@ -331,6 +371,53 @@ def require_admin_role(role: dict[str, str]) -> dict[str, str]:
     return role
 
 
+@asynccontextmanager
+async def _forecast_lifespan(app: Any) -> Any:
+    """Startup bootstrap: ensure app-managed forecast storage before serving.
+
+    Informative and fail-closed — never raises (a bootstrap failure must never block app startup,
+    mirroring the optional-surface degrade posture).
+    """
+    import asyncio
+
+    poll_task: asyncio.Task[None] | None = None
+    try:
+        from hb_assistant.construction.analytics.forecast_bootstrap import (
+            ensure_forecast_managed_storage,
+        )
+
+        ensure_forecast_managed_storage()
+    except Exception:
+        pass
+
+    async def _quality_poll_loop() -> None:
+        from hb_assistant.config.path_policy import PathPolicy
+        from hb_assistant.construction.analytics.schedule_quality_worker import poll_and_process
+
+        configured = getattr(app.state, "db_path", None)
+        db = str(configured) if configured else str(PathPolicy().get_db_path())
+        while True:
+            try:
+                await asyncio.to_thread(poll_and_process, db_path=db, limit=3)
+            except Exception:
+                pass
+            await asyncio.sleep(60)
+
+    try:
+        poll_task = asyncio.create_task(_quality_poll_loop())
+    except Exception:
+        poll_task = None
+
+    yield
+
+    if poll_task is not None:
+        poll_task.cancel()
+        try:
+            await poll_task
+        except asyncio.CancelledError:
+            pass
+
+
 def create_app(*, db_path: str | None = None) -> Any:
     """Create the optional FastAPI app shell.
 
@@ -338,10 +425,11 @@ def create_app(*, db_path: str | None = None) -> Any:
     status. Future analytics route adapters should call ``AnalyticsService``
     directly and reuse ``role_dependency``.
     """
-    from fastapi import Depends, FastAPI
+    from fastapi import Body, Depends, FastAPI, Query
 
     require_role = role_dependency()
     app = FastAPI(
+        lifespan=_forecast_lifespan,
         title="HB Personal Assistant Analytics UI Shell",
         version="0.1.0-prompt-14b",
         description=(
@@ -352,7 +440,9 @@ def create_app(*, db_path: str | None = None) -> Any:
             "(Prompt 14B: account/project connections, source scope, keywords, daily brief config, preferences, admin sync controls) supported."
         ),
     )
+    app.state.db_path = db_path
     role_dep = Depends(require_role)
+    optional_json_body = Body(default=None)  # bound to a var so call isn't in an arg default (B008)
 
     @app.get("/health")
     def health(role: dict[str, str] = role_dep) -> dict[str, Any]:
@@ -1143,6 +1233,51 @@ def create_app(*, db_path: str | None = None) -> Any:
 
         return AnalyticsService(db_path=db_path).build_admin_data_completeness()
 
+    def _admin_schema_db_path() -> str:
+        return db_path or str(PathPolicy().get_db_path())
+
+    def _admin_table_count(schema_db: str) -> int:
+        import sqlite3
+
+        conn = sqlite3.connect(f"file:{schema_db}?mode=ro", uri=True)
+        try:
+            row = conn.execute(
+                """
+                SELECT COUNT(*) FROM sqlite_master
+                WHERE type IN ('table', 'view') AND name NOT LIKE 'sqlite_%'
+                """
+            ).fetchone()
+            return int(row[0]) if row else 0
+        finally:
+            conn.close()
+
+    @app.get("/api/admin/schema/status")
+    def admin_schema_status(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        require_admin_role(role)
+        schema_db = _admin_schema_db_path()
+        current = _schema_version(schema_db)
+        return {
+            "schema_version": current,
+            "schema_expected": LATEST_SCHEMA_VERSION,
+            "schema_ready": current >= LATEST_SCHEMA_VERSION,
+            "table_count": _admin_table_count(schema_db),
+        }
+
+    @app.post("/api/admin/schema/migrate")
+    def admin_schema_migrate(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        require_admin_role(role)
+        schema_db = _admin_schema_db_path()
+        before = _schema_version(schema_db)
+        after = int(SQLiteMigrator(db_path=schema_db).apply())
+        return {
+            "schema_before": before,
+            "schema_after": after,
+            "schema_expected": LATEST_SCHEMA_VERSION,
+            "schema_ready": after >= LATEST_SCHEMA_VERSION,
+            "table_count": _admin_table_count(schema_db),
+            "migration_name": f"v{after}_schema",
+        }
+
     # Prompt A — normalized frontend contract routes under /api/onboarding/readiness and
     # /api/settings/connections/* (plus data-quality). These coexist with (do not replace)
     # all prior root-level routes so existing tests and any legacy callers continue to work.
@@ -1614,6 +1749,73 @@ def create_app(*, db_path: str | None = None) -> Any:
         del role
         return _forecast_run_call(_forecast_run_service().list_runs)
 
+    # DB-config-backed generation: generate the comprehensive package CONSUMING the live config
+    # snapshot (so a promoted config drives generation). Default-OFF opt-in; live config DB read-only;
+    # writes only the isolated work-root. Registered BEFORE the {run_id} catch-all so "db-config" wins.
+    def _forecast_db_config_run_service() -> Any:
+        from hb_assistant.construction.analytics.forecast_db_config_run_service import (
+            ForecastDbConfigRunService,
+        )
+        from hb_assistant.construction.analytics.forecast_runtime_config import (
+            resolve_cfr_src,
+            resolve_data_root,
+            resolve_db_config_run_enabled,
+            resolve_runs_root,
+        )
+
+        return ForecastDbConfigRunService(
+            data_root=resolve_data_root(None),
+            runs_root=resolve_runs_root(None),
+            cfr_src=resolve_cfr_src(None),
+            db_config_run_enabled=resolve_db_config_run_enabled(None),
+        )
+
+    def _forecast_db_config_run_call(fn: Any, *args: Any) -> dict[str, Any]:
+        from fastapi import HTTPException
+
+        from hb_assistant.construction.analytics.forecast_db_config_run_service import (
+            ForecastDbConfigRunError,
+        )
+
+        try:
+            return fn(*args)
+        except ForecastDbConfigRunError as exc:
+            if str(exc).startswith("unknown run_id"):
+                raise HTTPException(status_code=404, detail="forecast_db_config_run_not_found")
+            if str(exc).startswith("db_config_run disabled"):
+                raise HTTPException(status_code=503, detail="forecast_db_config_run_disabled")
+            # not configured / config DB not ready — fail closed, path-free.
+            raise HTTPException(status_code=503, detail="forecast_db_config_run_not_configured")
+
+    @app.post("/api/forecast/runs/db-config")
+    def forecast_db_config_run_create(
+        payload: dict[str, Any] | None = optional_json_body,
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        from fastapi import HTTPException
+
+        require_operator_role(role)  # executes + writes isolated work-root; reads live config DB ro
+        # Optional body {"generator_kind": ...}; absent/empty body defaults to comprehensive (back-compat).
+        generator_kind = (payload or {}).get("generator_kind", "comprehensive")
+        if generator_kind not in ("comprehensive", "model_controls", "monthly", "probability"):
+            raise HTTPException(status_code=400, detail="forecast_db_config_run_bad_kind")
+        service = _forecast_db_config_run_service()
+        return _forecast_db_config_run_call(
+            lambda: service.start_db_config_run(generator_kind=generator_kind)
+        )
+
+    @app.get("/api/forecast/runs/db-config")
+    def forecast_db_config_runs_list(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        return _forecast_db_config_run_call(_forecast_db_config_run_service().list_db_config_runs)
+
+    @app.get("/api/forecast/runs/db-config/{run_id}")
+    def forecast_db_config_run_detail(run_id: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        return _forecast_db_config_run_call(
+            _forecast_db_config_run_service().read_db_config_run, run_id
+        )
+
     @app.get("/api/forecast/runs/{run_id}")
     def forecast_run_detail(run_id: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
         del role
@@ -1761,7 +1963,7 @@ def create_app(*, db_path: str | None = None) -> Any:
     def forecast_runtime_config_write(
         request: ForecastRuntimeConfigRequest, role: dict[str, str] = role_dep
     ) -> dict[str, Any]:
-        require_operator_role(role)  # mutates persisted runtime config
+        require_admin_role(role)  # advanced manual path override — admin-only carve-out
         from fastapi import HTTPException
 
         from hb_assistant.construction.analytics.forecast_runtime_config import (
@@ -1774,5 +1976,422 @@ def create_app(*, db_path: str | None = None) -> Any:
         except ForecastRuntimeConfigError as exc:
             # Path-free blocker code ("<root>:<blocker>"); never persisted on failure.
             raise HTTPException(status_code=400, detail=f"forecast_runtime_invalid:{exc}")
+
+    @app.post("/api/forecast/runtime/repair")
+    def forecast_runtime_storage_repair(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        require_operator_role(role)
+        from hb_assistant.construction.analytics.forecast_bootstrap import (
+            ensure_forecast_managed_storage,
+        )
+
+        return ensure_forecast_managed_storage(repair=True)
+
+    @app.post("/api/forecast/runtime/reset")
+    def forecast_runtime_storage_reset(
+        request: ForecastRuntimeResetRequest, role: dict[str, str] = role_dep
+    ) -> dict[str, Any]:
+        require_admin_role(role)
+        from fastapi import HTTPException
+
+        from hb_assistant.construction.analytics.forecast_bootstrap import (
+            ensure_forecast_managed_storage,
+        )
+        from hb_assistant.construction.analytics.forecast_runtime_config import (
+            reset_runtime_config_to_managed_defaults,
+        )
+
+        if not request.confirm:
+            raise HTTPException(status_code=400, detail="forecast_runtime_reset_confirm_required")
+        reset_runtime_config_to_managed_defaults()
+        return ensure_forecast_managed_storage(repair=True)
+
+    # Schedule Intelligence (V62) — canonical schedule activity storage + cost mapping.
+    def _schedule_db_path() -> str:
+        return db_path or str(PathPolicy().get_db_path())
+
+    def _schedule_import_service() -> Any:
+        from hb_assistant.construction.analytics.schedule_import_service import (
+            ScheduleImportService,
+        )
+
+        return ScheduleImportService(db_path=_schedule_db_path())
+
+    def _schedule_read_service() -> Any:
+        from hb_assistant.construction.analytics.schedule_import_service import (
+            ScheduleReadService,
+        )
+
+        return ScheduleReadService(db_path=_schedule_db_path())
+
+    def _schedule_cost_mapping_service() -> Any:
+        from hb_assistant.construction.analytics.schedule_cost_mapping import (
+            ScheduleCostMappingService,
+        )
+
+        return ScheduleCostMappingService(db_path=_schedule_db_path())
+
+    def _raise_schedule_import_error(exc: Any) -> None:
+        from fastapi import HTTPException
+
+        code = getattr(exc, "code", None) or str(exc)
+        payload = getattr(exc, "payload", None) or {}
+        if code == "schedule_not_found":
+            raise HTTPException(status_code=404, detail="schedule_not_found")
+        if code == "schedule_schema_not_ready":
+            raise HTTPException(status_code=503, detail="schedule_schema_not_ready")
+        if code == "schedule_file_too_large":
+            raise HTTPException(status_code=413, detail="schedule_file_too_large")
+        if code == "duplicate_schedule_version":
+            raise HTTPException(status_code=409, detail={"code": code, **payload})
+        if code == "schedule_multipart_unavailable":
+            raise HTTPException(status_code=503, detail="schedule_multipart_unavailable")
+        if code == "schedule_quality_not_ready":
+            raise HTTPException(status_code=409, detail="schedule_quality_not_ready")
+        if code in {"unsupported_schedule_format", "schedule_parse_failed"}:
+            raise HTTPException(status_code=400, detail=code)
+        raise HTTPException(status_code=400, detail=code or "schedule_import_invalid")
+
+    def require_schedule_schema_ready() -> None:
+        from hb_assistant.construction.analytics.schedule_import_service import ensure_schedule_schema
+
+        try:
+            ensure_schedule_schema(_schedule_db_path())
+        except Exception as exc:
+            _raise_schedule_import_error(exc)
+
+    def _schedule_call(fn: Any, *args: Any, **kwargs: Any) -> dict[str, Any] | list[dict[str, Any]]:
+        from hb_assistant.construction.analytics.schedule_file_parser import ScheduleImportError
+
+        try:
+            result = fn(*args, **kwargs)
+            if isinstance(result, list):
+                return result
+            return result if isinstance(result, dict) else {"result": result}
+        except ScheduleImportError as exc:
+            _raise_schedule_import_error(exc)
+            raise AssertionError("unreachable") from exc
+
+    @app.get("/api/schedules/projects")
+    def schedule_list_projects(role: dict[str, str] = role_dep) -> list[dict[str, Any]]:
+        del role
+        return _schedule_call(_schedule_read_service().list_projects)
+
+    @app.get("/api/schedules/projects/{project_key}/versions")
+    def schedule_list_versions(project_key: str, role: dict[str, str] = role_dep) -> list[dict[str, Any]]:
+        del role
+        return _schedule_call(_schedule_read_service().list_versions, project_key)
+
+    @app.get("/api/schedules/versions/{schedule_version_key}/summary")
+    def schedule_version_summary(
+        schedule_version_key: str, role: dict[str, str] = role_dep
+    ) -> dict[str, Any]:
+        del role
+        from fastapi import HTTPException
+
+        out = _schedule_call(_schedule_read_service().get_summary, schedule_version_key)
+        if out is None:
+            raise HTTPException(status_code=404, detail="schedule_not_found")
+        return out
+
+    @app.get("/api/schedules/versions/{schedule_version_key}/activities")
+    def schedule_version_activities(
+        schedule_version_key: str,
+        limit: int | None = Query(default=None, ge=1, le=10000),
+        offset: int = Query(default=0, ge=0),
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        del role
+        read = _schedule_read_service()
+        items = _schedule_call(
+            read.list_activities,
+            schedule_version_key,
+            limit=limit,
+            offset=offset,
+        )
+        total = read.count_activities(schedule_version_key)
+        return {
+            "schedule_version_key": schedule_version_key,
+            "activities": items,
+            "total_count": total,
+            "limit": limit if limit is not None else 500,
+            "offset": offset,
+            "truncated": len(items) + offset < total,
+        }
+
+    @app.get("/api/schedules/versions/{schedule_version_key}/relationships")
+    def schedule_version_relationships(
+        schedule_version_key: str, role: dict[str, str] = role_dep
+    ) -> dict[str, Any]:
+        del role
+        items = _schedule_call(_schedule_read_service().list_relationships, schedule_version_key)
+        return {"schedule_version_key": schedule_version_key, "relationships": items}
+
+    def _schedule_quality_service() -> Any:
+        from hb_assistant.construction.analytics.schedule_quality_service import (
+            ScheduleQualityService,
+        )
+
+        return ScheduleQualityService(db_path=_schedule_db_path())
+
+    @app.get("/api/schedules/versions/{schedule_version_key}/quality")
+    def schedule_version_quality(
+        schedule_version_key: str, role: dict[str, str] = role_dep
+    ) -> dict[str, Any]:
+        del role
+        return _schedule_call(
+            _schedule_quality_service().get_quality_summary,
+            schedule_version_key,
+        )
+
+    @app.get("/api/schedules/versions/{schedule_version_key}/quality/findings")
+    def schedule_version_quality_findings(
+        schedule_version_key: str,
+        evaluation_run_id: str | None = None,
+        limit: int = Query(default=500, ge=1, le=5000),
+        offset: int = Query(default=0, ge=0),
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        del role
+        return _schedule_call(
+            _schedule_quality_service().get_findings,
+            schedule_version_key,
+            evaluation_run_id=evaluation_run_id,
+            limit=limit,
+            offset=offset,
+        )
+
+    @app.get("/api/schedules/versions/{schedule_version_key}/quality/metrics")
+    def schedule_version_quality_metrics(
+        schedule_version_key: str, role: dict[str, str] = role_dep
+    ) -> dict[str, Any]:
+        del role
+        summary = _schedule_call(
+            _schedule_quality_service().get_quality_summary,
+            schedule_version_key,
+        )
+        return {
+            "schedule_version_key": schedule_version_key,
+            "evaluation_run_id": summary.get("evaluation_run_id"),
+            "metrics": summary.get("metrics", []),
+        }
+
+    @app.post("/api/schedules/versions/{schedule_version_key}/quality/rerun")
+    def schedule_version_quality_rerun(
+        schedule_version_key: str,
+        profile: str | None = None,
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        require_operator_role(role)
+        from hb_assistant.construction.analytics.schedule_quality_worker import poll_and_process
+
+        out = _schedule_call(
+            _schedule_quality_service().request_rerun,
+            schedule_version_key=schedule_version_key,
+            profile_id=profile,
+        )
+        poll_and_process(db_path=_schedule_db_path(), limit=1)
+        return out
+
+    @app.get("/api/schedules/quality/runs/{evaluation_run_id}")
+    def schedule_quality_run_detail(
+        evaluation_run_id: str, role: dict[str, str] = role_dep
+    ) -> dict[str, Any]:
+        del role
+        from fastapi import HTTPException
+
+        out = _schedule_call(
+            _schedule_quality_service().get_run_detail,
+            evaluation_run_id,
+        )
+        if out is None:
+            raise HTTPException(status_code=404, detail="schedule_not_found")
+        return out
+
+    @app.get("/api/schedules/projects/{project_key}/quality/summary")
+    def schedule_project_quality_summary(
+        project_key: str, role: dict[str, str] = role_dep
+    ) -> dict[str, Any]:
+        del role
+        return _schedule_call(
+            _schedule_quality_service().get_project_summary,
+            project_key,
+        )
+
+    @app.get("/api/schedules/projects/{project_key}/diff")
+    def schedule_version_diff(
+        project_key: str,
+        from_version: str = Query(alias="from"),
+        to_version: str = Query(alias="to"),
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        del role
+        from hb_assistant.construction.analytics.schedule_version_diff import compute_version_diff
+        from hb_assistant.store.schedule_mapping_repository import ScheduleMappingRepository
+
+        read = _schedule_read_service()
+        from_acts = read.list_activities(from_version, for_diff=True)
+        to_acts = read.list_activities(to_version, for_diff=True)
+        from_rels = read.list_relationships(from_version)
+        to_rels = read.list_relationships(to_version)
+        diff = compute_version_diff(
+            project_key=project_key,
+            from_version=from_version,
+            to_version=to_version,
+            from_activities=from_acts,
+            to_activities=to_acts,
+            from_relationships=from_rels,
+            to_relationships=to_rels,
+        )
+        ScheduleMappingRepository(db_path=_schedule_db_path()).insert_version_diff(diff)
+        return diff
+
+    async def _read_schedule_upload(file: Any, *, max_bytes: int) -> tuple[str, bytes]:
+        from hb_assistant.construction.analytics.schedule_file_parser import ScheduleImportError
+        from hb_assistant.construction.analytics.schedule_import_service import MAX_UPLOAD_BYTES
+
+        limit = max_bytes or MAX_UPLOAD_BYTES
+        chunks: list[bytes] = []
+        total = 0
+        while True:
+            chunk = await file.read(1024 * 1024)
+            if not chunk:
+                break
+            total += len(chunk)
+            if total > limit:
+                raise ScheduleImportError(
+                    "schedule_file_too_large",
+                    message="uploaded file exceeds the size limit",
+                )
+            chunks.append(chunk)
+        data = b"".join(chunks)
+        filename = str(getattr(file, "filename", None) or "upload")
+        return filename, data
+
+    @app.post("/api/schedules/import-preview")
+    async def schedule_import_preview(
+        role: dict[str, str] = role_dep,
+        _schema: None = Depends(require_schedule_schema_ready),
+        file: FastAPIUploadFile = FastAPIFile(...),
+        project_key: str = FastAPIForm("tropical"),
+        column_roles: str | None = FastAPIForm(None),
+    ) -> dict[str, Any]:
+        from fastapi import HTTPException
+
+        from hb_assistant.construction.analytics.schedule_file_parser import ScheduleImportError
+        from hb_assistant.construction.analytics.schedule_import_service import MAX_UPLOAD_BYTES
+
+        require_operator_role(role)
+        try:
+            filename, data = await _read_schedule_upload(file, max_bytes=MAX_UPLOAD_BYTES)
+            parsed_roles: dict[str, str] | None = None
+            if column_roles:
+                try:
+                    parsed_roles = json.loads(column_roles)
+                except json.JSONDecodeError as exc:
+                    raise ScheduleImportError(
+                        "schedule_import_invalid",
+                        message="column_roles must be valid JSON",
+                    ) from exc
+            return _schedule_call(
+                _schedule_import_service().preview_bytes,
+                filename=filename,
+                data=data,
+                project_key=project_key,
+                column_roles=parsed_roles,
+            )
+        except HTTPException:
+            raise
+        except ScheduleImportError as exc:
+            _raise_schedule_import_error(exc)
+            raise AssertionError("unreachable") from exc
+        except AssertionError as exc:
+            if "python-multipart" in str(exc):
+                _logger.exception("schedule import-preview missing python-multipart")
+                raise HTTPException(
+                    status_code=503,
+                    detail="schedule_multipart_unavailable",
+                ) from exc
+            raise
+        except Exception as exc:
+            _logger.exception("schedule import-preview failed")
+            raise HTTPException(status_code=500, detail="schedule_import_invalid") from exc
+
+    @app.post("/api/schedules/import-commit")
+    def schedule_import_commit(
+        request: ScheduleImportCommitRequest, role: dict[str, str] = role_dep
+    ) -> dict[str, Any]:
+        require_operator_role(role)
+        return _schedule_call(
+            _schedule_import_service().commit,
+            import_id=request.import_id,
+            project_key=request.project_key,
+            confirm=request.confirm,
+            column_roles=request.column_roles,
+        )
+
+    @app.post("/api/schedules/cost-mapping/runs")
+    def schedule_cost_mapping_create(
+        request: ScheduleCostMappingRunRequest, role: dict[str, str] = role_dep
+    ) -> dict[str, Any]:
+        require_operator_role(role)
+        return _schedule_call(
+            _schedule_cost_mapping_service().create_run,
+            project_key=request.project_key,
+            schedule_version_key=request.schedule_version_key,
+            operator_objective=request.operator_objective,
+        )
+
+    @app.get("/api/schedules/cost-mapping/runs/{mapping_run_id}")
+    def schedule_cost_mapping_get(mapping_run_id: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        from fastapi import HTTPException
+
+        out = _schedule_call(_schedule_cost_mapping_service().get_run, mapping_run_id)
+        if out is None:
+            raise HTTPException(status_code=404, detail="schedule_not_found")
+        return out
+
+    @app.get("/api/schedules/cost-mapping/runs/{mapping_run_id}/candidates")
+    def schedule_cost_mapping_candidates(
+        mapping_run_id: str, role: dict[str, str] = role_dep
+    ) -> dict[str, Any]:
+        del role
+        items = _schedule_call(_schedule_cost_mapping_service().list_candidates, mapping_run_id)
+        return {"mapping_run_id": mapping_run_id, "candidates": items}
+
+    @app.post("/api/schedules/cost-mapping/candidates/{candidate_id}/review")
+    def schedule_cost_mapping_review(
+        candidate_id: int,
+        request: ScheduleCostMappingReviewRequest,
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        require_operator_role(role)
+        _schedule_call(
+            _schedule_cost_mapping_service().review_candidate,
+            candidate_id,
+            operator_status=request.operator_status,
+            operator_notes=request.operator_notes,
+            candidate_cost_code=request.candidate_cost_code,
+        )
+        return {"candidate_id": candidate_id, "status": request.operator_status}
+
+    @app.post("/api/schedules/cost-mapping/runs/{mapping_run_id}/approve")
+    def schedule_cost_mapping_approve(mapping_run_id: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+        require_operator_role(role)
+        return _schedule_call(_schedule_cost_mapping_service().approve_run, mapping_run_id)
+
+    @app.get("/api/schedules/cost-mapping/runs/{mapping_run_id}/distribution")
+    def schedule_cost_mapping_distribution(
+        mapping_run_id: str, role: dict[str, str] = role_dep
+    ) -> dict[str, Any]:
+        del role
+        items = _schedule_call(_schedule_cost_mapping_service().list_distributions, mapping_run_id)
+        return {"mapping_run_id": mapping_run_id, "distributions": items}
+
+    @app.get("/api/schedules/cost-weighting/{project_key}")
+    def schedule_cost_weighting(project_key: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        items = _schedule_call(_schedule_cost_mapping_service().list_weighting, project_key)
+        return {"project_key": project_key, "weighting_results": items}
 
     return app

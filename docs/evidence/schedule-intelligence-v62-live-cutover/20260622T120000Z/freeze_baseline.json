@@ -1,0 +1,14 @@
+{
+  "branch": "feature/forecast-ui-live-config-promotion-orphan-fix",
+  "captured_utc": "2026-06-22T09:40:40.006582+00:00",
+  "commit_sha": "33fd116ca9438eb84437686b84494c1f8ade83db",
+  "expected_table_count": 412,
+  "latest_schema_version": 62,
+  "phase": "freeze_baseline",
+  "pytest": {
+    "exit_code": 0,
+    "log": "docs/evidence/schedule-intelligence-v62-live-cutover/20260622T120000Z/schedule_tests.log"
+  },
+  "status": "pass",
+  "v62_table_count": 13
+}

@@ -98,6 +98,43 @@ export interface AuthFlowStatus {
   guardrails?: any;
 }
 
+export class ScheduleApiError extends Error {
+  code: string;
+  status: number;
+  payload: Record<string, unknown>;
+
+  constructor(code: string, payload: Record<string, unknown>, status: number, message?: string) {
+    super(message || code);
+    this.code = code;
+    this.status = status;
+    this.payload = payload;
+  }
+}
+
+export class ScheduleNetworkError extends Error {
+  cause?: unknown;
+
+  constructor(message = 'schedule_upload_network_error', cause?: unknown) {
+    super(message);
+    this.name = 'ScheduleNetworkError';
+    this.cause = cause;
+  }
+}
+
+function parseScheduleApiError(status: number, body: unknown): ScheduleApiError | null {
+  if (!body || typeof body !== 'object') return null;
+  const detail = (body as { detail?: unknown }).detail;
+  if (detail && typeof detail === 'object' && detail !== null && 'code' in detail) {
+    const rec = detail as Record<string, unknown>;
+    const code = String(rec.code ?? 'schedule_import_invalid');
+    return new ScheduleApiError(code, rec, status, code);
+  }
+  if (typeof detail === 'string' && detail.startsWith('schedule_')) {
+    return new ScheduleApiError(detail, { code: detail }, status, detail);
+  }
+  return null;
+}
+
 async function fetchJson<T = any>(path: string, init?: RequestInit): Promise<T> {
   const role = getLocalUiRole();
   const headers = new Headers(init?.headers || {});
@@ -772,6 +809,22 @@ export function getForecastRuns() {
 export function getForecastRun(runId: string) {
   return fetchJson(`/api/forecast/runs/${encodeURIComponent(runId)}`);
 }
+/* DB-config-backed generation: a forecast package consuming the live config snapshot (operator).
+ * generatorKind selects which generator (comprehensive [default] / model_controls / monthly /
+ * probability); the default keeps existing callers backward-compatible. */
+export type ForecastGeneratorKind = 'comprehensive' | 'model_controls' | 'monthly' | 'probability';
+export function startForecastDbConfigRun(generatorKind: ForecastGeneratorKind = 'comprehensive') {
+  return fetchJson('/api/forecast/runs/db-config', {
+    method: 'POST',
+    body: JSON.stringify({ generator_kind: generatorKind }),
+  });
+}
+export function getForecastDbConfigRuns() {
+  return fetchJson('/api/forecast/runs/db-config');
+}
+export function getForecastDbConfigRun(runId: string) {
+  return fetchJson(`/api/forecast/runs/db-config/${encodeURIComponent(runId)}`);
+}
 
 /* External-Forecast Evaluation — upload an operator forecast, map it, and compare it against
  * actuals / budget / ERP-JTD / backend-model / prior baselines (Implementation Phase 4).
@@ -816,6 +869,169 @@ export function getExternalEvaluation(evalId: string) {
   return fetchJson(`/api/forecast/external/evaluations/${encodeURIComponent(evalId)}`);
 }
 
+/* Schedule Intelligence (V62) — import, versions, activities, cost mapping. */
+export function getScheduleProjects() {
+  return fetchJson('/api/schedules/projects');
+}
+export function getScheduleVersions(projectKey: string) {
+  return fetchJson(`/api/schedules/projects/${encodeURIComponent(projectKey)}/versions`);
+}
+export function getScheduleVersionSummary(scheduleVersionKey: string) {
+  return fetchJson(`/api/schedules/versions/${encodeURIComponent(scheduleVersionKey)}/summary`);
+}
+export function getScheduleActivities(
+  scheduleVersionKey: string,
+  opts?: { limit?: number; offset?: number },
+) {
+  const params = new URLSearchParams();
+  if (opts?.limit != null) params.set('limit', String(opts.limit));
+  if (opts?.offset != null) params.set('offset', String(opts.offset));
+  const qs = params.toString();
+  const suffix = qs ? `?${qs}` : '';
+  return fetchJson(
+    `/api/schedules/versions/${encodeURIComponent(scheduleVersionKey)}/activities${suffix}`,
+  );
+}
+export function getScheduleQuality(scheduleVersionKey: string) {
+  return fetchJson(`/api/schedules/versions/${encodeURIComponent(scheduleVersionKey)}/quality`);
+}
+export function getScheduleQualityFindings(
+  scheduleVersionKey: string,
+  opts?: { evaluationRunId?: string; limit?: number; offset?: number },
+) {
+  const params = new URLSearchParams();
+  if (opts?.evaluationRunId) params.set('evaluation_run_id', opts.evaluationRunId);
+  if (opts?.limit != null) params.set('limit', String(opts.limit));
+  if (opts?.offset != null) params.set('offset', String(opts.offset));
+  const qs = params.toString();
+  return fetchJson(
+    `/api/schedules/versions/${encodeURIComponent(scheduleVersionKey)}/quality/findings${qs ? `?${qs}` : ''}`,
+  );
+}
+export function getScheduleQualityMetrics(scheduleVersionKey: string) {
+  return fetchJson(
+    `/api/schedules/versions/${encodeURIComponent(scheduleVersionKey)}/quality/metrics`,
+  );
+}
+export function rerunScheduleQuality(scheduleVersionKey: string, profile?: string) {
+  const qs = profile ? `?profile=${encodeURIComponent(profile)}` : '';
+  return fetchJson(
+    `/api/schedules/versions/${encodeURIComponent(scheduleVersionKey)}/quality/rerun${qs}`,
+    { method: 'POST' },
+  );
+}
+export function getScheduleQualityRun(evaluationRunId: string) {
+  return fetchJson(`/api/schedules/quality/runs/${encodeURIComponent(evaluationRunId)}`);
+}
+export function getScheduleProjectQualitySummary(projectKey: string) {
+  return fetchJson(`/api/schedules/projects/${encodeURIComponent(projectKey)}/quality/summary`);
+}
+export function getScheduleVersionDiff(projectKey: string, fromVersion: string, toVersion: string) {
+  const params = new URLSearchParams({ from: fromVersion, to: toVersion });
+  return fetchJson(
+    `/api/schedules/projects/${encodeURIComponent(projectKey)}/diff?${params.toString()}`,
+  );
+}
+export async function uploadScheduleImportPreview(
+  file: File,
+  projectKey = 'tropical',
+  columnRoles?: Record<string, string> | null,
+) {
+  const form = new FormData();
+  form.append('file', file);
+  form.append('project_key', projectKey);
+  if (columnRoles) {
+    form.append('column_roles', JSON.stringify(columnRoles));
+  }
+  const role = getLocalUiRole();
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}/api/schedules/import-preview`, {
+      method: 'POST',
+      headers: { 'X-HB-UI-Role': role },
+      body: form,
+    });
+  } catch (err) {
+    throw new ScheduleNetworkError('schedule_upload_network_error', err);
+  }
+  if (!res.ok) {
+    let body: unknown = null;
+    try {
+      body = await res.json();
+    } catch {
+      body = null;
+    }
+    const schedErr = parseScheduleApiError(res.status, body);
+    if (schedErr) throw schedErr;
+    const detail =
+      body && typeof body === 'object' && 'detail' in body
+        ? String((body as { detail?: unknown }).detail ?? '')
+        : '';
+    const err = new Error(`${res.status} ${res.statusText}${detail ? `: ${detail}` : ''}`);
+    (err as { status?: number }).status = res.status;
+    throw err;
+  }
+  return res.json();
+}
+export function commitScheduleImport(
+  importId: string,
+  projectKey = 'tropical',
+  columnRoles?: Record<string, string> | null,
+) {
+  return fetchJson('/api/schedules/import-commit', {
+    method: 'POST',
+    body: JSON.stringify({
+      import_id: importId,
+      project_key: projectKey,
+      confirm: true,
+      column_roles: columnRoles ?? null,
+    }),
+  });
+}
+export function createScheduleCostMappingRun(
+  projectKey: string,
+  scheduleVersionKey: string,
+  operatorObjective = 'association_only',
+) {
+  return fetchJson('/api/schedules/cost-mapping/runs', {
+    method: 'POST',
+    body: JSON.stringify({
+      project_key: projectKey,
+      schedule_version_key: scheduleVersionKey,
+      operator_objective: operatorObjective,
+    }),
+  });
+}
+export function getScheduleCostMappingRun(mappingRunId: string) {
+  return fetchJson(`/api/schedules/cost-mapping/runs/${encodeURIComponent(mappingRunId)}`);
+}
+export function getScheduleCostWeighting(projectKey: string) {
+  return fetchJson(`/api/schedules/cost-weighting/${encodeURIComponent(projectKey)}`);
+}
+export function getScheduleCostMappingCandidates(mappingRunId: string) {
+  return fetchJson(`/api/schedules/cost-mapping/runs/${encodeURIComponent(mappingRunId)}/candidates`);
+}
+export function reviewScheduleCostMappingCandidate(
+  candidateId: number,
+  body: { operator_status: string; operator_notes?: string; candidate_cost_code?: string },
+) {
+  return fetchJson(`/api/schedules/cost-mapping/candidates/${candidateId}/review`, {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+export function approveScheduleCostMappingRun(mappingRunId: string) {
+  return fetchJson(`/api/schedules/cost-mapping/runs/${encodeURIComponent(mappingRunId)}/approve`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+}
+export function getScheduleCostMappingDistributions(mappingRunId: string) {
+  return fetchJson(
+    `/api/schedules/cost-mapping/runs/${encodeURIComponent(mappingRunId)}/distribution`,
+  );
+}
+
 /* Forecast runtime configuration — wires the data roots into the live app (Implementation Phase 6).
  * Status is viewer-readable and redaction-safe (booleans + coded blockers, never paths). The raw
  * configured paths are admin-only (getForecastRuntimeConfig). Saving validates + persists. */
@@ -838,6 +1054,15 @@ export function saveForecastRuntimeConfig(payload: ForecastRuntimeConfigInput) {
   return fetchJson('/api/forecast/runtime/config', {
     method: 'POST',
     body: JSON.stringify(payload),
+  });
+}
+export function repairForecastRuntimeStorage() {
+  return fetchJson('/api/forecast/runtime/repair', { method: 'POST' });
+}
+export function resetForecastRuntimeDefaults() {
+  return fetchJson('/api/forecast/runtime/reset', {
+    method: 'POST',
+    body: JSON.stringify({ confirm: true }),
   });
 }
 
@@ -948,16 +1173,43 @@ export const api = {
   startForecastRun,
   getForecastRuns,
   getForecastRun,
+  // DB-config-backed comprehensive generation (consumes the live config snapshot).
+  startForecastDbConfigRun,
+  getForecastDbConfigRuns,
+  getForecastDbConfigRun,
   // External-Forecast Evaluation (Implementation Phase 4).
   previewExternalForecast,
   proposeExternalMapping,
   evaluateExternalForecast,
   getExternalEvaluations,
   getExternalEvaluation,
+  // Schedule Intelligence (V62).
+  getScheduleProjects,
+  getScheduleVersions,
+  getScheduleVersionSummary,
+  getScheduleActivities,
+  getScheduleQuality,
+  getScheduleQualityFindings,
+  getScheduleQualityMetrics,
+  rerunScheduleQuality,
+  getScheduleQualityRun,
+  getScheduleProjectQualitySummary,
+  getScheduleVersionDiff,
+  uploadScheduleImportPreview,
+  commitScheduleImport,
+  createScheduleCostMappingRun,
+  getScheduleCostMappingRun,
+  getScheduleCostMappingCandidates,
+  reviewScheduleCostMappingCandidate,
+  approveScheduleCostMappingRun,
+  getScheduleCostMappingDistributions,
+  getScheduleCostWeighting,
   // Forecast runtime configuration (Implementation Phase 6).
   getForecastRuntimeStatus,
   getForecastRuntimeConfig,
   saveForecastRuntimeConfig,
+  repairForecastRuntimeStorage,
+  resetForecastRuntimeDefaults,
 };
 
 export default api;

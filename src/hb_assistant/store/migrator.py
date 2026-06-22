@@ -14,7 +14,7 @@ from .connection import get_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 61
+LATEST_SCHEMA_VERSION = 64
 
 
 class SQLiteMigrator:
@@ -6745,6 +6745,33 @@ class SQLiteMigrator:
         "CREATE INDEX IF NOT EXISTS idx_forecast_evidence_packages_project ON forecast_evidence_packages(project_key);",
     ]
 
+    # v62 Schedule Intelligence substrate: canonical schedule activities, file imports,
+    # relationships/WBS/calendars/codes/UDFs, quality/diff, and operator-controlled cost
+    # mapping. Additive CREATE TABLE IF NOT EXISTS only; intentionally empty until import
+    # or Procore sync projection. SQLite is the source of truth after operator commit.
+    @staticmethod
+    def _v62_statements() -> list[str]:
+        from hb_assistant.store.schedule_tables import V62_STATEMENTS
+
+        return V62_STATEMENTS
+
+    # v63 Forecast run-output family: the model run's own results (header + per-code
+    # recommendations, risks, monthly/probability/changes/exposure/staffing/phasing/
+    # narratives). Additive CREATE TABLE IF NOT EXISTS only; ships empty and is populated
+    # only by the read-only output projector into a temp DB, never the live DB. Distinct
+    # from the v61 external-forecast-evaluation tables.
+    @staticmethod
+    def _v63_statements() -> list[str]:
+        from hb_assistant.store.forecast_output_tables import V63_STATEMENTS
+
+        return V63_STATEMENTS
+
+    @staticmethod
+    def _v64_statements() -> list[str]:
+        from hb_assistant.store.schedule_quality_tables import V64_STATEMENTS
+
+        return V64_STATEMENTS
+
     # v44 Phase 10 Graph drive-item modified-by raw operational metadata.
     # Additive ADD COLUMN only on construction_drive_items; raw identity JSON is
     # local SQLite operational metadata and must not be emitted in committed evidence.
@@ -7846,11 +7873,62 @@ class SQLiteMigrator:
                     (now,),
                 )
 
+            # v62 Schedule Intelligence: canonical schedule activity substrate for Procore
+            # API and uploaded XML/XER/CSV schedules plus operator-controlled cost mapping.
+            for stmt in self._v62_statements():
+                conn.execute(stmt)
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 62")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (62, 'v62_schedule_intelligence', ?)",
+                    (now,),
+                )
+
+            # v63 Forecast run-output family: model-run results header + detail tables.
+            # Additive only; intentionally empty until the read-only output projector
+            # populates a temp DB. Forecast reads remain file-backed.
+            for stmt in self._v63_statements():
+                conn.execute(stmt)
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 63")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (63, 'v63_forecast_run_outputs', ?)",
+                    (now,),
+                )
+
+            for stmt in self._v64_statements():
+                conn.execute(stmt)
+            self._reconcile_v64_schedule_quality_findings(conn)
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 64")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (64, 'v64_schedule_quality_evaluation', ?)",
+                    (now,),
+                )
+
         # Return latest version
         conn2 = get_connection(self._db_path)
         cur = conn2.execute("SELECT MAX(version) FROM schema_migrations")
         row = cur.fetchone()
         return int(row[0]) if row and row[0] is not None else 0
+
+    @staticmethod
+    def _reconcile_v64_schedule_quality_findings(conn: sqlite3.Connection) -> None:
+        from hb_assistant.store.schedule_quality_tables import V64_FINDING_ALTER_COLUMNS
+
+        try:
+            cols = {row[1] for row in conn.execute("PRAGMA table_info(schedule_quality_findings)")}
+        except sqlite3.OperationalError:
+            return
+        if not cols:
+            return
+        for col in V64_FINDING_ALTER_COLUMNS:
+            if col not in cols:
+                conn.execute(f"ALTER TABLE schedule_quality_findings ADD COLUMN {col} TEXT")
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_schedule_quality_run "
+            "ON schedule_quality_findings(schedule_version_key, evaluation_run_id)"
+        )
 
     @staticmethod
     def _v47_statements() -> list[str]:

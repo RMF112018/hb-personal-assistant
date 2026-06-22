@@ -1,0 +1,67 @@
+"""Schedule quality assessment engine tests."""
+
+from __future__ import annotations
+
+import tempfile
+from pathlib import Path
+
+import pytest
+
+from hb_assistant.construction.analytics.schedule_import_service import ScheduleImportService
+from hb_assistant.construction.analytics.schedule_quality_engine import run_evaluation_for_run
+from hb_assistant.construction.analytics.schedule_quality_service import ScheduleQualityService
+from hb_assistant.store.migrator import SQLiteMigrator
+
+FIXTURE = Path(__file__).resolve().parent / "fixtures" / "schedules" / "xml" / "minimal_schedule.xml"
+
+
+def _db(tmp_path: Path) -> str:
+    db = tmp_path / "q.db"
+    SQLiteMigrator(db_path=str(db)).apply()
+    return str(db)
+
+
+def test_dcma_baseline_metrics_not_measurable(tmp_path: Path) -> None:
+    db = _db(tmp_path)
+    svc = ScheduleImportService(db_path=db)
+    preview = svc.preview_bytes(
+        filename=FIXTURE.name,
+        data=FIXTURE.read_bytes(),
+        project_key="tropical",
+    )
+    commit = svc.commit(import_id=preview["import_id"], project_key="tropical", confirm=True)
+    version_key = commit["schedule_version_key"]
+
+    result = run_evaluation_for_run(
+        db_path=db,
+        evaluation_run_id="sq-test000001",
+        project_key="tropical",
+        schedule_version_key=version_key,
+        schedule_table_id=None,
+        import_id=preview["import_id"],
+    )
+    codes = {m["metric_code"]: m for m in result.metrics}
+    assert codes["dcma_cpli"]["status"] == "not_measurable_missing_data"
+    assert codes["dcma_bei"]["status"] == "not_measurable_missing_data"
+    assert codes["dcma_missed_tasks"]["status"] == "not_measurable_missing_data"
+    assert result.scorecard["quality_grade"] in {"A", "B", "C", "D", "F", "insufficient_data"}
+
+
+def test_queue_and_process_completes_run(tmp_path: Path) -> None:
+    db = _db(tmp_path)
+    imp = ScheduleImportService(db_path=db)
+    preview = imp.preview_bytes(
+        filename=FIXTURE.name,
+        data=FIXTURE.read_bytes(),
+        project_key="tropical",
+    )
+    commit = imp.commit(import_id=preview["import_id"], project_key="tropical", confirm=True)
+    qsvc = ScheduleQualityService(db_path=db)
+    summary = qsvc.get_quality_summary(commit["schedule_version_key"])
+    assert summary["status"] in {"completed", "pending", "running", "failed"}
+    if summary["status"] != "completed":
+        out = qsvc.process_next_pending()
+        assert out is not None
+        summary = qsvc.get_quality_summary(commit["schedule_version_key"])
+    assert summary["status"] == "completed"
+    assert summary.get("metrics")

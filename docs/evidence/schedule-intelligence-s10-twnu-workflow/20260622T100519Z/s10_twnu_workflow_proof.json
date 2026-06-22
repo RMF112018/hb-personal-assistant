@@ -1,0 +1,99 @@
+{
+  "branch": "feature/forecast-ui-live-config-promotion-orphan-fix",
+  "captured_utc": "2026-06-22T10:05:34.591793+00:00",
+  "commit_sha": "33fd116ca9438eb84437686b84494c1f8ade83db",
+  "cost_mapping": {
+    "candidates_reviewed": 869,
+    "mapping_run_id": "map-173b732fdd84",
+    "weighting_after": 38,
+    "weighting_before": 1
+  },
+  "diffs": [
+    {
+      "from": "tropical|TWNU07|2025-08-07T08:00:00",
+      "result": {
+        "activity_added_count": 261,
+        "activity_changed_count": 984,
+        "activity_removed_count": 18,
+        "calendar_churn_count": 0,
+        "code_churn_count": 0,
+        "diff_type": "activity_id_aligned",
+        "finish_drift_days": null,
+        "from_schedule_version_key": "tropical|TWNU07|2025-08-07T08:00:00",
+        "logic_churn_rate": "0.4848",
+        "project_key": "tropical",
+        "relationship_added_count": 1591,
+        "relationship_removed_count": 469,
+        "summary_json": "{\"added_activity_ids\": [\"DELAY-BDA-10\", \"DELAY-BDA-20\", \"DELAY-BDA-30\", \"DELAY-FAREDS&PERM-1\", \"DELAY-FAREDS&PERM-2\", \"DELAY-FAREDS&PERM-3\", \"DELAY-FAREDS&PERM-4\", \"DELAY-FAREDS&PERM-5\", \"DELAY-ROOF-10\", \"DELAY-ROOF-20\", \"DELAY-ROOF-30\", \"DELAY-ROOF-40\", \"DELAY-ROOF-50\", \"FILTER-OUT-10\", \"FILTER-OUT-20\", \"FILTER-OUT-30\", \"FILTER-OUT-40\", \"FILTER-OUT-50\", \"FM-P1A-SITEDEV\", \"P1A-01-RI-160\", \"P1A-01-RI-170\", \"P1A-01-RI-180\", \"P1A-02-RI-160\", \"P1A-03-RI-160\", \"P1B-01-RI-160\", \"P1B-02-RI-160\", \"P1B-03-RI-160\", \"P1B-03-RI-170\", \"P2-01-RI-170\", \"P2-02-RI-170\", \"P2-03-RI-160\", \"SITEDEVCOMP-90\", \"U13-1STFLELECRM-10\", \"U13-1STFLELECRM-20\", \"U13-1STFLELECRM-30\", \"U13-1STFLELECRM-40\", \"U13-1STFLELECRM-50\", \"U13-1STFLELECRM-60\", \"U13-1STFLELECRM-70\", \"U13-2NDFLELECRM-10\", \"U13-2NDFLELECRM-20\", \"U13-2NDFLELECRM-30\", \"U13-2NDFLELECRM-40\", \"U13-2NDFLELECRM-50\", \"U13-2NDFLELECRM-60\", \"U13-2NDFLELECRM-70\", \"U13-3RDFLELECRM-10\", \"U13-3RDFLELECRM-20\", \"U13-3RDFLELECRM-30\", \"U13-3RDFLELECRM-40\"], \"removed_activity_ids\": [\"P1A-A-STAIRS-10\", \"P1A-A-STAIRS-20\", \"P1A-A-STRCT-80\", \"P1A-B-STAIRS-10\", \"P1A-B-STAIRS-20\", \"P1A-B-STRCT-80\", \"P1A-C1-STAIRS-10\", \"P1A-C1-STAIRS-20\", \"P1A-C1-STRCT-80\", \"P1A-NORTH-B/C1-60\", \"P1B-03-RI-40\", \"P1B-C2-STAIRS-10\", \"P1B-C2-STAIRS-20\", \"P1B-C2-STRCT-80\", \"P1B-NWCY-C2-60\", \"P2-D2-STAIRS-10\", \"P2-D2-STAIRS-20\", \"P2-D2-STRCT-80\"], \"changed_activity_count\": 984}",
+        "to_schedule_version_key": "tropical|TWNU16|2026-01-29T08:00:00",
+        "wbs_churn_count": 0
+      },
+      "to": "tropical|TWNU16|2026-01-29T08:00:00"
+    },
+    {
+      "from": "tropical|TWNU16|2026-01-29T08:00:00",
+      "result": {
+        "activity_added_count": 3,
+        "activity_changed_count": 856,
+        "activity_removed_count": 45,
+        "calendar_churn_count": 0,
+        "code_churn_count": 0,
+        "diff_type": "activity_id_aligned",
+        "finish_drift_days": null,
+        "from_schedule_version_key": "tropical|TWNU16|2026-01-29T08:00:00",
+        "logic_churn_rate": "0.2224",
+        "project_key": "tropical",
+        "relationship_added_count": 438,
+        "relationship_removed_count": 500,
+        "summary_json": "{\"added_activity_ids\": [\"FAB/DEL-710\", \"P1A-01C-FIN-170\", \"P1A-ELEVS-50\"], \"removed_activity_ids\": [\"CLOSEOUT-10\", \"CLOSEOUT-20\", \"P1A-01C-FIN-100\", \"P1A-01U-FIN-110\", \"P1A-01U-FIN-220\", \"P1A-01U-FIN-230\", \"P1A-02C-FIN-100\", \"P1A-02U-FIN-110\", \"P1A-02U-FIN-220\", \"P1A-02U-FIN-230\", \"P1A-03C-FIN-100\", \"P1A-03U-FIN-110\", \"P1A-03U-FIN-220\", \"P1A-03U-FIN-230\", \"P1A-EINELEVS\", \"P1A-FINBLDG\", \"P1A-KITCHEN-20\", \"P1B-01C-FIN-100\", \"P1B-01U-FIN-110\", \"P1B-01U-FIN-220\", \"P1B-01U-FIN-230\", \"P1B-02-RI-110\", \"P1B-02C-FIN-100\", \"P1B-02U-FIN-110\", \"P1B-02U-FIN-220\", \"P1B-02U-FIN-230\", \"P1B-03-RI-110\", \"P1B-03C-FIN-100\", \"P1B-03U-FIN-110\", \"P1B-03U-FIN-220\", \"P1B-03U-FIN-230\", \"P2-01C-FIN-100\", \"P2-01U-FIN-110\", \"P2-01U-FIN-220\", \"P2-01U-FIN-230\", \"P2-02-RI-160\", \"P2-02C-FIN-100\", \"P2-02U-FIN-110\", \"P2-02U-FIN-220\", \"P2-02U-FIN-230\", \"P2-03C-FIN-100\", \"P2-03U-FIN-110\", \"P2-03U-FIN-220\", \"P2-03U-FIN-230\", \"SITEDEVCOMP-60\"], \"changed_activity_count\": 856}",
+        "to_schedule_version_key": "tropical|TWNU18|2026-05-26T08:00:00",
+        "wbs_churn_count": 0
+      },
+      "to": "tropical|TWNU18|2026-05-26T08:00:00"
+    },
+    {
+      "from": "tropical|TWNU07|2025-08-07T08:00:00",
+      "result": {
+        "activity_added_count": 264,
+        "activity_changed_count": 940,
+        "activity_removed_count": 63,
+        "calendar_churn_count": 0,
+        "code_churn_count": 0,
+        "diff_type": "activity_id_aligned",
+        "finish_drift_days": null,
+        "from_schedule_version_key": "tropical|TWNU07|2025-08-07T08:00:00",
+        "logic_churn_rate": "0.5866",
+        "project_key": "tropical",
+        "relationship_added_count": 1853,
+        "relationship_removed_count": 793,
+        "summary_json": "{\"added_activity_ids\": [\"DELAY-BDA-10\", \"DELAY-BDA-20\", \"DELAY-BDA-30\", \"DELAY-FAREDS&PERM-1\", \"DELAY-FAREDS&PERM-2\", \"DELAY-FAREDS&PERM-3\", \"DELAY-FAREDS&PERM-4\", \"DELAY-FAREDS&PERM-5\", \"DELAY-ROOF-10\", \"DELAY-ROOF-20\", \"DELAY-ROOF-30\", \"DELAY-ROOF-40\", \"DELAY-ROOF-50\", \"FAB/DEL-710\", \"FILTER-OUT-10\", \"FILTER-OUT-20\", \"FILTER-OUT-30\", \"FILTER-OUT-40\", \"FILTER-OUT-50\", \"FM-P1A-SITEDEV\", \"P1A-01-RI-160\", \"P1A-01-RI-170\", \"P1A-01-RI-180\", \"P1A-01C-FIN-170\", \"P1A-02-RI-160\", \"P1A-03-RI-160\", \"P1A-ELEVS-50\", \"P1B-01-RI-160\", \"P1B-02-RI-160\", \"P1B-03-RI-160\", \"P1B-03-RI-170\", \"P2-01-RI-170\", \"P2-02-RI-170\", \"P2-03-RI-160\", \"SITEDEVCOMP-90\", \"U13-1STFLELECRM-10\", \"U13-1STFLELECRM-20\", \"U13-1STFLELECRM-30\", \"U13-1STFLELECRM-40\", \"U13-1STFLELECRM-50\", \"U13-1STFLELECRM-60\", \"U13-1STFLELECRM-70\", \"U13-2NDFLELECRM-10\", \"U13-2NDFLELECRM-20\", \"U13-2NDFLELECRM-30\", \"U13-2NDFLELECRM-40\", \"U13-2NDFLELECRM-50\", \"U13-2NDFLELECRM-60\", \"U13-2NDFLELECRM-70\", \"U13-3RDFLELECRM-10\"], \"removed_activity_ids\": [\"CLOSEOUT-10\", \"CLOSEOUT-20\", \"P1A-01C-FIN-100\", \"P1A-01U-FIN-110\", \"P1A-01U-FIN-220\", \"P1A-01U-FIN-230\", \"P1A-02C-FIN-100\", \"P1A-02U-FIN-110\", \"P1A-02U-FIN-220\", \"P1A-02U-FIN-230\", \"P1A-03C-FIN-100\", \"P1A-03U-FIN-110\", \"P1A-03U-FIN-220\", \"P1A-03U-FIN-230\", \"P1A-A-STAIRS-10\", \"P1A-A-STAIRS-20\", \"P1A-A-STRCT-80\", \"P1A-B-STAIRS-10\", \"P1A-B-STAIRS-20\", \"P1A-B-STRCT-80\", \"P1A-C1-STAIRS-10\", \"P1A-C1-STAIRS-20\", \"P1A-C1-STRCT-80\", \"P1A-EINELEVS\", \"P1A-FINBLDG\", \"P1A-KITCHEN-20\", \"P1A-NORTH-B/C1-60\", \"P1B-01C-FIN-100\", \"P1B-01U-FIN-110\", \"P1B-01U-FIN-220\", \"P1B-01U-FIN-230\", \"P1B-02-RI-110\", \"P1B-02C-FIN-100\", \"P1B-02U-FIN-110\", \"P1B-02U-FIN-220\", \"P1B-02U-FIN-230\", \"P1B-03-RI-110\", \"P1B-03-RI-40\", \"P1B-03C-FIN-100\", \"P1B-03U-FIN-110\", \"P1B-03U-FIN-220\", \"P1B-03U-FIN-230\", \"P1B-C2-STAIRS-10\", \"P1B-C2-STAIRS-20\", \"P1B-C2-STRCT-80\", \"P1B-NWCY-C2-60\", \"P2-01C-FIN-100\", \"P2-01U-FIN-110\", \"P2-01U-FIN-220\", \"P2-01U-FIN-230\"], \"changed_activity_count\": 940}",
+        "to_schedule_version_key": "tropical|TWNU18|2026-05-26T08:00:00",
+        "wbs_churn_count": 0
+      },
+      "to": "tropical|TWNU18|2026-05-26T08:00:00"
+    }
+  ],
+  "imports": [
+    {
+      "activity_count": 1177,
+      "filename": "TWNU07.xml",
+      "relationship_count": 2658,
+      "schedule_version_key": "tropical|TWNU07|2025-08-07T08:00:00"
+    },
+    {
+      "activity_count": 1420,
+      "filename": "TWNU16.xml",
+      "relationship_count": 3780,
+      "schedule_version_key": "tropical|TWNU16|2026-01-29T08:00:00"
+    },
+    {
+      "activity_count": 1378,
+      "filename": "TWNU18.xml",
+      "relationship_count": 3718,
+      "schedule_version_key": "tropical|TWNU18|2026-05-26T08:00:00"
+    }
+  ],
+  "phase": "s10_twnu_workflow",
+  "status": "pass",
+  "stop_condition_failures": []
+}

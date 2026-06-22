@@ -1,0 +1,142 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { createMemoryRouter, RouterProvider } from 'react-router-dom'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+import { ScheduleImportsPage } from './ScheduleImportsPage'
+import { ScheduleApiError, ScheduleNetworkError } from '../lib/api'
+
+const uploadMock = vi.fn()
+const commitMock = vi.fn()
+
+vi.mock('../lib/api', async () => {
+  const actual = await vi.importActual<typeof import('../lib/api')>('../lib/api')
+  return {
+    ...actual,
+    api: {
+      ...actual.api,
+      uploadScheduleImportPreview: (...args: unknown[]) => uploadMock(...args),
+      commitScheduleImport: (...args: unknown[]) => commitMock(...args),
+    },
+  }
+})
+
+function renderPage() {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  const router = createMemoryRouter(
+    [{ path: '/schedules/imports', element: <ScheduleImportsPage /> }],
+    { initialEntries: ['/schedules/imports'] },
+  )
+  return render(
+    <QueryClientProvider client={client}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>,
+  )
+}
+
+describe('ScheduleImportsPage', () => {
+  beforeEach(() => {
+    uploadMock.mockReset()
+    commitMock.mockReset()
+  })
+
+  it('shows 50 MB upload label', () => {
+    renderPage()
+    expect(screen.getByText(/max 50 MB/i)).toBeInTheDocument()
+  })
+
+  it('uploads file via multipart API helper', async () => {
+    uploadMock.mockResolvedValue({
+      import_id: 'abc',
+      activity_count: 2,
+      relationship_count: 1,
+      source_format: 'primavera_pmxml',
+      cost_loaded_status: 'not_cost_loaded',
+      wbs_count: 0,
+      calendar_count: 0,
+      validation_findings: [],
+      requires_column_mapping: false,
+    })
+    renderPage()
+    const file = new File(['<xml/>'], 'sample.xml', { type: 'application/xml' })
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement
+    fireEvent.change(input, { target: { files: [file] } })
+    await waitFor(() => expect(uploadMock).toHaveBeenCalledWith(file, 'tropical'))
+  })
+
+  it('renders duplicate preview with counts and link', async () => {
+    uploadMock.mockRejectedValue(
+      new ScheduleApiError(
+        'duplicate_schedule_version',
+        {
+          code: 'duplicate_schedule_version',
+          schedule_version_key: 'tropical|TWNU18|2026-05-26T08:00:00',
+          activity_count: 1378,
+          relationship_count: 3718,
+          view_path: '/schedules/activities?version=tropical%7CTWNU18%7C2026-05-26T08%3A00%3A00',
+        },
+        409,
+      ),
+    )
+    renderPage()
+    const file = new File(['<xml/>'], 'TWNU18.xml', { type: 'application/xml' })
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement
+    fireEvent.change(input, { target: { files: [file] } })
+    await waitFor(() => {
+      expect(screen.getByText(/already imported/i)).toBeInTheDocument()
+      expect(screen.getByText(/1378/)).toBeInTheDocument()
+      expect(screen.getByText(/3718/)).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: /View existing activities/i })).toBeInTheDocument()
+    })
+  })
+
+  it('shows schema-not-ready message from controlled API error', async () => {
+    uploadMock.mockRejectedValue(
+      new ScheduleApiError('schedule_schema_not_ready', { code: 'schedule_schema_not_ready' }, 503),
+    )
+    renderPage()
+    const file = new File(['<xml/>'], 'sample.xml', { type: 'application/xml' })
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement
+    fireEvent.change(input, { target: { files: [file] } })
+    await waitFor(() => {
+      expect(screen.getByText(/pending database migrations/i)).toBeInTheDocument()
+    })
+  })
+
+  it('shows network error when upload cannot reach backend', async () => {
+    uploadMock.mockRejectedValue(new ScheduleNetworkError())
+    renderPage()
+    const file = new File(['<xml/>'], 'sample.xml', { type: 'application/xml' })
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement
+    fireEvent.change(input, { target: { files: [file] } })
+    await waitFor(() => {
+      expect(screen.getByText(/could not reach the schedule import service/i)).toBeInTheDocument()
+    })
+  })
+
+  it('shows previewing state while upload is in flight', async () => {
+    let resolve!: (v: unknown) => void
+    uploadMock.mockReturnValue(
+      new Promise((r) => {
+        resolve = r
+      }),
+    )
+    renderPage()
+    const file = new File(['<xml/>'], 'sample.xml', { type: 'application/xml' })
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement
+    fireEvent.change(input, { target: { files: [file] } })
+    expect(await screen.findByText(/Previewing schedule/i)).toBeInTheDocument()
+    resolve({
+      import_id: 'abc',
+      activity_count: 1,
+      relationship_count: 0,
+      source_format: 'primavera_pmxml',
+      cost_loaded_status: 'not_cost_loaded',
+      wbs_count: 0,
+      calendar_count: 0,
+      validation_findings: [],
+      requires_column_mapping: false,
+    })
+    await waitFor(() => expect(screen.queryByText(/Previewing schedule/i)).not.toBeInTheDocument())
+  })
+})

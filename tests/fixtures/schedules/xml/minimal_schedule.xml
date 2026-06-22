@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<APIBusinessObjects>
+  <Project>
+    <ObjectId>PRJ-001</ObjectId>
+    <Name>Test Project Schedule</Name>
+    <DataDate>2026-06-01</DataDate>
+    <PlannedStartDate>2026-01-01</PlannedStartDate>
+    <ScheduledFinishDate>2026-12-31</ScheduledFinishDate>
+  </Project>
+  <Activity>
+    <ObjectId>A100</ObjectId>
+    <Name>Foundation Work</Name>
+    <StartDate>2026-01-15</StartDate>
+    <FinishDate>2026-02-15</FinishDate>
+    <OriginalDuration>20</OriginalDuration>
+    <PercentComplete>50</PercentComplete>
+    <WBSCode>01.01</WBSCode>
+    <CostAccountId>15-16-110</CostAccountId>
+  </Activity>
+  <Activity>
+    <ObjectId>A200</ObjectId>
+    <Name>Steel Erection</Name>
+    <StartDate>2026-03-01</StartDate>
+    <FinishDate>2026-04-30</FinishDate>
+    <OriginalDuration>40</OriginalDuration>
+    <PercentComplete>0</PercentComplete>
+    <WBSCode>01.02</WBSCode>
+  </Activity>
+  <Relationship>
+    <ObjectId>R1</ObjectId>
+    <PredecessorActivityObjectId>A100</PredecessorActivityObjectId>
+    <SuccessorActivityObjectId>A200</SuccessorActivityObjectId>
+    <Type>FS</Type>
+    <Lag>0</Lag>
+  </Relationship>
+  <WBS>
+    <ObjectId>W1</ObjectId>
+    <Code>01</Code>
+    <Name>Construction</Name>
+  </WBS>
+  <Calendar>
+    <ObjectId>C1</ObjectId>
+    <Name>Standard 5 Day</Name>
+    <HoursPerDay>8</HoursPerDay>
+    <DaysPerWeek>5</DaysPerWeek>
+    <IsDefault>true</IsDefault>
+  </Calendar>
+</APIBusinessObjects>

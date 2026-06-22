@@ -1,0 +1,13 @@
+{
+  "captured_utc": "2026-06-22T10:49:29.395098+00:00",
+  "phase": "s10_browser_upload_multipart_fix",
+  "filename": "TWNU18.xml",
+  "raw_bytes": 8045952,
+  "transport": "multipart/form-data",
+  "status_code": 503,
+  "detail_code": "schedule_schema_not_ready",
+  "activity_count": null,
+  "relationship_count": null,
+  "view_path": null,
+  "acceptance": "fail"
+}

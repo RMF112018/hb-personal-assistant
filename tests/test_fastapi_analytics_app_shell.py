@@ -35,6 +35,33 @@ def _client(tmp_path: Path) -> TestClient:
     return TestClient(create_app(db_path=db))
 
 
+def test_startup_lifespan_bootstraps_managed_storage(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The forecast lifespan hook bootstraps app-managed storage on ASGI startup."""
+    from hb_assistant.config.path_policy import PathPolicy
+
+    for v in (
+        "HB_FORECAST_RUNS_ROOT",
+        "HB_FORECAST_EVAL_ROOT",
+        "HB_FORECAST_CONFIG_EDIT_ROOT",
+        "HB_FORECAST_DATA_ROOT",
+        "HB_FORECAST_DB_PATH",
+        "HB_FORECAST_PACKAGE_ROOTS",
+    ):
+        monkeypatch.delenv(v, raising=False)
+
+    pp = PathPolicy()
+    db = str(tmp_path / "api.sqlite")
+    SQLiteMigrator(db_path=db).apply()
+
+    with TestClient(create_app(db_path=db)) as client:
+        assert client.get("/health").status_code == 200
+
+    assert pp.get_forecast_data_dir().is_dir()
+    assert (pp.get_app_support() / "analytics" / "forecast_runtime_config.json").exists()
+
+
 def test_health_is_metadata_only_and_chat_disabled(tmp_path: Path) -> None:
     client = _client(tmp_path)
     response = client.get("/health")
@@ -106,6 +133,8 @@ def test_openapi_exposes_only_shell_routes(tmp_path: Path) -> None:
         "/api/admin/retrieval-ai-quality",
         "/api/admin/permissions-governance",
         "/api/admin/data-completeness",
+        "/api/admin/schema/status",
+        "/api/admin/schema/migrate",
         # Prompt 14B / UI-14B Settings / Connection Management UX (overview + 8 areas + patches)
         "/api/settings",
         "/api/settings/accounts",
@@ -186,6 +215,8 @@ def test_openapi_exposes_only_shell_routes(tmp_path: Path) -> None:
         "/api/forecast/config/edits/{edit_id}/promote",
         # Forecast Run Center — isolated context->analysis generation (Implementation Phase 3)
         "/api/forecast/runs",
+        "/api/forecast/runs/db-config",
+        "/api/forecast/runs/db-config/{run_id}",
         "/api/forecast/runs/{run_id}",
         # External-Forecast Evaluation — upload/map/evaluate + read results (Implementation Phase 4)
         "/api/forecast/external/preview",
@@ -196,6 +227,8 @@ def test_openapi_exposes_only_shell_routes(tmp_path: Path) -> None:
         # Forecast runtime configuration — status/admin-config/write (Implementation Phase 6)
         "/api/forecast/runtime/status",
         "/api/forecast/runtime/config",
+        "/api/forecast/runtime/repair",
+        "/api/forecast/runtime/reset",
     }
     assert response.json()["info"]["title"] == "HB Personal Assistant Analytics UI Shell"
 
@@ -274,6 +307,8 @@ def test_all_ui_analytics_routes_no_forbidden_sensitive_fields_and_role_guards(
         ("GET", "admin", "/api/admin/retrieval-ai-quality", None),
         ("GET", "admin", "/api/admin/permissions-governance", None),
         ("GET", "admin", "/api/admin/data-completeness", None),
+        ("GET", "admin", "/api/admin/schema/status", None),
+        ("POST", "admin", "/api/admin/schema/migrate", None),
         # Operator/admin write-ish for local config (use admin to simplify)
         ("POST", "admin", "/api/daily-brief/configure", {}),
         ("POST", "admin", "/api/daily-brief/detect-latest", {}),
