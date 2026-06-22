@@ -19,10 +19,12 @@ transaction; a dry-run writes nothing. Money/scores stay TEXT (Decimal strings),
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import json
 import sqlite3
 from datetime import datetime, timezone
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any
 
@@ -42,7 +44,14 @@ GUARDRAILS = {
     "apply_refuses_live_db": True,
 }
 
-_PLAN_KEYS = ("maturity", "availability", "scorecards", "factors")
+_PLAN_KEYS = (
+    "maturity",
+    "availability",
+    "scorecards",
+    "factors",
+    "method_eligibility",
+    "model_selection",
+)
 
 # Reused from CFR workflows/model_engines_readiness.py (do not re-tune here).
 MIN_MONTHS_CANDIDATE = 3
@@ -54,6 +63,10 @@ _DB_DOMAINS = ("budget", "cost_actuals", "monthly_actuals")
 _ABSENT_DOMAINS = ("owner", "commitment", "schedule", "staffing")
 
 CONFIDENCE_ROLLUP_FILE = "confidence_rollup.json"
+
+# Phase 2c — forecast_accuracy package sources for per-method rollups.
+EAC_ESTIMATES_FILE = "eac_estimates_by_budget_code.jsonl"
+RECONCILIATION_FILE = "forecast_reconciliation_by_budget_code.jsonl"
 
 
 def _now() -> str:
@@ -94,10 +107,13 @@ def plan_decision_support(
     project_key: str,
     run_id: str | None = None,
     now_utc: str | None = None,
+    accuracy_package: Path | None = None,
 ) -> dict[str, Any]:
     """Derive maturity/availability from DB inputs + project confidence from the package.
 
-    Reads inputs read-only; builds planned rows in memory; performs no writes.
+    Reads inputs read-only; builds planned rows in memory; performs no writes. When
+    ``accuracy_package`` is supplied (explicit only), per-method eligibility and
+    model-selection rollups are projected from the forecast_accuracy package files.
     """
     now_utc = now_utc or _now()
     analysis_package = Path(analysis_package)
@@ -229,6 +245,10 @@ def plan_decision_support(
             warnings.append("forecast_output_budget_codes absent; no per-code scorecards")
     finally:
         conn.close()
+
+    # ---- per-method rollups from the forecast_accuracy package (file reads only) -------
+    if accuracy_package is not None:
+        _emit_method_rollups(planned, run_id, project_key, Path(accuracy_package), now_utc, warnings)
 
     counts = {k: len(v) for k, v in planned.items()}
     return {
@@ -366,6 +386,105 @@ def _factor_row(scorecard_id, run_id, project_key, factor_key, direction, magnit
     }
 
 
+def _read_jsonl(path: Path) -> list[dict[str, Any]]:
+    if not path.is_file():
+        return []
+    rows: list[dict[str, Any]] = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if line:
+            rows.append(json.loads(line))
+    return rows
+
+
+def _emit_method_rollups(planned, run_id, project_key, accuracy_package, now_utc, warnings) -> None:
+    """Aggregate per-code forecast_accuracy estimates/contributions into per-method run rows.
+
+    Project-level rollups (the v66 tables are keyed UNIQUE(run_id, method)); the per-code detail
+    is summarized into raw_json. No new scoring math — only counts and a mean of emitted weights.
+    """
+    est_rows = _read_jsonl(accuracy_package / EAC_ESTIMATES_FILE)
+    if not est_rows:
+        warnings.append(f"{EAC_ESTIMATES_FILE} not found or empty; no method-eligibility rows")
+    elig: dict[str, dict[str, Any]] = {}
+    total_codes = len(est_rows)
+    for row in est_rows:
+        for est in row.get("estimates") or []:
+            method = est.get("method")
+            if not method:
+                continue
+            agg = elig.setdefault(method, {"applicable": 0, "reliability": {}})
+            if est.get("applicable"):
+                agg["applicable"] += 1
+                rel = est.get("reliability")
+                if rel:
+                    agg["reliability"][rel] = agg["reliability"].get(rel, 0) + 1
+    for method in sorted(elig):
+        agg = elig[method]
+        applicable = agg["applicable"]
+        rel = agg["reliability"]
+        if applicable == 0:
+            status = "rejected_missing_data"
+        elif rel.get("high") or rel.get("medium"):
+            status = "eligible_weighted"
+        else:
+            status = "eligible_advisory"
+        planned["method_eligibility"].append(
+            {
+                "id": f"fmel-{_hash(f'{run_id}|{method}')[:32]}",
+                "run_id": run_id,
+                "project_key": project_key,
+                "method": method,
+                "status": status,
+                "weight": None,
+                "reason": f"applicable for {applicable}/{total_codes} budget codes",
+                "raw_json": json.dumps(
+                    {"applicable_count": applicable, "total_codes": total_codes,
+                     "reliability_histogram": rel},
+                    sort_keys=True,
+                ),
+                "created_utc": now_utc,
+                "updated_utc": now_utc,
+            }
+        )
+
+    rec_rows = _read_jsonl(accuracy_package / RECONCILIATION_FILE)
+    if not rec_rows:
+        warnings.append(f"{RECONCILIATION_FILE} not found or empty; no model-selection rows")
+    sel: dict[str, dict[str, Any]] = {}
+    for row in rec_rows:
+        for contrib in row.get("contributions") or []:
+            method = contrib.get("method")
+            if not method:
+                continue
+            agg = sel.setdefault(method, {"count": 0, "weights": []})
+            agg["count"] += 1
+            with contextlib.suppress(InvalidOperation, TypeError):
+                agg["weights"].append(Decimal(str(contrib.get("effective_weight"))))
+    for method in sorted(sel):
+        agg = sel[method]
+        weights = agg["weights"]
+        mean_w = (sum(weights) / Decimal(len(weights))) if weights else None
+        planned["model_selection"].append(
+            {
+                "id": f"fmsd-{_hash(f'{run_id}|{method}')[:32]}",
+                "run_id": run_id,
+                "project_key": project_key,
+                "method": method,
+                "contributed": 1 if agg["count"] > 0 else 0,
+                "weight": f"{mean_w:.4f}" if mean_w is not None else None,
+                "reason": f"contributed to {agg['count']} budget codes",
+                "raw_json": json.dumps(
+                    {"contributed_code_count": agg["count"],
+                     "mean_effective_weight": f"{mean_w:.4f}" if mean_w is not None else None},
+                    sort_keys=True,
+                ),
+                "created_utc": now_utc,
+                "updated_utc": now_utc,
+            }
+        )
+
+
 def project_decision_support(
     *,
     db_path: Path,
@@ -375,6 +494,7 @@ def project_decision_support(
     parity: bool = False,
     run_id: str | None = None,
     now_utc: str | None = None,
+    accuracy_package: Path | None = None,
 ) -> dict[str, Any]:
     """Derive+project decision-support; dry-run plans only, apply writes to a temp DB."""
     # Fail closed before any read/write: never touch the live/default DB.
@@ -392,6 +512,7 @@ def project_decision_support(
         project_key=project_key,
         run_id=run_id,
         now_utc=now_utc,
+        accuracy_package=accuracy_package,
     )
     plan["guardrails"] = GUARDRAILS
 
@@ -431,6 +552,8 @@ def _prove_parity(*, db_path: Path, run_id: str, planned: dict[str, list[dict]])
             "maturity": repo.read_maturity_from_db(conn, run_id=run_id),
             "availability": repo.read_availability_from_db(conn, run_id=run_id),
             "scorecards": repo.read_scorecards_from_db(conn, run_id=run_id),
+            "method_eligibility": repo.read_method_eligibility_from_db(conn, run_id=run_id),
+            "model_selection": repo.read_model_selection_from_db(conn, run_id=run_id),
         }
     finally:
         conn.close()

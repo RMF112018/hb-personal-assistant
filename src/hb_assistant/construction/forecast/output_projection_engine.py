@@ -41,12 +41,18 @@ GUARDRAILS = {
     "apply_refuses_live_db": True,
 }
 
-_PLAN_KEYS = ("outputs", "budget_codes", "risks")
+_PLAN_KEYS = ("outputs", "budget_codes", "risks", "monthly", "probability", "changes", "staffing")
 
 RECOMMENDATIONS_FILE = "forecast_recommendations_by_budget_code.jsonl"
 RISK_REGISTER_FILE = "forecast_risk_register.jsonl"
 PROJECT_SUMMARY_FILE = "summaries/project_forecast_analysis.json"
 MANIFEST_FILE = "manifest.json"
+
+# Phase 2c coverage source files (each in its own downstream package).
+MONTHLY_FILE = "monthly_forecast_by_budget_code.jsonl"
+PROBABILITY_FILE = "probabilistic_final_cost_by_budget_code.jsonl"
+CHANGES_FILE = "integrated_change_explanation.jsonl"
+STAFFING_FILE = "staffing_plan_monthly_by_budget_code.jsonl"
 
 
 def _now() -> str:
@@ -88,8 +94,18 @@ def plan_run_output_projection(
     project_key: str,
     run_id: str | None = None,
     now_utc: str | None = None,
+    monthly_package: Path | None = None,
+    probability_package: Path | None = None,
+    comprehensive_package: Path | None = None,
+    staffing_package: Path | None = None,
 ) -> dict[str, Any]:
-    """Build planned v63 run-output rows from an explicit analysis package. No DB access."""
+    """Build planned v63 run-output rows from an explicit analysis package. No DB access.
+
+    The analysis package is the spine (it mints the header + ``output_id``). When the optional
+    downstream package paths are supplied (explicit only, no latest-glob), their per-row outputs
+    are projected as child rows under the same ``output_id``: monthly / probability / changes /
+    staffing. Omitting a package leaves that table unpopulated — today's behavior.
+    """
     now_utc = now_utc or _now()
     analysis_package = Path(analysis_package)
     warnings: list[str] = []
@@ -104,7 +120,7 @@ def plan_run_output_projection(
             "source_package_path": str(analysis_package),
             "run_id": run_id,
             "planned": planned,
-            "counts": {k: 0 for k in _PLAN_KEYS},
+            "counts": dict.fromkeys(_PLAN_KEYS, 0),
             "warnings": [f"analysis package directory not found: {analysis_package}"],
         }
 
@@ -184,6 +200,102 @@ def plan_run_output_projection(
             }
         )
 
+    # ---- Phase 2c coverage: optional downstream packages, projected under output_id -------
+    if monthly_package is not None:
+        rows = _read_jsonl(Path(monthly_package) / MONTHLY_FILE)
+        if not rows:
+            warnings.append(f"{MONTHLY_FILE} not found or empty; no monthly outputs")
+        for n, row in enumerate(rows, start=1):
+            key = row.get("budget_code_key")
+            month = row.get("forecast_month")
+            planned["monthly"].append(
+                {
+                    "id": f"fomo-{_hash(f'{output_id}|{key}|{month}')[:32]}",
+                    "output_id": output_id,
+                    "project_key": project_key,
+                    "budget_code_key": key,
+                    "month": month,
+                    "value": row.get("recommended_month_cost"),
+                    "is_actual": 0,
+                    "source_row_number": n,
+                    "raw_json": json.dumps(row, sort_keys=True),
+                    "created_utc": now_utc,
+                    "updated_utc": now_utc,
+                }
+            )
+
+    if probability_package is not None:
+        rows = _read_jsonl(Path(probability_package) / PROBABILITY_FILE)
+        if not rows:
+            warnings.append(f"{PROBABILITY_FILE} not found or empty; no probability outputs")
+        for n, row in enumerate(rows, start=1):
+            key = row.get("budget_code_key")
+            planned["probability"].append(
+                {
+                    "id": f"fopb-{_hash(f'{output_id}|budget_code|{key}')[:32]}",
+                    "output_id": output_id,
+                    "project_key": project_key,
+                    "scope": "budget_code",
+                    "budget_code_key": key,
+                    "p10": row.get("simulated_p10"),
+                    "p50": row.get("simulated_p50"),
+                    "p90": row.get("simulated_p90"),
+                    "source_row_number": n,
+                    "raw_json": json.dumps(row, sort_keys=True),
+                    "created_utc": now_utc,
+                    "updated_utc": now_utc,
+                }
+            )
+
+    if comprehensive_package is not None:
+        rows = _read_jsonl(Path(comprehensive_package) / CHANGES_FILE)
+        if not rows:
+            warnings.append(f"{CHANGES_FILE} not found or empty; no change outputs")
+        for n, row in enumerate(rows, start=1):
+            key = row.get("budget_code_key")
+            planned["changes"].append(
+                {
+                    "id": f"foch-{_hash(f'{output_id}|{key}|integrated_vs_accepted')[:32]}",
+                    "output_id": output_id,
+                    "project_key": project_key,
+                    "budget_code_key": key,
+                    "change_type": "integrated_vs_accepted",
+                    "delta_amount": row.get("change_amount"),
+                    "prior_run_id": None,
+                    "source_row_number": n,
+                    "raw_json": json.dumps(row, sort_keys=True),
+                    "created_utc": now_utc,
+                    "updated_utc": now_utc,
+                }
+            )
+
+    if staffing_package is not None:
+        staffing_rows = _read_jsonl(Path(staffing_package) / STAFFING_FILE)
+        if not staffing_rows:
+            warnings.append(f"{STAFFING_FILE} not found or empty; no staffing outputs")
+        seq = 0
+        for row in staffing_rows:
+            key = row.get("budget_code_key")
+            for item in row.get("staffing_plan_implied_monthly_forecast") or []:
+                seq += 1
+                month = item.get("forecast_month")
+                planned["staffing"].append(
+                    {
+                        "id": f"fost-{_hash(f'{output_id}|{key}|{month}')[:32]}",
+                        "output_id": output_id,
+                        "project_key": project_key,
+                        "budget_code_key": key,
+                        "role": None,
+                        "month": month,
+                        "headcount": None,
+                        "cost_amount": item.get("amount"),
+                        "source_row_number": seq,
+                        "raw_json": json.dumps({"budget_code_key": key, **item}, sort_keys=True),
+                        "created_utc": now_utc,
+                        "updated_utc": now_utc,
+                    }
+                )
+
     counts = {key: len(rows) for key, rows in planned.items()}
     return {
         "ok": True,
@@ -207,6 +319,10 @@ def project_run_output(
     parity: bool = False,
     run_id: str | None = None,
     now_utc: str | None = None,
+    monthly_package: Path | None = None,
+    probability_package: Path | None = None,
+    comprehensive_package: Path | None = None,
+    staffing_package: Path | None = None,
 ) -> dict[str, Any]:
     """Plan (dry-run) or plan+write (apply) run-output rows; optionally prove DB parity."""
     plan = plan_run_output_projection(
@@ -214,6 +330,10 @@ def project_run_output(
         project_key=project_key,
         run_id=run_id,
         now_utc=now_utc,
+        monthly_package=monthly_package,
+        probability_package=probability_package,
+        comprehensive_package=comprehensive_package,
+        staffing_package=staffing_package,
     )
     plan["guardrails"] = GUARDRAILS
 
@@ -283,6 +403,10 @@ def _prove_parity(
         "outputs": repo.read_output_header_from_db,
         "budget_codes": repo.read_output_budget_codes_from_db,
         "risks": repo.read_output_risks_from_db,
+        "monthly": repo.read_output_monthly_from_db,
+        "probability": repo.read_output_probability_from_db,
+        "changes": repo.read_output_changes_from_db,
+        "staffing": repo.read_output_staffing_from_db,
     }
     per_table: dict[str, Any] = {}
     proven = True

@@ -59,12 +59,22 @@ def upsert_confidence_factor(conn: sqlite3.Connection, row: dict[str, Any]) -> N
     _upsert(conn, "forecast_confidence_factors", row, ("id",))
 
 
+def upsert_method_eligibility(conn: sqlite3.Connection, row: dict[str, Any]) -> None:
+    _upsert(conn, "forecast_method_eligibility", row, ("id",))
+
+
+def upsert_model_selection_decision(conn: sqlite3.Connection, row: dict[str, Any]) -> None:
+    _upsert(conn, "forecast_model_selection_decisions", row, ("id",))
+
+
 # Maps the engine's planned-table keys to their per-row upsert helper.
 _WRITERS = {
     "maturity": upsert_maturity_snapshot,
     "availability": upsert_availability_profile,
     "scorecards": upsert_confidence_scorecard,
     "factors": upsert_confidence_factor,
+    "method_eligibility": upsert_method_eligibility,
+    "model_selection": upsert_model_selection_decision,
 }
 
 
@@ -107,6 +117,18 @@ def read_factors_for_scorecard(
     return _read_raw(
         conn, "forecast_confidence_factors", "scorecard_id", scorecard_id, "factor_key"
     )
+
+
+def read_method_eligibility_from_db(
+    conn: sqlite3.Connection, *, run_id: str
+) -> list[dict[str, Any]]:
+    return _read_raw(conn, "forecast_method_eligibility", "run_id", run_id, "method")
+
+
+def read_model_selection_from_db(
+    conn: sqlite3.Connection, *, run_id: str
+) -> list[dict[str, Any]]:
+    return _read_raw(conn, "forecast_model_selection_decisions", "run_id", run_id, "method")
 
 
 def maturity_tier(conn: sqlite3.Connection, *, run_id: str) -> str | None:
