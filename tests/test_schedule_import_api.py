@@ -49,6 +49,44 @@ def _commit(client: TestClient, import_id: str, *, project_key: str = "tropical"
     )
 
 
+def test_import_commit_supersede_same_version_key(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+    preview1 = _preview(client, FIXTURE)
+    assert preview1.status_code == 200
+    commit1 = _commit(client, preview1.json()["import_id"])
+    assert commit1.status_code == 200
+    svk = commit1.json()["schedule_version_key"]
+
+    dup_preview = client.post(
+        "/api/schedules/import-preview",
+        headers=_op(),
+        files={"file": (FIXTURE.name, FIXTURE.read_bytes(), "application/xml")},
+        data={"project_key": "tropical"},
+    )
+    assert dup_preview.status_code == 409
+
+    preview2 = client.post(
+        "/api/schedules/import-preview",
+        headers=_op(),
+        files={"file": (FIXTURE.name, FIXTURE.read_bytes(), "application/xml")},
+        data={"project_key": "tropical", "confirm_supersede": "true"},
+    )
+    assert preview2.status_code == 200
+    supersede = client.post(
+        "/api/schedules/import-commit",
+        headers=_op(),
+        json={
+            "import_id": preview2.json()["import_id"],
+            "project_key": "tropical",
+            "confirm": True,
+            "confirm_supersede": True,
+        },
+    )
+    assert supersede.status_code == 200
+    assert supersede.json()["schedule_version_key"] == svk
+    assert supersede.json().get("superseded_import_id") == commit1.json()["import_id"]
+
+
 def test_import_preview_and_commit_flow(tmp_path: Path) -> None:
     client = _client(tmp_path)
     preview = _preview(client, FIXTURE)
@@ -76,15 +114,8 @@ def test_import_preview_and_commit_flow(tmp_path: Path) -> None:
     assert body["truncated"] is False
 
 
-def test_schedule_routes_fail_closed_without_schema(tmp_path: Path) -> None:
-    client = _client(tmp_path, migrate=False)
-    resp = client.get("/api/schedules/projects")
-    assert resp.status_code == 503
-    assert resp.json()["detail"] == "schedule_schema_not_ready"
-
-
-def test_preview_stale_schema_returns_503(tmp_path: Path) -> None:
-    """Simulate live DB at V62 while repo expects V63 — JSON 503 before upload work."""
+def test_schedule_routes_self_heal_stale_schema_version(tmp_path: Path) -> None:
+    """Stale schema_migrations rows are repaired on first schedule route touch."""
     db = tmp_path / "stale.db"
     SQLiteMigrator(db_path=str(db)).apply()
     with sqlite3.connect(db) as conn:
@@ -93,14 +124,30 @@ def test_preview_stale_schema_returns_503(tmp_path: Path) -> None:
         assert int(conn.execute("SELECT MAX(version) FROM schema_migrations").fetchone()[0]) == 62
 
     client = TestClient(create_app(db_path=str(db)))
+    resp = client.get("/api/schedules/projects", headers=_op())
+    assert resp.status_code == 200
+    with sqlite3.connect(db) as conn:
+        assert int(conn.execute("SELECT MAX(version) FROM schema_migrations").fetchone()[0]) >= 63
+
+
+def test_preview_self_heals_missing_v65_columns(tmp_path: Path) -> None:
+    db = tmp_path / "drift.db"
+    SQLiteMigrator(db_path=str(db)).apply()
+    with sqlite3.connect(db) as conn:
+        conn.execute("ALTER TABLE procore_ep_schedule_activities DROP COLUMN remaining_early_finish")
+        conn.commit()
+
+    client = TestClient(create_app(db_path=str(db)))
     resp = client.post(
         "/api/schedules/import-preview",
         headers=_op(),
         files={"file": (FIXTURE.name, FIXTURE.read_bytes(), "application/xml")},
         data={"project_key": "tropical"},
     )
-    assert resp.status_code == 503
-    assert resp.json()["detail"] == "schedule_schema_not_ready"
+    assert resp.status_code == 200
+    with sqlite3.connect(db) as conn:
+        cols = {r[1] for r in conn.execute("PRAGMA table_info(procore_ep_schedule_activities)")}
+        assert "remaining_early_finish" in cols
 
 
 def test_post_routes_require_operator(tmp_path: Path) -> None:

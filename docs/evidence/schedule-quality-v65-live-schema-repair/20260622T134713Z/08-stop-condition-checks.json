@@ -1,0 +1,8 @@
+{
+  "schema_v65_ready": true,
+  "derived_float_populated": true,
+  "cost_loading_not_passed_on_none": true,
+  "cost_weighting_ready_with_penalty": true,
+  "true_cost_unavailable": true,
+  "relationship_types_measurable": true
+}

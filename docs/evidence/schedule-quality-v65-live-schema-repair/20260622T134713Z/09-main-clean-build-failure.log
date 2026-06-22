@@ -1,0 +1,16 @@
+
+> frontend@0.0.0 build
+> tsc -b && vite build
+
+src/components/common/ErrorState.tsx(3,30): error TS2307: Cannot find module '../../lib/errorCopy' or its corresponding type declarations.
+src/components/my-items/MyWorkQueueItem.tsx(1,33): error TS2307: Cannot find module '../../lib/errorCopy' or its corresponding type declarations.
+src/components/projects/ProjectCard.tsx(3,33): error TS2307: Cannot find module '../../lib/errorCopy' or its corresponding type declarations.
+src/components/settings/ConnectionPreviewCard.tsx(4,33): error TS2307: Cannot find module '../../lib/errorCopy' or its corresponding type declarations.
+src/components/settings/GraphSourceCard.tsx(13,33): error TS2307: Cannot find module '../../lib/errorCopy' or its corresponding type declarations.
+src/components/settings/KeywordManagementPanel.tsx(9,33): error TS2307: Cannot find module '../../lib/errorCopy' or its corresponding type declarations.
+src/components/settings/ProcoreSourceCard.tsx(13,33): error TS2307: Cannot find module '../../lib/errorCopy' or its corresponding type declarations.
+src/components/settings/SourceConnectionsPanel.tsx(16,33): error TS2307: Cannot find module '../../lib/errorCopy' or its corresponding type declarations.
+src/components/today/TodayList.tsx(1,33): error TS2307: Cannot find module '../../lib/errorCopy' or its corresponding type declarations.
+src/lib/sourcesApi.test.ts(16,30): error TS2307: Cannot find module './errorCopy' or its corresponding type declarations.
+src/pages/ProjectDashboardPage.tsx(14,33): error TS2307: Cannot find module '../lib/errorCopy' or its corresponding type declarations.
+src/pages/ScheduleQualityPage.test.tsx(2,26): error TS6133: 'waitFor' is declared but its value is never read.

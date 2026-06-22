@@ -38,11 +38,37 @@ _PREVIEW_CACHE: dict[str, dict[str, Any]] = {}
 
 
 def ensure_schedule_schema(db_path: str) -> None:
-    version = SQLiteMigrator(db_path=db_path).current_version()
-    if version < LATEST_SCHEMA_VERSION:
+    from hb_assistant.store.connection import get_connection
+    from hb_assistant.store.schedule_schema_verify import verify_v65_schedule_float_schema
+
+    migrator = SQLiteMigrator(db_path=db_path)
+    conn = get_connection(db_path)
+    try:
+        missing = verify_v65_schedule_float_schema(conn)
+        version = migrator.current_version()
+        needs_apply = version < LATEST_SCHEMA_VERSION or bool(missing)
+    finally:
+        conn.close()
+
+    if needs_apply:
+        migrator.apply()
+
+    conn2 = get_connection(db_path)
+    try:
+        missing_after = verify_v65_schedule_float_schema(conn2)
+        version_after = migrator.current_version()
+    finally:
+        conn2.close()
+
+    if version_after < LATEST_SCHEMA_VERSION or missing_after:
         raise ScheduleImportError(
             "schedule_schema_not_ready",
             message="schedule schema is not ready",
+            payload={
+                "schema_version": version_after,
+                "schema_expected": LATEST_SCHEMA_VERSION,
+                "schedule_v65_missing_columns": missing_after,
+            },
         )
 
 
@@ -78,6 +104,7 @@ class ScheduleImportService:
         data: bytes,
         project_key: str,
         column_roles: dict[str, str] | None = None,
+        confirm_supersede: bool = False,
     ) -> dict[str, Any]:
         self._ensure_schema()
         if len(data) > MAX_UPLOAD_BYTES:
@@ -101,16 +128,17 @@ class ScheduleImportService:
         )
         existing = self._activity_repo.get_version_summary(version_key)
         if existing and str(existing.get("import_status") or "") == "committed":
-            raise ScheduleImportError(
-                "duplicate_schedule_version",
-                message="schedule version already committed",
-                payload={
-                    "schedule_version_key": version_key,
-                    "activity_count": int(existing.get("activity_count") or 0),
-                    "relationship_count": int(existing.get("relationship_count") or 0),
-                    "view_path": duplicate_view_path(version_key),
-                },
-            )
+            if not confirm_supersede:
+                raise ScheduleImportError(
+                    "duplicate_schedule_version",
+                    message="schedule version already committed",
+                    payload={
+                        "schedule_version_key": version_key,
+                        "activity_count": int(existing.get("activity_count") or 0),
+                        "relationship_count": int(existing.get("relationship_count") or 0),
+                        "view_path": duplicate_view_path(version_key),
+                    },
+                )
 
         _PREVIEW_CACHE[import_id] = {
             "project_key": project_key,
@@ -157,6 +185,7 @@ class ScheduleImportService:
         import_id: str,
         project_key: str,
         confirm: bool = False,
+        confirm_supersede: bool = False,
         column_roles: dict[str, str] | None = None,
     ) -> dict[str, Any]:
         self._ensure_schema()
@@ -200,16 +229,27 @@ class ScheduleImportService:
             project_key=project_key, bundle=bundle, import_id=import_id
         )
         existing = self._activity_repo.get_version_summary(version_key)
+        superseded_import_id: str | None = None
         if existing and str(existing.get("import_status") or "") == "committed":
-            raise ScheduleImportError(
-                "duplicate_schedule_version",
-                message="schedule version already committed",
-                payload={
-                    "schedule_version_key": version_key,
-                    "activity_count": int(existing.get("activity_count") or 0),
-                    "relationship_count": int(existing.get("relationship_count") or 0),
-                    "view_path": duplicate_view_path(version_key),
-                },
+            if not confirm_supersede:
+                raise ScheduleImportError(
+                    "duplicate_schedule_version",
+                    message="schedule version already committed",
+                    payload={
+                        "schedule_version_key": version_key,
+                        "activity_count": int(existing.get("activity_count") or 0),
+                        "relationship_count": int(existing.get("relationship_count") or 0),
+                        "view_path": duplicate_view_path(version_key),
+                    },
+                )
+            superseded_import_id = str(existing.get("import_id"))
+            self._activity_repo.delete_version_subgraph(
+                schedule_version_key=version_key,
+                import_id=superseded_import_id,
+            )
+            self._import_repo.update_import(
+                superseded_import_id,
+                {"import_status": "superseded", "validation_status": "superseded_by_operator"},
             )
         now = datetime.now(timezone.utc).isoformat()
         cost_status = assess_cost_loaded_status(bundle.activities, bundle.cost_loaded_hints)
@@ -327,6 +367,7 @@ class ScheduleImportService:
             "quality_evaluation_status": queued.get("status", "pending"),
             "evaluation_run_id": queued.get("evaluation_run_id"),
             "committed_at": now,
+            "superseded_import_id": superseded_import_id,
         }
 
     def _persist_bundle(
@@ -423,9 +464,7 @@ class ScheduleImportService:
                     "cost_loaded_amount": str(act.get("cost_loaded_amount"))
                     if act.get("cost_loaded_amount") is not None
                     else None,
-                    "cost_loaded_source_type": act.get("cost_loaded_source_type") or (
-                        "activity_cost" if act.get("cost_loaded_amount") else "none"
-                    ),
+                    "cost_loaded_source_type": act.get("cost_loaded_source_type"),
                     "raw_json_redacted": json.dumps(
                         {k: act[k] for k in act if k != "source_row_hash"},
                         sort_keys=True,

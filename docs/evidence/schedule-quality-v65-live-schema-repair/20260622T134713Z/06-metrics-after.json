@@ -1,0 +1,36 @@
+{
+  "evaluation_run_id": "sq-a55a4576f35c",
+  "completion_posture": "completed_with_limitations",
+  "metrics": {
+    "dcma_critical_path_test": {
+      "status": null,
+      "value": null,
+      "evidence": "{\"method\": \"derived_finish_float_non_authoritative\"}"
+    },
+    "dcma_high_float": {
+      "status": null,
+      "value": null,
+      "evidence": "{\"method\": \"derived_finish_float\", \"float_basis\": \"remaining_late_finish_minus_remaining_early_finish\", \"threshold_status\": \"passed_threshold\", \"schedule_options_snapshot\": {\"compute_total_float_type\": \"Finish Float = Late Finish - Early Finish\", \"critical_activity_path_type\": \"Critical Float\", \"critical_activity_float_threshold\": 0.0, \"calculate_float_based_on_finish_date\": 0}}"
+    },
+    "dcma_logic": {
+      "status": null,
+      "value": null,
+      "evidence": "{\"open_start_count\": 44, \"open_finish_count\": 4, \"invalid_relationship_reference_count\": 0, \"duplicate_relationship_count\": 0, \"self_relationship_count\": 0, \"excluded_activity_count\": 43, \"exclusion_reasons\": {\"milestone\": 43}}"
+    },
+    "dcma_negative_float": {
+      "status": null,
+      "value": null,
+      "evidence": "{\"method\": \"derived_finish_float\", \"float_basis\": \"remaining_late_finish_minus_remaining_early_finish\", \"threshold_status\": \"failed_threshold\", \"schedule_options_snapshot\": {\"compute_total_float_type\": \"Finish Float = Late Finish - Early Finish\", \"critical_activity_path_type\": \"Critical Float\", \"critical_activity_float_threshold\": 0.0, \"calculate_float_based_on_finish_date\": 0}}"
+    },
+    "dcma_relationship_types": {
+      "status": null,
+      "value": null,
+      "evidence": "{\"distribution\": {\"FS\": 2235, \"FF\": 1357, \"SS\": 125, \"SF\": 1, \"UNKNOWN\": 0, \"total\": 3718, \"non_fs_count\": 1483, \"non_fs_ratio\": 0.3989}}"
+    },
+    "dcma_resources_cost_loading": {
+      "status": null,
+      "value": null,
+      "evidence": "{\"schedule_posture\": \"not_cost_loaded\", \"activity_code_coverage_count\": 869, \"resource_loading_count\": 0, \"cost_loading_count\": 0}"
+    }
+  }
+}

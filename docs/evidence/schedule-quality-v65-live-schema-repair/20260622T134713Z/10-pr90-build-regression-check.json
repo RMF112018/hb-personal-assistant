@@ -1,0 +1,16 @@
+{
+  "pr_number": 90,
+  "branch": "feature/v65-schema-quality-repair",
+  "branch_sha": "6bf1b21a04a0620e6567e6635dc71120ca1c0382",
+  "command": "rm -rf node_modules && npm ci && npm run build",
+  "build_exit_code": 2,
+  "errorCopy_ts2307_count": 11,
+  "pr_specific_regressions": [],
+  "diff_vs_main": "PR removes one pre-existing main error (unused waitFor in ScheduleQualityPage.test.tsx); no new build errors introduced",
+  "frontend_files_changed_vs_main": [
+    "frontend/src/pages/ScheduleQualityPage.tsx",
+    "frontend/src/pages/ScheduleQualityPage.test.tsx"
+  ],
+  "neither_changed_file_imports_errorCopy": true,
+  "log_artifact": "10-pr90-build-failure.log"
+}

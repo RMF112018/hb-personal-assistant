@@ -184,7 +184,7 @@ def _activity_row(
         else 0,
         "cost_code": fields.get("CostAccountId") or fields.get("cost_code"),
         "cost_loaded_amount": cost_amount,
-        "cost_loaded_source_type": cost_source,
+        "cost_loaded_source_type": cost_source if cost_amount else None,
         "estimated_weight": fields.get("EstimatedWeight"),
         "nested_codes": nested_codes,
     }

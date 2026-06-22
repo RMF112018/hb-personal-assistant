@@ -159,7 +159,9 @@ class ScheduleQualityService:
             )
             self._repo.insert_metric_results(result.metrics)
             self._repo.insert_findings(result.findings)
-            self._repo.insert_scorecard(result.scorecard)
+            scorecard_row = dict(result.scorecard)
+            scorecard_row.pop("completion_posture", None)
+            self._repo.insert_scorecard(scorecard_row)
             self._repo.complete_run(
                 evaluation_run_id=run_id,
                 schedule_version_key=str(run["schedule_version_key"]),
@@ -197,10 +199,18 @@ class ScheduleQualityService:
             else []
         )
         findings = self._repo.list_findings(schedule_version_key, limit=20)
+        downstream = ScheduleQualityRepository.parse_json_field(
+            scorecard.get("downstream_readiness_json") if scorecard else None,
+            {},
+        )
+        completion_posture = (
+            scorecard.get("completion_posture") if scorecard else None
+        ) or downstream.get("completion_posture")
         return {
             "schedule_version_key": schedule_version_key,
             "evaluation_run_id": run.get("evaluation_run_id") if run else None,
             "status": run.get("status") if run else "not_evaluated",
+            "completion_posture": completion_posture,
             "assessment_profile": run.get("assessment_profile") if run else None,
             "assessment_profile_version": run.get("assessment_profile_version") if run else None,
             "method_source": run.get("method_source") if run else None,
@@ -212,10 +222,7 @@ class ScheduleQualityService:
                 scorecard.get("finding_counts_json") if scorecard else None,
                 {},
             ),
-            "downstream_readiness": ScheduleQualityRepository.parse_json_field(
-                scorecard.get("downstream_readiness_json") if scorecard else None,
-                {},
-            ),
+            "downstream_readiness": downstream,
             "gao_category_summary": ScheduleQualityRepository.parse_json_field(
                 scorecard.get("gao_category_summary_json") if scorecard else None,
                 {},

@@ -1,0 +1,12 @@
+{
+  "completion_posture": "completed_with_limitations",
+  "cost_mapping": "ready",
+  "cost_weighting": "ready_with_quality_penalty",
+  "critical_path_analytics": "unavailable_requires_cpm_recalculation",
+  "baseline_analytics": "unavailable_missing_baseline",
+  "true_cost_loaded_analytics": "unavailable_not_cost_loaded",
+  "blockers": [],
+  "cost_mapping_ready": true,
+  "cost_weighting_ready": true,
+  "forecast_context_ready": true
+}

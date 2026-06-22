@@ -7998,6 +7998,16 @@ class SQLiteMigrator:
         _add_cols("schedule_file_imports", V65_IMPORT_ALTER_COLUMNS, import_ddl)
         _add_cols("procore_ep_schedule_activities", V65_ACTIVITY_ALTER_COLUMNS, activity_ddl)
         SQLiteMigrator._reconcile_v65_metric_status_check(conn)
+        import_cols = {
+            row[1] for row in conn.execute("PRAGMA table_info(schedule_file_imports)")
+        }
+        activity_cols = {
+            row[1] for row in conn.execute("PRAGMA table_info(procore_ep_schedule_activities)")
+        }
+        if import_cols or activity_cols:
+            from hb_assistant.store.schedule_schema_verify import assert_v65_schedule_float_schema
+
+            assert_v65_schedule_float_schema(conn)
 
     @staticmethod
     def _reconcile_v65_metric_status_check(conn: sqlite3.Connection) -> None:

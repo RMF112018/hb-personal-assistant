@@ -1,0 +1,90 @@
+{
+  "evaluation_run_id": "sq-9c9ee307a13c",
+  "completion_posture": "completed_with_limitations",
+  "metrics": {
+    "dcma_bei": {
+      "status": null,
+      "value": null,
+      "evidence": "{}"
+    },
+    "dcma_cpli": {
+      "status": null,
+      "value": null,
+      "evidence": "{}"
+    },
+    "dcma_critical_path_test": {
+      "status": null,
+      "value": null,
+      "evidence": "{\"method\": \"derived_finish_float_non_authoritative\"}"
+    },
+    "dcma_hard_constraints": {
+      "status": null,
+      "value": null,
+      "evidence": "{}"
+    },
+    "dcma_high_duration": {
+      "status": null,
+      "value": null,
+      "evidence": "{\"threshold_days\": 44.0, \"sample_failures\": [{\"activity_id\": \"BUYOUT-10\", \"raw_duration_value\": \"104\", \"raw_duration_unit\": \"Fixed Duration and Units\", \"normalized_duration_days\": 104.0, \"hours_per_day\": 8.0, \"hours_per_day_source\": \"calendar\"}, {\"activity_id\": \"BUYOUT-100\", \"raw_duration_value\": \"96\", \"raw_duration_unit\": \"Fixed Duration and Units\", \"normalized_duration_days\": 96.0, \"hours_per_day\": 8.0, \"hours_per_day_source\": \"calendar\"}, {\"activity_id\": \"BUYOUT-120\", \"raw_duration_value\": \"64\", \"raw_duration_unit\": \"Fixed Duration and Units\", \"normalized_duration_days\": 64.0, \"hours_per_day\": 8.0, \"hours_per_day_source\": \"calendar\"}, {\"activity_id\": \"BUYOUT-130\", \"raw_duration_value\": \"64\", \"raw_duration_unit\": \"Fixed Duration and Units\", \"normalized_duration_days\": 64.0, \"hours_per_day\": 8.0, \"hours_per_day_source\": \"calendar\"}, {\"activity_id\": \"BUYOUT-140\", \"raw_duration_value\": \"184\", \"raw_duration_unit\": \"Fixed Duration and Units\", \"normalized_duration_days\": 184.0, \"hours_per_day\": 8.0, \"hours_per_day_source\": \"calendar\"}, {\"activity_id\": \"BUYOUT-150\", \"raw_duration_value\": \"104\", \"raw_duration_unit\": \"Fixed Duration and Units\", \"normalized_duration_days\": 104.0, \"hours_per_day\": 8.0, \"hours_per_day_source\": \"calendar\"}, {\"activity_id\": \"BUYOUT-180\", \"raw_duration_value\": \"80\", \"raw_duration_unit\": \"Fixed Duration and Units\", \"normalized_duration_days\": 80.0, \"hours_per_day\": 8.0, \"hours_per_day_source\": \"calendar\"}, {\"activity_id\": \"BUYOUT-20\", \"raw_duration_value\": \"200\", \"raw_duration_unit\": \"Fixed Duration and Units\", \"normalized_duration_days\": 200.0, \"hours_per_day\": 8.0, \"hours_per_day_source\": \"calendar\"}, {\"activity_id\": \"BUYOUT-220\", \"raw_duration_value\": \"80\", \"raw_duration_unit\": \"Fixed Duration and Units\", \"normalized_duration_days\": 80.0, \"hours_per_day\": 8.0, \"hours_per_day_source\": \"calendar\"}, {\"activity_id\": \"BUYOUT-230\", \"raw_duration_value\": \"80\", \"raw_duration_unit\": \"Fixed Duration and Units\", \"normalized_duration_days\": 80.0, \"hours_per_day\": 8.0, \"hours_per_day_source\": \"calendar\"}]}"
+    },
+    "dcma_high_float": {
+      "status": null,
+      "value": null,
+      "evidence": "{\"method\": \"derived_finish_float\", \"float_basis\": \"remaining_late_finish_minus_remaining_early_finish\", \"threshold_status\": \"passed_threshold\", \"schedule_options_snapshot\": {\"compute_total_float_type\": \"Finish Float = Late Finish - Early Finish\", \"critical_activity_path_type\": \"Critical Float\", \"critical_activity_float_threshold\": 0.0, \"calculate_float_based_on_finish_date\": 0}}"
+    },
+    "dcma_invalid_dates": {
+      "status": null,
+      "value": null,
+      "evidence": "{}"
+    },
+    "dcma_lags": {
+      "status": null,
+      "value": null,
+      "evidence": "{}"
+    },
+    "dcma_leads": {
+      "status": null,
+      "value": null,
+      "evidence": "{}"
+    },
+    "dcma_logic": {
+      "status": null,
+      "value": null,
+      "evidence": "{\"open_start_count\": 44, \"open_finish_count\": 4, \"invalid_relationship_reference_count\": 0, \"duplicate_relationship_count\": 0, \"self_relationship_count\": 0, \"excluded_activity_count\": 43, \"exclusion_reasons\": {\"milestone\": 43}}"
+    },
+    "dcma_missed_tasks": {
+      "status": null,
+      "value": null,
+      "evidence": "{}"
+    },
+    "dcma_negative_float": {
+      "status": null,
+      "value": null,
+      "evidence": "{\"method\": \"derived_finish_float\", \"float_basis\": \"remaining_late_finish_minus_remaining_early_finish\", \"threshold_status\": \"failed_threshold\", \"schedule_options_snapshot\": {\"compute_total_float_type\": \"Finish Float = Late Finish - Early Finish\", \"critical_activity_path_type\": \"Critical Float\", \"critical_activity_float_threshold\": 0.0, \"calculate_float_based_on_finish_date\": 0}}"
+    },
+    "dcma_relationship_types": {
+      "status": null,
+      "value": null,
+      "evidence": "{\"distribution\": {\"FS\": 2235, \"FF\": 1357, \"SS\": 125, \"SF\": 1, \"UNKNOWN\": 0, \"total\": 3718, \"non_fs_count\": 1483, \"non_fs_ratio\": 0.3989}}"
+    },
+    "dcma_resources_cost_loading": {
+      "status": null,
+      "value": null,
+      "evidence": "{\"schedule_posture\": \"partially_resource_loaded\", \"activity_code_coverage_count\": 869, \"resource_loading_count\": 0, \"cost_loading_count\": 1378}"
+    }
+  },
+  "downstream_readiness": {
+    "completion_posture": "completed_with_limitations",
+    "cost_mapping": "ready",
+    "cost_weighting": "blocked",
+    "critical_path_analytics": "unavailable_requires_cpm_recalculation",
+    "baseline_analytics": "unavailable_missing_baseline",
+    "true_cost_loaded_analytics": "partially_available",
+    "blockers": [
+      "quality_scorecard_incomplete_or_failed"
+    ],
+    "cost_mapping_ready": true,
+    "cost_weighting_ready": false,
+    "forecast_context_ready": true
+  }
+}

@@ -100,3 +100,64 @@ def test_gma_derived_float_metrics_measured(tmp_path: Path) -> None:
         gao.get("critical_path_validity", {}).get("posture")
         == "partially_measurable_critical_float_available"
     )
+
+
+def test_relationship_types_normalize_finish_to_start_labels(tmp_path: Path) -> None:
+    db = _db(tmp_path)
+    svc = ScheduleImportService(db_path=db)
+    preview = svc.preview_bytes(
+        filename=FIXTURE.name,
+        data=FIXTURE.read_bytes(),
+        project_key="tropical",
+    )
+    commit = svc.commit(import_id=preview["import_id"], project_key="tropical", confirm=True)
+    from hb_assistant.store.connection import get_connection
+
+    conn = get_connection(db)
+    conn.execute(
+        """
+        UPDATE procore_ep_schedule_relationships
+        SET relationship_type='Finish to Start'
+        WHERE schedule_version_key=?
+        """,
+        (commit["schedule_version_key"],),
+    )
+    conn.commit()
+    conn.close()
+
+    result = run_evaluation_for_run(
+        db_path=db,
+        evaluation_run_id="sq-testrel001",
+        project_key="tropical",
+        schedule_version_key=commit["schedule_version_key"],
+        schedule_table_id=None,
+        import_id=preview["import_id"],
+    )
+    metric = next(m for m in result.metrics if m["metric_code"] == "dcma_relationship_types")
+    import json
+
+    evidence = json.loads(metric.get("evidence_json") or "{}")
+    assert metric["numerator"] != "0"
+    assert evidence["distribution"]["FS"] >= 1
+
+
+def test_cost_loading_not_applicable_for_not_cost_loaded_import(tmp_path: Path) -> None:
+    db = _db(tmp_path)
+    svc = ScheduleImportService(db_path=db)
+    preview = svc.preview_bytes(
+        filename=FIXTURE.name,
+        data=FIXTURE.read_bytes(),
+        project_key="tropical",
+    )
+    commit = svc.commit(import_id=preview["import_id"], project_key="tropical", confirm=True)
+    assert commit["cost_loaded_status"] == "not_cost_loaded"
+    result = run_evaluation_for_run(
+        db_path=db,
+        evaluation_run_id="sq-testcost001",
+        project_key="tropical",
+        schedule_version_key=commit["schedule_version_key"],
+        schedule_table_id=None,
+        import_id=preview["import_id"],
+    )
+    metric = next(m for m in result.metrics if m["metric_code"] == "dcma_resources_cost_loading")
+    assert metric["status"] == "not_applicable"
