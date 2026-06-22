@@ -6,6 +6,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
+from hb_assistant.store.schedule_activity_repository import ScheduleActivityRepository
 from hb_assistant.store.schedule_quality_repository import (
     DEFAULT_PROFILE,
     ScheduleQualityRepository,
@@ -21,6 +22,7 @@ class ScheduleQualityService:
     def __init__(self, *, db_path: str) -> None:
         self._db_path = db_path
         self._repo = ScheduleQualityRepository(db_path=db_path)
+        self._activity_repo = ScheduleActivityRepository(db_path=db_path)
 
     def _ensure_schema(self) -> None:
         ensure_schedule_schema(self._db_path)
@@ -199,6 +201,7 @@ class ScheduleQualityService:
             else []
         )
         findings = self._repo.list_findings(schedule_version_key, limit=20)
+        import_meta = self._activity_repo.get_version_summary(schedule_version_key)
         downstream = ScheduleQualityRepository.parse_json_field(
             scorecard.get("downstream_readiness_json") if scorecard else None,
             {},
@@ -208,6 +211,8 @@ class ScheduleQualityService:
         ) or downstream.get("completion_posture")
         return {
             "schedule_version_key": schedule_version_key,
+            "source_format": import_meta.get("source_format") if import_meta else None,
+            "source_type": import_meta.get("source_type") if import_meta else None,
             "evaluation_run_id": run.get("evaluation_run_id") if run else None,
             "status": run.get("status") if run else "not_evaluated",
             "completion_posture": completion_posture,

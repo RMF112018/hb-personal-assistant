@@ -11,7 +11,7 @@ from hb_assistant.store.schedule_float_tables import METRIC_STATUS_CHECK_VALUES
 
 def test_v65_columns_present(tmp_path: Path) -> None:
     db = tmp_path / "v65.db"
-    assert LATEST_SCHEMA_VERSION == 66
+    assert LATEST_SCHEMA_VERSION == 67
     SQLiteMigrator(db_path=str(db)).apply()
     conn = sqlite3.connect(db)
     import_cols = {r[1] for r in conn.execute("PRAGMA table_info(schedule_file_imports)")}

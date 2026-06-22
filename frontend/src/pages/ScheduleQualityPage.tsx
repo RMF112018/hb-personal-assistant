@@ -17,9 +17,15 @@ import {
 } from '../components/schedule/ScheduleVersionPicker'
 import { EmptyState } from '../components/ui/EmptyState'
 import { api, getLocalUiRole } from '../lib/api'
+import {
+  CPM_RECALCULATION_BANNER,
+  getScheduleCapabilityBanner,
+  getScheduleFormatLabel,
+} from '../lib/scheduleCapabilityCopy'
 
 type QualitySummary = {
   schedule_version_key?: string
+  source_format?: string
   status?: string
   completion_posture?: string
   assessment_profile?: string
@@ -63,6 +69,9 @@ function statusClass(status: string | undefined): string {
     case 'failed_threshold':
       return 'text-red-600'
     case 'measured_from_derived_finish_float':
+    case 'measured_from_explicit_source_float':
+    case 'measured_from_xer_driving_path':
+    case 'measured_from_msp_critical_flag':
     case 'partially_measurable_critical_float_available':
       return 'text-amber-600'
     case 'not_measurable_missing_data':
@@ -116,6 +125,15 @@ export function ScheduleQualityPage() {
         {data?.disclaimer ??
           'Schedule quality metrics are deterministic CPM data checks for operator review. This is not forensic delay analysis and does not determine entitlement, responsibility, liability, or compensability.'}
       </p>
+      {data?.source_format ? (
+        <div className="text-xs text-[var(--hb-muted)] mb-4 max-w-3xl border border-[var(--hb-border)] rounded p-3 bg-[var(--hb-surface)] space-y-1">
+          <div>
+            Source: {getScheduleFormatLabel(data.source_format)} ({data.source_format})
+          </div>
+          <div>{getScheduleCapabilityBanner(data.source_format)}</div>
+          <div>{CPM_RECALCULATION_BANNER}</div>
+        </div>
+      ) : null}
 
       <div className="forecast-panel p-4 mb-3 max-w-xl flex flex-wrap gap-3 items-end">
         <ScheduleVersionPicker

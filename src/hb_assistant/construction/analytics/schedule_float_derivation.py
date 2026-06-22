@@ -119,5 +119,7 @@ def apply_derived_float_to_activities(
         str(c.get("calendar_id")): c for c in (calendars or []) if c.get("calendar_id")
     }
     for act in activities:
+        if act.get("explicit_total_float_hours") is not None:
+            continue
         derived = derive_finish_float(act, options=options, calendars_by_id=calendars_by_id)
         act.update(derived)

@@ -19,6 +19,7 @@ from .schedule_float_derivation import (
     merge_schedule_options,
     parse_schedule_options,
 )
+from .schedule_source_posture import apply_source_posture
 
 PARSER_NAME = "schedule_xml_parser"
 PARSER_VERSION = "1.2.0"
@@ -414,6 +415,13 @@ def parse_pmxml_bytes(data: bytes | io.BufferedIOBase) -> ParsedScheduleBundle:
         options=bundle.schedule_options,
         calendars=bundle.calendars,
     )
+    caps = apply_source_posture(
+        bundle.activities,
+        source_format="primavera_pmxml",
+        schedule_options=bundle.schedule_options,
+    )
+    bundle.source_capabilities = caps
+    bundle.schedule_options = {**(bundle.schedule_options or {}), "source_capabilities": caps}
     for act in bundle.activities:
         act["source_row_hash"] = _row_hash({k: act[k] for k in act if k != "source_row_hash"})
 
