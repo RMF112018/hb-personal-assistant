@@ -14,7 +14,7 @@ from .connection import get_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 65
+LATEST_SCHEMA_VERSION = 66
 
 
 class SQLiteMigrator:
@@ -6772,6 +6772,17 @@ class SQLiteMigrator:
 
         return V64_STATEMENTS
 
+    # v66 Forecast decision-support family: per-run maturity snapshot, data-availability
+    # profiles, method eligibility, confidence scorecards + factors, operator/required
+    # assumptions. Additive CREATE TABLE IF NOT EXISTS only; populated only by the read-only
+    # decision-support engine into a temp DB, never the live DB. (v65 is the schedule
+    # derived-finish-float migration; decision-support follows it as v66.)
+    @staticmethod
+    def _v66_statements() -> list[str]:
+        from hb_assistant.store.forecast_decision_support_tables import V66_STATEMENTS
+
+        return V66_STATEMENTS
+
     # v44 Phase 10 Graph drive-item modified-by raw operational metadata.
     # Additive ADD COLUMN only on construction_drive_items; raw identity JSON is
     # local SQLite operational metadata and must not be emitted in committed evidence.
@@ -7911,6 +7922,18 @@ class SQLiteMigrator:
             if cur.fetchone() is None:
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (65, 'v65_schedule_derived_finish_float', ?)",
+                    (now,),
+                )
+
+            # v66 Forecast decision-support family: maturity/availability/confidence
+            # persistence keyed to a forecast run. Additive only; intentionally empty until
+            # the read-only decision-support engine populates a temp DB.
+            for stmt in self._v66_statements():
+                conn.execute(stmt)
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 66")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (66, 'v66_forecast_decision_support', ?)",
                     (now,),
                 )
 

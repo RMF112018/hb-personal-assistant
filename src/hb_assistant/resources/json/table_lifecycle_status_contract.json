@@ -18,7 +18,7 @@
     "phase_owner",
     "blocking_for_phase"
   ],
-  "table_count": 425,
+  "table_count": 433,
   "tables": {
     "construction_data_quality_runs": {
       "table_family": "data_quality_v20v21",
@@ -3835,6 +3835,78 @@
       "v": "V64",
       "lifecycle_status": "operational_empty_expected",
       "notes": "Aggregated schedule quality scorecards per evaluation run."
+    },
+    "forecast_project_maturity_snapshots": {
+      "table_family": "forecast_decision_support_v66",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "forecast_db_transition",
+      "blocking_for_phase": "none",
+      "v": "V66",
+      "notes": "Per-run project maturity tier (M0-M5) derived from completed-month count; reuses model_engines_readiness thresholds."
+    },
+    "forecast_data_availability_profiles": {
+      "table_family": "forecast_decision_support_v66",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "forecast_db_transition",
+      "blocking_for_phase": "none",
+      "v": "V66",
+      "notes": "Per-run x domain availability/coverage/freshness/completeness/mapping profile; absent domains recorded as unavailable."
+    },
+    "forecast_method_eligibility": {
+      "table_family": "forecast_decision_support_v66",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "forecast_db_transition",
+      "blocking_for_phase": "none",
+      "v": "V66",
+      "notes": "Per-run method eligibility/weight/status; population deferred to a follow-on slice."
+    },
+    "forecast_model_selection_decisions": {
+      "table_family": "forecast_decision_support_v66",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "forecast_db_transition",
+      "blocking_for_phase": "none",
+      "v": "V66",
+      "notes": "Per-run audit of contributing methods + weights; population deferred to a follow-on slice."
+    },
+    "forecast_confidence_scorecards": {
+      "table_family": "forecast_decision_support_v66",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "forecast_db_transition",
+      "blocking_for_phase": "none",
+      "v": "V66",
+      "notes": "Per-run confidence scorecards (project/budget_code/method scope) projected from confidence_rollup.json and v63 outputs."
+    },
+    "forecast_confidence_factors": {
+      "table_family": "forecast_decision_support_v66",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "forecast_db_transition",
+      "blocking_for_phase": "none",
+      "v": "V66",
+      "notes": "Per-scorecard factor-level explanation (penalty/booster + reason); no confidence persisted without factors."
+    },
+    "forecast_operator_assumptions": {
+      "table_family": "forecast_decision_support_v66",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "forecast_db_transition",
+      "blocking_for_phase": "none",
+      "v": "V66",
+      "notes": "Per-run operator-entered assumptions; population deferred until the operator UI exists."
+    },
+    "forecast_required_assumptions": {
+      "table_family": "forecast_decision_support_v66",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "forecast_db_transition",
+      "blocking_for_phase": "none",
+      "v": "V66",
+      "notes": "Per-run required-assumption prerequisites; population deferred to a follow-on slice."
     }
   }
 }
