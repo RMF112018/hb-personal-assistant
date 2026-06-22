@@ -1,0 +1,682 @@
+[
+  {
+    "blank_count": 0,
+    "column": "parent_record_id",
+    "corresponding_endpoint_keys": [
+      "billing-periods"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 66,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 66,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_billing_periods",
+    "total_rows": 66
+  },
+  {
+    "blank_count": 0,
+    "column": "parent_record_id_hash",
+    "corresponding_endpoint_keys": [
+      "billing-periods"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 66,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 66,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_billing_periods",
+    "total_rows": 66
+  },
+  {
+    "blank_count": 0,
+    "column": "payload_sidecar_json",
+    "corresponding_endpoint_keys": [
+      "billing-periods"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": true,
+    "missing_count": 66,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 66,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_billing_periods",
+    "total_rows": 66
+  },
+  {
+    "blank_count": 0,
+    "column": "parent_record_id",
+    "corresponding_endpoint_keys": [
+      "budget-change-history"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 420,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 420,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_budget_change_history",
+    "total_rows": 420
+  },
+  {
+    "blank_count": 0,
+    "column": "parent_record_id_hash",
+    "corresponding_endpoint_keys": [
+      "budget-change-history"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 420,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 420,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_budget_change_history",
+    "total_rows": 420
+  },
+  {
+    "blank_count": 0,
+    "column": "payload_sidecar_json",
+    "corresponding_endpoint_keys": [
+      "budget-change-history"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": true,
+    "missing_count": 420,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 420,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_budget_change_history",
+    "total_rows": 420
+  },
+  {
+    "blank_count": 0,
+    "column": "visible",
+    "corresponding_endpoint_keys": [
+      "budget-detail-columns"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 399,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 399,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_budget_detail_columns",
+    "total_rows": 399
+  },
+  {
+    "blank_count": 0,
+    "column": "currency_iso_code",
+    "corresponding_endpoint_keys": [
+      "budget-detail-rows"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 273951,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 273951,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_budget_detail_row_cells",
+    "total_rows": 273951
+  },
+  {
+    "blank_count": 0,
+    "column": "column_id",
+    "corresponding_endpoint_keys": [
+      "budget-detail-rows"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 25,
+    "fingerprints_skipped": false,
+    "missing_count": 258385,
+    "missing_pct": 94.317962,
+    "nonblank_count": 15566,
+    "nonblank_pct": 5.682038,
+    "notnull_declared": false,
+    "null_count": 258385,
+    "numericish_sample_count_max_5000": 4060,
+    "pk": 0,
+    "table": "procore_ep_budget_detail_row_cells",
+    "total_rows": 273951
+  },
+  {
+    "blank_count": 0,
+    "column": "column_key",
+    "corresponding_endpoint_keys": [
+      "budget-detail-rows"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 12,
+    "fingerprints_skipped": false,
+    "missing_count": 258385,
+    "missing_pct": 94.317962,
+    "nonblank_count": 15566,
+    "nonblank_pct": 5.682038,
+    "notnull_declared": false,
+    "null_count": 258385,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_budget_detail_row_cells",
+    "total_rows": 273951
+  },
+  {
+    "blank_count": 0,
+    "column": "value_decimal_text",
+    "corresponding_endpoint_keys": [
+      "budget-detail-rows"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 5305,
+    "fingerprints_skipped": false,
+    "missing_count": 117785,
+    "missing_pct": 42.994915,
+    "nonblank_count": 156166,
+    "nonblank_pct": 57.005085,
+    "notnull_declared": false,
+    "null_count": 117785,
+    "numericish_sample_count_max_5000": 5000,
+    "pk": 0,
+    "table": "procore_ep_budget_detail_row_cells",
+    "total_rows": 273951
+  },
+  {
+    "blank_count": 0,
+    "column": "actual_cost",
+    "corresponding_endpoint_keys": [
+      "budget-detail-rows"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 3044,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 3044,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_budget_detail_rows",
+    "total_rows": 3044
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_type",
+    "corresponding_endpoint_keys": [
+      "budget-detail-rows"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 3044,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 3044,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_budget_detail_rows",
+    "total_rows": 3044
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_type_id",
+    "corresponding_endpoint_keys": [
+      "budget-detail-rows"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 3044,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 3044,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_budget_detail_rows",
+    "total_rows": 3044
+  },
+  {
+    "blank_count": 0,
+    "column": "line_item_type_id",
+    "corresponding_endpoint_keys": [
+      "budget-detail-rows"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 3044,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 3044,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_budget_detail_rows",
+    "total_rows": 3044
+  },
+  {
+    "blank_count": 0,
+    "column": "direct_costs",
+    "corresponding_endpoint_keys": [
+      "budget-detail-rows"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 339,
+    "fingerprints_skipped": false,
+    "missing_count": 2522,
+    "missing_pct": 82.851511,
+    "nonblank_count": 522,
+    "nonblank_pct": 17.148489,
+    "notnull_declared": false,
+    "null_count": 2522,
+    "numericish_sample_count_max_5000": 522,
+    "pk": 0,
+    "table": "procore_ep_budget_detail_rows",
+    "total_rows": 3044
+  },
+  {
+    "blank_count": 0,
+    "column": "erp_direct_costs",
+    "corresponding_endpoint_keys": [
+      "budget-detail-rows"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 377,
+    "fingerprints_skipped": false,
+    "missing_count": 2088,
+    "missing_pct": 68.593955,
+    "nonblank_count": 956,
+    "nonblank_pct": 31.406045,
+    "notnull_declared": false,
+    "null_count": 2088,
+    "numericish_sample_count_max_5000": 956,
+    "pk": 0,
+    "table": "procore_ep_budget_detail_rows",
+    "total_rows": 3044
+  },
+  {
+    "blank_count": 0,
+    "column": "erp_job_to_date_costs",
+    "corresponding_endpoint_keys": [
+      "budget-detail-rows"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 480,
+    "fingerprints_skipped": false,
+    "missing_count": 2088,
+    "missing_pct": 68.593955,
+    "nonblank_count": 956,
+    "nonblank_pct": 31.406045,
+    "notnull_declared": false,
+    "null_count": 2088,
+    "numericish_sample_count_max_5000": 956,
+    "pk": 0,
+    "table": "procore_ep_budget_detail_rows",
+    "total_rows": 3044
+  },
+  {
+    "blank_count": 0,
+    "column": "forecast_to_complete",
+    "corresponding_endpoint_keys": [
+      "budget-detail-rows"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 425,
+    "fingerprints_skipped": false,
+    "missing_count": 2000,
+    "missing_pct": 65.703022,
+    "nonblank_count": 1044,
+    "nonblank_pct": 34.296978,
+    "notnull_declared": false,
+    "null_count": 2000,
+    "numericish_sample_count_max_5000": 1044,
+    "pk": 0,
+    "table": "procore_ep_budget_detail_rows",
+    "total_rows": 3044
+  },
+  {
+    "blank_count": 0,
+    "column": "committed_costs",
+    "corresponding_endpoint_keys": [
+      "budget-detail-rows"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 144,
+    "fingerprints_skipped": false,
+    "missing_count": 1566,
+    "missing_pct": 51.445466,
+    "nonblank_count": 1478,
+    "nonblank_pct": 48.554534,
+    "notnull_declared": false,
+    "null_count": 1566,
+    "numericish_sample_count_max_5000": 1478,
+    "pk": 0,
+    "table": "procore_ep_budget_detail_rows",
+    "total_rows": 3044
+  },
+  {
+    "blank_count": 0,
+    "column": "pending_budget_changes",
+    "corresponding_endpoint_keys": [
+      "budget-detail-rows"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 35,
+    "fingerprints_skipped": false,
+    "missing_count": 1566,
+    "missing_pct": 51.445466,
+    "nonblank_count": 1478,
+    "nonblank_pct": 48.554534,
+    "notnull_declared": false,
+    "null_count": 1566,
+    "numericish_sample_count_max_5000": 1478,
+    "pk": 0,
+    "table": "procore_ep_budget_detail_rows",
+    "total_rows": 3044
+  },
+  {
+    "blank_count": 0,
+    "column": "job_to_date_costs",
+    "corresponding_endpoint_keys": [
+      "budget-detail-rows"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 517,
+    "fingerprints_skipped": false,
+    "missing_count": 1478,
+    "missing_pct": 48.554534,
+    "nonblank_count": 1566,
+    "nonblank_pct": 51.445466,
+    "notnull_declared": false,
+    "null_count": 1478,
+    "numericish_sample_count_max_5000": 1566,
+    "pk": 0,
+    "table": "procore_ep_budget_detail_rows",
+    "total_rows": 3044
+  },
+  {
+    "blank_count": 0,
+    "column": "approved_change_orders",
+    "corresponding_endpoint_keys": [
+      "budget-detail-rows"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 120,
+    "fingerprints_skipped": false,
+    "missing_count": 522,
+    "missing_pct": 17.148489,
+    "nonblank_count": 2522,
+    "nonblank_pct": 82.851511,
+    "notnull_declared": false,
+    "null_count": 522,
+    "numericish_sample_count_max_5000": 2522,
+    "pk": 0,
+    "table": "procore_ep_budget_detail_rows",
+    "total_rows": 3044
+  },
+  {
+    "blank_count": 0,
+    "column": "estimated_cost_at_completion",
+    "corresponding_endpoint_keys": [
+      "budget-detail-rows"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 719,
+    "fingerprints_skipped": false,
+    "missing_count": 522,
+    "missing_pct": 17.148489,
+    "nonblank_count": 2522,
+    "nonblank_pct": 82.851511,
+    "notnull_declared": false,
+    "null_count": 522,
+    "numericish_sample_count_max_5000": 2522,
+    "pk": 0,
+    "table": "procore_ep_budget_detail_rows",
+    "total_rows": 3044
+  },
+  {
+    "blank_count": 0,
+    "column": "projected_budget",
+    "corresponding_endpoint_keys": [
+      "budget-detail-rows"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 444,
+    "fingerprints_skipped": false,
+    "missing_count": 522,
+    "missing_pct": 17.148489,
+    "nonblank_count": 2522,
+    "nonblank_pct": 82.851511,
+    "notnull_declared": false,
+    "null_count": 522,
+    "numericish_sample_count_max_5000": 2522,
+    "pk": 0,
+    "table": "procore_ep_budget_detail_rows",
+    "total_rows": 3044
+  },
+  {
+    "blank_count": 0,
+    "column": "projected_costs",
+    "corresponding_endpoint_keys": [
+      "budget-detail-rows"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 555,
+    "fingerprints_skipped": false,
+    "missing_count": 522,
+    "missing_pct": 17.148489,
+    "nonblank_count": 2522,
+    "nonblank_pct": 82.851511,
+    "notnull_declared": false,
+    "null_count": 522,
+    "numericish_sample_count_max_5000": 2522,
+    "pk": 0,
+    "table": "procore_ep_budget_detail_rows",
+    "total_rows": 3044
+  },
+  {
+    "blank_count": 0,
+    "column": "projected_over_under",
+    "corresponding_endpoint_keys": [
+      "budget-detail-rows"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 561,
+    "fingerprints_skipped": false,
+    "missing_count": 522,
+    "missing_pct": 17.148489,
+    "nonblank_count": 2522,
+    "nonblank_pct": 82.851511,
+    "notnull_declared": false,
+    "null_count": 522,
+    "numericish_sample_count_max_5000": 2522,
+    "pk": 0,
+    "table": "procore_ep_budget_detail_rows",
+    "total_rows": 3044
+  },
+  {
+    "blank_count": 0,
+    "column": "revised_budget",
+    "corresponding_endpoint_keys": [
+      "budget-detail-rows"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 443,
+    "fingerprints_skipped": false,
+    "missing_count": 522,
+    "missing_pct": 17.148489,
+    "nonblank_count": 2522,
+    "nonblank_pct": 82.851511,
+    "notnull_declared": false,
+    "null_count": 522,
+    "numericish_sample_count_max_5000": 2522,
+    "pk": 0,
+    "table": "procore_ep_budget_detail_rows",
+    "total_rows": 3044
+  },
+  {
+    "blank_count": 0,
+    "column": "origin_data",
+    "corresponding_endpoint_keys": [
+      "budget-modifications"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 805,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 805,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_budget_modifications",
+    "total_rows": 805
+  },
+  {
+    "blank_count": 0,
+    "column": "origin_id",
+    "corresponding_endpoint_keys": [
+      "budget-modifications"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 805,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 805,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_budget_modifications",
+    "total_rows": 805
+  },
+  {
+    "blank_count": 0,
+    "column": "parent_record_id",
+    "corresponding_endpoint_keys": [
+      "budget-modifications"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 805,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 805,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_budget_modifications",
+    "total_rows": 805
+  },
+  {
+    "blank_count": 0,
+    "column": "parent_record_id_hash",
+    "corresponding_endpoint_keys": [
+      "budget-modifications"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 805,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 805,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_budget_modifications",
+    "total_rows": 805
+  },
+  {
+    "blank_count": 0,
+    "column": "payload_sidecar_json",
+    "corresponding_endpoint_keys": [
+      "budget-modifications"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": true,
+    "missing_count": 805,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 805,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_budget_modifications",
+    "total_rows": 805
+  },
+  {
+    "blank_count": 0,
+    "column": "notes",
+    "corresponding_endpoint_keys": [
+      "budget-modifications"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 644,
+    "fingerprints_skipped": false,
+    "missing_count": 44,
+    "missing_pct": 5.465839,
+    "nonblank_count": 761,
+    "nonblank_pct": 94.534161,
+    "notnull_declared": false,
+    "null_count": 44,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_budget_modifications",
+    "total_rows": 805
+  }
+]

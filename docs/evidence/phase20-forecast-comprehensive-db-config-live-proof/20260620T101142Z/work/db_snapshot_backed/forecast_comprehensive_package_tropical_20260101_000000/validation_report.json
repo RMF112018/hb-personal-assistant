@@ -1,0 +1,313 @@
+{
+  "generated_timestamp_local": "20260101_000000",
+  "package_stamp": "20260101_000000",
+  "project_key": "tropical",
+  "checks": {
+    "output_files_parse": true,
+    "manifest_present": true,
+    "schema_present": true,
+    "readme_present": true,
+    "input_inventory_present": true,
+    "source_packages_discovered": true,
+    "evidence_registry_present": true,
+    "evidence_lineage_present": true,
+    "canonical_budget_code_coverage": true,
+    "no_invented_budget_code_keys": true,
+    "cost_entries_actuals_primary_truth": true,
+    "no_history_as_actual": true,
+    "no_pay_apps_as_actual": true,
+    "no_prior_forecast_hard_cap": true,
+    "actuals_floor_preserved": true,
+    "no_upper_cap_audit_passed": true,
+    "monthly_reconciliation_passed": true,
+    "probability_determinism_passed": true,
+    "history_outputs_consumed_or_explicitly_downgraded": true,
+    "frequency_outputs_consumed_or_explicitly_missing": true,
+    "human_acceptance_fields_present": true,
+    "operator_control_evidence_present_when_active": true,
+    "operator_controls_floor_preserved": true,
+    "operator_controls_mapping_unambiguous": true,
+    "operator_staffing_plan_evidence_present_when_active": true,
+    "operator_staffing_plan_advisory_requires_acceptance": true,
+    "dormant_suppressed_integrated_final_equals_actual": true,
+    "dormant_suppressed_probability_marked": true,
+    "projected_cost_formula_reconciles": true,
+    "budgetdetails_projected_cost_basis_reconciles": true,
+    "monthly_reconciles_to_selected_ctc": true,
+    "zero_commitment_suppression_reconciles": true,
+    "actuals_floor_respected": true,
+    "operator_controls_preserved": true,
+    "dormant_closed_suppression_preserved": true,
+    "survey_code_1000_15_01_426_mat_projected_cost_basis": true,
+    "manual_monthly_1000_15_16_110_sub_preserved": true,
+    "staffing_basis_reconciles": true,
+    "staffing_monthly_total_reconciles_to_selected_ctc": true,
+    "staffing_actuals_floor_respected": true,
+    "staffing_lab_only_numeric_application": true,
+    "staffing_does_not_apply_to_lbn_or_mat": true,
+    "staffing_package_present_if_config_enabled": true,
+    "staffing_mapping_all_accepted_rows_resolved": true,
+    "model_controls_override_staffing": true,
+    "full_run_lineage_consistent": true,
+    "actuals_monthly_by_budget_code_jsonl_present": true,
+    "actuals_monthly_by_budget_code_csv_present": true,
+    "all_canonical_keys_in_actuals": true,
+    "no_non_canonical_keys_in_actuals": true,
+    "actuals_reconcile_to_actual_cost_to_date": true,
+    "actuals_project_total_reconciles": true,
+    "actuals_source_is_costentries_only": true,
+    "actuals_plus_forecast_cost_code_csv_present": true,
+    "actuals_plus_forecast_budget_code_csv_present": true,
+    "actuals_plus_forecast_audit_present": true,
+    "actuals_plus_forecast_first_column_is_cost_code": true,
+    "actuals_plus_forecast_months_sorted": true,
+    "actuals_plus_forecast_actual_side_reconciled": true,
+    "actuals_plus_forecast_forecast_side_reconciled": true,
+    "actuals_plus_forecast_validation_passed": true,
+    "meta_files_present": true,
+    "source_hashes_unchanged": true,
+    "no_sqlite_mutation": true,
+    "no_external_calls": true,
+    "safety_scan_passed": true,
+    "determinism_passed": true,
+    "llm_receipts_have_required_fields": true
+  },
+  "canonical_code_count": 127,
+  "covered_code_count": 127,
+  "determinism": {
+    "performed": true,
+    "quantitative_core_byte_identical": true,
+    "llm_excluded_from_byte_diff": true,
+    "diff_result": "pass",
+    "per_file": [
+      {
+        "file": "integrated_forecast_by_budget_code.jsonl",
+        "sha256": "a49add2c01aba4681c71fff4d0990e4165c6dfd693c6fa213ee4971975caa7c1",
+        "identical": true
+      },
+      {
+        "file": "integrated_evidence_registry_by_budget_code.jsonl",
+        "sha256": "bb15c03f4ddd06c540afd21d4cae2937da8c33e72f33a89ebdf4529f1181db72",
+        "identical": true
+      },
+      {
+        "file": "integrated_evidence_weights_by_budget_code.jsonl",
+        "sha256": "738fb7c6bbab047f95c2f1d4b092e2ef3192f9f38efb91b6b5b82126a412cd19",
+        "identical": true
+      },
+      {
+        "file": "integrated_final_cost_recommendations.jsonl",
+        "sha256": "0f728017f03b44e488f7cdfac529865ebdbb30c5849fbb3f4a48ad54268d2e47",
+        "identical": true
+      },
+      {
+        "file": "integrated_monthly_forecast_by_budget_code.jsonl",
+        "sha256": "6b6559ca6a94f89c18b4e5b768688fceb8c48bb9eef8470c811f6f3f07d351b1",
+        "identical": true
+      },
+      {
+        "file": "integrated_monthly_project_forecast.jsonl",
+        "sha256": "5db203de33818cb0c1658ef03bb7ffe3e4ddbd325226e127e9629a36f4d61f26",
+        "identical": true
+      },
+      {
+        "file": "integrated_probability_by_budget_code.jsonl",
+        "sha256": "b387deb217d3294f106559c3a7a3b7bcd1a708dafee69a08f7bebbad3d53d15e",
+        "identical": true
+      },
+      {
+        "file": "integrated_probability_project_summary.json",
+        "sha256": "e50d8e1846c302a5689507074f11e9745b0cc3af19d7b059a701532fc5c2e683",
+        "identical": true
+      },
+      {
+        "file": "integrated_risk_register.jsonl",
+        "sha256": "7eecfc8cc9249b8784f3179e682fd2e21ec626db8ed750ec0800a34d1558a1b1",
+        "identical": true
+      },
+      {
+        "file": "integrated_human_review_queue.jsonl",
+        "sha256": "c8af8208ad41948b0f1d64d3be6781c8afcdf1f55a4bfd8f4464b8d8d65676dd",
+        "identical": true
+      },
+      {
+        "file": "integrated_change_explanation.jsonl",
+        "sha256": "2603c14576b2c1eaf2dd0a960828ebd5003b69f5e0fab419ff912f2ea96ab8d2",
+        "identical": true
+      },
+      {
+        "file": "evidence_conflict_register.jsonl",
+        "sha256": "c5b39ca72c5ce2cd21a9df7c72af4ccea5de75a71c4e98a19c746dd2a828145c",
+        "identical": true
+      },
+      {
+        "file": "model_package_inventory.json",
+        "sha256": "7ae858dc298812bc6e2b5c75974edafbc1dc553e43263c5b44b58ebb9acb78df",
+        "identical": true
+      },
+      {
+        "file": "project_comprehensive_forecast_summary.json",
+        "sha256": "d196c56d8d4aa84855e34e95a77e238a9f8ba9d996a7d07862d04398390b68bc",
+        "identical": true
+      },
+      {
+        "file": "top_overrun_risks.json",
+        "sha256": "3db4b817018e2c26636d5e42ee159183a144a52a9f9d1aa913f5b6cbad3415ae",
+        "identical": true
+      },
+      {
+        "file": "top_confidence_improvements.json",
+        "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+        "identical": true
+      },
+      {
+        "file": "top_evidence_conflicts.json",
+        "sha256": "836969ec8a350be097ef43c3c37bd63ddc2ba95dbf29f700edbf95a66496e099",
+        "identical": true
+      },
+      {
+        "file": "top_human_review_items.json",
+        "sha256": "2fbdb6c4db1d362f543cad3341d8dc8aca1e15e88539209039ce39efac626ef9",
+        "identical": true
+      },
+      {
+        "file": "data_quality_warnings.jsonl",
+        "sha256": "a664e6f434eb6b66332a06f36a85db51e8f458d697d5074e89770c2020a698b5",
+        "identical": true
+      },
+      {
+        "file": "actuals_monthly_by_budget_code.jsonl",
+        "sha256": "b07afcec6086f360885de011e50caeb6ea26e9364c3a1fad98d79d8e8e888c4c",
+        "identical": true
+      },
+      {
+        "file": "actuals_monthly_by_cost_code.jsonl",
+        "sha256": "0bdec291e0ee5957d98ea757ce451c7d8b38a032259adabbec9027816748af13",
+        "identical": true
+      },
+      {
+        "file": "actuals_monthly_project_total.jsonl",
+        "sha256": "fe3f4b53b57905d3209ab8d03557f6390edc2e6160eeaeebb99ae92adf85c078",
+        "identical": true
+      },
+      {
+        "file": "actuals_to_forecast_bridge_by_budget_code.jsonl",
+        "sha256": "c2eb5fe6871afca44a71e3eeb4c95071fefb9fe6115dec7419fbd1db9604d0c6",
+        "identical": true
+      },
+      {
+        "file": "actuals_monthly_by_budget_code.csv",
+        "sha256": "8e0b6dd4816748187921c3f0ab011b94a411da7403fd085a1897b2116ee592a2",
+        "identical": true
+      },
+      {
+        "file": "actuals_monthly_by_cost_code.csv",
+        "sha256": "7c0c5e42688d4e33d401381154d09786488b530ffcac845d34b59df418db90e2",
+        "identical": true
+      },
+      {
+        "file": "actuals_plus_forecast_monthly_by_cost_code.csv",
+        "sha256": "2e6a4902f5aa16dee68781eb3d20a85968a17dba22208cf54ff3a67e17986b52",
+        "identical": true
+      },
+      {
+        "file": "actuals_plus_forecast_monthly_by_budget_code.csv",
+        "sha256": "36d33ba08c764cc3a56abeab2f2f6e17cf5bf7f619e4a1d9f7937bd3aa5d6d05",
+        "identical": true
+      },
+      {
+        "file": "audit/actuals_monthly_reconciliation_audit.json",
+        "sha256": "a5c7d34ea457953c12edda750bc4ef579ac1312620323bdd71610ef69cc61b07",
+        "identical": true
+      },
+      {
+        "file": "audit/actuals_plus_forecast_monthly_by_cost_code_audit.json",
+        "sha256": "5e7b9435c9d711c092ec93f620d2deffc905b0b030aec07c52504330f85710a0",
+        "identical": true
+      },
+      {
+        "file": "audit/evidence_registry_audit.json",
+        "sha256": "bae4d708ef86779f9889614a1e63f505ec052bb6caf6df984a4f11072a827f8c",
+        "identical": true
+      },
+      {
+        "file": "audit/evidence_weighting_audit.json",
+        "sha256": "5d9cb0dfae674ffad3e7230ae0fc690b66fd0bcc7f408605fb192f83a5251afc",
+        "identical": true
+      },
+      {
+        "file": "audit/history_consumption_audit.json",
+        "sha256": "bbf7ca0c1b02f9ca3c43ed91640741330083d67afe6d8f9006454522a8450549",
+        "identical": true
+      },
+      {
+        "file": "audit/frequency_consumption_audit.json",
+        "sha256": "1eda336a4f7f9fd1dda821ecc81dc63977ce0d8bf0ec1f3020f3107aa79a5edc",
+        "identical": true
+      },
+      {
+        "file": "audit/monthly_reconciliation_audit.json",
+        "sha256": "3e51f6cdacc5901c4c82eb7ef17d59b82866fe5ab2fa0023021e612f31067d85",
+        "identical": true
+      },
+      {
+        "file": "audit/probability_adjustment_audit.json",
+        "sha256": "ad0bf0ead0ec9f780c1da67299e545f1e5e89dd884838f7326f3c258d14f1310",
+        "identical": true
+      },
+      {
+        "file": "audit/no_upper_cap_audit.json",
+        "sha256": "564a506759c97ec44d7b9a4e8aeb1906bff5442bb2b7824e87ab30cb1f108700",
+        "identical": true
+      },
+      {
+        "file": "audit/actuals_floor_audit.json",
+        "sha256": "adee6f9998c06a61b0acd0c9dd0460518e82032918043b29042759a82716ecc1",
+        "identical": true
+      },
+      {
+        "file": "audit/model_evidence_completeness_matrix.json",
+        "sha256": "b9a0a871562ac6b6437968bfcee0645d2c8b6a005fef2abda971ae2d3dfe452f",
+        "identical": true
+      },
+      {
+        "file": "audit/forecast_cost_basis_decision_audit.json",
+        "sha256": "b56c015d5255efb41a2081105863b9b70c52e24e55bded5c7fac3c49fb3bae79",
+        "identical": true
+      },
+      {
+        "file": "audit/forecast_staffing_basis_decision_audit.json",
+        "sha256": "77771f2e59b57c50ae3584b778b81a17086de687ca08179fbd3d655ca55e9732",
+        "identical": true
+      },
+      {
+        "file": "audit/forecast_run_lineage_audit.json",
+        "sha256": "dd3649f82b45b0693278ded3a2e9f66d43a5bc18ca63f79b99ca6f99c8d1587c",
+        "identical": true
+      }
+    ]
+  },
+  "safety_scan": {
+    "scanned_file_count": 49,
+    "findings": {
+      "api_token": 0,
+      "bearer": 0,
+      "email": 0,
+      "pem": 0,
+      "phone": 0,
+      "private_blob_url": 0,
+      "raw_body_field": 0,
+      "signed_url_sig": 0
+    },
+    "fail_categories": [
+      "api_token",
+      "bearer",
+      "pem",
+      "private_blob_url",
+      "raw_body_field",
+      "signed_url_sig"
+    ],
+    "passed": true
+  },
+  "passed": true
+}

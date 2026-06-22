@@ -1,0 +1,23 @@
+{
+  "capture_run_id": "a8785186-85de-408d-8aa5-852f0c3e1b58",
+  "endpoint_family": "billing",
+  "endpoint_key": "billing-periods",
+  "is_current": 1,
+  "parent_record_id": null,
+  "payload_captured_at_utc": "2026-06-20T06:55:54.051599+00:00",
+  "payload_file": "docs/evidence/procore-listed-tables-null-field-audit/20260621T092320Z/sensitive-raw-payload-samples/billing-periods/rank-02__raw_payload_id-perp-8d9d41cf04b7753cd52c52b8461021ea.payload_json",
+  "payload_hash": "784a1d0eb7fc8566e86aacb0de69d7e9c43a2c4ba97be0dac08c0bfc12011bb9",
+  "payload_json_char_length": 213,
+  "payload_json_sha256": "784a1d0eb7fc8566e86aacb0de69d7e9c43a2c4ba97be0dac08c0bfc12011bb9",
+  "payload_seen_first_utc": "2026-06-20T06:55:54.051599+00:00",
+  "payload_seen_last_utc": "2026-06-20T06:55:54.051599+00:00",
+  "payload_size_bytes": 213,
+  "project_id": "3133242",
+  "project_key": "rybovich",
+  "rank": 2,
+  "raw_payload_id": "perp-8d9d41cf04b7753cd52c52b8461021ea",
+  "raw_procore_payload_persisted": 1,
+  "record_id": "3619256",
+  "record_type": "billing-periods",
+  "source_quality": "live_full_payload"
+}

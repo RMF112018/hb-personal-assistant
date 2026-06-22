@@ -1,0 +1,861 @@
+[
+  {
+    "column": "is_active",
+    "declared_type": "INTEGER",
+    "distribution": [
+      {
+        "row_count": 6,
+        "value": "1"
+      }
+    ],
+    "table": "forecast_config_sources"
+  },
+  {
+    "column": "is_current",
+    "declared_type": "INTEGER",
+    "distribution": [
+      {
+        "row_count": 66,
+        "value": "1"
+      }
+    ],
+    "table": "procore_ep_billing_periods"
+  },
+  {
+    "column": "is_current",
+    "declared_type": "INTEGER",
+    "distribution": [
+      {
+        "row_count": 420,
+        "value": "1"
+      }
+    ],
+    "table": "procore_ep_budget_change_history"
+  },
+  {
+    "column": "is_current",
+    "declared_type": "INTEGER",
+    "distribution": [
+      {
+        "row_count": 399,
+        "value": "1"
+      }
+    ],
+    "table": "procore_ep_budget_detail_columns"
+  },
+  {
+    "column": "is_current",
+    "declared_type": "INTEGER",
+    "distribution": [
+      {
+        "row_count": 273951,
+        "value": "1"
+      }
+    ],
+    "table": "procore_ep_budget_detail_row_cells"
+  },
+  {
+    "column": "is_current",
+    "declared_type": "INTEGER",
+    "distribution": [
+      {
+        "row_count": 3044,
+        "value": "1"
+      }
+    ],
+    "table": "procore_ep_budget_detail_rows"
+  },
+  {
+    "column": "is_current",
+    "declared_type": "INTEGER",
+    "distribution": [
+      {
+        "row_count": 805,
+        "value": "1"
+      }
+    ],
+    "table": "procore_ep_budget_modifications"
+  },
+  {
+    "column": "is_current",
+    "declared_type": "INTEGER",
+    "distribution": [
+      {
+        "row_count": 35,
+        "value": "1"
+      }
+    ],
+    "table": "procore_ep_budget_views"
+  },
+  {
+    "column": "comments_enabled",
+    "declared_type": "TEXT",
+    "distribution": [
+      {
+        "row_count": 1059,
+        "value": "True"
+      }
+    ],
+    "table": "procore_ep_change_events"
+  },
+  {
+    "column": "has_edited_markups",
+    "declared_type": "TEXT",
+    "distribution": [
+      {
+        "row_count": 1058,
+        "value": "False"
+      },
+      {
+        "row_count": 1,
+        "value": "True"
+      }
+    ],
+    "table": "procore_ep_change_events"
+  },
+  {
+    "column": "is_current",
+    "declared_type": "INTEGER",
+    "distribution": [
+      {
+        "row_count": 1059,
+        "value": "1"
+      }
+    ],
+    "table": "procore_ep_change_events"
+  },
+  {
+    "column": "is_current",
+    "declared_type": "INTEGER",
+    "distribution": [
+      {
+        "row_count": 2352,
+        "value": "1"
+      }
+    ],
+    "table": "procore_ep_change_events_attachments"
+  },
+  {
+    "column": "is_current",
+    "declared_type": "INTEGER",
+    "distribution": [
+      {
+        "row_count": 2829,
+        "value": "1"
+      }
+    ],
+    "table": "procore_ep_change_events_change_items"
+  },
+  {
+    "column": "is_current",
+    "declared_type": "INTEGER",
+    "distribution": [
+      {
+        "row_count": 8487,
+        "value": "1"
+      }
+    ],
+    "table": "procore_ep_change_events_change_items_budget_code_seg_2dff22"
+  },
+  {
+    "column": "is_current",
+    "declared_type": "INTEGER",
+    "distribution": [
+      {
+        "row_count": 2154,
+        "value": "1"
+      }
+    ],
+    "table": "procore_ep_change_events_markup_items"
+  },
+  {
+    "column": "is_current",
+    "declared_type": "INTEGER",
+    "distribution": [
+      {
+        "row_count": 6462,
+        "value": "1"
+      }
+    ],
+    "table": "procore_ep_change_events_markup_items_wbs_code_segment_items"
+  },
+  {
+    "column": "is_current",
+    "declared_type": "INTEGER",
+    "distribution": [
+      {
+        "row_count": 153,
+        "value": "1"
+      }
+    ],
+    "table": "procore_ep_commitment_attachments"
+  },
+  {
+    "column": "enable_ssov",
+    "declared_type": "TEXT",
+    "distribution": [
+      {
+        "row_count": 288,
+        "value": "False"
+      }
+    ],
+    "table": "procore_ep_commitment_change_orders"
+  },
+  {
+    "column": "executed",
+    "declared_type": "TEXT",
+    "distribution": [
+      {
+        "row_count": 236,
+        "value": "True"
+      },
+      {
+        "row_count": 52,
+        "value": "False"
+      }
+    ],
+    "table": "procore_ep_commitment_change_orders"
+  },
+  {
+    "column": "paid",
+    "declared_type": "TEXT",
+    "distribution": [
+      {
+        "row_count": 288,
+        "value": "False"
+      }
+    ],
+    "table": "procore_ep_commitment_change_orders"
+  },
+  {
+    "column": "private",
+    "declared_type": "TEXT",
+    "distribution": [
+      {
+        "row_count": 284,
+        "value": "True"
+      },
+      {
+        "row_count": 4,
+        "value": "False"
+      }
+    ],
+    "table": "procore_ep_commitment_change_orders"
+  },
+  {
+    "column": "is_current",
+    "declared_type": "INTEGER",
+    "distribution": [
+      {
+        "row_count": 288,
+        "value": "1"
+      }
+    ],
+    "table": "procore_ep_commitment_change_orders"
+  },
+  {
+    "column": "is_current",
+    "declared_type": "INTEGER",
+    "distribution": [
+      {
+        "row_count": 118,
+        "value": "1"
+      }
+    ],
+    "table": "procore_ep_commitment_compliance"
+  },
+  {
+    "column": "is_current",
+    "declared_type": "INTEGER",
+    "distribution": [
+      {
+        "row_count": 1085,
+        "value": "1"
+      }
+    ],
+    "table": "procore_ep_commitment_compliance_insurance_documents"
+  },
+  {
+    "column": "is_current",
+    "declared_type": "INTEGER",
+    "distribution": [
+      {
+        "row_count": 2844,
+        "value": "1"
+      }
+    ],
+    "table": "procore_ep_commitment_compliance_insurance_documents__52b7bf"
+  },
+  {
+    "column": "allow_change_orders_ssov",
+    "declared_type": "TEXT",
+    "distribution": [
+      {
+        "row_count": 243,
+        "value": "False"
+      }
+    ],
+    "table": "procore_ep_commitment_contracts"
+  },
+  {
+    "column": "allow_comments",
+    "declared_type": "TEXT",
+    "distribution": [
+      {
+        "row_count": 243,
+        "value": "False"
+      }
+    ],
+    "table": "procore_ep_commitment_contracts"
+  },
+  {
+    "column": "allow_markups",
+    "declared_type": "TEXT",
+    "distribution": [
+      {
+        "row_count": 243,
+        "value": "False"
+      }
+    ],
+    "table": "procore_ep_commitment_contracts"
+  },
+  {
+    "column": "allow_payment_applications",
+    "declared_type": "TEXT",
+    "distribution": [
+      {
+        "row_count": 243,
+        "value": "True"
+      }
+    ],
+    "table": "procore_ep_commitment_contracts"
+  },
+  {
+    "column": "allow_payments",
+    "declared_type": "TEXT",
+    "distribution": [
+      {
+        "row_count": 243,
+        "value": "True"
+      }
+    ],
+    "table": "procore_ep_commitment_contracts"
+  },
+  {
+    "column": "enable_ssov",
+    "declared_type": "TEXT",
+    "distribution": [
+      {
+        "row_count": 230,
+        "value": "True"
+      },
+      {
+        "row_count": 13,
+        "value": "False"
+      }
+    ],
+    "table": "procore_ep_commitment_contracts"
+  },
+  {
+    "column": "executed",
+    "declared_type": "TEXT",
+    "distribution": [
+      {
+        "row_count": 137,
+        "value": "True"
+      },
+      {
+        "row_count": 106,
+        "value": "False"
+      }
+    ],
+    "table": "procore_ep_commitment_contracts"
+  },
+  {
+    "column": "private",
+    "declared_type": "TEXT",
+    "distribution": [
+      {
+        "row_count": 243,
+        "value": "True"
+      }
+    ],
+    "table": "procore_ep_commitment_contracts"
+  },
+  {
+    "column": "ssr_enabled",
+    "declared_type": "TEXT",
+    "distribution": [
+      {
+        "row_count": 243,
+        "value": "False"
+      }
+    ],
+    "table": "procore_ep_commitment_contracts"
+  },
+  {
+    "column": "is_current",
+    "declared_type": "INTEGER",
+    "distribution": [
+      {
+        "row_count": 243,
+        "value": "1"
+      }
+    ],
+    "table": "procore_ep_commitment_contracts"
+  },
+  {
+    "column": "is_current",
+    "declared_type": "INTEGER",
+    "distribution": [
+      {
+        "row_count": 1308,
+        "value": "1"
+      }
+    ],
+    "table": "procore_ep_commitment_line_items"
+  },
+  {
+    "column": "is_current",
+    "declared_type": "INTEGER",
+    "distribution": [
+      {
+        "row_count": 249,
+        "value": "1"
+      }
+    ],
+    "table": "procore_ep_prime_change_order_line_items"
+  },
+  {
+    "column": "enable_ssov",
+    "declared_type": "TEXT",
+    "distribution": [
+      {
+        "row_count": 219,
+        "value": "False"
+      }
+    ],
+    "table": "procore_ep_prime_change_orders"
+  },
+  {
+    "column": "executed",
+    "declared_type": "TEXT",
+    "distribution": [
+      {
+        "row_count": 174,
+        "value": "False"
+      },
+      {
+        "row_count": 45,
+        "value": "True"
+      }
+    ],
+    "table": "procore_ep_prime_change_orders"
+  },
+  {
+    "column": "paid",
+    "declared_type": "TEXT",
+    "distribution": [
+      {
+        "row_count": 219,
+        "value": "False"
+      }
+    ],
+    "table": "procore_ep_prime_change_orders"
+  },
+  {
+    "column": "private",
+    "declared_type": "TEXT",
+    "distribution": [
+      {
+        "row_count": 218,
+        "value": "True"
+      },
+      {
+        "row_count": 1,
+        "value": "False"
+      }
+    ],
+    "table": "procore_ep_prime_change_orders"
+  },
+  {
+    "column": "is_current",
+    "declared_type": "INTEGER",
+    "distribution": [
+      {
+        "row_count": 219,
+        "value": "1"
+      }
+    ],
+    "table": "procore_ep_prime_change_orders"
+  },
+  {
+    "column": "is_current",
+    "declared_type": "INTEGER",
+    "distribution": [
+      {
+        "row_count": 499,
+        "value": "1"
+      }
+    ],
+    "table": "procore_ep_prime_contract_line_items"
+  },
+  {
+    "column": "executed",
+    "declared_type": "TEXT",
+    "distribution": [
+      {
+        "row_count": 6,
+        "value": "False"
+      },
+      {
+        "row_count": 1,
+        "value": "True"
+      }
+    ],
+    "table": "procore_ep_prime_contracts"
+  },
+  {
+    "column": "has_change_order_packages",
+    "declared_type": "TEXT",
+    "distribution": [
+      {
+        "row_count": 4,
+        "value": "False"
+      },
+      {
+        "row_count": 3,
+        "value": "True"
+      }
+    ],
+    "table": "procore_ep_prime_contracts"
+  },
+  {
+    "column": "has_potential_change_orders",
+    "declared_type": "TEXT",
+    "distribution": [
+      {
+        "row_count": 5,
+        "value": "True"
+      },
+      {
+        "row_count": 2,
+        "value": "False"
+      }
+    ],
+    "table": "procore_ep_prime_contracts"
+  },
+  {
+    "column": "private",
+    "declared_type": "TEXT",
+    "distribution": [
+      {
+        "row_count": 7,
+        "value": "True"
+      }
+    ],
+    "table": "procore_ep_prime_contracts"
+  },
+  {
+    "column": "is_current",
+    "declared_type": "INTEGER",
+    "distribution": [
+      {
+        "row_count": 7,
+        "value": "1"
+      }
+    ],
+    "table": "procore_ep_prime_contracts"
+  },
+  {
+    "column": "is_demo",
+    "declared_type": "TEXT",
+    "distribution": [
+      {
+        "row_count": 36,
+        "value": "False"
+      },
+      {
+        "row_count": 6,
+        "value": "True"
+      }
+    ],
+    "table": "procore_ep_projects"
+  },
+  {
+    "column": "is_current",
+    "declared_type": "INTEGER",
+    "distribution": [
+      {
+        "row_count": 42,
+        "value": "1"
+      }
+    ],
+    "table": "procore_ep_projects"
+  },
+  {
+    "column": "allow_change_orders_ssov",
+    "declared_type": "TEXT",
+    "distribution": [
+      {
+        "row_count": 11,
+        "value": "False"
+      }
+    ],
+    "table": "procore_ep_purchase_order_contracts"
+  },
+  {
+    "column": "enable_ssov",
+    "declared_type": "TEXT",
+    "distribution": [
+      {
+        "row_count": 11,
+        "value": "False"
+      }
+    ],
+    "table": "procore_ep_purchase_order_contracts"
+  },
+  {
+    "column": "executed",
+    "declared_type": "TEXT",
+    "distribution": [
+      {
+        "row_count": 9,
+        "value": "False"
+      },
+      {
+        "row_count": 2,
+        "value": "True"
+      }
+    ],
+    "table": "procore_ep_purchase_order_contracts"
+  },
+  {
+    "column": "has_change_order_packages",
+    "declared_type": "TEXT",
+    "distribution": [
+      {
+        "row_count": 8,
+        "value": "False"
+      },
+      {
+        "row_count": 3,
+        "value": "True"
+      }
+    ],
+    "table": "procore_ep_purchase_order_contracts"
+  },
+  {
+    "column": "has_potential_change_orders",
+    "declared_type": "TEXT",
+    "distribution": [
+      {
+        "row_count": 8,
+        "value": "False"
+      },
+      {
+        "row_count": 3,
+        "value": "True"
+      }
+    ],
+    "table": "procore_ep_purchase_order_contracts"
+  },
+  {
+    "column": "private",
+    "declared_type": "TEXT",
+    "distribution": [
+      {
+        "row_count": 11,
+        "value": "True"
+      }
+    ],
+    "table": "procore_ep_purchase_order_contracts"
+  },
+  {
+    "column": "requisitions_are_enabled",
+    "declared_type": "TEXT",
+    "distribution": [
+      {
+        "row_count": 11,
+        "value": "True"
+      }
+    ],
+    "table": "procore_ep_purchase_order_contracts"
+  },
+  {
+    "column": "is_current",
+    "declared_type": "INTEGER",
+    "distribution": [
+      {
+        "row_count": 11,
+        "value": "1"
+      }
+    ],
+    "table": "procore_ep_purchase_order_contracts"
+  },
+  {
+    "column": "is_current",
+    "declared_type": "INTEGER",
+    "distribution": [
+      {
+        "row_count": 1,
+        "value": "1"
+      }
+    ],
+    "table": "procore_ep_purchase_order_contracts_custom_fields_cus_a0fe65"
+  },
+  {
+    "column": "is_current",
+    "declared_type": "INTEGER",
+    "distribution": [
+      {
+        "row_count": 28,
+        "value": "1"
+      }
+    ],
+    "table": "procore_ep_purchase_order_line_items"
+  },
+  {
+    "column": "is_current",
+    "declared_type": "INTEGER",
+    "distribution": [
+      {
+        "row_count": 49,
+        "value": "1"
+      }
+    ],
+    "table": "procore_ep_purchase_order_line_items_cost_code_line_i_779dbd"
+  },
+  {
+    "column": "private",
+    "declared_type": "TEXT",
+    "distribution": [
+      {
+        "row_count": 12,
+        "value": "False"
+      }
+    ],
+    "table": "procore_ep_rfqs"
+  },
+  {
+    "column": "is_current",
+    "declared_type": "INTEGER",
+    "distribution": [
+      {
+        "row_count": 12,
+        "value": "1"
+      }
+    ],
+    "table": "procore_ep_rfqs"
+  },
+  {
+    "column": "is_current",
+    "declared_type": "INTEGER",
+    "distribution": [
+      {
+        "row_count": 72,
+        "value": "1"
+      }
+    ],
+    "table": "procore_ep_rfqs_attachments"
+  },
+  {
+    "column": "is_current",
+    "declared_type": "INTEGER",
+    "distribution": [
+      {
+        "row_count": 94,
+        "value": "1"
+      }
+    ],
+    "table": "procore_ep_rfqs_change_event_attachments"
+  },
+  {
+    "column": "is_markup_summary",
+    "declared_type": "TEXT",
+    "distribution": [
+      {
+        "row_count": 63,
+        "value": "False"
+      }
+    ],
+    "table": "procore_ep_rfqs_change_event_change_event_line_items"
+  },
+  {
+    "column": "is_current",
+    "declared_type": "INTEGER",
+    "distribution": [
+      {
+        "row_count": 63,
+        "value": "1"
+      }
+    ],
+    "table": "procore_ep_rfqs_change_event_change_event_line_items"
+  },
+  {
+    "column": "is_current",
+    "declared_type": "INTEGER",
+    "distribution": [
+      {
+        "row_count": 69,
+        "value": "1"
+      }
+    ],
+    "table": "procore_ep_rfqs_change_event_change_event_line_items__0a3e8d"
+  },
+  {
+    "column": "is_current",
+    "declared_type": "INTEGER",
+    "distribution": [
+      {
+        "row_count": 2403,
+        "value": "1"
+      }
+    ],
+    "table": "procore_ep_subcontractor_invoice_change_order_items"
+  },
+  {
+    "column": "is_current",
+    "declared_type": "INTEGER",
+    "distribution": [
+      {
+        "row_count": 51428,
+        "value": "1"
+      }
+    ],
+    "table": "procore_ep_subcontractor_invoice_contract_detail_items"
+  },
+  {
+    "column": "final",
+    "declared_type": "TEXT",
+    "distribution": [
+      {
+        "row_count": 1002,
+        "value": "False"
+      }
+    ],
+    "table": "procore_ep_subcontractor_invoices"
+  },
+  {
+    "column": "is_current",
+    "declared_type": "INTEGER",
+    "distribution": [
+      {
+        "row_count": 1002,
+        "value": "1"
+      }
+    ],
+    "table": "procore_ep_subcontractor_invoices"
+  },
+  {
+    "column": "is_current",
+    "declared_type": "INTEGER",
+    "distribution": [
+      {
+        "row_count": 1000,
+        "value": "1"
+      }
+    ],
+    "table": "procore_ep_subcontractor_invoices_attachments"
+  }
+]

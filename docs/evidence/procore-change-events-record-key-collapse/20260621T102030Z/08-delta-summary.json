@@ -1,0 +1,320 @@
+{
+  "business_field_nonblank_deltas": {
+    "procore_ep_change_events": {
+      "currency_configuration_currency_iso_code": {
+        "nonblank_after": 0,
+        "nonblank_before": 0,
+        "nonblank_delta": 0
+      },
+      "deleted_at": {
+        "nonblank_after": 0,
+        "nonblank_before": 0,
+        "nonblank_delta": 0
+      },
+      "event_origin": {
+        "nonblank_after": 5,
+        "nonblank_before": 5,
+        "nonblank_delta": 0
+      },
+      "event_origin_display_name": {
+        "nonblank_after": 144,
+        "nonblank_before": 144,
+        "nonblank_delta": 0
+      },
+      "event_origin_origin_id": {
+        "nonblank_after": 144,
+        "nonblank_before": 144,
+        "nonblank_delta": 0
+      },
+      "external_data": {
+        "nonblank_after": 0,
+        "nonblank_before": 0,
+        "nonblank_delta": 0
+      },
+      "source": {
+        "nonblank_after": 0,
+        "nonblank_before": 0,
+        "nonblank_delta": 0
+      }
+    },
+    "procore_ep_change_events_change_items": {
+      "budget_impact_budget_change": {
+        "nonblank_after": 0,
+        "nonblank_before": 0,
+        "nonblank_delta": 0
+      },
+      "budget_impact_budget_modification": {
+        "nonblank_after": 0,
+        "nonblank_before": 0,
+        "nonblank_delta": 0
+      },
+      "budget_impact_budget_modification_amount": {
+        "nonblank_after": 8,
+        "nonblank_before": 9,
+        "nonblank_delta": -1
+      },
+      "budget_impact_budget_modification_budget_modification_id": {
+        "nonblank_after": 8,
+        "nonblank_before": 9,
+        "nonblank_delta": -1
+      },
+      "budget_impact_budget_modification_notes": {
+        "nonblank_after": 8,
+        "nonblank_before": 9,
+        "nonblank_delta": -1
+      },
+      "budget_impact_budget_modification_transfer_from_id": {
+        "nonblank_after": 8,
+        "nonblank_before": 9,
+        "nonblank_delta": -1
+      },
+      "budget_impact_budget_modification_transfer_from_name": {
+        "nonblank_after": 8,
+        "nonblank_before": 9,
+        "nonblank_delta": -1
+      },
+      "budget_impact_budget_modification_transfer_to_id": {
+        "nonblank_after": 8,
+        "nonblank_before": 9,
+        "nonblank_delta": -1
+      },
+      "budget_impact_budget_modification_transfer_to_name": {
+        "nonblank_after": 8,
+        "nonblank_before": 9,
+        "nonblank_delta": -1
+      },
+      "cost_impact_commitment_currency_configuration_base_currency_iso_code": {
+        "nonblank_after": 0,
+        "nonblank_before": 0,
+        "nonblank_delta": 0
+      },
+      "cost_impact_commitment_currency_configuration_currency_exchange_rate": {
+        "nonblank_after": 0,
+        "nonblank_before": 0,
+        "nonblank_delta": 0
+      },
+      "cost_impact_commitment_currency_configuration_currency_iso_code": {
+        "nonblank_after": 0,
+        "nonblank_before": 0,
+        "nonblank_delta": 0
+      },
+      "cost_impact_non_commitment_amount": {
+        "nonblank_after": 0,
+        "nonblank_before": 0,
+        "nonblank_delta": 0
+      },
+      "cost_impact_request_for_quote_currency_configuration_base_currency_iso_code": {
+        "nonblank_after": 0,
+        "nonblank_before": 0,
+        "nonblank_delta": 0
+      },
+      "cost_impact_request_for_quote_currency_configuration_currency_exchange_rate": {
+        "nonblank_after": 0,
+        "nonblank_before": 0,
+        "nonblank_delta": 0
+      },
+      "cost_impact_request_for_quote_currency_configuration_currency_iso_code": {
+        "nonblank_after": 0,
+        "nonblank_before": 0,
+        "nonblank_delta": 0
+      },
+      "cost_impact_request_for_quote_id": {
+        "nonblank_after": 290,
+        "nonblank_before": 290,
+        "nonblank_delta": 0
+      },
+      "cost_impact_request_for_quote_number": {
+        "nonblank_after": 290,
+        "nonblank_before": 290,
+        "nonblank_delta": 0
+      },
+      "cost_impact_request_for_quote_status": {
+        "nonblank_after": 290,
+        "nonblank_before": 290,
+        "nonblank_delta": 0
+      },
+      "cost_impact_request_for_quote_title": {
+        "nonblank_after": 290,
+        "nonblank_before": 290,
+        "nonblank_delta": 0
+      },
+      "currency_configuration_currency_iso_code": {
+        "nonblank_after": 0,
+        "nonblank_before": 0,
+        "nonblank_delta": 0
+      },
+      "deleted_at": {
+        "nonblank_after": 0,
+        "nonblank_before": 0,
+        "nonblank_delta": 0
+      },
+      "latest_cost_values_uom_id": {
+        "nonblank_after": 821,
+        "nonblank_before": 822,
+        "nonblank_delta": -1
+      },
+      "latest_cost_values_uom_name": {
+        "nonblank_after": 821,
+        "nonblank_before": 822,
+        "nonblank_delta": -1
+      },
+      "latest_revenue_values_uom_id": {
+        "nonblank_after": 820,
+        "nonblank_before": 821,
+        "nonblank_delta": -1
+      },
+      "latest_revenue_values_uom_name": {
+        "nonblank_after": 820,
+        "nonblank_before": 821,
+        "nonblank_delta": -1
+      },
+      "revenue_impact_change_order_currency_configuration_base_currency_iso_code": {
+        "nonblank_after": 0,
+        "nonblank_before": 0,
+        "nonblank_delta": 0
+      },
+      "revenue_impact_change_order_currency_configuration_currency_exchange_rate": {
+        "nonblank_after": 0,
+        "nonblank_before": 0,
+        "nonblank_delta": 0
+      },
+      "revenue_impact_change_order_currency_configuration_currency_iso_code": {
+        "nonblank_after": 0,
+        "nonblank_before": 0,
+        "nonblank_delta": 0
+      }
+    }
+  },
+  "ok_to_use_for_record_key_remediation_decisions": true,
+  "projection_cardinality_deltas": {
+    "procore_ep_change_events": {
+      "distinct_item_id_after": null,
+      "distinct_item_id_before": null,
+      "distinct_record_key_after": 1059,
+      "distinct_record_key_before": 1059,
+      "row_count_after": 1059,
+      "row_count_before": 1059,
+      "row_count_delta": 0
+    },
+    "procore_ep_change_events_attachments": {
+      "distinct_item_id_after": 2333,
+      "distinct_item_id_before": 2334,
+      "distinct_record_key_after": 2351,
+      "distinct_record_key_before": 2352,
+      "row_count_after": 2351,
+      "row_count_before": 2352,
+      "row_count_delta": -1
+    },
+    "procore_ep_change_events_change_items": {
+      "distinct_item_id_after": 2825,
+      "distinct_item_id_before": 2829,
+      "distinct_record_key_after": 2825,
+      "distinct_record_key_before": 2829,
+      "row_count_after": 2825,
+      "row_count_before": 2829,
+      "row_count_delta": -4
+    },
+    "procore_ep_change_events_change_items_budget_code_seg_2dff22": {
+      "distinct_item_id_after": 201,
+      "distinct_item_id_before": 201,
+      "distinct_record_key_after": 8475,
+      "distinct_record_key_before": 8487,
+      "row_count_after": 8475,
+      "row_count_before": 8487,
+      "row_count_delta": -12
+    },
+    "procore_ep_change_events_markup_items": {
+      "distinct_item_id_after": 2154,
+      "distinct_item_id_before": 2154,
+      "distinct_record_key_after": 2154,
+      "distinct_record_key_before": 2154,
+      "row_count_after": 2154,
+      "row_count_before": 2154,
+      "row_count_delta": 0
+    },
+    "procore_ep_change_events_markup_items_wbs_code_segment_items": {
+      "distinct_item_id_after": 11,
+      "distinct_item_id_before": 11,
+      "distinct_record_key_after": 6462,
+      "distinct_record_key_before": 6462,
+      "row_count_after": 6462,
+      "row_count_before": 6462,
+      "row_count_delta": 0
+    }
+  },
+  "projection_reprocess_guardrails": {
+    "child_rows_written": 76604,
+    "degraded_unknown_projection_fields": 0,
+    "external_writeback_performed": 0,
+    "live_procore_calls": 0,
+    "ok": true,
+    "primary_rows_written": 3860,
+    "raw_full_rows_inspected": 3860
+  },
+  "raw_current_cardinality": {
+    "entities": {
+      "attachments": {
+        "distinct_id_only": 2334,
+        "distinct_scoped_company_project_parent_id": 2352,
+        "id_only_duplicate_key_count": 1210,
+        "max_rows_per_id_only_key": 13,
+        "max_rows_per_scoped_key": 13,
+        "raw_values_emitted": false,
+        "scoped_duplicate_key_count": 1203,
+        "total_items_seen": 6616
+      },
+      "budget_code_segment_items": {
+        "distinct_id_only": 201,
+        "distinct_scoped_company_project_parent_id": 8363,
+        "id_only_duplicate_key_count": 193,
+        "max_rows_per_id_only_key": 6977,
+        "max_rows_per_scoped_key": 36,
+        "raw_values_emitted": false,
+        "scoped_duplicate_key_count": 3977,
+        "total_items_seen": 24429
+      },
+      "change_events": {
+        "distinct_id_only": 1059,
+        "distinct_scoped_company_project_parent_id": 1059,
+        "id_only_duplicate_key_count": 592,
+        "max_rows_per_id_only_key": 13,
+        "max_rows_per_scoped_key": 13,
+        "raw_values_emitted": false,
+        "scoped_duplicate_key_count": 592,
+        "total_items_seen": 3860
+      },
+      "change_items": {
+        "distinct_id_only": 2829,
+        "distinct_scoped_company_project_parent_id": 2829,
+        "id_only_duplicate_key_count": 1363,
+        "max_rows_per_id_only_key": 13,
+        "max_rows_per_scoped_key": 13,
+        "raw_values_emitted": false,
+        "scoped_duplicate_key_count": 1363,
+        "total_items_seen": 8143
+      },
+      "markup_items": {
+        "distinct_id_only": 2154,
+        "distinct_scoped_company_project_parent_id": 2154,
+        "id_only_duplicate_key_count": 1032,
+        "max_rows_per_id_only_key": 13,
+        "max_rows_per_scoped_key": 13,
+        "raw_values_emitted": false,
+        "scoped_duplicate_key_count": 1032,
+        "total_items_seen": 9354
+      },
+      "wbs_code_segment_items": {
+        "distinct_id_only": 11,
+        "distinct_scoped_company_project_parent_id": 6322,
+        "id_only_duplicate_key_count": 11,
+        "max_rows_per_id_only_key": 6987,
+        "max_rows_per_scoped_key": 13,
+        "raw_values_emitted": false,
+        "scoped_duplicate_key_count": 2959,
+        "total_items_seen": 28062
+      }
+    },
+    "raw_current_rows": 3860
+  },
+  "raw_values_emitted": false
+}

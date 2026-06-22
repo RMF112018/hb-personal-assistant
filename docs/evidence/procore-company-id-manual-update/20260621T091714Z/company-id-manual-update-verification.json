@@ -1,0 +1,56 @@
+{
+  "procore_ep_billing_periods": {
+    "company_id_5280_rows": 66,
+    "company_id_blank_rows": 0,
+    "company_id_hash_nonnull_rows": 66,
+    "has_company_id": true,
+    "has_company_id_hash": true,
+    "table_exists": true,
+    "total_rows": 66
+  },
+  "procore_ep_budget_change_history": {
+    "company_id_5280_rows": 420,
+    "company_id_blank_rows": 0,
+    "company_id_hash_nonnull_rows": 420,
+    "has_company_id": true,
+    "has_company_id_hash": true,
+    "table_exists": true,
+    "total_rows": 420
+  },
+  "procore_ep_budget_detail_columns": {
+    "company_id_5280_rows": 399,
+    "company_id_blank_rows": 0,
+    "company_id_hash_nonnull_rows": 399,
+    "has_company_id": true,
+    "has_company_id_hash": true,
+    "table_exists": true,
+    "total_rows": 399
+  },
+  "procore_ep_budget_detail_row_cells": {
+    "company_id_5280_rows": 273951,
+    "company_id_blank_rows": 0,
+    "company_id_hash_nonnull_rows": 273951,
+    "has_company_id": true,
+    "has_company_id_hash": true,
+    "table_exists": true,
+    "total_rows": 273951
+  },
+  "procore_ep_budget_detail_rows": {
+    "company_id_5280_rows": 3044,
+    "company_id_blank_rows": 0,
+    "company_id_hash_nonnull_rows": 3044,
+    "has_company_id": true,
+    "has_company_id_hash": true,
+    "table_exists": true,
+    "total_rows": 3044
+  },
+  "procore_ep_budget_modifications": {
+    "company_id_5280_rows": 805,
+    "company_id_blank_rows": 0,
+    "company_id_hash_nonnull_rows": 805,
+    "has_company_id": true,
+    "has_company_id_hash": true,
+    "table_exists": true,
+    "total_rows": 805
+  }
+}

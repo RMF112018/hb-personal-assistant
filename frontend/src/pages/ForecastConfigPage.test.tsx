@@ -11,7 +11,7 @@ vi.mock('@tanstack/react-query', () => ({
 }))
 
 function mockData() {
-  useQueryMock.mockImplementation((opts: { queryKey: any[] }) => {
+  useQueryMock.mockImplementation((opts: { queryKey: unknown[] }) => {
     const kind = opts.queryKey[2]
     if (kind === 'snapshots') {
       return {

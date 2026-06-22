@@ -1,0 +1,3 @@
+[{"endpoint_key":"budget-detail-columns","raw_rows":399,"raw_company_id_nonnull":0,"sync_run_company_id_nonnull":399,"distinct_sync_run_company_ids":1},
+{"endpoint_key":"budget-detail-rows","raw_rows":3512,"raw_company_id_nonnull":0,"sync_run_company_id_nonnull":3512,"distinct_sync_run_company_ids":1},
+{"endpoint_key":"budget-views","raw_rows":35,"raw_company_id_nonnull":0,"sync_run_company_id_nonnull":35,"distinct_sync_run_company_ids":1}]

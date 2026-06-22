@@ -1,0 +1,45 @@
+{
+  "generation": {
+    "generator": "construction_financial_review.forecast_probability.generate_probabilistic_validation_package",
+    "subproject_path": "/Users/bobbyfetting/hb-personal-assistant/subrepos/construction-financial-review",
+    "git_branch": "main",
+    "git_head_sha": "f337db13f5cb91a554a18fa5b84ebead0e1f58ea",
+    "git_tree_dirty": true,
+    "command": "python3 -m construction_financial_review.cli forecast-probability --project tropical --runs 10000 --seed 20260614",
+    "package_stamp": "20260101_000000",
+    "generated_timestamp_local": "20260101_000000",
+    "runs": 10000,
+    "seed": 20260614,
+    "forecast_months": [
+      "2026-06",
+      "2026-07",
+      "2026-08",
+      "2026-09",
+      "2026-10",
+      "2026-11"
+    ],
+    "ollama_status": "disabled_mock",
+    "ollama_model": null,
+    "llm_narratives_generated": 25,
+    "selected_input_packages": {
+      "accepted_forecast_intelligence_package": "/Users/bobbyfetting/Library/CloudStorage/SynologyDrive-BFmacSync/Work/NAS - HB/Projects/2023/TWN - NAS/30_Financials/Forecasts/Data/2026-June/forecast_accuracy_next_package_tropical_20260617_152655",
+      "accepted_forecast_monthly_package": "/Users/bobbyfetting/Library/CloudStorage/SynologyDrive-BFmacSync/Work/NAS - HB/Projects/2023/TWN - NAS/30_Financials/Forecasts/Data/2026-June/forecast_monthly_package_tropical_20260617_152658",
+      "context_package": "/Users/bobbyfetting/Library/CloudStorage/SynologyDrive-BFmacSync/Work/NAS - HB/Projects/2023/TWN - NAS/30_Financials/Forecasts/Data/2026-June/forecast_context_package_tropical_20260617_152650"
+    }
+  },
+  "context_lineage": {
+    "consumed_context_package": "forecast_context_package_tropical_20260617_152650",
+    "consumed_context_stamp": "20260617_152650",
+    "consumed_context_manifest_generated_at": "2026-06-17T15:26:53.588987",
+    "consumed_context_manifest_hash": "81f5ac8e33d9889234a96fc48b5bac9bfa2dd1248b3b759ea19ae35b19a9a0e9",
+    "lineage_source": "latest_glob"
+  },
+  "forecast_months": [
+    "2026-06",
+    "2026-07",
+    "2026-08",
+    "2026-09",
+    "2026-10",
+    "2026-11"
+  ]
+}

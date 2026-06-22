@@ -1,0 +1,88 @@
+{
+  "backup_path": "/tmp/hb-personal-assistant-before-company-id-manual-update-20260621T091714Z.sqlite",
+  "company_id": "5280",
+  "company_id_hash": "c7c63acc2b79f8ae36746930b4ebfdef3aca62b8f7665682145ac26732be1137",
+  "db_path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite",
+  "ok": true,
+  "tables": {
+    "procore_ep_billing_periods": {
+      "company_id_5280_after": 66,
+      "company_id_5280_before": 0,
+      "company_id_hash_nonnull_after": 66,
+      "company_id_nonnull_after": 66,
+      "company_id_nonnull_before": 0,
+      "has_company_id": true,
+      "has_company_id_hash": true,
+      "rows_after": 66,
+      "rows_before": 66,
+      "rows_updated": 66,
+      "table_exists": true
+    },
+    "procore_ep_budget_change_history": {
+      "company_id_5280_after": 420,
+      "company_id_5280_before": 0,
+      "company_id_hash_nonnull_after": 420,
+      "company_id_nonnull_after": 420,
+      "company_id_nonnull_before": 0,
+      "has_company_id": true,
+      "has_company_id_hash": true,
+      "rows_after": 420,
+      "rows_before": 420,
+      "rows_updated": 420,
+      "table_exists": true
+    },
+    "procore_ep_budget_detail_columns": {
+      "company_id_5280_after": 399,
+      "company_id_5280_before": 0,
+      "company_id_hash_nonnull_after": 399,
+      "company_id_nonnull_after": 399,
+      "company_id_nonnull_before": 0,
+      "has_company_id": true,
+      "has_company_id_hash": true,
+      "rows_after": 399,
+      "rows_before": 399,
+      "rows_updated": 399,
+      "table_exists": true
+    },
+    "procore_ep_budget_detail_row_cells": {
+      "company_id_5280_after": 273951,
+      "company_id_5280_before": 0,
+      "company_id_hash_nonnull_after": 273951,
+      "company_id_nonnull_after": 273951,
+      "company_id_nonnull_before": 0,
+      "has_company_id": true,
+      "has_company_id_hash": true,
+      "rows_after": 273951,
+      "rows_before": 273951,
+      "rows_updated": 273951,
+      "table_exists": true
+    },
+    "procore_ep_budget_detail_rows": {
+      "company_id_5280_after": 3044,
+      "company_id_5280_before": 0,
+      "company_id_hash_nonnull_after": 3044,
+      "company_id_nonnull_after": 3044,
+      "company_id_nonnull_before": 0,
+      "has_company_id": true,
+      "has_company_id_hash": true,
+      "rows_after": 3044,
+      "rows_before": 3044,
+      "rows_updated": 3044,
+      "table_exists": true
+    },
+    "procore_ep_budget_modifications": {
+      "company_id_5280_after": 805,
+      "company_id_5280_before": 0,
+      "company_id_hash_nonnull_after": 805,
+      "company_id_nonnull_after": 805,
+      "company_id_nonnull_before": 0,
+      "has_company_id": true,
+      "has_company_id_hash": true,
+      "rows_after": 805,
+      "rows_before": 805,
+      "rows_updated": 805,
+      "table_exists": true
+    }
+  },
+  "updated_at_utc": "2026-06-21T09:17:58.918530+00:00"
+}

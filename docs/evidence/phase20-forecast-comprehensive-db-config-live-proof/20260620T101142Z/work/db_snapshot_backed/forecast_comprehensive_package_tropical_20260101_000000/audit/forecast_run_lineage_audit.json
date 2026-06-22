@@ -1,0 +1,45 @@
+{
+  "project_key": "tropical",
+  "comprehensive_context_stamp": "20260617_152650",
+  "strict_lineage_enforced": false,
+  "full_run_lineage_consistent": true,
+  "missing_context_lineage_metadata": false,
+  "packages": [
+    {
+      "package_type": "context",
+      "present": true,
+      "consumed_context_stamp": "20260617_152650",
+      "status": "consistent"
+    },
+    {
+      "package_type": "intelligence",
+      "present": true,
+      "consumed_context_stamp": "20260617_152650",
+      "status": "consistent"
+    },
+    {
+      "package_type": "staffing_plan",
+      "present": true,
+      "consumed_context_stamp": "20260617_152650",
+      "status": "consistent"
+    },
+    {
+      "package_type": "monthly",
+      "present": true,
+      "consumed_context_stamp": "20260617_152650",
+      "status": "consistent"
+    },
+    {
+      "package_type": "cost_frequency",
+      "present": true,
+      "consumed_context_stamp": "20260617_152650",
+      "status": "consistent"
+    },
+    {
+      "package_type": "probability",
+      "present": true,
+      "consumed_context_stamp": "20260617_152650",
+      "status": "consistent"
+    }
+  ]
+}

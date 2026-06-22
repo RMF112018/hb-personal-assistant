@@ -271,4 +271,4 @@ def test_gates_command_carries_safe_counts() -> None:
 
 
 def test_table_inventory_unchanged() -> None:
-    assert build_table_inventory_report()["contract_table_count"] == 399  # Phase 4: +8 v61 external-forecast tables (was 391)
+    assert build_table_inventory_report()["contract_table_count"] == 422  # Phase 4: +8 v61 external-forecast tables (was 399; V62 +13 schedule tables; V63 +10 run-output tables)

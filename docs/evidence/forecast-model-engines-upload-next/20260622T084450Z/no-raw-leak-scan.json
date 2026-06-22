@@ -1,0 +1,6 @@
+{
+  "finding_count": 0,
+  "findings": [],
+  "scan_note": "Scanner skipped itself and package manifest/hash files to avoid self-matches.",
+  "status": "pass"
+}

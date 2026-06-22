@@ -1,0 +1,264 @@
+{
+  "category_cell_summary": {
+    "category_cells": 3044,
+    "category_value_nonnull": 3044,
+    "distinct_category_values": 5
+  },
+  "category_id_cell_summary": {
+    "category_id_cells": 3044,
+    "category_id_value_nonnull": 3044,
+    "distinct_category_id_values": 5
+  },
+  "category_id_hash_counts_top20": [
+    {
+      "count": 1224,
+      "value_hash12": "6897148dc2e7"
+    },
+    {
+      "count": 1147,
+      "value_hash12": "c0a856817b01"
+    },
+    {
+      "count": 566,
+      "value_hash12": "f88ff5cdf36a"
+    },
+    {
+      "count": 540,
+      "value_hash12": "caf8be536150"
+    },
+    {
+      "count": 35,
+      "value_hash12": "b6518bd30ec8"
+    }
+  ],
+  "category_value_hash_counts_top20": [
+    {
+      "count": 1224,
+      "value_hash12": "b1307e3a5906"
+    },
+    {
+      "count": 1147,
+      "value_hash12": "fd10a146e962"
+    },
+    {
+      "count": 566,
+      "value_hash12": "7b6b969c8bc4"
+    },
+    {
+      "count": 540,
+      "value_hash12": "55bb13f6641e"
+    },
+    {
+      "count": 35,
+      "value_hash12": "2bdddc69f7ff"
+    }
+  ],
+  "company_id_provenance": [
+    {
+      "distinct_sync_run_company_ids": 1,
+      "endpoint_key": "budget-detail-columns",
+      "raw_company_id_nonnull": 0,
+      "raw_rows": 399,
+      "sync_run_company_id_nonnull": 399
+    },
+    {
+      "distinct_sync_run_company_ids": 1,
+      "endpoint_key": "budget-detail-rows",
+      "raw_company_id_nonnull": 0,
+      "raw_rows": 3512,
+      "sync_run_company_id_nonnull": 3512
+    },
+    {
+      "distinct_sync_run_company_ids": 1,
+      "endpoint_key": "budget-views",
+      "raw_company_id_nonnull": 0,
+      "raw_rows": 35,
+      "sync_run_company_id_nonnull": 35
+    }
+  ],
+  "db_path": "/tmp/hb-budget-detail-row-field-projection-audit.sqlite",
+  "deep_critical_key_report": {
+    "category": {
+      "nonnull_count": 3512,
+      "path_count": 3512,
+      "top_paths": [
+        {
+          "count": 3512,
+          "path": "$.category"
+        }
+      ]
+    },
+    "category_id": {
+      "nonnull_count": 3512,
+      "path_count": 3512,
+      "top_paths": [
+        {
+          "count": 3512,
+          "path": "$.category_id"
+        }
+      ]
+    },
+    "company": {
+      "nonnull_count": 3512,
+      "path_count": 3512,
+      "top_paths": [
+        {
+          "count": 3512,
+          "path": "$.company"
+        }
+      ]
+    },
+    "company_id": {
+      "nonnull_count": 3512,
+      "path_count": 3512,
+      "top_paths": [
+        {
+          "count": 3512,
+          "path": "$.company_id"
+        }
+      ]
+    }
+  },
+  "raw_current_breakdown": [
+    {
+      "distinct_raw_payload_ids": 399,
+      "distinct_record_ids": 44,
+      "endpoint_key": "budget-detail-columns",
+      "raw_current_rows": 399,
+      "raw_rows": 399
+    },
+    {
+      "distinct_raw_payload_ids": 3512,
+      "distinct_record_ids": 522,
+      "endpoint_key": "budget-detail-rows",
+      "raw_current_rows": 3512,
+      "raw_rows": 3512
+    },
+    {
+      "distinct_raw_payload_ids": 35,
+      "distinct_record_ids": 6,
+      "endpoint_key": "budget-views",
+      "raw_current_rows": 35,
+      "raw_rows": 35
+    }
+  ],
+  "raw_to_row_linkage": {
+    "raw_budget_detail_rows": 3512,
+    "raw_current_budget_detail_rows": 3512,
+    "raw_distinct_record_ids": 522,
+    "raw_rows_linked_to_read_model": 3044,
+    "raw_rows_not_linked_to_read_model": 468,
+    "read_model_distinct_record_ids": 522
+  },
+  "read_model_counts": {
+    "procore_ep_budget_detail_columns": 399,
+    "procore_ep_budget_detail_row_cells": 273951,
+    "procore_ep_budget_detail_rows": 3044
+  },
+  "wide_amount_reconciliation": {
+    "approved_change_orders": {
+      "matched_cell_nonempty_records": 2522,
+      "matched_cell_records": 2522,
+      "missing_cell_for_wide": 0,
+      "missing_wide_for_cell": 0,
+      "value_mismatch_count": 0,
+      "wide_nonempty_rows": 2522
+    },
+    "committed_costs": {
+      "matched_cell_nonempty_records": 1478,
+      "matched_cell_records": 1478,
+      "missing_cell_for_wide": 0,
+      "missing_wide_for_cell": 0,
+      "value_mismatch_count": 0,
+      "wide_nonempty_rows": 1478
+    },
+    "direct_costs": {
+      "matched_cell_nonempty_records": 522,
+      "matched_cell_records": 522,
+      "missing_cell_for_wide": 0,
+      "missing_wide_for_cell": 0,
+      "value_mismatch_count": 0,
+      "wide_nonempty_rows": 522
+    },
+    "erp_direct_costs": {
+      "matched_cell_nonempty_records": 956,
+      "matched_cell_records": 956,
+      "missing_cell_for_wide": 0,
+      "missing_wide_for_cell": 0,
+      "value_mismatch_count": 0,
+      "wide_nonempty_rows": 956
+    },
+    "erp_job_to_date_costs": {
+      "matched_cell_nonempty_records": 956,
+      "matched_cell_records": 956,
+      "missing_cell_for_wide": 0,
+      "missing_wide_for_cell": 0,
+      "value_mismatch_count": 0,
+      "wide_nonempty_rows": 956
+    },
+    "estimated_cost_at_completion": {
+      "matched_cell_nonempty_records": 2522,
+      "matched_cell_records": 2522,
+      "missing_cell_for_wide": 0,
+      "missing_wide_for_cell": 0,
+      "value_mismatch_count": 0,
+      "wide_nonempty_rows": 2522
+    },
+    "forecast_to_complete": {
+      "matched_cell_nonempty_records": 1044,
+      "matched_cell_records": 1044,
+      "missing_cell_for_wide": 0,
+      "missing_wide_for_cell": 0,
+      "value_mismatch_count": 0,
+      "wide_nonempty_rows": 1044
+    },
+    "job_to_date_costs": {
+      "matched_cell_nonempty_records": 1566,
+      "matched_cell_records": 1566,
+      "missing_cell_for_wide": 0,
+      "missing_wide_for_cell": 0,
+      "value_mismatch_count": 0,
+      "wide_nonempty_rows": 1566
+    },
+    "pending_budget_changes": {
+      "matched_cell_nonempty_records": 1478,
+      "matched_cell_records": 1478,
+      "missing_cell_for_wide": 0,
+      "missing_wide_for_cell": 0,
+      "value_mismatch_count": 0,
+      "wide_nonempty_rows": 1478
+    },
+    "projected_budget": {
+      "matched_cell_nonempty_records": 2522,
+      "matched_cell_records": 2522,
+      "missing_cell_for_wide": 0,
+      "missing_wide_for_cell": 0,
+      "value_mismatch_count": 0,
+      "wide_nonempty_rows": 2522
+    },
+    "projected_costs": {
+      "matched_cell_nonempty_records": 2522,
+      "matched_cell_records": 2522,
+      "missing_cell_for_wide": 0,
+      "missing_wide_for_cell": 0,
+      "value_mismatch_count": 0,
+      "wide_nonempty_rows": 2522
+    },
+    "projected_over_under": {
+      "matched_cell_nonempty_records": 2522,
+      "matched_cell_records": 2522,
+      "missing_cell_for_wide": 0,
+      "missing_wide_for_cell": 0,
+      "value_mismatch_count": 0,
+      "wide_nonempty_rows": 2522
+    },
+    "revised_budget": {
+      "matched_cell_nonempty_records": 2522,
+      "matched_cell_records": 2522,
+      "missing_cell_for_wide": 0,
+      "missing_wide_for_cell": 0,
+      "value_mismatch_count": 0,
+      "wide_nonempty_rows": 2522
+    }
+  }
+}

@@ -1,0 +1,2434 @@
+{
+  "procore_ep_change_events": {
+    "columns": [
+      {
+        "cid": 0,
+        "dflt_value": null,
+        "name": "record_key",
+        "notnull": 0,
+        "pk": 1,
+        "type": "TEXT"
+      },
+      {
+        "cid": 1,
+        "dflt_value": null,
+        "name": "raw_payload_id",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 2,
+        "dflt_value": null,
+        "name": "endpoint_key",
+        "notnull": 1,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 3,
+        "dflt_value": null,
+        "name": "endpoint_family",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 4,
+        "dflt_value": null,
+        "name": "project_key",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 5,
+        "dflt_value": null,
+        "name": "project_id",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 6,
+        "dflt_value": null,
+        "name": "project_id_hash",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 7,
+        "dflt_value": null,
+        "name": "company_id",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 8,
+        "dflt_value": null,
+        "name": "company_id_hash",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 9,
+        "dflt_value": null,
+        "name": "record_id",
+        "notnull": 1,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 10,
+        "dflt_value": null,
+        "name": "record_id_hash",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 11,
+        "dflt_value": null,
+        "name": "parent_record_id",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 12,
+        "dflt_value": null,
+        "name": "parent_record_id_hash",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 13,
+        "dflt_value": null,
+        "name": "change_reason_change_reason",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 14,
+        "dflt_value": null,
+        "name": "change_reason_id",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 15,
+        "dflt_value": null,
+        "name": "change_type_id",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 16,
+        "dflt_value": null,
+        "name": "change_type_name",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 17,
+        "dflt_value": null,
+        "name": "comments_enabled",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 18,
+        "dflt_value": null,
+        "name": "created_at",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 19,
+        "dflt_value": null,
+        "name": "created_by_id",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 20,
+        "dflt_value": null,
+        "name": "created_by_login",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 21,
+        "dflt_value": null,
+        "name": "created_by_name",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 22,
+        "dflt_value": null,
+        "name": "currency_configuration_currency_iso_code",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 23,
+        "dflt_value": null,
+        "name": "deletable",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 24,
+        "dflt_value": null,
+        "name": "deleted_at",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 25,
+        "dflt_value": null,
+        "name": "description",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 26,
+        "dflt_value": null,
+        "name": "event_origin",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 27,
+        "dflt_value": null,
+        "name": "event_origin_display_name",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 28,
+        "dflt_value": null,
+        "name": "event_origin_origin_id",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 29,
+        "dflt_value": null,
+        "name": "external_data",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 30,
+        "dflt_value": null,
+        "name": "has_edited_markups",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 31,
+        "dflt_value": null,
+        "name": "in_recycle_bin",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 32,
+        "dflt_value": null,
+        "name": "number",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 33,
+        "dflt_value": null,
+        "name": "prime_contract_for_estimates_id",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 34,
+        "dflt_value": null,
+        "name": "prime_contract_for_estimates_number",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 35,
+        "dflt_value": null,
+        "name": "prime_contract_for_estimates_title",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 36,
+        "dflt_value": null,
+        "name": "scope",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 37,
+        "dflt_value": null,
+        "name": "source",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 38,
+        "dflt_value": null,
+        "name": "source_of_revenue_rom",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 39,
+        "dflt_value": null,
+        "name": "status_id",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 40,
+        "dflt_value": null,
+        "name": "status_mapped_to_status",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 41,
+        "dflt_value": null,
+        "name": "status_name",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 42,
+        "dflt_value": null,
+        "name": "title",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 43,
+        "dflt_value": null,
+        "name": "updated_at",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 44,
+        "dflt_value": null,
+        "name": "payload_sidecar_json",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 45,
+        "dflt_value": null,
+        "name": "payload_hash",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 46,
+        "dflt_value": null,
+        "name": "source_quality",
+        "notnull": 1,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 47,
+        "dflt_value": null,
+        "name": "payload_seen_first_utc",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 48,
+        "dflt_value": null,
+        "name": "payload_seen_last_utc",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 49,
+        "dflt_value": "1",
+        "name": "is_current",
+        "notnull": 1,
+        "pk": 0,
+        "type": "INTEGER"
+      },
+      {
+        "cid": 50,
+        "dflt_value": "CURRENT_TIMESTAMP",
+        "name": "created_utc",
+        "notnull": 1,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 51,
+        "dflt_value": "CURRENT_TIMESTAMP",
+        "name": "updated_utc",
+        "notnull": 1,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 52,
+        "dflt_value": "0",
+        "name": "external_writeback_performed",
+        "notnull": 1,
+        "pk": 0,
+        "type": "INTEGER"
+      },
+      {
+        "cid": 53,
+        "dflt_value": "0",
+        "name": "raw_payload_emitted_to_read_model",
+        "notnull": 1,
+        "pk": 0,
+        "type": "INTEGER"
+      },
+      {
+        "cid": 54,
+        "dflt_value": "0",
+        "name": "raw_payload_emitted_to_evidence",
+        "notnull": 1,
+        "pk": 0,
+        "type": "INTEGER"
+      }
+    ],
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "table_exists": true
+  },
+  "procore_ep_change_events_attachments": {
+    "columns": [
+      {
+        "cid": 0,
+        "dflt_value": null,
+        "name": "record_key",
+        "notnull": 0,
+        "pk": 1,
+        "type": "TEXT"
+      },
+      {
+        "cid": 1,
+        "dflt_value": null,
+        "name": "primary_record_key",
+        "notnull": 1,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 2,
+        "dflt_value": null,
+        "name": "parent_item_id",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 3,
+        "dflt_value": null,
+        "name": "raw_payload_id",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 4,
+        "dflt_value": null,
+        "name": "endpoint_key",
+        "notnull": 1,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 5,
+        "dflt_value": null,
+        "name": "endpoint_family",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 6,
+        "dflt_value": null,
+        "name": "project_key",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 7,
+        "dflt_value": null,
+        "name": "project_id",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 8,
+        "dflt_value": null,
+        "name": "company_id",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 9,
+        "dflt_value": null,
+        "name": "item_id",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 10,
+        "dflt_value": null,
+        "name": "child_index",
+        "notnull": 0,
+        "pk": 0,
+        "type": "INTEGER"
+      },
+      {
+        "cid": 11,
+        "dflt_value": null,
+        "name": "array_path",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 12,
+        "dflt_value": null,
+        "name": "filename",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 13,
+        "dflt_value": null,
+        "name": "url",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 14,
+        "dflt_value": null,
+        "name": "payload_sidecar_json",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 15,
+        "dflt_value": null,
+        "name": "payload_hash",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 16,
+        "dflt_value": null,
+        "name": "source_quality",
+        "notnull": 1,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 17,
+        "dflt_value": "1",
+        "name": "is_current",
+        "notnull": 1,
+        "pk": 0,
+        "type": "INTEGER"
+      },
+      {
+        "cid": 18,
+        "dflt_value": "CURRENT_TIMESTAMP",
+        "name": "created_utc",
+        "notnull": 1,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 19,
+        "dflt_value": "CURRENT_TIMESTAMP",
+        "name": "updated_utc",
+        "notnull": 1,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 20,
+        "dflt_value": "0",
+        "name": "external_writeback_performed",
+        "notnull": 1,
+        "pk": 0,
+        "type": "INTEGER"
+      },
+      {
+        "cid": 21,
+        "dflt_value": "0",
+        "name": "raw_payload_emitted_to_read_model",
+        "notnull": 1,
+        "pk": 0,
+        "type": "INTEGER"
+      },
+      {
+        "cid": 22,
+        "dflt_value": "0",
+        "name": "raw_payload_emitted_to_evidence",
+        "notnull": 1,
+        "pk": 0,
+        "type": "INTEGER"
+      }
+    ],
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "table_exists": true
+  },
+  "procore_ep_change_events_change_items": {
+    "columns": [
+      {
+        "cid": 0,
+        "dflt_value": null,
+        "name": "record_key",
+        "notnull": 0,
+        "pk": 1,
+        "type": "TEXT"
+      },
+      {
+        "cid": 1,
+        "dflt_value": null,
+        "name": "primary_record_key",
+        "notnull": 1,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 2,
+        "dflt_value": null,
+        "name": "parent_item_id",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 3,
+        "dflt_value": null,
+        "name": "raw_payload_id",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 4,
+        "dflt_value": null,
+        "name": "endpoint_key",
+        "notnull": 1,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 5,
+        "dflt_value": null,
+        "name": "endpoint_family",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 6,
+        "dflt_value": null,
+        "name": "project_key",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 7,
+        "dflt_value": null,
+        "name": "project_id",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 8,
+        "dflt_value": null,
+        "name": "company_id",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 9,
+        "dflt_value": null,
+        "name": "item_id",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 10,
+        "dflt_value": null,
+        "name": "child_index",
+        "notnull": 0,
+        "pk": 0,
+        "type": "INTEGER"
+      },
+      {
+        "cid": 11,
+        "dflt_value": null,
+        "name": "array_path",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 12,
+        "dflt_value": null,
+        "name": "budget_code_description",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 13,
+        "dflt_value": null,
+        "name": "budget_code_flat_code",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 14,
+        "dflt_value": null,
+        "name": "budget_code_id",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 15,
+        "dflt_value": null,
+        "name": "budget_impact_budget_change",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 16,
+        "dflt_value": null,
+        "name": "budget_impact_budget_modification",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 17,
+        "dflt_value": null,
+        "name": "budget_impact_source_of_latest_budget_impact",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 18,
+        "dflt_value": null,
+        "name": "budget_impact_source_of_stage",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 19,
+        "dflt_value": null,
+        "name": "cost_impact_commitment_currency_configuration_base_currency_iso_code",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 20,
+        "dflt_value": null,
+        "name": "cost_impact_commitment_currency_configuration_currency_exchange_rate",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 21,
+        "dflt_value": null,
+        "name": "cost_impact_commitment_currency_configuration_currency_iso_code",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 22,
+        "dflt_value": null,
+        "name": "cost_impact_commitment_days_in_stage",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 23,
+        "dflt_value": null,
+        "name": "cost_impact_commitment_id",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 24,
+        "dflt_value": null,
+        "name": "cost_impact_commitment_in_status_since",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 25,
+        "dflt_value": null,
+        "name": "cost_impact_commitment_line_item_amount",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 26,
+        "dflt_value": null,
+        "name": "cost_impact_commitment_line_item_amount_project_currency",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 27,
+        "dflt_value": null,
+        "name": "cost_impact_commitment_line_item_holder_id",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 28,
+        "dflt_value": null,
+        "name": "cost_impact_commitment_line_item_id",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 29,
+        "dflt_value": null,
+        "name": "cost_impact_commitment_number",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 30,
+        "dflt_value": null,
+        "name": "cost_impact_commitment_status",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 31,
+        "dflt_value": null,
+        "name": "cost_impact_commitment_title",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 32,
+        "dflt_value": null,
+        "name": "cost_impact_contract_confirmed",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 33,
+        "dflt_value": null,
+        "name": "cost_impact_contract_confirmed_id",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 34,
+        "dflt_value": null,
+        "name": "cost_impact_contract_confirmed_number",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 35,
+        "dflt_value": null,
+        "name": "cost_impact_contract_confirmed_status",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 36,
+        "dflt_value": null,
+        "name": "cost_impact_contract_confirmed_title",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 37,
+        "dflt_value": null,
+        "name": "cost_impact_contract_proposed_id",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 38,
+        "dflt_value": null,
+        "name": "cost_impact_contract_proposed_number",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 39,
+        "dflt_value": null,
+        "name": "cost_impact_contract_proposed_status",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 40,
+        "dflt_value": null,
+        "name": "cost_impact_contract_proposed_title",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 41,
+        "dflt_value": null,
+        "name": "cost_impact_estimate_amount",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 42,
+        "dflt_value": null,
+        "name": "cost_impact_estimate_quantity",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 43,
+        "dflt_value": null,
+        "name": "cost_impact_estimate_unit_cost",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 44,
+        "dflt_value": null,
+        "name": "cost_impact_estimate_unit_of_measure",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 45,
+        "dflt_value": null,
+        "name": "cost_impact_non_commitment_amount",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 46,
+        "dflt_value": null,
+        "name": "cost_impact_request_for_quote_contract_id",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 47,
+        "dflt_value": null,
+        "name": "cost_impact_request_for_quote_currency_configuration_base_currency_iso_code",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 48,
+        "dflt_value": null,
+        "name": "cost_impact_request_for_quote_currency_configuration_currency_exchange_rate",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 49,
+        "dflt_value": null,
+        "name": "cost_impact_request_for_quote_currency_configuration_currency_iso_code",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 50,
+        "dflt_value": null,
+        "name": "cost_impact_request_for_quote_days_in_stage",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 51,
+        "dflt_value": null,
+        "name": "cost_impact_request_for_quote_id",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 52,
+        "dflt_value": null,
+        "name": "cost_impact_request_for_quote_in_status_since",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 53,
+        "dflt_value": null,
+        "name": "cost_impact_request_for_quote_latest_quote_amount",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 54,
+        "dflt_value": null,
+        "name": "cost_impact_request_for_quote_latest_quote_amount_project_currency",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 55,
+        "dflt_value": null,
+        "name": "cost_impact_request_for_quote_number",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 56,
+        "dflt_value": null,
+        "name": "cost_impact_request_for_quote_status",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 57,
+        "dflt_value": null,
+        "name": "cost_impact_request_for_quote_title",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 58,
+        "dflt_value": null,
+        "name": "cost_impact_source_of_latest_cost",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 59,
+        "dflt_value": null,
+        "name": "cost_impact_source_of_stage",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 60,
+        "dflt_value": null,
+        "name": "cost_impact_vendor_confirmed",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 61,
+        "dflt_value": null,
+        "name": "cost_impact_vendor_confirmed_id",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 62,
+        "dflt_value": null,
+        "name": "cost_impact_vendor_confirmed_name",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 63,
+        "dflt_value": null,
+        "name": "cost_impact_vendor_proposed_id",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 64,
+        "dflt_value": null,
+        "name": "cost_impact_vendor_proposed_name",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 65,
+        "dflt_value": null,
+        "name": "created_at",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 66,
+        "dflt_value": null,
+        "name": "currency_configuration_currency_iso_code",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 67,
+        "dflt_value": null,
+        "name": "deletable",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 68,
+        "dflt_value": null,
+        "name": "deleted_at",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 69,
+        "dflt_value": null,
+        "name": "description",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 70,
+        "dflt_value": null,
+        "name": "editable",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 71,
+        "dflt_value": null,
+        "name": "event_id",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 72,
+        "dflt_value": null,
+        "name": "event_number",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 73,
+        "dflt_value": null,
+        "name": "event_title",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 74,
+        "dflt_value": null,
+        "name": "item_type",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 75,
+        "dflt_value": null,
+        "name": "latest_cost_values_amount",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 76,
+        "dflt_value": null,
+        "name": "latest_cost_values_amount_project_currency",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 77,
+        "dflt_value": null,
+        "name": "latest_cost_values_quantity",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 78,
+        "dflt_value": null,
+        "name": "latest_cost_values_unit_cost",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 79,
+        "dflt_value": null,
+        "name": "latest_cost_values_unit_cost_project_currency",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 80,
+        "dflt_value": null,
+        "name": "latest_cost_values_uom_id",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 81,
+        "dflt_value": null,
+        "name": "latest_cost_values_uom_name",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 82,
+        "dflt_value": null,
+        "name": "latest_revenue_values_amount",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 83,
+        "dflt_value": null,
+        "name": "latest_revenue_values_amount_project_currency",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 84,
+        "dflt_value": null,
+        "name": "latest_revenue_values_quantity",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 85,
+        "dflt_value": null,
+        "name": "latest_revenue_values_unit_cost",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 86,
+        "dflt_value": null,
+        "name": "latest_revenue_values_unit_cost_project_currency",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 87,
+        "dflt_value": null,
+        "name": "latest_revenue_values_uom_id",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 88,
+        "dflt_value": null,
+        "name": "latest_revenue_values_uom_name",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 89,
+        "dflt_value": null,
+        "name": "line_aging",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 90,
+        "dflt_value": null,
+        "name": "revenue_impact_change_order_contract_id",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 91,
+        "dflt_value": null,
+        "name": "revenue_impact_change_order_contract_number",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 92,
+        "dflt_value": null,
+        "name": "revenue_impact_change_order_contract_title",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 93,
+        "dflt_value": null,
+        "name": "revenue_impact_change_order_currency_configuration_base_currency_iso_code",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 94,
+        "dflt_value": null,
+        "name": "revenue_impact_change_order_currency_configuration_currency_exchange_rate",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 95,
+        "dflt_value": null,
+        "name": "revenue_impact_change_order_currency_configuration_currency_iso_code",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 96,
+        "dflt_value": null,
+        "name": "revenue_impact_change_order_days_in_stage",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 97,
+        "dflt_value": null,
+        "name": "revenue_impact_change_order_id",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 98,
+        "dflt_value": null,
+        "name": "revenue_impact_change_order_in_status_since",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 99,
+        "dflt_value": null,
+        "name": "revenue_impact_change_order_line_item_amount",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 100,
+        "dflt_value": null,
+        "name": "revenue_impact_change_order_line_item_amount_project_currency",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 101,
+        "dflt_value": null,
+        "name": "revenue_impact_change_order_line_item_id",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 102,
+        "dflt_value": null,
+        "name": "revenue_impact_change_order_number",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 103,
+        "dflt_value": null,
+        "name": "revenue_impact_change_order_status",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 104,
+        "dflt_value": null,
+        "name": "revenue_impact_change_order_title",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 105,
+        "dflt_value": null,
+        "name": "revenue_impact_change_order_package_contract_id",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 106,
+        "dflt_value": null,
+        "name": "revenue_impact_change_order_package_days_in_stage",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 107,
+        "dflt_value": null,
+        "name": "revenue_impact_change_order_package_id",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 108,
+        "dflt_value": null,
+        "name": "revenue_impact_change_order_package_in_status_since",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 109,
+        "dflt_value": null,
+        "name": "revenue_impact_change_order_package_line_item_amount",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 110,
+        "dflt_value": null,
+        "name": "revenue_impact_change_order_package_line_item_amount_project_currency",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 111,
+        "dflt_value": null,
+        "name": "revenue_impact_change_order_package_line_item_id",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 112,
+        "dflt_value": null,
+        "name": "revenue_impact_change_order_package_number",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 113,
+        "dflt_value": null,
+        "name": "revenue_impact_change_order_package_status",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 114,
+        "dflt_value": null,
+        "name": "revenue_impact_change_order_package_title",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 115,
+        "dflt_value": null,
+        "name": "revenue_impact_estimate_amount",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 116,
+        "dflt_value": null,
+        "name": "revenue_impact_estimate_amount_project_currency",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 117,
+        "dflt_value": null,
+        "name": "revenue_impact_estimate_quantity",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 118,
+        "dflt_value": null,
+        "name": "revenue_impact_estimate_unit_cost",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 119,
+        "dflt_value": null,
+        "name": "revenue_impact_estimate_unit_cost_project_currency",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 120,
+        "dflt_value": null,
+        "name": "revenue_impact_source_of_latest_price",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 121,
+        "dflt_value": null,
+        "name": "revenue_impact_source_of_stage",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 122,
+        "dflt_value": null,
+        "name": "updated_at",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 123,
+        "dflt_value": null,
+        "name": "payload_sidecar_json",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 124,
+        "dflt_value": null,
+        "name": "payload_hash",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 125,
+        "dflt_value": null,
+        "name": "source_quality",
+        "notnull": 1,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 126,
+        "dflt_value": "1",
+        "name": "is_current",
+        "notnull": 1,
+        "pk": 0,
+        "type": "INTEGER"
+      },
+      {
+        "cid": 127,
+        "dflt_value": "CURRENT_TIMESTAMP",
+        "name": "created_utc",
+        "notnull": 1,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 128,
+        "dflt_value": "CURRENT_TIMESTAMP",
+        "name": "updated_utc",
+        "notnull": 1,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 129,
+        "dflt_value": "0",
+        "name": "external_writeback_performed",
+        "notnull": 1,
+        "pk": 0,
+        "type": "INTEGER"
+      },
+      {
+        "cid": 130,
+        "dflt_value": "0",
+        "name": "raw_payload_emitted_to_read_model",
+        "notnull": 1,
+        "pk": 0,
+        "type": "INTEGER"
+      },
+      {
+        "cid": 131,
+        "dflt_value": "0",
+        "name": "raw_payload_emitted_to_evidence",
+        "notnull": 1,
+        "pk": 0,
+        "type": "INTEGER"
+      },
+      {
+        "cid": 132,
+        "dflt_value": null,
+        "name": "budget_impact_budget_modification_amount",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 133,
+        "dflt_value": null,
+        "name": "budget_impact_budget_modification_budget_modification_id",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 134,
+        "dflt_value": null,
+        "name": "budget_impact_budget_modification_notes",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 135,
+        "dflt_value": null,
+        "name": "budget_impact_budget_modification_transfer_from_id",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 136,
+        "dflt_value": null,
+        "name": "budget_impact_budget_modification_transfer_from_name",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 137,
+        "dflt_value": null,
+        "name": "budget_impact_budget_modification_transfer_to_id",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 138,
+        "dflt_value": null,
+        "name": "budget_impact_budget_modification_transfer_to_name",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      }
+    ],
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "table_exists": true
+  },
+  "procore_ep_change_events_change_items_budget_code_seg_2dff22": {
+    "columns": [
+      {
+        "cid": 0,
+        "dflt_value": null,
+        "name": "record_key",
+        "notnull": 0,
+        "pk": 1,
+        "type": "TEXT"
+      },
+      {
+        "cid": 1,
+        "dflt_value": null,
+        "name": "primary_record_key",
+        "notnull": 1,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 2,
+        "dflt_value": null,
+        "name": "parent_item_id",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 3,
+        "dflt_value": null,
+        "name": "raw_payload_id",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 4,
+        "dflt_value": null,
+        "name": "endpoint_key",
+        "notnull": 1,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 5,
+        "dflt_value": null,
+        "name": "endpoint_family",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 6,
+        "dflt_value": null,
+        "name": "project_key",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 7,
+        "dflt_value": null,
+        "name": "project_id",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 8,
+        "dflt_value": null,
+        "name": "company_id",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 9,
+        "dflt_value": null,
+        "name": "item_id",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 10,
+        "dflt_value": null,
+        "name": "child_index",
+        "notnull": 0,
+        "pk": 0,
+        "type": "INTEGER"
+      },
+      {
+        "cid": 11,
+        "dflt_value": null,
+        "name": "array_path",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 12,
+        "dflt_value": null,
+        "name": "code",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 13,
+        "dflt_value": null,
+        "name": "name",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 14,
+        "dflt_value": null,
+        "name": "segment_id",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 15,
+        "dflt_value": null,
+        "name": "segment_name",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 16,
+        "dflt_value": null,
+        "name": "payload_sidecar_json",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 17,
+        "dflt_value": null,
+        "name": "payload_hash",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 18,
+        "dflt_value": null,
+        "name": "source_quality",
+        "notnull": 1,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 19,
+        "dflt_value": "1",
+        "name": "is_current",
+        "notnull": 1,
+        "pk": 0,
+        "type": "INTEGER"
+      },
+      {
+        "cid": 20,
+        "dflt_value": "CURRENT_TIMESTAMP",
+        "name": "created_utc",
+        "notnull": 1,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 21,
+        "dflt_value": "CURRENT_TIMESTAMP",
+        "name": "updated_utc",
+        "notnull": 1,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 22,
+        "dflt_value": "0",
+        "name": "external_writeback_performed",
+        "notnull": 1,
+        "pk": 0,
+        "type": "INTEGER"
+      },
+      {
+        "cid": 23,
+        "dflt_value": "0",
+        "name": "raw_payload_emitted_to_read_model",
+        "notnull": 1,
+        "pk": 0,
+        "type": "INTEGER"
+      },
+      {
+        "cid": 24,
+        "dflt_value": "0",
+        "name": "raw_payload_emitted_to_evidence",
+        "notnull": 1,
+        "pk": 0,
+        "type": "INTEGER"
+      }
+    ],
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "table_exists": true
+  },
+  "procore_ep_change_events_markup_items": {
+    "columns": [
+      {
+        "cid": 0,
+        "dflt_value": null,
+        "name": "record_key",
+        "notnull": 0,
+        "pk": 1,
+        "type": "TEXT"
+      },
+      {
+        "cid": 1,
+        "dflt_value": null,
+        "name": "primary_record_key",
+        "notnull": 1,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 2,
+        "dflt_value": null,
+        "name": "parent_item_id",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 3,
+        "dflt_value": null,
+        "name": "raw_payload_id",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 4,
+        "dflt_value": null,
+        "name": "endpoint_key",
+        "notnull": 1,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 5,
+        "dflt_value": null,
+        "name": "endpoint_family",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 6,
+        "dflt_value": null,
+        "name": "project_key",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 7,
+        "dflt_value": null,
+        "name": "project_id",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 8,
+        "dflt_value": null,
+        "name": "company_id",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 9,
+        "dflt_value": null,
+        "name": "item_id",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 10,
+        "dflt_value": null,
+        "name": "child_index",
+        "notnull": 0,
+        "pk": 0,
+        "type": "INTEGER"
+      },
+      {
+        "cid": 11,
+        "dflt_value": null,
+        "name": "array_path",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 12,
+        "dflt_value": null,
+        "name": "event_id",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 13,
+        "dflt_value": null,
+        "name": "item_type",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 14,
+        "dflt_value": null,
+        "name": "revenue_change_order_amount",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 15,
+        "dflt_value": null,
+        "name": "revenue_change_order_amount_project_currency",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 16,
+        "dflt_value": null,
+        "name": "revenue_estimate_amount",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 17,
+        "dflt_value": null,
+        "name": "revenue_latest_price_amount",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 18,
+        "dflt_value": null,
+        "name": "revenue_latest_price_amount_project_currency",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 19,
+        "dflt_value": null,
+        "name": "wbs_code_description",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 20,
+        "dflt_value": null,
+        "name": "wbs_code_flat_code",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 21,
+        "dflt_value": null,
+        "name": "wbs_code_id",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 22,
+        "dflt_value": null,
+        "name": "payload_sidecar_json",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 23,
+        "dflt_value": null,
+        "name": "payload_hash",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 24,
+        "dflt_value": null,
+        "name": "source_quality",
+        "notnull": 1,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 25,
+        "dflt_value": "1",
+        "name": "is_current",
+        "notnull": 1,
+        "pk": 0,
+        "type": "INTEGER"
+      },
+      {
+        "cid": 26,
+        "dflt_value": "CURRENT_TIMESTAMP",
+        "name": "created_utc",
+        "notnull": 1,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 27,
+        "dflt_value": "CURRENT_TIMESTAMP",
+        "name": "updated_utc",
+        "notnull": 1,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 28,
+        "dflt_value": "0",
+        "name": "external_writeback_performed",
+        "notnull": 1,
+        "pk": 0,
+        "type": "INTEGER"
+      },
+      {
+        "cid": 29,
+        "dflt_value": "0",
+        "name": "raw_payload_emitted_to_read_model",
+        "notnull": 1,
+        "pk": 0,
+        "type": "INTEGER"
+      },
+      {
+        "cid": 30,
+        "dflt_value": "0",
+        "name": "raw_payload_emitted_to_evidence",
+        "notnull": 1,
+        "pk": 0,
+        "type": "INTEGER"
+      }
+    ],
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "table_exists": true
+  },
+  "procore_ep_change_events_markup_items_wbs_code_segment_items": {
+    "columns": [
+      {
+        "cid": 0,
+        "dflt_value": null,
+        "name": "record_key",
+        "notnull": 0,
+        "pk": 1,
+        "type": "TEXT"
+      },
+      {
+        "cid": 1,
+        "dflt_value": null,
+        "name": "primary_record_key",
+        "notnull": 1,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 2,
+        "dflt_value": null,
+        "name": "parent_item_id",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 3,
+        "dflt_value": null,
+        "name": "raw_payload_id",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 4,
+        "dflt_value": null,
+        "name": "endpoint_key",
+        "notnull": 1,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 5,
+        "dflt_value": null,
+        "name": "endpoint_family",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 6,
+        "dflt_value": null,
+        "name": "project_key",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 7,
+        "dflt_value": null,
+        "name": "project_id",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 8,
+        "dflt_value": null,
+        "name": "company_id",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 9,
+        "dflt_value": null,
+        "name": "item_id",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 10,
+        "dflt_value": null,
+        "name": "child_index",
+        "notnull": 0,
+        "pk": 0,
+        "type": "INTEGER"
+      },
+      {
+        "cid": 11,
+        "dflt_value": null,
+        "name": "array_path",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 12,
+        "dflt_value": null,
+        "name": "code",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 13,
+        "dflt_value": null,
+        "name": "name",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 14,
+        "dflt_value": null,
+        "name": "segment_id",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 15,
+        "dflt_value": null,
+        "name": "segment_name",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 16,
+        "dflt_value": null,
+        "name": "payload_sidecar_json",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 17,
+        "dflt_value": null,
+        "name": "payload_hash",
+        "notnull": 0,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 18,
+        "dflt_value": null,
+        "name": "source_quality",
+        "notnull": 1,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 19,
+        "dflt_value": "1",
+        "name": "is_current",
+        "notnull": 1,
+        "pk": 0,
+        "type": "INTEGER"
+      },
+      {
+        "cid": 20,
+        "dflt_value": "CURRENT_TIMESTAMP",
+        "name": "created_utc",
+        "notnull": 1,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 21,
+        "dflt_value": "CURRENT_TIMESTAMP",
+        "name": "updated_utc",
+        "notnull": 1,
+        "pk": 0,
+        "type": "TEXT"
+      },
+      {
+        "cid": 22,
+        "dflt_value": "0",
+        "name": "external_writeback_performed",
+        "notnull": 1,
+        "pk": 0,
+        "type": "INTEGER"
+      },
+      {
+        "cid": 23,
+        "dflt_value": "0",
+        "name": "raw_payload_emitted_to_read_model",
+        "notnull": 1,
+        "pk": 0,
+        "type": "INTEGER"
+      },
+      {
+        "cid": 24,
+        "dflt_value": "0",
+        "name": "raw_payload_emitted_to_evidence",
+        "notnull": 1,
+        "pk": 0,
+        "type": "INTEGER"
+      }
+    ],
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "table_exists": true
+  }
+}

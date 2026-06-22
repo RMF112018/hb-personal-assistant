@@ -1,0 +1,10 @@
+{
+  "adapter_availability": "unverified: no statsforecast/model_engine_runtime source directory present",
+  "available_backtest_proxy": "/Users/bobbyfetting/hb-personal-assistant/docs/evidence/phase19-forecast-probability-db-config-live-proof/20260620T083849Z/work/db_snapshot_backed/forecast_probability_package_tropical_20260101_000000/probabilistic_backtest_results.json",
+  "decision_recommendation": "keep shadow-only",
+  "fallback_classical_ensemble": "six independent estimator ensemble in forecast_intelligence.estimators_uncapped",
+  "python_runtime": "/Users/bobbyfetting/hb-personal-assistant/.venv/bin/python3.12",
+  "reason_unavailable": "PackageNotFoundError('statsforecast')",
+  "runtime_availability": "unavailable",
+  "statsforecast_version": null
+}

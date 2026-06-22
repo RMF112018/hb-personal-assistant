@@ -1,0 +1,1601 @@
+{
+  "classification_inputs": {
+    "actual_cost": {
+      "cell_alias_coverage": {
+        "matched_cells": 0,
+        "matched_nonempty_cells": 0,
+        "matched_numericish_cells": 0
+      },
+      "raw_path_hits_by_name": {
+        "$.Actual Cost": {
+          "nonnull": 0,
+          "present": 0
+        },
+        "$.actual_cost": {
+          "nonnull": 0,
+          "present": 0
+        }
+      },
+      "target_profile": {
+        "nonnull_pct": 0.0,
+        "nonnull_rows": 0,
+        "null_rows": 3044,
+        "present_in_schema": true,
+        "total_rows": 3044
+      }
+    },
+    "approved_change_orders": {
+      "cell_alias_coverage": {
+        "matched_cells": 2522,
+        "matched_nonempty_cells": 2522,
+        "matched_numericish_cells": 2522
+      },
+      "raw_path_hits_by_name": {
+        "$.Approved Change Orders": {
+          "nonnull": 0,
+          "present": 0
+        }
+      },
+      "target_profile": {
+        "nonnull_pct": 82.8515,
+        "nonnull_rows": 2522,
+        "null_rows": 522,
+        "present_in_schema": true,
+        "total_rows": 3044
+      }
+    },
+    "committed_costs": {
+      "cell_alias_coverage": {
+        "matched_cells": 1478,
+        "matched_nonempty_cells": 1478,
+        "matched_numericish_cells": 1478
+      },
+      "raw_path_hits_by_name": {
+        "$.Committed Costs": {
+          "nonnull": 1799,
+          "present": 1799
+        }
+      },
+      "target_profile": {
+        "nonnull_pct": 48.5545,
+        "nonnull_rows": 1478,
+        "null_rows": 1566,
+        "present_in_schema": true,
+        "total_rows": 3044
+      }
+    },
+    "company_id": {
+      "cell_alias_coverage": {},
+      "raw_path_hits_by_name": {
+        "$.company_id": {
+          "nonnull": 3512,
+          "present": 3512
+        }
+      },
+      "target_profile": {
+        "nonnull_pct": 0.0,
+        "nonnull_rows": 0,
+        "null_rows": 3044,
+        "present_in_schema": true,
+        "total_rows": 3044
+      }
+    },
+    "company_id_hash": {
+      "cell_alias_coverage": {},
+      "raw_path_hits_by_name": {},
+      "target_profile": {
+        "nonnull_pct": 0.0,
+        "nonnull_rows": 0,
+        "null_rows": 3044,
+        "present_in_schema": true,
+        "total_rows": 3044
+      }
+    },
+    "cost_type": {
+      "cell_alias_coverage": {
+        "matched_cells": 3044,
+        "matched_nonempty_cells": 3044,
+        "matched_numericish_cells": 0
+      },
+      "raw_path_hits_by_name": {
+        "$.cost_type": {
+          "nonnull": 0,
+          "present": 0
+        },
+        "$.cost_type_id": {
+          "nonnull": 0,
+          "present": 0
+        }
+      },
+      "target_profile": {
+        "nonnull_pct": 0.0,
+        "nonnull_rows": 0,
+        "null_rows": 3044,
+        "present_in_schema": true,
+        "total_rows": 3044
+      }
+    },
+    "cost_type_id": {
+      "cell_alias_coverage": {
+        "matched_cells": 3044,
+        "matched_nonempty_cells": 3044,
+        "matched_numericish_cells": 3044
+      },
+      "raw_path_hits_by_name": {
+        "$.cost_type_id": {
+          "nonnull": 0,
+          "present": 0
+        }
+      },
+      "target_profile": {
+        "nonnull_pct": 0.0,
+        "nonnull_rows": 0,
+        "null_rows": 3044,
+        "present_in_schema": true,
+        "total_rows": 3044
+      }
+    },
+    "direct_costs": {
+      "cell_alias_coverage": {
+        "matched_cells": 522,
+        "matched_nonempty_cells": 522,
+        "matched_numericish_cells": 522
+      },
+      "raw_path_hits_by_name": {
+        "$.Direct Costs": {
+          "nonnull": 609,
+          "present": 609
+        },
+        "$.ERP Direct Costs": {
+          "nonnull": 1190,
+          "present": 1190
+        }
+      },
+      "target_profile": {
+        "nonnull_pct": 17.1485,
+        "nonnull_rows": 522,
+        "null_rows": 2522,
+        "present_in_schema": true,
+        "total_rows": 3044
+      }
+    },
+    "erp_direct_costs": {
+      "cell_alias_coverage": {
+        "matched_cells": 956,
+        "matched_nonempty_cells": 956,
+        "matched_numericish_cells": 956
+      },
+      "raw_path_hits_by_name": {
+        "$.ERP Direct Costs": {
+          "nonnull": 1190,
+          "present": 1190
+        }
+      },
+      "target_profile": {
+        "nonnull_pct": 31.406,
+        "nonnull_rows": 956,
+        "null_rows": 2088,
+        "present_in_schema": true,
+        "total_rows": 3044
+      }
+    },
+    "erp_job_to_date_costs": {
+      "cell_alias_coverage": {
+        "matched_cells": 956,
+        "matched_nonempty_cells": 956,
+        "matched_numericish_cells": 956
+      },
+      "raw_path_hits_by_name": {
+        "$.ERP Job to Date Costs": {
+          "nonnull": 1190,
+          "present": 1190
+        }
+      },
+      "target_profile": {
+        "nonnull_pct": 31.406,
+        "nonnull_rows": 956,
+        "null_rows": 2088,
+        "present_in_schema": true,
+        "total_rows": 3044
+      }
+    },
+    "estimated_cost_at_completion": {
+      "cell_alias_coverage": {
+        "matched_cells": 2522,
+        "matched_nonempty_cells": 2522,
+        "matched_numericish_cells": 2522
+      },
+      "raw_path_hits_by_name": {
+        "$.Estimated Cost at Completion": {
+          "nonnull": 2951,
+          "present": 2951
+        }
+      },
+      "target_profile": {
+        "nonnull_pct": 82.8515,
+        "nonnull_rows": 2522,
+        "null_rows": 522,
+        "present_in_schema": true,
+        "total_rows": 3044
+      }
+    },
+    "forecast_to_complete": {
+      "cell_alias_coverage": {
+        "matched_cells": 1044,
+        "matched_nonempty_cells": 1044,
+        "matched_numericish_cells": 1044
+      },
+      "raw_path_hits_by_name": {},
+      "target_profile": {
+        "nonnull_pct": 34.297,
+        "nonnull_rows": 1044,
+        "null_rows": 2000,
+        "present_in_schema": true,
+        "total_rows": 3044
+      }
+    },
+    "job_to_date_costs": {
+      "cell_alias_coverage": {
+        "matched_cells": 1566,
+        "matched_nonempty_cells": 1566,
+        "matched_numericish_cells": 1566
+      },
+      "raw_path_hits_by_name": {
+        "$.ERP Job to Date Costs": {
+          "nonnull": 1190,
+          "present": 1190
+        },
+        "$.Job to Date Costs": {
+          "nonnull": 1761,
+          "present": 1761
+        }
+      },
+      "target_profile": {
+        "nonnull_pct": 51.4455,
+        "nonnull_rows": 1566,
+        "null_rows": 1478,
+        "present_in_schema": true,
+        "total_rows": 3044
+      }
+    },
+    "line_item_type_id": {
+      "cell_alias_coverage": {
+        "matched_cells": 0,
+        "matched_nonempty_cells": 0,
+        "matched_numericish_cells": 0
+      },
+      "raw_path_hits_by_name": {
+        "$.line_item_type_id": {
+          "nonnull": 0,
+          "present": 0
+        }
+      },
+      "target_profile": {
+        "nonnull_pct": 0.0,
+        "nonnull_rows": 0,
+        "null_rows": 3044,
+        "present_in_schema": true,
+        "total_rows": 3044
+      }
+    },
+    "pending_budget_changes": {
+      "cell_alias_coverage": {
+        "matched_cells": 1478,
+        "matched_nonempty_cells": 1478,
+        "matched_numericish_cells": 1478
+      },
+      "raw_path_hits_by_name": {
+        "$.Pending Budget Changes": {
+          "nonnull": 1799,
+          "present": 1799
+        }
+      },
+      "target_profile": {
+        "nonnull_pct": 48.5545,
+        "nonnull_rows": 1478,
+        "null_rows": 1566,
+        "present_in_schema": true,
+        "total_rows": 3044
+      }
+    },
+    "projected_budget": {
+      "cell_alias_coverage": {
+        "matched_cells": 2522,
+        "matched_nonempty_cells": 2522,
+        "matched_numericish_cells": 2522
+      },
+      "raw_path_hits_by_name": {
+        "$.Projected Budget": {
+          "nonnull": 2951,
+          "present": 2951
+        }
+      },
+      "target_profile": {
+        "nonnull_pct": 82.8515,
+        "nonnull_rows": 2522,
+        "null_rows": 522,
+        "present_in_schema": true,
+        "total_rows": 3044
+      }
+    },
+    "projected_costs": {
+      "cell_alias_coverage": {
+        "matched_cells": 2522,
+        "matched_nonempty_cells": 2522,
+        "matched_numericish_cells": 2522
+      },
+      "raw_path_hits_by_name": {
+        "$.Projected Costs": {
+          "nonnull": 2951,
+          "present": 2951
+        }
+      },
+      "target_profile": {
+        "nonnull_pct": 82.8515,
+        "nonnull_rows": 2522,
+        "null_rows": 522,
+        "present_in_schema": true,
+        "total_rows": 3044
+      }
+    },
+    "projected_over_under": {
+      "cell_alias_coverage": {
+        "matched_cells": 2522,
+        "matched_nonempty_cells": 2522,
+        "matched_numericish_cells": 2522
+      },
+      "raw_path_hits_by_name": {
+        "$.Projected over Under": {
+          "nonnull": 2951,
+          "present": 2951
+        }
+      },
+      "target_profile": {
+        "nonnull_pct": 82.8515,
+        "nonnull_rows": 2522,
+        "null_rows": 522,
+        "present_in_schema": true,
+        "total_rows": 3044
+      }
+    },
+    "revised_budget": {
+      "cell_alias_coverage": {
+        "matched_cells": 2522,
+        "matched_nonempty_cells": 2522,
+        "matched_numericish_cells": 2522
+      },
+      "raw_path_hits_by_name": {
+        "$.Revised Budget": {
+          "nonnull": 2951,
+          "present": 2951
+        }
+      },
+      "target_profile": {
+        "nonnull_pct": 82.8515,
+        "nonnull_rows": 2522,
+        "null_rows": 522,
+        "present_in_schema": true,
+        "total_rows": 3044
+      }
+    }
+  },
+  "column_metadata_label_coverage": [
+    {
+      "example_label": "Vendor",
+      "metadata_rows": 35,
+      "normalized_label": "vendor"
+    },
+    {
+      "example_label": "Item",
+      "metadata_rows": 35,
+      "normalized_label": "item"
+    },
+    {
+      "example_label": "Detail Type",
+      "metadata_rows": 35,
+      "normalized_label": "detailtype"
+    },
+    {
+      "example_label": "Description",
+      "metadata_rows": 35,
+      "normalized_label": "description"
+    },
+    {
+      "example_label": "Budget Code",
+      "metadata_rows": 35,
+      "normalized_label": "budgetcode"
+    },
+    {
+      "example_label": "Forecast To Complete",
+      "metadata_rows": 29,
+      "normalized_label": "forecasttocomplete"
+    },
+    {
+      "example_label": "Approved COs",
+      "metadata_rows": 29,
+      "normalized_label": "approvedcos"
+    },
+    {
+      "example_label": "Original Budget Amount",
+      "metadata_rows": 23,
+      "normalized_label": "originalbudgetamount"
+    },
+    {
+      "example_label": "Budget Modifications",
+      "metadata_rows": 23,
+      "normalized_label": "budgetmodifications"
+    },
+    {
+      "example_label": "Pending Cost Changes",
+      "metadata_rows": 17,
+      "normalized_label": "pendingcostchanges"
+    },
+    {
+      "example_label": "Pending Budget Changes",
+      "metadata_rows": 17,
+      "normalized_label": "pendingbudgetchanges"
+    },
+    {
+      "example_label": "Committed Costs",
+      "metadata_rows": 17,
+      "normalized_label": "committedcosts"
+    },
+    {
+      "example_label": "Job to Date Costs",
+      "metadata_rows": 12,
+      "normalized_label": "jobtodatecosts"
+    },
+    {
+      "example_label": "Notes",
+      "metadata_rows": 11,
+      "normalized_label": "notes"
+    },
+    {
+      "example_label": "ERP Job to Date Costs",
+      "metadata_rows": 11,
+      "normalized_label": "erpjobtodatecosts"
+    },
+    {
+      "example_label": "Commitment Invoiced",
+      "metadata_rows": 11,
+      "normalized_label": "commitmentinvoiced"
+    },
+    {
+      "example_label": "Requisitions",
+      "metadata_rows": 6,
+      "normalized_label": "requisitions"
+    },
+    {
+      "example_label": "Prime",
+      "metadata_rows": 6,
+      "normalized_label": "prime"
+    },
+    {
+      "example_label": "Commitments",
+      "metadata_rows": 6,
+      "normalized_label": "commitments"
+    },
+    {
+      "example_label": "Change Events",
+      "metadata_rows": 6,
+      "normalized_label": "changeevents"
+    }
+  ],
+  "company_id_provenance": [
+    {
+      "distinct_sync_run_company_ids": 1,
+      "endpoint_key": "budget-detail-columns",
+      "raw_company_id_nonnull": 0,
+      "raw_rows": 399,
+      "sync_run_company_id_nonnull": 399
+    },
+    {
+      "distinct_sync_run_company_ids": 1,
+      "endpoint_key": "budget-detail-rows",
+      "raw_company_id_nonnull": 0,
+      "raw_rows": 3512,
+      "sync_run_company_id_nonnull": 3512
+    },
+    {
+      "distinct_sync_run_company_ids": 1,
+      "endpoint_key": "budget-views",
+      "raw_company_id_nonnull": 0,
+      "raw_rows": 35,
+      "sync_run_company_id_nonnull": 35
+    }
+  ],
+  "db_path": "/tmp/hb-budget-detail-row-field-projection-audit.sqlite",
+  "raw_payload_path_counts": {
+    "$.Actual Cost": {
+      "nonnull": 0,
+      "present": 0
+    },
+    "$.Approved COs": {
+      "nonnull": 2951,
+      "present": 2951
+    },
+    "$.Approved Change Orders": {
+      "nonnull": 0,
+      "present": 0
+    },
+    "$.Committed Costs": {
+      "nonnull": 1799,
+      "present": 1799
+    },
+    "$.Direct Costs": {
+      "nonnull": 609,
+      "present": 609
+    },
+    "$.ERP Direct Costs": {
+      "nonnull": 1190,
+      "present": 1190
+    },
+    "$.ERP Job to Date Costs": {
+      "nonnull": 1190,
+      "present": 1190
+    },
+    "$.Estimated Cost at Completion": {
+      "nonnull": 2951,
+      "present": 2951
+    },
+    "$.Job to Date Costs": {
+      "nonnull": 1761,
+      "present": 1761
+    },
+    "$.Pending Budget Changes": {
+      "nonnull": 1799,
+      "present": 1799
+    },
+    "$.Pending Cost Changes": {
+      "nonnull": 1799,
+      "present": 1799
+    },
+    "$.Projected Budget": {
+      "nonnull": 2951,
+      "present": 2951
+    },
+    "$.Projected Cost To Complete": {
+      "nonnull": 1152,
+      "present": 1152
+    },
+    "$.Projected Costs": {
+      "nonnull": 2951,
+      "present": 2951
+    },
+    "$.Projected over Under": {
+      "nonnull": 2951,
+      "present": 2951
+    },
+    "$.Revised Budget": {
+      "nonnull": 2951,
+      "present": 2951
+    },
+    "$.actual_cost": {
+      "nonnull": 0,
+      "present": 0
+    },
+    "$.budget_forecast": {
+      "nonnull": 3512,
+      "present": 3512
+    },
+    "$.budget_forecast.amount": {
+      "nonnull": 0,
+      "present": 0
+    },
+    "$.budget_forecast.automatic_amount": {
+      "nonnull": 0,
+      "present": 0
+    },
+    "$.budget_forecast.manual_amount": {
+      "nonnull": 0,
+      "present": 0
+    },
+    "$.category": {
+      "nonnull": 3512,
+      "present": 3512
+    },
+    "$.category_id": {
+      "nonnull": 3512,
+      "present": 3512
+    },
+    "$.company": {
+      "nonnull": 3512,
+      "present": 3512
+    },
+    "$.company_id": {
+      "nonnull": 3512,
+      "present": 3512
+    },
+    "$.cost_type": {
+      "nonnull": 0,
+      "present": 0
+    },
+    "$.cost_type_id": {
+      "nonnull": 0,
+      "present": 0
+    },
+    "$.line_item_type": {
+      "nonnull": 0,
+      "present": 0
+    },
+    "$.line_item_type_id": {
+      "nonnull": 0,
+      "present": 0
+    }
+  },
+  "row_cell_alias_target_coverage": {
+    "actual_cost": {
+      "matched_cells": 0,
+      "matched_nonempty_cells": 0,
+      "matched_numericish_cells": 0
+    },
+    "approved_change_orders": {
+      "matched_cells": 2522,
+      "matched_nonempty_cells": 2522,
+      "matched_numericish_cells": 2522
+    },
+    "committed_costs": {
+      "matched_cells": 1478,
+      "matched_nonempty_cells": 1478,
+      "matched_numericish_cells": 1478
+    },
+    "cost_type": {
+      "matched_cells": 3044,
+      "matched_nonempty_cells": 3044,
+      "matched_numericish_cells": 0
+    },
+    "cost_type_id": {
+      "matched_cells": 3044,
+      "matched_nonempty_cells": 3044,
+      "matched_numericish_cells": 3044
+    },
+    "direct_costs": {
+      "matched_cells": 522,
+      "matched_nonempty_cells": 522,
+      "matched_numericish_cells": 522
+    },
+    "erp_direct_costs": {
+      "matched_cells": 956,
+      "matched_nonempty_cells": 956,
+      "matched_numericish_cells": 956
+    },
+    "erp_job_to_date_costs": {
+      "matched_cells": 956,
+      "matched_nonempty_cells": 956,
+      "matched_numericish_cells": 956
+    },
+    "estimated_cost_at_completion": {
+      "matched_cells": 2522,
+      "matched_nonempty_cells": 2522,
+      "matched_numericish_cells": 2522
+    },
+    "forecast_to_complete": {
+      "matched_cells": 1044,
+      "matched_nonempty_cells": 1044,
+      "matched_numericish_cells": 1044
+    },
+    "job_to_date_costs": {
+      "matched_cells": 1566,
+      "matched_nonempty_cells": 1566,
+      "matched_numericish_cells": 1566
+    },
+    "line_item_type_id": {
+      "matched_cells": 0,
+      "matched_nonempty_cells": 0,
+      "matched_numericish_cells": 0
+    },
+    "pending_budget_changes": {
+      "matched_cells": 1478,
+      "matched_nonempty_cells": 1478,
+      "matched_numericish_cells": 1478
+    },
+    "projected_budget": {
+      "matched_cells": 2522,
+      "matched_nonempty_cells": 2522,
+      "matched_numericish_cells": 2522
+    },
+    "projected_costs": {
+      "matched_cells": 2522,
+      "matched_nonempty_cells": 2522,
+      "matched_numericish_cells": 2522
+    },
+    "projected_over_under": {
+      "matched_cells": 2522,
+      "matched_nonempty_cells": 2522,
+      "matched_numericish_cells": 2522
+    },
+    "revised_budget": {
+      "matched_cells": 2522,
+      "matched_nonempty_cells": 2522,
+      "matched_numericish_cells": 2522
+    }
+  },
+  "row_cell_label_coverage": [
+    {
+      "cell_rows": 26892,
+      "example_label": "id",
+      "nonempty_value_rows": 26892,
+      "normalized_label": "id",
+      "numericish_value_rows": 26892
+    },
+    {
+      "cell_rows": 18264,
+      "example_label": "name",
+      "nonempty_value_rows": 18264,
+      "normalized_label": "name",
+      "numericish_value_rows": 0
+    },
+    {
+      "cell_rows": 9132,
+      "example_label": "code",
+      "nonempty_value_rows": 9132,
+      "normalized_label": "code",
+      "numericish_value_rows": 3044
+    },
+    {
+      "cell_rows": 9132,
+      "example_label": "is_parent",
+      "nonempty_value_rows": 9132,
+      "normalized_label": "isparent",
+      "numericish_value_rows": 9132
+    },
+    {
+      "cell_rows": 9132,
+      "example_label": "path_code",
+      "nonempty_value_rows": 9132,
+      "normalized_label": "pathcode",
+      "numericish_value_rows": 3044
+    },
+    {
+      "cell_rows": 9132,
+      "example_label": "path_codes[0]",
+      "nonempty_value_rows": 9132,
+      "normalized_label": "pathcodes0",
+      "numericish_value_rows": 3044
+    },
+    {
+      "cell_rows": 9132,
+      "example_label": "path_ids[0]",
+      "nonempty_value_rows": 9132,
+      "normalized_label": "pathids0",
+      "numericish_value_rows": 9132
+    },
+    {
+      "cell_rows": 9132,
+      "example_label": "structure",
+      "nonempty_value_rows": 9132,
+      "normalized_label": "structure",
+      "numericish_value_rows": 0
+    },
+    {
+      "cell_rows": 9132,
+      "example_label": "type",
+      "nonempty_value_rows": 9132,
+      "normalized_label": "type",
+      "numericish_value_rows": 0
+    },
+    {
+      "cell_rows": 5566,
+      "example_label": "calculation_strategy",
+      "nonempty_value_rows": 5566,
+      "normalized_label": "calculationstrategy",
+      "numericish_value_rows": 0
+    },
+    {
+      "cell_rows": 3360,
+      "example_label": "amount",
+      "nonempty_value_rows": 3360,
+      "normalized_label": "amount",
+      "numericish_value_rows": 3360
+    },
+    {
+      "cell_rows": 3044,
+      "example_label": "automatic_amount",
+      "nonempty_value_rows": 3044,
+      "normalized_label": "automaticamount",
+      "numericish_value_rows": 3044
+    },
+    {
+      "cell_rows": 3044,
+      "example_label": "biller",
+      "nonempty_value_rows": 3044,
+      "normalized_label": "biller",
+      "numericish_value_rows": 0
+    },
+    {
+      "cell_rows": 3044,
+      "example_label": "biller_id",
+      "nonempty_value_rows": 3044,
+      "normalized_label": "billerid",
+      "numericish_value_rows": 3044
+    },
+    {
+      "cell_rows": 3044,
+      "example_label": "biller_type",
+      "nonempty_value_rows": 3044,
+      "normalized_label": "billertype",
+      "numericish_value_rows": 0
+    },
+    {
+      "cell_rows": 3044,
+      "example_label": "budgetable",
+      "nonempty_value_rows": 3044,
+      "normalized_label": "budgetable",
+      "numericish_value_rows": 3044
+    },
+    {
+      "cell_rows": 3044,
+      "example_label": "budgeted",
+      "nonempty_value_rows": 3044,
+      "normalized_label": "budgeted",
+      "numericish_value_rows": 3044
+    },
+    {
+      "cell_rows": 3044,
+      "example_label": "budget_modifications",
+      "nonempty_value_rows": 3044,
+      "normalized_label": "budgetmodifications",
+      "numericish_value_rows": 3044
+    },
+    {
+      "cell_rows": 3044,
+      "example_label": "budget_row_id",
+      "nonempty_value_rows": 3044,
+      "normalized_label": "budgetrowid",
+      "numericish_value_rows": 3044
+    },
+    {
+      "cell_rows": 3044,
+      "example_label": "category",
+      "nonempty_value_rows": 3044,
+      "normalized_label": "category",
+      "numericish_value_rows": 0
+    },
+    {
+      "cell_rows": 3044,
+      "example_label": "category_id",
+      "nonempty_value_rows": 3044,
+      "normalized_label": "categoryid",
+      "numericish_value_rows": 3044
+    },
+    {
+      "cell_rows": 3044,
+      "example_label": "company",
+      "nonempty_value_rows": 3044,
+      "normalized_label": "company",
+      "numericish_value_rows": 0
+    },
+    {
+      "cell_rows": 3044,
+      "example_label": "company_id",
+      "nonempty_value_rows": 3044,
+      "normalized_label": "companyid",
+      "numericish_value_rows": 3044
+    },
+    {
+      "cell_rows": 3044,
+      "example_label": "cost_code",
+      "nonempty_value_rows": 3044,
+      "normalized_label": "costcode",
+      "numericish_value_rows": 0
+    },
+    {
+      "cell_rows": 3044,
+      "example_label": "cost_code_id",
+      "nonempty_value_rows": 3044,
+      "normalized_label": "costcodeid",
+      "numericish_value_rows": 3044
+    },
+    {
+      "cell_rows": 3044,
+      "example_label": "cost_code_level_1",
+      "nonempty_value_rows": 3044,
+      "normalized_label": "costcodelevel1",
+      "numericish_value_rows": 0
+    },
+    {
+      "cell_rows": 3044,
+      "example_label": "cost_code_level_1_id",
+      "nonempty_value_rows": 3044,
+      "normalized_label": "costcodelevel1id",
+      "numericish_value_rows": 3044
+    },
+    {
+      "cell_rows": 3044,
+      "example_label": "cost_code_level_2",
+      "nonempty_value_rows": 3044,
+      "normalized_label": "costcodelevel2",
+      "numericish_value_rows": 0
+    },
+    {
+      "cell_rows": 3044,
+      "example_label": "cost_code_level_2_id",
+      "nonempty_value_rows": 3044,
+      "normalized_label": "costcodelevel2id",
+      "numericish_value_rows": 3044
+    },
+    {
+      "cell_rows": 3044,
+      "example_label": "cost_code_level_3",
+      "nonempty_value_rows": 3044,
+      "normalized_label": "costcodelevel3",
+      "numericish_value_rows": 0
+    },
+    {
+      "cell_rows": 3044,
+      "example_label": "cost_code_level_3_id",
+      "nonempty_value_rows": 3044,
+      "normalized_label": "costcodelevel3id",
+      "numericish_value_rows": 3044
+    },
+    {
+      "cell_rows": 3044,
+      "example_label": "cost_code_level_4",
+      "nonempty_value_rows": 3044,
+      "normalized_label": "costcodelevel4",
+      "numericish_value_rows": 0
+    },
+    {
+      "cell_rows": 3044,
+      "example_label": "cost_code_level_4_id",
+      "nonempty_value_rows": 3044,
+      "normalized_label": "costcodelevel4id",
+      "numericish_value_rows": 3044
+    },
+    {
+      "cell_rows": 3044,
+      "example_label": "cost_code_level_5",
+      "nonempty_value_rows": 3044,
+      "normalized_label": "costcodelevel5",
+      "numericish_value_rows": 0
+    },
+    {
+      "cell_rows": 3044,
+      "example_label": "cost_code_level_5_id",
+      "nonempty_value_rows": 3044,
+      "normalized_label": "costcodelevel5id",
+      "numericish_value_rows": 3044
+    },
+    {
+      "cell_rows": 3044,
+      "example_label": "cost_code_origin_id",
+      "nonempty_value_rows": 3044,
+      "normalized_label": "costcodeoriginid",
+      "numericish_value_rows": 0
+    },
+    {
+      "cell_rows": 3044,
+      "example_label": "deletable",
+      "nonempty_value_rows": 3044,
+      "normalized_label": "deletable",
+      "numericish_value_rows": 3044
+    },
+    {
+      "cell_rows": 3044,
+      "example_label": "Description",
+      "nonempty_value_rows": 3044,
+      "normalized_label": "description",
+      "numericish_value_rows": 0
+    },
+    {
+      "cell_rows": 3044,
+      "example_label": "flat_code",
+      "nonempty_value_rows": 3044,
+      "normalized_label": "flatcode",
+      "numericish_value_rows": 0
+    },
+    {
+      "cell_rows": 3044,
+      "example_label": "flat_name",
+      "nonempty_value_rows": 3044,
+      "normalized_label": "flatname",
+      "numericish_value_rows": 0
+    },
+    {
+      "cell_rows": 3044,
+      "example_label": "manual_amount",
+      "nonempty_value_rows": 3044,
+      "normalized_label": "manualamount",
+      "numericish_value_rows": 3044
+    },
+    {
+      "cell_rows": 3044,
+      "example_label": "original_budget_amount",
+      "nonempty_value_rows": 3044,
+      "normalized_label": "originalbudgetamount",
+      "numericish_value_rows": 3044
+    },
+    {
+      "cell_rows": 3044,
+      "example_label": "path_codes[1]",
+      "nonempty_value_rows": 3044,
+      "normalized_label": "pathcodes1",
+      "numericish_value_rows": 0
+    },
+    {
+      "cell_rows": 3044,
+      "example_label": "path_codes[2]",
+      "nonempty_value_rows": 3044,
+      "normalized_label": "pathcodes2",
+      "numericish_value_rows": 0
+    },
+    {
+      "cell_rows": 3044,
+      "example_label": "path_ids[1]",
+      "nonempty_value_rows": 3044,
+      "normalized_label": "pathids1",
+      "numericish_value_rows": 3044
+    },
+    {
+      "cell_rows": 3044,
+      "example_label": "path_ids[2]",
+      "nonempty_value_rows": 3044,
+      "normalized_label": "pathids2",
+      "numericish_value_rows": 3044
+    },
+    {
+      "cell_rows": 3044,
+      "example_label": "project",
+      "nonempty_value_rows": 3044,
+      "normalized_label": "project",
+      "numericish_value_rows": 0
+    },
+    {
+      "cell_rows": 3044,
+      "example_label": "project_id",
+      "nonempty_value_rows": 3044,
+      "normalized_label": "projectid",
+      "numericish_value_rows": 3044
+    },
+    {
+      "cell_rows": 3044,
+      "example_label": "root_cost_code",
+      "nonempty_value_rows": 3044,
+      "normalized_label": "rootcostcode",
+      "numericish_value_rows": 0
+    },
+    {
+      "cell_rows": 3044,
+      "example_label": "root_cost_code_id",
+      "nonempty_value_rows": 3044,
+      "normalized_label": "rootcostcodeid",
+      "numericish_value_rows": 3044
+    },
+    {
+      "cell_rows": 3044,
+      "example_label": "wbs_code_id",
+      "nonempty_value_rows": 3044,
+      "normalized_label": "wbscodeid",
+      "numericish_value_rows": 3044
+    },
+    {
+      "cell_rows": 2522,
+      "example_label": "Approved COs",
+      "nonempty_value_rows": 2522,
+      "normalized_label": "approvedcos",
+      "numericish_value_rows": 2522
+    },
+    {
+      "cell_rows": 2522,
+      "example_label": "automatically_calculated",
+      "nonempty_value_rows": 2522,
+      "normalized_label": "automaticallycalculated",
+      "numericish_value_rows": 2522
+    },
+    {
+      "cell_rows": 2522,
+      "example_label": "Estimated Cost at Completion",
+      "nonempty_value_rows": 2522,
+      "normalized_label": "estimatedcostatcompletion",
+      "numericish_value_rows": 2522
+    },
+    {
+      "cell_rows": 2522,
+      "example_label": "Projected Budget",
+      "nonempty_value_rows": 2522,
+      "normalized_label": "projectedbudget",
+      "numericish_value_rows": 2522
+    },
+    {
+      "cell_rows": 2522,
+      "example_label": "Projected Costs",
+      "nonempty_value_rows": 2522,
+      "normalized_label": "projectedcosts",
+      "numericish_value_rows": 2522
+    },
+    {
+      "cell_rows": 2522,
+      "example_label": "Projected over Under",
+      "nonempty_value_rows": 2522,
+      "normalized_label": "projectedoverunder",
+      "numericish_value_rows": 2522
+    },
+    {
+      "cell_rows": 2522,
+      "example_label": "Revised Budget",
+      "nonempty_value_rows": 2522,
+      "normalized_label": "revisedbudget",
+      "numericish_value_rows": 2522
+    },
+    {
+      "cell_rows": 1566,
+      "example_label": "Job to Date Costs",
+      "nonempty_value_rows": 1566,
+      "normalized_label": "jobtodatecosts",
+      "numericish_value_rows": 1566
+    },
+    {
+      "cell_rows": 1478,
+      "example_label": "Committed Costs",
+      "nonempty_value_rows": 1478,
+      "normalized_label": "committedcosts",
+      "numericish_value_rows": 1478
+    },
+    {
+      "cell_rows": 1478,
+      "example_label": "Pending Budget Changes",
+      "nonempty_value_rows": 1478,
+      "normalized_label": "pendingbudgetchanges",
+      "numericish_value_rows": 1478
+    },
+    {
+      "cell_rows": 1478,
+      "example_label": "Pending Cost Changes",
+      "nonempty_value_rows": 1478,
+      "normalized_label": "pendingcostchanges",
+      "numericish_value_rows": 1478
+    },
+    {
+      "cell_rows": 1044,
+      "example_label": "Projected Cost To Complete",
+      "nonempty_value_rows": 1044,
+      "normalized_label": "projectedcosttocomplete",
+      "numericish_value_rows": 1044
+    },
+    {
+      "cell_rows": 956,
+      "example_label": "Commitment Invoiced",
+      "nonempty_value_rows": 956,
+      "normalized_label": "commitmentinvoiced",
+      "numericish_value_rows": 956
+    },
+    {
+      "cell_rows": 956,
+      "example_label": "ERP Direct Costs",
+      "nonempty_value_rows": 956,
+      "normalized_label": "erpdirectcosts",
+      "numericish_value_rows": 956
+    },
+    {
+      "cell_rows": 956,
+      "example_label": "ERP Job to Date Costs",
+      "nonempty_value_rows": 956,
+      "normalized_label": "erpjobtodatecosts",
+      "numericish_value_rows": 956
+    },
+    {
+      "cell_rows": 782,
+      "example_label": "quantity",
+      "nonempty_value_rows": 782,
+      "normalized_label": "quantity",
+      "numericish_value_rows": 782
+    },
+    {
+      "cell_rows": 774,
+      "example_label": "start_date",
+      "nonempty_value_rows": 774,
+      "normalized_label": "startdate",
+      "numericish_value_rows": 0
+    },
+    {
+      "cell_rows": 768,
+      "example_label": "end_date",
+      "nonempty_value_rows": 768,
+      "normalized_label": "enddate",
+      "numericish_value_rows": 0
+    },
+    {
+      "cell_rows": 762,
+      "example_label": "curve",
+      "nonempty_value_rows": 762,
+      "normalized_label": "curve",
+      "numericish_value_rows": 0
+    },
+    {
+      "cell_rows": 522,
+      "example_label": "Change Events",
+      "nonempty_value_rows": 522,
+      "normalized_label": "changeevents",
+      "numericish_value_rows": 522
+    },
+    {
+      "cell_rows": 522,
+      "example_label": "Commitments",
+      "nonempty_value_rows": 522,
+      "normalized_label": "commitments",
+      "numericish_value_rows": 522
+    },
+    {
+      "cell_rows": 522,
+      "example_label": "Direct Costs",
+      "nonempty_value_rows": 522,
+      "normalized_label": "directcosts",
+      "numericish_value_rows": 522
+    },
+    {
+      "cell_rows": 522,
+      "example_label": "Prime",
+      "nonempty_value_rows": 522,
+      "normalized_label": "prime",
+      "numericish_value_rows": 522
+    },
+    {
+      "cell_rows": 522,
+      "example_label": "Requisitions",
+      "nonempty_value_rows": 522,
+      "normalized_label": "requisitions",
+      "numericish_value_rows": 522
+    },
+    {
+      "cell_rows": 316,
+      "example_label": "budget_notes",
+      "nonempty_value_rows": 316,
+      "normalized_label": "budgetnotes",
+      "numericish_value_rows": 0
+    },
+    {
+      "cell_rows": 316,
+      "example_label": "position",
+      "nonempty_value_rows": 316,
+      "normalized_label": "position",
+      "numericish_value_rows": 316
+    },
+    {
+      "cell_rows": 256,
+      "example_label": "forecast_remainder",
+      "nonempty_value_rows": 256,
+      "normalized_label": "forecastremainder",
+      "numericish_value_rows": 256
+    },
+    {
+      "cell_rows": 20,
+      "example_label": "unit_cost",
+      "nonempty_value_rows": 20,
+      "normalized_label": "unitcost",
+      "numericish_value_rows": 20
+    },
+    {
+      "cell_rows": 15,
+      "example_label": "notes",
+      "nonempty_value_rows": 15,
+      "normalized_label": "notes",
+      "numericish_value_rows": 0
+    }
+  ],
+  "schemas": {
+    "procore_endpoint_raw_payloads": [
+      "raw_payload_id",
+      "capture_run_id",
+      "endpoint_key",
+      "endpoint_family",
+      "endpoint_version",
+      "company_id",
+      "company_id_hash",
+      "project_id",
+      "project_id_hash",
+      "project_key",
+      "record_type",
+      "record_id",
+      "record_id_hash",
+      "parent_record_id",
+      "parent_record_id_hash",
+      "source_ref_hash",
+      "request_fingerprint_hash",
+      "payload_hash",
+      "payload_json",
+      "payload_size_bytes",
+      "payload_captured_at_utc",
+      "payload_seen_first_utc",
+      "payload_seen_last_utc",
+      "is_current",
+      "redaction_status",
+      "security_scrub_status",
+      "contains_personal_data",
+      "contains_signed_url",
+      "contains_secret_like_value",
+      "retention_class",
+      "analytics_eligible",
+      "source_quality",
+      "raw_procore_payload_persisted",
+      "external_writeback_performed",
+      "created_utc",
+      "updated_utc"
+    ],
+    "procore_ep_budget_detail_columns": [
+      "record_key",
+      "raw_payload_id",
+      "endpoint_key",
+      "endpoint_family",
+      "project_key",
+      "project_id",
+      "project_id_hash",
+      "company_id",
+      "company_id_hash",
+      "record_id",
+      "record_id_hash",
+      "parent_record_id",
+      "parent_record_id_hash",
+      "budget_view_id",
+      "column_id",
+      "column_key",
+      "name",
+      "label",
+      "data_type",
+      "field_path",
+      "position",
+      "visible",
+      "payload_sidecar_json",
+      "payload_hash",
+      "source_quality",
+      "payload_seen_first_utc",
+      "payload_seen_last_utc",
+      "is_current",
+      "created_utc",
+      "updated_utc",
+      "external_writeback_performed",
+      "raw_payload_emitted_to_read_model",
+      "raw_payload_emitted_to_evidence"
+    ],
+    "procore_ep_budget_detail_row_cells": [
+      "cell_key",
+      "record_key",
+      "raw_payload_id",
+      "endpoint_key",
+      "endpoint_family",
+      "project_key",
+      "project_id",
+      "project_id_hash",
+      "company_id",
+      "company_id_hash",
+      "budget_view_id",
+      "budget_row_id",
+      "row_id",
+      "column_id",
+      "column_key",
+      "column_name",
+      "column_label",
+      "field_path",
+      "value_text",
+      "value_decimal_text",
+      "currency_iso_code",
+      "value_json",
+      "payload_hash",
+      "source_quality",
+      "is_current",
+      "created_utc",
+      "updated_utc",
+      "external_writeback_performed",
+      "raw_payload_emitted_to_read_model",
+      "raw_payload_emitted_to_evidence"
+    ],
+    "procore_ep_budget_detail_rows": [
+      "record_key",
+      "raw_payload_id",
+      "endpoint_key",
+      "endpoint_family",
+      "project_key",
+      "project_id",
+      "project_id_hash",
+      "company_id",
+      "company_id_hash",
+      "record_id",
+      "record_id_hash",
+      "parent_record_id",
+      "parent_record_id_hash",
+      "budget_view_id",
+      "budget_row_id",
+      "row_id",
+      "wbs_code_id",
+      "wbs_flat_code",
+      "budget_code",
+      "canonical_budget_code_key",
+      "cost_code_id",
+      "cost_code",
+      "cost_type_id",
+      "cost_type",
+      "line_item_type_id",
+      "description",
+      "original_budget_amount",
+      "revised_budget",
+      "approved_change_orders",
+      "pending_budget_changes",
+      "projected_budget",
+      "committed_costs",
+      "direct_costs",
+      "actual_cost",
+      "projected_costs",
+      "forecast_to_complete",
+      "estimated_cost_at_completion",
+      "projected_over_under",
+      "erp_job_to_date_costs",
+      "payload_sidecar_json",
+      "payload_hash",
+      "source_quality",
+      "payload_seen_first_utc",
+      "payload_seen_last_utc",
+      "is_current",
+      "created_utc",
+      "updated_utc",
+      "external_writeback_performed",
+      "raw_payload_emitted_to_read_model",
+      "raw_payload_emitted_to_evidence",
+      "erp_direct_costs",
+      "job_to_date_costs"
+    ],
+    "procore_live_sync_runs": [
+      "sync_run_id",
+      "endpoint_id",
+      "command_endpoint",
+      "legacy_endpoint_alias",
+      "project_key",
+      "procore_project_id",
+      "company_id",
+      "mode",
+      "started_at_utc",
+      "completed_at_utc",
+      "request_count",
+      "retrieved_count",
+      "normalized_count",
+      "sqlite_upserted_count",
+      "status",
+      "state",
+      "reason_codes_json",
+      "evidence_path",
+      "redaction_applied",
+      "raw_body_persisted",
+      "no_live_call_performed"
+    ]
+  },
+  "tables_present": {
+    "procore_endpoint_raw_payloads": true,
+    "procore_ep_budget_detail_columns": true,
+    "procore_ep_budget_detail_row_cells": true,
+    "procore_ep_budget_detail_rows": true,
+    "procore_live_sync_runs": true
+  },
+  "target_field_null_profile": {
+    "actual_cost": {
+      "nonnull_pct": 0.0,
+      "nonnull_rows": 0,
+      "null_rows": 3044,
+      "present_in_schema": true,
+      "total_rows": 3044
+    },
+    "approved_change_orders": {
+      "nonnull_pct": 82.8515,
+      "nonnull_rows": 2522,
+      "null_rows": 522,
+      "present_in_schema": true,
+      "total_rows": 3044
+    },
+    "committed_costs": {
+      "nonnull_pct": 48.5545,
+      "nonnull_rows": 1478,
+      "null_rows": 1566,
+      "present_in_schema": true,
+      "total_rows": 3044
+    },
+    "company_id": {
+      "nonnull_pct": 0.0,
+      "nonnull_rows": 0,
+      "null_rows": 3044,
+      "present_in_schema": true,
+      "total_rows": 3044
+    },
+    "company_id_hash": {
+      "nonnull_pct": 0.0,
+      "nonnull_rows": 0,
+      "null_rows": 3044,
+      "present_in_schema": true,
+      "total_rows": 3044
+    },
+    "cost_type": {
+      "nonnull_pct": 0.0,
+      "nonnull_rows": 0,
+      "null_rows": 3044,
+      "present_in_schema": true,
+      "total_rows": 3044
+    },
+    "cost_type_id": {
+      "nonnull_pct": 0.0,
+      "nonnull_rows": 0,
+      "null_rows": 3044,
+      "present_in_schema": true,
+      "total_rows": 3044
+    },
+    "direct_costs": {
+      "nonnull_pct": 17.1485,
+      "nonnull_rows": 522,
+      "null_rows": 2522,
+      "present_in_schema": true,
+      "total_rows": 3044
+    },
+    "erp_direct_costs": {
+      "nonnull_pct": 31.406,
+      "nonnull_rows": 956,
+      "null_rows": 2088,
+      "present_in_schema": true,
+      "total_rows": 3044
+    },
+    "erp_job_to_date_costs": {
+      "nonnull_pct": 31.406,
+      "nonnull_rows": 956,
+      "null_rows": 2088,
+      "present_in_schema": true,
+      "total_rows": 3044
+    },
+    "estimated_cost_at_completion": {
+      "nonnull_pct": 82.8515,
+      "nonnull_rows": 2522,
+      "null_rows": 522,
+      "present_in_schema": true,
+      "total_rows": 3044
+    },
+    "forecast_to_complete": {
+      "nonnull_pct": 34.297,
+      "nonnull_rows": 1044,
+      "null_rows": 2000,
+      "present_in_schema": true,
+      "total_rows": 3044
+    },
+    "job_to_date_costs": {
+      "nonnull_pct": 51.4455,
+      "nonnull_rows": 1566,
+      "null_rows": 1478,
+      "present_in_schema": true,
+      "total_rows": 3044
+    },
+    "line_item_type_id": {
+      "nonnull_pct": 0.0,
+      "nonnull_rows": 0,
+      "null_rows": 3044,
+      "present_in_schema": true,
+      "total_rows": 3044
+    },
+    "pending_budget_changes": {
+      "nonnull_pct": 48.5545,
+      "nonnull_rows": 1478,
+      "null_rows": 1566,
+      "present_in_schema": true,
+      "total_rows": 3044
+    },
+    "projected_budget": {
+      "nonnull_pct": 82.8515,
+      "nonnull_rows": 2522,
+      "null_rows": 522,
+      "present_in_schema": true,
+      "total_rows": 3044
+    },
+    "projected_costs": {
+      "nonnull_pct": 82.8515,
+      "nonnull_rows": 2522,
+      "null_rows": 522,
+      "present_in_schema": true,
+      "total_rows": 3044
+    },
+    "projected_over_under": {
+      "nonnull_pct": 82.8515,
+      "nonnull_rows": 2522,
+      "null_rows": 522,
+      "present_in_schema": true,
+      "total_rows": 3044
+    },
+    "revised_budget": {
+      "nonnull_pct": 82.8515,
+      "nonnull_rows": 2522,
+      "null_rows": 522,
+      "present_in_schema": true,
+      "total_rows": 3044
+    }
+  }
+}

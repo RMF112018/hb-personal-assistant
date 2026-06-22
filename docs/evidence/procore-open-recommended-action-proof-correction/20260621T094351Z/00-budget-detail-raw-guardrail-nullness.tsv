@@ -1,0 +1,13 @@
+purpose	path	current_full_raw_rows	path_present_rows	path_non_null_rows	path_present_pct	path_non_null_pct
+actual_cost_absence	$.actual_cost	3512	0	0	0.0	0.0
+category_id_source_presence_do_not_map_to_cost_type_id	$.category_id	3512	3512	3512	100.0	100.0
+category_source_presence_do_not_map_to_cost_type	$.category	3512	3512	3512	100.0	100.0
+cost_type_absence	$.cost_type	3512	0	0	0.0	0.0
+cost_type_id_absence	$.cost_type.id	3512	0	0	0.0	0.0
+cost_type_id_absence	$.cost_type_id	3512	0	0	0.0	0.0
+currency_code_absence	$.currency_code	3512	0	0	0.0	0.0
+currency_iso_code_absence	$.currency_iso_code	3512	0	0	0.0	0.0
+currency_iso_code_present_but_null	$.currency_configuration.currency_iso_code	3512	3512	0	100.0	0.0
+line_item_type_absence	$.line_item_type	3512	0	0	0.0	0.0
+line_item_type_id_absence	$.line_item_type.id	3512	0	0	0.0	0.0
+line_item_type_id_absence	$.line_item_type_id	3512	0	0	0.0	0.0

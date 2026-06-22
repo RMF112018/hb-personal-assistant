@@ -1,0 +1,23 @@
+{
+  "capture_run_id": "0b81b6e5-6d36-45bf-a6cc-a7da15eaab3e",
+  "endpoint_family": "budget",
+  "endpoint_key": "budget-change-history",
+  "is_current": 1,
+  "parent_record_id": null,
+  "payload_captured_at_utc": "2026-06-10T18:07:41.623120+00:00",
+  "payload_file": "docs/evidence/procore-listed-tables-null-field-audit/20260621T092320Z/sensitive-raw-payload-samples/budget-change-history/rank-02__raw_payload_id-perp-cf3fe841f03245153879d91bebde2d0e.payload_json",
+  "payload_hash": "4892b957235205c4e4aaf6c086b8644c5f303e5d330d487ec940078a79d72958",
+  "payload_json_char_length": 573,
+  "payload_json_sha256": "4892b957235205c4e4aaf6c086b8644c5f303e5d330d487ec940078a79d72958",
+  "payload_seen_first_utc": "2026-06-10T18:07:41.623120+00:00",
+  "payload_seen_last_utc": "2026-06-10T18:07:41.623120+00:00",
+  "payload_size_bytes": 573,
+  "project_id": "2525840",
+  "project_key": "tropical",
+  "rank": 2,
+  "raw_payload_id": "perp-cf3fe841f03245153879d91bebde2d0e",
+  "raw_procore_payload_persisted": 1,
+  "record_id": "h:caaa25a6fe591201",
+  "record_type": "budget-change-history",
+  "source_quality": "live_full_payload"
+}

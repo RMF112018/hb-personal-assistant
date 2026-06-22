@@ -1,0 +1,727 @@
+{
+  "amount_field_availability": [
+    {
+      "column": "revised_budget",
+      "present": true,
+      "table": "procore_ep_budget_detail_rows"
+    },
+    {
+      "column": "committed_costs",
+      "present": true,
+      "table": "procore_ep_budget_detail_rows"
+    },
+    {
+      "column": "direct_costs",
+      "present": true,
+      "table": "procore_ep_budget_detail_rows"
+    },
+    {
+      "column": "actual_cost",
+      "present": true,
+      "table": "procore_ep_budget_detail_rows"
+    },
+    {
+      "column": "projected_costs",
+      "present": true,
+      "table": "procore_ep_budget_detail_rows"
+    },
+    {
+      "column": "erp_job_to_date_costs",
+      "present": true,
+      "table": "procore_ep_budget_detail_rows"
+    },
+    {
+      "column": "erp_direct_costs",
+      "present": true,
+      "table": "procore_ep_budget_detail_rows"
+    },
+    {
+      "column": "job_to_date_costs",
+      "present": true,
+      "table": "procore_ep_budget_detail_rows"
+    }
+  ],
+  "amount_field_null_rates": [
+    {
+      "column": "revised_budget",
+      "non_null": 2522,
+      "null_rate": 0.171485,
+      "rows": 3044,
+      "table": "procore_ep_budget_detail_rows"
+    },
+    {
+      "column": "committed_costs",
+      "non_null": 1478,
+      "null_rate": 0.514455,
+      "rows": 3044,
+      "table": "procore_ep_budget_detail_rows"
+    },
+    {
+      "column": "direct_costs",
+      "non_null": 522,
+      "null_rate": 0.828515,
+      "rows": 3044,
+      "table": "procore_ep_budget_detail_rows"
+    },
+    {
+      "column": "actual_cost",
+      "non_null": 0,
+      "null_rate": 1.0,
+      "rows": 3044,
+      "table": "procore_ep_budget_detail_rows"
+    },
+    {
+      "column": "projected_costs",
+      "non_null": 2522,
+      "null_rate": 0.171485,
+      "rows": 3044,
+      "table": "procore_ep_budget_detail_rows"
+    },
+    {
+      "column": "erp_job_to_date_costs",
+      "non_null": 956,
+      "null_rate": 0.68594,
+      "rows": 3044,
+      "table": "procore_ep_budget_detail_rows"
+    },
+    {
+      "column": "erp_direct_costs",
+      "non_null": 956,
+      "null_rate": 0.68594,
+      "rows": 3044,
+      "table": "procore_ep_budget_detail_rows"
+    },
+    {
+      "column": "job_to_date_costs",
+      "non_null": 1566,
+      "null_rate": 0.485545,
+      "rows": 3044,
+      "table": "procore_ep_budget_detail_rows"
+    }
+  ],
+  "db_path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite",
+  "errors": [],
+  "monthly_actuals_basis": {
+    "amount_column": "amount",
+    "budget_code_column": "budget_code_key",
+    "month_column": "month",
+    "project_column": "project_key",
+    "sample_limit": 500,
+    "table": "forecast_monthly_actuals_by_budget_code"
+  },
+  "row_counts": [
+    {
+      "rows": 0,
+      "table": "forecast_accuracy_results"
+    },
+    {
+      "rows": 0,
+      "table": "forecast_anomaly_findings"
+    },
+    {
+      "rows": 127,
+      "table": "forecast_budget_details"
+    },
+    {
+      "rows": 0,
+      "table": "forecast_comparison_results"
+    },
+    {
+      "rows": 195,
+      "table": "forecast_config_items"
+    },
+    {
+      "rows": 388,
+      "table": "forecast_config_snapshot_items"
+    },
+    {
+      "rows": 2,
+      "table": "forecast_config_snapshots"
+    },
+    {
+      "rows": 7,
+      "table": "forecast_config_sources"
+    },
+    {
+      "rows": 6324,
+      "table": "forecast_cost_entries"
+    },
+    {
+      "rows": 0,
+      "table": "forecast_evidence_packages"
+    },
+    {
+      "rows": 0,
+      "table": "forecast_external_forecast_mappings"
+    },
+    {
+      "rows": 0,
+      "table": "forecast_external_forecast_rows"
+    },
+    {
+      "rows": 0,
+      "table": "forecast_external_forecasts"
+    },
+    {
+      "rows": 1081,
+      "table": "forecast_monthly_actuals_by_budget_code"
+    },
+    {
+      "rows": 0,
+      "table": "forecast_package_manifests"
+    },
+    {
+      "rows": 0,
+      "table": "forecast_projects"
+    },
+    {
+      "rows": 0,
+      "table": "forecast_review_items"
+    },
+    {
+      "rows": 0,
+      "table": "forecast_runs"
+    },
+    {
+      "rows": 0,
+      "table": "forecast_source_ingestions"
+    },
+    {
+      "rows": 0,
+      "table": "forecast_validation_events"
+    },
+    {
+      "rows": 66,
+      "table": "procore_ep_billing_periods"
+    },
+    {
+      "rows": 420,
+      "table": "procore_ep_budget_change_history"
+    },
+    {
+      "rows": 399,
+      "table": "procore_ep_budget_detail_columns"
+    },
+    {
+      "rows": 273951,
+      "table": "procore_ep_budget_detail_row_cells"
+    },
+    {
+      "rows": 3044,
+      "table": "procore_ep_budget_detail_rows"
+    },
+    {
+      "rows": 805,
+      "table": "procore_ep_budget_modifications"
+    },
+    {
+      "rows": 35,
+      "table": "procore_ep_budget_views"
+    },
+    {
+      "rows": 1059,
+      "table": "procore_ep_change_events"
+    },
+    {
+      "rows": 2352,
+      "table": "procore_ep_change_events_attachments"
+    },
+    {
+      "rows": 2829,
+      "table": "procore_ep_change_events_change_items"
+    },
+    {
+      "rows": 8487,
+      "table": "procore_ep_change_events_change_items_budget_code_seg_2dff22"
+    },
+    {
+      "rows": 2154,
+      "table": "procore_ep_change_events_markup_items"
+    },
+    {
+      "rows": 6462,
+      "table": "procore_ep_change_events_markup_items_wbs_code_segment_items"
+    },
+    {
+      "rows": 153,
+      "table": "procore_ep_commitment_attachments"
+    },
+    {
+      "rows": 288,
+      "table": "procore_ep_commitment_change_orders"
+    },
+    {
+      "rows": 118,
+      "table": "procore_ep_commitment_compliance"
+    },
+    {
+      "rows": 1085,
+      "table": "procore_ep_commitment_compliance_insurance_documents"
+    },
+    {
+      "rows": 2844,
+      "table": "procore_ep_commitment_compliance_insurance_documents__52b7bf"
+    },
+    {
+      "rows": 243,
+      "table": "procore_ep_commitment_contracts"
+    },
+    {
+      "rows": 1308,
+      "table": "procore_ep_commitment_line_items"
+    },
+    {
+      "rows": 2641,
+      "table": "procore_ep_daily_log_dcrs"
+    },
+    {
+      "rows": 800,
+      "table": "procore_ep_daily_log_dcrs_attachments"
+    },
+    {
+      "rows": 59,
+      "table": "procore_ep_daily_log_deliveries"
+    },
+    {
+      "rows": 18,
+      "table": "procore_ep_daily_log_deliveries_attachments"
+    },
+    {
+      "rows": 114,
+      "table": "procore_ep_daily_log_inspections"
+    },
+    {
+      "rows": 14,
+      "table": "procore_ep_daily_log_inspections_attachments"
+    },
+    {
+      "rows": 943,
+      "table": "procore_ep_daily_log_manpower"
+    },
+    {
+      "rows": 783,
+      "table": "procore_ep_daily_log_manpower_attachments"
+    },
+    {
+      "rows": 92,
+      "table": "procore_ep_daily_log_notes"
+    },
+    {
+      "rows": 1188,
+      "table": "procore_ep_daily_log_notes_attachments"
+    },
+    {
+      "rows": 2,
+      "table": "procore_ep_daily_log_visitor"
+    },
+    {
+      "rows": 137,
+      "table": "procore_ep_daily_log_weather"
+    },
+    {
+      "rows": 5139,
+      "table": "procore_ep_inspection_items"
+    },
+    {
+      "rows": 15378,
+      "table": "procore_ep_inspection_items_response_set_responses"
+    },
+    {
+      "rows": 288,
+      "table": "procore_ep_inspection_sections"
+    },
+    {
+      "rows": 208,
+      "table": "procore_ep_inspections"
+    },
+    {
+      "rows": 1184,
+      "table": "procore_ep_inspections_attachments"
+    },
+    {
+      "rows": 827,
+      "table": "procore_ep_inspections_distribution_members"
+    },
+    {
+      "rows": 237,
+      "table": "procore_ep_inspections_inspectors"
+    },
+    {
+      "rows": 9,
+      "table": "procore_ep_inspections_signature_requests"
+    },
+    {
+      "rows": 576,
+      "table": "procore_ep_meetings"
+    },
+    {
+      "rows": 1491,
+      "table": "procore_ep_observations"
+    },
+    {
+      "rows": 368,
+      "table": "procore_ep_observations_assignees"
+    },
+    {
+      "rows": 249,
+      "table": "procore_ep_prime_change_order_line_items"
+    },
+    {
+      "rows": 219,
+      "table": "procore_ep_prime_change_orders"
+    },
+    {
+      "rows": 499,
+      "table": "procore_ep_prime_contract_line_items"
+    },
+    {
+      "rows": 7,
+      "table": "procore_ep_prime_contracts"
+    },
+    {
+      "rows": 42,
+      "table": "procore_ep_projects"
+    },
+    {
+      "rows": 30,
+      "table": "procore_ep_projects_custom_fields_custom_field_163287_value"
+    },
+    {
+      "rows": 18,
+      "table": "procore_ep_projects_custom_fields_custom_field_163290_value"
+    },
+    {
+      "rows": 12,
+      "table": "procore_ep_projects_custom_fields_custom_field_163293_value"
+    },
+    {
+      "rows": 6,
+      "table": "procore_ep_projects_custom_fields_custom_field_163296_value"
+    },
+    {
+      "rows": 6,
+      "table": "procore_ep_projects_custom_fields_custom_field_163299_value"
+    },
+    {
+      "rows": 6,
+      "table": "procore_ep_projects_custom_fields_custom_field_163302_value"
+    },
+    {
+      "rows": 6,
+      "table": "procore_ep_projects_custom_fields_custom_field_163305_value"
+    },
+    {
+      "rows": 36,
+      "table": "procore_ep_punch_items"
+    },
+    {
+      "rows": 48,
+      "table": "procore_ep_punch_items_assignees"
+    },
+    {
+      "rows": 48,
+      "table": "procore_ep_punch_items_assignments"
+    },
+    {
+      "rows": 23,
+      "table": "procore_ep_punch_items_ball_in_court"
+    },
+    {
+      "rows": 11,
+      "table": "procore_ep_purchase_order_contracts"
+    },
+    {
+      "rows": 1,
+      "table": "procore_ep_purchase_order_contracts_custom_fields_cus_a0fe65"
+    },
+    {
+      "rows": 28,
+      "table": "procore_ep_purchase_order_line_items"
+    },
+    {
+      "rows": 49,
+      "table": "procore_ep_purchase_order_line_items_cost_code_line_i_779dbd"
+    },
+    {
+      "rows": 1971,
+      "table": "procore_ep_rfis"
+    },
+    {
+      "rows": 3398,
+      "table": "procore_ep_rfis_assignees"
+    },
+    {
+      "rows": 145,
+      "table": "procore_ep_rfis_ball_in_courts"
+    },
+    {
+      "rows": 1971,
+      "table": "procore_ep_rfis_questions"
+    },
+    {
+      "rows": 12,
+      "table": "procore_ep_rfqs"
+    },
+    {
+      "rows": 72,
+      "table": "procore_ep_rfqs_attachments"
+    },
+    {
+      "rows": 94,
+      "table": "procore_ep_rfqs_change_event_attachments"
+    },
+    {
+      "rows": 63,
+      "table": "procore_ep_rfqs_change_event_change_event_line_items"
+    },
+    {
+      "rows": 69,
+      "table": "procore_ep_rfqs_change_event_change_event_line_items__0a3e8d"
+    },
+    {
+      "rows": 4,
+      "table": "procore_ep_schedules"
+    },
+    {
+      "rows": 2403,
+      "table": "procore_ep_subcontractor_invoice_change_order_items"
+    },
+    {
+      "rows": 51428,
+      "table": "procore_ep_subcontractor_invoice_contract_detail_items"
+    },
+    {
+      "rows": 1002,
+      "table": "procore_ep_subcontractor_invoices"
+    },
+    {
+      "rows": 1000,
+      "table": "procore_ep_subcontractor_invoices_attachments"
+    },
+    {
+      "rows": 1763,
+      "table": "procore_ep_submittals"
+    },
+    {
+      "rows": 7278,
+      "table": "procore_ep_submittals_approvers"
+    },
+    {
+      "rows": 6582,
+      "table": "procore_ep_submittals_approvers_attachments"
+    },
+    {
+      "rows": 191,
+      "table": "procore_ep_submittals_ball_in_court"
+    },
+    {
+      "rows": 446963,
+      "table": "procore_financial_amount_facts"
+    },
+    {
+      "rows": 67,
+      "table": "procore_financial_billing_periods"
+    },
+    {
+      "rows": 1225,
+      "table": "procore_financial_budget_changes"
+    },
+    {
+      "rows": 3044,
+      "table": "procore_financial_budget_rows"
+    },
+    {
+      "rows": 35,
+      "table": "procore_financial_budget_views"
+    },
+    {
+      "rows": 1059,
+      "table": "procore_financial_change_events"
+    },
+    {
+      "rows": 944,
+      "table": "procore_financial_change_order_line_items"
+    },
+    {
+      "rows": 507,
+      "table": "procore_financial_change_orders"
+    },
+    {
+      "rows": 1588,
+      "table": "procore_financial_compliance_documents"
+    },
+    {
+      "rows": 266,
+      "table": "procore_financial_contracts"
+    },
+    {
+      "rows": 71113,
+      "table": "procore_financial_invoice_items"
+    },
+    {
+      "rows": 2110,
+      "table": "procore_financial_line_items"
+    },
+    {
+      "rows": 0,
+      "table": "procore_financial_payment_applications"
+    },
+    {
+      "rows": 291,
+      "table": "procore_financial_rfqs"
+    },
+    {
+      "rows": 1002,
+      "table": "procore_financial_subcontractor_invoices"
+    },
+    {
+      "rows": 0,
+      "table": "procore_raw_budget_change_line_items"
+    },
+    {
+      "rows": 420,
+      "table": "procore_raw_budget_changes"
+    },
+    {
+      "rows": 399,
+      "table": "procore_raw_budget_columns"
+    },
+    {
+      "rows": 805,
+      "table": "procore_raw_budget_modifications"
+    },
+    {
+      "rows": 3044,
+      "table": "procore_raw_budget_rows"
+    },
+    {
+      "rows": 35,
+      "table": "procore_raw_budget_views"
+    }
+  ],
+  "tables": [
+    "forecast_accuracy_results",
+    "forecast_anomaly_findings",
+    "forecast_budget_details",
+    "forecast_comparison_results",
+    "forecast_config_items",
+    "forecast_config_snapshot_items",
+    "forecast_config_snapshots",
+    "forecast_config_sources",
+    "forecast_cost_entries",
+    "forecast_evidence_packages",
+    "forecast_external_forecast_mappings",
+    "forecast_external_forecast_rows",
+    "forecast_external_forecasts",
+    "forecast_monthly_actuals_by_budget_code",
+    "forecast_package_manifests",
+    "forecast_projects",
+    "forecast_review_items",
+    "forecast_runs",
+    "forecast_source_ingestions",
+    "forecast_validation_events",
+    "procore_ep_billing_periods",
+    "procore_ep_budget_change_history",
+    "procore_ep_budget_detail_columns",
+    "procore_ep_budget_detail_row_cells",
+    "procore_ep_budget_detail_rows",
+    "procore_ep_budget_modifications",
+    "procore_ep_budget_views",
+    "procore_ep_change_events",
+    "procore_ep_change_events_attachments",
+    "procore_ep_change_events_change_items",
+    "procore_ep_change_events_change_items_budget_code_seg_2dff22",
+    "procore_ep_change_events_markup_items",
+    "procore_ep_change_events_markup_items_wbs_code_segment_items",
+    "procore_ep_commitment_attachments",
+    "procore_ep_commitment_change_orders",
+    "procore_ep_commitment_compliance",
+    "procore_ep_commitment_compliance_insurance_documents",
+    "procore_ep_commitment_compliance_insurance_documents__52b7bf",
+    "procore_ep_commitment_contracts",
+    "procore_ep_commitment_line_items",
+    "procore_ep_daily_log_dcrs",
+    "procore_ep_daily_log_dcrs_attachments",
+    "procore_ep_daily_log_deliveries",
+    "procore_ep_daily_log_deliveries_attachments",
+    "procore_ep_daily_log_inspections",
+    "procore_ep_daily_log_inspections_attachments",
+    "procore_ep_daily_log_manpower",
+    "procore_ep_daily_log_manpower_attachments",
+    "procore_ep_daily_log_notes",
+    "procore_ep_daily_log_notes_attachments",
+    "procore_ep_daily_log_visitor",
+    "procore_ep_daily_log_weather",
+    "procore_ep_inspection_items",
+    "procore_ep_inspection_items_response_set_responses",
+    "procore_ep_inspection_sections",
+    "procore_ep_inspections",
+    "procore_ep_inspections_attachments",
+    "procore_ep_inspections_distribution_members",
+    "procore_ep_inspections_inspectors",
+    "procore_ep_inspections_signature_requests",
+    "procore_ep_meetings",
+    "procore_ep_observations",
+    "procore_ep_observations_assignees",
+    "procore_ep_prime_change_order_line_items",
+    "procore_ep_prime_change_orders",
+    "procore_ep_prime_contract_line_items",
+    "procore_ep_prime_contracts",
+    "procore_ep_projects",
+    "procore_ep_projects_custom_fields_custom_field_163287_value",
+    "procore_ep_projects_custom_fields_custom_field_163290_value",
+    "procore_ep_projects_custom_fields_custom_field_163293_value",
+    "procore_ep_projects_custom_fields_custom_field_163296_value",
+    "procore_ep_projects_custom_fields_custom_field_163299_value",
+    "procore_ep_projects_custom_fields_custom_field_163302_value",
+    "procore_ep_projects_custom_fields_custom_field_163305_value",
+    "procore_ep_punch_items",
+    "procore_ep_punch_items_assignees",
+    "procore_ep_punch_items_assignments",
+    "procore_ep_punch_items_ball_in_court",
+    "procore_ep_purchase_order_contracts",
+    "procore_ep_purchase_order_contracts_custom_fields_cus_a0fe65",
+    "procore_ep_purchase_order_line_items",
+    "procore_ep_purchase_order_line_items_cost_code_line_i_779dbd",
+    "procore_ep_rfis",
+    "procore_ep_rfis_assignees",
+    "procore_ep_rfis_ball_in_courts",
+    "procore_ep_rfis_questions",
+    "procore_ep_rfqs",
+    "procore_ep_rfqs_attachments",
+    "procore_ep_rfqs_change_event_attachments",
+    "procore_ep_rfqs_change_event_change_event_line_items",
+    "procore_ep_rfqs_change_event_change_event_line_items__0a3e8d",
+    "procore_ep_schedules",
+    "procore_ep_subcontractor_invoice_change_order_items",
+    "procore_ep_subcontractor_invoice_contract_detail_items",
+    "procore_ep_subcontractor_invoices",
+    "procore_ep_subcontractor_invoices_attachments",
+    "procore_ep_submittals",
+    "procore_ep_submittals_approvers",
+    "procore_ep_submittals_approvers_attachments",
+    "procore_ep_submittals_ball_in_court",
+    "procore_financial_amount_facts",
+    "procore_financial_billing_periods",
+    "procore_financial_budget_changes",
+    "procore_financial_budget_rows",
+    "procore_financial_budget_views",
+    "procore_financial_change_events",
+    "procore_financial_change_order_line_items",
+    "procore_financial_change_orders",
+    "procore_financial_compliance_documents",
+    "procore_financial_contracts",
+    "procore_financial_invoice_items",
+    "procore_financial_line_items",
+    "procore_financial_payment_applications",
+    "procore_financial_rfqs",
+    "procore_financial_subcontractor_invoices",
+    "procore_raw_budget_change_line_items",
+    "procore_raw_budget_changes",
+    "procore_raw_budget_columns",
+    "procore_raw_budget_modifications",
+    "procore_raw_budget_rows",
+    "procore_raw_budget_views"
+  ],
+  "used_live_db": true
+}

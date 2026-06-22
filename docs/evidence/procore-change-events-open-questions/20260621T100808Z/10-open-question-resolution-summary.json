@@ -1,0 +1,28 @@
+{
+  "degraded_unknown_projection_fields": 0,
+  "evidence_files": [
+    "00-repo-truth.txt",
+    "01-migration-apply.json",
+    "02-db-integrity-check.txt",
+    "03-before-row-counts-and-null-profile.json",
+    "04-raw-path-counts-no-values.json",
+    "05-before-linkage-company-sidecar-proof.json",
+    "06-replay-limit.json",
+    "07-projection-reprocess-dry-run.json",
+    "08-projection-reprocess-apply.json",
+    "09-after-row-counts-null-linkage-company-sidecar-proof.json"
+  ],
+  "external_writeback_performed": 0,
+  "live_procore_calls": 0,
+  "ok_to_use_for_remediation_decisions": true,
+  "questions_answered": {
+    "child_primary_linkage": "05-before... and 09-after...",
+    "company_id_propagation": "05-before... and 09-after...",
+    "grandchild_parent_item_linkage": "05-before... and 09-after...",
+    "replay_effect": "03-before... versus 09-after...",
+    "sidecar_presence": "05-before... and 09-after...",
+    "source_paths_have_nonblank_raw_values": "04-raw-path-counts-no-values.json"
+  },
+  "raw_current_rows_inspected": 3860,
+  "sensitive_payload_bodies_included": false
+}

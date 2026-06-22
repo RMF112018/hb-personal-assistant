@@ -1,20 +1,30 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-/* Forecasting — configuration viewer (Implementation Phase 2, read-only).
- * Shows the current immutable config snapshot that drives forecasts: controls, model controls,
- * staffing mappings, owner-SOV crosswalk, and project settings. Business settings only — no
- * paths, run stamps, endpoints, or internals (the backend redacts them structurally). */
-import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+/* Forecast configuration viewer — read-only business settings (Phase 2). */
+import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 
+import {
+  ForecastActionLink,
+  ForecastBackLink,
+  ForecastDomainTile,
+  ForecastPageHeader,
+  ForecastShell,
+  ForecastSubnav,
+  ForecastTable,
+  ForecastTd,
+  ForecastTh,
+} from '../components/forecast/ForecastPageChrome'
+import { useEffectiveSelection } from '../components/forecast/useEffectiveSelection'
 import { EmptyState } from '../components/ui/EmptyState'
 import { api } from '../lib/api'
 
-function cell(value: any): string {
+function cell(value: unknown): string {
   if (value === null || value === undefined || value === '') return '—'
-  if (typeof value === 'object') return String(value)
+  if (typeof value === 'object') return '—'
   return String(value)
 }
+
+type ConfigDomain = { domain: string; display_label?: string; item_count?: number }
+type ConfigItem = { item_id: string; fields?: Record<string, unknown> }
 
 export function ForecastConfigPage() {
   const { data: snapsResp, isLoading, error } = useQuery({
@@ -22,8 +32,8 @@ export function ForecastConfigPage() {
     queryFn: () => api.getForecastConfigSnapshots(),
   })
 
-  const snapshots: any[] = Array.isArray(snapsResp?.snapshots) ? snapsResp.snapshots : []
-  const snapshotId: string | undefined = snapshots[0]?.snapshot_id
+  const snapshots = Array.isArray(snapsResp?.snapshots) ? snapsResp.snapshots : []
+  const snapshotId = snapshots[0]?.snapshot_id as string | undefined
 
   const { data: snapResp } = useQuery({
     queryKey: ['forecast', 'config', 'snapshot', snapshotId],
@@ -31,11 +41,12 @@ export function ForecastConfigPage() {
     enabled: Boolean(snapshotId),
   })
 
-  const domains: any[] = Array.isArray(snapResp?.domains) ? snapResp.domains : []
-  const [domain, setDomain] = useState<string | undefined>(undefined)
-  useEffect(() => {
-    if (!domain && domains.length > 0) setDomain(domains[0].domain)
-  }, [domains, domain])
+  const domains = useMemo(
+    () => (Array.isArray(snapResp?.domains) ? snapResp.domains : []) as ConfigDomain[],
+    [snapResp],
+  )
+  const domainOptions = useMemo(() => domains.map((d) => d.domain), [domains])
+  const [domain, setDomain] = useEffectiveSelection(domainOptions)
 
   const { data: domainResp } = useQuery({
     queryKey: ['forecast', 'config', 'domain', snapshotId, domain],
@@ -43,7 +54,10 @@ export function ForecastConfigPage() {
     enabled: Boolean(snapshotId && domain),
   })
 
-  const items: any[] = Array.isArray(domainResp?.items) ? domainResp.items : []
+  const items = useMemo(
+    () => (Array.isArray(domainResp?.items) ? domainResp.items : []) as ConfigItem[],
+    [domainResp],
+  )
   const columns = useMemo(() => {
     if (items.length === 0) return [] as string[]
     return Object.keys(items[0].fields || {}).slice(0, 8)
@@ -54,29 +68,29 @@ export function ForecastConfigPage() {
   }
 
   if (error) {
-    const status = (error as any)?.status
+    const status = (error as { status?: number })?.status
     const isUnconfigured = status === 503
-    const message = isUnconfigured
-      ? 'Forecast configuration is not available in this environment yet.'
-      : 'We could not load forecast configuration right now.'
     return (
-      <div className="card">
-        <div className="text-xs mb-2">
-          <Link to="/forecasting" className="underline">
-            ← Back to forecast packages
-          </Link>
+      <div>
+        <ForecastBackLink />
+        <ForecastSubnav />
+        <div className="card">
+          <EmptyState
+            title="Configuration unavailable"
+            hint={
+              isUnconfigured
+                ? 'No forecast configuration snapshot is available yet. Check storage and database readiness.'
+                : 'We could not load forecast configuration right now.'
+            }
+            actions={
+              isUnconfigured ? (
+                <ForecastActionLink to="/forecasting/runtime" variant="primary">
+                  Open storage settings
+                </ForecastActionLink>
+              ) : undefined
+            }
+          />
         </div>
-        <EmptyState
-          title="Configuration unavailable"
-          hint={message}
-          actions={
-            isUnconfigured ? (
-              <Link to="/forecasting/runtime" className="underline">
-                Configure data sources →
-              </Link>
-            ) : undefined
-          }
-        />
       </div>
     )
   }
@@ -84,92 +98,84 @@ export function ForecastConfigPage() {
   const snap = snapResp || snapshots[0] || {}
 
   return (
-    <div>
-      <div className="text-xs mb-2">
-        <Link to="/forecasting" className="underline">
-          ← Back to forecast packages
-        </Link>
-      </div>
+    <ForecastShell>
+      <ForecastBackLink />
+      <ForecastSubnav />
 
-      <div className="card">
-        <div className="flex items-center justify-between gap-3">
-          <div className="section-title">Forecast configuration</div>
-          <Link to="/forecasting/config/proposals" className="text-sm underline">
-            Propose / view edits
-          </Link>
-        </div>
-        <p className="text-sm text-[var(--hb-muted)]">
-          {snap.snapshot_name ? `${snap.snapshot_name}` : 'Current configuration'}
+      <section className="forecast-panel">
+        <ForecastPageHeader
+          title="Forecast configuration"
+          subtitle="Read-only view of the configuration snapshot that drives forecasts — project settings, model controls, staffing, and crosswalks."
+          actions={
+            <ForecastActionLink to="/forecasting/config/proposals">Config proposals</ForecastActionLink>
+          }
+        />
+        <p className="text-sm text-[var(--hb-muted)] mt-2">
+          {(snap.snapshot_name as string) || 'Current snapshot'}
           {snap.created_display ? ` · Captured ${snap.created_display}` : ''}
           {snap.item_count ? ` · ${snap.item_count} settings` : ''}
         </p>
+
         {domains.length === 0 ? (
-          <EmptyState title="No configuration found" hint="The current config snapshot has no settings." />
+          <EmptyState
+            title="No configuration found"
+            hint="The current snapshot has no settings. Generate or import data after storage is ready."
+          />
         ) : (
-          <div className="flex flex-wrap gap-2 mt-3">
-            {domains.map((d: any) => {
-              const active = d.domain === domain
-              return (
-                <button
-                  key={d.domain}
-                  type="button"
-                  onClick={() => setDomain(d.domain)}
-                  className={`rounded border px-3 py-2 text-sm text-left ${
-                    active ? 'border-[var(--hb-accent)]' : 'border-[var(--hb-border)]'
-                  }`}
-                >
-                  <div className="font-medium">{d.display_label}</div>
-                  <div className="text-xs text-[var(--hb-muted)]">{d.item_count} items</div>
-                </button>
-              )
-            })}
+          <div className="flex flex-wrap gap-2 mt-4">
+            {domains.map((d) => (
+              <ForecastDomainTile
+                key={d.domain}
+                label={d.display_label || d.domain}
+                count={d.item_count}
+                active={d.domain === domain}
+                onClick={() => setDomain(d.domain)}
+              />
+            ))}
           </div>
         )}
-      </div>
+      </section>
 
       {domain && (
-        <div className="card mt-3">
-          <div className="section-title">{domainResp?.display_label || 'Settings'}</div>
+        <section className="forecast-panel">
+          <h2 className="forecast-section-label">{(domainResp?.display_label as string) || 'Settings'}</h2>
           {domain === 'forecast_controls' && (
             <p className="text-xs text-amber-300 mb-2">
-              Deprecated — superseded by Model controls. Shown read-only; not editable.
+              Legacy controls — superseded by Model controls. Shown read-only.
             </p>
           )}
           {items.length === 0 ? (
             <EmptyState title="No items" hint="This configuration area has no items." />
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm border-collapse">
-                <thead>
-                  <tr className="text-left text-[var(--hb-muted)] border-b border-[var(--hb-border)]">
+            <>
+              <ForecastTable
+                headers={
+                  <>
                     {columns.map((c) => (
-                      <th key={c} className="py-2 pr-3">
+                      <ForecastTh key={c} className="capitalize">
                         {c.replace(/_/g, ' ')}
-                      </th>
+                      </ForecastTh>
+                    ))}
+                  </>
+                }
+              >
+                {items.slice(0, 500).map((it) => (
+                  <tr key={it.item_id} className="align-top">
+                    {columns.map((c) => (
+                      <ForecastTd key={c}>{cell((it.fields || {})[c])}</ForecastTd>
                     ))}
                   </tr>
-                </thead>
-                <tbody>
-                  {items.slice(0, 500).map((it: any) => (
-                    <tr key={it.item_id} className="border-b border-[var(--hb-border)] align-top">
-                      {columns.map((c) => (
-                        <td key={c} className="py-2 pr-3">
-                          {cell((it.fields || {})[c])}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                ))}
+              </ForecastTable>
               {(domainResp?.truncated || items.length > 500) && (
                 <p className="text-xs text-[var(--hb-muted)] mt-2">
                   Showing the first {Math.min(items.length, 500)} items.
                 </p>
               )}
-            </div>
+            </>
           )}
-        </div>
+        </section>
       )}
-    </div>
+    </ForecastShell>
   )
 }

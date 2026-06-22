@@ -1,0 +1,227 @@
+[
+  {
+    "project_key": "tropical",
+    "budget_code_key": "1000.15-16-110.SUB",
+    "cost_code": "15-16-110",
+    "downside_contribution_to_project_p90": "10014313.79",
+    "tail_mean_final_cost": "23290194.14",
+    "overall_mean_final_cost": "13275880.36",
+    "rank": 1
+  },
+  {
+    "project_key": "tropical",
+    "budget_code_key": "1000.15-08-250.SUB",
+    "cost_code": "15-08-250",
+    "downside_contribution_to_project_p90": "738656.76",
+    "tail_mean_final_cost": "2012208.89",
+    "overall_mean_final_cost": "1273552.13",
+    "rank": 2
+  },
+  {
+    "project_key": "tropical",
+    "budget_code_key": "1000.15-09-250.SUB",
+    "cost_code": "15-09-250",
+    "downside_contribution_to_project_p90": "504252.12",
+    "tail_mean_final_cost": "4642207.36",
+    "overall_mean_final_cost": "4137955.25",
+    "rank": 3
+  },
+  {
+    "project_key": "tropical",
+    "budget_code_key": "1000.15-02-805.SUB",
+    "cost_code": "15-02-805",
+    "downside_contribution_to_project_p90": "256847.86",
+    "tail_mean_final_cost": "1346102.37",
+    "overall_mean_final_cost": "1089254.51",
+    "rank": 4
+  },
+  {
+    "project_key": "tropical",
+    "budget_code_key": "1000.15-06-220.SUB",
+    "cost_code": "15-06-220",
+    "downside_contribution_to_project_p90": "175456.89",
+    "tail_mean_final_cost": "1380189.92",
+    "overall_mean_final_cost": "1204733.03",
+    "rank": 5
+  },
+  {
+    "project_key": "tropical",
+    "budget_code_key": "1000.10-01-314.LAB",
+    "cost_code": "10-01-314",
+    "downside_contribution_to_project_p90": "169959.72",
+    "tail_mean_final_cost": "936363.15",
+    "overall_mean_final_cost": "766403.44",
+    "rank": 6
+  },
+  {
+    "project_key": "tropical",
+    "budget_code_key": "1000.15-09-910.SUB",
+    "cost_code": "15-09-910",
+    "downside_contribution_to_project_p90": "156734.22",
+    "tail_mean_final_cost": "1117830.52",
+    "overall_mean_final_cost": "961096.30",
+    "rank": 7
+  },
+  {
+    "project_key": "tropical",
+    "budget_code_key": "1000.15-11-400.SUB",
+    "cost_code": "15-11-400",
+    "downside_contribution_to_project_p90": "152282.15",
+    "tail_mean_final_cost": "655654.17",
+    "overall_mean_final_cost": "503372.02",
+    "rank": 8
+  },
+  {
+    "project_key": "tropical",
+    "budget_code_key": "1000.15-16-400.SUB",
+    "cost_code": "15-16-400",
+    "downside_contribution_to_project_p90": "141828.55",
+    "tail_mean_final_cost": "824126.16",
+    "overall_mean_final_cost": "682297.61",
+    "rank": 9
+  },
+  {
+    "project_key": "tropical",
+    "budget_code_key": "1000.15-12-300.SUB",
+    "cost_code": "15-12-300",
+    "downside_contribution_to_project_p90": "141719.36",
+    "tail_mean_final_cost": "1553818.55",
+    "overall_mean_final_cost": "1412099.19",
+    "rank": 10
+  },
+  {
+    "project_key": "tropical",
+    "budget_code_key": "1000.15-05-522.SUB",
+    "cost_code": "15-05-522",
+    "downside_contribution_to_project_p90": "140994.72",
+    "tail_mean_final_cost": "567968.99",
+    "overall_mean_final_cost": "426974.27",
+    "rank": 11
+  },
+  {
+    "project_key": "tropical",
+    "budget_code_key": "1000.15-02-010.SUB",
+    "cost_code": "15-02-010",
+    "downside_contribution_to_project_p90": "126121.19",
+    "tail_mean_final_cost": "3667373.81",
+    "overall_mean_final_cost": "3541252.62",
+    "rank": 12
+  },
+  {
+    "project_key": "tropical",
+    "budget_code_key": "1000.15-01-741.MAT",
+    "cost_code": "15-01-741",
+    "downside_contribution_to_project_p90": "124494.15",
+    "tail_mean_final_cost": "325979.94",
+    "overall_mean_final_cost": "201485.79",
+    "rank": 13
+  },
+  {
+    "project_key": "tropical",
+    "budget_code_key": "1000.15-01-745.MAT",
+    "cost_code": "15-01-745",
+    "downside_contribution_to_project_p90": "73060.81",
+    "tail_mean_final_cost": "309254.32",
+    "overall_mean_final_cost": "236193.50",
+    "rank": 14
+  },
+  {
+    "project_key": "tropical",
+    "budget_code_key": "1000.10-01-317.LAB",
+    "cost_code": "10-01-317",
+    "downside_contribution_to_project_p90": "55039.86",
+    "tail_mean_final_cost": "360697.62",
+    "overall_mean_final_cost": "305657.76",
+    "rank": 15
+  },
+  {
+    "project_key": "tropical",
+    "budget_code_key": "1000.10-01-311.LAB",
+    "cost_code": "10-01-311",
+    "downside_contribution_to_project_p90": "54606.96",
+    "tail_mean_final_cost": "320948.87",
+    "overall_mean_final_cost": "266341.90",
+    "rank": 16
+  },
+  {
+    "project_key": "tropical",
+    "budget_code_key": "1000.15-02-808.SUB",
+    "cost_code": "15-02-808",
+    "downside_contribution_to_project_p90": "51725.21",
+    "tail_mean_final_cost": "305448.99",
+    "overall_mean_final_cost": "253723.78",
+    "rank": 17
+  },
+  {
+    "project_key": "tropical",
+    "budget_code_key": "1000.10-01-315.LAB",
+    "cost_code": "10-01-315",
+    "downside_contribution_to_project_p90": "51094.23",
+    "tail_mean_final_cost": "301906.85",
+    "overall_mean_final_cost": "250812.62",
+    "rank": 18
+  },
+  {
+    "project_key": "tropical",
+    "budget_code_key": "1000.10-01-314.LBN",
+    "cost_code": "10-01-314",
+    "downside_contribution_to_project_p90": "36952.55",
+    "tail_mean_final_cost": "211773.80",
+    "overall_mean_final_cost": "174821.24",
+    "rank": 19
+  },
+  {
+    "project_key": "tropical",
+    "budget_code_key": "1000.15-11-450.SUB",
+    "cost_code": "15-11-450",
+    "downside_contribution_to_project_p90": "36779.52",
+    "tail_mean_final_cost": "1107696.62",
+    "overall_mean_final_cost": "1070917.09",
+    "rank": 20
+  },
+  {
+    "project_key": "tropical",
+    "budget_code_key": "1000.10-01-314.MAT",
+    "cost_code": "10-01-314",
+    "downside_contribution_to_project_p90": "19557.07",
+    "tail_mean_final_cost": "86383.50",
+    "overall_mean_final_cost": "66826.44",
+    "rank": 21
+  },
+  {
+    "project_key": "tropical",
+    "budget_code_key": "1000.15-13-150.SUB",
+    "cost_code": "15-13-150",
+    "downside_contribution_to_project_p90": "14919.97",
+    "tail_mean_final_cost": "446585.24",
+    "overall_mean_final_cost": "431665.27",
+    "rank": 22
+  },
+  {
+    "project_key": "tropical",
+    "budget_code_key": "1000.10-01-318.LAB",
+    "cost_code": "10-01-318",
+    "downside_contribution_to_project_p90": "14220.04",
+    "tail_mean_final_cost": "340990.44",
+    "overall_mean_final_cost": "326770.40",
+    "rank": 23
+  },
+  {
+    "project_key": "tropical",
+    "budget_code_key": "1000.15-01-515.SUB",
+    "cost_code": "15-01-515",
+    "downside_contribution_to_project_p90": "12829.03",
+    "tail_mean_final_cost": "84317.63",
+    "overall_mean_final_cost": "71488.59",
+    "rank": 24
+  },
+  {
+    "project_key": "tropical",
+    "budget_code_key": "1000.15-01-426.MAT",
+    "cost_code": "15-01-426",
+    "downside_contribution_to_project_p90": "12804.13",
+    "tail_mean_final_cost": "68747.49",
+    "overall_mean_final_cost": "55943.36",
+    "rank": 25
+  }
+]

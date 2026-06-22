@@ -1,0 +1,34 @@
+{
+  "branch": "feature/forecast-ui-live-config-promotion-orphan-fix",
+  "captured_utc": "2026-06-22T09:47:45.279840+00:00",
+  "commit_sha": "33fd116ca9438eb84437686b84494c1f8ade83db",
+  "gma_smoke": {
+    "activity_count": 189,
+    "cost_weighting_after_approval": 1,
+    "cost_weighting_before_approval": 0,
+    "distinct_schedule_table_ids": [
+      "svk-001b8a8411cf45227fd9b953e45366ed"
+    ],
+    "null_schedule_table_id_count": 0,
+    "redaction_leaks": [],
+    "relationship_count": 282,
+    "schedule_version_key": "tropical|GMA|2026-09-07T08:00:00"
+  },
+  "live_db_audit": {
+    "db_path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite",
+    "foreign_key_check": [],
+    "integrity_check": "ok",
+    "journal_mode": "wal",
+    "missing_v62_tables": [],
+    "procore_ep_schedules_count": 4,
+    "schema_version": 62,
+    "table_count": 412
+  },
+  "phase": "post_migration_certification",
+  "pytest": {
+    "exit_code": 0,
+    "log": "docs/evidence/schedule-intelligence-v62-live-cutover/20260622T120000Z/schedule_tests.log"
+  },
+  "status": "pass",
+  "stop_condition_failures": []
+}

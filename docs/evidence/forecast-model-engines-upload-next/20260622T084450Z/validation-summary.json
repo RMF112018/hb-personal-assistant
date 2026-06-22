@@ -1,0 +1,125 @@
+{
+  "commands": [
+    {
+      "command": [
+        "git",
+        "branch",
+        "--show-current"
+      ],
+      "cwd": "/Users/bobbyfetting/hb-personal-assistant",
+      "elapsed_seconds": 0.01,
+      "exit_code": 0,
+      "log": "/Users/bobbyfetting/hb-personal-assistant/docs/evidence/forecast-model-engines-upload-next/20260622T084450Z/command-logs/git_branch_--show-current.log"
+    },
+    {
+      "command": [
+        "git",
+        "rev-parse",
+        "HEAD"
+      ],
+      "cwd": "/Users/bobbyfetting/hb-personal-assistant",
+      "elapsed_seconds": 0.01,
+      "exit_code": 0,
+      "log": "/Users/bobbyfetting/hb-personal-assistant/docs/evidence/forecast-model-engines-upload-next/20260622T084450Z/command-logs/git_rev-parse_HEAD.log"
+    },
+    {
+      "command": [
+        "git",
+        "status",
+        "--short",
+        "--branch",
+        "--untracked-files=all"
+      ],
+      "cwd": "/Users/bobbyfetting/hb-personal-assistant",
+      "elapsed_seconds": 0.04,
+      "exit_code": 0,
+      "log": "/Users/bobbyfetting/hb-personal-assistant/docs/evidence/forecast-model-engines-upload-next/20260622T084450Z/command-logs/git_status_--short_--branch_--untracked-files_all.log"
+    },
+    {
+      "command": [
+        "git",
+        "log",
+        "--oneline",
+        "--decorate",
+        "--max-count=40"
+      ],
+      "cwd": "/Users/bobbyfetting/hb-personal-assistant",
+      "elapsed_seconds": 0.04,
+      "exit_code": 0,
+      "log": "/Users/bobbyfetting/hb-personal-assistant/docs/evidence/forecast-model-engines-upload-next/20260622T084450Z/command-logs/git_log_--oneline_--decorate_--max-count_40.log"
+    },
+    {
+      "command": [
+        "gh",
+        "pr",
+        "view",
+        "83",
+        "--json",
+        "number,state,mergedAt,headRefName,baseRefName,mergeCommit"
+      ],
+      "cwd": "/Users/bobbyfetting/hb-personal-assistant",
+      "elapsed_seconds": 0.52,
+      "exit_code": 0,
+      "log": "/Users/bobbyfetting/hb-personal-assistant/docs/evidence/forecast-model-engines-upload-next/20260622T084450Z/command-logs/gh_pr_view_83_--json_number_state_mergedAt_headRefName_baseRefName_mergeCommit.log"
+    },
+    {
+      "command": [
+        "/Users/bobbyfetting/hb-personal-assistant/.venv/bin/python3.12",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_forecast_accuracy_e2e.py",
+        "tests/test_forecast_adequacy.py",
+        "tests/test_forecast_cost_basis.py",
+        "tests/test_forecast_cost_basis_e2e.py",
+        "tests/test_forecast_model_controls_core.py",
+        "tests/test_forecast_model_controls_consumers.py",
+        "tests/test_forecast_model_controls_e2e.py",
+        "tests/test_forecast_model_controls_monthly_e2e.py",
+        "tests/test_forecast_model_controls_shape_reconcile.py",
+        "tests/test_fm_reconcile.py",
+        "tests/test_fm_e2e.py",
+        "tests/test_fia_schedule.py",
+        "tests/test_fia_change_order.py"
+      ],
+      "cwd": "/Users/bobbyfetting/hb-personal-assistant/subrepos/construction-financial-review",
+      "elapsed_seconds": 0.3,
+      "exit_code": 0,
+      "log": "/Users/bobbyfetting/hb-personal-assistant/docs/evidence/forecast-model-engines-upload-next/20260622T084450Z/command-logs/Users_bobbyfetting_hb-personal-assistant_.venv_bin_python3.12_-m_pytest_-q_tests_test_forecast_accuracy_e2e.py_tests_test_forecast_adequacy..log"
+    }
+  ],
+  "lint_type_checks": {
+    "mypy": "not run: broad repo type gate exceeds this evidence-package scope",
+    "ruff": "not run: narrow relevant pytest suite was prioritized"
+  },
+  "tests": {
+    "command": [
+      "/Users/bobbyfetting/hb-personal-assistant/.venv/bin/python3.12",
+      "-m",
+      "pytest",
+      "-q",
+      "tests/test_forecast_accuracy_e2e.py",
+      "tests/test_forecast_adequacy.py",
+      "tests/test_forecast_cost_basis.py",
+      "tests/test_forecast_cost_basis_e2e.py",
+      "tests/test_forecast_model_controls_core.py",
+      "tests/test_forecast_model_controls_consumers.py",
+      "tests/test_forecast_model_controls_e2e.py",
+      "tests/test_forecast_model_controls_monthly_e2e.py",
+      "tests/test_forecast_model_controls_shape_reconcile.py",
+      "tests/test_fm_reconcile.py",
+      "tests/test_fm_e2e.py",
+      "tests/test_fia_schedule.py",
+      "tests/test_fia_change_order.py"
+    ],
+    "exit_code": 0,
+    "failed": false,
+    "not_run": [
+      "full repository pytest not run; broader than requested evidence package and current tree is dirty",
+      "frontend/UI tests not run; not directly relevant to forecast model-engine evidence"
+    ],
+    "passed": true,
+    "skipped": "see raw pytest output",
+    "status": "passed"
+  }
+}

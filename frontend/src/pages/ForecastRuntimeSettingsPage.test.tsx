@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -17,28 +18,35 @@ vi.mock('../lib/api', () => ({
     getForecastRuntimeStatus: vi.fn(),
     getForecastRuntimeConfig: vi.fn(),
     saveForecastRuntimeConfig: vi.fn(),
+    repairForecastRuntimeStorage: vi.fn(),
+    resetForecastRuntimeDefaults: vi.fn(),
   },
 }))
 
 const STATUS = {
+  storage_mode: 'app_managed',
   roots: {
-    package_roots: { configured: true, valid: true, source: 'settings_file', blocker: null, count: 1 },
-    data_root: { configured: false, valid: false, source: null, blocker: 'not_configured' },
-    runs_root: { configured: false, valid: false, source: null, blocker: 'not_configured' },
-    eval_root: { configured: false, valid: false, source: null, blocker: 'not_configured' },
-    db_path: { configured: false, valid: false, source: null, blocker: 'not_configured' },
+    package_roots: { configured: true, valid: true, source: 'managed_default', blocker: null, count: 0 },
+    data_root: { configured: true, valid: true, source: 'managed_default', blocker: null },
+    runs_root: { configured: true, valid: true, source: 'managed_default', blocker: null },
+    eval_root: { configured: true, valid: true, source: 'managed_default', blocker: null },
+    db_path: { configured: true, valid: true, source: 'managed_default', blocker: null, schema_version: 61 },
     cfr_src: { configured: false, valid: true, source: 'default', blocker: null },
+    config_edit_root: { configured: true, valid: true, source: 'managed_default', blocker: null },
   },
-  surfaces_ready: { catalog: true, config: false, run_center: false, external_eval: false },
+  surfaces_ready: { catalog: true, config: true, run_center: true, external_eval: true, config_edit: true },
 }
 
 function mockQueries(config: unknown = undefined) {
-  useQueryMock.mockImplementation((opts: { queryKey: any[] }) => {
+  useQueryMock.mockImplementation((opts: { queryKey: unknown[] }) => {
     const kind = opts.queryKey[2]
     if (kind === 'status') {
       return { data: STATUS, isLoading: false, error: null, refetch: vi.fn() }
     }
-    return { data: config, isLoading: false, error: null, refetch: vi.fn() }
+    if (kind === 'config') {
+      return { data: config, isLoading: false, error: null, refetch: vi.fn() }
+    }
+    return { data: undefined, isLoading: false, error: null, refetch: vi.fn() }
   })
 }
 
@@ -56,29 +64,38 @@ describe('ForecastRuntimeSettingsPage', () => {
     getRoleMock.mockReturnValue('admin')
   })
 
-  it('renders the redaction-safe status with plain-language blockers', () => {
+  it('renders storage readiness without asking for paths by default', () => {
     mockQueries()
     renderPage()
-    expect(screen.getByText('Runtime data sources')).toBeInTheDocument()
-    expect(screen.getAllByText('Source data folder').length).toBeGreaterThan(0)
-    // A not_configured root surfaces as plain copy, never a path.
-    expect(screen.getAllByText('Not configured').length).toBeGreaterThan(0)
-    expect(screen.getByText('Surfaces ready')).toBeInTheDocument()
+    expect(screen.getByText('Storage & database readiness')).toBeInTheDocument()
+    expect(screen.getByText(/Managed by HB/)).toBeInTheDocument()
+    expect(screen.queryByPlaceholderText(/Absolute path/i)).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Advanced manual path override/i })).toBeInTheDocument()
   })
 
-  it('pre-fills the edit form from the admin path echo', () => {
-    mockQueries({ config: { data_root: '/live/data', package_roots: ['/pkg/a'] } })
+  it('shows advanced path overrides only when expanded for admin', async () => {
+    const user = userEvent.setup()
+    mockQueries({ config: { data_root: '/live/data', package_roots: ['/pkg/a'] }, config_file_present: true })
     renderPage()
-    expect(screen.getByText('Edit data sources')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Save data sources/i })).toBeInTheDocument()
-    expect(screen.getByDisplayValue('/live/data')).toBeInTheDocument()
+    expect(screen.queryByDisplayValue('/live/data')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /Advanced manual path override/i }))
+    expect(await screen.findByDisplayValue('/live/data')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Save overrides/i })).toBeInTheDocument()
   })
 
-  it('hides the edit form for a viewer role', () => {
+  it('shows repair for operator but hides advanced settings', () => {
+    getRoleMock.mockReturnValue('operator')
+    mockQueries()
+    renderPage()
+    expect(screen.getByRole('button', { name: /Repair local storage/i })).toBeInTheDocument()
+    expect(screen.queryByText(/Advanced manual path override/i)).not.toBeInTheDocument()
+  })
+
+  it('hides repair and advanced settings for viewer', () => {
     getRoleMock.mockReturnValue('viewer')
     mockQueries()
     renderPage()
-    expect(screen.queryByText('Edit data sources')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /Save data sources/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Repair local storage/i })).not.toBeInTheDocument()
+    expect(screen.queryByText(/Advanced manual path override/i)).not.toBeInTheDocument()
   })
 })

@@ -1,0 +1,47 @@
+{
+  "proof_id": "schedule-s10-econnreset-remediation",
+  "timestamp_utc": "2026-06-22T15:02:00Z",
+  "live_db_path": "~/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite",
+  "schema_version": 63,
+  "schema_expected": 63,
+  "checks": [
+    {
+      "name": "pytest_schedule_suite",
+      "command": "pytest tests/test_schedule_*.py -q",
+      "result": "32 passed"
+    },
+    {
+      "name": "pytest_stale_schema_preview",
+      "endpoint": "POST /api/schedules/import-preview",
+      "simulated_schema": 62,
+      "expected_status": 503,
+      "expected_detail": "schedule_schema_not_ready",
+      "result": "pass"
+    },
+    {
+      "name": "live_twnu18_duplicate_preview",
+      "endpoint": "POST /api/schedules/import-preview",
+      "file": "TWNU18.xml",
+      "byte_count": 8045952,
+      "status": 409,
+      "detail_code": "duplicate_schedule_version",
+      "activity_count": 1378,
+      "relationship_count": 3718,
+      "schedule_version_key": "tropical|TWNU18|2026-05-26T08:00:00",
+      "connection_reset": false
+    },
+    {
+      "name": "frontend_tests",
+      "files": [
+        "ScheduleImportsPage.test.tsx",
+        "ScheduleRoutes.test.tsx"
+      ],
+      "result": "15 passed"
+    },
+    {
+      "name": "frontend_build",
+      "command": "npm run build",
+      "result": "pass"
+    }
+  ]
+}

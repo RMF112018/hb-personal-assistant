@@ -1,0 +1,5 @@
+{
+  "ok": true,
+  "db": "/tmp/hb-change-events-open-questions-20260621T100136Z.sqlite",
+  "migration_apply": "complete"
+}

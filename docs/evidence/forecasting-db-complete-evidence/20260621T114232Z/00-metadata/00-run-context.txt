@@ -1,0 +1,32 @@
+timestamp_utc=20260621T114232Z
+repo=/Users/bobbyfetting/hb-personal-assistant
+db=/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite
+
+git_root=/Users/bobbyfetting/hb-personal-assistant
+git_head=cf1e8cd3e5041b39ac3eb790fd5e2f370e2bbdf0
+
+git_status_short:
+ M docs/evidence/construction-intelligence-phase-08b-automation-hardening/phase-08b-final-no-writeback-proof.md
+ M docs/evidence/construction-intelligence-phase-08c-financial-readiness/exposure-mart-preview.json
+ M docs/evidence/construction-intelligence-phase-08c-financial-readiness/financial-readiness-agent-proof.json
+ M docs/evidence/construction-intelligence-phase-08c-financial-readiness/financial-source-coverage-matrix.json
+ M docs/evidence/construction-intelligence-phase-08c-financial-readiness/forecast-readiness-gates.md
+ M docs/evidence/construction-intelligence-phase-08c-financial-readiness/forecast-readiness-proof.json
+ M docs/evidence/construction-intelligence-phase-08c-financial-readiness/phase-08c-gates-proof.json
+ M docs/evidence/construction-intelligence-phase-08c-financial-readiness/phase-08c-gates-proof.md
+?? docs/evidence/forecasting-db-complete-evidence/
+?? docs/evidence/forecasting-model-data-inventory/
+?? docs/evidence/phase19-forecast-probability-db-config-live-proof/
+?? docs/evidence/phase20-forecast-comprehensive-db-config-live-proof/
+?? docs/evidence/procore-budget-detail-null-field-investigation-deep/
+?? docs/evidence/procore-budget-detail-null-field-investigation/
+?? docs/evidence/procore-budget-detail-raw-version-collapse/
+?? docs/evidence/procore-budget-detail-row-field-projection-audit/
+?? docs/evidence/procore-change-events-null-field-audit/
+?? docs/evidence/procore-change-events-open-questions/
+?? docs/evidence/procore-change-events-record-key-collapse/
+?? docs/evidence/procore-company-id-manual-update/
+?? docs/evidence/procore-listed-tables-null-field-audit/
+?? docs/evidence/procore-open-recommended-action-proof-correction/
+?? docs/evidence/procore-open-recommended-action-proof/
+?? docs/evidence/schemacrawler-forecasting-db-map/

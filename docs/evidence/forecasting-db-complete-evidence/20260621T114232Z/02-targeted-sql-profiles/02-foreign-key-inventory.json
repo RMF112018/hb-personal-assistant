@@ -1,0 +1,833 @@
+{
+  "forecast_accuracy_results": [
+    {
+      "from": "external_forecast_id",
+      "id": 0,
+      "match": "NONE",
+      "on_delete": "NO ACTION",
+      "on_update": "NO ACTION",
+      "seq": 0,
+      "table": "forecast_external_forecasts",
+      "to": "external_forecast_id"
+    }
+  ],
+  "forecast_anomaly_findings": [
+    {
+      "from": "external_forecast_id",
+      "id": 0,
+      "match": "NONE",
+      "on_delete": "NO ACTION",
+      "on_update": "NO ACTION",
+      "seq": 0,
+      "table": "forecast_external_forecasts",
+      "to": "external_forecast_id"
+    }
+  ],
+  "forecast_budget_details": [],
+  "forecast_comparison_results": [
+    {
+      "from": "external_forecast_id",
+      "id": 0,
+      "match": "NONE",
+      "on_delete": "NO ACTION",
+      "on_update": "NO ACTION",
+      "seq": 0,
+      "table": "forecast_external_forecasts",
+      "to": "external_forecast_id"
+    }
+  ],
+  "forecast_config_items": [
+    {
+      "from": "config_source_id",
+      "id": 0,
+      "match": "NONE",
+      "on_delete": "NO ACTION",
+      "on_update": "NO ACTION",
+      "seq": 0,
+      "table": "forecast_config_sources",
+      "to": "config_source_id"
+    }
+  ],
+  "forecast_config_snapshot_items": [
+    {
+      "from": "config_item_id",
+      "id": 0,
+      "match": "NONE",
+      "on_delete": "NO ACTION",
+      "on_update": "NO ACTION",
+      "seq": 0,
+      "table": "forecast_config_items",
+      "to": "config_item_id"
+    },
+    {
+      "from": "config_snapshot_id",
+      "id": 1,
+      "match": "NONE",
+      "on_delete": "NO ACTION",
+      "on_update": "NO ACTION",
+      "seq": 0,
+      "table": "forecast_config_snapshots",
+      "to": "config_snapshot_id"
+    }
+  ],
+  "forecast_config_snapshots": [],
+  "forecast_config_sources": [],
+  "forecast_cost_entries": [],
+  "forecast_evidence_packages": [
+    {
+      "from": "external_forecast_id",
+      "id": 0,
+      "match": "NONE",
+      "on_delete": "NO ACTION",
+      "on_update": "NO ACTION",
+      "seq": 0,
+      "table": "forecast_external_forecasts",
+      "to": "external_forecast_id"
+    }
+  ],
+  "forecast_external_forecast_mappings": [
+    {
+      "from": "external_forecast_id",
+      "id": 0,
+      "match": "NONE",
+      "on_delete": "NO ACTION",
+      "on_update": "NO ACTION",
+      "seq": 0,
+      "table": "forecast_external_forecasts",
+      "to": "external_forecast_id"
+    }
+  ],
+  "forecast_external_forecast_rows": [
+    {
+      "from": "external_forecast_id",
+      "id": 0,
+      "match": "NONE",
+      "on_delete": "NO ACTION",
+      "on_update": "NO ACTION",
+      "seq": 0,
+      "table": "forecast_external_forecasts",
+      "to": "external_forecast_id"
+    }
+  ],
+  "forecast_external_forecasts": [],
+  "forecast_monthly_actuals_by_budget_code": [],
+  "forecast_package_manifests": [],
+  "forecast_projects": [],
+  "forecast_review_items": [
+    {
+      "from": "external_forecast_id",
+      "id": 0,
+      "match": "NONE",
+      "on_delete": "NO ACTION",
+      "on_update": "NO ACTION",
+      "seq": 0,
+      "table": "forecast_external_forecasts",
+      "to": "external_forecast_id"
+    }
+  ],
+  "forecast_runs": [],
+  "forecast_source_ingestions": [],
+  "forecast_validation_events": [],
+  "procore_ep_billing_periods": [
+    {
+      "from": "raw_payload_id",
+      "id": 0,
+      "match": "NONE",
+      "on_delete": "NO ACTION",
+      "on_update": "NO ACTION",
+      "seq": 0,
+      "table": "procore_endpoint_raw_payloads",
+      "to": "raw_payload_id"
+    }
+  ],
+  "procore_ep_budget_change_history": [
+    {
+      "from": "raw_payload_id",
+      "id": 0,
+      "match": "NONE",
+      "on_delete": "NO ACTION",
+      "on_update": "NO ACTION",
+      "seq": 0,
+      "table": "procore_endpoint_raw_payloads",
+      "to": "raw_payload_id"
+    }
+  ],
+  "procore_ep_budget_detail_columns": [
+    {
+      "from": "raw_payload_id",
+      "id": 0,
+      "match": "NONE",
+      "on_delete": "NO ACTION",
+      "on_update": "NO ACTION",
+      "seq": 0,
+      "table": "procore_endpoint_raw_payloads",
+      "to": "raw_payload_id"
+    }
+  ],
+  "procore_ep_budget_detail_row_cells": [
+    {
+      "from": "raw_payload_id",
+      "id": 0,
+      "match": "NONE",
+      "on_delete": "NO ACTION",
+      "on_update": "NO ACTION",
+      "seq": 0,
+      "table": "procore_endpoint_raw_payloads",
+      "to": "raw_payload_id"
+    },
+    {
+      "from": "record_key",
+      "id": 1,
+      "match": "NONE",
+      "on_delete": "NO ACTION",
+      "on_update": "NO ACTION",
+      "seq": 0,
+      "table": "procore_ep_budget_detail_rows",
+      "to": "record_key"
+    }
+  ],
+  "procore_ep_budget_detail_rows": [
+    {
+      "from": "raw_payload_id",
+      "id": 0,
+      "match": "NONE",
+      "on_delete": "NO ACTION",
+      "on_update": "NO ACTION",
+      "seq": 0,
+      "table": "procore_endpoint_raw_payloads",
+      "to": "raw_payload_id"
+    }
+  ],
+  "procore_ep_budget_modifications": [
+    {
+      "from": "raw_payload_id",
+      "id": 0,
+      "match": "NONE",
+      "on_delete": "NO ACTION",
+      "on_update": "NO ACTION",
+      "seq": 0,
+      "table": "procore_endpoint_raw_payloads",
+      "to": "raw_payload_id"
+    }
+  ],
+  "procore_ep_budget_views": [
+    {
+      "from": "raw_payload_id",
+      "id": 0,
+      "match": "NONE",
+      "on_delete": "NO ACTION",
+      "on_update": "NO ACTION",
+      "seq": 0,
+      "table": "procore_endpoint_raw_payloads",
+      "to": "raw_payload_id"
+    }
+  ],
+  "procore_ep_change_events": [
+    {
+      "from": "raw_payload_id",
+      "id": 0,
+      "match": "NONE",
+      "on_delete": "NO ACTION",
+      "on_update": "NO ACTION",
+      "seq": 0,
+      "table": "procore_endpoint_raw_payloads",
+      "to": "raw_payload_id"
+    }
+  ],
+  "procore_ep_change_events_attachments": [
+    {
+      "from": "raw_payload_id",
+      "id": 0,
+      "match": "NONE",
+      "on_delete": "NO ACTION",
+      "on_update": "NO ACTION",
+      "seq": 0,
+      "table": "procore_endpoint_raw_payloads",
+      "to": "raw_payload_id"
+    },
+    {
+      "from": "primary_record_key",
+      "id": 1,
+      "match": "NONE",
+      "on_delete": "NO ACTION",
+      "on_update": "NO ACTION",
+      "seq": 0,
+      "table": "procore_ep_change_events",
+      "to": "record_key"
+    }
+  ],
+  "procore_ep_change_events_change_items": [
+    {
+      "from": "raw_payload_id",
+      "id": 0,
+      "match": "NONE",
+      "on_delete": "NO ACTION",
+      "on_update": "NO ACTION",
+      "seq": 0,
+      "table": "procore_endpoint_raw_payloads",
+      "to": "raw_payload_id"
+    },
+    {
+      "from": "primary_record_key",
+      "id": 1,
+      "match": "NONE",
+      "on_delete": "NO ACTION",
+      "on_update": "NO ACTION",
+      "seq": 0,
+      "table": "procore_ep_change_events",
+      "to": "record_key"
+    }
+  ],
+  "procore_ep_change_events_change_items_budget_code_seg_2dff22": [
+    {
+      "from": "raw_payload_id",
+      "id": 0,
+      "match": "NONE",
+      "on_delete": "NO ACTION",
+      "on_update": "NO ACTION",
+      "seq": 0,
+      "table": "procore_endpoint_raw_payloads",
+      "to": "raw_payload_id"
+    },
+    {
+      "from": "primary_record_key",
+      "id": 1,
+      "match": "NONE",
+      "on_delete": "NO ACTION",
+      "on_update": "NO ACTION",
+      "seq": 0,
+      "table": "procore_ep_change_events",
+      "to": "record_key"
+    }
+  ],
+  "procore_ep_change_events_markup_items": [
+    {
+      "from": "raw_payload_id",
+      "id": 0,
+      "match": "NONE",
+      "on_delete": "NO ACTION",
+      "on_update": "NO ACTION",
+      "seq": 0,
+      "table": "procore_endpoint_raw_payloads",
+      "to": "raw_payload_id"
+    },
+    {
+      "from": "primary_record_key",
+      "id": 1,
+      "match": "NONE",
+      "on_delete": "NO ACTION",
+      "on_update": "NO ACTION",
+      "seq": 0,
+      "table": "procore_ep_change_events",
+      "to": "record_key"
+    }
+  ],
+  "procore_ep_change_events_markup_items_wbs_code_segment_items": [
+    {
+      "from": "raw_payload_id",
+      "id": 0,
+      "match": "NONE",
+      "on_delete": "NO ACTION",
+      "on_update": "NO ACTION",
+      "seq": 0,
+      "table": "procore_endpoint_raw_payloads",
+      "to": "raw_payload_id"
+    },
+    {
+      "from": "primary_record_key",
+      "id": 1,
+      "match": "NONE",
+      "on_delete": "NO ACTION",
+      "on_update": "NO ACTION",
+      "seq": 0,
+      "table": "procore_ep_change_events",
+      "to": "record_key"
+    }
+  ],
+  "procore_ep_commitment_attachments": [
+    {
+      "from": "raw_payload_id",
+      "id": 0,
+      "match": "NONE",
+      "on_delete": "NO ACTION",
+      "on_update": "NO ACTION",
+      "seq": 0,
+      "table": "procore_endpoint_raw_payloads",
+      "to": "raw_payload_id"
+    }
+  ],
+  "procore_ep_commitment_change_orders": [
+    {
+      "from": "raw_payload_id",
+      "id": 0,
+      "match": "NONE",
+      "on_delete": "NO ACTION",
+      "on_update": "NO ACTION",
+      "seq": 0,
+      "table": "procore_endpoint_raw_payloads",
+      "to": "raw_payload_id"
+    }
+  ],
+  "procore_ep_commitment_compliance": [
+    {
+      "from": "raw_payload_id",
+      "id": 0,
+      "match": "NONE",
+      "on_delete": "NO ACTION",
+      "on_update": "NO ACTION",
+      "seq": 0,
+      "table": "procore_endpoint_raw_payloads",
+      "to": "raw_payload_id"
+    }
+  ],
+  "procore_ep_commitment_compliance_insurance_documents": [
+    {
+      "from": "raw_payload_id",
+      "id": 0,
+      "match": "NONE",
+      "on_delete": "NO ACTION",
+      "on_update": "NO ACTION",
+      "seq": 0,
+      "table": "procore_endpoint_raw_payloads",
+      "to": "raw_payload_id"
+    },
+    {
+      "from": "primary_record_key",
+      "id": 1,
+      "match": "NONE",
+      "on_delete": "NO ACTION",
+      "on_update": "NO ACTION",
+      "seq": 0,
+      "table": "procore_ep_commitment_compliance",
+      "to": "record_key"
+    }
+  ],
+  "procore_ep_commitment_compliance_insurance_documents__52b7bf": [
+    {
+      "from": "raw_payload_id",
+      "id": 0,
+      "match": "NONE",
+      "on_delete": "NO ACTION",
+      "on_update": "NO ACTION",
+      "seq": 0,
+      "table": "procore_endpoint_raw_payloads",
+      "to": "raw_payload_id"
+    },
+    {
+      "from": "primary_record_key",
+      "id": 1,
+      "match": "NONE",
+      "on_delete": "NO ACTION",
+      "on_update": "NO ACTION",
+      "seq": 0,
+      "table": "procore_ep_commitment_compliance",
+      "to": "record_key"
+    }
+  ],
+  "procore_ep_commitment_contracts": [
+    {
+      "from": "raw_payload_id",
+      "id": 0,
+      "match": "NONE",
+      "on_delete": "NO ACTION",
+      "on_update": "NO ACTION",
+      "seq": 0,
+      "table": "procore_endpoint_raw_payloads",
+      "to": "raw_payload_id"
+    }
+  ],
+  "procore_ep_commitment_line_items": [
+    {
+      "from": "raw_payload_id",
+      "id": 0,
+      "match": "NONE",
+      "on_delete": "NO ACTION",
+      "on_update": "NO ACTION",
+      "seq": 0,
+      "table": "procore_endpoint_raw_payloads",
+      "to": "raw_payload_id"
+    }
+  ],
+  "procore_ep_prime_change_order_line_items": [
+    {
+      "from": "raw_payload_id",
+      "id": 0,
+      "match": "NONE",
+      "on_delete": "NO ACTION",
+      "on_update": "NO ACTION",
+      "seq": 0,
+      "table": "procore_endpoint_raw_payloads",
+      "to": "raw_payload_id"
+    }
+  ],
+  "procore_ep_prime_change_orders": [
+    {
+      "from": "raw_payload_id",
+      "id": 0,
+      "match": "NONE",
+      "on_delete": "NO ACTION",
+      "on_update": "NO ACTION",
+      "seq": 0,
+      "table": "procore_endpoint_raw_payloads",
+      "to": "raw_payload_id"
+    }
+  ],
+  "procore_ep_prime_contract_line_items": [
+    {
+      "from": "raw_payload_id",
+      "id": 0,
+      "match": "NONE",
+      "on_delete": "NO ACTION",
+      "on_update": "NO ACTION",
+      "seq": 0,
+      "table": "procore_endpoint_raw_payloads",
+      "to": "raw_payload_id"
+    }
+  ],
+  "procore_ep_prime_contracts": [
+    {
+      "from": "raw_payload_id",
+      "id": 0,
+      "match": "NONE",
+      "on_delete": "NO ACTION",
+      "on_update": "NO ACTION",
+      "seq": 0,
+      "table": "procore_endpoint_raw_payloads",
+      "to": "raw_payload_id"
+    }
+  ],
+  "procore_ep_projects": [
+    {
+      "from": "raw_payload_id",
+      "id": 0,
+      "match": "NONE",
+      "on_delete": "NO ACTION",
+      "on_update": "NO ACTION",
+      "seq": 0,
+      "table": "procore_endpoint_raw_payloads",
+      "to": "raw_payload_id"
+    }
+  ],
+  "procore_ep_purchase_order_contracts": [
+    {
+      "from": "raw_payload_id",
+      "id": 0,
+      "match": "NONE",
+      "on_delete": "NO ACTION",
+      "on_update": "NO ACTION",
+      "seq": 0,
+      "table": "procore_endpoint_raw_payloads",
+      "to": "raw_payload_id"
+    }
+  ],
+  "procore_ep_purchase_order_contracts_custom_fields_cus_a0fe65": [
+    {
+      "from": "raw_payload_id",
+      "id": 0,
+      "match": "NONE",
+      "on_delete": "NO ACTION",
+      "on_update": "NO ACTION",
+      "seq": 0,
+      "table": "procore_endpoint_raw_payloads",
+      "to": "raw_payload_id"
+    },
+    {
+      "from": "primary_record_key",
+      "id": 1,
+      "match": "NONE",
+      "on_delete": "NO ACTION",
+      "on_update": "NO ACTION",
+      "seq": 0,
+      "table": "procore_ep_purchase_order_contracts",
+      "to": "record_key"
+    }
+  ],
+  "procore_ep_purchase_order_line_items": [
+    {
+      "from": "raw_payload_id",
+      "id": 0,
+      "match": "NONE",
+      "on_delete": "NO ACTION",
+      "on_update": "NO ACTION",
+      "seq": 0,
+      "table": "procore_endpoint_raw_payloads",
+      "to": "raw_payload_id"
+    }
+  ],
+  "procore_ep_purchase_order_line_items_cost_code_line_i_779dbd": [
+    {
+      "from": "raw_payload_id",
+      "id": 0,
+      "match": "NONE",
+      "on_delete": "NO ACTION",
+      "on_update": "NO ACTION",
+      "seq": 0,
+      "table": "procore_endpoint_raw_payloads",
+      "to": "raw_payload_id"
+    },
+    {
+      "from": "primary_record_key",
+      "id": 1,
+      "match": "NONE",
+      "on_delete": "NO ACTION",
+      "on_update": "NO ACTION",
+      "seq": 0,
+      "table": "procore_ep_purchase_order_line_items",
+      "to": "record_key"
+    }
+  ],
+  "procore_ep_rfqs": [
+    {
+      "from": "raw_payload_id",
+      "id": 0,
+      "match": "NONE",
+      "on_delete": "NO ACTION",
+      "on_update": "NO ACTION",
+      "seq": 0,
+      "table": "procore_endpoint_raw_payloads",
+      "to": "raw_payload_id"
+    }
+  ],
+  "procore_ep_rfqs_attachments": [
+    {
+      "from": "raw_payload_id",
+      "id": 0,
+      "match": "NONE",
+      "on_delete": "NO ACTION",
+      "on_update": "NO ACTION",
+      "seq": 0,
+      "table": "procore_endpoint_raw_payloads",
+      "to": "raw_payload_id"
+    },
+    {
+      "from": "primary_record_key",
+      "id": 1,
+      "match": "NONE",
+      "on_delete": "NO ACTION",
+      "on_update": "NO ACTION",
+      "seq": 0,
+      "table": "procore_ep_rfqs",
+      "to": "record_key"
+    }
+  ],
+  "procore_ep_rfqs_change_event_attachments": [
+    {
+      "from": "raw_payload_id",
+      "id": 0,
+      "match": "NONE",
+      "on_delete": "NO ACTION",
+      "on_update": "NO ACTION",
+      "seq": 0,
+      "table": "procore_endpoint_raw_payloads",
+      "to": "raw_payload_id"
+    },
+    {
+      "from": "primary_record_key",
+      "id": 1,
+      "match": "NONE",
+      "on_delete": "NO ACTION",
+      "on_update": "NO ACTION",
+      "seq": 0,
+      "table": "procore_ep_rfqs",
+      "to": "record_key"
+    }
+  ],
+  "procore_ep_rfqs_change_event_change_event_line_items": [
+    {
+      "from": "raw_payload_id",
+      "id": 0,
+      "match": "NONE",
+      "on_delete": "NO ACTION",
+      "on_update": "NO ACTION",
+      "seq": 0,
+      "table": "procore_endpoint_raw_payloads",
+      "to": "raw_payload_id"
+    },
+    {
+      "from": "primary_record_key",
+      "id": 1,
+      "match": "NONE",
+      "on_delete": "NO ACTION",
+      "on_update": "NO ACTION",
+      "seq": 0,
+      "table": "procore_ep_rfqs",
+      "to": "record_key"
+    }
+  ],
+  "procore_ep_rfqs_change_event_change_event_line_items__0a3e8d": [
+    {
+      "from": "raw_payload_id",
+      "id": 0,
+      "match": "NONE",
+      "on_delete": "NO ACTION",
+      "on_update": "NO ACTION",
+      "seq": 0,
+      "table": "procore_endpoint_raw_payloads",
+      "to": "raw_payload_id"
+    },
+    {
+      "from": "primary_record_key",
+      "id": 1,
+      "match": "NONE",
+      "on_delete": "NO ACTION",
+      "on_update": "NO ACTION",
+      "seq": 0,
+      "table": "procore_ep_rfqs",
+      "to": "record_key"
+    }
+  ],
+  "procore_ep_subcontractor_invoice_change_order_items": [
+    {
+      "from": "raw_payload_id",
+      "id": 0,
+      "match": "NONE",
+      "on_delete": "NO ACTION",
+      "on_update": "NO ACTION",
+      "seq": 0,
+      "table": "procore_endpoint_raw_payloads",
+      "to": "raw_payload_id"
+    }
+  ],
+  "procore_ep_subcontractor_invoice_contract_detail_items": [
+    {
+      "from": "raw_payload_id",
+      "id": 0,
+      "match": "NONE",
+      "on_delete": "NO ACTION",
+      "on_update": "NO ACTION",
+      "seq": 0,
+      "table": "procore_endpoint_raw_payloads",
+      "to": "raw_payload_id"
+    }
+  ],
+  "procore_ep_subcontractor_invoices": [
+    {
+      "from": "raw_payload_id",
+      "id": 0,
+      "match": "NONE",
+      "on_delete": "NO ACTION",
+      "on_update": "NO ACTION",
+      "seq": 0,
+      "table": "procore_endpoint_raw_payloads",
+      "to": "raw_payload_id"
+    }
+  ],
+  "procore_ep_subcontractor_invoices_attachments": [
+    {
+      "from": "raw_payload_id",
+      "id": 0,
+      "match": "NONE",
+      "on_delete": "NO ACTION",
+      "on_update": "NO ACTION",
+      "seq": 0,
+      "table": "procore_endpoint_raw_payloads",
+      "to": "raw_payload_id"
+    },
+    {
+      "from": "primary_record_key",
+      "id": 1,
+      "match": "NONE",
+      "on_delete": "NO ACTION",
+      "on_update": "NO ACTION",
+      "seq": 0,
+      "table": "procore_ep_subcontractor_invoices",
+      "to": "record_key"
+    }
+  ],
+  "second_brain_agent_model_receipts": [
+    {
+      "from": "agent_run_id",
+      "id": 0,
+      "match": "NONE",
+      "on_delete": "CASCADE",
+      "on_update": "NO ACTION",
+      "seq": 0,
+      "table": "second_brain_agent_run_receipts",
+      "to": "agent_run_id"
+    }
+  ],
+  "second_brain_agent_performance_feedback_runs": [],
+  "second_brain_agent_run_receipts": [],
+  "second_brain_evaluation_runs": [],
+  "second_brain_financial_amount_facts_normalized": [],
+  "second_brain_financial_currency_completeness_snapshots": [],
+  "second_brain_financial_exposure_summary_items": [],
+  "second_brain_financial_fact_normalization_runs": [],
+  "second_brain_financial_forecast_readiness_runs": [],
+  "second_brain_financial_readiness_agent_runs": [],
+  "second_brain_financial_review_required_items": [],
+  "second_brain_financial_source_coverage_snapshots": [],
+  "second_brain_financial_wbs_cost_code_snapshots": [],
+  "second_brain_mcp_claude_desktop_config_previews": [],
+  "second_brain_mcp_denial_receipts": [],
+  "second_brain_mcp_permission_audit_runs": [],
+  "second_brain_mcp_policy_gate_runs": [],
+  "second_brain_mcp_prompt_registry_snapshots": [],
+  "second_brain_mcp_resource_registry_snapshots": [],
+  "second_brain_mcp_server_config_snapshots": [],
+  "second_brain_mcp_tool_call_receipts": [],
+  "second_brain_mcp_tool_registry_snapshots": [],
+  "second_brain_memory_consolidation_candidates": [],
+  "second_brain_memory_consolidation_review_items": [],
+  "second_brain_memory_quality_review_runs": [],
+  "second_brain_operator_feedback": [],
+  "second_brain_operator_preference_profiles": [],
+  "second_brain_phase_08c_validation_runs": [],
+  "second_brain_phase_08d_validation_runs": [],
+  "second_brain_phase_09_validation_runs": [],
+  "second_brain_research_packets": [],
+  "second_brain_retrieval_approved_source_manifests": [],
+  "second_brain_retrieval_benchmark_runs": [],
+  "second_brain_retrieval_context_budget_runs": [],
+  "second_brain_retrieval_embedding_model_evals": [],
+  "second_brain_retrieval_eval_cases": [],
+  "second_brain_retrieval_eval_runs": [],
+  "second_brain_retrieval_eval_sets": [],
+  "second_brain_retrieval_hybrid_query_results": [],
+  "second_brain_retrieval_hybrid_query_runs": [],
+  "second_brain_retrieval_llamaindex_config_snapshots": [],
+  "second_brain_retrieval_source_linked_proof_runs": [],
+  "second_brain_retrieval_unsupported_claim_checks": [],
+  "second_brain_retrieval_vector_index_items": [],
+  "second_brain_retrieval_vector_index_runs": [],
+  "second_brain_retry_receipts": [
+    {
+      "from": "run_registry_id",
+      "id": 0,
+      "match": "NONE",
+      "on_delete": "CASCADE",
+      "on_update": "NO ACTION",
+      "seq": 0,
+      "table": "second_brain_run_registry",
+      "to": "run_registry_id"
+    }
+  ],
+  "second_brain_review_burden_clusters": [],
+  "second_brain_review_burden_policy_evals": [],
+  "second_brain_review_burden_runs": [],
+  "second_brain_run_registry": [
+    {
+      "from": "assistant_run_id",
+      "id": 0,
+      "match": "NONE",
+      "on_delete": "NO ACTION",
+      "on_update": "NO ACTION",
+      "seq": 0,
+      "table": "assistant_runs",
+      "to": "id"
+    }
+  ],
+  "second_brain_run_steps": [
+    {
+      "from": "run_registry_id",
+      "id": 0,
+      "match": "NONE",
+      "on_delete": "CASCADE",
+      "on_update": "NO ACTION",
+      "seq": 0,
+      "table": "second_brain_run_registry",
+      "to": "run_registry_id"
+    }
+  ],
+  "second_brain_runtime_config_receipts": []
+}

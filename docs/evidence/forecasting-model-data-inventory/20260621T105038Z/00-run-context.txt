@@ -1,0 +1,30 @@
+stamp_utc=20260621T105038Z
+repo=/Users/bobbyfetting/hb-personal-assistant
+live_db=/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite
+copy_db=/tmp/forecasting-model-data-inventory-20260621T105038Z.sqlite
+
+git_head=0e19b5d3cb5d603f67f733c2c7e8815cb1fc49a3
+
+git_status_short:
+ M docs/evidence/construction-intelligence-phase-08b-automation-hardening/phase-08b-final-no-writeback-proof.md
+ M docs/evidence/construction-intelligence-phase-08c-financial-readiness/exposure-mart-preview.json
+ M docs/evidence/construction-intelligence-phase-08c-financial-readiness/financial-readiness-agent-proof.json
+ M docs/evidence/construction-intelligence-phase-08c-financial-readiness/financial-source-coverage-matrix.json
+ M docs/evidence/construction-intelligence-phase-08c-financial-readiness/forecast-readiness-gates.md
+ M docs/evidence/construction-intelligence-phase-08c-financial-readiness/forecast-readiness-proof.json
+ M docs/evidence/construction-intelligence-phase-08c-financial-readiness/phase-08c-gates-proof.json
+ M docs/evidence/construction-intelligence-phase-08c-financial-readiness/phase-08c-gates-proof.md
+?? docs/evidence/forecasting-model-data-inventory/
+?? docs/evidence/phase19-forecast-probability-db-config-live-proof/
+?? docs/evidence/phase20-forecast-comprehensive-db-config-live-proof/
+?? docs/evidence/procore-budget-detail-null-field-investigation-deep/
+?? docs/evidence/procore-budget-detail-null-field-investigation/
+?? docs/evidence/procore-budget-detail-raw-version-collapse/
+?? docs/evidence/procore-budget-detail-row-field-projection-audit/
+?? docs/evidence/procore-change-events-null-field-audit/
+?? docs/evidence/procore-change-events-open-questions/
+?? docs/evidence/procore-change-events-record-key-collapse/
+?? docs/evidence/procore-company-id-manual-update/
+?? docs/evidence/procore-listed-tables-null-field-audit/
+?? docs/evidence/procore-open-recommended-action-proof-correction/
+?? docs/evidence/procore-open-recommended-action-proof/

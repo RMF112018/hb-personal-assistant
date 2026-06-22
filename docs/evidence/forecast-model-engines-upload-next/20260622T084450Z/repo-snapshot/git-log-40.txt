@@ -1,0 +1,40 @@
+33fd116c (HEAD -> feature/forecast-ui-live-config-promotion-orphan-fix, origin/feature/forecast-ui-live-config-promotion-orphan-fix) Fix live config promotion orphaned-items defect; close edit→promote→generate loop (ADR 284)
+497a3403 (origin/feature/forecast-ui-live-config-promotion-defect, feature/forecast-ui-live-config-promotion-defect) Forecast UI: first real live config promotion — defect found, rolled back (ADR 283)
+8586f4d1 (origin/feature/forecast-ui-db-config-live-proof, feature/forecast-ui-db-config-live-proof) Forecast UI: live-data generation validation for all four DB-config-backed generators
+eca66b1c (origin/feature/forecast-ui-db-config-all-generators, feature/forecast-ui-db-config-all-generators) Forecast UI: extend DB-config-backed generation to all four generators
+7a1732cc Merge pull request #66 from RMF112018/feature/forecast-ui-db-config-generation
+cf1e8cd3 (origin/feature/forecast-ui-db-config-generation, feature/forecast-ui-db-config-generation) Forecast UI: wire comprehensive generator to consume live DB config
+565d203f Merge pull request #65 from RMF112018/feature/forecast-ui-read-root-onboarding
+0e19b5d3 (origin/feature/forecast-ui-read-root-onboarding, feature/forecast-ui-read-root-onboarding) Forecast UI: read-root onboarding (guided readiness + advisory)
+1d56fa85 Merge pull request #64 from RMF112018/feature/forecast-ui-launch-bootstrap
+beb2a4cf (origin/feature/forecast-ui-launch-bootstrap, feature/forecast-ui-launch-bootstrap) Forecast UI: live app launch bootstrap (ensure write-roots + readiness)
+0f9c90d0 (main) Fix projection audit classification for custom Budget Detail read model endpoints
+013e88b9 Merge pull request #62 from RMF112018/feature/forecast-ui-phaseE2-config-promotion
+d96df9e8 (origin/feature/forecast-ui-phaseE2-config-promotion, feature/forecast-ui-phaseE2-config-promotion) feat(forecast-ui): promote approved config edits to the live config DB (Phase E2)
+212f5352 Merge pull request #61 from RMF112018/feature/forecast-ui-phaseE-config-editing
+6b98d238 (origin/feature/forecast-ui-phaseE-config-editing) feat(forecast-ui): add config editing as isolated proposals (Phase E)
+947d2ced Merge pull request #60 from RMF112018/feature/forecast-ui-phase6-runtime-wiring
+0b1c03f5 Merge pull request #59 from RMF112018/feature/forecast-ui-phase5-review-surfaces
+da6e602c (origin/feature/forecast-ui-phase6-runtime-wiring, feature/forecast-ui-phase6-runtime-wiring) feat(forecast-ui): wire forecast data roots into the live app (runtime config)
+72033ce4 Merge pull request #58 from RMF112018/feature/forecast-ui-phase3-run-center
+9612205e (origin/feature/forecast-ui-phase5-review-surfaces, feature/forecast-ui-phase5-review-surfaces) feat(forecast-ui): add Forecast Review surfaces (read-only)
+99ed1127 (origin/feature/forecast-ui-phase3-run-center) Merge pull request #56 from RMF112018/feature/forecast-ui-phase4-external-eval
+b14e7540 (feature/forecast-ui-phase4-external-eval) feat(forecast-ui): add External-Forecast Evaluation (flagship, v61)
+7fd66a74 (feature/forecast-ui-phase3-run-center) feat(forecast-ui): add Forecast Run Center (isolated context→analysis generation)
+2f4e3165 (feature/forecast-ui-phase2-config-viewer) feat(forecast-ui): add read-only forecast configuration viewer
+963b8058 Merge pull request #53 from RMF112018/feature/forecast-ui-phase1-read-only-browser
+4bd4e436 (feature/forecast-ui-phase1-read-only-browser) feat(forecast-ui): add read-only forecast package browser
+24ef6e2a Merge pull request #52 from RMF112018/feature/forecast-comprehensive-db-config-phase20a
+e0c4cd5e (origin/feature/forecast-comprehensive-db-config-phase20a, feature/forecast-comprehensive-db-config-phase20a) fix(forecast): normalize config-root path in comprehensive evidence registry parity
+09705768 Merge pull request #51 from RMF112018/feature/forecast-comprehensive-db-config-phase20
+936b9dc8 (origin/feature/forecast-comprehensive-db-config-phase20, feature/forecast-comprehensive-db-config-phase20) feat(forecast): prove comprehensive with DB-backed config
+f337db13 Merge pull request #50 from RMF112018/feature/forecast-probability-db-config-phase19
+7811e3a9 (origin/feature/forecast-probability-db-config-phase19, feature/forecast-probability-db-config-phase19) feat(forecast): prove probability with DB-backed config
+9e5b35ce Merge pull request #49 from RMF112018/feature/forecast-monthly-db-stability-hardening-phase18a
+0d2922b6 (origin/feature/forecast-monthly-db-stability-hardening-phase18a, feature/forecast-monthly-db-stability-hardening-phase18a) fix(forecast): fail closed on monthly live DB instability
+6fc3163f Merge pull request #48 from RMF112018/feature/forecast-monthly-db-config-phase18
+941c183f (origin/feature/forecast-monthly-db-config-phase18, feature/forecast-monthly-db-config-phase18) feat(forecast): prove monthly with DB-backed config
+ea1b441b Merge pull request #47 from RMF112018/feature/forecast-model-controls-db-config-phase17
+d75c7c8d (origin/feature/forecast-model-controls-db-config-phase17, feature/forecast-model-controls-db-config-phase17) feat(forecast): prove model controls with DB-backed config
+4569418f Merge pull request #46 from RMF112018/codex/procore-null-projection-batch1
+55ce5ed3 (origin/codex/procore-null-projection-batch1, codex/procore-null-projection-batch1) test(procore): classify covered bare containers as deprecated

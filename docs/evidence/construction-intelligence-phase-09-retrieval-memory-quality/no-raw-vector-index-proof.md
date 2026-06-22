@@ -1,7 +1,7 @@
 # Phase 09 — No Raw Vector Index Proof
 
 - proof_passed: True
-- generated_utc: 2026-06-09T10:40:05.375655+00:00
+- generated_utc: 2026-06-22T11:07:26.437854+00:00
 - overall_status: clean
 - gates: 6/6 pass
 - db_guard_clean: True (guard_violations=0, tables=14)

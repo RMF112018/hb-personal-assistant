@@ -1,0 +1,6 @@
+mtime=1782033480 size=3529723904 path=/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite
+mtime=1782040344 size=189454112 path=/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite-wal
+mtime=1782033480 size=393216 path=/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite-shm
+99614d4ca8c4d53ba23a70a3df4c797fbf3cd8d1d9625d4488252da46377645a  /Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite
+16cda5e048ae676418ccccd3558719579cce94b2bc6662b1f026ea471d4cd79a  /Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite-wal
+22b6a44ed7fc3cc67c2ce5df6f5487a87d9c1d620876e64476cb5d53423f7f78  /Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite-shm

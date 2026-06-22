@@ -1,0 +1,29 @@
+{
+  "branch": "feature/forecast-ui-live-config-promotion-orphan-fix",
+  "captured_utc": "2026-06-22T09:44:14.064116+00:00",
+  "commit_sha": "33fd116ca9438eb84437686b84494c1f8ade83db",
+  "copy_db": "docs/evidence/schedule-intelligence-v62-live-cutover/20260622T120000Z/work/rehearsal-copy.sqlite",
+  "gma_smoke": {
+    "activity_count": 189,
+    "cost_weighting_after_approval": 1,
+    "cost_weighting_before_approval": 0,
+    "distinct_schedule_table_ids": [
+      "svk-9fa9a8d7d4cd7c2692d1a08d84f0cda5"
+    ],
+    "null_schedule_table_id_count": 0,
+    "redaction_leaks": [],
+    "relationship_count": 282,
+    "schedule_version_key": "tropical|GMA|2026-09-07T08:00:00"
+  },
+  "migration": {
+    "foreign_key_check": [],
+    "integrity_check": "ok",
+    "missing_v62_tables": [],
+    "schema_after": 62,
+    "schema_before": 61,
+    "table_count": 412
+  },
+  "phase": "copied_live_rehearsal",
+  "status": "pass",
+  "stop_condition_failures": []
+}

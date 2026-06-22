@@ -1,0 +1,120 @@
+{
+  "command": "hb-assistant procore analytics projection-inventory",
+  "endpoint_count": 1,
+  "total_distinct_paths": 10,
+  "total_array_paths": 0,
+  "endpoints": [
+    {
+      "endpoint_id": "billing-periods",
+      "distinct_paths": 10,
+      "array_paths": 0,
+      "fields": [
+        {
+          "path": "$",
+          "types": [
+            "object"
+          ],
+          "occurrences": 66,
+          "non_empty": 66,
+          "null_empty_rate_pct": 0.0,
+          "category": "other"
+        },
+        {
+          "path": "$.created_at",
+          "types": [
+            "string"
+          ],
+          "occurrences": 66,
+          "non_empty": 66,
+          "null_empty_rate_pct": 0.0,
+          "category": "date"
+        },
+        {
+          "path": "$.due_date",
+          "types": [
+            "string"
+          ],
+          "occurrences": 66,
+          "non_empty": 66,
+          "null_empty_rate_pct": 0.0,
+          "category": "date"
+        },
+        {
+          "path": "$.end_date",
+          "types": [
+            "string"
+          ],
+          "occurrences": 66,
+          "non_empty": 66,
+          "null_empty_rate_pct": 0.0,
+          "category": "date"
+        },
+        {
+          "path": "$.id",
+          "types": [
+            "integer"
+          ],
+          "occurrences": 66,
+          "non_empty": 66,
+          "null_empty_rate_pct": 0.0,
+          "category": "identity"
+        },
+        {
+          "path": "$.position",
+          "types": [
+            "integer"
+          ],
+          "occurrences": 66,
+          "non_empty": 66,
+          "null_empty_rate_pct": 0.0,
+          "category": "other"
+        },
+        {
+          "path": "$.project_id",
+          "types": [
+            "integer"
+          ],
+          "occurrences": 66,
+          "non_empty": 66,
+          "null_empty_rate_pct": 0.0,
+          "category": "identity"
+        },
+        {
+          "path": "$.start_date",
+          "types": [
+            "string"
+          ],
+          "occurrences": 66,
+          "non_empty": 66,
+          "null_empty_rate_pct": 0.0,
+          "category": "date"
+        },
+        {
+          "path": "$.status",
+          "types": [
+            "string"
+          ],
+          "occurrences": 66,
+          "non_empty": 66,
+          "null_empty_rate_pct": 0.0,
+          "category": "status"
+        },
+        {
+          "path": "$.updated_at",
+          "types": [
+            "string"
+          ],
+          "occurrences": 66,
+          "non_empty": 66,
+          "null_empty_rate_pct": 0.0,
+          "category": "date"
+        }
+      ]
+    }
+  ],
+  "guardrails": {
+    "live_calls_disabled": true,
+    "writeback": "none",
+    "emits_values": false
+  }
+}

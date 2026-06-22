@@ -1,0 +1,63 @@
+{
+  "all_null_field_count": 17,
+  "column_profile_count": 210,
+  "db_path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite",
+  "existing_table_count": 6,
+  "generated_at_utc": "2026-06-21T09:23:39.158595+00:00",
+  "majority_null_field_count": 25,
+  "majority_null_threshold_pct": 50.0,
+  "nullable_field_count": 34,
+  "ok": true,
+  "outputs": {
+    "all-null-fields.json": "docs/evidence/procore-listed-tables-null-field-audit/20260621T092320Z/shareable/all-null-fields.json",
+    "column-null-profile-all.json": "docs/evidence/procore-listed-tables-null-field-audit/20260621T092320Z/shareable/column-null-profile-all.json",
+    "majority-null-fields.json": "docs/evidence/procore-listed-tables-null-field-audit/20260621T092320Z/shareable/majority-null-fields.json",
+    "majority-null-sample-index.json": "docs/evidence/procore-listed-tables-null-field-audit/20260621T092320Z/shareable/majority-null-sample-index.json",
+    "null-field-audit-summary.md": "docs/evidence/procore-listed-tables-null-field-audit/20260621T092320Z/shareable/null-field-audit-summary.md",
+    "nullable-fields-all.json": "docs/evidence/procore-listed-tables-null-field-audit/20260621T092320Z/shareable/nullable-fields-all.json",
+    "raw-payload-sample-manifest.json": "docs/evidence/procore-listed-tables-null-field-audit/20260621T092320Z/sensitive-raw-payload-samples/raw-payload-sample-manifest.json",
+    "schema.json": "docs/evidence/procore-listed-tables-null-field-audit/20260621T092320Z/shareable/schema.json",
+    "sensitive-raw-payload-samples": "docs/evidence/procore-listed-tables-null-field-audit/20260621T092320Z/sensitive-raw-payload-samples",
+    "table-row-counts.json": "docs/evidence/procore-listed-tables-null-field-audit/20260621T092320Z/shareable/table-row-counts.json"
+  },
+  "raw_payload_samples_are_sensitive": true,
+  "raw_payload_samples_included": true,
+  "raw_sample_endpoint_count": 5,
+  "raw_sample_endpoint_keys": [
+    "billing-periods",
+    "budget-change-history",
+    "budget-detail-columns",
+    "budget-detail-rows",
+    "budget-modifications"
+  ],
+  "raw_sample_file_count": 15,
+  "table_count": 6,
+  "table_endpoint_map": {
+    "procore_ep_billing_periods": [
+      "billing-periods"
+    ],
+    "procore_ep_budget_change_history": [
+      "budget-change-history"
+    ],
+    "procore_ep_budget_detail_columns": [
+      "budget-detail-columns"
+    ],
+    "procore_ep_budget_detail_row_cells": [
+      "budget-detail-rows"
+    ],
+    "procore_ep_budget_detail_rows": [
+      "budget-detail-rows"
+    ],
+    "procore_ep_budget_modifications": [
+      "budget-modifications"
+    ]
+  },
+  "tables_requested": [
+    "procore_ep_budget_detail_rows",
+    "procore_ep_budget_detail_row_cells",
+    "procore_ep_budget_detail_columns",
+    "procore_ep_budget_change_history",
+    "procore_ep_billing_periods",
+    "procore_ep_budget_modifications"
+  ]
+}

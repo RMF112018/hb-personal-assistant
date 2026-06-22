@@ -35,6 +35,11 @@ describe('AppShell production chrome', () => {
     window.localStorage.clear()
   })
 
+  test('renders Schedules in primary navigation', () => {
+    renderShell('/schedules/imports')
+    expect(screen.getByRole('link', { name: /Schedules/i })).toBeInTheDocument()
+  })
+
   test('does not render development role chrome or disabled chat navigation', () => {
     renderShell()
 

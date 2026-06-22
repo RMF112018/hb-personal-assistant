@@ -1,6 +1,7 @@
 """Unit tests for forecast runtime config wiring (Implementation Phase 6).
 
-Asserts: resolver precedence (explicit > env > settings-file > None); whitelist-merge load with
+Asserts: resolver precedence (explicit > env > settings-file > managed_default > None);
+whitelist-merge load with
 fail-closed fallback; non-mutating validation maps to coded blockers; the status payload never
 leaks a path (find_redaction_leaks clean even with real paths configured); and save_runtime_config
 refuses a write-root under the resolved data root — including when data_root is supplied only via
@@ -14,6 +15,7 @@ from pathlib import Path
 
 import pytest
 
+from hb_assistant.config.path_policy import PathPolicy
 from hb_assistant.construction.analytics import forecast_runtime_config as rc
 from hb_assistant.construction.analytics.forecast_dto import find_redaction_leaks
 
@@ -53,7 +55,7 @@ def test_data_root_precedence(cfg_path: Path, monkeypatch: pytest.MonkeyPatch) -
     monkeypatch.delenv("HB_FORECAST_DATA_ROOT")
     assert rc.resolve_data_root(None) == "/settings/data"  # settings beats None
     cfg_path.unlink()
-    assert rc.resolve_data_root(None) is None  # fail-closed bottom
+    assert rc.resolve_data_root(None) == rc.managed_forecast_paths()["data_root"]
 
 
 def test_package_roots_precedence(cfg_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -94,7 +96,7 @@ def test_status_blocker_codes(cfg_path: Path, tmp_path: Path) -> None:
     assert status["roots"]["data_root"]["blocker"] == rc.BLOCKER_MISSING
     assert status["roots"]["runs_root"]["blocker"] == rc.BLOCKER_NOT_ABSOLUTE
     assert status["roots"]["eval_root"]["blocker"] == rc.BLOCKER_NOT_A_DIRECTORY
-    assert status["roots"]["package_roots"]["blocker"] == rc.BLOCKER_NOT_CONFIGURED
+    assert status["roots"]["package_roots"]["blocker"] == rc.BLOCKER_MISSING
     # The whole status payload — built from real /private|/tmp paths — must leak nothing.
     assert find_redaction_leaks(status) == []
 
@@ -250,6 +252,44 @@ def test_db_advisory_keeps_root_keyset_stable(cfg_path: Path, tmp_path: Path) ->
         "cfr_src",
         "config_edit_root",
     }
+
+
+def test_seed_runtime_config_if_incomplete_writes_managed_defaults(cfg_path: Path) -> None:
+    seeded = rc.seed_runtime_config_if_incomplete()
+    assert set(seeded) >= {
+        "package_roots",
+        "data_root",
+        "runs_root",
+        "eval_root",
+        "db_path",
+        "config_edit_root",
+    }
+    cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
+    managed = rc.managed_forecast_paths()
+    assert cfg["data_root"] == managed["data_root"]
+    assert cfg["db_path"] == managed["db_path"]
+
+
+def test_seed_preserves_existing_settings(cfg_path: Path, tmp_path: Path) -> None:
+    custom = str(tmp_path / "custom-data")
+    _write(cfg_path, data_root=custom)
+    seeded = rc.seed_runtime_config_if_incomplete()
+    assert "data_root" not in seeded
+    assert json.loads(cfg_path.read_text(encoding="utf-8"))["data_root"] == custom
+
+
+def test_reset_runtime_config_to_managed_defaults(cfg_path: Path, tmp_path: Path) -> None:
+    _write(cfg_path, data_root=str(tmp_path / "custom"))
+    status = rc.reset_runtime_config_to_managed_defaults()
+    cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
+    assert cfg["data_root"] == rc.managed_forecast_paths()["data_root"]
+    assert status["storage_mode"] == "app_managed"
+
+
+def test_is_managed_db_path_matches_path_policy() -> None:
+    managed = str(PathPolicy().get_db_path())
+    assert rc.is_managed_db_path(managed) is True
+    assert rc.is_managed_db_path("/tmp/other.sqlite") is False
 
 
 def test_save_allows_db_path_under_data_root(cfg_path: Path, tmp_path: Path) -> None:

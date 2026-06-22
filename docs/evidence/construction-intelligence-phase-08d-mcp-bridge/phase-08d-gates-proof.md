@@ -5,7 +5,7 @@ Deterministic, read-only, registry/contract-level gate evaluation over the Phase
 ## Summary
 - Proof passed: true
 - ok (no fail_blocking): true
-- Schema version: 44 (expected 44)
+- Schema version: 63 (expected 63)
 - Status counts: {'pass': 14, 'warning': 0, 'fail_blocking': 0, 'deferred_not_blocking': 0}
 - Required fields covered: true
 - Readiness overstated: false
@@ -48,4 +48,4 @@ Deterministic, read-only, registry/contract-level gate evaluation over the Phase
 ## Notes
 Deterministic Phase 08D MCP-bridge data-quality gate evaluation across schema/contracts (V37 + ten 08D contracts), server config, the nine allowed workflow tools, the denied registry, five resources, five prompts, metadata-only receipts, deny-first denial enforcement, nine workflow wrappers, the Claude Desktop config preview, and the overall permission-audit policy posture. Evaluated at the registry/contract level only — the synthesis/retrieval workflow tools are never dispatched. no_raw_access (Prompt 13), no_writeback (Prompt 14), and the full validation_matrix (Prompt 15) are deferred_not_blocking; ready_to_serve is False. Advisory only — not a determination, approval, or serve attestation.
 
-Generated: 2026-06-09T10:38:17.102987Z
+Generated: 2026-06-22T11:04:16.282144Z

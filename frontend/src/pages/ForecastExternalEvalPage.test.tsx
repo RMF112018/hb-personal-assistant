@@ -44,7 +44,7 @@ describe('ForecastExternalEvalPage', () => {
   it('renders the upload step and prior-evaluations history', () => {
     mockData()
     renderPage()
-    expect(screen.getByText('Upload an external forecast')).toBeInTheDocument()
+    expect(screen.getByText('Upload operator forecast')).toBeInTheDocument()
     expect(screen.getByText('Prior evaluations')).toBeInTheDocument()
     expect(
       screen.getByText('External forecast (Manual) — 2026-06 — Jun 20, 2026 1:07 PM'),

@@ -1,0 +1,114 @@
+catalog_match_bucket	cells	numeric_cells	distinct_field_paths
+missing_catalog_column	258385	143644	110
+matched_catalog_column	15566	12522	12
+field_path	column_name	column_label	cells	numeric_cells	distinct_budget_views
+$.biller	biller	biller	3044	0	6
+$.biller_id	biller_id	biller_id	3044	3044	6
+$.biller_type	biller_type	biller_type	3044	0	6
+$.budget_forecast.amount	amount	amount	3044	3044	6
+$.budget_forecast.automatic_amount	automatic_amount	automatic_amount	3044	3044	6
+$.budget_forecast.manual_amount	manual_amount	manual_amount	3044	3044	6
+$.budget_modifications	budget_modifications	budget_modifications	3044	3044	6
+$.budget_row_id	budget_row_id	budget_row_id	3044	3044	6
+$.budgetable	budgetable	budgetable	3044	3044	6
+$.budgeted	budgeted	budgeted	3044	3044	6
+$.calculation_strategy	calculation_strategy	calculation_strategy	3044	0	6
+$.category	category	category	3044	0	6
+$.category_id	category_id	category_id	3044	3044	6
+$.company	company	company	3044	0	6
+$.company_id	company_id	company_id	3044	3044	6
+$.cost_code	cost_code	cost_code	3044	0	6
+$.cost_code_id	cost_code_id	cost_code_id	3044	3044	6
+$.cost_code_level_1	cost_code_level_1	cost_code_level_1	3044	0	6
+$.cost_code_level_1_id	cost_code_level_1_id	cost_code_level_1_id	3044	3044	6
+$.cost_code_level_2	cost_code_level_2	cost_code_level_2	3044	0	6
+$.cost_code_level_2_id	cost_code_level_2_id	cost_code_level_2_id	3044	3044	6
+$.cost_code_level_3	cost_code_level_3	cost_code_level_3	3044	0	6
+$.cost_code_level_3_id	cost_code_level_3_id	cost_code_level_3_id	3044	3044	6
+$.cost_code_level_4	cost_code_level_4	cost_code_level_4	3044	0	6
+$.cost_code_level_4_id	cost_code_level_4_id	cost_code_level_4_id	3044	3044	6
+$.cost_code_level_5	cost_code_level_5	cost_code_level_5	3044	0	6
+$.cost_code_level_5_id	cost_code_level_5_id	cost_code_level_5_id	3044	3044	6
+$.cost_code_origin_id	cost_code_origin_id	cost_code_origin_id	3044	0	6
+$.deletable	deletable	deletable	3044	3044	6
+$.id	id	id	3044	3044	6
+$.original_budget_amount	original_budget_amount	original_budget_amount	3044	3044	6
+$.project	project	project	3044	0	6
+$.project_id	project_id	project_id	3044	3044	6
+$.root_cost_code	root_cost_code	root_cost_code	3044	0	6
+$.root_cost_code_id	root_cost_code_id	root_cost_code_id	3044	3044	6
+$.wbs_code.flat_code	flat_code	flat_code	3044	0	6
+$.wbs_code.flat_name	flat_name	flat_name	3044	0	6
+$.wbs_code.id	id	id	3044	3044	6
+$.wbs_code.segment_items[0].code	code	code	3044	3044	6
+$.wbs_code.segment_items[0].id	id	id	3044	3044	6
+$.wbs_code.segment_items[0].is_parent	is_parent	is_parent	3044	3044	6
+$.wbs_code.segment_items[0].name	name	name	3044	0	6
+$.wbs_code.segment_items[0].path_code	path_code	path_code	3044	3044	6
+$.wbs_code.segment_items[0].path_codes[0]	path_codes[0]	path_codes[0]	3044	3044	6
+$.wbs_code.segment_items[0].path_ids[0]	path_ids[0]	path_ids[0]	3044	3044	6
+$.wbs_code.segment_items[0].segment.id	id	id	3044	3044	6
+$.wbs_code.segment_items[0].segment.name	name	name	3044	0	6
+$.wbs_code.segment_items[0].segment.structure	structure	structure	3044	0	6
+$.wbs_code.segment_items[0].segment.type	type	type	3044	0	6
+$.wbs_code.segment_items[1].code	code	code	3044	0	6
+$.wbs_code.segment_items[1].id	id	id	3044	3044	6
+$.wbs_code.segment_items[1].is_parent	is_parent	is_parent	3044	3044	6
+$.wbs_code.segment_items[1].name	name	name	3044	0	6
+$.wbs_code.segment_items[1].path_code	path_code	path_code	3044	0	6
+$.wbs_code.segment_items[1].path_codes[0]	path_codes[0]	path_codes[0]	3044	0	6
+$.wbs_code.segment_items[1].path_codes[1]	path_codes[1]	path_codes[1]	3044	0	6
+$.wbs_code.segment_items[1].path_codes[2]	path_codes[2]	path_codes[2]	3044	0	6
+$.wbs_code.segment_items[1].path_ids[0]	path_ids[0]	path_ids[0]	3044	3044	6
+$.wbs_code.segment_items[1].path_ids[1]	path_ids[1]	path_ids[1]	3044	3044	6
+$.wbs_code.segment_items[1].path_ids[2]	path_ids[2]	path_ids[2]	3044	3044	6
+$.wbs_code.segment_items[1].segment.id	id	id	3044	3044	6
+$.wbs_code.segment_items[1].segment.name	name	name	3044	0	6
+$.wbs_code.segment_items[1].segment.structure	structure	structure	3044	0	6
+$.wbs_code.segment_items[1].segment.type	type	type	3044	0	6
+$.wbs_code.segment_items[2].code	code	code	3044	0	6
+$.wbs_code.segment_items[2].id	id	id	3044	3044	6
+$.wbs_code.segment_items[2].is_parent	is_parent	is_parent	3044	3044	6
+$.wbs_code.segment_items[2].name	name	name	3044	0	6
+$.wbs_code.segment_items[2].path_code	path_code	path_code	3044	0	6
+$.wbs_code.segment_items[2].path_codes[0]	path_codes[0]	path_codes[0]	3044	0	6
+$.wbs_code.segment_items[2].path_ids[0]	path_ids[0]	path_ids[0]	3044	3044	6
+$.wbs_code.segment_items[2].segment.id	id	id	3044	3044	6
+$.wbs_code.segment_items[2].segment.name	name	name	3044	0	6
+$.wbs_code.segment_items[2].segment.structure	structure	structure	3044	0	6
+$.wbs_code.segment_items[2].segment.type	type	type	3044	0	6
+$.wbs_code_id	wbs_code_id	wbs_code_id	3044	3044	6
+$.Estimated Cost at Completion	Estimated Cost at Completion	Estimated Cost at Completion	2522	2522	5
+$.Projected Budget	Projected Budget	Projected Budget	2522	2522	5
+$.Projected Costs	Projected Costs	Projected Costs	2522	2522	5
+$.Projected over Under	Projected over Under	Projected over Under	2522	2522	5
+$.Revised Budget	Revised Budget	Revised Budget	2522	2522	5
+$.budget_forecast.automatically_calculated	automatically_calculated	automatically_calculated	2522	2522	5
+$.budget_forecast.calculation_strategy	calculation_strategy	calculation_strategy	2522	0	5
+$.budget_forecast.id	id	id	2522	2522	5
+$.Projected Cost To Complete	Projected Cost To Complete	Projected Cost To Complete	1044	1044	2
+$.ERP Direct Costs	ERP Direct Costs	ERP Direct Costs	956	956	2
+$.quantity	quantity	quantity	782	782	6
+$.start_date	start_date	start_date	774	0	6
+$.end_date	end_date	end_date	768	0	6
+$.curve	curve	curve	762	0	6
+$.Direct Costs	Direct Costs	Direct Costs	522	522	1
+$.budget_notes	budget_notes	budget_notes	316	0	6
+$.forecast_remainder	forecast_remainder	forecast_remainder	256	256	2
+$.spread_june_2026.amount	amount	amount	242	242	2
+$.spread_june_2026.position	position	position	242	242	2
+$.spread_july_2026.amount	amount	amount	30	30	2
+$.spread_july_2026.position	position	position	30	30	2
+$.spread_august_2026.amount	amount	amount	20	20	2
+$.spread_august_2026.position	position	position	20	20	2
+$.unit_cost	unit_cost	unit_cost	20	20	5
+$.budget_forecast.notes	notes	notes	15	0	5
+$.spread_september_2026.amount	amount	amount	14	14	2
+$.spread_september_2026.position	position	position	14	14	2
+$.spread_october_2026.amount	amount	amount	10	10	2
+$.spread_october_2026.position	position	position	10	10	2
+$.spread_july_2026.id	id	id	6	6	2
+$.spread_june_2026.id	id	id	6	6	2
+$.spread_august_2026.id	id	id	2	2	2
+$.spread_october_2026.id	id	id	2	2	2
+$.spread_september_2026.id	id	id	2	2	2

@@ -1,0 +1,37 @@
+{
+  "project_key": "tropical",
+  "evidence_item_count": 1862,
+  "by_evidence_family": {
+    "actual_cost_truth": 127,
+    "budget_context": 127,
+    "current_projected_cost": 127,
+    "cost_entry_trend": 127,
+    "schedule_remaining_work": 127,
+    "schedule_monthly_phasing": 127,
+    "forecast_accuracy": 127,
+    "forecast_intelligence": 127,
+    "forecast_monthly": 127,
+    "forecast_probability": 127,
+    "history_informed_final_cost": 79,
+    "history_informed_monthly_shape": 79,
+    "history_informed_probability": 79,
+    "cost_frequency_cadence": 127,
+    "internal_staffing_weekday_rate": 22,
+    "operator_staffing_plan": 8,
+    "operator_forecast_control": 64,
+    "owner_scope_crosswalk": 46,
+    "owner_pay_application": 46,
+    "subcontractor_pay_application": 42
+  },
+  "by_source_package_type": {
+    "context": 469,
+    "intelligence": 554,
+    "monthly": 254,
+    "probability": 127,
+    "history_informed": 237,
+    "cost_frequency": 149,
+    "staffing_plan": 8,
+    "operator_control": 64
+  },
+  "lineage_complete": true
+}

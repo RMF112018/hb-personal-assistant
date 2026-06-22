@@ -1,0 +1,60 @@
+stamp=20260621T100136Z
+repo=/Users/bobbyfetting/hb-personal-assistant
+branch=feature/forecast-ui-launch-bootstrap
+head=013e88b9422475f23a85efef9d3a1295e83a8630
+status:
+ M docs/evidence/construction-intelligence-phase-08b-automation-hardening/phase-08b-final-no-writeback-proof.md
+ M docs/evidence/construction-intelligence-phase-08c-financial-readiness/exposure-mart-preview.json
+ M docs/evidence/construction-intelligence-phase-08c-financial-readiness/financial-readiness-agent-proof.json
+ M docs/evidence/construction-intelligence-phase-08c-financial-readiness/financial-source-coverage-matrix.json
+ M docs/evidence/construction-intelligence-phase-08c-financial-readiness/forecast-readiness-gates.md
+ M docs/evidence/construction-intelligence-phase-08c-financial-readiness/forecast-readiness-proof.json
+ M docs/evidence/construction-intelligence-phase-08c-financial-readiness/phase-08c-gates-proof.json
+ M docs/evidence/construction-intelligence-phase-08c-financial-readiness/phase-08c-gates-proof.md
+ M tests/test_fastapi_analytics_app_shell.py
+ M tests/test_launcher_scheduler.py
+?? docs/architecture/278-forecast-ui-launch-bootstrap.md
+?? docs/evidence/phase19-forecast-probability-db-config-live-proof/
+?? docs/evidence/phase20-forecast-comprehensive-db-config-live-proof/
+?? docs/evidence/procore-budget-detail-null-field-investigation-deep/
+?? docs/evidence/procore-budget-detail-null-field-investigation/
+?? docs/evidence/procore-budget-detail-raw-version-collapse/
+?? docs/evidence/procore-budget-detail-row-field-projection-audit/
+?? docs/evidence/procore-change-events-null-field-audit/
+?? docs/evidence/procore-change-events-open-questions/
+?? docs/evidence/procore-company-id-manual-update/
+?? docs/evidence/procore-listed-tables-null-field-audit/
+?? docs/evidence/procore-open-recommended-action-proof-correction/
+?? docs/evidence/procore-open-recommended-action-proof/
+?? src/hb_assistant/construction/analytics/forecast_bootstrap.py
+?? tests/test_forecast_bootstrap.py
+
+78f86a5f availability:
+commit
+78f86a5f fix(procore): remediate budget detail raw landing provenance
+ .../20260621T075026Z/README.md                     |  37 ++++
+ .../amount-reconciliation-proof.json               |  13 ++
+ .../budget-detail-category-proof.json              |   1 +
+ .../budget-detail-read-model-replay-receipt.json   |  22 ++
+ .../budget-detail-row-company-proof.json           |   1 +
+ .../company-id-propagation-proof.json              |   3 +
+ .../20260621T075026Z/db-integrity-check.txt        |   1 +
+ .../20260621T075026Z/no-raw-leak-scan.json         |  10 +
+ .../raw-current-version-proof.json                 |   1 +
+ .../raw-to-read-model-linkage-proof.json           |   1 +
+ .../20260621T075026Z/reconciliation-receipt.json   |  18 ++
+ .../source-absent-field-proof.json                 |   1 +
+ src/hb_assistant/cli/procore.py                    |  80 +++++++
+ .../procore/budget_detail_read_model.py            |  33 +++
+ src/hb_assistant/procore/live_sync.py              |   2 +
+ src/hb_assistant/procore/structured_analytics.py   | 243 ++++++++++++++++++++-
+ src/hb_assistant/store/migrator.py                 |  32 ++-
+ .../test_forecast_db_cutover_readiness_phase10.py  |   4 +-
+ ...est_forecast_guarded_db_operator_run_phase12.py |   3 +-
+ .../test_forecast_live_db_certification_phase13.py |   6 +-
+ ...ast_live_db_source_domain_projection_phase14.py |   4 +-
+ ...forecast_temp_db_readiness_rehearsal_phase11.py |   5 +-
+ tests/test_procore_budget_detail_read_model.py     | 128 ++++++++++-
+ tests/test_procore_full_raw_payload_ingestion.py   | 198 ++++++++++++++++-
+ 24 files changed, 828 insertions(+), 19 deletions(-)
+  feature/forecast-ui-phaseE-config-editing

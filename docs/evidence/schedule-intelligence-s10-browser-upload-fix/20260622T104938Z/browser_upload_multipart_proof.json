@@ -1,0 +1,21 @@
+{
+  "captured_utc": "2026-06-22T10:49:39.159128+00:00",
+  "phase": "s10_browser_upload_multipart_fix",
+  "filename": "TWNU18.xml",
+  "raw_bytes": 8045952,
+  "transport": "multipart/form-data",
+  "preview_status": 200,
+  "preview_activity_count": 1378,
+  "preview_relationship_count": 3718,
+  "commit_status": 200,
+  "duplicate_status": 409,
+  "duplicate_detail": {
+    "code": "duplicate_schedule_version",
+    "schedule_version_key": "tropical|TWNU18|2026-05-26T08:00:00",
+    "activity_count": 1378,
+    "relationship_count": 3718,
+    "view_path": "/schedules/activities?version=tropical%7CTWNU18%7C2026-05-26T08%3A00%3A00"
+  },
+  "imports_rows": 1,
+  "acceptance": "pass"
+}

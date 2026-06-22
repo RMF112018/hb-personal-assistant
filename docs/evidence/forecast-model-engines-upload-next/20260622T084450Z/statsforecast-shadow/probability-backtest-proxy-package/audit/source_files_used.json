@@ -1,0 +1,8 @@
+{
+  "accepted_forecast_intelligence_package": "/Users/bobbyfetting/Library/CloudStorage/SynologyDrive-BFmacSync/Work/NAS - HB/Projects/2023/TWN - NAS/30_Financials/Forecasts/Data/2026-June/forecast_accuracy_next_package_tropical_20260617_152655",
+  "accepted_forecast_monthly_package": "/Users/bobbyfetting/Library/CloudStorage/SynologyDrive-BFmacSync/Work/NAS - HB/Projects/2023/TWN - NAS/30_Financials/Forecasts/Data/2026-June/forecast_monthly_package_tropical_20260617_152658",
+  "context_package": "/Users/bobbyfetting/Library/CloudStorage/SynologyDrive-BFmacSync/Work/NAS - HB/Projects/2023/TWN - NAS/30_Financials/Forecasts/Data/2026-June/forecast_context_package_tropical_20260617_152650",
+  "local_db": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite",
+  "mutation_posture": "READ-ONLY: no source/Excel/SQLite/external mutation; DB opened mode=ro",
+  "simulation_rule": "Probabilistic outputs are advisory; actual cost to date is the only hard lower bound; simulated final costs are never capped at ERP projected, revised budget, committed, owner SOV, Procore pay-app, or prior model output. The local LLM produced no numeric simulation result."
+}

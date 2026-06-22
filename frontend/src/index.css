@@ -12,6 +12,7 @@
   --hb-surface: #ffffff;
   --hb-border: #e5e4e7;
   --hb-text: #1f2937;
+  --hb-fg: #1f2937;
   --hb-muted: #6b7280;
   --hb-accent: #4f46e5;
   --hb-accent-weak: #6366f1;
@@ -25,6 +26,7 @@
   --hb-surface: #16171d;
   --hb-border: #2e303a;
   --hb-text: #e5e7eb;
+  --hb-fg: #e5e7eb;
   --hb-muted: #9ca3af;
   --hb-accent: #a5b4fc;
   --hb-accent-weak: #6366f1;

@@ -1,0 +1,54 @@
+{
+  "branch": "feature/forecast-ui-live-config-promotion-orphan-fix",
+  "captured_utc": "2026-06-22T09:40:42.171503+00:00",
+  "commit_sha": "33fd116ca9438eb84437686b84494c1f8ade83db",
+  "latest_schema_version_expected": 62,
+  "live_db_audit": {
+    "db_path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite",
+    "foreign_key_check": [],
+    "integrity_check": "ok",
+    "journal_mode": "wal",
+    "missing_v62_tables": [
+      "schedule_file_imports",
+      "procore_ep_schedule_activities",
+      "procore_ep_schedule_relationships",
+      "procore_ep_schedule_wbs_nodes",
+      "procore_ep_schedule_calendars",
+      "procore_ep_schedule_activity_code_assignments",
+      "procore_ep_schedule_udf_values",
+      "schedule_version_diffs",
+      "schedule_quality_findings",
+      "schedule_cost_mapping_runs",
+      "schedule_cost_mapping_candidates",
+      "schedule_cost_distributions",
+      "schedule_cost_weighting_results"
+    ],
+    "procore_ep_schedules_count": 4,
+    "schema_version": 61,
+    "table_count": 397
+  },
+  "live_db_fingerprints": {
+    "main": {
+      "exists": true,
+      "mtime_ns": 1782087536267883255,
+      "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite",
+      "sha256": "9c2eafb81d2854db8feefcbc24232737c0b61a75cb2d8198a623cb33d560b847",
+      "size_bytes": 3537948672
+    },
+    "shm": {
+      "exists": true,
+      "mtime_ns": 1782118987608065983,
+      "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite-shm",
+      "sha256": "fd4c9fda9cd3f9ae7c962b0ddf37232294d55580e1aa165aa06129b8549389eb",
+      "size_bytes": 32768
+    },
+    "wal": {
+      "exists": true,
+      "mtime_ns": 1782110656453438581,
+      "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite-wal",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size_bytes": 0
+    }
+  },
+  "phase": "live_preflight"
+}

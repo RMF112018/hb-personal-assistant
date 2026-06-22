@@ -33,8 +33,8 @@ def _migrated_db(td: str) -> str:
     return str(db)
 
 
-def test_latest_schema_version_is_at_least_61() -> None:
-    assert LATEST_SCHEMA_VERSION >= 61
+def test_latest_schema_version_is_at_least_62() -> None:
+    assert LATEST_SCHEMA_VERSION >= 62
 
 
 def test_migration_applies_v61_with_all_tables() -> None:
@@ -101,7 +101,7 @@ def test_lifecycle_contract_count_and_v61_classification() -> None:
         / "src/hb_assistant/resources/json/table_lifecycle_status_contract.json"
     )
     contract = json.loads(contract_path.read_text(encoding="utf-8"))
-    assert contract["table_count"] == 399
+    assert contract["table_count"] == 422
     assert contract["table_count"] == len(contract["tables"])
     for t in V61_TABLES:
         entry = contract["tables"][t]

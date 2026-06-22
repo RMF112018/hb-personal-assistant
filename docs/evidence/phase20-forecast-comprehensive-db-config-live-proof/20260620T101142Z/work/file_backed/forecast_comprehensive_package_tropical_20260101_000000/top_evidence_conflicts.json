@@ -1,0 +1,66 @@
+[
+  {
+    "conflict_class": "operator_control_conflicts_with_model_forecast",
+    "count": 64
+  },
+  {
+    "conflict_class": "dormant_code_has_future_schedule_evidence",
+    "count": 58
+  },
+  {
+    "conflict_class": "schedule_contradicts_monthly_shape",
+    "count": 52
+  },
+  {
+    "conflict_class": "operator_stop_date_conflicts_with_schedule_remaining_work",
+    "count": 49
+  },
+  {
+    "conflict_class": "frequency_cadence_contradicts_recent_actuals",
+    "count": 45
+  },
+  {
+    "conflict_class": "dormant_code_has_open_commitment_remaining",
+    "count": 44
+  },
+  {
+    "conflict_class": "owner_vs_subcontractor_pay_app_mismatch",
+    "count": 36
+  },
+  {
+    "conflict_class": "non_staffing_recent_zero_run_advisory",
+    "count": 22
+  },
+  {
+    "conflict_class": "current_projected_diverges_from_integrated_forecast",
+    "count": 20
+  },
+  {
+    "conflict_class": "dormant_code_model_forecast_suppressed",
+    "count": 17
+  },
+  {
+    "conflict_class": "staffing_plan_conflicts_with_cost_frequency",
+    "count": 8
+  },
+  {
+    "conflict_class": "probability_risk_contradicts_confidence_band",
+    "count": 7
+  },
+  {
+    "conflict_class": "closed_code_forecast_suppressed",
+    "count": 4
+  },
+  {
+    "conflict_class": "staffing_plan_conflicts_with_current_accepted_ctc",
+    "count": 3
+  },
+  {
+    "conflict_class": "invoice_trend_contradicts_cost_entry_trend",
+    "count": 3
+  },
+  {
+    "conflict_class": "staffing_plan_changes_final_cost_materially",
+    "count": 2
+  }
+]

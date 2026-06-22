@@ -1,0 +1,35 @@
+{
+  "command": "hb-assistant procore analytics projection-audit",
+  "ok": false,
+  "endpoint_count": 1,
+  "unmapped_primary_business_fields": 7,
+  "unmapped_nested_business_fields": 0,
+  "unknown_business_field_paths": 7,
+  "runtime_plan_schema_mismatches": 0,
+  "endpoints_over_sidecar_threshold": [],
+  "endpoints_over_sidecar_threshold_unjustified": [],
+  "endpoints": [
+    {
+      "endpoint_id": "budget-detail-columns",
+      "status": "no_registry_plan",
+      "registry_present": false,
+      "unmapped_primary_business_fields": 7,
+      "unmapped_nested_business_fields": 0,
+      "unknown_business_field_paths": 7,
+      "unknown_sample": [
+        "$.aggregatable",
+        "$.filterable",
+        "$.groupable",
+        "$.id",
+        "$.name",
+        "$.position",
+        "$.type"
+      ]
+    }
+  ],
+  "guardrails": {
+    "live_calls_disabled": true,
+    "writeback": "none",
+    "emits_values": false
+  }
+}

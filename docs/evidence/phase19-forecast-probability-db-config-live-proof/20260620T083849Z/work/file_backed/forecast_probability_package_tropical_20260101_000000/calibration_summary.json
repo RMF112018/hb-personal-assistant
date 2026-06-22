@@ -1,0 +1,36 @@
+{
+  "methodology": "Probabilistic VALIDATION (not a replacement). Per code, cost-to-complete is modelled as a lognormal whose median equals the deterministic recommended cost-to-complete (so recommended = per-code P50) and whose high quantile maps to the worst-credible cost-to-complete. Spread is widened by burn volatility, backtest MAPE, model divergence and low confidence; overrun-existence confidence fattens the right tail via a quantile shift (median preserved). Codes are linked by a one-factor Gaussian copula (systemic + idiosyncratic). Actuals are the only floor; nothing is capped above any reference.",
+  "distribution_family": "shifted_lognormal_on_cost_to_complete",
+  "correlation_model": "one_factor_gaussian_copula",
+  "engine": "numpy_vectorized_monte_carlo",
+  "runs": 10000,
+  "seed": 20260614,
+  "antithetic_variates": true,
+  "latin_hypercube_systemic": false,
+  "parameters": {
+    "high_quantile": "0.9000",
+    "overrun_tail_quantile_shift": "0.1000",
+    "sigma_floor": "0.0200",
+    "sigma_cap": "1.0000",
+    "confidence_inflation_k": "0.4000",
+    "sigma_weight_cov": "0.2500",
+    "sigma_weight_mape": "0.5000",
+    "sigma_weight_divergence": "0.2000",
+    "systemic_correlation_rho": "0.3500",
+    "monthly_dirichlet_kappa0": "40.0000",
+    "p50_recommended_tolerance_pct": "0.0300"
+  },
+  "numpy_version": "2.4.6",
+  "scipy_version": "1.17.1",
+  "anchor_package": "forecast_accuracy_next_package_tropical_20260617_152655",
+  "monthly_package": "forecast_monthly_package_tropical_20260617_152658",
+  "forecast_months": [
+    "2026-06",
+    "2026-07",
+    "2026-08",
+    "2026-09",
+    "2026-10",
+    "2026-11"
+  ],
+  "n_codes": 127
+}

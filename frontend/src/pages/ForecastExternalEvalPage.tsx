@@ -1,26 +1,38 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-/* Forecasting — External-Forecast Evaluation (Implementation Phase 4).
- * Lets an operator upload an external/operator forecast (Excel/CSV), map its columns, and compare
- * it against actuals / budget / ERP-JTD / the backend model / prior external forecasts. The
- * evaluation writes only to an isolated work area; it never changes the live data or database and
- * never calls an LLM. Business labels only — no paths, run stamps, or internals are shown. */
+/* External forecast evaluation — guided compare flow (read-only toward live systems). */
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 
+import {
+  ForecastActionButton,
+  ForecastActionLink,
+  ForecastBackLink,
+  ForecastPageHeader,
+  ForecastShell,
+  ForecastSubnav,
+  ForecastTable,
+  ForecastTd,
+  ForecastTh,
+  ForecastWizardRail,
+} from '../components/forecast/ForecastPageChrome'
+import { ForecastStatusPill } from '../components/forecast/ForecastStatusPill'
 import { EmptyState } from '../components/ui/EmptyState'
-import { StatusPill } from './ForecastingPage'
 import { api } from '../lib/api'
 
 const ROLE_FIELDS: { key: string; label: string }[] = [
   { key: 'budget_code', label: 'Budget code' },
   { key: 'month', label: 'Month' },
-  { key: 'value', label: 'Value' },
-  { key: 'eac', label: 'EAC' },
+  { key: 'value', label: 'Forecast value' },
+  { key: 'eac', label: 'Estimate at completion' },
   { key: 'remaining', label: 'Remaining' },
 ]
 
-const SOURCE_SYSTEMS = ['excel', 'procore', 'sage', 'manual', 'other']
+const SOURCE_LABELS: Record<string, string> = {
+  excel: 'Excel workbook',
+  procore: 'Procore export',
+  sage: 'Sage export',
+  manual: 'Manual entry',
+  other: 'Other',
+}
 
 function readFileAsBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -41,19 +53,19 @@ export function ForecastExternalEvalPage() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [unconfigured, setUnconfigured] = useState(false)
-  const [preview, setPreview] = useState<any | null>(null)
+  const [preview, setPreview] = useState<Record<string, unknown> | null>(null)
   const [roles, setRoles] = useState<Record<string, string>>({})
-  const [result, setResult] = useState<any | null>(null)
+  const [result, setResult] = useState<Record<string, unknown> | null>(null)
 
   const { data: listResp, refetch } = useQuery({
     queryKey: ['forecast', 'external', 'evaluations'],
     queryFn: () => api.getExternalEvaluations(),
   })
-  const evaluations: any[] = Array.isArray(listResp?.evaluations) ? listResp.evaluations : []
+  const evaluations = Array.isArray(listResp?.evaluations) ? listResp.evaluations : []
 
-  function friendlyError(e: any): string {
-    const s = e?.status
-    if (s === 503) return 'External-forecast evaluation is not configured in this environment yet.'
+  function friendlyError(e: unknown): string {
+    const s = (e as { status?: number })?.status
+    if (s === 503) return 'External forecast evaluation is not ready yet. Check storage settings.'
     if (s === 403) return 'You need the operator role to upload and evaluate forecasts.'
     if (s === 400) return 'The uploaded file could not be read. Please upload a .xlsx or .csv file.'
     return 'The request could not be completed.'
@@ -66,12 +78,17 @@ export function ForecastExternalEvalPage() {
     setResult(null)
     try {
       const b64 = await readFileAsBase64(file)
-      const prev = await api.previewExternalForecast(file.name, b64, sourceSystem, period || null)
+      const prev = (await api.previewExternalForecast(
+        file.name,
+        b64,
+        sourceSystem,
+        period || null,
+      )) as Record<string, unknown>
       setPreview(prev)
-      const mapping = await api.proposeExternalMapping(prev.import_id)
-      setRoles({ ...(mapping.proposed_column_roles || {}) })
-    } catch (e: any) {
-      setUnconfigured(e?.status === 503)
+      const mapping = (await api.proposeExternalMapping(prev.import_id as string)) as Record<string, unknown>
+      setRoles({ ...((mapping.proposed_column_roles as Record<string, string>) || {}) })
+    } catch (e: unknown) {
+      setUnconfigured((e as { status?: number })?.status === 503)
       setError(friendlyError(e))
     } finally {
       setBusy(false)
@@ -84,11 +101,14 @@ export function ForecastExternalEvalPage() {
     setError(null)
     setUnconfigured(false)
     try {
-      const res = await api.evaluateExternalForecast(preview.import_id, roles)
+      const res = (await api.evaluateExternalForecast(preview.import_id as string, roles)) as Record<
+        string,
+        unknown
+      >
       setResult(res)
       await refetch()
-    } catch (e: any) {
-      setUnconfigured(e?.status === 503)
+    } catch (e: unknown) {
+      setUnconfigured((e as { status?: number })?.status === 503)
       setError(friendlyError(e))
     } finally {
       setBusy(false)
@@ -96,23 +116,27 @@ export function ForecastExternalEvalPage() {
   }
 
   const columns: string[] = Array.isArray(preview?.columns) ? preview.columns : []
+  const wizardSteps: { label: string; state: 'pending' | 'active' | 'done' }[] = [
+    { label: 'Upload', state: preview ? 'done' : 'active' },
+    { label: 'Map columns', state: preview ? (result ? 'done' : 'active') : 'pending' },
+    { label: 'Review findings', state: result ? 'active' : 'pending' },
+  ]
 
   return (
-    <div>
-      <div className="text-xs mb-2">
-        <Link to="/forecasting" className="underline">
-          ← Back to forecast packages
-        </Link>
-      </div>
+    <ForecastShell>
+      <ForecastBackLink />
+      <ForecastSubnav />
 
-      {/* Step 1 — upload */}
-      <div className="card">
-        <div className="section-title">Upload an external forecast</div>
-        <p className="text-sm text-[var(--hb-muted)]">
-          Compare an external or operator-supplied forecast against actuals, the current budget, ERP
-          job-to-date, the backend model, and prior external forecasts. The evaluation writes only to
-          an isolated work area — the live project data and database are never changed.
-        </p>
+      <section className="forecast-panel">
+        <ForecastPageHeader
+          title="Evaluate external forecast"
+          subtitle="Compare an operator forecast against actuals, budget, job-to-date, the HB model, and prior evaluations. Advisory only — live systems are never changed."
+        />
+        <ForecastWizardRail steps={wizardSteps} />
+      </section>
+
+      <section className="forecast-panel">
+        <h2 className="forecast-section-label">Upload operator forecast</h2>
         <div className="flex flex-wrap items-center gap-3 mt-3">
           <label className="text-sm">
             Source:{' '}
@@ -121,9 +145,9 @@ export function ForecastExternalEvalPage() {
               onChange={(e) => setSourceSystem(e.target.value)}
               className="bg-transparent border border-[var(--hb-border)] rounded px-2 py-1"
             >
-              {SOURCE_SYSTEMS.map((s) => (
-                <option key={s} value={s}>
-                  {s}
+              {Object.entries(SOURCE_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
                 </option>
               ))}
             </select>
@@ -154,21 +178,18 @@ export function ForecastExternalEvalPage() {
             {unconfigured && (
               <>
                 {' '}
-                <Link to="/forecasting/runtime" className="underline">
-                  Configure data sources →
-                </Link>
+                <ForecastActionLink to="/forecasting/runtime">Open storage settings</ForecastActionLink>
               </>
             )}
           </p>
         )}
-      </div>
+      </section>
 
-      {/* Step 2 — map columns */}
       {preview && (
-        <div className="card mt-3">
-          <div className="section-title">Map columns</div>
+        <section className="forecast-panel">
+          <h2 className="forecast-section-label">Map columns</h2>
           <p className="text-sm text-[var(--hb-muted)]">
-            {preview.display_label} · {preview.row_count} rows
+            {String(preview.display_label || 'Upload')} · {String(preview.row_count ?? 0)} rows
           </p>
           <div className="flex flex-wrap gap-4 mt-3">
             {ROLE_FIELDS.map((f) => (
@@ -189,70 +210,69 @@ export function ForecastExternalEvalPage() {
               </label>
             ))}
           </div>
-          <button
-            type="button"
-            onClick={onEvaluate}
-            disabled={busy || !roles.budget_code || !(roles.value || roles.eac)}
-            className="mt-3 rounded border border-[var(--hb-accent)] px-3 py-1.5 text-sm disabled:opacity-50"
-          >
-            {busy ? 'Evaluating…' : 'Evaluate forecast'}
-          </button>
-        </div>
+          <div className="mt-3">
+            <ForecastActionButton
+              onClick={onEvaluate}
+              disabled={busy || !roles.budget_code || !(roles.value || roles.eac)}
+            >
+              {busy ? 'Evaluating…' : 'Run evaluation'}
+            </ForecastActionButton>
+          </div>
+        </section>
       )}
 
       {/* Step 3 — results */}
-      {result && result.status === 'succeeded' && (
-        <ResultsView result={result} />
-      )}
+      {result && result.status === 'succeeded' && <ResultsView result={result} />}
       {result && result.status === 'failed' && (
-        <div className="card mt-3">
-          <EmptyState title="Evaluation failed" hint={result.message || 'Please try again.'} />
-        </div>
+        <section className="forecast-panel">
+          <EmptyState
+            title="Evaluation failed"
+            hint={String(result.message || 'Please try again.')}
+          />
+        </section>
       )}
 
-      {/* History */}
-      <div className="card mt-3">
-        <div className="section-title">Prior evaluations</div>
+      <section className="forecast-panel">
+        <h2 className="forecast-section-label">Prior evaluations</h2>
         {evaluations.length === 0 ? (
           <EmptyState title="No evaluations yet" hint="Upload a forecast to see it here." />
         ) : (
-          <table className="w-full text-sm border-collapse">
-            <thead>
-              <tr className="text-left text-[var(--hb-muted)] border-b border-[var(--hb-border)]">
-                <th className="py-2 pr-3">Evaluation</th>
-                <th className="py-2 pr-3">Status</th>
-                <th className="py-2 pr-3">Generated</th>
+          <ForecastTable
+            headers={
+              <>
+                <ForecastTh>Evaluation</ForecastTh>
+                <ForecastTh>Status</ForecastTh>
+                <ForecastTh>Generated</ForecastTh>
+              </>
+            }
+          >
+            {evaluations.map((e: Record<string, unknown>) => (
+              <tr key={String(e.eval_id)}>
+                <ForecastTd>{String(e.display_label || 'Evaluation')}</ForecastTd>
+                <ForecastTd>
+                  <ForecastStatusPill status={e.status === 'succeeded' ? 'validated' : 'attention'} />
+                </ForecastTd>
+                <ForecastTd className="text-[var(--hb-muted)]">{String(e.generated_display || '—')}</ForecastTd>
               </tr>
-            </thead>
-            <tbody>
-              {evaluations.map((e: any) => (
-                <tr key={e.eval_id} className="border-b border-[var(--hb-border)]">
-                  <td className="py-2 pr-3">{e.display_label}</td>
-                  <td className="py-2 pr-3">
-                    <StatusPill status={e.status === 'succeeded' ? 'validated' : 'attention'} />
-                  </td>
-                  <td className="py-2 pr-3 text-[var(--hb-muted)]">{e.generated_display || '—'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+            ))}
+          </ForecastTable>
         )}
-      </div>
-    </div>
+      </section>
+    </ForecastShell>
   )
 }
 
-function ResultsView({ result }: { result: any }) {
-  const accuracy: any[] = Array.isArray(result.accuracy) ? result.accuracy : []
-  const anomalies: any[] = Array.isArray(result.anomalies) ? result.anomalies : []
-  const reviewItems: any[] = Array.isArray(result.review_items) ? result.review_items : []
+function ResultsView({ result }: { result: Record<string, unknown> }) {
+  const accuracy = Array.isArray(result.accuracy) ? result.accuracy : []
+  const anomalies = Array.isArray(result.anomalies) ? result.anomalies : []
+  const reviewItems = Array.isArray(result.review_items) ? result.review_items : []
   const baselines: string[] = Array.isArray(result.baselines_compared) ? result.baselines_compared : []
   return (
-    <div className="card mt-3">
-      <div className="section-title">{result.display_label || 'Evaluation'}</div>
+    <section className="forecast-panel">
+      <h2 className="forecast-section-label">{String(result.display_label || 'Evaluation results')}</h2>
       <p className="text-sm">
-        Mapped {result.mapped_count} rows · {result.unmapped_count} unmapped · baselines:{' '}
-        {baselines.join(', ') || 'none'}
+        Mapped {String(result.mapped_count ?? 0)} rows · {String(result.unmapped_count ?? 0)} unmapped
+        · Compared to: {baselines.join(', ') || 'none'}
       </p>
       <p className="text-xs text-emerald-300 mt-1">
         No changes were made to the live project data or database.
@@ -260,27 +280,26 @@ function ResultsView({ result }: { result: any }) {
 
       {accuracy.length > 0 && (
         <div className="mt-3">
-          <div className="text-sm font-medium mb-1">Accuracy</div>
-          <table className="w-full text-sm border-collapse">
-            <thead>
-              <tr className="text-left text-[var(--hb-muted)] border-b border-[var(--hb-border)]">
-                <th className="py-1 pr-3">Baseline</th>
-                <th className="py-1 pr-3">Metric</th>
-                <th className="py-1 pr-3">Value</th>
-                <th className="py-1 pr-3">N</th>
+          <div className="text-sm font-medium mb-1">Variance & accuracy (advisory)</div>
+          <ForecastTable
+            headers={
+              <>
+                <ForecastTh>Baseline</ForecastTh>
+                <ForecastTh>Metric</ForecastTh>
+                <ForecastTh>Value</ForecastTh>
+                <ForecastTh>N</ForecastTh>
+              </>
+            }
+          >
+            {accuracy.map((a: Record<string, unknown>, i: number) => (
+              <tr key={i}>
+                <ForecastTd>{String(a.baseline_label || '—')}</ForecastTd>
+                <ForecastTd className="uppercase">{String(a.metric || '—')}</ForecastTd>
+                <ForecastTd>{String(a.metric_value ?? '—')}</ForecastTd>
+                <ForecastTd className="text-[var(--hb-muted)]">{String(a.sample_n ?? '—')}</ForecastTd>
               </tr>
-            </thead>
-            <tbody>
-              {accuracy.map((a: any, i: number) => (
-                <tr key={i} className="border-b border-[var(--hb-border)]">
-                  <td className="py-1 pr-3">{a.baseline_label}</td>
-                  <td className="py-1 pr-3 uppercase">{a.metric}</td>
-                  <td className="py-1 pr-3">{a.metric_value}</td>
-                  <td className="py-1 pr-3 text-[var(--hb-muted)]">{a.sample_n}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+            ))}
+          </ForecastTable>
         </div>
       )}
 
@@ -288,11 +307,11 @@ function ResultsView({ result }: { result: any }) {
         <div className="mt-3">
           <div className="text-sm font-medium mb-1">Anomalies ({anomalies.length})</div>
           <ul className="text-sm list-disc pl-5">
-            {anomalies.map((a: any, i: number) => (
+            {anomalies.map((a: Record<string, unknown>, i: number) => (
               <li key={i}>
-                <span className="uppercase text-xs text-[var(--hb-muted)]">{a.severity}</span> ·{' '}
-                {a.message}
-                {a.budget_code_key ? ` (${a.budget_code_key})` : ''}
+                <span className="uppercase text-xs text-[var(--hb-muted)]">{String(a.severity || '')}</span>{' '}
+                · {String(a.message || '')}
+                {a.budget_code_key ? ` (${String(a.budget_code_key)})` : ''}
               </li>
             ))}
           </ul>
@@ -304,6 +323,6 @@ function ResultsView({ result }: { result: any }) {
           {reviewItems.length} item{reviewItems.length === 1 ? '' : 's'} flagged for human review.
         </p>
       )}
-    </div>
+    </section>
   )
 }

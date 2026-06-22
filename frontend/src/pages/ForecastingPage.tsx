@@ -1,39 +1,54 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-/* Forecasting — package & run history (Implementation Phase 1, read-only).
- * Lists the deterministic forecast packages the backend has already produced for a project
- * and period. Business-facing only: friendly labels, validation status, and a friendly date.
- * No paths, run stamps, directory names, or internals are shown. */
-import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+/* Forecasting command center — package browser and executive summary (read-only). */
+import { ClipboardList, Sparkles } from 'lucide-react'
+import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 
-import { EmptyState } from '../components/ui/EmptyState'
 import { ForecastReadinessPanel } from '../components/forecast/ForecastReadinessPanel'
+import {
+  ForecastActionLink,
+  ForecastAdvisoryStrip,
+  ForecastPageHeader,
+  ForecastQuickLink,
+  ForecastQuickLinks,
+  ForecastShell,
+  ForecastSubnav,
+  ForecastSummaryCard,
+  ForecastSummaryGrid,
+  ForecastTable,
+  ForecastTd,
+  ForecastTh,
+} from '../components/forecast/ForecastPageChrome'
+import { ForecastStatusPill } from '../components/forecast/ForecastStatusPill'
+import { useEffectiveSelection } from '../components/forecast/useEffectiveSelection'
+import { useForecastReadiness } from '../hooks/useForecastReadiness'
+import { EmptyState } from '../components/ui/EmptyState'
 import { api } from '../lib/api'
 
-const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
-  validated: { label: 'Validated', cls: 'text-emerald-300 border-emerald-700' },
-  attention: { label: 'Needs attention', cls: 'text-amber-300 border-amber-700' },
-  invalid: { label: 'Unreadable', cls: 'text-rose-300 border-rose-700' },
-  unsupported: { label: 'Unsupported', cls: 'text-[var(--hb-muted)] border-[var(--hb-border)]' },
-  unknown: { label: 'Unknown', cls: 'text-[var(--hb-muted)] border-[var(--hb-border)]' },
-}
+/** @deprecated Import from `ForecastStatusPill` — kept for gradual migration. */
+export { ForecastStatusPill as StatusPill }
 
-export function StatusPill({ status }: { status: string }) {
-  const s = STATUS_LABEL[status] || STATUS_LABEL.unknown
-  return (
-    <span className={`inline-block rounded border px-2 py-0.5 text-xs ${s.cls}`}>{s.label}</span>
-  )
+type ForecastProject = { project_key?: string; project_name?: string; job_reference?: string }
+type ForecastPeriod = { period: string; package_count?: number }
+type ForecastPackage = {
+  package_id: string
+  display_label?: string
+  status?: string
+  generated_display?: string
+  validation_total?: number
+  validation_passed?: number
+  validation_failed?: number
 }
 
 export function ForecastingPage() {
+  const { data: readiness } = useForecastReadiness()
+
   const { data: projectsResp, isLoading: projLoading, error: projError } = useQuery({
     queryKey: ['forecast', 'projects'],
     queryFn: () => api.getForecastProjects(),
   })
 
-  const projects: any[] = Array.isArray(projectsResp?.projects) ? projectsResp.projects : []
-  const projectKey: string | undefined = projects[0]?.project_key
+  const projects: ForecastProject[] = Array.isArray(projectsResp?.projects) ? projectsResp.projects : []
+  const projectKey = projects[0]?.project_key
 
   const { data: periodsResp } = useQuery({
     queryKey: ['forecast', 'periods', projectKey],
@@ -41,11 +56,12 @@ export function ForecastingPage() {
     enabled: Boolean(projectKey),
   })
 
-  const periods: any[] = Array.isArray(periodsResp?.periods) ? periodsResp.periods : []
-  const [period, setPeriod] = useState<string | undefined>(undefined)
-  useEffect(() => {
-    if (!period && periods.length > 0) setPeriod(periods[0].period)
-  }, [periods, period])
+  const periods = useMemo(
+    () => (Array.isArray(periodsResp?.periods) ? periodsResp.periods : []) as ForecastPeriod[],
+    [periodsResp],
+  )
+  const periodOptions = useMemo(() => periods.map((p) => p.period), [periods])
+  const [period, setPeriod] = useEffectiveSelection(periodOptions)
 
   const { data: packagesResp, isLoading: pkgLoading } = useQuery({
     queryKey: ['forecast', 'packages', projectKey, period],
@@ -53,134 +69,219 @@ export function ForecastingPage() {
     enabled: Boolean(projectKey && period),
   })
 
+  const { data: runsResp } = useQuery({
+    queryKey: ['forecast', 'runs'],
+    queryFn: () => api.getForecastRuns(),
+    staleTime: 30_000,
+  })
+
+  const { data: evalResp } = useQuery({
+    queryKey: ['forecast', 'external', 'evaluations'],
+    queryFn: () => api.getExternalEvaluations(),
+    staleTime: 30_000,
+  })
+
+  const { data: configResp } = useQuery({
+    queryKey: ['forecast', 'config', 'snapshots'],
+    queryFn: () => api.getForecastConfigSnapshots(),
+    staleTime: 30_000,
+  })
+
   if (projLoading) {
-    return <div className="p-6 text-sm text-[var(--hb-muted)]">Loading forecast packages…</div>
+    return <div className="p-6 text-sm text-[var(--hb-muted)]">Loading forecast overview…</div>
   }
 
   if (projError) {
-    const status = (projError as any)?.status
+    const status = (projError as { status?: number })?.status
     const isUnconfigured = status === 503
     const message = isUnconfigured
-      ? 'Forecast packages are not configured for this environment yet.'
+      ? 'Forecast packages are not available yet. Check storage readiness first.'
       : 'We could not load forecast packages right now.'
     return (
-      <div>
+      <ForecastShell>
+        <ForecastSubnav />
         {isUnconfigured && <ForecastReadinessPanel />}
-        <div className={isUnconfigured ? 'card mt-3' : 'card'}>
-          <div className="section-title">Forecasting</div>
-          <EmptyState
-            title="Forecast packages unavailable"
-            hint={message}
-            actions={
-              isUnconfigured ? (
-                <Link to="/forecasting/runtime" className="underline">
-                  Configure data sources →
-                </Link>
-              ) : undefined
-            }
-          />
-        </div>
-      </div>
+        <section className="forecast-panel">
+          <ForecastPageHeader title="Forecast command center" subtitle={message} />
+          {isUnconfigured && (
+            <div className="mt-3">
+              <ForecastActionLink to="/forecasting/runtime" variant="primary">
+                Open storage settings
+              </ForecastActionLink>
+            </div>
+          )}
+        </section>
+      </ForecastShell>
     )
   }
 
-  const packages: any[] = Array.isArray(packagesResp?.packages) ? packagesResp.packages : []
+  const packages: ForecastPackage[] = Array.isArray(packagesResp?.packages) ? packagesResp.packages : []
   const project = projects[0] || {}
+  const latestPkg = packages[0]
+  const reviewAttention = packages.reduce((n, p) => n + (p.validation_failed || 0), 0)
+  const runs = Array.isArray(runsResp?.runs) ? runsResp.runs : []
+  const evaluations = Array.isArray(evalResp?.evaluations) ? evalResp.evaluations : []
+  const snapshots = Array.isArray(configResp?.snapshots) ? configResp.snapshots : []
+
+  const storageReady = Boolean(readiness?.surfaces_ready?.catalog)
+  const storageMode = readiness?.storage_mode === 'custom' ? 'Custom' : 'Managed by HB'
 
   return (
-    <div>
+    <ForecastShell>
+      <ForecastSubnav />
       <ForecastReadinessPanel />
-      <div className="card mt-3">
-        <div className="flex items-center justify-between gap-3">
-          <div className="section-title">Forecasting</div>
-          <div className="flex gap-3">
-            <Link to="/forecasting/runs" className="text-sm underline">
-              Run a forecast
-            </Link>
-            <Link to="/forecasting/external" className="text-sm underline">
-              Evaluate external forecast
-            </Link>
-            <Link to="/forecasting/config" className="text-sm underline">
-              View configuration
-            </Link>
-            <Link to="/forecasting/runtime" className="text-sm underline">
-              Data sources
-            </Link>
-          </div>
+
+      <section className="forecast-panel">
+        <ForecastPageHeader
+          title="Forecast command center"
+          subtitle={`Cost and completion forecasts for ${project.project_name || project.project_key || 'your project'}${project.job_reference ? ` (Job ${project.job_reference})` : ''}. All surfaces are advisory — nothing writes back to Procore or live project systems.`}
+          actions={
+            <>
+              <ForecastActionLink to="/forecasting/runs" variant="primary">
+                <Sparkles size={14} aria-hidden />
+                Generate forecast
+              </ForecastActionLink>
+              {latestPkg && (
+                <ForecastActionLink to={`/forecasting/${encodeURIComponent(latestPkg.package_id)}`}>
+                  <ClipboardList size={14} aria-hidden />
+                  Review latest
+                </ForecastActionLink>
+              )}
+            </>
+          }
+        />
+        <div className="mt-2">
+          <ForecastAdvisoryStrip>Advisory only · No Procore writeback</ForecastAdvisoryStrip>
         </div>
-        <p className="text-sm">
-          Forecast packages generated for{' '}
-          <span className="font-medium">{project.project_name || project.project_key || 'this project'}</span>
-          {project.job_reference ? ` (Job ${project.job_reference})` : ''}. Each entry is a deterministic,
-          validated forecast run. Open a package to review the recommended final cost, monthly outlook, and
-          human-review items.
+
+        <ForecastSummaryGrid>
+          <ForecastSummaryCard
+            label="Local forecast storage"
+            value={storageReady ? 'Ready' : 'Needs attention'}
+            detail={storageMode}
+            status={storageReady ? 'ready' : 'attention'}
+          />
+          <ForecastSummaryCard
+            label="Packages this period"
+            value={period ? String(packages.length) : '—'}
+            detail={period ? `Period ${period}` : 'Select a period below'}
+            status={packages.length > 0 ? 'ready' : 'neutral'}
+          />
+          <ForecastSummaryCard
+            label="Latest forecast"
+            value={latestPkg?.display_label || 'None yet'}
+            detail={latestPkg?.generated_display ? `Generated ${latestPkg.generated_display}` : 'Generate to begin'}
+            status={latestPkg ? 'ready' : 'neutral'}
+          />
+          <ForecastSummaryCard
+            label="Open review signals"
+            value={reviewAttention > 0 ? String(reviewAttention) : 'None'}
+            detail={reviewAttention > 0 ? 'Validation checks need review' : 'No failed checks in listed packages'}
+            status={reviewAttention > 0 ? 'attention' : 'ready'}
+          />
+          <ForecastSummaryCard
+            label="External evaluations"
+            value={String(evaluations.length)}
+            detail={evaluations.length ? 'Prior operator comparisons on file' : 'Upload an operator forecast to compare'}
+            status={evaluations.length > 0 ? 'ready' : 'neutral'}
+          />
+          <ForecastSummaryCard
+            label="Configuration snapshot"
+            value={snapshots.length ? (snapshots[0]?.snapshot_name as string) || 'Available' : 'Not available'}
+            detail={
+              snapshots.length
+                ? `${snapshots[0]?.item_count ?? '—'} settings captured`
+                : 'Database or snapshot not ready'
+            }
+            status={snapshots.length > 0 ? 'ready' : 'attention'}
+          />
+        </ForecastSummaryGrid>
+
+        <ForecastQuickLinks>
+          <ForecastQuickLink to="/forecasting/external">Evaluate external forecast</ForecastQuickLink>
+          <ForecastQuickLink to="/forecasting/config">View configuration</ForecastQuickLink>
+          <ForecastQuickLink to="/forecasting/runtime">Storage settings</ForecastQuickLink>
+        </ForecastQuickLinks>
+      </section>
+
+      <section className="forecast-panel">
+        <h2 className="forecast-section-label">Forecast packages</h2>
+        <p className="text-sm text-[var(--hb-muted)] mt-1 leading-relaxed">
+          Deterministic, validated forecast packages for review. Open a package to see recommended
+          final cost, monthly outlook, risk indicators, and the human review queue.
         </p>
 
-        {periods.length > 0 && (
-          <div className="flex items-center gap-2 mt-3 mb-1 text-sm">
-            <label htmlFor="forecast-period" className="text-[var(--hb-muted)]">
+        {periodOptions.length > 0 && (
+          <div className="flex items-center gap-2 mt-4 text-sm">
+            <label htmlFor="forecast-period" className="text-[var(--hb-muted)] font-medium">
               Period
             </label>
             <select
               id="forecast-period"
-              className="rounded border border-[var(--hb-border)] bg-transparent px-2 py-1 text-sm"
+              className="rounded-md border border-[var(--hb-border)] bg-[var(--hb-bg)]/40 px-2.5 py-1.5 text-sm"
               value={period || ''}
               onChange={(e) => setPeriod(e.target.value)}
             >
-              {periods.map((p: any) => (
+              {periods.map((p) => (
                 <option key={p.period} value={p.period}>
-                  {p.period} ({p.package_count})
+                  {p.period} ({p.package_count ?? 0})
                 </option>
               ))}
             </select>
           </div>
         )}
-      </div>
 
-      <div className="card mt-3">
-        <div className="section-title">Package &amp; run history</div>
         {pkgLoading ? (
-          <div className="text-sm text-[var(--hb-muted)]">Loading packages…</div>
+          <div className="text-sm text-[var(--hb-muted)] mt-3">Loading packages…</div>
         ) : packages.length === 0 ? (
           <EmptyState
-            title="No forecast packages found"
-            hint="Generated forecast packages for the selected period will appear here."
+            title="No forecast packages yet"
+            hint="Local storage may be ready, but no packages have been generated for this period. Generate a forecast to begin."
+            actions={
+              <ForecastActionLink to="/forecasting/runs" variant="primary">
+                Generate first forecast
+              </ForecastActionLink>
+            }
           />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm border-collapse">
-              <thead>
-                <tr className="text-left text-[var(--hb-muted)] border-b border-[var(--hb-border)]">
-                  <th className="py-2 pr-3">Forecast</th>
-                  <th className="py-2 pr-3">Status</th>
-                  <th className="py-2 pr-3">Checks</th>
-                  <th className="py-2 pr-3">Generated</th>
-                  <th className="py-2 pr-3"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {packages.map((pkg: any) => (
-                  <tr key={pkg.package_id} className="border-b border-[var(--hb-border)]">
-                    <td className="py-2 pr-3">{pkg.display_label}</td>
-                    <td className="py-2 pr-3">
-                      <StatusPill status={pkg.status} />
-                    </td>
-                    <td className="py-2 pr-3 text-[var(--hb-muted)]">
-                      {pkg.validation_total ? `${pkg.validation_passed}/${pkg.validation_total}` : '—'}
-                    </td>
-                    <td className="py-2 pr-3 text-[var(--hb-muted)]">{pkg.generated_display || '—'}</td>
-                    <td className="py-2 pr-3">
-                      <Link to={`/forecasting/${encodeURIComponent(pkg.package_id)}`} className="underline">
-                        Open
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <ForecastTable
+            headers={
+              <>
+                <ForecastTh>Forecast</ForecastTh>
+                <ForecastTh>Status</ForecastTh>
+                <ForecastTh>Checks</ForecastTh>
+                <ForecastTh>Generated</ForecastTh>
+                <ForecastTh />
+              </>
+            }
+          >
+            {packages.map((pkg) => (
+              <tr key={pkg.package_id}>
+                <ForecastTd>{pkg.display_label}</ForecastTd>
+                <ForecastTd>
+                  <ForecastStatusPill status={pkg.status || 'unknown'} />
+                </ForecastTd>
+                <ForecastTd className="text-[var(--hb-muted)]">
+                  {pkg.validation_total ? `${pkg.validation_passed}/${pkg.validation_total}` : '—'}
+                </ForecastTd>
+                <ForecastTd className="text-[var(--hb-muted)]">{pkg.generated_display || '—'}</ForecastTd>
+                <ForecastTd>
+                  <ForecastActionLink to={`/forecasting/${encodeURIComponent(pkg.package_id)}`} variant="ghost">
+                    Review
+                  </ForecastActionLink>
+                </ForecastTd>
+              </tr>
+            ))}
+          </ForecastTable>
         )}
-      </div>
-    </div>
+
+        {runs.length > 0 && (
+          <p className="text-xs text-[var(--hb-muted)] mt-3">
+            {runs.length} generation run{runs.length === 1 ? '' : 's'} on file.{' '}
+            <ForecastQuickLink to="/forecasting/runs">View run history</ForecastQuickLink>
+          </p>
+        )}
+      </section>
+    </ForecastShell>
   )
 }

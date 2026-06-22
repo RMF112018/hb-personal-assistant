@@ -1,14 +1,19 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-/* Forecasting — Config Edit Proposals (Implementation Phase E).
- * An operator proposes an edit to a config item; the backend seeds from the current snapshot
- * (read-only), applies the edit in an isolated area, and returns a parity-proven report. Nothing is
- * written to the live data or database. forecast_controls is deprecated and not editable here. */
+/* Configuration proposals — isolated edits with parity review (Phase E). */
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 
+import {
+  ForecastActionButton,
+  ForecastBackLink,
+  ForecastPageHeader,
+  ForecastShell,
+  ForecastSubnav,
+  ForecastTable,
+  ForecastTd,
+  ForecastTh,
+} from '../components/forecast/ForecastPageChrome'
+import { ForecastStatusPill } from '../components/forecast/ForecastStatusPill'
 import { EmptyState } from '../components/ui/EmptyState'
-import { StatusPill } from './ForecastingPage'
 import { api, getLocalUiRole } from '../lib/api'
 
 const EDITABLE_DOMAINS = [
@@ -42,7 +47,7 @@ export function ForecastConfigEditProposalsPage() {
   const promotionEnabled = Boolean(runtimeResp?.promotion?.enabled)
 
   const [promotingId, setPromotingId] = useState<string | null>(null)
-  const [promoteResult, setPromoteResult] = useState<any | null>(null)
+  const [promoteResult, setPromoteResult] = useState<Record<string, unknown> | null>(null)
   const [promoteError, setPromoteError] = useState<string | null>(null)
 
   const [domain, setDomain] = useState('project')
@@ -50,7 +55,7 @@ export function ForecastConfigEditProposalsPage() {
   const [itemKey, setItemKey] = useState('')
   const [rows, setRows] = useState<Row[]>([{ key: '', value: '' }])
   const [submitting, setSubmitting] = useState(false)
-  const [report, setReport] = useState<any | null>(null)
+  const [report, setReport] = useState<Record<string, unknown> | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   function setRow(i: number, patch: Partial<Row>) {
@@ -76,10 +81,10 @@ export function ForecastConfigEditProposalsPage() {
         base_snapshot_id: baseSnapshotId,
         edits: [{ domain, op, item_key: itemKey.trim(), fields }],
       })
-      setReport(result)
+      setReport(result as Record<string, unknown>)
       await refetch()
-    } catch (e: any) {
-      const message = String(e?.message || '')
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : ''
       setError(
         message.includes('forecast_config_edit_invalid_input')
           ? 'One or more edits are invalid for this domain.'
@@ -103,10 +108,10 @@ export function ForecastConfigEditProposalsPage() {
     setPromoteResult(null)
     try {
       const result = await api.promoteForecastConfigEdit(editId, true)
-      setPromoteResult(result)
+      setPromoteResult(result as Record<string, unknown>)
       await refetch()
-    } catch (e: any) {
-      const message = String(e?.message || '')
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : ''
       setPromoteError(
         message.includes('forecast_config_promotion_disabled')
           ? 'Live promotion is turned off in this environment.'
@@ -121,24 +126,19 @@ export function ForecastConfigEditProposalsPage() {
     }
   }
 
-  const edits: any[] = Array.isArray(editsResp?.edits) ? editsResp.edits : []
+  const edits = (Array.isArray(editsResp?.edits) ? editsResp.edits : []) as Record<string, unknown>[]
 
   return (
-    <div>
-      <div className="text-xs mb-2">
-        <Link to="/forecasting/config" className="underline">
-          ← Back to forecast configuration
-        </Link>
-      </div>
+    <ForecastShell>
+      <ForecastBackLink to="/forecasting/config" label="Back to configuration" />
+      <ForecastSubnav />
 
       {canEdit && (
-        <div className="card">
-          <div className="section-title">Propose a configuration edit</div>
-          <p className="text-sm text-[var(--hb-muted)]">
-            Edits are validated and parity-checked in an isolated area. The live configuration is
-            never changed. <span className="text-[var(--hb-muted)]">Model controls supersede the
-            deprecated forecast controls.</span>
-          </p>
+        <section className="forecast-panel">
+          <ForecastPageHeader
+            title="Configuration proposals"
+            subtitle="Propose isolated configuration changes. Each proposal is parity-checked before it can be reviewed for promotion. Live systems are not changed until an admin explicitly promotes an eligible proposal."
+          />
           <div className="grid gap-3 mt-3">
             <label className="text-sm">
               <span className="block mb-1">Configuration area</span>
@@ -206,91 +206,96 @@ export function ForecastConfigEditProposalsPage() {
             </div>
           </div>
           <div className="flex items-center gap-3 mt-3">
-            <button
-              type="button"
-              onClick={onSubmit}
-              disabled={submitting || !baseSnapshotId}
-              className="rounded border border-[var(--hb-accent)] px-3 py-1.5 text-sm disabled:opacity-50"
-            >
+            <ForecastActionButton onClick={onSubmit} disabled={submitting || !baseSnapshotId}>
               {submitting ? 'Checking…' : 'Propose edit'}
-            </button>
+            </ForecastActionButton>
             {error && <span className="text-sm text-rose-300">{error}</span>}
           </div>
-        </div>
+        </section>
       )}
 
       {report && (
-        <div className="card mt-3">
+        <section className="forecast-panel">
           <div className="flex items-center justify-between gap-3">
-            <div className="section-title">Proposal result</div>
-            <StatusPill status={report.parity?.status === 'pass' ? 'validated' : 'attention'} />
+            <h2 className="forecast-section-label">Proposal result</h2>
+            <ForecastStatusPill
+              status={
+                (report.parity as Record<string, unknown> | undefined)?.status === 'pass'
+                  ? 'validated'
+                  : 'attention'
+              }
+            />
           </div>
           {report.status === 'succeeded' ? (
             <div className="text-sm">
               <p>
-                Parity check: <span className="font-medium">{report.parity?.status}</span>
-                {` · ${report.snapshot_item_count} settings in the proposed snapshot`}
+                Parity check:{' '}
+                <span className="font-medium">
+                  {String((report.parity as Record<string, unknown> | undefined)?.status || '—')}
+                </span>
+                {` · ${String(report.snapshot_item_count ?? 0)} settings in the proposed snapshot`}
               </p>
               {Array.isArray(report.changed_items) && report.changed_items.length > 0 && (
                 <ul className="mt-2 list-disc pl-5 text-[var(--hb-muted)]">
-                  {report.changed_items.map((c: any, i: number) => (
+                  {(report.changed_items as Record<string, unknown>[]).map((c, i) => (
                     <li key={i}>
-                      {c.domain} · {c.item_key} · {c.op} · {(c.changed_fields || []).join(', ')}
+                      {String(c.domain)} · {String(c.item_key)} · {String(c.op)} ·{' '}
+                      {Array.isArray(c.changed_fields)
+                        ? (c.changed_fields as string[]).join(', ')
+                        : ''}
                     </li>
                   ))}
                 </ul>
               )}
             </div>
           ) : (
-            <p className="text-sm text-rose-300">{report.message || 'The proposal did not complete.'}</p>
+            <p className="text-sm text-rose-300">
+              {String(report.message || 'The proposal did not complete.')}
+            </p>
           )}
-        </div>
+        </section>
       )}
 
-      <div className="card mt-3">
-        <div className="section-title">Proposals</div>
+      <section className="forecast-panel">
+        <h2 className="forecast-section-label">Proposals</h2>
         {edits.length === 0 ? (
           <EmptyState title="No proposals yet" hint="Propose a configuration edit to see it here." />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm border-collapse">
-              <thead>
-                <tr className="text-left text-[var(--hb-muted)] border-b border-[var(--hb-border)]">
-                  <th className="py-2 pr-3">Proposal</th>
-                  <th className="py-2 pr-3">Created</th>
-                  <th className="py-2 pr-3">Parity</th>
-                  <th className="py-2 pr-3">Changes</th>
-                  <th className="py-2 pr-3">Live config</th>
-                </tr>
-              </thead>
-              <tbody>
-                {edits.map((e: any) => (
-                  <tr key={e.edit_id} className="border-b border-[var(--hb-border)]">
-                    <td className="py-2 pr-3">{e.edit_id}</td>
-                    <td className="py-2 pr-3 text-[var(--hb-muted)]">{e.created_display || '—'}</td>
-                    <td className="py-2 pr-3">
-                      <StatusPill status={e.parity_status === 'pass' ? 'validated' : 'attention'} />
-                    </td>
-                    <td className="py-2 pr-3 text-[var(--hb-muted)]">{e.changed_count ?? 0}</td>
-                    <td className="py-2 pr-3">
-                      {canEdit && promotionEnabled && e.parity_status === 'pass' && e.status === 'succeeded' ? (
-                        <button
-                          type="button"
-                          onClick={() => onPromote(e.edit_id)}
-                          disabled={promotingId === e.edit_id}
-                          className="rounded border border-[var(--hb-accent)] px-2 py-1 text-xs disabled:opacity-50"
-                        >
-                          {promotingId === e.edit_id ? 'Promoting…' : 'Promote to live'}
-                        </button>
-                      ) : (
-                        <span className="text-xs text-[var(--hb-muted)]">—</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <ForecastTable
+            headers={
+              <>
+                <ForecastTh>Proposal</ForecastTh>
+                <ForecastTh>Created</ForecastTh>
+                <ForecastTh>Parity</ForecastTh>
+                <ForecastTh>Changes</ForecastTh>
+                <ForecastTh>Live config</ForecastTh>
+              </>
+            }
+          >
+            {edits.map((e) => (
+              <tr key={String(e.edit_id)}>
+                <ForecastTd>{String(e.display_label || e.edit_id || 'Proposal')}</ForecastTd>
+                <ForecastTd className="text-[var(--hb-muted)]">{String(e.created_display || '—')}</ForecastTd>
+                <ForecastTd>
+                  <ForecastStatusPill status={e.parity_status === 'pass' ? 'validated' : 'attention'} />
+                </ForecastTd>
+                <ForecastTd className="text-[var(--hb-muted)]">{String(e.changed_count ?? 0)}</ForecastTd>
+                <ForecastTd>
+                  {canEdit && promotionEnabled && e.parity_status === 'pass' && e.status === 'succeeded' ? (
+                    <ForecastActionButton
+                      variant="ghost"
+                      onClick={() => onPromote(String(e.edit_id))}
+                      disabled={promotingId === String(e.edit_id)}
+                    >
+                      {promotingId === String(e.edit_id) ? 'Promoting…' : 'Promote to live'}
+                    </ForecastActionButton>
+                  ) : (
+                    <span className="text-xs text-[var(--hb-muted)]">—</span>
+                  )}
+                </ForecastTd>
+              </tr>
+            ))}
+          </ForecastTable>
         )}
         {!promotionEnabled && (
           <p className="text-xs text-[var(--hb-muted)] mt-2">
@@ -303,19 +308,19 @@ export function ForecastConfigEditProposalsPage() {
         </p>
         {promoteResult && (
           <div className="mt-2 text-sm">
-            <StatusPill status={promoteResult.status === 'promoted' ? 'validated' : 'attention'} />{' '}
+            <ForecastStatusPill status={promoteResult.status === 'promoted' ? 'validated' : 'attention'} />{' '}
             <span className="ml-1">
               {promoteResult.status === 'promoted'
                 ? 'Promoted to live configuration.'
                 : 'Promotion did not certify.'}
             </span>
-            {promoteResult.backup_created && (
+            {promoteResult.backup_created === true && (
               <span className="text-emerald-300 ml-2">A backup of the live configuration was made.</span>
             )}
           </div>
         )}
         {promoteError && <p className="text-sm text-rose-300 mt-2">{promoteError}</p>}
-      </div>
-    </div>
+      </section>
+    </ForecastShell>
   )
 }

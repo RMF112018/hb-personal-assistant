@@ -1,0 +1,43 @@
+{
+  "actuals_reconciliation_gate": {
+    "blocking": "validation blocking where included in package validation report",
+    "evidence_files": [
+      "/Users/bobbyfetting/hb-personal-assistant/docs/evidence/phase20-forecast-comprehensive-db-config-live-proof/20260620T103706Z/work/db_snapshot_backed/forecast_comprehensive_package_tropical_20260101_000000/audit/actuals_monthly_reconciliation_audit.json"
+    ],
+    "status": "present"
+  },
+  "code_hits": [
+    "subrepos/construction-financial-review/src/construction_financial_review/forecast_comprehensive/generate_comprehensive_forecast_package.py:813: \"- `audit/*` \u2014 evidence_registry, evidence_weighting (no-double-count), history_consumption, \"",
+    "subrepos/construction-financial-review/src/construction_financial_review/forecast_comprehensive/generate_comprehensive_forecast_package.py:822: \"collapsed with explicit reason codes; independence groups prevent double-counting.\",",
+    "subrepos/construction-financial-review/src/construction_financial_review/forecast_comprehensive/evidence_scoring.py:5: double-counting a signal that surfaces in several upstream packages. Cost-frequency may shape monthly"
+  ],
+  "cost_type_guard": {
+    "note": "No standalone forecast cost-type guard output was found in the targeted CFR source set.",
+    "status": "unverified"
+  },
+  "double_count_prevention_gate": {
+    "blocking": "validation blocking where generator validation asserts the audit",
+    "evidence_files": [
+      "/Users/bobbyfetting/hb-personal-assistant/docs/evidence/phase20-forecast-comprehensive-db-config-live-proof/20260620T103706Z/work/db_snapshot_backed/forecast_comprehensive_package_tropical_20260101_000000/audit/evidence_weighting_audit.json",
+      "/Users/bobbyfetting/hb-personal-assistant/docs/evidence/phase20-forecast-comprehensive-db-config-live-proof/20260620T103706Z/work/db_snapshot_backed/forecast_comprehensive_package_tropical_20260101_000000/audit/actuals_plus_forecast_monthly_by_cost_code_audit.json"
+    ],
+    "status": "present"
+  },
+  "dynamic_budget_columns_gate": {
+    "note": "No standalone dynamic budget columns gate output was found in the targeted CFR source set.",
+    "status": "unverified"
+  },
+  "invocation_proof": {
+    "files_functions_to_change_if_needed": [
+      "subrepos/construction-financial-review/src/construction_financial_review/forecast_comprehensive/generate_comprehensive_forecast_package.py",
+      "subrepos/construction-financial-review/src/construction_financial_review/workflows/forecast_db_config_backed_generation.py"
+    ],
+    "production_forecast_package_generation": "partially verified through comprehensive package audit/validation files",
+    "readiness_workflow": "unverified for model-engine readiness workflow",
+    "ui_runtime_readiness_surface": "unverified in targeted CFR source set"
+  },
+  "projection_parity_gate": {
+    "note": "No forecast-specific projection parity gate was found in the targeted CFR source set.",
+    "status": "unverified"
+  }
+}

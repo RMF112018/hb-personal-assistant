@@ -1,0 +1,491 @@
+{
+  "db": "/tmp/hb-change-events-open-questions-20260621T100136Z.sqlite",
+  "tables": {
+    "procore_ep_change_events": {
+      "columns": {
+        "company_id": {
+          "nonblank": 1059,
+          "null_or_blank": 0,
+          "null_or_blank_pct": 0.0,
+          "row_count": 1059
+        },
+        "company_id_hash": {
+          "nonblank": 1059,
+          "null_or_blank": 0,
+          "null_or_blank_pct": 0.0,
+          "row_count": 1059
+        },
+        "currency_configuration_currency_iso_code": {
+          "nonblank": 0,
+          "null_or_blank": 1059,
+          "null_or_blank_pct": 100.0,
+          "row_count": 1059
+        },
+        "deleted_at": {
+          "nonblank": 0,
+          "null_or_blank": 1059,
+          "null_or_blank_pct": 100.0,
+          "row_count": 1059
+        },
+        "event_origin": {
+          "nonblank": 5,
+          "null_or_blank": 1054,
+          "null_or_blank_pct": 99.527856,
+          "row_count": 1059
+        },
+        "event_origin_display_name": {
+          "nonblank": 144,
+          "null_or_blank": 915,
+          "null_or_blank_pct": 86.402266,
+          "row_count": 1059
+        },
+        "event_origin_origin_id": {
+          "nonblank": 144,
+          "null_or_blank": 915,
+          "null_or_blank_pct": 86.402266,
+          "row_count": 1059
+        },
+        "external_data": {
+          "nonblank": 0,
+          "null_or_blank": 1059,
+          "null_or_blank_pct": 100.0,
+          "row_count": 1059
+        },
+        "parent_record_id": {
+          "nonblank": 0,
+          "null_or_blank": 1059,
+          "null_or_blank_pct": 100.0,
+          "row_count": 1059
+        },
+        "parent_record_id_hash": {
+          "nonblank": 0,
+          "null_or_blank": 1059,
+          "null_or_blank_pct": 100.0,
+          "row_count": 1059
+        },
+        "payload_sidecar_json": {
+          "nonblank": 1059,
+          "null_or_blank": 0,
+          "null_or_blank_pct": 0.0,
+          "row_count": 1059
+        },
+        "source": {
+          "nonblank": 0,
+          "null_or_blank": 1059,
+          "null_or_blank_pct": 100.0,
+          "row_count": 1059
+        }
+      },
+      "row_count": 1059
+    },
+    "procore_ep_change_events_attachments": {
+      "columns": {
+        "company_id": {
+          "nonblank": 2352,
+          "null_or_blank": 0,
+          "null_or_blank_pct": 0.0,
+          "row_count": 2352
+        },
+        "filename": {
+          "nonblank": 2352,
+          "null_or_blank": 0,
+          "null_or_blank_pct": 0.0,
+          "row_count": 2352
+        },
+        "item_id": {
+          "nonblank": 2352,
+          "null_or_blank": 0,
+          "null_or_blank_pct": 0.0,
+          "row_count": 2352
+        },
+        "parent_item_id": {
+          "nonblank": 0,
+          "null_or_blank": 2352,
+          "null_or_blank_pct": 100.0,
+          "row_count": 2352
+        },
+        "payload_sidecar_json": {
+          "nonblank": 0,
+          "null_or_blank": 2352,
+          "null_or_blank_pct": 100.0,
+          "row_count": 2352
+        },
+        "url": {
+          "nonblank": 2352,
+          "null_or_blank": 0,
+          "null_or_blank_pct": 0.0,
+          "row_count": 2352
+        }
+      },
+      "row_count": 2352
+    },
+    "procore_ep_change_events_change_items": {
+      "columns": {
+        "budget_impact_budget_change": {
+          "nonblank": 0,
+          "null_or_blank": 2829,
+          "null_or_blank_pct": 100.0,
+          "row_count": 2829
+        },
+        "budget_impact_budget_modification": {
+          "nonblank": 0,
+          "null_or_blank": 2829,
+          "null_or_blank_pct": 100.0,
+          "row_count": 2829
+        },
+        "budget_impact_budget_modification_amount": {
+          "nonblank": 9,
+          "null_or_blank": 2820,
+          "null_or_blank_pct": 99.681866,
+          "row_count": 2829
+        },
+        "budget_impact_budget_modification_budget_modification_id": {
+          "nonblank": 9,
+          "null_or_blank": 2820,
+          "null_or_blank_pct": 99.681866,
+          "row_count": 2829
+        },
+        "budget_impact_budget_modification_notes": {
+          "nonblank": 9,
+          "null_or_blank": 2820,
+          "null_or_blank_pct": 99.681866,
+          "row_count": 2829
+        },
+        "budget_impact_budget_modification_transfer_from_id": {
+          "nonblank": 9,
+          "null_or_blank": 2820,
+          "null_or_blank_pct": 99.681866,
+          "row_count": 2829
+        },
+        "budget_impact_budget_modification_transfer_from_name": {
+          "nonblank": 9,
+          "null_or_blank": 2820,
+          "null_or_blank_pct": 99.681866,
+          "row_count": 2829
+        },
+        "budget_impact_budget_modification_transfer_to_id": {
+          "nonblank": 9,
+          "null_or_blank": 2820,
+          "null_or_blank_pct": 99.681866,
+          "row_count": 2829
+        },
+        "budget_impact_budget_modification_transfer_to_name": {
+          "nonblank": 9,
+          "null_or_blank": 2820,
+          "null_or_blank_pct": 99.681866,
+          "row_count": 2829
+        },
+        "company_id": {
+          "nonblank": 2829,
+          "null_or_blank": 0,
+          "null_or_blank_pct": 0.0,
+          "row_count": 2829
+        },
+        "cost_impact_commitment_currency_configuration_base_currency_iso_code": {
+          "nonblank": 0,
+          "null_or_blank": 2829,
+          "null_or_blank_pct": 100.0,
+          "row_count": 2829
+        },
+        "cost_impact_commitment_currency_configuration_currency_exchange_rate": {
+          "nonblank": 0,
+          "null_or_blank": 2829,
+          "null_or_blank_pct": 100.0,
+          "row_count": 2829
+        },
+        "cost_impact_commitment_currency_configuration_currency_iso_code": {
+          "nonblank": 0,
+          "null_or_blank": 2829,
+          "null_or_blank_pct": 100.0,
+          "row_count": 2829
+        },
+        "cost_impact_non_commitment_amount": {
+          "nonblank": 0,
+          "null_or_blank": 2829,
+          "null_or_blank_pct": 100.0,
+          "row_count": 2829
+        },
+        "cost_impact_request_for_quote_currency_configuration_base_currency_iso_code": {
+          "nonblank": 0,
+          "null_or_blank": 2829,
+          "null_or_blank_pct": 100.0,
+          "row_count": 2829
+        },
+        "cost_impact_request_for_quote_currency_configuration_currency_exchange_rate": {
+          "nonblank": 0,
+          "null_or_blank": 2829,
+          "null_or_blank_pct": 100.0,
+          "row_count": 2829
+        },
+        "cost_impact_request_for_quote_currency_configuration_currency_iso_code": {
+          "nonblank": 0,
+          "null_or_blank": 2829,
+          "null_or_blank_pct": 100.0,
+          "row_count": 2829
+        },
+        "cost_impact_request_for_quote_id": {
+          "nonblank": 290,
+          "null_or_blank": 2539,
+          "null_or_blank_pct": 89.749028,
+          "row_count": 2829
+        },
+        "cost_impact_request_for_quote_number": {
+          "nonblank": 290,
+          "null_or_blank": 2539,
+          "null_or_blank_pct": 89.749028,
+          "row_count": 2829
+        },
+        "cost_impact_request_for_quote_status": {
+          "nonblank": 290,
+          "null_or_blank": 2539,
+          "null_or_blank_pct": 89.749028,
+          "row_count": 2829
+        },
+        "cost_impact_request_for_quote_title": {
+          "nonblank": 290,
+          "null_or_blank": 2539,
+          "null_or_blank_pct": 89.749028,
+          "row_count": 2829
+        },
+        "currency_configuration_currency_iso_code": {
+          "nonblank": 0,
+          "null_or_blank": 2829,
+          "null_or_blank_pct": 100.0,
+          "row_count": 2829
+        },
+        "deleted_at": {
+          "nonblank": 0,
+          "null_or_blank": 2829,
+          "null_or_blank_pct": 100.0,
+          "row_count": 2829
+        },
+        "item_id": {
+          "nonblank": 2829,
+          "null_or_blank": 0,
+          "null_or_blank_pct": 0.0,
+          "row_count": 2829
+        },
+        "latest_cost_values_uom_id": {
+          "nonblank": 822,
+          "null_or_blank": 2007,
+          "null_or_blank_pct": 70.943796,
+          "row_count": 2829
+        },
+        "latest_cost_values_uom_name": {
+          "nonblank": 822,
+          "null_or_blank": 2007,
+          "null_or_blank_pct": 70.943796,
+          "row_count": 2829
+        },
+        "latest_revenue_values_uom_id": {
+          "nonblank": 821,
+          "null_or_blank": 2008,
+          "null_or_blank_pct": 70.979145,
+          "row_count": 2829
+        },
+        "latest_revenue_values_uom_name": {
+          "nonblank": 821,
+          "null_or_blank": 2008,
+          "null_or_blank_pct": 70.979145,
+          "row_count": 2829
+        },
+        "parent_item_id": {
+          "nonblank": 0,
+          "null_or_blank": 2829,
+          "null_or_blank_pct": 100.0,
+          "row_count": 2829
+        },
+        "payload_sidecar_json": {
+          "nonblank": 2829,
+          "null_or_blank": 0,
+          "null_or_blank_pct": 0.0,
+          "row_count": 2829
+        },
+        "revenue_impact_change_order_currency_configuration_base_currency_iso_code": {
+          "nonblank": 0,
+          "null_or_blank": 2829,
+          "null_or_blank_pct": 100.0,
+          "row_count": 2829
+        },
+        "revenue_impact_change_order_currency_configuration_currency_exchange_rate": {
+          "nonblank": 0,
+          "null_or_blank": 2829,
+          "null_or_blank_pct": 100.0,
+          "row_count": 2829
+        },
+        "revenue_impact_change_order_currency_configuration_currency_iso_code": {
+          "nonblank": 0,
+          "null_or_blank": 2829,
+          "null_or_blank_pct": 100.0,
+          "row_count": 2829
+        }
+      },
+      "row_count": 2829
+    },
+    "procore_ep_change_events_change_items_budget_code_seg_2dff22": {
+      "columns": {
+        "code": {
+          "nonblank": 8487,
+          "null_or_blank": 0,
+          "null_or_blank_pct": 0.0,
+          "row_count": 8487
+        },
+        "company_id": {
+          "nonblank": 8487,
+          "null_or_blank": 0,
+          "null_or_blank_pct": 0.0,
+          "row_count": 8487
+        },
+        "item_id": {
+          "nonblank": 8487,
+          "null_or_blank": 0,
+          "null_or_blank_pct": 0.0,
+          "row_count": 8487
+        },
+        "name": {
+          "nonblank": 8487,
+          "null_or_blank": 0,
+          "null_or_blank_pct": 0.0,
+          "row_count": 8487
+        },
+        "parent_item_id": {
+          "nonblank": 8487,
+          "null_or_blank": 0,
+          "null_or_blank_pct": 0.0,
+          "row_count": 8487
+        },
+        "payload_sidecar_json": {
+          "nonblank": 8487,
+          "null_or_blank": 0,
+          "null_or_blank_pct": 0.0,
+          "row_count": 8487
+        },
+        "segment_id": {
+          "nonblank": 8487,
+          "null_or_blank": 0,
+          "null_or_blank_pct": 0.0,
+          "row_count": 8487
+        },
+        "segment_name": {
+          "nonblank": 8487,
+          "null_or_blank": 0,
+          "null_or_blank_pct": 0.0,
+          "row_count": 8487
+        }
+      },
+      "row_count": 8487
+    },
+    "procore_ep_change_events_markup_items": {
+      "columns": {
+        "company_id": {
+          "nonblank": 2154,
+          "null_or_blank": 0,
+          "null_or_blank_pct": 0.0,
+          "row_count": 2154
+        },
+        "event_id": {
+          "nonblank": 2154,
+          "null_or_blank": 0,
+          "null_or_blank_pct": 0.0,
+          "row_count": 2154
+        },
+        "item_id": {
+          "nonblank": 2154,
+          "null_or_blank": 0,
+          "null_or_blank_pct": 0.0,
+          "row_count": 2154
+        },
+        "item_type": {
+          "nonblank": 2154,
+          "null_or_blank": 0,
+          "null_or_blank_pct": 0.0,
+          "row_count": 2154
+        },
+        "parent_item_id": {
+          "nonblank": 0,
+          "null_or_blank": 2154,
+          "null_or_blank_pct": 100.0,
+          "row_count": 2154
+        },
+        "payload_sidecar_json": {
+          "nonblank": 2154,
+          "null_or_blank": 0,
+          "null_or_blank_pct": 0.0,
+          "row_count": 2154
+        },
+        "wbs_code_description": {
+          "nonblank": 2084,
+          "null_or_blank": 70,
+          "null_or_blank_pct": 3.249768,
+          "row_count": 2154
+        },
+        "wbs_code_flat_code": {
+          "nonblank": 2084,
+          "null_or_blank": 70,
+          "null_or_blank_pct": 3.249768,
+          "row_count": 2154
+        },
+        "wbs_code_id": {
+          "nonblank": 2154,
+          "null_or_blank": 0,
+          "null_or_blank_pct": 0.0,
+          "row_count": 2154
+        }
+      },
+      "row_count": 2154
+    },
+    "procore_ep_change_events_markup_items_wbs_code_segment_items": {
+      "columns": {
+        "code": {
+          "nonblank": 6462,
+          "null_or_blank": 0,
+          "null_or_blank_pct": 0.0,
+          "row_count": 6462
+        },
+        "company_id": {
+          "nonblank": 6462,
+          "null_or_blank": 0,
+          "null_or_blank_pct": 0.0,
+          "row_count": 6462
+        },
+        "item_id": {
+          "nonblank": 6462,
+          "null_or_blank": 0,
+          "null_or_blank_pct": 0.0,
+          "row_count": 6462
+        },
+        "name": {
+          "nonblank": 6462,
+          "null_or_blank": 0,
+          "null_or_blank_pct": 0.0,
+          "row_count": 6462
+        },
+        "parent_item_id": {
+          "nonblank": 6462,
+          "null_or_blank": 0,
+          "null_or_blank_pct": 0.0,
+          "row_count": 6462
+        },
+        "payload_sidecar_json": {
+          "nonblank": 6462,
+          "null_or_blank": 0,
+          "null_or_blank_pct": 0.0,
+          "row_count": 6462
+        },
+        "segment_id": {
+          "nonblank": 6462,
+          "null_or_blank": 0,
+          "null_or_blank_pct": 0.0,
+          "row_count": 6462
+        },
+        "segment_name": {
+          "nonblank": 6462,
+          "null_or_blank": 0,
+          "null_or_blank_pct": 0.0,
+          "row_count": 6462
+        }
+      },
+      "row_count": 6462
+    }
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "procore_ep_change_events": {
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "table_exists": true,
+    "total_rows": 1059
+  },
+  "procore_ep_change_events_attachments": {
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "table_exists": true,
+    "total_rows": 2352
+  },
+  "procore_ep_change_events_change_items": {
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "table_exists": true,
+    "total_rows": 2829
+  },
+  "procore_ep_change_events_change_items_budget_code_seg_2dff22": {
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "table_exists": true,
+    "total_rows": 8487
+  },
+  "procore_ep_change_events_markup_items": {
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "table_exists": true,
+    "total_rows": 2154
+  },
+  "procore_ep_change_events_markup_items_wbs_code_segment_items": {
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "table_exists": true,
+    "total_rows": 6462
+  }
+}

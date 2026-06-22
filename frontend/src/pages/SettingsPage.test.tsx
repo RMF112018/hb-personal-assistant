@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { SettingsPage } from './SettingsPage'
@@ -17,6 +18,12 @@ const addProjectKeyword = vi.fn()
 const explainProjectKeywordMatch = vi.fn()
 const getAdminPendingApprovals = vi.fn()
 const getDataQualityDetail = vi.fn()
+const getEnvironment = vi.fn()
+const getSourcesStatus = vi.fn()
+const getSchedulerStatus = vi.fn()
+const refreshSourcesDryRun = vi.fn()
+const refreshSourcesLocal = vi.fn()
+const refreshSourcesLive = vi.fn()
 
 vi.mock('../app/providers', () => ({
   useTheme: () => ({ theme: 'dark', setTheme: vi.fn() }),
@@ -65,13 +72,30 @@ vi.mock('../lib/api', () => ({
   saveProjectConnection: vi.fn(),
   approveFirstSyncAdmin: vi.fn(),
   rejectFirstSyncAdmin: vi.fn(),
+  getEnvironment: () => getEnvironment(),
+  getSourcesStatus: () => getSourcesStatus(),
+  getSchedulerStatus: () => getSchedulerStatus(),
+  refreshSourcesDryRun: () => refreshSourcesDryRun(),
+  refreshSourcesLocal: () => refreshSourcesLocal(),
+  refreshSourcesLive: (confirm: boolean) => refreshSourcesLive(confirm),
 }))
 
 function renderSettings() {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+        refetchOnWindowFocus: false,
+      },
+    },
+  })
+
   return render(
-    <MemoryRouter>
-      <SettingsPage />
-    </MemoryRouter>,
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter>
+        <SettingsPage />
+      </MemoryRouter>
+    </QueryClientProvider>,
   )
 }
 
@@ -98,6 +122,33 @@ describe('SettingsPage guided setup', () => {
     explainProjectKeywordMatch.mockResolvedValue({ title: 'Matches project naming.' })
     getAdminPendingApprovals.mockResolvedValue({ items: [] })
     getDataQualityDetail.mockResolvedValue({ summary: { status: 'good' }, sources: [] })
+    getEnvironment.mockResolvedValue({
+      surface: 'environment',
+      status: 'ok',
+      environment: 'dev',
+      source_refresh_mode: 'mock_data',
+      live_refresh: { available: false, enabled: false, reason: 'disabled in test' },
+      guardrails: { read_only: true },
+    })
+    getSourcesStatus.mockResolvedValue({
+      surface: 'sources.status',
+      status: 'ok',
+      source_refresh_mode: 'mock_data',
+      live_refresh: { available: false, enabled: false, reason: 'disabled in test' },
+      graph: { state: 'connected_valid' },
+      procore: { state: 'connected' },
+      scheduler: { last_successful_schedule_date: null },
+      guardrails: { read_only: true },
+    })
+    getSchedulerStatus.mockResolvedValue({
+      surface: 'scheduler.status',
+      status: 'ok',
+      last_successful_schedule_date: null,
+      guardrails: { read_only: true },
+    })
+    refreshSourcesDryRun.mockResolvedValue({ status: 'ok', live_read_performed: false })
+    refreshSourcesLocal.mockResolvedValue({ status: 'ok', live_read_performed: false })
+    refreshSourcesLive.mockResolvedValue({ status: 'blocked', live_read_performed: false })
   })
 
   it('renders guided settings sections in order', async () => {

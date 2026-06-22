@@ -1,0 +1,24 @@
+{
+  "project_key": "tropical",
+  "independence_groups": [
+    "actuals_truth",
+    "cost_entry_trend",
+    "budget_reference",
+    "pay_application",
+    "schedule",
+    "base_model",
+    "history",
+    "frequency",
+    "operator_control",
+    "staffing_plan",
+    "narrative"
+  ],
+  "no_double_count_rule": "evidence in the same independence_group counts once; the same CostEntries trend surfacing in context/intelligence/monthly/history is not weighted 4x",
+  "bounds": {
+    "max_history_final_cost_weight": "0.45",
+    "max_history_monthly_shape_weight": "0.30",
+    "max_history_probability_weight": "0.25",
+    "max_frequency_monthly_shape_weight": "0.60"
+  },
+  "frequency_final_cost_weight": "0.0000 (cadence shapes timing only)"
+}

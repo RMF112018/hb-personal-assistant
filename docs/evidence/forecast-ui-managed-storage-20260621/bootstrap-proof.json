@@ -1,0 +1,33 @@
+{
+  "config_file_present": true,
+  "created_keys": [
+    "analytics_dir",
+    "config_edit_root",
+    "data_root",
+    "eval_root",
+    "imports_dir",
+    "package_roots",
+    "runs_root"
+  ],
+  "db_schema_version": 61,
+  "latest_schema_version": 61,
+  "managed_dirs_ready": {
+    "config_proposals": true,
+    "data": true,
+    "evaluations": true,
+    "imports": true,
+    "packages": true,
+    "runs": true
+  },
+  "redaction_leaks": [],
+  "seeded_keys": [
+    "package_roots",
+    "data_root",
+    "runs_root",
+    "eval_root",
+    "db_path",
+    "config_edit_root"
+  ],
+  "storage_mode": "app_managed",
+  "surface": "forecast_ui_managed_storage_bootstrap"
+}

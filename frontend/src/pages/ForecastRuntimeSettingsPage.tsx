@@ -1,29 +1,34 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-/* Forecasting — Runtime Settings (Implementation Phase 6).
- * Lets an operator/admin wire the forecast data roots into the live app. The status view is
- * redaction-safe (booleans + plain-language blockers, never paths) and visible to any role; the
- * raw configured paths are loaded only for an admin (the documented admin-only echo). Saving
- * validates fail-closed on the backend (a write folder under the live data folder is refused). */
-import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+/* Forecast storage & database readiness — app-managed by default; advanced overrides admin-only. */
+import { Database, Layers } from 'lucide-react'
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 
-import { StatusPill } from './ForecastingPage'
+import { AdminPathOverrideForm } from '../components/forecast/AdminPathOverrideForm'
+import {
+  ForecastActionButton,
+  ForecastBackLink,
+  ForecastChecklistItem,
+  ForecastPageHeader,
+  ForecastShell,
+  ForecastSubnav,
+} from '../components/forecast/ForecastPageChrome'
+import { ForecastPanel } from '../components/forecast/ForecastPrimitives'
+import { ForecastStatusPill } from '../components/forecast/ForecastStatusPill'
+import { BLOCKER_COPY, ROOT_LABELS, SURFACE_LABELS } from '../components/forecast/forecastRuntimeCopy'
 import { api, getLocalUiRole } from '../lib/api'
-import { BLOCKER_COPY, ROOT_LABELS } from '../components/forecast/forecastRuntimeCopy'
 
-const PATH_FIELDS: { key: string; label: string; placeholder: string }[] = [
-  { key: 'data_root', label: 'Source data folder', placeholder: 'Absolute path to the live forecast data folder' },
-  { key: 'runs_root', label: 'Run output folder', placeholder: 'Absolute path (must be OUTSIDE the source data folder)' },
-  { key: 'eval_root', label: 'Evaluation output folder', placeholder: 'Absolute path (must be OUTSIDE the source data folder)' },
-  { key: 'db_path', label: 'Source database', placeholder: 'Absolute path to the read-only source database' },
-  { key: 'cfr_src', label: 'Engine source', placeholder: 'Optional — defaults to the bundled engine' },
-  { key: 'config_edit_root', label: 'Config proposal output folder', placeholder: 'Absolute path (must be OUTSIDE the source data folder)' },
-]
+const STORAGE_ROWS = [
+  'db_path',
+  'package_roots',
+  'data_root',
+  'runs_root',
+  'eval_root',
+  'config_edit_root',
+] as const
 
 export function ForecastRuntimeSettingsPage() {
   const role = getLocalUiRole()
-  const canEdit = role === 'operator' || role === 'admin'
+  const canRepair = role === 'operator' || role === 'admin'
   const isAdmin = role === 'admin'
 
   const { data: statusResp, isLoading, error, refetch } = useQuery({
@@ -31,171 +36,120 @@ export function ForecastRuntimeSettingsPage() {
     queryFn: () => api.getForecastRuntimeStatus(),
   })
 
-  // Admin-only raw-path echo to pre-fill the form (the single deliberate path-bearing payload).
   const { data: configResp } = useQuery({
     queryKey: ['forecast', 'runtime', 'config'],
     queryFn: () => api.getForecastRuntimeConfig(),
     enabled: isAdmin,
   })
 
-  const [form, setForm] = useState<Record<string, string>>({})
-  const [packageRoots, setPackageRoots] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [saveError, setSaveError] = useState<string | null>(null)
-  const [saved, setSaved] = useState(false)
+  const [repairing, setRepairing] = useState(false)
+  const [repairError, setRepairError] = useState<string | null>(null)
+  const [repairDone, setRepairDone] = useState(false)
+  const [advancedOpen, setAdvancedOpen] = useState(false)
 
-  useEffect(() => {
-    const cfg = configResp?.config
-    if (!cfg) return
-    const next: Record<string, string> = {}
-    for (const { key } of PATH_FIELDS) next[key] = cfg[key] ?? ''
-    setForm(next)
-    setPackageRoots(Array.isArray(cfg.package_roots) ? cfg.package_roots.join('\n') : '')
-  }, [configResp])
-
-  async function onSave() {
-    setSaving(true)
-    setSaveError(null)
-    setSaved(false)
+  async function onRepair() {
+    setRepairing(true)
+    setRepairError(null)
+    setRepairDone(false)
     try {
-      const payload: Record<string, any> = {}
-      for (const { key } of PATH_FIELDS) {
-        const v = (form[key] || '').trim()
-        if (v) payload[key] = v
-      }
-      const roots = packageRoots
-        .split('\n')
-        .map((s) => s.trim())
-        .filter(Boolean)
-      if (roots.length) payload.package_roots = roots
-      await api.saveForecastRuntimeConfig(payload)
-      setSaved(true)
+      await api.repairForecastRuntimeStorage()
+      setRepairDone(true)
       await refetch()
-    } catch (e: any) {
-      const message: string = String(e?.message || '')
-      setSaveError(
-        message.includes('forecast_runtime_invalid')
-          ? 'One or more folders are invalid (a run/evaluation folder may not sit inside the source data folder).'
-          : 'The runtime configuration could not be saved.',
-      )
+    } catch {
+      setRepairError('Local storage could not be repaired right now.')
     } finally {
-      setSaving(false)
+      setRepairing(false)
     }
   }
 
-  const roots: Record<string, any> = statusResp?.roots || {}
-  const surfaces: Record<string, boolean> = statusResp?.surfaces_ready || {}
+  const roots = (statusResp?.roots || {}) as Record<string, { valid?: boolean; blocker?: string }>
+  const surfaces = (statusResp?.surfaces_ready || {}) as Record<string, boolean>
+  const appManaged = statusResp?.storage_mode !== 'custom'
+  const allStorageReady = STORAGE_ROWS.every((k) => roots[k]?.valid)
 
   return (
-    <div>
-      <div className="text-xs mb-2">
-        <Link to="/forecasting" className="underline">
-          ← Back to forecast packages
-        </Link>
-      </div>
+    <ForecastShell>
+      <ForecastBackLink />
+      <ForecastSubnav />
 
-      <div className="card">
-        <div className="section-title">Runtime data sources</div>
-        <p className="text-sm text-[var(--hb-muted)]">
-          Configure where the app reads forecast data and writes isolated run/evaluation output.
-          These settings make the forecast surfaces serve real project data. The live data folder is
-          never written.
+      <section className="forecast-panel">
+        <ForecastPageHeader
+          title="Storage & database readiness"
+          subtitle="HB manages local forecast folders and the database on this machine. You do not need to configure locations during normal setup."
+        />
+        <p className="text-xs text-[var(--hb-muted)] mt-3">
+          Mode: <span className="font-medium text-[var(--hb-text)]">{appManaged ? 'Managed by HB' : 'Custom locations'}</span>
+          {allStorageReady && appManaged && (
+            <span className="text-emerald-300 ml-2">· All workspaces ready</span>
+          )}
         </p>
+
         {isLoading ? (
-          <div className="text-sm text-[var(--hb-muted)] mt-2">Loading status…</div>
+          <div className="text-sm text-[var(--hb-muted)] mt-3">Loading readiness…</div>
         ) : error ? (
-          <p className="text-sm text-rose-300 mt-2">Status is unavailable right now.</p>
+          <p className="text-sm text-rose-300 mt-3">Readiness is unavailable right now.</p>
         ) : (
-          <div className="overflow-x-auto mt-2">
-            <table className="w-full text-sm border-collapse">
-              <thead>
-                <tr className="text-left text-[var(--hb-muted)] border-b border-[var(--hb-border)]">
-                  <th className="py-2 pr-3">Data source</th>
-                  <th className="py-2 pr-3">Status</th>
-                  <th className="py-2 pr-3">Detail</th>
-                </tr>
-              </thead>
-              <tbody>
-                {Object.keys(ROOT_LABELS).map((key) => {
-                  const r = roots[key] || {}
-                  return (
-                    <tr key={key} className="border-b border-[var(--hb-border)]">
-                      <td className="py-2 pr-3">{ROOT_LABELS[key]}</td>
-                      <td className="py-2 pr-3">
-                        <StatusPill status={r.valid ? 'validated' : 'attention'} />
-                      </td>
-                      <td className="py-2 pr-3 text-[var(--hb-muted)]">
-                        {r.valid
-                          ? 'Ready'
-                          : BLOCKER_COPY[r.blocker as string] || 'Not configured'}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+          <ul className="forecast-checklist">
+            {STORAGE_ROWS.map((key) => {
+              const r = roots[key] || {}
+              const ok = Boolean(r.valid)
+              return (
+                <ForecastChecklistItem
+                  key={key}
+                  label={ROOT_LABELS[key]}
+                  detail={ok ? 'Ready' : BLOCKER_COPY[r.blocker || ''] || 'Not ready'}
+                  ready={ok}
+                  trailing={<ForecastStatusPill status={ok ? 'validated' : 'attention'} />}
+                />
+              )
+            })}
+          </ul>
+        )}
+
+        {canRepair && (
+          <div className="flex flex-wrap items-center gap-3 mt-4">
+            <ForecastActionButton onClick={onRepair} disabled={repairing}>
+              {repairing ? 'Repairing…' : 'Repair local storage'}
+            </ForecastActionButton>
+            {repairDone && <span className="text-sm text-emerald-300">Repaired.</span>}
+            {repairError && <span className="text-sm text-rose-300">{repairError}</span>}
           </div>
         )}
-      </div>
+      </section>
 
-      <div className="card mt-3">
-        <div className="section-title">Surfaces ready</div>
-        <div className="flex flex-wrap gap-2 text-sm">
-          {['catalog', 'config', 'run_center', 'external_eval', 'config_edit'].map((k) => (
-            <span key={k} className="flex items-center gap-1">
-              <StatusPill status={surfaces[k] ? 'validated' : 'attention'} />
-              <span className="text-[var(--hb-muted)]">{k.replace('_', ' ')}</span>
+      <ForecastPanel icon={Layers} title="Forecast surfaces" description="Each surface unlocks when its storage workspaces are ready. All remain advisory.">
+        <div className="flex flex-wrap gap-2">
+          {Object.entries(SURFACE_LABELS).map(([k, label]) => (
+            <span key={k} className="forecast-surface-chip">
+              <ForecastStatusPill status={surfaces[k] ? 'validated' : 'attention'} />
+              <span className="text-[var(--hb-muted)]">{label}</span>
             </span>
           ))}
         </div>
-      </div>
+      </ForecastPanel>
 
-      {canEdit && (
-        <div className="card mt-3">
-          <div className="section-title">Edit data sources</div>
-          {!isAdmin && (
-            <p className="text-xs text-[var(--hb-muted)] mb-2">
-              Current paths are hidden for your role. Enter a full path to set or change a source.
-            </p>
-          )}
-          <div className="grid gap-3">
-            <label className="text-sm">
-              <span className="block mb-1">Forecast packages (one absolute path per line)</span>
-              <textarea
-                value={packageRoots}
-                onChange={(e) => setPackageRoots(e.target.value)}
-                rows={2}
-                className="w-full rounded border border-[var(--hb-border)] bg-transparent px-2 py-1 text-sm"
-                placeholder="Absolute path(s) to the forecast package folder(s)"
+      {isAdmin && (
+        <section className="forecast-panel">
+          <button
+            type="button"
+            onClick={() => setAdvancedOpen((o) => !o)}
+            className="forecast-section-label text-left w-full flex items-center gap-2"
+            aria-expanded={advancedOpen}
+          >
+            <Database size={14} aria-hidden />
+            Advanced manual path override {advancedOpen ? '▾' : '▸'}
+          </button>
+          {advancedOpen && configResp?.config && (
+            <div className="mt-3">
+              <AdminPathOverrideForm
+                key={String(configResp.config_file_present)}
+                config={configResp.config as Record<string, unknown>}
+                onSaved={() => void refetch()}
               />
-            </label>
-            {PATH_FIELDS.map(({ key, label, placeholder }) => (
-              <label key={key} className="text-sm">
-                <span className="block mb-1">{label}</span>
-                <input
-                  type="text"
-                  value={form[key] || ''}
-                  onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
-                  className="w-full rounded border border-[var(--hb-border)] bg-transparent px-2 py-1 text-sm"
-                  placeholder={placeholder}
-                />
-              </label>
-            ))}
-          </div>
-          <div className="flex items-center gap-3 mt-3">
-            <button
-              type="button"
-              onClick={onSave}
-              disabled={saving}
-              className="rounded border border-[var(--hb-accent)] px-3 py-1.5 text-sm disabled:opacity-50"
-            >
-              {saving ? 'Saving…' : 'Save data sources'}
-            </button>
-            {saved && <span className="text-sm text-emerald-300">Saved.</span>}
-            {saveError && <span className="text-sm text-rose-300">{saveError}</span>}
-          </div>
-        </div>
+            </div>
+          )}
+        </section>
       )}
-    </div>
+    </ForecastShell>
   )
 }

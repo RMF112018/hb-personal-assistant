@@ -95,6 +95,43 @@ class PathPolicy:
         """
         return self.get_app_support() / "html"
 
+    def get_forecast_root(self) -> Path:
+        """App-managed forecast storage root under Application Support."""
+        return self.get_app_support() / "forecast"
+
+    def get_forecast_packages_dir(self) -> Path:
+        return self.get_forecast_root() / "packages"
+
+    def get_forecast_data_dir(self) -> Path:
+        return self.get_forecast_root() / "data"
+
+    def get_forecast_runs_dir(self) -> Path:
+        return self.get_forecast_root() / "runs"
+
+    def get_forecast_evaluations_dir(self) -> Path:
+        return self.get_forecast_root() / "evaluations"
+
+    def get_forecast_config_proposals_dir(self) -> Path:
+        return self.get_forecast_root() / "config-proposals"
+
+    def get_forecast_imports_dir(self) -> Path:
+        return self.get_forecast_root() / "imports"
+
+    def get_forecast_runtime_config_path(self) -> Path:
+        return self.get_app_support() / "analytics" / "forecast_runtime_config.json"
+
+    def managed_forecast_storage_dirs(self) -> tuple[Path, ...]:
+        """Directories created by forecast managed-storage bootstrap (idempotent)."""
+        return (
+            self.get_app_support() / "analytics",
+            self.get_forecast_packages_dir(),
+            self.get_forecast_data_dir(),
+            self.get_forecast_runs_dir(),
+            self.get_forecast_evaluations_dir(),
+            self.get_forecast_config_proposals_dir(),
+            self.get_forecast_imports_dir(),
+        )
+
     # --- Obsidian Vault ---
 
     def get_vault_root(self) -> Path:

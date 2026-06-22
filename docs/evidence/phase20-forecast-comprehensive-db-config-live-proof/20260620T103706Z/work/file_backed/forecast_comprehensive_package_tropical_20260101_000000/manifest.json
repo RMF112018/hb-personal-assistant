@@ -1,0 +1,400 @@
+{
+  "package_name": "forecast_comprehensive_package_tropical_20260101_000000",
+  "manifest_title": "Comprehensive Integrated Forecast Package — Tropical World Nursery",
+  "manifest_version": "1.0.0",
+  "project": {
+    "project_key": "tropical",
+    "project_name": "Tropical World Nursery Senior Living Facility",
+    "job_reference": "23-435-01",
+    "forecast_period": "2026-June"
+  },
+  "generation": {
+    "generator": "construction_financial_review.forecast_comprehensive.generate_comprehensive_forecast_package",
+    "command": "python3 -m construction_financial_review.cli forecast-comprehensive --project tropical",
+    "package_stamp": "20260101_000000",
+    "generated_timestamp_local": "20260101_000000",
+    "project_key": "tropical"
+  },
+  "output_files": [
+    {
+      "path": "README.md",
+      "size_bytes": 3270,
+      "row_count": null,
+      "sha256": "0b931d6e229b8ee955d3c413a08f12538d1688f5d4152b17e2f7ded68b9471ad"
+    },
+    {
+      "path": "SCHEMA.md",
+      "size_bytes": 2861,
+      "row_count": null,
+      "sha256": "451f56b13ede685c8808922c08b60115c5e271b583741d9bec5d09e0d5d834d7"
+    },
+    {
+      "path": "actuals_monthly_by_budget_code.csv",
+      "size_bytes": 49019,
+      "row_count": null,
+      "sha256": "8e0b6dd4816748187921c3f0ab011b94a411da7403fd085a1897b2116ee592a2"
+    },
+    {
+      "path": "actuals_monthly_by_budget_code.jsonl",
+      "size_bytes": 1981278,
+      "row_count": 4699,
+      "sha256": "b07afcec6086f360885de011e50caeb6ea26e9364c3a1fad98d79d8e8e888c4c"
+    },
+    {
+      "path": "actuals_monthly_by_cost_code.csv",
+      "size_bytes": 35839,
+      "row_count": null,
+      "sha256": "7c0c5e42688d4e33d401381154d09786488b530ffcac845d34b59df418db90e2"
+    },
+    {
+      "path": "actuals_monthly_by_cost_code.jsonl",
+      "size_bytes": 1086941,
+      "row_count": 3700,
+      "sha256": "0bdec291e0ee5957d98ea757ce451c7d8b38a032259adabbec9027816748af13"
+    },
+    {
+      "path": "actuals_monthly_project_total.jsonl",
+      "size_bytes": 6921,
+      "row_count": 37,
+      "sha256": "fe3f4b53b57905d3209ab8d03557f6390edc2e6160eeaeebb99ae92adf85c078"
+    },
+    {
+      "path": "actuals_plus_forecast_monthly_by_budget_code.csv",
+      "size_bytes": 54680,
+      "row_count": null,
+      "sha256": "36d33ba08c764cc3a56abeab2f2f6e17cf5bf7f619e4a1d9f7937bd3aa5d6d05"
+    },
+    {
+      "path": "actuals_plus_forecast_monthly_by_cost_code.csv",
+      "size_bytes": 34402,
+      "row_count": null,
+      "sha256": "2e6a4902f5aa16dee68781eb3d20a85968a17dba22208cf54ff3a67e17986b52"
+    },
+    {
+      "path": "actuals_to_forecast_bridge_by_budget_code.jsonl",
+      "size_bytes": 75883,
+      "row_count": 127,
+      "sha256": "c2eb5fe6871afca44a71e3eeb4c95071fefb9fe6115dec7419fbd1db9604d0c6"
+    },
+    {
+      "path": "audit/actuals_floor_audit.json",
+      "size_bytes": 122,
+      "row_count": null,
+      "sha256": "adee6f9998c06a61b0acd0c9dd0460518e82032918043b29042759a82716ecc1"
+    },
+    {
+      "path": "audit/actuals_monthly_reconciliation_audit.json",
+      "size_bytes": 28662,
+      "row_count": null,
+      "sha256": "a5c7d34ea457953c12edda750bc4ef579ac1312620323bdd71610ef69cc61b07"
+    },
+    {
+      "path": "audit/actuals_plus_forecast_monthly_by_cost_code_audit.json",
+      "size_bytes": 1717,
+      "row_count": null,
+      "sha256": "5e7b9435c9d711c092ec93f620d2deffc905b0b030aec07c52504330f85710a0"
+    },
+    {
+      "path": "audit/db_inventory.json",
+      "size_bytes": 4891,
+      "row_count": null,
+      "sha256": "6398cf144ef04135a1c39225964993b1d4e6bd96965f2e6766504e67c6bc3a83"
+    },
+    {
+      "path": "audit/evidence_registry_audit.json",
+      "size_bytes": 1047,
+      "row_count": null,
+      "sha256": "bae4d708ef86779f9889614a1e63f505ec052bb6caf6df984a4f11072a827f8c"
+    },
+    {
+      "path": "audit/evidence_weighting_audit.json",
+      "size_bytes": 740,
+      "row_count": null,
+      "sha256": "5d9cb0dfae674ffad3e7230ae0fc690b66fd0bcc7f408605fb192f83a5251afc"
+    },
+    {
+      "path": "audit/forecast_cost_basis_decision_audit.json",
+      "size_bytes": 137101,
+      "row_count": null,
+      "sha256": "b56c015d5255efb41a2081105863b9b70c52e24e55bded5c7fac3c49fb3bae79"
+    },
+    {
+      "path": "audit/forecast_run_lineage_audit.json",
+      "size_bytes": 1140,
+      "row_count": null,
+      "sha256": "dd3649f82b45b0693278ded3a2e9f66d43a5bc18ca63f79b99ca6f99c8d1587c"
+    },
+    {
+      "path": "audit/forecast_staffing_basis_decision_audit.json",
+      "size_bytes": 24805,
+      "row_count": null,
+      "sha256": "77771f2e59b57c50ae3584b778b81a17086de687ca08179fbd3d655ca55e9732"
+    },
+    {
+      "path": "audit/frequency_consumption_audit.json",
+      "size_bytes": 334,
+      "row_count": null,
+      "sha256": "1eda336a4f7f9fd1dda821ecc81dc63977ce0d8bf0ec1f3020f3107aa79a5edc"
+    },
+    {
+      "path": "audit/history_consumption_audit.json",
+      "size_bytes": 141,
+      "row_count": null,
+      "sha256": "bbf7ca0c1b02f9ca3c43ed91640741330083d67afe6d8f9006454522a8450549"
+    },
+    {
+      "path": "audit/model_evidence_completeness_matrix.json",
+      "size_bytes": 2113,
+      "row_count": null,
+      "sha256": "b9a0a871562ac6b6437968bfcee0645d2c8b6a005fef2abda971ae2d3dfe452f"
+    },
+    {
+      "path": "audit/monthly_reconciliation_audit.json",
+      "size_bytes": 317,
+      "row_count": null,
+      "sha256": "3e51f6cdacc5901c4c82eb7ef17d59b82866fe5ab2fa0023021e612f31067d85"
+    },
+    {
+      "path": "audit/no_upper_cap_audit.json",
+      "size_bytes": 307,
+      "row_count": null,
+      "sha256": "564a506759c97ec44d7b9a4e8aeb1906bff5442bb2b7824e87ab30cb1f108700"
+    },
+    {
+      "path": "audit/probability_adjustment_audit.json",
+      "size_bytes": 431,
+      "row_count": null,
+      "sha256": "ad0bf0ead0ec9f780c1da67299e545f1e5e89dd884838f7326f3c258d14f1310"
+    },
+    {
+      "path": "audit/safety_scan_report.json",
+      "size_bytes": 366,
+      "row_count": null,
+      "sha256": "3e8fce6b6cc8435e7a53fb83b7bbcdd94642132d133d941b2dc500435318ea97"
+    },
+    {
+      "path": "audit/source_hashes_before_after.json",
+      "size_bytes": 65769,
+      "row_count": null,
+      "sha256": "263a8800339ee7772ca48eedcfc0380e18ad2f3353437146fad1c9d618ee0940"
+    },
+    {
+      "path": "audit/source_packages_used.json",
+      "size_bytes": 5026,
+      "row_count": null,
+      "sha256": "7ae858dc298812bc6e2b5c75974edafbc1dc553e43263c5b44b58ebb9acb78df"
+    },
+    {
+      "path": "data_quality_warnings.jsonl",
+      "size_bytes": 23754,
+      "row_count": 81,
+      "sha256": "a664e6f434eb6b66332a06f36a85db51e8f458d697d5074e89770c2020a698b5"
+    },
+    {
+      "path": "evidence_conflict_register.jsonl",
+      "size_bytes": 171715,
+      "row_count": 434,
+      "sha256": "c5b39ca72c5ce2cd21a9df7c72af4ccea5de75a71c4e98a19c746dd2a828145c"
+    },
+    {
+      "path": "input_inventory.json",
+      "size_bytes": 5888,
+      "row_count": null,
+      "sha256": "35d44e53ac50be18a0da8fbc97256aace19180e3fbf4f23c257f4bfe21f62967"
+    },
+    {
+      "path": "integrated_change_explanation.jsonl",
+      "size_bytes": 22061,
+      "row_count": 50,
+      "sha256": "2603c14576b2c1eaf2dd0a960828ebd5003b69f5e0fab419ff912f2ea96ab8d2"
+    },
+    {
+      "path": "integrated_evidence_registry_by_budget_code.jsonl",
+      "size_bytes": 1789001,
+      "row_count": 1862,
+      "sha256": "7b3068b347e04d56b09814857d0f3f233664aa6421c8b6de2e02bf08c35258af"
+    },
+    {
+      "path": "integrated_evidence_weights_by_budget_code.jsonl",
+      "size_bytes": 94305,
+      "row_count": 127,
+      "sha256": "738fb7c6bbab047f95c2f1d4b092e2ef3192f9f38efb91b6b5b82126a412cd19"
+    },
+    {
+      "path": "integrated_final_cost_recommendations.jsonl",
+      "size_bytes": 100864,
+      "row_count": 127,
+      "sha256": "0f728017f03b44e488f7cdfac529865ebdbb30c5849fbb3f4a48ad54268d2e47"
+    },
+    {
+      "path": "integrated_forecast_by_budget_code.jsonl",
+      "size_bytes": 308247,
+      "row_count": 127,
+      "sha256": "a49add2c01aba4681c71fff4d0990e4165c6dfd693c6fa213ee4971975caa7c1"
+    },
+    {
+      "path": "integrated_human_review_queue.jsonl",
+      "size_bytes": 50344,
+      "row_count": 78,
+      "sha256": "c8af8208ad41948b0f1d64d3be6781c8afcdf1f55a4bfd8f4464b8d8d65676dd"
+    },
+    {
+      "path": "integrated_monthly_forecast_by_budget_code.jsonl",
+      "size_bytes": 164880,
+      "row_count": 127,
+      "sha256": "6b6559ca6a94f89c18b4e5b768688fceb8c48bb9eef8470c811f6f3f07d351b1"
+    },
+    {
+      "path": "integrated_monthly_project_forecast.jsonl",
+      "size_bytes": 574,
+      "row_count": 6,
+      "sha256": "5db203de33818cb0c1658ef03bb7ffe3e4ddbd325226e127e9629a36f4d61f26"
+    },
+    {
+      "path": "integrated_probability_by_budget_code.jsonl",
+      "size_bytes": 132231,
+      "row_count": 127,
+      "sha256": "b387deb217d3294f106559c3a7a3b7bcd1a708dafee69a08f7bebbad3d53d15e"
+    },
+    {
+      "path": "integrated_probability_project_summary.json",
+      "size_bytes": 509,
+      "row_count": null,
+      "sha256": "e50d8e1846c302a5689507074f11e9745b0cc3af19d7b059a701532fc5c2e683"
+    },
+    {
+      "path": "integrated_risk_register.jsonl",
+      "size_bytes": 34173,
+      "row_count": 78,
+      "sha256": "7eecfc8cc9249b8784f3179e682fd2e21ec626db8ed750ec0800a34d1558a1b1"
+    },
+    {
+      "path": "llm/comprehensive_narrative_receipts.jsonl",
+      "size_bytes": 0,
+      "row_count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "llm/comprehensive_narratives.jsonl",
+      "size_bytes": 0,
+      "row_count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "model_package_inventory.json",
+      "size_bytes": 5026,
+      "row_count": null,
+      "sha256": "7ae858dc298812bc6e2b5c75974edafbc1dc553e43263c5b44b58ebb9acb78df"
+    },
+    {
+      "path": "project_comprehensive_forecast_summary.json",
+      "size_bytes": 2346,
+      "row_count": null,
+      "sha256": "d196c56d8d4aa84855e34e95a77e238a9f8ba9d996a7d07862d04398390b68bc"
+    },
+    {
+      "path": "top_confidence_improvements.json",
+      "size_bytes": 3,
+      "row_count": null,
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "path": "top_evidence_conflicts.json",
+      "size_bytes": 1494,
+      "row_count": null,
+      "sha256": "836969ec8a350be097ef43c3c37bd63ddc2ba95dbf29f700edbf95a66496e099"
+    },
+    {
+      "path": "top_human_review_items.json",
+      "size_bytes": 18679,
+      "row_count": null,
+      "sha256": "2fbdb6c4db1d362f543cad3341d8dc8aca1e15e88539209039ce39efac626ef9"
+    },
+    {
+      "path": "top_overrun_risks.json",
+      "size_bytes": 6086,
+      "row_count": null,
+      "sha256": "3db4b817018e2c26636d5e42ee159183a144a52a9f9d1aa913f5b6cbad3415ae"
+    },
+    {
+      "path": "validation_report.json",
+      "size_bytes": 11697,
+      "row_count": null,
+      "sha256": "6aba061c525f44849c5c93f5ae0e02035038eacfffaab0dddfd800d742583cce"
+    }
+  ],
+  "validation_status": {
+    "passed": true,
+    "checks": {
+      "output_files_parse": true,
+      "manifest_present": true,
+      "schema_present": true,
+      "readme_present": true,
+      "input_inventory_present": true,
+      "source_packages_discovered": true,
+      "evidence_registry_present": true,
+      "evidence_lineage_present": true,
+      "canonical_budget_code_coverage": true,
+      "no_invented_budget_code_keys": true,
+      "cost_entries_actuals_primary_truth": true,
+      "no_history_as_actual": true,
+      "no_pay_apps_as_actual": true,
+      "no_prior_forecast_hard_cap": true,
+      "actuals_floor_preserved": true,
+      "no_upper_cap_audit_passed": true,
+      "monthly_reconciliation_passed": true,
+      "probability_determinism_passed": true,
+      "history_outputs_consumed_or_explicitly_downgraded": true,
+      "frequency_outputs_consumed_or_explicitly_missing": true,
+      "human_acceptance_fields_present": true,
+      "operator_control_evidence_present_when_active": true,
+      "operator_controls_floor_preserved": true,
+      "operator_controls_mapping_unambiguous": true,
+      "operator_staffing_plan_evidence_present_when_active": true,
+      "operator_staffing_plan_advisory_requires_acceptance": true,
+      "dormant_suppressed_integrated_final_equals_actual": true,
+      "dormant_suppressed_probability_marked": true,
+      "projected_cost_formula_reconciles": true,
+      "budgetdetails_projected_cost_basis_reconciles": true,
+      "monthly_reconciles_to_selected_ctc": true,
+      "zero_commitment_suppression_reconciles": true,
+      "actuals_floor_respected": true,
+      "operator_controls_preserved": true,
+      "dormant_closed_suppression_preserved": true,
+      "survey_code_1000_15_01_426_mat_projected_cost_basis": true,
+      "manual_monthly_1000_15_16_110_sub_preserved": true,
+      "staffing_basis_reconciles": true,
+      "staffing_monthly_total_reconciles_to_selected_ctc": true,
+      "staffing_actuals_floor_respected": true,
+      "staffing_lab_only_numeric_application": true,
+      "staffing_does_not_apply_to_lbn_or_mat": true,
+      "staffing_package_present_if_config_enabled": true,
+      "staffing_mapping_all_accepted_rows_resolved": true,
+      "model_controls_override_staffing": true,
+      "full_run_lineage_consistent": true,
+      "actuals_monthly_by_budget_code_jsonl_present": true,
+      "actuals_monthly_by_budget_code_csv_present": true,
+      "all_canonical_keys_in_actuals": true,
+      "no_non_canonical_keys_in_actuals": true,
+      "actuals_reconcile_to_actual_cost_to_date": true,
+      "actuals_project_total_reconciles": true,
+      "actuals_source_is_costentries_only": true,
+      "actuals_plus_forecast_cost_code_csv_present": true,
+      "actuals_plus_forecast_budget_code_csv_present": true,
+      "actuals_plus_forecast_audit_present": true,
+      "actuals_plus_forecast_first_column_is_cost_code": true,
+      "actuals_plus_forecast_months_sorted": true,
+      "actuals_plus_forecast_actual_side_reconciled": true,
+      "actuals_plus_forecast_forecast_side_reconciled": true,
+      "actuals_plus_forecast_validation_passed": true,
+      "meta_files_present": true,
+      "source_hashes_unchanged": true,
+      "no_sqlite_mutation": true,
+      "no_external_calls": true,
+      "safety_scan_passed": true,
+      "determinism_passed": true,
+      "llm_receipts_have_required_fields": true
+    }
+  },
+  "conclusion": "forecast_comprehensive_ready"
+}

@@ -1,0 +1,5962 @@
+[
+  {
+    "blank_count": 0,
+    "column": "currency_configuration_currency_iso_code",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 1059,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 1059,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "deleted_at",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 1059,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 1059,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "external_data",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 1059,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 1059,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "parent_record_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 1059,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 1059,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "parent_record_id_hash",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 1059,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 1059,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "source",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 1059,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 1059,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "event_origin",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 5,
+    "fingerprints_skipped": false,
+    "missing_count": 1054,
+    "missing_pct": 99.527856,
+    "nonblank_count": 5,
+    "nonblank_pct": 0.472144,
+    "notnull_declared": false,
+    "null_count": 1054,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "event_origin_display_name",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 132,
+    "fingerprints_skipped": false,
+    "missing_count": 915,
+    "missing_pct": 86.402266,
+    "nonblank_count": 144,
+    "nonblank_pct": 13.597734,
+    "notnull_declared": false,
+    "null_count": 915,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "event_origin_origin_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 132,
+    "fingerprints_skipped": false,
+    "missing_count": 915,
+    "missing_pct": 86.402266,
+    "nonblank_count": 144,
+    "nonblank_pct": 13.597734,
+    "notnull_declared": false,
+    "null_count": 915,
+    "numericish_sample_count_max_5000": 144,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "description",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 913,
+    "fingerprints_skipped": false,
+    "missing_count": 136,
+    "missing_pct": 12.842304,
+    "nonblank_count": 923,
+    "nonblank_pct": 87.157696,
+    "notnull_declared": false,
+    "null_count": 136,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "source_of_revenue_rom",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 3,
+    "fingerprints_skipped": false,
+    "missing_count": 9,
+    "missing_pct": 0.849858,
+    "nonblank_count": 1050,
+    "nonblank_pct": 99.150142,
+    "notnull_declared": false,
+    "null_count": 9,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "prime_contract_for_estimates_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 4,
+    "fingerprints_skipped": false,
+    "missing_count": 4,
+    "missing_pct": 0.377715,
+    "nonblank_count": 1055,
+    "nonblank_pct": 99.622285,
+    "notnull_declared": false,
+    "null_count": 4,
+    "numericish_sample_count_max_5000": 1055,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "prime_contract_for_estimates_number",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 4,
+    "fingerprints_skipped": false,
+    "missing_count": 4,
+    "missing_pct": 0.377715,
+    "nonblank_count": 1055,
+    "nonblank_pct": 99.622285,
+    "notnull_declared": false,
+    "null_count": 4,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "prime_contract_for_estimates_title",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 4,
+    "fingerprints_skipped": false,
+    "missing_count": 4,
+    "missing_pct": 0.377715,
+    "nonblank_count": 1055,
+    "nonblank_pct": 99.622285,
+    "notnull_declared": false,
+    "null_count": 4,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "change_reason_change_reason",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 11,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 1059,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "change_reason_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 11,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 1059,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 1059,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "change_type_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 5,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 1059,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 1059,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "change_type_name",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 5,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 1059,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "comments_enabled",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 1059,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "company_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 1059,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 1059,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "company_id_hash",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 1059,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "created_at",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1059,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 1059,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "created_by_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 27,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 1059,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 1059,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "created_by_login",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 27,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 1059,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "created_by_name",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 27,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 1059,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "created_utc",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1059,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 1059,
+    "nonblank_pct": 100.0,
+    "notnull_declared": true,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "deletable",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 2,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 1059,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "endpoint_family",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 1059,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "endpoint_key",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 1059,
+    "nonblank_pct": 100.0,
+    "notnull_declared": true,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "external_writeback_performed",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "INTEGER",
+    "distinct_nonblank_count": 1,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 1059,
+    "nonblank_pct": 100.0,
+    "notnull_declared": true,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 1059,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "has_edited_markups",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 2,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 1059,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "in_recycle_bin",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 1059,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "is_current",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "INTEGER",
+    "distinct_nonblank_count": 1,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 1059,
+    "nonblank_pct": 100.0,
+    "notnull_declared": true,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 1059,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "number",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 686,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 1059,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 988,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "payload_hash",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1059,
+    "fingerprints_skipped": true,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 1059,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "payload_seen_first_utc",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 4,
+    "fingerprints_skipped": true,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 1059,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "payload_seen_last_utc",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 4,
+    "fingerprints_skipped": true,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 1059,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "payload_sidecar_json",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 350,
+    "fingerprints_skipped": true,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 1059,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "project_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 4,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 1059,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 1059,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "project_id_hash",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 4,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 1059,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "project_key",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 4,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 1059,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "raw_payload_emitted_to_evidence",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "INTEGER",
+    "distinct_nonblank_count": 1,
+    "fingerprints_skipped": true,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 1059,
+    "nonblank_pct": 100.0,
+    "notnull_declared": true,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 1059,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "raw_payload_emitted_to_read_model",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "INTEGER",
+    "distinct_nonblank_count": 1,
+    "fingerprints_skipped": true,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 1059,
+    "nonblank_pct": 100.0,
+    "notnull_declared": true,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 1059,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "raw_payload_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1059,
+    "fingerprints_skipped": true,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 1059,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "record_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1059,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 1059,
+    "nonblank_pct": 100.0,
+    "notnull_declared": true,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 1059,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "record_id_hash",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1059,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 1059,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "record_key",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1059,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 1059,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 1,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "scope",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 3,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 1059,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "source_quality",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 1059,
+    "nonblank_pct": 100.0,
+    "notnull_declared": true,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "status_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 4,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 1059,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 1059,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "status_mapped_to_status",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 4,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 1059,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "status_name",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 4,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 1059,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "title",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1044,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 1059,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "updated_at",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 849,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 1059,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "updated_utc",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1059,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 1059,
+    "nonblank_pct": 100.0,
+    "notnull_declared": true,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "parent_item_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 2352,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 2352,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_attachments",
+    "total_rows": 2352
+  },
+  {
+    "blank_count": 0,
+    "column": "payload_sidecar_json",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": true,
+    "missing_count": 2352,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 2352,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_attachments",
+    "total_rows": 2352
+  },
+  {
+    "blank_count": 0,
+    "column": "array_path",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2352,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_attachments",
+    "total_rows": 2352
+  },
+  {
+    "blank_count": 0,
+    "column": "child_index",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "INTEGER",
+    "distinct_nonblank_count": 53,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2352,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 2352,
+    "pk": 0,
+    "table": "procore_ep_change_events_attachments",
+    "total_rows": 2352
+  },
+  {
+    "blank_count": 0,
+    "column": "company_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2352,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 2352,
+    "pk": 0,
+    "table": "procore_ep_change_events_attachments",
+    "total_rows": 2352
+  },
+  {
+    "blank_count": 0,
+    "column": "created_utc",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 915,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2352,
+    "nonblank_pct": 100.0,
+    "notnull_declared": true,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_attachments",
+    "total_rows": 2352
+  },
+  {
+    "blank_count": 0,
+    "column": "endpoint_family",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2352,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_attachments",
+    "total_rows": 2352
+  },
+  {
+    "blank_count": 0,
+    "column": "endpoint_key",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2352,
+    "nonblank_pct": 100.0,
+    "notnull_declared": true,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_attachments",
+    "total_rows": 2352
+  },
+  {
+    "blank_count": 0,
+    "column": "external_writeback_performed",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "INTEGER",
+    "distinct_nonblank_count": 1,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2352,
+    "nonblank_pct": 100.0,
+    "notnull_declared": true,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 2352,
+    "pk": 0,
+    "table": "procore_ep_change_events_attachments",
+    "total_rows": 2352
+  },
+  {
+    "blank_count": 0,
+    "column": "filename",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 2214,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2352,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_attachments",
+    "total_rows": 2352
+  },
+  {
+    "blank_count": 0,
+    "column": "is_current",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "INTEGER",
+    "distinct_nonblank_count": 1,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2352,
+    "nonblank_pct": 100.0,
+    "notnull_declared": true,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 2352,
+    "pk": 0,
+    "table": "procore_ep_change_events_attachments",
+    "total_rows": 2352
+  },
+  {
+    "blank_count": 0,
+    "column": "item_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 2334,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2352,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 2352,
+    "pk": 0,
+    "table": "procore_ep_change_events_attachments",
+    "total_rows": 2352
+  },
+  {
+    "blank_count": 0,
+    "column": "payload_hash",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 915,
+    "fingerprints_skipped": true,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2352,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_attachments",
+    "total_rows": 2352
+  },
+  {
+    "blank_count": 0,
+    "column": "primary_record_key",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 915,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2352,
+    "nonblank_pct": 100.0,
+    "notnull_declared": true,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_attachments",
+    "total_rows": 2352
+  },
+  {
+    "blank_count": 0,
+    "column": "project_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 4,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2352,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 2352,
+    "pk": 0,
+    "table": "procore_ep_change_events_attachments",
+    "total_rows": 2352
+  },
+  {
+    "blank_count": 0,
+    "column": "project_key",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 4,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2352,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_attachments",
+    "total_rows": 2352
+  },
+  {
+    "blank_count": 0,
+    "column": "raw_payload_emitted_to_evidence",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "INTEGER",
+    "distinct_nonblank_count": 1,
+    "fingerprints_skipped": true,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2352,
+    "nonblank_pct": 100.0,
+    "notnull_declared": true,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 2352,
+    "pk": 0,
+    "table": "procore_ep_change_events_attachments",
+    "total_rows": 2352
+  },
+  {
+    "blank_count": 0,
+    "column": "raw_payload_emitted_to_read_model",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "INTEGER",
+    "distinct_nonblank_count": 1,
+    "fingerprints_skipped": true,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2352,
+    "nonblank_pct": 100.0,
+    "notnull_declared": true,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 2352,
+    "pk": 0,
+    "table": "procore_ep_change_events_attachments",
+    "total_rows": 2352
+  },
+  {
+    "blank_count": 0,
+    "column": "raw_payload_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 915,
+    "fingerprints_skipped": true,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2352,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_attachments",
+    "total_rows": 2352
+  },
+  {
+    "blank_count": 0,
+    "column": "record_key",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 2352,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2352,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 1,
+    "table": "procore_ep_change_events_attachments",
+    "total_rows": 2352
+  },
+  {
+    "blank_count": 0,
+    "column": "source_quality",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2352,
+    "nonblank_pct": 100.0,
+    "notnull_declared": true,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_attachments",
+    "total_rows": 2352
+  },
+  {
+    "blank_count": 0,
+    "column": "updated_utc",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 915,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2352,
+    "nonblank_pct": 100.0,
+    "notnull_declared": true,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_attachments",
+    "total_rows": 2352
+  },
+  {
+    "blank_count": 0,
+    "column": "url",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 2334,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2352,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_attachments",
+    "total_rows": 2352
+  },
+  {
+    "blank_count": 0,
+    "column": "budget_impact_budget_change",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 2829,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 2829,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "budget_impact_budget_modification",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 2829,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 2829,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_commitment_currency_configuration_base_currency_iso_code",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 2829,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 2829,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_commitment_currency_configuration_currency_exchange_rate",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 2829,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 2829,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_commitment_currency_configuration_currency_iso_code",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 2829,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 2829,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_non_commitment_amount",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 2829,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 2829,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_request_for_quote_currency_configuration_base_currency_iso_code",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 2829,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 2829,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_request_for_quote_currency_configuration_currency_exchange_rate",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 2829,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 2829,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_request_for_quote_currency_configuration_currency_iso_code",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 2829,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 2829,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "currency_configuration_currency_iso_code",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 2829,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 2829,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "deleted_at",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 2829,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 2829,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "parent_item_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 2829,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 2829,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "revenue_impact_change_order_currency_configuration_base_currency_iso_code",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 2829,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 2829,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "revenue_impact_change_order_currency_configuration_currency_exchange_rate",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 2829,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 2829,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "revenue_impact_change_order_currency_configuration_currency_iso_code",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 2829,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 2829,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "budget_impact_budget_modification_amount",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 9,
+    "fingerprints_skipped": false,
+    "missing_count": 2820,
+    "missing_pct": 99.681866,
+    "nonblank_count": 9,
+    "nonblank_pct": 0.318134,
+    "notnull_declared": false,
+    "null_count": 2820,
+    "numericish_sample_count_max_5000": 9,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "budget_impact_budget_modification_budget_modification_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 9,
+    "fingerprints_skipped": false,
+    "missing_count": 2820,
+    "missing_pct": 99.681866,
+    "nonblank_count": 9,
+    "nonblank_pct": 0.318134,
+    "notnull_declared": false,
+    "null_count": 2820,
+    "numericish_sample_count_max_5000": 9,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "budget_impact_budget_modification_notes",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 9,
+    "fingerprints_skipped": false,
+    "missing_count": 2820,
+    "missing_pct": 99.681866,
+    "nonblank_count": 9,
+    "nonblank_pct": 0.318134,
+    "notnull_declared": false,
+    "null_count": 2820,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "budget_impact_budget_modification_transfer_from_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 3,
+    "fingerprints_skipped": false,
+    "missing_count": 2820,
+    "missing_pct": 99.681866,
+    "nonblank_count": 9,
+    "nonblank_pct": 0.318134,
+    "notnull_declared": false,
+    "null_count": 2820,
+    "numericish_sample_count_max_5000": 9,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "budget_impact_budget_modification_transfer_from_name",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 3,
+    "fingerprints_skipped": false,
+    "missing_count": 2820,
+    "missing_pct": 99.681866,
+    "nonblank_count": 9,
+    "nonblank_pct": 0.318134,
+    "notnull_declared": false,
+    "null_count": 2820,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "budget_impact_budget_modification_transfer_to_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 6,
+    "fingerprints_skipped": false,
+    "missing_count": 2820,
+    "missing_pct": 99.681866,
+    "nonblank_count": 9,
+    "nonblank_pct": 0.318134,
+    "notnull_declared": false,
+    "null_count": 2820,
+    "numericish_sample_count_max_5000": 9,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "budget_impact_budget_modification_transfer_to_name",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 6,
+    "fingerprints_skipped": false,
+    "missing_count": 2820,
+    "missing_pct": 99.681866,
+    "nonblank_count": 9,
+    "nonblank_pct": 0.318134,
+    "notnull_declared": false,
+    "null_count": 2820,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_request_for_quote_latest_quote_amount",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 100,
+    "fingerprints_skipped": false,
+    "missing_count": 2657,
+    "missing_pct": 93.920113,
+    "nonblank_count": 172,
+    "nonblank_pct": 6.079887,
+    "notnull_declared": false,
+    "null_count": 2657,
+    "numericish_sample_count_max_5000": 172,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_request_for_quote_latest_quote_amount_project_currency",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 100,
+    "fingerprints_skipped": false,
+    "missing_count": 2657,
+    "missing_pct": 93.920113,
+    "nonblank_count": 172,
+    "nonblank_pct": 6.079887,
+    "notnull_declared": false,
+    "null_count": 2657,
+    "numericish_sample_count_max_5000": 172,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_request_for_quote_contract_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 41,
+    "fingerprints_skipped": false,
+    "missing_count": 2539,
+    "missing_pct": 89.749028,
+    "nonblank_count": 290,
+    "nonblank_pct": 10.250972,
+    "notnull_declared": false,
+    "null_count": 2539,
+    "numericish_sample_count_max_5000": 290,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_request_for_quote_days_in_stage",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 77,
+    "fingerprints_skipped": false,
+    "missing_count": 2539,
+    "missing_pct": 89.749028,
+    "nonblank_count": 290,
+    "nonblank_pct": 10.250972,
+    "notnull_declared": false,
+    "null_count": 2539,
+    "numericish_sample_count_max_5000": 290,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_request_for_quote_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 290,
+    "fingerprints_skipped": false,
+    "missing_count": 2539,
+    "missing_pct": 89.749028,
+    "nonblank_count": 290,
+    "nonblank_pct": 10.250972,
+    "notnull_declared": false,
+    "null_count": 2539,
+    "numericish_sample_count_max_5000": 290,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_request_for_quote_in_status_since",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 265,
+    "fingerprints_skipped": false,
+    "missing_count": 2539,
+    "missing_pct": 89.749028,
+    "nonblank_count": 290,
+    "nonblank_pct": 10.250972,
+    "notnull_declared": false,
+    "null_count": 2539,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_request_for_quote_number",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 28,
+    "fingerprints_skipped": false,
+    "missing_count": 2539,
+    "missing_pct": 89.749028,
+    "nonblank_count": 290,
+    "nonblank_pct": 10.250972,
+    "notnull_declared": false,
+    "null_count": 2539,
+    "numericish_sample_count_max_5000": 290,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_request_for_quote_status",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 5,
+    "fingerprints_skipped": false,
+    "missing_count": 2539,
+    "missing_pct": 89.749028,
+    "nonblank_count": 290,
+    "nonblank_pct": 10.250972,
+    "notnull_declared": false,
+    "null_count": 2539,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_request_for_quote_title",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 93,
+    "fingerprints_skipped": false,
+    "missing_count": 2539,
+    "missing_pct": 89.749028,
+    "nonblank_count": 290,
+    "nonblank_pct": 10.250972,
+    "notnull_declared": false,
+    "null_count": 2539,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_estimate_unit_of_measure",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 8,
+    "fingerprints_skipped": false,
+    "missing_count": 2083,
+    "missing_pct": 73.630258,
+    "nonblank_count": 746,
+    "nonblank_pct": 26.369742,
+    "notnull_declared": false,
+    "null_count": 2083,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "latest_revenue_values_uom_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 8,
+    "fingerprints_skipped": false,
+    "missing_count": 2008,
+    "missing_pct": 70.979145,
+    "nonblank_count": 821,
+    "nonblank_pct": 29.020855,
+    "notnull_declared": false,
+    "null_count": 2008,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "latest_revenue_values_uom_name",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 8,
+    "fingerprints_skipped": false,
+    "missing_count": 2008,
+    "missing_pct": 70.979145,
+    "nonblank_count": 821,
+    "nonblank_pct": 29.020855,
+    "notnull_declared": false,
+    "null_count": 2008,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "latest_cost_values_uom_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 8,
+    "fingerprints_skipped": false,
+    "missing_count": 2007,
+    "missing_pct": 70.943796,
+    "nonblank_count": 822,
+    "nonblank_pct": 29.056204,
+    "notnull_declared": false,
+    "null_count": 2007,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "latest_cost_values_uom_name",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 8,
+    "fingerprints_skipped": false,
+    "missing_count": 2007,
+    "missing_pct": 70.943796,
+    "nonblank_count": 822,
+    "nonblank_pct": 29.056204,
+    "notnull_declared": false,
+    "null_count": 2007,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_commitment_line_item_holder_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 937,
+    "fingerprints_skipped": false,
+    "missing_count": 1372,
+    "missing_pct": 48.497702,
+    "nonblank_count": 1457,
+    "nonblank_pct": 51.502298,
+    "notnull_declared": false,
+    "null_count": 1372,
+    "numericish_sample_count_max_5000": 1457,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_commitment_days_in_stage",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 285,
+    "fingerprints_skipped": false,
+    "missing_count": 1370,
+    "missing_pct": 48.427006,
+    "nonblank_count": 1459,
+    "nonblank_pct": 51.572994,
+    "notnull_declared": false,
+    "null_count": 1370,
+    "numericish_sample_count_max_5000": 1459,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_commitment_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 939,
+    "fingerprints_skipped": false,
+    "missing_count": 1370,
+    "missing_pct": 48.427006,
+    "nonblank_count": 1459,
+    "nonblank_pct": 51.572994,
+    "notnull_declared": false,
+    "null_count": 1370,
+    "numericish_sample_count_max_5000": 1459,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_commitment_in_status_since",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 939,
+    "fingerprints_skipped": false,
+    "missing_count": 1370,
+    "missing_pct": 48.427006,
+    "nonblank_count": 1459,
+    "nonblank_pct": 51.572994,
+    "notnull_declared": false,
+    "null_count": 1370,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_commitment_line_item_amount",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1220,
+    "fingerprints_skipped": false,
+    "missing_count": 1370,
+    "missing_pct": 48.427006,
+    "nonblank_count": 1459,
+    "nonblank_pct": 51.572994,
+    "notnull_declared": false,
+    "null_count": 1370,
+    "numericish_sample_count_max_5000": 1459,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_commitment_line_item_amount_project_currency",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1220,
+    "fingerprints_skipped": false,
+    "missing_count": 1370,
+    "missing_pct": 48.427006,
+    "nonblank_count": 1459,
+    "nonblank_pct": 51.572994,
+    "notnull_declared": false,
+    "null_count": 1370,
+    "numericish_sample_count_max_5000": 1459,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_commitment_line_item_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1459,
+    "fingerprints_skipped": false,
+    "missing_count": 1370,
+    "missing_pct": 48.427006,
+    "nonblank_count": 1459,
+    "nonblank_pct": 51.572994,
+    "notnull_declared": false,
+    "null_count": 1370,
+    "numericish_sample_count_max_5000": 1459,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_commitment_number",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 148,
+    "fingerprints_skipped": false,
+    "missing_count": 1370,
+    "missing_pct": 48.427006,
+    "nonblank_count": 1459,
+    "nonblank_pct": 51.572994,
+    "notnull_declared": false,
+    "null_count": 1370,
+    "numericish_sample_count_max_5000": 1431,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_commitment_status",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 5,
+    "fingerprints_skipped": false,
+    "missing_count": 1370,
+    "missing_pct": 48.427006,
+    "nonblank_count": 1459,
+    "nonblank_pct": 51.572994,
+    "notnull_declared": false,
+    "null_count": 1370,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_commitment_title",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 777,
+    "fingerprints_skipped": false,
+    "missing_count": 1370,
+    "missing_pct": 48.427006,
+    "nonblank_count": 1459,
+    "nonblank_pct": 51.572994,
+    "notnull_declared": false,
+    "null_count": 1370,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "revenue_impact_change_order_package_contract_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 3,
+    "fingerprints_skipped": false,
+    "missing_count": 1359,
+    "missing_pct": 48.038176,
+    "nonblank_count": 1470,
+    "nonblank_pct": 51.961824,
+    "notnull_declared": false,
+    "null_count": 1359,
+    "numericish_sample_count_max_5000": 1470,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "revenue_impact_change_order_package_days_in_stage",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 256,
+    "fingerprints_skipped": false,
+    "missing_count": 1359,
+    "missing_pct": 48.038176,
+    "nonblank_count": 1470,
+    "nonblank_pct": 51.961824,
+    "notnull_declared": false,
+    "null_count": 1359,
+    "numericish_sample_count_max_5000": 1470,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "revenue_impact_change_order_package_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 146,
+    "fingerprints_skipped": false,
+    "missing_count": 1359,
+    "missing_pct": 48.038176,
+    "nonblank_count": 1470,
+    "nonblank_pct": 51.961824,
+    "notnull_declared": false,
+    "null_count": 1359,
+    "numericish_sample_count_max_5000": 1470,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "revenue_impact_change_order_package_in_status_since",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 146,
+    "fingerprints_skipped": false,
+    "missing_count": 1359,
+    "missing_pct": 48.038176,
+    "nonblank_count": 1470,
+    "nonblank_pct": 51.961824,
+    "notnull_declared": false,
+    "null_count": 1359,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "revenue_impact_change_order_package_line_item_amount",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 967,
+    "fingerprints_skipped": false,
+    "missing_count": 1359,
+    "missing_pct": 48.038176,
+    "nonblank_count": 1470,
+    "nonblank_pct": 51.961824,
+    "notnull_declared": false,
+    "null_count": 1359,
+    "numericish_sample_count_max_5000": 1470,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "revenue_impact_change_order_package_line_item_amount_project_currency",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 967,
+    "fingerprints_skipped": false,
+    "missing_count": 1359,
+    "missing_pct": 48.038176,
+    "nonblank_count": 1470,
+    "nonblank_pct": 51.961824,
+    "notnull_declared": false,
+    "null_count": 1359,
+    "numericish_sample_count_max_5000": 1470,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "revenue_impact_change_order_package_line_item_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1470,
+    "fingerprints_skipped": false,
+    "missing_count": 1359,
+    "missing_pct": 48.038176,
+    "nonblank_count": 1470,
+    "nonblank_pct": 51.961824,
+    "notnull_declared": false,
+    "null_count": 1359,
+    "numericish_sample_count_max_5000": 1470,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "revenue_impact_change_order_package_number",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 57,
+    "fingerprints_skipped": false,
+    "missing_count": 1359,
+    "missing_pct": 48.038176,
+    "nonblank_count": 1470,
+    "nonblank_pct": 51.961824,
+    "notnull_declared": false,
+    "null_count": 1359,
+    "numericish_sample_count_max_5000": 1470,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "revenue_impact_change_order_package_status",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 4,
+    "fingerprints_skipped": false,
+    "missing_count": 1359,
+    "missing_pct": 48.038176,
+    "nonblank_count": 1470,
+    "nonblank_pct": 51.961824,
+    "notnull_declared": false,
+    "null_count": 1359,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "revenue_impact_change_order_package_title",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 146,
+    "fingerprints_skipped": false,
+    "missing_count": 1359,
+    "missing_pct": 48.038176,
+    "nonblank_count": 1470,
+    "nonblank_pct": 51.961824,
+    "notnull_declared": false,
+    "null_count": 1359,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_contract_confirmed",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 103,
+    "fingerprints_skipped": false,
+    "missing_count": 1184,
+    "missing_pct": 41.852245,
+    "nonblank_count": 1645,
+    "nonblank_pct": 58.147755,
+    "notnull_declared": false,
+    "null_count": 1184,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_contract_confirmed_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 111,
+    "fingerprints_skipped": false,
+    "missing_count": 1184,
+    "missing_pct": 41.852245,
+    "nonblank_count": 1645,
+    "nonblank_pct": 58.147755,
+    "notnull_declared": false,
+    "null_count": 1184,
+    "numericish_sample_count_max_5000": 1645,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_contract_confirmed_number",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 111,
+    "fingerprints_skipped": false,
+    "missing_count": 1184,
+    "missing_pct": 41.852245,
+    "nonblank_count": 1645,
+    "nonblank_pct": 58.147755,
+    "notnull_declared": false,
+    "null_count": 1184,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_contract_confirmed_status",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1,
+    "fingerprints_skipped": false,
+    "missing_count": 1184,
+    "missing_pct": 41.852245,
+    "nonblank_count": 1645,
+    "nonblank_pct": 58.147755,
+    "notnull_declared": false,
+    "null_count": 1184,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_contract_confirmed_title",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 103,
+    "fingerprints_skipped": false,
+    "missing_count": 1184,
+    "missing_pct": 41.852245,
+    "nonblank_count": 1645,
+    "nonblank_pct": 58.147755,
+    "notnull_declared": false,
+    "null_count": 1184,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_vendor_confirmed",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 100,
+    "fingerprints_skipped": false,
+    "missing_count": 1184,
+    "missing_pct": 41.852245,
+    "nonblank_count": 1645,
+    "nonblank_pct": 58.147755,
+    "notnull_declared": false,
+    "null_count": 1184,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_vendor_confirmed_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 100,
+    "fingerprints_skipped": false,
+    "missing_count": 1184,
+    "missing_pct": 41.852245,
+    "nonblank_count": 1645,
+    "nonblank_pct": 58.147755,
+    "notnull_declared": false,
+    "null_count": 1184,
+    "numericish_sample_count_max_5000": 1645,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_vendor_confirmed_name",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 100,
+    "fingerprints_skipped": false,
+    "missing_count": 1184,
+    "missing_pct": 41.852245,
+    "nonblank_count": 1645,
+    "nonblank_pct": 58.147755,
+    "notnull_declared": false,
+    "null_count": 1184,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "revenue_impact_change_order_contract_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 5,
+    "fingerprints_skipped": false,
+    "missing_count": 1066,
+    "missing_pct": 37.681159,
+    "nonblank_count": 1763,
+    "nonblank_pct": 62.318841,
+    "notnull_declared": false,
+    "null_count": 1066,
+    "numericish_sample_count_max_5000": 1763,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "revenue_impact_change_order_contract_number",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 5,
+    "fingerprints_skipped": false,
+    "missing_count": 1066,
+    "missing_pct": 37.681159,
+    "nonblank_count": 1763,
+    "nonblank_pct": 62.318841,
+    "notnull_declared": false,
+    "null_count": 1066,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "revenue_impact_change_order_contract_title",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 5,
+    "fingerprints_skipped": false,
+    "missing_count": 1066,
+    "missing_pct": 37.681159,
+    "nonblank_count": 1763,
+    "nonblank_pct": 62.318841,
+    "notnull_declared": false,
+    "null_count": 1066,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "revenue_impact_change_order_days_in_stage",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 290,
+    "fingerprints_skipped": false,
+    "missing_count": 1066,
+    "missing_pct": 37.681159,
+    "nonblank_count": 1763,
+    "nonblank_pct": 62.318841,
+    "notnull_declared": false,
+    "null_count": 1066,
+    "numericish_sample_count_max_5000": 1763,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "revenue_impact_change_order_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 628,
+    "fingerprints_skipped": false,
+    "missing_count": 1066,
+    "missing_pct": 37.681159,
+    "nonblank_count": 1763,
+    "nonblank_pct": 62.318841,
+    "notnull_declared": false,
+    "null_count": 1066,
+    "numericish_sample_count_max_5000": 1763,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "revenue_impact_change_order_in_status_since",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 256,
+    "fingerprints_skipped": false,
+    "missing_count": 1066,
+    "missing_pct": 37.681159,
+    "nonblank_count": 1763,
+    "nonblank_pct": 62.318841,
+    "notnull_declared": false,
+    "null_count": 1066,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "revenue_impact_change_order_line_item_amount",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1147,
+    "fingerprints_skipped": false,
+    "missing_count": 1066,
+    "missing_pct": 37.681159,
+    "nonblank_count": 1763,
+    "nonblank_pct": 62.318841,
+    "notnull_declared": false,
+    "null_count": 1066,
+    "numericish_sample_count_max_5000": 1763,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "revenue_impact_change_order_line_item_amount_project_currency",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1147,
+    "fingerprints_skipped": false,
+    "missing_count": 1066,
+    "missing_pct": 37.681159,
+    "nonblank_count": 1763,
+    "nonblank_pct": 62.318841,
+    "notnull_declared": false,
+    "null_count": 1066,
+    "numericish_sample_count_max_5000": 1763,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "revenue_impact_change_order_line_item_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1763,
+    "fingerprints_skipped": false,
+    "missing_count": 1066,
+    "missing_pct": 37.681159,
+    "nonblank_count": 1763,
+    "nonblank_pct": 62.318841,
+    "notnull_declared": false,
+    "null_count": 1066,
+    "numericish_sample_count_max_5000": 1763,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "revenue_impact_change_order_number",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 515,
+    "fingerprints_skipped": false,
+    "missing_count": 1066,
+    "missing_pct": 37.681159,
+    "nonblank_count": 1763,
+    "nonblank_pct": 62.318841,
+    "notnull_declared": false,
+    "null_count": 1066,
+    "numericish_sample_count_max_5000": 1763,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "revenue_impact_change_order_status",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 5,
+    "fingerprints_skipped": false,
+    "missing_count": 1066,
+    "missing_pct": 37.681159,
+    "nonblank_count": 1763,
+    "nonblank_pct": 62.318841,
+    "notnull_declared": false,
+    "null_count": 1066,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "revenue_impact_change_order_title",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 623,
+    "fingerprints_skipped": false,
+    "missing_count": 1066,
+    "missing_pct": 37.681159,
+    "nonblank_count": 1763,
+    "nonblank_pct": 62.318841,
+    "notnull_declared": false,
+    "null_count": 1066,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_estimate_unit_cost",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1288,
+    "fingerprints_skipped": false,
+    "missing_count": 713,
+    "missing_pct": 25.203252,
+    "nonblank_count": 2116,
+    "nonblank_pct": 74.796748,
+    "notnull_declared": false,
+    "null_count": 713,
+    "numericish_sample_count_max_5000": 2116,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_estimate_quantity",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 23,
+    "fingerprints_skipped": false,
+    "missing_count": 705,
+    "missing_pct": 24.920467,
+    "nonblank_count": 2124,
+    "nonblank_pct": 75.079533,
+    "notnull_declared": false,
+    "null_count": 705,
+    "numericish_sample_count_max_5000": 2124,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_contract_proposed_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 124,
+    "fingerprints_skipped": false,
+    "missing_count": 579,
+    "missing_pct": 20.466596,
+    "nonblank_count": 2250,
+    "nonblank_pct": 79.533404,
+    "notnull_declared": false,
+    "null_count": 579,
+    "numericish_sample_count_max_5000": 2250,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_contract_proposed_number",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 123,
+    "fingerprints_skipped": false,
+    "missing_count": 579,
+    "missing_pct": 20.466596,
+    "nonblank_count": 2250,
+    "nonblank_pct": 79.533404,
+    "notnull_declared": false,
+    "null_count": 579,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_contract_proposed_status",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 2,
+    "fingerprints_skipped": false,
+    "missing_count": 579,
+    "missing_pct": 20.466596,
+    "nonblank_count": 2250,
+    "nonblank_pct": 79.533404,
+    "notnull_declared": false,
+    "null_count": 579,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_contract_proposed_title",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 115,
+    "fingerprints_skipped": false,
+    "missing_count": 579,
+    "missing_pct": 20.466596,
+    "nonblank_count": 2250,
+    "nonblank_pct": 79.533404,
+    "notnull_declared": false,
+    "null_count": 579,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_vendor_proposed_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 120,
+    "fingerprints_skipped": false,
+    "missing_count": 457,
+    "missing_pct": 16.154118,
+    "nonblank_count": 2372,
+    "nonblank_pct": 83.845882,
+    "notnull_declared": false,
+    "null_count": 457,
+    "numericish_sample_count_max_5000": 2372,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_vendor_proposed_name",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 120,
+    "fingerprints_skipped": false,
+    "missing_count": 457,
+    "missing_pct": 16.154118,
+    "nonblank_count": 2372,
+    "nonblank_pct": 83.845882,
+    "notnull_declared": false,
+    "null_count": 457,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "latest_cost_values_unit_cost",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1232,
+    "fingerprints_skipped": false,
+    "missing_count": 330,
+    "missing_pct": 11.664899,
+    "nonblank_count": 2499,
+    "nonblank_pct": 88.335101,
+    "notnull_declared": false,
+    "null_count": 330,
+    "numericish_sample_count_max_5000": 2499,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "latest_cost_values_unit_cost_project_currency",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1232,
+    "fingerprints_skipped": false,
+    "missing_count": 330,
+    "missing_pct": 11.664899,
+    "nonblank_count": 2499,
+    "nonblank_pct": 88.335101,
+    "notnull_declared": false,
+    "null_count": 330,
+    "numericish_sample_count_max_5000": 2499,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "latest_cost_values_quantity",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 23,
+    "fingerprints_skipped": false,
+    "missing_count": 325,
+    "missing_pct": 11.488158,
+    "nonblank_count": 2504,
+    "nonblank_pct": 88.511842,
+    "notnull_declared": false,
+    "null_count": 325,
+    "numericish_sample_count_max_5000": 2504,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "revenue_impact_estimate_unit_cost",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1054,
+    "fingerprints_skipped": false,
+    "missing_count": 317,
+    "missing_pct": 11.205373,
+    "nonblank_count": 2512,
+    "nonblank_pct": 88.794627,
+    "notnull_declared": false,
+    "null_count": 317,
+    "numericish_sample_count_max_5000": 2512,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "revenue_impact_estimate_unit_cost_project_currency",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1054,
+    "fingerprints_skipped": false,
+    "missing_count": 317,
+    "missing_pct": 11.205373,
+    "nonblank_count": 2512,
+    "nonblank_pct": 88.794627,
+    "notnull_declared": false,
+    "null_count": 317,
+    "numericish_sample_count_max_5000": 2512,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "revenue_impact_estimate_quantity",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 24,
+    "fingerprints_skipped": false,
+    "missing_count": 312,
+    "missing_pct": 11.028632,
+    "nonblank_count": 2517,
+    "nonblank_pct": 88.971368,
+    "notnull_declared": false,
+    "null_count": 312,
+    "numericish_sample_count_max_5000": 2517,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "description",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1914,
+    "fingerprints_skipped": false,
+    "missing_count": 249,
+    "missing_pct": 8.801697,
+    "nonblank_count": 2580,
+    "nonblank_pct": 91.198303,
+    "notnull_declared": false,
+    "null_count": 249,
+    "numericish_sample_count_max_5000": 1,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "latest_revenue_values_unit_cost",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1119,
+    "fingerprints_skipped": false,
+    "missing_count": 136,
+    "missing_pct": 4.807352,
+    "nonblank_count": 2693,
+    "nonblank_pct": 95.192648,
+    "notnull_declared": false,
+    "null_count": 136,
+    "numericish_sample_count_max_5000": 2693,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "latest_revenue_values_unit_cost_project_currency",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1119,
+    "fingerprints_skipped": false,
+    "missing_count": 136,
+    "missing_pct": 4.807352,
+    "nonblank_count": 2693,
+    "nonblank_pct": 95.192648,
+    "notnull_declared": false,
+    "null_count": 136,
+    "numericish_sample_count_max_5000": 2693,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "latest_revenue_values_quantity",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 20,
+    "fingerprints_skipped": false,
+    "missing_count": 133,
+    "missing_pct": 4.701308,
+    "nonblank_count": 2696,
+    "nonblank_pct": 95.298692,
+    "notnull_declared": false,
+    "null_count": 133,
+    "numericish_sample_count_max_5000": 2696,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "budget_code_description",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 196,
+    "fingerprints_skipped": false,
+    "missing_count": 62,
+    "missing_pct": 2.191587,
+    "nonblank_count": 2767,
+    "nonblank_pct": 97.808413,
+    "notnull_declared": false,
+    "null_count": 62,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "budget_code_flat_code",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 180,
+    "fingerprints_skipped": false,
+    "missing_count": 62,
+    "missing_pct": 2.191587,
+    "nonblank_count": 2767,
+    "nonblank_pct": 97.808413,
+    "notnull_declared": false,
+    "null_count": 62,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "array_path",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2829,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "budget_code_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 199,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2829,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 2829,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "budget_impact_source_of_latest_budget_impact",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2829,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "budget_impact_source_of_stage",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2829,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "child_index",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "INTEGER",
+    "distinct_nonblank_count": 50,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2829,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 2829,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "company_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2829,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 2829,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_estimate_amount",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1797,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2829,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 2829,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_source_of_latest_cost",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 3,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2829,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_source_of_stage",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 3,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2829,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "created_at",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 2019,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2829,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "created_utc",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1053,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2829,
+    "nonblank_pct": 100.0,
+    "notnull_declared": true,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "deletable",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 2,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2829,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "editable",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 2,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2829,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "endpoint_family",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2829,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "endpoint_key",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2829,
+    "nonblank_pct": 100.0,
+    "notnull_declared": true,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "event_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1053,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2829,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 2829,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "event_number",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 682,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2829,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 2648,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "event_title",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1040,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2829,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "external_writeback_performed",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "INTEGER",
+    "distinct_nonblank_count": 1,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2829,
+    "nonblank_pct": 100.0,
+    "notnull_declared": true,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 2829,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "is_current",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "INTEGER",
+    "distinct_nonblank_count": 1,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2829,
+    "nonblank_pct": 100.0,
+    "notnull_declared": true,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 2829,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "item_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 2829,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2829,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 2829,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "item_type",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2829,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "latest_cost_values_amount",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1808,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2829,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 2829,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "latest_cost_values_amount_project_currency",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1808,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2829,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 2829,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "latest_revenue_values_amount",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1596,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2829,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 2829,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "latest_revenue_values_amount_project_currency",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1596,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2829,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 2829,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "line_aging",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 423,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2829,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 2829,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "payload_hash",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1053,
+    "fingerprints_skipped": true,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2829,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "payload_sidecar_json",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 2742,
+    "fingerprints_skipped": true,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2829,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "primary_record_key",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1053,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2829,
+    "nonblank_pct": 100.0,
+    "notnull_declared": true,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "project_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 4,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2829,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 2829,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "project_key",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 4,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2829,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "raw_payload_emitted_to_evidence",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "INTEGER",
+    "distinct_nonblank_count": 1,
+    "fingerprints_skipped": true,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2829,
+    "nonblank_pct": 100.0,
+    "notnull_declared": true,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 2829,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "raw_payload_emitted_to_read_model",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "INTEGER",
+    "distinct_nonblank_count": 1,
+    "fingerprints_skipped": true,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2829,
+    "nonblank_pct": 100.0,
+    "notnull_declared": true,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 2829,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "raw_payload_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1053,
+    "fingerprints_skipped": true,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2829,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "record_key",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 2829,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2829,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 1,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "revenue_impact_estimate_amount",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1582,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2829,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 2829,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "revenue_impact_estimate_amount_project_currency",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1582,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2829,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 2829,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "revenue_impact_source_of_latest_price",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 2,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2829,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "revenue_impact_source_of_stage",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 3,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2829,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "source_quality",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2829,
+    "nonblank_pct": 100.0,
+    "notnull_declared": true,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "updated_at",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1999,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2829,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "updated_utc",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1053,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2829,
+    "nonblank_pct": 100.0,
+    "notnull_declared": true,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "array_path",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 8487,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items_budget_code_seg_2dff22",
+    "total_rows": 8487
+  },
+  {
+    "blank_count": 0,
+    "column": "child_index",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "INTEGER",
+    "distinct_nonblank_count": 3,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 8487,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 5000,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items_budget_code_seg_2dff22",
+    "total_rows": 8487
+  },
+  {
+    "blank_count": 0,
+    "column": "code",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 160,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 8487,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 1615,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items_budget_code_seg_2dff22",
+    "total_rows": 8487
+  },
+  {
+    "blank_count": 0,
+    "column": "company_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 8487,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 5000,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items_budget_code_seg_2dff22",
+    "total_rows": 8487
+  },
+  {
+    "blank_count": 0,
+    "column": "created_utc",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1053,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 8487,
+    "nonblank_pct": 100.0,
+    "notnull_declared": true,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items_budget_code_seg_2dff22",
+    "total_rows": 8487
+  },
+  {
+    "blank_count": 0,
+    "column": "endpoint_family",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 8487,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items_budget_code_seg_2dff22",
+    "total_rows": 8487
+  },
+  {
+    "blank_count": 0,
+    "column": "endpoint_key",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 8487,
+    "nonblank_pct": 100.0,
+    "notnull_declared": true,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items_budget_code_seg_2dff22",
+    "total_rows": 8487
+  },
+  {
+    "blank_count": 0,
+    "column": "external_writeback_performed",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "INTEGER",
+    "distinct_nonblank_count": 1,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 8487,
+    "nonblank_pct": 100.0,
+    "notnull_declared": true,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 5000,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items_budget_code_seg_2dff22",
+    "total_rows": 8487
+  },
+  {
+    "blank_count": 0,
+    "column": "is_current",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "INTEGER",
+    "distinct_nonblank_count": 1,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 8487,
+    "nonblank_pct": 100.0,
+    "notnull_declared": true,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 5000,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items_budget_code_seg_2dff22",
+    "total_rows": 8487
+  },
+  {
+    "blank_count": 0,
+    "column": "item_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 201,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 8487,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 5000,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items_budget_code_seg_2dff22",
+    "total_rows": 8487
+  },
+  {
+    "blank_count": 0,
+    "column": "name",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 159,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 8487,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items_budget_code_seg_2dff22",
+    "total_rows": 8487
+  },
+  {
+    "blank_count": 0,
+    "column": "parent_item_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 2829,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 8487,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 5000,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items_budget_code_seg_2dff22",
+    "total_rows": 8487
+  },
+  {
+    "blank_count": 0,
+    "column": "payload_hash",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1053,
+    "fingerprints_skipped": true,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 8487,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items_budget_code_seg_2dff22",
+    "total_rows": 8487
+  },
+  {
+    "blank_count": 0,
+    "column": "payload_sidecar_json",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 203,
+    "fingerprints_skipped": true,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 8487,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items_budget_code_seg_2dff22",
+    "total_rows": 8487
+  },
+  {
+    "blank_count": 0,
+    "column": "primary_record_key",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1053,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 8487,
+    "nonblank_pct": 100.0,
+    "notnull_declared": true,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items_budget_code_seg_2dff22",
+    "total_rows": 8487
+  },
+  {
+    "blank_count": 0,
+    "column": "project_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 4,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 8487,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 5000,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items_budget_code_seg_2dff22",
+    "total_rows": 8487
+  },
+  {
+    "blank_count": 0,
+    "column": "project_key",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 4,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 8487,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items_budget_code_seg_2dff22",
+    "total_rows": 8487
+  },
+  {
+    "blank_count": 0,
+    "column": "raw_payload_emitted_to_evidence",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "INTEGER",
+    "distinct_nonblank_count": 1,
+    "fingerprints_skipped": true,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 8487,
+    "nonblank_pct": 100.0,
+    "notnull_declared": true,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 5000,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items_budget_code_seg_2dff22",
+    "total_rows": 8487
+  },
+  {
+    "blank_count": 0,
+    "column": "raw_payload_emitted_to_read_model",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "INTEGER",
+    "distinct_nonblank_count": 1,
+    "fingerprints_skipped": true,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 8487,
+    "nonblank_pct": 100.0,
+    "notnull_declared": true,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 5000,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items_budget_code_seg_2dff22",
+    "total_rows": 8487
+  },
+  {
+    "blank_count": 0,
+    "column": "raw_payload_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1053,
+    "fingerprints_skipped": true,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 8487,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items_budget_code_seg_2dff22",
+    "total_rows": 8487
+  },
+  {
+    "blank_count": 0,
+    "column": "record_key",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 8487,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 8487,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 1,
+    "table": "procore_ep_change_events_change_items_budget_code_seg_2dff22",
+    "total_rows": 8487
+  },
+  {
+    "blank_count": 0,
+    "column": "segment_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 3,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 8487,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 5000,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items_budget_code_seg_2dff22",
+    "total_rows": 8487
+  },
+  {
+    "blank_count": 0,
+    "column": "segment_name",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 3,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 8487,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items_budget_code_seg_2dff22",
+    "total_rows": 8487
+  },
+  {
+    "blank_count": 0,
+    "column": "source_quality",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 8487,
+    "nonblank_pct": 100.0,
+    "notnull_declared": true,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items_budget_code_seg_2dff22",
+    "total_rows": 8487
+  },
+  {
+    "blank_count": 0,
+    "column": "updated_utc",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1053,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 8487,
+    "nonblank_pct": 100.0,
+    "notnull_declared": true,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items_budget_code_seg_2dff22",
+    "total_rows": 8487
+  },
+  {
+    "blank_count": 0,
+    "column": "parent_item_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 2154,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 2154,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_markup_items",
+    "total_rows": 2154
+  },
+  {
+    "blank_count": 0,
+    "column": "wbs_code_description",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 6,
+    "fingerprints_skipped": false,
+    "missing_count": 70,
+    "missing_pct": 3.249768,
+    "nonblank_count": 2084,
+    "nonblank_pct": 96.750232,
+    "notnull_declared": false,
+    "null_count": 70,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_markup_items",
+    "total_rows": 2154
+  },
+  {
+    "blank_count": 0,
+    "column": "wbs_code_flat_code",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 6,
+    "fingerprints_skipped": false,
+    "missing_count": 70,
+    "missing_pct": 3.249768,
+    "nonblank_count": 2084,
+    "nonblank_pct": 96.750232,
+    "notnull_declared": false,
+    "null_count": 70,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_markup_items",
+    "total_rows": 2154
+  },
+  {
+    "blank_count": 0,
+    "column": "array_path",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2154,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_markup_items",
+    "total_rows": 2154
+  },
+  {
+    "blank_count": 0,
+    "column": "child_index",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "INTEGER",
+    "distinct_nonblank_count": 3,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2154,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 2154,
+    "pk": 0,
+    "table": "procore_ep_change_events_markup_items",
+    "total_rows": 2154
+  },
+  {
+    "blank_count": 0,
+    "column": "company_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2154,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 2154,
+    "pk": 0,
+    "table": "procore_ep_change_events_markup_items",
+    "total_rows": 2154
+  },
+  {
+    "blank_count": 0,
+    "column": "created_utc",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 771,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2154,
+    "nonblank_pct": 100.0,
+    "notnull_declared": true,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_markup_items",
+    "total_rows": 2154
+  },
+  {
+    "blank_count": 0,
+    "column": "endpoint_family",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2154,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_markup_items",
+    "total_rows": 2154
+  },
+  {
+    "blank_count": 0,
+    "column": "endpoint_key",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2154,
+    "nonblank_pct": 100.0,
+    "notnull_declared": true,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_markup_items",
+    "total_rows": 2154
+  },
+  {
+    "blank_count": 0,
+    "column": "event_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 771,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2154,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 2154,
+    "pk": 0,
+    "table": "procore_ep_change_events_markup_items",
+    "total_rows": 2154
+  },
+  {
+    "blank_count": 0,
+    "column": "external_writeback_performed",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "INTEGER",
+    "distinct_nonblank_count": 1,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2154,
+    "nonblank_pct": 100.0,
+    "notnull_declared": true,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 2154,
+    "pk": 0,
+    "table": "procore_ep_change_events_markup_items",
+    "total_rows": 2154
+  },
+  {
+    "blank_count": 0,
+    "column": "is_current",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "INTEGER",
+    "distinct_nonblank_count": 1,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2154,
+    "nonblank_pct": 100.0,
+    "notnull_declared": true,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 2154,
+    "pk": 0,
+    "table": "procore_ep_change_events_markup_items",
+    "total_rows": 2154
+  },
+  {
+    "blank_count": 0,
+    "column": "item_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 2154,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2154,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_markup_items",
+    "total_rows": 2154
+  },
+  {
+    "blank_count": 0,
+    "column": "item_type",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2154,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_markup_items",
+    "total_rows": 2154
+  },
+  {
+    "blank_count": 0,
+    "column": "payload_hash",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 771,
+    "fingerprints_skipped": true,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2154,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_markup_items",
+    "total_rows": 2154
+  },
+  {
+    "blank_count": 0,
+    "column": "payload_sidecar_json",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1329,
+    "fingerprints_skipped": true,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2154,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_markup_items",
+    "total_rows": 2154
+  },
+  {
+    "blank_count": 0,
+    "column": "primary_record_key",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 771,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2154,
+    "nonblank_pct": 100.0,
+    "notnull_declared": true,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_markup_items",
+    "total_rows": 2154
+  },
+  {
+    "blank_count": 0,
+    "column": "project_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 3,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2154,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 2154,
+    "pk": 0,
+    "table": "procore_ep_change_events_markup_items",
+    "total_rows": 2154
+  },
+  {
+    "blank_count": 0,
+    "column": "project_key",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 3,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2154,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_markup_items",
+    "total_rows": 2154
+  },
+  {
+    "blank_count": 0,
+    "column": "raw_payload_emitted_to_evidence",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "INTEGER",
+    "distinct_nonblank_count": 1,
+    "fingerprints_skipped": true,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2154,
+    "nonblank_pct": 100.0,
+    "notnull_declared": true,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 2154,
+    "pk": 0,
+    "table": "procore_ep_change_events_markup_items",
+    "total_rows": 2154
+  },
+  {
+    "blank_count": 0,
+    "column": "raw_payload_emitted_to_read_model",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "INTEGER",
+    "distinct_nonblank_count": 1,
+    "fingerprints_skipped": true,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2154,
+    "nonblank_pct": 100.0,
+    "notnull_declared": true,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 2154,
+    "pk": 0,
+    "table": "procore_ep_change_events_markup_items",
+    "total_rows": 2154
+  },
+  {
+    "blank_count": 0,
+    "column": "raw_payload_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 771,
+    "fingerprints_skipped": true,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2154,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_markup_items",
+    "total_rows": 2154
+  },
+  {
+    "blank_count": 0,
+    "column": "record_key",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 2154,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2154,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 1,
+    "table": "procore_ep_change_events_markup_items",
+    "total_rows": 2154
+  },
+  {
+    "blank_count": 0,
+    "column": "revenue_change_order_amount",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1217,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2154,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 2154,
+    "pk": 0,
+    "table": "procore_ep_change_events_markup_items",
+    "total_rows": 2154
+  },
+  {
+    "blank_count": 0,
+    "column": "revenue_change_order_amount_project_currency",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1217,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2154,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 2154,
+    "pk": 0,
+    "table": "procore_ep_change_events_markup_items",
+    "total_rows": 2154
+  },
+  {
+    "blank_count": 0,
+    "column": "revenue_estimate_amount",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 273,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2154,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 2154,
+    "pk": 0,
+    "table": "procore_ep_change_events_markup_items",
+    "total_rows": 2154
+  },
+  {
+    "blank_count": 0,
+    "column": "revenue_latest_price_amount",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1311,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2154,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 2154,
+    "pk": 0,
+    "table": "procore_ep_change_events_markup_items",
+    "total_rows": 2154
+  },
+  {
+    "blank_count": 0,
+    "column": "revenue_latest_price_amount_project_currency",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1311,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2154,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 2154,
+    "pk": 0,
+    "table": "procore_ep_change_events_markup_items",
+    "total_rows": 2154
+  },
+  {
+    "blank_count": 0,
+    "column": "source_quality",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2154,
+    "nonblank_pct": 100.0,
+    "notnull_declared": true,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_markup_items",
+    "total_rows": 2154
+  },
+  {
+    "blank_count": 0,
+    "column": "updated_utc",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 771,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2154,
+    "nonblank_pct": 100.0,
+    "notnull_declared": true,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_markup_items",
+    "total_rows": 2154
+  },
+  {
+    "blank_count": 0,
+    "column": "wbs_code_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 7,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 2154,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 2154,
+    "pk": 0,
+    "table": "procore_ep_change_events_markup_items",
+    "total_rows": 2154
+  },
+  {
+    "blank_count": 0,
+    "column": "array_path",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 6462,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_markup_items_wbs_code_segment_items",
+    "total_rows": 6462
+  },
+  {
+    "blank_count": 0,
+    "column": "child_index",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "INTEGER",
+    "distinct_nonblank_count": 3,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 6462,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 5000,
+    "pk": 0,
+    "table": "procore_ep_change_events_markup_items_wbs_code_segment_items",
+    "total_rows": 6462
+  },
+  {
+    "blank_count": 0,
+    "column": "code",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 9,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 6462,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 1597,
+    "pk": 0,
+    "table": "procore_ep_change_events_markup_items_wbs_code_segment_items",
+    "total_rows": 6462
+  },
+  {
+    "blank_count": 0,
+    "column": "company_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 6462,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 5000,
+    "pk": 0,
+    "table": "procore_ep_change_events_markup_items_wbs_code_segment_items",
+    "total_rows": 6462
+  },
+  {
+    "blank_count": 0,
+    "column": "created_utc",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 771,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 6462,
+    "nonblank_pct": 100.0,
+    "notnull_declared": true,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_markup_items_wbs_code_segment_items",
+    "total_rows": 6462
+  },
+  {
+    "blank_count": 0,
+    "column": "endpoint_family",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 6462,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_markup_items_wbs_code_segment_items",
+    "total_rows": 6462
+  },
+  {
+    "blank_count": 0,
+    "column": "endpoint_key",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 6462,
+    "nonblank_pct": 100.0,
+    "notnull_declared": true,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_markup_items_wbs_code_segment_items",
+    "total_rows": 6462
+  },
+  {
+    "blank_count": 0,
+    "column": "external_writeback_performed",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "INTEGER",
+    "distinct_nonblank_count": 1,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 6462,
+    "nonblank_pct": 100.0,
+    "notnull_declared": true,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 5000,
+    "pk": 0,
+    "table": "procore_ep_change_events_markup_items_wbs_code_segment_items",
+    "total_rows": 6462
+  },
+  {
+    "blank_count": 0,
+    "column": "is_current",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "INTEGER",
+    "distinct_nonblank_count": 1,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 6462,
+    "nonblank_pct": 100.0,
+    "notnull_declared": true,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 5000,
+    "pk": 0,
+    "table": "procore_ep_change_events_markup_items_wbs_code_segment_items",
+    "total_rows": 6462
+  },
+  {
+    "blank_count": 0,
+    "column": "item_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 11,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 6462,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 5000,
+    "pk": 0,
+    "table": "procore_ep_change_events_markup_items_wbs_code_segment_items",
+    "total_rows": 6462
+  },
+  {
+    "blank_count": 0,
+    "column": "name",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 9,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 6462,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_markup_items_wbs_code_segment_items",
+    "total_rows": 6462
+  },
+  {
+    "blank_count": 0,
+    "column": "parent_item_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 2154,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 6462,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_markup_items_wbs_code_segment_items",
+    "total_rows": 6462
+  },
+  {
+    "blank_count": 0,
+    "column": "payload_hash",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 771,
+    "fingerprints_skipped": true,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 6462,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_markup_items_wbs_code_segment_items",
+    "total_rows": 6462
+  },
+  {
+    "blank_count": 0,
+    "column": "payload_sidecar_json",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 13,
+    "fingerprints_skipped": true,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 6462,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_markup_items_wbs_code_segment_items",
+    "total_rows": 6462
+  },
+  {
+    "blank_count": 0,
+    "column": "primary_record_key",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 771,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 6462,
+    "nonblank_pct": 100.0,
+    "notnull_declared": true,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_markup_items_wbs_code_segment_items",
+    "total_rows": 6462
+  },
+  {
+    "blank_count": 0,
+    "column": "project_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 3,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 6462,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 5000,
+    "pk": 0,
+    "table": "procore_ep_change_events_markup_items_wbs_code_segment_items",
+    "total_rows": 6462
+  },
+  {
+    "blank_count": 0,
+    "column": "project_key",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 3,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 6462,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_markup_items_wbs_code_segment_items",
+    "total_rows": 6462
+  },
+  {
+    "blank_count": 0,
+    "column": "raw_payload_emitted_to_evidence",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "INTEGER",
+    "distinct_nonblank_count": 1,
+    "fingerprints_skipped": true,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 6462,
+    "nonblank_pct": 100.0,
+    "notnull_declared": true,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 5000,
+    "pk": 0,
+    "table": "procore_ep_change_events_markup_items_wbs_code_segment_items",
+    "total_rows": 6462
+  },
+  {
+    "blank_count": 0,
+    "column": "raw_payload_emitted_to_read_model",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "INTEGER",
+    "distinct_nonblank_count": 1,
+    "fingerprints_skipped": true,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 6462,
+    "nonblank_pct": 100.0,
+    "notnull_declared": true,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 5000,
+    "pk": 0,
+    "table": "procore_ep_change_events_markup_items_wbs_code_segment_items",
+    "total_rows": 6462
+  },
+  {
+    "blank_count": 0,
+    "column": "raw_payload_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 771,
+    "fingerprints_skipped": true,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 6462,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_markup_items_wbs_code_segment_items",
+    "total_rows": 6462
+  },
+  {
+    "blank_count": 0,
+    "column": "record_key",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 6462,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 6462,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 1,
+    "table": "procore_ep_change_events_markup_items_wbs_code_segment_items",
+    "total_rows": 6462
+  },
+  {
+    "blank_count": 0,
+    "column": "segment_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 3,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 6462,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 5000,
+    "pk": 0,
+    "table": "procore_ep_change_events_markup_items_wbs_code_segment_items",
+    "total_rows": 6462
+  },
+  {
+    "blank_count": 0,
+    "column": "segment_name",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 3,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 6462,
+    "nonblank_pct": 100.0,
+    "notnull_declared": false,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_markup_items_wbs_code_segment_items",
+    "total_rows": 6462
+  },
+  {
+    "blank_count": 0,
+    "column": "source_quality",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 1,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 6462,
+    "nonblank_pct": 100.0,
+    "notnull_declared": true,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_markup_items_wbs_code_segment_items",
+    "total_rows": 6462
+  },
+  {
+    "blank_count": 0,
+    "column": "updated_utc",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 771,
+    "fingerprints_skipped": false,
+    "missing_count": 0,
+    "missing_pct": 0.0,
+    "nonblank_count": 6462,
+    "nonblank_pct": 100.0,
+    "notnull_declared": true,
+    "null_count": 0,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_markup_items_wbs_code_segment_items",
+    "total_rows": 6462
+  }
+]

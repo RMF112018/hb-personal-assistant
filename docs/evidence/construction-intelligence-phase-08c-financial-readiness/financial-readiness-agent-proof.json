@@ -1,7 +1,7 @@
 {
-  "generated_utc": "2026-06-09T10:39:44.333785+00:00",
+  "generated_utc": "2026-06-22T11:06:49.033929+00:00",
   "repo_head": "644938c (post P06)",
-  "run_id": "08c-fact-37f2f1b5",
+  "run_id": "08c-fact-f69bae9c",
   "project_key": null,
   "status": "succeeded",
   "items_evaluated": 80,
@@ -18,7 +18,7 @@
         "project_default_applied_total": 0
       },
       "wbs": {
-        "run_id": "08c-comp-f9ad0cf1",
+        "run_id": "08c-comp-52135ba4",
         "present": {
           "wbs": 0,
           "cost_code": 0,
@@ -35,7 +35,7 @@
         "ambiguous": 0
       },
       "source": {
-        "run_id": "08c-comp-f9ad0cf1",
+        "run_id": "08c-comp-52135ba4",
         "families": [
           "owner_contracts",
           "commitments",
