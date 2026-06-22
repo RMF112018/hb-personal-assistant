@@ -1,0 +1,5 @@
+Cost Code,Month,EAC,ETC,Remaining,Confidence,Notes
+01-100,2026-06,950000,200000,750000,high,Mapped code exact match
+02-200,2026-06,510000,180000,330000,medium,Second mapped code
+99-UNMAPPED,2026-06,100000,50000,50000,low,Should flag unmapped
+01-100,2026-06,960000,210000,750000,high,Duplicate code different EAC for max aggregation

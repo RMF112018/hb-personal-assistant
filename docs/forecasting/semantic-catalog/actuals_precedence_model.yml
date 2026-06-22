@@ -1,0 +1,80 @@
+version: 2
+evidence_package_ref: docs/evidence/forecasting-db-audit-20260621/actual-erp-semantics-evidence.json
+
+actual_bases:
+  budget_actual_cumulative:
+    fields: [procore_ep_budget_detail_rows.actual_cost]
+    procore_formula_status: unresolved
+    model_use: compare_only_until_populated
+    live_copy_note: zero population on 2026-06-21 live copy (3044 rows)
+
+  budget_job_to_date_cumulative:
+    fields: [procore_ep_budget_detail_rows.job_to_date_costs]
+    procore_formula_status: proven
+    procore_formula: Direct Costs + Subcontractor Invoices
+    model_use: primary_cumulative_actual_when_actual_cost_null
+
+  direct_cost_rollup:
+    fields: [procore_ep_budget_detail_rows.direct_costs]
+    procore_formula_status: proven
+    model_use: workflow_stage_component_not_terminal_actual
+
+  erp_actual_sidecar:
+    fields:
+      - procore_ep_budget_detail_rows.erp_direct_costs
+      - procore_ep_budget_detail_rows.erp_job_to_date_costs
+    policy: explicit_sidecar
+    model_use: compare_only_never_substitute_for_procore_jtd
+
+  invoice_progress_fact:
+    fields:
+      - procore_ep_subcontractor_invoice_contract_detail_items.total_completed_and_stored_to_date
+      - procore_ep_subcontractor_invoice_change_order_items.total_completed_and_stored_to_date
+    model_use: progress_reconciliation_not_additive_with_jtd
+
+  monthly_periodized_actual:
+    fields: [forecast_monthly_actuals_by_budget_code.amount]
+    model_use: training_period_axis_reconcile_separately_from_cumulative
+
+  payment_cash_flow_fact:
+    fields:
+      - procore_ep_subcontractor_invoices.payment_date
+      - procore_ep_subcontractor_invoices.billing_date
+    model_use: cash_timing_not_earned_actual_cost
+
+use_cases:
+  eac_etc_reconciliation:
+    precedence:
+      - forecast_monthly_actuals_by_budget_code
+      - procore_ep_budget_detail_rows.job_to_date_costs
+      - procore_ep_budget_detail_rows.actual_cost
+      - procore_ep_budget_detail_rows.direct_costs
+      - procore_ep_budget_detail_rows.erp_job_to_date_costs
+      - procore_ep_budget_detail_rows.erp_direct_costs
+    rule: pick_one_per_budget_code_not_sum_cumulative_sources
+
+  invoice_progress:
+    precedence:
+      - procore_ep_subcontractor_invoice_contract_detail_items.total_completed_and_stored_to_date
+      - procore_ep_subcontractor_invoice_change_order_items.total_completed_and_stored_to_date
+    rule: detail_facts_for_progress_not_budget_rollups
+
+  cash_flow_payment_timing:
+    precedence:
+      - procore_ep_subcontractor_invoices.payment_date
+      - procore_ep_billing_periods.end_date
+    rule: invoice_dates_override_period_fallback
+
+  anomaly_detection:
+    precedence:
+      - compare budget_detail.actual_cost vs sum(invoice_details) by budget_code
+      - flag when delta exceeds materiality threshold
+    rule: reconciliation_not_double_count
+
+erp_fields:
+  policy: explicit_sidecar
+  note: ERP actuals are not interchangeable with Procore actuals without source tag
+
+monthly_vs_cumulative:
+  policy: never_assume_equivalent
+  reconciliation: required_join_on_project_key_budget_code_period

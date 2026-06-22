@@ -41,7 +41,7 @@ from ..forecast_dormancy import suppress as dormancy_suppress
 from ..schedule_analysis import schedule_io, schedule_mapping, schedule_rollup
 from . import (backtest_strong, change_explanation, confidence_intel, db_inventory,
                estimators_uncapped, evidence, overrun_register, reconcile_final,
-               schedule_association, trend)
+               reconciled_backtest, schedule_association, trend)
 
 SUBPROJECT_ROOT = Path(__file__).resolve().parents[3]
 GENERATOR_NAME = "construction_financial_review.forecast_intelligence.generate_forecast_intelligence_package"
@@ -50,6 +50,16 @@ PRIOR_ACCURACY_GLOB = "forecast_accuracy_package_tropical_*"
 
 CONCLUSION_OVERRUNS = "forecast_intelligence_ready_with_overrun_risks"
 CONCLUSION_READY = "forecast_intelligence_ready"
+
+# Completion-stage recalibration: ENABLED. Tempers the p75 overrun bump at low completion to cut the
+# early-stage over-forecast the accuracy gate found (faithful backtest: reconciled MAPE 0.41 -> 0.30,
+# bias +0.33 -> +0.22, worst-case ceiling held; ADR 288/289/290). Doctrine-safe: no ERP anchor, never
+# below weighted_mean, ceiling untouched. Only known-low-completion overrun codes are affected.
+_P75_STAGE_GATE = True
+# Completion-stage reliability damping flip-point. Default OFF -> production unchanged. Flipping to True
+# down-weights the early-overshooting methods (owner_progress, trend) at low completion to cut the
+# residual over-forecast left after the p75 stage-gate. Gated on the reliability_damping_effect evidence.
+_RELIABILITY_DAMPING = False
 CONCLUSION_NOT_READY = "forecast_intelligence_not_ready"
 
 LLM_SUBSET_CAP = 60
@@ -107,6 +117,7 @@ def generate(project_key: str, cfg: dict, data_root: Optional[Path] = None,
     recs = list(read_jsonl(analysis_pkg / "forecast_recommendations_by_budget_code.jsonl"))
     rec_by_key = {r["budget_code_key"]: r for r in recs}
     owner_history = signals.load_owner_history(context_pkg)
+    procore_history = signals.load_procore_history(context_pkg)
 
     # monthly actuals (CostEntries/Sage only) for the actuals export + recommendation-row fields
     actuals_load = actuals_export.load_costentries_monthly(context_pkg)
@@ -172,6 +183,7 @@ def generate(project_key: str, cfg: dict, data_root: Optional[Path] = None,
     cost_basis_rows = []
     recommendations, model_evidence, sched_evidence, trend_rows = [], [], [], []
     remaining_rows, confidences, changes, bundles = [], [], [], []
+    ts_shadow_inputs = []  # (key, timeseries_eac estimate, recommended_final_cost, completed series)
     for bc in sorted(budget_codes, key=lambda r: r["budget_code_key"]):
         key = bc["budget_code_key"]
         ctx = context_by_key.get(key, {"budget_code_key": key, "sub_job": bc.get("sub_job"),
@@ -189,7 +201,9 @@ def generate(project_key: str, cfg: dict, data_root: Optional[Path] = None,
                                             cashflow_totals.get(key), assoc, tr, data_date,
                                             project_finish, project_key)
         ests = estimators_uncapped.estimate_all(bundle)
-        recommendation = reconcile_final.select_final(key, project_key, ests, bundle, calibration)
+        recommendation = reconcile_final.select_final(key, project_key, ests, bundle, calibration,
+                                                      p75_stage_gate=_P75_STAGE_GATE,
+                                                      reliability_damping=_RELIABILITY_DAMPING)
 
         # dormant / closed-code suppression (authoritative decision; emitted as the status file)
         if dorm_enabled:
@@ -202,6 +216,11 @@ def generate(project_key: str, cfg: dict, data_root: Optional[Path] = None,
             if decision["suppression_applied"]:
                 recommendation, before = dormancy_suppress.suppress_recommendation(recommendation, decision)
             dorm_audit.append(dormancy_suppress.audit_row(decision, before))
+
+        ts_est = next((e for e in ests if e["method"] == "timeseries_eac"), None)
+        ts_shadow_inputs.append((key, ts_est, recommendation.get("recommended_final_cost"),
+                                 bundle.get("monthly_actuals_completed"),
+                                 bundle.get("actual_cost_all_source_to_date")))
 
         conf = confidence_intel.score(bundle, recommendation)
         change = change_explanation.explain_change(recommendation, prior_model_rec_by_key.get(key),
@@ -270,6 +289,10 @@ def generate(project_key: str, cfg: dict, data_root: Optional[Path] = None,
     ]))
     write_jsonl(out / "forecast_accuracy_next_by_budget_code.jsonl", accuracy_next)
     write_jsonl(out / "forecast_model_evidence_by_budget_code.jsonl", model_evidence)
+    # SHADOW time-series comparison + holdout backtest (evidence only; never changes the forecast).
+    ts_comparison, ts_backtest = _timeseries_shadow_artifacts(project_key, ts_shadow_inputs)
+    write_jsonl(out / "statsforecast_shadow_comparison.jsonl", ts_comparison)
+    write_json(out / "audit" / "statsforecast_shadow_backtest.json", ts_backtest)
     write_jsonl(out / "schedule_forecast_evidence_by_budget_code.jsonl", sched_evidence)
     write_jsonl(out / "trend_evidence_by_budget_code.jsonl", trend_rows)
     write_jsonl(out / "remaining_work_evidence_by_budget_code.jsonl", remaining_rows)
@@ -279,6 +302,10 @@ def generate(project_key: str, cfg: dict, data_root: Optional[Path] = None,
     write_jsonl(out / "data_quality_warnings.jsonl", warnings)
     write_json(out / "model_backtest_results.json", _backtest_results(bt))
     write_json(out / "model_calibration_summary.json", _calibration_summary(bt))
+    # As-of backtest of the PRODUCTION reconciled forecast (trust gate scoring; evidence only).
+    write_json(out / "reconciled_forecast_backtest.json", reconciled_backtest.run_reconciled_backtest(
+        context_rows, owner_history, project_key, calibration, bt.get("summary_by_method"),
+        procore_history))
     write_jsonl(out / "llm" / "forecast_narratives.jsonl", narratives)
     write_jsonl(out / "llm" / "llm_receipts.jsonl", receipts)
 
@@ -552,6 +579,137 @@ def _dormant_audit(project_key, decisions, audit_rows, dcfg) -> OrderedDict:
                  "actuals are never reduced and final never falls below actuals; overridden only by "
                  "affirmative remaining evidence or a value-asserting accepted operator control"),
     ])
+
+
+def _timeseries_shadow_artifacts(project_key, ts_shadow_inputs):
+    """SHADOW time-series comparison + deterministic holdout backtest (evidence only).
+
+    Uses the isolated statsforecast runtime when ``CFR_MODEL_ENGINE_PYTHON`` is configured and
+    available (one batched subprocess call); otherwise the in-process classical ensemble — byte
+    identical to a runtime-absent run. Each artifact records its ``backend``. Nothing here changes
+    the central forecast; it is the go/no-go evidence for promoting the estimator (next PR).
+    """
+    from . import model_engine_adapter as mea
+    from . import timeseries_engine
+
+    def _money2(x):
+        return money_str(Decimal(str(round(float(x), 2))))
+
+    def _pct4(x):
+        return str(Decimal(str(round(float(x), 6))).quantize(Decimal("0.0001")))
+
+    # Deterministic per-code plan (sorted): parse series, horizon, and the holdout split.
+    plan = []
+    for key, ts_est, rec_final, series, actual in sorted(ts_shadow_inputs, key=lambda t: t[0] or ""):
+        vals = [float(D(p.get("amount"))) for p in (series or [])]
+        n = len(vals)
+        horizon = int((ts_est or {}).get("inputs", {}).get("horizon_months") or 0)
+        h = prefix = actual_holdout = None
+        if n >= 4:
+            hh = 1 if n < 6 else (2 if n < 9 else 3)
+            if n - hh >= 3:
+                ah = sum(vals[-hh:])
+                if ah != 0:
+                    h, prefix, actual_holdout = hh, vals[:-hh], ah
+        plan.append((key, ts_est, rec_final, vals, actual, n, horizon, h, prefix, actual_holdout))
+
+    # Try the isolated runtime once (batched: full-horizon for the comparison + holdout prefixes for
+    # the backtest). Any unavailability falls back to the classical in-process engine.
+    use_runtime = False
+    runtime_full: dict = {}
+    runtime_holdout: dict = {}
+    backend = timeseries_engine.BACKEND_LABEL
+    runtime_ok, _reason = mea.available()
+    if runtime_ok:
+        reqs = []
+        for (key, ts_est, _rf, vals, _a, n, horizon, h, prefix, _ah) in plan:
+            if ts_est is not None and ts_est.get("applicable") and horizon > 0 and n >= 3:
+                reqs.append({"id": key + "|full", "series": vals, "horizon": horizon})
+            if h is not None:
+                reqs.append({"id": key + "|holdout", "series": prefix, "horizon": h})
+        if reqs:
+            try:
+                resp = mea.forecast_batch(reqs)
+                for rid, r in (resp.get("results") or {}).items():
+                    if rid.endswith("|full"):
+                        runtime_full[rid[: -len("|full")]] = r.get("etc")
+                    elif rid.endswith("|holdout"):
+                        runtime_holdout[rid[: -len("|holdout")]] = r.get("etc")
+                backend = resp.get("backend") or backend
+                use_runtime = True
+            except mea.ModelEngineUnavailable:
+                use_runtime = False
+
+    comparison, bt_rows = [], []
+    for (key, ts_est, rec_final, vals, actual, n, horizon, h, prefix, actual_holdout) in plan:
+        if ts_est is not None and ts_est.get("applicable") and dec(ts_est.get("eac")) is not None:
+            if use_runtime and runtime_full.get(key) is not None:
+                act = D(actual)
+                raw = act + Decimal(str(round(float(runtime_full[key]), 2)))
+                ts_eac = raw if raw >= act else act
+            else:
+                ts_eac = D(ts_est["eac"])
+            rec = dec(rec_final)
+            delta = (ts_eac - rec) if rec is not None else None
+            pct = (delta / rec) if (rec is not None and rec != 0 and delta is not None) else None
+            comparison.append(OrderedDict([
+                ("project_key", project_key),
+                ("budget_code_key", key),
+                ("timeseries_eac", money_str(ts_eac)),
+                ("recommended_final_cost", money_str(rec) if rec is not None else None),
+                ("delta_timeseries_minus_recommended", money_str(delta) if delta is not None else None),
+                ("delta_pct", str(pct.quantize(Decimal("0.0001"))) if pct is not None else None),
+                ("backend", backend),
+            ]))
+        if h is None:
+            continue
+        if use_runtime and runtime_holdout.get(key) is not None:
+            engine_pred = float(runtime_holdout[key])
+        else:
+            engine_pred = timeseries_engine.forecast_etc(prefix, h)["etc"]
+        naive_pred = prefix[-1] * h
+        eng_ape = abs(engine_pred - actual_holdout) / abs(actual_holdout)
+        nai_ape = abs(naive_pred - actual_holdout) / abs(actual_holdout)
+        bt_rows.append(OrderedDict([
+            ("budget_code_key", key),
+            ("n_completed_months", n),
+            ("holdout_months", h),
+            ("actual_holdout", _money2(actual_holdout)),
+            ("engine_pred", _money2(engine_pred)),
+            ("naive_pred", _money2(naive_pred)),
+            ("engine_abs_pct_error", _pct4(eng_ape)),
+            ("naive_abs_pct_error", _pct4(nai_ape)),
+            ("engine_wins", eng_ape <= nai_ape),
+        ]))
+
+    def _median_pct(rows, field):
+        xs = sorted(float(r[field]) for r in rows)
+        if not xs:
+            return None
+        m = len(xs) // 2
+        med = xs[m] if len(xs) % 2 else (xs[m - 1] + xs[m]) / 2
+        return _pct4(med)
+
+    total = len(bt_rows)
+    wins = sum(1 for r in bt_rows if r["engine_wins"])
+    summary = OrderedDict([
+        ("project_key", project_key),
+        ("backend", backend),
+        ("backtest_scheme", "holdout last h completed months (h=1 if <6 obs, 2 if <9, 3 else); fit "
+                            "the engine on the prefix, predict h and sum vs the actual held-out "
+                            "months; naive baseline = last observed month repeated h. Codes with <4 "
+                            "completed months or zero held-out actuals are excluded."),
+        ("eligible_code_count", total),
+        ("engine_median_abs_pct_error", _median_pct(bt_rows, "engine_abs_pct_error")),
+        ("naive_median_abs_pct_error", _median_pct(bt_rows, "naive_abs_pct_error")),
+        ("engine_better_or_equal_count", wins),
+        ("engine_better_or_equal_rate",
+         str((Decimal(wins) / Decimal(total)).quantize(Decimal("0.0001"))) if total else None),
+        ("per_code", bt_rows),
+        ("note", "SHADOW evidence only; timeseries_eac is NOT in INDEPENDENT_METHODS and never "
+                 "changes the central forecast. Promotion to the weighted ensemble is gated on this."),
+    ])
+    return comparison, summary
 
 
 def _accuracy_next_row(r):

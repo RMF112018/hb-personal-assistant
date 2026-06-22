@@ -1,0 +1,37 @@
+{
+  "ok": true,
+  "gate": "forecast_projection_parity",
+  "db_path": "docs/evidence/forecasting-gates-live-copy-20260621T133000Z/live-copy.sqlite",
+  "checked_at_utc": "2026-06-21T13:31:16+00:00",
+  "pairs_checked": 2,
+  "finding_count": 2,
+  "warning_count": 2,
+  "error_count": 0,
+  "findings": [
+    {
+      "family": "purchase_order",
+      "severity": "warning",
+      "basis": "row_count_mismatch",
+      "source_table": "procore_ep_purchase_order_contracts",
+      "ep_row_count": 11,
+      "target_table": "procore_financial_contracts",
+      "financial_row_count": 16,
+      "message": "Dual projection layers diverge; investigate before modeling."
+    },
+    {
+      "source_table": "procore_ep_purchase_order_contracts",
+      "target_table": "procore_financial_contracts",
+      "family": "purchase_order",
+      "check": "missing_source_keys",
+      "severity": "warning",
+      "count": 5,
+      "sample_key_hashes": [
+        "569cc15064cb0916",
+        "a01e7f0872817f4a",
+        "b6415ed5c15763e6",
+        "49475618b40069a0",
+        "71209725aac2d23b"
+      ]
+    }
+  ]
+}

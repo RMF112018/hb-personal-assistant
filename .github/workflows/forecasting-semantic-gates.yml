@@ -1,0 +1,23 @@
+name: Forecasting Semantic Gates
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  forecasting-semantic-gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install package and dev dependencies
+        run: pip install -e ".[dev]"
+
+      - name: Run forecasting semantic gate test suite
+        run: bash scripts/ci_forecasting_semantic_gates.sh

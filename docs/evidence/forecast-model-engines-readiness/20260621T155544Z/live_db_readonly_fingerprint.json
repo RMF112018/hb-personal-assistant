@@ -1,0 +1,10 @@
+{
+  "db_path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite",
+  "access": "read_only_via_forecasting_gates (sqlite mode=ro; module never opens the DB itself)",
+  "size_bytes_before": 3530186752,
+  "size_bytes_after": 3530186752,
+  "mtime_before": 1782052839,
+  "mtime_after": 1782052839,
+  "wal_shm_unchanged": true,
+  "mutation_observed": false
+}

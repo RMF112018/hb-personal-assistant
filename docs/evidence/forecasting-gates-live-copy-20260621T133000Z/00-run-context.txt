@@ -1,0 +1,7 @@
+stamp=20260621T133107Z
+live_db=/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite
+out_dir=docs/evidence/forecasting-gates-live-copy-20260621T133000Z
+copy_method=VACUUM INTO
+repo_root=/Users/bobbyfetting/hb-personal-assistant-worktrees/forecasting-db-audit-20260621
+branch=feature/forecasting-db-audit-20260621
+head=264a62969e344e617a56960ca07c8237c0e1bbaf

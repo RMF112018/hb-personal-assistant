@@ -17,6 +17,7 @@ from decimal import Decimal
 from typing import Optional
 
 from ..common.money import D, dec, money_str
+from . import timeseries_engine
 
 WORKDAYS_PER_MONTH = Decimal("21.67")
 PCT_FLOOR = Decimal("0.05")
@@ -30,7 +31,8 @@ REFERENCE_METHODS = ("erp_projected_reference", "erp_eac_reference")
 
 
 def _norm(method: str, applicable: bool, eac: Optional[Decimal], actual: Decimal, reliability: str,
-          b: dict, inputs: dict, note: str, association_scale: str = "1.0") -> OrderedDict:
+          b: dict, inputs: dict, note: str, association_scale: str = "1.0",
+          source: str = "independent") -> OrderedDict:
     """Build a normalized estimate. Floors EAC to actual only; never caps upward."""
     eac_f = etc = None
     floored = False
@@ -45,7 +47,7 @@ def _norm(method: str, applicable: bool, eac: Optional[Decimal], actual: Decimal
         exceeds_rev = revised is not None and eac_f > revised
     return OrderedDict([
         ("method", method),
-        ("source", "independent"),
+        ("source", source),
         ("applicable", bool(applicable and eac is not None)),
         ("etc", money_str(etc) if etc is not None else None),
         ("eac", money_str(eac_f) if eac_f is not None else None),
@@ -226,9 +228,51 @@ def erp_eac_reference(b: dict) -> OrderedDict:
                       "ERP estimated cost at completion")
 
 
+def timeseries_eac(b: dict) -> OrderedDict:
+    """SHADOW classical time-series ensemble EAC. Uncapped (actuals floor only).
+
+    Computed and emitted for comparison/backtest, but NOT in ``INDEPENDENT_METHODS`` — so it never
+    enters the weighted central forecast (mirrors the ERP references). Fits the completed monthly
+    actuals (CostEntries truth) with a median ensemble (naive/drift/holt/theta-like) and projects the
+    remaining horizon. Output quantized to cents for determinism. A statsforecast backend can later
+    replace ``timeseries_engine`` behind this same estimator.
+    """
+    actual = D(b.get("actual_cost_all_source_to_date"))
+    series = b.get("monthly_actuals_completed") or []
+    vals = [float(D(p.get("amount"))) for p in series]
+    n = len(vals)
+    # Remaining horizon: prefer schedule when a code-level association exists, else project horizon.
+    rem = None
+    if b.get("schedule_influences_estimate"):
+        rem = dec(b.get("remaining_months_schedule"))
+    if rem is None or rem <= 0:
+        rem = dec(b.get("remaining_months_project"))
+    horizon = int(rem) if rem is not None and rem > 0 else 0
+    applicable = n >= 3 and horizon > 0 and actual > 0
+    eac = None
+    rel = "low"
+    fc: dict = {}
+    if applicable:
+        fc = timeseries_engine.forecast_etc(vals, horizon)
+        eac = actual + Decimal(str(round(fc["etc"], 2)))
+        rel = "medium" if n >= timeseries_engine.MIN_OBS_FULL_ENSEMBLE else "low"
+    inputs = OrderedDict([
+        ("backend", timeseries_engine.BACKEND_LABEL),
+        ("n_completed_months", n),
+        ("horizon_months", horizon),
+        ("model_set", fc.get("model_set", [])),
+        ("fallback_used", fc.get("fallback_used", False)),
+        ("etc_raw", str(round(fc["etc"], 2)) if fc else None),
+    ])
+    return _norm("timeseries_eac", applicable, eac, actual, rel, b, inputs,
+                 "SHADOW classical time-series ensemble (median of naive/drift/holt/theta-like) over "
+                 "the remaining horizon; uncapped, never weighted in the central forecast.",
+                 association_scale="0.0", source="shadow_timeseries")
+
+
 ALL_ESTIMATORS = (owner_progress_eac, procore_progress_eac, schedule_remaining_work_eac,
                   trend_projection_eac, commitment_exposure_eac, cpi_blend_eac,
-                  erp_projected_reference, erp_eac_reference)
+                  erp_projected_reference, erp_eac_reference, timeseries_eac)
 
 
 def estimate_all(b: dict) -> list[OrderedDict]:

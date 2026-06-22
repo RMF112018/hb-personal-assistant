@@ -1,0 +1,112 @@
+# Forecasting Semantic Catalog
+
+Repo-owned semantic layer design artifacts for forecasting DB evidence and future model implementation.
+
+## Authority
+
+- **Primary evidence:** `docs/evidence/forecasting-db-complete-evidence-*/`
+- **Code truth:** `src/hb_assistant/procore/`, `src/hb_assistant/store/`, `src/hb_assistant/construction/analytics/`
+- **Field classifiers:** `src/hb_assistant/forecasting/field_classifiers.py`
+
+## Relationship confidence levels
+
+| Level | Meaning |
+|-------|---------|
+| `high` | Schema + row-profile + repo-code alignment |
+| `medium` | Row-profile supported; business semantics partially proven |
+| `low` | Schema or naming only; needs validation |
+| `unresolved` | Conflicting or insufficient evidence |
+
+## Evidence basis tags
+
+`schema-supported`, `row-profile-supported`, `repo-code-supported`, `Procore-doc-supported`, `inferred`, `unresolved`
+
+## Catalog files
+
+| File | Domain |
+|------|--------|
+| `semantic_catalog.yml` | Top-level entity index |
+| `procore_budget_semantics.yml` | Budget detail, cells, changes |
+| `procore_commitment_semantics.yml` | Commitments, CCOs |
+| `procore_purchase_order_semantics.yml` | PO contracts, polymorphic holders |
+| `procore_prime_contract_semantics.yml` | Prime contracts, PCOs |
+| `procore_change_event_semantics.yml` | Change events, RFQs |
+| `procore_invoice_semantics.yml` | Subcontractor invoices, billing periods |
+| `forecast_internal_semantics.yml` | Internal/external forecast tables |
+| `normalization_rules.yml` | Amount/date/boolean/status rules |
+| `double_count_prevention_model.yml` | Exposure lifecycle precedence |
+| `actuals_precedence_model.yml` | Actuals source hierarchy (v2 actual bases) |
+| `budget_column_roles.yml` | Standard budget column roles and overlap checks |
+| `budget_dynamic_columns.yml` | Custom/dynamic budget-view column classification |
+
+## Runnable gates
+
+Read-only SQLite gates (JSON output):
+
+```bash
+hb-assistant construction-agent forecast double-count-gate --db-path /path/to/db.sqlite --json
+hb-assistant construction-agent forecast actuals-reconciliation-gate --db-path /path/to/db.sqlite --json
+hb-assistant construction-agent forecast gates --db-path /path/to/db.sqlite --json
+
+## External forecast project eligibility
+
+External evaluation projects are controlled by `HB_FORECAST_EVAL_PROJECT_ALLOWLIST` (comma-separated).
+Built-in defaults: `tropical`, `fixtureproj`. Unknown projects fail closed with `ForecastExternalError`.
+
+## Live-copy gate evidence
+
+```bash
+scripts/run_forecasting_gates_live_copy_evidence.sh
+```
+
+Produces safe JSON under `docs/evidence/forecasting-gates-live-copy-YYYYMMDDTHHMMSSZ/` (DB copy gitignored).
+
+## Phase 5 additions
+
+- `actuals_precedence_model.yml` v2 — seven explicit actual bases (cumulative, ERP sidecar, invoice, monthly, payment)
+- `budget_dynamic_columns.yml` + `forecast_budget_dynamic_columns` gate
+- Projection parity: prime, change event, subcontractor invoice; RFQ unsupported documented
+- `.github/workflows/forecasting-semantic-gates.yml` + `scripts/ci_forecasting_semantic_gates.sh`
+
+## Phase 4 additions
+
+- `budget_column_roles.yml` v2 — Procore formula status per column (see `docs/evidence/forecasting-db-audit-20260621/procore-budget-formula-proof.md`)
+- PO projection drift audit script: `scripts/audit_po_projection_drift.py`
+- CI/readiness: `docs/forecasting/forecast-gates-ci-readiness.md`
+- External eval workflow: `docs/forecasting/external-forecast-evaluation-workflow.md`
+```
+
+### Double-count gate (`forecast_double_count_prevention`)
+
+**Checks:** change-event + RFQ overlap; change-event + approved CCO coexistence; budget actual + invoice detail coexistence; budget modification + change-event coexistence.
+
+**Does not yet check:** prime change-order vs budget rollup column inclusion; per-line-item amount equality proofs.
+
+**Severity:** `info` = coexistence only; `warning` = likely double-count if summed; `error` = only in `--mode strict` for warnings.
+
+### Actuals reconciliation gate (`forecast_actuals_reconciliation`)
+
+**Bases:** `budget_actual_cumulative`, `budget_job_to_date_cumulative`, `erp_actual_sidecar`, `direct_cost_rollup`, `invoice_progress_fact`, `monthly_periodized_actual`, `payment_cash_flow_fact`.
+
+**Checks:** population summary; JTD vs ERP aggregate variance (warning); monthly vs cumulative; invoice/budget coexistence; payment timing population.
+
+**Thresholds:** `--absolute-threshold` (default `100.00`), `--percent-threshold` (default `0.005`).
+
+**Does not:** add all actual fields together; treat ERP as interchangeable with Procore without explicit sidecar tagging.
+
+### Budget dynamic columns gate (`forecast_budget_dynamic_columns`)
+
+**Checks:** classifies budget-view columns; warns on unmapped numeric cells; excludes text/notes from monetary parsing.
+
+## Validation SQL
+
+Run SQL under `validation_queries/` against the local SQLite DB (read-only). Never export raw payload bodies.
+
+| Query | Purpose |
+|-------|---------|
+| `double_count_prevention.sql` | Workflow-stage overlap |
+| `actuals_reconciliation.sql` | Cumulative vs periodized vs ERP |
+| `purchase_order_relationships.sql` | PO polymorphic holder classification |
+| `projection_parity.sql` | `procore_ep_*` vs `procore_financial_*` counts |
+| `budget_dynamic_columns.sql` | Dynamic column definitions and cell population |
+| `cost_type_mapping_guard.sql` | Cost-type null rate; category ≠ cost_type |

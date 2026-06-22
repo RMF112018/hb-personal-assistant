@@ -752,6 +752,67 @@ def cmd_db_cutover_readiness(*, data_root: str, work_root: str, context_stamp: s
     return 0 if report.get("decision") == "ready_for_guarded_operator_use" else 1
 
 
+def cmd_model_engines_readiness(*, context_package: str, db_path: str, work_root: str,
+                                project: str, gate_mode: str) -> int:
+    """Phase I PR 1: model-engines data + semantic readiness evidence (read-only, no dependency).
+
+    Reads an EXISTING tropical context package read-only (per-code monthly-actuals time-series
+    sufficiency + budget-code coverage denominator), runs the hb_assistant forecasting semantic
+    gates against --db-path read-only, and prints a deterministic readiness report judging whether
+    the real data supports a future statsforecast estimator AND is semantically safe to feed it.
+    Adds no dependency, edits no forecast core, writes nothing to the live data root or DB.
+    rc 0 = data ready; rc 1 = insufficient/not-ready evidence (bundle ran); rc 3 = controlled
+    refusal (unsafe/missing input)."""
+    from .workflows.model_engines_readiness import (
+        DECISION_READY,
+        ModelEnginesReadinessError,
+        run_model_engines_readiness,
+    )
+    try:
+        # Keep stdout a clean machine-readable JSON channel: workflow chatter -> stderr.
+        with contextlib.redirect_stdout(sys.stderr):
+            report = run_model_engines_readiness(
+                context_package=Path(context_package), db_path=Path(db_path),
+                work_root=Path(work_root), project_key=project, gate_mode=gate_mode)
+    except ModelEnginesReadinessError as exc:
+        print(json.dumps({"command": "model-engines-readiness", "project": project,
+                          "status": "refused", "reason": str(exc)}, indent=2))
+        return 3
+    out = {"command": "model-engines-readiness"}
+    out.update(report)
+    print(json.dumps(out, indent=2))
+    return 0 if report.get("decision") == DECISION_READY else 1
+
+
+def cmd_forecast_accuracy_gate(*, package: str | None, data_root: str | None, work_root: str,
+                               project: str) -> int:
+    """Production-forecast accuracy/trust gate (verdict over an existing intelligence package).
+
+    Reads the reconciled as-of backtest emitted by forecast-intelligence and prints a deterministic
+    go/no-go verdict on whether the production reconciled forecast is accurate + unbiased enough to
+    trust. Evidence only. rc 0 = pass; rc 1 = review/not-ready/insufficient evidence (gate ran);
+    rc 3 = controlled refusal (unsafe/missing input)."""
+    from .workflows.forecast_accuracy_gate import (
+        VERDICT_PASS,
+        ForecastAccuracyGateError,
+        run_forecast_accuracy_gate,
+    )
+    try:
+        with contextlib.redirect_stdout(sys.stderr):
+            report = run_forecast_accuracy_gate(
+                package=Path(package) if package else None,
+                data_root=Path(data_root) if data_root else None,
+                work_root=Path(work_root), project_key=project)
+    except ForecastAccuracyGateError as exc:
+        print(json.dumps({"command": "forecast-accuracy-gate", "project": project,
+                          "status": "refused", "reason": str(exc)}, indent=2))
+        return 3
+    out = {"command": "forecast-accuracy-gate"}
+    out.update(report)
+    print(json.dumps(out, indent=2))
+    return 0 if report.get("verdict") == VERDICT_PASS else 1
+
+
 def cmd_temp_db_readiness_rehearsal(*, source_package: str, work_root: str, context_stamp: str,
                                     db_path: str | None, project: str) -> int:
     """Controlled temp-DB preparation + readiness rehearsal (Phase 11).
@@ -1294,6 +1355,33 @@ def build_parser() -> argparse.ArgumentParser:
                      help="Deterministic context-package stamp for the run.")
     drp.add_argument("--db-path", required=True,
                      help="Explicit temp/non-live v59 SQLite DB path (refuses the live/default DB).")
+    # Phase I PR 1 — model-engines data + semantic readiness (read-only; no dependency, no core edit).
+    mer = sub.add_parser("model-engines-readiness")
+    mer.add_argument("--project", required=True, help="Project key (only 'tropical').")
+    mer.add_argument("--context-package", required=True,
+                     help="Explicit EXISTING context package directory (read-only). Must contain "
+                          "canonical/monthly_actuals_by_budget_code.jsonl and "
+                          "canonical/budget_codes.jsonl.")
+    mer.add_argument("--db-path", required=True,
+                     help="Explicit SQLite DB path for the forecasting semantic gates (opened "
+                          "read-only; the live hb_assistant DB is acceptable read-only).")
+    mer.add_argument("--work-root", required=True,
+                     help="Explicit work root (report under <work-root>/model_engines_readiness; "
+                          "not under the live data root).")
+    mer.add_argument("--gate-mode", default="warn", choices=("warn", "strict"),
+                     help="Forecasting semantic-gate mode (default: warn).")
+    # Production-forecast accuracy/trust gate — verdict over an existing intelligence package.
+    fag = sub.add_parser("forecast-accuracy-gate")
+    fag.add_argument("--project", required=True, help="Project key (only 'tropical').")
+    fag.add_argument("--package", default=None,
+                     help="Explicit forecast_accuracy_next_package_* directory to score "
+                          "(else use --data-root to discover the latest).")
+    fag.add_argument("--data-root", default=None,
+                     help="Data root to discover the latest forecast_accuracy_next_package_<project>_* "
+                          "(used when --package is omitted).")
+    fag.add_argument("--work-root", required=True,
+                     help="Explicit work root (report under <work-root>/forecast_accuracy_gate; "
+                          "not under the live data root).")
     # Phase 11 — controlled temp-DB preparation + readiness rehearsal from an explicit source package.
     tdr = sub.add_parser("temp-db-readiness-rehearsal")
     tdr.add_argument("--project", required=True, help="Project key (only 'tropical' in Phase 11).")
@@ -1718,6 +1806,13 @@ def main(argv=None) -> int:
         return cmd_db_cutover_readiness(data_root=args.data_root, work_root=args.work_root,
                                         context_stamp=args.context_stamp, db_path=args.db_path,
                                         project=args.project)
+    if args.command == "model-engines-readiness":
+        return cmd_model_engines_readiness(context_package=args.context_package,
+                                           db_path=args.db_path, work_root=args.work_root,
+                                           project=args.project, gate_mode=args.gate_mode)
+    if args.command == "forecast-accuracy-gate":
+        return cmd_forecast_accuracy_gate(package=args.package, data_root=args.data_root,
+                                          work_root=args.work_root, project=args.project)
     if args.command == "temp-db-readiness-rehearsal":
         return cmd_temp_db_readiness_rehearsal(source_package=args.source_package,
                                                work_root=args.work_root,

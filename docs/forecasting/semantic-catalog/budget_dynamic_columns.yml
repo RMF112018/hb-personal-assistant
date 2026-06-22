@@ -1,0 +1,34 @@
+version: 1
+evidence_package_ref: docs/evidence/forecasting-db-audit-20260621/budget-view-dynamic-columns-evidence.json
+notes:
+  - Row cells in procore_ep_budget_detail_row_cells are source evidence, not final semantic facts.
+  - Unmapped numeric columns must not become model inputs without catalog entry and validation.
+  - Standard known columns map through budget_column_roles.yml via Procore display labels.
+
+classification_rules:
+  standard_known_column:
+    rule: column maps to budget_column_roles.yml role via Procore label
+    model_input: allowed_when_role_validated
+  known_calculated_rollup:
+    rule: source_type calculated in budget_column_roles.yml
+    model_input: use_rollup_not_components
+  known_source_column:
+    rule: source_type source in budget_column_roles.yml
+    model_input: precedence_required
+  custom_numeric_candidate:
+    rule: numeric-looking column without role mapping
+    model_input: excluded_until_catalog_entry
+  custom_status_or_dimension:
+    rule: dimension/text identifier columns
+    model_input: dimension_only
+  custom_text_or_note:
+    rule: notes and free text
+    model_input: excluded_from_model
+  review_required:
+    rule: source or budget_forecast data_type without role mapping
+    model_input: operator_review_required
+  excluded_from_model:
+    rule: explicit exclusion list
+    model_input: never
+
+column_classifications: []

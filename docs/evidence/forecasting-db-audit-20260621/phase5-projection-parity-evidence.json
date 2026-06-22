@@ -1,0 +1,61 @@
+{
+  "ok": true,
+  "gate": "forecast_projection_parity",
+  "db_path": "docs/evidence/forecasting-gates-live-copy-20260621T133000Z/live-copy.sqlite",
+  "checked_at_utc": "2026-06-21T13:57:14+00:00",
+  "mode": "warn",
+  "pairs_checked": 6,
+  "pairs_unsupported": 1,
+  "finding_count": 3,
+  "warning_count": 1,
+  "error_count": 0,
+  "findings": [
+    {
+      "source_table": "procore_ep_purchase_order_contracts",
+      "target_table": "procore_financial_contracts",
+      "family": "purchase_order",
+      "check": "expected_financial_only_keys",
+      "classification": "commitment_backed_po",
+      "severity": "info",
+      "count": 5,
+      "sample_key_hashes": [
+        "569cc15064cb0916",
+        "a01e7f0872817f4a",
+        "b6415ed5c15763e6",
+        "49475618b40069a0",
+        "71209725aac2d23b"
+      ]
+    },
+    {
+      "family": "rfq",
+      "severity": "info",
+      "basis": "parity_unsupported",
+      "parity_availability": "unsupported_ep_scope_subset",
+      "source_table": "procore_ep_rfqs",
+      "target_table": "procore_financial_rfqs",
+      "ep_row_count": 12,
+      "financial_row_count": 291,
+      "message": "Financial RFQ projection scope exceeds current EP rfqs endpoint sync; parity counts are informational only until EP coverage aligns."
+    },
+    {
+      "source_table": "procore_ep_rfqs",
+      "target_table": "procore_financial_rfqs",
+      "family": "rfq",
+      "check": "missing_source_keys",
+      "severity": "warning",
+      "count": 279,
+      "sample_key_hashes": [
+        "56e5b232e4cb674d",
+        "78140ef9b99d5630",
+        "0369f1d267e18c51",
+        "8ca4f50c7f2fbe2c",
+        "4407ed8470b8ee57",
+        "63bba3833af85253",
+        "57d8e96693f0444d",
+        "a9beb2267f861b10",
+        "ee29f213b93b3f29",
+        "d8cde979ecf802c9"
+      ]
+    }
+  ]
+}

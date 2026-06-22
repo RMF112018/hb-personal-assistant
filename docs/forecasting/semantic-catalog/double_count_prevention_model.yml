@@ -1,0 +1,55 @@
+version: 1
+exposure_lifecycle:
+  cost_side:
+    - potential_exposure        # change event estimate / ROM
+    - quoted_exposure           # RFQ quote amount
+    - pending_commitment_change # PCO / pending CCO
+    - approved_commitment_change # approved CCO
+    - invoiced_actual           # subcontractor invoice detail
+    - paid_actual               # payment date reached
+  revenue_side:
+    - potential_revenue_change
+    - pending_prime_change
+    - approved_prime_change
+    - owner_invoiced
+    - owner_paid
+
+precedence_rules:
+  - stage: change_event_line_item.latest_cost_values_amount
+    counts_when: no_approved_cco_and_no_budget_modification
+    superseded_by: [commitment_change_order, budget_modification, budget_detail_projected]
+    confidence: medium
+    evidence_basis: row-profile-supported
+
+  - stage: rfq.latest_quote_amount
+    counts_when: no_approved_cco_for_same_change_event_line
+    superseded_by: [commitment_change_order]
+    confidence: medium
+
+  - stage: commitment_change_order.grand_total
+    counts_when: status in included_actual_approved
+    supersedes: [change_event_estimate, rfq_quote]
+    confidence: high
+
+  - stage: prime_change_order.line_item_amount
+    counts_when: status in included_actual_approved
+    supersedes: [change_event_revenue_estimate]
+    confidence: high
+
+  - stage: budget_detail_row.projected_cost
+    counts_when: use_for_eac_rollup
+    must_not_add: [approved_cco_amount_if_already_in_budget_column]
+    confidence: medium
+    caveat: Procore calculated columns may already include approved changes
+
+  - stage: purchase_order_line_item
+    counts_when: holder resolves to po_contract AND not duplicate_of_commitment
+    route_to_commitment_when: holder resolves to commitment_contract
+    confidence: medium
+    evidence_basis: repo-code-supported
+
+validation_query: validation_queries/double_count_prevention.sql
+budget_column_roles_ref: budget_column_roles.yml
+procore_formula_proof: partially_proven
+procore_doc_reference: https://support.procore.com/faq/what-are-procores-standard-budget-views
+po_projection_drift_ref: docs/evidence/forecasting-db-audit-20260621/purchase-order-projection-drift-audit.md

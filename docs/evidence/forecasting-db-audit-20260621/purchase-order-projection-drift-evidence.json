@@ -1,0 +1,69 @@
+{
+  "db_path": "docs/evidence/forecasting-gates-live-copy-20260621T133000Z/live-copy.sqlite",
+  "ep_row_count": 11,
+  "financial_po_row_count": 16,
+  "shared_key_count": 11,
+  "ep_only_key_count": 0,
+  "financial_only_key_count": 5,
+  "financial_only_classifications": {
+    "commitment_backed_po": 5
+  },
+  "financial_only_keys": [
+    {
+      "project_key": "caretta",
+      "contract_id_hash": "569cc15064cb0916",
+      "financial_status": "Closed",
+      "grand_total_populated": true,
+      "has_commitment_financial": true,
+      "has_commitment_ep": true,
+      "classification": "commitment_backed_po",
+      "reason": "Financial PO row exists without EP PO endpoint row; same contract_id is present as commitment (expected duplicate_of_commitment enrichment)."
+    },
+    {
+      "project_key": "caretta",
+      "contract_id_hash": "a01e7f0872817f4a",
+      "financial_status": "Approved",
+      "grand_total_populated": true,
+      "has_commitment_financial": true,
+      "has_commitment_ep": true,
+      "classification": "commitment_backed_po",
+      "reason": "Financial PO row exists without EP PO endpoint row; same contract_id is present as commitment (expected duplicate_of_commitment enrichment)."
+    },
+    {
+      "project_key": "caretta",
+      "contract_id_hash": "b6415ed5c15763e6",
+      "financial_status": "Approved",
+      "grand_total_populated": true,
+      "has_commitment_financial": true,
+      "has_commitment_ep": true,
+      "classification": "commitment_backed_po",
+      "reason": "Financial PO row exists without EP PO endpoint row; same contract_id is present as commitment (expected duplicate_of_commitment enrichment)."
+    },
+    {
+      "project_key": "pga-modern-garage",
+      "contract_id_hash": "49475618b40069a0",
+      "financial_status": "Approved",
+      "grand_total_populated": true,
+      "has_commitment_financial": true,
+      "has_commitment_ep": true,
+      "classification": "commitment_backed_po",
+      "reason": "Financial PO row exists without EP PO endpoint row; same contract_id is present as commitment (expected duplicate_of_commitment enrichment)."
+    },
+    {
+      "project_key": "rybovich",
+      "contract_id_hash": "71209725aac2d23b",
+      "financial_status": "Approved",
+      "grand_total_populated": true,
+      "has_commitment_financial": true,
+      "has_commitment_ep": true,
+      "classification": "commitment_backed_po",
+      "reason": "Financial PO row exists without EP PO endpoint row; same contract_id is present as commitment (expected duplicate_of_commitment enrichment)."
+    }
+  ],
+  "projection_code_path": "src/hb_assistant/store/procore_commitment_projection.py::_project_purchase_order",
+  "guardrails": {
+    "read_only": true,
+    "no_raw_payload_export": true,
+    "no_live_db_mutation": true
+  }
+}

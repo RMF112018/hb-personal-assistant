@@ -1,0 +1,33 @@
+family: invoice
+confidence: high
+evidence_package_ref: docs/evidence/forecasting-db-complete-evidence/20260621T130542Z/
+
+entities:
+  fact_subcontractor_invoice_actuals:
+    source_tables:
+      - procore_ep_subcontractor_invoices
+      - procore_ep_subcontractor_invoice_contract_detail_items
+      - procore_ep_subcontractor_invoice_change_order_items
+      - procore_ep_billing_periods
+    grain: invoice / detail line / billing period
+    primary_key: record_key
+    parent_keys:
+      - period_id -> billing_periods.record_id
+      - commitment_id -> commitment_contracts.record_id
+    join_confidence: high
+    evidence_basis: [row-profile-supported]
+    date_basis: [billing_date, payment_date, billing_periods.start_date, billing_periods.end_date]
+    amount_basis:
+      - total_completed_and_stored_to_date
+      - subcontractor_claimed_amount
+      - work_completed_this_period
+    actual_bases:
+      invoice_progress_fact: detail line progress metrics
+      payment_cash_flow_fact: billing_date and payment_date timing
+      budget_job_to_date_cumulative: Procore rollup that may include invoice actuals per proven formula
+    status_inclusion: {included: [approved, paid, complete], pending: [draft, pending], excluded: [void]}
+    forecast_relevance: actualization_progress_cash_flow
+    caveats:
+      - Invoice detail facts are not additive with budget cumulative actual rollups.
+      - total_completed_and_stored_to_date is a financial progress metric, not a calendar date.
+    validation_query: validation_queries/invoice_relationships.sql
