@@ -317,6 +317,142 @@ describe('ScheduleImportsPage', () => {
     })
   })
 
+  it('preview supersede sends confirmSupersede and preserves project selection', async () => {
+    uploadMock
+      .mockRejectedValueOnce(
+        new ScheduleApiError(
+          'duplicate_schedule_version',
+          {
+            code: 'duplicate_schedule_version',
+            schedule_version_key: 'tropical|TWNU18|2026-05-26T08:00:00',
+            activity_count: 1378,
+            relationship_count: 3718,
+            view_path: '/schedules/activities?version=tropical',
+          },
+          409,
+        ),
+      )
+      .mockResolvedValueOnce({
+        import_id: 'supersede-preview',
+        activity_count: 1378,
+        relationship_count: 3718,
+        source_format: 'primavera_xer',
+        cost_loaded_status: 'not_cost_loaded',
+        wbs_count: 10,
+        calendar_count: 3,
+        validation_findings: [],
+        requires_column_mapping: false,
+        project_key: 'tropical',
+      })
+    renderPage()
+    await selectTropicalProject()
+    const file = new File(['ERMHDR'], 'TWNU18.xer', { type: 'application/octet-stream' })
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement
+    fireEvent.change(input, { target: { files: [file] } })
+    await waitFor(() => expect(screen.getByText(/already imported/i)).toBeInTheDocument())
+    const select = screen.getByRole('combobox', { name: /project/i })
+    expect(select).toHaveValue('tropical')
+    fireEvent.click(screen.getByRole('button', { name: /Preview supersede/i }))
+    await waitFor(() =>
+      expect(uploadMock).toHaveBeenLastCalledWith(file, 'tropical', null, true),
+    )
+    expect(select).toHaveValue('tropical')
+  })
+
+  it('after supersede preview commit button sends confirmSupersede', async () => {
+    uploadMock
+      .mockRejectedValueOnce(
+        new ScheduleApiError(
+          'duplicate_schedule_version',
+          {
+            code: 'duplicate_schedule_version',
+            schedule_version_key: 'tropical|TWNU18|2026-05-26T08:00:00',
+            activity_count: 1378,
+            relationship_count: 3718,
+            view_path: '/schedules/activities?version=tropical',
+          },
+          409,
+        ),
+      )
+      .mockResolvedValueOnce({
+        import_id: 'supersede-preview',
+        activity_count: 1378,
+        relationship_count: 3718,
+        source_format: 'primavera_xer',
+        cost_loaded_status: 'not_cost_loaded',
+        wbs_count: 10,
+        calendar_count: 3,
+        validation_findings: [],
+        requires_column_mapping: false,
+        project_key: 'tropical',
+      })
+    commitMock.mockResolvedValue({
+      import_id: 'supersede-preview',
+      project_key: 'tropical',
+      schedule_version_key: 'tropical|TWNU18|2026-05-26T08:00:00',
+      supersede_performed: true,
+    })
+    renderPage()
+    await selectTropicalProject()
+    const file = new File(['ERMHDR'], 'TWNU18.xer', { type: 'application/octet-stream' })
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement
+    fireEvent.change(input, { target: { files: [file] } })
+    await waitFor(() => expect(screen.getByText(/already imported/i)).toBeInTheDocument())
+    fireEvent.click(screen.getByRole('button', { name: /Preview supersede/i }))
+    await waitFor(() => {
+      expect(
+        screen.getByText(/will supersede the existing schedule version/i),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: /Commit supersede import to database/i }),
+      ).toBeInTheDocument()
+    })
+    fireEvent.click(screen.getByRole('button', { name: /Commit supersede import to database/i }))
+    await waitFor(() =>
+      expect(commitMock).toHaveBeenCalledWith('supersede-preview', 'tropical', null, true),
+    )
+  })
+
+  it('commit duplicate 409 shows supersede-required message', async () => {
+    uploadMock.mockResolvedValue({
+      import_id: 'dup-commit',
+      activity_count: 2,
+      relationship_count: 1,
+      source_format: 'primavera_xer',
+      cost_loaded_status: 'not_cost_loaded',
+      wbs_count: 1,
+      calendar_count: 1,
+      validation_findings: [],
+      requires_column_mapping: false,
+      project_key: 'tropical',
+    })
+    commitMock.mockRejectedValue(
+      new ScheduleApiError(
+        'duplicate_schedule_version',
+        {
+          code: 'duplicate_schedule_version',
+          schedule_version_key: 'tropical|TWNU18|2026-05-26T08:00:00',
+          activity_count: 1378,
+          relationship_count: 3718,
+          view_path: '/schedules/activities?version=tropical',
+        },
+        409,
+      ),
+    )
+    renderPage()
+    await selectTropicalProject()
+    const file = new File(['ERMHDR'], 'minimal.xer', { type: 'application/octet-stream' })
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement
+    fireEvent.change(input, { target: { files: [file] } })
+    await waitFor(() => expect(screen.getByText(/Commit import to database/i)).toBeInTheDocument())
+    fireEvent.click(screen.getByRole('button', { name: /Commit import to database/i }))
+    await waitFor(() => {
+      expect(
+        screen.getByText(/Preview supersede before committing/i),
+      ).toBeInTheDocument()
+    })
+  })
+
   it('shows previewing state while upload is in flight', async () => {
     let resolve!: (v: unknown) => void
     uploadMock.mockReturnValue(

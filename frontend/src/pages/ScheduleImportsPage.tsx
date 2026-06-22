@@ -50,6 +50,8 @@ function scheduleErrorMessage(err: unknown): string {
         return 'Selected project no longer matches the preview. Re-upload the file for the intended project.'
       case 'schedule_import_persistence_failed':
         return 'Schedule import could not be saved completely. No partial version was committed.'
+      case 'duplicate_schedule_version':
+        return 'This schedule version already exists. Preview supersede before committing.'
       default:
         return err.message || 'Schedule import failed.'
     }
@@ -65,6 +67,7 @@ export function ScheduleImportsPage() {
   const [duplicate, setDuplicate] = useState<DuplicateInfo | null>(null)
   const [preview, setPreview] = useState<Record<string, unknown> | null>(null)
   const [previewProjectKey, setPreviewProjectKey] = useState('')
+  const [previewIsSupersede, setPreviewIsSupersede] = useState(false)
   const [committed, setCommitted] = useState<Record<string, unknown> | null>(null)
   const { data: projectsData } = useScheduleProjects()
 
@@ -72,6 +75,7 @@ export function ScheduleImportsPage() {
     if (!previewProjectKey || projectKey === previewProjectKey) return
     setPreview(null)
     setPreviewProjectKey('')
+    setPreviewIsSupersede(false)
     setDuplicate(null)
   }, [projectKey, previewProjectKey])
 
@@ -87,6 +91,7 @@ export function ScheduleImportsPage() {
       setDuplicate(null)
       setCommitted(null)
       setPreview(null)
+      setPreviewIsSupersede(false)
     }
     if (file.size > MAX_UPLOAD_BYTES) {
       setError('This file exceeds the 50 MB upload limit.')
@@ -104,7 +109,10 @@ export function ScheduleImportsPage() {
       const body = resp as Record<string, unknown>
       setPreview(body)
       setPreviewProjectKey(String(body.project_key ?? projectKey))
-      setDuplicate(null)
+      setPreviewIsSupersede(confirmSupersede)
+      if (!confirmSupersede) {
+        setDuplicate(null)
+      }
     } catch (err) {
       if (err instanceof ScheduleApiError && err.code === 'duplicate_schedule_version') {
         const p = err.payload
@@ -146,6 +154,7 @@ export function ScheduleImportsPage() {
           relationship_count: Number(p.relationship_count ?? 0),
           view_path: String(p.view_path ?? '/schedules/versions'),
         })
+        setError(scheduleErrorMessage(err))
       } else {
         setError(scheduleErrorMessage(err))
       }
@@ -228,11 +237,6 @@ export function ScheduleImportsPage() {
               >
                 Preview supersede
               </ScheduleActionButton>
-              {preview ? (
-                <ScheduleActionButton onClick={() => void onCommit(true)} disabled={busy}>
-                  Commit supersede
-                </ScheduleActionButton>
-              ) : null}
             </div>
           </div>
         ) : null}
@@ -275,11 +279,20 @@ export function ScheduleImportsPage() {
             {Boolean(preview.requires_column_mapping) ? (
               <p className="text-[var(--hb-muted)]">CSV uploads require column mapping before commit.</p>
             ) : null}
+            {previewIsSupersede ? (
+              <p className="text-amber-700">
+                This import will supersede the existing schedule version for this project.
+              </p>
+            ) : null}
             <ScheduleActionButton
-              onClick={() => void onCommit()}
+              onClick={() => void onCommit(previewIsSupersede)}
               disabled={busy || !previewProjectKey || projectKey !== previewProjectKey}
             >
-              {busy && busyAction === 'commit' ? 'Committing…' : 'Commit import to database'}
+              {busy && busyAction === 'commit'
+                ? 'Committing…'
+                : previewIsSupersede
+                  ? 'Commit supersede import to database'
+                  : 'Commit import to database'}
             </ScheduleActionButton>
           </div>
         ) : null}

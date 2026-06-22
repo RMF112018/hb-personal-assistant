@@ -50,11 +50,22 @@ def _preview(client: TestClient, path: Path, *, project_key: str = "tropical") -
     )
 
 
-def _commit(client: TestClient, import_id: str, *, project_key: str = "tropical") -> Any:
+def _commit(
+    client: TestClient,
+    import_id: str,
+    *,
+    project_key: str = "tropical",
+    confirm_supersede: bool = False,
+) -> Any:
     return client.post(
         "/api/schedules/import-commit",
         headers=_op(),
-        json={"import_id": import_id, "project_key": project_key, "confirm": True},
+        json={
+            "import_id": import_id,
+            "project_key": project_key,
+            "confirm": True,
+            "confirm_supersede": confirm_supersede,
+        },
     )
 
 
@@ -156,8 +167,10 @@ def test_import_commit_supersede_same_version_key(tmp_path: Path) -> None:
         },
     )
     assert supersede.status_code == 200
-    assert supersede.json()["schedule_version_key"] == svk
-    assert supersede.json().get("superseded_import_id") == commit1.json()["import_id"]
+    body = supersede.json()
+    assert body["schedule_version_key"] == svk
+    assert body.get("superseded_import_id") == commit1.json()["import_id"]
+    assert body.get("supersede_performed") is True
 
 
 def test_import_preview_and_commit_flow(tmp_path: Path) -> None:
@@ -327,6 +340,96 @@ def test_unsupported_schedule_format(tmp_path: Path) -> None:
     )
     assert resp.status_code == 400
     assert resp.json()["detail"] == "unsupported_schedule_format"
+
+
+def test_commit_after_supersede_preview_requires_commit_confirmation(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+    preview1 = _preview(client, FIXTURE)
+    assert preview1.status_code == 200
+    commit1 = _commit(client, preview1.json()["import_id"])
+    assert commit1.status_code == 200
+
+    preview2 = client.post(
+        "/api/schedules/import-preview",
+        headers=_op(),
+        files={"file": (FIXTURE.name, FIXTURE.read_bytes(), "application/xml")},
+        data={"project_key": "tropical", "confirm_supersede": "true"},
+    )
+    assert preview2.status_code == 200
+    import_id = preview2.json()["import_id"]
+
+    blocked = _commit(client, import_id)
+    assert blocked.status_code == 409
+    detail = blocked.json()["detail"]
+    assert detail["code"] == "schedule_supersede_confirmation_required"
+    assert detail["preview_confirm_supersede"] is True
+    assert detail["commit_confirm_supersede"] is False
+
+    ok = _commit(client, import_id, confirm_supersede=True)
+    assert ok.status_code == 200
+    assert ok.json().get("supersede_performed") is True
+
+
+def test_commit_supersede_state_mismatch_when_cache_not_supersede(tmp_path: Path) -> None:
+    from hb_assistant.construction.analytics.schedule_import_service import _PREVIEW_CACHE
+
+    client = _client(tmp_path)
+    preview1 = _preview(client, FIXTURE)
+    assert _commit(client, preview1.json()["import_id"]).status_code == 200
+
+    preview2 = client.post(
+        "/api/schedules/import-preview",
+        headers=_op(),
+        files={"file": (FIXTURE.name, FIXTURE.read_bytes(), "application/xml")},
+        data={"project_key": "tropical", "confirm_supersede": "true"},
+    )
+    assert preview2.status_code == 200
+    import_id = preview2.json()["import_id"]
+    _PREVIEW_CACHE[import_id]["confirm_supersede"] = False
+
+    resp = _commit(client, import_id, confirm_supersede=True)
+    assert resp.status_code == 409
+    detail = resp.json()["detail"]
+    assert detail["code"] == "schedule_supersede_state_mismatch"
+    assert detail["preview_confirm_supersede"] is False
+    assert detail["commit_confirm_supersede"] is True
+
+
+def test_supersede_leaves_one_committed_version(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+    preview1 = _preview(client, FIXTURE)
+    commit1 = _commit(client, preview1.json()["import_id"])
+    assert commit1.status_code == 200
+    svk = commit1.json()["schedule_version_key"]
+    old_import_id = commit1.json()["import_id"]
+
+    preview2 = client.post(
+        "/api/schedules/import-preview",
+        headers=_op(),
+        files={"file": (FIXTURE.name, FIXTURE.read_bytes(), "application/xml")},
+        data={"project_key": "tropical", "confirm_supersede": "true"},
+    )
+    assert preview2.status_code == 200
+    commit2 = _commit(client, preview2.json()["import_id"], confirm_supersede=True)
+    assert commit2.status_code == 200
+    new_import_id = commit2.json()["import_id"]
+
+    db = tmp_path / "api.db"
+    with sqlite3.connect(db) as conn:
+        rows = conn.execute(
+            """
+            SELECT import_id, import_status
+            FROM schedule_file_imports
+            WHERE schedule_version_key = ?
+            ORDER BY created_at
+            """,
+            (svk,),
+        ).fetchall()
+        statuses = {r[0]: r[1] for r in rows}
+        assert statuses[old_import_id] == "superseded"
+        assert statuses[new_import_id] == "committed"
+        committed_count = sum(1 for s in statuses.values() if s == "committed")
+        assert committed_count == 1
 
 
 def test_commit_duplicate_blocked(tmp_path: Path) -> None:

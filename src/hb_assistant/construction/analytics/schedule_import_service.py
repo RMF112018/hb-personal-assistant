@@ -226,6 +226,9 @@ class ScheduleImportService:
                 },
             )
 
+        duplicate_exists = bool(
+            existing and str(existing.get("import_status") or "") == "committed"
+        )
         _PREVIEW_CACHE[import_id] = {
             "project_key": project_key,
             "bundle": bundle,
@@ -239,6 +242,9 @@ class ScheduleImportService:
                 {"activities": len(bundle.activities)}, sort_keys=True
             ).encode()),
             "column_roles": column_roles,
+            "confirm_supersede": bool(confirm_supersede),
+            "schedule_version_key": version_key,
+            "duplicate_exists": duplicate_exists,
         }
 
         from .schedule_project_catalog import ScheduleProjectCatalog
@@ -330,8 +336,22 @@ class ScheduleImportService:
         )
         existing = self._activity_repo.get_version_summary(version_key)
         superseded_import_id: str | None = None
-        if existing and str(existing.get("import_status") or "") == "committed":
-            if not confirm_supersede:
+        duplicate_exists = bool(
+            existing and str(existing.get("import_status") or "") == "committed"
+        )
+        cached_supersede = bool(cached.get("confirm_supersede"))
+        if duplicate_exists:
+            if not cached_supersede:
+                if confirm_supersede:
+                    raise ScheduleImportError(
+                        "schedule_supersede_state_mismatch",
+                        message="preview was not created with supersede confirmation",
+                        payload={
+                            "schedule_version_key": version_key,
+                            "preview_confirm_supersede": False,
+                            "commit_confirm_supersede": True,
+                        },
+                    )
                 raise ScheduleImportError(
                     "duplicate_schedule_version",
                     message="schedule version already committed",
@@ -342,7 +362,27 @@ class ScheduleImportService:
                         "view_path": duplicate_view_path(version_key),
                     },
                 )
+            if not confirm_supersede:
+                raise ScheduleImportError(
+                    "schedule_supersede_confirmation_required",
+                    message="supersede preview requires explicit commit confirmation",
+                    payload={
+                        "schedule_version_key": version_key,
+                        "preview_confirm_supersede": True,
+                        "commit_confirm_supersede": False,
+                    },
+                )
             superseded_import_id = str(existing.get("import_id"))
+        elif confirm_supersede and cached_supersede:
+            raise ScheduleImportError(
+                "schedule_supersede_state_mismatch",
+                message="supersede preview no longer matches committed state",
+                payload={
+                    "schedule_version_key": version_key,
+                    "preview_confirm_supersede": True,
+                    "commit_confirm_supersede": True,
+                },
+            )
         now = datetime.now(timezone.utc).isoformat()
         cost_status = assess_cost_loaded_status(bundle.activities, bundle.cost_loaded_hints)
 
@@ -501,6 +541,7 @@ class ScheduleImportService:
             "evaluation_run_id": queued.get("evaluation_run_id"),
             "committed_at": now,
             "superseded_import_id": superseded_import_id,
+            "supersede_performed": superseded_import_id is not None,
         }
 
     @staticmethod

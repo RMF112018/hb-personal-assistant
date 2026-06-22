@@ -1,0 +1,14 @@
+{
+  "scan_command": "hb-assistant diagnostics scan-sensitive --repo . --json",
+  "scan_implemented": true,
+  "evidence_artifacts_reviewed": [
+    "live_api_flow.json",
+    "live_db_proof.txt",
+    "backend_tests.log",
+    "frontend_tests.log",
+    "frontend_build.log",
+    "EVIDENCE.md"
+  ],
+  "evidence_contains_secrets": false,
+  "notes": "Full repo scan output omitted from bundle (large). Evidence files contain only status codes, import IDs, and aggregate DB metrics."
+}
