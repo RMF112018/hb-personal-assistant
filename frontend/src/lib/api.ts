@@ -895,6 +895,37 @@ export function getScheduleActivities(
 export function getScheduleQuality(scheduleVersionKey: string) {
   return fetchJson(`/api/schedules/versions/${encodeURIComponent(scheduleVersionKey)}/quality`);
 }
+export function getScheduleQualityFindings(
+  scheduleVersionKey: string,
+  opts?: { evaluationRunId?: string; limit?: number; offset?: number },
+) {
+  const params = new URLSearchParams();
+  if (opts?.evaluationRunId) params.set('evaluation_run_id', opts.evaluationRunId);
+  if (opts?.limit != null) params.set('limit', String(opts.limit));
+  if (opts?.offset != null) params.set('offset', String(opts.offset));
+  const qs = params.toString();
+  return fetchJson(
+    `/api/schedules/versions/${encodeURIComponent(scheduleVersionKey)}/quality/findings${qs ? `?${qs}` : ''}`,
+  );
+}
+export function getScheduleQualityMetrics(scheduleVersionKey: string) {
+  return fetchJson(
+    `/api/schedules/versions/${encodeURIComponent(scheduleVersionKey)}/quality/metrics`,
+  );
+}
+export function rerunScheduleQuality(scheduleVersionKey: string, profile?: string) {
+  const qs = profile ? `?profile=${encodeURIComponent(profile)}` : '';
+  return fetchJson(
+    `/api/schedules/versions/${encodeURIComponent(scheduleVersionKey)}/quality/rerun${qs}`,
+    { method: 'POST' },
+  );
+}
+export function getScheduleQualityRun(evaluationRunId: string) {
+  return fetchJson(`/api/schedules/quality/runs/${encodeURIComponent(evaluationRunId)}`);
+}
+export function getScheduleProjectQualitySummary(projectKey: string) {
+  return fetchJson(`/api/schedules/projects/${encodeURIComponent(projectKey)}/quality/summary`);
+}
 export function getScheduleVersionDiff(projectKey: string, fromVersion: string, toVersion: string) {
   const params = new URLSearchParams({ from: fromVersion, to: toVersion });
   return fetchJson(
@@ -1158,6 +1189,11 @@ export const api = {
   getScheduleVersionSummary,
   getScheduleActivities,
   getScheduleQuality,
+  getScheduleQualityFindings,
+  getScheduleQualityMetrics,
+  rerunScheduleQuality,
+  getScheduleQualityRun,
+  getScheduleProjectQualitySummary,
   getScheduleVersionDiff,
   uploadScheduleImportPreview,
   commitScheduleImport,

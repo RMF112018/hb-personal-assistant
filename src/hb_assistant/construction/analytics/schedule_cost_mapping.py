@@ -168,6 +168,19 @@ class ScheduleCostMappingService:
                 message="mapping run requires at least one approved candidate",
             )
 
+        from hb_assistant.construction.analytics.schedule_quality_service import (
+            ScheduleQualityService,
+        )
+
+        quality = ScheduleQualityService(db_path=self._db_path).latest_completed_scorecard(
+            run["schedule_version_key"]
+        )
+        if not quality:
+            raise ScheduleImportError(
+                "schedule_quality_not_ready",
+                message="approved cost weighting requires a completed quality scorecard",
+            )
+
         now = datetime.now(timezone.utc).isoformat()
         self._mapping_repo.approve_mapping_run(mapping_run_id, approved_at=now)
 

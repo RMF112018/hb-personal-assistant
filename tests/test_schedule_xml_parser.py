@@ -41,6 +41,11 @@ def test_parse_gma_real_sample() -> None:
     assert bundle.schedule_id == "GMA"
     assert bundle.data_date is not None
 
+    assert bundle.schedule_options.get("compute_total_float_type")
+    assert "Finish Float = Late Finish - Early Finish" in str(
+        bundle.schedule_options.get("compute_total_float_type")
+    )
+
     first = bundle.activities[0]
     assert first["activity_id"] == "BUY-ALBANY-EH1-1010"
     assert first["source_activity_object_id"] == "99508"
@@ -48,6 +53,10 @@ def test_parse_gma_real_sample() -> None:
     assert first.get("planned_finish")
     assert first.get("activity_status") == "Not Started"
     assert first.get("duration_original") == "40"
+    assert first.get("remaining_early_finish")
+    assert first.get("remaining_late_finish")
+    assert first.get("derived_float_basis") == "remaining_late_finish_minus_remaining_early_finish"
+    assert float(first.get("derived_total_float_days") or 0) > 0
 
     act_ids = {a["activity_id"] for a in bundle.activities}
     for rel in bundle.relationships[:20]:

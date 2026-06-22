@@ -14,9 +14,14 @@ import xml.etree.ElementTree as ET
 from typing import Any
 
 from .schedule_file_parser import ParsedScheduleBundle, ScheduleImportError
+from .schedule_float_derivation import (
+    apply_derived_float_to_activities,
+    merge_schedule_options,
+    parse_schedule_options,
+)
 
 PARSER_NAME = "schedule_xml_parser"
-PARSER_VERSION = "1.1.0"
+PARSER_VERSION = "1.2.0"
 
 _ACTIVITY_TAGS = frozenset({"Activity", "activity", "TASK"})
 _RELATIONSHIP_TAGS = frozenset({"Relationship", "relationship", "TaskPred", "TaskPredecessor"})
@@ -142,11 +147,15 @@ def _activity_row(
         "start_date": fields.get("StartDate") or fields.get("start_date"),
         "finish_date": fields.get("FinishDate") or fields.get("finish_date"),
         "early_start": fields.get("ExternalEarlyStartDate") or fields.get("EarlyStartDate"),
-        "early_finish": fields.get("ExternalLateFinishDate") or fields.get("EarlyFinishDate"),
-        "late_start": fields.get("RemainingLateStartDate") or fields.get("LateStartDate"),
-        "late_finish": fields.get("RemainingLateFinishDate") or fields.get("LateFinishDate"),
+        "early_finish": fields.get("ExternalEarlyFinishDate") or fields.get("EarlyFinishDate"),
+        "late_start": fields.get("LateStartDate"),
+        "late_finish": fields.get("LateFinishDate"),
         "actual_start": fields.get("ActualStartDate"),
         "actual_finish": fields.get("ActualFinishDate"),
+        "remaining_early_start": fields.get("RemainingEarlyStartDate"),
+        "remaining_early_finish": fields.get("RemainingEarlyFinishDate"),
+        "remaining_late_start": fields.get("RemainingLateStartDate"),
+        "remaining_late_finish": fields.get("RemainingLateFinishDate"),
         "remaining_start": fields.get("RemainingEarlyStartDate"),
         "remaining_finish": fields.get("RemainingEarlyFinishDate"),
         "duration_original": fields.get("PlannedDuration")
@@ -224,9 +233,29 @@ def parse_pmxml_bytes(data: bytes | io.BufferedIOBase) -> ParsedScheduleBundle:
                         "type_oid": fields.get("CodeTypeObjectId") or "",
                     }
 
+            elif tag == "ScheduleOptions":
+                bundle.schedule_options = merge_schedule_options(
+                    bundle.schedule_options, parse_schedule_options(_field_map(el))
+                )
+
             elif tag == "Project" and not project_seen:
                 fields = _field_map(el)
                 project_seen = True
+                bundle.schedule_options = merge_schedule_options(
+                    bundle.schedule_options,
+                    parse_schedule_options(
+                        {
+                            k: fields[k]
+                            for k in (
+                                "ComputeTotalFloatType",
+                                "CriticalActivityPathType",
+                                "CriticalActivityFloatThreshold",
+                                "CalculateFloatBasedOnFinishDate",
+                            )
+                            if k in fields
+                        }
+                    ),
+                )
                 bundle.schedule_name = fields.get("Name") or bundle.schedule_name
                 bundle.data_date = fields.get("DataDate") or bundle.data_date
                 bundle.planned_start = fields.get("PlannedStartDate") or fields.get("AnticipatedStartDate")
@@ -379,4 +408,13 @@ def parse_pmxml_bytes(data: bytes | io.BufferedIOBase) -> ParsedScheduleBundle:
         bundle.validation_findings.append(
             {"code": "no_activities", "message": "No schedule activities detected in XML"}
         )
+
+    apply_derived_float_to_activities(
+        bundle.activities,
+        options=bundle.schedule_options,
+        calendars=bundle.calendars,
+    )
+    for act in bundle.activities:
+        act["source_row_hash"] = _row_hash({k: act[k] for k in act if k != "source_row_hash"})
+
     return bundle

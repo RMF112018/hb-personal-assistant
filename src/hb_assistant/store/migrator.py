@@ -14,7 +14,7 @@ from .connection import get_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 63
+LATEST_SCHEMA_VERSION = 65
 
 
 class SQLiteMigrator:
@@ -6766,6 +6766,12 @@ class SQLiteMigrator:
 
         return V63_STATEMENTS
 
+    @staticmethod
+    def _v64_statements() -> list[str]:
+        from hb_assistant.store.schedule_quality_tables import V64_STATEMENTS
+
+        return V64_STATEMENTS
+
     # v44 Phase 10 Graph drive-item modified-by raw operational metadata.
     # Additive ADD COLUMN only on construction_drive_items; raw identity JSON is
     # local SQLite operational metadata and must not be emitted in committed evidence.
@@ -7890,11 +7896,143 @@ class SQLiteMigrator:
                     (now,),
                 )
 
+            for stmt in self._v64_statements():
+                conn.execute(stmt)
+            self._reconcile_v64_schedule_quality_findings(conn)
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 64")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (64, 'v64_schedule_quality_evaluation', ?)",
+                    (now,),
+                )
+
+            self._reconcile_v65_schedule_float_columns(conn)
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 65")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (65, 'v65_schedule_derived_finish_float', ?)",
+                    (now,),
+                )
+
         # Return latest version
         conn2 = get_connection(self._db_path)
         cur = conn2.execute("SELECT MAX(version) FROM schema_migrations")
         row = cur.fetchone()
         return int(row[0]) if row and row[0] is not None else 0
+
+    @staticmethod
+    def _reconcile_v64_schedule_quality_findings(conn: sqlite3.Connection) -> None:
+        from hb_assistant.store.schedule_quality_tables import V64_FINDING_ALTER_COLUMNS
+
+        try:
+            cols = {row[1] for row in conn.execute("PRAGMA table_info(schedule_quality_findings)")}
+        except sqlite3.OperationalError:
+            return
+        if not cols:
+            return
+        for col in V64_FINDING_ALTER_COLUMNS:
+            if col not in cols:
+                conn.execute(f"ALTER TABLE schedule_quality_findings ADD COLUMN {col} TEXT")
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_schedule_quality_run "
+            "ON schedule_quality_findings(schedule_version_key, evaluation_run_id)"
+        )
+
+    @staticmethod
+    def _reconcile_v65_schedule_float_columns(conn: sqlite3.Connection) -> None:
+        from hb_assistant.store.schedule_float_tables import (
+            V65_ACTIVITY_ALTER_COLUMNS,
+            V65_IMPORT_ALTER_COLUMNS,
+        )
+
+        def _add_cols(table: str, cols: tuple[str, ...], ddl: dict[str, str]) -> None:
+            try:
+                existing = {row[1] for row in conn.execute(f"PRAGMA table_info({table})")}
+            except sqlite3.OperationalError:
+                return
+            if not existing:
+                return
+            for col in cols:
+                if col not in existing:
+                    conn.execute(f"ALTER TABLE {table} ADD COLUMN {col} {ddl[col]}")
+
+        import_ddl = {
+            "compute_total_float_type": "TEXT",
+            "critical_activity_path_type": "TEXT",
+            "critical_activity_float_threshold": "TEXT",
+            "calculate_float_based_on_finish_date": "INTEGER",
+        }
+        activity_ddl = {
+            "remaining_early_start": "TEXT",
+            "remaining_early_finish": "TEXT",
+            "remaining_late_start": "TEXT",
+            "remaining_late_finish": "TEXT",
+            "derived_total_float_hours": "TEXT",
+            "derived_total_float_days": "TEXT",
+            "derived_float_basis": "TEXT",
+            "derived_is_critical_by_float_threshold": "INTEGER",
+        }
+        _add_cols("schedule_file_imports", V65_IMPORT_ALTER_COLUMNS, import_ddl)
+        _add_cols("procore_ep_schedule_activities", V65_ACTIVITY_ALTER_COLUMNS, activity_ddl)
+        SQLiteMigrator._reconcile_v65_metric_status_check(conn)
+
+    @staticmethod
+    def _reconcile_v65_metric_status_check(conn: sqlite3.Connection) -> None:
+        from hb_assistant.store.schedule_float_tables import METRIC_STATUS_CHECK_VALUES
+
+        cur = conn.execute(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name='schedule_quality_metric_results'"
+        )
+        row = cur.fetchone()
+        if not row or not row[0]:
+            return
+        if "measured_from_derived_finish_float" in str(row[0]):
+            return
+        statuses = ", ".join(f"'{s}'" for s in METRIC_STATUS_CHECK_VALUES)
+        conn.execute("ALTER TABLE schedule_quality_metric_results RENAME TO schedule_quality_metric_results_v64")
+        conn.execute(
+            f"""
+            CREATE TABLE schedule_quality_metric_results (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              evaluation_run_id TEXT NOT NULL,
+              project_key TEXT NOT NULL,
+              schedule_version_key TEXT NOT NULL,
+              metric_code TEXT NOT NULL,
+              metric_name TEXT NOT NULL,
+              metric_family TEXT NOT NULL CHECK(metric_family IN ('dcma', 'gao', 'aace')),
+              numerator TEXT,
+              denominator TEXT,
+              value TEXT,
+              unit TEXT,
+              threshold_warning TEXT,
+              threshold_fail TEXT,
+              status TEXT NOT NULL CHECK(status IN ({statuses})),
+              not_measurable_reason TEXT,
+              evidence_json TEXT,
+              related_finding_codes_json TEXT,
+              created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (evaluation_run_id) REFERENCES schedule_quality_evaluation_runs(evaluation_run_id)
+            );
+            """
+        )
+        conn.execute(
+            """
+            INSERT INTO schedule_quality_metric_results (
+              id, evaluation_run_id, project_key, schedule_version_key, metric_code, metric_name,
+              metric_family, numerator, denominator, value, unit, threshold_warning, threshold_fail,
+              status, not_measurable_reason, evidence_json, related_finding_codes_json, created_at
+            )
+            SELECT
+              id, evaluation_run_id, project_key, schedule_version_key, metric_code, metric_name,
+              metric_family, numerator, denominator, value, unit, threshold_warning, threshold_fail,
+              status, not_measurable_reason, evidence_json, related_finding_codes_json, created_at
+            FROM schedule_quality_metric_results_v64
+            """
+        )
+        conn.execute("DROP TABLE schedule_quality_metric_results_v64")
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_sq_metrics_run ON schedule_quality_metric_results(evaluation_run_id)"
+        )
 
     @staticmethod
     def _v47_statements() -> list[str]:

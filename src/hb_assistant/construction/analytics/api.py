@@ -378,6 +378,9 @@ async def _forecast_lifespan(app: Any) -> Any:
     Informative and fail-closed — never raises (a bootstrap failure must never block app startup,
     mirroring the optional-surface degrade posture).
     """
+    import asyncio
+
+    poll_task: asyncio.Task[None] | None = None
     try:
         from hb_assistant.construction.analytics.forecast_bootstrap import (
             ensure_forecast_managed_storage,
@@ -386,7 +389,33 @@ async def _forecast_lifespan(app: Any) -> Any:
         ensure_forecast_managed_storage()
     except Exception:
         pass
+
+    async def _quality_poll_loop() -> None:
+        from hb_assistant.config.path_policy import PathPolicy
+        from hb_assistant.construction.analytics.schedule_quality_worker import poll_and_process
+
+        configured = getattr(app.state, "db_path", None)
+        db = str(configured) if configured else str(PathPolicy().get_db_path())
+        while True:
+            try:
+                await asyncio.to_thread(poll_and_process, db_path=db, limit=3)
+            except Exception:
+                pass
+            await asyncio.sleep(60)
+
+    try:
+        poll_task = asyncio.create_task(_quality_poll_loop())
+    except Exception:
+        poll_task = None
+
     yield
+
+    if poll_task is not None:
+        poll_task.cancel()
+        try:
+            await poll_task
+        except asyncio.CancelledError:
+            pass
 
 
 def create_app(*, db_path: str | None = None) -> Any:
@@ -411,6 +440,7 @@ def create_app(*, db_path: str | None = None) -> Any:
             "(Prompt 14B: account/project connections, source scope, keywords, daily brief config, preferences, admin sync controls) supported."
         ),
     )
+    app.state.db_path = db_path
     role_dep = Depends(require_role)
     optional_json_body = Body(default=None)  # bound to a var so call isn't in an arg default (B008)
 
@@ -2015,6 +2045,8 @@ def create_app(*, db_path: str | None = None) -> Any:
             raise HTTPException(status_code=409, detail={"code": code, **payload})
         if code == "schedule_multipart_unavailable":
             raise HTTPException(status_code=503, detail="schedule_multipart_unavailable")
+        if code == "schedule_quality_not_ready":
+            raise HTTPException(status_code=409, detail="schedule_quality_not_ready")
         if code in {"unsupported_schedule_format", "schedule_parse_failed"}:
             raise HTTPException(status_code=400, detail=code)
         raise HTTPException(status_code=400, detail=code or "schedule_import_invalid")
@@ -2094,13 +2126,96 @@ def create_app(*, db_path: str | None = None) -> Any:
         items = _schedule_call(_schedule_read_service().list_relationships, schedule_version_key)
         return {"schedule_version_key": schedule_version_key, "relationships": items}
 
+    def _schedule_quality_service() -> Any:
+        from hb_assistant.construction.analytics.schedule_quality_service import (
+            ScheduleQualityService,
+        )
+
+        return ScheduleQualityService(db_path=_schedule_db_path())
+
     @app.get("/api/schedules/versions/{schedule_version_key}/quality")
     def schedule_version_quality(
         schedule_version_key: str, role: dict[str, str] = role_dep
     ) -> dict[str, Any]:
         del role
-        items = _schedule_call(_schedule_read_service().list_quality, schedule_version_key)
-        return {"schedule_version_key": schedule_version_key, "findings": items}
+        return _schedule_call(
+            _schedule_quality_service().get_quality_summary,
+            schedule_version_key,
+        )
+
+    @app.get("/api/schedules/versions/{schedule_version_key}/quality/findings")
+    def schedule_version_quality_findings(
+        schedule_version_key: str,
+        evaluation_run_id: str | None = None,
+        limit: int = Query(default=500, ge=1, le=5000),
+        offset: int = Query(default=0, ge=0),
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        del role
+        return _schedule_call(
+            _schedule_quality_service().get_findings,
+            schedule_version_key,
+            evaluation_run_id=evaluation_run_id,
+            limit=limit,
+            offset=offset,
+        )
+
+    @app.get("/api/schedules/versions/{schedule_version_key}/quality/metrics")
+    def schedule_version_quality_metrics(
+        schedule_version_key: str, role: dict[str, str] = role_dep
+    ) -> dict[str, Any]:
+        del role
+        summary = _schedule_call(
+            _schedule_quality_service().get_quality_summary,
+            schedule_version_key,
+        )
+        return {
+            "schedule_version_key": schedule_version_key,
+            "evaluation_run_id": summary.get("evaluation_run_id"),
+            "metrics": summary.get("metrics", []),
+        }
+
+    @app.post("/api/schedules/versions/{schedule_version_key}/quality/rerun")
+    def schedule_version_quality_rerun(
+        schedule_version_key: str,
+        profile: str | None = None,
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        require_operator_role(role)
+        from hb_assistant.construction.analytics.schedule_quality_worker import poll_and_process
+
+        out = _schedule_call(
+            _schedule_quality_service().request_rerun,
+            schedule_version_key=schedule_version_key,
+            profile_id=profile,
+        )
+        poll_and_process(db_path=_schedule_db_path(), limit=1)
+        return out
+
+    @app.get("/api/schedules/quality/runs/{evaluation_run_id}")
+    def schedule_quality_run_detail(
+        evaluation_run_id: str, role: dict[str, str] = role_dep
+    ) -> dict[str, Any]:
+        del role
+        from fastapi import HTTPException
+
+        out = _schedule_call(
+            _schedule_quality_service().get_run_detail,
+            evaluation_run_id,
+        )
+        if out is None:
+            raise HTTPException(status_code=404, detail="schedule_not_found")
+        return out
+
+    @app.get("/api/schedules/projects/{project_key}/quality/summary")
+    def schedule_project_quality_summary(
+        project_key: str, role: dict[str, str] = role_dep
+    ) -> dict[str, Any]:
+        del role
+        return _schedule_call(
+            _schedule_quality_service().get_project_summary,
+            project_key,
+        )
 
     @app.get("/api/schedules/projects/{project_key}/diff")
     def schedule_version_diff(

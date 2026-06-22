@@ -48,6 +48,10 @@ class ScheduleVersionSummaryDTO:
     cost_loaded_status: str
     imported_at: str
     quality_finding_count: int
+    quality_status: str = "not_evaluated"
+    quality_score: str | None = None
+    quality_grade: str | None = None
+    quality_profile: str | None = None
 
     def public(self) -> dict[str, Any]:
         return asdict(self)
