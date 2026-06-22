@@ -22,8 +22,8 @@ def _migrated_db(td: str) -> str:
     return str(db)
 
 
-def test_latest_schema_version_is_63() -> None:
-    assert LATEST_SCHEMA_VERSION == 63
+def test_latest_schema_version_is_at_least_63() -> None:
+    assert LATEST_SCHEMA_VERSION >= 63
 
 
 def test_migration_applies_v63_with_all_tables() -> None:

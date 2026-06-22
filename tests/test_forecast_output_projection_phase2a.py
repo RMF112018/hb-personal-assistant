@@ -76,7 +76,11 @@ def test_plan_reads_package_without_db() -> None:
         pkg = _make_analysis_package(Path(td))
         plan = eng.plan_run_output_projection(analysis_package=pkg, project_key=PROJECT_KEY)
         assert plan["ok"] is True
-        assert plan["counts"] == {"outputs": 1, "budget_codes": 2, "risks": 1}
+        # analysis-only run: the coverage tables (monthly/probability/changes/staffing) stay 0
+        assert {k: plan["counts"][k] for k in ("outputs", "budget_codes", "risks")} == {
+            "outputs": 1, "budget_codes": 2, "risks": 1
+        }
+        assert all(plan["counts"][k] == 0 for k in ("monthly", "probability", "changes", "staffing"))
         assert plan["output_id"].startswith("fout-")
 
 
@@ -131,7 +135,9 @@ def test_apply_writes_with_parity_and_is_idempotent() -> None:
             analysis_package=pkg, project_key=PROJECT_KEY, apply=True, db_path=db, parity=True
         )
         assert plan["ok"] is True
-        assert plan["written"] == {"outputs": 1, "budget_codes": 2, "risks": 1}
+        assert {k: plan["written"][k] for k in ("outputs", "budget_codes", "risks")} == {
+            "outputs": 1, "budget_codes": 2, "risks": 1
+        }
         assert plan["parity"]["proven"] is True
 
         # Re-apply is idempotent: no duplicate rows.

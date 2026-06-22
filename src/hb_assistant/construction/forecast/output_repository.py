@@ -6,9 +6,10 @@ apply is idempotent. Read repositories return the projected row's ``raw_json``
 (``json.loads``) and nothing else, so a parity test can compare DB output against the
 source package rows (canonical row-equivalence).
 
-Scope this phase: the header (``forecast_outputs``), per-code recommendations
-(``forecast_output_budget_codes``), and the risk register (``forecast_output_risks``).
-The remaining v63 tables ship empty until a follow-on projection slice.
+Coverage: the header (``forecast_outputs``), per-code recommendations
+(``forecast_output_budget_codes``), risk register (``forecast_output_risks``), and — added in
+Phase 2c — monthly / probability / changes / staffing. ``commitment_exposure`` and
+``schedule_phasing`` remain empty (no clean per-row source yet).
 """
 
 from __future__ import annotations
@@ -107,11 +108,34 @@ def upsert_output_risk(conn: sqlite3.Connection, row: dict[str, Any]) -> None:
     _upsert(conn, "forecast_output_risks", row, ("output_id", "risk_id"))
 
 
+# Phase 2c coverage tables. These conflict on the deterministic PK ``id`` (derived from the
+# natural key) rather than the table UNIQUE: it is robustly idempotent even where the UNIQUE
+# includes a column the source never emits (e.g. staffing ``role`` is NULL).
+def upsert_output_monthly(conn: sqlite3.Connection, row: dict[str, Any]) -> None:
+    _upsert(conn, "forecast_output_monthly", row, ("id",))
+
+
+def upsert_output_probability(conn: sqlite3.Connection, row: dict[str, Any]) -> None:
+    _upsert(conn, "forecast_output_probability", row, ("id",))
+
+
+def upsert_output_change(conn: sqlite3.Connection, row: dict[str, Any]) -> None:
+    _upsert(conn, "forecast_output_changes", row, ("id",))
+
+
+def upsert_output_staffing(conn: sqlite3.Connection, row: dict[str, Any]) -> None:
+    _upsert(conn, "forecast_output_staffing", row, ("id",))
+
+
 # Maps the engine's planned-table keys to their per-row upsert helper.
 _WRITERS = {
     "outputs": upsert_output,
     "budget_codes": upsert_output_budget_code,
     "risks": upsert_output_risk,
+    "monthly": upsert_output_monthly,
+    "probability": upsert_output_probability,
+    "changes": upsert_output_change,
+    "staffing": upsert_output_staffing,
 }
 
 
@@ -155,3 +179,31 @@ def read_output_risks_from_db(
 ) -> list[dict[str, Any]]:
     """Risk-register rows in source-file order (source_row_number)."""
     return _read_raw(conn, "forecast_output_risks", "source_row_number", output_id=output_id)
+
+
+def read_output_monthly_from_db(
+    conn: sqlite3.Connection, *, output_id: str
+) -> list[dict[str, Any]]:
+    """Monthly forecast rows in source-file order (source_row_number)."""
+    return _read_raw(conn, "forecast_output_monthly", "source_row_number", output_id=output_id)
+
+
+def read_output_probability_from_db(
+    conn: sqlite3.Connection, *, output_id: str
+) -> list[dict[str, Any]]:
+    """Probability-band rows in source-file order (source_row_number)."""
+    return _read_raw(conn, "forecast_output_probability", "source_row_number", output_id=output_id)
+
+
+def read_output_changes_from_db(
+    conn: sqlite3.Connection, *, output_id: str
+) -> list[dict[str, Any]]:
+    """Change/delta rows in source-file order (source_row_number)."""
+    return _read_raw(conn, "forecast_output_changes", "source_row_number", output_id=output_id)
+
+
+def read_output_staffing_from_db(
+    conn: sqlite3.Connection, *, output_id: str
+) -> list[dict[str, Any]]:
+    """Staffing rows in source-file order (source_row_number)."""
+    return _read_raw(conn, "forecast_output_staffing", "source_row_number", output_id=output_id)
