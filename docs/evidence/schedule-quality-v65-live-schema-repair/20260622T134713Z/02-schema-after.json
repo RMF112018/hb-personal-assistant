@@ -1,0 +1,9 @@
+{
+  "schema_expected": 66,
+  "schema_after": 66,
+  "schedule_v65_physical_after": {
+    "schedule_v65_physical_ready": true,
+    "schedule_v65_missing_columns": [],
+    "schedule_v65_metric_status_check_ready": true
+  }
+}

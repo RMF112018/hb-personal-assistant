@@ -1,0 +1,15 @@
+{
+  "preview_import_id": "aad996c433b0",
+  "commit": {
+    "import_id": "aad996c433b0",
+    "schedule_version_key": "tropical|TWNU18|2026-05-26T08:00:00",
+    "activity_count": 1378,
+    "cost_loaded_status": "not_cost_loaded",
+    "quality_evaluation_status": "pending",
+    "evaluation_run_id": "sq-af01d98818ad",
+    "committed_at": "2026-06-22T13:47:14.009564+00:00",
+    "superseded_import_id": "86d0f5559c38"
+  },
+  "file_sha256_expected": "26b4661029d955d08212d166d8295844fb964af7b6577885d7a4e45a0701a8e2",
+  "file_sha256_actual": "26b4661029d955d08212d166d8295844fb964af7b6577885d7a4e45a0701a8e2"
+}

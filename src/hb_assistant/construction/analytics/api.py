@@ -86,6 +86,7 @@ class ScheduleImportCommitRequest(BaseModel):
     import_id: str
     project_key: str = "tropical"
     confirm: bool = False
+    confirm_supersede: bool = False
     column_roles: dict[str, str] | None = None
 
 
@@ -1251,16 +1252,28 @@ def create_app(*, db_path: str | None = None) -> Any:
         finally:
             conn.close()
 
+    def _schedule_v65_physical_status(schema_db: str) -> dict[str, object]:
+        from hb_assistant.store.connection import get_connection
+        from hb_assistant.store.schedule_schema_verify import schedule_v65_physical_report
+
+        conn = get_connection(schema_db)
+        try:
+            return schedule_v65_physical_report(conn)
+        finally:
+            conn.close()
+
     @app.get("/api/admin/schema/status")
     def admin_schema_status(role: dict[str, str] = role_dep) -> dict[str, Any]:
         require_admin_role(role)
         schema_db = _admin_schema_db_path()
         current = _schema_version(schema_db)
+        physical = _schedule_v65_physical_status(schema_db)
         return {
             "schema_version": current,
             "schema_expected": LATEST_SCHEMA_VERSION,
             "schema_ready": current >= LATEST_SCHEMA_VERSION,
             "table_count": _admin_table_count(schema_db),
+            **physical,
         }
 
     @app.post("/api/admin/schema/migrate")
@@ -1268,7 +1281,9 @@ def create_app(*, db_path: str | None = None) -> Any:
         require_admin_role(role)
         schema_db = _admin_schema_db_path()
         before = _schema_version(schema_db)
+        physical_before = _schedule_v65_physical_status(schema_db)
         after = int(SQLiteMigrator(db_path=schema_db).apply())
+        physical_after = _schedule_v65_physical_status(schema_db)
         return {
             "schema_before": before,
             "schema_after": after,
@@ -1276,6 +1291,8 @@ def create_app(*, db_path: str | None = None) -> Any:
             "schema_ready": after >= LATEST_SCHEMA_VERSION,
             "table_count": _admin_table_count(schema_db),
             "migration_name": f"v{after}_schema",
+            "schedule_v65_physical_before": physical_before,
+            "schedule_v65_physical_after": physical_after,
         }
 
     # Prompt A — normalized frontend contract routes under /api/onboarding/readiness and
@@ -2274,6 +2291,7 @@ def create_app(*, db_path: str | None = None) -> Any:
         file: FastAPIUploadFile = FastAPIFile(...),
         project_key: str = FastAPIForm("tropical"),
         column_roles: str | None = FastAPIForm(None),
+        confirm_supersede: bool = FastAPIForm(False),
     ) -> dict[str, Any]:
         from fastapi import HTTPException
 
@@ -2298,6 +2316,7 @@ def create_app(*, db_path: str | None = None) -> Any:
                 data=data,
                 project_key=project_key,
                 column_roles=parsed_roles,
+                confirm_supersede=confirm_supersede,
             )
         except HTTPException:
             raise
@@ -2326,6 +2345,7 @@ def create_app(*, db_path: str | None = None) -> Any:
             import_id=request.import_id,
             project_key=request.project_key,
             confirm=request.confirm,
+            confirm_supersede=request.confirm_supersede,
             column_roles=request.column_roles,
         )
 

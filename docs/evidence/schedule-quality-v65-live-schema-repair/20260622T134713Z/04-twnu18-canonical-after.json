@@ -1,0 +1,18 @@
+{
+  "schedule_version_key": "tropical|TWNU18|2026-05-26T08:00:00",
+  "committed_import": {
+    "import_id": "7898325a1aca",
+    "activity_count": 1378,
+    "relationship_count": 3718,
+    "import_status": "committed"
+  },
+  "v65_field_counts": {
+    "total": 1378,
+    "with_float_hours": 677,
+    "with_float_days": 677,
+    "with_ref": 677,
+    "with_cost_amount": 0,
+    "with_cost_source": 0,
+    "with_cost_source_none": 0
+  }
+}

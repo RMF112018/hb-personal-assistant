@@ -1,0 +1,13 @@
+{
+  "rerun": {
+    "evaluation_run_id": "sq-a55a4576f35c",
+    "status": "pending",
+    "created": true
+  },
+  "processed": {
+    "evaluation_run_id": "sq-a55a4576f35c",
+    "status": "completed",
+    "finding_count": 82,
+    "metric_count": 14
+  }
+}

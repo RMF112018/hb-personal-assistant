@@ -10,7 +10,15 @@ from hb_assistant.store.schedule_activity_repository import ScheduleActivityRepo
 from hb_assistant.store.schedule_mapping_repository import ScheduleMappingRepository
 
 from .schedule_float_derivation import supports_finish_float_derivation
-from .schedule_graph import build_adjacency, orphan_relationship_ids
+from .schedule_graph import orphan_relationship_ids
+from .schedule_quality_normalization import (
+    calendar_hours_per_day,
+    cost_resource_posture,
+    is_logic_excluded_activity,
+    normalize_duration_days,
+    normalize_relationship_type,
+    relationship_type_distribution,
+)
 from .schedule_quality_profiles import (
     DCMA_METRIC_SPECS,
     DISCLAIMER_VERSION,
@@ -275,42 +283,61 @@ class ScheduleQualityAssessmentEngine:
                 ),
                 findings,
             )
-        if not rels and not any(a.get("total_float") for a in acts):
+        if not rels:
             return (
                 self._base_metric(
                     ctx,
                     code=code,
                     spec=spec,
                     status=METRIC_STATUS_NOT_MEASURABLE,
-                    not_measurable_reason="no relationships or float data for logic assessment",
+                    not_measurable_reason="no relationships in canonical store",
                 ),
                 findings,
             )
+
         activity_ids = {str(a["activity_id"]) for a in acts if a.get("activity_id")}
-        orphans = orphan_relationship_ids(rels, activity_ids)
-        adj = build_adjacency(rels)
-        no_pred_succ = 0
+        assessed: list[dict[str, Any]] = []
+        excluded = 0
+        exclusion_reasons: dict[str, int] = {}
         for act in acts:
-            aid = str(act.get("activity_id", ""))
-            if not adj.get(aid) and not any(
-                str(r.get("successor_activity_id")) == aid for r in rels
-            ):
-                no_pred_succ += 1
-                findings.append(
-                    self._finding(
-                        ctx,
-                        finding_code="activity_no_predecessor_successor",
-                        severity="warning",
-                        finding_type="logic",
-                        category="dcma",
-                        metric_code=code,
-                        activity_id=aid,
-                        summary="Activity has no predecessor or successor relationship",
-                    )
-                )
-        denom = len(acts)
-        numer = len(orphans) + no_pred_succ
-        ratio = numer / denom if denom else 0.0
+            skip, reason = is_logic_excluded_activity(act)
+            if skip:
+                excluded += 1
+                if reason:
+                    exclusion_reasons[reason] = exclusion_reasons.get(reason, 0) + 1
+                continue
+            assessed.append(act)
+
+        preds_by_succ: dict[str, set[str]] = {}
+        succs_by_pred: dict[str, set[str]] = {}
+        rel_keys: set[str] = set()
+        duplicate_relationship_count = 0
+        self_relationship_count = 0
+        for rel in rels:
+            pred = str(rel.get("predecessor_activity_id") or "")
+            succ = str(rel.get("successor_activity_id") or "")
+            if pred and pred == succ:
+                self_relationship_count += 1
+            key = f"{pred}|{succ}|{normalize_relationship_type(rel.get('relationship_type'))}"
+            if key in rel_keys:
+                duplicate_relationship_count += 1
+            rel_keys.add(key)
+            if succ:
+                preds_by_succ.setdefault(succ, set()).add(pred)
+            if pred:
+                succs_by_pred.setdefault(pred, set()).add(succ)
+
+        open_start_count = 0
+        open_finish_count = 0
+        for act in assessed:
+            aid = str(act.get("activity_id") or "")
+            if not preds_by_succ.get(aid):
+                open_start_count += 1
+            if not succs_by_pred.get(aid):
+                open_finish_count += 1
+
+        orphans = orphan_relationship_ids(rels, activity_ids)
+        invalid_relationship_reference_count = len(orphans)
         for o in orphans[:MAX_EVIDENCE_IDS]:
             findings.append(
                 self._finding(
@@ -324,17 +351,36 @@ class ScheduleQualityAssessmentEngine:
                     requires_review=1,
                 )
             )
+
+        logic_defects = (
+            open_start_count
+            + open_finish_count
+            + invalid_relationship_reference_count
+            + duplicate_relationship_count
+            + self_relationship_count
+        )
+        denom = len(assessed) if assessed else len(acts)
+        ratio = logic_defects / denom if denom else 0.0
+        evidence = {
+            "open_start_count": open_start_count,
+            "open_finish_count": open_finish_count,
+            "invalid_relationship_reference_count": invalid_relationship_reference_count,
+            "duplicate_relationship_count": duplicate_relationship_count,
+            "self_relationship_count": self_relationship_count,
+            "excluded_activity_count": excluded,
+            "exclusion_reasons": exclusion_reasons,
+        }
         return (
             self._base_metric(
                 ctx,
                 code=code,
                 spec=spec,
                 status=self._status_from_ratio(ratio, spec),
-                numerator=numer,
+                numerator=logic_defects,
                 denominator=denom,
                 value=round(ratio, 4),
-                evidence={"orphan_count": len(orphans), "open_end_count": no_pred_succ},
-                related_codes=["orphan_relationship", "activity_no_predecessor_successor"],
+                evidence=evidence,
+                related_codes=["orphan_relationship", "open_start", "open_finish"],
             ),
             findings,
         )
@@ -424,19 +470,19 @@ class ScheduleQualityAssessmentEngine:
                 ),
                 [],
             )
-        valid = {"FS", "SS", "FF", "SF"}
-        good = sum(1 for r in rels if str(r.get("relationship_type") or "FS").upper() in valid)
-        ratio = good / len(rels)
+        distribution = relationship_type_distribution(rels)
+        fs_count = distribution.get("FS", 0)
+        ratio = fs_count / len(rels)
         return (
             self._base_metric(
                 ctx,
                 code=code,
                 spec=spec,
                 status=self._status_from_ratio(ratio, spec, higher_is_better=True),
-                numerator=good,
+                numerator=fs_count,
                 denominator=len(rels),
                 value=round(ratio, 4),
-                evidence={"distribution": self._rel_type_counts(rels)},
+                evidence={"distribution": distribution},
             ),
             [],
         )
@@ -561,14 +607,29 @@ class ScheduleQualityAssessmentEngine:
     def _metric_high_duration(
         self, ctx: EvaluationContext, code: str, spec: dict[str, Any]
     ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
-        durs = []
-        for a in ctx.activities:
-            try:
-                if a.get("duration_original") is not None:
-                    durs.append(float(a["duration_original"]))
-            except (TypeError, ValueError):
-                pass
-        if not durs:
+        normalized: list[dict[str, Any]] = []
+        for act in ctx.activities:
+            if act.get("duration_original") is None:
+                continue
+            hpd = calendar_hours_per_day(ctx.calendars, act.get("calendar_id"))
+            days = normalize_duration_days(
+                duration_value=act.get("duration_original"),
+                duration_unit=act.get("duration_unit"),
+                hours_per_day=hpd,
+            )
+            if days is None:
+                continue
+            normalized.append(
+                {
+                    "activity_id": act.get("activity_id"),
+                    "raw_duration_value": act.get("duration_original"),
+                    "raw_duration_unit": act.get("duration_unit"),
+                    "normalized_duration_days": days,
+                    "hours_per_day": hpd,
+                    "hours_per_day_source": "calendar" if act.get("calendar_id") else "default_8h",
+                }
+            )
+        if not normalized:
             return (
                 self._base_metric(
                     ctx,
@@ -579,17 +640,21 @@ class ScheduleQualityAssessmentEngine:
                 ),
                 [],
             )
-        bad = sum(1 for d in durs if d > HIGH_DURATION_DAYS)
-        ratio = bad / len(durs)
+        bad_items = [n for n in normalized if n["normalized_duration_days"] > HIGH_DURATION_DAYS]
+        ratio = len(bad_items) / len(normalized)
         return (
             self._base_metric(
                 ctx,
                 code=code,
                 spec=spec,
                 status=self._status_from_ratio(ratio, spec),
-                numerator=bad,
-                denominator=len(durs),
+                numerator=len(bad_items),
+                denominator=len(normalized),
                 value=round(ratio, 4),
+                evidence={
+                    "threshold_days": HIGH_DURATION_DAYS,
+                    "sample_failures": bad_items[:MAX_EVIDENCE_IDS],
+                },
             ),
             [],
         )
@@ -708,12 +773,19 @@ class ScheduleQualityAssessmentEngine:
                 ),
                 [],
             )
-        loaded = sum(
-            1
-            for a in acts
-            if a.get("cost_code") or a.get("cost_loaded_amount") or a.get("cost_loaded_source_type")
+        posture = cost_resource_posture(ctx.import_meta)
+        code_coverage = sum(1 for a in acts if a.get("cost_code"))
+        resource_loaded = sum(
+            1 for a in acts if a.get("resource_id") or a.get("resource_name")
         )
-        if loaded == 0:
+        cost_loaded = sum(1 for a in acts if a.get("cost_loaded_amount"))
+        evidence = {
+            "schedule_posture": posture,
+            "activity_code_coverage_count": code_coverage,
+            "resource_loading_count": resource_loaded,
+            "cost_loading_count": cost_loaded,
+        }
+        if posture in {"not_cost_loaded", "unknown"}:
             return (
                 self._base_metric(
                     ctx,
@@ -723,10 +795,12 @@ class ScheduleQualityAssessmentEngine:
                     numerator=0,
                     denominator=len(acts),
                     value=0.0,
-                    not_measurable_reason="no cost or resource loading fields present",
+                    not_measurable_reason="schedule is not cost- or resource-loaded",
+                    evidence=evidence,
                 ),
                 [],
             )
+        loaded = max(resource_loaded, cost_loaded)
         ratio = loaded / len(acts)
         return (
             self._base_metric(
@@ -737,6 +811,7 @@ class ScheduleQualityAssessmentEngine:
                 numerator=loaded,
                 denominator=len(acts),
                 value=round(ratio, 4),
+                evidence=evidence,
             ),
             [],
         )
@@ -887,9 +962,22 @@ class ScheduleQualityAssessmentEngine:
                 posture = "not_measurable"
                 reason = "no duration fields"
         elif category == "resource_cost_loading":
-            if not any(a.get("cost_code") or a.get("cost_loaded_amount") for a in ctx.activities):
+            schedule_posture = cost_resource_posture(ctx.import_meta)
+            if schedule_posture in {"not_cost_loaded", "unknown"}:
+                posture = "not_cost_resource_loaded"
+                reason = json.dumps(
+                    {
+                        "schedule_posture": schedule_posture,
+                        "activity_code_coverage_count": sum(
+                            1 for a in ctx.activities if a.get("cost_code")
+                        ),
+                    }
+                )
+            elif not any(
+                a.get("cost_loaded_amount") or a.get("resource_id") for a in ctx.activities
+            ):
                 posture = "not_measurable"
-                reason = "no cost loading fields"
+                reason = "no resource or cost loading fields"
         elif category == "horizontal_vertical_traceability":
             missing_wbs = sum(1 for a in ctx.activities if not a.get("wbs_code"))
             if ctx.activities and missing_wbs / len(ctx.activities) > 0.25:
@@ -1067,20 +1155,74 @@ class ScheduleQualityAssessmentEngine:
             if sev in sev_counts:
                 sev_counts[sev] += 1
 
-        readiness = {
-            "cost_mapping_ready": bool(ctx.activities),
-            "cost_weighting_ready": grade not in ("insufficient_data", "F") and fail_c == 0,
-            "forecast_context_ready": score is not None and score >= 60,
-            "blockers": [],
+        expected_not_measurable = {
+            "dcma_cpli",
+            "dcma_bei",
+            "dcma_missed_tasks",
+            "dcma_critical_path_test",
         }
-        if not readiness["cost_weighting_ready"]:
+        has_expected_gaps = any(
+            m["metric_code"] in expected_not_measurable
+            and m["status"]
+            in (
+                METRIC_STATUS_NOT_MEASURABLE,
+                METRIC_STATUS_NOT_MEASURABLE_RECALC,
+                METRIC_STATUS_NOT_MEASURABLE_LONGEST_PATH,
+                METRIC_STATUS_NA,
+            )
+            for m in dcma
+        )
+        completion_posture = "completed"
+        if has_expected_gaps and len(measured) >= 5:
+            completion_posture = "completed_with_limitations"
+
+        has_critical_path_recalc = any(
+            m["metric_code"] == "dcma_critical_path_test"
+            and m["status"] == METRIC_STATUS_NOT_MEASURABLE_RECALC
+            for m in dcma
+        )
+        critical_blockers = any(f.get("severity") == "critical" for f in findings)
+        cost_weighting = "blocked"
+        if completion_posture == "completed_with_limitations" and not critical_blockers:
+            cost_weighting = "ready_with_quality_penalty"
+        elif completion_posture == "completed" and grade not in ("insufficient_data", "F") and fail_c == 0:
+            cost_weighting = "ready"
+
+        readiness = {
+            "completion_posture": completion_posture,
+            "cost_mapping": "ready" if ctx.activities else "not_ready",
+            "cost_weighting": cost_weighting,
+            "critical_path_analytics": (
+                "unavailable_requires_cpm_recalculation"
+                if has_critical_path_recalc
+                else "available_export_flags_only"
+            ),
+            "baseline_analytics": "unavailable_missing_baseline",
+            "true_cost_loaded_analytics": (
+                "unavailable_not_cost_loaded"
+                if cost_resource_posture(ctx.import_meta) in {"not_cost_loaded", "unknown"}
+                else (
+                    "partially_available"
+                    if cost_resource_posture(ctx.import_meta) == "partially_resource_loaded"
+                    else "available"
+                )
+            ),
+            "blockers": [],
+            "cost_mapping_ready": bool(ctx.activities),
+            "cost_weighting_ready": cost_weighting in {"ready", "ready_with_quality_penalty"},
+            "forecast_context_ready": score is not None and score >= 60,
+        }
+        if cost_weighting == "blocked":
             readiness["blockers"].append("quality_scorecard_incomplete_or_failed")
+        elif cost_weighting == "ready_with_quality_penalty":
+            readiness["blockers"] = []
 
         return {
             "evaluation_run_id": ctx.evaluation_run_id,
             "project_key": ctx.project_key,
             "schedule_version_key": ctx.schedule_version_key,
             "assessment_profile": ctx.assessment_profile.profile_id,
+            "completion_posture": completion_posture,
             "quality_score": str(score) if score is not None else None,
             "quality_grade": grade,
             "dcma_measured_count": len(measured),
@@ -1116,11 +1258,7 @@ class ScheduleQualityAssessmentEngine:
 
     @staticmethod
     def _rel_type_counts(rels: list[dict[str, Any]]) -> dict[str, int]:
-        counts: dict[str, int] = {}
-        for r in rels:
-            t = str(r.get("relationship_type") or "FS").upper()
-            counts[t] = counts.get(t, 0) + 1
-        return counts
+        return relationship_type_distribution(rels)
 
 
 def run_evaluation_for_run(

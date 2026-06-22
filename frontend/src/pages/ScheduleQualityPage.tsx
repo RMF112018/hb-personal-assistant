@@ -21,6 +21,7 @@ import { api, getLocalUiRole } from '../lib/api'
 type QualitySummary = {
   schedule_version_key?: string
   status?: string
+  completion_posture?: string
   assessment_profile?: string
   quality_score?: string | null
   quality_grade?: string | null
@@ -33,7 +34,17 @@ type QualitySummary = {
   }
   metrics?: Array<Record<string, unknown>>
   gao_category_summary?: Record<string, { posture?: string; reason?: string | null }>
-  downstream_readiness?: { cost_mapping_ready?: boolean; cost_weighting_ready?: boolean; blockers?: string[] }
+  downstream_readiness?: {
+    completion_posture?: string
+    cost_mapping?: string
+    cost_weighting?: string
+    critical_path_analytics?: string
+    baseline_analytics?: string
+    true_cost_loaded_analytics?: string
+    cost_mapping_ready?: boolean
+    cost_weighting_ready?: boolean
+    blockers?: string[]
+  }
   finding_counts?: Record<string, number>
   top_findings?: Array<Record<string, unknown>>
   disclaimer?: string
@@ -136,6 +147,9 @@ export function ScheduleQualityPage() {
             <div className="forecast-panel p-3">
               <div className="text-xs text-[var(--hb-muted)]">Status</div>
               <div className={`text-lg font-medium ${statusClass(data.status)}`}>{data.status ?? '—'}</div>
+              {data.completion_posture ? (
+                <div className="text-xs text-[var(--hb-muted)] mt-1">{data.completion_posture}</div>
+              ) : null}
             </div>
             <div className="forecast-panel p-3">
               <div className="text-xs text-[var(--hb-muted)]">Score / Grade</div>
@@ -220,8 +234,12 @@ export function ScheduleQualityPage() {
           <section className="forecast-panel p-4">
             <h2 className="text-sm font-semibold mb-2">Downstream readiness</h2>
             <ul className="text-sm space-y-1">
-              <li>Cost mapping: {data.downstream_readiness?.cost_mapping_ready ? 'ready' : 'not ready'}</li>
-              <li>Cost weighting: {data.downstream_readiness?.cost_weighting_ready ? 'ready' : 'blocked'}</li>
+              <li>Completion posture: {data.downstream_readiness?.completion_posture ?? data.completion_posture ?? '—'}</li>
+              <li>Cost mapping: {data.downstream_readiness?.cost_mapping ?? (data.downstream_readiness?.cost_mapping_ready ? 'ready' : 'not ready')}</li>
+              <li>Cost weighting: {data.downstream_readiness?.cost_weighting ?? (data.downstream_readiness?.cost_weighting_ready ? 'ready' : 'blocked')}</li>
+              <li>Critical path analytics: {data.downstream_readiness?.critical_path_analytics ?? '—'}</li>
+              <li>Baseline analytics: {data.downstream_readiness?.baseline_analytics ?? '—'}</li>
+              <li>True cost-loaded analytics: {data.downstream_readiness?.true_cost_loaded_analytics ?? '—'}</li>
               {(data.downstream_readiness?.blockers ?? []).map((b) => (
                 <li key={b} className="text-[var(--hb-muted)]">
                   Blocker: {b}

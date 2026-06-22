@@ -26,8 +26,9 @@ def assess_cost_loaded_status(
             for k in (
                 "cost_loaded_amount",
                 "cost_loaded_quantity",
-                "cost_code",
-                "cost_account_id",
+                "cost_loaded_source_type",
+                "resource_id",
+                "resource_name",
             )
         ):
             with_cost += 1
