@@ -996,7 +996,8 @@ def cmd_live_db_run_output_project(*, analysis_package: str, source_package: str
                                    allow_live_db_write: bool, allow_replace_existing: bool,
                                    monthly_package: str | None, probability_package: str | None,
                                    comprehensive_package: str | None, staffing_package: str | None,
-                                   accuracy_package: str | None, expect_outputs: int | None,
+                                   accuracy_package: str | None, context_package: str | None,
+                                   expect_outputs: int | None,
                                    expect_budget_codes: int | None, project: str) -> int:
     """Controlled live-DB run-output + decision-support projection (Phase 3; gated live write).
 
@@ -1030,7 +1031,7 @@ def cmd_live_db_run_output_project(*, analysis_package: str, source_package: str
                 expected_counts=expected or None,
                 monthly_package=_p(monthly_package), probability_package=_p(probability_package),
                 comprehensive_package=_p(comprehensive_package), staffing_package=_p(staffing_package),
-                accuracy_package=_p(accuracy_package))
+                accuracy_package=_p(accuracy_package), context_package=_p(context_package))
     except LiveDbRunOutputProjectionError as exc:
         print(json.dumps({"command": "live-db-run-output-project", "project": project,
                           "status": "refused", "reason": str(exc)}, indent=2))
@@ -1528,6 +1529,8 @@ def build_parser() -> argparse.ArgumentParser:
     lro.add_argument("--comprehensive-package", default=None, help="Optional forecast_comprehensive package.")
     lro.add_argument("--staffing-package", default=None, help="Optional forecast_staffing_plan package.")
     lro.add_argument("--accuracy-package", default=None, help="Optional forecast_accuracy package.")
+    lro.add_argument("--context-package", default=None,
+                     help="Optional context package (canonical/budget_codes.jsonl for commitment exposure).")
     lro.add_argument("--expect-outputs", type=int, default=None,
                      help="Optional exact expected temp count for forecast_outputs.")
     lro.add_argument("--expect-budget-codes", type=int, default=None,
@@ -1928,7 +1931,8 @@ def main(argv=None) -> int:
             allow_replace_existing=args.allow_replace_existing,
             monthly_package=args.monthly_package, probability_package=args.probability_package,
             comprehensive_package=args.comprehensive_package, staffing_package=args.staffing_package,
-            accuracy_package=args.accuracy_package, expect_outputs=args.expect_outputs,
+            accuracy_package=args.accuracy_package, context_package=args.context_package,
+            expect_outputs=args.expect_outputs,
             expect_budget_codes=args.expect_budget_codes, project=args.project)
     if args.command == "forecast-config-registry-promote":
         return cmd_forecast_config_registry_promote(

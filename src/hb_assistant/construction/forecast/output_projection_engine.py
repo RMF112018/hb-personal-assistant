@@ -22,6 +22,7 @@ from __future__ import annotations
 import hashlib
 import json
 from datetime import datetime, timezone
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any
 
@@ -41,7 +42,17 @@ GUARDRAILS = {
     "apply_refuses_live_db": True,
 }
 
-_PLAN_KEYS = ("outputs", "budget_codes", "risks", "monthly", "probability", "changes", "staffing")
+_PLAN_KEYS = (
+    "outputs",
+    "budget_codes",
+    "risks",
+    "monthly",
+    "probability",
+    "changes",
+    "staffing",
+    "commitment_exposure",
+    "schedule_phasing",
+)
 
 RECOMMENDATIONS_FILE = "forecast_recommendations_by_budget_code.jsonl"
 RISK_REGISTER_FILE = "forecast_risk_register.jsonl"
@@ -53,6 +64,9 @@ MONTHLY_FILE = "monthly_forecast_by_budget_code.jsonl"
 PROBABILITY_FILE = "probabilistic_final_cost_by_budget_code.jsonl"
 CHANGES_FILE = "integrated_change_explanation.jsonl"
 STAFFING_FILE = "staffing_plan_monthly_by_budget_code.jsonl"
+# Phase 6 coverage source files.
+BUDGET_CODES_CANONICAL_FILE = "canonical/budget_codes.jsonl"  # in the context package
+SCHEDULE_PHASING_FILE = "schedule_monthly_phasing_by_budget_code.jsonl"  # in the monthly package
 
 
 def _now() -> str:
@@ -61,6 +75,35 @@ def _now() -> str:
 
 def _hash(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8", "replace")).hexdigest()
+
+
+def _money_2dp(value: Any) -> str | None:
+    """Quantize a money value (number or string) to a 2dp Decimal string. None passes through."""
+    if value is None or value == "":
+        return None
+    try:
+        return str(Decimal(str(value)).quantize(Decimal("0.01")))
+    except (InvalidOperation, TypeError, ValueError):
+        return None
+
+
+def _money_sub(a: Any, b: Any) -> str | None:
+    """a - b as a 2dp Decimal string (null treated as 0); None if a is unusable."""
+    try:
+        da = Decimal(str(a)) if a not in (None, "") else None
+        if da is None:
+            return None
+        db = Decimal(str(b)) if b not in (None, "") else Decimal("0")
+        return str((da - db).quantize(Decimal("0.01")))
+    except (InvalidOperation, TypeError, ValueError):
+        return None
+
+
+def _positive_weight(w: Any) -> bool:
+    try:
+        return Decimal(str(w)) > 0
+    except (InvalidOperation, TypeError, ValueError):
+        return False
 
 
 def _output_id(project_key: str, source_package: str) -> str:
@@ -98,6 +141,7 @@ def plan_run_output_projection(
     probability_package: Path | None = None,
     comprehensive_package: Path | None = None,
     staffing_package: Path | None = None,
+    context_package: Path | None = None,
 ) -> dict[str, Any]:
     """Build planned v63 run-output rows from an explicit analysis package. No DB access.
 
@@ -296,6 +340,92 @@ def plan_run_output_projection(
                     }
                 )
 
+    # Phase 6: schedule phasing (month-weights x final cost) — also from the monthly package.
+    if monthly_package is not None:
+        phasing_rows = _read_jsonl(Path(monthly_package) / SCHEDULE_PHASING_FILE)
+        final_cost_by_code: dict[str, Any] = {}
+        for mrow in _read_jsonl(Path(monthly_package) / MONTHLY_FILE):
+            k = mrow.get("budget_code_key")
+            if k is not None and k not in final_cost_by_code:
+                final_cost_by_code[k] = mrow.get("recommended_final_cost")
+        seq = 0
+        for row in phasing_rows:
+            if not row.get("used_for_budget_code_phasing"):
+                continue
+            dist = [
+                d
+                for d in (row.get("monthly_schedule_weight_distribution") or [])
+                if d.get("month") and _positive_weight(d.get("weight"))
+            ]
+            if not dist:
+                continue
+            seq += 1
+            key = row.get("budget_code_key")
+            phase = row.get("schedule_association_type")
+            months = sorted(d["month"] for d in dist)
+            planned["schedule_phasing"].append(
+                {
+                    "id": f"fosp-{_hash(f'{output_id}|{key}|{phase}')[:32]}",
+                    "output_id": output_id,
+                    "project_key": project_key,
+                    "budget_code_key": key,
+                    "phase": phase,
+                    "start_month": months[0],
+                    "end_month": months[-1],
+                    "amount": _money_2dp(final_cost_by_code.get(key)),
+                    "source_row_number": seq,
+                    "raw_json": json.dumps(
+                        {
+                            "budget_code_key": key,
+                            "phase": phase,
+                            "monthly_schedule_weight_distribution": row.get(
+                                "monthly_schedule_weight_distribution"
+                            ),
+                            "recommended_final_cost": final_cost_by_code.get(key),
+                        },
+                        sort_keys=True,
+                    ),
+                    "created_utc": now_utc,
+                    "updated_utc": now_utc,
+                }
+            )
+
+    # Phase 6: commitment exposure (committed - invoiced) from the context budget-code amounts.
+    if context_package is not None:
+        bc_rows = _read_jsonl(Path(context_package) / BUDGET_CODES_CANONICAL_FILE)
+        if not bc_rows:
+            warnings.append(f"{BUDGET_CODES_CANONICAL_FILE} not found or empty; no commitment exposure")
+        seq = 0
+        for row in bc_rows:
+            amounts = row.get("amounts") or {}
+            committed = amounts.get("committed_costs")
+            if committed in (None, ""):
+                continue
+            seq += 1
+            key = row.get("budget_code_key")
+            invoiced = amounts.get("commitment_invoiced")
+            planned["commitment_exposure"].append(
+                {
+                    "id": f"foce-{_hash(f'{output_id}|{key}')[:32]}",
+                    "output_id": output_id,
+                    "project_key": project_key,
+                    "budget_code_key": key,
+                    "committed_amount": _money_2dp(committed),
+                    "exposure_amount": _money_sub(committed, invoiced),
+                    "source_row_number": seq,
+                    "raw_json": json.dumps(
+                        {
+                            "budget_code_key": key,
+                            "committed_costs": committed,
+                            "commitment_invoiced": invoiced,
+                        },
+                        sort_keys=True,
+                    ),
+                    "created_utc": now_utc,
+                    "updated_utc": now_utc,
+                }
+            )
+
     counts = {key: len(rows) for key, rows in planned.items()}
     return {
         "ok": True,
@@ -323,6 +453,7 @@ def project_run_output(
     probability_package: Path | None = None,
     comprehensive_package: Path | None = None,
     staffing_package: Path | None = None,
+    context_package: Path | None = None,
 ) -> dict[str, Any]:
     """Plan (dry-run) or plan+write (apply) run-output rows; optionally prove DB parity."""
     plan = plan_run_output_projection(
@@ -334,6 +465,7 @@ def project_run_output(
         probability_package=probability_package,
         comprehensive_package=comprehensive_package,
         staffing_package=staffing_package,
+        context_package=context_package,
     )
     plan["guardrails"] = GUARDRAILS
 
@@ -407,6 +539,8 @@ def _prove_parity(
         "probability": repo.read_output_probability_from_db,
         "changes": repo.read_output_changes_from_db,
         "staffing": repo.read_output_staffing_from_db,
+        "commitment_exposure": repo.read_output_commitment_exposure_from_db,
+        "schedule_phasing": repo.read_output_schedule_phasing_from_db,
     }
     per_table: dict[str, Any] = {}
     proven = True

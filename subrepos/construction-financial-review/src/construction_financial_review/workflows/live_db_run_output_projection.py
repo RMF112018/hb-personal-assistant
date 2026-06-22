@@ -53,6 +53,8 @@ V63_TABLES = (
     "forecast_output_probability",
     "forecast_output_changes",
     "forecast_output_staffing",
+    "forecast_output_commitment_exposure",
+    "forecast_output_schedule_phasing",
 )
 V66_TABLES = (
     "forecast_project_maturity_snapshots",
@@ -123,6 +125,7 @@ def _build_temp_projection(
     comprehensive_package: Path | None,
     staffing_package: Path | None,
     accuracy_package: Path | None,
+    context_package: Path | None = None,
 ) -> dict[str, Any]:
     """Build a fresh NON-LIVE temp DB: migrate -> v59 -> run anchor -> v63 -> v66. Capture rows.
 
@@ -173,6 +176,7 @@ def _build_temp_projection(
         probability_package=probability_package,
         comprehensive_package=comprehensive_package,
         staffing_package=staffing_package,
+        context_package=context_package,
     )
     if not ro.get("ok"):
         raise LiveDbRunOutputProjectionError(
@@ -242,6 +246,7 @@ def run_controlled_live_db_run_output_projection(
     comprehensive_package: Path | None = None,
     staffing_package: Path | None = None,
     accuracy_package: Path | None = None,
+    context_package: Path | None = None,
 ) -> dict[str, Any]:
     """Populate live forecast_runs anchor + v63 run-output + v66 decision-support for tropical.
 
@@ -347,6 +352,7 @@ def run_controlled_live_db_run_output_projection(
         comprehensive_package=comprehensive_package,
         staffing_package=staffing_package,
         accuracy_package=accuracy_package,
+        context_package=context_package,
     )
 
     # v59 consistency gate: temp v59 must equal live v59 (else the temp v66 derivation would
@@ -427,6 +433,7 @@ def run_controlled_live_db_run_output_projection(
         comprehensive_package=comprehensive_package,
         staffing_package=staffing_package,
         accuracy_package=accuracy_package,
+        context_package=context_package,
     )
     cert_tables: dict[str, dict[str, Any]] = {}
     all_match = True
