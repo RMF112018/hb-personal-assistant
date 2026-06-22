@@ -46,7 +46,7 @@ def _rb(cohort, mape, bias, coverage):
             "damp_lo": "0.4",
             "damp_hi": "0.7",
             "damp_min": "0.3",
-            "damped_methods": ["owner_progress_eac", "trend_projection_eac"],
+            "damped_selection": "eac_above_blend_median",
             "damped_final_mape": "0.1400",
             "damped_final_mean_bias": "0.0900",
             "damped_worst_credible_coverage_rate": coverage,
@@ -72,7 +72,7 @@ def test_reliability_damping_effect_block(tmp_path):
     # incremental MAPE improvement 0.06 (>= 0.05), bias improves, coverage held -> recommended.
     assert eff["reliability_damping_recommended"] is True
     assert eff["recalibrated_mape"] == "0.2000" and eff["damped_mape"] == "0.1400"
-    assert eff["damped_methods"] == ["owner_progress_eac", "trend_projection_eac"]
+    assert eff["damped_selection"] == "eac_above_blend_median"
 
 
 def test_recalibration_effect_block(tmp_path):

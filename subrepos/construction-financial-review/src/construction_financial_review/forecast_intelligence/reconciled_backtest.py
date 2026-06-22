@@ -341,7 +341,7 @@ def run_reconciled_backtest(
             "damp_lo": str(reconcile_final.DAMP_LO),
             "damp_hi": str(reconcile_final.DAMP_HI),
             "damp_min": str(reconcile_final.DAMP_MIN),
-            "damped_methods": list(reconcile_final.DAMPED_METHODS),
+            "damped_selection": "eac_above_blend_median",
             "damped_final_mape": _q4(damp_mape) if damp_mape is not None else None,
             "damped_final_mean_bias": _q4(damp_bias) if damp_bias is not None else None,
             "damped_worst_credible_coverage_rate": _q4(
@@ -363,9 +363,9 @@ def run_reconciled_backtest(
                 for t, v in damp_per_target.items()
                 if v and (mv := _mean(v)) is not None
             ),
-            "note": "p75 stage-gate ON + reliability damping ON (owner_progress + trend down-weighted "
-            "at low completion). 'incremental' is vs the p75-only recalibration (current production); "
-            "'total' is vs baseline. Production damping flag default-off.",
+            "note": "p75 stage-gate ON + reliability damping ON (estimates above the blend median "
+            "down-weighted at low completion -> monotonic-down). 'incremental' is vs the p75-only "
+            "recalibration (current production); 'total' is vs baseline. Production damping flag default-off.",
         },
         "detail_rows": detail,
         "methodology": (

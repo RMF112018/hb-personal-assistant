@@ -134,7 +134,7 @@ def test_reconciled_backtest_emits_damped_block():
     assert "damped_final_mape" in d
     assert "incremental_mape_improvement_over_recalibrated" in d
     assert "total_mape_improvement_over_baseline" in d
-    assert d["damped_methods"] == ["owner_progress_eac", "trend_projection_eac"]
+    assert d["damped_selection"] == "eac_above_blend_median"
     for row in out["detail_rows"]:
         assert "damped_recommended_final_cost" in row
         assert "damped_abs_pct_error" in row

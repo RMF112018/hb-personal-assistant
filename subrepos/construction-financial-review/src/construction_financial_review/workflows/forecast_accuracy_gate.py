@@ -241,7 +241,7 @@ def run_forecast_accuracy_gate(
                 "total_mape_improvement_over_baseline"
             ),
             "damped_coverage": damped.get("damped_worst_credible_coverage_rate"),
-            "damped_methods": damped.get("damped_methods"),
+            "damped_selection": damped.get("damped_selection"),
             "damped_per_target_mape": damped.get("damped_per_target_mape"),
             "note": "Incremental effect of reliability damping (owner/trend) OVER the p75-only "
             "recalibration that is in production. Advisory; verdict stays on baseline.",
