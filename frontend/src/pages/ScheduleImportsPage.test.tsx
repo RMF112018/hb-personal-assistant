@@ -8,6 +8,7 @@ import { ScheduleApiError, ScheduleNetworkError } from '../lib/api'
 
 const uploadMock = vi.fn()
 const commitMock = vi.fn()
+const projectsMock = vi.fn()
 
 vi.mock('../lib/api', async () => {
   const actual = await vi.importActual<typeof import('../lib/api')>('../lib/api')
@@ -15,11 +16,20 @@ vi.mock('../lib/api', async () => {
     ...actual,
     api: {
       ...actual.api,
+      getScheduleProjects: () => projectsMock(),
       uploadScheduleImportPreview: (...args: unknown[]) => uploadMock(...args),
       commitScheduleImport: (...args: unknown[]) => commitMock(...args),
     },
   }
 })
+
+async function selectTropicalProject() {
+  const select = await screen.findByRole('combobox', { name: /project/i })
+  await waitFor(() => {
+    expect(select.querySelector('option[value="tropical"]')).toBeTruthy()
+  })
+  fireEvent.change(select, { target: { value: 'tropical' } })
+}
 
 function renderPage() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -38,6 +48,17 @@ describe('ScheduleImportsPage', () => {
   beforeEach(() => {
     uploadMock.mockReset()
     commitMock.mockReset()
+    projectsMock.mockReset()
+    projectsMock.mockResolvedValue({
+      catalog_status: 'ok',
+      projects: [
+        {
+          project_key: 'tropical',
+          display_name: 'Tropical Wind',
+          selectable_for_import: true,
+        },
+      ],
+    })
   })
 
   it('shows 50 MB upload label', () => {
@@ -45,7 +66,18 @@ describe('ScheduleImportsPage', () => {
     expect(screen.getByText(/max 50 MB/i)).toBeInTheDocument()
   })
 
-  it('uploads file via multipart API helper', async () => {
+  it('requires project selection before upload', async () => {
+    renderPage()
+    const file = new File(['<xml/>'], 'sample.xml', { type: 'application/xml' })
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement
+    fireEvent.change(input, { target: { files: [file] } })
+    await waitFor(() => {
+      expect(uploadMock).not.toHaveBeenCalled()
+      expect(screen.getByText(/select an existing project/i)).toBeInTheDocument()
+    })
+  })
+
+  it('uploads file with selected project', async () => {
     uploadMock.mockResolvedValue({
       import_id: 'abc',
       activity_count: 2,
@@ -56,12 +88,14 @@ describe('ScheduleImportsPage', () => {
       calendar_count: 0,
       validation_findings: [],
       requires_column_mapping: false,
+      project_key: 'tropical',
     })
     renderPage()
+    await selectTropicalProject()
     const file = new File(['<xml/>'], 'sample.xml', { type: 'application/xml' })
     const input = document.querySelector('input[type="file"]') as HTMLInputElement
     fireEvent.change(input, { target: { files: [file] } })
-    await waitFor(() => expect(uploadMock).toHaveBeenCalledWith(file, 'tropical'))
+    await waitFor(() => expect(uploadMock).toHaveBeenCalledWith(file, 'tropical', null, false))
   })
 
   it('renders duplicate preview with counts and link', async () => {
@@ -79,6 +113,7 @@ describe('ScheduleImportsPage', () => {
       ),
     )
     renderPage()
+    await selectTropicalProject()
     const file = new File(['<xml/>'], 'TWNU18.xml', { type: 'application/xml' })
     const input = document.querySelector('input[type="file"]') as HTMLInputElement
     fireEvent.change(input, { target: { files: [file] } })
@@ -95,6 +130,7 @@ describe('ScheduleImportsPage', () => {
       new ScheduleApiError('schedule_schema_not_ready', { code: 'schedule_schema_not_ready' }, 503),
     )
     renderPage()
+    await selectTropicalProject()
     const file = new File(['<xml/>'], 'sample.xml', { type: 'application/xml' })
     const input = document.querySelector('input[type="file"]') as HTMLInputElement
     fireEvent.change(input, { target: { files: [file] } })
@@ -106,6 +142,7 @@ describe('ScheduleImportsPage', () => {
   it('shows network error when upload cannot reach backend', async () => {
     uploadMock.mockRejectedValue(new ScheduleNetworkError())
     renderPage()
+    await selectTropicalProject()
     const file = new File(['<xml/>'], 'sample.xml', { type: 'application/xml' })
     const input = document.querySelector('input[type="file"]') as HTMLInputElement
     fireEvent.change(input, { target: { files: [file] } })
@@ -122,6 +159,7 @@ describe('ScheduleImportsPage', () => {
       }),
     )
     renderPage()
+    await selectTropicalProject()
     const file = new File(['<xml/>'], 'sample.xml', { type: 'application/xml' })
     const input = document.querySelector('input[type="file"]') as HTMLInputElement
     fireEvent.change(input, { target: { files: [file] } })

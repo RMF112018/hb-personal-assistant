@@ -15,6 +15,7 @@ from fastapi.testclient import TestClient
 from hb_assistant.construction.analytics import create_app
 from hb_assistant.construction.analytics.forecast_dto import find_redaction_leaks
 from hb_assistant.store.migrator import SQLiteMigrator
+from tests.schedule_project_test_helpers import seed_procore_ep_project
 
 FIXTURE = Path(__file__).resolve().parent / "fixtures" / "schedules" / "xml" / "minimal_schedule.xml"
 GMA_FIXTURE = Path(__file__).resolve().parent / "fixtures" / "schedules" / "xml" / "gma_sample.xml"
@@ -28,6 +29,12 @@ def _client(tmp_path: Path, *, migrate: bool = True) -> TestClient:
     db = tmp_path / "api.db"
     if migrate:
         SQLiteMigrator(db_path=str(db)).apply()
+        seed_procore_ep_project(
+            db,
+            project_key="tropical",
+            display_name="Tropical Wind",
+            project_number="TWNU18",
+        )
     return TestClient(create_app(db_path=str(db)))
 
 
@@ -123,9 +130,11 @@ def test_schedule_routes_self_heal_stale_schema_version(tmp_path: Path) -> None:
         conn.commit()
         assert int(conn.execute("SELECT MAX(version) FROM schema_migrations").fetchone()[0]) == 62
 
+    seed_procore_ep_project(db, project_key="tropical", display_name="Tropical Wind")
     client = TestClient(create_app(db_path=str(db)))
     resp = client.get("/api/schedules/projects", headers=_op())
     assert resp.status_code == 200
+    assert resp.json()["catalog_status"] == "ok"
     with sqlite3.connect(db) as conn:
         assert int(conn.execute("SELECT MAX(version) FROM schema_migrations").fetchone()[0]) >= 63
 
@@ -137,6 +146,7 @@ def test_preview_self_heals_missing_v65_columns(tmp_path: Path) -> None:
         conn.execute("ALTER TABLE procore_ep_schedule_activities DROP COLUMN remaining_early_finish")
         conn.commit()
 
+    seed_procore_ep_project(db, project_key="tropical", display_name="Tropical Wind")
     client = TestClient(create_app(db_path=str(db)))
     resp = client.post(
         "/api/schedules/import-preview",

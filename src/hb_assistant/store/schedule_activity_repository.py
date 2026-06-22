@@ -192,12 +192,11 @@ class ScheduleActivityRepository:
                     (schedule_version_key, import_id),
                 )
 
-    def list_versions(self, project_key: str) -> list[dict[str, Any]]:
+    def list_versions(self, project_key: str | None = None) -> list[dict[str, Any]]:
         with self._conn() as conn:
-            cur = conn.execute(
-                """
-                SELECT i.import_id, i.schedule_version_key, i.source_type, i.source_format,
-                       i.import_status, i.activity_count, i.relationship_count,
+            sql = """
+                SELECT i.import_id, i.project_key, i.schedule_version_key, i.source_type,
+                       i.source_format, i.import_status, i.activity_count, i.relationship_count,
                        i.cost_loaded_status, i.created_at, i.source_filename_redacted,
                        COUNT(DISTINCT a.activity_id) AS activity_count_live,
                        COUNT(DISTINCT r.id) AS relationship_count_live
@@ -206,12 +205,14 @@ class ScheduleActivityRepository:
                   ON a.import_id = i.import_id
                 LEFT JOIN procore_ep_schedule_relationships r
                   ON r.import_id = i.import_id
-                WHERE i.project_key=? AND i.import_status='committed'
-                GROUP BY i.import_id
-                ORDER BY i.created_at DESC
-                """,
-                (project_key,),
-            )
+                WHERE i.import_status='committed'
+            """
+            params: tuple[Any, ...] = ()
+            if project_key:
+                sql += " AND i.project_key=?"
+                params = (project_key,)
+            sql += " GROUP BY i.import_id ORDER BY i.created_at DESC"
+            cur = conn.execute(sql, params)
             return [dict(r) for r in cur.fetchall()]
 
     def get_version_summary(self, schedule_version_key: str) -> dict[str, Any] | None:

@@ -13,11 +13,13 @@ from hb_assistant.construction.analytics.schedule_quality_engine import (
 from hb_assistant.construction.analytics.schedule_quality_profiles import DCMA_METRIC_SPECS
 from hb_assistant.construction.analytics.schedule_quality_service import ScheduleQualityService
 from hb_assistant.store.migrator import SQLiteMigrator
+from tests.schedule_project_test_helpers import seed_procore_ep_project
 
 
 def _seed_xer_quality(tmp_path: Path) -> str:
     db = tmp_path / "q.db"
     SQLiteMigrator(db_path=str(db)).apply()
+    seed_procore_ep_project(db, project_key="tropical", display_name="Tropical Wind")
     xer = Path(__file__).parent / "fixtures" / "schedules" / "xer" / "minimal.xer"
     from hb_assistant.construction.analytics.schedule_import_service import ScheduleImportService
 
@@ -68,6 +70,7 @@ def test_xer_critical_path_test_measurable(tmp_path: Path) -> None:
 def test_gma_p6_still_not_measurable_critical_path(tmp_path: Path) -> None:
     db_path = str(tmp_path / "q.db")
     SQLiteMigrator(db_path=db_path).apply()
+    seed_procore_ep_project(db_path, project_key="tropical", display_name="Tropical Wind")
     gma = Path(__file__).parent / "fixtures" / "schedules" / "xml" / "gma_sample.xml"
     from hb_assistant.construction.analytics.schedule_import_service import ScheduleImportService
 

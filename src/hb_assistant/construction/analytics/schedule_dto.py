@@ -28,6 +28,8 @@ class ScheduleImportPreviewDTO:
     planned_start: str | None
     scheduled_finish: str | None
     requires_column_mapping: bool
+    project_key: str | None = None
+    project_display_name: str | None = None
 
     def public(self) -> dict[str, Any]:
         return asdict(self)
@@ -52,6 +54,9 @@ class ScheduleVersionSummaryDTO:
     quality_score: str | None = None
     quality_grade: str | None = None
     quality_profile: str | None = None
+    project_display_name: str | None = None
+    completion_posture: str | None = None
+    evaluated_at: str | None = None
 
     def public(self) -> dict[str, Any]:
         return asdict(self)

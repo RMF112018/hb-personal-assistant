@@ -37,3 +37,12 @@ export function getScheduleCapabilityBanner(format: ScheduleSourceFormat | undef
 }
 
 export const CPM_RECALCULATION_BANNER = 'CPM recalculation: not implemented'
+
+export function formatProjectCapabilityBanner(
+  projectLabel: string | undefined,
+  projectKey: string | undefined,
+  format: ScheduleSourceFormat | undefined,
+): string {
+  const project = projectLabel || projectKey || 'selected project'
+  return `For ${project}: ${getScheduleCapabilityBanner(format)}`
+}

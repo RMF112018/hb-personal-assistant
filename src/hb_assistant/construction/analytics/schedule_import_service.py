@@ -25,8 +25,6 @@ from .schedule_file_parser import (
     detect_source,
     safe_basename,
 )
-
-from .schedule_xer_parser import parse_xer_bytes
 from .schedule_xml_parser import PARSER_NAME as XML_PARSER
 from .schedule_xml_parser import PARSER_VERSION as XML_VER
 from .schedule_xml_parser import parse_pmxml_bytes
@@ -83,6 +81,70 @@ def duplicate_view_path(schedule_version_key: str) -> str:
     return f"/schedules/activities?version={quote(schedule_version_key, safe='')}"
 
 
+def validate_import_project_key(*, db_path: str, project_key: str) -> str:
+    from .schedule_project_catalog import ScheduleProjectCatalog
+
+    key = str(project_key or "").strip()
+    if not key:
+        raise ScheduleImportError(
+            "schedule_project_required",
+            message="project_key is required",
+        )
+    catalog = ScheduleProjectCatalog(db_path=db_path)
+    if not catalog.is_selectable_project(key):
+        raise ScheduleImportError(
+            "schedule_project_unknown",
+            message=f"project_key is not a selectable Procore project: {key}",
+            payload={"project_key": key},
+        )
+    return key
+
+
+def assert_version_matches_project(
+    schedule_version_key: str, project_key: str | None
+) -> None:
+    if not project_key:
+        return
+    parts = str(schedule_version_key).split("|")
+    if not parts or parts[0] != project_key:
+        raise ScheduleImportError(
+            "schedule_not_found",
+            message="schedule version does not belong to the requested project",
+        )
+
+
+def _sort_key_value(row: dict[str, Any], field: str) -> Any:
+    raw = row.get(field)
+    if field in {"quality_score"} and raw is not None:
+        try:
+            return float(raw)
+        except (TypeError, ValueError):
+            return raw
+    return raw if raw is not None else ""
+
+
+def sort_version_summaries(
+    rows: list[dict[str, Any]],
+    *,
+    sort: str = "imported_at",
+    order: str = "desc",
+) -> list[dict[str, Any]]:
+    allowed = {
+        "project_key",
+        "data_date",
+        "imported_at",
+        "source_format",
+        "quality_score",
+        "quality_grade",
+        "completion_posture",
+        "quality_status",
+        "evaluated_at",
+    }
+    field = sort if sort in allowed else "imported_at"
+    reverse = str(order or "desc").lower() != "asc"
+    return sorted(rows, key=lambda r: _sort_key_value(r, field), reverse=reverse)
+
+
 class ScheduleImportService:
     def __init__(self, *, db_path: str) -> None:
         self._db_path = db_path
@@ -107,6 +169,7 @@ class ScheduleImportService:
         confirm_supersede: bool = False,
     ) -> dict[str, Any]:
         self._ensure_schema()
+        project_key = validate_import_project_key(db_path=self._db_path, project_key=project_key)
         if len(data) > MAX_UPLOAD_BYTES:
             raise ScheduleImportError(
                 "schedule_file_too_large",
@@ -133,18 +196,21 @@ class ScheduleImportService:
             project_key=project_key, bundle=bundle, import_id=import_id
         )
         existing = self._activity_repo.get_version_summary(version_key)
-        if existing and str(existing.get("import_status") or "") == "committed":
-            if not confirm_supersede:
-                raise ScheduleImportError(
-                    "duplicate_schedule_version",
-                    message="schedule version already committed",
-                    payload={
-                        "schedule_version_key": version_key,
-                        "activity_count": int(existing.get("activity_count") or 0),
-                        "relationship_count": int(existing.get("relationship_count") or 0),
-                        "view_path": duplicate_view_path(version_key),
-                    },
-                )
+        if (
+            existing
+            and str(existing.get("import_status") or "") == "committed"
+            and not confirm_supersede
+        ):
+            raise ScheduleImportError(
+                "duplicate_schedule_version",
+                message="schedule version already committed",
+                payload={
+                    "schedule_version_key": version_key,
+                    "activity_count": int(existing.get("activity_count") or 0),
+                    "relationship_count": int(existing.get("relationship_count") or 0),
+                    "view_path": duplicate_view_path(version_key),
+                },
+            )
 
         _PREVIEW_CACHE[import_id] = {
             "project_key": project_key,
@@ -161,6 +227,9 @@ class ScheduleImportService:
             "column_roles": column_roles,
         }
 
+        from .schedule_project_catalog import ScheduleProjectCatalog
+
+        catalog = ScheduleProjectCatalog(db_path=self._db_path)
         dto = ScheduleImportPreviewDTO(
             import_id=import_id,
             display_label=bundle.schedule_name or basename,
@@ -182,6 +251,8 @@ class ScheduleImportService:
             planned_start=bundle.planned_start,
             scheduled_finish=bundle.scheduled_finish,
             requires_column_mapping=source_type == "csv" and not column_roles,
+            project_key=project_key,
+            project_display_name=catalog.resolve_display_name(project_key),
         )
         return dto.public()
 
@@ -195,6 +266,7 @@ class ScheduleImportService:
         column_roles: dict[str, str] | None = None,
     ) -> dict[str, Any]:
         self._ensure_schema()
+        project_key = validate_import_project_key(db_path=self._db_path, project_key=project_key)
         if not confirm:
             raise ScheduleImportError(
                 "schedule_import_invalid",
@@ -377,8 +449,13 @@ class ScheduleImportService:
         poll_and_process(db_path=self._db_path, limit=1)
 
         _PREVIEW_CACHE.pop(import_id, None)
+        from .schedule_project_catalog import ScheduleProjectCatalog
+
+        catalog = ScheduleProjectCatalog(db_path=self._db_path)
         return {
             "import_id": import_id,
+            "project_key": project_key,
+            "project_display_name": catalog.resolve_display_name(project_key),
             "schedule_version_key": version_key,
             "activity_count": len(bundle.activities),
             "cost_loaded_status": cost_status,
@@ -575,49 +652,76 @@ class ScheduleReadService:
     def _ensure_schema(self) -> None:
         ensure_schedule_schema(self._db_path)
 
-    def list_projects(self) -> list[dict[str, str]]:
-        self._ensure_schema()
-        keys = self._activity_repo.list_projects_with_schedules()
-        return [{"project_key": k, "display_label": k.replace("_", " ").title()} for k in keys]
+    def list_projects(self) -> dict[str, Any]:
+        from .schedule_project_catalog import ScheduleProjectCatalog
 
-    def list_versions(self, project_key: str) -> list[dict[str, Any]]:
+        self._ensure_schema()
+        catalog = ScheduleProjectCatalog(db_path=self._db_path)
+        projects = catalog.list_browse_projects()
+        for project in projects:
+            project["display_label"] = project.get("display_name") or project["project_key"]
+        return {
+            "catalog_status": catalog.catalog_status(),
+            "projects": projects,
+        }
+
+    def _version_summary_row(self, r: dict[str, Any]) -> dict[str, Any] | None:
+        from .schedule_project_catalog import ScheduleProjectCatalog
+
+        svk = r.get("schedule_version_key")
+        if not svk:
+            return None
+        row_project = str(r.get("project_key") or str(svk).split("|")[0])
+        q_count = len(self._mapping_repo.list_quality_findings(str(svk)))
+        run = self._quality_repo.get_latest_run(str(svk)) or self._quality_repo.get_pending_run(
+            str(svk)
+        )
+        scorecard = self._quality_repo.get_latest_scorecard(str(svk)) if run else None
+        parts = str(svk).split("|")
+        data_date = parts[2] if len(parts) >= 3 else None
+        completion_posture = scorecard.get("completion_posture") if scorecard else None
+        catalog = ScheduleProjectCatalog(db_path=self._db_path)
+        dto = ScheduleVersionSummaryDTO(
+            schedule_version_key=str(svk),
+            project_key=row_project,
+            source_type=str(r.get("source_type") or ""),
+            source_format=str(r.get("source_format") or ""),
+            display_label=str(r.get("source_filename_redacted") or svk),
+            data_date=data_date,
+            planned_start=None,
+            scheduled_finish=None,
+            activity_count=int(r.get("activity_count_live") or r.get("activity_count") or 0),
+            relationship_count=int(
+                r.get("relationship_count_live") or r.get("relationship_count") or 0
+            ),
+            cost_loaded_status=str(r.get("cost_loaded_status") or "not_cost_loaded"),
+            imported_at=str(r.get("created_at") or ""),
+            quality_finding_count=q_count,
+            quality_status=str(run.get("status")) if run else "not_evaluated",
+            quality_score=scorecard.get("quality_score") if scorecard else None,
+            quality_grade=scorecard.get("quality_grade") if scorecard else None,
+            quality_profile=str(run.get("assessment_profile")) if run else None,
+            project_display_name=catalog.resolve_display_name(row_project),
+            completion_posture=str(completion_posture) if completion_posture else None,
+            evaluated_at=str(run.get("completed_at")) if run and run.get("completed_at") else None,
+        )
+        return dto.public()
+
+    def list_versions(
+        self,
+        project_key: str | None = None,
+        *,
+        sort: str = "imported_at",
+        order: str = "desc",
+    ) -> list[dict[str, Any]]:
         self._ensure_schema()
         rows = self._activity_repo.list_versions(project_key)
-        out = []
+        out: list[dict[str, Any]] = []
         for r in rows:
-            svk = r.get("schedule_version_key")
-            if not svk:
-                continue
-            q_count = len(self._mapping_repo.list_quality_findings(str(svk)))
-            run = self._quality_repo.get_latest_run(str(svk)) or self._quality_repo.get_pending_run(
-                str(svk)
-            )
-            scorecard = self._quality_repo.get_latest_scorecard(str(svk)) if run else None
-            parts = str(svk).split("|")
-            data_date = parts[2] if len(parts) >= 3 else None
-            dto = ScheduleVersionSummaryDTO(
-                schedule_version_key=str(svk),
-                project_key=project_key,
-                source_type=str(r.get("source_type") or ""),
-                source_format=str(r.get("source_format") or ""),
-                display_label=str(r.get("source_filename_redacted") or svk),
-                data_date=data_date,
-                planned_start=None,
-                scheduled_finish=None,
-                activity_count=int(r.get("activity_count_live") or r.get("activity_count") or 0),
-                relationship_count=int(
-                    r.get("relationship_count_live") or r.get("relationship_count") or 0
-                ),
-                cost_loaded_status=str(r.get("cost_loaded_status") or "not_cost_loaded"),
-                imported_at=str(r.get("created_at") or ""),
-                quality_finding_count=q_count,
-                quality_status=str(run.get("status")) if run else "not_evaluated",
-                quality_score=scorecard.get("quality_score") if scorecard else None,
-                quality_grade=scorecard.get("quality_grade") if scorecard else None,
-                quality_profile=str(run.get("assessment_profile")) if run else None,
-            )
-            out.append(dto.public())
-        return out
+            summary = self._version_summary_row(r)
+            if summary:
+                out.append(summary)
+        return sort_version_summaries(out, sort=sort, order=order)
 
     def get_summary(self, schedule_version_key: str) -> dict[str, Any] | None:
         self._ensure_schema()

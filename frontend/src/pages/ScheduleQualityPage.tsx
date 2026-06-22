@@ -12,19 +12,25 @@ import {
   ScheduleTh,
 } from '../components/schedule/SchedulePageChrome'
 import {
-  DEFAULT_SCHEDULE_PROJECT,
-  ScheduleVersionPicker,
-} from '../components/schedule/ScheduleVersionPicker'
+  ScheduleProjectContext,
+  ScheduleProjectPicker,
+  useScheduleProjectParam,
+  useScheduleProjects,
+} from '../components/schedule/ScheduleProjectPicker'
+import { ScheduleVersionPicker } from '../components/schedule/ScheduleVersionPicker'
 import { EmptyState } from '../components/ui/EmptyState'
 import { api, getLocalUiRole } from '../lib/api'
 import {
   CPM_RECALCULATION_BANNER,
-  getScheduleCapabilityBanner,
+  formatProjectCapabilityBanner,
   getScheduleFormatLabel,
 } from '../lib/scheduleCapabilityCopy'
+import { Link } from 'react-router-dom'
 
 type QualitySummary = {
   schedule_version_key?: string
+  project_key?: string
+  project_display_name?: string | null
   source_format?: string
   status?: string
   completion_posture?: string
@@ -86,9 +92,11 @@ function statusClass(status: string | undefined): string {
 
 export function ScheduleQualityPage() {
   const [searchParams, setSearchParams] = useSearchParams()
+  const [projectKey, setProjectKey] = useScheduleProjectParam()
   const [versionKey, setVersionKey] = useState(searchParams.get('version') || '')
   const queryClient = useQueryClient()
   const canRerun = getLocalUiRole() === 'operator' || getLocalUiRole() === 'admin'
+  const { data: projectsData } = useScheduleProjects()
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['schedules', 'quality', versionKey],
@@ -106,10 +114,22 @@ export function ScheduleQualityPage() {
   const dcmaMetrics = (data?.metrics ?? []).filter((m) => m.metric_family === 'dcma')
   const gaoSummary = data?.gao_category_summary ?? {}
 
+  function onProjectChange(next: string) {
+    setProjectKey(next)
+    setVersionKey('')
+  }
+
   function onVersionChange(next: string) {
     setVersionKey(next)
-    if (next) setSearchParams({ version: next })
-    else setSearchParams({})
+    const params = new URLSearchParams(searchParams)
+    if (next) {
+      params.set('version', next)
+      const inferred = next.split('|')[0]
+      if (inferred) params.set('project', inferred)
+    } else {
+      params.delete('version')
+    }
+    setSearchParams(params, { replace: true })
   }
 
   return (
@@ -127,20 +147,39 @@ export function ScheduleQualityPage() {
       </p>
       {data?.source_format ? (
         <div className="text-xs text-[var(--hb-muted)] mb-4 max-w-3xl border border-[var(--hb-border)] rounded p-3 bg-[var(--hb-surface)] space-y-1">
+          <ScheduleProjectContext
+            projectKey={data.project_key ?? projectKey}
+            projects={projectsData?.projects}
+          />
           <div>
             Source: {getScheduleFormatLabel(data.source_format)} ({data.source_format})
           </div>
-          <div>{getScheduleCapabilityBanner(data.source_format)}</div>
+          <div>
+            {formatProjectCapabilityBanner(
+              data.project_display_name ?? undefined,
+              data.project_key ?? projectKey,
+              data.source_format,
+            )}
+          </div>
           <div>{CPM_RECALCULATION_BANNER}</div>
         </div>
       ) : null}
 
-      <div className="forecast-panel p-4 mb-3 max-w-xl flex flex-wrap gap-3 items-end">
+      <div className="forecast-panel p-4 mb-3 max-w-3xl flex flex-wrap gap-3 items-end">
+        <ScheduleProjectPicker value={projectKey} onChange={onProjectChange} className="min-w-[16rem]" />
         <ScheduleVersionPicker
-          projectKey={DEFAULT_SCHEDULE_PROJECT}
+          projectKey={projectKey}
           value={versionKey}
           onChange={onVersionChange}
         />
+        {projectKey ? (
+          <Link
+            className="text-sm underline self-end pb-1"
+            to={`/schedules/versions?project=${encodeURIComponent(projectKey)}`}
+          >
+            View project versions
+          </Link>
+        ) : null}
         {versionKey && canRerun ? (
           <button
             type="button"

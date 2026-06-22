@@ -209,8 +209,18 @@ class ScheduleQualityService:
         completion_posture = (
             scorecard.get("completion_posture") if scorecard else None
         ) or downstream.get("completion_posture")
+        project_key = import_meta.get("project_key") if import_meta else None
+        if project_key is None and "|" in schedule_version_key:
+            project_key = schedule_version_key.split("|", 1)[0]
+        from hb_assistant.construction.analytics.schedule_project_catalog import (
+            ScheduleProjectCatalog,
+        )
+
+        catalog = ScheduleProjectCatalog(db_path=self._db_path)
         return {
             "schedule_version_key": schedule_version_key,
+            "project_key": project_key,
+            "project_display_name": catalog.resolve_display_name(str(project_key or "")),
             "source_format": import_meta.get("source_format") if import_meta else None,
             "source_type": import_meta.get("source_type") if import_meta else None,
             "evaluation_run_id": run.get("evaluation_run_id") if run else None,
@@ -307,11 +317,77 @@ class ScheduleQualityService:
         }
 
     def get_project_summary(self, project_key: str) -> dict[str, Any]:
+        from hb_assistant.construction.analytics.schedule_project_catalog import (
+            ScheduleProjectCatalog,
+        )
+
         self._ensure_schema()
+        catalog = ScheduleProjectCatalog(db_path=self._db_path)
+        versions = self._repo.list_project_quality_summary(project_key)
+        for row in versions:
+            row["project_display_name"] = catalog.resolve_display_name(project_key)
         return {
             "project_key": project_key,
-            "versions": self._repo.list_project_quality_summary(project_key),
+            "project_display_name": catalog.resolve_display_name(project_key),
+            "versions": versions,
         }
+
+    def list_evaluations(
+        self,
+        *,
+        project_key: str | None = None,
+        sort: str = "evaluated_at",
+        order: str = "desc",
+        include_history: bool = False,
+    ) -> list[dict[str, Any]]:
+        from hb_assistant.construction.analytics.schedule_import_service import (
+            sort_version_summaries,
+        )
+        from hb_assistant.construction.analytics.schedule_project_catalog import (
+            ScheduleProjectCatalog,
+        )
+
+        self._ensure_schema()
+        catalog = ScheduleProjectCatalog(db_path=self._db_path)
+        if project_key:
+            rows = self._repo.list_project_quality_summary(project_key)
+            for row in rows:
+                row["project_display_name"] = catalog.resolve_display_name(project_key)
+            return sort_version_summaries(rows, sort=sort, order=order)
+
+        rows: list[dict[str, Any]] = []
+        for project in catalog.list_browse_projects():
+            pk = str(project["project_key"])
+            if not project.get("has_schedule_imports"):
+                continue
+            for row in self._repo.list_project_quality_summary(pk):
+                row["project_display_name"] = project.get("display_name")
+                rows.append(row)
+        if include_history:
+            for run in self._repo.list_evaluation_runs(include_history=True):
+                svk = str(run.get("schedule_version_key") or "")
+                pk = str(run.get("project_key") or "")
+                scorecard = self._repo.get_scorecard(str(run["evaluation_run_id"]))
+                rows.append(
+                    {
+                        "schedule_version_key": svk,
+                        "project_key": pk,
+                        "project_display_name": catalog.resolve_display_name(pk),
+                        "source_format": None,
+                        "imported_at": None,
+                        "quality_status": run.get("status"),
+                        "quality_score": scorecard.get("quality_score") if scorecard else None,
+                        "quality_grade": scorecard.get("quality_grade") if scorecard else None,
+                        "completion_posture": scorecard.get("completion_posture")
+                        if scorecard
+                        else None,
+                        "assessment_profile": run.get("assessment_profile"),
+                        "evaluation_run_id": run.get("evaluation_run_id"),
+                        "evaluated_at": run.get("completed_at"),
+                        "is_historical_run": not bool(run.get("is_latest")),
+                    }
+                )
+        return sort_version_summaries(rows, sort=sort, order=order)
 
     def latest_completed_scorecard(self, schedule_version_key: str) -> dict[str, Any] | None:
         self._ensure_schema()

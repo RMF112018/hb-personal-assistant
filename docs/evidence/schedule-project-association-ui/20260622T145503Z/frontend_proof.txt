@@ -1,0 +1,44 @@
+
+> frontend@0.0.0 test
+> vitest run ScheduleImports ScheduleRoutes ScheduleQualityPage
+
+
+ RUN  v1.6.1 /Users/bobbyfetting/hb-personal-assistant/frontend
+
+stderr | src/pages/ScheduleImportsPage.test.tsx > ScheduleImportsPage > shows 50 MB upload label
+⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+
+stderr | src/pages/ScheduleQualityPage.test.tsx > ScheduleQualityPage > renders disclaimer and DCMA metrics grid
+⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+
+ ✓ src/pages/ScheduleQualityPage.test.tsx  (2 tests) 63ms
+ ✓ src/pages/ScheduleRoutes.test.tsx  (9 tests) 106ms
+stderr | src/pages/ScheduleRoutes.test.tsx > Schedule routes > renders imports under /schedules/imports
+⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+
+ ✓ src/pages/ScheduleImportsPage.test.tsx  (7 tests) 168ms
+
+ Test Files  3 passed (3)
+      Tests  18 passed (18)
+   Start at  11:00:34
+   Duration  1.23s (transform 244ms, setup 147ms, collect 821ms, tests 337ms, environment 965ms, prepare 141ms)
+
+
+
+> frontend@0.0.0 build
+> tsc -b && vite build
+
+vite v8.0.16 building client environment for production...
+[2Ktransforming...✓ 1885 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.46 kB │ gzip:   0.30 kB
+dist/assets/index-DQFoN2ET.css   29.68 kB │ gzip:   6.51 kB
+dist/assets/index-CouWMJyK.js   502.09 kB │ gzip: 139.22 kB
+
+✓ built in 445ms
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.

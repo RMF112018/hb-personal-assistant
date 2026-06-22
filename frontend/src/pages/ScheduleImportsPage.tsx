@@ -8,7 +8,11 @@ import {
   ScheduleShell,
   ScheduleSubnav,
 } from '../components/schedule/SchedulePageChrome'
-import { DEFAULT_SCHEDULE_PROJECT } from '../components/schedule/ScheduleVersionPicker'
+import {
+  ScheduleProjectContext,
+  ScheduleProjectPicker,
+  useScheduleProjects,
+} from '../components/schedule/ScheduleProjectPicker'
 import { api, ScheduleApiError, ScheduleNetworkError } from '../lib/api'
 
 const MAX_UPLOAD_BYTES = 50 * 1024 * 1024
@@ -36,6 +40,10 @@ function scheduleErrorMessage(err: unknown): string {
         return 'Unsupported schedule format. Use Primavera XML (.xml, .pmxml) or CSV.'
       case 'schedule_parse_failed':
         return 'Could not parse the schedule file. Check that it is valid Primavera XML or CSV.'
+      case 'schedule_project_required':
+        return 'Select an existing project before uploading or committing a schedule.'
+      case 'schedule_project_unknown':
+        return 'Selected project is not available for schedule import.'
       case 'schedule_import_invalid':
         return err.message || 'Schedule import request was invalid.'
       default:
@@ -46,21 +54,28 @@ function scheduleErrorMessage(err: unknown): string {
 }
 
 export function ScheduleImportsPage() {
-  const [projectKey] = useState(DEFAULT_SCHEDULE_PROJECT)
+  const [projectKey, setProjectKey] = useState('')
   const [busy, setBusy] = useState(false)
   const [busyAction, setBusyAction] = useState<'preview' | 'commit' | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [duplicate, setDuplicate] = useState<DuplicateInfo | null>(null)
   const [preview, setPreview] = useState<Record<string, unknown> | null>(null)
   const [committed, setCommitted] = useState<Record<string, unknown> | null>(null)
+  const { data: projectsData } = useScheduleProjects()
 
-  async function onUpload(file: File) {
+  async function onUpload(file: File, confirmSupersede = false) {
+    if (!projectKey) {
+      setError('Select an existing project before uploading a schedule file.')
+      return
+    }
     setBusy(true)
     setBusyAction('preview')
     setError(null)
-    setDuplicate(null)
-    setCommitted(null)
-    setPreview(null)
+    if (!confirmSupersede) {
+      setDuplicate(null)
+      setCommitted(null)
+      setPreview(null)
+    }
     if (file.size > MAX_UPLOAD_BYTES) {
       setError('This file exceeds the 50 MB upload limit.')
       setBusy(false)
@@ -68,8 +83,14 @@ export function ScheduleImportsPage() {
       return
     }
     try {
-      const resp = await api.uploadScheduleImportPreview(file, projectKey)
+      const resp = await api.uploadScheduleImportPreview(
+        file,
+        projectKey,
+        null,
+        confirmSupersede,
+      )
       setPreview(resp as Record<string, unknown>)
+      setDuplicate(null)
     } catch (err) {
       if (err instanceof ScheduleApiError && err.code === 'duplicate_schedule_version') {
         const p = err.payload
@@ -88,14 +109,20 @@ export function ScheduleImportsPage() {
     }
   }
 
-  async function onCommit() {
-    if (!preview?.import_id) return
+  async function onCommit(confirmSupersede = false) {
+    if (!preview?.import_id || !projectKey) return
     setBusy(true)
     setBusyAction('commit')
     setError(null)
     try {
-      const resp = await api.commitScheduleImport(String(preview.import_id), projectKey)
+      const resp = await api.commitScheduleImport(
+        String(preview.import_id),
+        projectKey,
+        null,
+        confirmSupersede,
+      )
       setCommitted(resp as Record<string, unknown>)
+      setDuplicate(null)
     } catch (err) {
       if (err instanceof ScheduleApiError && err.code === 'duplicate_schedule_version') {
         const p = err.payload
@@ -128,14 +155,27 @@ export function ScheduleImportsPage() {
         actions={<ScheduleActionLink to="/schedules/versions">View versions</ScheduleActionLink>}
       />
 
-      <div className="forecast-panel p-4 space-y-4">
+      <div className="forecast-panel p-4 space-y-4 max-w-xl">
+        <ScheduleProjectPicker
+          value={projectKey}
+          onChange={setProjectKey}
+          required
+          importSelectableOnly
+        />
+        {projectKey ? (
+          <ScheduleProjectContext
+            projectKey={projectKey}
+            projects={projectsData?.projects}
+          />
+        ) : null}
+
         <label className="block text-sm">
           <span className="text-[var(--hb-muted)]">Schedule file (.xml, .csv) — max 50 MB</span>
           <input
             type="file"
             accept=".xml,.csv,.pmxml"
             className="mt-2 block w-full text-sm"
-            disabled={busy}
+            disabled={busy || !projectKey}
             onChange={(e) => {
               const f = e.target.files?.[0]
               if (f) void onUpload(f)
@@ -151,19 +191,42 @@ export function ScheduleImportsPage() {
 
         {duplicate ? (
           <div className="rounded border border-[var(--hb-border)] p-3 text-sm space-y-2">
-            <p className="font-medium">This schedule version is already imported.</p>
-            <p className="text-[var(--hb-muted)]">
-              Version: {duplicate.schedule_version_key}
-            </p>
+            <p className="font-medium">This schedule version is already imported for this project.</p>
+            <ScheduleProjectContext
+              projectKey={projectKey}
+              projects={projectsData?.projects}
+            />
+            <p className="text-[var(--hb-muted)]">Version: {duplicate.schedule_version_key}</p>
             <p>
               Activities: {duplicate.activity_count} · Relationships: {duplicate.relationship_count}
             </p>
-            <ScheduleActionLink to={duplicate.view_path}>View existing activities</ScheduleActionLink>
+            <div className="flex flex-wrap gap-2">
+              <ScheduleActionLink to={duplicate.view_path}>View existing activities</ScheduleActionLink>
+              <ScheduleActionButton
+                onClick={() => {
+                  const input = document.querySelector('input[type="file"]') as HTMLInputElement | null
+                  const file = input?.files?.[0]
+                  if (file) void onUpload(file, true)
+                }}
+                disabled={busy}
+              >
+                Preview supersede
+              </ScheduleActionButton>
+              {preview ? (
+                <ScheduleActionButton onClick={() => void onCommit(true)} disabled={busy}>
+                  Commit supersede
+                </ScheduleActionButton>
+              ) : null}
+            </div>
           </div>
         ) : null}
 
         {preview ? (
           <div className="space-y-2 text-sm">
+            <ScheduleProjectContext
+              projectKey={String(preview.project_key ?? projectKey)}
+              projects={projectsData?.projects}
+            />
             {preview.schedule_name ? (
               <p className="font-medium">{String(preview.schedule_name)}</p>
             ) : null}
@@ -190,18 +253,22 @@ export function ScheduleImportsPage() {
             {Boolean(preview.requires_column_mapping) ? (
               <p className="text-[var(--hb-muted)]">CSV uploads require column mapping before commit.</p>
             ) : null}
-            <ScheduleActionButton onClick={() => void onCommit()} disabled={busy}>
+            <ScheduleActionButton onClick={() => void onCommit()} disabled={busy || !projectKey}>
               {busy && busyAction === 'commit' ? 'Committing…' : 'Commit import to database'}
             </ScheduleActionButton>
           </div>
         ) : null}
 
         {committed ? (
-          <div className="rounded border border-[var(--hb-border)] p-3 text-sm">
+          <div className="rounded border border-[var(--hb-border)] p-3 text-sm space-y-2">
             <p className="font-medium">Import committed</p>
+            <ScheduleProjectContext
+              projectKey={String(committed.project_key ?? projectKey)}
+              projects={projectsData?.projects}
+            />
             <p>Version: {String(committed.schedule_version_key)}</p>
             <ScheduleActionLink
-              to={`/schedules/activities?version=${encodeURIComponent(String(committed.schedule_version_key))}`}
+              to={`/schedules/activities?version=${encodeURIComponent(String(committed.schedule_version_key))}&project=${encodeURIComponent(String(committed.project_key ?? projectKey))}`}
             >
               Browse activities
             </ScheduleActionLink>

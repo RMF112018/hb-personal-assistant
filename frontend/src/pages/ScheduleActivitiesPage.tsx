@@ -11,10 +11,8 @@ import {
   ScheduleTd,
   ScheduleTh,
 } from '../components/schedule/SchedulePageChrome'
-import {
-  DEFAULT_SCHEDULE_PROJECT,
-  ScheduleVersionPicker,
-} from '../components/schedule/ScheduleVersionPicker'
+import { useScheduleProjectParam } from '../components/schedule/ScheduleProjectPicker'
+import { ScheduleVersionPicker } from '../components/schedule/ScheduleVersionPicker'
 import { EmptyState } from '../components/ui/EmptyState'
 import { api } from '../lib/api'
 
@@ -22,14 +20,17 @@ const PAGE_SIZE = 500
 
 export function ScheduleActivitiesPage() {
   const [searchParams, setSearchParams] = useSearchParams()
+  const [projectKey, setProjectKey] = useScheduleProjectParam()
   const [versionKey, setVersionKey] = useState(searchParams.get('version') || '')
   const [offset, setOffset] = useState(0)
 
   useEffect(() => {
     const v = searchParams.get('version') || ''
+    const p = searchParams.get('project') || ''
     setVersionKey(v)
+    if (p) setProjectKey(p)
     setOffset(0)
-  }, [searchParams])
+  }, [searchParams, setProjectKey])
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['schedules', 'activities', versionKey, offset],
@@ -46,11 +47,15 @@ export function ScheduleActivitiesPage() {
   function onVersionChange(next: string) {
     setVersionKey(next)
     setOffset(0)
+    const params = new URLSearchParams(searchParams)
     if (next) {
-      setSearchParams({ version: next })
+      params.set('version', next)
+      const inferred = next.split('|')[0]
+      if (inferred) params.set('project', inferred)
     } else {
-      setSearchParams({})
+      params.delete('version')
     }
+    setSearchParams(params, { replace: true })
   }
 
   return (
@@ -64,7 +69,7 @@ export function ScheduleActivitiesPage() {
 
       <div className="forecast-panel p-4 mb-3 max-w-xl">
         <ScheduleVersionPicker
-          projectKey={DEFAULT_SCHEDULE_PROJECT}
+          projectKey={projectKey || versionKey.split('|')[0] || ''}
           value={versionKey}
           onChange={onVersionChange}
         />
