@@ -658,8 +658,6 @@ class ScheduleReadService:
         self._ensure_schema()
         catalog = ScheduleProjectCatalog(db_path=self._db_path)
         projects = catalog.list_browse_projects()
-        for project in projects:
-            project["display_label"] = project.get("display_name") or project["project_key"]
         return {
             "catalog_status": catalog.catalog_status(),
             "projects": projects,

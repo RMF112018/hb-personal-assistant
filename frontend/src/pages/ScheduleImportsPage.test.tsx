@@ -55,6 +55,17 @@ describe('ScheduleImportsPage', () => {
         {
           project_key: 'tropical',
           display_name: 'Tropical Wind',
+          project_identity_label: 'tropical — Tropical Wind',
+          selectable_for_import: true,
+        },
+        {
+          project_key: 'rybovich',
+          display_name: '25-745-01 - RYBOVICH-SAFE HARBOR',
+          project_number: '25-745-01',
+          procore_project_id: '3133242',
+          project_identity_label:
+            'rybovich — 25-745-01 - RYBOVICH-SAFE HARBOR · #25-745-01 · Procore 3133242 ⚠',
+          identity_warning: 'duplicate_display_metadata_across_project_keys',
           selectable_for_import: true,
         },
       ],
@@ -64,6 +75,12 @@ describe('ScheduleImportsPage', () => {
   it('shows 50 MB upload label', () => {
     renderPage()
     expect(screen.getByText(/max 50 MB/i)).toBeInTheDocument()
+  })
+
+  it('renders project_key in every import picker option', async () => {
+    renderPage()
+    expect(await screen.findByRole('option', { name: /tropical —/i })).toBeInTheDocument()
+    expect(await screen.findByRole('option', { name: /rybovich —/i })).toBeInTheDocument()
   })
 
   it('requires project selection before upload', async () => {

@@ -7,8 +7,11 @@ export type ScheduleProjectOption = {
   project_key: string
   display_name?: string | null
   display_label?: string | null
+  project_identity_label?: string | null
+  identity_warning?: string | null
   project_number?: string | null
   procore_project_id?: string | null
+  record_key?: string | null
   source_system?: string
   selectable_for_import?: boolean
   has_schedule_imports?: boolean
@@ -27,11 +30,15 @@ export function useScheduleProjects() {
 }
 
 export function projectOptionLabel(project: ScheduleProjectOption): string {
-  const name = project.display_name || project.display_label
-  const parts = [name || project.project_key]
+  if (project.project_identity_label) {
+    return project.project_identity_label
+  }
+  const name = (project.display_name || project.display_label || '').trim() || 'display unavailable'
+  const parts = [`${project.project_key} — ${name}`]
   if (project.project_number) parts.push(`#${project.project_number}`)
   if (project.procore_project_id) parts.push(`Procore ${project.procore_project_id}`)
-  return parts.join(' · ')
+  const label = parts.join(' · ')
+  return project.identity_warning ? `${label} ⚠` : label
 }
 
 export function useScheduleProjectParam(): [string, (next: string) => void] {
@@ -111,15 +118,16 @@ export function ScheduleProjectContext({
 }) {
   if (!projectKey) return null
   const project = projects?.find((p) => p.project_key === projectKey)
-  const display = project?.display_name || project?.display_label
+  const label = project
+    ? projectOptionLabel(project).replace(/ ⚠$/, '')
+    : `${projectKey} — display unavailable`
   return (
     <p className="text-sm text-[var(--hb-muted)]">
       Project:{' '}
-      <span className="text-[var(--hb-fg)] font-medium">
-        {display || 'display name unavailable'}
-      </span>{' '}
-      <span className="font-mono text-xs">({projectKey})</span>
-      {project?.project_number ? <span> · #{project.project_number}</span> : null}
+      <span className="text-[var(--hb-fg)] font-medium">{label}</span>
+      {project?.identity_warning ? (
+        <span className="ml-1 text-xs text-amber-600">Identity warning</span>
+      ) : null}
     </p>
   )
 }

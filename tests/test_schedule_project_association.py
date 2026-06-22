@@ -12,7 +12,7 @@ from fastapi.testclient import TestClient
 
 from hb_assistant.construction.analytics import create_app
 from hb_assistant.store.migrator import SQLiteMigrator
-from tests.schedule_project_test_helpers import seed_procore_ep_project
+from tests.schedule_project_test_helpers import seed_procore_ep_project, seed_procore_ep_project_row
 
 FIXTURE = Path(__file__).resolve().parent / "fixtures" / "schedules" / "xml" / "minimal_schedule.xml"
 
@@ -74,6 +74,10 @@ def test_projects_endpoint_lists_ep_and_browse_keys(tmp_path: Path) -> None:
     tropical = next(p for p in body["projects"] if p["project_key"] == "tropical")
     assert tropical["display_name"] == "Tropical Wind"
     assert tropical["has_schedule_imports"] is True
+    assert tropical["project_identity_label"].startswith("tropical —")
+    for project in body["projects"]:
+        if project.get("selectable_for_import"):
+            assert project["project_identity_label"].startswith(f"{project['project_key']} —")
 
 
 def test_import_requires_project_key(tmp_path: Path) -> None:
@@ -145,6 +149,74 @@ def test_quality_list_filters_by_project(tmp_path: Path) -> None:
     assert len(evals) == 1
     assert evals[0]["project_key"] == "tropical"
     assert evals[0]["schedule_version_key"] == c1.json()["schedule_version_key"]
+
+
+def test_project_labels_remain_distinct_for_duplicate_display_metadata(tmp_path: Path) -> None:
+    db = tmp_path / "dup.db"
+    SQLiteMigrator(db_path=str(db)).apply()
+    shared_name = "25-745-01 - RYBOVICH-SAFE HARBOR"
+    shared_number = "25-745-01"
+    seed_procore_ep_project_row(
+        db,
+        project_key="rybovich",
+        display_name=shared_name,
+        project_number=shared_number,
+        project_id="3133242",
+    )
+    seed_procore_ep_project_row(
+        db,
+        project_key="tropical",
+        display_name=shared_name,
+        project_number=shared_number,
+        project_id="2525840",
+    )
+    client = TestClient(create_app(db_path=str(db)))
+    resp = client.get("/api/schedules/projects", headers=_op())
+    assert resp.status_code == 200
+    labels = {
+        p["project_key"]: p["project_identity_label"]
+        for p in resp.json()["projects"]
+        if p["selectable_for_import"]
+    }
+    assert labels["rybovich"].startswith("rybovich —")
+    assert labels["tropical"].startswith("tropical —")
+    assert labels["rybovich"] != labels["tropical"]
+    for project in resp.json()["projects"]:
+        if project["project_key"] in {"rybovich", "tropical"}:
+            assert "duplicate_display_metadata_across_project_keys" in (
+                project.get("identity_warning") or ""
+            )
+
+
+def test_multi_row_project_key_uses_newest_current_metadata(tmp_path: Path) -> None:
+    db = tmp_path / "multi.db"
+    SQLiteMigrator(db_path=str(db)).apply()
+    seed_procore_ep_project_row(
+        db,
+        project_key="rybovich",
+        display_name="Older Name",
+        project_number="OLD-01",
+        project_id="3133242",
+        record_key="rk-rybovich-old",
+        updated_utc="2026-06-20T00:00:00Z",
+    )
+    seed_procore_ep_project_row(
+        db,
+        project_key="rybovich",
+        display_name="25-745-01 - RYBOVICH-SAFE HARBOR",
+        project_number="25-745-01",
+        project_id="3133242",
+        record_key="rk-rybovich-new",
+        updated_utc="2026-06-22T00:00:00Z",
+    )
+    client = TestClient(create_app(db_path=str(db)))
+    resp = client.get("/api/schedules/projects", headers=_op())
+    project = next(p for p in resp.json()["projects"] if p["project_key"] == "rybovich")
+    assert project["display_name"] == "25-745-01 - RYBOVICH-SAFE HARBOR"
+    assert project["project_number"] == "25-745-01"
+    assert project["record_key"] == "rk-rybovich-new"
+    assert "inconsistent_display_metadata_within_project_key" in (project.get("identity_warning") or "")
+    assert "multiple_current_rows" in (project.get("identity_warning") or "")
 
 
 def test_historical_tropical_version_readable(tmp_path: Path) -> None:
