@@ -72,9 +72,61 @@ describe('ScheduleImportsPage', () => {
     })
   })
 
-  it('shows 50 MB upload label', () => {
+  it('shows 50 MB upload label with XER support', () => {
     renderPage()
-    expect(screen.getByText(/max 50 MB/i)).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        /Upload Primavera XER, Primavera XML\/PMXML, Microsoft Project XML, or mapped CSV — max 50 MB/i,
+      ),
+    ).toBeInTheDocument()
+  })
+
+  it('accepts xer in file input', () => {
+    renderPage()
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement
+    expect(input.accept).toContain('.xer')
+    expect(input.accept).toContain('.xml')
+    expect(input.accept).toContain('.pmxml')
+    expect(input.accept).toContain('.csv')
+  })
+
+  it('uploads xer with selected project', async () => {
+    uploadMock.mockResolvedValue({
+      import_id: 'xer-abc',
+      activity_count: 2,
+      relationship_count: 1,
+      source_format: 'primavera_xer',
+      cost_loaded_status: 'not_cost_loaded',
+      wbs_count: 1,
+      calendar_count: 1,
+      validation_findings: [],
+      requires_column_mapping: false,
+      project_key: 'tropical',
+    })
+    renderPage()
+    await selectTropicalProject()
+    const file = new File(['ERMHDR'], 'minimal.xer', { type: 'application/octet-stream' })
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement
+    fireEvent.change(input, { target: { files: [file] } })
+    await waitFor(() => expect(uploadMock).toHaveBeenCalledWith(file, 'tropical', null, false))
+  })
+
+  it('unsupported format copy mentions xer', async () => {
+    uploadMock.mockRejectedValue(
+      new ScheduleApiError('unsupported_schedule_format', { code: 'unsupported_schedule_format' }, 400),
+    )
+    renderPage()
+    await selectTropicalProject()
+    const file = new File(['hello'], 'notes.txt', { type: 'text/plain' })
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement
+    fireEvent.change(input, { target: { files: [file] } })
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          /Unsupported schedule format\. Use Primavera XER, Primavera XML\/PMXML/i,
+        ),
+      ).toBeInTheDocument()
+    })
   })
 
   it('renders display_name as import picker option text', async () => {

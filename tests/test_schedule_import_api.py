@@ -19,6 +19,7 @@ from tests.schedule_project_test_helpers import seed_procore_ep_project
 
 FIXTURE = Path(__file__).resolve().parent / "fixtures" / "schedules" / "xml" / "minimal_schedule.xml"
 GMA_FIXTURE = Path(__file__).resolve().parent / "fixtures" / "schedules" / "xml" / "gma_sample.xml"
+XER_FIXTURE = Path(__file__).resolve().parent / "fixtures" / "schedules" / "xer" / "minimal.xer"
 
 
 def _op() -> dict[str, str]:
@@ -54,6 +55,69 @@ def _commit(client: TestClient, import_id: str, *, project_key: str = "tropical"
         headers=_op(),
         json={"import_id": import_id, "project_key": project_key, "confirm": True},
     )
+
+
+def _preview_xer(client: TestClient, *, project_key: str = "tropical") -> Any:
+    return client.post(
+        "/api/schedules/import-preview",
+        headers=_op(),
+        files={"file": (XER_FIXTURE.name, XER_FIXTURE.read_bytes(), "application/octet-stream")},
+        data={"project_key": project_key},
+    )
+
+
+def test_import_preview_and_commit_xer(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+    preview = _preview_xer(client)
+    assert preview.status_code == 200
+    body = preview.json()
+    assert body["source_format"] == "primavera_xer"
+    assert body["activity_count"] == 2
+    assert body["relationship_count"] == 1
+
+    commit = _commit(client, body["import_id"])
+    assert commit.status_code == 200
+    svk = commit.json()["schedule_version_key"]
+    acts = client.get(f"/api/schedules/versions/{svk}/activities")
+    assert acts.status_code == 200
+    assert len(acts.json()["activities"]) == 2
+
+
+def test_xer_commit_persists_critical_path_fields(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+    preview = _preview_xer(client)
+    assert preview.status_code == 200
+    commit = _commit(client, preview.json()["import_id"])
+    assert commit.status_code == 200
+    svk = commit.json()["schedule_version_key"]
+
+    db = tmp_path / "api.db"
+    with sqlite3.connect(db) as conn:
+        driving = conn.execute(
+            """
+            SELECT activity_id, source_driving_path_flag, explicit_total_float_days
+            FROM procore_ep_schedule_activities
+            WHERE schedule_version_key = ? AND source_driving_path_flag = 1
+            """,
+            (svk,),
+        ).fetchall()
+        assert len(driving) == 1
+        assert driving[0][0] == "A1000"
+        assert driving[0][2] is not None
+
+
+def test_xer_quality_critical_path_measurable_via_api(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+    preview = _preview_xer(client)
+    assert preview.status_code == 200
+    commit = _commit(client, preview.json()["import_id"])
+    assert commit.status_code == 200
+    svk = commit.json()["schedule_version_key"]
+
+    quality = client.get(f"/api/schedules/versions/{svk}/quality", headers=_op())
+    assert quality.status_code == 200
+    metrics = {m["metric_code"]: m for m in quality.json().get("metrics") or []}
+    assert metrics["dcma_critical_path_test"]["status"] == "measured_from_xer_driving_path"
 
 
 def test_import_commit_supersede_same_version_key(tmp_path: Path) -> None:

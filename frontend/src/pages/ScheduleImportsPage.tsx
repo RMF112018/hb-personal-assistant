@@ -37,9 +37,9 @@ function scheduleErrorMessage(err: unknown): string {
       case 'schedule_multipart_unavailable':
         return 'Schedule import upload is unavailable. Reinstall analytics-ui dependencies (python-multipart) and restart the backend.'
       case 'unsupported_schedule_format':
-        return 'Unsupported schedule format. Use Primavera XML (.xml, .pmxml) or CSV.'
+        return 'Unsupported schedule format. Use Primavera XER, Primavera XML/PMXML, Microsoft Project XML, or CSV with operator mapping.'
       case 'schedule_parse_failed':
-        return 'Could not parse the schedule file. Check that it is valid Primavera XML or CSV.'
+        return 'Could not parse the schedule file. Check that it is valid Primavera XER, Primavera XML/PMXML, Microsoft Project XML, or mapped CSV.'
       case 'schedule_project_required':
         return 'Select an existing project before uploading or committing a schedule.'
       case 'schedule_project_unknown':
@@ -151,7 +151,7 @@ export function ScheduleImportsPage() {
       <ScheduleSubnav />
       <SchedulePageHeader
         title="Schedule imports"
-        subtitle="Upload Primavera XML or CSV schedules into the local database after preview and operator confirmation."
+        subtitle="Upload Primavera XER, XML/PMXML, Microsoft Project XML, or mapped CSV schedules after preview and operator confirmation."
         actions={<ScheduleActionLink to="/schedules/versions">View versions</ScheduleActionLink>}
       />
 
@@ -170,10 +170,12 @@ export function ScheduleImportsPage() {
         ) : null}
 
         <label className="block text-sm">
-          <span className="text-[var(--hb-muted)]">Schedule file (.xml, .csv) — max 50 MB</span>
+          <span className="text-[var(--hb-muted)]">
+            Upload Primavera XER, Primavera XML/PMXML, Microsoft Project XML, or mapped CSV — max 50 MB
+          </span>
           <input
             type="file"
-            accept=".xml,.csv,.pmxml"
+            accept=".xml,.pmxml,.xer,.csv"
             className="mt-2 block w-full text-sm"
             disabled={busy || !projectKey}
             onChange={(e) => {
