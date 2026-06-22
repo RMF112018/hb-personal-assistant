@@ -138,13 +138,8 @@ def parse_xer_bytes(data: bytes) -> ParsedScheduleBundle:
         ff_h = _float_or_none(task.get("free_float_hr_cnt"))
         driving = _truthy_y(task.get("driving_path_flag"))
         status_code = str(task.get("status_code") or "")
-        act_start = task.get("act_start_date") or task.get("restart_date")
-        act_end = task.get("act_end_date") or task.get("reend_date")
-        phys_pct = _float_or_none(task.get("phys_complete_pct"))
-        is_complete = status_code == "TK_Complete" or (
-            phys_pct is not None and phys_pct >= 100.0
-        )
-        is_started = bool(act_start) or status_code in {"TK_Active", "TK_Complete"}
+        act_start_raw = task.get("act_start_date")
+        act_end_raw = task.get("act_end_date")
         act = {
             "activity_id": task_code,
             "source_activity_object_id": str(task_id),
@@ -155,10 +150,10 @@ def parse_xer_bytes(data: bytes) -> ParsedScheduleBundle:
             "calendar_id": cal_id,
             "planned_start": task.get("early_start_date") or task.get("target_start_date"),
             "planned_finish": task.get("early_end_date") or task.get("target_end_date"),
-            "start_date": act_start,
-            "finish_date": act_end,
-            "actual_start": act_start if is_started else None,
-            "actual_finish": act_end if is_complete else None,
+            "start_date": act_start_raw or task.get("restart_date"),
+            "finish_date": act_end_raw or task.get("reend_date"),
+            "actual_start": act_start_raw or None,
+            "actual_finish": act_end_raw or None,
             "early_start": task.get("early_start_date"),
             "early_finish": task.get("early_end_date"),
             "late_start": task.get("late_start_date"),

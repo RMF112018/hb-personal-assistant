@@ -1,0 +1,14 @@
+metric_code                          status                                 numerator  denominator  value  evidence_head                                               
+-----------------------------------  -------------------------------------  ---------  -----------  -----  ------------------------------------------------------------
+dcma_critical_path_test              not_measurable_requires_recalculation                                 {"method": "requires_cpm_recalculation", "cpm_recalculation"
+                                                                                                           : "not_implemented", "source_format": "primavera_xer"}      
+
+dcma_invalid_dates                   failed_threshold                       733        733          1.0    {"display_mode": "finding_count", "method": "subcategory_dat
+                                                                                                           e_checks", "subcategories": {"completed_missing_actual_finis
+                                                                                                           h": {"findings": 705, "denominator": 705, "denominator_basis
+                                                                                                           ": "completed_activi                                        
+
+source_driving_path_integrity_proxy  measured_from_source_export_proxy      0          32           0.0    {"method": "source_export_proxy", "critical_path_source": "x
+                                                                                                           er_driving_path_flag", "cpm_recalculation": "not_implemented
+                                                                                                           ", "dcma_critical_path_test": "not_applicable", "caveat": "n
+                                                                                                           ot a DCMA critical p                                        

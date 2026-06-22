@@ -49,7 +49,7 @@ V64_STATEMENTS: list[str] = [
       schedule_version_key TEXT NOT NULL,
       metric_code TEXT NOT NULL,
       metric_name TEXT NOT NULL,
-      metric_family TEXT NOT NULL CHECK(metric_family IN ('dcma', 'gao', 'aace')),
+      metric_family TEXT NOT NULL CHECK(metric_family IN ('dcma', 'gao', 'aace', 'supplemental')),
       numerator TEXT,
       denominator TEXT,
       value TEXT,

@@ -128,15 +128,24 @@ describe('ScheduleQualityPage', () => {
           metric_family: 'dcma',
           metric_code: 'dcma_critical_path_test',
           metric_name: 'Critical path test',
+          status: 'not_measurable_requires_recalculation',
+          not_measurable_reason:
+            'CPM recalculation not implemented; source-export flags are not an authoritative DCMA critical path test',
+        },
+        {
+          metric_family: 'supplemental',
+          metric_code: 'source_driving_path_integrity_proxy',
+          metric_name: 'Source driving path integrity (proxy)',
           numerator: 0,
           denominator: 32,
-          status: 'measured_from_xer_driving_path',
+          status: 'measured_from_source_export_proxy',
           evidence_json: JSON.stringify({
-            display_name_override: 'Critical path proxy (source driving path)',
-            driving_path_float_consistency_violation_count: 0,
+            display_name_override: 'Source driving path integrity (proxy)',
+            proxy_violation_count: 0,
             eligible_driving_path_activity_count: 32,
             driving_path_activity_count: 269,
-            critical_path_test_method: 'source_export_driving_path_proxy',
+            eligible_denominator_basis: 'driving_path_flag_with_explicit_float',
+            method: 'source_export_proxy',
           }),
         },
         {
@@ -160,9 +169,12 @@ describe('ScheduleQualityPage', () => {
 
     expect(await screen.findByText('0 findings')).toBeInTheDocument()
     expect(screen.queryByText('1410/1378')).not.toBeInTheDocument()
-    expect(screen.getByText(/Critical path proxy \(source driving path\)/i)).toBeInTheDocument()
+    expect(screen.getByText(/not_measurable_requires_recalculation/i)).toBeInTheDocument()
+    expect(screen.getByText(/Source-export supplemental checks/i)).toBeInTheDocument()
+    expect(screen.getByText(/Source driving path integrity \(proxy\)/i)).toBeInTheDocument()
     expect(screen.getByText(/0 violations \/ 32 eligible/i)).toBeInTheDocument()
     expect(screen.getByText(/269 XER driving-path flags/i)).toBeInTheDocument()
+    expect(screen.getByText(/not a DCMA critical path test/i)).toBeInTheDocument()
     expect(screen.getByText(/FS 2235 \/ 3718 \(60\.1%\)/i)).toBeInTheDocument()
   })
 

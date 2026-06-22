@@ -90,6 +90,15 @@ DCMA_METRIC_SPECS: dict[str, dict[str, Any]] = {
     },
 }
 
+SUPPLEMENTAL_METRIC_SPECS: dict[str, dict[str, Any]] = {
+    "source_driving_path_integrity_proxy": {
+        "metric_name": "Source driving path integrity (proxy)",
+        "threshold_warning": 0.10,
+        "threshold_fail": 0.25,
+        "unit": "ratio",
+    },
+}
+
 GAO_CATEGORIES: tuple[str, ...] = (
     "capturing_all_activities",
     "sequencing_all_activities",

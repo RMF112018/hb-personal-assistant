@@ -118,7 +118,8 @@ def test_xer_quality_critical_path_measurable_via_api(tmp_path: Path) -> None:
     quality = client.get(f"/api/schedules/versions/{svk}/quality", headers=_op())
     assert quality.status_code == 200
     metrics = {m["metric_code"]: m for m in quality.json().get("metrics") or []}
-    assert metrics["dcma_critical_path_test"]["status"] == "measured_from_xer_driving_path"
+    assert metrics["dcma_critical_path_test"]["status"] == "not_measurable_requires_recalculation"
+    assert metrics["source_driving_path_integrity_proxy"]["metric_family"] == "supplemental"
 
 
 def test_import_commit_supersede_same_version_key(tmp_path: Path) -> None:

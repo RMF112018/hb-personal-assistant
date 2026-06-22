@@ -92,14 +92,17 @@ function formatMetricValue(metric: Record<string, unknown>): { value: string; ba
     }
   }
 
-  if (code === 'dcma_critical_path_test') {
-    const violations = evidence.driving_path_float_consistency_violation_count ?? num ?? 0
+  if (code === 'source_driving_path_integrity_proxy') {
+    const violations = evidence.proxy_violation_count ?? evidence.driving_path_float_consistency_violation_count ?? num ?? 0
     const eligible = evidence.eligible_driving_path_activity_count ?? denom ?? '—'
     const exportCount = evidence.driving_path_activity_count ?? evidence.driving_path_count
+    const eligibleBasis = evidence.eligible_denominator_basis
+      ? String(evidence.eligible_denominator_basis).replaceAll('_', ' ')
+      : 'driving path flag with explicit float'
     const basis =
       exportCount != null
-        ? `source-export proxy · ${exportCount} XER driving-path flags · not full DCMA CPM recalculation`
-        : 'source-export proxy; not full DCMA CPM recalculation'
+        ? `${exportCount} XER driving-path flags · eligible basis: ${eligibleBasis} · not a DCMA critical path test`
+        : `eligible basis: ${eligibleBasis} · not a DCMA critical path test`
     return {
       value: `${violations} violations / ${eligible} eligible`,
       basis,
@@ -158,6 +161,7 @@ function statusClass(status: string | undefined): string {
     case 'measured_from_derived_finish_float':
     case 'measured_from_explicit_source_float':
     case 'measured_from_xer_driving_path':
+    case 'measured_from_source_export_proxy':
     case 'measured_from_msp_critical_flag':
     case 'partially_measurable_critical_float_available':
       return 'text-amber-600'
@@ -193,6 +197,7 @@ export function ScheduleQualityPage() {
   })
 
   const dcmaMetrics = (data?.metrics ?? []).filter((m) => m.metric_family === 'dcma')
+  const supplementalMetrics = (data?.metrics ?? []).filter((m) => m.metric_family === 'supplemental')
   const gaoSummary = data?.gao_category_summary ?? {}
 
   function onProjectChange(next: string) {
@@ -347,6 +352,43 @@ export function ScheduleQualityPage() {
               </ScheduleTable>
             )}
           </section>
+
+          {supplementalMetrics.length > 0 ? (
+            <section>
+              <h2 className="text-sm font-semibold mb-1">Source-export supplemental checks</h2>
+              <p className="text-xs text-[var(--hb-muted)] mb-2">
+                Advisory source-export integrity checks. These are not DCMA 14-point metrics and do not
+                substitute for CPM recalculation.
+              </p>
+              <ScheduleTable
+                headers={
+                  <>
+                    <ScheduleTh>Check</ScheduleTh>
+                    <ScheduleTh>Value</ScheduleTh>
+                    <ScheduleTh>Unit</ScheduleTh>
+                    <ScheduleTh>Status</ScheduleTh>
+                  </>
+                }
+              >
+                {supplementalMetrics.map((m) => {
+                  const formatted = formatMetricValue(m)
+                  return (
+                    <tr key={String(m.metric_code)}>
+                      <ScheduleTd>{metricDisplayName(m)}</ScheduleTd>
+                      <ScheduleTd>
+                        <div>{formatted.value}</div>
+                        {formatted.basis ? (
+                          <div className="text-xs text-[var(--hb-muted)] mt-0.5">{formatted.basis}</div>
+                        ) : null}
+                      </ScheduleTd>
+                      <ScheduleTd>{String(m.unit ?? '—')}</ScheduleTd>
+                      <ScheduleTd className={statusClass(String(m.status))}>{String(m.status)}</ScheduleTd>
+                    </tr>
+                  )
+                })}
+              </ScheduleTable>
+            </section>
+          ) : null}
 
           <section>
             <h2 className="text-sm font-semibold mb-2">GAO / AACE categories</h2>

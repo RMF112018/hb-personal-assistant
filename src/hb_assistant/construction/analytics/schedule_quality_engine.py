@@ -22,6 +22,7 @@ from .schedule_quality_normalization import (
 from .schedule_quality_profiles import (
     DCMA_METRIC_SPECS,
     DISCLAIMER_VERSION,
+    SUPPLEMENTAL_METRIC_SPECS,
     AssessmentProfile,
     get_profile,
 )
@@ -44,6 +45,7 @@ METRIC_STATUS_NOT_MEASURABLE_RECALC = "not_measurable_requires_recalculation"
 METRIC_STATUS_XER_DRIVING_PATH = "measured_from_xer_driving_path"
 METRIC_STATUS_MSP_CRITICAL = "measured_from_msp_critical_flag"
 METRIC_STATUS_EXPLICIT_FLOAT = "measured_from_explicit_source_float"
+METRIC_STATUS_SOURCE_EXPORT_PROXY = "measured_from_source_export_proxy"
 
 MEASURED_STATUSES = (
     METRIC_STATUS_PASS,
@@ -186,6 +188,8 @@ class ScheduleQualityAssessmentEngine:
             metrics.append(metric)
             findings.extend(metric_findings)
 
+        metrics.extend(self._evaluate_supplemental_metrics(ctx))
+
         gao_summary: dict[str, dict[str, Any]] = {}
         for category in profile.gao_categories:
             summary, cat_findings = self._evaluate_gao_category(ctx, category)
@@ -224,6 +228,26 @@ class ScheduleQualityAssessmentEngine:
         }
         return evaluators[code](ctx, code, spec)
 
+    def _evaluate_supplemental_metrics(
+        self, ctx: EvaluationContext
+    ) -> list[dict[str, Any]]:
+        supplemental: list[dict[str, Any]] = []
+        source_fmt = self._import_source_format(ctx)
+        if source_fmt != "primavera_xer":
+            return supplemental
+        driving = [a for a in ctx.activities if a.get("source_driving_path_flag")]
+        if not driving:
+            return supplemental
+        spec = SUPPLEMENTAL_METRIC_SPECS["source_driving_path_integrity_proxy"]
+        metric, _ = self._metric_source_driving_path_integrity_proxy(
+            ctx,
+            "source_driving_path_integrity_proxy",
+            spec,
+            driving,
+        )
+        supplemental.append(metric)
+        return supplemental
+
     def _base_metric(
         self,
         ctx: EvaluationContext,
@@ -237,6 +261,7 @@ class ScheduleQualityAssessmentEngine:
         not_measurable_reason: str | None = None,
         evidence: dict[str, Any] | None = None,
         related_codes: list[str] | None = None,
+        metric_family: str = "dcma",
     ) -> dict[str, Any]:
         return {
             "evaluation_run_id": ctx.evaluation_run_id,
@@ -244,7 +269,7 @@ class ScheduleQualityAssessmentEngine:
             "schedule_version_key": ctx.schedule_version_key,
             "metric_code": code,
             "metric_name": spec["metric_name"],
-            "metric_family": "dcma",
+            "metric_family": metric_family,
             "numerator": str(numerator) if numerator is not None else None,
             "denominator": str(denominator) if denominator is not None else None,
             "value": str(value) if value is not None else None,
@@ -599,17 +624,15 @@ class ScheduleQualityAssessmentEngine:
         status = str(activity.get("activity_status") or "")
         if status in {"TK_Active", "TK_Complete"}:
             return True
-        if activity.get("actual_start") or activity.get("start_date"):
-            return True
         pct = self._activity_percent_complete(activity)
         return pct is not None and pct > 0.0
 
-    def _resolved_actual_start(self, activity: dict[str, Any]) -> str | None:
-        raw = activity.get("actual_start") or activity.get("start_date")
+    def _canonical_actual_start(self, activity: dict[str, Any]) -> str | None:
+        raw = activity.get("actual_start")
         return str(raw) if raw else None
 
-    def _resolved_actual_finish(self, activity: dict[str, Any]) -> str | None:
-        raw = activity.get("actual_finish") or activity.get("finish_date")
+    def _canonical_actual_finish(self, activity: dict[str, Any]) -> str | None:
+        raw = activity.get("actual_finish")
         return str(raw) if raw else None
 
     def _explicit_float_days(self, activity: dict[str, Any]) -> float | None:
@@ -827,8 +850,8 @@ class ScheduleQualityAssessmentEngine:
 
         for act in ctx.activities:
             aid = act.get("activity_id")
-            actual_start = self._resolved_actual_start(act)
-            actual_finish = self._resolved_actual_finish(act)
+            actual_start = self._canonical_actual_start(act)
+            actual_finish = self._canonical_actual_finish(act)
 
             if self._is_completed_activity(act):
                 subcategories["completed_missing_actual_finish"]["denominator"] += 1
@@ -1038,13 +1061,9 @@ class ScheduleQualityAssessmentEngine:
             [],
         )
 
-    def _metric_critical_path_xer_driving(
-        self,
-        ctx: EvaluationContext,
-        code: str,
-        spec: dict[str, Any],
-        driving: list[dict[str, Any]],
-    ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    def _driving_path_proxy_stats(
+        self, ctx: EvaluationContext, driving: list[dict[str, Any]]
+    ) -> dict[str, Any]:
         threshold = _parse_threshold(
             (ctx.import_meta or {}).get("critical_float_threshold")
             or (ctx.schedule_options or {}).get("critical_activity_float_threshold")
@@ -1052,16 +1071,58 @@ class ScheduleQualityAssessmentEngine:
         mismatches = 0
         checked = 0
         non_driving_zero = 0
+        eligible_by_status: dict[str, int] = {}
         for a in ctx.activities:
             tf = self._explicit_float_days(a)
             if tf is None:
                 continue
             if a.get("source_driving_path_flag"):
                 checked += 1
+                status = str(a.get("activity_status") or "unknown")
+                eligible_by_status[status] = eligible_by_status.get(status, 0) + 1
                 if tf > threshold + 0.01:
                     mismatches += 1
             elif tf <= threshold + 0.01 and tf >= -0.01:
                 non_driving_zero += 1
+        driving_count = len(driving)
+        ratio = mismatches / checked if checked else 0.0
+        return {
+            "method": "source_export_proxy",
+            "critical_path_source": "xer_driving_path_flag",
+            "cpm_recalculation": "not_implemented",
+            "dcma_critical_path_test": "not_applicable",
+            "caveat": "not a DCMA critical path test; CPM recalculation not implemented",
+            "source_driving_path_available": driving_count > 0,
+            "driving_path_activity_count": driving_count,
+            "driving_path_count": driving_count,
+            "eligible_driving_path_activity_count": checked,
+            "eligible_denominator_basis": "driving_path_flag_with_explicit_float",
+            "eligible_by_activity_status": eligible_by_status,
+            "explicit_float_checked": checked,
+            "driving_path_float_consistency_violation_count": mismatches,
+            "proxy_violation_count": mismatches,
+            "non_driving_near_zero_float_count": non_driving_zero,
+            "numerator_basis": "driving_path_float_consistency_violations",
+            "denominator_basis": "driving_path_flag_with_explicit_float",
+            "threshold_status": self._status_from_ratio(
+                ratio,
+                SUPPLEMENTAL_METRIC_SPECS["source_driving_path_integrity_proxy"],
+            )
+            if checked
+            else METRIC_STATUS_NOT_MEASURABLE,
+            "float_threshold": threshold,
+            "ratio": round(ratio, 4) if checked else None,
+        }
+
+    def _metric_source_driving_path_integrity_proxy(
+        self,
+        ctx: EvaluationContext,
+        code: str,
+        spec: dict[str, Any],
+        driving: list[dict[str, Any]],
+    ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+        stats = self._driving_path_proxy_stats(ctx, driving)
+        checked = int(stats["eligible_driving_path_activity_count"])
         if checked == 0:
             return (
                 self._base_metric(
@@ -1070,37 +1131,25 @@ class ScheduleQualityAssessmentEngine:
                     spec=spec,
                     status=METRIC_STATUS_NOT_MEASURABLE,
                     not_measurable_reason="no explicit float on driving-path activities",
+                    metric_family="supplemental",
+                    evidence=stats,
                 ),
                 [],
             )
-        ratio = mismatches / checked
-        driving_count = len(driving)
+        mismatches = int(stats["driving_path_float_consistency_violation_count"])
         return (
             self._base_metric(
                 ctx,
                 code=code,
                 spec=spec,
-                status=METRIC_STATUS_XER_DRIVING_PATH,
+                status=METRIC_STATUS_SOURCE_EXPORT_PROXY,
                 numerator=mismatches,
                 denominator=checked,
-                value=round(ratio, 4),
+                value=stats["ratio"],
+                metric_family="supplemental",
                 evidence={
-                    "method": "source_export_driving_path_proxy",
-                    "critical_path_test_method": "source_export_driving_path_proxy",
-                    "display_name_override": "Critical path proxy (source driving path)",
-                    "critical_path_source": "xer_driving_path_flag",
-                    "cpm_recalculation": "not_implemented",
-                    "source_driving_path_available": driving_count > 0,
-                    "driving_path_activity_count": driving_count,
-                    "driving_path_count": driving_count,
-                    "eligible_driving_path_activity_count": checked,
-                    "explicit_float_checked": checked,
-                    "driving_path_float_consistency_violation_count": mismatches,
-                    "non_driving_near_zero_float_count": non_driving_zero,
-                    "numerator_basis": "driving_path_float_consistency_violations",
-                    "denominator_basis": "driving_path_activities_with_explicit_float",
-                    "threshold_status": self._status_from_ratio(ratio, spec),
-                    "float_threshold": threshold,
+                    **stats,
+                    "display_name_override": "Source driving path integrity (proxy)",
                 },
             ),
             [],
@@ -1157,12 +1206,25 @@ class ScheduleQualityAssessmentEngine:
         self, ctx: EvaluationContext, code: str, spec: dict[str, Any]
     ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
         source_fmt = self._import_source_format(ctx)
-        driving = [a for a in ctx.activities if a.get("source_driving_path_flag")]
-        if source_fmt == "primavera_xer" and driving:
-            return self._metric_critical_path_xer_driving(ctx, code, spec, driving)
-        msp_critical = [a for a in ctx.activities if a.get("source_critical_flag")]
-        if source_fmt == "ms_project_xml" and msp_critical:
-            return self._metric_critical_path_msp_critical(ctx, code, spec, msp_critical)
+        if source_fmt in {"primavera_xer", "ms_project_xml"}:
+            return (
+                self._base_metric(
+                    ctx,
+                    code=code,
+                    spec=spec,
+                    status=METRIC_STATUS_NOT_MEASURABLE_RECALC,
+                    not_measurable_reason=(
+                        "CPM recalculation not implemented; source-export flags are not "
+                        "an authoritative DCMA critical path test"
+                    ),
+                    evidence={
+                        "method": "requires_cpm_recalculation",
+                        "cpm_recalculation": "not_implemented",
+                        "source_format": source_fmt,
+                    },
+                ),
+                [],
+            )
         if self._is_p6_derived_only(ctx):
             return (
                 self._base_metric(
@@ -1330,12 +1392,23 @@ class ScheduleQualityAssessmentEngine:
             driving = [a for a in ctx.activities if a.get("source_driving_path_flag")]
             explicit_float = [a for a in ctx.activities if self._explicit_float_days(a) is not None]
             if source_fmt == "primavera_xer" and driving:
-                posture = METRIC_STATUS_XER_DRIVING_PATH
+                proxy = self._driving_path_proxy_stats(ctx, driving)
+                posture = "xer_export_driving_path"
                 reason = json.dumps(
                     {
                         "critical_path_source": "xer_driving_path_flag",
                         "driving_path_count": len(driving),
                         "explicit_float_count": len(explicit_float),
+                        "method": proxy.get("method"),
+                        "eligible_driving_path_activity_count": proxy.get(
+                            "eligible_driving_path_activity_count"
+                        ),
+                        "eligible_denominator_basis": proxy.get("eligible_denominator_basis"),
+                        "eligible_by_activity_status": proxy.get("eligible_by_activity_status"),
+                        "proxy_violation_count": proxy.get("proxy_violation_count"),
+                        "cpm_recalculation": "not_implemented",
+                        "caveat": proxy.get("caveat"),
+                        "dcma_critical_path_test": "not_measurable_requires_recalculation",
                         "longest_path_driving_path": {
                             "posture": "xer_export_driving_path",
                             "reason": "XER driving_path_flag export; not forensic delay analysis",
@@ -1544,20 +1617,14 @@ class ScheduleQualityAssessmentEngine:
             and m["status"] == METRIC_STATUS_NOT_MEASURABLE_RECALC
             for m in dcma
         )
-        has_xer_driving = any(
-            m["metric_code"] == "dcma_critical_path_test"
-            and m["status"] == METRIC_STATUS_XER_DRIVING_PATH
-            for m in dcma
-        )
-        has_msp_critical = any(
-            m["metric_code"] == "dcma_critical_path_test"
-            and m["status"] == METRIC_STATUS_MSP_CRITICAL
-            for m in dcma
+        has_supplemental_driving_proxy = any(
+            m.get("metric_code") == "source_driving_path_integrity_proxy"
+            for m in metrics
         )
         source_fmt = self._import_source_format(ctx)
-        if has_xer_driving or source_fmt == "primavera_xer":
+        if has_supplemental_driving_proxy or source_fmt == "primavera_xer":
             critical_path_analytics = "available_source_export_driving_path"
-        elif has_msp_critical or source_fmt == "ms_project_xml":
+        elif source_fmt == "ms_project_xml":
             critical_path_analytics = "available_msp_critical_slack"
         elif has_critical_path_recalc:
             critical_path_analytics = "unavailable_requires_cpm_recalculation"

@@ -23,7 +23,10 @@ METRIC_STATUS_CHECK_VALUES: tuple[str, ...] = (
     "measured_from_xer_driving_path",
     "measured_from_msp_critical_flag",
     "measured_from_explicit_source_float",
+    "measured_from_source_export_proxy",
 )
+
+METRIC_FAMILY_CHECK_VALUES: tuple[str, ...] = ("dcma", "gao", "aace", "supplemental")
 
 V65_ACTIVITY_ALTER_COLUMNS: tuple[str, ...] = (
     "remaining_early_start",

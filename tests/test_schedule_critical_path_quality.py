@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from hb_assistant.construction.analytics.schedule_quality_engine import (
     METRIC_STATUS_NOT_MEASURABLE_RECALC,
-    METRIC_STATUS_XER_DRIVING_PATH,
+    METRIC_STATUS_SOURCE_EXPORT_PROXY,
     ScheduleQualityAssessmentEngine,
     ScheduleQualityDataLoader,
 )
@@ -40,7 +41,7 @@ def _seed_xer_quality(tmp_path: Path) -> str:
     return commit["schedule_version_key"]
 
 
-def test_xer_critical_path_test_measurable(tmp_path: Path) -> None:
+def test_xer_dcma_critical_path_not_measurable_with_supplemental_proxy(tmp_path: Path) -> None:
     svk = _seed_xer_quality(tmp_path)
     db = tmp_path / "q.db"
     loader = ScheduleQualityDataLoader(db_path=str(db))
@@ -64,13 +65,16 @@ def test_xer_critical_path_test_measurable(tmp_path: Path) -> None:
     metric, _ = engine._metric_critical_path_test(
         ctx, "dcma_critical_path_test", DCMA_METRIC_SPECS["dcma_critical_path_test"]
     )
-    assert metric["status"] == METRIC_STATUS_XER_DRIVING_PATH
-    import json
+    assert metric["status"] == METRIC_STATUS_NOT_MEASURABLE_RECALC
 
-    evidence = json.loads(metric["evidence_json"])
+    supplemental = engine._evaluate_supplemental_metrics(ctx)
+    assert len(supplemental) == 1
+    proxy = supplemental[0]
+    assert proxy["status"] == METRIC_STATUS_SOURCE_EXPORT_PROXY
+    evidence = json.loads(proxy["evidence_json"])
     assert evidence["driving_path_activity_count"] >= 1
-    assert evidence["eligible_driving_path_activity_count"] == int(metric["denominator"])
-    assert evidence["critical_path_test_method"] == "source_export_driving_path_proxy"
+    assert evidence["eligible_driving_path_activity_count"] == int(proxy["denominator"])
+    assert evidence["method"] == "source_export_proxy"
 
 
 def test_gma_p6_still_not_measurable_critical_path(tmp_path: Path) -> None:
