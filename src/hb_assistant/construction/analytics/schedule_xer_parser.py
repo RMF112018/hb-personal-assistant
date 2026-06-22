@@ -137,18 +137,28 @@ def parse_xer_bytes(data: bytes) -> ParsedScheduleBundle:
         tf_h = _float_or_none(task.get("total_float_hr_cnt"))
         ff_h = _float_or_none(task.get("free_float_hr_cnt"))
         driving = _truthy_y(task.get("driving_path_flag"))
+        status_code = str(task.get("status_code") or "")
+        act_start = task.get("act_start_date") or task.get("restart_date")
+        act_end = task.get("act_end_date") or task.get("reend_date")
+        phys_pct = _float_or_none(task.get("phys_complete_pct"))
+        is_complete = status_code == "TK_Complete" or (
+            phys_pct is not None and phys_pct >= 100.0
+        )
+        is_started = bool(act_start) or status_code in {"TK_Active", "TK_Complete"}
         act = {
             "activity_id": task_code,
             "source_activity_object_id": str(task_id),
             "activity_name": task.get("task_name"),
             "activity_type": task.get("task_type"),
-            "activity_status": task.get("status_code"),
+            "activity_status": status_code or None,
             "wbs_id": task.get("wbs_id"),
             "calendar_id": cal_id,
             "planned_start": task.get("early_start_date") or task.get("target_start_date"),
             "planned_finish": task.get("early_end_date") or task.get("target_end_date"),
-            "start_date": task.get("act_start_date") or task.get("restart_date"),
-            "finish_date": task.get("act_end_date") or task.get("reend_date"),
+            "start_date": act_start,
+            "finish_date": act_end,
+            "actual_start": act_start if is_started else None,
+            "actual_finish": act_end if is_complete else None,
             "early_start": task.get("early_start_date"),
             "early_finish": task.get("early_end_date"),
             "late_start": task.get("late_start_date"),
@@ -177,6 +187,7 @@ def parse_xer_bytes(data: bytes) -> ParsedScheduleBundle:
             "percent_complete": task.get("phys_complete_pct"),
             "duration_original": task.get("target_drtn_hr_cnt"),
             "duration_remaining": task.get("remain_drtn_hr_cnt"),
+            "duration_unit": "hour",
             "is_milestone": str(task.get("task_type") or "").endswith("Mile"),
         }
         act["source_row_hash"] = _row_hash(act)

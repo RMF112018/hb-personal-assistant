@@ -65,6 +65,12 @@ def test_xer_critical_path_test_measurable(tmp_path: Path) -> None:
         ctx, "dcma_critical_path_test", DCMA_METRIC_SPECS["dcma_critical_path_test"]
     )
     assert metric["status"] == METRIC_STATUS_XER_DRIVING_PATH
+    import json
+
+    evidence = json.loads(metric["evidence_json"])
+    assert evidence["driving_path_activity_count"] >= 1
+    assert evidence["eligible_driving_path_activity_count"] == int(metric["denominator"])
+    assert evidence["critical_path_test_method"] == "source_export_driving_path_proxy"
 
 
 def test_gma_p6_still_not_measurable_critical_path(tmp_path: Path) -> None:

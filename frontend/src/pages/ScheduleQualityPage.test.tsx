@@ -102,6 +102,70 @@ describe('ScheduleQualityPage', () => {
     expect(screen.getByText(/not forensic delay analysis/i)).toBeInTheDocument()
   })
 
+  it('formats XER quality metrics without impossible ratios', async () => {
+    getScheduleQualityMock.mockResolvedValue({
+      schedule_version_key: 'tropical|1069|2026-05-26 08:00',
+      status: 'completed',
+      source_format: 'primavera_xer',
+      assessment_profile: 'dcma_14_point_plus_gao',
+      metrics: [
+        {
+          metric_family: 'dcma',
+          metric_code: 'dcma_invalid_dates',
+          metric_name: 'Invalid dates',
+          numerator: 0,
+          denominator: 701,
+          value: 0,
+          unit: 'ratio',
+          status: 'passed_threshold',
+          evidence_json: JSON.stringify({
+            display_mode: 'finding_count',
+            total_findings: 0,
+            primary_denominator_basis: 'completed_activities',
+          }),
+        },
+        {
+          metric_family: 'dcma',
+          metric_code: 'dcma_critical_path_test',
+          metric_name: 'Critical path test',
+          numerator: 0,
+          denominator: 32,
+          status: 'measured_from_xer_driving_path',
+          evidence_json: JSON.stringify({
+            display_name_override: 'Critical path proxy (source driving path)',
+            driving_path_float_consistency_violation_count: 0,
+            eligible_driving_path_activity_count: 32,
+            driving_path_activity_count: 269,
+            critical_path_test_method: 'source_export_driving_path_proxy',
+          }),
+        },
+        {
+          metric_family: 'dcma',
+          metric_code: 'dcma_relationship_types',
+          metric_name: 'Relationship types',
+          numerator: 2235,
+          denominator: 3718,
+          value: 0.6011,
+          status: 'passed_threshold',
+          evidence_json: JSON.stringify({
+            distribution: { FS: 2235, FF: 1357, SS: 125, SF: 1 },
+          }),
+        },
+      ],
+      gao_category_summary: {},
+      top_findings: [],
+    })
+
+    renderPage('tropical|1069|2026-05-26 08:00')
+
+    expect(await screen.findByText('0 findings')).toBeInTheDocument()
+    expect(screen.queryByText('1410/1378')).not.toBeInTheDocument()
+    expect(screen.getByText(/Critical path proxy \(source driving path\)/i)).toBeInTheDocument()
+    expect(screen.getByText(/0 violations \/ 32 eligible/i)).toBeInTheDocument()
+    expect(screen.getByText(/269 XER driving-path flags/i)).toBeInTheDocument()
+    expect(screen.getByText(/FS 2235 \/ 3718 \(60\.1%\)/i)).toBeInTheDocument()
+  })
+
   it('shows pending state hint when no DCMA metrics yet', async () => {
     getScheduleQualityMock.mockResolvedValue({
       status: 'pending',

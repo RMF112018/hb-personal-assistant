@@ -62,6 +62,87 @@ type QualitySummary = {
   disclaimer?: string
 }
 
+function parseMetricEvidence(metric: Record<string, unknown>): Record<string, unknown> {
+  const raw = metric.evidence_json
+  if (!raw) return {}
+  if (typeof raw === 'string') {
+    try {
+      return JSON.parse(raw) as Record<string, unknown>
+    } catch {
+      return {}
+    }
+  }
+  return raw as Record<string, unknown>
+}
+
+function formatMetricValue(metric: Record<string, unknown>): { value: string; basis?: string } {
+  const code = String(metric.metric_code ?? '')
+  const evidence = parseMetricEvidence(metric)
+  const num = metric.numerator
+  const denom = metric.denominator
+
+  if (code === 'dcma_invalid_dates') {
+    const total = evidence.total_findings ?? num ?? 0
+    const basisLabel = evidence.primary_denominator_basis
+      ? String(evidence.primary_denominator_basis).replaceAll('_', ' ')
+      : 'date-check subcategories'
+    return {
+      value: `${total} findings`,
+      basis: `basis: ${basisLabel}`,
+    }
+  }
+
+  if (code === 'dcma_critical_path_test') {
+    const violations = evidence.driving_path_float_consistency_violation_count ?? num ?? 0
+    const eligible = evidence.eligible_driving_path_activity_count ?? denom ?? '—'
+    const exportCount = evidence.driving_path_activity_count ?? evidence.driving_path_count
+    const basis =
+      exportCount != null
+        ? `source-export proxy · ${exportCount} XER driving-path flags · not full DCMA CPM recalculation`
+        : 'source-export proxy; not full DCMA CPM recalculation'
+    return {
+      value: `${violations} violations / ${eligible} eligible`,
+      basis,
+    }
+  }
+
+  if (code === 'dcma_high_duration') {
+    const ratio = num != null && denom != null ? `${num}/${denom}` : String(metric.value ?? '—')
+    return { value: ratio, basis: 'normalized working days (hours→days for XER)' }
+  }
+
+  if (code === 'dcma_relationship_types') {
+    const dist = evidence.distribution as Record<string, number> | undefined
+    const fs = dist?.FS ?? num
+    const total = denom
+    if (dist && total != null) {
+      const pct = ((Number(fs) / Number(total)) * 100).toFixed(1)
+      const other = ['FF', 'SS', 'SF']
+        .map((k) => (dist[k] ? `${k} ${dist[k]}` : null))
+        .filter(Boolean)
+        .join(' · ')
+      return {
+        value: `FS ${fs} / ${total} (${pct}%)`,
+        basis: other || undefined,
+      }
+    }
+  }
+
+  if (num != null && denom != null) {
+    return { value: `${num}/${denom}` }
+  }
+  return { value: String(metric.value ?? '—') }
+}
+
+function metricDisplayName(metric: Record<string, unknown>): string {
+  const evidence = parseMetricEvidence(metric)
+  const override = evidence.display_name_override
+  if (typeof override === 'string' && override.trim()) {
+    return override
+  }
+  return String(metric.metric_name ?? metric.metric_code ?? '—')
+}
+
 function statusClass(status: string | undefined): string {
   switch (status) {
     case 'completed':
@@ -243,13 +324,16 @@ export function ScheduleQualityPage() {
                   </>
                 }
               >
-                {dcmaMetrics.map((m) => (
+                {dcmaMetrics.map((m) => {
+                  const formatted = formatMetricValue(m)
+                  return (
                   <tr key={String(m.metric_code)}>
-                    <ScheduleTd>{String(m.metric_name)}</ScheduleTd>
+                    <ScheduleTd>{metricDisplayName(m)}</ScheduleTd>
                     <ScheduleTd>
-                      {m.numerator != null && m.denominator != null
-                        ? `${m.numerator}/${m.denominator}`
-                        : String(m.value ?? '—')}
+                      <div>{formatted.value}</div>
+                      {formatted.basis ? (
+                        <div className="text-xs text-[var(--hb-muted)] mt-0.5">{formatted.basis}</div>
+                      ) : null}
                     </ScheduleTd>
                     <ScheduleTd>{String(m.unit ?? '—')}</ScheduleTd>
                     <ScheduleTd>
@@ -258,7 +342,8 @@ export function ScheduleQualityPage() {
                     <ScheduleTd className={statusClass(String(m.status))}>{String(m.status)}</ScheduleTd>
                     <ScheduleTd>{String(m.not_measurable_reason ?? '—')}</ScheduleTd>
                   </tr>
-                ))}
+                  )
+                })}
               </ScheduleTable>
             )}
           </section>
