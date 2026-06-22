@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
 import {
-  projectOptionLabel,
+  projectPickerOptionText,
   ScheduleProjectPicker,
   type ScheduleProjectOption,
 } from './ScheduleProjectPicker'
@@ -34,12 +34,9 @@ const duplicateDisplayProjects: ScheduleProjectOption[] = [
   },
   {
     project_key: 'tropical',
-    display_name: '25-745-01 - RYBOVICH-SAFE HARBOR',
+    display_name: 'Tropical Wind',
     project_number: '25-745-01',
     procore_project_id: '2525840',
-    project_identity_label:
-      'tropical — 25-745-01 - RYBOVICH-SAFE HARBOR · #25-745-01 · Procore 2525840 ⚠',
-    identity_warning: 'duplicate_display_metadata_across_project_keys',
     selectable_for_import: true,
   },
 ]
@@ -62,45 +59,45 @@ function renderPicker() {
   )
 }
 
-describe('projectOptionLabel', () => {
-  it('prefixes labels with project_key', () => {
-    const label = projectOptionLabel({
-      project_key: 'tropical',
-      display_name: 'Tropical Wind',
-      project_number: 'TWNU18',
-      procore_project_id: '2525840',
-    })
-    expect(label).toBe('tropical — Tropical Wind · #TWNU18 · Procore 2525840')
+describe('projectPickerOptionText', () => {
+  it('returns display_name only', () => {
+    expect(
+      projectPickerOptionText({
+        project_key: 'tropical',
+        display_name: 'Tropical Wind',
+        project_number: 'TWNU18',
+        procore_project_id: '2525840',
+        project_identity_label: 'tropical — Tropical Wind · #TWNU18 · Procore 2525840',
+      }),
+    ).toBe('Tropical Wind')
   })
 
-  it('appends warning marker when identity_warning is set', () => {
-    const label = projectOptionLabel({
-      project_key: 'rybovich',
-      display_name: '25-745-01 - RYBOVICH-SAFE HARBOR',
-      project_number: '25-745-01',
-      procore_project_id: '3133242',
-      identity_warning: 'duplicate_display_metadata_across_project_keys',
-    })
-    expect(label.endsWith('⚠')).toBe(true)
-    expect(label.startsWith('rybovich —')).toBe(true)
+  it('ignores project_identity_label and other identity fields', () => {
+    expect(
+      projectPickerOptionText({
+        project_key: 'rybovich',
+        display_name: '25-745-01 - RYBOVICH-SAFE HARBOR',
+        project_identity_label: 'rybovich — should not appear',
+        identity_warning: 'duplicate_display_metadata_across_project_keys',
+      }),
+    ).toBe('25-745-01 - RYBOVICH-SAFE HARBOR')
   })
 
-  it('prefers API project_identity_label when provided', () => {
-    const label = projectOptionLabel({
-      project_key: 'tropical',
-      project_identity_label: 'tropical — API label',
-    })
-    expect(label).toBe('tropical — API label')
+  it('returns empty string when display_name is missing', () => {
+    expect(projectPickerOptionText({ project_key: 'legacy-only' })).toBe('')
   })
 })
 
 describe('ScheduleProjectPicker', () => {
-  it('renders project_key in every selectable option', async () => {
+  it('renders display_name as option text and project_key as value', async () => {
     renderPicker()
-    const rybovich = await screen.findByRole('option', { name: /rybovich —/i })
-    const tropical = await screen.findByRole('option', { name: /tropical —/i })
+    const rybovich = await screen.findByRole('option', {
+      name: '25-745-01 - RYBOVICH-SAFE HARBOR',
+    })
+    const tropical = await screen.findByRole('option', { name: 'Tropical Wind' })
     expect(rybovich).toHaveAttribute('value', 'rybovich')
     expect(tropical).toHaveAttribute('value', 'tropical')
-    expect(rybovich.textContent).not.toBe(tropical.textContent)
+    expect(rybovich.textContent).toBe('25-745-01 - RYBOVICH-SAFE HARBOR')
+    expect(tropical.textContent).toBe('Tropical Wind')
   })
 })

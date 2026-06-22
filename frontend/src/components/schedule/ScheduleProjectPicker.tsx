@@ -29,16 +29,13 @@ export function useScheduleProjects() {
   })
 }
 
+/** Picker option text: display_name only (value remains project_key). */
+export function projectPickerOptionText(project: ScheduleProjectOption): string {
+  return (project.display_name ?? '').trim()
+}
+
 export function projectOptionLabel(project: ScheduleProjectOption): string {
-  if (project.project_identity_label) {
-    return project.project_identity_label
-  }
-  const name = (project.display_name || project.display_label || '').trim() || 'display unavailable'
-  const parts = [`${project.project_key} — ${name}`]
-  if (project.project_number) parts.push(`#${project.project_number}`)
-  if (project.procore_project_id) parts.push(`Procore ${project.procore_project_id}`)
-  const label = parts.join(' · ')
-  return project.identity_warning ? `${label} ⚠` : label
+  return projectPickerOptionText(project)
 }
 
 export function useScheduleProjectParam(): [string, (next: string) => void] {
@@ -96,7 +93,7 @@ export function ScheduleProjectPicker({
         ) : null}
         {projects.map((project) => (
           <option key={project.project_key} value={project.project_key}>
-            {projectOptionLabel(project)}
+            {projectPickerOptionText(project)}
           </option>
         ))}
       </select>
@@ -118,13 +115,19 @@ export function ScheduleProjectContext({
 }) {
   if (!projectKey) return null
   const project = projects?.find((p) => p.project_key === projectKey)
-  const label = project
-    ? projectOptionLabel(project).replace(/ ⚠$/, '')
-    : `${projectKey} — display unavailable`
+  const displayName = project ? projectPickerOptionText(project) : ''
   return (
     <p className="text-sm text-[var(--hb-muted)]">
       Project:{' '}
-      <span className="text-[var(--hb-fg)] font-medium">{label}</span>
+      <span className="font-mono text-xs text-[var(--hb-fg)] font-medium">{projectKey}</span>
+      {displayName ? (
+        <>
+          {' '}
+          <span className="text-[var(--hb-fg)]">— {displayName}</span>
+        </>
+      ) : (
+        <span className="text-[var(--hb-fg)]"> — display unavailable</span>
+      )}
       {project?.identity_warning ? (
         <span className="ml-1 text-xs text-amber-600">Identity warning</span>
       ) : null}

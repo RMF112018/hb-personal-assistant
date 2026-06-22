@@ -77,10 +77,14 @@ describe('ScheduleImportsPage', () => {
     expect(screen.getByText(/max 50 MB/i)).toBeInTheDocument()
   })
 
-  it('renders project_key in every import picker option', async () => {
+  it('renders display_name as import picker option text', async () => {
     renderPage()
-    expect(await screen.findByRole('option', { name: /tropical —/i })).toBeInTheDocument()
-    expect(await screen.findByRole('option', { name: /rybovich —/i })).toBeInTheDocument()
+    const tropical = await screen.findByRole('option', { name: 'Tropical Wind' })
+    const rybovich = await screen.findByRole('option', {
+      name: '25-745-01 - RYBOVICH-SAFE HARBOR',
+    })
+    expect(tropical).toHaveAttribute('value', 'tropical')
+    expect(rybovich).toHaveAttribute('value', 'rybovich')
   })
 
   it('requires project selection before upload', async () => {
