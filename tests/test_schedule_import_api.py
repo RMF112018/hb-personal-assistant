@@ -130,6 +130,7 @@ def test_xer_quality_critical_path_measurable_via_api(tmp_path: Path) -> None:
     assert quality.status_code == 200
     metrics = {m["metric_code"]: m for m in quality.json().get("metrics") or []}
     assert metrics["dcma_critical_path_test"]["status"] == "not_measurable_requires_recalculation"
+    assert metrics["source_critical_path_available"]["metric_family"] == "source_export"
     assert metrics["source_driving_path_integrity_proxy"]["metric_family"] == "supplemental"
 
 

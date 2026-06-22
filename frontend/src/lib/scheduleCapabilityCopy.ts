@@ -28,7 +28,7 @@ export function getScheduleCapabilityBanner(format: ScheduleSourceFormat | undef
     case 'primavera_pmxml':
       return 'P6 API XML: partial critical-float only (derived finish float; no authoritative driving path)'
     case 'primavera_xer':
-      return 'XER: source-export critical path available (driving path + explicit float)'
+      return 'XER: source critical path basis varies by export (CT_DrivPath vs CT_TotFloat); DCMA Check 12 requires CPM recalculation'
     case 'ms_project_xml':
       return 'MSP XML: MSP critical/slack fields available when exported'
     default:

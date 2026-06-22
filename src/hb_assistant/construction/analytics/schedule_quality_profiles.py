@@ -99,6 +99,13 @@ SUPPLEMENTAL_METRIC_SPECS: dict[str, dict[str, Any]] = {
     },
 }
 
+SOURCE_EXPORT_METRIC_SPECS: dict[str, dict[str, Any]] = {
+    "source_critical_path_available": {
+        "metric_name": "Source critical path available",
+        "unit": "count",
+    },
+}
+
 GAO_CATEGORIES: tuple[str, ...] = (
     "capturing_all_activities",
     "sequencing_all_activities",

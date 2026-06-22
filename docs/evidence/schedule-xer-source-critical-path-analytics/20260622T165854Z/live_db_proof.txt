@@ -1,0 +1,13 @@
+schedule_version_key                      source_format  critical_path_type  critical_float_threshold  schedule_options_json                                       
+----------------------------------------  -------------  ------------------  ------------------------  ------------------------------------------------------------
+pga-modern-garage|61340|2025-12-15 08:00                                                                                                                           
+
+tropical|1069|2026-05-26 08:00            primavera_xer  CT_TotFloat         0                         {"project": {"critical_drtn_hr_cnt": "0", "critical_path_typ
+                                                                                                       e": "CT_TotFloat", "sum_base_proj_id": "", "use_project_base
+                                                                                                       line_flag": "Y"}, "schedoptions": {"enable_multiple_longest_
+                                                                                                       path_calc": "N", "sched_float_type": "FT_FF", "sched_use_pro
+                                                                                                       ject_end_date_for_float": "Y", "use_total_float_multiple_lon
+                                                                                                       gest_paths": "Y"}}                                          
+schedule_version_key            activity_count  explicit_float_count  total_float_le_zero_count  driving_path_flag_count  driving_path_with_float_count  driving_path_with_nonpositive_float_count
+------------------------------  --------------  --------------------  -------------------------  -----------------------  -----------------------------  -----------------------------------------
+tropical|1069|2026-05-26 08:00  1378            677                   664                        269                      32                             32                                       

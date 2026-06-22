@@ -46,6 +46,7 @@ type QualitySummary = {
   }
   metrics?: Array<Record<string, unknown>>
   gao_category_summary?: Record<string, { posture?: string; reason?: string | null }>
+  source_critical_path_analytics?: Record<string, unknown> | null
   downstream_readiness?: {
     completion_posture?: string
     cost_mapping?: string
@@ -75,11 +76,65 @@ function parseMetricEvidence(metric: Record<string, unknown>): Record<string, un
   return raw as Record<string, unknown>
 }
 
+function sourceCriticalBasisLabel(basis: string | undefined): string {
+  switch (basis) {
+    case 'xer_driving_path_flag':
+      return 'XER driving path flag'
+    case 'xer_total_float_threshold':
+      return 'XER total float threshold'
+    default:
+      return basis?.replaceAll('_', ' ') ?? '—'
+  }
+}
+
+function formatSourceCriticalAnalytics(
+  analytics: Record<string, unknown>,
+): { lines: string[]; caveat?: string } {
+  const basis = String(analytics.source_critical_basis ?? '')
+  const activityCount = Number(analytics.activity_count ?? analytics.source_critical_coverage_denominator ?? 0)
+  const criticalCount = Number(analytics.source_critical_activity_count ?? 0)
+  const drivingCount = Number(analytics.source_driving_path_count ?? 0)
+  const explicitFloat = Number(analytics.explicit_float_activity_count ?? 0)
+  const drivingWithFloat = Number(analytics.driving_path_with_explicit_float_count ?? 0)
+  const lines = [
+    `Basis: ${sourceCriticalBasisLabel(basis)}`,
+    `Project critical path type: ${String(analytics.source_critical_path_type ?? '—')}`,
+  ]
+  if (basis === 'xer_driving_path_flag') {
+    lines.push(`Driving path activities: ${drivingCount} / ${activityCount}`)
+    lines.push(`Explicit float coverage: ${explicitFloat} / ${activityCount}`)
+    lines.push(`Driving path activities with explicit float: ${drivingWithFloat}`)
+  } else if (basis === 'xer_total_float_threshold') {
+    const threshold = analytics.source_critical_float_threshold_hours ?? 0
+    lines.push(
+      `Critical activities by float <= ${threshold}h: ${criticalCount} / ${explicitFloat} explicit-float activities`,
+    )
+    lines.push(`Driving path flags: ${drivingCount} / ${activityCount}`)
+    lines.push(`Driving path activities with explicit float: ${drivingWithFloat}`)
+  } else {
+    lines.push(`Source critical activities: ${criticalCount}`)
+  }
+  const caveat = analytics.caveat ? String(analytics.caveat) : undefined
+  return { lines, caveat }
+}
+
 function formatMetricValue(metric: Record<string, unknown>): { value: string; basis?: string } {
   const code = String(metric.metric_code ?? '')
   const evidence = parseMetricEvidence(metric)
   const num = metric.numerator
   const denom = metric.denominator
+
+  if (code === 'dcma_critical_path_test') {
+    if (metric.status === 'not_measurable_requires_recalculation') {
+      return { value: '—' }
+    }
+  }
+
+  if (code === 'source_critical_path_available') {
+    return {
+      value: `${String(num ?? evidence.source_critical_activity_count ?? '—')} critical activities`,
+    }
+  }
 
   if (code === 'dcma_invalid_dates') {
     const total = evidence.total_findings ?? num ?? 0
@@ -164,7 +219,12 @@ function statusClass(status: string | undefined): string {
     case 'measured_from_source_export_proxy':
     case 'measured_from_msp_critical_flag':
     case 'partially_measurable_critical_float_available':
-      return 'text-amber-600'
+    case 'available_xer_driving_path':
+    case 'available_xer_total_float_threshold':
+    case 'partial_xer_float_coverage':
+      return 'text-emerald-600'
+    case 'missing_source_critical_data':
+      return 'text-[var(--hb-muted)]'
     case 'not_measurable_missing_data':
     case 'not_measurable_missing_longest_path_data':
     case 'not_measurable_requires_recalculation':
@@ -197,7 +257,13 @@ export function ScheduleQualityPage() {
   })
 
   const dcmaMetrics = (data?.metrics ?? []).filter((m) => m.metric_family === 'dcma')
+  const sourceExportMetrics = (data?.metrics ?? []).filter(
+    (m) => m.metric_family === 'source_export' || m.metric_code === 'source_critical_path_available',
+  )
   const supplementalMetrics = (data?.metrics ?? []).filter((m) => m.metric_family === 'supplemental')
+  const sourceAnalyticsEvidence =
+    data?.source_critical_path_analytics ??
+    (sourceExportMetrics[0] ? parseMetricEvidence(sourceExportMetrics[0]) : null)
   const gaoSummary = data?.gao_category_summary ?? {}
 
   function onProjectChange(next: string) {
@@ -353,12 +419,61 @@ export function ScheduleQualityPage() {
             )}
           </section>
 
+          {sourceExportMetrics.length > 0 || sourceAnalyticsEvidence ? (
+            <section>
+              <h2 className="text-sm font-semibold mb-1">Source critical path analytics</h2>
+              <p className="text-xs text-[var(--hb-muted)] mb-2">
+                First-class source-export critical path data from the schedule file. This is not the DCMA
+                critical path test and does not substitute for CPM recalculation.
+              </p>
+              {sourceAnalyticsEvidence ? (
+                <div className="text-sm space-y-1 mb-3 rounded border border-[var(--hb-border)] p-3">
+                  {formatSourceCriticalAnalytics(sourceAnalyticsEvidence).lines.map((line) => (
+                    <p key={line}>{line}</p>
+                  ))}
+                  {formatSourceCriticalAnalytics(sourceAnalyticsEvidence).caveat ? (
+                    <p className="text-xs text-amber-700 mt-2">
+                      {formatSourceCriticalAnalytics(sourceAnalyticsEvidence).caveat}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
+              {sourceExportMetrics.length > 0 ? (
+                <ScheduleTable
+                  headers={
+                    <>
+                      <ScheduleTh>Metric</ScheduleTh>
+                      <ScheduleTh>Value</ScheduleTh>
+                      <ScheduleTh>Status</ScheduleTh>
+                    </>
+                  }
+                >
+                  {sourceExportMetrics.map((m) => {
+                    const formatted = formatMetricValue(m)
+                    return (
+                      <tr key={String(m.metric_code)}>
+                        <ScheduleTd>{metricDisplayName(m)}</ScheduleTd>
+                        <ScheduleTd>
+                          <div>{formatted.value}</div>
+                          {formatted.basis ? (
+                            <div className="text-xs text-[var(--hb-muted)] mt-0.5">{formatted.basis}</div>
+                          ) : null}
+                        </ScheduleTd>
+                        <ScheduleTd className={statusClass(String(m.status))}>{String(m.status)}</ScheduleTd>
+                      </tr>
+                    )
+                  })}
+                </ScheduleTable>
+              ) : null}
+            </section>
+          ) : null}
+
           {supplementalMetrics.length > 0 ? (
             <section>
               <h2 className="text-sm font-semibold mb-1">Source-export supplemental checks</h2>
               <p className="text-xs text-[var(--hb-muted)] mb-2">
-                Advisory source-export integrity checks. These are not DCMA 14-point metrics and do not
-                substitute for CPM recalculation.
+                Advisory integrity checks on driving-path flags vs explicit float. These do not replace
+                export critical path analytics or CPM recalculation.
               </p>
               <ScheduleTable
                 headers={

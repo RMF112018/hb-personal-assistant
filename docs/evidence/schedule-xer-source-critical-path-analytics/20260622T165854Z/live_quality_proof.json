@@ -1,0 +1,66 @@
+{
+  "pga-modern-garage|61340|2025-12-15 08:00": {
+    "critical_path_analytics_readiness": null,
+    "quality_status": 200,
+    "rerun_status": 404,
+    "source_critical_path_analytics": null,
+    "source_metric": {
+      "evidence": null,
+      "metric_family": null,
+      "status": null
+    }
+  },
+  "tropical|1069|2026-05-26 08:00": {
+    "critical_path_analytics_readiness": "available_source_export_critical_path",
+    "quality_status": 200,
+    "rerun_status": 200,
+    "source_critical_path_analytics": {
+      "activity_count": 1378,
+      "caveat": "Source critical activities use total_float_hr_cnt <= critical_drtn_hr_cnt when PROJECT.critical_path_type is CT_TotFloat. Completed activities may have blank float fields in XER; driving_path_flag counts are separate export evidence.",
+      "cpm_recalculation": "not_implemented",
+      "dcma_critical_path_test": "not_measurable_requires_recalculation",
+      "display_name_override": "Source critical path analytics",
+      "driving_path_with_explicit_float_count": 32,
+      "driving_path_with_nonpositive_float_count": 32,
+      "explicit_float_activity_count": 677,
+      "not_a_dcma_critical_path_test": true,
+      "source_critical_activity_count": 0,
+      "source_critical_basis": "xer_total_float_threshold",
+      "source_critical_coverage_basis": "all_activities",
+      "source_critical_coverage_count": 677,
+      "source_critical_coverage_denominator": 1378,
+      "source_critical_float_threshold_hours": 0.0,
+      "source_critical_path_evidence_json": "{\"activity_count\": 1378, \"caveat\": \"Source critical activities use total_float_hr_cnt <= critical_drtn_hr_cnt when PROJECT.critical_path_type is CT_TotFloat. Completed activities may have blank float fields in XER; driving_path_flag counts are separate export evidence.\", \"cpm_recalculation\": \"not_implemented\", \"dcma_critical_path_test\": \"not_measurable_requires_recalculation\", \"driving_path_with_explicit_float_count\": 32, \"driving_path_with_nonpositive_float_count\": 32, \"explicit_float_activity_count\": 677, \"source_critical_activity_count\": 0, \"source_critical_basis\": \"xer_total_float_threshold\", \"source_critical_coverage_basis\": \"all_activities\", \"source_critical_coverage_count\": 677, \"source_critical_coverage_denominator\": 1378, \"source_critical_float_threshold_hours\": 0.0, \"source_critical_path_type\": \"CT_TotFloat\", \"source_driving_path_count\": 269, \"total_float_le_zero_count\": 664}",
+      "source_critical_path_type": "CT_TotFloat",
+      "source_driving_path_count": 269,
+      "status": "partial_xer_float_coverage",
+      "total_float_le_zero_count": 664
+    },
+    "source_metric": {
+      "evidence": {
+        "activity_count": 1378,
+        "caveat": "Source critical activities use total_float_hr_cnt <= critical_drtn_hr_cnt when PROJECT.critical_path_type is CT_TotFloat. Completed activities may have blank float fields in XER; driving_path_flag counts are separate export evidence.",
+        "cpm_recalculation": "not_implemented",
+        "dcma_critical_path_test": "not_measurable_requires_recalculation",
+        "display_name_override": "Source critical path analytics",
+        "driving_path_with_explicit_float_count": 32,
+        "driving_path_with_nonpositive_float_count": 32,
+        "explicit_float_activity_count": 677,
+        "not_a_dcma_critical_path_test": true,
+        "source_critical_activity_count": 0,
+        "source_critical_basis": "xer_total_float_threshold",
+        "source_critical_coverage_basis": "all_activities",
+        "source_critical_coverage_count": 677,
+        "source_critical_coverage_denominator": 1378,
+        "source_critical_float_threshold_hours": 0.0,
+        "source_critical_path_evidence_json": "{\"activity_count\": 1378, \"caveat\": \"Source critical activities use total_float_hr_cnt <= critical_drtn_hr_cnt when PROJECT.critical_path_type is CT_TotFloat. Completed activities may have blank float fields in XER; driving_path_flag counts are separate export evidence.\", \"cpm_recalculation\": \"not_implemented\", \"dcma_critical_path_test\": \"not_measurable_requires_recalculation\", \"driving_path_with_explicit_float_count\": 32, \"driving_path_with_nonpositive_float_count\": 32, \"explicit_float_activity_count\": 677, \"source_critical_activity_count\": 0, \"source_critical_basis\": \"xer_total_float_threshold\", \"source_critical_coverage_basis\": \"all_activities\", \"source_critical_coverage_count\": 677, \"source_critical_coverage_denominator\": 1378, \"source_critical_float_threshold_hours\": 0.0, \"source_critical_path_type\": \"CT_TotFloat\", \"source_driving_path_count\": 269, \"total_float_le_zero_count\": 664}",
+        "source_critical_path_type": "CT_TotFloat",
+        "source_driving_path_count": 269,
+        "status": "partial_xer_float_coverage",
+        "total_float_le_zero_count": 664
+      },
+      "metric_family": "source_export",
+      "status": "partial_xer_float_coverage"
+    }
+  }
+}

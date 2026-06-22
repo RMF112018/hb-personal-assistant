@@ -6,6 +6,7 @@ import hashlib
 import json
 from typing import Any
 
+from .schedule_critical_path_analytics import classify_xer_critical_activities
 from .schedule_file_parser import ParsedScheduleBundle, ScheduleImportError
 from .schedule_float_derivation import apply_derived_float_to_activities
 from .schedule_source_posture import apply_source_posture
@@ -275,8 +276,16 @@ def parse_xer_bytes(data: bytes) -> ParsedScheduleBundle:
         options=schedule_options,
         calendars=calendars,
     )
+    source_critical_basis = classify_xer_critical_activities(
+        activities,
+        critical_path_type=project.get("critical_path_type"),
+        threshold_hours=project.get("critical_drtn_hr_cnt"),
+    )
     capabilities = apply_source_posture(
-        activities, source_format="primavera_xer", schedule_options=schedule_options
+        activities,
+        source_format="primavera_xer",
+        schedule_options=schedule_options,
+        source_critical_basis=source_critical_basis,
     )
 
     source_metadata = {

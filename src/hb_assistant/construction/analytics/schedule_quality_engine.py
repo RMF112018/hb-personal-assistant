@@ -19,9 +19,17 @@ from .schedule_quality_normalization import (
     normalize_relationship_type,
     relationship_type_distribution,
 )
+from .schedule_critical_path_analytics import (
+    METRIC_STATUS_AVAILABLE_XER_DRIVING,
+    METRIC_STATUS_AVAILABLE_XER_TOTFLOAT,
+    METRIC_STATUS_PARTIAL_XER_FLOAT,
+    compute_source_critical_path_analytics,
+    resolve_analytics_status,
+)
 from .schedule_quality_profiles import (
     DCMA_METRIC_SPECS,
     DISCLAIMER_VERSION,
+    SOURCE_EXPORT_METRIC_SPECS,
     SUPPLEMENTAL_METRIC_SPECS,
     AssessmentProfile,
     get_profile,
@@ -134,6 +142,8 @@ class ScheduleQualityDataLoader:
                 "calculate_float_based_on_finish_date": import_meta.get(
                     "calculate_float_based_on_finish_date"
                 ),
+                "critical_path_type": import_meta.get("critical_path_type"),
+                "critical_float_threshold": import_meta.get("critical_float_threshold"),
             }
         return {
             "activities": activities,
@@ -188,6 +198,7 @@ class ScheduleQualityAssessmentEngine:
             metrics.append(metric)
             findings.extend(metric_findings)
 
+        metrics.extend(self._evaluate_source_export_metrics(ctx))
         metrics.extend(self._evaluate_supplemental_metrics(ctx))
 
         gao_summary: dict[str, dict[str, Any]] = {}
@@ -228,6 +239,20 @@ class ScheduleQualityAssessmentEngine:
         }
         return evaluators[code](ctx, code, spec)
 
+    def _evaluate_source_export_metrics(
+        self, ctx: EvaluationContext
+    ) -> list[dict[str, Any]]:
+        source_fmt = self._import_source_format(ctx)
+        if source_fmt != "primavera_xer":
+            return []
+        spec = SOURCE_EXPORT_METRIC_SPECS["source_critical_path_available"]
+        metric, _ = self._metric_source_critical_path_available(
+            ctx,
+            "source_critical_path_available",
+            spec,
+        )
+        return [metric]
+
     def _evaluate_supplemental_metrics(
         self, ctx: EvaluationContext
     ) -> list[dict[str, Any]]:
@@ -247,6 +272,49 @@ class ScheduleQualityAssessmentEngine:
         )
         supplemental.append(metric)
         return supplemental
+
+    def _metric_source_critical_path_available(
+        self,
+        ctx: EvaluationContext,
+        code: str,
+        spec: dict[str, Any],
+    ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+        analytics = compute_source_critical_path_analytics(
+            ctx.import_meta,
+            ctx.activities,
+            schedule_options=ctx.schedule_options,
+        )
+        status = resolve_analytics_status(analytics)
+        critical_count = int(analytics.get("source_critical_activity_count") or 0)
+        coverage_denom = int(analytics.get("source_critical_coverage_denominator") or 0)
+        return (
+            self._base_metric(
+                ctx,
+                code=code,
+                spec=spec,
+                status=status,
+                numerator=critical_count,
+                denominator=coverage_denom or len(ctx.activities),
+                value=critical_count,
+                metric_family="source_export",
+                not_measurable_reason=(
+                    None
+                    if status
+                    in (
+                        METRIC_STATUS_AVAILABLE_XER_DRIVING,
+                        METRIC_STATUS_AVAILABLE_XER_TOTFLOAT,
+                        METRIC_STATUS_PARTIAL_XER_FLOAT,
+                    )
+                    else "no source-export critical path basis recognized"
+                ),
+                evidence={
+                    **analytics,
+                    "display_name_override": "Source critical path analytics",
+                    "not_a_dcma_critical_path_test": True,
+                },
+            ),
+            [],
+        )
 
     def _base_metric(
         self,
@@ -1214,8 +1282,8 @@ class ScheduleQualityAssessmentEngine:
                     spec=spec,
                     status=METRIC_STATUS_NOT_MEASURABLE_RECALC,
                     not_measurable_reason=(
-                        "CPM recalculation not implemented; source-export flags are not "
-                        "an authoritative DCMA critical path test"
+                        "CPM recalculation not implemented; source-export critical path "
+                        "data is available separately"
                     ),
                     evidence={
                         "method": "requires_cpm_recalculation",
@@ -1389,32 +1457,27 @@ class ScheduleQualityAssessmentEngine:
                 )
         elif category == "critical_path_validity":
             source_fmt = self._import_source_format(ctx)
-            driving = [a for a in ctx.activities if a.get("source_driving_path_flag")]
-            explicit_float = [a for a in ctx.activities if self._explicit_float_days(a) is not None]
-            if source_fmt == "primavera_xer" and driving:
-                proxy = self._driving_path_proxy_stats(ctx, driving)
-                posture = "xer_export_driving_path"
-                reason = json.dumps(
-                    {
-                        "critical_path_source": "xer_driving_path_flag",
-                        "driving_path_count": len(driving),
-                        "explicit_float_count": len(explicit_float),
-                        "method": proxy.get("method"),
-                        "eligible_driving_path_activity_count": proxy.get(
-                            "eligible_driving_path_activity_count"
-                        ),
-                        "eligible_denominator_basis": proxy.get("eligible_denominator_basis"),
-                        "eligible_by_activity_status": proxy.get("eligible_by_activity_status"),
-                        "proxy_violation_count": proxy.get("proxy_violation_count"),
-                        "cpm_recalculation": "not_implemented",
-                        "caveat": proxy.get("caveat"),
-                        "dcma_critical_path_test": "not_measurable_requires_recalculation",
-                        "longest_path_driving_path": {
-                            "posture": "xer_export_driving_path",
-                            "reason": "XER driving_path_flag export; not forensic delay analysis",
-                        },
-                    }
+            if source_fmt == "primavera_xer":
+                analytics = compute_source_critical_path_analytics(
+                    ctx.import_meta,
+                    ctx.activities,
+                    schedule_options=ctx.schedule_options,
                 )
+                driving_count = int(analytics.get("source_driving_path_count") or 0)
+                if analytics.get("source_critical_basis") != "missing" or driving_count > 0:
+                    posture = "xer_export_critical_path_analytics"
+                    reason = json.dumps(
+                        {
+                            **analytics,
+                            "longest_path_driving_path": {
+                                "posture": "xer_export_critical_path_analytics",
+                                "reason": "XER export critical path metadata; not forensic delay analysis",
+                            },
+                        }
+                    )
+                else:
+                    posture = "not_measurable"
+                    reason = "no XER critical path export data"
             elif source_fmt == "ms_project_xml" and any(
                 a.get("source_critical_flag") for a in ctx.activities
             ):
@@ -1617,13 +1680,21 @@ class ScheduleQualityAssessmentEngine:
             and m["status"] == METRIC_STATUS_NOT_MEASURABLE_RECALC
             for m in dcma
         )
-        has_supplemental_driving_proxy = any(
-            m.get("metric_code") == "source_driving_path_integrity_proxy"
+        has_source_critical_analytics = any(
+            m.get("metric_code") == "source_critical_path_available"
+            and m.get("status")
+            in (
+                METRIC_STATUS_AVAILABLE_XER_DRIVING,
+                METRIC_STATUS_AVAILABLE_XER_TOTFLOAT,
+                METRIC_STATUS_PARTIAL_XER_FLOAT,
+            )
             for m in metrics
         )
         source_fmt = self._import_source_format(ctx)
-        if has_supplemental_driving_proxy or source_fmt == "primavera_xer":
-            critical_path_analytics = "available_source_export_driving_path"
+        if has_source_critical_analytics:
+            critical_path_analytics = "available_source_export_critical_path"
+        elif source_fmt == "primavera_xer":
+            critical_path_analytics = "unavailable_requires_cpm_recalculation"
         elif source_fmt == "ms_project_xml":
             critical_path_analytics = "available_msp_critical_slack"
         elif has_critical_path_recalc:

@@ -603,12 +603,36 @@ class ScheduleImportService:
             if (bundle.schedule_options or {}).get("critical_float_threshold") is not None
             else None,
             "schedule_options_json": json.dumps(
-                (bundle.schedule_options or {}).get("schedule_options_json") or {},
+                ScheduleImportService._schedule_options_json_with_analytics(bundle),
                 sort_keys=True,
                 default=str,
             ),
             "baseline_source": (bundle.schedule_options or {}).get("baseline_source"),
         }
+
+    @staticmethod
+    def _schedule_options_json_with_analytics(bundle: ParsedScheduleBundle) -> dict[str, Any]:
+        from .schedule_critical_path_analytics import compute_source_critical_path_analytics
+
+        schedule_opts = bundle.schedule_options or {}
+        opts = dict(schedule_opts.get("schedule_options_json") or {})
+        capabilities = schedule_opts.get("source_capabilities") or {}
+        if str(capabilities.get("source_format") or "") == "primavera_xer" and bundle.activities:
+            import_meta = {
+                "critical_path_type": schedule_opts.get("critical_path_type"),
+                "critical_float_threshold": schedule_opts.get("critical_float_threshold"),
+            }
+            analytics = compute_source_critical_path_analytics(
+                import_meta,
+                bundle.activities,
+                schedule_options=schedule_opts,
+            )
+            opts["source_critical_path_analytics"] = {
+                k: v
+                for k, v in analytics.items()
+                if k not in {"source_critical_path_evidence_json", "status"}
+            }
+        return opts
 
     def _build_activity_rows(
         self,

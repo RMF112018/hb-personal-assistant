@@ -217,6 +217,15 @@ class ScheduleQualityService:
         )
 
         catalog = ScheduleProjectCatalog(db_path=self._db_path)
+        source_critical_path_analytics = None
+        for metric in metrics:
+            if metric.get("metric_code") == "source_critical_path_available":
+                evidence = ScheduleQualityRepository.parse_json_field(
+                    metric.get("evidence_json"), {}
+                )
+                if evidence:
+                    source_critical_path_analytics = evidence
+                break
         return {
             "schedule_version_key": schedule_version_key,
             "project_key": project_key,
@@ -233,6 +242,7 @@ class ScheduleQualityService:
             "quality_grade": scorecard.get("quality_grade") if scorecard else None,
             "scorecard": self._public_scorecard(scorecard),
             "metrics": metrics,
+            "source_critical_path_analytics": source_critical_path_analytics,
             "finding_counts": ScheduleQualityRepository.parse_json_field(
                 scorecard.get("finding_counts_json") if scorecard else None,
                 {},
