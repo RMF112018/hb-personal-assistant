@@ -14,7 +14,7 @@ from .connection import get_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 67
+LATEST_SCHEMA_VERSION = 68
 
 
 class SQLiteMigrator:
@@ -7945,11 +7945,33 @@ class SQLiteMigrator:
                     (now,),
                 )
 
+            self._reconcile_v68_procore_ep_projects_one_per_key(conn)
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 68")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (68, 'v68_procore_ep_projects_one_per_key', ?)",
+                    (now,),
+                )
+
         # Return latest version
         conn2 = get_connection(self._db_path)
         cur = conn2.execute("SELECT MAX(version) FROM schema_migrations")
         row = cur.fetchone()
         return int(row[0]) if row and row[0] is not None else 0
+
+    @staticmethod
+    def _reconcile_v68_procore_ep_projects_one_per_key(conn: sqlite3.Connection) -> None:
+        from hb_assistant.procore.projects_projection import dedupe_procore_ep_projects
+
+        conn.execute("PRAGMA foreign_keys=OFF")
+        dedupe_procore_ep_projects(conn)
+        conn.execute("PRAGMA foreign_keys=ON")
+        conn.execute(
+            """
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_procore_ep_projects_project_key_unique
+            ON procore_ep_projects(project_key)
+            """
+        )
 
     @staticmethod
     def _reconcile_v64_schedule_quality_findings(conn: sqlite3.Connection) -> None:

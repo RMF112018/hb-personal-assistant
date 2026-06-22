@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sqlite3
 from pathlib import Path
 from typing import Any
 
@@ -191,6 +192,9 @@ def test_project_labels_remain_distinct_for_duplicate_display_metadata(tmp_path:
 def test_multi_row_project_key_uses_newest_current_metadata(tmp_path: Path) -> None:
     db = tmp_path / "multi.db"
     SQLiteMigrator(db_path=str(db)).apply()
+    with sqlite3.connect(db) as conn:
+        conn.execute("DROP INDEX IF EXISTS idx_procore_ep_projects_project_key_unique")
+        conn.commit()
     seed_procore_ep_project_row(
         db,
         project_key="rybovich",
