@@ -127,6 +127,14 @@ def upsert_output_staffing(conn: sqlite3.Connection, row: dict[str, Any]) -> Non
     _upsert(conn, "forecast_output_staffing", row, ("id",))
 
 
+def upsert_output_commitment_exposure(conn: sqlite3.Connection, row: dict[str, Any]) -> None:
+    _upsert(conn, "forecast_output_commitment_exposure", row, ("id",))
+
+
+def upsert_output_schedule_phasing(conn: sqlite3.Connection, row: dict[str, Any]) -> None:
+    _upsert(conn, "forecast_output_schedule_phasing", row, ("id",))
+
+
 # Maps the engine's planned-table keys to their per-row upsert helper.
 _WRITERS = {
     "outputs": upsert_output,
@@ -136,6 +144,8 @@ _WRITERS = {
     "probability": upsert_output_probability,
     "changes": upsert_output_change,
     "staffing": upsert_output_staffing,
+    "commitment_exposure": upsert_output_commitment_exposure,
+    "schedule_phasing": upsert_output_schedule_phasing,
 }
 
 
@@ -207,3 +217,21 @@ def read_output_staffing_from_db(
 ) -> list[dict[str, Any]]:
     """Staffing rows in source-file order (source_row_number)."""
     return _read_raw(conn, "forecast_output_staffing", "source_row_number", output_id=output_id)
+
+
+def read_output_commitment_exposure_from_db(
+    conn: sqlite3.Connection, *, output_id: str
+) -> list[dict[str, Any]]:
+    """Commitment-exposure rows in source-file order (source_row_number)."""
+    return _read_raw(
+        conn, "forecast_output_commitment_exposure", "source_row_number", output_id=output_id
+    )
+
+
+def read_output_schedule_phasing_from_db(
+    conn: sqlite3.Connection, *, output_id: str
+) -> list[dict[str, Any]]:
+    """Schedule-phasing rows in source-file order (source_row_number)."""
+    return _read_raw(
+        conn, "forecast_output_schedule_phasing", "source_row_number", output_id=output_id
+    )

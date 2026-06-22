@@ -110,7 +110,13 @@ def _analysis_pkg(root: Path) -> Path:
 def _downstream_pkgs(root: Path) -> dict:
     monthly = root / "forecast_monthly_package_tropical_s"
     _wj(monthly / "monthly_forecast_by_budget_code.jsonl", [
-        {"budget_code_key": BCK, "forecast_month": "2026-07", "recommended_month_cost": "100.00"},
+        {"budget_code_key": BCK, "forecast_month": "2026-07",
+         "recommended_month_cost": "100.00", "recommended_final_cost": "100.00"},
+    ])
+    _wj(monthly / "schedule_monthly_phasing_by_budget_code.jsonl", [
+        {"budget_code_key": BCK, "schedule_association_type": "direct",
+         "used_for_budget_code_phasing": True,
+         "monthly_schedule_weight_distribution": [{"month": "2026-07", "weight": "1.0000"}]},
     ])
     prob = root / "forecast_probability_package_tropical_s"
     _wj(prob / "probabilistic_final_cost_by_budget_code.jsonl", [
@@ -132,12 +138,18 @@ def _downstream_pkgs(root: Path) -> dict:
     _wj(acc / "forecast_reconciliation_by_budget_code.jsonl", [
         {"budget_code_key": BCK, "contributions": [{"method": "burn_rate", "effective_weight": "0.7000"}]},
     ])
+    ctx = root / "forecast_context_package_tropical_s"
+    _wj(ctx / "canonical" / "budget_codes.jsonl", [
+        {"budget_code_key": BCK,
+         "amounts": {"committed_costs": 1000.0, "commitment_invoiced": 250.0}},
+    ])
     return {
         "monthly_package": monthly,
         "probability_package": prob,
         "comprehensive_package": comp,
         "staffing_package": staff,
         "accuracy_package": acc,
+        "context_package": ctx,
     }
 
 
@@ -194,6 +206,8 @@ def test_happy_path_certified_and_writes_run_graph(tmp_path, monkeypatch):
     assert _tropical(live, "forecast_output_staffing") == 1
     assert _tropical(live, "forecast_project_maturity_snapshots") == 1
     assert _tropical(live, "forecast_method_eligibility") == 1
+    assert _tropical(live, "forecast_output_commitment_exposure") == 1
+    assert _tropical(live, "forecast_output_schedule_phasing") == 1
     # v59 untouched
     assert _tropical(live, "forecast_budget_details") == 1
     # all digest tables certified
@@ -311,6 +325,7 @@ def test_cli_success_rc0(tmp_path, monkeypatch, capsys):
         "--comprehensive-package", str(downstream["comprehensive_package"]),
         "--staffing-package", str(downstream["staffing_package"]),
         "--accuracy-package", str(downstream["accuracy_package"]),
+        "--context-package", str(downstream["context_package"]),
     ])
     assert rc == 0
     assert json.loads(capsys.readouterr().out)["decision"] == DECISION_CERTIFIED

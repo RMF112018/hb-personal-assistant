@@ -33,10 +33,38 @@ def _monthly_pkg(root: Path) -> Path:
     pkg = root / "forecast_monthly_package_tropical_s"
     pkg.mkdir(parents=True)
     rows = [
-        {"budget_code_key": "01-100", "forecast_month": "2026-07", "recommended_month_cost": "1000.00"},
-        {"budget_code_key": "01-100", "forecast_month": "2026-08", "recommended_month_cost": "2000.00"},
+        {"budget_code_key": "01-100", "forecast_month": "2026-07",
+         "recommended_month_cost": "1000.00", "recommended_final_cost": "3000.00"},
+        {"budget_code_key": "01-100", "forecast_month": "2026-08",
+         "recommended_month_cost": "2000.00", "recommended_final_cost": "3000.00"},
     ]
     (pkg / "monthly_forecast_by_budget_code.jsonl").write_text(
+        "\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8"
+    )
+    # Phase 6: schedule phasing (one usable row + one not-used row that must be skipped).
+    phasing = [
+        {"budget_code_key": "01-100", "schedule_association_type": "direct",
+         "used_for_budget_code_phasing": True,
+         "monthly_schedule_weight_distribution": [
+             {"month": "2026-07", "weight": "0.4000"}, {"month": "2026-08", "weight": "0.6000"}]},
+        {"budget_code_key": "02-200", "schedule_association_type": "project_level",
+         "used_for_budget_code_phasing": False, "not_used_reason": "no mapping",
+         "monthly_schedule_weight_distribution": []},
+    ]
+    (pkg / "schedule_monthly_phasing_by_budget_code.jsonl").write_text(
+        "\n".join(json.dumps(r) for r in phasing) + "\n", encoding="utf-8"
+    )
+    return pkg
+
+
+def _context_pkg(root: Path) -> Path:
+    pkg = root / "forecast_context_package_tropical_s"
+    (pkg / "canonical").mkdir(parents=True)
+    rows = [
+        {"budget_code_key": "01-100", "amounts": {"committed_costs": 1000.0, "commitment_invoiced": 250.0}},
+        {"budget_code_key": "02-200", "amounts": {"committed_costs": None}},  # skipped (no commitment)
+    ]
+    (pkg / "canonical" / "budget_codes.jsonl").write_text(
         "\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8"
     )
     return pkg
@@ -95,6 +123,7 @@ def _all_pkgs(root: Path):
         probability_package=_probability_pkg(root),
         comprehensive_package=_comprehensive_pkg(root),
         staffing_package=_staffing_pkg(root),
+        context_package=_context_pkg(root),
     )
 
 
@@ -108,9 +137,17 @@ def test_plan_projects_all_coverage_tables() -> None:
         assert plan["counts"]["probability"] == 1
         assert plan["counts"]["changes"] == 1
         assert plan["counts"]["staffing"] == 2  # unrolled from one row's monthly list
+        assert plan["counts"]["commitment_exposure"] == 1  # 01-100 (02-200 skipped: no commitment)
+        assert plan["counts"]["schedule_phasing"] == 1  # 01-100 (02-200 skipped: not used)
         # all child rows share the analysis-derived output_id
         oid = plan["output_id"]
         assert all(r["output_id"] == oid for r in plan["planned"]["monthly"])
+        # commitment exposure = committed - invoiced (1000.00 - 250.00)
+        ce = plan["planned"]["commitment_exposure"][0]
+        assert ce["committed_amount"] == "1000.00" and ce["exposure_amount"] == "750.00"
+        sp = plan["planned"]["schedule_phasing"][0]
+        assert sp["phase"] == "direct" and sp["start_month"] == "2026-07"
+        assert sp["end_month"] == "2026-08" and sp["amount"] == "3000.00"
 
 
 def test_dry_run_writes_nothing() -> None:
@@ -148,6 +185,8 @@ def test_apply_writes_with_parity_and_idempotent() -> None:
         assert plan["written"]["probability"] == 1
         assert plan["written"]["changes"] == 1
         assert plan["written"]["staffing"] == 2
+        assert plan["written"]["commitment_exposure"] == 1
+        assert plan["written"]["schedule_phasing"] == 1
         assert plan["parity"]["proven"] is True
 
         eng.project_run_output(project_key=PROJECT_KEY, run_id="r1", db_path=db, apply=True, **pkgs)
@@ -155,7 +194,10 @@ def test_apply_writes_with_parity_and_idempotent() -> None:
         assert conn.execute("SELECT COUNT(*) FROM forecast_output_monthly").fetchone()[0] == 2
         assert conn.execute("SELECT COUNT(*) FROM forecast_output_staffing").fetchone()[0] == 2
         assert conn.execute("SELECT COUNT(*) FROM forecast_output_probability").fetchone()[0] == 1
-        # commitment_exposure / schedule_phasing remain empty (no source this phase)
-        assert conn.execute("SELECT COUNT(*) FROM forecast_output_commitment_exposure").fetchone()[0] == 0
-        assert conn.execute("SELECT COUNT(*) FROM forecast_output_schedule_phasing").fetchone()[0] == 0
+        # Phase 6: now populated (idempotent — counts stable on re-apply)
+        assert conn.execute("SELECT COUNT(*) FROM forecast_output_commitment_exposure").fetchone()[0] == 1
+        assert conn.execute("SELECT COUNT(*) FROM forecast_output_schedule_phasing").fetchone()[0] == 1
+        assert conn.execute(
+            "SELECT exposure_amount FROM forecast_output_commitment_exposure WHERE budget_code_key='01-100'"
+        ).fetchone()[0] == "750.00"
         conn.close()
