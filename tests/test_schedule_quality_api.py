@@ -120,3 +120,7 @@ def test_twnu_quality_scorecard_when_zip_present(tmp_path: Path, filename: str) 
     )
     assert cpli is not None
     assert cpli.get("status") == "not_measurable_missing_data"
+    metrics = {m["metric_code"]: m for m in body.get("metrics") or []}
+    assert metrics["dcma_high_float"]["status"] == "measured_from_derived_finish_float"
+    assert metrics["dcma_negative_float"]["status"] == "measured_from_derived_finish_float"
+    assert metrics["dcma_critical_path_test"]["status"] == "not_measurable_requires_recalculation"

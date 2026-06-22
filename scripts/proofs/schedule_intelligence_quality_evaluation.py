@@ -13,7 +13,7 @@ from fastapi.testclient import TestClient
 from hb_assistant.construction.analytics import create_app
 from hb_assistant.store.migrator import SQLiteMigrator
 
-FIXTURE = Path(__file__).resolve().parents[2] / "tests/fixtures/schedules/xml/minimal_schedule.xml"
+GMA = Path(__file__).resolve().parents[2] / "tests/fixtures/schedules/xml/gma_sample.xml"
 
 
 def main() -> int:
@@ -25,7 +25,7 @@ def main() -> int:
         preview = client.post(
             "/api/schedules/import-preview",
             headers=headers,
-            files={"file": (FIXTURE.name, FIXTURE.read_bytes(), "application/xml")},
+            files={"file": (GMA.name, GMA.read_bytes(), "application/xml")},
             data={"project_key": "tropical"},
         )
         commit = client.post(
@@ -36,23 +36,30 @@ def main() -> int:
         svk = commit.json()["schedule_version_key"]
         quality = client.get(f"/api/schedules/versions/{svk}/quality", headers={"X-HB-UI-Role": "viewer"})
         body = quality.json()
+        metrics = {m.get("metric_code"): m.get("status") for m in body.get("metrics") or []}
         proof = {
             "schedule_version_key": svk,
             "status": body.get("status"),
             "assessment_profile": body.get("assessment_profile"),
             "dcma_metric_count": len(body.get("metrics") or []),
-            "not_measurable_cpli": next(
-                (
-                    m.get("status")
-                    for m in body.get("metrics") or []
-                    if m.get("metric_code") == "dcma_cpli"
-                ),
-                None,
-            ),
+            "high_float_status": metrics.get("dcma_high_float"),
+            "negative_float_status": metrics.get("dcma_negative_float"),
+            "critical_path_test_status": metrics.get("dcma_critical_path_test"),
+            "not_measurable_cpli": metrics.get("dcma_cpli"),
             "disclaimer_present": bool(body.get("disclaimer")),
+            "derived_float_disclaimer": "not a full Primavera recalculation"
+            in str(body.get("disclaimer") or ""),
         }
         print(json.dumps(proof, indent=2))
-        return 0 if proof["status"] == "completed" and proof["dcma_metric_count"] >= 14 else 1
+        ok = (
+            proof["status"] == "completed"
+            and proof["dcma_metric_count"] >= 14
+            and proof["high_float_status"] == "measured_from_derived_finish_float"
+            and proof["negative_float_status"] == "measured_from_derived_finish_float"
+            and proof["critical_path_test_status"] == "not_measurable_requires_recalculation"
+            and proof["derived_float_disclaimer"]
+        )
+        return 0 if ok else 1
 
 
 if __name__ == "__main__":

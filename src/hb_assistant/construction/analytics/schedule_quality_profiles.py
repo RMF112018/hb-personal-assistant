@@ -7,7 +7,7 @@ from typing import Any
 
 DEFAULT_ASSESSMENT_PROFILE = "dcma_14_point_plus_gao"
 PROFILE_VERSION = "1.0.0"
-DISCLAIMER_VERSION = "sq_disclaimer_v1"
+DISCLAIMER_VERSION = "sq_disclaimer_v2"
 
 DCMA_METRIC_SPECS: dict[str, dict[str, Any]] = {
     "dcma_logic": {

@@ -273,6 +273,21 @@ class ScheduleImportService:
                 "schedule_version_key": version_key,
                 "evidence_package_id": evidence_id,
                 "created_by_operator": "operator",
+                "compute_total_float_type": (bundle.schedule_options or {}).get(
+                    "compute_total_float_type"
+                ),
+                "critical_activity_path_type": (bundle.schedule_options or {}).get(
+                    "critical_activity_path_type"
+                ),
+                "critical_activity_float_threshold": str(
+                    (bundle.schedule_options or {}).get("critical_activity_float_threshold")
+                )
+                if (bundle.schedule_options or {}).get("critical_activity_float_threshold")
+                is not None
+                else None,
+                "calculate_float_based_on_finish_date": (bundle.schedule_options or {}).get(
+                    "calculate_float_based_on_finish_date"
+                ),
             }
         )
 
@@ -363,6 +378,16 @@ class ScheduleImportService:
                     "actual_finish": act.get("actual_finish"),
                     "remaining_start": act.get("remaining_start"),
                     "remaining_finish": act.get("remaining_finish"),
+                    "remaining_early_start": act.get("remaining_early_start"),
+                    "remaining_early_finish": act.get("remaining_early_finish"),
+                    "remaining_late_start": act.get("remaining_late_start"),
+                    "remaining_late_finish": act.get("remaining_late_finish"),
+                    "derived_total_float_hours": act.get("derived_total_float_hours"),
+                    "derived_total_float_days": act.get("derived_total_float_days"),
+                    "derived_float_basis": act.get("derived_float_basis"),
+                    "derived_is_critical_by_float_threshold": act.get(
+                        "derived_is_critical_by_float_threshold"
+                    ),
                     "duration_original": str(act.get("duration_original"))
                     if act.get("duration_original") is not None
                     else None,

@@ -9,6 +9,7 @@ from typing import Any
 from hb_assistant.store.schedule_activity_repository import ScheduleActivityRepository
 from hb_assistant.store.schedule_mapping_repository import ScheduleMappingRepository
 
+from .schedule_float_derivation import supports_finish_float_derivation
 from .schedule_graph import build_adjacency, orphan_relationship_ids
 from .schedule_quality_profiles import (
     DCMA_METRIC_SPECS,
@@ -28,6 +29,19 @@ METRIC_STATUS_WARN = "warning_threshold"
 METRIC_STATUS_FAIL = "failed_threshold"
 METRIC_STATUS_NOT_MEASURABLE = "not_measurable_missing_data"
 METRIC_STATUS_NA = "not_applicable"
+METRIC_STATUS_DERIVED_FINISH_FLOAT = "measured_from_derived_finish_float"
+METRIC_STATUS_PARTIAL_CRITICAL_FLOAT = "partially_measurable_critical_float_available"
+METRIC_STATUS_NOT_MEASURABLE_LONGEST_PATH = "not_measurable_missing_longest_path_data"
+METRIC_STATUS_NOT_MEASURABLE_RECALC = "not_measurable_requires_recalculation"
+
+MEASURED_STATUSES = (
+    METRIC_STATUS_PASS,
+    METRIC_STATUS_WARN,
+    METRIC_STATUS_FAIL,
+    METRIC_STATUS_MEASURED,
+    METRIC_STATUS_DERIVED_FINISH_FLOAT,
+    METRIC_STATUS_PARTIAL_CRITICAL_FLOAT,
+)
 
 
 @dataclass
@@ -45,6 +59,16 @@ class EvaluationContext:
     calendars: list[dict[str, Any]] = field(default_factory=list)
     prior_diff: dict[str, Any] | None = None
     import_meta: dict[str, Any] | None = None
+    schedule_options: dict[str, Any] | None = None
+
+
+def _parse_threshold(value: Any) -> float:
+    if value is None or str(value).strip() == "":
+        return 0.0
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return 0.0
 
 
 @dataclass
@@ -77,12 +101,25 @@ class ScheduleQualityDataLoader:
             parts = str(schedule_version_key).split("|")
             data_date = parts[2] if len(parts) >= 3 else None
         prior_diff = self._latest_diff(schedule_version_key)
+        schedule_options = None
+        if import_meta:
+            schedule_options = {
+                "compute_total_float_type": import_meta.get("compute_total_float_type"),
+                "critical_activity_path_type": import_meta.get("critical_activity_path_type"),
+                "critical_activity_float_threshold": _parse_threshold(
+                    import_meta.get("critical_activity_float_threshold")
+                ),
+                "calculate_float_based_on_finish_date": import_meta.get(
+                    "calculate_float_based_on_finish_date"
+                ),
+            }
         return {
             "activities": activities,
             "relationships": relationships,
             "wbs_nodes": wbs_nodes,
             "calendars": calendars,
             "import_meta": import_meta,
+            "schedule_options": schedule_options,
             "schedule_table_id": schedule_table_id,
             "data_date": data_date,
             "prior_diff": prior_diff,
@@ -455,16 +492,29 @@ class ScheduleQualityAssessmentEngine:
     ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
         return self._float_metric(ctx, code, spec, mode="negative")
 
+    def _activity_float_days(self, activity: dict[str, Any]) -> tuple[float | None, bool]:
+        if activity.get("derived_float_basis"):
+            try:
+                return float(activity["derived_total_float_days"]), True
+            except (TypeError, ValueError):
+                pass
+        if activity.get("total_float") is not None:
+            try:
+                return float(activity["total_float"]), False
+            except (TypeError, ValueError):
+                pass
+        return None, False
+
     def _float_metric(
         self, ctx: EvaluationContext, code: str, spec: dict[str, Any], *, mode: str
     ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
-        floats = []
+        floats: list[float] = []
+        derived_used = False
         for a in ctx.activities:
-            try:
-                if a.get("total_float") is not None:
-                    floats.append(float(a["total_float"]))
-            except (TypeError, ValueError):
-                pass
+            val, is_derived = self._activity_float_days(a)
+            if val is not None:
+                floats.append(val)
+                derived_used = derived_used or is_derived
         if not floats:
             return (
                 self._base_metric(
@@ -472,7 +522,7 @@ class ScheduleQualityAssessmentEngine:
                     code=code,
                     spec=spec,
                     status=METRIC_STATUS_NOT_MEASURABLE,
-                    not_measurable_reason="no total_float values in canonical store",
+                    not_measurable_reason="no derived or export float values in canonical store",
                 ),
                 [],
             )
@@ -481,16 +531,29 @@ class ScheduleQualityAssessmentEngine:
         else:
             bad = sum(1 for f in floats if f < 0)
         ratio = bad / len(floats)
+        threshold_status = self._status_from_ratio(ratio, spec)
+        status = (
+            METRIC_STATUS_DERIVED_FINISH_FLOAT
+            if derived_used
+            else threshold_status
+        )
         return (
             self._base_metric(
                 ctx,
                 code=code,
                 spec=spec,
-                status=self._status_from_ratio(ratio, spec),
+                status=status,
                 numerator=bad,
                 denominator=len(floats),
                 value=round(ratio, 4),
-                evidence={"method": "export_flags_only"},
+                evidence={
+                    "method": "derived_finish_float" if derived_used else "export_total_float",
+                    "float_basis": "remaining_late_finish_minus_remaining_early_finish"
+                    if derived_used
+                    else None,
+                    "threshold_status": threshold_status,
+                    "schedule_options_snapshot": ctx.schedule_options or {},
+                },
             ),
             [],
         )
@@ -695,6 +758,23 @@ class ScheduleQualityAssessmentEngine:
     def _metric_critical_path_test(
         self, ctx: EvaluationContext, code: str, spec: dict[str, Any]
     ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+        if supports_finish_float_derivation(ctx.schedule_options) or any(
+            a.get("derived_float_basis") for a in ctx.activities
+        ):
+            return (
+                self._base_metric(
+                    ctx,
+                    code=code,
+                    spec=spec,
+                    status=METRIC_STATUS_NOT_MEASURABLE_RECALC,
+                    not_measurable_reason=(
+                        "derived finish float cannot validate DCMA critical path test; "
+                        "full Primavera recalculation or authoritative export flags required"
+                    ),
+                    evidence={"method": "derived_finish_float_non_authoritative"},
+                ),
+                [],
+            )
         has_float = any(a.get("total_float") is not None for a in ctx.activities)
         has_critical = any(a.get("is_critical") for a in ctx.activities)
         if not has_float and not has_critical:
@@ -825,15 +905,41 @@ class ScheduleQualityAssessmentEngine:
                     )
                 )
         elif category == "critical_path_validity":
-            if not any(a.get("is_critical") for a in ctx.activities) and not any(
+            derivable = [a for a in ctx.activities if a.get("derived_float_basis")]
+            critical_by_threshold = [
+                a for a in ctx.activities if a.get("derived_is_critical_by_float_threshold")
+            ]
+            has_longest = any(a.get("is_longest_path") for a in ctx.activities)
+            if derivable and supports_finish_float_derivation(ctx.schedule_options):
+                posture = METRIC_STATUS_PARTIAL_CRITICAL_FLOAT
+                reason = json.dumps(
+                    {
+                        "critical_float_classification": {
+                            "posture": METRIC_STATUS_PARTIAL_CRITICAL_FLOAT,
+                            "derivable_count": len(derivable),
+                            "critical_by_float_threshold_count": len(critical_by_threshold),
+                        },
+                        "longest_path_driving_path": {
+                            "posture": METRIC_STATUS_NOT_MEASURABLE_LONGEST_PATH
+                            if not has_longest
+                            else "export_flags_only",
+                            "reason": "no longest-path or driving-path export flags"
+                            if not has_longest
+                            else "longest-path flags present; not authoritative CPM",
+                        },
+                    }
+                )
+            elif not any(a.get("is_critical") for a in ctx.activities) and not any(
                 a.get("total_float") is not None for a in ctx.activities
             ):
                 posture = "not_measurable"
                 reason = "no critical path or float export data"
         elif category == "float_reasonableness":
-            if not any(a.get("total_float") is not None for a in ctx.activities):
+            if not any(a.get("derived_float_basis") for a in ctx.activities) and not any(
+                a.get("total_float") is not None for a in ctx.activities
+            ):
                 posture = "not_measurable"
-                reason = "no float data"
+                reason = "no derived or export float data"
         elif category == "schedule_risk_readiness":
             posture = "pass" if ctx.activities else "fail"
         elif category == "update_status_integrity":
@@ -900,26 +1006,46 @@ class ScheduleQualityAssessmentEngine:
         gao_summary: dict[str, dict[str, Any]],
     ) -> dict[str, Any]:
         dcma = [m for m in metrics if m["metric_family"] == "dcma"]
-        measured = [
+        measured = [m for m in dcma if m["status"] in MEASURED_STATUSES]
+        not_measurable = [
             m
             for m in dcma
             if m["status"]
-            in (METRIC_STATUS_PASS, METRIC_STATUS_WARN, METRIC_STATUS_FAIL, METRIC_STATUS_MEASURED)
+            in (
+                METRIC_STATUS_NOT_MEASURABLE,
+                METRIC_STATUS_NA,
+                METRIC_STATUS_NOT_MEASURABLE_RECALC,
+                METRIC_STATUS_NOT_MEASURABLE_LONGEST_PATH,
+            )
         ]
-        not_measurable = [m for m in dcma if m["status"] in (METRIC_STATUS_NOT_MEASURABLE, METRIC_STATUS_NA)]
-        pass_c = sum(1 for m in measured if m["status"] == METRIC_STATUS_PASS)
-        warn_c = sum(1 for m in measured if m["status"] == METRIC_STATUS_WARN)
-        fail_c = sum(1 for m in measured if m["status"] == METRIC_STATUS_FAIL)
+
+        def _threshold_status(metric: dict[str, Any]) -> str:
+            if metric["status"] == METRIC_STATUS_DERIVED_FINISH_FLOAT:
+                try:
+                    ev = json.loads(metric.get("evidence_json") or "{}")
+                except json.JSONDecodeError:
+                    ev = {}
+                return str(ev.get("threshold_status") or METRIC_STATUS_MEASURED)
+            return str(metric["status"])
+
+        pass_c = sum(1 for m in measured if _threshold_status(m) == METRIC_STATUS_PASS)
+        warn_c = sum(1 for m in measured if _threshold_status(m) == METRIC_STATUS_WARN)
+        fail_c = sum(1 for m in measured if _threshold_status(m) == METRIC_STATUS_FAIL)
 
         score = None
         grade = "insufficient_data"
-        scorable = [m for m in measured if m["status"] != METRIC_STATUS_MEASURED]
+        scorable = [
+            m
+            for m in measured
+            if _threshold_status(m)
+            in (METRIC_STATUS_PASS, METRIC_STATUS_WARN, METRIC_STATUS_FAIL)
+        ]
         if len(scorable) >= 5:
             points = sum(
                 1.0
-                if m["status"] == METRIC_STATUS_PASS
+                if _threshold_status(m) == METRIC_STATUS_PASS
                 else 0.5
-                if m["status"] == METRIC_STATUS_WARN
+                if _threshold_status(m) == METRIC_STATUS_WARN
                 else 0.0
                 for m in scorable
             )
@@ -1024,5 +1150,6 @@ def run_evaluation_for_run(
         calendars=data["calendars"],
         prior_diff=data.get("prior_diff"),
         import_meta=data.get("import_meta"),
+        schedule_options=data.get("schedule_options"),
     )
     return ScheduleQualityAssessmentEngine().evaluate(ctx)

@@ -232,6 +232,9 @@ class ScheduleQualityService:
             ],
             "disclaimer": (
                 "Schedule quality metrics are deterministic CPM data checks for operator review. "
+                "Derived finish float uses exported remaining early/late finish dates per P6 "
+                "schedule options; it is not a full Primavera recalculation and does not "
+                "establish authoritative longest-path or driving-path criticality. "
                 "This is not forensic delay analysis and does not determine entitlement, "
                 "responsibility, liability, or compensability."
             ),

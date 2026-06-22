@@ -51,7 +51,12 @@ function statusClass(status: string | undefined): string {
     case 'failed':
     case 'failed_threshold':
       return 'text-red-600'
+    case 'measured_from_derived_finish_float':
+    case 'partially_measurable_critical_float_available':
+      return 'text-amber-600'
     case 'not_measurable_missing_data':
+    case 'not_measurable_missing_longest_path_data':
+    case 'not_measurable_requires_recalculation':
     case 'not_applicable':
       return 'text-[var(--hb-muted)]'
     default:

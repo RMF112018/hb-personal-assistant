@@ -8,11 +8,16 @@ from pathlib import Path
 import pytest
 
 from hb_assistant.construction.analytics.schedule_import_service import ScheduleImportService
-from hb_assistant.construction.analytics.schedule_quality_engine import run_evaluation_for_run
+from hb_assistant.construction.analytics.schedule_quality_engine import (
+    METRIC_STATUS_DERIVED_FINISH_FLOAT,
+    METRIC_STATUS_NOT_MEASURABLE_RECALC,
+    run_evaluation_for_run,
+)
 from hb_assistant.construction.analytics.schedule_quality_service import ScheduleQualityService
 from hb_assistant.store.migrator import SQLiteMigrator
 
 FIXTURE = Path(__file__).resolve().parent / "fixtures" / "schedules" / "xml" / "minimal_schedule.xml"
+GMA = Path(__file__).resolve().parent / "fixtures" / "schedules" / "xml" / "gma_sample.xml"
 
 
 def _db(tmp_path: Path) -> str:
@@ -65,3 +70,33 @@ def test_queue_and_process_completes_run(tmp_path: Path) -> None:
         summary = qsvc.get_quality_summary(commit["schedule_version_key"])
     assert summary["status"] == "completed"
     assert summary.get("metrics")
+
+
+def test_gma_derived_float_metrics_measured(tmp_path: Path) -> None:
+    db = _db(tmp_path)
+    svc = ScheduleImportService(db_path=db)
+    preview = svc.preview_bytes(
+        filename=GMA.name,
+        data=GMA.read_bytes(),
+        project_key="tropical",
+    )
+    commit = svc.commit(import_id=preview["import_id"], project_key="tropical", confirm=True)
+    result = run_evaluation_for_run(
+        db_path=db,
+        evaluation_run_id="sq-testgma001",
+        project_key="tropical",
+        schedule_version_key=commit["schedule_version_key"],
+        schedule_table_id=None,
+        import_id=preview["import_id"],
+    )
+    codes = {m["metric_code"]: m for m in result.metrics}
+    assert codes["dcma_high_float"]["status"] == METRIC_STATUS_DERIVED_FINISH_FLOAT
+    assert codes["dcma_negative_float"]["status"] == METRIC_STATUS_DERIVED_FINISH_FLOAT
+    assert codes["dcma_critical_path_test"]["status"] == METRIC_STATUS_NOT_MEASURABLE_RECALC
+    import json
+
+    gao = json.loads(result.scorecard.get("gao_category_summary_json") or "{}")
+    assert (
+        gao.get("critical_path_validity", {}).get("posture")
+        == "partially_measurable_critical_float_available"
+    )
