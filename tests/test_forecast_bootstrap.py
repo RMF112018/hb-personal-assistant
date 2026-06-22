@@ -1,6 +1,7 @@
 """Unit tests for the forecast launch bootstrap (Live App Bootstrap/Launcher phase).
 
-Asserts: ``ensure_forecast_roots`` creates ONLY configured+valid write-roots (never read-roots),
+Asserts: ``ensure_forecast_managed_storage`` bootstraps app-managed layout from empty state;
+``ensure_forecast_roots`` creates ONLY configured+valid write-roots (never custom read-roots),
 is idempotent, skips a write-root nested under the data root, is a no-op when nothing is configured,
 and that its readiness report leaks no path strings (find_redaction_leaks clean with real paths).
 """
@@ -12,9 +13,11 @@ from pathlib import Path
 
 import pytest
 
+from hb_assistant.config.path_policy import PathPolicy
 from hb_assistant.construction.analytics import forecast_bootstrap as boot
 from hb_assistant.construction.analytics import forecast_runtime_config as rc
 from hb_assistant.construction.analytics.forecast_dto import find_redaction_leaks
+from hb_assistant.store.migrator import LATEST_SCHEMA_VERSION, SQLiteMigrator
 
 ENV_VARS = (
     "HB_FORECAST_PACKAGE_ROOTS",
@@ -38,6 +41,32 @@ def cfg_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 def _write(cfg_path: Path, **values: object) -> None:
     cfg_path.write_text(json.dumps(values), encoding="utf-8")
+
+
+def test_managed_storage_bootstraps_from_empty(cfg_path: Path) -> None:
+    report = boot.ensure_forecast_managed_storage()
+
+    pp = PathPolicy()
+    assert pp.get_forecast_packages_dir().is_dir()
+    assert pp.get_forecast_data_dir().is_dir()
+    assert pp.get_forecast_runs_dir().is_dir()
+    assert pp.get_forecast_evaluations_dir().is_dir()
+    assert pp.get_forecast_config_proposals_dir().is_dir()
+    assert pp.get_forecast_imports_dir().is_dir()
+    assert cfg_path.exists()
+    assert report["storage_mode"] == "app_managed"
+    assert set(report.get("seeded", [])) >= {"data_root", "db_path", "runs_root"}
+    db_path = pp.get_db_path()
+    assert db_path.exists()
+    assert SQLiteMigrator(db_path=str(db_path)).current_version() == LATEST_SCHEMA_VERSION
+    assert find_redaction_leaks(report) == []
+
+
+def test_managed_storage_repair_is_idempotent(cfg_path: Path) -> None:
+    first = boot.ensure_forecast_managed_storage(repair=True)
+    second = boot.ensure_forecast_managed_storage(repair=True)
+    assert first["storage_mode"] == "app_managed"
+    assert second.get("seeded", []) == []
 
 
 def test_creates_only_configured_write_roots(cfg_path: Path, tmp_path: Path) -> None:
@@ -70,7 +99,7 @@ def test_creates_write_root_with_missing_parents(cfg_path: Path, tmp_path: Path)
     report = boot.ensure_forecast_roots()
 
     assert runs.is_dir()
-    assert report["created"] == ["runs_root"]
+    assert "runs_root" in report["created"]
     assert report["roots"]["runs_root"]["valid"] is True
 
 
@@ -79,7 +108,7 @@ def test_is_idempotent(cfg_path: Path, tmp_path: Path) -> None:
     _write(cfg_path, runs_root=str(runs))
 
     first = boot.ensure_forecast_roots()
-    assert first["created"] == ["runs_root"]
+    assert "runs_root" in first["created"]
 
     second = boot.ensure_forecast_roots()
     assert second["created"] == []  # already exists → not re-reported
@@ -94,7 +123,6 @@ def test_never_creates_read_roots(cfg_path: Path, tmp_path: Path) -> None:
     report = boot.ensure_forecast_roots()
 
     assert not data.exists()
-    assert report["created"] == []
     assert report["roots"]["data_root"]["blocker"] == rc.BLOCKER_MISSING
 
 
@@ -107,15 +135,16 @@ def test_skips_write_root_under_data_root(cfg_path: Path, tmp_path: Path) -> Non
     report = boot.ensure_forecast_roots()
 
     assert not runs_under_data.exists()
-    assert report["created"] == []
+    assert "runs_root" not in report["created"]
     assert report["roots"]["runs_root"]["blocker"] == rc.BLOCKER_UNDER_LIVE_DATA_ROOT
 
 
-def test_noop_when_unconfigured(cfg_path: Path, tmp_path: Path) -> None:
-    # No settings file written, no env → every write-root resolves to None → nothing created.
+def test_write_roots_use_managed_defaults_when_unconfigured(cfg_path: Path) -> None:
+    # No settings/env → resolvers fall through to managed_default write-roots (creatable under app-support).
     report = boot.ensure_forecast_roots()
-    assert report["created"] == []
-    assert not (tmp_path / "runs").exists()
+    pp = PathPolicy()
+    assert pp.get_forecast_runs_dir().is_dir()
+    assert "runs_root" in report["created"]
 
 
 def test_report_is_redaction_safe(cfg_path: Path, tmp_path: Path) -> None:

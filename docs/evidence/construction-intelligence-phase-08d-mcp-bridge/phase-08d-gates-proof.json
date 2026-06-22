@@ -4,9 +4,9 @@
   "proof_passed": true,
   "ok": true,
   "phase": "08D",
-  "generated_utc": "2026-06-09T10:38:17.102987Z",
-  "schema_version": 44,
-  "schema_version_expected": 44,
+  "generated_utc": "2026-06-22T11:04:16.282144Z",
+  "schema_version": 63,
+  "schema_version_expected": 63,
   "contract_version": "1.4.0-phase-08d-planning",
   "advisory_only": true,
   "ready_to_serve": true,
@@ -39,7 +39,7 @@
       "gate_status": "pass",
       "blocking": 0,
       "reason": null,
-      "schema_version": 44,
+      "schema_version": 63,
       "contracts": 10
     },
     {

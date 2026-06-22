@@ -1,0 +1,259 @@
+[
+  {
+    "bytes": 983,
+    "exists": true,
+    "path": "subrepos/construction-financial-review/src/construction_financial_review/forecast_intelligence/__init__.py",
+    "sha256": "c2e9ec2498ff32097704271a90e977ebf84e8183f138d48e6645585e459c2511",
+    "type": "file"
+  },
+  {
+    "bytes": 10460,
+    "exists": true,
+    "path": "subrepos/construction-financial-review/src/construction_financial_review/forecast_intelligence/backtest_strong.py",
+    "sha256": "14336fc9c5ca3f4c8756d0637847d288be7db46abc1c21b235e276ea71d01830",
+    "type": "file"
+  },
+  {
+    "bytes": 2637,
+    "exists": true,
+    "path": "subrepos/construction-financial-review/src/construction_financial_review/forecast_intelligence/change_explanation.py",
+    "sha256": "ca314eb376a5dec84b5364a3bb11a88d522e13373cf4e6e116f29c76d5698d90",
+    "type": "file"
+  },
+  {
+    "bytes": 3431,
+    "exists": true,
+    "path": "subrepos/construction-financial-review/src/construction_financial_review/forecast_intelligence/confidence_intel.py",
+    "sha256": "70c337eefaff5181c3bf790d0db4721a4367547e1ab24e53e020a3be70740908",
+    "type": "file"
+  },
+  {
+    "bytes": 5365,
+    "exists": true,
+    "path": "subrepos/construction-financial-review/src/construction_financial_review/forecast_intelligence/db_inventory.py",
+    "sha256": "59b1e85d0fa210df9c2a583ef8c01623e10f92609908eb733d2a57f03e166cb1",
+    "type": "file"
+  },
+  {
+    "bytes": 11733,
+    "exists": true,
+    "path": "subrepos/construction-financial-review/src/construction_financial_review/forecast_intelligence/estimators_uncapped.py",
+    "sha256": "46f70f93f2c3c976ff112129bc3668f5ebfd8d8364eb14b141636f7fa4ba66d4",
+    "type": "file"
+  },
+  {
+    "bytes": 3993,
+    "exists": true,
+    "path": "subrepos/construction-financial-review/src/construction_financial_review/forecast_intelligence/evidence.py",
+    "sha256": "a8eda542e98843f02c3791c2538bf292a7ee1f70132e8c498b8590519396a81e",
+    "type": "file"
+  },
+  {
+    "bytes": 59438,
+    "exists": true,
+    "path": "subrepos/construction-financial-review/src/construction_financial_review/forecast_intelligence/generate_forecast_intelligence_package.py",
+    "sha256": "bbe9db696795cb298466e8e64284d7155f3f0a91856d3c24061701a37c2e927d",
+    "type": "file"
+  },
+  {
+    "bytes": 3119,
+    "exists": true,
+    "path": "subrepos/construction-financial-review/src/construction_financial_review/forecast_intelligence/overrun_register.py",
+    "sha256": "247ce8f67104bc133186b056bda4c1a88f51af039224a97c6c9c822b71a76892",
+    "type": "file"
+  },
+  {
+    "bytes": 10825,
+    "exists": true,
+    "path": "subrepos/construction-financial-review/src/construction_financial_review/forecast_intelligence/reconcile_final.py",
+    "sha256": "d0dc769b111da47c3d99a2a4de8eea23bac015941e5671bd8dbadb9ee1c65c0d",
+    "type": "file"
+  },
+  {
+    "bytes": 8893,
+    "exists": true,
+    "path": "subrepos/construction-financial-review/src/construction_financial_review/forecast_intelligence/schedule_association.py",
+    "sha256": "25774c9a5ad716d69d53f85cc6e87334d7dc2d7522b470587e86324d574f2061",
+    "type": "file"
+  },
+  {
+    "bytes": 5594,
+    "exists": true,
+    "path": "subrepos/construction-financial-review/src/construction_financial_review/forecast_intelligence/trend.py",
+    "sha256": "68c6a6c57e0fb69448b46fd89fadb451261105be2356eff7ae0e7033a69efb9b",
+    "type": "file"
+  },
+  {
+    "bytes": 461,
+    "exists": true,
+    "path": "subrepos/construction-financial-review/src/construction_financial_review/workflows/__init__.py",
+    "sha256": "762419c0e558d3af1899820f84d0972413dc846f24615f8564af703997a2a556",
+    "type": "file"
+  },
+  {
+    "bytes": 17851,
+    "exists": true,
+    "path": "subrepos/construction-financial-review/src/construction_financial_review/workflows/controlled_db_context_analysis.py",
+    "sha256": "4960927988b692b92c2aac310e32a08f10cfe9f8310db1ded05e14b9f07df4b8",
+    "type": "file"
+  },
+  {
+    "bytes": 25097,
+    "exists": true,
+    "path": "subrepos/construction-financial-review/src/construction_financial_review/workflows/db_certified_final_output.py",
+    "sha256": "316259fef9a01ce68bcc7f48a59ab09ee7e61a05e88cc13c73b8df20a7bd7459",
+    "type": "file"
+  },
+  {
+    "bytes": 13750,
+    "exists": true,
+    "path": "subrepos/construction-financial-review/src/construction_financial_review/workflows/db_cutover_readiness.py",
+    "sha256": "d14f4bb39de0759933062a823335af2bfaf68486c077510b3504c700846ef236",
+    "type": "file"
+  },
+  {
+    "bytes": 34574,
+    "exists": true,
+    "path": "subrepos/construction-financial-review/src/construction_financial_review/workflows/forecast_comprehensive_db_config_proof.py",
+    "sha256": "e76aef4f1fdac3d3941466d88c2bf8c0821573bb715f5033de8549deb23365ba",
+    "type": "file"
+  },
+  {
+    "bytes": 26342,
+    "exists": true,
+    "path": "subrepos/construction-financial-review/src/construction_financial_review/workflows/forecast_db_config_backed_core.py",
+    "sha256": "350d1f20fb92190d7260e3eb96957a695ef34e9fcc52c0ae20396603e6b44ec4",
+    "type": "file"
+  },
+  {
+    "bytes": 4950,
+    "exists": true,
+    "path": "subrepos/construction-financial-review/src/construction_financial_review/workflows/forecast_db_config_backed_generation.py",
+    "sha256": "f5502d5015beb208d3e5e9d8122629d5ac835c94ffe24e3b3cc38cc14b2089d3",
+    "type": "file"
+  },
+  {
+    "bytes": 24284,
+    "exists": true,
+    "path": "subrepos/construction-financial-review/src/construction_financial_review/workflows/forecast_model_controls_db_config_proof.py",
+    "sha256": "5a774156d31439ed0e544b527dc2805c2b290b534c4c45d6c8c92c2f68b5bfd7",
+    "type": "file"
+  },
+  {
+    "bytes": 35670,
+    "exists": true,
+    "path": "subrepos/construction-financial-review/src/construction_financial_review/workflows/forecast_monthly_db_config_proof.py",
+    "sha256": "7c633d47415c98dab4e32f10f38e56e68d35a0d82025e8ea88d41938fd5b5da2",
+    "type": "file"
+  },
+  {
+    "bytes": 31004,
+    "exists": true,
+    "path": "subrepos/construction-financial-review/src/construction_financial_review/workflows/forecast_probability_db_config_proof.py",
+    "sha256": "1232083c75ea19ee6808d0d104aaaa2389f8c1964c1d20cbe6ed3a9f96ba8ac3",
+    "type": "file"
+  },
+  {
+    "bytes": 22823,
+    "exists": true,
+    "path": "subrepos/construction-financial-review/src/construction_financial_review/workflows/guarded_db_operator_run.py",
+    "sha256": "3d27a603fe8402aa7db3fc9352bbe50e85aed6c610c643f54f170519f2c45466",
+    "type": "file"
+  },
+  {
+    "bytes": 18897,
+    "exists": true,
+    "path": "subrepos/construction-financial-review/src/construction_financial_review/workflows/live_db_certification.py",
+    "sha256": "d8a74da8d6029264522f35bfa6e0b02e96b76263b49bd1d8bbe238909febdd3c",
+    "type": "file"
+  },
+  {
+    "bytes": 23603,
+    "exists": true,
+    "path": "subrepos/construction-financial-review/src/construction_financial_review/workflows/live_db_config_registry_promotion.py",
+    "sha256": "399d8a66a99ee03e4259b57892eebd5c8dcb4cd160b995cde3bbeec64d72b124",
+    "type": "file"
+  },
+  {
+    "bytes": 18010,
+    "exists": true,
+    "path": "subrepos/construction-financial-review/src/construction_financial_review/workflows/live_db_source_domain_projection.py",
+    "sha256": "05e5273e26d844c0cd46adb71c486a9fdf86789437f1bd708d9a537610060d4a",
+    "type": "file"
+  },
+  {
+    "bytes": 11682,
+    "exists": true,
+    "path": "subrepos/construction-financial-review/src/construction_financial_review/workflows/temp_db_readiness_rehearsal.py",
+    "sha256": "fd8805a6d79831b3f60a819e98f7a3bf9c954a5789bc5f43b5751b1fa284e49d",
+    "type": "file"
+  },
+  {
+    "exists": false,
+    "path": "subrepos/construction-financial-review/src/construction_financial_review/model_engine_runtime"
+  },
+  {
+    "bytes": 1580,
+    "exists": true,
+    "path": "subrepos/construction-financial-review/src/construction_financial_review/forecast_cost_basis/__init__.py",
+    "sha256": "04ae996cb51735aca813fef4beabdd8f358d2b775e0ddeac9855d7d4a66d1d7c",
+    "type": "file"
+  },
+  {
+    "bytes": 5207,
+    "exists": true,
+    "path": "subrepos/construction-financial-review/src/construction_financial_review/forecast_cost_basis/apply.py",
+    "sha256": "b0fb947549ea9b9d039ed43fba9cb878f09a51b657e9abf71566acb216970673",
+    "type": "file"
+  },
+  {
+    "bytes": 9814,
+    "exists": true,
+    "path": "subrepos/construction-financial-review/src/construction_financial_review/forecast_cost_basis/classify.py",
+    "sha256": "981b3329ece35928ec638c7ffbdc3fc03f61e2fc390aeea8d9a747efe0a0cfb3",
+    "type": "file"
+  },
+  {
+    "bytes": 5095,
+    "exists": true,
+    "path": "subrepos/construction-financial-review/src/construction_financial_review/forecast_cost_basis/validation.py",
+    "sha256": "553ed7cc90fec8f2c7d402b5d11f7ccb26bacb11480febdef3f98fd52632aa3e",
+    "type": "file"
+  },
+  {
+    "exists": false,
+    "path": "src/hb_assistant/forecasting"
+  },
+  {
+    "exists": false,
+    "path": "docs/architecture/286-forecast-phase-i-pr2-timeseries-shadow-estimator.md"
+  },
+  {
+    "exists": false,
+    "path": "docs/architecture/287-forecast-phase-i-pr3-isolated-model-engine-runtime.md"
+  },
+  {
+    "exists": false,
+    "path": "docs/architecture/288-forecast-production-accuracy-trust-gate.md"
+  },
+  {
+    "exists": false,
+    "path": "docs/architecture/289-forecast-completion-stage-recalibration.md"
+  },
+  {
+    "exists": false,
+    "path": "docs/architecture/290-forecast-reconciled-backtest-fidelity.md"
+  },
+  {
+    "exists": false,
+    "path": "docs/architecture/291-forecast-p75-stage-gate-default-on.md"
+  },
+  {
+    "exists": false,
+    "path": "docs/architecture/292-forecast-phase-i-pr83-reliability-damping.md"
+  },
+  {
+    "exists": false,
+    "path": "docs/architecture/293-forecast-reliability-damping-abandoned.md"
+  }
+]

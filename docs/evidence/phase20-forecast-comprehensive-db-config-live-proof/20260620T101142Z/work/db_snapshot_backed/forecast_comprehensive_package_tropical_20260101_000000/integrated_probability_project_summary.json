@@ -1,0 +1,16 @@
+{
+  "project_key": "tropical",
+  "probability_method": "accepted_distribution_deterministic_adjustment",
+  "deterministic_seed": 20260614,
+  "integrated_p50_total": "60053075.97",
+  "integrated_p90_total": "71570583.39",
+  "integrated_p95_total": "77398870.92",
+  "direction_counts": {
+    "dormant": 21,
+    "hold": 51,
+    "budgetdetails_basis": 22,
+    "widen": 33
+  },
+  "note": "deterministic transform of the accepted probability package, not a fresh Monte Carlo",
+  "requires_human_acceptance": true
+}

@@ -1,0 +1,442 @@
+[
+  {
+    "row_count": 0,
+    "table": "forecast_accuracy_results"
+  },
+  {
+    "row_count": 0,
+    "table": "forecast_anomaly_findings"
+  },
+  {
+    "row_count": 127,
+    "table": "forecast_budget_details"
+  },
+  {
+    "row_count": 0,
+    "table": "forecast_comparison_results"
+  },
+  {
+    "row_count": 194,
+    "table": "forecast_config_items"
+  },
+  {
+    "row_count": 194,
+    "table": "forecast_config_snapshot_items"
+  },
+  {
+    "row_count": 1,
+    "table": "forecast_config_snapshots"
+  },
+  {
+    "row_count": 6,
+    "table": "forecast_config_sources"
+  },
+  {
+    "row_count": 6324,
+    "table": "forecast_cost_entries"
+  },
+  {
+    "row_count": 0,
+    "table": "forecast_evidence_packages"
+  },
+  {
+    "row_count": 0,
+    "table": "forecast_external_forecast_mappings"
+  },
+  {
+    "row_count": 0,
+    "table": "forecast_external_forecast_rows"
+  },
+  {
+    "row_count": 0,
+    "table": "forecast_external_forecasts"
+  },
+  {
+    "row_count": 1081,
+    "table": "forecast_monthly_actuals_by_budget_code"
+  },
+  {
+    "row_count": 0,
+    "table": "forecast_package_manifests"
+  },
+  {
+    "row_count": 0,
+    "table": "forecast_projects"
+  },
+  {
+    "row_count": 0,
+    "table": "forecast_review_items"
+  },
+  {
+    "row_count": 0,
+    "table": "forecast_runs"
+  },
+  {
+    "row_count": 0,
+    "table": "forecast_source_ingestions"
+  },
+  {
+    "row_count": 0,
+    "table": "forecast_validation_events"
+  },
+  {
+    "row_count": 66,
+    "table": "procore_ep_billing_periods"
+  },
+  {
+    "row_count": 420,
+    "table": "procore_ep_budget_change_history"
+  },
+  {
+    "row_count": 399,
+    "table": "procore_ep_budget_detail_columns"
+  },
+  {
+    "row_count": 273951,
+    "table": "procore_ep_budget_detail_row_cells"
+  },
+  {
+    "row_count": 3044,
+    "table": "procore_ep_budget_detail_rows"
+  },
+  {
+    "row_count": 805,
+    "table": "procore_ep_budget_modifications"
+  },
+  {
+    "row_count": 35,
+    "table": "procore_ep_budget_views"
+  },
+  {
+    "row_count": 1059,
+    "table": "procore_ep_change_events"
+  },
+  {
+    "row_count": 2352,
+    "table": "procore_ep_change_events_attachments"
+  },
+  {
+    "row_count": 2829,
+    "table": "procore_ep_change_events_change_items"
+  },
+  {
+    "row_count": 8487,
+    "table": "procore_ep_change_events_change_items_budget_code_seg_2dff22"
+  },
+  {
+    "row_count": 2154,
+    "table": "procore_ep_change_events_markup_items"
+  },
+  {
+    "row_count": 6462,
+    "table": "procore_ep_change_events_markup_items_wbs_code_segment_items"
+  },
+  {
+    "row_count": 153,
+    "table": "procore_ep_commitment_attachments"
+  },
+  {
+    "row_count": 288,
+    "table": "procore_ep_commitment_change_orders"
+  },
+  {
+    "row_count": 118,
+    "table": "procore_ep_commitment_compliance"
+  },
+  {
+    "row_count": 1085,
+    "table": "procore_ep_commitment_compliance_insurance_documents"
+  },
+  {
+    "row_count": 2844,
+    "table": "procore_ep_commitment_compliance_insurance_documents__52b7bf"
+  },
+  {
+    "row_count": 243,
+    "table": "procore_ep_commitment_contracts"
+  },
+  {
+    "row_count": 1308,
+    "table": "procore_ep_commitment_line_items"
+  },
+  {
+    "row_count": 249,
+    "table": "procore_ep_prime_change_order_line_items"
+  },
+  {
+    "row_count": 219,
+    "table": "procore_ep_prime_change_orders"
+  },
+  {
+    "row_count": 499,
+    "table": "procore_ep_prime_contract_line_items"
+  },
+  {
+    "row_count": 7,
+    "table": "procore_ep_prime_contracts"
+  },
+  {
+    "row_count": 42,
+    "table": "procore_ep_projects"
+  },
+  {
+    "row_count": 11,
+    "table": "procore_ep_purchase_order_contracts"
+  },
+  {
+    "row_count": 1,
+    "table": "procore_ep_purchase_order_contracts_custom_fields_cus_a0fe65"
+  },
+  {
+    "row_count": 28,
+    "table": "procore_ep_purchase_order_line_items"
+  },
+  {
+    "row_count": 49,
+    "table": "procore_ep_purchase_order_line_items_cost_code_line_i_779dbd"
+  },
+  {
+    "row_count": 12,
+    "table": "procore_ep_rfqs"
+  },
+  {
+    "row_count": 72,
+    "table": "procore_ep_rfqs_attachments"
+  },
+  {
+    "row_count": 94,
+    "table": "procore_ep_rfqs_change_event_attachments"
+  },
+  {
+    "row_count": 63,
+    "table": "procore_ep_rfqs_change_event_change_event_line_items"
+  },
+  {
+    "row_count": 69,
+    "table": "procore_ep_rfqs_change_event_change_event_line_items__0a3e8d"
+  },
+  {
+    "row_count": 2403,
+    "table": "procore_ep_subcontractor_invoice_change_order_items"
+  },
+  {
+    "row_count": 51428,
+    "table": "procore_ep_subcontractor_invoice_contract_detail_items"
+  },
+  {
+    "row_count": 1002,
+    "table": "procore_ep_subcontractor_invoices"
+  },
+  {
+    "row_count": 1000,
+    "table": "procore_ep_subcontractor_invoices_attachments"
+  },
+  {
+    "row_count": 15,
+    "table": "second_brain_agent_model_receipts"
+  },
+  {
+    "row_count": 0,
+    "table": "second_brain_agent_performance_feedback_runs"
+  },
+  {
+    "row_count": 15,
+    "table": "second_brain_agent_run_receipts"
+  },
+  {
+    "row_count": 15,
+    "table": "second_brain_evaluation_runs"
+  },
+  {
+    "row_count": 0,
+    "table": "second_brain_financial_amount_facts_normalized"
+  },
+  {
+    "row_count": 291,
+    "table": "second_brain_financial_currency_completeness_snapshots"
+  },
+  {
+    "row_count": 0,
+    "table": "second_brain_financial_exposure_summary_items"
+  },
+  {
+    "row_count": 0,
+    "table": "second_brain_financial_fact_normalization_runs"
+  },
+  {
+    "row_count": 65,
+    "table": "second_brain_financial_forecast_readiness_runs"
+  },
+  {
+    "row_count": 48,
+    "table": "second_brain_financial_readiness_agent_runs"
+  },
+  {
+    "row_count": 128769,
+    "table": "second_brain_financial_review_required_items"
+  },
+  {
+    "row_count": 980,
+    "table": "second_brain_financial_source_coverage_snapshots"
+  },
+  {
+    "row_count": 97,
+    "table": "second_brain_financial_wbs_cost_code_snapshots"
+  },
+  {
+    "row_count": 2,
+    "table": "second_brain_mcp_claude_desktop_config_previews"
+  },
+  {
+    "row_count": 0,
+    "table": "second_brain_mcp_denial_receipts"
+  },
+  {
+    "row_count": 3,
+    "table": "second_brain_mcp_permission_audit_runs"
+  },
+  {
+    "row_count": 0,
+    "table": "second_brain_mcp_policy_gate_runs"
+  },
+  {
+    "row_count": 3,
+    "table": "second_brain_mcp_prompt_registry_snapshots"
+  },
+  {
+    "row_count": 3,
+    "table": "second_brain_mcp_resource_registry_snapshots"
+  },
+  {
+    "row_count": 15,
+    "table": "second_brain_mcp_server_config_snapshots"
+  },
+  {
+    "row_count": 14,
+    "table": "second_brain_mcp_tool_call_receipts"
+  },
+  {
+    "row_count": 3,
+    "table": "second_brain_mcp_tool_registry_snapshots"
+  },
+  {
+    "row_count": 0,
+    "table": "second_brain_memory_consolidation_candidates"
+  },
+  {
+    "row_count": 0,
+    "table": "second_brain_memory_consolidation_review_items"
+  },
+  {
+    "row_count": 0,
+    "table": "second_brain_memory_quality_review_runs"
+  },
+  {
+    "row_count": 0,
+    "table": "second_brain_operator_feedback"
+  },
+  {
+    "row_count": 0,
+    "table": "second_brain_operator_preference_profiles"
+  },
+  {
+    "row_count": 0,
+    "table": "second_brain_phase_08c_validation_runs"
+  },
+  {
+    "row_count": 0,
+    "table": "second_brain_phase_08d_validation_runs"
+  },
+  {
+    "row_count": 0,
+    "table": "second_brain_phase_09_validation_runs"
+  },
+  {
+    "row_count": 2,
+    "table": "second_brain_research_packets"
+  },
+  {
+    "row_count": 1,
+    "table": "second_brain_retrieval_approved_source_manifests"
+  },
+  {
+    "row_count": 0,
+    "table": "second_brain_retrieval_benchmark_runs"
+  },
+  {
+    "row_count": 0,
+    "table": "second_brain_retrieval_context_budget_runs"
+  },
+  {
+    "row_count": 0,
+    "table": "second_brain_retrieval_embedding_model_evals"
+  },
+  {
+    "row_count": 0,
+    "table": "second_brain_retrieval_eval_cases"
+  },
+  {
+    "row_count": 0,
+    "table": "second_brain_retrieval_eval_runs"
+  },
+  {
+    "row_count": 0,
+    "table": "second_brain_retrieval_eval_sets"
+  },
+  {
+    "row_count": 0,
+    "table": "second_brain_retrieval_hybrid_query_results"
+  },
+  {
+    "row_count": 0,
+    "table": "second_brain_retrieval_hybrid_query_runs"
+  },
+  {
+    "row_count": 0,
+    "table": "second_brain_retrieval_llamaindex_config_snapshots"
+  },
+  {
+    "row_count": 0,
+    "table": "second_brain_retrieval_source_linked_proof_runs"
+  },
+  {
+    "row_count": 0,
+    "table": "second_brain_retrieval_unsupported_claim_checks"
+  },
+  {
+    "row_count": 5104,
+    "table": "second_brain_retrieval_vector_index_items"
+  },
+  {
+    "row_count": 4,
+    "table": "second_brain_retrieval_vector_index_runs"
+  },
+  {
+    "row_count": 0,
+    "table": "second_brain_retry_receipts"
+  },
+  {
+    "row_count": 0,
+    "table": "second_brain_review_burden_clusters"
+  },
+  {
+    "row_count": 0,
+    "table": "second_brain_review_burden_policy_evals"
+  },
+  {
+    "row_count": 0,
+    "table": "second_brain_review_burden_runs"
+  },
+  {
+    "row_count": 0,
+    "table": "second_brain_run_registry"
+  },
+  {
+    "row_count": 0,
+    "table": "second_brain_run_steps"
+  },
+  {
+    "row_count": 14,
+    "table": "second_brain_runtime_config_receipts"
+  }
+]

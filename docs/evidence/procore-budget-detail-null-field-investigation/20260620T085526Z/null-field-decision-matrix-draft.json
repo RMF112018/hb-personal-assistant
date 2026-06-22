@@ -1,0 +1,192 @@
+[
+  {
+    "cell_alias_nonempty_rows": 0,
+    "classification": "source_absent_or_dead_column_do_not_alias",
+    "field": "actual_cost",
+    "rationale": [
+      "no Actual Cost evidence; do not map from Direct Costs/JTD/ERP fields"
+    ],
+    "target_nonnull_rows": 0,
+    "target_total_rows": 3044
+  },
+  {
+    "cell_alias_nonempty_rows": 2522,
+    "classification": "dynamic_budget_column_projection_or_legitimate_sparsity",
+    "field": "approved_change_orders",
+    "rationale": [
+      "field depends on dynamic Budget Detail columns; compare cell/metadata coverage to wide-column population"
+    ],
+    "target_nonnull_rows": 2522,
+    "target_total_rows": 3044
+  },
+  {
+    "cell_alias_nonempty_rows": 1478,
+    "classification": "dynamic_budget_column_projection_or_legitimate_sparsity",
+    "field": "committed_costs",
+    "rationale": [
+      "field depends on dynamic Budget Detail columns; compare cell/metadata coverage to wide-column population"
+    ],
+    "target_nonnull_rows": 1478,
+    "target_total_rows": 3044
+  },
+  {
+    "cell_alias_nonempty_rows": 0,
+    "classification": "confirmed_run_context_propagation_defect",
+    "field": "company_id",
+    "rationale": [
+      "sync-run company_id exists while raw landing/read-model field is null"
+    ],
+    "target_nonnull_rows": 0,
+    "target_total_rows": 3044
+  },
+  {
+    "cell_alias_nonempty_rows": 0,
+    "classification": "confirmed_run_context_propagation_defect",
+    "field": "company_id_hash",
+    "rationale": [
+      "sync-run company_id exists while raw landing/read-model field is null"
+    ],
+    "target_nonnull_rows": 0,
+    "target_total_rows": 3044
+  },
+  {
+    "cell_alias_nonempty_rows": 3044,
+    "classification": "semantic_candidate_requires_policy_proof",
+    "field": "cost_type",
+    "rationale": [
+      "category/category_id or metadata may be candidate, but equivalence to cost_type is not proven"
+    ],
+    "target_nonnull_rows": 0,
+    "target_total_rows": 3044
+  },
+  {
+    "cell_alias_nonempty_rows": 3044,
+    "classification": "semantic_candidate_requires_policy_proof",
+    "field": "cost_type_id",
+    "rationale": [
+      "category/category_id or metadata may be candidate, but equivalence to cost_type is not proven"
+    ],
+    "target_nonnull_rows": 0,
+    "target_total_rows": 3044
+  },
+  {
+    "cell_alias_nonempty_rows": 522,
+    "classification": "dynamic_budget_column_projection_or_legitimate_sparsity",
+    "field": "direct_costs",
+    "rationale": [
+      "field depends on dynamic Budget Detail columns; compare cell/metadata coverage to wide-column population"
+    ],
+    "target_nonnull_rows": 522,
+    "target_total_rows": 3044
+  },
+  {
+    "cell_alias_nonempty_rows": 956,
+    "classification": "dynamic_budget_column_projection_or_legitimate_sparsity",
+    "field": "erp_direct_costs",
+    "rationale": [
+      "field depends on dynamic Budget Detail columns; compare cell/metadata coverage to wide-column population"
+    ],
+    "target_nonnull_rows": 956,
+    "target_total_rows": 3044
+  },
+  {
+    "cell_alias_nonempty_rows": 956,
+    "classification": "dynamic_budget_column_projection_or_legitimate_sparsity",
+    "field": "erp_job_to_date_costs",
+    "rationale": [
+      "field depends on dynamic Budget Detail columns; compare cell/metadata coverage to wide-column population"
+    ],
+    "target_nonnull_rows": 956,
+    "target_total_rows": 3044
+  },
+  {
+    "cell_alias_nonempty_rows": 2522,
+    "classification": "dynamic_budget_column_projection_or_legitimate_sparsity",
+    "field": "estimated_cost_at_completion",
+    "rationale": [
+      "field depends on dynamic Budget Detail columns; compare cell/metadata coverage to wide-column population"
+    ],
+    "target_nonnull_rows": 2522,
+    "target_total_rows": 3044
+  },
+  {
+    "cell_alias_nonempty_rows": 1044,
+    "classification": "dynamic_budget_column_projection_or_legitimate_sparsity",
+    "field": "forecast_to_complete",
+    "rationale": [
+      "field depends on dynamic Budget Detail columns; compare cell/metadata coverage to wide-column population"
+    ],
+    "target_nonnull_rows": 1044,
+    "target_total_rows": 3044
+  },
+  {
+    "cell_alias_nonempty_rows": 1566,
+    "classification": "dynamic_budget_column_projection_or_legitimate_sparsity",
+    "field": "job_to_date_costs",
+    "rationale": [
+      "field depends on dynamic Budget Detail columns; compare cell/metadata coverage to wide-column population"
+    ],
+    "target_nonnull_rows": 1566,
+    "target_total_rows": 3044
+  },
+  {
+    "cell_alias_nonempty_rows": 0,
+    "classification": "source_absent_or_dead_column",
+    "field": "line_item_type_id",
+    "rationale": [
+      "no direct line_item_type_id evidence found"
+    ],
+    "target_nonnull_rows": 0,
+    "target_total_rows": 3044
+  },
+  {
+    "cell_alias_nonempty_rows": 1478,
+    "classification": "dynamic_budget_column_projection_or_legitimate_sparsity",
+    "field": "pending_budget_changes",
+    "rationale": [
+      "field depends on dynamic Budget Detail columns; compare cell/metadata coverage to wide-column population"
+    ],
+    "target_nonnull_rows": 1478,
+    "target_total_rows": 3044
+  },
+  {
+    "cell_alias_nonempty_rows": 2522,
+    "classification": "dynamic_budget_column_projection_or_legitimate_sparsity",
+    "field": "projected_budget",
+    "rationale": [
+      "field depends on dynamic Budget Detail columns; compare cell/metadata coverage to wide-column population"
+    ],
+    "target_nonnull_rows": 2522,
+    "target_total_rows": 3044
+  },
+  {
+    "cell_alias_nonempty_rows": 2522,
+    "classification": "dynamic_budget_column_projection_or_legitimate_sparsity",
+    "field": "projected_costs",
+    "rationale": [
+      "field depends on dynamic Budget Detail columns; compare cell/metadata coverage to wide-column population"
+    ],
+    "target_nonnull_rows": 2522,
+    "target_total_rows": 3044
+  },
+  {
+    "cell_alias_nonempty_rows": 2522,
+    "classification": "dynamic_budget_column_projection_or_legitimate_sparsity",
+    "field": "projected_over_under",
+    "rationale": [
+      "field depends on dynamic Budget Detail columns; compare cell/metadata coverage to wide-column population"
+    ],
+    "target_nonnull_rows": 2522,
+    "target_total_rows": 3044
+  },
+  {
+    "cell_alias_nonempty_rows": 2522,
+    "classification": "dynamic_budget_column_projection_or_legitimate_sparsity",
+    "field": "revised_budget",
+    "rationale": [
+      "field depends on dynamic Budget Detail columns; compare cell/metadata coverage to wide-column population"
+    ],
+    "target_nonnull_rows": 2522,
+    "target_total_rows": 3044
+  }
+]

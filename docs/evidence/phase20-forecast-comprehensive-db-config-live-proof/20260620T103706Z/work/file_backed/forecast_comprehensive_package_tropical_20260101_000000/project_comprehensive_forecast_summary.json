@@ -1,0 +1,50 @@
+{
+  "project_key": "tropical",
+  "packages_consumed": [
+    "context",
+    "intelligence",
+    "monthly",
+    "probability",
+    "history_informed",
+    "cost_frequency",
+    "crosswalk_v2",
+    "schedule_integrated",
+    "staffing_plan"
+  ],
+  "packages_missing": [],
+  "frequency_disposition": "consumed",
+  "canonical_codes_covered": 127,
+  "integrated_final_cost_recommendations": 127,
+  "integrated_monthly_rows": 127,
+  "integrated_probability_rows": 127,
+  "human_review_items": 78,
+  "evidence_conflicts": 434,
+  "evidence_conflicts_by_class": {
+    "closed_code_forecast_suppressed": 4,
+    "non_staffing_recent_zero_run_advisory": 22,
+    "dormant_code_model_forecast_suppressed": 17,
+    "frequency_cadence_contradicts_recent_actuals": 45,
+    "staffing_plan_conflicts_with_cost_frequency": 8,
+    "current_projected_diverges_from_integrated_forecast": 20,
+    "staffing_plan_conflicts_with_current_accepted_ctc": 3,
+    "staffing_plan_changes_final_cost_materially": 2,
+    "operator_control_conflicts_with_model_forecast": 64,
+    "dormant_code_has_future_schedule_evidence": 58,
+    "dormant_code_has_open_commitment_remaining": 44,
+    "operator_stop_date_conflicts_with_schedule_remaining_work": 49,
+    "schedule_contradicts_monthly_shape": 52,
+    "owner_vs_subcontractor_pay_app_mismatch": 36,
+    "probability_risk_contradicts_confidence_band": 7,
+    "invoice_trend_contradicts_cost_entry_trend": 3
+  },
+  "totals": {
+    "accepted_recommended_final_cost_total": "64475545.77",
+    "integrated_recommended_final_cost_total": "64405345.58",
+    "integrated_cost_to_complete_total": "16846147.61",
+    "actual_cost_to_date_total": "47559197.97",
+    "integrated_minus_accepted_final_cost_total": "-70200.19"
+  },
+  "probability_method": "accepted_distribution_deterministic_adjustment",
+  "posture": "Accepted intelligence is the base final cost. Advisory evidence (history-informed, cost-frequency) is consumed at bounded, contradiction-collapsed weights with explicit lineage. CostEntries are accounting truth; actual cost to date is the only floor; no evidence is a cap. Cadence shapes monthly TIMING only. Probability is a deterministic transform of the accepted distribution, not a fresh Monte Carlo. Every recommendation is advisory and requires human acceptance (status=pending).",
+  "requires_human_acceptance": true
+}

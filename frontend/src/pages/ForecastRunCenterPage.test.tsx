@@ -24,7 +24,7 @@ vi.mock('../lib/api', () => ({
 }))
 
 function mockData() {
-  useQueryMock.mockImplementation((opts: { queryKey: any[] }) => {
+  useQueryMock.mockImplementation((opts: { queryKey: unknown[] }) => {
     const kind = opts.queryKey[1]
     const sub = opts.queryKey[2]
     if (kind === 'runs' && sub === 'db-config') {
@@ -83,9 +83,9 @@ describe('ForecastRunCenterPage', () => {
   it('renders the generate action and run history', () => {
     mockData()
     renderPage()
-    expect(screen.getByText('Run a forecast')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Generate forecast/i })).toBeInTheDocument()
-    expect(screen.getByText('Run history')).toBeInTheDocument()
+    expect(screen.getAllByText('Generate forecast').length).toBeGreaterThan(0)
+    expect(screen.getAllByRole('button', { name: /Generate forecast/i }).length).toBeGreaterThan(0)
+    expect(screen.getByText('Generation history')).toBeInTheDocument()
     expect(
       screen.getByText('Context → analysis forecast — Jun 20, 2026 1:07 PM'),
     ).toBeInTheDocument()
@@ -95,14 +95,14 @@ describe('ForecastRunCenterPage', () => {
     mockData()
     renderPage()
     expect(
-      screen.getByRole('button', { name: /Generate from live config/i }),
+      screen.getByRole('button', { name: /^Generate$/i }),
     ).toBeInTheDocument()
     // both a file-config and a live-config run appear, with a Source column distinguishing them
     expect(
       screen.getByText('Comprehensive forecast from live config — Jun 21, 2026 9:00 AM'),
     ).toBeInTheDocument()
-    expect(screen.getByText('Live config')).toBeInTheDocument()
-    expect(screen.getByText('File config')).toBeInTheDocument()
+    expect(screen.getByText('Live configuration')).toBeInTheDocument()
+    expect(screen.getByText('File configuration')).toBeInTheDocument()
   })
 
   it('offers all four generator kinds and passes the selected kind to the API', async () => {
@@ -113,7 +113,7 @@ describe('ForecastRunCenterPage', () => {
     expect(optionValues).toEqual(['comprehensive', 'model_controls', 'monthly', 'probability'])
 
     fireEvent.change(select, { target: { value: 'monthly' } })
-    fireEvent.click(screen.getByRole('button', { name: /Generate from live config/i }))
+    fireEvent.click(screen.getByRole('button', { name: /^Generate$/i }))
     await waitFor(() => expect(startDbConfigMock).toHaveBeenCalledWith('monthly'))
   })
 

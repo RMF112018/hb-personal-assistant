@@ -1,0 +1,499 @@
+[
+  {
+    "project_key": "tropical",
+    "budget_code_key": "1000.10-01-311.LAB",
+    "cost_code": "10-01-311",
+    "review_priority": "high",
+    "review_reason": "integrated final-cost change or high-severity conflict or actuals contradict history",
+    "affected_evidence_families": [
+      "current_projected_diverges_from_integrated_forecast",
+      "staffing_plan_conflicts_with_cost_frequency"
+    ],
+    "requires_human_acceptance": true,
+    "do_not_auto_apply": true,
+    "acceptance_status": "pending",
+    "accepted_by": null,
+    "accepted_at": null,
+    "acceptance_notes": null
+  },
+  {
+    "project_key": "tropical",
+    "budget_code_key": "1000.10-01-314.LAB",
+    "cost_code": "10-01-314",
+    "review_priority": "high",
+    "review_reason": "integrated final-cost change or high-severity conflict or actuals contradict history",
+    "affected_evidence_families": [
+      "current_projected_diverges_from_integrated_forecast",
+      "staffing_plan_conflicts_with_cost_frequency",
+      "staffing_plan_conflicts_with_current_accepted_ctc"
+    ],
+    "requires_human_acceptance": true,
+    "do_not_auto_apply": true,
+    "acceptance_status": "pending",
+    "accepted_by": null,
+    "accepted_at": null,
+    "acceptance_notes": null
+  },
+  {
+    "project_key": "tropical",
+    "budget_code_key": "1000.10-01-314.LBN",
+    "cost_code": "10-01-314",
+    "review_priority": "high",
+    "review_reason": "integrated final-cost change or high-severity conflict or actuals contradict history",
+    "affected_evidence_families": [
+      "current_projected_diverges_from_integrated_forecast"
+    ],
+    "requires_human_acceptance": true,
+    "do_not_auto_apply": true,
+    "acceptance_status": "pending",
+    "accepted_by": null,
+    "accepted_at": null,
+    "acceptance_notes": null
+  },
+  {
+    "project_key": "tropical",
+    "budget_code_key": "1000.10-01-315.LAB",
+    "cost_code": "10-01-315",
+    "review_priority": "high",
+    "review_reason": "integrated final-cost change or high-severity conflict or actuals contradict history",
+    "affected_evidence_families": [
+      "current_projected_diverges_from_integrated_forecast",
+      "staffing_plan_changes_final_cost_materially",
+      "staffing_plan_conflicts_with_cost_frequency",
+      "staffing_plan_conflicts_with_current_accepted_ctc"
+    ],
+    "requires_human_acceptance": true,
+    "do_not_auto_apply": true,
+    "acceptance_status": "pending",
+    "accepted_by": null,
+    "accepted_at": null,
+    "acceptance_notes": null
+  },
+  {
+    "project_key": "tropical",
+    "budget_code_key": "1000.10-01-317.LAB",
+    "cost_code": "10-01-317",
+    "review_priority": "high",
+    "review_reason": "integrated final-cost change or high-severity conflict or actuals contradict history",
+    "affected_evidence_families": [
+      "current_projected_diverges_from_integrated_forecast",
+      "staffing_plan_conflicts_with_cost_frequency"
+    ],
+    "requires_human_acceptance": true,
+    "do_not_auto_apply": true,
+    "acceptance_status": "pending",
+    "accepted_by": null,
+    "accepted_at": null,
+    "acceptance_notes": null
+  },
+  {
+    "project_key": "tropical",
+    "budget_code_key": "1000.10-01-318.LAB",
+    "cost_code": "10-01-318",
+    "review_priority": "high",
+    "review_reason": "integrated final-cost change or high-severity conflict or actuals contradict history",
+    "affected_evidence_families": [
+      "frequency_cadence_contradicts_recent_actuals",
+      "current_projected_diverges_from_integrated_forecast",
+      "staffing_plan_changes_final_cost_materially",
+      "staffing_plan_conflicts_with_cost_frequency",
+      "staffing_plan_conflicts_with_current_accepted_ctc"
+    ],
+    "requires_human_acceptance": true,
+    "do_not_auto_apply": true,
+    "acceptance_status": "pending",
+    "accepted_by": null,
+    "accepted_at": null,
+    "acceptance_notes": null
+  },
+  {
+    "project_key": "tropical",
+    "budget_code_key": "1000.10-01-340.MAT",
+    "cost_code": "10-01-340",
+    "review_priority": "high",
+    "review_reason": "integrated final-cost change or high-severity conflict or actuals contradict history",
+    "affected_evidence_families": [
+      "current_projected_diverges_from_integrated_forecast",
+      "operator_control_conflicts_with_model_forecast"
+    ],
+    "requires_human_acceptance": true,
+    "do_not_auto_apply": true,
+    "acceptance_status": "pending",
+    "accepted_by": null,
+    "accepted_at": null,
+    "acceptance_notes": null
+  },
+  {
+    "project_key": "tropical",
+    "budget_code_key": "1000.15-01-530.LAB",
+    "cost_code": "15-01-530",
+    "review_priority": "high",
+    "review_reason": "integrated final-cost change or high-severity conflict or actuals contradict history",
+    "affected_evidence_families": [
+      "dormant_code_has_future_schedule_evidence",
+      "schedule_contradicts_monthly_shape",
+      "current_projected_diverges_from_integrated_forecast",
+      "operator_control_conflicts_with_model_forecast",
+      "operator_stop_date_conflicts_with_schedule_remaining_work"
+    ],
+    "requires_human_acceptance": true,
+    "do_not_auto_apply": true,
+    "acceptance_status": "pending",
+    "accepted_by": null,
+    "accepted_at": null,
+    "acceptance_notes": null
+  },
+  {
+    "project_key": "tropical",
+    "budget_code_key": "1000.15-01-530.LBN",
+    "cost_code": "15-01-530",
+    "review_priority": "high",
+    "review_reason": "integrated final-cost change or high-severity conflict or actuals contradict history",
+    "affected_evidence_families": [
+      "dormant_code_has_future_schedule_evidence",
+      "schedule_contradicts_monthly_shape",
+      "operator_control_conflicts_with_model_forecast",
+      "operator_stop_date_conflicts_with_schedule_remaining_work"
+    ],
+    "requires_human_acceptance": true,
+    "do_not_auto_apply": true,
+    "acceptance_status": "pending",
+    "accepted_by": null,
+    "accepted_at": null,
+    "acceptance_notes": null
+  },
+  {
+    "project_key": "tropical",
+    "budget_code_key": "1000.15-01-530.MAT",
+    "cost_code": "15-01-530",
+    "review_priority": "high",
+    "review_reason": "integrated final-cost change or high-severity conflict or actuals contradict history",
+    "affected_evidence_families": [
+      "dormant_code_has_future_schedule_evidence",
+      "schedule_contradicts_monthly_shape",
+      "operator_control_conflicts_with_model_forecast",
+      "operator_stop_date_conflicts_with_schedule_remaining_work"
+    ],
+    "requires_human_acceptance": true,
+    "do_not_auto_apply": true,
+    "acceptance_status": "pending",
+    "accepted_by": null,
+    "accepted_at": null,
+    "acceptance_notes": null
+  },
+  {
+    "project_key": "tropical",
+    "budget_code_key": "1000.15-01-530.SUB",
+    "cost_code": "15-01-530",
+    "review_priority": "high",
+    "review_reason": "integrated final-cost change or high-severity conflict or actuals contradict history",
+    "affected_evidence_families": [
+      "dormant_code_has_future_schedule_evidence",
+      "schedule_contradicts_monthly_shape",
+      "frequency_cadence_contradicts_recent_actuals",
+      "operator_control_conflicts_with_model_forecast",
+      "operator_stop_date_conflicts_with_schedule_remaining_work"
+    ],
+    "requires_human_acceptance": true,
+    "do_not_auto_apply": true,
+    "acceptance_status": "pending",
+    "accepted_by": null,
+    "accepted_at": null,
+    "acceptance_notes": null
+  },
+  {
+    "project_key": "tropical",
+    "budget_code_key": "1000.15-01-560.MAT",
+    "cost_code": "15-01-560",
+    "review_priority": "high",
+    "review_reason": "integrated final-cost change or high-severity conflict or actuals contradict history",
+    "affected_evidence_families": [
+      "dormant_code_has_future_schedule_evidence",
+      "schedule_contradicts_monthly_shape",
+      "operator_control_conflicts_with_model_forecast",
+      "operator_stop_date_conflicts_with_schedule_remaining_work"
+    ],
+    "requires_human_acceptance": true,
+    "do_not_auto_apply": true,
+    "acceptance_status": "pending",
+    "accepted_by": null,
+    "accepted_at": null,
+    "acceptance_notes": null
+  },
+  {
+    "project_key": "tropical",
+    "budget_code_key": "1000.15-01-741.MAT",
+    "cost_code": "15-01-741",
+    "review_priority": "high",
+    "review_reason": "integrated final-cost change or high-severity conflict or actuals contradict history",
+    "affected_evidence_families": [
+      "dormant_code_has_open_commitment_remaining",
+      "dormant_code_has_future_schedule_evidence",
+      "schedule_contradicts_monthly_shape",
+      "frequency_cadence_contradicts_recent_actuals",
+      "operator_control_conflicts_with_model_forecast",
+      "operator_stop_date_conflicts_with_schedule_remaining_work"
+    ],
+    "requires_human_acceptance": true,
+    "do_not_auto_apply": true,
+    "acceptance_status": "pending",
+    "accepted_by": null,
+    "accepted_at": null,
+    "acceptance_notes": null
+  },
+  {
+    "project_key": "tropical",
+    "budget_code_key": "1000.15-01-745.MAT",
+    "cost_code": "15-01-745",
+    "review_priority": "high",
+    "review_reason": "integrated final-cost change or high-severity conflict or actuals contradict history",
+    "affected_evidence_families": [
+      "dormant_code_has_future_schedule_evidence",
+      "current_projected_diverges_from_integrated_forecast"
+    ],
+    "requires_human_acceptance": true,
+    "do_not_auto_apply": true,
+    "acceptance_status": "pending",
+    "accepted_by": null,
+    "accepted_at": null,
+    "acceptance_notes": null
+  },
+  {
+    "project_key": "tropical",
+    "budget_code_key": "1000.15-02-010.SUB",
+    "cost_code": "15-02-010",
+    "review_priority": "high",
+    "review_reason": "integrated final-cost change or high-severity conflict or actuals contradict history",
+    "affected_evidence_families": [
+      "dormant_code_has_open_commitment_remaining",
+      "dormant_code_has_future_schedule_evidence",
+      "schedule_contradicts_monthly_shape",
+      "probability_risk_contradicts_confidence_band",
+      "frequency_cadence_contradicts_recent_actuals",
+      "owner_vs_subcontractor_pay_app_mismatch",
+      "operator_control_conflicts_with_model_forecast",
+      "operator_stop_date_conflicts_with_schedule_remaining_work"
+    ],
+    "requires_human_acceptance": true,
+    "do_not_auto_apply": true,
+    "acceptance_status": "pending",
+    "accepted_by": null,
+    "accepted_at": null,
+    "acceptance_notes": null
+  },
+  {
+    "project_key": "tropical",
+    "budget_code_key": "1000.15-02-805.SUB",
+    "cost_code": "15-02-805",
+    "review_priority": "high",
+    "review_reason": "integrated final-cost change or high-severity conflict or actuals contradict history",
+    "affected_evidence_families": [
+      "dormant_code_has_open_commitment_remaining",
+      "dormant_code_has_future_schedule_evidence",
+      "schedule_contradicts_monthly_shape",
+      "frequency_cadence_contradicts_recent_actuals",
+      "owner_vs_subcontractor_pay_app_mismatch",
+      "operator_control_conflicts_with_model_forecast",
+      "operator_stop_date_conflicts_with_schedule_remaining_work"
+    ],
+    "requires_human_acceptance": true,
+    "do_not_auto_apply": true,
+    "acceptance_status": "pending",
+    "accepted_by": null,
+    "accepted_at": null,
+    "acceptance_notes": null
+  },
+  {
+    "project_key": "tropical",
+    "budget_code_key": "1000.15-02-808.SUB",
+    "cost_code": "15-02-808",
+    "review_priority": "high",
+    "review_reason": "integrated final-cost change or high-severity conflict or actuals contradict history",
+    "affected_evidence_families": [
+      "dormant_code_has_open_commitment_remaining",
+      "dormant_code_has_future_schedule_evidence",
+      "schedule_contradicts_monthly_shape",
+      "frequency_cadence_contradicts_recent_actuals",
+      "owner_vs_subcontractor_pay_app_mismatch",
+      "operator_control_conflicts_with_model_forecast",
+      "operator_stop_date_conflicts_with_schedule_remaining_work"
+    ],
+    "requires_human_acceptance": true,
+    "do_not_auto_apply": true,
+    "acceptance_status": "pending",
+    "accepted_by": null,
+    "accepted_at": null,
+    "acceptance_notes": null
+  },
+  {
+    "project_key": "tropical",
+    "budget_code_key": "1000.15-03-010.SUB",
+    "cost_code": "15-03-010",
+    "review_priority": "high",
+    "review_reason": "integrated final-cost change or high-severity conflict or actuals contradict history",
+    "affected_evidence_families": [
+      "dormant_code_has_open_commitment_remaining",
+      "schedule_contradicts_monthly_shape",
+      "frequency_cadence_contradicts_recent_actuals",
+      "owner_vs_subcontractor_pay_app_mismatch",
+      "operator_control_conflicts_with_model_forecast",
+      "operator_stop_date_conflicts_with_schedule_remaining_work"
+    ],
+    "requires_human_acceptance": true,
+    "do_not_auto_apply": true,
+    "acceptance_status": "pending",
+    "accepted_by": null,
+    "accepted_at": null,
+    "acceptance_notes": null
+  },
+  {
+    "project_key": "tropical",
+    "budget_code_key": "1000.15-04-400.SUB",
+    "cost_code": "15-04-400",
+    "review_priority": "high",
+    "review_reason": "integrated final-cost change or high-severity conflict or actuals contradict history",
+    "affected_evidence_families": [
+      "dormant_code_has_open_commitment_remaining",
+      "dormant_code_has_future_schedule_evidence",
+      "schedule_contradicts_monthly_shape",
+      "probability_risk_contradicts_confidence_band",
+      "frequency_cadence_contradicts_recent_actuals",
+      "owner_vs_subcontractor_pay_app_mismatch",
+      "operator_control_conflicts_with_model_forecast",
+      "operator_stop_date_conflicts_with_schedule_remaining_work"
+    ],
+    "requires_human_acceptance": true,
+    "do_not_auto_apply": true,
+    "acceptance_status": "pending",
+    "accepted_by": null,
+    "accepted_at": null,
+    "acceptance_notes": null
+  },
+  {
+    "project_key": "tropical",
+    "budget_code_key": "1000.15-05-522.SUB",
+    "cost_code": "15-05-522",
+    "review_priority": "high",
+    "review_reason": "integrated final-cost change or high-severity conflict or actuals contradict history",
+    "affected_evidence_families": [
+      "dormant_code_has_open_commitment_remaining",
+      "dormant_code_has_future_schedule_evidence",
+      "schedule_contradicts_monthly_shape",
+      "owner_vs_subcontractor_pay_app_mismatch",
+      "operator_control_conflicts_with_model_forecast",
+      "operator_stop_date_conflicts_with_schedule_remaining_work"
+    ],
+    "requires_human_acceptance": true,
+    "do_not_auto_apply": true,
+    "acceptance_status": "pending",
+    "accepted_by": null,
+    "accepted_at": null,
+    "acceptance_notes": null
+  },
+  {
+    "project_key": "tropical",
+    "budget_code_key": "1000.15-05-910.SUB",
+    "cost_code": "15-05-910",
+    "review_priority": "high",
+    "review_reason": "integrated final-cost change or high-severity conflict or actuals contradict history",
+    "affected_evidence_families": [
+      "dormant_code_has_open_commitment_remaining",
+      "dormant_code_has_future_schedule_evidence",
+      "schedule_contradicts_monthly_shape",
+      "frequency_cadence_contradicts_recent_actuals",
+      "owner_vs_subcontractor_pay_app_mismatch",
+      "operator_control_conflicts_with_model_forecast",
+      "operator_stop_date_conflicts_with_schedule_remaining_work"
+    ],
+    "requires_human_acceptance": true,
+    "do_not_auto_apply": true,
+    "acceptance_status": "pending",
+    "accepted_by": null,
+    "accepted_at": null,
+    "acceptance_notes": null
+  },
+  {
+    "project_key": "tropical",
+    "budget_code_key": "1000.15-06-190.SUB",
+    "cost_code": "15-06-190",
+    "review_priority": "high",
+    "review_reason": "integrated final-cost change or high-severity conflict or actuals contradict history",
+    "affected_evidence_families": [
+      "non_staffing_recent_zero_run_advisory",
+      "schedule_contradicts_monthly_shape",
+      "operator_control_conflicts_with_model_forecast",
+      "operator_stop_date_conflicts_with_schedule_remaining_work"
+    ],
+    "requires_human_acceptance": true,
+    "do_not_auto_apply": true,
+    "acceptance_status": "pending",
+    "accepted_by": null,
+    "accepted_at": null,
+    "acceptance_notes": null
+  },
+  {
+    "project_key": "tropical",
+    "budget_code_key": "1000.15-06-200.SUB",
+    "cost_code": "15-06-200",
+    "review_priority": "high",
+    "review_reason": "integrated final-cost change or high-severity conflict or actuals contradict history",
+    "affected_evidence_families": [
+      "dormant_code_has_open_commitment_remaining",
+      "dormant_code_has_future_schedule_evidence",
+      "schedule_contradicts_monthly_shape",
+      "owner_vs_subcontractor_pay_app_mismatch",
+      "operator_control_conflicts_with_model_forecast",
+      "operator_stop_date_conflicts_with_schedule_remaining_work"
+    ],
+    "requires_human_acceptance": true,
+    "do_not_auto_apply": true,
+    "acceptance_status": "pending",
+    "accepted_by": null,
+    "accepted_at": null,
+    "acceptance_notes": null
+  },
+  {
+    "project_key": "tropical",
+    "budget_code_key": "1000.15-06-220.SUB",
+    "cost_code": "15-06-220",
+    "review_priority": "high",
+    "review_reason": "integrated final-cost change or high-severity conflict or actuals contradict history",
+    "affected_evidence_families": [
+      "dormant_code_has_open_commitment_remaining",
+      "dormant_code_has_future_schedule_evidence",
+      "schedule_contradicts_monthly_shape",
+      "owner_vs_subcontractor_pay_app_mismatch",
+      "operator_control_conflicts_with_model_forecast",
+      "operator_stop_date_conflicts_with_schedule_remaining_work"
+    ],
+    "requires_human_acceptance": true,
+    "do_not_auto_apply": true,
+    "acceptance_status": "pending",
+    "accepted_by": null,
+    "accepted_at": null,
+    "acceptance_notes": null
+  },
+  {
+    "project_key": "tropical",
+    "budget_code_key": "1000.15-06-270.SUB",
+    "cost_code": "15-06-270",
+    "review_priority": "high",
+    "review_reason": "integrated final-cost change or high-severity conflict or actuals contradict history",
+    "affected_evidence_families": [
+      "dormant_code_has_open_commitment_remaining",
+      "dormant_code_has_future_schedule_evidence",
+      "schedule_contradicts_monthly_shape",
+      "frequency_cadence_contradicts_recent_actuals",
+      "owner_vs_subcontractor_pay_app_mismatch",
+      "current_projected_diverges_from_integrated_forecast",
+      "operator_control_conflicts_with_model_forecast",
+      "operator_stop_date_conflicts_with_schedule_remaining_work"
+    ],
+    "requires_human_acceptance": true,
+    "do_not_auto_apply": true,
+    "acceptance_status": "pending",
+    "accepted_by": null,
+    "accepted_at": null,
+    "acceptance_notes": null
+  }
+]

@@ -1,0 +1,24 @@
+{
+  "db_path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite",
+  "forecasting_family_table_count": 110,
+  "generated_at_utc": "2026-06-21T11:45:57Z",
+  "note": "Profiles use schema metadata, counts, grouped distributions, parse metrics, and hashed parse-failure fingerprints. Raw payload bodies and raw JSON values are not exported.",
+  "outputs": {
+    "amount_parse_profile": "03-type-normalization-profiles/01-amount-parse-profile.json",
+    "boolean_normalization_profile": "03-type-normalization-profiles/03-boolean-normalization-profile.json",
+    "budget_code_wbs_profile": "02-targeted-sql-profiles/08-budget-code-wbs-profile.json",
+    "change_event_trace": "04-risk-tracing/01-change-event-rfq-co-trace-coverage.json",
+    "column_inventory": "02-targeted-sql-profiles/01-column-inventory.json",
+    "coverage": "02-targeted-sql-profiles/05-project-endpoint-current-coverage.json",
+    "date_parse_profile": "03-type-normalization-profiles/02-date-parse-profile.json",
+    "foreign_key_inventory": "02-targeted-sql-profiles/02-foreign-key-inventory.json",
+    "index_inventory": "02-targeted-sql-profiles/03-index-inventory.json",
+    "invoice_trace": "04-risk-tracing/02-invoice-actualization-trace-coverage.json",
+    "join_cardinality": "02-targeted-sql-profiles/07-join-cardinality-results.json",
+    "row_counts": "02-targeted-sql-profiles/04-table-row-counts.json",
+    "schema": "01-schemacrawler-schema/",
+    "status_distributions": "02-targeted-sql-profiles/06-status-and-flag-distributions.json",
+    "table_inventory": "02-targeted-sql-profiles/00-table-inventory.json"
+  },
+  "raw_payload_values_exported": false
+}

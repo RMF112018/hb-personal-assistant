@@ -1,0 +1,17 @@
+question	endpoint_key	path	current_full_raw_rows	path_present_rows	path_non_null_rows	path_present_pct	path_non_null_pct
+registry_unknown_or_sidecar_gap_check	budget-change-history	$.description_summary	446	0	0	0.0	0.0
+visible_source_presence_check	budget-detail-columns	$.visible	399	0	0	0.0	0.0
+actual_cost_source_presence_check	budget-detail-rows	$.actual_cost	3512	0	0	0.0	0.0
+category_not_cost_type_guardrail_check	budget-detail-rows	$.category	3512	3512	3512	100.0	100.0
+category_not_cost_type_guardrail_check	budget-detail-rows	$.category_id	3512	3512	3512	100.0	100.0
+cost_type_source_presence_check	budget-detail-rows	$.cost_type	3512	0	0	0.0	0.0
+cost_type_source_presence_check	budget-detail-rows	$.cost_type.id	3512	0	0	0.0	0.0
+cost_type_source_presence_check	budget-detail-rows	$.cost_type_id	3512	0	0	0.0	0.0
+row_currency_source_check	budget-detail-rows	$.currency_code	3512	0	0	0.0	0.0
+row_currency_source_check	budget-detail-rows	$.currency_configuration.currency_iso_code	3512	3512	0	100.0	0.0
+row_currency_source_check	budget-detail-rows	$.currency_iso_code	3512	0	0	0.0	0.0
+line_item_type_source_presence_check	budget-detail-rows	$.line_item_type	3512	0	0	0.0	0.0
+line_item_type_source_presence_check	budget-detail-rows	$.line_item_type.id	3512	0	0	0.0	0.0
+line_item_type_source_presence_check	budget-detail-rows	$.line_item_type_id	3512	0	0	0.0	0.0
+origin_data_non_null_source_check	budget-modifications	$.origin_data	805	805	0	100.0	0.0
+origin_id_non_null_source_check	budget-modifications	$.origin_id	805	805	0	100.0	0.0

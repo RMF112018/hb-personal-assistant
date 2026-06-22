@@ -1770,6 +1770,20 @@ def run_live_sync(
                 )
             except Exception:  # noqa: BLE001
                 redacted_errors.append({"schedule_projection_error": "projection_failed"})
+            try:
+                from hb_assistant.construction.analytics.schedule_procore_activity_adapter import (
+                    project_procore_activity,
+                )
+
+                project_procore_activity(
+                    raw,
+                    project_key=project_key,
+                    db_path=db_path,
+                    parent_schedule_id=parent_id_for_upsert,
+                    sync_run_id=sync_run_id,
+                )
+            except Exception:  # noqa: BLE001
+                redacted_errors.append({"schedule_activity_projection_error": "projection_failed"})
 
         # Phase 05 owner-side financial enrichment: project prime contracts /
         # line items / attachments / change orders / CO line items / payment

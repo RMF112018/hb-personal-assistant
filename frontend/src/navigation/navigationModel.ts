@@ -9,8 +9,9 @@ export type NavItem = {
 
 export const PRIMARY_NAV: NavItem[] = [
   { label: 'My Dashboard', route: '/my-dashboard' },
-  { label: 'Projects', route: '/projects' },
   { label: 'Forecasting', route: '/forecasting' },
+  { label: 'Schedules', route: '/schedules' },
+  { label: 'Projects', route: '/projects' },
 ]
 
 export const SUPPORT_NAV: NavItem[] = [
@@ -36,6 +37,9 @@ export function isActive(currentPath: string, itemRoute: string): boolean {
   if (itemRoute === '/projects') {
     return currentPath === '/projects' || currentPath.startsWith('/projects/')
   }
+  if (itemRoute === '/schedules') {
+    return currentPath === '/schedules' || currentPath.startsWith('/schedules/')
+  }
   return currentPath === itemRoute || currentPath.startsWith(itemRoute + '/')
 }
 
@@ -54,6 +58,14 @@ export function getRouteTitleForPath(path: string): string {
   if (path.startsWith('/forecasting/runs')) return 'Forecast Run Center'
   if (path.startsWith('/forecasting/external')) return 'External Forecast Evaluation'
   if (path.startsWith('/forecasting/runtime')) return 'Forecast Runtime Settings'
+  if (path.startsWith('/schedules/imports')) return 'Schedule Imports'
+  if (path.startsWith('/schedules/activities')) return 'Schedule Activities'
+  if (path.startsWith('/schedules/versions')) return 'Schedule Versions'
+  if (path.startsWith('/schedules/quality')) return 'Schedule Quality'
+  if (path.startsWith('/schedules/version-diff')) return 'Schedule Version Diff'
+  if (path.startsWith('/schedules/cost-mapping')) return 'Schedule Cost Mapping'
+  if (path.startsWith('/schedules/cost-weighting')) return 'Schedule Cost Weighting'
+  if (path.startsWith('/schedules')) return 'Schedule Intelligence'
   if (path.startsWith('/forecasting/')) return 'Forecast Package'
   if (path.startsWith('/forecasting')) return 'Forecasting'
   if (path.startsWith('/admin')) return 'Data Health'

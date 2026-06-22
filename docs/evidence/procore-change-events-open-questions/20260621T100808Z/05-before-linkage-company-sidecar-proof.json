@@ -1,0 +1,113 @@
+{
+  "child_linkage": {
+    "procore_ep_change_events_attachments": {
+      "child_rows": 2352,
+      "missing_primary_record_key_link": 0,
+      "parent_item_id_nonblank": 0
+    },
+    "procore_ep_change_events_change_items": {
+      "child_rows": 2829,
+      "missing_primary_record_key_link": 0,
+      "parent_item_id_nonblank": 0
+    },
+    "procore_ep_change_events_change_items_budget_code_seg_2dff22": {
+      "child_rows": 8487,
+      "missing_primary_record_key_link": 0,
+      "parent_item_id_nonblank": 8487
+    },
+    "procore_ep_change_events_markup_items": {
+      "child_rows": 2154,
+      "missing_primary_record_key_link": 0,
+      "parent_item_id_nonblank": 0
+    },
+    "procore_ep_change_events_markup_items_wbs_code_segment_items": {
+      "child_rows": 6462,
+      "missing_primary_record_key_link": 0,
+      "parent_item_id_nonblank": 6462
+    }
+  },
+  "db": "/tmp/hb-change-events-open-questions-20260621T100808Z.sqlite",
+  "endpoint_specific_company": {
+    "procore_ep_change_events": {
+      "company_id_nonblank": 1059,
+      "rows": 1059
+    },
+    "procore_ep_change_events_attachments": {
+      "company_id_nonblank": 2352,
+      "rows": 2352
+    },
+    "procore_ep_change_events_change_items": {
+      "company_id_nonblank": 2829,
+      "rows": 2829
+    },
+    "procore_ep_change_events_change_items_budget_code_seg_2dff22": {
+      "company_id_nonblank": 8487,
+      "rows": 8487
+    },
+    "procore_ep_change_events_markup_items": {
+      "company_id_nonblank": 2154,
+      "rows": 2154
+    },
+    "procore_ep_change_events_markup_items_wbs_code_segment_items": {
+      "company_id_nonblank": 6462,
+      "rows": 6462
+    }
+  },
+  "raw_landing_company": {
+    "company_hash_nonblank": 0,
+    "company_id_nonblank": 0,
+    "rows": 3860
+  },
+  "record_key_uniqueness": {
+    "procore_ep_change_events": {
+      "distinct_record_keys": 1059,
+      "rows": 1059
+    },
+    "procore_ep_change_events_attachments": {
+      "distinct_record_keys": 2352,
+      "rows": 2352
+    },
+    "procore_ep_change_events_change_items": {
+      "distinct_record_keys": 2829,
+      "rows": 2829
+    },
+    "procore_ep_change_events_change_items_budget_code_seg_2dff22": {
+      "distinct_record_keys": 8487,
+      "rows": 8487
+    },
+    "procore_ep_change_events_markup_items": {
+      "distinct_record_keys": 2154,
+      "rows": 2154
+    },
+    "procore_ep_change_events_markup_items_wbs_code_segment_items": {
+      "distinct_record_keys": 6462,
+      "rows": 6462
+    }
+  },
+  "sidecar_presence": {
+    "procore_ep_change_events": {
+      "rows": 1059,
+      "sidecar_nonblank": 1059
+    },
+    "procore_ep_change_events_attachments": {
+      "rows": 2352,
+      "sidecar_nonblank": 0
+    },
+    "procore_ep_change_events_change_items": {
+      "rows": 2829,
+      "sidecar_nonblank": 2829
+    },
+    "procore_ep_change_events_change_items_budget_code_seg_2dff22": {
+      "rows": 8487,
+      "sidecar_nonblank": 8487
+    },
+    "procore_ep_change_events_markup_items": {
+      "rows": 2154,
+      "sidecar_nonblank": 2154
+    },
+    "procore_ep_change_events_markup_items_wbs_code_segment_items": {
+      "rows": 6462,
+      "sidecar_nonblank": 6462
+    }
+  }
+}

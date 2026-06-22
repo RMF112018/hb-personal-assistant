@@ -1,0 +1,482 @@
+[
+  {
+    "blank_count": 0,
+    "column": "currency_configuration_currency_iso_code",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 1059,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 1059,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "deleted_at",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 1059,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 1059,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "external_data",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 1059,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 1059,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "parent_record_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 1059,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 1059,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "parent_record_id_hash",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 1059,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 1059,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "source",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 1059,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 1059,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "parent_item_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 2352,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 2352,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_attachments",
+    "total_rows": 2352
+  },
+  {
+    "blank_count": 0,
+    "column": "payload_sidecar_json",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": true,
+    "missing_count": 2352,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 2352,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_attachments",
+    "total_rows": 2352
+  },
+  {
+    "blank_count": 0,
+    "column": "budget_impact_budget_change",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 2829,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 2829,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "budget_impact_budget_modification",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 2829,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 2829,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_commitment_currency_configuration_base_currency_iso_code",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 2829,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 2829,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_commitment_currency_configuration_currency_exchange_rate",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 2829,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 2829,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_commitment_currency_configuration_currency_iso_code",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 2829,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 2829,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_non_commitment_amount",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 2829,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 2829,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_request_for_quote_currency_configuration_base_currency_iso_code",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 2829,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 2829,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_request_for_quote_currency_configuration_currency_exchange_rate",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 2829,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 2829,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_request_for_quote_currency_configuration_currency_iso_code",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 2829,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 2829,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "currency_configuration_currency_iso_code",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 2829,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 2829,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "deleted_at",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 2829,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 2829,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "parent_item_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 2829,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 2829,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "revenue_impact_change_order_currency_configuration_base_currency_iso_code",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 2829,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 2829,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "revenue_impact_change_order_currency_configuration_currency_exchange_rate",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 2829,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 2829,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "revenue_impact_change_order_currency_configuration_currency_iso_code",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 2829,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 2829,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "parent_item_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 2154,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 2154,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_markup_items",
+    "total_rows": 2154
+  }
+]

@@ -1,0 +1,13 @@
+{
+  "project_key": "tropical",
+  "probability_method": "accepted_distribution_deterministic_adjustment",
+  "deterministic_no_monte_carlo": true,
+  "deterministic_seed": 20260614,
+  "direction_counts": {
+    "dormant": 21,
+    "hold": 51,
+    "budgetdetails_basis": 22,
+    "widen": 33
+  },
+  "note": "deterministic reshaping of the accepted probability band around P50; NOT a fresh Monte Carlo; floored at actuals; never capped"
+}

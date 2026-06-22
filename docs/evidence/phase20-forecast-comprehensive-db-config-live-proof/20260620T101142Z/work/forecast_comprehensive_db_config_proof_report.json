@@ -1,0 +1,331 @@
+{
+  "command": "forecast-comprehensive-db-config-proof",
+  "comparison": {
+    "compared": true,
+    "differences": [
+      {
+        "db_backed_value": "bb15c03f4ddd06c540afd21d4cae2937da8c33e72f33a89ebdf4529f1181db72",
+        "file": "integrated_evidence_registry_by_budget_code.jsonl",
+        "file_backed_value": "7b3068b347e04d56b09814857d0f3f233664aa6421c8b6de2e02bf08c35258af",
+        "key_or_path": "<bytes>",
+        "normalized_rules": "none (compared byte-exact)"
+      },
+      {
+        "db_backed_value": "<see file value>",
+        "file": "validation_report.json",
+        "file_backed_value": "-        \"sha256\": \"7b3068b347e04d56b09814857d0f3f233664aa6421c8b6de2e02bf08c35258af\",",
+        "key_or_path": "<normalized-text>",
+        "normalized_rules": "raw file-backed vs DB-backed diff inspected (mandatory); only files that embed an absolute config-root/output path are enumerated in _PATH_EMBEDDING_FILES and compared after PATH normalization (<OUTPUT_PACKAGE>/<CONFIG_ROOT>) only; NO forecast/monthly/probability value, row count, warning count, validation status, manifest conclusion, audit/db_inventory.json content, CSV math, source-package lineage, or package-consumption result is ever normalized; standard package CSVs are compared byte-exact"
+      },
+      {
+        "db_backed_value": 1794633,
+        "file": "manifest.json",
+        "file_backed_value": 1789001,
+        "key_or_path": "integrated_evidence_registry_by_budget_code.jsonl.size_bytes",
+        "normalized_rules": "none"
+      },
+      {
+        "db_backed_value": "bb15c03f4ddd06c540afd21d4cae2937da8c33e72f33a89ebdf4529f1181db72",
+        "file": "manifest.json",
+        "file_backed_value": "7b3068b347e04d56b09814857d0f3f233664aa6421c8b6de2e02bf08c35258af",
+        "key_or_path": "integrated_evidence_registry_by_budget_code.jsonl.sha256",
+        "normalized_rules": "none"
+      },
+      {
+        "db_backed_value": "b045d9b8975b5f54228c02524d8803c196ffd2ad4f6903f7ccb6550508297fe1",
+        "file": "manifest.json",
+        "file_backed_value": "6aba061c525f44849c5c93f5ae0e02035038eacfffaab0dddfd800d742583cce",
+        "key_or_path": "validation_report.json.sha256",
+        "normalized_rules": "none"
+      }
+    ],
+    "normalized_rules": [
+      "raw file-backed vs DB-backed diff inspected (mandatory); only files that embed an absolute config-root/output path are enumerated in _PATH_EMBEDDING_FILES and compared after PATH normalization (<OUTPUT_PACKAGE>/<CONFIG_ROOT>) only",
+      "NO forecast/monthly/probability value, row count, warning count, validation status, manifest conclusion, audit/db_inventory.json content, CSV math, source-package lineage, or package-consumption result is ever normalized; standard package CSVs are compared byte-exact"
+    ],
+    "path_embedding_files": [],
+    "raw_diff_inspected": true,
+    "result": "fail"
+  },
+  "config_snapshot_id": "c3b4a67d22db47c74e696ae562fbf1c555e365fc66bb003a7b3312754415b698",
+  "config_snapshot_manifest": "/Users/bobbyfetting/hb-personal-assistant/docs/evidence/phase20-forecast-comprehensive-db-config-live-proof/20260620T101142Z/work/db_snapshot_config/config_snapshot_manifest.json",
+  "consumed_by_domain": {
+    "forecast_controls": {
+      "file": "config/forecast_controls/tropical/code_forecast_controls.jsonl",
+      "item_count": 64
+    },
+    "forecast_model_controls": {
+      "file": "config/forecast_model_controls/tropical/code_forecast_model_controls.jsonl",
+      "item_count": 5
+    },
+    "project": {
+      "file": "config/projects/tropical.json",
+      "item_count": 1
+    }
+  },
+  "consumed_config_domains": [
+    "forecast_controls",
+    "forecast_model_controls",
+    "project"
+  ],
+  "consumed_config_files": [
+    "config/forecast_controls/tropical/code_forecast_controls.jsonl",
+    "config/forecast_model_controls/tropical/code_forecast_model_controls.jsonl",
+    "config/projects/tropical.json"
+  ],
+  "consumed_snapshot_item_count": 70,
+  "data_root": "/Users/bobbyfetting/Library/CloudStorage/SynologyDrive-BFmacSync/Work/NAS - HB/Projects/2023/TWN - NAS/30_Financials/Forecasts/Data/2026-June",
+  "db_schema_version": 60,
+  "db_snapshot_backed": {
+    "cfr_config_root_restored": true,
+    "config_snapshot_consumed": true,
+    "config_snapshot_id": "c3b4a67d22db47c74e696ae562fbf1c555e365fc66bb003a7b3312754415b698",
+    "materialized_config_manifest": "/Users/bobbyfetting/hb-personal-assistant/docs/evidence/phase20-forecast-comprehensive-db-config-live-proof/20260620T101142Z/work/db_snapshot_config/config_snapshot_manifest.json",
+    "output_package": "/Users/bobbyfetting/hb-personal-assistant/docs/evidence/phase20-forecast-comprehensive-db-config-live-proof/20260620T101142Z/work/db_snapshot_backed/forecast_comprehensive_package_tropical_20260101_000000",
+    "reads_materialized_config": true,
+    "resolved_config_paths": {
+      "forecast_controls": "/Users/bobbyfetting/hb-personal-assistant/docs/evidence/phase20-forecast-comprehensive-db-config-live-proof/20260620T101142Z/work/db_snapshot_config/materialized_config/config/forecast_controls/tropical/code_forecast_controls.jsonl",
+      "forecast_model_controls": "/Users/bobbyfetting/hb-personal-assistant/docs/evidence/phase20-forecast-comprehensive-db-config-live-proof/20260620T101142Z/work/db_snapshot_config/materialized_config/config/forecast_model_controls/tropical/code_forecast_model_controls.jsonl"
+    },
+    "validation_passed": true
+  },
+  "db_snapshot_backed_output_package": "/Users/bobbyfetting/hb-personal-assistant/docs/evidence/phase20-forecast-comprehensive-db-config-live-proof/20260620T101142Z/work/db_snapshot_backed/forecast_comprehensive_package_tropical_20260101_000000",
+  "decision": "not_ready",
+  "file_backed": {
+    "cfr_config_root": null,
+    "output_package": "/Users/bobbyfetting/hb-personal-assistant/docs/evidence/phase20-forecast-comprehensive-db-config-live-proof/20260620T101142Z/work/file_backed/forecast_comprehensive_package_tropical_20260101_000000",
+    "resolved_config_paths": {
+      "forecast_controls": "/Users/bobbyfetting/hb-personal-assistant/subrepos/construction-financial-review/config/forecast_controls/tropical/code_forecast_controls.jsonl",
+      "forecast_model_controls": "/Users/bobbyfetting/hb-personal-assistant/subrepos/construction-financial-review/config/forecast_model_controls/tropical/code_forecast_model_controls.jsonl"
+    },
+    "validation_passed": true
+  },
+  "file_backed_output_package": "/Users/bobbyfetting/hb-personal-assistant/docs/evidence/phase20-forecast-comprehensive-db-config-live-proof/20260620T101142Z/work/file_backed/forecast_comprehensive_package_tropical_20260101_000000",
+  "live_db_integrity": {
+    "after": {
+      "logical": {
+        "data_version": 2,
+        "db_inventory_digest": "bdfca0c87fd5baccebe40a67808d0c58f9697f19128f3652f0124bba9b2dd8f9",
+        "db_inventory_table_counts": {
+          "procore_financial_amount_facts": 446933,
+          "procore_financial_budget_rows": 3044,
+          "procore_financial_change_orders": 507,
+          "procore_financial_contracts": 266,
+          "procore_financial_invoice_items": 71113,
+          "procore_financial_subcontractor_invoices": 996
+        },
+        "schema_version": 60
+      },
+      "physical": {
+        "main": {
+          "exists": true,
+          "mtime_ns": 1781941809183980468,
+          "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite",
+          "sha256": "50c55f696bf2c772914edd79073c99a0ee09e912cb1bd24dafef52c63dc4ce81",
+          "size_bytes": 3492159488
+        },
+        "shm": {
+          "exists": true,
+          "mtime_ns": 1781941919683834195,
+          "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite-shm",
+          "sha256": "fd4c9fda9cd3f9ae7c962b0ddf37232294d55580e1aa165aa06129b8549389eb",
+          "size_bytes": 32768
+        },
+        "wal": {
+          "exists": true,
+          "mtime_ns": 1781941912664399335,
+          "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite-wal",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "size_bytes": 0
+        }
+      }
+    },
+    "before": {
+      "logical": {
+        "data_version": 2,
+        "db_inventory_digest": "bdfca0c87fd5baccebe40a67808d0c58f9697f19128f3652f0124bba9b2dd8f9",
+        "db_inventory_table_counts": {
+          "procore_financial_amount_facts": 446933,
+          "procore_financial_budget_rows": 3044,
+          "procore_financial_change_orders": 507,
+          "procore_financial_contracts": 266,
+          "procore_financial_invoice_items": 71113,
+          "procore_financial_subcontractor_invoices": 996
+        },
+        "schema_version": 60
+      },
+      "physical": {
+        "main": {
+          "exists": true,
+          "mtime_ns": 1781941809183980468,
+          "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite",
+          "sha256": "50c55f696bf2c772914edd79073c99a0ee09e912cb1bd24dafef52c63dc4ce81",
+          "size_bytes": 3492159488
+        },
+        "shm": {
+          "exists": true,
+          "mtime_ns": 1781941919683834195,
+          "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite-shm",
+          "sha256": "fd4c9fda9cd3f9ae7c962b0ddf37232294d55580e1aa165aa06129b8549389eb",
+          "size_bytes": 32768
+        },
+        "wal": {
+          "exists": true,
+          "mtime_ns": 1781941912664399335,
+          "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite-wal",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "size_bytes": 0
+        }
+      }
+    },
+    "drift": [],
+    "preflight_samples": [
+      {
+        "logical": {
+          "data_version": 2,
+          "db_inventory_digest": "bdfca0c87fd5baccebe40a67808d0c58f9697f19128f3652f0124bba9b2dd8f9",
+          "db_inventory_table_counts": {
+            "procore_financial_amount_facts": 446933,
+            "procore_financial_budget_rows": 3044,
+            "procore_financial_change_orders": 507,
+            "procore_financial_contracts": 266,
+            "procore_financial_invoice_items": 71113,
+            "procore_financial_subcontractor_invoices": 996
+          },
+          "schema_version": 60
+        },
+        "physical": {
+          "main": {
+            "exists": true,
+            "mtime_ns": 1781941809183980468,
+            "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite",
+            "sha256": "50c55f696bf2c772914edd79073c99a0ee09e912cb1bd24dafef52c63dc4ce81",
+            "size_bytes": 3492159488
+          },
+          "shm": {
+            "exists": true,
+            "mtime_ns": 1781941919683834195,
+            "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite-shm",
+            "sha256": "fd4c9fda9cd3f9ae7c962b0ddf37232294d55580e1aa165aa06129b8549389eb",
+            "size_bytes": 32768
+          },
+          "wal": {
+            "exists": true,
+            "mtime_ns": 1781941912664399335,
+            "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite-wal",
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "size_bytes": 0
+          }
+        }
+      },
+      {
+        "logical": {
+          "data_version": 2,
+          "db_inventory_digest": "bdfca0c87fd5baccebe40a67808d0c58f9697f19128f3652f0124bba9b2dd8f9",
+          "db_inventory_table_counts": {
+            "procore_financial_amount_facts": 446933,
+            "procore_financial_budget_rows": 3044,
+            "procore_financial_change_orders": 507,
+            "procore_financial_contracts": 266,
+            "procore_financial_invoice_items": 71113,
+            "procore_financial_subcontractor_invoices": 996
+          },
+          "schema_version": 60
+        },
+        "physical": {
+          "main": {
+            "exists": true,
+            "mtime_ns": 1781941809183980468,
+            "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite",
+            "sha256": "50c55f696bf2c772914edd79073c99a0ee09e912cb1bd24dafef52c63dc4ce81",
+            "size_bytes": 3492159488
+          },
+          "shm": {
+            "exists": true,
+            "mtime_ns": 1781941919683834195,
+            "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite-shm",
+            "sha256": "fd4c9fda9cd3f9ae7c962b0ddf37232294d55580e1aa165aa06129b8549389eb",
+            "size_bytes": 32768
+          },
+          "wal": {
+            "exists": true,
+            "mtime_ns": 1781941912664399335,
+            "path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite-wal",
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "size_bytes": 0
+          }
+        }
+      }
+    ],
+    "preflight_stability_seconds": 30.0,
+    "preflight_stable": true,
+    "unchanged": true
+  },
+  "live_db_path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite",
+  "materialized_config_root": "/Users/bobbyfetting/hb-personal-assistant/docs/evidence/phase20-forecast-comprehensive-db-config-live-proof/20260620T101142Z/work/db_snapshot_config/materialized_config",
+  "not_ready_reason": "config_parity_mismatch",
+  "predecessor_packages": {
+    "generated": [],
+    "optional": [
+      "probability",
+      "history_informed",
+      "cost_frequency",
+      "crosswalk_v2",
+      "schedule_integrated",
+      "staffing_plan"
+    ],
+    "read": [
+      "context",
+      "cost_frequency",
+      "crosswalk_v2",
+      "history_informed",
+      "intelligence",
+      "monthly",
+      "probability",
+      "schedule_integrated",
+      "staffing_plan"
+    ],
+    "required": [
+      "context",
+      "intelligence",
+      "monthly"
+    ]
+  },
+  "project_key": "tropical",
+  "report_schema_version": 1,
+  "run_stamp": "20260101_000000",
+  "safety": {
+    "cfr_config_root_default_changed": false,
+    "db_snapshot_config_consumed": true,
+    "file_backed_default_preserved": true,
+    "forecast_comprehensive_run": true,
+    "forecast_cost_frequency_package_read": true,
+    "forecast_cost_frequency_run": false,
+    "forecast_monthly_package_read": true,
+    "forecast_monthly_run": false,
+    "forecast_probability_package_read": true,
+    "forecast_probability_run": false,
+    "integrated_csv_generated": false,
+    "intelligence_workflow_run": false,
+    "live_db_imported": false,
+    "live_db_migrated": false,
+    "live_db_preflight_stable": true,
+    "live_db_snapshot_read": true,
+    "live_db_unchanged_during_run": true,
+    "live_db_written": false,
+    "model_backed_llm_or_ollama_run": false,
+    "production_defaults_changed": false,
+    "source_config_mutated": false,
+    "source_package_mutated": false
+  },
+  "snapshot_item_count": 194,
+  "source_config_root": "/Users/bobbyfetting/hb-personal-assistant/subrepos/construction-financial-review",
+  "standard_comprehensive_package_csvs": [
+    "actuals_monthly_by_budget_code.csv",
+    "actuals_monthly_by_cost_code.csv",
+    "actuals_plus_forecast_monthly_by_budget_code.csv",
+    "actuals_plus_forecast_monthly_by_cost_code.csv"
+  ],
+  "standard_comprehensive_package_csvs_generated": true,
+  "status": "not_ready"
+}

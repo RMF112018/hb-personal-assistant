@@ -1,9 +1,9 @@
 {
   "prompt": "06",
   "phase": "07A",
-  "generated_utc": "2026-06-11T07:11:39.828644+00:00",
-  "repo_sha": "3e50fd7e12a7bc50e66b799612c2a5ba27b70236",
-  "schema_version": 49,
+  "generated_utc": "2026-06-22T10:50:32.676152+00:00",
+  "repo_sha": "33fd116ca9438eb84437686b84494c1f8ade83db",
+  "schema_version": 0,
   "dry_run": true,
   "apply": false,
   "row_counts": {

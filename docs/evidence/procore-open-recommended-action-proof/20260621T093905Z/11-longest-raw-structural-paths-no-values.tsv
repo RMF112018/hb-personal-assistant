@@ -1,0 +1,490 @@
+endpoint_key	longest_rank	raw_payload_id	record_id	parent_record_id	payload_hash	payload_chars	json_path	json_type
+billing-periods	1	perp-f43dfda88586b5f1da9d06684df388c7	3764879		b00bc3e5f743390b953eabf09a376a918dd7f109789efe9e29de3f52835ae0aa	213	$	object
+billing-periods	1	perp-f43dfda88586b5f1da9d06684df388c7	3764879		b00bc3e5f743390b953eabf09a376a918dd7f109789efe9e29de3f52835ae0aa	213	$."created_at"	text
+billing-periods	1	perp-f43dfda88586b5f1da9d06684df388c7	3764879		b00bc3e5f743390b953eabf09a376a918dd7f109789efe9e29de3f52835ae0aa	213	$."due_date"	text
+billing-periods	1	perp-f43dfda88586b5f1da9d06684df388c7	3764879		b00bc3e5f743390b953eabf09a376a918dd7f109789efe9e29de3f52835ae0aa	213	$."end_date"	text
+billing-periods	1	perp-f43dfda88586b5f1da9d06684df388c7	3764879		b00bc3e5f743390b953eabf09a376a918dd7f109789efe9e29de3f52835ae0aa	213	$."project_id"	integer
+billing-periods	1	perp-f43dfda88586b5f1da9d06684df388c7	3764879		b00bc3e5f743390b953eabf09a376a918dd7f109789efe9e29de3f52835ae0aa	213	$."start_date"	text
+billing-periods	1	perp-f43dfda88586b5f1da9d06684df388c7	3764879		b00bc3e5f743390b953eabf09a376a918dd7f109789efe9e29de3f52835ae0aa	213	$."updated_at"	text
+billing-periods	1	perp-f43dfda88586b5f1da9d06684df388c7	3764879		b00bc3e5f743390b953eabf09a376a918dd7f109789efe9e29de3f52835ae0aa	213	$.id	integer
+billing-periods	1	perp-f43dfda88586b5f1da9d06684df388c7	3764879		b00bc3e5f743390b953eabf09a376a918dd7f109789efe9e29de3f52835ae0aa	213	$.position	integer
+billing-periods	1	perp-f43dfda88586b5f1da9d06684df388c7	3764879		b00bc3e5f743390b953eabf09a376a918dd7f109789efe9e29de3f52835ae0aa	213	$.status	text
+billing-periods	2	perp-2204ed0452f475e961df35718ca2f0cb	3695946		2dd6d308f1115a7eb3cb5fc1b00a7f818653284d2572fb2503b07895ad8ef859	213	$	object
+billing-periods	2	perp-2204ed0452f475e961df35718ca2f0cb	3695946		2dd6d308f1115a7eb3cb5fc1b00a7f818653284d2572fb2503b07895ad8ef859	213	$."created_at"	text
+billing-periods	2	perp-2204ed0452f475e961df35718ca2f0cb	3695946		2dd6d308f1115a7eb3cb5fc1b00a7f818653284d2572fb2503b07895ad8ef859	213	$."due_date"	text
+billing-periods	2	perp-2204ed0452f475e961df35718ca2f0cb	3695946		2dd6d308f1115a7eb3cb5fc1b00a7f818653284d2572fb2503b07895ad8ef859	213	$."end_date"	text
+billing-periods	2	perp-2204ed0452f475e961df35718ca2f0cb	3695946		2dd6d308f1115a7eb3cb5fc1b00a7f818653284d2572fb2503b07895ad8ef859	213	$."project_id"	integer
+billing-periods	2	perp-2204ed0452f475e961df35718ca2f0cb	3695946		2dd6d308f1115a7eb3cb5fc1b00a7f818653284d2572fb2503b07895ad8ef859	213	$."start_date"	text
+billing-periods	2	perp-2204ed0452f475e961df35718ca2f0cb	3695946		2dd6d308f1115a7eb3cb5fc1b00a7f818653284d2572fb2503b07895ad8ef859	213	$."updated_at"	text
+billing-periods	2	perp-2204ed0452f475e961df35718ca2f0cb	3695946		2dd6d308f1115a7eb3cb5fc1b00a7f818653284d2572fb2503b07895ad8ef859	213	$.id	integer
+billing-periods	2	perp-2204ed0452f475e961df35718ca2f0cb	3695946		2dd6d308f1115a7eb3cb5fc1b00a7f818653284d2572fb2503b07895ad8ef859	213	$.position	integer
+billing-periods	2	perp-2204ed0452f475e961df35718ca2f0cb	3695946		2dd6d308f1115a7eb3cb5fc1b00a7f818653284d2572fb2503b07895ad8ef859	213	$.status	text
+billing-periods	3	perp-4fb844033f18748a7c13ee3dd4330f11	3678968		58ca1cdbd76245df1557ab3ae90b6420b4483566abc478a38747b79244326d0e	213	$	object
+billing-periods	3	perp-4fb844033f18748a7c13ee3dd4330f11	3678968		58ca1cdbd76245df1557ab3ae90b6420b4483566abc478a38747b79244326d0e	213	$."created_at"	text
+billing-periods	3	perp-4fb844033f18748a7c13ee3dd4330f11	3678968		58ca1cdbd76245df1557ab3ae90b6420b4483566abc478a38747b79244326d0e	213	$."due_date"	text
+billing-periods	3	perp-4fb844033f18748a7c13ee3dd4330f11	3678968		58ca1cdbd76245df1557ab3ae90b6420b4483566abc478a38747b79244326d0e	213	$."end_date"	text
+billing-periods	3	perp-4fb844033f18748a7c13ee3dd4330f11	3678968		58ca1cdbd76245df1557ab3ae90b6420b4483566abc478a38747b79244326d0e	213	$."project_id"	integer
+billing-periods	3	perp-4fb844033f18748a7c13ee3dd4330f11	3678968		58ca1cdbd76245df1557ab3ae90b6420b4483566abc478a38747b79244326d0e	213	$."start_date"	text
+billing-periods	3	perp-4fb844033f18748a7c13ee3dd4330f11	3678968		58ca1cdbd76245df1557ab3ae90b6420b4483566abc478a38747b79244326d0e	213	$."updated_at"	text
+billing-periods	3	perp-4fb844033f18748a7c13ee3dd4330f11	3678968		58ca1cdbd76245df1557ab3ae90b6420b4483566abc478a38747b79244326d0e	213	$.id	integer
+billing-periods	3	perp-4fb844033f18748a7c13ee3dd4330f11	3678968		58ca1cdbd76245df1557ab3ae90b6420b4483566abc478a38747b79244326d0e	213	$.position	integer
+billing-periods	3	perp-4fb844033f18748a7c13ee3dd4330f11	3678968		58ca1cdbd76245df1557ab3ae90b6420b4483566abc478a38747b79244326d0e	213	$.status	text
+budget-change-history	1	perp-cf3fe841f03245153879d91bebde2d0e	h:caaa25a6fe591201		4892b957235205c4e4aaf6c086b8644c5f303e5d330d487ec940078a79d72958	573	$	object
+budget-change-history	1	perp-cf3fe841f03245153879d91bebde2d0e	h:caaa25a6fe591201		4892b957235205c4e4aaf6c086b8644c5f303e5d330d487ec940078a79d72958	573	$."budget_code"	text
+budget-change-history	1	perp-cf3fe841f03245153879d91bebde2d0e	h:caaa25a6fe591201		4892b957235205c4e4aaf6c086b8644c5f303e5d330d487ec940078a79d72958	573	$."created_at"	text
+budget-change-history	1	perp-cf3fe841f03245153879d91bebde2d0e	h:caaa25a6fe591201		4892b957235205c4e4aaf6c086b8644c5f303e5d330d487ec940078a79d72958	573	$."created_by"	text
+budget-change-history	1	perp-cf3fe841f03245153879d91bebde2d0e	h:caaa25a6fe591201		4892b957235205c4e4aaf6c086b8644c5f303e5d330d487ec940078a79d72958	573	$."new_value"	text
+budget-change-history	1	perp-cf3fe841f03245153879d91bebde2d0e	h:caaa25a6fe591201		4892b957235205c4e4aaf6c086b8644c5f303e5d330d487ec940078a79d72958	573	$."old_value"	text
+budget-change-history	1	perp-cf3fe841f03245153879d91bebde2d0e	h:caaa25a6fe591201		4892b957235205c4e4aaf6c086b8644c5f303e5d330d487ec940078a79d72958	573	$.column	text
+budget-change-history	1	perp-cf3fe841f03245153879d91bebde2d0e	h:caaa25a6fe591201		4892b957235205c4e4aaf6c086b8644c5f303e5d330d487ec940078a79d72958	573	$.description	text
+budget-change-history	1	perp-cf3fe841f03245153879d91bebde2d0e	h:caaa25a6fe591201		4892b957235205c4e4aaf6c086b8644c5f303e5d330d487ec940078a79d72958	573	$.type	text
+budget-change-history	2	perp-7bc895966f1f1dafa7bd21c0cf61629b	h:8553277dee20df87		042b3a30bfe47288a93b7e28e1ecac889a5feab473b60868991edeaaa039e80e	401	$	object
+budget-change-history	2	perp-7bc895966f1f1dafa7bd21c0cf61629b	h:8553277dee20df87		042b3a30bfe47288a93b7e28e1ecac889a5feab473b60868991edeaaa039e80e	401	$."budget_code"	text
+budget-change-history	2	perp-7bc895966f1f1dafa7bd21c0cf61629b	h:8553277dee20df87		042b3a30bfe47288a93b7e28e1ecac889a5feab473b60868991edeaaa039e80e	401	$."created_at"	text
+budget-change-history	2	perp-7bc895966f1f1dafa7bd21c0cf61629b	h:8553277dee20df87		042b3a30bfe47288a93b7e28e1ecac889a5feab473b60868991edeaaa039e80e	401	$."created_by"	text
+budget-change-history	2	perp-7bc895966f1f1dafa7bd21c0cf61629b	h:8553277dee20df87		042b3a30bfe47288a93b7e28e1ecac889a5feab473b60868991edeaaa039e80e	401	$."new_value"	text
+budget-change-history	2	perp-7bc895966f1f1dafa7bd21c0cf61629b	h:8553277dee20df87		042b3a30bfe47288a93b7e28e1ecac889a5feab473b60868991edeaaa039e80e	401	$."old_value"	text
+budget-change-history	2	perp-7bc895966f1f1dafa7bd21c0cf61629b	h:8553277dee20df87		042b3a30bfe47288a93b7e28e1ecac889a5feab473b60868991edeaaa039e80e	401	$.column	text
+budget-change-history	2	perp-7bc895966f1f1dafa7bd21c0cf61629b	h:8553277dee20df87		042b3a30bfe47288a93b7e28e1ecac889a5feab473b60868991edeaaa039e80e	401	$.description	text
+budget-change-history	2	perp-7bc895966f1f1dafa7bd21c0cf61629b	h:8553277dee20df87		042b3a30bfe47288a93b7e28e1ecac889a5feab473b60868991edeaaa039e80e	401	$.type	text
+budget-change-history	3	perp-f4e0d2a60c7a115d0e5a49e0e2b040ea	h:7e660567b815818f		8f945629123c7d39ecd6959406bb3f9ed6e126dc9bc1a39210e35c564d478b3a	390	$	object
+budget-change-history	3	perp-f4e0d2a60c7a115d0e5a49e0e2b040ea	h:7e660567b815818f		8f945629123c7d39ecd6959406bb3f9ed6e126dc9bc1a39210e35c564d478b3a	390	$."budget_code"	text
+budget-change-history	3	perp-f4e0d2a60c7a115d0e5a49e0e2b040ea	h:7e660567b815818f		8f945629123c7d39ecd6959406bb3f9ed6e126dc9bc1a39210e35c564d478b3a	390	$."created_at"	text
+budget-change-history	3	perp-f4e0d2a60c7a115d0e5a49e0e2b040ea	h:7e660567b815818f		8f945629123c7d39ecd6959406bb3f9ed6e126dc9bc1a39210e35c564d478b3a	390	$."created_by"	text
+budget-change-history	3	perp-f4e0d2a60c7a115d0e5a49e0e2b040ea	h:7e660567b815818f		8f945629123c7d39ecd6959406bb3f9ed6e126dc9bc1a39210e35c564d478b3a	390	$."new_value"	text
+budget-change-history	3	perp-f4e0d2a60c7a115d0e5a49e0e2b040ea	h:7e660567b815818f		8f945629123c7d39ecd6959406bb3f9ed6e126dc9bc1a39210e35c564d478b3a	390	$."old_value"	text
+budget-change-history	3	perp-f4e0d2a60c7a115d0e5a49e0e2b040ea	h:7e660567b815818f		8f945629123c7d39ecd6959406bb3f9ed6e126dc9bc1a39210e35c564d478b3a	390	$.column	text
+budget-change-history	3	perp-f4e0d2a60c7a115d0e5a49e0e2b040ea	h:7e660567b815818f		8f945629123c7d39ecd6959406bb3f9ed6e126dc9bc1a39210e35c564d478b3a	390	$.description	text
+budget-change-history	3	perp-f4e0d2a60c7a115d0e5a49e0e2b040ea	h:7e660567b815818f		8f945629123c7d39ecd6959406bb3f9ed6e126dc9bc1a39210e35c564d478b3a	390	$.type	text
+budget-detail-columns	1	perp-d04472a0bd6120d8da186637d1d845f0	3814293	713474	48a54ae64cf1802d0c32f5f3c0a2a40d68d6623087a2ab2e7c1923964e91bba6	142	$	object
+budget-detail-columns	1	perp-d04472a0bd6120d8da186637d1d845f0	3814293	713474	48a54ae64cf1802d0c32f5f3c0a2a40d68d6623087a2ab2e7c1923964e91bba6	142	$.aggregatable	true
+budget-detail-columns	1	perp-d04472a0bd6120d8da186637d1d845f0	3814293	713474	48a54ae64cf1802d0c32f5f3c0a2a40d68d6623087a2ab2e7c1923964e91bba6	142	$.filterable	false
+budget-detail-columns	1	perp-d04472a0bd6120d8da186637d1d845f0	3814293	713474	48a54ae64cf1802d0c32f5f3c0a2a40d68d6623087a2ab2e7c1923964e91bba6	142	$.groupable	false
+budget-detail-columns	1	perp-d04472a0bd6120d8da186637d1d845f0	3814293	713474	48a54ae64cf1802d0c32f5f3c0a2a40d68d6623087a2ab2e7c1923964e91bba6	142	$.id	text
+budget-detail-columns	1	perp-d04472a0bd6120d8da186637d1d845f0	3814293	713474	48a54ae64cf1802d0c32f5f3c0a2a40d68d6623087a2ab2e7c1923964e91bba6	142	$.name	text
+budget-detail-columns	1	perp-d04472a0bd6120d8da186637d1d845f0	3814293	713474	48a54ae64cf1802d0c32f5f3c0a2a40d68d6623087a2ab2e7c1923964e91bba6	142	$.position	integer
+budget-detail-columns	1	perp-d04472a0bd6120d8da186637d1d845f0	3814293	713474	48a54ae64cf1802d0c32f5f3c0a2a40d68d6623087a2ab2e7c1923964e91bba6	142	$.type	text
+budget-detail-columns	2	perp-ee241827864790e37957f16fb86c24ab	3814293	713474	48a54ae64cf1802d0c32f5f3c0a2a40d68d6623087a2ab2e7c1923964e91bba6	142	$	object
+budget-detail-columns	2	perp-ee241827864790e37957f16fb86c24ab	3814293	713474	48a54ae64cf1802d0c32f5f3c0a2a40d68d6623087a2ab2e7c1923964e91bba6	142	$.aggregatable	true
+budget-detail-columns	2	perp-ee241827864790e37957f16fb86c24ab	3814293	713474	48a54ae64cf1802d0c32f5f3c0a2a40d68d6623087a2ab2e7c1923964e91bba6	142	$.filterable	false
+budget-detail-columns	2	perp-ee241827864790e37957f16fb86c24ab	3814293	713474	48a54ae64cf1802d0c32f5f3c0a2a40d68d6623087a2ab2e7c1923964e91bba6	142	$.groupable	false
+budget-detail-columns	2	perp-ee241827864790e37957f16fb86c24ab	3814293	713474	48a54ae64cf1802d0c32f5f3c0a2a40d68d6623087a2ab2e7c1923964e91bba6	142	$.id	text
+budget-detail-columns	2	perp-ee241827864790e37957f16fb86c24ab	3814293	713474	48a54ae64cf1802d0c32f5f3c0a2a40d68d6623087a2ab2e7c1923964e91bba6	142	$.name	text
+budget-detail-columns	2	perp-ee241827864790e37957f16fb86c24ab	3814293	713474	48a54ae64cf1802d0c32f5f3c0a2a40d68d6623087a2ab2e7c1923964e91bba6	142	$.position	integer
+budget-detail-columns	2	perp-ee241827864790e37957f16fb86c24ab	3814293	713474	48a54ae64cf1802d0c32f5f3c0a2a40d68d6623087a2ab2e7c1923964e91bba6	142	$.type	text
+budget-detail-columns	3	perp-d3d7f1e772cf78fce8c49d2bc5c7d07d	3814293	713474	48a54ae64cf1802d0c32f5f3c0a2a40d68d6623087a2ab2e7c1923964e91bba6	142	$	object
+budget-detail-columns	3	perp-d3d7f1e772cf78fce8c49d2bc5c7d07d	3814293	713474	48a54ae64cf1802d0c32f5f3c0a2a40d68d6623087a2ab2e7c1923964e91bba6	142	$.aggregatable	true
+budget-detail-columns	3	perp-d3d7f1e772cf78fce8c49d2bc5c7d07d	3814293	713474	48a54ae64cf1802d0c32f5f3c0a2a40d68d6623087a2ab2e7c1923964e91bba6	142	$.filterable	false
+budget-detail-columns	3	perp-d3d7f1e772cf78fce8c49d2bc5c7d07d	3814293	713474	48a54ae64cf1802d0c32f5f3c0a2a40d68d6623087a2ab2e7c1923964e91bba6	142	$.groupable	false
+budget-detail-columns	3	perp-d3d7f1e772cf78fce8c49d2bc5c7d07d	3814293	713474	48a54ae64cf1802d0c32f5f3c0a2a40d68d6623087a2ab2e7c1923964e91bba6	142	$.id	text
+budget-detail-columns	3	perp-d3d7f1e772cf78fce8c49d2bc5c7d07d	3814293	713474	48a54ae64cf1802d0c32f5f3c0a2a40d68d6623087a2ab2e7c1923964e91bba6	142	$.name	text
+budget-detail-columns	3	perp-d3d7f1e772cf78fce8c49d2bc5c7d07d	3814293	713474	48a54ae64cf1802d0c32f5f3c0a2a40d68d6623087a2ab2e7c1923964e91bba6	142	$.position	integer
+budget-detail-columns	3	perp-d3d7f1e772cf78fce8c49d2bc5c7d07d	3814293	713474	48a54ae64cf1802d0c32f5f3c0a2a40d68d6623087a2ab2e7c1923964e91bba6	142	$.type	text
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$	object
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."Approved COs"	text
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."Estimated Cost at Completion"	text
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."Job to Date Costs"	text
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."Projected Budget"	text
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."Projected Cost To Complete"	text
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."Projected Costs"	text
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."Projected over Under"	text
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."Revised Budget"	text
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."biller_id"	integer
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."biller_type"	text
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."budget_forecast"	object
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."budget_forecast"."automatic_amount"	text
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."budget_forecast"."automatically_calculated"	false
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."budget_forecast"."calculation_strategy"	text
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."budget_forecast"."manual_amount"	text
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."budget_forecast".amount	text
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."budget_forecast".id	integer
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."budget_forecast".notes	text
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."budget_modifications"	text
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."budget_notes"	text
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."budget_row_id"	text
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."calculation_strategy"	text
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."category_id"	integer
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."company_id"	integer
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."cost_code"	text
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."cost_code_id"	integer
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."cost_code_level_1"	text
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."cost_code_level_1_id"	integer
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."cost_code_level_2"	text
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."cost_code_level_2_id"	integer
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."cost_code_level_3"	text
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."cost_code_level_3_id"	integer
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."cost_code_level_4"	text
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."cost_code_level_4_id"	integer
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."cost_code_level_5"	text
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."cost_code_level_5_id"	integer
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."cost_code_origin_id"	text
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."currency_configuration"	object
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."currency_configuration"."currency_iso_code"	null
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."end_date"	text
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."forecast_remainder"	text
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."original_budget_amount"	text
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."project_id"	integer
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."root_cost_code"	text
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."root_cost_code_id"	integer
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."spread_august_2026"	object
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."spread_august_2026".amount	text
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."spread_august_2026".id	null
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."spread_august_2026".position	integer
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."spread_july_2026"	object
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."spread_july_2026".amount	text
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."spread_july_2026".id	null
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."spread_july_2026".position	integer
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."spread_june_2026"	object
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."spread_june_2026".amount	text
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."spread_june_2026".id	null
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."spread_june_2026".position	integer
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."start_date"	text
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."unbudgeted_reason"	null
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."unit_cost"	null
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."wbs_code"	object
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."wbs_code"."attribute_items"	array
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."wbs_code"."flat_code"	text
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."wbs_code"."flat_name"	text
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."wbs_code"."segment_items"	array
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."wbs_code"."segment_items"[0]	object
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."wbs_code"."segment_items"[0]."is_parent"	false
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."wbs_code"."segment_items"[0]."path_code"	text
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."wbs_code"."segment_items"[0]."path_codes"	array
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."wbs_code"."segment_items"[0]."path_codes"[0]	text
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."wbs_code"."segment_items"[0]."path_ids"	array
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."wbs_code"."segment_items"[0]."path_ids"[0]	integer
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."wbs_code"."segment_items"[0].code	text
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."wbs_code"."segment_items"[0].id	integer
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."wbs_code"."segment_items"[0].name	text
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."wbs_code"."segment_items"[0].segment	object
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."wbs_code"."segment_items"[0].segment.id	integer
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."wbs_code"."segment_items"[0].segment.name	text
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."wbs_code"."segment_items"[0].segment.structure	text
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."wbs_code"."segment_items"[0].segment.type	text
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."wbs_code"."segment_items"[1]	object
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."wbs_code"."segment_items"[1]."is_parent"	false
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."wbs_code"."segment_items"[1]."path_code"	text
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."wbs_code"."segment_items"[1]."path_codes"	array
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."wbs_code"."segment_items"[1]."path_codes"[0]	text
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."wbs_code"."segment_items"[1]."path_codes"[1]	text
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."wbs_code"."segment_items"[1]."path_codes"[2]	text
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."wbs_code"."segment_items"[1]."path_ids"	array
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."wbs_code"."segment_items"[1]."path_ids"[0]	integer
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."wbs_code"."segment_items"[1]."path_ids"[1]	integer
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."wbs_code"."segment_items"[1]."path_ids"[2]	integer
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."wbs_code"."segment_items"[1].code	text
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."wbs_code"."segment_items"[1].id	integer
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."wbs_code"."segment_items"[1].name	text
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."wbs_code"."segment_items"[1].segment	object
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."wbs_code"."segment_items"[1].segment.id	integer
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."wbs_code"."segment_items"[1].segment.name	text
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."wbs_code"."segment_items"[1].segment.structure	text
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."wbs_code"."segment_items"[1].segment.type	text
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."wbs_code"."segment_items"[2]	object
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."wbs_code"."segment_items"[2]."is_parent"	false
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."wbs_code"."segment_items"[2]."path_code"	text
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."wbs_code"."segment_items"[2]."path_codes"	array
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."wbs_code"."segment_items"[2]."path_codes"[0]	text
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."wbs_code"."segment_items"[2]."path_ids"	array
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."wbs_code"."segment_items"[2]."path_ids"[0]	integer
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."wbs_code"."segment_items"[2].code	text
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."wbs_code"."segment_items"[2].id	integer
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."wbs_code"."segment_items"[2].name	text
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."wbs_code"."segment_items"[2].segment	object
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."wbs_code"."segment_items"[2].segment.id	integer
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."wbs_code"."segment_items"[2].segment.name	text
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."wbs_code"."segment_items"[2].segment.structure	text
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."wbs_code"."segment_items"[2].segment.type	text
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."wbs_code".description	text
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."wbs_code".id	integer
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$."wbs_code_id"	integer
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$.biller	text
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$.budgetable	true
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$.budgeted	true
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$.category	text
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$.company	text
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$.curve	text
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$.deletable	false
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$.id	integer
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$.project	text
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$.quantity	null
+budget-detail-rows	1	perp-bb4a1de2eaa01fbdcbf910db08599da4	37130914	362562	8d12fbc981dbaca56f54f29ffbca5fa49a536367b1ba57ab6dcf2c9ccc85bd91	3166	$.uom	null
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$	object
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."Approved COs"	text
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."Estimated Cost at Completion"	text
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."Job to Date Costs"	text
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."Projected Budget"	text
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."Projected Cost To Complete"	text
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."Projected Costs"	text
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."Projected over Under"	text
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."Revised Budget"	text
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."biller_id"	integer
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."biller_type"	text
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."budget_forecast"	object
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."budget_forecast"."automatic_amount"	text
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."budget_forecast"."automatically_calculated"	false
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."budget_forecast"."calculation_strategy"	text
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."budget_forecast"."manual_amount"	text
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."budget_forecast".amount	text
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."budget_forecast".id	integer
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."budget_forecast".notes	text
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."budget_modifications"	text
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."budget_notes"	text
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."budget_row_id"	text
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."calculation_strategy"	text
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."category_id"	integer
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."company_id"	integer
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."cost_code"	text
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."cost_code_id"	integer
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."cost_code_level_1"	text
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."cost_code_level_1_id"	integer
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."cost_code_level_2"	text
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."cost_code_level_2_id"	integer
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."cost_code_level_3"	text
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."cost_code_level_3_id"	integer
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."cost_code_level_4"	text
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."cost_code_level_4_id"	integer
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."cost_code_level_5"	text
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."cost_code_level_5_id"	integer
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."cost_code_origin_id"	text
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."currency_configuration"	object
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."currency_configuration"."currency_iso_code"	null
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."end_date"	text
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."forecast_remainder"	text
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."original_budget_amount"	text
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."project_id"	integer
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."root_cost_code"	text
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."root_cost_code_id"	integer
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."spread_august_2026"	object
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."spread_august_2026".amount	text
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."spread_august_2026".id	null
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."spread_august_2026".position	integer
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."spread_july_2026"	object
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."spread_july_2026".amount	text
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."spread_july_2026".id	null
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."spread_july_2026".position	integer
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."spread_june_2026"	object
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."spread_june_2026".amount	text
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."spread_june_2026".id	null
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."spread_june_2026".position	integer
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."start_date"	text
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."unbudgeted_reason"	null
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."unit_cost"	null
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."wbs_code"	object
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."wbs_code"."attribute_items"	array
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."wbs_code"."flat_code"	text
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."wbs_code"."flat_name"	text
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."wbs_code"."segment_items"	array
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."wbs_code"."segment_items"[0]	object
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."wbs_code"."segment_items"[0]."is_parent"	false
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."wbs_code"."segment_items"[0]."path_code"	text
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."wbs_code"."segment_items"[0]."path_codes"	array
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."wbs_code"."segment_items"[0]."path_codes"[0]	text
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."wbs_code"."segment_items"[0]."path_ids"	array
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."wbs_code"."segment_items"[0]."path_ids"[0]	integer
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."wbs_code"."segment_items"[0].code	text
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."wbs_code"."segment_items"[0].id	integer
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."wbs_code"."segment_items"[0].name	text
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."wbs_code"."segment_items"[0].segment	object
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."wbs_code"."segment_items"[0].segment.id	integer
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."wbs_code"."segment_items"[0].segment.name	text
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."wbs_code"."segment_items"[0].segment.structure	text
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."wbs_code"."segment_items"[0].segment.type	text
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."wbs_code"."segment_items"[1]	object
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."wbs_code"."segment_items"[1]."is_parent"	false
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."wbs_code"."segment_items"[1]."path_code"	text
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."wbs_code"."segment_items"[1]."path_codes"	array
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."wbs_code"."segment_items"[1]."path_codes"[0]	text
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."wbs_code"."segment_items"[1]."path_codes"[1]	text
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."wbs_code"."segment_items"[1]."path_codes"[2]	text
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."wbs_code"."segment_items"[1]."path_ids"	array
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."wbs_code"."segment_items"[1]."path_ids"[0]	integer
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."wbs_code"."segment_items"[1]."path_ids"[1]	integer
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."wbs_code"."segment_items"[1]."path_ids"[2]	integer
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."wbs_code"."segment_items"[1].code	text
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."wbs_code"."segment_items"[1].id	integer
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."wbs_code"."segment_items"[1].name	text
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."wbs_code"."segment_items"[1].segment	object
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."wbs_code"."segment_items"[1].segment.id	integer
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."wbs_code"."segment_items"[1].segment.name	text
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."wbs_code"."segment_items"[1].segment.structure	text
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."wbs_code"."segment_items"[1].segment.type	text
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."wbs_code"."segment_items"[2]	object
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."wbs_code"."segment_items"[2]."is_parent"	false
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."wbs_code"."segment_items"[2]."path_code"	text
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."wbs_code"."segment_items"[2]."path_codes"	array
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."wbs_code"."segment_items"[2]."path_codes"[0]	text
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."wbs_code"."segment_items"[2]."path_ids"	array
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."wbs_code"."segment_items"[2]."path_ids"[0]	integer
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."wbs_code"."segment_items"[2].code	text
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."wbs_code"."segment_items"[2].id	integer
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."wbs_code"."segment_items"[2].name	text
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."wbs_code"."segment_items"[2].segment	object
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."wbs_code"."segment_items"[2].segment.id	integer
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."wbs_code"."segment_items"[2].segment.name	text
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."wbs_code"."segment_items"[2].segment.structure	text
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."wbs_code"."segment_items"[2].segment.type	text
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."wbs_code".description	text
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."wbs_code".id	integer
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$."wbs_code_id"	integer
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$.biller	text
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$.budgetable	true
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$.budgeted	true
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$.category	text
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$.company	text
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$.curve	text
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$.deletable	false
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$.id	integer
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$.project	text
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$.quantity	null
+budget-detail-rows	2	perp-0d456d37fb1def5cada27573e30c4dd1	37130914	362563	983d1f42c0b7dded0bee57500ca66cccbf377d24d68252d35f0426f8c83b46c6	3164	$.uom	null
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$	object
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."Approved COs"	text
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."Commitment Invoiced"	text
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."Committed Costs"	text
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."ERP Direct Costs"	text
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."ERP Job to Date Costs"	text
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."Estimated Cost at Completion"	text
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."Pending Budget Changes"	text
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."Pending Cost Changes"	text
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."Projected Budget"	text
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."Projected Costs"	text
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."Projected over Under"	text
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."Revised Budget"	text
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."biller_id"	integer
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."biller_type"	text
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."budget_forecast"	object
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."budget_forecast"."automatic_amount"	text
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."budget_forecast"."automatically_calculated"	false
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."budget_forecast"."calculation_strategy"	text
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."budget_forecast"."manual_amount"	text
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."budget_forecast".amount	text
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."budget_forecast".id	integer
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."budget_forecast".notes	text
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."budget_modifications"	text
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."budget_notes"	text
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."budget_row_id"	text
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."calculation_strategy"	text
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."category_id"	integer
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."company_id"	integer
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."cost_code"	text
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."cost_code_id"	integer
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."cost_code_level_1"	text
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."cost_code_level_1_id"	integer
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."cost_code_level_2"	text
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."cost_code_level_2_id"	integer
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."cost_code_level_3"	text
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."cost_code_level_3_id"	integer
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."cost_code_level_4"	text
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."cost_code_level_4_id"	integer
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."cost_code_level_5"	text
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."cost_code_level_5_id"	integer
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."cost_code_origin_id"	text
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."currency_configuration"	object
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."currency_configuration"."currency_iso_code"	null
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."end_date"	text
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."original_budget_amount"	text
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."project_id"	integer
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."root_cost_code"	text
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."root_cost_code_id"	integer
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."start_date"	text
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."unbudgeted_reason"	null
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."unit_cost"	null
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."wbs_code"	object
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."wbs_code"."attribute_items"	array
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."wbs_code"."flat_code"	text
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."wbs_code"."flat_name"	text
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."wbs_code"."segment_items"	array
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."wbs_code"."segment_items"[0]	object
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."wbs_code"."segment_items"[0]."is_parent"	false
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."wbs_code"."segment_items"[0]."path_code"	text
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."wbs_code"."segment_items"[0]."path_codes"	array
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."wbs_code"."segment_items"[0]."path_codes"[0]	text
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."wbs_code"."segment_items"[0]."path_ids"	array
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."wbs_code"."segment_items"[0]."path_ids"[0]	integer
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."wbs_code"."segment_items"[0].code	text
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."wbs_code"."segment_items"[0].id	integer
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."wbs_code"."segment_items"[0].name	text
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."wbs_code"."segment_items"[0].segment	object
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."wbs_code"."segment_items"[0].segment.id	integer
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."wbs_code"."segment_items"[0].segment.name	text
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."wbs_code"."segment_items"[0].segment.structure	text
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."wbs_code"."segment_items"[0].segment.type	text
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."wbs_code"."segment_items"[1]	object
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."wbs_code"."segment_items"[1]."is_parent"	false
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."wbs_code"."segment_items"[1]."path_code"	text
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."wbs_code"."segment_items"[1]."path_codes"	array
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."wbs_code"."segment_items"[1]."path_codes"[0]	text
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."wbs_code"."segment_items"[1]."path_codes"[1]	text
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."wbs_code"."segment_items"[1]."path_codes"[2]	text
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."wbs_code"."segment_items"[1]."path_ids"	array
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."wbs_code"."segment_items"[1]."path_ids"[0]	integer
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."wbs_code"."segment_items"[1]."path_ids"[1]	integer
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."wbs_code"."segment_items"[1]."path_ids"[2]	integer
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."wbs_code"."segment_items"[1].code	text
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."wbs_code"."segment_items"[1].id	integer
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."wbs_code"."segment_items"[1].name	text
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."wbs_code"."segment_items"[1].segment	object
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."wbs_code"."segment_items"[1].segment.id	integer
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."wbs_code"."segment_items"[1].segment.name	text
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."wbs_code"."segment_items"[1].segment.structure	text
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."wbs_code"."segment_items"[1].segment.type	text
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."wbs_code"."segment_items"[2]	object
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."wbs_code"."segment_items"[2]."is_parent"	false
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."wbs_code"."segment_items"[2]."path_code"	text
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."wbs_code"."segment_items"[2]."path_codes"	array
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."wbs_code"."segment_items"[2]."path_codes"[0]	text
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."wbs_code"."segment_items"[2]."path_ids"	array
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."wbs_code"."segment_items"[2]."path_ids"[0]	integer
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."wbs_code"."segment_items"[2].code	text
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."wbs_code"."segment_items"[2].id	integer
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."wbs_code"."segment_items"[2].name	text
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."wbs_code"."segment_items"[2].segment	object
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."wbs_code"."segment_items"[2].segment.id	integer
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."wbs_code"."segment_items"[2].segment.name	text
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."wbs_code"."segment_items"[2].segment.structure	text
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."wbs_code"."segment_items"[2].segment.type	text
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."wbs_code".description	text
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."wbs_code".id	integer
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$."wbs_code_id"	integer
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$.biller	text
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$.budgetable	true
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$.budgeted	true
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$.category	text
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$.company	text
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$.curve	text
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$.deletable	false
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$.id	integer
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$.project	text
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$.quantity	null
+budget-detail-rows	3	perp-ade75153b8916462138aab633ec45786	37130914	713474	d32a126f2591d479542a6eec9a016c89733f8decaaa6952f4848176c68e4f1bf	3068	$.uom	null
+budget-modifications	1	perp-c40ee0013086e22e347753c6b9a78a9f	8684862		f45749275892047ee3d7739552c8b9d995e25f6379c97df68bb9a34659df6682	438	$	object
+budget-modifications	1	perp-c40ee0013086e22e347753c6b9a78a9f	8684862		f45749275892047ee3d7739552c8b9d995e25f6379c97df68bb9a34659df6682	438	$."created_at"	text
+budget-modifications	1	perp-c40ee0013086e22e347753c6b9a78a9f	8684862		f45749275892047ee3d7739552c8b9d995e25f6379c97df68bb9a34659df6682	438	$."from_budget_line_item_id"	integer
+budget-modifications	1	perp-c40ee0013086e22e347753c6b9a78a9f	8684862		f45749275892047ee3d7739552c8b9d995e25f6379c97df68bb9a34659df6682	438	$."origin_data"	null
+budget-modifications	1	perp-c40ee0013086e22e347753c6b9a78a9f	8684862		f45749275892047ee3d7739552c8b9d995e25f6379c97df68bb9a34659df6682	438	$."origin_id"	null
+budget-modifications	1	perp-c40ee0013086e22e347753c6b9a78a9f	8684862		f45749275892047ee3d7739552c8b9d995e25f6379c97df68bb9a34659df6682	438	$."to_budget_line_item_id"	integer
+budget-modifications	1	perp-c40ee0013086e22e347753c6b9a78a9f	8684862		f45749275892047ee3d7739552c8b9d995e25f6379c97df68bb9a34659df6682	438	$."transfer_amount"	text
+budget-modifications	1	perp-c40ee0013086e22e347753c6b9a78a9f	8684862		f45749275892047ee3d7739552c8b9d995e25f6379c97df68bb9a34659df6682	438	$."updated_at"	text
+budget-modifications	1	perp-c40ee0013086e22e347753c6b9a78a9f	8684862		f45749275892047ee3d7739552c8b9d995e25f6379c97df68bb9a34659df6682	438	$.id	integer
+budget-modifications	1	perp-c40ee0013086e22e347753c6b9a78a9f	8684862		f45749275892047ee3d7739552c8b9d995e25f6379c97df68bb9a34659df6682	438	$.notes	text
+budget-modifications	2	perp-973e9235be6e8cc3ff67ebf819495a07	7170455		df4c9c21b56a96bd155cf412bc377645b852617f77d6710bd99489e0f9508d44	430	$	object
+budget-modifications	2	perp-973e9235be6e8cc3ff67ebf819495a07	7170455		df4c9c21b56a96bd155cf412bc377645b852617f77d6710bd99489e0f9508d44	430	$."created_at"	text
+budget-modifications	2	perp-973e9235be6e8cc3ff67ebf819495a07	7170455		df4c9c21b56a96bd155cf412bc377645b852617f77d6710bd99489e0f9508d44	430	$."from_budget_line_item_id"	integer
+budget-modifications	2	perp-973e9235be6e8cc3ff67ebf819495a07	7170455		df4c9c21b56a96bd155cf412bc377645b852617f77d6710bd99489e0f9508d44	430	$."origin_data"	null
+budget-modifications	2	perp-973e9235be6e8cc3ff67ebf819495a07	7170455		df4c9c21b56a96bd155cf412bc377645b852617f77d6710bd99489e0f9508d44	430	$."origin_id"	null
+budget-modifications	2	perp-973e9235be6e8cc3ff67ebf819495a07	7170455		df4c9c21b56a96bd155cf412bc377645b852617f77d6710bd99489e0f9508d44	430	$."to_budget_line_item_id"	integer
+budget-modifications	2	perp-973e9235be6e8cc3ff67ebf819495a07	7170455		df4c9c21b56a96bd155cf412bc377645b852617f77d6710bd99489e0f9508d44	430	$."transfer_amount"	text
+budget-modifications	2	perp-973e9235be6e8cc3ff67ebf819495a07	7170455		df4c9c21b56a96bd155cf412bc377645b852617f77d6710bd99489e0f9508d44	430	$."updated_at"	text
+budget-modifications	2	perp-973e9235be6e8cc3ff67ebf819495a07	7170455		df4c9c21b56a96bd155cf412bc377645b852617f77d6710bd99489e0f9508d44	430	$.id	integer
+budget-modifications	2	perp-973e9235be6e8cc3ff67ebf819495a07	7170455		df4c9c21b56a96bd155cf412bc377645b852617f77d6710bd99489e0f9508d44	430	$.notes	text
+budget-modifications	3	perp-ee7b1abd62ecfd294c0f2d7e86452cad	8292183		341ec57331d690fba280cc9de4bc5cd1dc9ae26fd6e1a594c405c462129207a6	388	$	object
+budget-modifications	3	perp-ee7b1abd62ecfd294c0f2d7e86452cad	8292183		341ec57331d690fba280cc9de4bc5cd1dc9ae26fd6e1a594c405c462129207a6	388	$."created_at"	text
+budget-modifications	3	perp-ee7b1abd62ecfd294c0f2d7e86452cad	8292183		341ec57331d690fba280cc9de4bc5cd1dc9ae26fd6e1a594c405c462129207a6	388	$."from_budget_line_item_id"	integer
+budget-modifications	3	perp-ee7b1abd62ecfd294c0f2d7e86452cad	8292183		341ec57331d690fba280cc9de4bc5cd1dc9ae26fd6e1a594c405c462129207a6	388	$."origin_data"	null
+budget-modifications	3	perp-ee7b1abd62ecfd294c0f2d7e86452cad	8292183		341ec57331d690fba280cc9de4bc5cd1dc9ae26fd6e1a594c405c462129207a6	388	$."origin_id"	null
+budget-modifications	3	perp-ee7b1abd62ecfd294c0f2d7e86452cad	8292183		341ec57331d690fba280cc9de4bc5cd1dc9ae26fd6e1a594c405c462129207a6	388	$."to_budget_line_item_id"	integer
+budget-modifications	3	perp-ee7b1abd62ecfd294c0f2d7e86452cad	8292183		341ec57331d690fba280cc9de4bc5cd1dc9ae26fd6e1a594c405c462129207a6	388	$."transfer_amount"	text
+budget-modifications	3	perp-ee7b1abd62ecfd294c0f2d7e86452cad	8292183		341ec57331d690fba280cc9de4bc5cd1dc9ae26fd6e1a594c405c462129207a6	388	$."updated_at"	text
+budget-modifications	3	perp-ee7b1abd62ecfd294c0f2d7e86452cad	8292183		341ec57331d690fba280cc9de4bc5cd1dc9ae26fd6e1a594c405c462129207a6	388	$.id	integer
+budget-modifications	3	perp-ee7b1abd62ecfd294c0f2d7e86452cad	8292183		341ec57331d690fba280cc9de4bc5cd1dc9ae26fd6e1a594c405c462129207a6	388	$.notes	text

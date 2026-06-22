@@ -1,0 +1,68 @@
+{
+  "config_snapshot_id": "c3b4a67d22db47c74e696ae562fbf1c555e365fc66bb003a7b3312754415b698",
+  "project_key": "tropical",
+  "snapshot_name": "tropical-phase16-live-config-20260619T085305Z",
+  "item_count": 194,
+  "snapshot_sha256": "d42f2db68635cb35c2067e10c3b5d685df0b84927fb24c13a5931b33e613847a",
+  "materialized_config_root": "/Users/bobbyfetting/hb-personal-assistant/docs/evidence/phase20-forecast-comprehensive-db-config-live-proof/20260620T103706Z/work/db_snapshot_config/materialized_config",
+  "files": [
+    {
+      "rel_path": "config/crosswalks/tropical/owner_sov_scope_crosswalk_tropical_authoritative_20260614_final.csv",
+      "path": "/Users/bobbyfetting/hb-personal-assistant/docs/evidence/phase20-forecast-comprehensive-db-config-live-proof/20260620T103706Z/work/db_snapshot_config/materialized_config/config/crosswalks/tropical/owner_sov_scope_crosswalk_tropical_authoritative_20260614_final.csv",
+      "source_format": "csv",
+      "row_count": 58,
+      "sha256": "9c7a5c59e62f7a738cd1be0a9b0a6200ae170187fa00870d9a56401693fc49c1"
+    },
+    {
+      "rel_path": "config/crosswalks/tropical/owner_sov_scope_crosswalk_tropical_authoritative_20260614_final.jsonl",
+      "path": "/Users/bobbyfetting/hb-personal-assistant/docs/evidence/phase20-forecast-comprehensive-db-config-live-proof/20260620T103706Z/work/db_snapshot_config/materialized_config/config/crosswalks/tropical/owner_sov_scope_crosswalk_tropical_authoritative_20260614_final.jsonl",
+      "source_format": "jsonl",
+      "row_count": 58,
+      "sha256": "50ad7a6f9f8b250d27e6d6f71527b7c674e31a160a6044bfde7fa64bce64265b"
+    },
+    {
+      "rel_path": "config/forecast_controls/tropical/code_forecast_controls.jsonl",
+      "path": "/Users/bobbyfetting/hb-personal-assistant/docs/evidence/phase20-forecast-comprehensive-db-config-live-proof/20260620T103706Z/work/db_snapshot_config/materialized_config/config/forecast_controls/tropical/code_forecast_controls.jsonl",
+      "source_format": "jsonl",
+      "row_count": 64,
+      "sha256": "f239d166e0dc994c80e50ab3bcae9b729d32ba7fb1b0e0d0cccbdd183c4ab2ba"
+    },
+    {
+      "rel_path": "config/forecast_model_controls/tropical/code_forecast_model_controls.jsonl",
+      "path": "/Users/bobbyfetting/hb-personal-assistant/docs/evidence/phase20-forecast-comprehensive-db-config-live-proof/20260620T103706Z/work/db_snapshot_config/materialized_config/config/forecast_model_controls/tropical/code_forecast_model_controls.jsonl",
+      "source_format": "jsonl",
+      "row_count": 5,
+      "sha256": "70afb94564fcc4ebf403274321e85dddd792cd229c0831f5385ce67e619308bc"
+    },
+    {
+      "rel_path": "config/forecast_staffing/tropical/staffing_budget_code_mapping.jsonl",
+      "path": "/Users/bobbyfetting/hb-personal-assistant/docs/evidence/phase20-forecast-comprehensive-db-config-live-proof/20260620T103706Z/work/db_snapshot_config/materialized_config/config/forecast_staffing/tropical/staffing_budget_code_mapping.jsonl",
+      "source_format": "jsonl",
+      "row_count": 8,
+      "sha256": "e211c2b8572e07c832f4cbef2e3e4280349cb10132279812ff1cc47736d4195b"
+    },
+    {
+      "rel_path": "config/projects/tropical.json",
+      "path": "/Users/bobbyfetting/hb-personal-assistant/docs/evidence/phase20-forecast-comprehensive-db-config-live-proof/20260620T103706Z/work/db_snapshot_config/materialized_config/config/projects/tropical.json",
+      "source_format": "json",
+      "row_count": 1,
+      "sha256": "e2eb83cdf15bfbfa1f88705f664bc5a83b8940f3910edc12b2377306dbd2c217"
+    }
+  ],
+  "row_counts": {
+    "config/crosswalks/tropical/owner_sov_scope_crosswalk_tropical_authoritative_20260614_final.csv": 58,
+    "config/crosswalks/tropical/owner_sov_scope_crosswalk_tropical_authoritative_20260614_final.jsonl": 58,
+    "config/forecast_controls/tropical/code_forecast_controls.jsonl": 64,
+    "config/forecast_model_controls/tropical/code_forecast_model_controls.jsonl": 5,
+    "config/forecast_staffing/tropical/staffing_budget_code_mapping.jsonl": 8,
+    "config/projects/tropical.json": 1
+  },
+  "hashes": {
+    "config/crosswalks/tropical/owner_sov_scope_crosswalk_tropical_authoritative_20260614_final.csv": "9c7a5c59e62f7a738cd1be0a9b0a6200ae170187fa00870d9a56401693fc49c1",
+    "config/crosswalks/tropical/owner_sov_scope_crosswalk_tropical_authoritative_20260614_final.jsonl": "50ad7a6f9f8b250d27e6d6f71527b7c674e31a160a6044bfde7fa64bce64265b",
+    "config/forecast_controls/tropical/code_forecast_controls.jsonl": "f239d166e0dc994c80e50ab3bcae9b729d32ba7fb1b0e0d0cccbdd183c4ab2ba",
+    "config/forecast_model_controls/tropical/code_forecast_model_controls.jsonl": "70afb94564fcc4ebf403274321e85dddd792cd229c0831f5385ce67e619308bc",
+    "config/forecast_staffing/tropical/staffing_budget_code_mapping.jsonl": "e211c2b8572e07c832f4cbef2e3e4280349cb10132279812ff1cc47736d4195b",
+    "config/projects/tropical.json": "e2eb83cdf15bfbfa1f88705f664bc5a83b8940f3910edc12b2377306dbd2c217"
+  }
+}

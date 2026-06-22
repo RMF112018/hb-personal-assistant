@@ -1,0 +1,68 @@
+{
+  "project_key": "tropical",
+  "packages": [
+    {
+      "package_type": "context",
+      "present": true,
+      "package_name": "forecast_context_package_tropical_20260617_152650",
+      "manifest_present": true,
+      "consumption_status": "consumed"
+    },
+    {
+      "package_type": "intelligence",
+      "present": true,
+      "package_name": "forecast_accuracy_next_package_tropical_20260617_152655",
+      "manifest_present": true,
+      "consumption_status": "consumed"
+    },
+    {
+      "package_type": "monthly",
+      "present": true,
+      "package_name": "forecast_monthly_package_tropical_20260617_152658",
+      "manifest_present": true,
+      "consumption_status": "consumed"
+    },
+    {
+      "package_type": "probability",
+      "present": true,
+      "package_name": "forecast_probability_package_tropical_20260617_152659",
+      "manifest_present": true,
+      "consumption_status": "consumed"
+    },
+    {
+      "package_type": "history_informed",
+      "present": true,
+      "package_name": "forecast_history_informed_package_tropical_20260617_152656",
+      "manifest_present": true,
+      "consumption_status": "consumed"
+    },
+    {
+      "package_type": "cost_frequency",
+      "present": true,
+      "package_name": "forecast_cost_frequency_package_tropical_20260617_152657",
+      "manifest_present": true,
+      "consumption_status": "consumed"
+    },
+    {
+      "package_type": "crosswalk_v2",
+      "present": true,
+      "package_name": "forecast_analysis_package_tropical_crosswalk_v2_20260617_152654",
+      "manifest_present": true,
+      "consumption_status": "partially_consumed"
+    },
+    {
+      "package_type": "schedule_integrated",
+      "present": true,
+      "package_name": "schedule_integrated_forecast_package_tropical_20260617_152654",
+      "manifest_present": true,
+      "consumption_status": "partially_consumed"
+    },
+    {
+      "package_type": "staffing_plan",
+      "present": true,
+      "package_name": "forecast_staffing_plan_package_tropical_20260617_152657",
+      "manifest_present": true,
+      "consumption_status": "consumed"
+    }
+  ]
+}

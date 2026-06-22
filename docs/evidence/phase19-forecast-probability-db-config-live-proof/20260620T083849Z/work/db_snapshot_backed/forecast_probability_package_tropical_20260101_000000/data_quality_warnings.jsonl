@@ -1,0 +1,2 @@
+{"project_key": "tropical", "budget_code_key": null, "severity": "low", "message": "32 code(s) treated as near-complete (CTC<=$0.01): final fixed at actuals."}
+{"project_key": "tropical", "budget_code_key": null, "severity": "medium", "message": "5 code(s) hit the sigma cap; their upside spread is bounded by the cap."}

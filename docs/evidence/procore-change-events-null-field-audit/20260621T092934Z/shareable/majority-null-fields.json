@@ -1,0 +1,962 @@
+[
+  {
+    "blank_count": 0,
+    "column": "currency_configuration_currency_iso_code",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 1059,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 1059,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "deleted_at",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 1059,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 1059,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "external_data",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 1059,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 1059,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "parent_record_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 1059,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 1059,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "parent_record_id_hash",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 1059,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 1059,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "source",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 1059,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 1059,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "event_origin",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 5,
+    "fingerprints_skipped": false,
+    "missing_count": 1054,
+    "missing_pct": 99.527856,
+    "nonblank_count": 5,
+    "nonblank_pct": 0.472144,
+    "notnull_declared": false,
+    "null_count": 1054,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "event_origin_display_name",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 132,
+    "fingerprints_skipped": false,
+    "missing_count": 915,
+    "missing_pct": 86.402266,
+    "nonblank_count": 144,
+    "nonblank_pct": 13.597734,
+    "notnull_declared": false,
+    "null_count": 915,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "event_origin_origin_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 132,
+    "fingerprints_skipped": false,
+    "missing_count": 915,
+    "missing_pct": 86.402266,
+    "nonblank_count": 144,
+    "nonblank_pct": 13.597734,
+    "notnull_declared": false,
+    "null_count": 915,
+    "numericish_sample_count_max_5000": 144,
+    "pk": 0,
+    "table": "procore_ep_change_events",
+    "total_rows": 1059
+  },
+  {
+    "blank_count": 0,
+    "column": "parent_item_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 2352,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 2352,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_attachments",
+    "total_rows": 2352
+  },
+  {
+    "blank_count": 0,
+    "column": "payload_sidecar_json",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": true,
+    "missing_count": 2352,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 2352,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_attachments",
+    "total_rows": 2352
+  },
+  {
+    "blank_count": 0,
+    "column": "budget_impact_budget_change",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 2829,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 2829,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "budget_impact_budget_modification",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 2829,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 2829,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_commitment_currency_configuration_base_currency_iso_code",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 2829,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 2829,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_commitment_currency_configuration_currency_exchange_rate",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 2829,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 2829,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_commitment_currency_configuration_currency_iso_code",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 2829,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 2829,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_non_commitment_amount",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 2829,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 2829,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_request_for_quote_currency_configuration_base_currency_iso_code",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 2829,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 2829,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_request_for_quote_currency_configuration_currency_exchange_rate",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 2829,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 2829,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_request_for_quote_currency_configuration_currency_iso_code",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 2829,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 2829,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "currency_configuration_currency_iso_code",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 2829,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 2829,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "deleted_at",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 2829,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 2829,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "parent_item_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 2829,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 2829,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "revenue_impact_change_order_currency_configuration_base_currency_iso_code",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 2829,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 2829,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "revenue_impact_change_order_currency_configuration_currency_exchange_rate",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 2829,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 2829,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "revenue_impact_change_order_currency_configuration_currency_iso_code",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 2829,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 2829,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "budget_impact_budget_modification_amount",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 9,
+    "fingerprints_skipped": false,
+    "missing_count": 2820,
+    "missing_pct": 99.681866,
+    "nonblank_count": 9,
+    "nonblank_pct": 0.318134,
+    "notnull_declared": false,
+    "null_count": 2820,
+    "numericish_sample_count_max_5000": 9,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "budget_impact_budget_modification_budget_modification_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 9,
+    "fingerprints_skipped": false,
+    "missing_count": 2820,
+    "missing_pct": 99.681866,
+    "nonblank_count": 9,
+    "nonblank_pct": 0.318134,
+    "notnull_declared": false,
+    "null_count": 2820,
+    "numericish_sample_count_max_5000": 9,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "budget_impact_budget_modification_notes",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 9,
+    "fingerprints_skipped": false,
+    "missing_count": 2820,
+    "missing_pct": 99.681866,
+    "nonblank_count": 9,
+    "nonblank_pct": 0.318134,
+    "notnull_declared": false,
+    "null_count": 2820,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "budget_impact_budget_modification_transfer_from_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 3,
+    "fingerprints_skipped": false,
+    "missing_count": 2820,
+    "missing_pct": 99.681866,
+    "nonblank_count": 9,
+    "nonblank_pct": 0.318134,
+    "notnull_declared": false,
+    "null_count": 2820,
+    "numericish_sample_count_max_5000": 9,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "budget_impact_budget_modification_transfer_from_name",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 3,
+    "fingerprints_skipped": false,
+    "missing_count": 2820,
+    "missing_pct": 99.681866,
+    "nonblank_count": 9,
+    "nonblank_pct": 0.318134,
+    "notnull_declared": false,
+    "null_count": 2820,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "budget_impact_budget_modification_transfer_to_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 6,
+    "fingerprints_skipped": false,
+    "missing_count": 2820,
+    "missing_pct": 99.681866,
+    "nonblank_count": 9,
+    "nonblank_pct": 0.318134,
+    "notnull_declared": false,
+    "null_count": 2820,
+    "numericish_sample_count_max_5000": 9,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "budget_impact_budget_modification_transfer_to_name",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 6,
+    "fingerprints_skipped": false,
+    "missing_count": 2820,
+    "missing_pct": 99.681866,
+    "nonblank_count": 9,
+    "nonblank_pct": 0.318134,
+    "notnull_declared": false,
+    "null_count": 2820,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_request_for_quote_latest_quote_amount",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 100,
+    "fingerprints_skipped": false,
+    "missing_count": 2657,
+    "missing_pct": 93.920113,
+    "nonblank_count": 172,
+    "nonblank_pct": 6.079887,
+    "notnull_declared": false,
+    "null_count": 2657,
+    "numericish_sample_count_max_5000": 172,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_request_for_quote_latest_quote_amount_project_currency",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 100,
+    "fingerprints_skipped": false,
+    "missing_count": 2657,
+    "missing_pct": 93.920113,
+    "nonblank_count": 172,
+    "nonblank_pct": 6.079887,
+    "notnull_declared": false,
+    "null_count": 2657,
+    "numericish_sample_count_max_5000": 172,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_request_for_quote_contract_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 41,
+    "fingerprints_skipped": false,
+    "missing_count": 2539,
+    "missing_pct": 89.749028,
+    "nonblank_count": 290,
+    "nonblank_pct": 10.250972,
+    "notnull_declared": false,
+    "null_count": 2539,
+    "numericish_sample_count_max_5000": 290,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_request_for_quote_days_in_stage",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 77,
+    "fingerprints_skipped": false,
+    "missing_count": 2539,
+    "missing_pct": 89.749028,
+    "nonblank_count": 290,
+    "nonblank_pct": 10.250972,
+    "notnull_declared": false,
+    "null_count": 2539,
+    "numericish_sample_count_max_5000": 290,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_request_for_quote_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 290,
+    "fingerprints_skipped": false,
+    "missing_count": 2539,
+    "missing_pct": 89.749028,
+    "nonblank_count": 290,
+    "nonblank_pct": 10.250972,
+    "notnull_declared": false,
+    "null_count": 2539,
+    "numericish_sample_count_max_5000": 290,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_request_for_quote_in_status_since",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 265,
+    "fingerprints_skipped": false,
+    "missing_count": 2539,
+    "missing_pct": 89.749028,
+    "nonblank_count": 290,
+    "nonblank_pct": 10.250972,
+    "notnull_declared": false,
+    "null_count": 2539,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_request_for_quote_number",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 28,
+    "fingerprints_skipped": false,
+    "missing_count": 2539,
+    "missing_pct": 89.749028,
+    "nonblank_count": 290,
+    "nonblank_pct": 10.250972,
+    "notnull_declared": false,
+    "null_count": 2539,
+    "numericish_sample_count_max_5000": 290,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_request_for_quote_status",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 5,
+    "fingerprints_skipped": false,
+    "missing_count": 2539,
+    "missing_pct": 89.749028,
+    "nonblank_count": 290,
+    "nonblank_pct": 10.250972,
+    "notnull_declared": false,
+    "null_count": 2539,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_request_for_quote_title",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 93,
+    "fingerprints_skipped": false,
+    "missing_count": 2539,
+    "missing_pct": 89.749028,
+    "nonblank_count": 290,
+    "nonblank_pct": 10.250972,
+    "notnull_declared": false,
+    "null_count": 2539,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "cost_impact_estimate_unit_of_measure",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 8,
+    "fingerprints_skipped": false,
+    "missing_count": 2083,
+    "missing_pct": 73.630258,
+    "nonblank_count": 746,
+    "nonblank_pct": 26.369742,
+    "notnull_declared": false,
+    "null_count": 2083,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "latest_revenue_values_uom_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 8,
+    "fingerprints_skipped": false,
+    "missing_count": 2008,
+    "missing_pct": 70.979145,
+    "nonblank_count": 821,
+    "nonblank_pct": 29.020855,
+    "notnull_declared": false,
+    "null_count": 2008,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "latest_revenue_values_uom_name",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 8,
+    "fingerprints_skipped": false,
+    "missing_count": 2008,
+    "missing_pct": 70.979145,
+    "nonblank_count": 821,
+    "nonblank_pct": 29.020855,
+    "notnull_declared": false,
+    "null_count": 2008,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "latest_cost_values_uom_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 8,
+    "fingerprints_skipped": false,
+    "missing_count": 2007,
+    "missing_pct": 70.943796,
+    "nonblank_count": 822,
+    "nonblank_pct": 29.056204,
+    "notnull_declared": false,
+    "null_count": 2007,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "latest_cost_values_uom_name",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 8,
+    "fingerprints_skipped": false,
+    "missing_count": 2007,
+    "missing_pct": 70.943796,
+    "nonblank_count": 822,
+    "nonblank_pct": 29.056204,
+    "notnull_declared": false,
+    "null_count": 2007,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_change_items",
+    "total_rows": 2829
+  },
+  {
+    "blank_count": 0,
+    "column": "parent_item_id",
+    "corresponding_endpoint_keys": [
+      "change-events"
+    ],
+    "declared_type": "TEXT",
+    "distinct_nonblank_count": 0,
+    "fingerprints_skipped": false,
+    "missing_count": 2154,
+    "missing_pct": 100.0,
+    "nonblank_count": 0,
+    "nonblank_pct": 0.0,
+    "notnull_declared": false,
+    "null_count": 2154,
+    "numericish_sample_count_max_5000": 0,
+    "pk": 0,
+    "table": "procore_ep_change_events_markup_items",
+    "total_rows": 2154
+  }
+]

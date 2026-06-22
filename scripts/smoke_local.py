@@ -87,6 +87,8 @@ UI_SURFACES = [
     ("GET", "admin", "/api/admin/retrieval-ai-quality", None),
     ("GET", "admin", "/api/admin/permissions-governance", None),
     ("GET", "admin", "/api/admin/data-completeness", None),
+    ("GET", "admin", "/api/admin/schema/status", None),
+    ("POST", "admin", "/api/admin/schema/migrate", None),
 
     # Daily brief status (used on Today/Settings)
     ("GET", "viewer", "/api/daily-brief/status", None),
@@ -102,9 +104,71 @@ def _client():
     SQLiteMigrator(db_path=db).apply()
     return TestClient(create_app(db_path=db)), tmp
 
+SENSITIVE_KEY_EXACT = {
+    "access_token",
+    "refresh_token",
+    "id_token",
+    "client_secret",
+    "authorization",
+    "bearer",
+    "raw_body",
+    "raw_payload",
+    "signed_url",
+    "download_url",
+    "cache_path",
+}
+
+SENSITIVE_VALUE_MARKERS = (
+    "BEGIN PRIVATE KEY",
+    "-----BEGIN",
+    "Bearer ",
+    "eyJ",  # common JWT prefix; safe as a high-signal value marker only
+)
+
+
 def _has_raw(payload: dict) -> list[str]:
-    s = json.dumps(payload, default=str)
-    return [tok for tok in FORBIDDEN if tok in s]
+    """Structured no-raw smoke check.
+
+    Flags secret-bearing keys and high-signal secret value markers.
+    Does not fail on safe guardrail prose like "no tokens or secrets",
+    or boolean metadata such as token_cache_present=false.
+    """
+
+    hits: list[str] = []
+
+    def walk(obj, path: str = "") -> None:
+        if isinstance(obj, dict):
+            for k, v in obj.items():
+                key = str(k)
+                key_l = key.lower()
+                child_path = f"{path}.{key}" if path else key
+
+                if key_l in SENSITIVE_KEY_EXACT:
+                    hits.append(child_path)
+
+                # Safe metadata fields are allowed when they expose only bool/null/status,
+                # e.g. token_cache_present=false or keychain_secret_present=false.
+                if ("token" in key_l or "secret" in key_l) and key_l not in {
+                    "token_cache_present",
+                    "keychain_secret_present",
+                    "no_tokens_or_secrets",
+                }:
+                    if v not in (None, False, "", "not_present", "absent", "redacted"):
+                        hits.append(child_path)
+
+                walk(v, child_path)
+
+        elif isinstance(obj, list):
+            for i, v in enumerate(obj):
+                walk(v, f"{path}[{i}]")
+
+        elif isinstance(obj, str):
+            for marker in SENSITIVE_VALUE_MARKERS:
+                if marker in obj:
+                    hits.append(path or "<value>")
+
+    walk(payload)
+    return sorted(set(hits))
 
 def main() -> int:
     print("=== PROMPT 23 LOCAL SMOKE HARNESS ===")

@@ -5,9 +5,9 @@ variables (``HB_FORECAST_*``) that are only ever set transiently in tests/smokes
 app serves no real data. This module adds a persistent app-support JSON settings file as a third
 resolution layer **behind** the env vars and provides:
 
-  - per-root resolvers with precedence **explicit arg > env var > settings-file > None** (env must
-    win so every existing test that ``monkeypatch.setenv(...)`` then constructs a service with no
-    args stays green; ``None`` at the bottom preserves today's fail-closed → 503 behaviour);
+  - per-root resolvers with precedence **explicit arg > env var > settings-file > managed_default >
+    None** (env must win so every existing test that ``monkeypatch.setenv(...)`` then constructs a
+    service with no args stays green);
   - ``build_runtime_status`` — a **redaction-safe** per-root status payload (booleans + coded
     enums only, never path strings, so it passes ``find_redaction_leaks``);
   - ``read_runtime_config_admin`` — the raw configured paths (admin-only echo; the single
@@ -90,11 +90,22 @@ class ForecastRuntimeConfigError(RuntimeError):
 # -- settings file (mirrors daily_brief.py) -----------------------------------
 
 
+_WRITABLE_KEYS = (
+    "package_roots",
+    "data_root",
+    "runs_root",
+    "eval_root",
+    "db_path",
+    "cfr_src",
+    "config_edit_root",
+)
+
+
 def _config_path() -> Path:
     pp = PathPolicy()
-    base = pp.get_app_support() / "analytics"
-    base.mkdir(parents=True, exist_ok=True)
-    return base / _CONFIG_NAME
+    path = pp.get_forecast_runtime_config_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    return path
 
 
 def _load_config() -> dict[str, Any]:
@@ -138,7 +149,87 @@ def _is_under(child: Path, parent: Path) -> bool:
         return True  # fail closed
 
 
-# -- resolvers (precedence: explicit > env > settings-file > None) -------------
+# -- managed defaults (app-support layout) --------------------------------------
+
+
+def managed_forecast_paths() -> dict[str, Any]:
+    """Canonical app-managed forecast paths (server-side only; never in status payloads)."""
+    pp = PathPolicy()
+    return {
+        "package_roots": [str(pp.get_forecast_packages_dir())],
+        "data_root": str(pp.get_forecast_data_dir()),
+        "runs_root": str(pp.get_forecast_runs_dir()),
+        "eval_root": str(pp.get_forecast_evaluations_dir()),
+        "config_edit_root": str(pp.get_forecast_config_proposals_dir()),
+        "db_path": str(pp.get_db_path()),
+    }
+
+
+def build_managed_defaults_payload() -> dict[str, Any]:
+    """Settings-file payload for admin reset (path keys only)."""
+    managed = managed_forecast_paths()
+    return {k: managed[k] for k in _WRITABLE_KEYS if k in managed}
+
+
+def _managed_package_roots() -> list[str]:
+    return list(managed_forecast_paths()["package_roots"])
+
+
+def _env_set(env_key: str) -> bool:
+    val = os.environ.get(env_key)
+    return val is not None and str(val).strip() != ""
+
+
+def seed_runtime_config_if_incomplete() -> list[str]:
+    """Persist app-managed defaults for roots missing from env and settings file."""
+    cfg = _load_config()
+    managed = managed_forecast_paths()
+    seeded: list[str] = []
+
+    if not _env_set("HB_FORECAST_PACKAGE_ROOTS"):
+        env_roots = resolve_package_roots_from_env()
+        if not env_roots and not [x for x in (cfg.get("package_roots") or []) if x]:
+            cfg["package_roots"] = managed["package_roots"]
+            seeded.append("package_roots")
+
+    env_key_map = (
+        (ENV_DATA_ROOT, "data_root"),
+        (ENV_RUNS_ROOT, "runs_root"),
+        (ENV_EVAL_ROOT, "eval_root"),
+        (ENV_DB_PATH, "db_path"),
+        (ENV_CONFIG_EDIT_ROOT, "config_edit_root"),
+    )
+    for env_key, cfg_key in env_key_map:
+        if _env_set(env_key):
+            continue
+        if cfg.get(cfg_key):
+            continue
+        cfg[cfg_key] = managed[cfg_key]
+        seeded.append(cfg_key)
+
+    if seeded:
+        cfg["schema_version"] = DEFAULT_CONFIG["schema_version"]
+        _save_config(cfg)
+    return seeded
+
+
+def reset_runtime_config_to_managed_defaults() -> dict[str, Any]:
+    """Overwrite settings-file path keys with app-managed defaults (env still wins at runtime)."""
+    cfg = _load_config()
+    managed = managed_forecast_paths()
+    for key in _WRITABLE_KEYS:
+        if key == "package_roots":
+            cfg[key] = managed["package_roots"]
+        elif key in managed:
+            cfg[key] = managed[key]
+        elif key == "cfr_src":
+            cfg[key] = None
+    cfg["schema_version"] = DEFAULT_CONFIG["schema_version"]
+    _save_config(cfg)
+    return build_runtime_status()
+
+
+# -- resolvers (precedence: explicit > env > settings-file > managed_default) --
 
 
 def resolve_package_roots(explicit: list[str] | None = None) -> list[str]:
@@ -148,24 +239,46 @@ def resolve_package_roots(explicit: list[str] | None = None) -> list[str]:
     env = resolve_package_roots_from_env()
     if env:
         return env
-    settings = _load_config().get("package_roots") or []
-    return [str(x) for x in settings if x]
+    settings = [str(x) for x in (_load_config().get("package_roots") or []) if x]
+    if settings:
+        return settings
+    return _managed_package_roots()
 
 
 def resolve_data_root(explicit: str | None = None) -> str | None:
-    return _first(explicit, os.environ.get(ENV_DATA_ROOT), _load_config().get("data_root"))
+    return _first(
+        explicit,
+        os.environ.get(ENV_DATA_ROOT),
+        _load_config().get("data_root"),
+        managed_forecast_paths()["data_root"],
+    )
 
 
 def resolve_runs_root(explicit: str | None = None) -> str | None:
-    return _first(explicit, os.environ.get(ENV_RUNS_ROOT), _load_config().get("runs_root"))
+    return _first(
+        explicit,
+        os.environ.get(ENV_RUNS_ROOT),
+        _load_config().get("runs_root"),
+        managed_forecast_paths()["runs_root"],
+    )
 
 
 def resolve_eval_root_value(explicit: str | None = None) -> str | None:
-    return _first(explicit, os.environ.get(ENV_EVAL_ROOT), _load_config().get("eval_root"))
+    return _first(
+        explicit,
+        os.environ.get(ENV_EVAL_ROOT),
+        _load_config().get("eval_root"),
+        managed_forecast_paths()["eval_root"],
+    )
 
 
 def resolve_db_path(explicit: str | None = None) -> str | None:
-    return _first(explicit, os.environ.get(ENV_DB_PATH), _load_config().get("db_path"))
+    return _first(
+        explicit,
+        os.environ.get(ENV_DB_PATH),
+        _load_config().get("db_path"),
+        managed_forecast_paths()["db_path"],
+    )
 
 
 def resolve_cfr_src(explicit: str | None = None) -> str | None:
@@ -174,8 +287,20 @@ def resolve_cfr_src(explicit: str | None = None) -> str | None:
 
 def resolve_config_edit_root_value(explicit: str | None = None) -> str | None:
     return _first(
-        explicit, os.environ.get(ENV_CONFIG_EDIT_ROOT), _load_config().get("config_edit_root")
+        explicit,
+        os.environ.get(ENV_CONFIG_EDIT_ROOT),
+        _load_config().get("config_edit_root"),
+        managed_forecast_paths()["config_edit_root"],
     )
+
+
+def is_managed_db_path(db_path: str | None) -> bool:
+    if not db_path:
+        return False
+    try:
+        return Path(db_path).resolve() == PathPolicy().get_db_path().resolve()
+    except OSError:
+        return False
 
 
 def resolve_promotion_enabled(explicit: bool | str | None = None) -> bool:
@@ -278,14 +403,70 @@ def _db_advisory(raw: str | None) -> dict[str, Any]:
         conn.close()
 
 
-def _source(env_val: Any, settings_val: Any, *, default: bool = False) -> str | None:
+def _source(
+    env_val: Any,
+    settings_val: Any,
+    *,
+    default: bool = False,
+    managed: bool = False,
+) -> str | None:
     if env_val:
         return "env"
     if settings_val:
         return "settings_file"
+    if managed:
+        return "managed_default"
     if default:
         return "default"
     return None
+
+
+def _package_settings_nonempty(settings: list[str]) -> bool:
+    return bool(settings)
+
+
+def _settings_match_managed() -> dict[str, bool]:
+    """Whether persisted settings-file values equal the canonical managed paths."""
+    cfg = _load_config()
+    managed = managed_forecast_paths()
+    pkg = [str(x) for x in (cfg.get("package_roots") or []) if x]
+    return {
+        "package_roots": pkg == managed["package_roots"],
+        "data_root": cfg.get("data_root") == managed["data_root"],
+        "runs_root": cfg.get("runs_root") == managed["runs_root"],
+        "eval_root": cfg.get("eval_root") == managed["eval_root"],
+        "db_path": cfg.get("db_path") == managed["db_path"],
+        "config_edit_root": cfg.get("config_edit_root") == managed["config_edit_root"],
+    }
+
+
+def _storage_mode(roots: dict[str, Any]) -> str:
+    path_keys = (
+        "package_roots",
+        "data_root",
+        "runs_root",
+        "eval_root",
+        "db_path",
+        "config_edit_root",
+    )
+    managed_match = _settings_match_managed()
+
+    def _is_app_managed(key: str) -> bool:
+        source = roots.get(key, {}).get("source")
+        if source == "managed_default":
+            return True
+        return source == "settings_file" and managed_match.get(key, False)
+
+    if all(_is_app_managed(k) for k in path_keys):
+        return "app_managed"
+    if any(roots.get(k, {}).get("source") == "env" for k in path_keys):
+        return "custom"
+    if any(
+        roots.get(k, {}).get("source") == "settings_file" and not managed_match.get(k, False)
+        for k in path_keys
+    ):
+        return "custom"
+    return "app_managed"
 
 
 # -- status (redaction-safe) --------------------------------------------------
@@ -297,25 +478,27 @@ def build_runtime_status() -> dict[str, Any]:
 
     pkg_env = resolve_package_roots_from_env()
     pkg_settings = [str(x) for x in (cfg.get("package_roots") or []) if x]
-    pkg_raw = pkg_env or pkg_settings
+    pkg_managed = _managed_package_roots()
+    pkg_raw = pkg_env or pkg_settings or pkg_managed
     pkg_blocker = (
         BLOCKER_NOT_CONFIGURED
         if not pkg_raw
         else next((b for b in (_existing_dir_blocker(r) for r in pkg_raw) if b), None)
     )
+    pkg_using_managed = not pkg_env and not _package_settings_nonempty(pkg_settings)
 
     data_env, data_settings = os.environ.get(ENV_DATA_ROOT), cfg.get("data_root")
-    data_raw = _first(data_env, data_settings)
+    data_raw = resolve_data_root()
     runs_env, runs_settings = os.environ.get(ENV_RUNS_ROOT), cfg.get("runs_root")
-    runs_raw = _first(runs_env, runs_settings)
+    runs_raw = resolve_runs_root()
     eval_env, eval_settings = os.environ.get(ENV_EVAL_ROOT), cfg.get("eval_root")
-    eval_raw = _first(eval_env, eval_settings)
+    eval_raw = resolve_eval_root_value()
     db_env, db_settings = os.environ.get(ENV_DB_PATH), cfg.get("db_path")
-    db_raw = _first(db_env, db_settings)
+    db_raw = resolve_db_path()
     cfr_env, cfr_settings = os.environ.get(ENV_CFR_SRC), cfg.get("cfr_src")
     cfr_raw = _first(cfr_env, cfr_settings)
     cedit_env, cedit_settings = os.environ.get(ENV_CONFIG_EDIT_ROOT), cfg.get("config_edit_root")
-    cedit_raw = _first(cedit_env, cedit_settings)
+    cedit_raw = resolve_config_edit_root_value()
 
     data_blocker = _existing_dir_blocker(data_raw)
     runs_blocker = _write_root_blocker(runs_raw, data_raw)
@@ -337,17 +520,33 @@ def build_runtime_status() -> dict[str, Any]:
     roots = {
         "package_roots": _root(
             pkg_blocker,
-            _source(pkg_env, pkg_settings),
+            _source(pkg_env, pkg_settings, managed=pkg_using_managed),
             count=len(pkg_raw),
         ),
-        "data_root": _root(data_blocker, _source(data_env, data_settings)),
-        "runs_root": _root(runs_blocker, _source(runs_env, runs_settings)),
-        "eval_root": _root(eval_blocker, _source(eval_env, eval_settings)),
+        "data_root": _root(
+            data_blocker,
+            _source(data_env, data_settings, managed=not data_env and not data_settings),
+        ),
+        "runs_root": _root(
+            runs_blocker,
+            _source(runs_env, runs_settings, managed=not runs_env and not runs_settings),
+        ),
+        "eval_root": _root(
+            eval_blocker,
+            _source(eval_env, eval_settings, managed=not eval_env and not eval_settings),
+        ),
         # db_path carries a redaction-safe advisory (ints only) so onboarding can confirm the DB
         # actually holds config content, not just that the file exists.
-        "db_path": _root(db_blocker, _source(db_env, db_settings), **_db_advisory(db_raw)),
+        "db_path": _root(
+            db_blocker,
+            _source(db_env, db_settings, managed=not db_env and not db_settings),
+            **_db_advisory(db_raw),
+        ),
         "cfr_src": _root(cfr_blocker, _source(cfr_env, cfr_settings, default=True)),
-        "config_edit_root": _root(config_edit_blocker, _source(cedit_env, cedit_settings)),
+        "config_edit_root": _root(
+            config_edit_blocker,
+            _source(cedit_env, cedit_settings, managed=not cedit_env and not cedit_settings),
+        ),
     }
 
     surfaces_ready = {
@@ -373,6 +572,7 @@ def build_runtime_status() -> dict[str, Any]:
 
     return {
         "surface": _SURFACE,
+        "storage_mode": _storage_mode(roots),
         "roots": roots,
         "surfaces_ready": surfaces_ready,
         "promotion": {"enabled": resolve_promotion_enabled()},
@@ -382,6 +582,7 @@ def build_runtime_status() -> dict[str, Any]:
             "local_first": True,
             "no_path_strings_in_status": True,
             "settings_layer_behind_env": True,
+            "managed_defaults_available": True,
         },
     }
 
@@ -404,16 +605,6 @@ def read_runtime_config_admin() -> dict[str, Any]:
 
 
 # -- write (fail-closed) ------------------------------------------------------
-
-_WRITABLE_KEYS = (
-    "package_roots",
-    "data_root",
-    "runs_root",
-    "eval_root",
-    "db_path",
-    "cfr_src",
-    "config_edit_root",
-)
 
 
 def save_runtime_config(updates: dict[str, Any]) -> dict[str, Any]:

@@ -1,0 +1,65 @@
+{
+  "entities": {
+    "attachments": {
+      "distinct_id_only": 2334,
+      "distinct_scoped_company_project_parent_id": 2352,
+      "id_only_duplicate_key_count": 1210,
+      "max_rows_per_id_only_key": 13,
+      "max_rows_per_scoped_key": 13,
+      "raw_values_emitted": false,
+      "scoped_duplicate_key_count": 1203,
+      "total_items_seen": 6616
+    },
+    "budget_code_segment_items": {
+      "distinct_id_only": 201,
+      "distinct_scoped_company_project_parent_id": 8363,
+      "id_only_duplicate_key_count": 193,
+      "max_rows_per_id_only_key": 6977,
+      "max_rows_per_scoped_key": 36,
+      "raw_values_emitted": false,
+      "scoped_duplicate_key_count": 3977,
+      "total_items_seen": 24429
+    },
+    "change_events": {
+      "distinct_id_only": 1059,
+      "distinct_scoped_company_project_parent_id": 1059,
+      "id_only_duplicate_key_count": 592,
+      "max_rows_per_id_only_key": 13,
+      "max_rows_per_scoped_key": 13,
+      "raw_values_emitted": false,
+      "scoped_duplicate_key_count": 592,
+      "total_items_seen": 3860
+    },
+    "change_items": {
+      "distinct_id_only": 2829,
+      "distinct_scoped_company_project_parent_id": 2829,
+      "id_only_duplicate_key_count": 1363,
+      "max_rows_per_id_only_key": 13,
+      "max_rows_per_scoped_key": 13,
+      "raw_values_emitted": false,
+      "scoped_duplicate_key_count": 1363,
+      "total_items_seen": 8143
+    },
+    "markup_items": {
+      "distinct_id_only": 2154,
+      "distinct_scoped_company_project_parent_id": 2154,
+      "id_only_duplicate_key_count": 1032,
+      "max_rows_per_id_only_key": 13,
+      "max_rows_per_scoped_key": 13,
+      "raw_values_emitted": false,
+      "scoped_duplicate_key_count": 1032,
+      "total_items_seen": 9354
+    },
+    "wbs_code_segment_items": {
+      "distinct_id_only": 11,
+      "distinct_scoped_company_project_parent_id": 6322,
+      "id_only_duplicate_key_count": 11,
+      "max_rows_per_id_only_key": 6987,
+      "max_rows_per_scoped_key": 13,
+      "raw_values_emitted": false,
+      "scoped_duplicate_key_count": 2959,
+      "total_items_seen": 28062
+    }
+  },
+  "raw_current_rows": 3860
+}

@@ -194,3 +194,12 @@ config/config.yml
 # Local-only read-only audit/evidence outputs and scratch (never committed).
 /local_audit_outputs/
 /tmp/
+
+# Local DB backups / cutover restore points
+docs/evidence/**/backups/*.sqlite
+docs/evidence/**/backups/*.sqlite-*
+docs/evidence/**/work/*.sqlite
+docs/evidence/**/work/*.sqlite-shm
+docs/evidence/**/work/*.sqlite-wal
+docs/evidence/**/.DS_Store
+*.sqlite.backup

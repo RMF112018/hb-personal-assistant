@@ -1,6 +1,6 @@
 {
   "schema": "table_lifecycle_status_contract/v1",
-  "source": "Seeded from docs/evidence/construction-intelligence-phase-07a-data-quality/01-table-lifecycle-inventory.json (Phase 07A Prompt 00 manual inventory); operationalized for hb-assistant construction-agent data-quality table-inventory (Phase 07B Prompt 01); refreshed to map the V20/V21 Phase 07A data-quality and relationship tables that post-dated the manual inventory (Phase 07C Prompt 01 remediation); extended with the ten V25 Phase 07D cross-source relationship and meeting-prep substrate tables (Phase 07D Prompt 02); extended with the twenty-one V26 Phase 08A second-brain runtime substrate tables (Phase 08A Prompt 02); extended with the nineteen V38 Phase 09 retrieval/memory/agent metadata substrate tables (Phase 09 Prompt 12 \u2014 schema + contracts + table lifecycle; ships empty/placeholder_deferred); extended with the three V39 Phase 09 review-burden tables (Prompt 37 review burden reduction; advisory promotion policy; ships empty/placeholder_deferred); extended with the one V45 Phase 10 email follow-up raw enrichment table (email_followup_enrichments; review-safe model-enriched follow-up metadata; ships empty/placeholder_deferred); extended with the forty-seven V46 Procore structured analytics foundation tables (landing, capture control, endpoint-family bronze, and dimensions; ships empty/placeholder_deferred until local reprocessing or capture). ; extended with the seventy-eight V47 Procore endpoint-specific structured projection tables (procore_ep_* primary + child/detail tables derived from the committed projection registry; ships empty/placeholder_deferred until projection replay from full raw payloads). Extended with the thirteen V49 email/calendar structured projection + receipt tables (email_raw_*/calendar_raw_*/email_calendar_* + raw_content_source_quality_snapshots; build_v49_ddl); the three V55 Procore endpoint budget-detail tables (operational/populated from the budget-detail read model); the sixteen V50-V54 Phase 10 daily-brief/candidate/ranking tables (ships empty/placeholder_deferred); and the five V58 forecast DB-transition foundation tables (forecast_projects/runs/source_ingestions/package_manifests/validation_events; operational_empty_expected, intentionally empty until Phase 2+); extended with the three V59 forecast DB-transition source-domain tables (forecast_budget_details/cost_entries/monthly_actuals_by_budget_code; Phase 3 JSON/JSONL projection + DB read parity; operational_empty_expected, intentionally empty until projection is applied; forecast behavior remains file-backed); extended with the four V60 forecast DB-transition config-registry tables (forecast_config_sources/config_items/config_snapshots/config_snapshot_items; Phase 16 governed config import/export/snapshot/materialize; operational_empty_expected, intentionally empty until config is imported; forecast behavior remains file-backed); extended with the eight V61 forecast-UI external-forecast evaluation tables (forecast_external_forecasts/external_forecast_rows/external_forecast_mappings/accuracy_results/comparison_results/anomaly_findings/review_items/evidence_packages; Phase 4 operator-supplied external-forecast upload + evaluation against actuals/budget/ERP-JTD/model/prior baselines, distinguished from model forecasts via forecast_origin; operational_empty_expected, intentionally empty on the live DB — real rows live only in an isolated per-run eval SQLite; forecast behavior remains file-backed).",
+  "source": "Seeded from docs/evidence/construction-intelligence-phase-07a-data-quality/01-table-lifecycle-inventory.json (Phase 07A Prompt 00 manual inventory); operationalized for hb-assistant construction-agent data-quality table-inventory (Phase 07B Prompt 01); refreshed to map the V20/V21 Phase 07A data-quality and relationship tables that post-dated the manual inventory (Phase 07C Prompt 01 remediation); extended with the ten V25 Phase 07D cross-source relationship and meeting-prep substrate tables (Phase 07D Prompt 02); extended with the twenty-one V26 Phase 08A second-brain runtime substrate tables (Phase 08A Prompt 02); extended with the nineteen V38 Phase 09 retrieval/memory/agent metadata substrate tables (Phase 09 Prompt 12 \u2014 schema + contracts + table lifecycle; ships empty/placeholder_deferred); extended with the three V39 Phase 09 review-burden tables (Prompt 37 review burden reduction; advisory promotion policy; ships empty/placeholder_deferred); extended with the one V45 Phase 10 email follow-up raw enrichment table (email_followup_enrichments; review-safe model-enriched follow-up metadata; ships empty/placeholder_deferred); extended with the forty-seven V46 Procore structured analytics foundation tables (landing, capture control, endpoint-family bronze, and dimensions; ships empty/placeholder_deferred until local reprocessing or capture). ; extended with the seventy-eight V47 Procore endpoint-specific structured projection tables (procore_ep_* primary + child/detail tables derived from the committed projection registry; ships empty/placeholder_deferred until projection replay from full raw payloads). Extended with the thirteen V49 email/calendar structured projection + receipt tables (email_raw_*/calendar_raw_*/email_calendar_* + raw_content_source_quality_snapshots; build_v49_ddl); the three V55 Procore endpoint budget-detail tables (operational/populated from the budget-detail read model); the sixteen V50-V54 Phase 10 daily-brief/candidate/ranking tables (ships empty/placeholder_deferred); and the five V58 forecast DB-transition foundation tables (forecast_projects/runs/source_ingestions/package_manifests/validation_events; operational_empty_expected, intentionally empty until Phase 2+); extended with the three V59 forecast DB-transition source-domain tables (forecast_budget_details/cost_entries/monthly_actuals_by_budget_code; Phase 3 JSON/JSONL projection + DB read parity; operational_empty_expected, intentionally empty until projection is applied; forecast behavior remains file-backed); extended with the four V60 forecast DB-transition config-registry tables (forecast_config_sources/config_items/config_snapshots/config_snapshot_items; Phase 16 governed config import/export/snapshot/materialize; operational_empty_expected, intentionally empty until config is imported; forecast behavior remains file-backed); extended with the eight V61 forecast-UI external-forecast evaluation tables (forecast_external_forecasts/external_forecast_rows/external_forecast_mappings/accuracy_results/comparison_results/anomaly_findings/review_items/evidence_packages; Phase 4 operator-supplied external-forecast upload + evaluation against actuals/budget/ERP-JTD/model/prior baselines, distinguished from model forecasts via forecast_origin; operational_empty_expected, intentionally empty on the live DB \u2014 real rows live only in an isolated per-run eval SQLite; forecast behavior remains file-backed).; extended with the thirteen V62 schedule-intelligence tables (schedule_file_imports, procore_ep_schedule_activities, relationships, WBS, calendars, codes, UDFs, version diffs, quality findings, cost mapping runs/candidates/distributions, weighting results; operational_empty_expected until import or Procore sync projection).",
   "statuses": [
     "operational_populated",
     "operational_empty_expected",
@@ -18,7 +18,7 @@
     "phase_owner",
     "blocking_for_phase"
   ],
-  "table_count": 399,
+  "table_count": 422,
   "tables": {
     "construction_data_quality_runs": {
       "table_family": "data_quality_v20v21",
@@ -3610,6 +3610,213 @@
       "blocking_for_phase": "none",
       "v": "V61",
       "notes": "V61 evidence-package ledger (one row per emitted external-forecast evaluation package). Intentionally empty on the live DB; rows live in the isolated per-run eval SQLite only."
+    },
+    "schedule_file_imports": {
+      "table_family": "schedule_intelligence_v62",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "schedule_intelligence",
+      "blocking_for_phase": "none",
+      "v": "V62",
+      "notes": "Tracks uploaded XML/XER/CSV and Procore API import batches."
+    },
+    "procore_ep_schedule_activities": {
+      "table_family": "schedule_intelligence_v62",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "schedule_intelligence",
+      "blocking_for_phase": "none",
+      "v": "V62",
+      "notes": "Canonical activity rows for Procore API and file imports."
+    },
+    "procore_ep_schedule_relationships": {
+      "table_family": "schedule_intelligence_v62",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "schedule_intelligence",
+      "blocking_for_phase": "none",
+      "v": "V62",
+      "notes": "Schedule logic relationships per version."
+    },
+    "procore_ep_schedule_wbs_nodes": {
+      "table_family": "schedule_intelligence_v62",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "schedule_intelligence",
+      "blocking_for_phase": "none",
+      "v": "V62",
+      "notes": "WBS hierarchy per schedule version."
+    },
+    "procore_ep_schedule_calendars": {
+      "table_family": "schedule_intelligence_v62",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "schedule_intelligence",
+      "blocking_for_phase": "none",
+      "v": "V62",
+      "notes": "Calendar definitions per schedule version."
+    },
+    "procore_ep_schedule_activity_code_assignments": {
+      "table_family": "schedule_intelligence_v62",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "schedule_intelligence",
+      "blocking_for_phase": "none",
+      "v": "V62",
+      "notes": "Activity code assignments for taxonomy/cost candidates."
+    },
+    "procore_ep_schedule_udf_values": {
+      "table_family": "schedule_intelligence_v62",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "schedule_intelligence",
+      "blocking_for_phase": "none",
+      "v": "V62",
+      "notes": "PMXML UDF values not normalized elsewhere."
+    },
+    "schedule_version_diffs": {
+      "table_family": "schedule_intelligence_v62",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "schedule_intelligence",
+      "blocking_for_phase": "none",
+      "v": "V62",
+      "notes": "Deterministic version-over-version deltas."
+    },
+    "schedule_quality_findings": {
+      "table_family": "schedule_intelligence_v62",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "schedule_intelligence",
+      "blocking_for_phase": "none",
+      "v": "V62",
+      "notes": "Deterministic schedule quality findings."
+    },
+    "schedule_cost_mapping_runs": {
+      "table_family": "schedule_intelligence_v62",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "schedule_intelligence",
+      "blocking_for_phase": "none",
+      "v": "V62",
+      "notes": "Operator-controlled cost mapping runs with objective selection."
+    },
+    "schedule_cost_mapping_candidates": {
+      "table_family": "schedule_intelligence_v62",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "schedule_intelligence",
+      "blocking_for_phase": "none",
+      "v": "V62",
+      "notes": "Advisory mapping candidates pending operator review."
+    },
+    "schedule_cost_distributions": {
+      "table_family": "schedule_intelligence_v62",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "schedule_intelligence",
+      "blocking_for_phase": "none",
+      "v": "V62",
+      "notes": "Analytical or true cost-loading distribution output."
+    },
+    "schedule_cost_weighting_results": {
+      "table_family": "schedule_intelligence_v62",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "schedule_intelligence",
+      "blocking_for_phase": "none",
+      "v": "V62",
+      "notes": "Advisory forecast weighting from approved mappings only."
+    },
+    "forecast_outputs": {
+      "table_family": "forecast_output_v63",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "forecast_db_transition",
+      "blocking_for_phase": "none",
+      "v": "V63",
+      "notes": "Per-run model-output header (one row per projected forecast run); distinct from v61 external-forecast evaluation."
+    },
+    "forecast_output_budget_codes": {
+      "table_family": "forecast_output_v63",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "forecast_db_transition",
+      "blocking_for_phase": "none",
+      "v": "V63",
+      "notes": "Per-budget-code recommendations projected from forecast_recommendations_by_budget_code.jsonl."
+    },
+    "forecast_output_monthly": {
+      "table_family": "forecast_output_v63",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "forecast_db_transition",
+      "blocking_for_phase": "none",
+      "v": "V63",
+      "notes": "Monthly forecast curve by budget code; projection deferred to a follow-on slice."
+    },
+    "forecast_output_probability": {
+      "table_family": "forecast_output_v63",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "forecast_db_transition",
+      "blocking_for_phase": "none",
+      "v": "V63",
+      "notes": "Probability bands (P10/P50/P90); projection deferred to a follow-on slice."
+    },
+    "forecast_output_risks": {
+      "table_family": "forecast_output_v63",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "forecast_db_transition",
+      "blocking_for_phase": "none",
+      "v": "V63",
+      "notes": "Risk register projected from forecast_risk_register.jsonl."
+    },
+    "forecast_output_changes": {
+      "table_family": "forecast_output_v63",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "forecast_db_transition",
+      "blocking_for_phase": "none",
+      "v": "V63",
+      "notes": "Output deltas vs prior run/baseline; projection deferred to a follow-on slice."
+    },
+    "forecast_output_commitment_exposure": {
+      "table_family": "forecast_output_v63",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "forecast_db_transition",
+      "blocking_for_phase": "none",
+      "v": "V63",
+      "notes": "Commitment exposure per budget code; projection deferred to a follow-on slice."
+    },
+    "forecast_output_staffing": {
+      "table_family": "forecast_output_v63",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "forecast_db_transition",
+      "blocking_for_phase": "none",
+      "v": "V63",
+      "notes": "Labor/staffing outputs; projection deferred to a follow-on slice."
+    },
+    "forecast_output_schedule_phasing": {
+      "table_family": "forecast_output_v63",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "forecast_db_transition",
+      "blocking_for_phase": "none",
+      "v": "V63",
+      "notes": "Schedule phase mapping of forecast amounts; projection deferred to a follow-on slice."
+    },
+    "forecast_output_narratives": {
+      "table_family": "forecast_output_v63",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "forecast_db_transition",
+      "blocking_for_phase": "none",
+      "v": "V63",
+      "notes": "Textual run narratives/rationale; projection deferred to a follow-on slice."
     }
   }
 }

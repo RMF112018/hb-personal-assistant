@@ -1,0 +1,44 @@
+{
+  "procore_ep_change_events": {
+    "distinct_available_scoped_identity": 4,
+    "distinct_item_id": null,
+    "distinct_primary_record_key": null,
+    "distinct_record_key": 1059,
+    "row_count": 1059
+  },
+  "procore_ep_change_events_attachments": {
+    "distinct_available_scoped_identity": 2351,
+    "distinct_item_id": 2333,
+    "distinct_primary_record_key": 915,
+    "distinct_record_key": 2351,
+    "row_count": 2351
+  },
+  "procore_ep_change_events_change_items": {
+    "distinct_available_scoped_identity": 2825,
+    "distinct_item_id": 2825,
+    "distinct_primary_record_key": 1053,
+    "distinct_record_key": 2825,
+    "row_count": 2825
+  },
+  "procore_ep_change_events_change_items_budget_code_seg_2dff22": {
+    "distinct_available_scoped_identity": 8351,
+    "distinct_item_id": 201,
+    "distinct_primary_record_key": 1053,
+    "distinct_record_key": 8475,
+    "row_count": 8475
+  },
+  "procore_ep_change_events_markup_items": {
+    "distinct_available_scoped_identity": 2154,
+    "distinct_item_id": 2154,
+    "distinct_primary_record_key": 771,
+    "distinct_record_key": 2154,
+    "row_count": 2154
+  },
+  "procore_ep_change_events_markup_items_wbs_code_segment_items": {
+    "distinct_available_scoped_identity": 6322,
+    "distinct_item_id": 11,
+    "distinct_primary_record_key": 771,
+    "distinct_record_key": 6462,
+    "row_count": 6462
+  }
+}

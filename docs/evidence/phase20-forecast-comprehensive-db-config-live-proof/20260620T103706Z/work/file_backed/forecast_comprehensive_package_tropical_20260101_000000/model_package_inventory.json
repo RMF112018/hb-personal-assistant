@@ -1,0 +1,104 @@
+{
+  "project_key": "tropical",
+  "packages": [
+    {
+      "package_type": "context",
+      "required": true,
+      "glob": "forecast_context_package_tropical_*",
+      "present": true,
+      "path": "/Users/bobbyfetting/Library/CloudStorage/SynologyDrive-BFmacSync/Work/NAS - HB/Projects/2023/TWN - NAS/30_Financials/Forecasts/Data/2026-June/forecast_context_package_tropical_20260617_152650",
+      "package_name": "forecast_context_package_tropical_20260617_152650",
+      "manifest_present": true,
+      "manifest_version": null,
+      "contract_version": null
+    },
+    {
+      "package_type": "intelligence",
+      "required": true,
+      "glob": "forecast_accuracy_next_package_tropical_*",
+      "present": true,
+      "path": "/Users/bobbyfetting/Library/CloudStorage/SynologyDrive-BFmacSync/Work/NAS - HB/Projects/2023/TWN - NAS/30_Financials/Forecasts/Data/2026-June/forecast_accuracy_next_package_tropical_20260617_152655",
+      "package_name": "forecast_accuracy_next_package_tropical_20260617_152655",
+      "manifest_present": true,
+      "manifest_version": "1.0.0",
+      "contract_version": null
+    },
+    {
+      "package_type": "monthly",
+      "required": true,
+      "glob": "forecast_monthly_package_tropical_*",
+      "present": true,
+      "path": "/Users/bobbyfetting/Library/CloudStorage/SynologyDrive-BFmacSync/Work/NAS - HB/Projects/2023/TWN - NAS/30_Financials/Forecasts/Data/2026-June/forecast_monthly_package_tropical_20260617_152658",
+      "package_name": "forecast_monthly_package_tropical_20260617_152658",
+      "manifest_present": true,
+      "manifest_version": "1.0.0",
+      "contract_version": null
+    },
+    {
+      "package_type": "probability",
+      "required": false,
+      "glob": "forecast_probability_package_tropical_*",
+      "present": true,
+      "path": "/Users/bobbyfetting/Library/CloudStorage/SynologyDrive-BFmacSync/Work/NAS - HB/Projects/2023/TWN - NAS/30_Financials/Forecasts/Data/2026-June/forecast_probability_package_tropical_20260617_152659",
+      "package_name": "forecast_probability_package_tropical_20260617_152659",
+      "manifest_present": true,
+      "manifest_version": "1.0.0",
+      "contract_version": null
+    },
+    {
+      "package_type": "history_informed",
+      "required": false,
+      "glob": "forecast_history_informed_package_tropical_*",
+      "present": true,
+      "path": "/Users/bobbyfetting/Library/CloudStorage/SynologyDrive-BFmacSync/Work/NAS - HB/Projects/2023/TWN - NAS/30_Financials/Forecasts/Data/2026-June/forecast_history_informed_package_tropical_20260617_152656",
+      "package_name": "forecast_history_informed_package_tropical_20260617_152656",
+      "manifest_present": true,
+      "manifest_version": "1.1.0",
+      "contract_version": null
+    },
+    {
+      "package_type": "cost_frequency",
+      "required": false,
+      "glob": "forecast_cost_frequency_package_tropical_*",
+      "present": true,
+      "path": "/Users/bobbyfetting/Library/CloudStorage/SynologyDrive-BFmacSync/Work/NAS - HB/Projects/2023/TWN - NAS/30_Financials/Forecasts/Data/2026-June/forecast_cost_frequency_package_tropical_20260617_152657",
+      "package_name": "forecast_cost_frequency_package_tropical_20260617_152657",
+      "manifest_present": true,
+      "manifest_version": "1.0.0",
+      "contract_version": "1.0.0"
+    },
+    {
+      "package_type": "crosswalk_v2",
+      "required": false,
+      "glob": "forecast_analysis_package_tropical_crosswalk_v2_*",
+      "present": true,
+      "path": "/Users/bobbyfetting/Library/CloudStorage/SynologyDrive-BFmacSync/Work/NAS - HB/Projects/2023/TWN - NAS/30_Financials/Forecasts/Data/2026-June/forecast_analysis_package_tropical_crosswalk_v2_20260617_152654",
+      "package_name": "forecast_analysis_package_tropical_crosswalk_v2_20260617_152654",
+      "manifest_present": true,
+      "manifest_version": null,
+      "contract_version": null
+    },
+    {
+      "package_type": "schedule_integrated",
+      "required": false,
+      "glob": "schedule_integrated_forecast_package_tropical_*",
+      "present": true,
+      "path": "/Users/bobbyfetting/Library/CloudStorage/SynologyDrive-BFmacSync/Work/NAS - HB/Projects/2023/TWN - NAS/30_Financials/Forecasts/Data/2026-June/schedule_integrated_forecast_package_tropical_20260617_152654",
+      "package_name": "schedule_integrated_forecast_package_tropical_20260617_152654",
+      "manifest_present": true,
+      "manifest_version": null,
+      "contract_version": null
+    },
+    {
+      "package_type": "staffing_plan",
+      "required": false,
+      "glob": "forecast_staffing_plan_package_tropical_*",
+      "present": true,
+      "path": "/Users/bobbyfetting/Library/CloudStorage/SynologyDrive-BFmacSync/Work/NAS - HB/Projects/2023/TWN - NAS/30_Financials/Forecasts/Data/2026-June/forecast_staffing_plan_package_tropical_20260617_152657",
+      "package_name": "forecast_staffing_plan_package_tropical_20260617_152657",
+      "manifest_present": true,
+      "manifest_version": "1.0.0",
+      "contract_version": null
+    }
+  ]
+}

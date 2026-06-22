@@ -1,0 +1,23 @@
+{
+  "capture_run_id": "8b150cef-ad63-455f-bbe4-67f858eb2491",
+  "endpoint_family": "budget",
+  "endpoint_key": "budget-modifications",
+  "is_current": 1,
+  "parent_record_id": null,
+  "payload_captured_at_utc": "2026-06-20T05:06:50.237772+00:00",
+  "payload_file": "docs/evidence/procore-listed-tables-null-field-audit/20260621T092320Z/sensitive-raw-payload-samples/budget-modifications/rank-03__raw_payload_id-perp-ee7b1abd62ecfd294c0f2d7e86452cad.payload_json",
+  "payload_hash": "341ec57331d690fba280cc9de4bc5cd1dc9ae26fd6e1a594c405c462129207a6",
+  "payload_json_char_length": 388,
+  "payload_json_sha256": "341ec57331d690fba280cc9de4bc5cd1dc9ae26fd6e1a594c405c462129207a6",
+  "payload_seen_first_utc": "2026-06-20T05:06:50.237772+00:00",
+  "payload_seen_last_utc": "2026-06-20T05:06:50.237772+00:00",
+  "payload_size_bytes": 388,
+  "project_id": "2145250",
+  "project_key": "caretta",
+  "rank": 3,
+  "raw_payload_id": "perp-ee7b1abd62ecfd294c0f2d7e86452cad",
+  "raw_procore_payload_persisted": 1,
+  "record_id": "8292183",
+  "record_type": "budget-modifications",
+  "source_quality": "live_full_payload"
+}

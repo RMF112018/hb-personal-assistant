@@ -1,0 +1,59 @@
+{
+  "all_null_field_count": 24,
+  "column_profile_count": 298,
+  "db_path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite",
+  "existing_table_count": 6,
+  "generated_at_utc": "2026-06-21T09:30:13.102127+00:00",
+  "majority_null_field_count": 48,
+  "majority_null_threshold_pct": 50.0,
+  "nullable_field_count": 115,
+  "ok": true,
+  "outputs": {
+    "all-null-fields.json": "docs/evidence/procore-change-events-null-field-audit/20260621T092934Z/shareable/all-null-fields.json",
+    "column-null-profile-all.json": "docs/evidence/procore-change-events-null-field-audit/20260621T092934Z/shareable/column-null-profile-all.json",
+    "majority-null-fields.json": "docs/evidence/procore-change-events-null-field-audit/20260621T092934Z/shareable/majority-null-fields.json",
+    "majority-null-sample-index.json": "docs/evidence/procore-change-events-null-field-audit/20260621T092934Z/shareable/majority-null-sample-index.json",
+    "null-field-audit-summary.md": "docs/evidence/procore-change-events-null-field-audit/20260621T092934Z/shareable/null-field-audit-summary.md",
+    "nullable-fields-all.json": "docs/evidence/procore-change-events-null-field-audit/20260621T092934Z/shareable/nullable-fields-all.json",
+    "raw-payload-sample-manifest.json": "docs/evidence/procore-change-events-null-field-audit/20260621T092934Z/sensitive-raw-payload-samples/raw-payload-sample-manifest.json",
+    "schema.json": "docs/evidence/procore-change-events-null-field-audit/20260621T092934Z/shareable/schema.json",
+    "sensitive-raw-payload-samples": "docs/evidence/procore-change-events-null-field-audit/20260621T092934Z/sensitive-raw-payload-samples",
+    "table-row-counts.json": "docs/evidence/procore-change-events-null-field-audit/20260621T092934Z/shareable/table-row-counts.json"
+  },
+  "raw_payload_samples_are_sensitive": true,
+  "raw_payload_samples_included": true,
+  "raw_sample_endpoint_count": 1,
+  "raw_sample_endpoint_keys": [
+    "change-events"
+  ],
+  "raw_sample_file_count": 3,
+  "table_count": 6,
+  "table_endpoint_map": {
+    "procore_ep_change_events": [
+      "change-events"
+    ],
+    "procore_ep_change_events_attachments": [
+      "change-events"
+    ],
+    "procore_ep_change_events_change_items": [
+      "change-events"
+    ],
+    "procore_ep_change_events_change_items_budget_code_seg_2dff22": [
+      "change-events"
+    ],
+    "procore_ep_change_events_markup_items": [
+      "change-events"
+    ],
+    "procore_ep_change_events_markup_items_wbs_code_segment_items": [
+      "change-events"
+    ]
+  },
+  "tables_requested": [
+    "procore_ep_change_events",
+    "procore_ep_change_events_attachments",
+    "procore_ep_change_events_change_items",
+    "procore_ep_change_events_change_items_budget_code_seg_2dff22",
+    "procore_ep_change_events_markup_items",
+    "procore_ep_change_events_markup_items_wbs_code_segment_items"
+  ]
+}

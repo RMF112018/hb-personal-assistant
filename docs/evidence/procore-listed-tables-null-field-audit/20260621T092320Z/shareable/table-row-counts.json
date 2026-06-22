@@ -1,0 +1,44 @@
+{
+  "procore_ep_billing_periods": {
+    "corresponding_endpoint_keys": [
+      "billing-periods"
+    ],
+    "table_exists": true,
+    "total_rows": 66
+  },
+  "procore_ep_budget_change_history": {
+    "corresponding_endpoint_keys": [
+      "budget-change-history"
+    ],
+    "table_exists": true,
+    "total_rows": 420
+  },
+  "procore_ep_budget_detail_columns": {
+    "corresponding_endpoint_keys": [
+      "budget-detail-columns"
+    ],
+    "table_exists": true,
+    "total_rows": 399
+  },
+  "procore_ep_budget_detail_row_cells": {
+    "corresponding_endpoint_keys": [
+      "budget-detail-rows"
+    ],
+    "table_exists": true,
+    "total_rows": 273951
+  },
+  "procore_ep_budget_detail_rows": {
+    "corresponding_endpoint_keys": [
+      "budget-detail-rows"
+    ],
+    "table_exists": true,
+    "total_rows": 3044
+  },
+  "procore_ep_budget_modifications": {
+    "corresponding_endpoint_keys": [
+      "budget-modifications"
+    ],
+    "table_exists": true,
+    "total_rows": 805
+  }
+}

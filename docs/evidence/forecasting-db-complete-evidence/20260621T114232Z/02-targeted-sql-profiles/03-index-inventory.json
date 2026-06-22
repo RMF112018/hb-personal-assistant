@@ -1,0 +1,5135 @@
+{
+  "forecast_accuracy_results": [
+    {
+      "columns": [
+        {
+          "cid": 3,
+          "name": "baseline",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_forecast_accuracy_results_baseline",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 2,
+          "name": "project_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_forecast_accuracy_results_project",
+      "origin": "c",
+      "partial": 0,
+      "seq": 1,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "external_forecast_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_forecast_accuracy_results_forecast",
+      "origin": "c",
+      "partial": 0,
+      "seq": 2,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "accuracy_result_id",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_forecast_accuracy_results_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 3,
+      "unique": 1
+    }
+  ],
+  "forecast_anomaly_findings": [
+    {
+      "columns": [
+        {
+          "cid": 5,
+          "name": "severity",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_forecast_anomaly_findings_severity",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 2,
+          "name": "project_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_forecast_anomaly_findings_project",
+      "origin": "c",
+      "partial": 0,
+      "seq": 1,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "external_forecast_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_forecast_anomaly_findings_forecast",
+      "origin": "c",
+      "partial": 0,
+      "seq": 2,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "anomaly_finding_id",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_forecast_anomaly_findings_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 3,
+      "unique": 1
+    }
+  ],
+  "forecast_budget_details": [
+    {
+      "columns": [
+        {
+          "cid": 2,
+          "name": "source_package",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_forecast_budget_details_package",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "budget_code_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_forecast_budget_details_code",
+      "origin": "c",
+      "partial": 0,
+      "seq": 1,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "project_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_forecast_budget_details_project",
+      "origin": "c",
+      "partial": 0,
+      "seq": 2,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "project_key",
+          "seqno": 0
+        },
+        {
+          "cid": 1,
+          "name": "budget_code_key",
+          "seqno": 1
+        },
+        {
+          "cid": 2,
+          "name": "source_package",
+          "seqno": 2
+        }
+      ],
+      "name": "sqlite_autoindex_forecast_budget_details_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 3,
+      "unique": 1
+    }
+  ],
+  "forecast_comparison_results": [
+    {
+      "columns": [
+        {
+          "cid": 4,
+          "name": "baseline",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_forecast_comparison_results_baseline",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 3,
+          "name": "budget_code_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_forecast_comparison_results_code",
+      "origin": "c",
+      "partial": 0,
+      "seq": 1,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 2,
+          "name": "project_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_forecast_comparison_results_project",
+      "origin": "c",
+      "partial": 0,
+      "seq": 2,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "external_forecast_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_forecast_comparison_results_forecast",
+      "origin": "c",
+      "partial": 0,
+      "seq": 3,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "comparison_result_id",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_forecast_comparison_results_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 4,
+      "unique": 1
+    }
+  ],
+  "forecast_config_items": [
+    {
+      "columns": [
+        {
+          "cid": 9,
+          "name": "status",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_forecast_config_items_status",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 4,
+          "name": "config_name",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_forecast_config_items_name",
+      "origin": "c",
+      "partial": 0,
+      "seq": 1,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 3,
+          "name": "config_domain",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_forecast_config_items_domain",
+      "origin": "c",
+      "partial": 0,
+      "seq": 2,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 2,
+          "name": "project_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_forecast_config_items_project",
+      "origin": "c",
+      "partial": 0,
+      "seq": 3,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "config_source_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_forecast_config_items_source",
+      "origin": "c",
+      "partial": 0,
+      "seq": 4,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 2,
+          "name": "project_key",
+          "seqno": 0
+        },
+        {
+          "cid": 3,
+          "name": "config_domain",
+          "seqno": 1
+        },
+        {
+          "cid": 4,
+          "name": "config_name",
+          "seqno": 2
+        },
+        {
+          "cid": 5,
+          "name": "item_key",
+          "seqno": 3
+        },
+        {
+          "cid": 11,
+          "name": "canonical_json_sha256",
+          "seqno": 4
+        }
+      ],
+      "name": "sqlite_autoindex_forecast_config_items_2",
+      "origin": "u",
+      "partial": 0,
+      "seq": 5,
+      "unique": 1
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "config_item_id",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_forecast_config_items_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 6,
+      "unique": 1
+    }
+  ],
+  "forecast_config_snapshot_items": [
+    {
+      "columns": [
+        {
+          "cid": 3,
+          "name": "config_domain",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_forecast_config_snapshot_items_domain",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 2,
+          "name": "project_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_forecast_config_snapshot_items_project",
+      "origin": "c",
+      "partial": 0,
+      "seq": 1,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "config_snapshot_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_forecast_config_snapshot_items_snapshot",
+      "origin": "c",
+      "partial": 0,
+      "seq": 2,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "config_snapshot_id",
+          "seqno": 0
+        },
+        {
+          "cid": 1,
+          "name": "config_item_id",
+          "seqno": 1
+        }
+      ],
+      "name": "sqlite_autoindex_forecast_config_snapshot_items_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 3,
+      "unique": 1
+    }
+  ],
+  "forecast_config_snapshots": [
+    {
+      "columns": [
+        {
+          "cid": 2,
+          "name": "snapshot_name",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_forecast_config_snapshots_name",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "project_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_forecast_config_snapshots_project",
+      "origin": "c",
+      "partial": 0,
+      "seq": 1,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "project_key",
+          "seqno": 0
+        },
+        {
+          "cid": 2,
+          "name": "snapshot_name",
+          "seqno": 1
+        },
+        {
+          "cid": 7,
+          "name": "snapshot_sha256",
+          "seqno": 2
+        }
+      ],
+      "name": "sqlite_autoindex_forecast_config_snapshots_2",
+      "origin": "u",
+      "partial": 0,
+      "seq": 2,
+      "unique": 1
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "config_snapshot_id",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_forecast_config_snapshots_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 3,
+      "unique": 1
+    }
+  ],
+  "forecast_config_sources": [
+    {
+      "columns": [
+        {
+          "cid": 3,
+          "name": "config_name",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_forecast_config_sources_name",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 2,
+          "name": "config_domain",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_forecast_config_sources_domain",
+      "origin": "c",
+      "partial": 0,
+      "seq": 1,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "project_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_forecast_config_sources_project",
+      "origin": "c",
+      "partial": 0,
+      "seq": 2,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "project_key",
+          "seqno": 0
+        },
+        {
+          "cid": 2,
+          "name": "config_domain",
+          "seqno": 1
+        },
+        {
+          "cid": 3,
+          "name": "config_name",
+          "seqno": 2
+        },
+        {
+          "cid": 7,
+          "name": "content_sha256",
+          "seqno": 3
+        }
+      ],
+      "name": "sqlite_autoindex_forecast_config_sources_2",
+      "origin": "u",
+      "partial": 0,
+      "seq": 3,
+      "unique": 1
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "config_source_id",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_forecast_config_sources_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 4,
+      "unique": 1
+    }
+  ],
+  "forecast_cost_entries": [
+    {
+      "columns": [
+        {
+          "cid": 2,
+          "name": "source_package",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_forecast_cost_entries_package",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 4,
+          "name": "budget_code_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_forecast_cost_entries_code",
+      "origin": "c",
+      "partial": 0,
+      "seq": 1,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "project_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_forecast_cost_entries_project",
+      "origin": "c",
+      "partial": 0,
+      "seq": 2,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "project_key",
+          "seqno": 0
+        },
+        {
+          "cid": 2,
+          "name": "source_package",
+          "seqno": 1
+        },
+        {
+          "cid": 3,
+          "name": "source_row_number",
+          "seqno": 2
+        }
+      ],
+      "name": "sqlite_autoindex_forecast_cost_entries_2",
+      "origin": "u",
+      "partial": 0,
+      "seq": 3,
+      "unique": 1
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "cost_entry_id",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_forecast_cost_entries_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 4,
+      "unique": 1
+    }
+  ],
+  "forecast_evidence_packages": [
+    {
+      "columns": [
+        {
+          "cid": 2,
+          "name": "project_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_forecast_evidence_packages_project",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "external_forecast_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_forecast_evidence_packages_forecast",
+      "origin": "c",
+      "partial": 0,
+      "seq": 1,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 2,
+          "name": "project_key",
+          "seqno": 0
+        },
+        {
+          "cid": 4,
+          "name": "manifest_sha256",
+          "seqno": 1
+        }
+      ],
+      "name": "sqlite_autoindex_forecast_evidence_packages_2",
+      "origin": "u",
+      "partial": 0,
+      "seq": 2,
+      "unique": 1
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "evidence_package_id",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_forecast_evidence_packages_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 3,
+      "unique": 1
+    }
+  ],
+  "forecast_external_forecast_mappings": [
+    {
+      "columns": [
+        {
+          "cid": 7,
+          "name": "mapping_status",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_forecast_external_mappings_status",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 2,
+          "name": "project_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_forecast_external_mappings_project",
+      "origin": "c",
+      "partial": 0,
+      "seq": 1,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "external_forecast_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_forecast_external_mappings_forecast",
+      "origin": "c",
+      "partial": 0,
+      "seq": 2,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "external_forecast_mapping_id",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_forecast_external_forecast_mappings_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 3,
+      "unique": 1
+    }
+  ],
+  "forecast_external_forecast_rows": [
+    {
+      "columns": [
+        {
+          "cid": 3,
+          "name": "budget_code_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_forecast_external_rows_code",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 2,
+          "name": "project_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_forecast_external_rows_project",
+      "origin": "c",
+      "partial": 0,
+      "seq": 1,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "external_forecast_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_forecast_external_rows_forecast",
+      "origin": "c",
+      "partial": 0,
+      "seq": 2,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "external_forecast_row_id",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_forecast_external_forecast_rows_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 3,
+      "unique": 1
+    }
+  ],
+  "forecast_external_forecasts": [
+    {
+      "columns": [
+        {
+          "cid": 2,
+          "name": "source_system",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_forecast_external_forecasts_source",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 4,
+          "name": "period",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_forecast_external_forecasts_period",
+      "origin": "c",
+      "partial": 0,
+      "seq": 1,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "project_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_forecast_external_forecasts_project",
+      "origin": "c",
+      "partial": 0,
+      "seq": 2,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "project_key",
+          "seqno": 0
+        },
+        {
+          "cid": 4,
+          "name": "period",
+          "seqno": 1
+        },
+        {
+          "cid": 7,
+          "name": "content_sha256",
+          "seqno": 2
+        }
+      ],
+      "name": "sqlite_autoindex_forecast_external_forecasts_2",
+      "origin": "u",
+      "partial": 0,
+      "seq": 3,
+      "unique": 1
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "external_forecast_id",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_forecast_external_forecasts_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 4,
+      "unique": 1
+    }
+  ],
+  "forecast_monthly_actuals_by_budget_code": [
+    {
+      "columns": [
+        {
+          "cid": 2,
+          "name": "month",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_forecast_monthly_actuals_month",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 4,
+          "name": "source_package",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_forecast_monthly_actuals_package",
+      "origin": "c",
+      "partial": 0,
+      "seq": 1,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "budget_code_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_forecast_monthly_actuals_code",
+      "origin": "c",
+      "partial": 0,
+      "seq": 2,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "project_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_forecast_monthly_actuals_project",
+      "origin": "c",
+      "partial": 0,
+      "seq": 3,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "project_key",
+          "seqno": 0
+        },
+        {
+          "cid": 1,
+          "name": "budget_code_key",
+          "seqno": 1
+        },
+        {
+          "cid": 2,
+          "name": "month",
+          "seqno": 2
+        },
+        {
+          "cid": 3,
+          "name": "type",
+          "seqno": 3
+        },
+        {
+          "cid": 4,
+          "name": "source_package",
+          "seqno": 4
+        }
+      ],
+      "name": "sqlite_autoindex_forecast_monthly_actuals_by_budget_code_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 4,
+      "unique": 1
+    }
+  ],
+  "forecast_package_manifests": [
+    {
+      "columns": [
+        {
+          "cid": 2,
+          "name": "run_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_forecast_package_manifests_run",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "project_key",
+          "seqno": 0
+        },
+        {
+          "cid": 3,
+          "name": "package_type",
+          "seqno": 1
+        }
+      ],
+      "name": "idx_forecast_package_manifests_project_type",
+      "origin": "c",
+      "partial": 0,
+      "seq": 1,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 4,
+          "name": "package_name",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_forecast_package_manifests_2",
+      "origin": "u",
+      "partial": 0,
+      "seq": 2,
+      "unique": 1
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "package_id",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_forecast_package_manifests_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 3,
+      "unique": 1
+    }
+  ],
+  "forecast_projects": [
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "project_key",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_forecast_projects_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 0,
+      "unique": 1
+    }
+  ],
+  "forecast_review_items": [
+    {
+      "columns": [
+        {
+          "cid": 6,
+          "name": "status",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_forecast_review_items_status",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 2,
+          "name": "project_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_forecast_review_items_project",
+      "origin": "c",
+      "partial": 0,
+      "seq": 1,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "external_forecast_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_forecast_review_items_forecast",
+      "origin": "c",
+      "partial": 0,
+      "seq": 2,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "review_item_id",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_forecast_review_items_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 3,
+      "unique": 1
+    }
+  ],
+  "forecast_runs": [
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "project_key",
+          "seqno": 0
+        },
+        {
+          "cid": 5,
+          "name": "created_utc",
+          "seqno": 1
+        }
+      ],
+      "name": "idx_forecast_runs_project_created",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "run_id",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_forecast_runs_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 1,
+      "unique": 1
+    }
+  ],
+  "forecast_source_ingestions": [
+    {
+      "columns": [
+        {
+          "cid": 2,
+          "name": "run_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_forecast_source_ingestions_run",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "project_key",
+          "seqno": 0
+        },
+        {
+          "cid": 3,
+          "name": "source_kind",
+          "seqno": 1
+        }
+      ],
+      "name": "idx_forecast_source_ingestions_project_kind",
+      "origin": "c",
+      "partial": 0,
+      "seq": 1,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "project_key",
+          "seqno": 0
+        },
+        {
+          "cid": 4,
+          "name": "source_package",
+          "seqno": 1
+        },
+        {
+          "cid": 6,
+          "name": "source_sha256",
+          "seqno": 2
+        }
+      ],
+      "name": "sqlite_autoindex_forecast_source_ingestions_2",
+      "origin": "u",
+      "partial": 0,
+      "seq": 2,
+      "unique": 1
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "ingestion_id",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_forecast_source_ingestions_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 3,
+      "unique": 1
+    }
+  ],
+  "forecast_validation_events": [
+    {
+      "columns": [
+        {
+          "cid": 2,
+          "name": "project_key",
+          "seqno": 0
+        },
+        {
+          "cid": 3,
+          "name": "gate_name",
+          "seqno": 1
+        }
+      ],
+      "name": "idx_forecast_validation_events_project",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "run_id",
+          "seqno": 0
+        },
+        {
+          "cid": 1,
+          "name": "event_seq",
+          "seqno": 1
+        }
+      ],
+      "name": "sqlite_autoindex_forecast_validation_events_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 1,
+      "unique": 1
+    }
+  ],
+  "procore_ep_billing_periods": [
+    {
+      "columns": [
+        {
+          "cid": 9,
+          "name": "record_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_billing_periods_record_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "raw_payload_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_billing_periods_raw_payload_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 1,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 2,
+          "name": "endpoint_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_billing_periods_endpoint_key",
+      "origin": "c",
+      "partial": 0,
+      "seq": 2,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 4,
+          "name": "project_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_billing_periods_project_key",
+      "origin": "c",
+      "partial": 0,
+      "seq": 3,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "record_key",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_procore_ep_billing_periods_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 4,
+      "unique": 1
+    }
+  ],
+  "procore_ep_budget_change_history": [
+    {
+      "columns": [
+        {
+          "cid": 9,
+          "name": "record_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_budget_change_history_record_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "raw_payload_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_budget_change_history_raw_payload_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 1,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 2,
+          "name": "endpoint_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_budget_change_history_endpoint_key",
+      "origin": "c",
+      "partial": 0,
+      "seq": 2,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 4,
+          "name": "project_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_budget_change_history_project_key",
+      "origin": "c",
+      "partial": 0,
+      "seq": 3,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "record_key",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_procore_ep_budget_change_history_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 4,
+      "unique": 1
+    }
+  ],
+  "procore_ep_budget_detail_columns": [
+    {
+      "columns": [
+        {
+          "cid": 27,
+          "name": "is_current",
+          "seqno": 0
+        },
+        {
+          "cid": 24,
+          "name": "source_quality",
+          "seqno": 1
+        }
+      ],
+      "name": "idx_procore_ep_budget_detail_columns_current_quality",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 19,
+          "name": "field_path",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_budget_detail_columns_field_path",
+      "origin": "c",
+      "partial": 0,
+      "seq": 1,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 16,
+          "name": "name",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_budget_detail_columns_name",
+      "origin": "c",
+      "partial": 0,
+      "seq": 2,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 13,
+          "name": "budget_view_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_budget_detail_columns_budget_view_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 3,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 11,
+          "name": "parent_record_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_budget_detail_columns_parent_record_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 4,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 9,
+          "name": "record_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_budget_detail_columns_record_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 5,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "raw_payload_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_budget_detail_columns_raw_payload_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 6,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 2,
+          "name": "endpoint_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_budget_detail_columns_endpoint_key",
+      "origin": "c",
+      "partial": 0,
+      "seq": 7,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 4,
+          "name": "project_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_budget_detail_columns_project_key",
+      "origin": "c",
+      "partial": 0,
+      "seq": 8,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "record_key",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_procore_ep_budget_detail_columns_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 9,
+      "unique": 1
+    }
+  ],
+  "procore_ep_budget_detail_row_cells": [
+    {
+      "columns": [
+        {
+          "cid": 24,
+          "name": "is_current",
+          "seqno": 0
+        },
+        {
+          "cid": 23,
+          "name": "source_quality",
+          "seqno": 1
+        }
+      ],
+      "name": "idx_procore_ep_budget_detail_row_cells_current_quality",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 17,
+          "name": "field_path",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_budget_detail_row_cells_field_path",
+      "origin": "c",
+      "partial": 0,
+      "seq": 1,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 15,
+          "name": "column_name",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_budget_detail_row_cells_column_name",
+      "origin": "c",
+      "partial": 0,
+      "seq": 2,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 10,
+          "name": "budget_view_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_budget_detail_row_cells_budget_view_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 3,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 5,
+          "name": "project_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_budget_detail_row_cells_project_key",
+      "origin": "c",
+      "partial": 0,
+      "seq": 4,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "record_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_budget_detail_row_cells_record_key",
+      "origin": "c",
+      "partial": 0,
+      "seq": 5,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "cell_key",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_procore_ep_budget_detail_row_cells_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 6,
+      "unique": 1
+    }
+  ],
+  "procore_ep_budget_detail_rows": [
+    {
+      "columns": [
+        {
+          "cid": 44,
+          "name": "is_current",
+          "seqno": 0
+        },
+        {
+          "cid": 41,
+          "name": "source_quality",
+          "seqno": 1
+        }
+      ],
+      "name": "idx_procore_ep_budget_detail_rows_current_quality",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 20,
+          "name": "cost_code_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_budget_detail_rows_cost_code_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 1,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 19,
+          "name": "canonical_budget_code_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_budget_detail_rows_canonical_key",
+      "origin": "c",
+      "partial": 0,
+      "seq": 2,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 17,
+          "name": "wbs_flat_code",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_budget_detail_rows_wbs_flat_code",
+      "origin": "c",
+      "partial": 0,
+      "seq": 3,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 13,
+          "name": "budget_view_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_budget_detail_rows_budget_view_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 4,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 11,
+          "name": "parent_record_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_budget_detail_rows_parent_record_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 5,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 9,
+          "name": "record_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_budget_detail_rows_record_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 6,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "raw_payload_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_budget_detail_rows_raw_payload_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 7,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 2,
+          "name": "endpoint_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_budget_detail_rows_endpoint_key",
+      "origin": "c",
+      "partial": 0,
+      "seq": 8,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 4,
+          "name": "project_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_budget_detail_rows_project_key",
+      "origin": "c",
+      "partial": 0,
+      "seq": 9,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "record_key",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_procore_ep_budget_detail_rows_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 10,
+      "unique": 1
+    }
+  ],
+  "procore_ep_budget_modifications": [
+    {
+      "columns": [
+        {
+          "cid": 9,
+          "name": "record_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_budget_modifications_record_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "raw_payload_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_budget_modifications_raw_payload_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 1,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 2,
+          "name": "endpoint_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_budget_modifications_endpoint_key",
+      "origin": "c",
+      "partial": 0,
+      "seq": 2,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 4,
+          "name": "project_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_budget_modifications_project_key",
+      "origin": "c",
+      "partial": 0,
+      "seq": 3,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "record_key",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_procore_ep_budget_modifications_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 4,
+      "unique": 1
+    }
+  ],
+  "procore_ep_budget_views": [
+    {
+      "columns": [
+        {
+          "cid": 9,
+          "name": "record_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_budget_views_record_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "raw_payload_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_budget_views_raw_payload_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 1,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 2,
+          "name": "endpoint_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_budget_views_endpoint_key",
+      "origin": "c",
+      "partial": 0,
+      "seq": 2,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 4,
+          "name": "project_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_budget_views_project_key",
+      "origin": "c",
+      "partial": 0,
+      "seq": 3,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "record_key",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_procore_ep_budget_views_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 4,
+      "unique": 1
+    }
+  ],
+  "procore_ep_change_events": [
+    {
+      "columns": [
+        {
+          "cid": 9,
+          "name": "record_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_change_events_record_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "raw_payload_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_change_events_raw_payload_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 1,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 2,
+          "name": "endpoint_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_change_events_endpoint_key",
+      "origin": "c",
+      "partial": 0,
+      "seq": 2,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 4,
+          "name": "project_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_change_events_project_key",
+      "origin": "c",
+      "partial": 0,
+      "seq": 3,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "record_key",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_procore_ep_change_events_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 4,
+      "unique": 1
+    }
+  ],
+  "procore_ep_change_events_attachments": [
+    {
+      "columns": [
+        {
+          "cid": 2,
+          "name": "parent_item_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_change_events_attachments_parent_item_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 3,
+          "name": "raw_payload_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_change_events_attachments_raw_payload_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 1,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "primary_record_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_change_events_attachments_primary_record_key",
+      "origin": "c",
+      "partial": 0,
+      "seq": 2,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "record_key",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_procore_ep_change_events_attachments_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 3,
+      "unique": 1
+    }
+  ],
+  "procore_ep_change_events_change_items": [
+    {
+      "columns": [
+        {
+          "cid": 2,
+          "name": "parent_item_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_change_events_change_items_parent_item_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 3,
+          "name": "raw_payload_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_change_events_change_items_raw_payload_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 1,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "primary_record_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_change_events_change_items_primary_record_key",
+      "origin": "c",
+      "partial": 0,
+      "seq": 2,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "record_key",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_procore_ep_change_events_change_items_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 3,
+      "unique": 1
+    }
+  ],
+  "procore_ep_change_events_change_items_budget_code_seg_2dff22": [
+    {
+      "columns": [
+        {
+          "cid": 2,
+          "name": "parent_item_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_change_events_change_items_budget_code_seg_2dff22_parent_item_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 3,
+          "name": "raw_payload_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_change_events_change_items_budget_code_seg_2dff22_raw_payload_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 1,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "primary_record_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_change_events_change_items_budget_code_seg_2dff22_primary_record_key",
+      "origin": "c",
+      "partial": 0,
+      "seq": 2,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "record_key",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_procore_ep_change_events_change_items_budget_code_seg_2dff22_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 3,
+      "unique": 1
+    }
+  ],
+  "procore_ep_change_events_markup_items": [
+    {
+      "columns": [
+        {
+          "cid": 2,
+          "name": "parent_item_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_change_events_markup_items_parent_item_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 3,
+          "name": "raw_payload_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_change_events_markup_items_raw_payload_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 1,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "primary_record_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_change_events_markup_items_primary_record_key",
+      "origin": "c",
+      "partial": 0,
+      "seq": 2,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "record_key",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_procore_ep_change_events_markup_items_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 3,
+      "unique": 1
+    }
+  ],
+  "procore_ep_change_events_markup_items_wbs_code_segment_items": [
+    {
+      "columns": [
+        {
+          "cid": 2,
+          "name": "parent_item_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_change_events_markup_items_wbs_code_segment_items_parent_item_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 3,
+          "name": "raw_payload_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_change_events_markup_items_wbs_code_segment_items_raw_payload_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 1,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "primary_record_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_change_events_markup_items_wbs_code_segment_items_primary_record_key",
+      "origin": "c",
+      "partial": 0,
+      "seq": 2,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "record_key",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_procore_ep_change_events_markup_items_wbs_code_segment_items_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 3,
+      "unique": 1
+    }
+  ],
+  "procore_ep_commitment_attachments": [
+    {
+      "columns": [
+        {
+          "cid": 9,
+          "name": "record_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_commitment_attachments_record_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "raw_payload_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_commitment_attachments_raw_payload_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 1,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 2,
+          "name": "endpoint_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_commitment_attachments_endpoint_key",
+      "origin": "c",
+      "partial": 0,
+      "seq": 2,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 4,
+          "name": "project_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_commitment_attachments_project_key",
+      "origin": "c",
+      "partial": 0,
+      "seq": 3,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "record_key",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_procore_ep_commitment_attachments_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 4,
+      "unique": 1
+    }
+  ],
+  "procore_ep_commitment_change_orders": [
+    {
+      "columns": [
+        {
+          "cid": 9,
+          "name": "record_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_commitment_change_orders_record_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "raw_payload_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_commitment_change_orders_raw_payload_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 1,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 2,
+          "name": "endpoint_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_commitment_change_orders_endpoint_key",
+      "origin": "c",
+      "partial": 0,
+      "seq": 2,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 4,
+          "name": "project_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_commitment_change_orders_project_key",
+      "origin": "c",
+      "partial": 0,
+      "seq": 3,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "record_key",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_procore_ep_commitment_change_orders_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 4,
+      "unique": 1
+    }
+  ],
+  "procore_ep_commitment_compliance": [
+    {
+      "columns": [
+        {
+          "cid": 9,
+          "name": "record_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_commitment_compliance_record_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "raw_payload_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_commitment_compliance_raw_payload_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 1,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 2,
+          "name": "endpoint_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_commitment_compliance_endpoint_key",
+      "origin": "c",
+      "partial": 0,
+      "seq": 2,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 4,
+          "name": "project_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_commitment_compliance_project_key",
+      "origin": "c",
+      "partial": 0,
+      "seq": 3,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "record_key",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_procore_ep_commitment_compliance_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 4,
+      "unique": 1
+    }
+  ],
+  "procore_ep_commitment_compliance_insurance_documents": [
+    {
+      "columns": [
+        {
+          "cid": 2,
+          "name": "parent_item_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_commitment_compliance_insurance_documents_parent_item_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 3,
+          "name": "raw_payload_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_commitment_compliance_insurance_documents_raw_payload_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 1,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "primary_record_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_commitment_compliance_insurance_documents_primary_record_key",
+      "origin": "c",
+      "partial": 0,
+      "seq": 2,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "record_key",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_procore_ep_commitment_compliance_insurance_documents_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 3,
+      "unique": 1
+    }
+  ],
+  "procore_ep_commitment_compliance_insurance_documents__52b7bf": [
+    {
+      "columns": [
+        {
+          "cid": 2,
+          "name": "parent_item_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_commitment_compliance_insurance_documents__52b7bf_parent_item_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 3,
+          "name": "raw_payload_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_commitment_compliance_insurance_documents__52b7bf_raw_payload_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 1,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "primary_record_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_commitment_compliance_insurance_documents__52b7bf_primary_record_key",
+      "origin": "c",
+      "partial": 0,
+      "seq": 2,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "record_key",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_procore_ep_commitment_compliance_insurance_documents__52b7bf_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 3,
+      "unique": 1
+    }
+  ],
+  "procore_ep_commitment_contracts": [
+    {
+      "columns": [
+        {
+          "cid": 9,
+          "name": "record_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_commitment_contracts_record_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "raw_payload_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_commitment_contracts_raw_payload_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 1,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 2,
+          "name": "endpoint_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_commitment_contracts_endpoint_key",
+      "origin": "c",
+      "partial": 0,
+      "seq": 2,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 4,
+          "name": "project_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_commitment_contracts_project_key",
+      "origin": "c",
+      "partial": 0,
+      "seq": 3,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "record_key",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_procore_ep_commitment_contracts_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 4,
+      "unique": 1
+    }
+  ],
+  "procore_ep_commitment_line_items": [
+    {
+      "columns": [
+        {
+          "cid": 9,
+          "name": "record_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_commitment_line_items_record_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "raw_payload_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_commitment_line_items_raw_payload_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 1,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 2,
+          "name": "endpoint_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_commitment_line_items_endpoint_key",
+      "origin": "c",
+      "partial": 0,
+      "seq": 2,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 4,
+          "name": "project_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_commitment_line_items_project_key",
+      "origin": "c",
+      "partial": 0,
+      "seq": 3,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "record_key",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_procore_ep_commitment_line_items_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 4,
+      "unique": 1
+    }
+  ],
+  "procore_ep_prime_change_order_line_items": [
+    {
+      "columns": [
+        {
+          "cid": 9,
+          "name": "record_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_prime_change_order_line_items_record_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "raw_payload_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_prime_change_order_line_items_raw_payload_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 1,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 2,
+          "name": "endpoint_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_prime_change_order_line_items_endpoint_key",
+      "origin": "c",
+      "partial": 0,
+      "seq": 2,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 4,
+          "name": "project_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_prime_change_order_line_items_project_key",
+      "origin": "c",
+      "partial": 0,
+      "seq": 3,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "record_key",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_procore_ep_prime_change_order_line_items_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 4,
+      "unique": 1
+    }
+  ],
+  "procore_ep_prime_change_orders": [
+    {
+      "columns": [
+        {
+          "cid": 9,
+          "name": "record_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_prime_change_orders_record_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "raw_payload_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_prime_change_orders_raw_payload_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 1,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 2,
+          "name": "endpoint_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_prime_change_orders_endpoint_key",
+      "origin": "c",
+      "partial": 0,
+      "seq": 2,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 4,
+          "name": "project_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_prime_change_orders_project_key",
+      "origin": "c",
+      "partial": 0,
+      "seq": 3,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "record_key",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_procore_ep_prime_change_orders_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 4,
+      "unique": 1
+    }
+  ],
+  "procore_ep_prime_contract_line_items": [
+    {
+      "columns": [
+        {
+          "cid": 9,
+          "name": "record_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_prime_contract_line_items_record_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "raw_payload_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_prime_contract_line_items_raw_payload_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 1,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 2,
+          "name": "endpoint_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_prime_contract_line_items_endpoint_key",
+      "origin": "c",
+      "partial": 0,
+      "seq": 2,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 4,
+          "name": "project_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_prime_contract_line_items_project_key",
+      "origin": "c",
+      "partial": 0,
+      "seq": 3,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "record_key",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_procore_ep_prime_contract_line_items_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 4,
+      "unique": 1
+    }
+  ],
+  "procore_ep_prime_contracts": [
+    {
+      "columns": [
+        {
+          "cid": 9,
+          "name": "record_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_prime_contracts_record_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "raw_payload_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_prime_contracts_raw_payload_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 1,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 2,
+          "name": "endpoint_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_prime_contracts_endpoint_key",
+      "origin": "c",
+      "partial": 0,
+      "seq": 2,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 4,
+          "name": "project_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_prime_contracts_project_key",
+      "origin": "c",
+      "partial": 0,
+      "seq": 3,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "record_key",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_procore_ep_prime_contracts_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 4,
+      "unique": 1
+    }
+  ],
+  "procore_ep_projects": [
+    {
+      "columns": [
+        {
+          "cid": 9,
+          "name": "record_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_projects_record_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "raw_payload_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_projects_raw_payload_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 1,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 2,
+          "name": "endpoint_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_projects_endpoint_key",
+      "origin": "c",
+      "partial": 0,
+      "seq": 2,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 4,
+          "name": "project_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_projects_project_key",
+      "origin": "c",
+      "partial": 0,
+      "seq": 3,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "record_key",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_procore_ep_projects_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 4,
+      "unique": 1
+    }
+  ],
+  "procore_ep_purchase_order_contracts": [
+    {
+      "columns": [
+        {
+          "cid": 9,
+          "name": "record_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_purchase_order_contracts_record_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "raw_payload_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_purchase_order_contracts_raw_payload_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 1,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 2,
+          "name": "endpoint_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_purchase_order_contracts_endpoint_key",
+      "origin": "c",
+      "partial": 0,
+      "seq": 2,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 4,
+          "name": "project_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_purchase_order_contracts_project_key",
+      "origin": "c",
+      "partial": 0,
+      "seq": 3,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "record_key",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_procore_ep_purchase_order_contracts_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 4,
+      "unique": 1
+    }
+  ],
+  "procore_ep_purchase_order_contracts_custom_fields_cus_a0fe65": [
+    {
+      "columns": [
+        {
+          "cid": 2,
+          "name": "parent_item_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_purchase_order_contracts_custom_fields_cus_a0fe65_parent_item_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 3,
+          "name": "raw_payload_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_purchase_order_contracts_custom_fields_cus_a0fe65_raw_payload_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 1,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "primary_record_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_purchase_order_contracts_custom_fields_cus_a0fe65_primary_record_key",
+      "origin": "c",
+      "partial": 0,
+      "seq": 2,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "record_key",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_procore_ep_purchase_order_contracts_custom_fields_cus_a0fe65_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 3,
+      "unique": 1
+    }
+  ],
+  "procore_ep_purchase_order_line_items": [
+    {
+      "columns": [
+        {
+          "cid": 9,
+          "name": "record_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_purchase_order_line_items_record_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "raw_payload_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_purchase_order_line_items_raw_payload_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 1,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 2,
+          "name": "endpoint_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_purchase_order_line_items_endpoint_key",
+      "origin": "c",
+      "partial": 0,
+      "seq": 2,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 4,
+          "name": "project_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_purchase_order_line_items_project_key",
+      "origin": "c",
+      "partial": 0,
+      "seq": 3,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "record_key",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_procore_ep_purchase_order_line_items_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 4,
+      "unique": 1
+    }
+  ],
+  "procore_ep_purchase_order_line_items_cost_code_line_i_779dbd": [
+    {
+      "columns": [
+        {
+          "cid": 2,
+          "name": "parent_item_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_purchase_order_line_items_cost_code_line_i_779dbd_parent_item_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 3,
+          "name": "raw_payload_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_purchase_order_line_items_cost_code_line_i_779dbd_raw_payload_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 1,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "primary_record_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_purchase_order_line_items_cost_code_line_i_779dbd_primary_record_key",
+      "origin": "c",
+      "partial": 0,
+      "seq": 2,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "record_key",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_procore_ep_purchase_order_line_items_cost_code_line_i_779dbd_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 3,
+      "unique": 1
+    }
+  ],
+  "procore_ep_rfqs": [
+    {
+      "columns": [
+        {
+          "cid": 9,
+          "name": "record_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_rfqs_record_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "raw_payload_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_rfqs_raw_payload_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 1,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 2,
+          "name": "endpoint_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_rfqs_endpoint_key",
+      "origin": "c",
+      "partial": 0,
+      "seq": 2,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 4,
+          "name": "project_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_rfqs_project_key",
+      "origin": "c",
+      "partial": 0,
+      "seq": 3,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "record_key",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_procore_ep_rfqs_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 4,
+      "unique": 1
+    }
+  ],
+  "procore_ep_rfqs_attachments": [
+    {
+      "columns": [
+        {
+          "cid": 2,
+          "name": "parent_item_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_rfqs_attachments_parent_item_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 3,
+          "name": "raw_payload_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_rfqs_attachments_raw_payload_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 1,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "primary_record_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_rfqs_attachments_primary_record_key",
+      "origin": "c",
+      "partial": 0,
+      "seq": 2,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "record_key",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_procore_ep_rfqs_attachments_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 3,
+      "unique": 1
+    }
+  ],
+  "procore_ep_rfqs_change_event_attachments": [
+    {
+      "columns": [
+        {
+          "cid": 2,
+          "name": "parent_item_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_rfqs_change_event_attachments_parent_item_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 3,
+          "name": "raw_payload_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_rfqs_change_event_attachments_raw_payload_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 1,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "primary_record_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_rfqs_change_event_attachments_primary_record_key",
+      "origin": "c",
+      "partial": 0,
+      "seq": 2,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "record_key",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_procore_ep_rfqs_change_event_attachments_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 3,
+      "unique": 1
+    }
+  ],
+  "procore_ep_rfqs_change_event_change_event_line_items": [
+    {
+      "columns": [
+        {
+          "cid": 2,
+          "name": "parent_item_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_rfqs_change_event_change_event_line_items_parent_item_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 3,
+          "name": "raw_payload_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_rfqs_change_event_change_event_line_items_raw_payload_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 1,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "primary_record_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_rfqs_change_event_change_event_line_items_primary_record_key",
+      "origin": "c",
+      "partial": 0,
+      "seq": 2,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "record_key",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_procore_ep_rfqs_change_event_change_event_line_items_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 3,
+      "unique": 1
+    }
+  ],
+  "procore_ep_rfqs_change_event_change_event_line_items__0a3e8d": [
+    {
+      "columns": [
+        {
+          "cid": 2,
+          "name": "parent_item_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_rfqs_change_event_change_event_line_items__0a3e8d_parent_item_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 3,
+          "name": "raw_payload_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_rfqs_change_event_change_event_line_items__0a3e8d_raw_payload_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 1,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "primary_record_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_rfqs_change_event_change_event_line_items__0a3e8d_primary_record_key",
+      "origin": "c",
+      "partial": 0,
+      "seq": 2,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "record_key",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_procore_ep_rfqs_change_event_change_event_line_items__0a3e8d_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 3,
+      "unique": 1
+    }
+  ],
+  "procore_ep_subcontractor_invoice_change_order_items": [
+    {
+      "columns": [
+        {
+          "cid": 9,
+          "name": "record_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_subcontractor_invoice_change_order_items_record_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "raw_payload_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_subcontractor_invoice_change_order_items_raw_payload_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 1,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 2,
+          "name": "endpoint_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_subcontractor_invoice_change_order_items_endpoint_key",
+      "origin": "c",
+      "partial": 0,
+      "seq": 2,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 4,
+          "name": "project_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_subcontractor_invoice_change_order_items_project_key",
+      "origin": "c",
+      "partial": 0,
+      "seq": 3,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "record_key",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_procore_ep_subcontractor_invoice_change_order_items_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 4,
+      "unique": 1
+    }
+  ],
+  "procore_ep_subcontractor_invoice_contract_detail_items": [
+    {
+      "columns": [
+        {
+          "cid": 9,
+          "name": "record_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_subcontractor_invoice_contract_detail_items_record_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "raw_payload_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_subcontractor_invoice_contract_detail_items_raw_payload_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 1,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 2,
+          "name": "endpoint_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_subcontractor_invoice_contract_detail_items_endpoint_key",
+      "origin": "c",
+      "partial": 0,
+      "seq": 2,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 4,
+          "name": "project_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_subcontractor_invoice_contract_detail_items_project_key",
+      "origin": "c",
+      "partial": 0,
+      "seq": 3,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "record_key",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_procore_ep_subcontractor_invoice_contract_detail_items_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 4,
+      "unique": 1
+    }
+  ],
+  "procore_ep_subcontractor_invoices": [
+    {
+      "columns": [
+        {
+          "cid": 9,
+          "name": "record_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_subcontractor_invoices_record_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "raw_payload_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_subcontractor_invoices_raw_payload_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 1,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 2,
+          "name": "endpoint_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_subcontractor_invoices_endpoint_key",
+      "origin": "c",
+      "partial": 0,
+      "seq": 2,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 4,
+          "name": "project_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_subcontractor_invoices_project_key",
+      "origin": "c",
+      "partial": 0,
+      "seq": 3,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "record_key",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_procore_ep_subcontractor_invoices_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 4,
+      "unique": 1
+    }
+  ],
+  "procore_ep_subcontractor_invoices_attachments": [
+    {
+      "columns": [
+        {
+          "cid": 2,
+          "name": "parent_item_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_subcontractor_invoices_attachments_parent_item_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 3,
+          "name": "raw_payload_id",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_subcontractor_invoices_attachments_raw_payload_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 1,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "primary_record_key",
+          "seqno": 0
+        }
+      ],
+      "name": "idx_procore_ep_subcontractor_invoices_attachments_primary_record_key",
+      "origin": "c",
+      "partial": 0,
+      "seq": 2,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "record_key",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_procore_ep_subcontractor_invoices_attachments_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 3,
+      "unique": 1
+    }
+  ],
+  "second_brain_agent_model_receipts": [
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "agent_run_id",
+          "seqno": 0
+        },
+        {
+          "cid": 11,
+          "name": "created_utc",
+          "seqno": 1
+        }
+      ],
+      "name": "ix_agent_model_receipts_run",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "model_receipt_id",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_second_brain_agent_model_receipts_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 1,
+      "unique": 1
+    }
+  ],
+  "second_brain_agent_performance_feedback_runs": [
+    {
+      "columns": [
+        {
+          "cid": 5,
+          "name": "project_key",
+          "seqno": 0
+        }
+      ],
+      "name": "ix_second_brain_agent_performance_feedback_runs_project_key",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "run_id",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_second_brain_agent_performance_feedback_runs_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 1,
+      "unique": 1
+    }
+  ],
+  "second_brain_agent_run_receipts": [
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "agent_id",
+          "seqno": 0
+        },
+        {
+          "cid": 10,
+          "name": "created_utc",
+          "seqno": 1
+        }
+      ],
+      "name": "ix_agent_run_receipts_agent",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "agent_run_id",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_second_brain_agent_run_receipts_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 1,
+      "unique": 1
+    }
+  ],
+  "second_brain_evaluation_runs": [
+    {
+      "columns": [
+        {
+          "cid": 2,
+          "name": "target_kind",
+          "seqno": 0
+        },
+        {
+          "cid": 3,
+          "name": "target_id",
+          "seqno": 1
+        }
+      ],
+      "name": "ix_second_brain_evaluation_runs_target",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "evaluation_run_id",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_second_brain_evaluation_runs_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 1,
+      "unique": 1
+    }
+  ],
+  "second_brain_financial_amount_facts_normalized": [],
+  "second_brain_financial_currency_completeness_snapshots": [],
+  "second_brain_financial_exposure_summary_items": [],
+  "second_brain_financial_fact_normalization_runs": [
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "run_id",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_second_brain_financial_fact_normalization_runs_1",
+      "origin": "u",
+      "partial": 0,
+      "seq": 0,
+      "unique": 1
+    }
+  ],
+  "second_brain_financial_forecast_readiness_runs": [
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "run_id",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_second_brain_financial_forecast_readiness_runs_1",
+      "origin": "u",
+      "partial": 0,
+      "seq": 0,
+      "unique": 1
+    }
+  ],
+  "second_brain_financial_readiness_agent_runs": [
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "run_id",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_second_brain_financial_readiness_agent_runs_1",
+      "origin": "u",
+      "partial": 0,
+      "seq": 0,
+      "unique": 1
+    }
+  ],
+  "second_brain_financial_review_required_items": [],
+  "second_brain_financial_source_coverage_snapshots": [],
+  "second_brain_financial_wbs_cost_code_snapshots": [],
+  "second_brain_mcp_claude_desktop_config_previews": [
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "preview_id",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_second_brain_mcp_claude_desktop_config_previews_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 0,
+      "unique": 1
+    }
+  ],
+  "second_brain_mcp_denial_receipts": [
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "receipt_id",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_second_brain_mcp_denial_receipts_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 0,
+      "unique": 1
+    }
+  ],
+  "second_brain_mcp_permission_audit_runs": [
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "audit_run_id",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_second_brain_mcp_permission_audit_runs_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 0,
+      "unique": 1
+    }
+  ],
+  "second_brain_mcp_policy_gate_runs": [
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "gate_run_id",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_second_brain_mcp_policy_gate_runs_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 0,
+      "unique": 1
+    }
+  ],
+  "second_brain_mcp_prompt_registry_snapshots": [
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "snapshot_id",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_second_brain_mcp_prompt_registry_snapshots_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 0,
+      "unique": 1
+    }
+  ],
+  "second_brain_mcp_resource_registry_snapshots": [
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "snapshot_id",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_second_brain_mcp_resource_registry_snapshots_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 0,
+      "unique": 1
+    }
+  ],
+  "second_brain_mcp_server_config_snapshots": [
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "snapshot_id",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_second_brain_mcp_server_config_snapshots_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 0,
+      "unique": 1
+    }
+  ],
+  "second_brain_mcp_tool_call_receipts": [
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "receipt_id",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_second_brain_mcp_tool_call_receipts_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 0,
+      "unique": 1
+    }
+  ],
+  "second_brain_mcp_tool_registry_snapshots": [
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "snapshot_id",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_second_brain_mcp_tool_registry_snapshots_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 0,
+      "unique": 1
+    }
+  ],
+  "second_brain_memory_consolidation_candidates": [
+    {
+      "columns": [
+        {
+          "cid": 4,
+          "name": "run_id",
+          "seqno": 0
+        }
+      ],
+      "name": "ix_second_brain_memory_consolidation_candidates_run_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "candidate_id",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_second_brain_memory_consolidation_candidates_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 1,
+      "unique": 1
+    }
+  ],
+  "second_brain_memory_consolidation_review_items": [
+    {
+      "columns": [
+        {
+          "cid": 4,
+          "name": "candidate_id",
+          "seqno": 0
+        }
+      ],
+      "name": "ix_second_brain_memory_consolidation_review_items_candidate_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "review_item_id",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_second_brain_memory_consolidation_review_items_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 1,
+      "unique": 1
+    }
+  ],
+  "second_brain_memory_quality_review_runs": [
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "run_id",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_second_brain_memory_quality_review_runs_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 0,
+      "unique": 1
+    }
+  ],
+  "second_brain_operator_feedback": [
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "target_kind",
+          "seqno": 0
+        },
+        {
+          "cid": 2,
+          "name": "target_id",
+          "seqno": 1
+        }
+      ],
+      "name": "ix_second_brain_operator_feedback_target",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "feedback_id",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_second_brain_operator_feedback_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 1,
+      "unique": 1
+    }
+  ],
+  "second_brain_operator_preference_profiles": [
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "scope",
+          "seqno": 0
+        },
+        {
+          "cid": 2,
+          "name": "scope_key",
+          "seqno": 1
+        },
+        {
+          "cid": 3,
+          "name": "preference_key",
+          "seqno": 2
+        }
+      ],
+      "name": "sqlite_autoindex_second_brain_operator_preference_profiles_2",
+      "origin": "u",
+      "partial": 0,
+      "seq": 0,
+      "unique": 1
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "preference_id",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_second_brain_operator_preference_profiles_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 1,
+      "unique": 1
+    }
+  ],
+  "second_brain_phase_08c_validation_runs": [
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "run_id",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_second_brain_phase_08c_validation_runs_1",
+      "origin": "u",
+      "partial": 0,
+      "seq": 0,
+      "unique": 1
+    }
+  ],
+  "second_brain_phase_08d_validation_runs": [
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "validation_run_id",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_second_brain_phase_08d_validation_runs_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 0,
+      "unique": 1
+    }
+  ],
+  "second_brain_phase_09_validation_runs": [
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "run_id",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_second_brain_phase_09_validation_runs_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 0,
+      "unique": 1
+    }
+  ],
+  "second_brain_research_packets": [
+    {
+      "columns": [
+        {
+          "cid": 3,
+          "name": "project_key",
+          "seqno": 0
+        },
+        {
+          "cid": 18,
+          "name": "status",
+          "seqno": 1
+        },
+        {
+          "cid": 13,
+          "name": "review_tier",
+          "seqno": 2
+        }
+      ],
+      "name": "ix_second_brain_research_packets_project",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "packet_id",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_second_brain_research_packets_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 1,
+      "unique": 1
+    }
+  ],
+  "second_brain_retrieval_approved_source_manifests": [
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "manifest_id",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_second_brain_retrieval_approved_source_manifests_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 0,
+      "unique": 1
+    }
+  ],
+  "second_brain_retrieval_benchmark_runs": [
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "run_id",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_second_brain_retrieval_benchmark_runs_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 0,
+      "unique": 1
+    }
+  ],
+  "second_brain_retrieval_context_budget_runs": [
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "run_id",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_second_brain_retrieval_context_budget_runs_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 0,
+      "unique": 1
+    }
+  ],
+  "second_brain_retrieval_embedding_model_evals": [
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "eval_id",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_second_brain_retrieval_embedding_model_evals_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 0,
+      "unique": 1
+    }
+  ],
+  "second_brain_retrieval_eval_cases": [
+    {
+      "columns": [
+        {
+          "cid": 4,
+          "name": "eval_set_id",
+          "seqno": 0
+        }
+      ],
+      "name": "ix_second_brain_retrieval_eval_cases_eval_set_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "eval_case_id",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_second_brain_retrieval_eval_cases_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 1,
+      "unique": 1
+    }
+  ],
+  "second_brain_retrieval_eval_runs": [
+    {
+      "columns": [
+        {
+          "cid": 4,
+          "name": "eval_set_id",
+          "seqno": 0
+        }
+      ],
+      "name": "ix_second_brain_retrieval_eval_runs_eval_set_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "run_id",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_second_brain_retrieval_eval_runs_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 1,
+      "unique": 1
+    }
+  ],
+  "second_brain_retrieval_eval_sets": [
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "eval_set_id",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_second_brain_retrieval_eval_sets_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 0,
+      "unique": 1
+    }
+  ],
+  "second_brain_retrieval_hybrid_query_results": [
+    {
+      "columns": [
+        {
+          "cid": 4,
+          "name": "run_id",
+          "seqno": 0
+        }
+      ],
+      "name": "ix_second_brain_retrieval_hybrid_query_results_run_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "result_id",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_second_brain_retrieval_hybrid_query_results_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 1,
+      "unique": 1
+    }
+  ],
+  "second_brain_retrieval_hybrid_query_runs": [
+    {
+      "columns": [
+        {
+          "cid": 4,
+          "name": "project_key",
+          "seqno": 0
+        }
+      ],
+      "name": "ix_second_brain_retrieval_hybrid_query_runs_project_key",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "run_id",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_second_brain_retrieval_hybrid_query_runs_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 1,
+      "unique": 1
+    }
+  ],
+  "second_brain_retrieval_llamaindex_config_snapshots": [
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "snapshot_id",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_second_brain_retrieval_llamaindex_config_snapshots_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 0,
+      "unique": 1
+    }
+  ],
+  "second_brain_retrieval_source_linked_proof_runs": [
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "run_id",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_second_brain_retrieval_source_linked_proof_runs_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 0,
+      "unique": 1
+    }
+  ],
+  "second_brain_retrieval_unsupported_claim_checks": [
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "check_id",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_second_brain_retrieval_unsupported_claim_checks_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 0,
+      "unique": 1
+    }
+  ],
+  "second_brain_retrieval_vector_index_items": [
+    {
+      "columns": [
+        {
+          "cid": 4,
+          "name": "run_id",
+          "seqno": 0
+        }
+      ],
+      "name": "ix_second_brain_retrieval_vector_index_items_run_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "item_id",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_second_brain_retrieval_vector_index_items_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 1,
+      "unique": 1
+    }
+  ],
+  "second_brain_retrieval_vector_index_runs": [
+    {
+      "columns": [
+        {
+          "cid": 6,
+          "name": "project_key",
+          "seqno": 0
+        }
+      ],
+      "name": "ix_second_brain_retrieval_vector_index_runs_project_key",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "run_id",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_second_brain_retrieval_vector_index_runs_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 1,
+      "unique": 1
+    }
+  ],
+  "second_brain_retry_receipts": [
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "run_kind",
+          "seqno": 0
+        },
+        {
+          "cid": 9,
+          "name": "created_utc",
+          "seqno": 1
+        }
+      ],
+      "name": "ix_retry_receipts_kind",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "retry_receipt_id",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_second_brain_retry_receipts_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 1,
+      "unique": 1
+    }
+  ],
+  "second_brain_review_burden_clusters": [
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "run_id",
+          "seqno": 0
+        }
+      ],
+      "name": "ix_second_brain_review_burden_clusters_run_id",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "cluster_id",
+          "seqno": 0
+        },
+        {
+          "cid": 1,
+          "name": "run_id",
+          "seqno": 1
+        }
+      ],
+      "name": "sqlite_autoindex_second_brain_review_burden_clusters_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 1,
+      "unique": 1
+    }
+  ],
+  "second_brain_review_burden_policy_evals": [
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "eval_id",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_second_brain_review_burden_policy_evals_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 0,
+      "unique": 1
+    }
+  ],
+  "second_brain_review_burden_runs": [
+    {
+      "columns": [
+        {
+          "cid": 4,
+          "name": "project_key",
+          "seqno": 0
+        }
+      ],
+      "name": "ix_second_brain_review_burden_runs_project_key",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "run_id",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_second_brain_review_burden_runs_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 1,
+      "unique": 1
+    }
+  ],
+  "second_brain_run_registry": [
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "run_kind",
+          "seqno": 0
+        },
+        {
+          "cid": 11,
+          "name": "created_utc",
+          "seqno": 1
+        }
+      ],
+      "name": "ix_run_registry_kind",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "run_registry_id",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_second_brain_run_registry_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 1,
+      "unique": 1
+    }
+  ],
+  "second_brain_run_steps": [
+    {
+      "columns": [
+        {
+          "cid": 1,
+          "name": "run_registry_id",
+          "seqno": 0
+        },
+        {
+          "cid": 3,
+          "name": "step_order",
+          "seqno": 1
+        }
+      ],
+      "name": "ix_run_steps_registry",
+      "origin": "c",
+      "partial": 0,
+      "seq": 0,
+      "unique": 0
+    },
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "run_step_id",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_second_brain_run_steps_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 1,
+      "unique": 1
+    }
+  ],
+  "second_brain_runtime_config_receipts": [
+    {
+      "columns": [
+        {
+          "cid": 0,
+          "name": "config_receipt_id",
+          "seqno": 0
+        }
+      ],
+      "name": "sqlite_autoindex_second_brain_runtime_config_receipts_1",
+      "origin": "pk",
+      "partial": 0,
+      "seq": 0,
+      "unique": 1
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "project_key": "tropical",
+  "disposition": "consumed",
+  "disposition_reason": "cost-frequency package already present",
+  "status_counts": {
+    "partially_consumed": 89,
+    "consumed": 38
+  },
+  "cadence_affects_final_cost": false,
+  "note": "cost-frequency shapes monthly timing + timing-risk only; zero final-cost weight"
+}

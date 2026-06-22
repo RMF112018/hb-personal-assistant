@@ -1,0 +1,55 @@
+{
+  "note": "Repo-local DB-backed comprehensive/probability packages copied because configured data root was inaccessible.",
+  "probability_package": {
+    "copied": true,
+    "destination": "/Users/bobbyfetting/hb-personal-assistant/docs/evidence/forecast-model-engines-upload-next/20260622T084450Z/statsforecast-shadow/probability-backtest-proxy-package",
+    "files": [
+      "audit/safety_scan_report.json",
+      "audit/source_files_used.json",
+      "calibration_summary.json",
+      "manifest.json",
+      "probabilistic_backtest_results.json",
+      "probabilistic_project_summary.json",
+      "validation_report.json"
+    ],
+    "source": "/Users/bobbyfetting/hb-personal-assistant/docs/evidence/phase19-forecast-probability-db-config-live-proof/20260620T083849Z/work/db_snapshot_backed/forecast_probability_package_tropical_20260101_000000"
+  },
+  "production_package": {
+    "copied": true,
+    "destination": "/Users/bobbyfetting/hb-personal-assistant/docs/evidence/forecast-model-engines-upload-next/20260622T084450Z/production-forecast-package-repo-local",
+    "files": [
+      "README.md",
+      "SCHEMA.md",
+      "actuals_monthly_by_budget_code.csv",
+      "actuals_monthly_by_budget_code.jsonl",
+      "actuals_to_forecast_bridge_by_budget_code.jsonl",
+      "audit/actuals_floor_audit.json",
+      "audit/actuals_monthly_reconciliation_audit.json",
+      "audit/actuals_plus_forecast_monthly_by_cost_code_audit.json",
+      "audit/db_inventory.json",
+      "audit/evidence_registry_audit.json",
+      "audit/evidence_weighting_audit.json",
+      "audit/forecast_cost_basis_decision_audit.json",
+      "audit/model_evidence_completeness_matrix.json",
+      "audit/monthly_reconciliation_audit.json",
+      "audit/no_upper_cap_audit.json",
+      "audit/safety_scan_report.json",
+      "audit/source_hashes_before_after.json",
+      "audit/source_packages_used.json",
+      "data_quality_warnings.jsonl",
+      "integrated_evidence_registry_by_budget_code.jsonl",
+      "integrated_evidence_weights_by_budget_code.jsonl",
+      "integrated_final_cost_recommendations.jsonl",
+      "integrated_forecast_by_budget_code.jsonl",
+      "integrated_human_review_queue.jsonl",
+      "integrated_monthly_forecast_by_budget_code.jsonl",
+      "integrated_probability_by_budget_code.jsonl",
+      "integrated_risk_register.jsonl",
+      "manifest.json",
+      "model_package_inventory.json",
+      "project_comprehensive_forecast_summary.json",
+      "validation_report.json"
+    ],
+    "source": "/Users/bobbyfetting/hb-personal-assistant/docs/evidence/phase20-forecast-comprehensive-db-config-live-proof/20260620T103706Z/work/db_snapshot_backed/forecast_comprehensive_package_tropical_20260101_000000"
+  }
+}

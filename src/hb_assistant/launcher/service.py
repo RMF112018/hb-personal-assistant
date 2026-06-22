@@ -77,31 +77,13 @@ class LauncherService:
         return data if isinstance(data, dict) else {}
 
     def _forecast_default_env(self) -> dict[str, str]:
-        """Default the 3 forecast WRITE-roots under this profile's app-support when unconfigured.
+        """Forecast env overrides for child processes (empty by default).
 
-        Read-roots (package_roots / data_root / db_path) are NEVER defaulted — they point at live
-        inputs that must be configured explicitly. A default is injected only when the key is set
-        neither in the inherited process env nor in the profile's settings file, so an operator's
-        explicit configuration always wins. The directories themselves are created at app startup by
-        the backend's forecast lifespan hook (the single mutation site).
+        App-managed forecast roots are seeded into ``forecast_runtime_config.json`` and created by
+        ``ensure_forecast_managed_storage`` at launch — env injection is no longer required for the
+        write-backed surfaces. Operator ``HB_FORECAST_*`` env vars still win when set explicitly.
         """
-        from hb_assistant.construction.analytics.forecast_external_ingest import ENV_EVAL_ROOT
-        from hb_assistant.construction.analytics.forecast_run_service import ENV_RUNS_ROOT
-        from hb_assistant.construction.analytics.forecast_runtime_config import ENV_CONFIG_EDIT_ROOT
-
-        base = self.profile.app_support_root / "analytics" / "forecast"
-        settings = self._forecast_settings()
-        mapping = (
-            (ENV_RUNS_ROOT, "runs_root", base / "runs"),
-            (ENV_EVAL_ROOT, "eval_root", base / "eval"),
-            (ENV_CONFIG_EDIT_ROOT, "config_edit_root", base / "config-edit"),
-        )
-        out: dict[str, str] = {}
-        for env_key, settings_key, default_path in mapping:
-            if os.environ.get(env_key) or settings.get(settings_key):
-                continue
-            out[env_key] = str(default_path)
-        return out
+        return {}
 
     def _forecast_readiness(self) -> dict[str, Any]:
         """Run the forecast bootstrap under the child env and return its redaction-safe report.
@@ -114,9 +96,11 @@ class LauncherService:
         saved = {k: os.environ.get(k) for k in overrides}
         try:
             os.environ.update(overrides)
-            from hb_assistant.construction.analytics.forecast_bootstrap import ensure_forecast_roots
+            from hb_assistant.construction.analytics.forecast_bootstrap import (
+                ensure_forecast_managed_storage,
+            )
 
-            return ensure_forecast_roots()
+            return ensure_forecast_managed_storage()
         except Exception as exc:
             return {"status": "unavailable", "error_class": type(exc).__name__}
         finally:

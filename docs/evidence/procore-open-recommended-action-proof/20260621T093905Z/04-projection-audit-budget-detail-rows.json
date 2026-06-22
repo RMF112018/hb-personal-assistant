@@ -1,0 +1,53 @@
+{
+  "command": "hb-assistant procore analytics projection-audit",
+  "ok": false,
+  "endpoint_count": 1,
+  "unmapped_primary_business_fields": 90,
+  "unmapped_nested_business_fields": 11,
+  "unknown_business_field_paths": 101,
+  "runtime_plan_schema_mismatches": 0,
+  "endpoints_over_sidecar_threshold": [],
+  "endpoints_over_sidecar_threshold_unjustified": [],
+  "endpoints": [
+    {
+      "endpoint_id": "budget-detail-rows",
+      "status": "no_registry_plan",
+      "registry_present": false,
+      "unmapped_primary_business_fields": 90,
+      "unmapped_nested_business_fields": 11,
+      "unknown_business_field_paths": 101,
+      "unknown_sample": [
+        "$.Approved COs",
+        "$.Change Events",
+        "$.Commitment Invoiced",
+        "$.Commitments",
+        "$.Committed Costs",
+        "$.Direct Costs",
+        "$.ERP Direct Costs",
+        "$.ERP Job to Date Costs",
+        "$.Estimated Cost at Completion",
+        "$.Job to Date Costs",
+        "$.Pending Budget Changes",
+        "$.Pending Cost Changes",
+        "$.Prime",
+        "$.Projected Budget",
+        "$.Projected Cost To Complete",
+        "$.Projected Costs",
+        "$.Projected over Under",
+        "$.Requisitions",
+        "$.Revised Budget",
+        "$.biller",
+        "$.biller_id",
+        "$.biller_type",
+        "$.budget_forecast.amount",
+        "$.budget_forecast.automatic_amount",
+        "$.budget_forecast.automatically_calculated"
+      ]
+    }
+  ],
+  "guardrails": {
+    "live_calls_disabled": true,
+    "writeback": "none",
+    "emits_values": false
+  }
+}

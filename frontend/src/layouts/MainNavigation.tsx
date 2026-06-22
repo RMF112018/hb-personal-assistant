@@ -1,12 +1,13 @@
 import { Link } from 'react-router-dom'
 import { PRIMARY_NAV, isActive } from '../navigation/navigationModel'
-import { Calendar, FolderOpen, ListChecks, LayoutDashboard, TrendingUp } from 'lucide-react'
+import { Calendar, CalendarRange, FolderOpen, ListChecks, LayoutDashboard, TrendingUp } from 'lucide-react'
 
 const iconFor = (label: string) => {
   if (label === 'My Dashboard') return <LayoutDashboard className="h-4 w-4" />
   if (label === 'Today') return <Calendar className="h-4 w-4" />
   if (label === 'Projects') return <FolderOpen className="h-4 w-4" />
   if (label === 'Forecasting') return <TrendingUp className="h-4 w-4" />
+  if (label === 'Schedules') return <CalendarRange className="h-4 w-4" />
   if (label === 'My Items') return <ListChecks className="h-4 w-4" />
   return null
 }

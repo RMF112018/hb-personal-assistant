@@ -21,9 +21,6 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    // Log for developers; do not surface raw stack or details in the UI.
-    // CM-first: friendly advisory only.
-    // eslint-disable-next-line no-console
     console.error('App render error (ErrorBoundary):', error, errorInfo)
   }
 

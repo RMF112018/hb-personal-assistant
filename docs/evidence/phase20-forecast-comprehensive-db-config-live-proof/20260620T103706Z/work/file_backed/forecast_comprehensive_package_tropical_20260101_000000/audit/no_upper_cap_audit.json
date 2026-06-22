@@ -1,0 +1,7 @@
+{
+  "project_key": "tropical",
+  "no_upper_cap_anywhere": true,
+  "final_cost_rows_checked": 127,
+  "probability_rows_checked": 127,
+  "rule": "no history / pay-app / owner SOV / ERP budget / commitment / prior forecast / probability value is used as a hard cap; integrated final floored at actuals only"
+}

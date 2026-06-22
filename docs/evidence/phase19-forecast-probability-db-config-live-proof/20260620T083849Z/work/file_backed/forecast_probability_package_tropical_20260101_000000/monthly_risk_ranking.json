@@ -1,0 +1,62 @@
+{
+  "months_ranked_by_simulated_p50_cost": [
+    {
+      "forecast_month": "2026-07",
+      "simulated_p50_month_cost": "4651117.55",
+      "simulated_p90_month_cost": "7141300.90"
+    },
+    {
+      "forecast_month": "2026-06",
+      "simulated_p50_month_cost": "4533383.72",
+      "simulated_p90_month_cost": "7555539.17"
+    },
+    {
+      "forecast_month": "2026-08",
+      "simulated_p50_month_cost": "2575103.15",
+      "simulated_p90_month_cost": "4154016.74"
+    },
+    {
+      "forecast_month": "2026-09",
+      "simulated_p50_month_cost": "704724.40",
+      "simulated_p90_month_cost": "1604168.90"
+    },
+    {
+      "forecast_month": "2026-10",
+      "simulated_p50_month_cost": "396626.65",
+      "simulated_p90_month_cost": "1115843.24"
+    },
+    {
+      "forecast_month": "2026-11",
+      "simulated_p50_month_cost": "84963.95",
+      "simulated_p90_month_cost": "169681.40"
+    }
+  ],
+  "months_ranked_by_overrun_probability": [
+    {
+      "forecast_month": "2026-11",
+      "prob_cumulative_exceeds_current_projected_total": "0.9859"
+    },
+    {
+      "forecast_month": "2026-10",
+      "prob_cumulative_exceeds_current_projected_total": "0.9847"
+    },
+    {
+      "forecast_month": "2026-09",
+      "prob_cumulative_exceeds_current_projected_total": "0.9808"
+    },
+    {
+      "forecast_month": "2026-08",
+      "prob_cumulative_exceeds_current_projected_total": "0.9609"
+    },
+    {
+      "forecast_month": "2026-07",
+      "prob_cumulative_exceeds_current_projected_total": "0.7195"
+    },
+    {
+      "forecast_month": "2026-06",
+      "prob_cumulative_exceeds_current_projected_total": "0.0860"
+    }
+  ],
+  "highest_cost_month": "2026-07",
+  "highest_overrun_risk_month": "2026-11"
+}

@@ -4,8 +4,8 @@
   "proof_passed": false,
   "ok": false,
   "phase": "08C",
-  "generated_utc": "2026-06-09T10:37:42.748476Z",
-  "schema_version": 44,
+  "generated_utc": "2026-06-22T11:03:07.679679Z",
+  "schema_version": 63,
   "schema_version_expected": 35,
   "contract_version": "phase_08c_data_quality_gates-v1",
   "advisory_only": true,
@@ -126,7 +126,7 @@
         "sqlite_real_allowed": false
       },
       "normalization": {
-        "run_id": "08c-amount-norm-a91362ee3b7d",
+        "run_id": "08c-amount-norm-e36ebd8ae91b",
         "stats": {
           "parseable": 0,
           "rejected": 0,

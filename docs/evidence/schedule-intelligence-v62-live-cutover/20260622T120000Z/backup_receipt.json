@@ -1,0 +1,8 @@
+{
+  "backup_path": "docs/evidence/schedule-intelligence-v62-live-cutover/20260622T120000Z/backups/hb-personal-assistant-pre-v62.sqlite",
+  "integrity_check": "ok",
+  "sha256": "9aac4198836d32f909944e4e8e174acfbb3520ffef7d231aa847b086cc316f4e",
+  "size_bytes": 3537948672,
+  "source_db": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite",
+  "verified_schema_version": 61
+}

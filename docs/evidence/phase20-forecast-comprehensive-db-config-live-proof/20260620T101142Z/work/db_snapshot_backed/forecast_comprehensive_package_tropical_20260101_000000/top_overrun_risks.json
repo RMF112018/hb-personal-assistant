@@ -1,0 +1,177 @@
+[
+  {
+    "budget_code_key": "1000.10-01-318.LAB",
+    "cost_code": "10-01-318",
+    "integrated_recommended_final_cost": "408425.76",
+    "integrated_minus_accepted_final_cost": "85899.79",
+    "integrated_direction": "integrated_increase_review"
+  },
+  {
+    "budget_code_key": "1000.10-01-315.LAB",
+    "cost_code": "10-01-315",
+    "integrated_recommended_final_cost": "266218.84",
+    "integrated_minus_accepted_final_cost": "29985.61",
+    "integrated_direction": "integrated_increase_review"
+  },
+  {
+    "budget_code_key": "1000.10-01-460.LAB",
+    "cost_code": "10-01-460",
+    "integrated_recommended_final_cost": "60274.58",
+    "integrated_minus_accepted_final_cost": "10842.08",
+    "integrated_direction": "integrated_increase_review"
+  },
+  {
+    "budget_code_key": "1000.10-01-302.LAB",
+    "cost_code": "10-01-302",
+    "integrated_recommended_final_cost": "30006.71",
+    "integrated_minus_accepted_final_cost": "2464.98",
+    "integrated_direction": "integrated_increase_review"
+  },
+  {
+    "budget_code_key": "1000.15-07-200.SUB",
+    "cost_code": "15-07-200",
+    "integrated_recommended_final_cost": "861492.14",
+    "integrated_minus_accepted_final_cost": "2154.40",
+    "integrated_direction": "integrated_increase_review"
+  },
+  {
+    "budget_code_key": "1000.10-01-311.LAB",
+    "cost_code": "10-01-311",
+    "integrated_recommended_final_cost": "252681.46",
+    "integrated_minus_accepted_final_cost": "1169.67",
+    "integrated_direction": "integrated_increase_review"
+  },
+  {
+    "budget_code_key": "1000.15-08-830.SUB",
+    "cost_code": "15-08-830",
+    "integrated_recommended_final_cost": "107788.54",
+    "integrated_minus_accepted_final_cost": "1031.04",
+    "integrated_direction": "integrated_increase_review"
+  },
+  {
+    "budget_code_key": "1000.10-01-523.MAT",
+    "cost_code": "10-01-523",
+    "integrated_recommended_final_cost": "66569.29",
+    "integrated_minus_accepted_final_cost": "835.31",
+    "integrated_direction": "integrated_increase_review"
+  },
+  {
+    "budget_code_key": "1000.15-05-910.SUB",
+    "cost_code": "15-05-910",
+    "integrated_recommended_final_cost": "463710.22",
+    "integrated_minus_accepted_final_cost": "295.98",
+    "integrated_direction": "integrated_increase_review"
+  },
+  {
+    "budget_code_key": "1000.15-10-440.SUB",
+    "cost_code": "15-10-440",
+    "integrated_recommended_final_cost": "210.04",
+    "integrated_minus_accepted_final_cost": "210.04",
+    "integrated_direction": "integrated_increase_review"
+  },
+  {
+    "budget_code_key": "1000.15-02-510.MAT",
+    "cost_code": "15-02-510",
+    "integrated_recommended_final_cost": "109551.48",
+    "integrated_minus_accepted_final_cost": "194.31",
+    "integrated_direction": "integrated_increase_review"
+  },
+  {
+    "budget_code_key": "1000.10-01-532.MAT",
+    "cost_code": "10-01-532",
+    "integrated_recommended_final_cost": "28771.62",
+    "integrated_minus_accepted_final_cost": "180.29",
+    "integrated_direction": "integrated_increase_review"
+  },
+  {
+    "budget_code_key": "1000.90-01-300.MAT",
+    "cost_code": "90-01-300",
+    "integrated_recommended_final_cost": "29868.61",
+    "integrated_minus_accepted_final_cost": "161.10",
+    "integrated_direction": "integrated_increase_review"
+  },
+  {
+    "budget_code_key": "1000.15-07-840.SUB",
+    "cost_code": "15-07-840",
+    "integrated_recommended_final_cost": "114398.71",
+    "integrated_minus_accepted_final_cost": "138.26",
+    "integrated_direction": "integrated_increase_review"
+  },
+  {
+    "budget_code_key": "1000.15-15-700.SUB",
+    "cost_code": "15-15-700",
+    "integrated_recommended_final_cost": "2716231.26",
+    "integrated_minus_accepted_final_cost": "101.72",
+    "integrated_direction": "integrated_increase_review"
+  },
+  {
+    "budget_code_key": "1000.10-01-521.MAT",
+    "cost_code": "10-01-521",
+    "integrated_recommended_final_cost": "98273.77",
+    "integrated_minus_accepted_final_cost": "83.37",
+    "integrated_direction": "integrated_increase_review"
+  },
+  {
+    "budget_code_key": "1000.10-01-520.MAT",
+    "cost_code": "10-01-520",
+    "integrated_recommended_final_cost": "6538.49",
+    "integrated_minus_accepted_final_cost": "35.66",
+    "integrated_direction": "integrated_increase_review"
+  },
+  {
+    "budget_code_key": "1000.10-01-565.MAT",
+    "cost_code": "10-01-565",
+    "integrated_recommended_final_cost": "2059.56",
+    "integrated_minus_accepted_final_cost": "21.10",
+    "integrated_direction": "integrated_increase_review"
+  },
+  {
+    "budget_code_key": "1000.10-01-612.MAT",
+    "cost_code": "10-01-612",
+    "integrated_recommended_final_cost": "35496.47",
+    "integrated_minus_accepted_final_cost": "8.30",
+    "integrated_direction": "integrated_increase_review"
+  },
+  {
+    "budget_code_key": "1000.10-01-025.MAT",
+    "cost_code": "10-01-025",
+    "integrated_recommended_final_cost": "3807.37",
+    "integrated_minus_accepted_final_cost": "2.00",
+    "integrated_direction": "integrated_increase_review"
+  },
+  {
+    "budget_code_key": "0000.03-01-025.MAT",
+    "cost_code": "03-01-025",
+    "integrated_recommended_final_cost": "1032.40",
+    "integrated_minus_accepted_final_cost": "0.00",
+    "integrated_direction": "hold"
+  },
+  {
+    "budget_code_key": "0000.03-01-413.LAB",
+    "cost_code": "03-01-413",
+    "integrated_recommended_final_cost": "127360.67",
+    "integrated_minus_accepted_final_cost": "0.00",
+    "integrated_direction": "hold"
+  },
+  {
+    "budget_code_key": "0000.03-01-413.LBN",
+    "cost_code": "03-01-413",
+    "integrated_recommended_final_cost": "24487.19",
+    "integrated_minus_accepted_final_cost": "0.00",
+    "integrated_direction": "hold"
+  },
+  {
+    "budget_code_key": "0000.03-01-413.MAT",
+    "cost_code": "03-01-413",
+    "integrated_recommended_final_cost": "4278.99",
+    "integrated_minus_accepted_final_cost": "0.00",
+    "integrated_direction": "hold"
+  },
+  {
+    "budget_code_key": "1000.10-01-100.LAB",
+    "cost_code": "10-01-100",
+    "integrated_recommended_final_cost": "0.00",
+    "integrated_minus_accepted_final_cost": "0.00",
+    "integrated_direction": "hold"
+  }
+]

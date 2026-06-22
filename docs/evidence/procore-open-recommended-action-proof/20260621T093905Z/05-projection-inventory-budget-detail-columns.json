@@ -1,0 +1,100 @@
+{
+  "command": "hb-assistant procore analytics projection-inventory",
+  "endpoint_count": 1,
+  "total_distinct_paths": 8,
+  "total_array_paths": 0,
+  "endpoints": [
+    {
+      "endpoint_id": "budget-detail-columns",
+      "distinct_paths": 8,
+      "array_paths": 0,
+      "fields": [
+        {
+          "path": "$",
+          "types": [
+            "object"
+          ],
+          "occurrences": 399,
+          "non_empty": 399,
+          "null_empty_rate_pct": 0.0,
+          "category": "other"
+        },
+        {
+          "path": "$.aggregatable",
+          "types": [
+            "boolean"
+          ],
+          "occurrences": 399,
+          "non_empty": 399,
+          "null_empty_rate_pct": 0.0,
+          "category": "other"
+        },
+        {
+          "path": "$.filterable",
+          "types": [
+            "boolean"
+          ],
+          "occurrences": 399,
+          "non_empty": 399,
+          "null_empty_rate_pct": 0.0,
+          "category": "other"
+        },
+        {
+          "path": "$.groupable",
+          "types": [
+            "boolean"
+          ],
+          "occurrences": 399,
+          "non_empty": 399,
+          "null_empty_rate_pct": 0.0,
+          "category": "other"
+        },
+        {
+          "path": "$.id",
+          "types": [
+            "string"
+          ],
+          "occurrences": 399,
+          "non_empty": 399,
+          "null_empty_rate_pct": 0.0,
+          "category": "identity"
+        },
+        {
+          "path": "$.name",
+          "types": [
+            "string"
+          ],
+          "occurrences": 399,
+          "non_empty": 399,
+          "null_empty_rate_pct": 0.0,
+          "category": "title"
+        },
+        {
+          "path": "$.position",
+          "types": [
+            "integer"
+          ],
+          "occurrences": 399,
+          "non_empty": 399,
+          "null_empty_rate_pct": 0.0,
+          "category": "other"
+        },
+        {
+          "path": "$.type",
+          "types": [
+            "string"
+          ],
+          "occurrences": 399,
+          "non_empty": 399,
+          "null_empty_rate_pct": 0.0,
+          "category": "other"
+        }
+      ]
+    }
+  ],
+  "guardrails": {
+    "live_calls_disabled": true,
+    "writeback": "none",
+    "emits_values": false
+  }
+}

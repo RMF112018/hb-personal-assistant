@@ -23,7 +23,7 @@ vi.mock('../lib/api', () => ({
 }))
 
 function mockQueries(edits: unknown[] = [], promotionEnabled = false) {
-  useQueryMock.mockImplementation((opts: { queryKey: any[] }) => {
+  useQueryMock.mockImplementation((opts: { queryKey: unknown[] }) => {
     if (opts.queryKey[1] === 'runtime') {
       return { data: { promotion: { enabled: promotionEnabled } }, refetch: vi.fn() }
     }
@@ -53,7 +53,7 @@ describe('ForecastConfigEditProposalsPage', () => {
   it('renders the propose form for an operator with editable domains', () => {
     mockQueries()
     renderPage()
-    expect(screen.getByText('Propose a configuration edit')).toBeInTheDocument()
+    expect(screen.getByText('Configuration proposals')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Propose edit/i })).toBeInTheDocument()
     expect(screen.getByText('Model controls')).toBeInTheDocument()
   })
@@ -62,7 +62,7 @@ describe('ForecastConfigEditProposalsPage', () => {
     getRoleMock.mockReturnValue('viewer')
     mockQueries()
     renderPage()
-    expect(screen.queryByText('Propose a configuration edit')).not.toBeInTheDocument()
+    expect(screen.queryByText('Configuration proposals')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Propose edit/i })).not.toBeInTheDocument()
   })
 

@@ -10,9 +10,28 @@ vi.mock('@tanstack/react-query', () => ({
   useQuery: (options: { queryKey: unknown[] }) => useQueryMock(options),
 }))
 
+vi.mock('../hooks/useForecastReadiness', () => ({
+  useForecastReadiness: () => ({
+    data: {
+      storage_mode: 'app_managed',
+      surfaces_ready: { catalog: true },
+      roots: {
+        package_roots: { valid: true, count: 1 },
+        data_root: { valid: true },
+        db_path: { valid: true },
+        runs_root: { valid: true },
+        eval_root: { valid: true },
+        config_edit_root: { valid: true },
+      },
+    },
+    isLoading: false,
+  }),
+}))
+
 function mockData() {
-  useQueryMock.mockImplementation((opts: { queryKey: any[] }) => {
+  useQueryMock.mockImplementation((opts: { queryKey: unknown[] }) => {
     const kind = opts.queryKey[1]
+    const sub = opts.queryKey[2]
     if (kind === 'projects') {
       return {
         data: {
@@ -47,6 +66,11 @@ function mockData() {
         error: null,
       }
     }
+    if (kind === 'runs') return { data: { runs: [] }, isLoading: false, error: null }
+    if (kind === 'external') return { data: { evaluations: [] }, isLoading: false, error: null }
+    if (kind === 'config' && sub === 'snapshots') {
+      return { data: { snapshots: [{ snapshot_name: 'Live', item_count: 12 }] }, isLoading: false, error: null }
+    }
     return { data: undefined, isLoading: false, error: null }
   })
 }
@@ -67,10 +91,12 @@ describe('ForecastingPage package history', () => {
   it('lists forecast packages with a friendly label and status', () => {
     mockData()
     renderPage()
-    expect(screen.getByText('Package & run history')).toBeInTheDocument()
-    expect(screen.getByText('Comprehensive forecast — Jun 15, 2026 3:39 PM')).toBeInTheDocument()
-    expect(screen.getByText('Validated')).toBeInTheDocument()
-    expect(screen.getByText('Open')).toBeInTheDocument()
+    expect(screen.getByText('Forecast packages')).toBeInTheDocument()
+    expect(
+      screen.getAllByText('Comprehensive forecast — Jun 15, 2026 3:39 PM').length,
+    ).toBeGreaterThan(0)
+    expect(screen.getAllByText('Ready').length).toBeGreaterThan(0)
+    expect(screen.getByText('Review')).toBeInTheDocument()
   })
 
   it('does not render raw stamps or filesystem paths', () => {

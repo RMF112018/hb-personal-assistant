@@ -93,9 +93,9 @@ def test_config_echo_returns_raw_paths(
 # -- write (operator-gated, fail-closed) --------------------------------------
 
 
-def test_write_requires_operator(client: TestClient) -> None:
-    r = client.post("/api/forecast/runtime/config", headers=_h("viewer"), json={"data_root": "/x"})
-    assert r.status_code == 403
+def test_write_requires_admin(client: TestClient) -> None:
+    assert client.post("/api/forecast/runtime/config", headers=_h("viewer"), json={"data_root": "/x"}).status_code == 403
+    assert client.post("/api/forecast/runtime/config", headers=_h("operator"), json={"data_root": "/x"}).status_code == 403
 
 
 def test_write_refuses_write_root_under_data_root(client: TestClient, tmp_path: Path) -> None:
@@ -103,7 +103,7 @@ def test_write_refuses_write_root_under_data_root(client: TestClient, tmp_path: 
     data.mkdir()
     r = client.post(
         "/api/forecast/runtime/config",
-        headers=_h("operator"),
+        headers=_h("admin"),
         json={"data_root": str(data), "runs_root": str(data / "inside")},
     )
     assert r.status_code == 400
@@ -119,7 +119,7 @@ def test_write_success_returns_redaction_safe_status(client: TestClient, tmp_pat
     pkg.mkdir()
     r = client.post(
         "/api/forecast/runtime/config",
-        headers=_h("operator"),
+        headers=_h("admin"),
         json={
             "data_root": str(data),
             "runs_root": str(tmp_path / "runs"),
@@ -135,6 +135,24 @@ def test_write_success_returns_redaction_safe_status(client: TestClient, tmp_pat
 
 
 # -- end-to-end: settings file (no env) reaches the catalog service -----------
+
+
+def test_repair_bootstraps_managed_storage(client: TestClient) -> None:
+    r = client.post("/api/forecast/runtime/repair", headers=_h("operator"))
+    assert r.status_code == 200
+    body = r.json()
+    assert body["storage_mode"] == "app_managed"
+    assert find_redaction_leaks(body) == []
+
+
+def test_reset_requires_admin_and_confirm(client: TestClient) -> None:
+    assert client.post("/api/forecast/runtime/reset", headers=_h("operator"), json={"confirm": True}).status_code == 403
+    r = client.post("/api/forecast/runtime/reset", headers=_h("admin"), json={"confirm": False})
+    assert r.status_code == 400
+    assert r.json()["detail"] == "forecast_runtime_reset_confirm_required"
+    ok = client.post("/api/forecast/runtime/reset", headers=_h("admin"), json={"confirm": True})
+    assert ok.status_code == 200
+    assert ok.json()["storage_mode"] == "app_managed"
 
 
 def test_settings_file_only_reaches_catalog(client: TestClient, tmp_path: Path) -> None:

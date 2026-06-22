@@ -1,0 +1,1175 @@
+{
+  "command": "hb-assistant procore analytics projection-inventory",
+  "endpoint_count": 1,
+  "total_distinct_paths": 114,
+  "total_array_paths": 4,
+  "endpoints": [
+    {
+      "endpoint_id": "budget-detail-rows",
+      "distinct_paths": 114,
+      "array_paths": 4,
+      "fields": [
+        {
+          "path": "$",
+          "types": [
+            "object"
+          ],
+          "occurrences": 3512,
+          "non_empty": 3512,
+          "null_empty_rate_pct": 0.0,
+          "category": "other"
+        },
+        {
+          "path": "$.Approved COs",
+          "types": [
+            "string"
+          ],
+          "occurrences": 2951,
+          "non_empty": 2951,
+          "null_empty_rate_pct": 0.0,
+          "category": "status"
+        },
+        {
+          "path": "$.Change Events",
+          "types": [
+            "string"
+          ],
+          "occurrences": 561,
+          "non_empty": 561,
+          "null_empty_rate_pct": 0.0,
+          "category": "other"
+        },
+        {
+          "path": "$.Commitment Invoiced",
+          "types": [
+            "string"
+          ],
+          "occurrences": 1190,
+          "non_empty": 1190,
+          "null_empty_rate_pct": 0.0,
+          "category": "money"
+        },
+        {
+          "path": "$.Commitments",
+          "types": [
+            "string"
+          ],
+          "occurrences": 561,
+          "non_empty": 561,
+          "null_empty_rate_pct": 0.0,
+          "category": "other"
+        },
+        {
+          "path": "$.Committed Costs",
+          "types": [
+            "string"
+          ],
+          "occurrences": 1799,
+          "non_empty": 1799,
+          "null_empty_rate_pct": 0.0,
+          "category": "money"
+        },
+        {
+          "path": "$.Direct Costs",
+          "types": [
+            "string"
+          ],
+          "occurrences": 609,
+          "non_empty": 609,
+          "null_empty_rate_pct": 0.0,
+          "category": "money"
+        },
+        {
+          "path": "$.ERP Direct Costs",
+          "types": [
+            "string"
+          ],
+          "occurrences": 1190,
+          "non_empty": 1190,
+          "null_empty_rate_pct": 0.0,
+          "category": "money"
+        },
+        {
+          "path": "$.ERP Job to Date Costs",
+          "types": [
+            "string"
+          ],
+          "occurrences": 1190,
+          "non_empty": 1190,
+          "null_empty_rate_pct": 0.0,
+          "category": "money"
+        },
+        {
+          "path": "$.Estimated Cost at Completion",
+          "types": [
+            "string"
+          ],
+          "occurrences": 2951,
+          "non_empty": 2951,
+          "null_empty_rate_pct": 0.0,
+          "category": "money"
+        },
+        {
+          "path": "$.Job to Date Costs",
+          "types": [
+            "string"
+          ],
+          "occurrences": 1761,
+          "non_empty": 1761,
+          "null_empty_rate_pct": 0.0,
+          "category": "money"
+        },
+        {
+          "path": "$.Pending Budget Changes",
+          "types": [
+            "string"
+          ],
+          "occurrences": 1799,
+          "non_empty": 1799,
+          "null_empty_rate_pct": 0.0,
+          "category": "money"
+        },
+        {
+          "path": "$.Pending Cost Changes",
+          "types": [
+            "string"
+          ],
+          "occurrences": 1799,
+          "non_empty": 1799,
+          "null_empty_rate_pct": 0.0,
+          "category": "money"
+        },
+        {
+          "path": "$.Prime",
+          "types": [
+            "string"
+          ],
+          "occurrences": 561,
+          "non_empty": 561,
+          "null_empty_rate_pct": 0.0,
+          "category": "other"
+        },
+        {
+          "path": "$.Projected Budget",
+          "types": [
+            "string"
+          ],
+          "occurrences": 2951,
+          "non_empty": 2951,
+          "null_empty_rate_pct": 0.0,
+          "category": "money"
+        },
+        {
+          "path": "$.Projected Cost To Complete",
+          "types": [
+            "string"
+          ],
+          "occurrences": 1152,
+          "non_empty": 1152,
+          "null_empty_rate_pct": 0.0,
+          "category": "money"
+        },
+        {
+          "path": "$.Projected Costs",
+          "types": [
+            "string"
+          ],
+          "occurrences": 2951,
+          "non_empty": 2951,
+          "null_empty_rate_pct": 0.0,
+          "category": "money"
+        },
+        {
+          "path": "$.Projected over Under",
+          "types": [
+            "string"
+          ],
+          "occurrences": 2951,
+          "non_empty": 2951,
+          "null_empty_rate_pct": 0.0,
+          "category": "other"
+        },
+        {
+          "path": "$.Requisitions",
+          "types": [
+            "string"
+          ],
+          "occurrences": 561,
+          "non_empty": 561,
+          "null_empty_rate_pct": 0.0,
+          "category": "other"
+        },
+        {
+          "path": "$.Revised Budget",
+          "types": [
+            "string"
+          ],
+          "occurrences": 2951,
+          "non_empty": 2951,
+          "null_empty_rate_pct": 0.0,
+          "category": "money"
+        },
+        {
+          "path": "$.biller",
+          "types": [
+            "string"
+          ],
+          "occurrences": 3512,
+          "non_empty": 3512,
+          "null_empty_rate_pct": 0.0,
+          "category": "other"
+        },
+        {
+          "path": "$.biller_id",
+          "types": [
+            "integer"
+          ],
+          "occurrences": 3512,
+          "non_empty": 3512,
+          "null_empty_rate_pct": 0.0,
+          "category": "identity"
+        },
+        {
+          "path": "$.biller_type",
+          "types": [
+            "string"
+          ],
+          "occurrences": 3512,
+          "non_empty": 3512,
+          "null_empty_rate_pct": 0.0,
+          "category": "other"
+        },
+        {
+          "path": "$.budget_forecast",
+          "types": [
+            "object"
+          ],
+          "occurrences": 3512,
+          "non_empty": 3512,
+          "null_empty_rate_pct": 0.0,
+          "category": "money"
+        },
+        {
+          "path": "$.budget_forecast.amount",
+          "types": [
+            "string"
+          ],
+          "occurrences": 3512,
+          "non_empty": 3512,
+          "null_empty_rate_pct": 0.0,
+          "category": "money"
+        },
+        {
+          "path": "$.budget_forecast.automatic_amount",
+          "types": [
+            "string"
+          ],
+          "occurrences": 3512,
+          "non_empty": 3512,
+          "null_empty_rate_pct": 0.0,
+          "category": "money"
+        },
+        {
+          "path": "$.budget_forecast.automatically_calculated",
+          "types": [
+            "boolean",
+            "null"
+          ],
+          "occurrences": 3512,
+          "non_empty": 2951,
+          "null_empty_rate_pct": 16.0,
+          "category": "other"
+        },
+        {
+          "path": "$.budget_forecast.calculation_strategy",
+          "types": [
+            "null",
+            "string"
+          ],
+          "occurrences": 3512,
+          "non_empty": 2951,
+          "null_empty_rate_pct": 16.0,
+          "category": "other"
+        },
+        {
+          "path": "$.budget_forecast.id",
+          "types": [
+            "integer",
+            "null"
+          ],
+          "occurrences": 3512,
+          "non_empty": 2951,
+          "null_empty_rate_pct": 16.0,
+          "category": "identity"
+        },
+        {
+          "path": "$.budget_forecast.manual_amount",
+          "types": [
+            "string"
+          ],
+          "occurrences": 3512,
+          "non_empty": 3512,
+          "null_empty_rate_pct": 0.0,
+          "category": "money"
+        },
+        {
+          "path": "$.budget_forecast.notes",
+          "types": [
+            "string"
+          ],
+          "occurrences": 3512,
+          "non_empty": 16,
+          "null_empty_rate_pct": 99.5,
+          "category": "title"
+        },
+        {
+          "path": "$.budget_modifications",
+          "types": [
+            "string"
+          ],
+          "occurrences": 3512,
+          "non_empty": 3512,
+          "null_empty_rate_pct": 0.0,
+          "category": "money"
+        },
+        {
+          "path": "$.budget_notes",
+          "types": [
+            "null",
+            "string"
+          ],
+          "occurrences": 3512,
+          "non_empty": 370,
+          "null_empty_rate_pct": 89.5,
+          "category": "money"
+        },
+        {
+          "path": "$.budget_row_id",
+          "types": [
+            "string"
+          ],
+          "occurrences": 3512,
+          "non_empty": 3512,
+          "null_empty_rate_pct": 0.0,
+          "category": "identity"
+        },
+        {
+          "path": "$.budgetable",
+          "types": [
+            "boolean"
+          ],
+          "occurrences": 3512,
+          "non_empty": 3512,
+          "null_empty_rate_pct": 0.0,
+          "category": "money"
+        },
+        {
+          "path": "$.budgeted",
+          "types": [
+            "boolean"
+          ],
+          "occurrences": 3512,
+          "non_empty": 3512,
+          "null_empty_rate_pct": 0.0,
+          "category": "money"
+        },
+        {
+          "path": "$.calculation_strategy",
+          "types": [
+            "string"
+          ],
+          "occurrences": 3512,
+          "non_empty": 3512,
+          "null_empty_rate_pct": 0.0,
+          "category": "other"
+        },
+        {
+          "path": "$.category",
+          "types": [
+            "string"
+          ],
+          "occurrences": 3512,
+          "non_empty": 3512,
+          "null_empty_rate_pct": 0.0,
+          "category": "other"
+        },
+        {
+          "path": "$.category_id",
+          "types": [
+            "integer"
+          ],
+          "occurrences": 3512,
+          "non_empty": 3512,
+          "null_empty_rate_pct": 0.0,
+          "category": "identity"
+        },
+        {
+          "path": "$.company",
+          "types": [
+            "string"
+          ],
+          "occurrences": 3512,
+          "non_empty": 3512,
+          "null_empty_rate_pct": 0.0,
+          "category": "company"
+        },
+        {
+          "path": "$.company_id",
+          "types": [
+            "integer"
+          ],
+          "occurrences": 3512,
+          "non_empty": 3512,
+          "null_empty_rate_pct": 0.0,
+          "category": "identity"
+        },
+        {
+          "path": "$.cost_code",
+          "types": [
+            "string"
+          ],
+          "occurrences": 3512,
+          "non_empty": 3512,
+          "null_empty_rate_pct": 0.0,
+          "category": "identity"
+        },
+        {
+          "path": "$.cost_code_id",
+          "types": [
+            "integer"
+          ],
+          "occurrences": 3512,
+          "non_empty": 3512,
+          "null_empty_rate_pct": 0.0,
+          "category": "identity"
+        },
+        {
+          "path": "$.cost_code_level_1",
+          "types": [
+            "string"
+          ],
+          "occurrences": 3512,
+          "non_empty": 3512,
+          "null_empty_rate_pct": 0.0,
+          "category": "cost_code"
+        },
+        {
+          "path": "$.cost_code_level_1_id",
+          "types": [
+            "integer"
+          ],
+          "occurrences": 3512,
+          "non_empty": 3512,
+          "null_empty_rate_pct": 0.0,
+          "category": "identity"
+        },
+        {
+          "path": "$.cost_code_level_2",
+          "types": [
+            "string"
+          ],
+          "occurrences": 3512,
+          "non_empty": 3512,
+          "null_empty_rate_pct": 0.0,
+          "category": "cost_code"
+        },
+        {
+          "path": "$.cost_code_level_2_id",
+          "types": [
+            "integer"
+          ],
+          "occurrences": 3512,
+          "non_empty": 3512,
+          "null_empty_rate_pct": 0.0,
+          "category": "identity"
+        },
+        {
+          "path": "$.cost_code_level_3",
+          "types": [
+            "string"
+          ],
+          "occurrences": 3512,
+          "non_empty": 3512,
+          "null_empty_rate_pct": 0.0,
+          "category": "cost_code"
+        },
+        {
+          "path": "$.cost_code_level_3_id",
+          "types": [
+            "integer"
+          ],
+          "occurrences": 3512,
+          "non_empty": 3512,
+          "null_empty_rate_pct": 0.0,
+          "category": "identity"
+        },
+        {
+          "path": "$.cost_code_level_4",
+          "types": [
+            "string"
+          ],
+          "occurrences": 3512,
+          "non_empty": 3512,
+          "null_empty_rate_pct": 0.0,
+          "category": "cost_code"
+        },
+        {
+          "path": "$.cost_code_level_4_id",
+          "types": [
+            "integer"
+          ],
+          "occurrences": 3512,
+          "non_empty": 3512,
+          "null_empty_rate_pct": 0.0,
+          "category": "identity"
+        },
+        {
+          "path": "$.cost_code_level_5",
+          "types": [
+            "string"
+          ],
+          "occurrences": 3512,
+          "non_empty": 3512,
+          "null_empty_rate_pct": 0.0,
+          "category": "cost_code"
+        },
+        {
+          "path": "$.cost_code_level_5_id",
+          "types": [
+            "integer"
+          ],
+          "occurrences": 3512,
+          "non_empty": 3512,
+          "null_empty_rate_pct": 0.0,
+          "category": "identity"
+        },
+        {
+          "path": "$.cost_code_origin_id",
+          "types": [
+            "string"
+          ],
+          "occurrences": 3512,
+          "non_empty": 3512,
+          "null_empty_rate_pct": 0.0,
+          "category": "identity"
+        },
+        {
+          "path": "$.currency_configuration",
+          "types": [
+            "object"
+          ],
+          "occurrences": 3512,
+          "non_empty": 3512,
+          "null_empty_rate_pct": 0.0,
+          "category": "money"
+        },
+        {
+          "path": "$.currency_configuration.currency_iso_code",
+          "types": [
+            "null"
+          ],
+          "occurrences": 3512,
+          "non_empty": 0,
+          "null_empty_rate_pct": 100.0,
+          "category": "identity"
+        },
+        {
+          "path": "$.curve",
+          "types": [
+            "null",
+            "string"
+          ],
+          "occurrences": 3512,
+          "non_empty": 953,
+          "null_empty_rate_pct": 72.9,
+          "category": "other"
+        },
+        {
+          "path": "$.deletable",
+          "types": [
+            "boolean"
+          ],
+          "occurrences": 3512,
+          "non_empty": 3512,
+          "null_empty_rate_pct": 0.0,
+          "category": "other"
+        },
+        {
+          "path": "$.end_date",
+          "types": [
+            "null",
+            "string"
+          ],
+          "occurrences": 3512,
+          "non_empty": 959,
+          "null_empty_rate_pct": 72.7,
+          "category": "date"
+        },
+        {
+          "path": "$.forecast_remainder",
+          "types": [
+            "string"
+          ],
+          "occurrences": 306,
+          "non_empty": 306,
+          "null_empty_rate_pct": 0.0,
+          "category": "other"
+        },
+        {
+          "path": "$.id",
+          "types": [
+            "integer"
+          ],
+          "occurrences": 3512,
+          "non_empty": 3512,
+          "null_empty_rate_pct": 0.0,
+          "category": "identity"
+        },
+        {
+          "path": "$.original_budget_amount",
+          "types": [
+            "string"
+          ],
+          "occurrences": 3512,
+          "non_empty": 3512,
+          "null_empty_rate_pct": 0.0,
+          "category": "money"
+        },
+        {
+          "path": "$.project",
+          "types": [
+            "string"
+          ],
+          "occurrences": 3512,
+          "non_empty": 3512,
+          "null_empty_rate_pct": 0.0,
+          "category": "other"
+        },
+        {
+          "path": "$.project_id",
+          "types": [
+            "integer"
+          ],
+          "occurrences": 3512,
+          "non_empty": 3512,
+          "null_empty_rate_pct": 0.0,
+          "category": "identity"
+        },
+        {
+          "path": "$.quantity",
+          "types": [
+            "null",
+            "string"
+          ],
+          "occurrences": 3512,
+          "non_empty": 844,
+          "null_empty_rate_pct": 76.0,
+          "category": "quantity"
+        },
+        {
+          "path": "$.root_cost_code",
+          "types": [
+            "string"
+          ],
+          "occurrences": 3512,
+          "non_empty": 3512,
+          "null_empty_rate_pct": 0.0,
+          "category": "identity"
+        },
+        {
+          "path": "$.root_cost_code_id",
+          "types": [
+            "integer"
+          ],
+          "occurrences": 3512,
+          "non_empty": 3512,
+          "null_empty_rate_pct": 0.0,
+          "category": "identity"
+        },
+        {
+          "path": "$.spread_august_2026",
+          "types": [
+            "object"
+          ],
+          "occurrences": 20,
+          "non_empty": 20,
+          "null_empty_rate_pct": 0.0,
+          "category": "other"
+        },
+        {
+          "path": "$.spread_august_2026.amount",
+          "types": [
+            "string"
+          ],
+          "occurrences": 20,
+          "non_empty": 20,
+          "null_empty_rate_pct": 0.0,
+          "category": "money"
+        },
+        {
+          "path": "$.spread_august_2026.id",
+          "types": [
+            "integer",
+            "null"
+          ],
+          "occurrences": 20,
+          "non_empty": 2,
+          "null_empty_rate_pct": 90.0,
+          "category": "identity"
+        },
+        {
+          "path": "$.spread_august_2026.position",
+          "types": [
+            "integer"
+          ],
+          "occurrences": 20,
+          "non_empty": 20,
+          "null_empty_rate_pct": 0.0,
+          "category": "other"
+        },
+        {
+          "path": "$.spread_july_2026",
+          "types": [
+            "object"
+          ],
+          "occurrences": 30,
+          "non_empty": 30,
+          "null_empty_rate_pct": 0.0,
+          "category": "other"
+        },
+        {
+          "path": "$.spread_july_2026.amount",
+          "types": [
+            "string"
+          ],
+          "occurrences": 30,
+          "non_empty": 30,
+          "null_empty_rate_pct": 0.0,
+          "category": "money"
+        },
+        {
+          "path": "$.spread_july_2026.id",
+          "types": [
+            "integer",
+            "null"
+          ],
+          "occurrences": 30,
+          "non_empty": 6,
+          "null_empty_rate_pct": 80.0,
+          "category": "identity"
+        },
+        {
+          "path": "$.spread_july_2026.position",
+          "types": [
+            "integer"
+          ],
+          "occurrences": 30,
+          "non_empty": 30,
+          "null_empty_rate_pct": 0.0,
+          "category": "other"
+        },
+        {
+          "path": "$.spread_june_2026",
+          "types": [
+            "object"
+          ],
+          "occurrences": 292,
+          "non_empty": 292,
+          "null_empty_rate_pct": 0.0,
+          "category": "other"
+        },
+        {
+          "path": "$.spread_june_2026.amount",
+          "types": [
+            "string"
+          ],
+          "occurrences": 292,
+          "non_empty": 292,
+          "null_empty_rate_pct": 0.0,
+          "category": "money"
+        },
+        {
+          "path": "$.spread_june_2026.id",
+          "types": [
+            "integer",
+            "null"
+          ],
+          "occurrences": 292,
+          "non_empty": 6,
+          "null_empty_rate_pct": 97.9,
+          "category": "identity"
+        },
+        {
+          "path": "$.spread_june_2026.position",
+          "types": [
+            "integer"
+          ],
+          "occurrences": 292,
+          "non_empty": 292,
+          "null_empty_rate_pct": 0.0,
+          "category": "other"
+        },
+        {
+          "path": "$.spread_october_2026",
+          "types": [
+            "object"
+          ],
+          "occurrences": 10,
+          "non_empty": 10,
+          "null_empty_rate_pct": 0.0,
+          "category": "other"
+        },
+        {
+          "path": "$.spread_october_2026.amount",
+          "types": [
+            "string"
+          ],
+          "occurrences": 10,
+          "non_empty": 10,
+          "null_empty_rate_pct": 0.0,
+          "category": "money"
+        },
+        {
+          "path": "$.spread_october_2026.id",
+          "types": [
+            "integer",
+            "null"
+          ],
+          "occurrences": 10,
+          "non_empty": 2,
+          "null_empty_rate_pct": 80.0,
+          "category": "identity"
+        },
+        {
+          "path": "$.spread_october_2026.position",
+          "types": [
+            "integer"
+          ],
+          "occurrences": 10,
+          "non_empty": 10,
+          "null_empty_rate_pct": 0.0,
+          "category": "other"
+        },
+        {
+          "path": "$.spread_september_2026",
+          "types": [
+            "object"
+          ],
+          "occurrences": 14,
+          "non_empty": 14,
+          "null_empty_rate_pct": 0.0,
+          "category": "other"
+        },
+        {
+          "path": "$.spread_september_2026.amount",
+          "types": [
+            "string"
+          ],
+          "occurrences": 14,
+          "non_empty": 14,
+          "null_empty_rate_pct": 0.0,
+          "category": "money"
+        },
+        {
+          "path": "$.spread_september_2026.id",
+          "types": [
+            "integer",
+            "null"
+          ],
+          "occurrences": 14,
+          "non_empty": 2,
+          "null_empty_rate_pct": 85.7,
+          "category": "identity"
+        },
+        {
+          "path": "$.spread_september_2026.position",
+          "types": [
+            "integer"
+          ],
+          "occurrences": 14,
+          "non_empty": 14,
+          "null_empty_rate_pct": 0.0,
+          "category": "other"
+        },
+        {
+          "path": "$.start_date",
+          "types": [
+            "null",
+            "string"
+          ],
+          "occurrences": 3512,
+          "non_empty": 965,
+          "null_empty_rate_pct": 72.5,
+          "category": "date"
+        },
+        {
+          "path": "$.unbudgeted_reason",
+          "types": [
+            "null"
+          ],
+          "occurrences": 3512,
+          "non_empty": 0,
+          "null_empty_rate_pct": 100.0,
+          "category": "money"
+        },
+        {
+          "path": "$.unit_cost",
+          "types": [
+            "null",
+            "string"
+          ],
+          "occurrences": 3512,
+          "non_empty": 20,
+          "null_empty_rate_pct": 99.4,
+          "category": "money"
+        },
+        {
+          "path": "$.uom",
+          "types": [
+            "null",
+            "string"
+          ],
+          "occurrences": 3512,
+          "non_empty": 0,
+          "null_empty_rate_pct": 100.0,
+          "category": "quantity"
+        },
+        {
+          "path": "$.wbs_code",
+          "types": [
+            "object"
+          ],
+          "occurrences": 3512,
+          "non_empty": 3512,
+          "null_empty_rate_pct": 0.0,
+          "category": "identity"
+        },
+        {
+          "path": "$.wbs_code.attribute_items",
+          "types": [
+            "array"
+          ],
+          "occurrences": 3512,
+          "non_empty": 0,
+          "null_empty_rate_pct": 100.0,
+          "category": "other"
+        },
+        {
+          "path": "$.wbs_code.description",
+          "types": [
+            "string"
+          ],
+          "occurrences": 3512,
+          "non_empty": 3512,
+          "null_empty_rate_pct": 0.0,
+          "category": "title"
+        },
+        {
+          "path": "$.wbs_code.flat_code",
+          "types": [
+            "string"
+          ],
+          "occurrences": 3512,
+          "non_empty": 3512,
+          "null_empty_rate_pct": 0.0,
+          "category": "identity"
+        },
+        {
+          "path": "$.wbs_code.flat_name",
+          "types": [
+            "string"
+          ],
+          "occurrences": 3512,
+          "non_empty": 3512,
+          "null_empty_rate_pct": 0.0,
+          "category": "title"
+        },
+        {
+          "path": "$.wbs_code.id",
+          "types": [
+            "integer"
+          ],
+          "occurrences": 3512,
+          "non_empty": 3512,
+          "null_empty_rate_pct": 0.0,
+          "category": "identity"
+        },
+        {
+          "path": "$.wbs_code.segment_items",
+          "types": [
+            "array"
+          ],
+          "occurrences": 3512,
+          "non_empty": 3512,
+          "null_empty_rate_pct": 0.0,
+          "category": "cost_code"
+        },
+        {
+          "path": "$.wbs_code.segment_items[]",
+          "types": [
+            "object"
+          ],
+          "occurrences": 10536,
+          "non_empty": 10536,
+          "null_empty_rate_pct": 0.0,
+          "category": "cost_code"
+        },
+        {
+          "path": "$.wbs_code.segment_items[].code",
+          "types": [
+            "string"
+          ],
+          "occurrences": 10536,
+          "non_empty": 10536,
+          "null_empty_rate_pct": 0.0,
+          "category": "identity"
+        },
+        {
+          "path": "$.wbs_code.segment_items[].id",
+          "types": [
+            "integer"
+          ],
+          "occurrences": 10536,
+          "non_empty": 10536,
+          "null_empty_rate_pct": 0.0,
+          "category": "identity"
+        },
+        {
+          "path": "$.wbs_code.segment_items[].is_parent",
+          "types": [
+            "boolean"
+          ],
+          "occurrences": 10536,
+          "non_empty": 10536,
+          "null_empty_rate_pct": 0.0,
+          "category": "other"
+        },
+        {
+          "path": "$.wbs_code.segment_items[].name",
+          "types": [
+            "string"
+          ],
+          "occurrences": 10536,
+          "non_empty": 10536,
+          "null_empty_rate_pct": 0.0,
+          "category": "title"
+        },
+        {
+          "path": "$.wbs_code.segment_items[].path_code",
+          "types": [
+            "string"
+          ],
+          "occurrences": 10536,
+          "non_empty": 10536,
+          "null_empty_rate_pct": 0.0,
+          "category": "identity"
+        },
+        {
+          "path": "$.wbs_code.segment_items[].path_codes",
+          "types": [
+            "array"
+          ],
+          "occurrences": 10536,
+          "non_empty": 10536,
+          "null_empty_rate_pct": 0.0,
+          "category": "cost_code"
+        },
+        {
+          "path": "$.wbs_code.segment_items[].path_codes[]",
+          "types": [
+            "string"
+          ],
+          "occurrences": 17560,
+          "non_empty": 17560,
+          "null_empty_rate_pct": 0.0,
+          "category": "cost_code"
+        },
+        {
+          "path": "$.wbs_code.segment_items[].path_ids",
+          "types": [
+            "array"
+          ],
+          "occurrences": 10536,
+          "non_empty": 10536,
+          "null_empty_rate_pct": 0.0,
+          "category": "cost_code"
+        },
+        {
+          "path": "$.wbs_code.segment_items[].path_ids[]",
+          "types": [
+            "integer"
+          ],
+          "occurrences": 17560,
+          "non_empty": 17560,
+          "null_empty_rate_pct": 0.0,
+          "category": "cost_code"
+        },
+        {
+          "path": "$.wbs_code.segment_items[].segment",
+          "types": [
+            "object"
+          ],
+          "occurrences": 10536,
+          "non_empty": 10536,
+          "null_empty_rate_pct": 0.0,
+          "category": "cost_code"
+        },
+        {
+          "path": "$.wbs_code.segment_items[].segment.id",
+          "types": [
+            "integer"
+          ],
+          "occurrences": 10536,
+          "non_empty": 10536,
+          "null_empty_rate_pct": 0.0,
+          "category": "identity"
+        },
+        {
+          "path": "$.wbs_code.segment_items[].segment.name",
+          "types": [
+            "string"
+          ],
+          "occurrences": 10536,
+          "non_empty": 10536,
+          "null_empty_rate_pct": 0.0,
+          "category": "title"
+        },
+        {
+          "path": "$.wbs_code.segment_items[].segment.structure",
+          "types": [
+            "string"
+          ],
+          "occurrences": 10536,
+          "non_empty": 10536,
+          "null_empty_rate_pct": 0.0,
+          "category": "other"
+        },
+        {
+          "path": "$.wbs_code.segment_items[].segment.type",
+          "types": [
+            "string"
+          ],
+          "occurrences": 10536,
+          "non_empty": 10536,
+          "null_empty_rate_pct": 0.0,
+          "category": "other"
+        },
+        {
+          "path": "$.wbs_code_id",
+          "types": [
+            "integer"
+          ],
+          "occurrences": 3512,
+          "non_empty": 3512,
+          "null_empty_rate_pct": 0.0,
+          "category": "identity"
+        }
+      ]
+    }
+  ],
+  "guardrails": {
+    "live_calls_disabled": true,
+    "writeback": "none",
+    "emits_values": false
+  }
+}

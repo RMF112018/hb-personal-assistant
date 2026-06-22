@@ -1,0 +1,306 @@
+{
+  "package_name": "forecast_probability_package_tropical_20260101_000000",
+  "manifest_title": "Forecast Probabilistic Validation Package — Tropical World Nursery",
+  "manifest_version": "1.0.0",
+  "project": {
+    "project_key": "tropical",
+    "project_name": "Tropical World Nursery Senior Living Facility",
+    "job_reference": "23-435-01",
+    "forecast_period": "2026-June"
+  },
+  "generation": {
+    "generator": "construction_financial_review.forecast_probability.generate_probabilistic_validation_package",
+    "subproject_path": "/Users/bobbyfetting/hb-personal-assistant/subrepos/construction-financial-review",
+    "git_branch": "main",
+    "git_head_sha": "f337db13f5cb91a554a18fa5b84ebead0e1f58ea",
+    "git_tree_dirty": true,
+    "command": "python3 -m construction_financial_review.cli forecast-probability --project tropical --runs 10000 --seed 20260614",
+    "package_stamp": "20260101_000000",
+    "generated_timestamp_local": "20260101_000000",
+    "runs": 10000,
+    "seed": 20260614,
+    "forecast_months": [
+      "2026-06",
+      "2026-07",
+      "2026-08",
+      "2026-09",
+      "2026-10",
+      "2026-11"
+    ],
+    "ollama_status": "disabled_mock",
+    "ollama_model": null,
+    "llm_narratives_generated": 25,
+    "selected_input_packages": {
+      "accepted_forecast_intelligence_package": "/Users/bobbyfetting/Library/CloudStorage/SynologyDrive-BFmacSync/Work/NAS - HB/Projects/2023/TWN - NAS/30_Financials/Forecasts/Data/2026-June/forecast_accuracy_next_package_tropical_20260617_152655",
+      "accepted_forecast_monthly_package": "/Users/bobbyfetting/Library/CloudStorage/SynologyDrive-BFmacSync/Work/NAS - HB/Projects/2023/TWN - NAS/30_Financials/Forecasts/Data/2026-June/forecast_monthly_package_tropical_20260617_152658",
+      "context_package": "/Users/bobbyfetting/Library/CloudStorage/SynologyDrive-BFmacSync/Work/NAS - HB/Projects/2023/TWN - NAS/30_Financials/Forecasts/Data/2026-June/forecast_context_package_tropical_20260617_152650"
+    }
+  },
+  "output_files": [
+    {
+      "path": "README.md",
+      "size_bytes": 2467,
+      "row_count": null,
+      "sha256": "b04442aad871a4536fe2031af56df245b5946f7945b60ec4d67fbc31ebb284c4"
+    },
+    {
+      "path": "SCHEMA.md",
+      "size_bytes": 4962,
+      "row_count": null,
+      "sha256": "a060fd05e55bd2e8eaea4af460b4a51a53627e50c310b77525f951a191eb7bfd"
+    },
+    {
+      "path": "actuals_monthly_by_budget_code.csv",
+      "size_bytes": 49019,
+      "row_count": null,
+      "sha256": "8e0b6dd4816748187921c3f0ab011b94a411da7403fd085a1897b2116ee592a2"
+    },
+    {
+      "path": "actuals_monthly_by_budget_code.jsonl",
+      "size_bytes": 1981278,
+      "row_count": 4699,
+      "sha256": "b07afcec6086f360885de011e50caeb6ea26e9364c3a1fad98d79d8e8e888c4c"
+    },
+    {
+      "path": "actuals_monthly_by_cost_code.csv",
+      "size_bytes": 35839,
+      "row_count": null,
+      "sha256": "7c0c5e42688d4e33d401381154d09786488b530ffcac845d34b59df418db90e2"
+    },
+    {
+      "path": "actuals_monthly_by_cost_code.jsonl",
+      "size_bytes": 1086941,
+      "row_count": 3700,
+      "sha256": "0bdec291e0ee5957d98ea757ce451c7d8b38a032259adabbec9027816748af13"
+    },
+    {
+      "path": "actuals_monthly_project_total.jsonl",
+      "size_bytes": 6921,
+      "row_count": 37,
+      "sha256": "fe3f4b53b57905d3209ab8d03557f6390edc2e6160eeaeebb99ae92adf85c078"
+    },
+    {
+      "path": "actuals_to_forecast_bridge_by_budget_code.jsonl",
+      "size_bytes": 75267,
+      "row_count": 127,
+      "sha256": "528b13cc8c0f3657c4867405e9259fc6cd151c8b7e7e286319e3520c9b6b7323"
+    },
+    {
+      "path": "audit/actuals_monthly_reconciliation_audit.json",
+      "size_bytes": 28662,
+      "row_count": null,
+      "sha256": "a5c7d34ea457953c12edda750bc4ef579ac1312620323bdd71610ef69cc61b07"
+    },
+    {
+      "path": "audit/db_inventory.json",
+      "size_bytes": 4891,
+      "row_count": null,
+      "sha256": "6398cf144ef04135a1c39225964993b1d4e6bd96965f2e6766504e67c6bc3a83"
+    },
+    {
+      "path": "audit/no_upper_cap_audit.json",
+      "size_bytes": 59093,
+      "row_count": null,
+      "sha256": "c49986640dd8406a245beb052c7623b80af363dc387beee06a900fe75164af98"
+    },
+    {
+      "path": "audit/operator_probability_value_constraints_audit.json",
+      "size_bytes": 27456,
+      "row_count": null,
+      "sha256": "2d625a3c07dc90934ba7a89d9ca6a30d56f0986fd0dfd7bbb783eee78536459e"
+    },
+    {
+      "path": "audit/safety_scan_report.json",
+      "size_bytes": 366,
+      "row_count": null,
+      "sha256": "63f02314b03b1808150aff8c484c2e9e67c9cad65b6083d3f114af3d939a2d50"
+    },
+    {
+      "path": "audit/source_files_used.json",
+      "size_bytes": 1211,
+      "row_count": null,
+      "sha256": "e3afbc7fd6a1ac02bf941ff3881246cd31717c58f6216e7118fe316a7137c4e7"
+    },
+    {
+      "path": "budget_code_sensitivity.jsonl",
+      "size_bytes": 25627,
+      "row_count": 127,
+      "sha256": "f9c205c4ac3882895d2416d9da64a5df868d322e2527c40170ede52008056bee"
+    },
+    {
+      "path": "calibration_summary.json",
+      "size_bytes": 1667,
+      "row_count": null,
+      "sha256": "65308a85eaafaee6dd4291701f8e0e1e4a851b7b92969095bd78b04f3b0b8d94"
+    },
+    {
+      "path": "code_overrun_probabilities.jsonl",
+      "size_bytes": 36881,
+      "row_count": 127,
+      "sha256": "52e6c4f9747a6f497f74deff5291c7d4ba5fefd7b01f535ea6206b79c9eea396"
+    },
+    {
+      "path": "data_quality_warnings.jsonl",
+      "size_bytes": 321,
+      "row_count": 2,
+      "sha256": "7a78a4173a6c43826b928cfdd0330f361c0909750fe5d3e134269428cb322107"
+    },
+    {
+      "path": "division_sensitivity.jsonl",
+      "size_bytes": 926,
+      "row_count": 5,
+      "sha256": "147a6c9641d16f46602bea38c33d3000f37c4d7f807c93b1fde7892614d91714"
+    },
+    {
+      "path": "downside_exposure_ranking.jsonl",
+      "size_bytes": 29426,
+      "row_count": 127,
+      "sha256": "1f0b64c2a81e32dd6af3fb2134ee93b85906d483474f0e057485185e64fed67b"
+    },
+    {
+      "path": "input_inventory.json",
+      "size_bytes": 2104,
+      "row_count": null,
+      "sha256": "9724f7131f66bd65fa5563cf4ec5e98e979b7b8f672ff56d8e54daca178cd0ac"
+    },
+    {
+      "path": "llm/probabilistic_narrative_receipts.jsonl",
+      "size_bytes": 9575,
+      "row_count": 25,
+      "sha256": "4f9a04a3e68809e03b3ba6747c94e6a87240a57bd56e014244381da4a0d41bd1"
+    },
+    {
+      "path": "llm/probabilistic_narratives.jsonl",
+      "size_bytes": 15325,
+      "row_count": 25,
+      "sha256": "ed6f6465c0609de3b4a278037936516b38af9a7e40c9f650827476794a016133"
+    },
+    {
+      "path": "monthly_risk_ranking.json",
+      "size_bytes": 1713,
+      "row_count": null,
+      "sha256": "5b75b8bbdf497ee4b7b7741c948c75f9b25ac39548ca8c7b191cd1bc51027996"
+    },
+    {
+      "path": "owner_scope_sensitivity.jsonl",
+      "size_bytes": 19553,
+      "row_count": 57,
+      "sha256": "1be92e1ed29d565be6a96cd78b6ac3012a852e34b00a9ac28e81afd963384f5e"
+    },
+    {
+      "path": "probabilistic_backtest_results.json",
+      "size_bytes": 16947,
+      "row_count": null,
+      "sha256": "80b473ce1f0ffaac2c35235946b86052ac8da298269446a783236e1dab8f2bd4"
+    },
+    {
+      "path": "probabilistic_final_cost_by_budget_code.jsonl",
+      "size_bytes": 110999,
+      "row_count": 127,
+      "sha256": "f8a149f2cad6426cff1b2bb7e23fcef07982f0ee3d99a7d2a6c33f6e590cc6cc"
+    },
+    {
+      "path": "probabilistic_monthly_by_budget_code.jsonl",
+      "size_bytes": 160995,
+      "row_count": 762,
+      "sha256": "0bcc0d7818a13daffc58888d6e06b504be36998571716a7260064fb8161eaa68"
+    },
+    {
+      "path": "probabilistic_monthly_project_forecast.jsonl",
+      "size_bytes": 2484,
+      "row_count": 6,
+      "sha256": "8d50404293414a164f9693df2103efd7614209be5f5e4076ed5b54dfdeae97c0"
+    },
+    {
+      "path": "probabilistic_overrun_risk_register.jsonl",
+      "size_bytes": 21587,
+      "row_count": 47,
+      "sha256": "fc8387178972e79dd7977ad5f210d5ffe1363eb36403ab9c6618d822524fe2ba"
+    },
+    {
+      "path": "probabilistic_project_summary.json",
+      "size_bytes": 2072,
+      "row_count": null,
+      "sha256": "0974db3abab5b90919790197093d01e595a7f02888c6d76cc1d1b81060b4e3cc"
+    },
+    {
+      "path": "sensitivity_analysis.json",
+      "size_bytes": 4453,
+      "row_count": null,
+      "sha256": "f533091aaa5fb3ceaeddfb7b9cee647f41c83925e49445a4e2acc4a9a9514add"
+    },
+    {
+      "path": "simulation_inputs_by_budget_code.jsonl",
+      "size_bytes": 113423,
+      "row_count": 127,
+      "sha256": "a8688aca76e365dc1457ad4ecdb8b560fa41528b779c28552b482d67197bffe3"
+    },
+    {
+      "path": "simulation_results_by_budget_code.jsonl",
+      "size_bytes": 110999,
+      "row_count": 127,
+      "sha256": "f8a149f2cad6426cff1b2bb7e23fcef07982f0ee3d99a7d2a6c33f6e590cc6cc"
+    },
+    {
+      "path": "simulation_results_by_month.jsonl",
+      "size_bytes": 2484,
+      "row_count": 6,
+      "sha256": "8d50404293414a164f9693df2103efd7614209be5f5e4076ed5b54dfdeae97c0"
+    },
+    {
+      "path": "simulation_results_project.json",
+      "size_bytes": 2072,
+      "row_count": null,
+      "sha256": "0974db3abab5b90919790197093d01e595a7f02888c6d76cc1d1b81060b4e3cc"
+    },
+    {
+      "path": "top_downside_drivers.json",
+      "size_bytes": 6797,
+      "row_count": null,
+      "sha256": "ddbe5d3a2e084d19aa9e09b6806aea361eaa71966240ec764495cdeb16512d6c"
+    },
+    {
+      "path": "validation_report.json",
+      "size_bytes": 7458,
+      "row_count": null,
+      "sha256": "d6219330f23f9dafce5896c76ebac752664890c8c9ba0f592969ea4ef7b7f447"
+    }
+  ],
+  "validation_status": {
+    "passed": true,
+    "checks": {
+      "output_files_parse": true,
+      "per_code_completeness_127": true,
+      "canonical_only_codes": true,
+      "percentile_monotonicity": true,
+      "final_cost_floor_at_actuals": true,
+      "no_upper_cap_audit_present": true,
+      "hidden_or_implicit_upper_caps_absent": true,
+      "accepted_operator_caps_disclosed": true,
+      "accepted_operator_caps_applied": true,
+      "no_unaccepted_reference_caps": true,
+      "operator_probability_value_constraints_audit_present": true,
+      "revised_budget_probability_present_and_unit_interval": true,
+      "compatibility_alias_files_present_and_parseable": true,
+      "forecast_start_month_no_full_ctc_reallocation": true,
+      "p50_aligns_with_deterministic_recommended": true,
+      "monthly_reconciles_to_simulated_ctc": true,
+      "probability_fields_in_unit_interval": true,
+      "sensitivity_ranking_present": true,
+      "backtest_cohort_reported": true,
+      "determinism_passed": true,
+      "llm_no_numeric_outputs": true,
+      "llm_receipts_have_required_fields": true,
+      "db_inventory_no_payloads": true,
+      "safety_scan_passed": true,
+      "actuals_monthly_by_budget_code_jsonl_present": true,
+      "actuals_monthly_by_budget_code_csv_present": true,
+      "all_canonical_keys_in_actuals": true,
+      "no_non_canonical_keys_in_actuals": true,
+      "actuals_reconcile_to_actual_cost_to_date": true,
+      "actuals_project_total_reconciles": true,
+      "actuals_source_is_costentries_only": true
+    }
+  },
+  "conclusion": "forecast_probability_ready"
+}

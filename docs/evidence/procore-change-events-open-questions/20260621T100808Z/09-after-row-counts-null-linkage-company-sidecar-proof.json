@@ -1,0 +1,319 @@
+{
+  "child_linkage": {
+    "procore_ep_change_events_attachments": {
+      "child_rows": 2351,
+      "missing_primary_record_key_link": 0,
+      "parent_item_id_nonblank": 0
+    },
+    "procore_ep_change_events_change_items": {
+      "child_rows": 2825,
+      "missing_primary_record_key_link": 0,
+      "parent_item_id_nonblank": 0
+    },
+    "procore_ep_change_events_change_items_budget_code_seg_2dff22": {
+      "child_rows": 8475,
+      "missing_primary_record_key_link": 0,
+      "parent_item_id_nonblank": 8475
+    },
+    "procore_ep_change_events_markup_items": {
+      "child_rows": 2154,
+      "missing_primary_record_key_link": 0,
+      "parent_item_id_nonblank": 0
+    },
+    "procore_ep_change_events_markup_items_wbs_code_segment_items": {
+      "child_rows": 6462,
+      "missing_primary_record_key_link": 0,
+      "parent_item_id_nonblank": 6462
+    }
+  },
+  "db": "/tmp/hb-change-events-open-questions-20260621T100808Z.sqlite",
+  "raw_landing": {
+    "company_id_nonblank": 0,
+    "is_current_rows": 3860,
+    "rows": 3860
+  },
+  "tables": {
+    "procore_ep_change_events": {
+      "columns": {
+        "company_id": {
+          "nonblank": 1059,
+          "null_or_blank": 0,
+          "null_or_blank_pct": 0.0,
+          "row_count": 1059
+        },
+        "company_id_hash": {
+          "nonblank": 1059,
+          "null_or_blank": 0,
+          "null_or_blank_pct": 0.0,
+          "row_count": 1059
+        },
+        "currency_configuration_currency_iso_code": {
+          "nonblank": 0,
+          "null_or_blank": 1059,
+          "null_or_blank_pct": 100.0,
+          "row_count": 1059
+        },
+        "deleted_at": {
+          "nonblank": 0,
+          "null_or_blank": 1059,
+          "null_or_blank_pct": 100.0,
+          "row_count": 1059
+        },
+        "external_data": {
+          "nonblank": 0,
+          "null_or_blank": 1059,
+          "null_or_blank_pct": 100.0,
+          "row_count": 1059
+        },
+        "parent_record_id": {
+          "nonblank": 0,
+          "null_or_blank": 1059,
+          "null_or_blank_pct": 100.0,
+          "row_count": 1059
+        },
+        "parent_record_id_hash": {
+          "nonblank": 0,
+          "null_or_blank": 1059,
+          "null_or_blank_pct": 100.0,
+          "row_count": 1059
+        },
+        "payload_sidecar_json": {
+          "nonblank": 1059,
+          "null_or_blank": 0,
+          "null_or_blank_pct": 0.0,
+          "row_count": 1059
+        },
+        "record_key": {
+          "nonblank": 1059,
+          "null_or_blank": 0,
+          "null_or_blank_pct": 0.0,
+          "row_count": 1059
+        },
+        "source": {
+          "nonblank": 0,
+          "null_or_blank": 1059,
+          "null_or_blank_pct": 100.0,
+          "row_count": 1059
+        }
+      },
+      "row_count": 1059
+    },
+    "procore_ep_change_events_attachments": {
+      "columns": {
+        "company_id": {
+          "nonblank": 2351,
+          "null_or_blank": 0,
+          "null_or_blank_pct": 0.0,
+          "row_count": 2351
+        },
+        "item_id": {
+          "nonblank": 2351,
+          "null_or_blank": 0,
+          "null_or_blank_pct": 0.0,
+          "row_count": 2351
+        },
+        "parent_item_id": {
+          "nonblank": 0,
+          "null_or_blank": 2351,
+          "null_or_blank_pct": 100.0,
+          "row_count": 2351
+        },
+        "payload_sidecar_json": {
+          "nonblank": 0,
+          "null_or_blank": 2351,
+          "null_or_blank_pct": 100.0,
+          "row_count": 2351
+        },
+        "primary_record_key": {
+          "nonblank": 2351,
+          "null_or_blank": 0,
+          "null_or_blank_pct": 0.0,
+          "row_count": 2351
+        },
+        "record_key": {
+          "nonblank": 2351,
+          "null_or_blank": 0,
+          "null_or_blank_pct": 0.0,
+          "row_count": 2351
+        }
+      },
+      "row_count": 2351
+    },
+    "procore_ep_change_events_change_items": {
+      "columns": {
+        "company_id": {
+          "nonblank": 2825,
+          "null_or_blank": 0,
+          "null_or_blank_pct": 0.0,
+          "row_count": 2825
+        },
+        "currency_configuration_currency_iso_code": {
+          "nonblank": 0,
+          "null_or_blank": 2825,
+          "null_or_blank_pct": 100.0,
+          "row_count": 2825
+        },
+        "deleted_at": {
+          "nonblank": 0,
+          "null_or_blank": 2825,
+          "null_or_blank_pct": 100.0,
+          "row_count": 2825
+        },
+        "item_id": {
+          "nonblank": 2825,
+          "null_or_blank": 0,
+          "null_or_blank_pct": 0.0,
+          "row_count": 2825
+        },
+        "parent_item_id": {
+          "nonblank": 0,
+          "null_or_blank": 2825,
+          "null_or_blank_pct": 100.0,
+          "row_count": 2825
+        },
+        "payload_sidecar_json": {
+          "nonblank": 2825,
+          "null_or_blank": 0,
+          "null_or_blank_pct": 0.0,
+          "row_count": 2825
+        },
+        "primary_record_key": {
+          "nonblank": 2825,
+          "null_or_blank": 0,
+          "null_or_blank_pct": 0.0,
+          "row_count": 2825
+        },
+        "record_key": {
+          "nonblank": 2825,
+          "null_or_blank": 0,
+          "null_or_blank_pct": 0.0,
+          "row_count": 2825
+        }
+      },
+      "row_count": 2825
+    },
+    "procore_ep_change_events_change_items_budget_code_seg_2dff22": {
+      "columns": {
+        "company_id": {
+          "nonblank": 8475,
+          "null_or_blank": 0,
+          "null_or_blank_pct": 0.0,
+          "row_count": 8475
+        },
+        "item_id": {
+          "nonblank": 8475,
+          "null_or_blank": 0,
+          "null_or_blank_pct": 0.0,
+          "row_count": 8475
+        },
+        "parent_item_id": {
+          "nonblank": 8475,
+          "null_or_blank": 0,
+          "null_or_blank_pct": 0.0,
+          "row_count": 8475
+        },
+        "payload_sidecar_json": {
+          "nonblank": 8475,
+          "null_or_blank": 0,
+          "null_or_blank_pct": 0.0,
+          "row_count": 8475
+        },
+        "primary_record_key": {
+          "nonblank": 8475,
+          "null_or_blank": 0,
+          "null_or_blank_pct": 0.0,
+          "row_count": 8475
+        },
+        "record_key": {
+          "nonblank": 8475,
+          "null_or_blank": 0,
+          "null_or_blank_pct": 0.0,
+          "row_count": 8475
+        }
+      },
+      "row_count": 8475
+    },
+    "procore_ep_change_events_markup_items": {
+      "columns": {
+        "company_id": {
+          "nonblank": 2154,
+          "null_or_blank": 0,
+          "null_or_blank_pct": 0.0,
+          "row_count": 2154
+        },
+        "item_id": {
+          "nonblank": 2154,
+          "null_or_blank": 0,
+          "null_or_blank_pct": 0.0,
+          "row_count": 2154
+        },
+        "parent_item_id": {
+          "nonblank": 0,
+          "null_or_blank": 2154,
+          "null_or_blank_pct": 100.0,
+          "row_count": 2154
+        },
+        "payload_sidecar_json": {
+          "nonblank": 2154,
+          "null_or_blank": 0,
+          "null_or_blank_pct": 0.0,
+          "row_count": 2154
+        },
+        "primary_record_key": {
+          "nonblank": 2154,
+          "null_or_blank": 0,
+          "null_or_blank_pct": 0.0,
+          "row_count": 2154
+        },
+        "record_key": {
+          "nonblank": 2154,
+          "null_or_blank": 0,
+          "null_or_blank_pct": 0.0,
+          "row_count": 2154
+        }
+      },
+      "row_count": 2154
+    },
+    "procore_ep_change_events_markup_items_wbs_code_segment_items": {
+      "columns": {
+        "company_id": {
+          "nonblank": 6462,
+          "null_or_blank": 0,
+          "null_or_blank_pct": 0.0,
+          "row_count": 6462
+        },
+        "item_id": {
+          "nonblank": 6462,
+          "null_or_blank": 0,
+          "null_or_blank_pct": 0.0,
+          "row_count": 6462
+        },
+        "parent_item_id": {
+          "nonblank": 6462,
+          "null_or_blank": 0,
+          "null_or_blank_pct": 0.0,
+          "row_count": 6462
+        },
+        "payload_sidecar_json": {
+          "nonblank": 6462,
+          "null_or_blank": 0,
+          "null_or_blank_pct": 0.0,
+          "row_count": 6462
+        },
+        "primary_record_key": {
+          "nonblank": 6462,
+          "null_or_blank": 0,
+          "null_or_blank_pct": 0.0,
+          "row_count": 6462
+        },
+        "record_key": {
+          "nonblank": 6462,
+          "null_or_blank": 0,
+          "null_or_blank_pct": 0.0,
+          "row_count": 6462
+        }
+      },
+      "row_count": 6462
+    }
+  }
+}

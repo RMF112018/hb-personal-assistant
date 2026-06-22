@@ -11,7 +11,7 @@ vi.mock('@tanstack/react-query', () => ({
 }))
 
 function mockData() {
-  useQueryMock.mockImplementation((opts: { queryKey: any[] }) => {
+  useQueryMock.mockImplementation((opts: { queryKey: unknown[] }) => {
     const kind = opts.queryKey[1]
     if (kind === 'summary') {
       return {
@@ -164,10 +164,10 @@ describe('ForecastPackagePage detail', () => {
     mockData()
     renderPage()
     expect(screen.getByText('Comprehensive forecast — Jun 15, 2026 3:39 PM')).toBeInTheDocument()
-    expect(screen.getByText('Validated')).toBeInTheDocument()
+    expect(screen.getByText('Ready')).toBeInTheDocument()
     expect(screen.getByText('Recommended final cost by cost code')).toBeInTheDocument()
     expect(screen.getByText('3561.74')).toBeInTheDocument()
-    expect(screen.getByText('Human-review queue')).toBeInTheDocument()
+    expect(screen.getByText('Review queue')).toBeInTheDocument()
     expect(screen.getByText('integrated final-cost change')).toBeInTheDocument()
   })
 

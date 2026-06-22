@@ -1,0 +1,307 @@
+{
+  "array_paths": {
+    "$.attachments": {
+      "rows_path_present": 3860,
+      "rows_with_nonempty_array": 3245,
+      "total_array_items": 6616
+    },
+    "$.change_items": {
+      "rows_path_present": 3860,
+      "rows_with_nonempty_array": 3854,
+      "total_array_items": 8143
+    },
+    "$.markup_items": {
+      "rows_path_present": 3860,
+      "rows_with_nonempty_array": 3252,
+      "total_array_items": 9354
+    }
+  },
+  "db": "/tmp/hb-change-events-open-questions-20260621T100808Z.sqlite",
+  "item_paths": {
+    "$.attachments[*].filename": {
+      "items_inspected": 6616,
+      "items_nonblank": 6616,
+      "items_path_present": 6616
+    },
+    "$.attachments[*].id": {
+      "items_inspected": 6616,
+      "items_nonblank": 6616,
+      "items_path_present": 6616
+    },
+    "$.attachments[*].url": {
+      "items_inspected": 6616,
+      "items_nonblank": 6616,
+      "items_path_present": 6616
+    },
+    "$.change_items[*].budget_code.segment_items[*].code": {
+      "items_inspected": 24429,
+      "items_nonblank": 24429,
+      "items_path_present": 24429
+    },
+    "$.change_items[*].budget_code.segment_items[*].id": {
+      "items_inspected": 24429,
+      "items_nonblank": 24429,
+      "items_path_present": 24429
+    },
+    "$.change_items[*].budget_code.segment_items[*].name": {
+      "items_inspected": 24429,
+      "items_nonblank": 24429,
+      "items_path_present": 24429
+    },
+    "$.change_items[*].budget_code.segment_items[*].segment.id": {
+      "items_inspected": 24429,
+      "items_nonblank": 24429,
+      "items_path_present": 24429
+    },
+    "$.change_items[*].budget_code.segment_items[*].segment.name": {
+      "items_inspected": 24429,
+      "items_nonblank": 24429,
+      "items_path_present": 24429
+    },
+    "$.change_items[*].budget_impact.budget_change": {
+      "items_inspected": 8143,
+      "items_nonblank": 0,
+      "items_path_present": 8143
+    },
+    "$.change_items[*].budget_impact.budget_modification": {
+      "items_inspected": 8143,
+      "items_nonblank": 12,
+      "items_path_present": 8143
+    },
+    "$.change_items[*].budget_impact.budget_modification.amount": {
+      "items_inspected": 8143,
+      "items_nonblank": 12,
+      "items_path_present": 12
+    },
+    "$.change_items[*].budget_impact.budget_modification.budget_modification_id": {
+      "items_inspected": 8143,
+      "items_nonblank": 12,
+      "items_path_present": 12
+    },
+    "$.change_items[*].budget_impact.budget_modification.notes": {
+      "items_inspected": 8143,
+      "items_nonblank": 12,
+      "items_path_present": 12
+    },
+    "$.change_items[*].budget_impact.budget_modification.transfer_from.id": {
+      "items_inspected": 8143,
+      "items_nonblank": 12,
+      "items_path_present": 12
+    },
+    "$.change_items[*].budget_impact.budget_modification.transfer_from.name": {
+      "items_inspected": 8143,
+      "items_nonblank": 12,
+      "items_path_present": 12
+    },
+    "$.change_items[*].budget_impact.budget_modification.transfer_to.id": {
+      "items_inspected": 8143,
+      "items_nonblank": 12,
+      "items_path_present": 12
+    },
+    "$.change_items[*].budget_impact.budget_modification.transfer_to.name": {
+      "items_inspected": 8143,
+      "items_nonblank": 12,
+      "items_path_present": 12
+    },
+    "$.change_items[*].cost_impact.commitment.currency_configuration.base_currency_iso_code": {
+      "items_inspected": 8143,
+      "items_nonblank": 0,
+      "items_path_present": 4289
+    },
+    "$.change_items[*].cost_impact.commitment.currency_configuration.currency_exchange_rate": {
+      "items_inspected": 8143,
+      "items_nonblank": 0,
+      "items_path_present": 4289
+    },
+    "$.change_items[*].cost_impact.commitment.currency_configuration.currency_iso_code": {
+      "items_inspected": 8143,
+      "items_nonblank": 0,
+      "items_path_present": 4289
+    },
+    "$.change_items[*].cost_impact.non_commitment.amount": {
+      "items_inspected": 8143,
+      "items_nonblank": 0,
+      "items_path_present": 8143
+    },
+    "$.change_items[*].cost_impact.request_for_quote.currency_configuration.base_currency_iso_code": {
+      "items_inspected": 8143,
+      "items_nonblank": 0,
+      "items_path_present": 513
+    },
+    "$.change_items[*].cost_impact.request_for_quote.currency_configuration.currency_exchange_rate": {
+      "items_inspected": 8143,
+      "items_nonblank": 0,
+      "items_path_present": 513
+    },
+    "$.change_items[*].cost_impact.request_for_quote.currency_configuration.currency_iso_code": {
+      "items_inspected": 8143,
+      "items_nonblank": 0,
+      "items_path_present": 513
+    },
+    "$.change_items[*].cost_impact.request_for_quote.id": {
+      "items_inspected": 8143,
+      "items_nonblank": 513,
+      "items_path_present": 513
+    },
+    "$.change_items[*].cost_impact.request_for_quote.number": {
+      "items_inspected": 8143,
+      "items_nonblank": 513,
+      "items_path_present": 513
+    },
+    "$.change_items[*].cost_impact.request_for_quote.status": {
+      "items_inspected": 8143,
+      "items_nonblank": 513,
+      "items_path_present": 513
+    },
+    "$.change_items[*].cost_impact.request_for_quote.title": {
+      "items_inspected": 8143,
+      "items_nonblank": 513,
+      "items_path_present": 513
+    },
+    "$.change_items[*].currency_configuration.currency_iso_code": {
+      "items_inspected": 8143,
+      "items_nonblank": 0,
+      "items_path_present": 8143
+    },
+    "$.change_items[*].deleted_at": {
+      "items_inspected": 8143,
+      "items_nonblank": 0,
+      "items_path_present": 8143
+    },
+    "$.change_items[*].id": {
+      "items_inspected": 8143,
+      "items_nonblank": 8143,
+      "items_path_present": 8143
+    },
+    "$.change_items[*].latest_cost_values.uom.id": {
+      "items_inspected": 8143,
+      "items_nonblank": 1852,
+      "items_path_present": 8143
+    },
+    "$.change_items[*].latest_cost_values.uom.name": {
+      "items_inspected": 8143,
+      "items_nonblank": 1852,
+      "items_path_present": 8143
+    },
+    "$.change_items[*].latest_revenue_values.uom.id": {
+      "items_inspected": 8143,
+      "items_nonblank": 1862,
+      "items_path_present": 8143
+    },
+    "$.change_items[*].latest_revenue_values.uom.name": {
+      "items_inspected": 8143,
+      "items_nonblank": 1862,
+      "items_path_present": 8143
+    },
+    "$.change_items[*].revenue_impact.change_order.currency_configuration.base_currency_iso_code": {
+      "items_inspected": 8143,
+      "items_nonblank": 0,
+      "items_path_present": 4660
+    },
+    "$.change_items[*].revenue_impact.change_order.currency_configuration.currency_exchange_rate": {
+      "items_inspected": 8143,
+      "items_nonblank": 0,
+      "items_path_present": 4660
+    },
+    "$.change_items[*].revenue_impact.change_order.currency_configuration.currency_iso_code": {
+      "items_inspected": 8143,
+      "items_nonblank": 0,
+      "items_path_present": 4660
+    },
+    "$.markup_items[*].event_id": {
+      "items_inspected": 9354,
+      "items_nonblank": 9354,
+      "items_path_present": 9354
+    },
+    "$.markup_items[*].id": {
+      "items_inspected": 9354,
+      "items_nonblank": 9354,
+      "items_path_present": 9354
+    },
+    "$.markup_items[*].item_type": {
+      "items_inspected": 9354,
+      "items_nonblank": 9354,
+      "items_path_present": 9354
+    },
+    "$.markup_items[*].wbs_code.description": {
+      "items_inspected": 9354,
+      "items_nonblank": 9215,
+      "items_path_present": 9354
+    },
+    "$.markup_items[*].wbs_code.flat_code": {
+      "items_inspected": 9354,
+      "items_nonblank": 9215,
+      "items_path_present": 9354
+    },
+    "$.markup_items[*].wbs_code.id": {
+      "items_inspected": 9354,
+      "items_nonblank": 9354,
+      "items_path_present": 9354
+    },
+    "$.markup_items[*].wbs_code.segment_items[*].code": {
+      "items_inspected": 28062,
+      "items_nonblank": 28062,
+      "items_path_present": 28062
+    },
+    "$.markup_items[*].wbs_code.segment_items[*].id": {
+      "items_inspected": 28062,
+      "items_nonblank": 28062,
+      "items_path_present": 28062
+    },
+    "$.markup_items[*].wbs_code.segment_items[*].name": {
+      "items_inspected": 28062,
+      "items_nonblank": 28062,
+      "items_path_present": 28062
+    },
+    "$.markup_items[*].wbs_code.segment_items[*].segment.id": {
+      "items_inspected": 28062,
+      "items_nonblank": 28062,
+      "items_path_present": 28062
+    },
+    "$.markup_items[*].wbs_code.segment_items[*].segment.name": {
+      "items_inspected": 28062,
+      "items_nonblank": 28062,
+      "items_path_present": 28062
+    }
+  },
+  "raw_current_rows": 3860,
+  "raw_payload_bodies_emitted": false,
+  "top_level_paths": {
+    "$.company_id": {
+      "rows_nonblank": 3860,
+      "rows_path_present": 3860
+    },
+    "$.currency_configuration.currency_iso_code": {
+      "rows_nonblank": 0,
+      "rows_path_present": 3860
+    },
+    "$.deleted_at": {
+      "rows_nonblank": 0,
+      "rows_path_present": 3860
+    },
+    "$.event_origin": {
+      "rows_nonblank": 290,
+      "rows_path_present": 3860
+    },
+    "$.event_origin.display_name": {
+      "rows_nonblank": 290,
+      "rows_path_present": 290
+    },
+    "$.event_origin.origin_id": {
+      "rows_nonblank": 290,
+      "rows_path_present": 290
+    },
+    "$.external_data": {
+      "rows_nonblank": 0,
+      "rows_path_present": 3860
+    },
+    "$.project_id": {
+      "rows_nonblank": 3860,
+      "rows_path_present": 3860
+    },
+    "$.source": {
+      "rows_nonblank": 0,
+      "rows_path_present": 3860
+    }
+  }
+}

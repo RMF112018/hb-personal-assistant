@@ -1,71 +1,73 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-/* Forecast read-root onboarding — a guided readiness panel shown on the Forecasting landing when the
- * read data sources are not configured. Redaction-safe: it renders only the status booleans, coded
- * blocker copy, and integer advisory counts the backend returns (never a path). Links to the existing
- * runtime settings page for the actual editing. */
-import { Link } from 'react-router-dom'
-
+import { ShieldAlert } from 'lucide-react'
 import { getLocalUiRole } from '../../lib/api'
 import { useForecastReadiness } from '../../hooks/useForecastReadiness'
-import { BLOCKER_COPY, READ_ROOTS, rootAdvisory } from './forecastRuntimeCopy'
+import { ForecastAdvisoryStrip } from './ForecastPrimitives'
+import { ForecastActionLink } from './ForecastPageChrome'
+import { BLOCKER_COPY, READ_ROOTS, ROOT_LABELS, rootAdvisory } from './forecastRuntimeCopy'
+import type { RuntimeRootStatus } from './forecastRuntimeCopy'
+import { ForecastStatusPill } from './ForecastStatusPill'
 
-function Dot({ ok }: { ok: boolean }) {
-  return (
-    <span
-      aria-hidden
-      className={`inline-block h-2 w-2 rounded-full ${ok ? 'bg-emerald-400' : 'bg-amber-400'}`}
-    />
-  )
-}
+const WORKSPACE_ROWS = [
+  ...READ_ROOTS,
+  { key: 'runs_root', label: ROOT_LABELS.runs_root, unlocks: 'Generation history' },
+  { key: 'eval_root', label: ROOT_LABELS.eval_root, unlocks: 'External evaluation' },
+  { key: 'config_edit_root', label: ROOT_LABELS.config_edit_root, unlocks: 'Configuration proposals' },
+]
 
 export function ForecastReadinessPanel() {
   const { data, isLoading } = useForecastReadiness()
   const role = getLocalUiRole()
-  const canEdit = role === 'operator' || role === 'admin'
+  const canRepair = role === 'operator' || role === 'admin'
 
   if (isLoading || !data) return null
 
-  const roots: Record<string, any> = data.roots || {}
-  const allReady = READ_ROOTS.every((r) => roots[r.key]?.valid)
-  if (allReady) return null // nothing to onboard — surfaces are configured
+  const roots = (data.roots || {}) as Record<string, RuntimeRootStatus>
+  const allReady = WORKSPACE_ROWS.every((r) => roots[r.key]?.valid)
+  if (allReady) return null
+
+  const appManaged = data.storage_mode !== 'custom'
 
   return (
-    <div className="card">
-      <div className="section-title">Set up forecast data sources</div>
-      <p className="text-sm text-[var(--hb-muted)]">
-        Point the app at your project's forecast inputs to unlock the forecasting surfaces. The live
-        project data is only read — it is never modified.
-      </p>
+    <section className="forecast-panel border-amber-700/30 bg-gradient-to-br from-amber-950/20 to-[var(--hb-surface)]">
+      <div className="forecast-panel-header">
+        <div className="forecast-panel-icon text-amber-300 border-amber-700/40 bg-amber-950/30">
+          <ShieldAlert size={16} strokeWidth={2} aria-hidden />
+        </div>
+        <div>
+          <h2 className="forecast-section-label">Forecast readiness</h2>
+          <p className="text-sm text-[var(--hb-muted)] mt-1 leading-relaxed">
+            {appManaged
+              ? 'HB manages local forecast storage on this machine. Review readiness or repair missing workspaces before generating.'
+              : 'Custom storage locations are in use. Confirm readiness before generating forecasts.'}
+          </p>
+        </div>
+      </div>
 
-      <ul className="mt-3 grid gap-2 text-sm">
-        {READ_ROOTS.map((r) => {
-          const root = roots[r.key] || {}
-          const ok = Boolean(root.valid)
+      <ul className="forecast-checklist">
+        {WORKSPACE_ROWS.map((r) => {
+          const root = roots[r.key]
+          const ok = Boolean(root?.valid)
           const detail = ok
             ? rootAdvisory(r.key, root) || 'Ready'
-            : `${BLOCKER_COPY[root.blocker as string] || 'Not configured'} — ${r.unlocks}`
+            : `${BLOCKER_COPY[root?.blocker || ''] || 'Not ready'} — ${r.unlocks}`
           return (
-            <li key={r.key} className="flex items-start gap-2">
-              <span className="mt-1.5">
-                <Dot ok={ok} />
-              </span>
-              <span>
-                <span className="font-medium">{r.label}</span>
-                <span className="text-[var(--hb-muted)]"> — {detail}</span>
-              </span>
+            <li key={r.key} className={`forecast-checklist-item ${ok ? 'is-ready' : ''}`}>
+              <div className="min-w-0">
+                <div className="text-sm font-medium">{r.label}</div>
+                <div className="text-xs text-[var(--hb-muted)] mt-0.5">{detail}</div>
+              </div>
+              <ForecastStatusPill status={ok ? 'validated' : 'attention'} />
             </li>
           )
         })}
       </ul>
 
-      <div className="mt-3">
-        <Link
-          to="/forecasting/runtime"
-          className="inline-block rounded border border-[var(--hb-accent)] px-3 py-1.5 text-sm"
-        >
-          {canEdit ? 'Configure data sources' : 'View data source setup'}
-        </Link>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <ForecastActionLink to="/forecasting/runtime" variant="primary">
+          {canRepair ? 'Open storage settings' : 'View storage settings'}
+        </ForecastActionLink>
+        <ForecastAdvisoryStrip>Advisory only — no live writeback</ForecastAdvisoryStrip>
       </div>
-    </div>
+    </section>
   )
 }

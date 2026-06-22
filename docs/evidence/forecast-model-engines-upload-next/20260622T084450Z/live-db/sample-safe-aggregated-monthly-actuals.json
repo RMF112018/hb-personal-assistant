@@ -1,0 +1,3502 @@
+[
+  {
+    "amount": 172.02,
+    "budget_code_key": "0000.03-01-025.MAT",
+    "month": "2024-06",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 0.25,
+    "budget_code_key": "0000.03-01-025.MAT",
+    "month": "2024-07",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 547.62,
+    "budget_code_key": "0000.03-01-025.MAT",
+    "month": "2024-09",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 312.51,
+    "budget_code_key": "0000.03-01-025.MAT",
+    "month": "2024-10",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 692.32,
+    "budget_code_key": "0000.03-01-413.LAB",
+    "month": "2023-06",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 3461.6,
+    "budget_code_key": "0000.03-01-413.LAB",
+    "month": "2023-07",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1453.92,
+    "budget_code_key": "0000.03-01-413.LAB",
+    "month": "2023-12",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 3730.88,
+    "budget_code_key": "0000.03-01-413.LAB",
+    "month": "2024-06",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 13539.7,
+    "budget_code_key": "0000.03-01-413.LAB",
+    "month": "2024-07",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 32160.86,
+    "budget_code_key": "0000.03-01-413.LAB",
+    "month": "2024-08",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 8057.1,
+    "budget_code_key": "0000.03-01-413.LAB",
+    "month": "2024-09",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 36857.49,
+    "budget_code_key": "0000.03-01-413.LAB",
+    "month": "2024-10",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 27406.8,
+    "budget_code_key": "0000.03-01-413.LAB",
+    "month": "2024-11",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 115.63,
+    "budget_code_key": "0000.03-01-413.LBN",
+    "month": "2023-06",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 578.18,
+    "budget_code_key": "0000.03-01-413.LBN",
+    "month": "2023-07",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 279.4,
+    "budget_code_key": "0000.03-01-413.LBN",
+    "month": "2023-12",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 725.81,
+    "budget_code_key": "0000.03-01-413.LBN",
+    "month": "2024-06",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 2741.01,
+    "budget_code_key": "0000.03-01-413.LBN",
+    "month": "2024-07",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 6383.43,
+    "budget_code_key": "0000.03-01-413.LBN",
+    "month": "2024-08",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1625.07,
+    "budget_code_key": "0000.03-01-413.LBN",
+    "month": "2024-09",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 6230.82,
+    "budget_code_key": "0000.03-01-413.LBN",
+    "month": "2024-10",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 5807.84,
+    "budget_code_key": "0000.03-01-413.LBN",
+    "month": "2024-11",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 65.6,
+    "budget_code_key": "0000.03-01-413.MAT",
+    "month": "2023-11",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 86.08,
+    "budget_code_key": "0000.03-01-413.MAT",
+    "month": "2024-06",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 149.02,
+    "budget_code_key": "0000.03-01-413.MAT",
+    "month": "2024-07",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 925.25,
+    "budget_code_key": "0000.03-01-413.MAT",
+    "month": "2024-09",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 2485.28,
+    "budget_code_key": "0000.03-01-413.MAT",
+    "month": "2024-10",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 472.71,
+    "budget_code_key": "0000.03-01-413.MAT",
+    "month": "2024-11",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 95.05,
+    "budget_code_key": "0000.03-01-413.MAT",
+    "month": "2024-12",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 161.88,
+    "budget_code_key": "1000.10-01-025.MAT",
+    "month": "2024-11",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 112.71,
+    "budget_code_key": "1000.10-01-025.MAT",
+    "month": "2024-12",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 19.84,
+    "budget_code_key": "1000.10-01-025.MAT",
+    "month": "2025-01",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 320.15,
+    "budget_code_key": "1000.10-01-025.MAT",
+    "month": "2025-02",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 2487.73,
+    "budget_code_key": "1000.10-01-025.MAT",
+    "month": "2025-03",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 259.23,
+    "budget_code_key": "1000.10-01-025.MAT",
+    "month": "2025-04",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 0.85,
+    "budget_code_key": "1000.10-01-025.MAT",
+    "month": "2025-05",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 78.47,
+    "budget_code_key": "1000.10-01-025.MAT",
+    "month": "2025-06",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 101.55,
+    "budget_code_key": "1000.10-01-025.MAT",
+    "month": "2025-07",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 165.33,
+    "budget_code_key": "1000.10-01-025.MAT",
+    "month": "2025-08",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 3.0,
+    "budget_code_key": "1000.10-01-025.MAT",
+    "month": "2025-09",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 25.5,
+    "budget_code_key": "1000.10-01-025.MAT",
+    "month": "2025-10",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1.85,
+    "budget_code_key": "1000.10-01-025.MAT",
+    "month": "2025-11",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 12.5,
+    "budget_code_key": "1000.10-01-025.MAT",
+    "month": "2025-12",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1.0,
+    "budget_code_key": "1000.10-01-025.MAT",
+    "month": "2026-02",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 24.41,
+    "budget_code_key": "1000.10-01-025.MAT",
+    "month": "2026-03",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 0.25,
+    "budget_code_key": "1000.10-01-025.MAT",
+    "month": "2026-05",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1371.96,
+    "budget_code_key": "1000.10-01-302.LAB",
+    "month": "2025-01",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1370.82,
+    "budget_code_key": "1000.10-01-302.LAB",
+    "month": "2025-02",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1992.4,
+    "budget_code_key": "1000.10-01-302.LAB",
+    "month": "2025-03",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1394.68,
+    "budget_code_key": "1000.10-01-302.LAB",
+    "month": "2025-04",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1195.44,
+    "budget_code_key": "1000.10-01-302.LAB",
+    "month": "2025-05",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 597.72,
+    "budget_code_key": "1000.10-01-302.LAB",
+    "month": "2025-06",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1295.06,
+    "budget_code_key": "1000.10-01-302.LAB",
+    "month": "2025-07",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 805.48,
+    "budget_code_key": "1000.10-01-302.LAB",
+    "month": "2025-08",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 4269.02,
+    "budget_code_key": "1000.10-01-302.LAB",
+    "month": "2025-09",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1492.83,
+    "budget_code_key": "1000.10-01-302.LAB",
+    "month": "2025-10",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 8452.25,
+    "budget_code_key": "1000.10-01-302.LAB",
+    "month": "2025-11",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1437.56,
+    "budget_code_key": "1000.10-01-302.LAB",
+    "month": "2025-12",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 230.78,
+    "budget_code_key": "1000.10-01-302.LAB",
+    "month": "2026-01",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1002.46,
+    "budget_code_key": "1000.10-01-302.LAB",
+    "month": "2026-02",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 134.62,
+    "budget_code_key": "1000.10-01-302.LAB",
+    "month": "2026-03",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 134.62,
+    "budget_code_key": "1000.10-01-302.LAB",
+    "month": "2026-04",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 67.31,
+    "budget_code_key": "1000.10-01-302.LAB",
+    "month": "2026-05",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 308.34,
+    "budget_code_key": "1000.10-01-302.LBN",
+    "month": "2025-01",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 288.13,
+    "budget_code_key": "1000.10-01-302.LBN",
+    "month": "2025-02",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 394.5,
+    "budget_code_key": "1000.10-01-302.LBN",
+    "month": "2025-03",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 276.12,
+    "budget_code_key": "1000.10-01-302.LBN",
+    "month": "2025-04",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 236.67,
+    "budget_code_key": "1000.10-01-302.LBN",
+    "month": "2025-05",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 118.33,
+    "budget_code_key": "1000.10-01-302.LBN",
+    "month": "2025-06",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 256.43,
+    "budget_code_key": "1000.10-01-302.LBN",
+    "month": "2025-07",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 170.46,
+    "budget_code_key": "1000.10-01-302.LBN",
+    "month": "2025-08",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 464.47,
+    "budget_code_key": "1000.10-01-302.LBN",
+    "month": "2025-09",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 295.56,
+    "budget_code_key": "1000.10-01-302.LBN",
+    "month": "2025-10",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1642.25,
+    "budget_code_key": "1000.10-01-302.LBN",
+    "month": "2025-11",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 280.12,
+    "budget_code_key": "1000.10-01-302.LBN",
+    "month": "2025-12",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 46.42,
+    "budget_code_key": "1000.10-01-302.LBN",
+    "month": "2026-01",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 206.48,
+    "budget_code_key": "1000.10-01-302.LBN",
+    "month": "2026-02",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 26.01,
+    "budget_code_key": "1000.10-01-302.LBN",
+    "month": "2026-03",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 26.01,
+    "budget_code_key": "1000.10-01-302.LBN",
+    "month": "2026-04",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 13.01,
+    "budget_code_key": "1000.10-01-302.LBN",
+    "month": "2026-05",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 28.0,
+    "budget_code_key": "1000.10-01-302.MAT",
+    "month": "2025-07",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 30.8,
+    "budget_code_key": "1000.10-01-302.MAT",
+    "month": "2025-08",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 28.0,
+    "budget_code_key": "1000.10-01-302.MAT",
+    "month": "2025-09",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 28.0,
+    "budget_code_key": "1000.10-01-302.MAT",
+    "month": "2025-10",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 28.0,
+    "budget_code_key": "1000.10-01-302.MAT",
+    "month": "2025-12",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 2740.8,
+    "budget_code_key": "1000.10-01-308.LAB",
+    "month": "2024-11",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 3654.4,
+    "budget_code_key": "1000.10-01-308.LAB",
+    "month": "2024-12",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 4568.0,
+    "budget_code_key": "1000.10-01-308.LAB",
+    "month": "2025-01",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 6443.2,
+    "budget_code_key": "1000.10-01-308.LAB",
+    "month": "2025-02",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 9232.0,
+    "budget_code_key": "1000.10-01-308.LAB",
+    "month": "2025-03",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 9232.0,
+    "budget_code_key": "1000.10-01-308.LAB",
+    "month": "2025-04",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 11540.0,
+    "budget_code_key": "1000.10-01-308.LAB",
+    "month": "2025-05",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 9232.0,
+    "budget_code_key": "1000.10-01-308.LAB",
+    "month": "2025-06",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 9232.0,
+    "budget_code_key": "1000.10-01-308.LAB",
+    "month": "2025-07",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 2500.0,
+    "budget_code_key": "1000.10-01-308.LAB",
+    "month": "2025-08",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 3384.96,
+    "budget_code_key": "1000.10-01-308.LAB",
+    "month": "2025-11",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 524.34,
+    "budget_code_key": "1000.10-01-308.LBN",
+    "month": "2024-11",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 699.2,
+    "budget_code_key": "1000.10-01-308.LBN",
+    "month": "2024-12",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 903.0,
+    "budget_code_key": "1000.10-01-308.LBN",
+    "month": "2025-01",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1232.8,
+    "budget_code_key": "1000.10-01-308.LBN",
+    "month": "2025-02",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1766.41,
+    "budget_code_key": "1000.10-01-308.LBN",
+    "month": "2025-03",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1766.39,
+    "budget_code_key": "1000.10-01-308.LBN",
+    "month": "2025-04",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 2208.0,
+    "budget_code_key": "1000.10-01-308.LBN",
+    "month": "2025-05",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1766.4,
+    "budget_code_key": "1000.10-01-308.LBN",
+    "month": "2025-06",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1766.52,
+    "budget_code_key": "1000.10-01-308.LBN",
+    "month": "2025-07",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 479.64,
+    "budget_code_key": "1000.10-01-308.LBN",
+    "month": "2025-08",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 692.12,
+    "budget_code_key": "1000.10-01-308.LBN",
+    "month": "2025-11",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 790.99,
+    "budget_code_key": "1000.10-01-308.MAT",
+    "month": "2025-04",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 660.99,
+    "budget_code_key": "1000.10-01-308.MAT",
+    "month": "2025-05",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 720.0,
+    "budget_code_key": "1000.10-01-308.MAT",
+    "month": "2025-06",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 32.9,
+    "budget_code_key": "1000.10-01-308.MAT",
+    "month": "2025-09",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 79.34,
+    "budget_code_key": "1000.10-01-310.LAB",
+    "month": "2025-01",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 317.36,
+    "budget_code_key": "1000.10-01-310.LAB",
+    "month": "2025-02",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 729.48,
+    "budget_code_key": "1000.10-01-310.LAB",
+    "month": "2025-03",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1015.19,
+    "budget_code_key": "1000.10-01-310.LAB",
+    "month": "2025-04",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1896.94,
+    "budget_code_key": "1000.10-01-310.LAB",
+    "month": "2025-05",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1357.48,
+    "budget_code_key": "1000.10-01-310.LAB",
+    "month": "2025-06",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1495.61,
+    "budget_code_key": "1000.10-01-310.LAB",
+    "month": "2025-07",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 2353.57,
+    "budget_code_key": "1000.10-01-310.LAB",
+    "month": "2025-08",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1645.63,
+    "budget_code_key": "1000.10-01-310.LAB",
+    "month": "2025-09",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 2629.73,
+    "budget_code_key": "1000.10-01-310.LAB",
+    "month": "2025-10",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1962.26,
+    "budget_code_key": "1000.10-01-310.LAB",
+    "month": "2025-11",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1400.34,
+    "budget_code_key": "1000.10-01-310.LAB",
+    "month": "2025-12",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1967.45,
+    "budget_code_key": "1000.10-01-310.LAB",
+    "month": "2026-01",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 2456.08,
+    "budget_code_key": "1000.10-01-310.LAB",
+    "month": "2026-02",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 2029.16,
+    "budget_code_key": "1000.10-01-310.LAB",
+    "month": "2026-03",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 2702.48,
+    "budget_code_key": "1000.10-01-310.LAB",
+    "month": "2026-04",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 2779.7,
+    "budget_code_key": "1000.10-01-310.LAB",
+    "month": "2026-05",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 297.31,
+    "budget_code_key": "1000.10-01-310.LAB",
+    "month": "2026-06",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 15.54,
+    "budget_code_key": "1000.10-01-310.LBN",
+    "month": "2025-01",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 62.16,
+    "budget_code_key": "1000.10-01-310.LBN",
+    "month": "2025-02",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 140.05,
+    "budget_code_key": "1000.10-01-310.LBN",
+    "month": "2025-03",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 192.73,
+    "budget_code_key": "1000.10-01-310.LBN",
+    "month": "2025-04",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 360.06,
+    "budget_code_key": "1000.10-01-310.LBN",
+    "month": "2025-05",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 261.13,
+    "budget_code_key": "1000.10-01-310.LBN",
+    "month": "2025-06",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 285.72,
+    "budget_code_key": "1000.10-01-310.LBN",
+    "month": "2025-07",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 448.34,
+    "budget_code_key": "1000.10-01-310.LBN",
+    "month": "2025-08",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 311.97,
+    "budget_code_key": "1000.10-01-310.LBN",
+    "month": "2025-09",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 497.12,
+    "budget_code_key": "1000.10-01-310.LBN",
+    "month": "2025-10",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 371.64,
+    "budget_code_key": "1000.10-01-310.LBN",
+    "month": "2025-11",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 248.2,
+    "budget_code_key": "1000.10-01-310.LBN",
+    "month": "2025-12",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 381.52,
+    "budget_code_key": "1000.10-01-310.LBN",
+    "month": "2026-01",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 471.22,
+    "budget_code_key": "1000.10-01-310.LBN",
+    "month": "2026-02",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 386.81,
+    "budget_code_key": "1000.10-01-310.LBN",
+    "month": "2026-03",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 516.17,
+    "budget_code_key": "1000.10-01-310.LBN",
+    "month": "2026-04",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 537.2,
+    "budget_code_key": "1000.10-01-310.LBN",
+    "month": "2026-05",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 57.43,
+    "budget_code_key": "1000.10-01-310.LBN",
+    "month": "2026-06",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 2423.28,
+    "budget_code_key": "1000.10-01-311.LAB",
+    "month": "2024-11",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 7577.52,
+    "budget_code_key": "1000.10-01-311.LAB",
+    "month": "2024-12",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 9443.08,
+    "budget_code_key": "1000.10-01-311.LAB",
+    "month": "2025-01",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 9294.01,
+    "budget_code_key": "1000.10-01-311.LAB",
+    "month": "2025-02",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 9510.38,
+    "budget_code_key": "1000.10-01-311.LAB",
+    "month": "2025-03",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 7231.36,
+    "budget_code_key": "1000.10-01-311.LAB",
+    "month": "2025-04",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 7485.97,
+    "budget_code_key": "1000.10-01-311.LAB",
+    "month": "2025-05",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 5644.52,
+    "budget_code_key": "1000.10-01-311.LAB",
+    "month": "2025-06",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 5644.52,
+    "budget_code_key": "1000.10-01-311.LAB",
+    "month": "2025-07",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 7401.81,
+    "budget_code_key": "1000.10-01-311.LAB",
+    "month": "2025-08",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 8228.77,
+    "budget_code_key": "1000.10-01-311.LAB",
+    "month": "2025-09",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 11567.88,
+    "budget_code_key": "1000.10-01-311.LAB",
+    "month": "2025-10",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 5096.4,
+    "budget_code_key": "1000.10-01-311.LAB",
+    "month": "2025-11",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 5644.52,
+    "budget_code_key": "1000.10-01-311.LAB",
+    "month": "2025-12",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 11382.45,
+    "budget_code_key": "1000.10-01-311.LAB",
+    "month": "2026-01",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 18028.54,
+    "budget_code_key": "1000.10-01-311.LAB",
+    "month": "2026-02",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 14711.23,
+    "budget_code_key": "1000.10-01-311.LAB",
+    "month": "2026-03",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 10095.95,
+    "budget_code_key": "1000.10-01-311.LAB",
+    "month": "2026-04",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 14615.34,
+    "budget_code_key": "1000.10-01-311.LAB",
+    "month": "2026-05",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 2307.64,
+    "budget_code_key": "1000.10-01-311.LAB",
+    "month": "2026-06",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 489.03,
+    "budget_code_key": "1000.10-01-311.LBN",
+    "month": "2024-11",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1419.06,
+    "budget_code_key": "1000.10-01-311.LBN",
+    "month": "2024-12",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1933.44,
+    "budget_code_key": "1000.10-01-311.LBN",
+    "month": "2025-01",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1881.61,
+    "budget_code_key": "1000.10-01-311.LBN",
+    "month": "2025-02",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1922.22,
+    "budget_code_key": "1000.10-01-311.LBN",
+    "month": "2025-03",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1460.28,
+    "budget_code_key": "1000.10-01-311.LBN",
+    "month": "2025-04",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1519.67,
+    "budget_code_key": "1000.10-01-311.LBN",
+    "month": "2025-05",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1145.54,
+    "budget_code_key": "1000.10-01-311.LBN",
+    "month": "2025-06",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1145.59,
+    "budget_code_key": "1000.10-01-311.LBN",
+    "month": "2025-07",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1500.36,
+    "budget_code_key": "1000.10-01-311.LBN",
+    "month": "2025-08",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1644.65,
+    "budget_code_key": "1000.10-01-311.LBN",
+    "month": "2025-09",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 2169.0,
+    "budget_code_key": "1000.10-01-311.LBN",
+    "month": "2025-10",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 858.15,
+    "budget_code_key": "1000.10-01-311.LBN",
+    "month": "2025-11",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 813.97,
+    "budget_code_key": "1000.10-01-311.LBN",
+    "month": "2025-12",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 2329.11,
+    "budget_code_key": "1000.10-01-311.LBN",
+    "month": "2026-01",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 3728.9,
+    "budget_code_key": "1000.10-01-311.LBN",
+    "month": "2026-02",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 3047.73,
+    "budget_code_key": "1000.10-01-311.LBN",
+    "month": "2026-03",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 2046.13,
+    "budget_code_key": "1000.10-01-311.LBN",
+    "month": "2026-04",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 3057.78,
+    "budget_code_key": "1000.10-01-311.LBN",
+    "month": "2026-05",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 482.37,
+    "budget_code_key": "1000.10-01-311.LBN",
+    "month": "2026-06",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 110.2,
+    "budget_code_key": "1000.10-01-311.MAT",
+    "month": "2024-11",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 521.38,
+    "budget_code_key": "1000.10-01-311.MAT",
+    "month": "2024-12",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 4344.66,
+    "budget_code_key": "1000.10-01-311.MAT",
+    "month": "2025-01",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 660.12,
+    "budget_code_key": "1000.10-01-311.MAT",
+    "month": "2025-02",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 593.21,
+    "budget_code_key": "1000.10-01-311.MAT",
+    "month": "2025-03",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 395.06,
+    "budget_code_key": "1000.10-01-311.MAT",
+    "month": "2025-04",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 921.45,
+    "budget_code_key": "1000.10-01-311.MAT",
+    "month": "2025-05",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 584.02,
+    "budget_code_key": "1000.10-01-311.MAT",
+    "month": "2025-06",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 656.92,
+    "budget_code_key": "1000.10-01-311.MAT",
+    "month": "2025-07",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 687.98,
+    "budget_code_key": "1000.10-01-311.MAT",
+    "month": "2025-08",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 858.01,
+    "budget_code_key": "1000.10-01-311.MAT",
+    "month": "2025-09",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 892.59,
+    "budget_code_key": "1000.10-01-311.MAT",
+    "month": "2025-10",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 470.11,
+    "budget_code_key": "1000.10-01-311.MAT",
+    "month": "2025-11",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 999.59,
+    "budget_code_key": "1000.10-01-311.MAT",
+    "month": "2025-12",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 717.5,
+    "budget_code_key": "1000.10-01-311.MAT",
+    "month": "2026-01",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1179.16,
+    "budget_code_key": "1000.10-01-311.MAT",
+    "month": "2026-02",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 480.11,
+    "budget_code_key": "1000.10-01-311.MAT",
+    "month": "2026-03",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 183.08,
+    "budget_code_key": "1000.10-01-311.MAT",
+    "month": "2026-04",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1346.24,
+    "budget_code_key": "1000.10-01-312.LAB",
+    "month": "2024-11",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1827.04,
+    "budget_code_key": "1000.10-01-312.LAB",
+    "month": "2024-12",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 3080.0,
+    "budget_code_key": "1000.10-01-312.LAB",
+    "month": "2025-02",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 6160.0,
+    "budget_code_key": "1000.10-01-312.LAB",
+    "month": "2025-04",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 16158.4,
+    "budget_code_key": "1000.10-01-312.LAB",
+    "month": "2025-05",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 12424.48,
+    "budget_code_key": "1000.10-01-312.LAB",
+    "month": "2025-06",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 13078.4,
+    "budget_code_key": "1000.10-01-312.LAB",
+    "month": "2025-07",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 16348.0,
+    "budget_code_key": "1000.10-01-312.LAB",
+    "month": "2025-08",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 13078.4,
+    "budget_code_key": "1000.10-01-312.LAB",
+    "month": "2025-09",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 16348.0,
+    "budget_code_key": "1000.10-01-312.LAB",
+    "month": "2025-10",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 18848.0,
+    "budget_code_key": "1000.10-01-312.LAB",
+    "month": "2025-11",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 20771.2,
+    "budget_code_key": "1000.10-01-312.LAB",
+    "month": "2025-12",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 20386.56,
+    "budget_code_key": "1000.10-01-312.LAB",
+    "month": "2026-01",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 3923.52,
+    "budget_code_key": "1000.10-01-312.LAB",
+    "month": "2026-02",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 328.74,
+    "budget_code_key": "1000.10-01-312.LBN",
+    "month": "2024-11",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 446.1,
+    "budget_code_key": "1000.10-01-312.LBN",
+    "month": "2024-12",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 768.47,
+    "budget_code_key": "1000.10-01-312.LBN",
+    "month": "2025-02",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1526.85,
+    "budget_code_key": "1000.10-01-312.LBN",
+    "month": "2025-04",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 4006.35,
+    "budget_code_key": "1000.10-01-312.LBN",
+    "month": "2025-05",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 3080.77,
+    "budget_code_key": "1000.10-01-312.LBN",
+    "month": "2025-06",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 3242.89,
+    "budget_code_key": "1000.10-01-312.LBN",
+    "month": "2025-07",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 4053.6,
+    "budget_code_key": "1000.10-01-312.LBN",
+    "month": "2025-08",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 3242.47,
+    "budget_code_key": "1000.10-01-312.LBN",
+    "month": "2025-09",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 4052.93,
+    "budget_code_key": "1000.10-01-312.LBN",
+    "month": "2025-10",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 4670.96,
+    "budget_code_key": "1000.10-01-312.LBN",
+    "month": "2025-11",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 5147.18,
+    "budget_code_key": "1000.10-01-312.LBN",
+    "month": "2025-12",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 5148.69,
+    "budget_code_key": "1000.10-01-312.LBN",
+    "month": "2026-01",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 964.31,
+    "budget_code_key": "1000.10-01-312.LBN",
+    "month": "2026-02",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 300.0,
+    "budget_code_key": "1000.10-01-312.MAT",
+    "month": "2024-11",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 600.0,
+    "budget_code_key": "1000.10-01-312.MAT",
+    "month": "2025-01",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 600.0,
+    "budget_code_key": "1000.10-01-312.MAT",
+    "month": "2025-02",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 600.0,
+    "budget_code_key": "1000.10-01-312.MAT",
+    "month": "2025-03",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1117.1,
+    "budget_code_key": "1000.10-01-312.MAT",
+    "month": "2025-04",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1535.25,
+    "budget_code_key": "1000.10-01-312.MAT",
+    "month": "2025-05",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1049.71,
+    "budget_code_key": "1000.10-01-312.MAT",
+    "month": "2025-06",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1107.64,
+    "budget_code_key": "1000.10-01-312.MAT",
+    "month": "2025-07",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1097.51,
+    "budget_code_key": "1000.10-01-312.MAT",
+    "month": "2025-08",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1178.55,
+    "budget_code_key": "1000.10-01-312.MAT",
+    "month": "2025-09",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1049.87,
+    "budget_code_key": "1000.10-01-312.MAT",
+    "month": "2025-10",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1933.53,
+    "budget_code_key": "1000.10-01-312.MAT",
+    "month": "2025-11",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 2148.8,
+    "budget_code_key": "1000.10-01-312.MAT",
+    "month": "2025-12",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 625.48,
+    "budget_code_key": "1000.10-01-312.MAT",
+    "month": "2026-01",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 176.43,
+    "budget_code_key": "1000.10-01-312.MAT",
+    "month": "2026-02",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 8366.4,
+    "budget_code_key": "1000.10-01-314.LAB",
+    "month": "2024-11",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 21834.72,
+    "budget_code_key": "1000.10-01-314.LAB",
+    "month": "2024-12",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 34344.32,
+    "budget_code_key": "1000.10-01-314.LAB",
+    "month": "2025-01",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 24049.28,
+    "budget_code_key": "1000.10-01-314.LAB",
+    "month": "2025-02",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 27225.44,
+    "budget_code_key": "1000.10-01-314.LAB",
+    "month": "2025-03",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 19815.36,
+    "budget_code_key": "1000.10-01-314.LAB",
+    "month": "2025-04",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 15963.36,
+    "budget_code_key": "1000.10-01-314.LAB",
+    "month": "2025-05",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 11636.0,
+    "budget_code_key": "1000.10-01-314.LAB",
+    "month": "2025-06",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 12405.28,
+    "budget_code_key": "1000.10-01-314.LAB",
+    "month": "2025-07",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 15328.72,
+    "budget_code_key": "1000.10-01-314.LAB",
+    "month": "2025-08",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 14231.36,
+    "budget_code_key": "1000.10-01-314.LAB",
+    "month": "2025-09",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 17404.16,
+    "budget_code_key": "1000.10-01-314.LAB",
+    "month": "2025-10",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 22212.32,
+    "budget_code_key": "1000.10-01-314.LAB",
+    "month": "2025-11",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 25385.6,
+    "budget_code_key": "1000.10-01-314.LAB",
+    "month": "2025-12",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 35674.64,
+    "budget_code_key": "1000.10-01-314.LAB",
+    "month": "2026-01",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 36444.32,
+    "budget_code_key": "1000.10-01-314.LAB",
+    "month": "2026-02",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 35771.2,
+    "budget_code_key": "1000.10-01-314.LAB",
+    "month": "2026-03",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 36347.2,
+    "budget_code_key": "1000.10-01-314.LAB",
+    "month": "2026-04",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 45674.0,
+    "budget_code_key": "1000.10-01-314.LAB",
+    "month": "2026-05",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 9134.8,
+    "budget_code_key": "1000.10-01-314.LAB",
+    "month": "2026-06",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1690.42,
+    "budget_code_key": "1000.10-01-314.LBN",
+    "month": "2024-11",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 4684.98,
+    "budget_code_key": "1000.10-01-314.LBN",
+    "month": "2024-12",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 8017.26,
+    "budget_code_key": "1000.10-01-314.LBN",
+    "month": "2025-01",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 5451.51,
+    "budget_code_key": "1000.10-01-314.LBN",
+    "month": "2025-02",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 6223.47,
+    "budget_code_key": "1000.10-01-314.LBN",
+    "month": "2025-03",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 4391.27,
+    "budget_code_key": "1000.10-01-314.LBN",
+    "month": "2025-04",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 3310.49,
+    "budget_code_key": "1000.10-01-314.LBN",
+    "month": "2025-05",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 2371.43,
+    "budget_code_key": "1000.10-01-314.LBN",
+    "month": "2025-06",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 2558.75,
+    "budget_code_key": "1000.10-01-314.LBN",
+    "month": "2025-07",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 3155.37,
+    "budget_code_key": "1000.10-01-314.LBN",
+    "month": "2025-08",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 3001.2,
+    "budget_code_key": "1000.10-01-314.LBN",
+    "month": "2025-09",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 3656.22,
+    "budget_code_key": "1000.10-01-314.LBN",
+    "month": "2025-10",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 5053.32,
+    "budget_code_key": "1000.10-01-314.LBN",
+    "month": "2025-11",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 5708.15,
+    "budget_code_key": "1000.10-01-314.LBN",
+    "month": "2025-12",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 8322.0,
+    "budget_code_key": "1000.10-01-314.LBN",
+    "month": "2026-01",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 8438.75,
+    "budget_code_key": "1000.10-01-314.LBN",
+    "month": "2026-02",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 8260.44,
+    "budget_code_key": "1000.10-01-314.LBN",
+    "month": "2026-03",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 8409.89,
+    "budget_code_key": "1000.10-01-314.LBN",
+    "month": "2026-04",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 10565.1,
+    "budget_code_key": "1000.10-01-314.LBN",
+    "month": "2026-05",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 2113.03,
+    "budget_code_key": "1000.10-01-314.LBN",
+    "month": "2026-06",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 74.42,
+    "budget_code_key": "1000.10-01-314.MAT",
+    "month": "2024-10",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 816.45,
+    "budget_code_key": "1000.10-01-314.MAT",
+    "month": "2024-11",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1476.86,
+    "budget_code_key": "1000.10-01-314.MAT",
+    "month": "2024-12",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 2757.29,
+    "budget_code_key": "1000.10-01-314.MAT",
+    "month": "2025-01",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1259.01,
+    "budget_code_key": "1000.10-01-314.MAT",
+    "month": "2025-02",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1572.21,
+    "budget_code_key": "1000.10-01-314.MAT",
+    "month": "2025-03",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 931.79,
+    "budget_code_key": "1000.10-01-314.MAT",
+    "month": "2025-04",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1089.88,
+    "budget_code_key": "1000.10-01-314.MAT",
+    "month": "2025-05",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 868.84,
+    "budget_code_key": "1000.10-01-314.MAT",
+    "month": "2025-06",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 930.16,
+    "budget_code_key": "1000.10-01-314.MAT",
+    "month": "2025-07",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 872.95,
+    "budget_code_key": "1000.10-01-314.MAT",
+    "month": "2025-08",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1548.54,
+    "budget_code_key": "1000.10-01-314.MAT",
+    "month": "2025-09",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1318.15,
+    "budget_code_key": "1000.10-01-314.MAT",
+    "month": "2025-10",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1717.38,
+    "budget_code_key": "1000.10-01-314.MAT",
+    "month": "2025-11",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1944.73,
+    "budget_code_key": "1000.10-01-314.MAT",
+    "month": "2025-12",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 2319.64,
+    "budget_code_key": "1000.10-01-314.MAT",
+    "month": "2026-01",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 4888.23,
+    "budget_code_key": "1000.10-01-314.MAT",
+    "month": "2026-02",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 3198.02,
+    "budget_code_key": "1000.10-01-314.MAT",
+    "month": "2026-03",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 3842.23,
+    "budget_code_key": "1000.10-01-314.MAT",
+    "month": "2026-04",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 4048.89,
+    "budget_code_key": "1000.10-01-314.MAT",
+    "month": "2026-05",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 3269.6,
+    "budget_code_key": "1000.10-01-315.LAB",
+    "month": "2024-12",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 5693.12,
+    "budget_code_key": "1000.10-01-315.LAB",
+    "month": "2025-01",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 7308.8,
+    "budget_code_key": "1000.10-01-315.LAB",
+    "month": "2025-02",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 7308.8,
+    "budget_code_key": "1000.10-01-315.LAB",
+    "month": "2025-03",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 12502.4,
+    "budget_code_key": "1000.10-01-315.LAB",
+    "month": "2025-04",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 12944.96,
+    "budget_code_key": "1000.10-01-315.LAB",
+    "month": "2025-05",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 6539.2,
+    "budget_code_key": "1000.10-01-315.LAB",
+    "month": "2025-06",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 6539.2,
+    "budget_code_key": "1000.10-01-315.LAB",
+    "month": "2025-07",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 12893.2,
+    "budget_code_key": "1000.10-01-315.LAB",
+    "month": "2025-08",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 6539.2,
+    "budget_code_key": "1000.10-01-315.LAB",
+    "month": "2025-09",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 8174.0,
+    "budget_code_key": "1000.10-01-315.LAB",
+    "month": "2025-10",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 7899.2,
+    "budget_code_key": "1000.10-01-315.LAB",
+    "month": "2025-11",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 6539.2,
+    "budget_code_key": "1000.10-01-315.LAB",
+    "month": "2025-12",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 8174.0,
+    "budget_code_key": "1000.10-01-315.LAB",
+    "month": "2026-01",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 6539.2,
+    "budget_code_key": "1000.10-01-315.LAB",
+    "month": "2026-02",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 6539.2,
+    "budget_code_key": "1000.10-01-315.LAB",
+    "month": "2026-03",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 8424.16,
+    "budget_code_key": "1000.10-01-315.LAB",
+    "month": "2026-04",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 16348.4,
+    "budget_code_key": "1000.10-01-315.LAB",
+    "month": "2026-05",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 4712.0,
+    "budget_code_key": "1000.10-01-315.LAB",
+    "month": "2026-06",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 842.97,
+    "budget_code_key": "1000.10-01-315.LBN",
+    "month": "2024-12",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1450.37,
+    "budget_code_key": "1000.10-01-315.LBN",
+    "month": "2025-01",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1797.74,
+    "budget_code_key": "1000.10-01-315.LBN",
+    "month": "2025-02",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1797.47,
+    "budget_code_key": "1000.10-01-315.LBN",
+    "month": "2025-03",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 2845.33,
+    "budget_code_key": "1000.10-01-315.LBN",
+    "month": "2025-04",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 2796.93,
+    "budget_code_key": "1000.10-01-315.LBN",
+    "month": "2025-05",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1281.23,
+    "budget_code_key": "1000.10-01-315.LBN",
+    "month": "2025-06",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1281.16,
+    "budget_code_key": "1000.10-01-315.LBN",
+    "month": "2025-07",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 2613.11,
+    "budget_code_key": "1000.10-01-315.LBN",
+    "month": "2025-08",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1284.43,
+    "budget_code_key": "1000.10-01-315.LBN",
+    "month": "2025-09",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1606.9,
+    "budget_code_key": "1000.10-01-315.LBN",
+    "month": "2025-10",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1702.5,
+    "budget_code_key": "1000.10-01-315.LBN",
+    "month": "2025-11",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1285.52,
+    "budget_code_key": "1000.10-01-315.LBN",
+    "month": "2025-12",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1660.19,
+    "budget_code_key": "1000.10-01-315.LBN",
+    "month": "2026-01",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1290.42,
+    "budget_code_key": "1000.10-01-315.LBN",
+    "month": "2026-02",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1285.51,
+    "budget_code_key": "1000.10-01-315.LBN",
+    "month": "2026-03",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1658.85,
+    "budget_code_key": "1000.10-01-315.LBN",
+    "month": "2026-04",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 3299.11,
+    "budget_code_key": "1000.10-01-315.LBN",
+    "month": "2026-05",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1004.8,
+    "budget_code_key": "1000.10-01-315.LBN",
+    "month": "2026-06",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 525.07,
+    "budget_code_key": "1000.10-01-315.MAT",
+    "month": "2025-01",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1952.06,
+    "budget_code_key": "1000.10-01-315.MAT",
+    "month": "2025-02",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1954.57,
+    "budget_code_key": "1000.10-01-315.MAT",
+    "month": "2025-03",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 2168.98,
+    "budget_code_key": "1000.10-01-315.MAT",
+    "month": "2025-04",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 586.21,
+    "budget_code_key": "1000.10-01-315.MAT",
+    "month": "2025-05",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 2527.44,
+    "budget_code_key": "1000.10-01-317.LAB",
+    "month": "2024-11",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 7706.43,
+    "budget_code_key": "1000.10-01-317.LAB",
+    "month": "2024-12",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 9034.62,
+    "budget_code_key": "1000.10-01-317.LAB",
+    "month": "2025-01",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 7062.09,
+    "budget_code_key": "1000.10-01-317.LAB",
+    "month": "2025-02",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 7259.24,
+    "budget_code_key": "1000.10-01-317.LAB",
+    "month": "2025-03",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 7101.52,
+    "budget_code_key": "1000.10-01-317.LAB",
+    "month": "2025-04",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 11672.91,
+    "budget_code_key": "1000.10-01-317.LAB",
+    "month": "2025-05",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 10205.52,
+    "budget_code_key": "1000.10-01-317.LAB",
+    "month": "2025-06",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 10424.39,
+    "budget_code_key": "1000.10-01-317.LAB",
+    "month": "2025-07",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 14021.0,
+    "budget_code_key": "1000.10-01-317.LAB",
+    "month": "2025-08",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 9693.6,
+    "budget_code_key": "1000.10-01-317.LAB",
+    "month": "2025-09",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 12270.6,
+    "budget_code_key": "1000.10-01-317.LAB",
+    "month": "2025-10",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 10178.0,
+    "budget_code_key": "1000.10-01-317.LAB",
+    "month": "2025-11",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 9847.2,
+    "budget_code_key": "1000.10-01-317.LAB",
+    "month": "2025-12",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 12309.0,
+    "budget_code_key": "1000.10-01-317.LAB",
+    "month": "2026-01",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 13732.4,
+    "budget_code_key": "1000.10-01-317.LAB",
+    "month": "2026-02",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 13759.4,
+    "budget_code_key": "1000.10-01-317.LAB",
+    "month": "2026-03",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 13345.9,
+    "budget_code_key": "1000.10-01-317.LAB",
+    "month": "2026-04",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 15752.0,
+    "budget_code_key": "1000.10-01-317.LAB",
+    "month": "2026-05",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 2654.2,
+    "budget_code_key": "1000.10-01-317.LAB",
+    "month": "2026-06",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 536.41,
+    "budget_code_key": "1000.10-01-317.LBN",
+    "month": "2024-11",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1597.64,
+    "budget_code_key": "1000.10-01-317.LBN",
+    "month": "2024-12",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1848.62,
+    "budget_code_key": "1000.10-01-317.LBN",
+    "month": "2025-01",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1392.71,
+    "budget_code_key": "1000.10-01-317.LBN",
+    "month": "2025-02",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1430.82,
+    "budget_code_key": "1000.10-01-317.LBN",
+    "month": "2025-03",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1400.28,
+    "budget_code_key": "1000.10-01-317.LBN",
+    "month": "2025-04",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 2434.03,
+    "budget_code_key": "1000.10-01-317.LBN",
+    "month": "2025-05",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 2189.91,
+    "budget_code_key": "1000.10-01-317.LBN",
+    "month": "2025-06",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 2219.99,
+    "budget_code_key": "1000.10-01-317.LBN",
+    "month": "2025-07",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 2862.52,
+    "budget_code_key": "1000.10-01-317.LBN",
+    "month": "2025-08",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1903.02,
+    "budget_code_key": "1000.10-01-317.LBN",
+    "month": "2025-09",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 2409.14,
+    "budget_code_key": "1000.10-01-317.LBN",
+    "month": "2025-10",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1997.41,
+    "budget_code_key": "1000.10-01-317.LBN",
+    "month": "2025-11",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1933.39,
+    "budget_code_key": "1000.10-01-317.LBN",
+    "month": "2025-12",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 2496.83,
+    "budget_code_key": "1000.10-01-317.LBN",
+    "month": "2026-01",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 2698.18,
+    "budget_code_key": "1000.10-01-317.LBN",
+    "month": "2026-02",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 2693.69,
+    "budget_code_key": "1000.10-01-317.LBN",
+    "month": "2026-03",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 2614.84,
+    "budget_code_key": "1000.10-01-317.LBN",
+    "month": "2026-04",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 3087.15,
+    "budget_code_key": "1000.10-01-317.LBN",
+    "month": "2026-05",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 521.44,
+    "budget_code_key": "1000.10-01-317.LBN",
+    "month": "2026-06",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 50.92,
+    "budget_code_key": "1000.10-01-317.MAT",
+    "month": "2024-11",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 80.0,
+    "budget_code_key": "1000.10-01-317.MAT",
+    "month": "2024-12",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1000.0,
+    "budget_code_key": "1000.10-01-317.MAT",
+    "month": "2025-01",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 500.0,
+    "budget_code_key": "1000.10-01-317.MAT",
+    "month": "2025-02",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 500.0,
+    "budget_code_key": "1000.10-01-317.MAT",
+    "month": "2025-03",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 500.0,
+    "budget_code_key": "1000.10-01-317.MAT",
+    "month": "2025-04",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 682.58,
+    "budget_code_key": "1000.10-01-317.MAT",
+    "month": "2025-05",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 500.0,
+    "budget_code_key": "1000.10-01-317.MAT",
+    "month": "2025-06",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 500.0,
+    "budget_code_key": "1000.10-01-317.MAT",
+    "month": "2025-07",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 500.0,
+    "budget_code_key": "1000.10-01-317.MAT",
+    "month": "2025-08",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 500.0,
+    "budget_code_key": "1000.10-01-317.MAT",
+    "month": "2025-09",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 682.58,
+    "budget_code_key": "1000.10-01-317.MAT",
+    "month": "2025-10",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 690.28,
+    "budget_code_key": "1000.10-01-317.MAT",
+    "month": "2025-11",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 681.84,
+    "budget_code_key": "1000.10-01-317.MAT",
+    "month": "2025-12",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 668.2,
+    "budget_code_key": "1000.10-01-317.MAT",
+    "month": "2026-01",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 500.0,
+    "budget_code_key": "1000.10-01-317.MAT",
+    "month": "2026-02",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 693.04,
+    "budget_code_key": "1000.10-01-317.MAT",
+    "month": "2026-03",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 500.0,
+    "budget_code_key": "1000.10-01-317.MAT",
+    "month": "2026-04",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 500.0,
+    "budget_code_key": "1000.10-01-317.MAT",
+    "month": "2026-05",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 9519.6,
+    "budget_code_key": "1000.10-01-318.LAB",
+    "month": "2024-11",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 12692.8,
+    "budget_code_key": "1000.10-01-318.LAB",
+    "month": "2024-12",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 25098.0,
+    "budget_code_key": "1000.10-01-318.LAB",
+    "month": "2025-01",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 17308.8,
+    "budget_code_key": "1000.10-01-318.LAB",
+    "month": "2025-02",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 12692.8,
+    "budget_code_key": "1000.10-01-318.LAB",
+    "month": "2025-03",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 12692.8,
+    "budget_code_key": "1000.10-01-318.LAB",
+    "month": "2025-04",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 15866.0,
+    "budget_code_key": "1000.10-01-318.LAB",
+    "month": "2025-05",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 12692.8,
+    "budget_code_key": "1000.10-01-318.LAB",
+    "month": "2025-06",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 12692.8,
+    "budget_code_key": "1000.10-01-318.LAB",
+    "month": "2025-07",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 18692.96,
+    "budget_code_key": "1000.10-01-318.LAB",
+    "month": "2025-08",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 13846.4,
+    "budget_code_key": "1000.10-01-318.LAB",
+    "month": "2025-09",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 23462.4,
+    "budget_code_key": "1000.10-01-318.LAB",
+    "month": "2025-10",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 26155.2,
+    "budget_code_key": "1000.10-01-318.LAB",
+    "month": "2025-11",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 26155.2,
+    "budget_code_key": "1000.10-01-318.LAB",
+    "month": "2025-12",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 29232.4,
+    "budget_code_key": "1000.10-01-318.LAB",
+    "month": "2026-01",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 12308.8,
+    "budget_code_key": "1000.10-01-318.LAB",
+    "month": "2026-02",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 6154.4,
+    "budget_code_key": "1000.10-01-318.LAB",
+    "month": "2026-03",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 7788.96,
+    "budget_code_key": "1000.10-01-318.LAB",
+    "month": "2026-05",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 4327.2,
+    "budget_code_key": "1000.10-01-318.LAB",
+    "month": "2026-06",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1918.76,
+    "budget_code_key": "1000.10-01-318.LBN",
+    "month": "2024-11",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 2509.69,
+    "budget_code_key": "1000.10-01-318.LBN",
+    "month": "2024-12",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 5063.03,
+    "budget_code_key": "1000.10-01-318.LBN",
+    "month": "2025-01",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 3441.54,
+    "budget_code_key": "1000.10-01-318.LBN",
+    "month": "2025-02",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 2558.34,
+    "budget_code_key": "1000.10-01-318.LBN",
+    "month": "2025-03",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 2558.34,
+    "budget_code_key": "1000.10-01-318.LBN",
+    "month": "2025-04",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 3197.92,
+    "budget_code_key": "1000.10-01-318.LBN",
+    "month": "2025-05",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 2558.34,
+    "budget_code_key": "1000.10-01-318.LBN",
+    "month": "2025-06",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 2558.34,
+    "budget_code_key": "1000.10-01-318.LBN",
+    "month": "2025-07",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 3752.56,
+    "budget_code_key": "1000.10-01-318.LBN",
+    "month": "2025-08",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 2790.67,
+    "budget_code_key": "1000.10-01-318.LBN",
+    "month": "2025-09",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 4813.42,
+    "budget_code_key": "1000.10-01-318.LBN",
+    "month": "2025-10",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 5345.65,
+    "budget_code_key": "1000.10-01-318.LBN",
+    "month": "2025-11",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 5315.61,
+    "budget_code_key": "1000.10-01-318.LBN",
+    "month": "2025-12",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 6044.28,
+    "budget_code_key": "1000.10-01-318.LBN",
+    "month": "2026-01",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 2506.21,
+    "budget_code_key": "1000.10-01-318.LBN",
+    "month": "2026-02",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1234.28,
+    "budget_code_key": "1000.10-01-318.LBN",
+    "month": "2026-03",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1670.42,
+    "budget_code_key": "1000.10-01-318.LBN",
+    "month": "2026-05",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 895.72,
+    "budget_code_key": "1000.10-01-318.LBN",
+    "month": "2026-06",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 672.36,
+    "budget_code_key": "1000.10-01-318.MAT",
+    "month": "2024-11",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 2146.74,
+    "budget_code_key": "1000.10-01-318.MAT",
+    "month": "2024-12",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1861.21,
+    "budget_code_key": "1000.10-01-318.MAT",
+    "month": "2025-01",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1867.36,
+    "budget_code_key": "1000.10-01-318.MAT",
+    "month": "2025-02",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1848.6,
+    "budget_code_key": "1000.10-01-318.MAT",
+    "month": "2025-03",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1023.05,
+    "budget_code_key": "1000.10-01-318.MAT",
+    "month": "2025-04",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1097.72,
+    "budget_code_key": "1000.10-01-318.MAT",
+    "month": "2025-05",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1134.3,
+    "budget_code_key": "1000.10-01-318.MAT",
+    "month": "2025-06",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1020.92,
+    "budget_code_key": "1000.10-01-318.MAT",
+    "month": "2025-07",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1727.65,
+    "budget_code_key": "1000.10-01-318.MAT",
+    "month": "2025-08",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 188.82,
+    "budget_code_key": "1000.10-01-318.MAT",
+    "month": "2025-09",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 706.62,
+    "budget_code_key": "1000.10-01-318.MAT",
+    "month": "2025-10",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1672.92,
+    "budget_code_key": "1000.10-01-318.MAT",
+    "month": "2025-11",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1519.13,
+    "budget_code_key": "1000.10-01-318.MAT",
+    "month": "2025-12",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1446.23,
+    "budget_code_key": "1000.10-01-318.MAT",
+    "month": "2026-01",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1484.9,
+    "budget_code_key": "1000.10-01-318.MAT",
+    "month": "2026-02",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 669.45,
+    "budget_code_key": "1000.10-01-318.MAT",
+    "month": "2026-03",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 600.0,
+    "budget_code_key": "1000.10-01-318.MAT",
+    "month": "2026-04",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 3063.23,
+    "budget_code_key": "1000.10-01-318.MAT",
+    "month": "2026-05",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 2200.0,
+    "budget_code_key": "1000.10-01-340.MAT",
+    "month": "2024-11",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1950.0,
+    "budget_code_key": "1000.10-01-340.MAT",
+    "month": "2024-12",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1950.0,
+    "budget_code_key": "1000.10-01-340.MAT",
+    "month": "2025-01",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1950.0,
+    "budget_code_key": "1000.10-01-340.MAT",
+    "month": "2025-02",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 2925.0,
+    "budget_code_key": "1000.10-01-340.MAT",
+    "month": "2025-03",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1950.0,
+    "budget_code_key": "1000.10-01-340.MAT",
+    "month": "2025-04",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 2568.75,
+    "budget_code_key": "1000.10-01-340.MAT",
+    "month": "2025-05",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1950.0,
+    "budget_code_key": "1000.10-01-340.MAT",
+    "month": "2025-06",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1950.0,
+    "budget_code_key": "1000.10-01-340.MAT",
+    "month": "2025-07",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 2087.5,
+    "budget_code_key": "1000.10-01-340.MAT",
+    "month": "2025-08",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 2500.0,
+    "budget_code_key": "1000.10-01-340.MAT",
+    "month": "2025-10",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 3600.0,
+    "budget_code_key": "1000.10-01-340.MAT",
+    "month": "2025-11",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1950.0,
+    "budget_code_key": "1000.10-01-340.MAT",
+    "month": "2025-12",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 2250.0,
+    "budget_code_key": "1000.10-01-340.MAT",
+    "month": "2026-01",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 4125.0,
+    "budget_code_key": "1000.10-01-340.MAT",
+    "month": "2026-02",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 6750.0,
+    "budget_code_key": "1000.10-01-340.MAT",
+    "month": "2026-05",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 105.78,
+    "budget_code_key": "1000.10-01-460.LAB",
+    "month": "2024-11",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 76.94,
+    "budget_code_key": "1000.10-01-460.LAB",
+    "month": "2024-12",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 230.82,
+    "budget_code_key": "1000.10-01-460.LAB",
+    "month": "2025-01",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 307.76,
+    "budget_code_key": "1000.10-01-460.LAB",
+    "month": "2025-02",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 375.04,
+    "budget_code_key": "1000.10-01-460.LAB",
+    "month": "2025-03",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 110.58,
+    "budget_code_key": "1000.10-01-460.LAB",
+    "month": "2025-04",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 757.25,
+    "budget_code_key": "1000.10-01-460.LAB",
+    "month": "2025-05",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 1202.04,
+    "budget_code_key": "1000.10-01-460.LAB",
+    "month": "2025-06",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 3735.82,
+    "budget_code_key": "1000.10-01-460.LAB",
+    "month": "2025-07",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 8563.1,
+    "budget_code_key": "1000.10-01-460.LAB",
+    "month": "2025-08",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 4764.74,
+    "budget_code_key": "1000.10-01-460.LAB",
+    "month": "2025-09",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 4632.08,
+    "budget_code_key": "1000.10-01-460.LAB",
+    "month": "2025-10",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 5482.22,
+    "budget_code_key": "1000.10-01-460.LAB",
+    "month": "2025-11",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 3531.04,
+    "budget_code_key": "1000.10-01-460.LAB",
+    "month": "2025-12",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 3965.74,
+    "budget_code_key": "1000.10-01-460.LAB",
+    "month": "2026-01",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 2440.09,
+    "budget_code_key": "1000.10-01-460.LAB",
+    "month": "2026-02",
+    "project_key": "tropical",
+    "row_count": 1
+  },
+  {
+    "amount": 2029.0,
+    "budget_code_key": "1000.10-01-460.LAB",
+    "month": "2026-03",
+    "project_key": "tropical",
+    "row_count": 1
+  }
+]

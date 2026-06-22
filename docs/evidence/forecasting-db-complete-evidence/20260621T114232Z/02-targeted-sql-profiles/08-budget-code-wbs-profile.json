@@ -1,0 +1,331 @@
+{
+  "forecast_anomaly_findings": {
+    "column_profiles": {
+      "budget_code_key": {
+        "distinct_count": 0,
+        "nonnull_count": 0
+      }
+    },
+    "columns_present": [
+      "budget_code_key"
+    ]
+  },
+  "forecast_budget_details": {
+    "column_profiles": {
+      "budget_code_key": {
+        "distinct_count": 127,
+        "nonnull_count": 127
+      },
+      "cost_code": {
+        "distinct_count": 100,
+        "nonnull_count": 127
+      }
+    },
+    "columns_present": [
+      "budget_code_key",
+      "cost_code"
+    ]
+  },
+  "forecast_comparison_results": {
+    "column_profiles": {
+      "budget_code_key": {
+        "distinct_count": 0,
+        "nonnull_count": 0
+      }
+    },
+    "columns_present": [
+      "budget_code_key"
+    ]
+  },
+  "forecast_cost_entries": {
+    "column_profiles": {
+      "budget_code_key": {
+        "distinct_count": 108,
+        "nonnull_count": 6324
+      }
+    },
+    "columns_present": [
+      "budget_code_key"
+    ]
+  },
+  "forecast_external_forecast_mappings": {
+    "column_profiles": {
+      "canonical_budget_code_key": {
+        "distinct_count": 0,
+        "nonnull_count": 0
+      }
+    },
+    "columns_present": [
+      "canonical_budget_code_key"
+    ]
+  },
+  "forecast_external_forecast_rows": {
+    "column_profiles": {
+      "budget_code_key": {
+        "distinct_count": 0,
+        "nonnull_count": 0
+      }
+    },
+    "columns_present": [
+      "budget_code_key"
+    ]
+  },
+  "forecast_monthly_actuals_by_budget_code": {
+    "column_profiles": {
+      "budget_code_key": {
+        "distinct_count": 108,
+        "nonnull_count": 1081
+      }
+    },
+    "columns_present": [
+      "budget_code_key"
+    ]
+  },
+  "forecast_review_items": {
+    "column_profiles": {
+      "budget_code_key": {
+        "distinct_count": 0,
+        "nonnull_count": 0
+      }
+    },
+    "columns_present": [
+      "budget_code_key"
+    ]
+  },
+  "procore_ep_budget_change_history": {
+    "column_profiles": {
+      "budget_code": {
+        "distinct_count": 133,
+        "nonnull_count": 420
+      }
+    },
+    "columns_present": [
+      "budget_code"
+    ]
+  },
+  "procore_ep_budget_detail_rows": {
+    "column_profiles": {
+      "budget_code": {
+        "distinct_count": 372,
+        "nonnull_count": 3044
+      },
+      "canonical_budget_code_key": {
+        "distinct_count": 372,
+        "nonnull_count": 3044
+      },
+      "cost_code": {
+        "distinct_count": 294,
+        "nonnull_count": 3044
+      },
+      "cost_code_id": {
+        "distinct_count": 385,
+        "nonnull_count": 3044
+      },
+      "cost_type": {
+        "distinct_count": 0,
+        "nonnull_count": 0
+      },
+      "cost_type_id": {
+        "distinct_count": 0,
+        "nonnull_count": 0
+      },
+      "line_item_type_id": {
+        "distinct_count": 0,
+        "nonnull_count": 0
+      },
+      "wbs_code_id": {
+        "distinct_count": 522,
+        "nonnull_count": 3044
+      },
+      "wbs_flat_code": {
+        "distinct_count": 372,
+        "nonnull_count": 3044
+      }
+    },
+    "columns_present": [
+      "budget_code",
+      "canonical_budget_code_key",
+      "wbs_code_id",
+      "wbs_flat_code",
+      "cost_code",
+      "cost_code_id",
+      "cost_type",
+      "cost_type_id",
+      "line_item_type_id"
+    ]
+  },
+  "procore_ep_change_events_change_items": {
+    "column_profiles": {
+      "budget_code_id": {
+        "distinct_count": 199,
+        "nonnull_count": 2829
+      }
+    },
+    "columns_present": [
+      "budget_code_id"
+    ]
+  },
+  "procore_ep_change_events_markup_items": {
+    "column_profiles": {
+      "wbs_code_flat_code": {
+        "distinct_count": 6,
+        "nonnull_count": 2084
+      },
+      "wbs_code_id": {
+        "distinct_count": 7,
+        "nonnull_count": 2154
+      }
+    },
+    "columns_present": [
+      "wbs_code_id",
+      "wbs_code_flat_code"
+    ]
+  },
+  "procore_ep_commitment_line_items": {
+    "column_profiles": {
+      "wbs_code_flat_code": {
+        "distinct_count": 97,
+        "nonnull_count": 1308
+      },
+      "wbs_code_id": {
+        "distinct_count": 104,
+        "nonnull_count": 1308
+      }
+    },
+    "columns_present": [
+      "wbs_code_id",
+      "wbs_code_flat_code"
+    ]
+  },
+  "procore_ep_prime_change_order_line_items": {
+    "column_profiles": {
+      "wbs_code_flat_code": {
+        "distinct_count": 69,
+        "nonnull_count": 249
+      },
+      "wbs_code_id": {
+        "distinct_count": 72,
+        "nonnull_count": 249
+      }
+    },
+    "columns_present": [
+      "wbs_code_id",
+      "wbs_code_flat_code"
+    ]
+  },
+  "procore_ep_prime_contract_line_items": {
+    "column_profiles": {
+      "wbs_code_flat_code": {
+        "distinct_count": 89,
+        "nonnull_count": 493
+      },
+      "wbs_code_id": {
+        "distinct_count": 103,
+        "nonnull_count": 499
+      }
+    },
+    "columns_present": [
+      "wbs_code_id",
+      "wbs_code_flat_code"
+    ]
+  },
+  "procore_ep_purchase_order_line_items": {
+    "column_profiles": {
+      "cost_code_id": {
+        "distinct_count": 7,
+        "nonnull_count": 28
+      },
+      "line_item_type_id": {
+        "distinct_count": 2,
+        "nonnull_count": 28
+      },
+      "wbs_code_flat_code": {
+        "distinct_count": 7,
+        "nonnull_count": 28
+      },
+      "wbs_code_id": {
+        "distinct_count": 7,
+        "nonnull_count": 28
+      }
+    },
+    "columns_present": [
+      "wbs_code_id",
+      "wbs_code_flat_code",
+      "cost_code_id",
+      "line_item_type_id"
+    ]
+  },
+  "procore_ep_rfqs_change_event_change_event_line_items": {
+    "column_profiles": {
+      "cost_code_id": {
+        "distinct_count": 13,
+        "nonnull_count": 60
+      },
+      "cost_type_id": {
+        "distinct_count": 1,
+        "nonnull_count": 60
+      },
+      "line_item_type_id": {
+        "distinct_count": 1,
+        "nonnull_count": 60
+      },
+      "wbs_code_flat_code": {
+        "distinct_count": 0,
+        "nonnull_count": 0
+      },
+      "wbs_code_id": {
+        "distinct_count": 0,
+        "nonnull_count": 0
+      }
+    },
+    "columns_present": [
+      "wbs_code_id",
+      "wbs_code_flat_code",
+      "cost_code_id",
+      "cost_type_id",
+      "line_item_type_id"
+    ]
+  },
+  "procore_ep_subcontractor_invoice_change_order_items": {
+    "column_profiles": {
+      "cost_code_id": {
+        "distinct_count": 55,
+        "nonnull_count": 2403
+      },
+      "wbs_code_flat_code": {
+        "distinct_count": 56,
+        "nonnull_count": 2403
+      },
+      "wbs_code_id": {
+        "distinct_count": 56,
+        "nonnull_count": 2403
+      }
+    },
+    "columns_present": [
+      "wbs_code_id",
+      "wbs_code_flat_code",
+      "cost_code_id"
+    ]
+  },
+  "procore_ep_subcontractor_invoice_contract_detail_items": {
+    "column_profiles": {
+      "cost_code_id": {
+        "distinct_count": 72,
+        "nonnull_count": 51428
+      },
+      "wbs_code_flat_code": {
+        "distinct_count": 74,
+        "nonnull_count": 51428
+      },
+      "wbs_code_id": {
+        "distinct_count": 74,
+        "nonnull_count": 51428
+      }
+    },
+    "columns_present": [
+      "wbs_code_id",
+      "wbs_code_flat_code",
+      "cost_code_id"
+    ]
+  }
+}

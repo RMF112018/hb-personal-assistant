@@ -1,0 +1,158 @@
+{
+  "method": "one_at_a_time_delta_p90 + spearman_rank + systemic_variance_share",
+  "base_project_p90": "68990479.43",
+  "oat_delta_p90_by_source": [
+    {
+      "source": "overrun_tail",
+      "base_project_p90": "68990479.43",
+      "neutralized_project_p90": "83228624.57",
+      "delta_p90": "-14238145.13",
+      "abs_delta_p90": "14238145.13",
+      "rank": 1
+    },
+    {
+      "source": "model_divergence",
+      "base_project_p90": "68990479.43",
+      "neutralized_project_p90": "82495329.25",
+      "delta_p90": "-13504849.82",
+      "abs_delta_p90": "13504849.82",
+      "rank": 2
+    },
+    {
+      "source": "cost_volatility_cov",
+      "base_project_p90": "68990479.43",
+      "neutralized_project_p90": "81844107.15",
+      "delta_p90": "-12853627.72",
+      "abs_delta_p90": "12853627.72",
+      "rank": 3
+    },
+    {
+      "source": "backtest_mape",
+      "base_project_p90": "68990479.43",
+      "neutralized_project_p90": "81742999.15",
+      "delta_p90": "-12752519.71",
+      "abs_delta_p90": "12752519.71",
+      "rank": 4
+    },
+    {
+      "source": "systemic_correlation",
+      "base_project_p90": "68990479.43",
+      "neutralized_project_p90": "78340194.50",
+      "delta_p90": "-9349715.07",
+      "abs_delta_p90": "9349715.07",
+      "rank": 5
+    },
+    {
+      "source": "worst_credible_spread",
+      "base_project_p90": "68990479.43",
+      "neutralized_project_p90": "76060428.98",
+      "delta_p90": "-7069949.54",
+      "abs_delta_p90": "7069949.54",
+      "rank": 6
+    }
+  ],
+  "top_spearman_code_drivers": [
+    {
+      "budget_code_key": "1000.15-16-110.SUB",
+      "spearman_vs_project_total": "0.8772"
+    },
+    {
+      "budget_code_key": "1000.15-08-250.SUB",
+      "spearman_vs_project_total": "0.5722"
+    },
+    {
+      "budget_code_key": "1000.15-09-250.SUB",
+      "spearman_vs_project_total": "0.5404"
+    },
+    {
+      "budget_code_key": "1000.15-16-400.SUB",
+      "spearman_vs_project_total": "0.5252"
+    },
+    {
+      "budget_code_key": "1000.15-09-910.SUB",
+      "spearman_vs_project_total": "0.5226"
+    },
+    {
+      "budget_code_key": "1000.15-02-010.SUB",
+      "spearman_vs_project_total": "0.5198"
+    },
+    {
+      "budget_code_key": "1000.15-05-522.SUB",
+      "spearman_vs_project_total": "0.5182"
+    },
+    {
+      "budget_code_key": "1000.15-02-805.SUB",
+      "spearman_vs_project_total": "0.5137"
+    },
+    {
+      "budget_code_key": "1000.10-01-314.LAB",
+      "spearman_vs_project_total": "0.5105"
+    },
+    {
+      "budget_code_key": "1000.15-11-400.SUB",
+      "spearman_vs_project_total": "0.5100"
+    },
+    {
+      "budget_code_key": "1000.15-12-300.SUB",
+      "spearman_vs_project_total": "0.5098"
+    },
+    {
+      "budget_code_key": "1000.15-06-220.SUB",
+      "spearman_vs_project_total": "0.5066"
+    },
+    {
+      "budget_code_key": "1000.15-02-808.SUB",
+      "spearman_vs_project_total": "0.5063"
+    },
+    {
+      "budget_code_key": "1000.15-14-110.SUB",
+      "spearman_vs_project_total": "0.5001"
+    },
+    {
+      "budget_code_key": "1000.15-01-741.MAT",
+      "spearman_vs_project_total": "0.4987"
+    },
+    {
+      "budget_code_key": "1000.10-01-311.LAB",
+      "spearman_vs_project_total": "0.4980"
+    },
+    {
+      "budget_code_key": "1000.15-12-540.SUB",
+      "spearman_vs_project_total": "0.4943"
+    },
+    {
+      "budget_code_key": "1000.15-12-490.SUB",
+      "spearman_vs_project_total": "0.4933"
+    },
+    {
+      "budget_code_key": "1000.10-01-318.LBN",
+      "spearman_vs_project_total": "0.4930"
+    },
+    {
+      "budget_code_key": "1000.15-10-312.SUB",
+      "spearman_vs_project_total": "0.4925"
+    },
+    {
+      "budget_code_key": "1000.10-01-302.LAB",
+      "spearman_vs_project_total": "0.4916"
+    },
+    {
+      "budget_code_key": "1000.10-01-310.LAB",
+      "spearman_vs_project_total": "0.4904"
+    },
+    {
+      "budget_code_key": "1000.15-01-515.SUB",
+      "spearman_vs_project_total": "0.4901"
+    },
+    {
+      "budget_code_key": "1000.10-01-317.LAB",
+      "spearman_vs_project_total": "0.4890"
+    },
+    {
+      "budget_code_key": "1000.10-01-318.MAT",
+      "spearman_vs_project_total": "0.4889"
+    }
+  ],
+  "most_influential_assumption": "overrun_tail",
+  "limitations": "OAT ΔP90 holds the random seed fixed and neutralizes one spread source at a time; it does not capture interactions between sources. Spearman is monotone association of a code's draws with the project total, not a causal share."
+}
