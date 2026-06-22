@@ -30,17 +30,31 @@ from . import trend as trend_mod
 
 # Real per-method reliability thresholds (mirror estimators_uncapped) for faithful as-of weighting.
 _OWNER_MEDIUM_PCT = Decimal("0.50")
+_PROCORE_MEDIUM_PCT = Decimal("0.50")
 _TREND_MIN_MONTHS = 6
 _TREND_MAX_COV = Decimal("0.75")
 
+# Independent methods reconstructed in this backtest: the 4 calibration methods + procore_progress
+# (reconstructable from the procore pay-app history). schedule_remaining_work has no history and is
+# omitted (disclosed in method_coverage); timeseries is shadow-only (not an independent method).
+_RECONCILED_METHODS = bts.METHODS + ("procore_progress_eac",)
+_OMITTED_METHOD = "schedule_remaining_work_eac"
+_OMITTED_REASON = "schedule state is not versioned (no per-period history to reconstruct as-of)"
+_SHADOW_EXCLUDED = "timeseries_eac"
 
-def _asof_reliabilities(owner_pct: Optional[Decimal], trend_block: dict) -> dict:
+
+def _asof_reliabilities(
+    owner_pct: Optional[Decimal], trend_block: dict, procore_pct: Optional[Decimal]
+) -> dict:
     """Each method's REAL reliability at the as-of point (estimators_uncapped rules). The commitment
     pipeline ratio isn't reconstructable at as-of -> 'low' (conservative, under-weights the most
     accurate method); cpi_blend is always 'low'."""
     months = int(trend_block.get("months_of_completed_actuals") or 0)
     cov = dec(trend_block.get("cost_volatility_cov"))
     owner_rel = "medium" if (owner_pct is not None and owner_pct >= _OWNER_MEDIUM_PCT) else "low"
+    procore_rel = (
+        "medium" if (procore_pct is not None and procore_pct >= _PROCORE_MEDIUM_PCT) else "low"
+    )
     trend_rel = (
         "medium"
         if (months >= _TREND_MIN_MONTHS and (cov is None or cov <= _TREND_MAX_COV))
@@ -48,6 +62,7 @@ def _asof_reliabilities(owner_pct: Optional[Decimal], trend_block: dict) -> dict
     )
     return {
         "owner_progress_eac": owner_rel,
+        "procore_progress_eac": procore_rel,
         "trend_projection_eac": trend_rel,
         "commitment_exposure_eac": "low",
         "cpi_blend_eac": "low",
@@ -68,7 +83,7 @@ def _asof_estimates(m: dict, reliabilities: dict) -> list[dict]:
     actual_t = m["actual_to_t"]
     erp = m.get("erp_projected")
     out = []
-    for method in bts.METHODS:
+    for method in _RECONCILED_METHODS:
         pred = bts._predict(method, m)
         if pred is None:
             continue
@@ -114,6 +129,7 @@ def run_reconciled_backtest(
     project_key: str,
     calibration: Optional[dict],
     method_summary: Optional[list],
+    procore_history: Optional[dict] = None,
 ) -> dict:
     """Score the reconciled production forecast as-of vs realized on the near-complete cohort.
 
@@ -121,6 +137,9 @@ def run_reconciled_backtest(
     via the real ``select_final`` (same ``calibration``); returns a deterministic evidence dict.
     """
     calibration = calibration or {}
+    procore_history = procore_history or {}
+    # Per-method standalone APE (incl. procore) for the coverage diagnostic — does not affect the blend.
+    method_apes: dict[str, list] = {mth: [] for mth in _RECONCILED_METHODS}
     detail = []
     rec_apes: list[Decimal] = []
     rec_biases: list[Decimal] = []
@@ -142,8 +161,9 @@ def run_reconciled_backtest(
     for ctx in context_rows:
         key = ctx.get("budget_code_key")
         owner_rows = owner_history.get(key, [])
+        procore_rows = procore_history.get(key, [])
         for target in bts.ASOF_TARGETS:
-            m = bts._reconstruct(ctx, owner_rows, target)
+            m = bts._reconstruct(ctx, owner_rows, target, procore_rows)
             if not m:
                 continue
             # Reconstruct the as-of trend block via the real production trend.analyze on the monthly
@@ -155,7 +175,9 @@ def run_reconciled_backtest(
                 and (r.get("month") or "") <= m["t_month"]
             ]
             trend_block = trend_mod.analyze(monthly_upto, m["t_month"], project_key, key)
-            reliabilities = _asof_reliabilities(m["owner_pct_to_t"], trend_block)
+            reliabilities = _asof_reliabilities(
+                m["owner_pct_to_t"], trend_block, m.get("procore_pct_to_t")
+            )
             ests = _asof_estimates(m, reliabilities)
             if not ests:
                 continue
@@ -165,6 +187,8 @@ def run_reconciled_backtest(
             realized = m["realized_final"]
             if realized <= 0:
                 continue
+            for e in ests:
+                method_apes[e["method"]].append((D(e["eac"]) - realized).copy_abs() / realized)
             recommendation = reconcile_final.select_final(
                 key, project_key, ests, bundle, calibration
             )
@@ -293,6 +317,23 @@ def run_reconciled_backtest(
         (rec_mape - naive_mape) if (rec_mape is not None and naive_mape is not None) else None
     )
 
+    per_method_asof_mape = OrderedDict(
+        (mth, _q4(mv))
+        for mth in _RECONCILED_METHODS
+        if method_apes[mth] and (mv := _mean(method_apes[mth])) is not None
+    )
+    method_coverage = {
+        "production_independent_method_count": len(reconcile_final.INDEPENDENT_METHODS),
+        "reconstructed_independent_methods": list(_RECONCILED_METHODS),
+        "reconstructed_count": len(_RECONCILED_METHODS),
+        "omitted_independent_methods": [{"method": _OMITTED_METHOD, "reason": _OMITTED_REASON}],
+        "shadow_methods_excluded": [_SHADOW_EXCLUDED],
+        "per_method_asof_mape": per_method_asof_mape,
+        "note": "The reconciled blend is scored over the reconstructable independent methods; "
+        "schedule_remaining_work is omitted (no history) and disclosed. per_method_asof_mape is each "
+        "method's standalone as-of accuracy (diagnostic; the gate verdict is on the blend).",
+    }
+
     return {
         "project_key": project_key,
         "cohort_size": len(cohort_keys),
@@ -315,6 +356,7 @@ def run_reconciled_backtest(
         "per_target_mape": OrderedDict(
             (t, _q4(mv)) for t, v in per_target.items() if v and (mv := _mean(v)) is not None
         ),
+        "method_coverage": method_coverage,
         "recalibrated": {
             "stage_gate_lo": str(reconcile_final.STAGE_GATE_LO),
             "stage_gate_hi": str(reconcile_final.STAGE_GATE_HI),

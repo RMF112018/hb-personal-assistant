@@ -189,6 +189,7 @@ def run_forecast_accuracy_gate(
         "project_key": project_key,
         "verdict": verdict,
         "package_scored": str(pkg),
+        "method_coverage": rb.get("method_coverage"),
         "thresholds": {
             "min_cohort": MIN_COHORT,
             "mape_pass": str(MAPE_PASS),
