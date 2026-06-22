@@ -741,6 +741,94 @@ export function getForecastPackageTopRisks(packageId: string) {
   return fetchJson(`/api/forecast/packages/${encodeURIComponent(packageId)}/top-risks`);
 }
 
+/* Forecast DB read-model — persisted v63 run-output + v66 decision-support (Phase 4/5).
+ * Read-only, redaction-safe (navigates by hash-based output_id; never the run_id/paths). Renders
+ * gracefully empty until an operator runs the authorized live-write. */
+export interface ForecastDbOutputSummary {
+  output_id: string;
+  project_key: string;
+  estimated_final_cost: string | null;
+  cost_to_complete: string | null;
+  variance_to_budget: string | null;
+  created_display: string | null;
+}
+export interface ForecastDbBudgetCode {
+  budget_code_key: string | null;
+  cost_code: string | null;
+  category: string | null;
+  forecast_action: string | null;
+  recommended_projected_cost: string | null;
+  recommended_cost_to_complete: string | null;
+  confidence: string | null;
+}
+export interface ForecastDbOutputDetail extends ForecastDbOutputSummary {
+  forecast_at_completion: string | null;
+  variance_to_prior_forecast: string | null;
+  budget_codes: ForecastDbBudgetCode[];
+  risks: Record<string, unknown>[];
+  monthly: Record<string, unknown>[];
+  probability: Record<string, unknown>[];
+  changes: Record<string, unknown>[];
+  staffing: Record<string, unknown>[];
+}
+export interface ForecastDbConfidenceFactor {
+  factor_key: string;
+  direction: string | null;
+  magnitude: string | null;
+  reason: string | null;
+}
+export interface ForecastDbScorecard {
+  scope: string;
+  scope_key: string | null;
+  score: string | null;
+  label: string | null;
+  factors: ForecastDbConfidenceFactor[];
+}
+export interface ForecastDbAvailability {
+  domain: string;
+  availability: string | null;
+  coverage: string | null;
+  freshness: string | null;
+  reason: string | null;
+}
+export interface ForecastDbMethodEligibility {
+  method: string;
+  status: string | null;
+  weight: string | null;
+  reason: string | null;
+}
+export interface ForecastDbMaturity {
+  maturity_tier: string | null;
+  completed_month_count: number | null;
+  nonzero_month_count: number | null;
+  lifecycle_signal: string | null;
+  basis: string | null;
+}
+export interface ForecastDbDecisionSupport {
+  output_id: string;
+  maturity: ForecastDbMaturity | null;
+  data_availability: ForecastDbAvailability[];
+  confidence_scorecards: ForecastDbScorecard[];
+  method_eligibility: ForecastDbMethodEligibility[];
+  model_selection: Record<string, unknown>[];
+}
+
+export function getForecastDbOutputs(projectKey = 'tropical') {
+  return fetchJson<{ outputs: ForecastDbOutputSummary[] }>(
+    `/api/forecast/db/projects/${encodeURIComponent(projectKey)}/outputs`,
+  );
+}
+export function getForecastDbOutput(outputId: string) {
+  return fetchJson<ForecastDbOutputDetail>(
+    `/api/forecast/db/outputs/${encodeURIComponent(outputId)}`,
+  );
+}
+export function getForecastDbDecisionSupport(outputId: string) {
+  return fetchJson<ForecastDbDecisionSupport>(
+    `/api/forecast/db/outputs/${encodeURIComponent(outputId)}/decision-support`,
+  );
+}
+
 /* Forecast configuration — read-only viewer over the v60 config snapshot (Implementation Phase 2).
  * Read-only metadata: business config settings only (no paths, run stamps, endpoints, or internals). */
 export function getForecastConfigSnapshots() {
@@ -1158,6 +1246,9 @@ export const api = {
   getForecastPackageProbability,
   getForecastPackageRiskRegister,
   getForecastPackageTopRisks,
+  getForecastDbOutputs,
+  getForecastDbOutput,
+  getForecastDbDecisionSupport,
   // Forecast configuration viewer (Implementation Phase 2). Read-only metadata.
   getForecastConfigSnapshots,
   getForecastConfigSnapshot,
