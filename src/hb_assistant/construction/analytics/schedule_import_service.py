@@ -25,7 +25,7 @@ from .schedule_file_parser import (
     detect_source,
     safe_basename,
 )
-from .schedule_quality import run_quality_checks
+
 from .schedule_xer_parser import parse_xer_bytes
 from .schedule_xml_parser import PARSER_NAME as XML_PARSER
 from .schedule_xml_parser import PARSER_VERSION as XML_VER
@@ -273,6 +273,21 @@ class ScheduleImportService:
                 "schedule_version_key": version_key,
                 "evidence_package_id": evidence_id,
                 "created_by_operator": "operator",
+                "compute_total_float_type": (bundle.schedule_options or {}).get(
+                    "compute_total_float_type"
+                ),
+                "critical_activity_path_type": (bundle.schedule_options or {}).get(
+                    "critical_activity_path_type"
+                ),
+                "critical_activity_float_threshold": str(
+                    (bundle.schedule_options or {}).get("critical_activity_float_threshold")
+                )
+                if (bundle.schedule_options or {}).get("critical_activity_float_threshold")
+                is not None
+                else None,
+                "calculate_float_based_on_finish_date": (bundle.schedule_options or {}).get(
+                    "calculate_float_based_on_finish_date"
+                ),
             }
         )
 
@@ -287,14 +302,21 @@ class ScheduleImportService:
             source_format=cached["source_format"],
         )
 
-        findings = run_quality_checks(
+        from hb_assistant.construction.analytics.schedule_quality_service import (
+            ScheduleQualityService,
+        )
+        from hb_assistant.construction.analytics.schedule_quality_worker import (
+            poll_and_process,
+        )
+
+        quality_svc = ScheduleQualityService(db_path=self._db_path)
+        queued = quality_svc.queue_after_commit(
             project_key=project_key,
             schedule_version_key=version_key,
+            schedule_table_id=record_key,
             import_id=import_id,
-            activities=bundle.activities,
-            relationships=bundle.relationships,
         )
-        self._mapping_repo.insert_quality_findings(findings)
+        poll_and_process(db_path=self._db_path, limit=1)
 
         _PREVIEW_CACHE.pop(import_id, None)
         return {
@@ -302,7 +324,8 @@ class ScheduleImportService:
             "schedule_version_key": version_key,
             "activity_count": len(bundle.activities),
             "cost_loaded_status": cost_status,
-            "quality_finding_count": len(findings),
+            "quality_evaluation_status": queued.get("status", "pending"),
+            "evaluation_run_id": queued.get("evaluation_run_id"),
             "committed_at": now,
         }
 
@@ -355,6 +378,16 @@ class ScheduleImportService:
                     "actual_finish": act.get("actual_finish"),
                     "remaining_start": act.get("remaining_start"),
                     "remaining_finish": act.get("remaining_finish"),
+                    "remaining_early_start": act.get("remaining_early_start"),
+                    "remaining_early_finish": act.get("remaining_early_finish"),
+                    "remaining_late_start": act.get("remaining_late_start"),
+                    "remaining_late_finish": act.get("remaining_late_finish"),
+                    "derived_total_float_hours": act.get("derived_total_float_hours"),
+                    "derived_total_float_days": act.get("derived_total_float_days"),
+                    "derived_float_basis": act.get("derived_float_basis"),
+                    "derived_is_critical_by_float_threshold": act.get(
+                        "derived_is_critical_by_float_threshold"
+                    ),
                     "duration_original": str(act.get("duration_original"))
                     if act.get("duration_original") is not None
                     else None,
@@ -449,6 +482,9 @@ class ScheduleReadService:
         self._db_path = db_path
         self._activity_repo = ScheduleActivityRepository(db_path=db_path)
         self._mapping_repo = ScheduleMappingRepository(db_path=db_path)
+        from hb_assistant.store.schedule_quality_repository import ScheduleQualityRepository
+
+        self._quality_repo = ScheduleQualityRepository(db_path=db_path)
 
     def _ensure_schema(self) -> None:
         ensure_schedule_schema(self._db_path)
@@ -467,6 +503,10 @@ class ScheduleReadService:
             if not svk:
                 continue
             q_count = len(self._mapping_repo.list_quality_findings(str(svk)))
+            run = self._quality_repo.get_latest_run(str(svk)) or self._quality_repo.get_pending_run(
+                str(svk)
+            )
+            scorecard = self._quality_repo.get_latest_scorecard(str(svk)) if run else None
             parts = str(svk).split("|")
             data_date = parts[2] if len(parts) >= 3 else None
             dto = ScheduleVersionSummaryDTO(
@@ -479,10 +519,16 @@ class ScheduleReadService:
                 planned_start=None,
                 scheduled_finish=None,
                 activity_count=int(r.get("activity_count_live") or r.get("activity_count") or 0),
-                relationship_count=int(r.get("relationship_count") or 0),
+                relationship_count=int(
+                    r.get("relationship_count_live") or r.get("relationship_count") or 0
+                ),
                 cost_loaded_status=str(r.get("cost_loaded_status") or "not_cost_loaded"),
                 imported_at=str(r.get("created_at") or ""),
                 quality_finding_count=q_count,
+                quality_status=str(run.get("status")) if run else "not_evaluated",
+                quality_score=scorecard.get("quality_score") if scorecard else None,
+                quality_grade=scorecard.get("quality_grade") if scorecard else None,
+                quality_profile=str(run.get("assessment_profile")) if run else None,
             )
             out.append(dto.public())
         return out
@@ -499,7 +545,7 @@ class ScheduleReadService:
             "source_format": row.get("source_format"),
             "display_label": row.get("source_filename_redacted"),
             "activity_count": self._activity_repo.count_activities(schedule_version_key),
-            "relationship_count": row.get("relationship_count"),
+            "relationship_count": self._activity_repo.count_relationships(schedule_version_key),
             "cost_loaded_status": row.get("cost_loaded_status"),
             "imported_at": row.get("created_at"),
             "evidence_package_id": row.get("evidence_package_id"),

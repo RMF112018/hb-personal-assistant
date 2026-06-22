@@ -38,6 +38,7 @@ class ParsedScheduleBundle:
     udf_values: list[dict[str, Any]] = field(default_factory=list)
     validation_findings: list[dict[str, str]] = field(default_factory=list)
     cost_loaded_hints: list[dict[str, Any]] = field(default_factory=list)
+    schedule_options: dict[str, Any] = field(default_factory=dict)
 
 
 def safe_basename(filename: str) -> str:

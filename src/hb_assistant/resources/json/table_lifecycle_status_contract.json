@@ -18,7 +18,7 @@
     "phase_owner",
     "blocking_for_phase"
   ],
-  "table_count": 422,
+  "table_count": 425,
   "tables": {
     "construction_data_quality_runs": {
       "table_family": "data_quality_v20v21",
@@ -3817,6 +3817,24 @@
       "blocking_for_phase": "none",
       "v": "V63",
       "notes": "Textual run narratives/rationale; projection deferred to a follow-on slice."
+    },
+    "schedule_quality_evaluation_runs": {
+      "table_family": "schedule_intelligence_v64",
+      "v": "V64",
+      "lifecycle_status": "operational_empty_expected",
+      "notes": "Background DCMA/GAO/AACE schedule quality evaluation runs."
+    },
+    "schedule_quality_metric_results": {
+      "table_family": "schedule_intelligence_v64",
+      "v": "V64",
+      "lifecycle_status": "operational_empty_expected",
+      "notes": "Per-metric DCMA/GAO/AACE assessment results."
+    },
+    "schedule_quality_scorecards": {
+      "table_family": "schedule_intelligence_v64",
+      "v": "V64",
+      "lifecycle_status": "operational_empty_expected",
+      "notes": "Aggregated schedule quality scorecards per evaluation run."
     }
   }
 }

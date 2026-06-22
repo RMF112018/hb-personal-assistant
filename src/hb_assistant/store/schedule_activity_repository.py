@@ -37,6 +37,14 @@ _ACTIVITY_COLS = (
     "actual_finish",
     "remaining_start",
     "remaining_finish",
+    "remaining_early_start",
+    "remaining_early_finish",
+    "remaining_late_start",
+    "remaining_late_finish",
+    "derived_total_float_hours",
+    "derived_total_float_days",
+    "derived_float_basis",
+    "derived_is_critical_by_float_threshold",
     "duration_original",
     "duration_remaining",
     "duration_actual",
@@ -171,12 +179,15 @@ class ScheduleActivityRepository:
             cur = conn.execute(
                 """
                 SELECT i.import_id, i.schedule_version_key, i.source_type, i.source_format,
-                       i.import_status, i.activity_count, i.cost_loaded_status,
-                       i.created_at, i.source_filename_redacted,
-                       COUNT(DISTINCT a.activity_id) AS activity_count_live
+                       i.import_status, i.activity_count, i.relationship_count,
+                       i.cost_loaded_status, i.created_at, i.source_filename_redacted,
+                       COUNT(DISTINCT a.activity_id) AS activity_count_live,
+                       COUNT(DISTINCT r.id) AS relationship_count_live
                 FROM schedule_file_imports i
                 LEFT JOIN procore_ep_schedule_activities a
                   ON a.import_id = i.import_id
+                LEFT JOIN procore_ep_schedule_relationships r
+                  ON r.import_id = i.import_id
                 WHERE i.project_key=? AND i.import_status='committed'
                 GROUP BY i.import_id
                 ORDER BY i.created_at DESC
@@ -204,14 +215,18 @@ class ScheduleActivityRepository:
         with self._conn() as conn:
             cur = conn.execute(
                 """
-                SELECT activity_id, activity_name, wbs_code, wbs_path,
+                SELECT activity_id, activity_name, wbs_code, wbs_path, schedule_table_id,
                        planned_start, planned_finish, start_date, finish_date,
                        actual_start, actual_finish, remaining_start, remaining_finish,
+                       remaining_early_start, remaining_early_finish,
+                       remaining_late_start, remaining_late_finish,
                        duration_original, duration_remaining, duration_actual, duration_unit,
                        activity_status, activity_type,
-                       calendar_id, is_critical, is_milestone, total_float, cost_code,
-                       percent_complete, physical_percent_complete, duration_percent_complete,
-                       cost_loaded_amount, cost_loaded_source_type
+                       calendar_id, constraint_type, is_critical, is_milestone, is_longest_path,
+                       total_float, derived_total_float_hours, derived_total_float_days,
+                       derived_float_basis, derived_is_critical_by_float_threshold,
+                       cost_code, percent_complete, physical_percent_complete,
+                       duration_percent_complete, cost_loaded_amount, cost_loaded_source_type
                 FROM procore_ep_schedule_activities
                 WHERE schedule_version_key=?
                 ORDER BY activity_id
@@ -245,6 +260,14 @@ class ScheduleActivityRepository:
         with self._conn() as conn:
             cur = conn.execute(
                 "SELECT COUNT(*) FROM procore_ep_schedule_activities WHERE schedule_version_key=?",
+                (schedule_version_key,),
+            )
+            return int(cur.fetchone()[0])
+
+    def count_relationships(self, schedule_version_key: str) -> int:
+        with self._conn() as conn:
+            cur = conn.execute(
+                "SELECT COUNT(*) FROM procore_ep_schedule_relationships WHERE schedule_version_key=?",
                 (schedule_version_key,),
             )
             return int(cur.fetchone()[0])

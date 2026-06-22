@@ -88,7 +88,7 @@ def test_preview_stale_schema_returns_503(tmp_path: Path) -> None:
     db = tmp_path / "stale.db"
     SQLiteMigrator(db_path=str(db)).apply()
     with sqlite3.connect(db) as conn:
-        conn.execute("DELETE FROM schema_migrations WHERE version = 63")
+        conn.execute("DELETE FROM schema_migrations WHERE version >= 63")
         conn.commit()
         assert int(conn.execute("SELECT MAX(version) FROM schema_migrations").fetchone()[0]) == 62
 
