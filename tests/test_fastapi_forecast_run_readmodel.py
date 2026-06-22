@@ -1,0 +1,192 @@
+"""FastAPI route tests for the DB-backed forecast run-output + decision-support read-model (Phase 4).
+
+Asserts the routes are role-aware, read-only, redaction-safe (the stamp-format run_id and
+source_path never reach the client; navigation is by the hash-based output_id), fail closed when
+the DB is unavailable, render gracefully empty on a migrated-but-unpopulated DB, and 404 on an
+unknown output_id.
+"""
+
+from __future__ import annotations
+
+import sqlite3
+from pathlib import Path
+
+import pytest
+
+pytest.importorskip("fastapi")
+
+from fastapi.testclient import TestClient  # noqa: E402
+
+from hb_assistant.construction.analytics import create_app  # noqa: E402
+from hb_assistant.construction.analytics.forecast_dto import find_redaction_leaks  # noqa: E402
+from hb_assistant.store.migrator import SQLiteMigrator  # noqa: E402
+
+RUN_ID = "20260101_000000"  # stamp-format — must NEVER appear in any response body
+OID = "fout-test0000000000000000000000000001"
+TS = "2026-06-19T08:00:00+00:00"
+
+
+def _seed(db: Path) -> None:
+    SQLiteMigrator(db_path=str(db)).apply()
+    conn = sqlite3.connect(str(db))
+    try:
+        conn.execute(
+            "INSERT INTO forecast_runs (run_id, project_key, created_utc) VALUES (?,?,?)",
+            (RUN_ID, "tropical", TS),
+        )
+        conn.execute(
+            "INSERT INTO forecast_outputs (output_id, run_id, project_key, source_package, "
+            "estimated_final_cost, cost_to_complete, variance_to_budget, source_path, raw_json, created_utc) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?)",
+            (OID, RUN_ID, "tropical", "forecast_analysis_package_tropical_20260101_000000",
+             "500.00", "100.00", "10.00", "/Users/bobbyfetting/secret/path", "{}", TS),
+        )
+        conn.execute(
+            "INSERT INTO forecast_output_budget_codes (id, output_id, project_key, budget_code_key, "
+            "cost_code, category, forecast_action, recommended_projected_cost, recommended_cost_to_complete, "
+            "confidence, source_row_number, raw_json, created_utc) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            ("bc1", OID, "tropical", "0000.03-01-025.MAT", "03-01-025", "MAT", "hold",
+             "500.00", "100.00", "high", 1, "{}", TS),
+        )
+        conn.execute(
+            "INSERT INTO forecast_output_risks (id, output_id, project_key, risk_id, severity, "
+            "budget_code_key, cost_code, category, risk_type, source_row_number, raw_json, created_utc) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+            ("rk1", OID, "tropical", "R-0001", "low", "0000.03-01-025.MAT", "03-01-025", "MAT",
+             "x", 1, "{}", TS),
+        )
+        conn.execute(
+            "INSERT INTO forecast_output_monthly (id, output_id, project_key, budget_code_key, month, "
+            "value, is_actual, source_row_number, raw_json, created_utc) VALUES (?,?,?,?,?,?,?,?,?,?)",
+            ("mo1", OID, "tropical", "0000.03-01-025.MAT", "2026-07", "100.00", 0, 1, "{}", TS),
+        )
+        conn.execute(
+            "INSERT INTO forecast_output_probability (id, output_id, project_key, scope, budget_code_key, "
+            "p10, p50, p90, source_row_number, raw_json, created_utc) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+            ("pb1", OID, "tropical", "budget_code", "0000.03-01-025.MAT", "90.00", "100.00", "120.00",
+             1, "{}", TS),
+        )
+        conn.execute(
+            "INSERT INTO forecast_output_changes (id, output_id, project_key, budget_code_key, "
+            "change_type, delta_amount, source_row_number, raw_json, created_utc) VALUES (?,?,?,?,?,?,?,?,?)",
+            ("ch1", OID, "tropical", "0000.03-01-025.MAT", "integrated_vs_accepted", "10.00", 1, "{}", TS),
+        )
+        conn.execute(
+            "INSERT INTO forecast_output_staffing (id, output_id, project_key, budget_code_key, role, "
+            "month, headcount, cost_amount, source_row_number, raw_json, created_utc) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+            ("st1", OID, "tropical", "0000.03-01-025.MAT", None, "2026-07", None, "50.00", 1, "{}", TS),
+        )
+        # v66 decision-support, keyed by run_id
+        conn.execute(
+            "INSERT INTO forecast_project_maturity_snapshots (snapshot_id, run_id, project_key, "
+            "maturity_tier, completed_month_count, nonzero_month_count, basis, raw_json, created_utc) "
+            "VALUES (?,?,?,?,?,?,?,?,?)",
+            ("ms1", RUN_ID, "tropical", "M2", 2, 2, "completed_month_count_thresholds", "{}", TS),
+        )
+        conn.execute(
+            "INSERT INTO forecast_data_availability_profiles (id, run_id, project_key, domain, "
+            "availability, coverage, reason, raw_json, created_utc) VALUES (?,?,?,?,?,?,?,?,?)",
+            ("da1", RUN_ID, "tropical", "monthly_actuals", "available", "2", "rows present", "{}", TS),
+        )
+        conn.execute(
+            "INSERT INTO forecast_confidence_scorecards (scorecard_id, run_id, project_key, scope, "
+            "scope_key, score, label, raw_json, created_utc) VALUES (?,?,?,?,?,?,?,?,?)",
+            ("sc1", RUN_ID, "tropical", "project", "project", None, "high", "{}", TS),
+        )
+        conn.execute(
+            "INSERT INTO forecast_confidence_factors (id, scorecard_id, run_id, project_key, factor_key, "
+            "direction, magnitude, reason, raw_json, created_utc) VALUES (?,?,?,?,?,?,?,?,?,?)",
+            ("ft1", "sc1", RUN_ID, "tropical", "confidence_high", "booster", "1",
+             "1 budget codes at high confidence", "{}", TS),
+        )
+        conn.execute(
+            "INSERT INTO forecast_method_eligibility (id, run_id, project_key, method, status, weight, "
+            "reason, raw_json, created_utc) VALUES (?,?,?,?,?,?,?,?,?)",
+            ("me1", RUN_ID, "tropical", "burn_rate", "eligible_weighted", None,
+             "applicable for 1/1 budget codes", "{}", TS),
+        )
+        conn.execute(
+            "INSERT INTO forecast_model_selection_decisions (id, run_id, project_key, method, contributed, "
+            "weight, reason, raw_json, created_utc) VALUES (?,?,?,?,?,?,?,?,?)",
+            ("md1", RUN_ID, "tropical", "burn_rate", 1, "0.7000", "contributed to 1 budget codes",
+             "{}", TS),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def _client(db: Path) -> TestClient:
+    return TestClient(create_app(db_path=str(db)))
+
+
+def _h(role: str = "viewer") -> dict[str, str]:
+    return {"X-HB-UI-Role": role}
+
+
+@pytest.fixture
+def seeded(tmp_path) -> Path:
+    db = tmp_path / "hb.sqlite"
+    _seed(db)
+    return db
+
+
+def test_list_outputs(seeded):
+    body = _client(seeded).get("/api/forecast/db/projects/tropical/outputs", headers=_h()).json()
+    assert body["guardrails"]["read_only"] is True
+    assert [o["output_id"] for o in body["outputs"]] == [OID]
+    assert find_redaction_leaks(body) == []
+
+
+def test_read_output_with_all_children(seeded):
+    resp = _client(seeded).get(f"/api/forecast/db/outputs/{OID}", headers=_h())
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["output_id"] == OID and body["created_display"] == "Jun 19, 2026"
+    assert len(body["budget_codes"]) == 1 and len(body["risks"]) == 1
+    assert len(body["monthly"]) == 1 and len(body["probability"]) == 1
+    assert len(body["changes"]) == 1 and len(body["staffing"]) == 1
+    assert find_redaction_leaks(body) == []  # no source_path, no run stamp
+    assert "source_path" not in resp.text and RUN_ID not in resp.text
+
+
+def test_read_decision_support(seeded):
+    resp = _client(seeded).get(f"/api/forecast/db/outputs/{OID}/decision-support", headers=_h())
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["maturity"]["maturity_tier"] == "M2"
+    assert body["data_availability"][0]["availability"] == "available"
+    assert body["confidence_scorecards"][0]["label"] == "high"
+    assert body["confidence_scorecards"][0]["factors"][0]["factor_key"] == "confidence_high"
+    assert body["method_eligibility"][0]["status"] == "eligible_weighted"
+    assert body["model_selection"][0]["weight"] == "0.7000"
+    assert find_redaction_leaks(body) == []
+    assert RUN_ID not in resp.text  # stamp-format run_id never surfaced
+
+
+def test_graceful_empty(tmp_path):
+    db = tmp_path / "empty.sqlite"
+    SQLiteMigrator(db_path=str(db)).apply()  # migrated, unpopulated
+    body = _client(db).get("/api/forecast/db/projects/tropical/outputs", headers=_h()).json()
+    assert body["outputs"] == []
+
+
+def test_unknown_output_404(seeded):
+    resp = _client(seeded).get("/api/forecast/db/outputs/fout-nope", headers=_h())
+    assert resp.status_code == 404
+    assert resp.json()["detail"] == "forecast_output_not_found"
+
+
+def test_missing_db_503(tmp_path):
+    resp = _client(tmp_path / "missing.sqlite").get(
+        "/api/forecast/db/projects/tropical/outputs", headers=_h()
+    )
+    assert resp.status_code == 503
+    assert resp.json()["detail"] == "forecast_run_output_not_available"
+
+
+def test_invalid_role_403(seeded):
+    resp = _client(seeded).get(
+        "/api/forecast/db/projects/tropical/outputs", headers={"X-HB-UI-Role": "root"}
+    )
+    assert resp.status_code == 403
