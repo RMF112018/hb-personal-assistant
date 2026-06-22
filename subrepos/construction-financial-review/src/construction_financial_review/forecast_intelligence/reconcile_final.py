@@ -27,15 +27,15 @@ STABLE_COV = Decimal("0.50")
 STAGE_GATE_LO = Decimal("0.5")
 STAGE_GATE_HI = Decimal("0.8")
 
-# Completion-stage reliability damping (opt-in; default off). The early-overshooting methods
-# (owner_progress = actual/owner%, trend = early-burn extrapolation) dominate the weighted mean at low
-# completion and over-forecast; ramp DOWN their blend weight there so the steadier methods (commitment,
-# cpi) carry more early. Doctrine-safe: reliability weighting only — never anchors to ERP, factor is
-# floored (methods still contribute), and the p90/commitment worst-case ceiling is unaffected.
+# Completion-stage reliability damping (opt-in; default off). At low completion, down-weight the
+# OVERSHOOTING estimates — any method whose EAC is above the blend median — so the early central isn't
+# inflated by them. Targeting by position (not a fixed method set) makes it monotonic-down: it can only
+# lower the central, never raise it. Doctrine-safe: reliability weighting only — never anchors to ERP,
+# factor is floored (methods still contribute), and the p90/commitment worst-case ceiling (which
+# preserves the overrun exposure) is unaffected.
 DAMP_LO = Decimal("0.4")
 DAMP_HI = Decimal("0.7")
 DAMP_MIN = Decimal("0.3")
-DAMPED_METHODS = ("owner_progress_eac", "trend_projection_eac")
 
 METHOD_FAMILY = {
     "owner_progress_eac": "owner_progress",
@@ -134,6 +134,9 @@ def select_final(
         for e in estimates
         if e["method"] in INDEPENDENT_METHODS and e["applicable"] and dec(e["eac"]) is not None
     ]
+    # Reference for "overshooting": the median of the independent EACs (weight-independent). Damping
+    # only down-weights estimates ABOVE it, so the weighted mean can only move down -> monotonic-down.
+    damp_ref = _median([dec(e["eac"]) for e in independent]) if independent else None
 
     contributions = []
     eac_values = []
@@ -146,7 +149,7 @@ def select_final(
         base = RELIABILITY_WEIGHT.get(e["reliability"], Decimal("0.3"))
         calw = dec(calibration.get(e["method"])) or Decimal("1")
         scale = dec(e.get("association_scale")) or Decimal("1")
-        meth_damp = damp if e["method"] in DAMPED_METHODS else Decimal("1")
+        meth_damp = damp if (damp_ref is not None and eac > damp_ref) else Decimal("1")
         w = base * calw * scale * meth_damp
         weighted_sum += eac * w
         weight_total += w

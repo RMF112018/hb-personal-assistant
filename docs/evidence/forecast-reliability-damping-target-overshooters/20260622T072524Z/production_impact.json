@@ -1,0 +1,25 @@
+{
+  "all_changes_are_reductions": true,
+  "changed_codes": [
+    {
+      "budget_code_key": "1000.15-09-600.SUB",
+      "delta": "-164461.44",
+      "off": "3618999.19",
+      "off_worst": "10262075.76",
+      "on": "3454537.75",
+      "on_worst": "10262075.76"
+    }
+  ],
+  "codes_changed": 1,
+  "flag": "_RELIABILITY_DAMPING on (refined, above-median); _P75_STAGE_GATE on in both",
+  "prev_offending_code_1000.15-09-600.SUB": {
+    "off": "3618999.19",
+    "on": "3454537.75"
+  },
+  "project_key": "tropical",
+  "project_total_delta": "-164461.44",
+  "project_total_off": "64423874.73",
+  "project_total_on": "64259413.29",
+  "total_codes": 127,
+  "worst_credible_unchanged_for_changed": true
+}
