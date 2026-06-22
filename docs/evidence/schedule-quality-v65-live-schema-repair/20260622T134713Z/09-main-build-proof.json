@@ -1,0 +1,27 @@
+{
+  "main_sha": "1663186973efefbdf0cee4be78839df70799c78f",
+  "main_ref": "origin/main",
+  "command": "rm -rf node_modules && npm ci && npm run build",
+  "worktree": "main-frontend-proof (detached HEAD at origin/main)",
+  "build_exit_code": 2,
+  "failure_class": "missing_errorCopy_module",
+  "errorCopy_ts2307_count": 11,
+  "additional_errors_on_main": [
+    "src/pages/ScheduleQualityPage.test.tsx(2,26): error TS6133: 'waitFor' is declared but its value is never read."
+  ],
+  "errorCopy_importing_files": [
+    "frontend/src/components/common/ErrorState.tsx",
+    "frontend/src/components/my-items/MyWorkQueueItem.tsx",
+    "frontend/src/components/projects/ProjectCard.tsx",
+    "frontend/src/components/settings/ConnectionPreviewCard.tsx",
+    "frontend/src/components/settings/GraphSourceCard.tsx",
+    "frontend/src/components/settings/KeywordManagementPanel.tsx",
+    "frontend/src/components/settings/ProcoreSourceCard.tsx",
+    "frontend/src/components/settings/SourceConnectionsPanel.tsx",
+    "frontend/src/components/today/TodayList.tsx",
+    "frontend/src/lib/sourcesApi.test.ts",
+    "frontend/src/pages/ProjectDashboardPage.tsx"
+  ],
+  "errorCopy_file_exists_on_main": false,
+  "log_artifact": "09-main-clean-build-failure.log"
+}

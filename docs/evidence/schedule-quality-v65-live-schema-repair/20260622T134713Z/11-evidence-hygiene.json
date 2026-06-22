@@ -1,0 +1,22 @@
+{
+  "scan_at": "2026-06-22T14:02:00Z",
+  "committed_evidence_files": 10,
+  "banned_artifact_scan": {
+    "sqlite": 0,
+    "wal": 0,
+    "shm": 0,
+    "xml": 0,
+    "ds_store": 0
+  },
+  "untracked_partial_run_dirs_excluded_from_commit": [
+    "20260622T134439Z",
+    "20260622T134445Z",
+    "20260622T134707Z"
+  ],
+  "readme_references_live_paths_only": true,
+  "validation_rerun": {
+    "pytest_schedule_v65": "55 passed",
+    "vitest_schedule_quality": "11 passed (ScheduleQualityPage.test.tsx + ScheduleRoutes.test.tsx)"
+  },
+  "status": "hygiene_passed"
+}

@@ -31,6 +31,10 @@ Live Application Support DB repair and TWNU18 quality re-validation after V65 de
 - `true_cost_loaded_analytics: unavailable_not_cost_loaded`
 - `dcma_relationship_types` shows real distribution (FS=2235, FF=1357, SS=125, SF=1) — not `0/3718`
 
+## Pre-merge frontend build proof
+
+`frontend/src/lib/errorCopy.ts` is **absent on `origin/main`** (`16631869`) while 11 files import it. Clean `npm ci && npm run build` on an isolated main worktree reproduces the same `TS2307` failure (`09-main-clean-build-failure.log`). PR #90 does not touch `errorCopy` imports; the only build-log delta vs main is removal of a pre-existing unused `waitFor` import in `ScheduleQualityPage.test.tsx` (`10-pr90-build-regression-check.json`).
+
 ## Branch
 
 `feature/v65-schema-quality-repair` (worktree `schedule-derived-finish-float-v65`)
