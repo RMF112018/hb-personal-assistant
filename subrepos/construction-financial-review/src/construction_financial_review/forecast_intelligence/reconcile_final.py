@@ -27,6 +27,16 @@ STABLE_COV = Decimal("0.50")
 STAGE_GATE_LO = Decimal("0.5")
 STAGE_GATE_HI = Decimal("0.8")
 
+# Completion-stage reliability damping (opt-in; default off). The early-overshooting methods
+# (owner_progress = actual/owner%, trend = early-burn extrapolation) dominate the weighted mean at low
+# completion and over-forecast; ramp DOWN their blend weight there so the steadier methods (commitment,
+# cpi) carry more early. Doctrine-safe: reliability weighting only — never anchors to ERP, factor is
+# floored (methods still contribute), and the p90/commitment worst-case ceiling is unaffected.
+DAMP_LO = Decimal("0.4")
+DAMP_HI = Decimal("0.7")
+DAMP_MIN = Decimal("0.3")
+DAMPED_METHODS = ("owner_progress_eac", "trend_projection_eac")
+
 METHOD_FAMILY = {
     "owner_progress_eac": "owner_progress",
     "procore_progress_eac": "procore_progress",
@@ -55,6 +65,17 @@ def _p75_stage_factor(completion: Optional[Decimal]) -> Decimal:
     if completion <= STAGE_GATE_LO:
         return Decimal("0")
     return (completion - STAGE_GATE_LO) / (STAGE_GATE_HI - STAGE_GATE_LO)
+
+
+def _reliability_damp_factor(completion: Optional[Decimal]) -> Decimal:
+    """Weight multiplier for the overshooting methods by completion: DAMP_MIN at/below LO, 1 at/above
+    HI (or unknown completion -> 1, no damping). Floored at DAMP_MIN (methods always still contribute)."""
+    if completion is None or completion >= DAMP_HI:
+        return Decimal("1")
+    if completion <= DAMP_LO:
+        return DAMP_MIN
+    span = (completion - DAMP_LO) / (DAMP_HI - DAMP_LO)
+    return DAMP_MIN + span * (Decimal("1") - DAMP_MIN)
 
 
 def _median(values: list[Decimal]) -> Decimal:
@@ -96,6 +117,7 @@ def select_final(
     bundle: dict,
     calibration: Optional[dict] = None,
     p75_stage_gate: bool = False,
+    reliability_damping: bool = False,
 ) -> OrderedDict:
     calibration = calibration or {}
     actual = D(bundle.get("actual_cost_all_source_to_date"))
@@ -104,6 +126,8 @@ def select_final(
     committed = dec(bundle.get("committed_costs"))
     owner_sov = dec(bundle.get("owner_sov_value"))
     trend_signal = bundle.get("trend_signal")
+    completion = _completion_fraction(bundle)
+    damp = _reliability_damp_factor(completion) if reliability_damping else Decimal("1")
 
     independent = [
         e
@@ -122,7 +146,8 @@ def select_final(
         base = RELIABILITY_WEIGHT.get(e["reliability"], Decimal("0.3"))
         calw = dec(calibration.get(e["method"])) or Decimal("1")
         scale = dec(e.get("association_scale")) or Decimal("1")
-        w = base * calw * scale
+        meth_damp = damp if e["method"] in DAMPED_METHODS else Decimal("1")
+        w = base * calw * scale * meth_damp
         weighted_sum += eac * w
         weight_total += w
         eac_values.append(eac)

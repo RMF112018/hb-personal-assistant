@@ -170,6 +170,20 @@ def run_forecast_accuracy_gate(
         and (recal_cov is None or coverage is None or recal_cov >= coverage - RECAL_COVERAGE_TOL)
     )
 
+    # Reliability-damping effect: incremental value of the new lever OVER the p75-only recalibration
+    # (current production). Advisory; the verdict stays on the baseline (production) metrics.
+    damped = rb.get("damped") or {}
+    damp_incr_mape = dec(damped.get("incremental_mape_improvement_over_recalibrated"))
+    damp_incr_bias = dec(damped.get("incremental_bias_abs_improvement_over_recalibrated"))
+    damp_cov = dec(damped.get("damped_worst_credible_coverage_rate"))
+    reliability_damping_recommended = bool(
+        damp_incr_mape is not None
+        and damp_incr_mape >= RECAL_MIN_MAPE_IMPROVEMENT
+        and damp_incr_bias is not None
+        and damp_incr_bias >= Decimal("0")
+        and (damp_cov is None or recal_cov is None or damp_cov >= recal_cov - RECAL_COVERAGE_TOL)
+    )
+
     report = {
         "schema_version": REPORT_SCHEMA_VERSION,
         "project_key": project_key,
@@ -209,6 +223,28 @@ def run_forecast_accuracy_gate(
             "recalibrated_per_target_mape": recal.get("recalibrated_per_target_mape"),
             "note": "Effect of flipping the completion-stage p75 stage-gate ON; the verdict above is on "
             "the baseline (production) metrics. recalibration_recommended is advisory.",
+        },
+        "reliability_damping_effect": {
+            "production_flag_default": "off",
+            "reliability_damping_recommended": reliability_damping_recommended,
+            "recalibrated_mape": recal.get("recalibrated_final_mape"),
+            "damped_mape": damped.get("damped_final_mape"),
+            "incremental_mape_improvement_over_recalibrated": damped.get(
+                "incremental_mape_improvement_over_recalibrated"
+            ),
+            "recalibrated_mean_bias": recal.get("recalibrated_final_mean_bias"),
+            "damped_mean_bias": damped.get("damped_final_mean_bias"),
+            "incremental_bias_abs_improvement_over_recalibrated": damped.get(
+                "incremental_bias_abs_improvement_over_recalibrated"
+            ),
+            "total_mape_improvement_over_baseline": damped.get(
+                "total_mape_improvement_over_baseline"
+            ),
+            "damped_coverage": damped.get("damped_worst_credible_coverage_rate"),
+            "damped_methods": damped.get("damped_methods"),
+            "damped_per_target_mape": damped.get("damped_per_target_mape"),
+            "note": "Incremental effect of reliability damping (owner/trend) OVER the p75-only "
+            "recalibration that is in production. Advisory; verdict stays on baseline.",
         },
         "verdict_notes": notes,
         "reconstruction_fidelity_caveats": rb.get("reconstruction_fidelity_caveats"),

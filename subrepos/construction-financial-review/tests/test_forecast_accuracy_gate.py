@@ -42,6 +42,19 @@ def _rb(cohort, mape, bias, coverage):
             "bias_abs_improvement": "0.1796",
             "recalibrated_per_target_mape": {"0.40": "0.30"},
         },
+        "damped": {
+            "damp_lo": "0.4",
+            "damp_hi": "0.7",
+            "damp_min": "0.3",
+            "damped_methods": ["owner_progress_eac", "trend_projection_eac"],
+            "damped_final_mape": "0.1400",
+            "damped_final_mean_bias": "0.0900",
+            "damped_worst_credible_coverage_rate": coverage,
+            "incremental_mape_improvement_over_recalibrated": "0.0600",
+            "incremental_bias_abs_improvement_over_recalibrated": "0.0600",
+            "total_mape_improvement_over_baseline": "0.2725",
+            "damped_per_target_mape": {"0.40": "0.20"},
+        },
         "methodology": "x",
         "reconstruction_fidelity_caveats": ["c"],
     }
@@ -49,6 +62,17 @@ def _rb(cohort, mape, bias, coverage):
 
 def _run(tmp_path, pkg, **kw):
     return gate.run_forecast_accuracy_gate(package=pkg, work_root=tmp_path / "wr", **kw)
+
+
+def test_reliability_damping_effect_block(tmp_path):
+    pkg = _pkg(tmp_path, _rb(12, "0.4125", "0.3296", "0.8966"))
+    r = _run(tmp_path, pkg)
+    eff = r["reliability_damping_effect"]
+    assert eff["production_flag_default"] == "off"
+    # incremental MAPE improvement 0.06 (>= 0.05), bias improves, coverage held -> recommended.
+    assert eff["reliability_damping_recommended"] is True
+    assert eff["recalibrated_mape"] == "0.2000" and eff["damped_mape"] == "0.1400"
+    assert eff["damped_methods"] == ["owner_progress_eac", "trend_projection_eac"]
 
 
 def test_recalibration_effect_block(tmp_path):

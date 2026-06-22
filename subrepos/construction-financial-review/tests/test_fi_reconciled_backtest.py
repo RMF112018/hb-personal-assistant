@@ -127,6 +127,19 @@ def test_reconciled_backtest_emits_recalibrated_block():
         assert "recalibrated_abs_pct_error" in d
 
 
+def test_reconciled_backtest_emits_damped_block():
+    ctx, owner = _near_complete_ctx()
+    out = rb.run_reconciled_backtest([ctx], owner, "tropical", {}, METHOD_SUMMARY)
+    d = out["damped"]
+    assert "damped_final_mape" in d
+    assert "incremental_mape_improvement_over_recalibrated" in d
+    assert "total_mape_improvement_over_baseline" in d
+    assert d["damped_methods"] == ["owner_progress_eac", "trend_projection_eac"]
+    for row in out["detail_rows"]:
+        assert "damped_recommended_final_cost" in row
+        assert "damped_abs_pct_error" in row
+
+
 def test_reconciled_backtest_deterministic():
     ctx, owner = _near_complete_ctx()
     a = rb.run_reconciled_backtest([ctx], owner, "tropical", {}, METHOD_SUMMARY)
