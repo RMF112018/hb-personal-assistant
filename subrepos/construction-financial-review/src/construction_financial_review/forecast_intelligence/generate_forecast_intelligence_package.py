@@ -51,11 +51,11 @@ PRIOR_ACCURACY_GLOB = "forecast_accuracy_package_tropical_*"
 CONCLUSION_OVERRUNS = "forecast_intelligence_ready_with_overrun_risks"
 CONCLUSION_READY = "forecast_intelligence_ready"
 
-# Completion-stage recalibration flip-point. Default OFF -> production reconciled forecast unchanged.
-# Flipping to True enables tempering the p75 overrun bump at low completion (gated on the accuracy-gate
-# evidence under docs/evidence/forecast-completion-stage-recalibration/). The reconciled backtest
-# measures both baseline and recalibrated regardless of this flag.
-_P75_STAGE_GATE = False
+# Completion-stage recalibration: ENABLED. Tempers the p75 overrun bump at low completion to cut the
+# early-stage over-forecast the accuracy gate found (faithful backtest: reconciled MAPE 0.41 -> 0.30,
+# bias +0.33 -> +0.22, worst-case ceiling held; ADR 288/289/290). Doctrine-safe: no ERP anchor, never
+# below weighted_mean, ceiling untouched. Only known-low-completion overrun codes are affected.
+_P75_STAGE_GATE = True
 CONCLUSION_NOT_READY = "forecast_intelligence_not_ready"
 
 LLM_SUBSET_CAP = 60
