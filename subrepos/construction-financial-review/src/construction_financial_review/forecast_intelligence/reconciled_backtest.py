@@ -133,6 +133,11 @@ def run_reconciled_backtest(
     recal_biases: list[Decimal] = []
     recal_within_ceiling = 0
     recal_per_target: dict[str, list] = {str(t): [] for t in bts.ASOF_TARGETS}
+    # Damped variant (p75 stage-gate ON + reliability damping ON) — the new candidate lever.
+    damp_apes: list[Decimal] = []
+    damp_biases: list[Decimal] = []
+    damp_within_ceiling = 0
+    damp_per_target: dict[str, list] = {str(t): [] for t in bts.ASOF_TARGETS}
 
     for ctx in context_rows:
         key = ctx.get("budget_code_key")
@@ -187,6 +192,25 @@ def run_reconciled_backtest(
             recal_within_ceiling += 1 if realized <= recal_worst else 0
             recal_per_target[str(target)].append(recal_ape)
 
+            # Damped variant: p75 stage-gate ON + reliability damping ON.
+            damped = reconcile_final.select_final(
+                key,
+                project_key,
+                ests,
+                bundle,
+                calibration,
+                p75_stage_gate=True,
+                reliability_damping=True,
+            )
+            damp_recommended = D(damped["recommended_final_cost"])
+            damp_worst = D(damped["worst_credible_final_cost"])
+            damp_ape = (damp_recommended - realized).copy_abs() / realized
+            damp_bias = (damp_recommended - realized) / realized
+            damp_apes.append(damp_ape)
+            damp_biases.append(damp_bias)
+            damp_within_ceiling += 1 if realized <= damp_worst else 0
+            damp_per_target[str(target)].append(damp_ape)
+
             erp = m.get("erp_projected")
             naive_ape = None
             if erp is not None and erp > 0:
@@ -212,6 +236,9 @@ def run_reconciled_backtest(
                         ("recalibrated_recommended_final_cost", money_str(recal_recommended)),
                         ("recalibrated_abs_pct_error", _q4(recal_ape)),
                         ("recalibrated_signed_bias", _q4(recal_bias)),
+                        ("damped_recommended_final_cost", money_str(damp_recommended)),
+                        ("damped_abs_pct_error", _q4(damp_ape)),
+                        ("damped_signed_bias", _q4(damp_bias)),
                         ("reconciliation_basis", recommendation.get("reconciliation_basis")),
                     ]
                 )
@@ -231,6 +258,20 @@ def run_reconciled_backtest(
         (abs(rec_bias) - abs(recal_bias))
         if (rec_bias is not None and recal_bias is not None)
         else None
+    )
+    damp_mape = _mean(damp_apes)
+    damp_bias = _mean(damp_biases)
+    # Incremental effect of reliability damping over the p75-only recalibration (current production).
+    damp_incr_mape = (
+        (recal_mape - damp_mape) if (recal_mape is not None and damp_mape is not None) else None
+    )
+    damp_incr_bias_abs = (
+        (abs(recal_bias) - abs(damp_bias))
+        if (recal_bias is not None and damp_bias is not None)
+        else None
+    )
+    damp_total_mape = (
+        (rec_mape - damp_mape) if (rec_mape is not None and damp_mape is not None) else None
     )
 
     # Best single method (from backtest_strong's per-method summary) for the blending-value comparison.
@@ -295,6 +336,36 @@ def run_reconciled_backtest(
             ),
             "note": "p75 overrun-bump stage-gate ON (ramped 0 at/below LO completion -> full at/above "
             "HI or unknown). Production flag default-off; this measures what flipping it would buy.",
+        },
+        "damped": {
+            "damp_lo": str(reconcile_final.DAMP_LO),
+            "damp_hi": str(reconcile_final.DAMP_HI),
+            "damp_min": str(reconcile_final.DAMP_MIN),
+            "damped_methods": list(reconcile_final.DAMPED_METHODS),
+            "damped_final_mape": _q4(damp_mape) if damp_mape is not None else None,
+            "damped_final_mean_bias": _q4(damp_bias) if damp_bias is not None else None,
+            "damped_worst_credible_coverage_rate": _q4(
+                Decimal(damp_within_ceiling) / Decimal(n_obs)
+            )
+            if n_obs
+            else None,
+            "incremental_mape_improvement_over_recalibrated": _q4(damp_incr_mape)
+            if damp_incr_mape is not None
+            else None,
+            "incremental_bias_abs_improvement_over_recalibrated": _q4(damp_incr_bias_abs)
+            if damp_incr_bias_abs is not None
+            else None,
+            "total_mape_improvement_over_baseline": _q4(damp_total_mape)
+            if damp_total_mape is not None
+            else None,
+            "damped_per_target_mape": OrderedDict(
+                (t, _q4(mv))
+                for t, v in damp_per_target.items()
+                if v and (mv := _mean(v)) is not None
+            ),
+            "note": "p75 stage-gate ON + reliability damping ON (owner_progress + trend down-weighted "
+            "at low completion). 'incremental' is vs the p75-only recalibration (current production); "
+            "'total' is vs baseline. Production damping flag default-off.",
         },
         "detail_rows": detail,
         "methodology": (

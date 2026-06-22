@@ -56,6 +56,10 @@ CONCLUSION_READY = "forecast_intelligence_ready"
 # bias +0.33 -> +0.22, worst-case ceiling held; ADR 288/289/290). Doctrine-safe: no ERP anchor, never
 # below weighted_mean, ceiling untouched. Only known-low-completion overrun codes are affected.
 _P75_STAGE_GATE = True
+# Completion-stage reliability damping flip-point. Default OFF -> production unchanged. Flipping to True
+# down-weights the early-overshooting methods (owner_progress, trend) at low completion to cut the
+# residual over-forecast left after the p75 stage-gate. Gated on the reliability_damping_effect evidence.
+_RELIABILITY_DAMPING = False
 CONCLUSION_NOT_READY = "forecast_intelligence_not_ready"
 
 LLM_SUBSET_CAP = 60
@@ -197,7 +201,8 @@ def generate(project_key: str, cfg: dict, data_root: Optional[Path] = None,
                                             project_finish, project_key)
         ests = estimators_uncapped.estimate_all(bundle)
         recommendation = reconcile_final.select_final(key, project_key, ests, bundle, calibration,
-                                                      p75_stage_gate=_P75_STAGE_GATE)
+                                                      p75_stage_gate=_P75_STAGE_GATE,
+                                                      reliability_damping=_RELIABILITY_DAMPING)
 
         # dormant / closed-code suppression (authoritative decision; emitted as the status file)
         if dorm_enabled:
