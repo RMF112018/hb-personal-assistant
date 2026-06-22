@@ -5,7 +5,7 @@ from __future__ import annotations
 import sqlite3
 from typing import Any, Iterable
 
-from .connection import get_connection
+from .connection import get_connection, open_connection, transaction
 
 _ACTIVITY_COLS = (
     "project_key",
@@ -108,7 +108,9 @@ class ScheduleActivityRepository:
         conn.execute("PRAGMA foreign_keys=ON")
         return conn
 
-    def upsert_schedule_version_row(self, row: dict[str, Any]) -> str:
+    def upsert_schedule_version_row(
+        self, row: dict[str, Any], *, conn: sqlite3.Connection | None = None
+    ) -> str:
         """Insert or update a synthetic procore_ep_schedules row; return record_key."""
         record_key = row["record_key"]
         cols = list(row.keys())
@@ -116,15 +118,18 @@ class ScheduleActivityRepository:
         names = ", ".join(cols)
         update_cols = [c for c in cols if c != "record_key"]
         update_clause = ", ".join(f"{c}=excluded.{c}" for c in update_cols)
-        with self._conn() as conn:
-            conn.execute(
-                f"""
-                INSERT INTO procore_ep_schedules ({names})
-                VALUES ({placeholders})
-                ON CONFLICT(record_key) DO UPDATE SET {update_clause}
-                """,
-                tuple(row[c] for c in cols),
-            )
+        sql = f"""
+            INSERT INTO procore_ep_schedules ({names})
+            VALUES ({placeholders})
+            ON CONFLICT(record_key) DO UPDATE SET {update_clause}
+        """
+        params = tuple(row[c] for c in cols)
+        if conn is not None:
+            conn.execute(sql, params)
+        else:
+            with open_connection(self._db_path) as active:
+                with transaction(active):
+                    active.execute(sql, params)
         return record_key
 
     def find_schedule_table_id(
@@ -142,7 +147,9 @@ class ScheduleActivityRepository:
             row = cur.fetchone()
             return str(row[0]) if row else None
 
-    def bulk_upsert_activities(self, rows: Iterable[dict[str, Any]]) -> int:
+    def bulk_upsert_activities(
+        self, rows: Iterable[dict[str, Any]], *, conn: sqlite3.Connection | None = None
+    ) -> int:
         items = list(rows)
         if not items:
             return 0
@@ -158,25 +165,45 @@ class ScheduleActivityRepository:
             ON CONFLICT(schedule_version_key, activity_id, import_id)
             DO UPDATE SET {update_clause}, updated_at=CURRENT_TIMESTAMP
         """
-        with self._conn() as conn:
-            conn.executemany(sql, [tuple(r.get(c) for c in cols) for r in items])
+        batch = [tuple(r.get(c) for c in cols) for r in items]
+        if conn is not None:
+            conn.executemany(sql, batch)
+        else:
+            with open_connection(self._db_path) as active:
+                with transaction(active):
+                    active.executemany(sql, batch)
         return len(items)
 
-    def bulk_insert_table(self, table: str, rows: Iterable[dict[str, Any]]) -> int:
+    def bulk_insert_table(
+        self,
+        table: str,
+        rows: Iterable[dict[str, Any]],
+        *,
+        conn: sqlite3.Connection | None = None,
+    ) -> int:
         items = list(rows)
         if not items:
             return 0
         cols = list(items[0].keys())
         placeholders = ", ".join("?" for _ in cols)
         names = ", ".join(cols)
-        with self._conn() as conn:
-            conn.executemany(
-                f"INSERT INTO {table} ({names}) VALUES ({placeholders})",
-                [tuple(r[c] for c in cols) for r in items],
-            )
+        insert_sql = f"INSERT INTO {table} ({names}) VALUES ({placeholders})"
+        batch = [tuple(r[c] for c in cols) for r in items]
+        if conn is not None:
+            conn.executemany(insert_sql, batch)
+        else:
+            with open_connection(self._db_path) as active:
+                with transaction(active):
+                    active.executemany(insert_sql, batch)
         return len(items)
 
-    def delete_version_subgraph(self, *, schedule_version_key: str, import_id: str) -> None:
+    def delete_version_subgraph(
+        self,
+        *,
+        schedule_version_key: str,
+        import_id: str,
+        conn: sqlite3.Connection | None = None,
+    ) -> None:
         tables = (
             "procore_ep_schedule_udf_values",
             "procore_ep_schedule_activity_code_assignments",
@@ -185,12 +212,20 @@ class ScheduleActivityRepository:
             "procore_ep_schedule_relationships",
             "procore_ep_schedule_activities",
         )
-        with self._conn() as conn:
+        if conn is not None:
             for table in tables:
                 conn.execute(
                     f"DELETE FROM {table} WHERE schedule_version_key=? AND import_id=?",
                     (schedule_version_key, import_id),
                 )
+            return
+        with open_connection(self._db_path) as active:
+            with transaction(active):
+                for table in tables:
+                    active.execute(
+                        f"DELETE FROM {table} WHERE schedule_version_key=? AND import_id=?",
+                        (schedule_version_key, import_id),
+                    )
 
     def list_versions(self, project_key: str | None = None) -> list[dict[str, Any]]:
         with self._conn() as conn:

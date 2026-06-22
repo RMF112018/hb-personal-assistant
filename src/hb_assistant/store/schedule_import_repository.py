@@ -5,7 +5,7 @@ from __future__ import annotations
 import sqlite3
 from typing import Any
 
-from .connection import get_connection
+from .connection import get_connection, open_connection, transaction
 
 
 class ScheduleImportRepository:
@@ -17,25 +17,45 @@ class ScheduleImportRepository:
         conn.execute("PRAGMA foreign_keys=ON")
         return conn
 
-    def insert_import(self, row: dict[str, Any]) -> None:
+    def insert_import(self, row: dict[str, Any], *, conn: sqlite3.Connection | None = None) -> None:
         cols = list(row.keys())
         placeholders = ", ".join("?" for _ in cols)
         names = ", ".join(cols)
-        with self._conn() as conn:
+        if conn is not None:
             conn.execute(
                 f"INSERT INTO schedule_file_imports ({names}) VALUES ({placeholders})",
                 tuple(row[c] for c in cols),
             )
+            return
+        with open_connection(self._db_path) as active:
+            with transaction(active):
+                active.execute(
+                    f"INSERT INTO schedule_file_imports ({names}) VALUES ({placeholders})",
+                    tuple(row[c] for c in cols),
+                )
 
-    def update_import(self, import_id: str, updates: dict[str, Any]) -> None:
+    def update_import(
+        self,
+        import_id: str,
+        updates: dict[str, Any],
+        *,
+        conn: sqlite3.Connection | None = None,
+    ) -> None:
         if not updates:
             return
         sets = ", ".join(f"{k}=?" for k in updates)
-        with self._conn() as conn:
+        if conn is not None:
             conn.execute(
                 f"UPDATE schedule_file_imports SET {sets} WHERE import_id=?",
                 (*updates.values(), import_id),
             )
+            return
+        with open_connection(self._db_path) as active:
+            with transaction(active):
+                active.execute(
+                    f"UPDATE schedule_file_imports SET {sets} WHERE import_id=?",
+                    (*updates.values(), import_id),
+                )
 
     def get_import(self, import_id: str) -> dict[str, Any] | None:
         with self._conn() as conn:

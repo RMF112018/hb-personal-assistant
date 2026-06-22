@@ -1,0 +1,13 @@
+schema_version
+--------------
+69            
+id  seq  table                  from       to         on_update  on_delete  match
+--  ---  ---------------------  ---------  ---------  ---------  ---------  -----
+0   0    schedule_file_imports  import_id  import_id  NO ACTION  NO ACTION  NONE 
+name                                    
+----------------------------------------
+schedule_file_imports                   
+sqlite_autoindex_schedule_file_imports_1
+idx_schedule_file_imports_project       
+idx_schedule_file_imports_status        
+idx_schedule_file_imports_version       

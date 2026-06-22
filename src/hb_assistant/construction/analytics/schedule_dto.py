@@ -30,6 +30,9 @@ class ScheduleImportPreviewDTO:
     requires_column_mapping: bool
     project_key: str | None = None
     project_display_name: str | None = None
+    source_project_id: str | None = None
+    source_project_name: str | None = None
+    source_project_short_name: str | None = None
 
     def public(self) -> dict[str, Any]:
         return asdict(self)

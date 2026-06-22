@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import sqlite3
 import tempfile
 from pathlib import Path
@@ -335,3 +336,159 @@ def test_commit_duplicate_blocked(tmp_path: Path) -> None:
 
     preview2 = _preview(client, FIXTURE)
     assert preview2.status_code == 409
+
+
+def test_xer_preview_returns_selected_project_key(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+    preview = _preview_xer(client, project_key="tropical")
+    assert preview.status_code == 200
+    assert preview.json()["project_key"] == "tropical"
+
+
+def test_commit_rejects_project_mismatch(tmp_path: Path) -> None:
+    db = tmp_path / "api.db"
+    SQLiteMigrator(db_path=str(db)).apply()
+    seed_procore_ep_project(db, project_key="tropical", display_name="Tropical Wind")
+    seed_procore_ep_project(db, project_key="hilltop", display_name="Hilltop Gardens", project_id="9002")
+    client = TestClient(create_app(db_path=str(db)))
+
+    preview = _preview_xer(client, project_key="tropical")
+    assert preview.status_code == 200
+    resp = client.post(
+        "/api/schedules/import-commit",
+        headers=_op(),
+        json={
+            "import_id": preview.json()["import_id"],
+            "project_key": "hilltop",
+            "confirm": True,
+        },
+    )
+    assert resp.status_code == 409
+    detail = resp.json()["detail"]
+    assert detail["code"] == "schedule_project_mismatch"
+    assert detail["preview_project_key"] == "tropical"
+
+
+def test_commit_persistence_failure_returns_structured_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    client = _client(tmp_path)
+    preview = _preview_xer(client)
+    assert preview.status_code == 200
+    import_id = preview.json()["import_id"]
+
+    def _boom(*_args: Any, **_kwargs: Any) -> None:
+        raise sqlite3.IntegrityError("FOREIGN KEY constraint failed")
+
+    monkeypatch.setattr(
+        "hb_assistant.store.schedule_activity_repository.ScheduleActivityRepository.bulk_upsert_activities",
+        _boom,
+    )
+    resp = _commit(client, import_id)
+    assert resp.status_code == 409
+    detail = resp.json()["detail"]
+    assert detail["code"] == "schedule_import_persistence_failed"
+    assert detail["source_format"] == "primavera_xer"
+    assert detail["project_key"] == "tropical"
+
+    db = tmp_path / "api.db"
+    with sqlite3.connect(db) as conn:
+        row = conn.execute(
+            "SELECT import_status FROM schedule_file_imports WHERE import_id=?",
+            (import_id,),
+        ).fetchone()
+        assert row is None
+
+
+def test_xer_commit_persists_import_parent_and_counts(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+    preview = _preview_xer(client)
+    assert preview.status_code == 200
+    import_id = preview.json()["import_id"]
+    commit = _commit(client, import_id)
+    assert commit.status_code == 200
+    svk = commit.json()["schedule_version_key"]
+
+    db = tmp_path / "api.db"
+    with sqlite3.connect(db) as conn:
+        parent = conn.execute(
+            "SELECT import_status, source_format, source_type, source_project_id "
+            "FROM schedule_file_imports WHERE import_id=?",
+            (import_id,),
+        ).fetchone()
+        assert parent is not None
+        assert parent[0] == "committed"
+        assert parent[1] == "primavera_xer"
+        assert parent[2] == "xer"
+        assert parent[3] is not None
+        assert int(
+            conn.execute(
+                "SELECT COUNT(*) FROM procore_ep_schedule_activities WHERE import_id=?",
+                (import_id,),
+            ).fetchone()[0]
+        ) == 2
+        assert int(
+            conn.execute(
+                "SELECT COUNT(*) FROM procore_ep_schedule_relationships WHERE import_id=?",
+                (import_id,),
+            ).fetchone()[0]
+        ) == 1
+
+    acts = client.get(f"/api/schedules/versions/{svk}/activities")
+    assert len(acts.json()["activities"]) == 2
+
+
+@pytest.mark.parametrize(
+    "fixture_path,activity_count,relationship_count",
+    [
+        pytest.param(
+            Path(os.environ.get("HB_SCHEDULE_FIXTURE_XER", Path.home() / "Downloads/TWNU18.xer")),
+            1378,
+            3718,
+            id="twnu18",
+        )
+    ],
+)
+def test_twnu18_xer_commit_when_fixture_present(
+    tmp_path: Path,
+    fixture_path: Path,
+    activity_count: int,
+    relationship_count: int,
+) -> None:
+    if not fixture_path.is_file():
+        pytest.skip(f"missing XER fixture: {fixture_path}")
+    client = _client(tmp_path)
+    preview = client.post(
+        "/api/schedules/import-preview",
+        headers=_op(),
+        files={
+            "file": (
+                fixture_path.name,
+                fixture_path.read_bytes(),
+                "application/octet-stream",
+            )
+        },
+        data={"project_key": "tropical"},
+    )
+    assert preview.status_code == 200
+    body = preview.json()
+    assert body["project_key"] == "tropical"
+    assert body["activity_count"] == activity_count
+    assert body["relationship_count"] == relationship_count
+    commit = _commit(client, body["import_id"], project_key="tropical")
+    assert commit.status_code == 200
+    import_id = body["import_id"]
+    db = tmp_path / "api.db"
+    with sqlite3.connect(db) as conn:
+        assert int(
+            conn.execute(
+                "SELECT COUNT(*) FROM procore_ep_schedule_activities WHERE import_id=?",
+                (import_id,),
+            ).fetchone()[0]
+        ) == activity_count
+        assert int(
+            conn.execute(
+                "SELECT COUNT(*) FROM procore_ep_schedule_relationships WHERE import_id=?",
+                (import_id,),
+            ).fetchone()[0]
+        ) == relationship_count

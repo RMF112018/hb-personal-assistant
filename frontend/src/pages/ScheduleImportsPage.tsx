@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 import {
   ScheduleActionButton,
@@ -46,6 +46,10 @@ function scheduleErrorMessage(err: unknown): string {
         return 'Selected project is not available for schedule import.'
       case 'schedule_import_invalid':
         return err.message || 'Schedule import request was invalid.'
+      case 'schedule_project_mismatch':
+        return 'Selected project no longer matches the preview. Re-upload the file for the intended project.'
+      case 'schedule_import_persistence_failed':
+        return 'Schedule import could not be saved completely. No partial version was committed.'
       default:
         return err.message || 'Schedule import failed.'
     }
@@ -60,8 +64,16 @@ export function ScheduleImportsPage() {
   const [error, setError] = useState<string | null>(null)
   const [duplicate, setDuplicate] = useState<DuplicateInfo | null>(null)
   const [preview, setPreview] = useState<Record<string, unknown> | null>(null)
+  const [previewProjectKey, setPreviewProjectKey] = useState('')
   const [committed, setCommitted] = useState<Record<string, unknown> | null>(null)
   const { data: projectsData } = useScheduleProjects()
+
+  useEffect(() => {
+    if (!previewProjectKey || projectKey === previewProjectKey) return
+    setPreview(null)
+    setPreviewProjectKey('')
+    setDuplicate(null)
+  }, [projectKey, previewProjectKey])
 
   async function onUpload(file: File, confirmSupersede = false) {
     if (!projectKey) {
@@ -89,7 +101,9 @@ export function ScheduleImportsPage() {
         null,
         confirmSupersede,
       )
-      setPreview(resp as Record<string, unknown>)
+      const body = resp as Record<string, unknown>
+      setPreview(body)
+      setPreviewProjectKey(String(body.project_key ?? projectKey))
       setDuplicate(null)
     } catch (err) {
       if (err instanceof ScheduleApiError && err.code === 'duplicate_schedule_version') {
@@ -110,14 +124,14 @@ export function ScheduleImportsPage() {
   }
 
   async function onCommit(confirmSupersede = false) {
-    if (!preview?.import_id || !projectKey) return
+    if (!preview?.import_id || !previewProjectKey) return
     setBusy(true)
     setBusyAction('commit')
     setError(null)
     try {
       const resp = await api.commitScheduleImport(
         String(preview.import_id),
-        projectKey,
+        previewProjectKey,
         null,
         confirmSupersede,
       )
@@ -226,11 +240,17 @@ export function ScheduleImportsPage() {
         {preview ? (
           <div className="space-y-2 text-sm">
             <ScheduleProjectContext
-              projectKey={String(preview.project_key ?? projectKey)}
+              projectKey={previewProjectKey}
               projects={projectsData?.projects}
             />
             {preview.schedule_name ? (
               <p className="font-medium">{String(preview.schedule_name)}</p>
+            ) : null}
+            {preview.source_project_short_name ? (
+              <p className="text-xs text-[var(--hb-muted)]">
+                Source schedule: {String(preview.source_project_short_name)}
+                {preview.source_project_id ? ` (${String(preview.source_project_id)})` : ''}
+              </p>
             ) : null}
             <p className="text-[var(--hb-muted)]">
               Format: {String(preview.source_format)} · Cost loaded: {String(preview.cost_loaded_status)}
@@ -255,7 +275,10 @@ export function ScheduleImportsPage() {
             {Boolean(preview.requires_column_mapping) ? (
               <p className="text-[var(--hb-muted)]">CSV uploads require column mapping before commit.</p>
             ) : null}
-            <ScheduleActionButton onClick={() => void onCommit()} disabled={busy || !projectKey}>
+            <ScheduleActionButton
+              onClick={() => void onCommit()}
+              disabled={busy || !previewProjectKey || projectKey !== previewProjectKey}
+            >
               {busy && busyAction === 'commit' ? 'Committing…' : 'Commit import to database'}
             </ScheduleActionButton>
           </div>

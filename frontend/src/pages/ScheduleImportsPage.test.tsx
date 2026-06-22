@@ -224,6 +224,99 @@ describe('ScheduleImportsPage', () => {
     })
   })
 
+  it('preview card shows preview-bound project after picker changes', async () => {
+    uploadMock.mockResolvedValue({
+      import_id: 'xer-abc',
+      activity_count: 2,
+      relationship_count: 1,
+      source_format: 'primavera_xer',
+      cost_loaded_status: 'not_cost_loaded',
+      wbs_count: 1,
+      calendar_count: 1,
+      validation_findings: [],
+      requires_column_mapping: false,
+      project_key: 'tropical',
+      schedule_name: 'TWNU18',
+    })
+    renderPage()
+    await selectTropicalProject()
+    const file = new File(['ERMHDR'], 'minimal.xer', { type: 'application/octet-stream' })
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement
+    fireEvent.change(input, { target: { files: [file] } })
+    await waitFor(() => expect(screen.getByText(/TWNU18/)).toBeInTheDocument())
+    const select = screen.getByRole('combobox', { name: /project/i })
+    fireEvent.change(select, { target: { value: 'rybovich' } })
+    await waitFor(() => expect(screen.queryByText(/TWNU18/)).not.toBeInTheDocument())
+  })
+
+  it('commit uses preview-bound project key', async () => {
+    uploadMock.mockResolvedValue({
+      import_id: 'xer-commit',
+      activity_count: 2,
+      relationship_count: 1,
+      source_format: 'primavera_xer',
+      cost_loaded_status: 'not_cost_loaded',
+      wbs_count: 1,
+      calendar_count: 1,
+      validation_findings: [],
+      requires_column_mapping: false,
+      project_key: 'tropical',
+    })
+    commitMock.mockResolvedValue({
+      import_id: 'xer-commit',
+      project_key: 'tropical',
+      schedule_version_key: 'tropical|TWNU18|2026-01-01',
+    })
+    renderPage()
+    await selectTropicalProject()
+    const file = new File(['ERMHDR'], 'minimal.xer', { type: 'application/octet-stream' })
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement
+    fireEvent.change(input, { target: { files: [file] } })
+    await waitFor(() => expect(screen.getByText(/Commit import to database/i)).toBeInTheDocument())
+    fireEvent.click(screen.getByRole('button', { name: /Commit import to database/i }))
+    await waitFor(() =>
+      expect(commitMock).toHaveBeenCalledWith('xer-commit', 'tropical', null, false),
+    )
+  })
+
+  it('shows safe copy for persistence failure', async () => {
+    uploadMock.mockResolvedValue({
+      import_id: 'xer-fail',
+      activity_count: 2,
+      relationship_count: 1,
+      source_format: 'primavera_xer',
+      cost_loaded_status: 'not_cost_loaded',
+      wbs_count: 1,
+      calendar_count: 1,
+      validation_findings: [],
+      requires_column_mapping: false,
+      project_key: 'tropical',
+    })
+    commitMock.mockRejectedValue(
+      new ScheduleApiError(
+        'schedule_import_persistence_failed',
+        {
+          code: 'schedule_import_persistence_failed',
+          source_format: 'primavera_xer',
+          project_key: 'tropical',
+        },
+        409,
+      ),
+    )
+    renderPage()
+    await selectTropicalProject()
+    const file = new File(['ERMHDR'], 'minimal.xer', { type: 'application/octet-stream' })
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement
+    fireEvent.change(input, { target: { files: [file] } })
+    await waitFor(() => expect(screen.getByText(/Commit import to database/i)).toBeInTheDocument())
+    fireEvent.click(screen.getByRole('button', { name: /Commit import to database/i }))
+    await waitFor(() => {
+      expect(
+        screen.getByText(/could not be saved completely/i),
+      ).toBeInTheDocument()
+    })
+  })
+
   it('shows previewing state while upload is in flight', async () => {
     let resolve!: (v: unknown) => void
     uploadMock.mockReturnValue(

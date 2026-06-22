@@ -2062,6 +2062,8 @@ def create_app(*, db_path: str | None = None) -> Any:
             raise HTTPException(status_code=409, detail={"code": code, **payload})
         if code in {"schedule_project_required", "schedule_project_unknown"}:
             raise HTTPException(status_code=422, detail={"code": code, **payload})
+        if code in {"schedule_project_mismatch", "schedule_import_persistence_failed"}:
+            raise HTTPException(status_code=409, detail={"code": code, **payload})
         if code == "schedule_multipart_unavailable":
             raise HTTPException(status_code=503, detail="schedule_multipart_unavailable")
         if code == "schedule_quality_not_ready":

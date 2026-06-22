@@ -76,3 +76,19 @@ def assert_v65_schedule_float_schema(conn: sqlite3.Connection) -> None:
         raise SchemaReconcileError(
             "schedule_quality_metric_results CHECK missing V65 derived-float statuses"
         )
+
+
+def verify_schedule_import_fk_targets(conn: sqlite3.Connection) -> list[str]:
+    from hb_assistant.store.schedule_import_fk_repair import (
+        verify_schedule_import_fk_targets as _verify_fk,
+    )
+
+    return _verify_fk(conn)
+
+
+def assert_schedule_import_fk_targets(conn: sqlite3.Connection) -> None:
+    issues = verify_schedule_import_fk_targets(conn)
+    if issues:
+        raise SchemaReconcileError(
+            "schedule import FK drift still present after reconcile: " + ", ".join(issues)
+        )

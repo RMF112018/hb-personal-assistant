@@ -273,10 +273,30 @@ def parse_xer_bytes(data: bytes) -> ParsedScheduleBundle:
         activities, source_format="primavera_xer", schedule_options=schedule_options
     )
 
+    source_metadata = {
+        k: project.get(k)
+        for k in (
+            "proj_id",
+            "proj_short_name",
+            "proj_name",
+            "plan_start_date",
+            "plan_end_date",
+            "last_recalc_date",
+            "critical_path_type",
+            "critical_drtn_hr_cnt",
+        )
+        if project.get(k)
+    }
     bundle = ParsedScheduleBundle(
         source_capabilities=capabilities,
         schedule_id=str(project.get("proj_id") or project.get("proj_short_name") or "xer-import"),
         schedule_name=project.get("proj_short_name") or project.get("proj_id"),
+        source_project_id=str(project.get("proj_id") or "") or None,
+        source_project_name=project.get("proj_name"),
+        source_project_short_name=project.get("proj_short_name"),
+        source_project_metadata_json=json.dumps(source_metadata, sort_keys=True, default=str)
+        if source_metadata
+        else None,
         data_date=project.get("last_recalc_date") or project.get("add_date"),
         planned_start=project.get("plan_start_date"),
         scheduled_finish=project.get("plan_end_date") or project.get("scd_end_date"),
