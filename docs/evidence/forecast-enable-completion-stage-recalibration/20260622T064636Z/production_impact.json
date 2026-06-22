@@ -1,0 +1,57 @@
+{
+  "all_changes_are_reductions": true,
+  "changed_codes": [
+    {
+      "budget_code_key": "1000.15-07-840.SUB",
+      "delta": "-30.53",
+      "off_overrun_projected": false,
+      "off_recommended_final_cost": "114260.45",
+      "on_overrun_projected": false,
+      "on_recommended_final_cost": "114229.92",
+      "on_worst_credible_final_cost": "114661.35"
+    },
+    {
+      "budget_code_key": "1000.15-08-830.SUB",
+      "delta": "-313.12",
+      "off_overrun_projected": false,
+      "off_recommended_final_cost": "106757.50",
+      "on_overrun_projected": false,
+      "on_recommended_final_cost": "106444.38",
+      "on_worst_credible_final_cost": "111524.20"
+    },
+    {
+      "budget_code_key": "1000.15-12-490.SUB",
+      "delta": "-205.00",
+      "off_overrun_projected": false,
+      "off_recommended_final_cost": "130205.00",
+      "on_overrun_projected": false,
+      "on_recommended_final_cost": "130000.00",
+      "on_worst_credible_final_cost": "135814.74"
+    },
+    {
+      "budget_code_key": "1000.15-15-410.SUB",
+      "delta": "-18649.62",
+      "off_overrun_projected": false,
+      "off_recommended_final_cost": "3241491.92",
+      "on_overrun_projected": false,
+      "on_recommended_final_cost": "3222842.30",
+      "on_worst_credible_final_cost": "3558613.55"
+    },
+    {
+      "budget_code_key": "1000.15-16-400.SUB",
+      "delta": "-32472.77",
+      "off_overrun_projected": true,
+      "off_recommended_final_cost": "649179.45",
+      "on_overrun_projected": true,
+      "on_recommended_final_cost": "616706.68",
+      "on_worst_credible_final_cost": "730149.74"
+    }
+  ],
+  "codes_changed": 5,
+  "flag": "_P75_STAGE_GATE on (vs off)",
+  "project_key": "tropical",
+  "project_recommended_total_off": "64475545.77",
+  "project_recommended_total_on": "64423874.73",
+  "project_total_delta": "-51671.04",
+  "total_codes": 127
+}
