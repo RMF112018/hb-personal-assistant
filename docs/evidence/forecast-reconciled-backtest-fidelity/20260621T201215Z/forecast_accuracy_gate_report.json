@@ -1,0 +1,59 @@
+{
+  "methodology": "Reconstruct each near-complete code's state at 40/60/80% owner progress (backtest_strong cohort + as-of truncation), feed the as-of per-method EACs through the real reconcile_final.select_final (same calibration weights production uses), and score the blended recommended_final_cost vs realized actual-to-date. MAPE/bias = mean over observations; coverage = fraction with realized <= worst_credible; naive baseline = trust the ERP projected cost. Negative blend_minus_best / reconciled_minus_naive => the production blend adds value.",
+  "metrics": {
+    "best_single_method": "commitment_exposure_eac",
+    "best_single_method_mape": "0.0739",
+    "blend_minus_best_method_delta": "0.3363",
+    "cohort_size": 10,
+    "naive_erp_mape": "0.0526",
+    "observation_count": 29,
+    "per_target_mape": {
+      "0.40": "0.5984",
+      "0.60": "0.3623",
+      "0.80": "0.2543"
+    },
+    "reconciled_final_mape": "0.4102",
+    "reconciled_final_mean_bias": "0.3348",
+    "reconciled_minus_naive_delta": "0.3577",
+    "worst_credible_coverage_rate": "0.8966"
+  },
+  "package_scored": "/tmp/fidelity/forecast_accuracy_next_package_tropical_20260101_000000",
+  "project_key": "tropical",
+  "recalibration_effect": {
+    "baseline_coverage": "0.8966",
+    "baseline_mape": "0.4102",
+    "baseline_mean_bias": "0.3348",
+    "bias_abs_improvement": "0.1108",
+    "mape_improvement": "0.1055",
+    "note": "Effect of flipping the completion-stage p75 stage-gate ON; the verdict above is on the baseline (production) metrics. recalibration_recommended is advisory.",
+    "production_flag_default": "off",
+    "recalibrated_coverage": "0.8966",
+    "recalibrated_mape": "0.3048",
+    "recalibrated_mean_bias": "0.2239",
+    "recalibrated_per_target_mape": {
+      "0.40": "0.4103",
+      "0.60": "0.2452",
+      "0.80": "0.2537"
+    },
+    "recalibration_recommended": true
+  },
+  "reconstruction_fidelity_caveats": [
+    "Per-method reliability is the REAL estimators_uncapped rule at the as-of point (owner via owner%, trend via reconstructed months+CoV); commitment is floored to 'low' (pipeline ratio not reconstructable at as-of) and cpi is always 'low'.",
+    "Trend signal is reconstructed via the real trend.analyze on the as-of-truncated monthly series (not neutral); owner SOV value not reconstructed.",
+    "Per-method EAC values still use backtest_strong._predict's simplified forms (full estimator-formula fidelity via as-of bundle rebuild is deferred).",
+    "Schedule method has no history and is absent (same as backtest_strong).",
+    "Realized truth = current actual-to-date, valid only for the owner>=95% near-complete cohort."
+  ],
+  "schema_version": 1,
+  "thresholds": {
+    "bias_abs_pass": "0.10",
+    "coverage_pass": "0.90",
+    "mape_fail": "0.30",
+    "mape_pass": "0.15",
+    "min_cohort": 8
+  },
+  "verdict": "not_ready",
+  "verdict_notes": [
+    "reconciled MAPE 0.4102 exceeds fail threshold 0.30"
+  ]
+}

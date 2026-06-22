@@ -26,10 +26,32 @@ from typing import Optional
 from ..common.money import D, dec, money_str
 from . import backtest_strong as bts
 from . import reconcile_final
+from . import trend as trend_mod
 
-# Uniform reliability for the as-of reconstruction (documented approximation; calibration drives the
-# per-method weighting, mirroring production's dominant differentiator).
-_ASOF_RELIABILITY = "medium"
+# Real per-method reliability thresholds (mirror estimators_uncapped) for faithful as-of weighting.
+_OWNER_MEDIUM_PCT = Decimal("0.50")
+_TREND_MIN_MONTHS = 6
+_TREND_MAX_COV = Decimal("0.75")
+
+
+def _asof_reliabilities(owner_pct: Optional[Decimal], trend_block: dict) -> dict:
+    """Each method's REAL reliability at the as-of point (estimators_uncapped rules). The commitment
+    pipeline ratio isn't reconstructable at as-of -> 'low' (conservative, under-weights the most
+    accurate method); cpi_blend is always 'low'."""
+    months = int(trend_block.get("months_of_completed_actuals") or 0)
+    cov = dec(trend_block.get("cost_volatility_cov"))
+    owner_rel = "medium" if (owner_pct is not None and owner_pct >= _OWNER_MEDIUM_PCT) else "low"
+    trend_rel = (
+        "medium"
+        if (months >= _TREND_MIN_MONTHS and (cov is None or cov <= _TREND_MAX_COV))
+        else "low"
+    )
+    return {
+        "owner_progress_eac": owner_rel,
+        "trend_projection_eac": trend_rel,
+        "commitment_exposure_eac": "low",
+        "cpi_blend_eac": "low",
+    }
 
 
 def _q4(x: Decimal) -> str:
@@ -40,8 +62,9 @@ def _mean(xs: list) -> Optional[Decimal]:
     return (sum(xs, Decimal("0")) / Decimal(len(xs))) if xs else None
 
 
-def _asof_estimates(m: dict) -> list[dict]:
-    """select_final-shaped estimate dicts from the as-of per-method EACs (floored to as-of actual)."""
+def _asof_estimates(m: dict, reliabilities: dict) -> list[dict]:
+    """select_final-shaped estimate dicts from the as-of per-method EACs (floored to as-of actual),
+    each carrying its REAL as-of reliability."""
     actual_t = m["actual_to_t"]
     erp = m.get("erp_projected")
     out = []
@@ -55,7 +78,7 @@ def _asof_estimates(m: dict) -> list[dict]:
                 "method": method,
                 "applicable": True,
                 "eac": money_str(eac),
-                "reliability": _ASOF_RELIABILITY,
+                "reliability": reliabilities.get(method, "low"),
                 "association_scale": "1.0",
                 "exceeds_erp_projected": bool(erp is not None and eac > erp),
             }
@@ -63,8 +86,9 @@ def _asof_estimates(m: dict) -> list[dict]:
     return out
 
 
-def _asof_bundle(m: dict, budget_amounts: dict) -> dict:
-    """Minimal as-of bundle exposing the fields select_final reads (neutral trend; owner_sov absent)."""
+def _asof_bundle(m: dict, budget_amounts: dict, trend_signal) -> dict:
+    """Minimal as-of bundle exposing the fields select_final reads (reconstructed trend; owner_sov
+    absent)."""
     return {
         "actual_cost_all_source_to_date": money_str(m["actual_to_t"]),
         "projected_costs": money_str(m["erp_projected"])
@@ -77,7 +101,7 @@ def _asof_bundle(m: dict, budget_amounts: dict) -> dict:
         if m.get("committed_costs") is not None
         else None,
         "owner_sov_value": None,
-        "trend_signal": None,
+        "trend_signal": trend_signal,
         # As-of completion fraction, so the (opt-in) p75 stage-gate is exercised in the backtest.
         # Does not affect the baseline (stage-gate off) recommended value.
         "owner_latest_percent_complete": str(m["owner_pct_to_t"]),
@@ -117,10 +141,22 @@ def run_reconciled_backtest(
             m = bts._reconstruct(ctx, owner_rows, target)
             if not m:
                 continue
-            ests = _asof_estimates(m)
+            # Reconstruct the as-of trend block via the real production trend.analyze on the monthly
+            # series truncated to <= t_month -> faithful trend_signal + reliability inputs.
+            monthly_upto = [
+                r
+                for r in ((ctx.get("actuals") or {}).get("monthly_actuals") or [])
+                if r.get("actual_period_bucket") == "through_may_2026"
+                and (r.get("month") or "") <= m["t_month"]
+            ]
+            trend_block = trend_mod.analyze(monthly_upto, m["t_month"], project_key, key)
+            reliabilities = _asof_reliabilities(m["owner_pct_to_t"], trend_block)
+            ests = _asof_estimates(m, reliabilities)
             if not ests:
                 continue
-            bundle = _asof_bundle(m, ctx.get("budget_amounts") or {})
+            bundle = _asof_bundle(
+                m, ctx.get("budget_amounts") or {}, trend_block.get("trend_signal")
+            )
             realized = m["realized_final"]
             if realized <= 0:
                 continue
@@ -271,10 +307,13 @@ def run_reconciled_backtest(
             "production blend adds value."
         ),
         "reconstruction_fidelity_caveats": [
-            "Uniform 'medium' reliability for as-of estimates; calibration weights carry per-method "
-            "differentiation (production assigns varied reliability).",
-            "Neutral trend signal (no reconstructed supports_overrun bump beyond the ERP-exceedance "
-            "path); owner SOV value not reconstructed.",
+            "Per-method reliability is the REAL estimators_uncapped rule at the as-of point (owner via "
+            "owner%, trend via reconstructed months+CoV); commitment is floored to 'low' (pipeline "
+            "ratio not reconstructable at as-of) and cpi is always 'low'.",
+            "Trend signal is reconstructed via the real trend.analyze on the as-of-truncated monthly "
+            "series (not neutral); owner SOV value not reconstructed.",
+            "Per-method EAC values still use backtest_strong._predict's simplified forms (full "
+            "estimator-formula fidelity via as-of bundle rebuild is deferred).",
             "Schedule method has no history and is absent (same as backtest_strong).",
             "Realized truth = current actual-to-date, valid only for the owner>=95% near-complete cohort.",
         ],

@@ -2,7 +2,54 @@
 
 from __future__ import annotations
 
+from decimal import Decimal
+
 from construction_financial_review.forecast_intelligence import reconciled_backtest as rb
+
+
+def test_asof_reliabilities_use_real_rules():
+    # owner < 0.50 -> low; trend months < 6 -> low; commitment + cpi always low.
+    r = rb._asof_reliabilities(
+        Decimal("0.40"), {"months_of_completed_actuals": 4, "cost_volatility_cov": "0.20"}
+    )
+    assert r == {
+        "owner_progress_eac": "low",
+        "trend_projection_eac": "low",
+        "commitment_exposure_eac": "low",
+        "cpi_blend_eac": "low",
+    }
+    # owner >= 0.50 -> medium; trend months>=6 & cov<=0.75 -> medium.
+    r2 = rb._asof_reliabilities(
+        Decimal("0.60"), {"months_of_completed_actuals": 8, "cost_volatility_cov": "0.30"}
+    )
+    assert r2["owner_progress_eac"] == "medium"
+    assert r2["trend_projection_eac"] == "medium"
+    # high volatility -> trend low even with enough months.
+    r3 = rb._asof_reliabilities(
+        Decimal("0.60"), {"months_of_completed_actuals": 8, "cost_volatility_cov": "0.90"}
+    )
+    assert r3["trend_projection_eac"] == "low"
+
+
+def test_asof_estimates_carry_supplied_reliability():
+    m = {
+        "actual_to_t": Decimal("50000"),
+        "erp_projected": Decimal("90000"),
+        "owner_pct_to_t": Decimal("0.40"),
+        "burn_to_t": Decimal("10000"),
+        "remaining_months": Decimal("5"),
+        "committed_costs": Decimal("80000"),
+    }
+    rels = {
+        "owner_progress_eac": "low",
+        "trend_projection_eac": "medium",
+        "commitment_exposure_eac": "low",
+        "cpi_blend_eac": "low",
+    }
+    ests = rb._asof_estimates(m, rels)
+    by = {e["method"]: e["reliability"] for e in ests}
+    assert by["owner_progress_eac"] == "low"
+    assert by["trend_projection_eac"] == "medium"
 
 
 def _owner_row(period_to, pct):
