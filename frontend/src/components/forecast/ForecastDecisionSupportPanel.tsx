@@ -218,6 +218,56 @@ export function ForecastDecisionSupportPanel() {
           </ForecastTable>
         </div>
       )}
+
+      {detail && detail.commitment_exposure.length > 0 && (
+        <div className="mt-4">
+          <h3 className="forecast-eyebrow mb-2">Commitment exposure</h3>
+          <ForecastTable
+            headers={
+              <>
+                <ForecastTh>Cost code</ForecastTh>
+                <ForecastTh>Committed</ForecastTh>
+                <ForecastTh>Exposure</ForecastTh>
+              </>
+            }
+          >
+            {detail.commitment_exposure.slice(0, 50).map((c, i) => (
+              <tr key={c.budget_code_key ?? `ce-${i}`}>
+                <ForecastTd>{c.budget_code_key ?? '—'}</ForecastTd>
+                <ForecastTd className="tabular-nums">{money(c.committed_amount)}</ForecastTd>
+                <ForecastTd className="tabular-nums">{money(c.exposure_amount)}</ForecastTd>
+              </tr>
+            ))}
+          </ForecastTable>
+        </div>
+      )}
+
+      {detail && detail.schedule_phasing.length > 0 && (
+        <div className="mt-4">
+          <h3 className="forecast-eyebrow mb-2">Schedule phasing</h3>
+          <ForecastTable
+            headers={
+              <>
+                <ForecastTh>Cost code</ForecastTh>
+                <ForecastTh>Phase</ForecastTh>
+                <ForecastTh>Window</ForecastTh>
+                <ForecastTh>Amount</ForecastTh>
+              </>
+            }
+          >
+            {detail.schedule_phasing.slice(0, 50).map((s, i) => (
+              <tr key={s.budget_code_key ?? `sp-${i}`}>
+                <ForecastTd>{s.budget_code_key ?? '—'}</ForecastTd>
+                <ForecastTd className="text-[var(--hb-muted)]">{s.phase ?? '—'}</ForecastTd>
+                <ForecastTd className="text-[var(--hb-muted)]">
+                  {s.start_month ?? '—'}–{s.end_month ?? '—'}
+                </ForecastTd>
+                <ForecastTd className="tabular-nums">{money(s.amount)}</ForecastTd>
+              </tr>
+            ))}
+          </ForecastTable>
+        </div>
+      )}
     </ForecastPanel>
   )
 }

@@ -76,6 +76,21 @@ def _seed(db: Path) -> None:
             "month, headcount, cost_amount, source_row_number, raw_json, created_utc) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
             ("st1", OID, "tropical", "0000.03-01-025.MAT", None, "2026-07", None, "50.00", 1, "{}", TS),
         )
+        # raw_json carries redaction bait (a path + run-stamp) that must never reach the client.
+        _bait = '{"source_path": "/Users/bobby/forecast/20260101_000000/x.jsonl"}'
+        conn.execute(
+            "INSERT INTO forecast_output_commitment_exposure (id, output_id, project_key, "
+            "budget_code_key, committed_amount, exposure_amount, source_row_number, raw_json, created_utc) "
+            "VALUES (?,?,?,?,?,?,?,?,?)",
+            ("ce1", OID, "tropical", "0000.03-01-025.MAT", "1000.00", "750.00", 1, _bait, TS),
+        )
+        conn.execute(
+            "INSERT INTO forecast_output_schedule_phasing (id, output_id, project_key, budget_code_key, "
+            "phase, start_month, end_month, amount, source_row_number, raw_json, created_utc) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+            ("sp1", OID, "tropical", "0000.03-01-025.MAT", "direct", "2026-07", "2026-08", "3000.00",
+             1, _bait, TS),
+        )
         # v66 decision-support, keyed by run_id
         conn.execute(
             "INSERT INTO forecast_project_maturity_snapshots (snapshot_id, run_id, project_key, "
@@ -146,7 +161,12 @@ def test_read_output_with_all_children(seeded):
     assert len(body["budget_codes"]) == 1 and len(body["risks"]) == 1
     assert len(body["monthly"]) == 1 and len(body["probability"]) == 1
     assert len(body["changes"]) == 1 and len(body["staffing"]) == 1
-    assert find_redaction_leaks(body) == []  # no source_path, no run stamp
+    assert len(body["commitment_exposure"]) == 1 and len(body["schedule_phasing"]) == 1
+    assert body["commitment_exposure"][0]["committed_amount"] == "1000.00"
+    assert body["commitment_exposure"][0]["exposure_amount"] == "750.00"
+    assert body["schedule_phasing"][0]["phase"] == "direct"
+    assert body["schedule_phasing"][0]["start_month"] == "2026-07"
+    assert find_redaction_leaks(body) == []  # no source_path, no run stamp (even from seeded raw_json bait)
     assert "source_path" not in resp.text and RUN_ID not in resp.text
 
 

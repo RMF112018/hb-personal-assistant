@@ -146,7 +146,8 @@ class ForecastRunReadModelService:
         }
 
     def read_output(self, output_id: str) -> dict[str, Any]:
-        """Header + per-code/risk/monthly/probability/changes/staffing detail for one output."""
+        """Header + per-code/risk/monthly/probability/changes/staffing/commitment-exposure/
+        schedule-phasing detail for one output."""
         conn = self._connect()
         try:
             header = self._output_header(conn, output_id)
@@ -191,6 +192,20 @@ class ForecastRunReadModelService:
                 "FROM forecast_output_staffing WHERE output_id = ? ORDER BY source_row_number LIMIT ?",
                 (output_id, _MAX_ROWS),
             )
+            commitment_exposure = self._rows(
+                conn,
+                "SELECT budget_code_key, committed_amount, exposure_amount "
+                "FROM forecast_output_commitment_exposure WHERE output_id = ? "
+                "ORDER BY source_row_number LIMIT ?",
+                (output_id, _MAX_ROWS),
+            )
+            schedule_phasing = self._rows(
+                conn,
+                "SELECT budget_code_key, phase, start_month, end_month, amount "
+                "FROM forecast_output_schedule_phasing WHERE output_id = ? "
+                "ORDER BY source_row_number LIMIT ?",
+                (output_id, _MAX_ROWS),
+            )
         finally:
             conn.close()
         return {
@@ -202,6 +217,8 @@ class ForecastRunReadModelService:
             "probability": probability,
             "changes": changes,
             "staffing": staffing,
+            "commitment_exposure": commitment_exposure,
+            "schedule_phasing": schedule_phasing,
             "guardrails": _guardrails(),
         }
 
