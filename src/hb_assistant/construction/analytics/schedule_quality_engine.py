@@ -41,6 +41,9 @@ METRIC_STATUS_DERIVED_FINISH_FLOAT = "measured_from_derived_finish_float"
 METRIC_STATUS_PARTIAL_CRITICAL_FLOAT = "partially_measurable_critical_float_available"
 METRIC_STATUS_NOT_MEASURABLE_LONGEST_PATH = "not_measurable_missing_longest_path_data"
 METRIC_STATUS_NOT_MEASURABLE_RECALC = "not_measurable_requires_recalculation"
+METRIC_STATUS_XER_DRIVING_PATH = "measured_from_xer_driving_path"
+METRIC_STATUS_MSP_CRITICAL = "measured_from_msp_critical_flag"
+METRIC_STATUS_EXPLICIT_FLOAT = "measured_from_explicit_source_float"
 
 MEASURED_STATUSES = (
     METRIC_STATUS_PASS,
@@ -49,6 +52,9 @@ MEASURED_STATUSES = (
     METRIC_STATUS_MEASURED,
     METRIC_STATUS_DERIVED_FINISH_FLOAT,
     METRIC_STATUS_PARTIAL_CRITICAL_FLOAT,
+    METRIC_STATUS_XER_DRIVING_PATH,
+    METRIC_STATUS_MSP_CRITICAL,
+    METRIC_STATUS_EXPLICIT_FLOAT,
 )
 
 
@@ -538,29 +544,62 @@ class ScheduleQualityAssessmentEngine:
     ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
         return self._float_metric(ctx, code, spec, mode="negative")
 
-    def _activity_float_days(self, activity: dict[str, Any]) -> tuple[float | None, bool]:
+    def _import_source_format(self, ctx: EvaluationContext) -> str:
+        if ctx.import_meta:
+            return str(ctx.import_meta.get("source_format") or "")
+        return ""
+
+    def _explicit_float_days(self, activity: dict[str, Any]) -> float | None:
+        raw = activity.get("explicit_total_float_days")
+        if raw is None or str(raw).strip() == "":
+            return None
+        try:
+            return float(raw)
+        except (TypeError, ValueError):
+            return None
+
+    def _activity_float_days(
+        self, activity: dict[str, Any]
+    ) -> tuple[float | None, bool, str]:
+        explicit = self._explicit_float_days(activity)
+        if explicit is not None:
+            return explicit, False, "explicit"
         if activity.get("derived_float_basis"):
             try:
-                return float(activity["derived_total_float_days"]), True
+                return float(activity["derived_total_float_days"]), True, "derived"
             except (TypeError, ValueError):
                 pass
         if activity.get("total_float") is not None:
             try:
-                return float(activity["total_float"]), False
+                return float(activity["total_float"]), False, "export"
             except (TypeError, ValueError):
                 pass
-        return None, False
+        return None, False, "missing"
+
+    def _is_p6_derived_only(self, ctx: EvaluationContext) -> bool:
+        fmt = self._import_source_format(ctx)
+        if fmt and fmt != "primavera_pmxml":
+            return False
+        if any(a.get("critical_path_source") == "xer_driving_path_flag" for a in ctx.activities):
+            return False
+        if any(a.get("critical_path_source") == "msp_critical_flag" for a in ctx.activities):
+            return False
+        return supports_finish_float_derivation(ctx.schedule_options) or any(
+            a.get("derived_float_basis") for a in ctx.activities
+        )
 
     def _float_metric(
         self, ctx: EvaluationContext, code: str, spec: dict[str, Any], *, mode: str
     ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
         floats: list[float] = []
         derived_used = False
+        explicit_used = False
         for a in ctx.activities:
-            val, is_derived = self._activity_float_days(a)
+            val, is_derived, source_kind = self._activity_float_days(a)
             if val is not None:
                 floats.append(val)
                 derived_used = derived_used or is_derived
+                explicit_used = explicit_used or source_kind == "explicit"
         if not floats:
             return (
                 self._base_metric(
@@ -578,11 +617,12 @@ class ScheduleQualityAssessmentEngine:
             bad = sum(1 for f in floats if f < 0)
         ratio = bad / len(floats)
         threshold_status = self._status_from_ratio(ratio, spec)
-        status = (
-            METRIC_STATUS_DERIVED_FINISH_FLOAT
-            if derived_used
-            else threshold_status
-        )
+        if explicit_used and not derived_used:
+            status = METRIC_STATUS_EXPLICIT_FLOAT
+        elif derived_used:
+            status = METRIC_STATUS_DERIVED_FINISH_FLOAT
+        else:
+            status = threshold_status
         return (
             self._base_metric(
                 ctx,
@@ -593,9 +633,17 @@ class ScheduleQualityAssessmentEngine:
                 denominator=len(floats),
                 value=round(ratio, 4),
                 evidence={
-                    "method": "derived_finish_float" if derived_used else "export_total_float",
+                    "method": (
+                        "explicit_source_float"
+                        if explicit_used and not derived_used
+                        else "derived_finish_float"
+                        if derived_used
+                        else "export_total_float"
+                    ),
                     "float_basis": "remaining_late_finish_minus_remaining_early_finish"
                     if derived_used
+                    else "xer_or_msp_explicit"
+                    if explicit_used
                     else None,
                     "threshold_status": threshold_status,
                     "schedule_options_snapshot": ctx.schedule_options or {},
@@ -830,12 +878,122 @@ class ScheduleQualityAssessmentEngine:
             [],
         )
 
+    def _metric_critical_path_xer_driving(
+        self,
+        ctx: EvaluationContext,
+        code: str,
+        spec: dict[str, Any],
+        driving: list[dict[str, Any]],
+    ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+        threshold = _parse_threshold(
+            (ctx.import_meta or {}).get("critical_float_threshold")
+            or (ctx.schedule_options or {}).get("critical_activity_float_threshold")
+        )
+        mismatches = 0
+        checked = 0
+        non_driving_zero = 0
+        for a in ctx.activities:
+            tf = self._explicit_float_days(a)
+            if tf is None:
+                continue
+            if a.get("source_driving_path_flag"):
+                checked += 1
+                if tf > threshold + 0.01:
+                    mismatches += 1
+            elif tf <= threshold + 0.01 and tf >= -0.01:
+                non_driving_zero += 1
+        if checked == 0:
+            return (
+                self._base_metric(
+                    ctx,
+                    code=code,
+                    spec=spec,
+                    status=METRIC_STATUS_NOT_MEASURABLE,
+                    not_measurable_reason="no explicit float on driving-path activities",
+                ),
+                [],
+            )
+        ratio = mismatches / checked
+        return (
+            self._base_metric(
+                ctx,
+                code=code,
+                spec=spec,
+                status=METRIC_STATUS_XER_DRIVING_PATH,
+                numerator=mismatches,
+                denominator=checked,
+                value=round(ratio, 4),
+                evidence={
+                    "method": "xer_driving_path_consistency",
+                    "critical_path_source": "xer_driving_path_flag",
+                    "driving_path_count": len(driving),
+                    "explicit_float_checked": checked,
+                    "non_driving_near_zero_float_count": non_driving_zero,
+                    "threshold_status": self._status_from_ratio(ratio, spec),
+                    "float_threshold": threshold,
+                },
+            ),
+            [],
+        )
+
+    def _metric_critical_path_msp_critical(
+        self,
+        ctx: EvaluationContext,
+        code: str,
+        spec: dict[str, Any],
+        critical: list[dict[str, Any]],
+    ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+        mismatches = 0
+        checked = 0
+        for a in critical:
+            tf = self._explicit_float_days(a)
+            if tf is None:
+                continue
+            checked += 1
+            if tf > 0.01:
+                mismatches += 1
+        if checked == 0:
+            return (
+                self._base_metric(
+                    ctx,
+                    code=code,
+                    spec=spec,
+                    status=METRIC_STATUS_NOT_MEASURABLE,
+                    not_measurable_reason="no explicit slack on MSP critical tasks",
+                ),
+                [],
+            )
+        ratio = mismatches / checked
+        return (
+            self._base_metric(
+                ctx,
+                code=code,
+                spec=spec,
+                status=METRIC_STATUS_MSP_CRITICAL,
+                numerator=mismatches,
+                denominator=checked,
+                value=round(ratio, 4),
+                evidence={
+                    "method": "msp_critical_slack_consistency",
+                    "critical_path_source": "msp_critical_flag",
+                    "critical_flag_count": len(critical),
+                    "threshold_status": self._status_from_ratio(ratio, spec),
+                },
+            ),
+            [],
+        )
+
     def _metric_critical_path_test(
         self, ctx: EvaluationContext, code: str, spec: dict[str, Any]
     ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
-        if supports_finish_float_derivation(ctx.schedule_options) or any(
-            a.get("derived_float_basis") for a in ctx.activities
-        ):
+        source_fmt = self._import_source_format(ctx)
+        driving = [a for a in ctx.activities if a.get("source_driving_path_flag")]
+        if source_fmt == "primavera_xer" and driving:
+            return self._metric_critical_path_xer_driving(ctx, code, spec, driving)
+        msp_critical = [a for a in ctx.activities if a.get("source_critical_flag")]
+        if source_fmt == "ms_project_xml" and msp_critical:
+            return self._metric_critical_path_msp_critical(ctx, code, spec, msp_critical)
+        if self._is_p6_derived_only(ctx):
             return (
                 self._base_metric(
                     ctx,
@@ -993,35 +1151,65 @@ class ScheduleQualityAssessmentEngine:
                     )
                 )
         elif category == "critical_path_validity":
-            derivable = [a for a in ctx.activities if a.get("derived_float_basis")]
-            critical_by_threshold = [
-                a for a in ctx.activities if a.get("derived_is_critical_by_float_threshold")
-            ]
-            has_longest = any(a.get("is_longest_path") for a in ctx.activities)
-            if derivable and supports_finish_float_derivation(ctx.schedule_options):
-                posture = METRIC_STATUS_PARTIAL_CRITICAL_FLOAT
+            source_fmt = self._import_source_format(ctx)
+            driving = [a for a in ctx.activities if a.get("source_driving_path_flag")]
+            explicit_float = [a for a in ctx.activities if self._explicit_float_days(a) is not None]
+            if source_fmt == "primavera_xer" and driving:
+                posture = METRIC_STATUS_XER_DRIVING_PATH
                 reason = json.dumps(
                     {
-                        "critical_float_classification": {
-                            "posture": METRIC_STATUS_PARTIAL_CRITICAL_FLOAT,
-                            "derivable_count": len(derivable),
-                            "critical_by_float_threshold_count": len(critical_by_threshold),
-                        },
+                        "critical_path_source": "xer_driving_path_flag",
+                        "driving_path_count": len(driving),
+                        "explicit_float_count": len(explicit_float),
                         "longest_path_driving_path": {
-                            "posture": METRIC_STATUS_NOT_MEASURABLE_LONGEST_PATH
-                            if not has_longest
-                            else "export_flags_only",
-                            "reason": "no longest-path or driving-path export flags"
-                            if not has_longest
-                            else "longest-path flags present; not authoritative CPM",
+                            "posture": "xer_export_driving_path",
+                            "reason": "XER driving_path_flag export; not forensic delay analysis",
                         },
                     }
                 )
-            elif not any(a.get("is_critical") for a in ctx.activities) and not any(
-                a.get("total_float") is not None for a in ctx.activities
+            elif source_fmt == "ms_project_xml" and any(
+                a.get("source_critical_flag") for a in ctx.activities
             ):
-                posture = "not_measurable"
-                reason = "no critical path or float export data"
+                posture = METRIC_STATUS_MSP_CRITICAL
+                reason = json.dumps(
+                    {
+                        "critical_path_source": "msp_critical_flag",
+                        "critical_flag_count": sum(
+                            1 for a in ctx.activities if a.get("source_critical_flag")
+                        ),
+                        "posture": "msp_export_critical",
+                    }
+                )
+            else:
+                derivable = [a for a in ctx.activities if a.get("derived_float_basis")]
+                critical_by_threshold = [
+                    a for a in ctx.activities if a.get("derived_is_critical_by_float_threshold")
+                ]
+                has_longest = any(a.get("is_longest_path") for a in ctx.activities)
+                if derivable and supports_finish_float_derivation(ctx.schedule_options):
+                    posture = METRIC_STATUS_PARTIAL_CRITICAL_FLOAT
+                    reason = json.dumps(
+                        {
+                            "critical_float_classification": {
+                                "posture": METRIC_STATUS_PARTIAL_CRITICAL_FLOAT,
+                                "derivable_count": len(derivable),
+                                "critical_by_float_threshold_count": len(critical_by_threshold),
+                            },
+                            "longest_path_driving_path": {
+                                "posture": METRIC_STATUS_NOT_MEASURABLE_LONGEST_PATH
+                                if not has_longest
+                                else "export_flags_only",
+                                "reason": "no longest-path or driving-path export flags"
+                                if not has_longest
+                                else "longest-path flags present; not authoritative CPM",
+                            },
+                        }
+                    )
+                elif not any(a.get("is_critical") for a in ctx.activities) and not any(
+                    a.get("total_float") is not None for a in ctx.activities
+                ):
+                    posture = "not_measurable"
+                    reason = "no critical path or float export data"
         elif category == "float_reasonableness":
             if not any(a.get("derived_float_basis") for a in ctx.activities) and not any(
                 a.get("total_float") is not None for a in ctx.activities
@@ -1181,6 +1369,25 @@ class ScheduleQualityAssessmentEngine:
             and m["status"] == METRIC_STATUS_NOT_MEASURABLE_RECALC
             for m in dcma
         )
+        has_xer_driving = any(
+            m["metric_code"] == "dcma_critical_path_test"
+            and m["status"] == METRIC_STATUS_XER_DRIVING_PATH
+            for m in dcma
+        )
+        has_msp_critical = any(
+            m["metric_code"] == "dcma_critical_path_test"
+            and m["status"] == METRIC_STATUS_MSP_CRITICAL
+            for m in dcma
+        )
+        source_fmt = self._import_source_format(ctx)
+        if has_xer_driving or source_fmt == "primavera_xer":
+            critical_path_analytics = "available_source_export_driving_path"
+        elif has_msp_critical or source_fmt == "ms_project_xml":
+            critical_path_analytics = "available_msp_critical_slack"
+        elif has_critical_path_recalc:
+            critical_path_analytics = "unavailable_requires_cpm_recalculation"
+        else:
+            critical_path_analytics = "available_export_flags_only"
         critical_blockers = any(f.get("severity") == "critical" for f in findings)
         cost_weighting = "blocked"
         if completion_posture == "completed_with_limitations" and not critical_blockers:
@@ -1192,11 +1399,8 @@ class ScheduleQualityAssessmentEngine:
             "completion_posture": completion_posture,
             "cost_mapping": "ready" if ctx.activities else "not_ready",
             "cost_weighting": cost_weighting,
-            "critical_path_analytics": (
-                "unavailable_requires_cpm_recalculation"
-                if has_critical_path_recalc
-                else "available_export_flags_only"
-            ),
+            "critical_path_analytics": critical_path_analytics,
+            "cpm_recalculation": "not_implemented",
             "baseline_analytics": "unavailable_missing_baseline",
             "true_cost_loaded_analytics": (
                 "unavailable_not_cost_loaded"

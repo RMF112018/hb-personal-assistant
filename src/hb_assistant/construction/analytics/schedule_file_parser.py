@@ -39,6 +39,7 @@ class ParsedScheduleBundle:
     validation_findings: list[dict[str, str]] = field(default_factory=list)
     cost_loaded_hints: list[dict[str, Any]] = field(default_factory=list)
     schedule_options: dict[str, Any] = field(default_factory=dict)
+    source_capabilities: dict[str, Any] = field(default_factory=dict)
 
 
 def safe_basename(filename: str) -> str:
@@ -46,9 +47,22 @@ def safe_basename(filename: str) -> str:
     return base.replace("/", "_").replace("\\", "_").replace("..", "_")
 
 
-def detect_source(filename: str) -> tuple[str, str]:
+def sniff_xml_source_format(data: bytes) -> str:
+    """Detect P6 APIBusinessObjects vs Microsoft Project 2007 XML from content."""
+    head = data[:8192].decode("utf-8", errors="ignore").lower()
+    if "schemas.microsoft.com/project" in head:
+        return "ms_project_xml"
+    if "apibusinessobjects" in head or "xmlns=\"http://xmlns.oracle.com/primavera/p6" in head:
+        return "primavera_pmxml"
+    # Default XML uploads to P6 parser; invalid/unknown XML fails at parse time.
+    return "primavera_pmxml"
+
+
+def detect_source(filename: str, data: bytes | None = None) -> tuple[str, str]:
     lower = safe_basename(filename).lower()
     if lower.endswith(".xml") or lower.endswith(".pmxml"):
+        if data:
+            return "xml", sniff_xml_source_format(data)
         return "xml", "primavera_pmxml"
     if lower.endswith(".xer"):
         return "xer", "primavera_xer"

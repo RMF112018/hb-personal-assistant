@@ -116,9 +116,15 @@ class ScheduleImportService:
             raise ScheduleImportError("schedule_import_invalid", message="empty upload payload")
 
         basename = safe_basename(filename)
-        source_type, source_format = detect_source(basename)
+        source_type, source_format = detect_source(basename, data=data)
         bundle, parser_name, parser_version = self._parse_bundle(
-            data, source_type=source_type, column_roles=column_roles
+            data,
+            source_type=source_type,
+            source_format=source_format,
+            column_roles=column_roles,
+        )
+        bundle.source_capabilities = dict(
+            (bundle.schedule_options or {}).get("source_capabilities") or {}
         )
         cost_status = assess_cost_loaded_status(bundle.activities, bundle.cost_loaded_hints)
         import_id = uuid.uuid4().hex[:12]
@@ -328,6 +334,18 @@ class ScheduleImportService:
                 "calculate_float_based_on_finish_date": (bundle.schedule_options or {}).get(
                     "calculate_float_based_on_finish_date"
                 ),
+                "critical_path_type": (bundle.schedule_options or {}).get("critical_path_type"),
+                "critical_float_threshold": str(
+                    (bundle.schedule_options or {}).get("critical_float_threshold")
+                )
+                if (bundle.schedule_options or {}).get("critical_float_threshold") is not None
+                else None,
+                "schedule_options_json": json.dumps(
+                    (bundle.schedule_options or {}).get("schedule_options_json") or {},
+                    sort_keys=True,
+                    default=str,
+                ),
+                "baseline_source": (bundle.schedule_options or {}).get("baseline_source"),
             }
         )
 
@@ -429,6 +447,24 @@ class ScheduleImportService:
                     "derived_is_critical_by_float_threshold": act.get(
                         "derived_is_critical_by_float_threshold"
                     ),
+                    "explicit_total_float_hours": act.get("explicit_total_float_hours"),
+                    "explicit_total_float_days": act.get("explicit_total_float_days"),
+                    "explicit_free_float_hours": act.get("explicit_free_float_hours"),
+                    "explicit_free_float_days": act.get("explicit_free_float_days"),
+                    "float_source": act.get("float_source"),
+                    "source_critical_flag": act.get("source_critical_flag"),
+                    "source_driving_path_flag": act.get("source_driving_path_flag"),
+                    "source_longest_path_flag": act.get("source_longest_path_flag"),
+                    "float_path": act.get("float_path"),
+                    "float_path_order": act.get("float_path_order"),
+                    "critical_path_number": act.get("critical_path_number"),
+                    "critical_path_source": act.get("critical_path_source"),
+                    "target_start": act.get("target_start"),
+                    "target_finish": act.get("target_finish"),
+                    "target_duration": act.get("target_duration"),
+                    "baseline_start": act.get("baseline_start"),
+                    "baseline_finish": act.get("baseline_finish"),
+                    "baseline_duration": act.get("baseline_duration"),
                     "duration_original": str(act.get("duration_original"))
                     if act.get("duration_original") is not None
                     else None,
@@ -496,14 +532,25 @@ class ScheduleImportService:
         data: bytes,
         *,
         source_type: str,
+        source_format: str,
         column_roles: dict[str, str] | None,
     ) -> tuple[ParsedScheduleBundle, str, str]:
         if source_type == "xml":
+            if source_format == "ms_project_xml":
+                from .schedule_msp_xml_parser import PARSER_NAME as MSP_PARSER
+                from .schedule_msp_xml_parser import PARSER_VERSION as MSP_VER
+                from .schedule_msp_xml_parser import parse_msp_xml_bytes
+
+                return parse_msp_xml_bytes(data), MSP_PARSER, MSP_VER
             return parse_pmxml_bytes(data), XML_PARSER, XML_VER
         if source_type == "csv":
             return parse_csv_bytes(data, column_roles=column_roles), CSV_PARSER, CSV_VER
         if source_type == "xer":
-            return parse_xer_bytes(data), "schedule_xer_parser", "0.0.0-stub"
+            from .schedule_xer_parser import PARSER_NAME as XER_PARSER
+            from .schedule_xer_parser import PARSER_VERSION as XER_VER
+            from .schedule_xer_parser import parse_xer_bytes
+
+            return parse_xer_bytes(data), XER_PARSER, XER_VER
         raise ScheduleImportError(
             "unsupported_schedule_format",
             message="unsupported source type",

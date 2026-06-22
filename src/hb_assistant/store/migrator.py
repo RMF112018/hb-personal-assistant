@@ -14,7 +14,7 @@ from .connection import get_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 66
+LATEST_SCHEMA_VERSION = 67
 
 
 class SQLiteMigrator:
@@ -7937,6 +7937,14 @@ class SQLiteMigrator:
                     (now,),
                 )
 
+            self._reconcile_v67_schedule_critical_path_columns(conn)
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 67")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (67, 'v67_schedule_critical_path_source_formats', ?)",
+                    (now,),
+                )
+
         # Return latest version
         conn2 = get_connection(self._db_path)
         cur = conn2.execute("SELECT MAX(version) FROM schema_migrations")
@@ -8008,6 +8016,187 @@ class SQLiteMigrator:
             from hb_assistant.store.schedule_schema_verify import assert_v65_schedule_float_schema
 
             assert_v65_schedule_float_schema(conn)
+
+    @staticmethod
+    def _reconcile_v67_schedule_critical_path_columns(conn: sqlite3.Connection) -> None:
+        from hb_assistant.store.schedule_critical_path_tables import (
+            V67_ACTIVITY_ALTER_COLUMNS,
+            V67_IMPORT_ALTER_COLUMNS,
+        )
+        from hb_assistant.store.schedule_float_tables import V65_IMPORT_ALTER_COLUMNS
+
+        SQLiteMigrator._reconcile_v67_source_format_check(conn)
+
+        def _add_cols(table: str, cols: tuple[str, ...], ddl: dict[str, str]) -> None:
+            try:
+                existing = {row[1] for row in conn.execute(f"PRAGMA table_info({table})")}
+            except sqlite3.OperationalError:
+                return
+            if not existing:
+                return
+            for col in cols:
+                if col not in existing:
+                    conn.execute(f"ALTER TABLE {table} ADD COLUMN {col} {ddl[col]}")
+
+        import_ddl = {
+            "critical_path_type": "TEXT",
+            "critical_float_threshold": "TEXT",
+            "schedule_options_json": "TEXT",
+            "baseline_source": "TEXT",
+        }
+        activity_ddl = {
+            "explicit_total_float_hours": "TEXT",
+            "explicit_total_float_days": "TEXT",
+            "explicit_free_float_hours": "TEXT",
+            "explicit_free_float_days": "TEXT",
+            "float_source": "TEXT",
+            "source_critical_flag": "INTEGER",
+            "source_driving_path_flag": "INTEGER",
+            "source_longest_path_flag": "INTEGER",
+            "float_path": "TEXT",
+            "float_path_order": "TEXT",
+            "critical_path_number": "TEXT",
+            "critical_path_source": "TEXT",
+            "target_start": "TEXT",
+            "target_finish": "TEXT",
+            "target_duration": "TEXT",
+            "baseline_start": "TEXT",
+            "baseline_finish": "TEXT",
+            "baseline_duration": "TEXT",
+        }
+        v65_import_ddl = {
+            "compute_total_float_type": "TEXT",
+            "critical_activity_path_type": "TEXT",
+            "critical_activity_float_threshold": "TEXT",
+            "calculate_float_based_on_finish_date": "INTEGER",
+        }
+        _add_cols("schedule_file_imports", V65_IMPORT_ALTER_COLUMNS, v65_import_ddl)
+        _add_cols("schedule_file_imports", V67_IMPORT_ALTER_COLUMNS, import_ddl)
+        _add_cols("procore_ep_schedule_activities", V67_ACTIVITY_ALTER_COLUMNS, activity_ddl)
+        SQLiteMigrator._reconcile_v67_metric_status_check(conn)
+
+    @staticmethod
+    def _reconcile_v67_metric_status_check(conn: sqlite3.Connection) -> None:
+        from hb_assistant.store.schedule_float_tables import METRIC_STATUS_CHECK_VALUES
+
+        cur = conn.execute(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name='schedule_quality_metric_results'"
+        )
+        row = cur.fetchone()
+        if not row or not row[0]:
+            return
+        if "measured_from_xer_driving_path" in str(row[0]):
+            return
+        statuses = ", ".join(f"'{s}'" for s in METRIC_STATUS_CHECK_VALUES)
+        conn.execute("ALTER TABLE schedule_quality_metric_results RENAME TO schedule_quality_metric_results_v66")
+        conn.execute(
+            f"""
+            CREATE TABLE schedule_quality_metric_results (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              evaluation_run_id TEXT NOT NULL,
+              project_key TEXT NOT NULL,
+              schedule_version_key TEXT NOT NULL,
+              metric_code TEXT NOT NULL,
+              metric_name TEXT NOT NULL,
+              metric_family TEXT NOT NULL CHECK(metric_family IN ('dcma', 'gao', 'aace')),
+              numerator TEXT,
+              denominator TEXT,
+              value TEXT,
+              unit TEXT,
+              threshold_warning TEXT,
+              threshold_fail TEXT,
+              status TEXT NOT NULL CHECK(status IN ({statuses})),
+              not_measurable_reason TEXT,
+              evidence_json TEXT,
+              related_finding_codes_json TEXT,
+              created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (evaluation_run_id) REFERENCES schedule_quality_evaluation_runs(evaluation_run_id)
+            );
+            """
+        )
+        conn.execute(
+            """
+            INSERT INTO schedule_quality_metric_results (
+              evaluation_run_id, project_key, schedule_version_key, metric_code, metric_name,
+              metric_family, numerator, denominator, value, unit, threshold_warning,
+              threshold_fail, status, not_measurable_reason, evidence_json,
+              related_finding_codes_json, created_at
+            )
+            SELECT
+              evaluation_run_id, project_key, schedule_version_key, metric_code, metric_name,
+              metric_family, numerator, denominator, value, unit, threshold_warning,
+              threshold_fail, status, not_measurable_reason, evidence_json,
+              related_finding_codes_json, created_at
+            FROM schedule_quality_metric_results_v66
+            """
+        )
+        conn.execute("DROP TABLE schedule_quality_metric_results_v66")
+
+    @staticmethod
+    def _reconcile_v67_source_format_check(conn: sqlite3.Connection) -> None:
+        cur = conn.execute(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name='schedule_file_imports'"
+        )
+        row = cur.fetchone()
+        if not row or not row[0] or "ms_project_xml" in str(row[0]):
+            return
+        old_info = list(conn.execute("PRAGMA table_info(schedule_file_imports)"))
+        if not old_info:
+            return
+        conn.execute("PRAGMA foreign_keys=OFF")
+        conn.execute(
+            """
+            CREATE TABLE schedule_file_imports_v67 (
+              import_id TEXT PRIMARY KEY,
+              project_key TEXT NOT NULL,
+              procore_project_id TEXT,
+              source_type TEXT NOT NULL CHECK(source_type IN ('procore_api', 'xml', 'xer', 'csv')),
+              source_format TEXT NOT NULL CHECK(source_format IN (
+                'procore_json', 'primavera_pmxml', 'primavera_xer', 'ms_project_xml', 'csv'
+              )),
+              source_filename_redacted TEXT,
+              source_file_sha256 TEXT,
+              source_payload_sha256 TEXT,
+              parser_name TEXT,
+              parser_version TEXT,
+              import_status TEXT NOT NULL DEFAULT 'previewed' CHECK(import_status IN (
+                'previewed', 'committed', 'failed', 'superseded'
+              )),
+              validation_status TEXT,
+              activity_count INTEGER NOT NULL DEFAULT 0,
+              relationship_count INTEGER NOT NULL DEFAULT 0,
+              wbs_count INTEGER NOT NULL DEFAULT 0,
+              calendar_count INTEGER NOT NULL DEFAULT 0,
+              code_count INTEGER NOT NULL DEFAULT 0,
+              udf_count INTEGER NOT NULL DEFAULT 0,
+              cost_loaded_status TEXT NOT NULL DEFAULT 'not_cost_loaded' CHECK(cost_loaded_status IN (
+                'not_cost_loaded', 'possible', 'verified', 'unreconciled'
+              )),
+              schedule_version_key TEXT,
+              evidence_package_id TEXT,
+              created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              created_by_operator TEXT
+            );
+            """
+        )
+        base_cols = {r[1] for r in conn.execute("PRAGMA table_info(schedule_file_imports_v67)")}
+        for col_name, col_type in ((r[1], r[2]) for r in old_info):
+            if col_name not in base_cols:
+                conn.execute(
+                    f"ALTER TABLE schedule_file_imports_v67 ADD COLUMN {col_name} {col_type}"
+                )
+        all_cols = [r[1] for r in conn.execute("PRAGMA table_info(schedule_file_imports)")]
+        new_cols = {r[1] for r in conn.execute("PRAGMA table_info(schedule_file_imports_v67)")}
+        present = [c for c in all_cols if c in new_cols]
+        if present:
+            cols_sql = ", ".join(present)
+            conn.execute(
+                f"INSERT INTO schedule_file_imports_v67 ({cols_sql}) "
+                f"SELECT {cols_sql} FROM schedule_file_imports"
+            )
+        conn.execute("DROP TABLE schedule_file_imports")
+        conn.execute("ALTER TABLE schedule_file_imports_v67 RENAME TO schedule_file_imports")
+        conn.execute("PRAGMA foreign_keys=ON")
 
     @staticmethod
     def _reconcile_v65_metric_status_check(conn: sqlite3.Connection) -> None:

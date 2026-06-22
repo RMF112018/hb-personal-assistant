@@ -20,6 +20,9 @@ METRIC_STATUS_CHECK_VALUES: tuple[str, ...] = (
     "partially_measurable_critical_float_available",
     "not_measurable_missing_longest_path_data",
     "not_measurable_requires_recalculation",
+    "measured_from_xer_driving_path",
+    "measured_from_msp_critical_flag",
+    "measured_from_explicit_source_float",
 )
 
 V65_ACTIVITY_ALTER_COLUMNS: tuple[str, ...] = (
