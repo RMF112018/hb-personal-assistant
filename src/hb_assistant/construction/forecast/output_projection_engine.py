@@ -157,6 +157,126 @@ def _empty_planned() -> dict[str, list[dict[str, Any]]]:
     return {key: [] for key in _PLAN_KEYS}
 
 
+# P2b: reserved operator assumption_types that override per-code dollar values, mapped to the
+# budget-code typed column they replace.
+_OVERRIDE_TYPES = {
+    "projected_cost_override": "recommended_projected_cost",
+    "cost_to_complete_override": "recommended_cost_to_complete",
+}
+
+
+def _apply_value_overrides(planned, operator_assumptions, output_id, project_key, budget_sum,
+                           warnings, now_utc) -> None:
+    """Apply operator dollar overrides to per-code typed columns, re-aggregate, record changes.
+
+    Mutates only the matching ``planned["budget_codes"]`` typed column (raw_json untouched ->
+    parity-safe), re-derives the header EAC/CTC/variance from the now-effective per-code values,
+    and appends one ``operator_value_override`` change row per applied override. Degraded-not-fatal:
+    a null/unmatched ``budget_code_key`` or an unparseable value is skipped with a warning.
+    """
+    by_key: dict[str, dict[str, Any]] = {}
+    for code_row in planned["budget_codes"]:
+        k = code_row.get("budget_code_key")
+        if k is not None and k not in by_key:
+            by_key[k] = code_row
+
+    applied = 0
+    for a in operator_assumptions:
+        column = _OVERRIDE_TYPES.get(a.get("assumption_type") or "")
+        if column is None:
+            continue  # not an override assumption
+        atype = a.get("assumption_type")
+        key = a.get("budget_code_key")
+        if not key:
+            warnings.append(f"operator override '{atype}' skipped: no budget_code_key (not applied project-wide)")
+            continue
+        code_row = by_key.get(key)
+        if code_row is None:
+            warnings.append(f"operator override '{atype}' skipped: budget_code_key {key} not in recommendations")
+            continue
+        new_value = _money_2dp(a.get("value"))
+        if new_value is None:
+            warnings.append(f"operator override '{atype}' for {key} skipped: value not a parseable amount")
+            continue
+        original = code_row.get(column)
+        code_row[column] = new_value  # typed column only; raw_json stays the original source echo
+        planned["changes"].append(
+            {
+                "id": f"foch-{_hash(f'{output_id}|{key}|operator_value_override')[:32]}",
+                "output_id": output_id,
+                "project_key": project_key,
+                "budget_code_key": key,
+                "change_type": "operator_value_override",
+                "delta_amount": _money_sub(new_value, original),
+                "prior_run_id": None,
+                "source_row_number": len(planned["changes"]) + 1,
+                "raw_json": json.dumps(
+                    {
+                        "change_type": "operator_value_override",
+                        "assumption_type": atype,
+                        "budget_code_key": key,
+                        "column": column,
+                        "original": original,
+                        "override": new_value,
+                        "source": a.get("source"),
+                    },
+                    sort_keys=True,
+                ),
+                "created_utc": now_utc,
+                "updated_utc": now_utc,
+            }
+        )
+        applied += 1
+
+    if not applied:
+        return
+    # Re-aggregate the header from the now-effective per-code values (budget_sum unchanged).
+    eac, _ = _money_sum(r.get("recommended_projected_cost") for r in planned["budget_codes"])
+    ctc, _ = _money_sum(r.get("recommended_cost_to_complete") for r in planned["budget_codes"])
+    header = planned["outputs"][0]
+    header["estimated_final_cost"] = eac
+    header["forecast_at_completion"] = eac
+    header["cost_to_complete"] = ctc
+    header["variance_to_budget"] = (
+        _money_sub(eac, budget_sum) if eac is not None and budget_sum is not None else None
+    )
+
+
+def _hydrate_operator_assumptions(
+    *, project_key: str, assumptions_db_path: Path | None
+) -> list[dict[str, Any]]:
+    """Read operator assumptions read-only when value-overrides are enabled.
+
+    Returns ``[]`` when the flag is off, no DB is available, or the read fails (degraded-not-fatal;
+    never blocks a run). Assumptions live in the LIVE managed DB (where the operator write surface
+    puts them); this opens it ``mode=ro`` only. ``assumptions_db_path`` lets tests point at a seeded
+    temp DB (no live access). Mirrors ``decision_support_engine._hydrate_assumptions``.
+    """
+    from hb_assistant.construction.analytics.forecast_runtime_config import (
+        resolve_assumption_overrides_enabled,
+    )
+
+    if not resolve_assumption_overrides_enabled():
+        return []
+    src = assumptions_db_path
+    if src is None:
+        from hb_assistant.config.path_policy import PathPolicy
+
+        src = PathPolicy().get_db_path()
+    try:
+        conn = sqlite3.connect(f"file:{Path(src)}?mode=ro", uri=True)
+    except sqlite3.Error:
+        return []
+    try:
+        from . import assumptions_repository as assumptions_repo
+
+        return assumptions_repo.read_operator_assumptions_from_db(conn, project_key=project_key)
+    except sqlite3.Error:
+        return []
+    finally:
+        conn.close()
+
+
 def plan_run_output_projection(
     *,
     analysis_package: Path,
@@ -168,6 +288,7 @@ def plan_run_output_projection(
     comprehensive_package: Path | None = None,
     staffing_package: Path | None = None,
     context_package: Path | None = None,
+    operator_assumptions: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Build planned v63 run-output rows from an explicit analysis package. No DB access.
 
@@ -282,6 +403,15 @@ def plan_run_output_projection(
                 f"{ctc_skipped}/{len(rec_rows)} budget codes missing recommended_cost_to_complete; "
                 "header cost_to_complete aggregates the remainder"
             )
+
+    # P2b: operator DOLLAR value-overrides (pre-hydrated; empty/None = no-op). Applied as a guarded
+    # post-pass so the no-override path above is byte-identical. Overrides mutate the per-code TYPED
+    # columns only (raw_json stays the original source echo -> DB<->package parity unaffected),
+    # re-aggregate the header, and append an auditable operator_value_override change row each.
+    if operator_assumptions:
+        _apply_value_overrides(
+            planned, operator_assumptions, output_id, project_key, budget_sum, warnings, now_utc
+        )
 
     risk_rows = _read_jsonl(analysis_package / RISK_REGISTER_FILE)
     if not risk_rows:
@@ -571,8 +701,20 @@ def project_run_output(
     comprehensive_package: Path | None = None,
     staffing_package: Path | None = None,
     context_package: Path | None = None,
+    assumptions_db_path: Path | None = None,
 ) -> dict[str, Any]:
-    """Plan (dry-run) or plan+write (apply) run-output rows; optionally prove DB parity."""
+    """Plan (dry-run) or plan+write (apply) run-output rows; optionally prove DB parity.
+
+    P2b: when ``HB_FORECAST_ASSUMPTION_OVERRIDES_ENABLED`` is set, operator dollar overrides are read
+    read-only (``mode=ro``) from ``assumptions_db_path`` or, by default, the live managed DB, and
+    threaded into the planner — in both dry-run and apply paths (so a dry-run previews the effect).
+    The flag is off by default, in which case nothing is read and output is byte-identical. The
+    ``apply``/``is_live_db_path`` write-guards on ``db_path`` are unchanged; this read is a separate
+    read-only connection.
+    """
+    operator_assumptions = _hydrate_operator_assumptions(
+        project_key=project_key, assumptions_db_path=assumptions_db_path
+    )
     plan = plan_run_output_projection(
         analysis_package=analysis_package,
         project_key=project_key,
@@ -583,6 +725,7 @@ def project_run_output(
         comprehensive_package=comprehensive_package,
         staffing_package=staffing_package,
         context_package=context_package,
+        operator_assumptions=operator_assumptions,
     )
     plan["guardrails"] = GUARDRAILS
 

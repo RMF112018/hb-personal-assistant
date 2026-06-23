@@ -1,0 +1,30 @@
+{
+  "after": {
+    "cost_to_complete": "25000.00",
+    "estimated_final_cost": "230000.00",
+    "forecast_at_completion": "230000.00",
+    "variance_to_budget": "50000.00"
+  },
+  "before": {
+    "cost_to_complete": "25000.00",
+    "estimated_final_cost": "205000.00",
+    "forecast_at_completion": "205000.00",
+    "variance_to_budget": "25000.00"
+  },
+  "code_01_100_raw_json_unchanged": "125000.00",
+  "override_change_rows": [
+    {
+      "budget_code_key": "01-100",
+      "change_type": "operator_value_override",
+      "created_utc": "2026-01-01T00:00:00+00:00",
+      "delta_amount": "25000.00",
+      "id": "foch-3483c92691b75542d266433d70863644",
+      "output_id": "fout-f929051826610a8115da98ed4145c694",
+      "prior_run_id": null,
+      "project_key": "tropical",
+      "raw_json": "{\"assumption_type\": \"projected_cost_override\", \"budget_code_key\": \"01-100\", \"change_type\": \"operator_value_override\", \"column\": \"recommended_projected_cost\", \"original\": \"125000.00\", \"override\": \"150000.00\", \"source\": \"evidence\"}",
+      "source_row_number": 1,
+      "updated_utc": "2026-01-01T00:00:00+00:00"
+    }
+  ]
+}
