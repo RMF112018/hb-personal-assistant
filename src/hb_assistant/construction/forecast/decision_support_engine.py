@@ -30,6 +30,7 @@ from typing import Any
 
 from hb_assistant.store.connection import open_connection, transaction
 
+from . import assumptions_repository as assumptions_repo
 from . import decision_support_repository as repo
 from .source_domain_engine import is_live_db_path  # reuse the fail-closed live-DB guard
 
@@ -108,12 +109,20 @@ def plan_decision_support(
     run_id: str | None = None,
     now_utc: str | None = None,
     accuracy_package: Path | None = None,
+    operator_assumptions: list[dict[str, Any]] | None = None,
+    required_assumptions: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Derive maturity/availability from DB inputs + project confidence from the package.
 
     Reads inputs read-only; builds planned rows in memory; performs no writes. When
     ``accuracy_package`` is supplied (explicit only), per-method eligibility and
     model-selection rollups are projected from the forecast_accuracy package files.
+
+    P2: ``operator_assumptions`` / ``required_assumptions`` are PRE-HYDRATED lists (read
+    elsewhere, read-only, from the live managed DB — see ``project_decision_support``). When
+    present they add confidence-modifier + required-gate factors to the existing scorecards.
+    Both default to ``None`` (and empty lists are a no-op), so the no-assumptions output is
+    byte-identical to before — the planner never opens the assumptions DB itself.
     """
     now_utc = now_utc or _now()
     analysis_package = Path(analysis_package)
@@ -249,6 +258,13 @@ def plan_decision_support(
     # ---- per-method rollups from the forecast_accuracy package (file reads only) -------
     if accuracy_package is not None:
         _emit_method_rollups(planned, run_id, project_key, Path(accuracy_package), now_utc, warnings)
+
+    # ---- P2: operator-assumption consumption (pre-hydrated; empty/None = no-op) ---------
+    if operator_assumptions or required_assumptions:
+        _apply_assumption_factors(
+            planned, run_id, project_key,
+            operator_assumptions or [], required_assumptions or [], warnings, now_utc,
+        )
 
     counts = {k: len(v) for k, v in planned.items()}
     return {
@@ -386,6 +402,93 @@ def _factor_row(scorecard_id, run_id, project_key, factor_key, direction, magnit
     }
 
 
+# P2: operator confidence_impact -> persisted factor direction.
+_CONFIDENCE_IMPACT_DIRECTION = {"raises": "booster", "lowers": "penalty", "neutral": "neutral"}
+
+
+def _apply_assumption_factors(planned, run_id, project_key, operator_assumptions,
+                              required_assumptions, warnings, now_utc) -> None:
+    """Emit confidence-modifier + required-gate factors from operator assumptions.
+
+    Factors attach to EXISTING scorecards only (the factors table FKs ``scorecard_id``): a
+    matching per-code scorecard is preferred, else the project scorecard. Each emitted factor
+    is an ordinary confidence factor row, persisted via the existing ``apply_plan`` writer —
+    no new tables, no schema change. Consumption is degraded-not-fatal: anything that cannot
+    attach is recorded as a warning, never a failure.
+    """
+    existing = {s["scorecard_id"] for s in planned["scorecards"]}
+    project_sid = f"fcs-{_hash(f'{run_id}|project|project')[:32]}"
+
+    for a in operator_assumptions:
+        impact = (a.get("confidence_impact") or "").strip().lower()
+        direction = _CONFIDENCE_IMPACT_DIRECTION.get(impact)
+        if direction is None:
+            continue  # no/unknown confidence_impact -> not a confidence modifier
+        atype = a.get("assumption_type") or "unspecified"
+        code = a.get("budget_code_key")
+        sid = f"fcs-{_hash(f'{run_id}|budget_code|{code}')[:32]}" if code else project_sid
+        if sid not in existing:
+            sid = project_sid  # fall back to the project scorecard if the code has none
+        if sid not in existing:
+            warnings.append(f"operator assumption '{atype}' skipped: no scorecard to attach to")
+            continue
+        reason = a.get("source") or a.get("value") or f"operator assumption: {atype}"
+        planned["factors"].append(
+            _factor_row(sid, run_id, project_key, f"operator_assumption:{atype}",
+                        direction, None, reason, now_utc)
+        )
+
+    for r in required_assumptions:
+        if r.get("satisfied"):
+            continue
+        atype = r.get("assumption_type") or "unspecified"
+        warnings.append(f"required assumption '{atype}' is unsatisfied")
+        if project_sid in existing:
+            planned["factors"].append(
+                _factor_row(project_sid, run_id, project_key,
+                            f"required_assumption_unsatisfied:{atype}", "penalty", None,
+                            r.get("reason") or f"required assumption unsatisfied: {atype}",
+                            now_utc)
+            )
+
+
+def _hydrate_assumptions(
+    *, project_key: str, assumptions_db_path: Path | None
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Read operator/required assumptions read-only when consumption is enabled.
+
+    Returns ``([], [])`` when the flag is off, no DB is available, or the read fails —
+    consumption is degraded-not-fatal and never blocks a run. The assumptions live in the
+    LIVE managed DB (where the operator write surface puts them); this opens it ``mode=ro``
+    only. ``assumptions_db_path`` lets tests point at a seeded temp DB (no live access).
+    """
+    # Lazy import: keep the flag-off path free of the analytics-config dependency.
+    from hb_assistant.construction.analytics.forecast_runtime_config import (
+        resolve_assumption_consumption_enabled,
+    )
+
+    if not resolve_assumption_consumption_enabled():
+        return [], []
+    src = assumptions_db_path
+    if src is None:
+        from hb_assistant.config.path_policy import PathPolicy
+
+        src = PathPolicy().get_db_path()
+    try:
+        conn = _connect_ro(Path(src))
+    except sqlite3.Error:
+        return [], []
+    try:
+        return (
+            assumptions_repo.read_operator_assumptions_from_db(conn, project_key=project_key),
+            assumptions_repo.read_required_assumptions_from_db(conn, project_key=project_key),
+        )
+    except sqlite3.Error:
+        return [], []
+    finally:
+        conn.close()
+
+
 def _read_jsonl(path: Path) -> list[dict[str, Any]]:
     if not path.is_file():
         return []
@@ -495,8 +598,16 @@ def project_decision_support(
     run_id: str | None = None,
     now_utc: str | None = None,
     accuracy_package: Path | None = None,
+    assumptions_db_path: Path | None = None,
 ) -> dict[str, Any]:
-    """Derive+project decision-support; dry-run plans only, apply writes to a temp DB."""
+    """Derive+project decision-support; dry-run plans only, apply writes to a temp DB.
+
+    P2: when ``HB_FORECAST_ASSUMPTION_CONSUMPTION_ENABLED`` is set, operator/required
+    assumptions are read read-only (from ``assumptions_db_path`` or, by default, the live
+    managed DB) and threaded into the plan. The flag is off by default — output is then
+    byte-identical to before. The ``is_live_db_path`` guard below still applies only to the
+    run/write ``db_path``; the assumptions read is a separate ``mode=ro`` connection.
+    """
     # Fail closed before any read/write: never touch the live/default DB.
     if is_live_db_path(db_path):
         return {
@@ -506,6 +617,10 @@ def project_decision_support(
             "warnings": ["db_path resolves to the live/default DB (or is unresolvable); refusing"],
         }
 
+    operator_assumptions, required_assumptions = _hydrate_assumptions(
+        project_key=project_key, assumptions_db_path=assumptions_db_path
+    )
+
     plan = plan_decision_support(
         db_path=db_path,
         analysis_package=analysis_package,
@@ -513,6 +628,8 @@ def project_decision_support(
         run_id=run_id,
         now_utc=now_utc,
         accuracy_package=accuracy_package,
+        operator_assumptions=operator_assumptions,
+        required_assumptions=required_assumptions,
     )
     plan["guardrails"] = GUARDRAILS
 

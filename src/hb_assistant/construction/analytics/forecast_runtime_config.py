@@ -58,6 +58,10 @@ ENV_PROMOTION_ENABLED = "HB_FORECAST_PROMOTION_ENABLED"
 # DB-config-backed generation opt-in (default OFF). A boolean flag (NOT a path root) gating whether the
 # Run Center may generate the comprehensive package CONSUMING the live DB config snapshot.
 ENV_DB_CONFIG_RUN_ENABLED = "HB_FORECAST_DB_CONFIG_RUN_ENABLED"
+
+# Assumption-consumption opt-in (default OFF). A boolean flag (NOT a path root) gating whether the
+# decision-support engine CONSUMES operator/required assumptions (confidence modifiers + required gate).
+ENV_ASSUMPTION_CONSUMPTION_ENABLED = "HB_FORECAST_ASSUMPTION_CONSUMPTION_ENABLED"
 _TRUTHY = {"1", "true", "yes", "on"}
 
 # Whitelisted keys. An unknown key in the on-disk file can never inject behaviour.
@@ -71,6 +75,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "config_edit_root": None,  # str|None; absolute, creatable, MUST be outside data_root (write)
     "promotion_enabled": False,  # bool flag (NOT a path); gates the Phase E2 live config promotion
     "db_config_run_enabled": False,  # bool flag (NOT a path); gates DB-config-backed comprehensive generation
+    "assumption_consumption_enabled": False,  # bool flag (NOT a path); gates decision-support assumption consumption
     "schema_version": 1,  # LOCAL file version only — NOT the DB schema; do not conflate
 }
 
@@ -321,6 +326,16 @@ def resolve_db_config_run_enabled(explicit: bool | str | None = None) -> bool:
     if env is not None:
         return env.strip().lower() in _TRUTHY
     return bool(_load_config().get("db_config_run_enabled"))
+
+
+def resolve_assumption_consumption_enabled(explicit: bool | str | None = None) -> bool:
+    """Resolve the assumption-consumption opt-in (explicit > env > settings-file > default False)."""
+    if explicit is not None:
+        return explicit is True or str(explicit).strip().lower() in _TRUTHY
+    env = os.environ.get(ENV_ASSUMPTION_CONSUMPTION_ENABLED)
+    if env is not None:
+        return env.strip().lower() in _TRUTHY
+    return bool(_load_config().get("assumption_consumption_enabled"))
 
 
 # -- non-mutating validation (status + save) ----------------------------------
@@ -628,6 +643,14 @@ def save_runtime_config(updates: dict[str, Any]) -> dict[str, Any]:
         cfg["db_config_run_enabled"] = bool(
             updates["db_config_run_enabled"] is True
             or str(updates["db_config_run_enabled"]).strip().lower() in _TRUTHY
+        )
+    if (
+        "assumption_consumption_enabled" in updates
+        and updates["assumption_consumption_enabled"] is not None
+    ):
+        cfg["assumption_consumption_enabled"] = bool(
+            updates["assumption_consumption_enabled"] is True
+            or str(updates["assumption_consumption_enabled"]).strip().lower() in _TRUTHY
         )
 
     # Effective data root for the write-root cross-check (settings value, since this is the
