@@ -1118,19 +1118,22 @@ def cmd_db_certified_final_output(*, phase14_report: str, source_package: str, w
 
 def cmd_run_generator(command: str, project: str, *, overrides: dict | None = None,
                       lineage_state: str | None = None) -> int:
-    if project != "tropical":
+    from .common.project_eligibility import eligible_projects, is_project_eligible
+
+    if not is_project_eligible(project):
         print(json.dumps({
             "command": command, "project": project, "status": "not_supported",
-            "reason": "Generators are not yet parameterized; only project 'tropical' is supported. "
-                      "Parameterization is deferred work (see docs/decisions).",
+            "reason": f"project_key {project!r} is not eligible; "
+                      f"allowed: {sorted(eligible_projects())}",
         }, indent=2))
         return 2
     script = GENERATORS[command]
     if not script.exists():
         raise SystemExit(f"ERROR: generator not found at {script}")
-    # Forward the active full-fresh run lineage state (normally inherited from the runner's env) and any
-    # debug/developer stamp overrides to the generator subprocess. The runner sets none of these by hand.
+    # Forward the project key + the active full-fresh run lineage state (normally inherited from the
+    # runner's env) and any debug/developer stamp overrides to the generator subprocess.
     env = dict(os.environ)
+    env["CFR_PROJECT_KEY"] = project
     if lineage_state:
         env["CFR_RUN_LINEAGE_STATE"] = lineage_state
     for cli_key, env_key in (("context_stamp", "CFR_CONTEXT_STAMP"),
@@ -1139,7 +1142,7 @@ def cmd_run_generator(command: str, project: str, *, overrides: dict | None = No
         v = (overrides or {}).get(cli_key)
         if v:
             env[env_key] = v
-    print(f"[cfr] START {command} (tropical) -> {script.name}")
+    print(f"[cfr] START {command} ({project}) -> {script.name}")
     print("[cfr] writing only to a new timestamped output package folder under the configured data root.")
     proc = subprocess.run([sys.executable, str(script)], env=env)
     print(f"[cfr] END {command} (exit {proc.returncode})")

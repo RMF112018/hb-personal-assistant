@@ -27,7 +27,7 @@ from pathlib import Path
 from datetime import datetime
 from decimal import Decimal, InvalidOperation, getcontext
 from collections import defaultdict, OrderedDict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 # Phase 4 read adapter: file-backed by default; DB-backed only when HB_FORECAST_DB_BACKED_READS=1.
 # Dual-mode import — script mode resolves via the script directory (sys.path[0]); the package
@@ -58,6 +58,19 @@ JUNE_CUTOFF = "2026-06-01"          # < this = through_may_2026
 JULY_CUTOFF = "2026-07-01"          # < this (and >= june) = june_2026_to_date
 CENTS = Decimal("0.01")
 
+# Per-project canonical-output row-count expectations (the tropical baseline; a project config
+# may override via ``row_count_expectations``). Bound to ROW_COUNT_EXPECTATIONS by _apply_config().
+_DEFAULT_ROW_COUNTS = {
+    "canonical/budget_codes.jsonl": 127,
+    "canonical/cost_entries.jsonl": 6324,
+    "canonical/monthly_actuals_by_budget_code.jsonl": 1081,
+    "canonical/owner_pay_app_line_items_mapped.jsonl": 1657,
+    "canonical/owner_pay_app_totals.jsonl": 63,
+    "canonical/procore_subcontractor_payment_app_headers.jsonl": 219,
+    "canonical/procore_subcontractor_payment_app_line_items_mapped.jsonl": 13088,
+    "canonical/procore_commitments.jsonl": 73,
+}
+
 # ROOT / TWN_DIR / OWNER_DIR / PROCORE_DIR / STAMP / OUT / SRC_FILES / IGNORED are injected
 # per run by _apply_config() inside build_context_package(); they are intentionally NOT module
 # globals at import time, so importing this module performs no path I/O or source reads.
@@ -65,24 +78,55 @@ CENTS = Decimal("0.01")
 
 @dataclass(frozen=True)
 class ContextPackageConfig:
-    """Inputs/outputs for one context-package build. Defaults reproduce production behavior."""
+    """Inputs/outputs for one context-package build. Defaults reproduce production behavior.
+
+    The project-identity fields default to tropical so existing callers that construct this with
+    only ``data_root``/``out_dir``/``stamp`` (e.g. the controlled runner) keep byte-identical
+    behavior; ``default_config()`` populates them from ``config/projects/<key>.json``.
+    """
 
     data_root: Path
     out_dir: Path
     stamp: str
+    project_key: str = PROJECT_KEY
+    project_name: str = PROJECT_NAME
+    job_reference: str = JOB_REF
+    forecast_period: str = PACKAGE_PERIOD
+    procore_export_folder: str = "cost_forecast_agent_db_json_export_tropical_20260614_080344"
+    june_cutoff: str = JUNE_CUTOFF
+    july_cutoff: str = JULY_CUTOFF
+    row_count_expectations: dict = field(default_factory=dict)
 
 
 def default_config() -> "ContextPackageConfig":
     """Today's default behavior, with optional env overrides for controlled temp-root runs.
 
-    CFR_CONTEXT_DATA_ROOT overrides the source root; CFR_CONTEXT_OUT_DIR the output package
-    dir; CFR_CONTEXT_STAMP the wall-clock stamp. Unset => identical to historical defaults.
+    The project is selected by CFR_PROJECT_KEY (default ``tropical``); every project-specific value
+    comes from ``config/projects/<key>.json``. CFR_CONTEXT_DATA_ROOT overrides the source root;
+    CFR_CONTEXT_OUT_DIR the output package dir; CFR_CONTEXT_STAMP the wall-clock stamp. Unset =>
+    byte-identical to the historical tropical defaults.
     """
-    root = Path(os.environ.get("CFR_CONTEXT_DATA_ROOT") or _DEFAULT_DATA_ROOT)
+    from ..common.project_config import load_project_config, resolve_project_key
+
+    key = resolve_project_key()
+    pcfg = load_project_config(key)
+    root = Path(os.environ.get("CFR_CONTEXT_DATA_ROOT") or pcfg["default_data_root"])
     stamp = os.environ.get("CFR_CONTEXT_STAMP") or datetime.now().strftime("%Y%m%d_%H%M%S")
     out_env = os.environ.get("CFR_CONTEXT_OUT_DIR")
-    out_dir = Path(out_env) if out_env else root / f"forecast_context_package_tropical_{stamp}"
-    return ContextPackageConfig(data_root=root, out_dir=out_dir, stamp=stamp)
+    out_dir = Path(out_env) if out_env else root / f"forecast_context_package_{key}_{stamp}"
+    return ContextPackageConfig(
+        data_root=root,
+        out_dir=out_dir,
+        stamp=stamp,
+        project_key=key,
+        project_name=pcfg["project_name"],
+        job_reference=pcfg["job_reference"],
+        forecast_period=pcfg["forecast_period"],
+        procore_export_folder=pcfg["procore_export_folder"],
+        june_cutoff=pcfg["june_cutoff"],
+        july_cutoff=pcfg["july_cutoff"],
+        row_count_expectations=pcfg.get("row_count_expectations", {}),
+    )
 
 # --------------------------------------------------------------------------------------
 # Low-level helpers
@@ -870,7 +914,7 @@ def emit_procore_headers():
         if d and (procore_header_max_date is None or d > procore_header_max_date):
             procore_header_max_date = d
         out = OrderedDict(r)
-        out["source_file"] = "cost_forecast_agent_db_json_export_tropical_20260614_080344/procore_subcontractor_payment_app_headers.jsonl"
+        out["source_file"] = f"{PROCORE_DIR.name}/procore_subcontractor_payment_app_headers.jsonl"
         out["pay_app_cutoff_status"] = "through_may_2026"
         out["mapped_project_key"] = PROJECT_KEY
         rows.append(out)
@@ -925,7 +969,7 @@ def emit_procore_line_items():
         # money preserved as source strings (already strings in source)
         for f in MONEY_FIELDS_PROC:
             out[f] = r.get(f)
-        out["source_file"] = "cost_forecast_agent_db_json_export_tropical_20260614_080344/procore_subcontractor_payment_app_line_items.jsonl"
+        out["source_file"] = f"{PROCORE_DIR.name}/procore_subcontractor_payment_app_line_items.jsonl"
         canon_rows.append(out)
 
         res = OrderedDict([
@@ -991,7 +1035,7 @@ def emit_procore_latest(proc_result_rows, proc_unmapped_rows):
         out["parsed_sub_job"] = parsed[0]
         out["parsed_cost_code"] = parsed[1]
         out["parsed_category"] = parsed[2]
-        out["source_file"] = "cost_forecast_agent_db_json_export_tropical_20260614_080344/procore_latest_subcontractor_invoice_by_vendor_cost_code.jsonl"
+        out["source_file"] = f"{PROCORE_DIR.name}/procore_latest_subcontractor_invoice_by_vendor_cost_code.jsonl"
         rows.append(out)
 
         res = OrderedDict([
@@ -1039,7 +1083,7 @@ def emit_commitments():
     for r in src:
         cid = r.get("contract_id")
         out = OrderedDict([
-            ("source_file", "cost_forecast_agent_db_json_export_tropical_20260614_080344/procore_commitments.jsonl"),
+            ("source_file", f"{PROCORE_DIR.name}/procore_commitments.jsonl"),
             ("project_key", PROJECT_KEY),
             ("contract_id", cid),
             ("commitment_id", cid),
@@ -1357,10 +1401,19 @@ def safety_scan(files):
 def _apply_config(config):
     """Bind per-run path/stamp/output globals from ``config`` (no I/O)."""
     global ROOT, TWN_DIR, OWNER_DIR, PROCORE_DIR, STAMP, OUT, SRC_FILES, IGNORED
+    global PROJECT_KEY, PROJECT_NAME, JOB_REF, PACKAGE_PERIOD, JUNE_CUTOFF, JULY_CUTOFF
+    global ROW_COUNT_EXPECTATIONS
     ROOT = config.data_root
+    PROJECT_KEY = config.project_key
+    PROJECT_NAME = config.project_name
+    JOB_REF = config.job_reference
+    PACKAGE_PERIOD = config.forecast_period
+    JUNE_CUTOFF = config.june_cutoff
+    JULY_CUTOFF = config.july_cutoff
+    ROW_COUNT_EXPECTATIONS = config.row_count_expectations or dict(_DEFAULT_ROW_COUNTS)
     TWN_DIR = ROOT / "twn_cost_forecast_json_package"
     OWNER_DIR = ROOT / "owner_pay_app_json_package"
-    PROCORE_DIR = ROOT / "cost_forecast_agent_db_json_export_tropical_20260614_080344"
+    PROCORE_DIR = ROOT / config.procore_export_folder
     STAMP = config.stamp
     OUT = config.out_dir
     SRC_FILES = {
@@ -1673,16 +1726,7 @@ def build_context_package(config):
     shutil.copy2(Path(__file__), OUT / "generate_forecast_context_package.py")
 
     # ---- row-count reconciliation ----
-    expected = {
-        "canonical/budget_codes.jsonl": 127,
-        "canonical/cost_entries.jsonl": 6324,
-        "canonical/monthly_actuals_by_budget_code.jsonl": 1081,
-        "canonical/owner_pay_app_line_items_mapped.jsonl": 1657,
-        "canonical/owner_pay_app_totals.jsonl": 63,
-        "canonical/procore_subcontractor_payment_app_headers.jsonl": 219,
-        "canonical/procore_subcontractor_payment_app_line_items_mapped.jsonl": 13088,
-        "canonical/procore_commitments.jsonl": 73,
-    }
+    expected = ROW_COUNT_EXPECTATIONS
     rowcount_checks = OrderedDict()
     rowcount_ok = True
     for f, exp in expected.items():
@@ -1932,7 +1976,7 @@ def build_context_package(config):
         ("source_packages_used", [
             "twn_cost_forecast_json_package",
             "owner_pay_app_json_package",
-            "cost_forecast_agent_db_json_export_tropical_20260614_080344",
+            PROCORE_DIR.name,
         ]),
         ("row_counts", out_counts),
         ("mapping_coverage", coverage),
@@ -2022,7 +2066,7 @@ def write_readme(out_counts, coverage, cutoff, safety, conclusion, ka, ko, kp, b
     A("## Input packages used\n")
     A("- `twn_cost_forecast_json_package/` — BudgetDetails (master), CostEntries, monthly actuals")
     A("- `owner_pay_app_json_package/` — owner G703 line items + totals")
-    A("- `cost_forecast_agent_db_json_export_tropical_20260614_080344/` — Procore subcontractor pay-apps, commitments, mapping template\n")
+    A(f"- `{PROCORE_DIR.name}/` — Procore subcontractor pay-apps, commitments, mapping template\n")
     A("## Ignored inputs\n")
     for ig in IGNORED:
         A(f"- `{ig['path']}` — {ig['reason']}")

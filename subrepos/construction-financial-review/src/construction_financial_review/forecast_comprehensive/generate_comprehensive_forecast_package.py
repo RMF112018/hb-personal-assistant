@@ -614,7 +614,7 @@ def generate(project_key, cfg, data_root=None, frozen_stamp=None, out_root=None,
     stamp = frozen_stamp or datetime.now().strftime("%Y%m%d_%H%M%S")
     generated_ts = frozen_stamp if frozen_stamp else datetime.now().isoformat(timespec="seconds")
     out_base = Path(out_root) if out_root else data_root
-    out = out_base / f"forecast_comprehensive_package_tropical_{stamp}"
+    out = out_base / f"forecast_comprehensive_package_{project_key}_{stamp}"
     out.mkdir(parents=True, exist_ok=False)
     (out / "audit").mkdir(exist_ok=True)
     (out / "llm").mkdir(exist_ok=True)
@@ -694,13 +694,17 @@ def _manifest(out, project_key, meta, conclusion, validation):
             rows = sum(1 for _ in read_jsonl(p)) if p.suffix == ".jsonl" else None
             files.append(OrderedDict([("path", str(p.relative_to(out))), ("size_bytes", p.stat().st_size),
                                       ("row_count", rows), ("sha256", sha256_file(p))]))
+    from ..common.project_config import load_project_config
+
+    _pcfg = load_project_config(project_key)
     return OrderedDict([
         ("package_name", out.name),
-        ("manifest_title", "Comprehensive Integrated Forecast Package — Tropical World Nursery"),
+        ("manifest_title", f"Comprehensive Integrated Forecast Package — {_pcfg['project_display_name']}"),
         ("manifest_version", "1.0.0"),
         ("project", OrderedDict([("project_key", project_key),
-                                 ("project_name", "Tropical World Nursery Senior Living Facility"),
-                                 ("job_reference", "23-435-01"), ("forecast_period", "2026-June")])),
+                                 ("project_name", _pcfg["project_name"]),
+                                 ("job_reference", _pcfg["job_reference"]),
+                                 ("forecast_period", _pcfg["forecast_period"])])),
         ("generation", meta), ("output_files", files),
         ("validation_status", OrderedDict([("passed", validation["passed"]),
                                            ("checks", validation["checks"])])),
@@ -738,12 +742,16 @@ def _run_llm(with_llm, cfg, llm_model, review_rows):
 
 
 def _write_readme(out, project_key, meta, collections):
+    from ..common.project_config import load_project_config
+
+    _pcfg = load_project_config(project_key)
     s = collections["project_comprehensive_forecast_summary.json"]
     md = [
-        f"# forecast_comprehensive_package_tropical ({meta['package_stamp']})",
+        f"# forecast_comprehensive_package_{project_key} ({meta['package_stamp']})",
         "",
-        "Comprehensive integrated forecast for Tropical World Nursery "
-        f"({project_key} / 23-435-01 / 2026-June). Discovers and CONSUMES the accepted evidence packages "
+        f"Comprehensive integrated forecast for {_pcfg['project_display_name']} "
+        f"({project_key} / {_pcfg['job_reference']} / {_pcfg['forecast_period']}). "
+        "Discovers and CONSUMES the accepted evidence packages "
         "(context, intelligence, monthly, probability, history-informed, cost-frequency; crosswalk-v2 + "
         "schedule-integrated for completeness) into a per-budget-code evidence registry, scores advisory "
         "evidence at bounded de-duplicated weights, and emits integrated final-cost / monthly / "

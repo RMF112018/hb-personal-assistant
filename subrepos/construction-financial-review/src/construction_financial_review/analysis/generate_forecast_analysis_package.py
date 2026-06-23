@@ -73,11 +73,19 @@ def resolve_inputs():
     stale config names or hardcoded package paths.
     """
     global ROOT, INPUT, OUT, SRC, CONTEXT_LINEAGE
+    global PROJECT_KEY, PROJECT_NAME, JOB_REF, PERIOD
+    from ..common.project_config import load_project_config, resolve_project_key
+
+    PROJECT_KEY = resolve_project_key()
+    _pcfg = load_project_config(PROJECT_KEY)
+    PROJECT_NAME = _pcfg["project_name"]
+    JOB_REF = _pcfg["job_reference"]
+    PERIOD = _pcfg["forecast_period"]
     ROOT = run_lineage.active_data_root(DEFAULT_ROOT)
     INPUT, CONTEXT_LINEAGE = run_lineage.resolve_upstream(
         "context", data_root=ROOT, project_key=PROJECT_KEY,
         override_stamp=os.environ.get("CFR_CONTEXT_STAMP"))
-    OUT = ROOT / f"forecast_analysis_package_tropical_{STAMP}"
+    OUT = ROOT / f"forecast_analysis_package_{PROJECT_KEY}_{STAMP}"
     SRC = {
         "bc_context": INPUT / "summaries" / "budget_code_forecast_context.jsonl",
         "project_context": INPUT / "summaries" / "project_forecast_context.json",

@@ -1,0 +1,16 @@
+{
+  "fixtureproj": {
+    "budget_codes_expected": 2,
+    "context_out_dir": "forecast_context_package_fixtureproj_20260101_000000",
+    "june_cutoff": "2026-06-01",
+    "procore_dir": "cost_forecast_agent_db_json_export_fixtureproj_20260101_000000",
+    "project_key": "fixtureproj"
+  },
+  "tropical_default": {
+    "budget_codes_expected": 127,
+    "context_out_dir": "forecast_context_package_tropical_20260101_000000",
+    "june_cutoff": "2026-06-01",
+    "procore_dir": "cost_forecast_agent_db_json_export_tropical_20260614_080344",
+    "project_key": "tropical"
+  }
+}

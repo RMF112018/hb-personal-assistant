@@ -63,6 +63,14 @@ STAMP = datetime.now().strftime("%Y%m%d_%H%M%S")
 def resolve_inputs():
     """Resolve upstream context + analysis packages at runtime (full-fresh run state aware)."""
     global ROOT, CTX, ANL, OUT, SRC, CONTEXT_LINEAGE, ANALYSIS_LINEAGE
+    global PROJECT_KEY, PROJECT_NAME, JOB_REF, PERIOD
+    from ..common.project_config import load_project_config, resolve_project_key
+
+    PROJECT_KEY = resolve_project_key()
+    _pcfg = load_project_config(PROJECT_KEY)
+    PROJECT_NAME = _pcfg["project_name"]
+    JOB_REF = _pcfg["job_reference"]
+    PERIOD = _pcfg["forecast_period"]
     ROOT = run_lineage.active_data_root(DEFAULT_ROOT)
     CTX, CONTEXT_LINEAGE = run_lineage.resolve_upstream(
         "context", data_root=ROOT, project_key=PROJECT_KEY,
@@ -70,7 +78,7 @@ def resolve_inputs():
     ANL, ANALYSIS_LINEAGE = run_lineage.resolve_upstream(
         "analysis", data_root=ROOT, project_key=PROJECT_KEY,
         override_stamp=os.environ.get("CFR_ANALYSIS_STAMP"))
-    OUT = ROOT / f"mapping_discrepancy_workpaper_tropical_{STAMP}"
+    OUT = ROOT / f"mapping_discrepancy_workpaper_{PROJECT_KEY}_{STAMP}"
     SRC = _build_src(CTX, ANL)
     return {"context": CONTEXT_LINEAGE, "analysis": ANALYSIS_LINEAGE}
 

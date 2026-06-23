@@ -76,6 +76,17 @@ def resolve_inputs():
     The authoritative owner-SOV crosswalk is a fixed static input, resolved by its governance name."""
     global ROOT, CTX, ANL, WP, XW_DIR, XW_FILE, XW_VALIDATION, OUT
     global CONTEXT_LINEAGE, ANALYSIS_LINEAGE, WORKPAPER_LINEAGE
+    global PROJECT_KEY, PROJECT_NAME, JOB_REF, PERIOD, XW_AUTHORITATIVE_NAME
+    from ..common.project_config import load_project_config, resolve_project_key
+
+    PROJECT_KEY = resolve_project_key()
+    _pcfg = load_project_config(PROJECT_KEY)
+    PROJECT_NAME = _pcfg["project_name"]
+    JOB_REF = _pcfg["job_reference"]
+    PERIOD = _pcfg["forecast_period"]
+    # The owner-SOV crosswalk DIR (sibling of the data root) is named by the governance stem of the
+    # project config's crosswalk path; for tropical this is byte-identical to the former constant.
+    XW_AUTHORITATIVE_NAME = Path(_pcfg["owner_sov_scope_crosswalk"]).stem
     ROOT = run_lineage.active_data_root(DEFAULT_ROOT)
     CTX, CONTEXT_LINEAGE = run_lineage.resolve_upstream(
         "context", data_root=ROOT, project_key=PROJECT_KEY,
@@ -89,7 +100,7 @@ def resolve_inputs():
     XW_DIR = ROOT / XW_AUTHORITATIVE_NAME
     XW_FILE = XW_DIR / f"{XW_AUTHORITATIVE_NAME}.jsonl"
     XW_VALIDATION = XW_DIR / f"{XW_AUTHORITATIVE_NAME}_validation_report.json"
-    OUT = ROOT / f"forecast_analysis_package_tropical_crosswalk_v2_{STAMP}"
+    OUT = ROOT / f"forecast_analysis_package_{PROJECT_KEY}_crosswalk_v2_{STAMP}"
     return {"context": CONTEXT_LINEAGE, "analysis": ANALYSIS_LINEAGE, "mapping_workpaper": WORKPAPER_LINEAGE}
 
 # --------------------------------------------------------------------------------------

@@ -1,0 +1,42 @@
+{
+  "project_key": "fixtureproj",
+  "project_name": "Fixture Project (synthetic second project)",
+  "project_display_name": "Fixture Project",
+  "job_reference": "fixture-0001",
+  "forecast_period": "2026-June",
+  "procore_export_folder": "cost_forecast_agent_db_json_export_fixtureproj_20260101_000000",
+  "june_cutoff": "2026-06-01",
+  "july_cutoff": "2026-07-01",
+  "row_count_expectations": {
+    "canonical/budget_codes.jsonl": 2,
+    "canonical/cost_entries.jsonl": 2,
+    "canonical/monthly_actuals_by_budget_code.jsonl": 2,
+    "canonical/owner_pay_app_line_items_mapped.jsonl": 1,
+    "canonical/owner_pay_app_totals.jsonl": 1,
+    "canonical/procore_subcontractor_payment_app_headers.jsonl": 1,
+    "canonical/procore_subcontractor_payment_app_line_items_mapped.jsonl": 1,
+    "canonical/procore_commitments.jsonl": 1
+  },
+  "_note": "P4b config-only fixture: no synthetic data root exists yet (a full second-project run is deferred to P4c). default_data_root points at a non-existent placeholder so an accidental generator run fails fast (file-not-found) rather than silently consuming another project's data.",
+  "default_data_root": "/nonexistent/cfr_fixtureproj_data_root_p4c_placeholder",
+  "forecast_context_package": "forecast_context_package_fixtureproj_00000000_000000",
+  "forecast_analysis_package": "forecast_analysis_package_fixtureproj_00000000_000000",
+  "forecast_analysis_package_crosswalk_v2": "forecast_analysis_package_fixtureproj_crosswalk_v2_00000000_000000",
+  "mapping_discrepancy_workpaper": "mapping_discrepancy_workpaper_fixtureproj_00000000_000000",
+  "schedule_package": "project_schedule_json_package",
+  "owner_sov_scope_crosswalk": "config/crosswalks/fixtureproj/owner_sov_scope_crosswalk_fixtureproj_authoritative_00000000_final.jsonl",
+  "budget_amount_field": "budget_amounts.revised_budget",
+  "current_projected_cost_field": "budget_amounts.projected_costs",
+  "materiality_absolute": "25000.00",
+  "materiality_percent": "0.10",
+  "forecast_comprehensive": {
+    "forecast_context_package_glob": "forecast_context_package_fixtureproj_*",
+    "forecast_intelligence_package_glob": "forecast_accuracy_next_package_fixtureproj_*",
+    "forecast_monthly_package_glob": "forecast_monthly_package_fixtureproj_*",
+    "forecast_probability_package_glob": "forecast_probability_package_fixtureproj_*",
+    "forecast_history_informed_package_glob": "forecast_history_informed_package_fixtureproj_*",
+    "forecast_cost_frequency_package_glob": "forecast_cost_frequency_package_fixtureproj_*",
+    "forecast_crosswalk_v2_package_glob": "forecast_analysis_package_fixtureproj_crosswalk_v2_*",
+    "schedule_integrated_package_glob": "schedule_integrated_forecast_package_fixtureproj_*"
+  }
+}
