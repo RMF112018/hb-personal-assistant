@@ -21,6 +21,7 @@ import pytest
 
 # hb_assistant is imported by the rehearsal's lazy DB-prep path; the live-DB test monkeypatches it.
 from hb_assistant.construction.forecast import source_domain_engine as dbeng
+from hb_assistant.store.migrator import LATEST_SCHEMA_VERSION
 
 CFR_SRC = Path(__file__).resolve().parents[1] / "subrepos/construction-financial-review/src"
 if str(CFR_SRC) not in sys.path:
@@ -80,7 +81,7 @@ def test_operator_run_succeeds_derived_db(tmp_path):
     assert report["temp_db"]["path"] == str(
         work / "temp_dbs" / "forecast_source_domain_tropical.sqlite"
     )
-    assert report["temp_db"]["schema_version"] == 61  # Phase 4: migrator now at v61 (synthetic temp DB)
+    assert report["temp_db"]["schema_version"] == LATEST_SCHEMA_VERSION  # synthetic temp DB migrated to latest
     assert Path(report["report_path"]).is_file()
 
 
@@ -158,7 +159,7 @@ def test_manifest_includes_source_domain_counts(tmp_path):
 
 def test_refuses_unsupported_project(tmp_path):
     sp = _source_package(tmp_path)
-    with pytest.raises(GuardedDbOperatorRunError, match="unsupported project_key"):
+    with pytest.raises(GuardedDbOperatorRunError, match="not eligible"):
         run_guarded_db_operator_run(
             source_package=sp,
             work_root=tmp_path / "work",

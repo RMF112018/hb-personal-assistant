@@ -553,7 +553,7 @@ def test_existing_out_dir_refused(tmp_path):
 
 def test_unsupported_project_refused(tmp_path):
     root = build_fixture(tmp_path / "data_root")
-    with pytest.raises(ContextRunnerError, match="unsupported project_key"):
+    with pytest.raises(ContextRunnerError, match="not eligible"):
         run_context_generation(
             data_root=root, out_dir=tmp_path / "out", stamp=STAMP, project_key="not-tropical"
         )

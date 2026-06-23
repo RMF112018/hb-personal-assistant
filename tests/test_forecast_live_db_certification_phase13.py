@@ -22,7 +22,7 @@ import pytest
 # hb_assistant is imported lazily by the audit/cert + projection paths; tests monkeypatch the live-DB
 # check and drive real migration + projection into temp DBs.
 from hb_assistant.construction.forecast import source_domain_engine as dbeng
-from hb_assistant.store.migrator import SQLiteMigrator
+from hb_assistant.store.migrator import LATEST_SCHEMA_VERSION, SQLiteMigrator
 
 CFR_SRC = Path(__file__).resolve().parents[1] / "subrepos/construction-financial-review/src"
 if str(CFR_SRC) not in sys.path:
@@ -128,7 +128,7 @@ def test_audit_reads_synthetic_live_readonly(tmp_path, monkeypatch):
     _flag_live(monkeypatch, live)
     report = run_live_db_provenance_audit(live_db_path=live, project_key="tropical")
     assert report["decision"] == "populated_tropical"
-    assert report["schema"]["schema_version"] == 61  # Phase 4: migrator now at v61 (synthetic temp DB)
+    assert report["schema"]["schema_version"] == LATEST_SCHEMA_VERSION  # synthetic temp DB migrated to latest
     assert report["schema"]["required_tables_present"] == dict.fromkeys(REQUIRED_TABLES, True)
     assert report["safety"]["read_only"] is True
 
@@ -141,7 +141,7 @@ def test_audit_reports_migration_rows(tmp_path, monkeypatch):
     report = run_live_db_provenance_audit(live_db_path=live, project_key="tropical")
     migs = report["schema"]["migrations"]
     assert migs and {"version", "name", "applied_at"} <= set(migs[0])
-    assert max(m["version"] for m in migs) == 61  # Phase 4: migrator now at v61 (synthetic temp DB)
+    assert max(m["version"] for m in migs) == LATEST_SCHEMA_VERSION  # synthetic temp DB migrated to latest
 
 
 def test_audit_reports_counts_by_project_key(tmp_path, monkeypatch):

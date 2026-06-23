@@ -21,7 +21,7 @@ import pytest
 
 # hb_assistant is used ONLY to build / monkeypatch around a temp v59 DB (mirrors Phase 9).
 from hb_assistant.construction.forecast import source_domain_engine as dbeng
-from hb_assistant.store.migrator import SQLiteMigrator
+from hb_assistant.store.migrator import LATEST_SCHEMA_VERSION, SQLiteMigrator
 
 CFR_SRC = Path(__file__).resolve().parents[1] / "subrepos/construction-financial-review/src"
 if str(CFR_SRC) not in sys.path:
@@ -143,7 +143,7 @@ def test_report_includes_db_checks(tmp_path):
     checks = report["db_checks"]
     assert checks["db_exists"] is True
     assert checks["live_db_refused"] is True
-    assert checks["schema_version"] == 61  # Phase 4: migrator now at v61 (synthetic temp DB)
+    assert checks["schema_version"] == LATEST_SCHEMA_VERSION  # synthetic temp DB migrated to latest
     assert checks["required_tables_present"] is True
     assert checks["required_tables_nonempty"] is True
 
@@ -155,7 +155,7 @@ def test_refuses_unsupported_project(tmp_path):
     src = build_fixture(tmp_path / "src")
     db = tmp_path / "v59.db"
     _project_db(src, db)
-    with pytest.raises(DbCutoverReadinessError, match="unsupported project_key"):
+    with pytest.raises(DbCutoverReadinessError, match="not eligible"):
         run_db_cutover_readiness(
             data_root=src,
             work_root=tmp_path / "work",

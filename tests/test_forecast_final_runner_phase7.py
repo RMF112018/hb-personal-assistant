@@ -500,7 +500,7 @@ def test_refuses_structurally_invalid_context_package(tmp_path):
 
 def test_refuses_non_tropical_project(tmp_path):
     ctx = _fake_context(tmp_path)
-    with pytest.raises(FinalForecastRunnerError, match="unsupported project_key"):
+    with pytest.raises(FinalForecastRunnerError, match="not eligible"):
         run_final_forecast_generation(context_package=ctx, project_key="not-tropical")
 
 

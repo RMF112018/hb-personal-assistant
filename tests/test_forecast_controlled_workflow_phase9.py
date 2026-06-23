@@ -176,7 +176,7 @@ def test_report_includes_required_keys(tmp_path):
 
 def test_refuses_unsupported_project(tmp_path):
     src = build_fixture(tmp_path / "src")
-    with pytest.raises(ControlledWorkflowError, match="unsupported project_key"):
+    with pytest.raises(ControlledWorkflowError, match="not eligible"):
         run_controlled_context_analysis_workflow(
             data_root=src,
             work_root=tmp_path / "work",

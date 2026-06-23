@@ -64,7 +64,10 @@ def resolve_inputs():
     """Resolve upstream context + analysis packages at runtime (full-fresh run state aware)."""
     global ROOT, CTX, ANL, OUT, SRC, CONTEXT_LINEAGE, ANALYSIS_LINEAGE
     global PROJECT_KEY, PROJECT_NAME, JOB_REF, PERIOD
-    from ..common.project_config import load_project_config, resolve_project_key
+    from construction_financial_review.common.project_config import (
+        load_project_config,
+        resolve_project_key,
+    )
 
     PROJECT_KEY = resolve_project_key()
     _pcfg = load_project_config(PROJECT_KEY)
