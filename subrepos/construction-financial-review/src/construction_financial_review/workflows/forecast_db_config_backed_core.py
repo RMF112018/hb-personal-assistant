@@ -39,6 +39,7 @@ from typing import Any
 
 from .. import config_registry as cr
 from ..common.config_root import ENV_CONFIG_ROOT
+from ..common.project_eligibility import eligible_projects, is_project_eligible
 from . import forecast_comprehensive_db_config_proof as proof
 from . import live_db_certification as cert
 
@@ -87,7 +88,9 @@ def _require(condition: bool, message: str) -> None:
         raise ForecastDbConfigGenerationError(message)
 
 
-def _select_snapshot(pin: Any, project_key: str, config_snapshot_id: str | None) -> tuple[str, int, str, str]:
+def _select_snapshot(
+    pin: Any, project_key: str, config_snapshot_id: str | None
+) -> tuple[str, int, str, str]:
     """Return (config_snapshot_id, item_count, snapshot_sha256, snapshot_name) for the snapshot to consume.
 
     Explicit id if given; otherwise the latest snapshot for the project (DESC by created_utc).
@@ -98,7 +101,10 @@ def _select_snapshot(pin: Any, project_key: str, config_snapshot_id: str | None)
             "FROM forecast_config_snapshots WHERE config_snapshot_id = ? AND project_key = ?",
             (config_snapshot_id, project_key),
         ).fetchone()
-        _require(row is not None, f"{REASON_NO_SNAPSHOT}: config_snapshot_id not found {config_snapshot_id}")
+        _require(
+            row is not None,
+            f"{REASON_NO_SNAPSHOT}: config_snapshot_id not found {config_snapshot_id}",
+        )
     else:
         row = pin.execute(
             "SELECT config_snapshot_id, item_count, snapshot_sha256, snapshot_name "
@@ -114,7 +120,9 @@ def _select_snapshot(pin: Any, project_key: str, config_snapshot_id: str | None)
 # Per-kind consumed-config accounting (from the materialized manifest row_counts; never constants).
 # Each generator reads a different set of config domains through the bridge — accounting is per-kind.
 # --------------------------------------------------------------------------------------------------
-def _comprehensive_consumed(base_cfg: dict, project_key: str, row_counts: dict) -> dict[str, dict[str, Any]]:
+def _comprehensive_consumed(
+    base_cfg: dict, project_key: str, row_counts: dict
+) -> dict[str, dict[str, Any]]:
     rels = proof._consumed_config_rel_paths(base_cfg, project_key)
     consumed: dict[str, dict[str, Any]] = {}
     for domain in ("project", "forecast_controls", "forecast_model_controls"):
@@ -124,7 +132,9 @@ def _comprehensive_consumed(base_cfg: dict, project_key: str, row_counts: dict) 
     return consumed
 
 
-def _model_controls_consumed(base_cfg: dict, project_key: str, row_counts: dict) -> dict[str, dict[str, Any]]:
+def _model_controls_consumed(
+    base_cfg: dict, project_key: str, row_counts: dict
+) -> dict[str, dict[str, Any]]:
     files = sorted(r for r in row_counts if "/forecast_model_controls/" in f"/{r}")
     if not files:
         return {}
@@ -136,7 +146,9 @@ def _model_controls_consumed(base_cfg: dict, project_key: str, row_counts: dict)
     }
 
 
-def _monthly_consumed(base_cfg: dict, project_key: str, row_counts: dict) -> dict[str, dict[str, Any]]:
+def _monthly_consumed(
+    base_cfg: dict, project_key: str, row_counts: dict
+) -> dict[str, dict[str, Any]]:
     from . import forecast_monthly_db_config_proof as moproof
 
     consumed: dict[str, dict[str, Any]] = {}
@@ -151,7 +163,9 @@ def _monthly_consumed(base_cfg: dict, project_key: str, row_counts: dict) -> dic
     return consumed
 
 
-def _probability_consumed(base_cfg: dict, project_key: str, row_counts: dict) -> dict[str, dict[str, Any]]:
+def _probability_consumed(
+    base_cfg: dict, project_key: str, row_counts: dict
+) -> dict[str, dict[str, Any]]:
     project_rel = f"config/projects/{project_key}.json"
     crosswalk_rel = base_cfg.get("owner_sov_scope_crosswalk")
     consumed: dict[str, dict[str, Any]] = {}
@@ -298,7 +312,9 @@ def get_descriptor(
     if kind == "monthly":
         return _monthly_descriptor()
     if kind == "probability":
-        return _probability_descriptor(runs=runs, seed=seed, forecast_start_month=forecast_start_month)
+        return _probability_descriptor(
+            runs=runs, seed=seed, forecast_start_month=forecast_start_month
+        )
     raise ForecastDbConfigGenerationError(f"{REASON_UNSUPPORTED_KIND}: {kind!r}")
 
 
@@ -317,7 +333,10 @@ def run_db_config_backed_generation(
     preflight_stability_seconds: float = DEFAULT_PREFLIGHT_STABILITY_SECONDS,
 ) -> dict[str, Any]:
     """Generate ``descriptor.kind``'s forecast package consuming the live DB config snapshot."""
-    _require(project_key == SUPPORTED_PROJECT_KEY, f"unsupported project_key {project_key!r}")
+    _require(
+        is_project_eligible(project_key),
+        f"project_key {project_key!r} is not eligible; allowed: {sorted(eligible_projects())}",
+    )
     _require(bool(work_root), "work_root is required (explicit; no implicit output root)")
     work_root = Path(work_root)
     run_stamp = run_stamp or DEFAULT_RUN_STAMP
@@ -325,7 +344,9 @@ def run_db_config_backed_generation(
     live_db_path = Path(live_db_path)
     _require(live_db_path.exists(), f"live DB not found: {live_db_path}")
     if require_live_snapshot:
-        _require(cr._is_live_db(live_db_path), f"live_db_path is not the live/default DB: {live_db_path}")
+        _require(
+            cr._is_live_db(live_db_path), f"live_db_path is not the live/default DB: {live_db_path}"
+        )
 
     db_inventory_tables = proof._db_inventory_tables()
     pin = cert._ro_conn(live_db_path)
@@ -354,7 +375,9 @@ def run_db_config_backed_generation(
         finally:
             if prev_env is not None:
                 os.environ[ENV_CONFIG_ROOT] = prev_env
-        eff_data_root = Path(data_root) if data_root is not None else Path(base_cfg["default_data_root"])
+        eff_data_root = (
+            Path(data_root) if data_root is not None else Path(base_cfg["default_data_root"])
+        )
         _require(
             eff_data_root.exists() and eff_data_root.is_dir(),
             f"data_root not found or not a directory: {eff_data_root}",
@@ -397,7 +420,9 @@ def run_db_config_backed_generation(
             time.sleep(preflight_stability_seconds)
         pf_b = proof._live_db_state(live_db_path, pin, db_inventory_tables=db_inventory_tables)
         pf_drift = proof._state_drift(pf_a, pf_b)
-        _require(not pf_drift, f"{REASON_NOT_QUIESCENT}: live DB changed during preflight: {pf_drift}")
+        _require(
+            not pf_drift, f"{REASON_NOT_QUIESCENT}: live DB changed during preflight: {pf_drift}"
+        )
         live_db_before = pf_b
 
         # Materialize the snapshot READ-ONLY (never opens the live DB read-write).
@@ -408,7 +433,9 @@ def run_db_config_backed_generation(
                 out_root=work_root / MATERIALIZE_SUBDIR,
             )
         except cr.ConfigRegistryError as exc:
-            raise ForecastDbConfigGenerationError(f"snapshot materialization failed: {exc}") from exc
+            raise ForecastDbConfigGenerationError(
+                f"snapshot materialization failed: {exc}"
+            ) from exc
         materialized_config_root = mat["materialized_config_root"]
 
         # FIDELITY GATE: re-import the materialized tree into a temp DB, re-snapshot, and assert the
@@ -429,7 +456,9 @@ def run_db_config_backed_generation(
                 snapshot_reason="materialization fidelity round-trip",
             )
         except cr.ConfigRegistryError as exc:
-            raise ForecastDbConfigGenerationError(f"{REASON_FIDELITY}: round-trip failed: {exc}") from exc
+            raise ForecastDbConfigGenerationError(
+                f"{REASON_FIDELITY}: round-trip failed: {exc}"
+            ) from exc
         fidelity_passed = (
             int(resnap["item_count"]) == stored_item_count
             and str(resnap["snapshot_sha256"]) == stored_sha
@@ -504,7 +533,9 @@ def run_db_config_backed_generation(
                 "differences": diffs,
             }
 
-        live_db_after = proof._live_db_state(live_db_path, pin, db_inventory_tables=db_inventory_tables)
+        live_db_after = proof._live_db_state(
+            live_db_path, pin, db_inventory_tables=db_inventory_tables
+        )
     finally:
         pin.close()
 

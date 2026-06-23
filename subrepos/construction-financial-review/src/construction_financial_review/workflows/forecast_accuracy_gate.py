@@ -16,6 +16,7 @@ from typing import Any, Optional
 
 from ..common.io import read_json
 from ..common.money import dec
+from ..common.project_eligibility import eligible_projects, is_project_eligible
 
 SUPPORTED_PROJECT_KEY = "tropical"
 REPORT_SCHEMA_VERSION = 1
@@ -125,9 +126,9 @@ def run_forecast_accuracy_gate(
     missing reconciled-backtest artifact; missing work root or one under the live root; or a
     non-empty gate output dir. rc mapping is in the CLI: pass -> 0, otherwise -> 1, refusal -> 3.
     """
-    if project_key != SUPPORTED_PROJECT_KEY:
+    if not is_project_eligible(project_key):
         raise ForecastAccuracyGateError(
-            f"unsupported project_key {project_key!r}; only {SUPPORTED_PROJECT_KEY!r} is supported"
+            f"project_key {project_key!r} is not eligible; allowed: {sorted(eligible_projects())}"
         )
     if not work_root:
         raise ForecastAccuracyGateError("work_root is required (explicit; no implicit output root)")

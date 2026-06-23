@@ -23,14 +23,19 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
 
-SUPPORTED_PROJECT_KEY = "tropical"
+from .project_eligibility import SUPPORTED_PROJECT_KEY, eligible_projects, is_project_eligible
+
 CHAIN_MANIFEST_SCHEMA_VERSION = 1
 
-# package_kind -> directory-name prefix (the stamp is the remainder of the name).
-_PREFIXES = {
-    "context": "forecast_context_package_tropical_",
-    "analysis": "forecast_analysis_package_tropical_",
-}
+# Valid package kinds. The directory-name prefix is derived per project as
+# ``forecast_{kind}_package_{project_key}_`` (the stamp is the remainder of the name), so any
+# eligible project resolves under the same naming convention.
+_VALID_PACKAGE_KINDS = frozenset({"context", "analysis"})
+
+
+def _prefix(package_kind: str, project_key: str) -> str:
+    return f"forecast_{package_kind}_package_{project_key}_"
+
 
 # package_kind -> required on-disk members (files/dirs) that mark a structurally valid package.
 _REQUIRED_MEMBERS = {
@@ -84,15 +89,15 @@ def package_stamp_from_name(
     package_path: Path, *, package_kind: str, project_key: str = SUPPORTED_PROJECT_KEY
 ) -> str:
     """Parse the stamp from a package directory name (fail closed on any mismatch)."""
-    if project_key != SUPPORTED_PROJECT_KEY:
+    if not is_project_eligible(project_key):
         raise PackageResolutionError(
-            f"unsupported project_key {project_key!r}; only {SUPPORTED_PROJECT_KEY!r} is supported"
+            f"project_key {project_key!r} is not eligible; allowed: {sorted(eligible_projects())}"
         )
-    if package_kind not in _PREFIXES:
+    if package_kind not in _VALID_PACKAGE_KINDS:
         raise PackageResolutionError(
-            f"unsupported package_kind {package_kind!r}; expected one of {sorted(_PREFIXES)}"
+            f"unsupported package_kind {package_kind!r}; expected one of {sorted(_VALID_PACKAGE_KINDS)}"
         )
-    prefix = _PREFIXES[package_kind]
+    prefix = _prefix(package_kind, project_key)
     name = Path(package_path).name
     if not name.startswith(prefix):
         raise PackageResolutionError(
@@ -117,13 +122,13 @@ def resolve_explicit_package(
     path; non-directory path; wrong name prefix; empty stamp; any missing required member; or a
     path at/under the live Synology root. Never does recency-based discovery.
     """
-    if project_key != SUPPORTED_PROJECT_KEY:
+    if not is_project_eligible(project_key):
         raise PackageResolutionError(
-            f"unsupported project_key {project_key!r}; only {SUPPORTED_PROJECT_KEY!r} is supported"
+            f"project_key {project_key!r} is not eligible; allowed: {sorted(eligible_projects())}"
         )
-    if package_kind not in _PREFIXES:
+    if package_kind not in _VALID_PACKAGE_KINDS:
         raise PackageResolutionError(
-            f"unsupported package_kind {package_kind!r}; expected one of {sorted(_PREFIXES)}"
+            f"unsupported package_kind {package_kind!r}; expected one of {sorted(_VALID_PACKAGE_KINDS)}"
         )
 
     package_path = Path(package_path)
@@ -170,9 +175,9 @@ def build_package_chain(
     *, project_key: str, data_root: Path, refs: Iterable[ForecastPackageRef]
 ) -> ForecastPackageChain:
     """Assemble a chain from explicit refs (fail closed on project mismatch / duplicate kind)."""
-    if project_key != SUPPORTED_PROJECT_KEY:
+    if not is_project_eligible(project_key):
         raise PackageResolutionError(
-            f"unsupported project_key {project_key!r}; only {SUPPORTED_PROJECT_KEY!r} is supported"
+            f"project_key {project_key!r} is not eligible; allowed: {sorted(eligible_projects())}"
         )
     packages: dict[str, ForecastPackageRef] = {}
     for ref in refs:

@@ -28,6 +28,7 @@ from pathlib import Path
 from typing import Any
 
 from ..common import run_lineage
+from ..common.project_eligibility import eligible_projects, is_project_eligible
 from . import generate_forecast_analysis_package as _analysis_gen
 
 # Phase 7 is Tropical-only, exactly like the existing CFR run-* commands.
@@ -76,10 +77,9 @@ def run_final_forecast_generation(
     # --- Fail closed BEFORE subprocess execution. -------------------------------------------
     if not context_package:
         raise FinalForecastRunnerError("context_package is required for a controlled run")
-    if project_key != SUPPORTED_PROJECT_KEY:
+    if not is_project_eligible(project_key):
         raise FinalForecastRunnerError(
-            f"unsupported project_key {project_key!r}; only {SUPPORTED_PROJECT_KEY!r} is supported "
-            "in Phase 7"
+            f"project_key {project_key!r} is not eligible; allowed: {sorted(eligible_projects())}"
         )
     if not deterministic:
         # The analysis generator has no LLM/external inference (repo truth); there is no

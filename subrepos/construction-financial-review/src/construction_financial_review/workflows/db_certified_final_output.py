@@ -34,6 +34,11 @@ import shutil
 from pathlib import Path
 from typing import Any
 
+from ..common.project_eligibility import (
+    eligible_projects,
+    is_project_eligible,
+    source_package_name,
+)
 from . import guarded_db_operator_run as guarded
 from . import live_db_certification as cert
 from .db_cutover_readiness import REQUIRED_SOURCE_DOMAIN_TABLES
@@ -46,7 +51,6 @@ FINAL_OUTPUT_DIRNAME = "final_output"
 GUARDED_SUBDIR = "guarded"
 CURRENT_CERT_SUBDIR = "current_certification"
 
-EXPECTED_SOURCE_PACKAGE_NAME = "twn_cost_forecast_json_package"
 
 DECISION_READY = "db_certified_final_output_ready"
 DECISION_NOT_READY = "not_ready"
@@ -290,9 +294,9 @@ def run_db_certified_final_output(
     ``db_certified_final_output_ready`` (rc 0) on success, else ``not_ready`` (rc 1).
     """
     # --- Gate 1-2: project + work root (fail closed before any output). ---------------------------
-    if project_key != SUPPORTED_PROJECT_KEY:
+    if not is_project_eligible(project_key):
         raise DbCertifiedFinalOutputError(
-            f"unsupported project_key {project_key!r}; only {SUPPORTED_PROJECT_KEY!r} is supported"
+            f"project_key {project_key!r} is not eligible; allowed: {sorted(eligible_projects())}"
         )
     if not work_root:
         raise DbCertifiedFinalOutputError(
@@ -316,10 +320,11 @@ def run_db_certified_final_output(
         raise DbCertifiedFinalOutputError(
             f"source_package not found or not a directory: {source_package}"
         )
-    if source_package.name != EXPECTED_SOURCE_PACKAGE_NAME:
+    expected_source = source_package_name(project_key)
+    if source_package.name != expected_source:
         raise DbCertifiedFinalOutputError(
             f"source_package is not the expected Tropical package "
-            f"{EXPECTED_SOURCE_PACKAGE_NAME!r}: {source_package.name}"
+            f"{expected_source!r}: {source_package.name}"
         )
 
     # --- Gate 3-6: Phase 14 report. ---------------------------------------------------------------

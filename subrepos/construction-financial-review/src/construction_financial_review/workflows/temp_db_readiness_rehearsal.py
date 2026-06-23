@@ -22,6 +22,11 @@ import urllib.parse
 from pathlib import Path
 from typing import Any
 
+from ..common.project_eligibility import (
+    eligible_projects,
+    is_project_eligible,
+    source_package_name,
+)
 from .db_cutover_readiness import (
     REQUIRED_SCHEMA_VERSION,
     REQUIRED_SOURCE_DOMAIN_TABLES,
@@ -34,7 +39,6 @@ REHEARSAL_REPORT_SCHEMA_VERSION = 1
 
 # The explicit Tropical source package the source-domain projection consumes; its PARENT is the data
 # root (containing the sibling owner/procore packages the context generator reads).
-EXPECTED_SOURCE_PACKAGE_NAME = "twn_cost_forecast_json_package"
 # Required source JSONL members under <source_package>/data/ (structural validity check).
 _REQUIRED_SOURCE_MEMBERS = (
     "data/budget_details.jsonl",
@@ -84,14 +88,14 @@ def _schema_version(db_path: Path) -> int:
         conn.close()
 
 
-def _tropical_rowcount(db_path: Path, table: str) -> int:
-    """Read-only count of ``project_key='tropical'`` rows for one required source-domain table."""
+def _project_rowcount(db_path: Path, table: str, project_key: str) -> int:
+    """Read-only count of ``project_key`` rows for one required source-domain table."""
     uri = f"file:{urllib.parse.quote(str(Path(db_path).resolve(strict=False)))}?mode=ro"
     conn = sqlite3.connect(uri, uri=True)
     try:
         # ``table`` is only ever one of REQUIRED_SOURCE_DOMAIN_TABLES (module constants).
         row = conn.execute(
-            f"SELECT COUNT(*) FROM {table} WHERE project_key = ?", (SUPPORTED_PROJECT_KEY,)
+            f"SELECT COUNT(*) FROM {table} WHERE project_key = ?", (project_key,)
         ).fetchone()
         return int(row[0]) if row and row[0] is not None else 0
     finally:
@@ -131,20 +135,20 @@ def run_temp_db_readiness_rehearsal(
     ``failed`` (readiness not_ready).
     """
     # --- Preflight (fail closed before any output). ----------------------------------------------
-    if project_key != SUPPORTED_PROJECT_KEY:
+    if not is_project_eligible(project_key):
         raise TempDbRehearsalError(
-            f"unsupported project_key {project_key!r}; only {SUPPORTED_PROJECT_KEY!r} is supported "
-            "in Phase 11 (multi-project generalization is deferred)"
+            f"project_key {project_key!r} is not eligible; allowed: {sorted(eligible_projects())}"
         )
     if not source_package:
         raise TempDbRehearsalError("source_package is required for a rehearsal run")
     source_package = Path(source_package)
     if not source_package.exists() or not source_package.is_dir():
         raise TempDbRehearsalError(f"source_package not found or not a directory: {source_package}")
-    if source_package.name != EXPECTED_SOURCE_PACKAGE_NAME:
+    expected_source = source_package_name(project_key)
+    if source_package.name != expected_source:
         raise TempDbRehearsalError(
             f"source_package is not the expected Tropical package "
-            f"{EXPECTED_SOURCE_PACKAGE_NAME!r}: {source_package.name}"
+            f"{expected_source!r}: {source_package.name}"
         )
     missing = [m for m in _REQUIRED_SOURCE_MEMBERS if not (source_package / m).exists()]
     if missing:
@@ -211,7 +215,8 @@ def run_temp_db_readiness_rehearsal(
         )
 
     required_tables = {
-        t: {"rows": _tropical_rowcount(db_path, t)} for t in REQUIRED_SOURCE_DOMAIN_TABLES
+        t: {"rows": _project_rowcount(db_path, t, project_key)}
+        for t in REQUIRED_SOURCE_DOMAIN_TABLES
     }
     empty = sorted(t for t, c in required_tables.items() if c["rows"] == 0)
     if empty:

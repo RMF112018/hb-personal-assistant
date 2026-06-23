@@ -1,0 +1,1 @@
+PASS (fail-closed): project_key 'other' is not eligible; allowed: ['fixtureproj', 'tropical']

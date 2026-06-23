@@ -30,6 +30,7 @@ import urllib.parse
 from pathlib import Path
 from typing import Any
 
+from ..common.project_eligibility import eligible_projects, is_project_eligible
 from .controlled_db_context_analysis import (
     ControlledWorkflowError,
     run_controlled_context_analysis_parity,
@@ -106,15 +107,15 @@ def _table_exists(conn: sqlite3.Connection, name: str) -> bool:
     return row is not None
 
 
-def _tropical_rowcount(conn: sqlite3.Connection, table: str) -> int:
+def _project_rowcount(conn: sqlite3.Connection, table: str, project_key: str) -> int:
     # ``table`` is only ever one of REQUIRED_SOURCE_DOMAIN_TABLES (module constants), never user input.
     row = conn.execute(
-        f"SELECT COUNT(*) FROM {table} WHERE project_key = ?", (SUPPORTED_PROJECT_KEY,)
+        f"SELECT COUNT(*) FROM {table} WHERE project_key = ?", (project_key,)
     ).fetchone()
     return int(row[0]) if row and row[0] is not None else 0
 
 
-def _inspect_temp_db(db_path: Path) -> dict[str, Any]:
+def _inspect_temp_db(db_path: Path, project_key: str) -> dict[str, Any]:
     """Read-only inspection of an explicit temp v59 DB; fail closed on any unmet prerequisite.
 
     Opens a strictly read-only connection (``mode=ro`` never creates a missing file; the path is
@@ -157,12 +158,12 @@ def _inspect_temp_db(db_path: Path) -> dict[str, Any]:
                 f"db_path is missing required v59 source-domain tables {missing}: {db_path}"
             )
 
-        counts = {t: _tropical_rowcount(conn, t) for t in REQUIRED_SOURCE_DOMAIN_TABLES}
+        counts = {t: _project_rowcount(conn, t, project_key) for t in REQUIRED_SOURCE_DOMAIN_TABLES}
         if not all(c > 0 for c in counts.values()):
             empty = sorted(t for t, c in counts.items() if c == 0)
             raise DbCutoverReadinessError(
                 f"db_path has empty required v59 source-domain tables for "
-                f"project_key={SUPPORTED_PROJECT_KEY!r} {empty}: {db_path}"
+                f"project_key={project_key!r} {empty}: {db_path}"
             )
     finally:
         conn.close()
@@ -198,10 +199,9 @@ def run_db_cutover_readiness(
     readiness report dict (plus ``report_path``).
     """
     # --- Preflight (fail closed before any run). --------------------------------------------------
-    if project_key != SUPPORTED_PROJECT_KEY:
+    if not is_project_eligible(project_key):
         raise DbCutoverReadinessError(
-            f"unsupported project_key {project_key!r}; only {SUPPORTED_PROJECT_KEY!r} is supported "
-            "in Phase 10 (multi-project generalization is deferred)"
+            f"project_key {project_key!r} is not eligible; allowed: {sorted(eligible_projects())}"
         )
     if not data_root:
         raise DbCutoverReadinessError("data_root is required for a readiness run")
@@ -224,7 +224,7 @@ def run_db_cutover_readiness(
         raise DbCutoverReadinessError(f"db_path not found: {db_path}")
 
     _refuse_if_live_db(db_path)
-    db_checks = _inspect_temp_db(db_path)
+    db_checks = _inspect_temp_db(db_path, project_key)
 
     readiness_root = work_root / READINESS_SUBDIR
     if readiness_root.exists() and any(readiness_root.iterdir()):

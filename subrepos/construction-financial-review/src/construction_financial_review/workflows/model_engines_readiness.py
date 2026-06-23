@@ -38,6 +38,7 @@ from typing import Any, Callable
 from ..common.hashing import sha256_file
 from ..common.io import read_jsonl
 from ..common.money import D, dec, money_str
+from ..common.project_eligibility import eligible_projects, is_project_eligible
 from ..forecast_cost_frequency.weekday_calendar import months_between
 
 SUPPORTED_PROJECT_KEY = "tropical"
@@ -372,10 +373,9 @@ def run_model_engines_readiness(
     is an injection seam for tests; production passes None (real lazy import).
     """
     # --- Preflight (fail closed before any output). ----------------------------------------------
-    if project_key != SUPPORTED_PROJECT_KEY:
+    if not is_project_eligible(project_key):
         raise ModelEnginesReadinessError(
-            f"unsupported project_key {project_key!r}; only {SUPPORTED_PROJECT_KEY!r} is supported "
-            "(multi-project generalization is deferred)"
+            f"project_key {project_key!r} is not eligible; allowed: {sorted(eligible_projects())}"
         )
     if not context_package:
         raise ModelEnginesReadinessError("context_package is required (explicit existing package)")
