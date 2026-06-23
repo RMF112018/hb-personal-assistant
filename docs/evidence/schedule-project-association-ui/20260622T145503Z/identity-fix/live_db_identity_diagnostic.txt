@@ -1,0 +1,53 @@
+project_key        row_count  distinct_display_names  distinct_project_numbers  distinct_project_ids  display_names                                                 project_numbers                                               project_ids
+-----------------  ---------  ----------------------  ------------------------  --------------------  ------------------------------------------------------------  ------------------------------------------------------------  -----------
+alton-hilltop-pbg  7          7                       7                         1                     22-140-01 - CARETTA,24-606-01 - Hilltop Gardens,22-112-01 -   22-140-01,24-606-01,22-112-01,16-999-01,25-745-01,25-244-01,  2982068    
+                                                                                                      PGA THE MODERN,16-999-01 - PROCORE TEST PROJECT,25-745-01 -   23-435-01                                                                
+                                                                                                      RYBOVICH-SAFE HARBOR,25-244-01 - THE WELLINGTON ESTATE HOMES                                                                           
+                                                                                                      ,23-435-01 - Tropical World Nursery Senior Living Facility                                                                             
+
+caretta            7          7                       7                         1                     22-140-01 - CARETTA,24-606-01 - Hilltop Gardens,22-112-01 -   22-140-01,24-606-01,22-112-01,16-999-01,25-745-01,25-244-01,  2145250    
+                                                                                                      PGA THE MODERN,16-999-01 - PROCORE TEST PROJECT,25-745-01 -   23-435-01                                                                
+                                                                                                      RYBOVICH-SAFE HARBOR,25-244-01 - THE WELLINGTON ESTATE HOMES                                                                           
+                                                                                                      ,23-435-01 - Tropical World Nursery Senior Living Facility                                                                             
+
+pga-modern-garage  7          7                       7                         1                     22-140-01 - CARETTA,24-606-01 - Hilltop Gardens,22-112-01 -   22-140-01,24-606-01,22-112-01,16-999-01,25-745-01,25-244-01,  2091445    
+                                                                                                      PGA THE MODERN,16-999-01 - PROCORE TEST PROJECT,25-745-01 -   23-435-01                                                                
+                                                                                                      RYBOVICH-SAFE HARBOR,25-244-01 - THE WELLINGTON ESTATE HOMES                                                                           
+                                                                                                      ,23-435-01 - Tropical World Nursery Senior Living Facility                                                                             
+
+rybovich           7          7                       7                         1                     22-140-01 - CARETTA,24-606-01 - Hilltop Gardens,22-112-01 -   22-140-01,24-606-01,22-112-01,16-999-01,25-745-01,25-244-01,  3133242    
+                                                                                                      PGA THE MODERN,16-999-01 - PROCORE TEST PROJECT,25-745-01 -   23-435-01                                                                
+                                                                                                      RYBOVICH-SAFE HARBOR,25-244-01 - THE WELLINGTON ESTATE HOMES                                                                           
+                                                                                                      ,23-435-01 - Tropical World Nursery Senior Living Facility                                                                             
+
+the-wellington     7          7                       7                         1                     22-140-01 - CARETTA,24-606-01 - Hilltop Gardens,22-112-01 -   22-140-01,24-606-01,22-112-01,16-999-01,25-745-01,25-244-01,  3215931    
+                                                                                                      PGA THE MODERN,16-999-01 - PROCORE TEST PROJECT,25-745-01 -   23-435-01                                                                
+                                                                                                      RYBOVICH-SAFE HARBOR,25-244-01 - THE WELLINGTON ESTATE HOMES                                                                           
+                                                                                                      ,23-435-01 - Tropical World Nursery Senior Living Facility                                                                             
+
+tropical           7          7                       7                         1                     16-999-01 - PROCORE TEST PROJECT,22-112-01 - PGA THE MODERN,  16-999-01,22-112-01,22-140-01,23-435-01,24-606-01,25-745-01,  2525840    
+                                                                                                      22-140-01 - CARETTA,23-435-01 - Tropical World Nursery Senio  25-244-01                                                                
+                                                                                                      r Living Facility,24-606-01 - Hilltop Gardens,25-745-01 - RY                                                                           
+                                                                                                      BOVICH-SAFE HARBOR,25-244-01 - THE WELLINGTON ESTATE HOMES                                                                             
+display_name                                               project_number  distinct_project_keys  project_keys                                                  project_ids                                    
+---------------------------------------------------------  --------------  ---------------------  ------------------------------------------------------------  -----------------------------------------------
+16-999-01 - PROCORE TEST PROJECT                           16-999-01       6                      tropical,rybovich,pga-modern-garage,alton-hilltop-pbg,the-we  2525840,3133242,2091445,2982068,3215931,2145250
+                                                                                                  llington,caretta                                                                                             
+
+22-112-01 - PGA THE MODERN                                 22-112-01       6                      tropical,rybovich,pga-modern-garage,alton-hilltop-pbg,the-we  2525840,3133242,2091445,2982068,3215931,2145250
+                                                                                                  llington,caretta                                                                                             
+
+22-140-01 - CARETTA                                        22-140-01       6                      tropical,rybovich,pga-modern-garage,alton-hilltop-pbg,the-we  2525840,3133242,2091445,2982068,3215931,2145250
+                                                                                                  llington,caretta                                                                                             
+
+23-435-01 - Tropical World Nursery Senior Living Facility  23-435-01       6                      tropical,rybovich,pga-modern-garage,alton-hilltop-pbg,the-we  2525840,3133242,2091445,2982068,3215931,2145250
+                                                                                                  llington,caretta                                                                                             
+
+24-606-01 - Hilltop Gardens                                24-606-01       6                      tropical,rybovich,pga-modern-garage,alton-hilltop-pbg,the-we  2525840,3133242,2091445,2982068,3215931,2145250
+                                                                                                  llington,caretta                                                                                             
+
+25-244-01 - THE WELLINGTON ESTATE HOMES                    25-244-01       6                      tropical,rybovich,pga-modern-garage,alton-hilltop-pbg,the-we  2525840,3133242,2091445,2982068,3215931,2145250
+                                                                                                  llington,caretta                                                                                             
+
+25-745-01 - RYBOVICH-SAFE HARBOR                           25-745-01       6                      tropical,rybovich,pga-modern-garage,alton-hilltop-pbg,the-we  2525840,3133242,2091445,2982068,3215931,2145250
+                                                                                                  llington,caretta                                                                                             

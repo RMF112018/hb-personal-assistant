@@ -11,6 +11,7 @@ from fastapi.testclient import TestClient
 
 from hb_assistant.construction.analytics import create_app
 from hb_assistant.store.migrator import SQLiteMigrator
+from tests.schedule_project_test_helpers import seed_procore_ep_project
 
 FIXTURE = Path(__file__).resolve().parent / "fixtures" / "schedules" / "xml" / "minimal_schedule.xml"
 
@@ -26,6 +27,7 @@ def _viewer() -> dict[str, str]:
 def _client(tmp_path: Path) -> TestClient:
     db = tmp_path / "quality_api.db"
     SQLiteMigrator(db_path=str(db)).apply()
+    seed_procore_ep_project(db, project_key="tropical", display_name="Tropical Wind")
     return TestClient(create_app(db_path=str(db)))
 
 

@@ -12,9 +12,9 @@ ERMHDR	18.8	2026-06-22	Project	admin	dbxDatabaseNoName	ProjectMgr	USD
 %F	wbs_id	proj_id	parent_wbs_id	wbs_short_name	wbs_name
 %R	10	1		wbs1	WBS Root
 %T	TASK
-%F	task_id	proj_id	wbs_id	clndr_id	task_code	task_name	status_code	task_type	total_float_hr_cnt	free_float_hr_cnt	early_start_date	early_end_date	late_start_date	late_end_date	driving_path_flag	crt_path_num	float_path	float_path_order
-%R	1001	1	10	100	A1000	Driving Task	TK_Active	TT_Task	0	0	2026-02-01 08:00	2026-02-05 17:00	2026-02-01 08:00	2026-02-05 17:00	Y	1	1	1
-%R	1002	1	10	100	A1010	Float Task	TK_Active	TT_Task	40	16	2026-03-01 08:00	2026-03-10 17:00	2026-03-15 08:00	2026-03-24 17:00	N	0	0	0
+%F	task_id	proj_id	wbs_id	clndr_id	task_code	task_name	status_code	task_type	total_float_hr_cnt	free_float_hr_cnt	early_start_date	early_end_date	late_start_date	late_end_date	act_start_date	act_end_date	target_drtn_hr_cnt	remain_drtn_hr_cnt	phys_complete_pct	driving_path_flag	crt_path_num	float_path	float_path_order
+%R	1001	1	10	100	A1000	Driving Task	TK_Active	TT_Task	0	0	2026-02-01 08:00	2026-02-05 17:00	2026-02-01 08:00	2026-02-05 17:00	2026-02-01 08:00		40	24	50	Y	1	1	1
+%R	1002	1	10	100	A1010	Float Task	TK_Complete	TT_Task	40	16	2026-03-01 08:00	2026-03-10 17:00	2026-03-15 08:00	2026-03-24 17:00	2026-03-01 08:00	2026-03-10 17:00	80	0	100	N	0	0	0
 %T	TASKPRED
 %F	task_pred_id	task_id	pred_task_id	proj_id	pred_type	lag_hr_cnt
 %R	5001	1002	1001	1	PR_FS	0

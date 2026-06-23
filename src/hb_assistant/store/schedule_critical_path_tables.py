@@ -45,6 +45,7 @@ FLOAT_SOURCE_VALUES: tuple[str, ...] = (
 
 CRITICAL_PATH_SOURCE_VALUES: tuple[str, ...] = (
     "xer_driving_path_flag",
+    "xer_total_float_threshold",
     "msp_critical_flag",
     "p6_derived_float_only",
     "app_cpm_recalculated",

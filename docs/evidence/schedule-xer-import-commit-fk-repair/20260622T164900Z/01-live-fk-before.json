@@ -1,0 +1,11 @@
+{
+  "schema_version": 68,
+  "child_fk_parent": "schedule_file_imports_v66",
+  "orphan_parent_rows": 7,
+  "canonical_parent_rows": 1,
+  "tables": {
+    "schedule_file_imports": "canonical insert target",
+    "schedule_file_imports_v66": "orphan FK parent retained after V67 source_format migration"
+  },
+  "activity_fk_sql_excerpt": "FOREIGN KEY (import_id) REFERENCES \"schedule_file_imports_v66\"(import_id)"
+}

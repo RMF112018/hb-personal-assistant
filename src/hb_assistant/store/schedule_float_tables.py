@@ -23,6 +23,19 @@ METRIC_STATUS_CHECK_VALUES: tuple[str, ...] = (
     "measured_from_xer_driving_path",
     "measured_from_msp_critical_flag",
     "measured_from_explicit_source_float",
+    "measured_from_source_export_proxy",
+    "available_xer_driving_path",
+    "available_xer_total_float_threshold",
+    "partial_xer_float_coverage",
+    "missing_source_critical_data",
+)
+
+METRIC_FAMILY_CHECK_VALUES: tuple[str, ...] = (
+    "dcma",
+    "gao",
+    "aace",
+    "supplemental",
+    "source_export",
 )
 
 V65_ACTIVITY_ALTER_COLUMNS: tuple[str, ...] = (

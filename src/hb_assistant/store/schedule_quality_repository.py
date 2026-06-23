@@ -315,28 +315,57 @@ class ScheduleQualityRepository:
         with self._conn() as conn:
             cur = conn.execute(
                 """
-                SELECT DISTINCT schedule_version_key FROM schedule_file_imports
+                SELECT schedule_version_key, source_format, created_at
+                FROM schedule_file_imports
                 WHERE project_key=? AND import_status='committed'
                 ORDER BY created_at DESC
                 """,
                 (project_key,),
             )
-            versions = [str(r[0]) for r in cur.fetchall()]
+            imports = [dict(r) for r in cur.fetchall()]
         out: list[dict[str, Any]] = []
-        for svk in versions:
+        for imp in imports:
+            svk = str(imp["schedule_version_key"])
             run = self.get_latest_run(svk)
             scorecard = self.get_latest_scorecard(svk) if run else None
             out.append(
                 {
                     "schedule_version_key": svk,
+                    "project_key": project_key,
+                    "source_format": imp.get("source_format"),
+                    "imported_at": imp.get("created_at"),
                     "quality_status": run.get("status") if run else "not_evaluated",
                     "quality_score": scorecard.get("quality_score") if scorecard else None,
                     "quality_grade": scorecard.get("quality_grade") if scorecard else None,
+                    "completion_posture": scorecard.get("completion_posture") if scorecard else None,
                     "assessment_profile": run.get("assessment_profile") if run else None,
                     "evaluation_run_id": run.get("evaluation_run_id") if run else None,
+                    "evaluated_at": run.get("completed_at") if run else None,
                 }
             )
         return out
+
+    def list_evaluation_runs(
+        self,
+        *,
+        project_key: str | None = None,
+        schedule_version_key: str | None = None,
+        include_history: bool = False,
+    ) -> list[dict[str, Any]]:
+        with self._conn() as conn:
+            sql = "SELECT * FROM schedule_quality_evaluation_runs WHERE 1=1"
+            params: list[Any] = []
+            if project_key:
+                sql += " AND project_key=?"
+                params.append(project_key)
+            if schedule_version_key:
+                sql += " AND schedule_version_key=?"
+                params.append(schedule_version_key)
+            if not include_history:
+                sql += " AND is_latest=1"
+            sql += " ORDER BY COALESCE(completed_at, queued_at) DESC"
+            cur = conn.execute(sql, params)
+            return [dict(r) for r in cur.fetchall()]
 
     @staticmethod
     def parse_json_field(value: Any, default: Any) -> Any:

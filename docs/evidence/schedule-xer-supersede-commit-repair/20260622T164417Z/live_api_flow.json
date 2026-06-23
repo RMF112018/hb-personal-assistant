@@ -1,0 +1,71 @@
+{
+  "commit_without_supersede": {
+    "body": {
+      "detail": {
+        "code": "schedule_supersede_confirmation_required",
+        "commit_confirm_supersede": false,
+        "preview_confirm_supersede": true,
+        "schedule_version_key": "tropical|1069|2026-05-26 08:00"
+      }
+    },
+    "status_code": 409
+  },
+  "normal_preview": {
+    "body": {
+      "detail": {
+        "activity_count": 1378,
+        "code": "duplicate_schedule_version",
+        "relationship_count": 3718,
+        "schedule_version_key": "tropical|1069|2026-05-26 08:00",
+        "view_path": "/schedules/activities?version=tropical%7C1069%7C2026-05-26%2008%3A00"
+      }
+    },
+    "status_code": 409
+  },
+  "supersede_commit": {
+    "body": {
+      "activity_count": 1378,
+      "committed_at": "2026-06-22T16:44:18.556934+00:00",
+      "cost_loaded_status": "not_cost_loaded",
+      "evaluation_run_id": "sq-8d9fc675b772",
+      "import_id": "26140a04d72d",
+      "project_display_name": "23-435-01 - Tropical World Nursery Senior Living Facility",
+      "project_key": "tropical",
+      "quality_evaluation_status": "pending",
+      "schedule_version_key": "tropical|1069|2026-05-26 08:00",
+      "supersede_performed": true,
+      "superseded_import_id": "d57d46b5dcdc"
+    },
+    "status_code": 200
+  },
+  "supersede_preview": {
+    "body": {
+      "activity_count": 1378,
+      "byte_count": 1268853,
+      "calendar_count": 3,
+      "code_count": 5171,
+      "cost_loaded_status": "not_cost_loaded",
+      "data_date": "2026-05-26 08:00",
+      "display_label": "TWNU18",
+      "file_sha256": "704cfa74a58dba5765cc39d8c826b4a3b09af73a0b36c184cc5342ba90d99278",
+      "import_id": "777d933bcec1",
+      "planned_start": "2024-09-06 08:00",
+      "project_display_name": "23-435-01 - Tropical World Nursery Senior Living Facility",
+      "project_key": "tropical",
+      "relationship_count": 3718,
+      "requires_column_mapping": false,
+      "schedule_name": "TWNU18",
+      "scheduled_finish": "2026-11-03 16:00",
+      "source_filename": "TWNU18.xer",
+      "source_format": "primavera_xer",
+      "source_project_id": "1069",
+      "source_project_name": null,
+      "source_project_short_name": "TWNU18",
+      "source_type": "xer",
+      "udf_count": 4311,
+      "validation_findings": [],
+      "wbs_count": 189
+    },
+    "status_code": 200
+  }
+}

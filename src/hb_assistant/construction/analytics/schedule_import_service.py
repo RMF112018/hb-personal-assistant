@@ -4,9 +4,13 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
+import sqlite3
 import uuid
 from datetime import datetime, timezone
 from typing import Any
+
+_logger = logging.getLogger(__name__)
 
 from hb_assistant.store.migrator import LATEST_SCHEMA_VERSION, SQLiteMigrator
 from hb_assistant.store.schedule_activity_repository import ScheduleActivityRepository
@@ -25,8 +29,6 @@ from .schedule_file_parser import (
     detect_source,
     safe_basename,
 )
-
-from .schedule_xer_parser import parse_xer_bytes
 from .schedule_xml_parser import PARSER_NAME as XML_PARSER
 from .schedule_xml_parser import PARSER_VERSION as XML_VER
 from .schedule_xml_parser import parse_pmxml_bytes
@@ -60,7 +62,16 @@ def ensure_schedule_schema(db_path: str) -> None:
     finally:
         conn2.close()
 
-    if version_after < LATEST_SCHEMA_VERSION or missing_after:
+    fk_issues: list[str] = []
+    conn3 = get_connection(db_path)
+    try:
+        from hb_assistant.store.schedule_schema_verify import verify_schedule_import_fk_targets
+
+        fk_issues = verify_schedule_import_fk_targets(conn3)
+    finally:
+        conn3.close()
+
+    if version_after < LATEST_SCHEMA_VERSION or missing_after or fk_issues:
         raise ScheduleImportError(
             "schedule_schema_not_ready",
             message="schedule schema is not ready",
@@ -68,6 +79,7 @@ def ensure_schedule_schema(db_path: str) -> None:
                 "schema_version": version_after,
                 "schema_expected": LATEST_SCHEMA_VERSION,
                 "schedule_v65_missing_columns": missing_after,
+                "schedule_import_fk_drift": fk_issues,
             },
         )
 
@@ -81,6 +93,70 @@ def duplicate_view_path(schedule_version_key: str) -> str:
     from urllib.parse import quote
 
     return f"/schedules/activities?version={quote(schedule_version_key, safe='')}"
+
+
+def validate_import_project_key(*, db_path: str, project_key: str) -> str:
+    from .schedule_project_catalog import ScheduleProjectCatalog
+
+    key = str(project_key or "").strip()
+    if not key:
+        raise ScheduleImportError(
+            "schedule_project_required",
+            message="project_key is required",
+        )
+    catalog = ScheduleProjectCatalog(db_path=db_path)
+    if not catalog.is_selectable_project(key):
+        raise ScheduleImportError(
+            "schedule_project_unknown",
+            message=f"project_key is not a selectable Procore project: {key}",
+            payload={"project_key": key},
+        )
+    return key
+
+
+def assert_version_matches_project(
+    schedule_version_key: str, project_key: str | None
+) -> None:
+    if not project_key:
+        return
+    parts = str(schedule_version_key).split("|")
+    if not parts or parts[0] != project_key:
+        raise ScheduleImportError(
+            "schedule_not_found",
+            message="schedule version does not belong to the requested project",
+        )
+
+
+def _sort_key_value(row: dict[str, Any], field: str) -> Any:
+    raw = row.get(field)
+    if field in {"quality_score"} and raw is not None:
+        try:
+            return float(raw)
+        except (TypeError, ValueError):
+            return raw
+    return raw if raw is not None else ""
+
+
+def sort_version_summaries(
+    rows: list[dict[str, Any]],
+    *,
+    sort: str = "imported_at",
+    order: str = "desc",
+) -> list[dict[str, Any]]:
+    allowed = {
+        "project_key",
+        "data_date",
+        "imported_at",
+        "source_format",
+        "quality_score",
+        "quality_grade",
+        "completion_posture",
+        "quality_status",
+        "evaluated_at",
+    }
+    field = sort if sort in allowed else "imported_at"
+    reverse = str(order or "desc").lower() != "asc"
+    return sorted(rows, key=lambda r: _sort_key_value(r, field), reverse=reverse)
 
 
 class ScheduleImportService:
@@ -107,6 +183,7 @@ class ScheduleImportService:
         confirm_supersede: bool = False,
     ) -> dict[str, Any]:
         self._ensure_schema()
+        project_key = validate_import_project_key(db_path=self._db_path, project_key=project_key)
         if len(data) > MAX_UPLOAD_BYTES:
             raise ScheduleImportError(
                 "schedule_file_too_large",
@@ -133,19 +210,25 @@ class ScheduleImportService:
             project_key=project_key, bundle=bundle, import_id=import_id
         )
         existing = self._activity_repo.get_version_summary(version_key)
-        if existing and str(existing.get("import_status") or "") == "committed":
-            if not confirm_supersede:
-                raise ScheduleImportError(
-                    "duplicate_schedule_version",
-                    message="schedule version already committed",
-                    payload={
-                        "schedule_version_key": version_key,
-                        "activity_count": int(existing.get("activity_count") or 0),
-                        "relationship_count": int(existing.get("relationship_count") or 0),
-                        "view_path": duplicate_view_path(version_key),
-                    },
-                )
+        if (
+            existing
+            and str(existing.get("import_status") or "") == "committed"
+            and not confirm_supersede
+        ):
+            raise ScheduleImportError(
+                "duplicate_schedule_version",
+                message="schedule version already committed",
+                payload={
+                    "schedule_version_key": version_key,
+                    "activity_count": int(existing.get("activity_count") or 0),
+                    "relationship_count": int(existing.get("relationship_count") or 0),
+                    "view_path": duplicate_view_path(version_key),
+                },
+            )
 
+        duplicate_exists = bool(
+            existing and str(existing.get("import_status") or "") == "committed"
+        )
         _PREVIEW_CACHE[import_id] = {
             "project_key": project_key,
             "bundle": bundle,
@@ -159,8 +242,14 @@ class ScheduleImportService:
                 {"activities": len(bundle.activities)}, sort_keys=True
             ).encode()),
             "column_roles": column_roles,
+            "confirm_supersede": bool(confirm_supersede),
+            "schedule_version_key": version_key,
+            "duplicate_exists": duplicate_exists,
         }
 
+        from .schedule_project_catalog import ScheduleProjectCatalog
+
+        catalog = ScheduleProjectCatalog(db_path=self._db_path)
         dto = ScheduleImportPreviewDTO(
             import_id=import_id,
             display_label=bundle.schedule_name or basename,
@@ -182,6 +271,11 @@ class ScheduleImportService:
             planned_start=bundle.planned_start,
             scheduled_finish=bundle.scheduled_finish,
             requires_column_mapping=source_type == "csv" and not column_roles,
+            project_key=project_key,
+            project_display_name=catalog.resolve_display_name(project_key),
+            source_project_id=bundle.source_project_id,
+            source_project_name=bundle.source_project_name,
+            source_project_short_name=bundle.source_project_short_name,
         )
         return dto.public()
 
@@ -195,6 +289,7 @@ class ScheduleImportService:
         column_roles: dict[str, str] | None = None,
     ) -> dict[str, Any]:
         self._ensure_schema()
+        project_key = validate_import_project_key(db_path=self._db_path, project_key=project_key)
         if not confirm:
             raise ScheduleImportError(
                 "schedule_import_invalid",
@@ -208,10 +303,15 @@ class ScheduleImportService:
                 message=f"unknown import_id {import_id}",
             )
 
-        if cached["project_key"] != project_key:
+        preview_project_key = str(cached["project_key"])
+        if preview_project_key != project_key:
             raise ScheduleImportError(
-                "schedule_import_invalid",
+                "schedule_project_mismatch",
                 message="project_key does not match preview",
+                payload={
+                    "project_key": project_key,
+                    "preview_project_key": preview_project_key,
+                },
             )
 
         bundle: ParsedScheduleBundle = cached["bundle"]
@@ -236,8 +336,22 @@ class ScheduleImportService:
         )
         existing = self._activity_repo.get_version_summary(version_key)
         superseded_import_id: str | None = None
-        if existing and str(existing.get("import_status") or "") == "committed":
-            if not confirm_supersede:
+        duplicate_exists = bool(
+            existing and str(existing.get("import_status") or "") == "committed"
+        )
+        cached_supersede = bool(cached.get("confirm_supersede"))
+        if duplicate_exists:
+            if not cached_supersede:
+                if confirm_supersede:
+                    raise ScheduleImportError(
+                        "schedule_supersede_state_mismatch",
+                        message="preview was not created with supersede confirmation",
+                        payload={
+                            "schedule_version_key": version_key,
+                            "preview_confirm_supersede": False,
+                            "commit_confirm_supersede": True,
+                        },
+                    )
                 raise ScheduleImportError(
                     "duplicate_schedule_version",
                     message="schedule version already committed",
@@ -248,41 +362,141 @@ class ScheduleImportService:
                         "view_path": duplicate_view_path(version_key),
                     },
                 )
+            if not confirm_supersede:
+                raise ScheduleImportError(
+                    "schedule_supersede_confirmation_required",
+                    message="supersede preview requires explicit commit confirmation",
+                    payload={
+                        "schedule_version_key": version_key,
+                        "preview_confirm_supersede": True,
+                        "commit_confirm_supersede": False,
+                    },
+                )
             superseded_import_id = str(existing.get("import_id"))
-            self._activity_repo.delete_version_subgraph(
-                schedule_version_key=version_key,
-                import_id=superseded_import_id,
-            )
-            self._import_repo.update_import(
-                superseded_import_id,
-                {"import_status": "superseded", "validation_status": "superseded_by_operator"},
+        elif confirm_supersede and cached_supersede:
+            raise ScheduleImportError(
+                "schedule_supersede_state_mismatch",
+                message="supersede preview no longer matches committed state",
+                payload={
+                    "schedule_version_key": version_key,
+                    "preview_confirm_supersede": True,
+                    "commit_confirm_supersede": True,
+                },
             )
         now = datetime.now(timezone.utc).isoformat()
         cost_status = assess_cost_loaded_status(bundle.activities, bundle.cost_loaded_hints)
 
         record_key = f"svk-{_sha256(f'{project_key}|{schedule_id}|{import_id}')[:32]}"
-        self._activity_repo.upsert_schedule_version_row(
-            {
-                "record_key": record_key,
-                "raw_payload_id": None,
-                "endpoint_key": "schedule_import",
-                "endpoint_family": "schedules",
-                "project_key": project_key,
-                "project_id": bundle.procore_project_id,
-                "record_id": schedule_id,
-                "schedule_id": schedule_id,
-                "schedule_name": bundle.schedule_name,
-                "data_date": bundle.data_date,
-                "start_date": bundle.planned_start,
-                "source_quality": "file_import",
-                "is_current": 0,
-                "created_utc": now,
-                "updated_utc": now,
-                "external_writeback_performed": 0,
-                "raw_payload_emitted_to_read_model": 0,
-                "raw_payload_emitted_to_evidence": 0,
-            }
+        import_row = self._build_import_row(
+            import_id=import_id,
+            project_key=project_key,
+            bundle=bundle,
+            cached=cached,
+            version_key=version_key,
+            cost_status=cost_status,
+            evidence_package_id=None,
         )
+        import_row["import_status"] = "committed"
+
+        activity_rows = self._build_activity_rows(
+            bundle=bundle,
+            project_key=project_key,
+            schedule_id=schedule_id,
+            version_key=version_key,
+            import_id=import_id,
+            schedule_table_id=record_key,
+            source_type=cached["source_type"],
+            source_format=cached["source_format"],
+        )
+        self._log_commit_context(
+            import_id=import_id,
+            project_key=project_key,
+            preview_project_key=preview_project_key,
+            schedule_id=schedule_id,
+            version_key=version_key,
+            schedule_table_id=record_key,
+            source_type=cached["source_type"],
+            source_format=cached["source_format"],
+            parser_name=cached["parser_name"],
+            parser_version=cached["parser_version"],
+            activity_rows=activity_rows,
+        )
+
+        from hb_assistant.store.connection import get_connection, transaction
+
+        try:
+            conn = get_connection(self._db_path)
+            try:
+                with transaction(conn):
+                    if superseded_import_id:
+                        self._activity_repo.delete_version_subgraph(
+                            schedule_version_key=version_key,
+                            import_id=superseded_import_id,
+                            conn=conn,
+                        )
+                        self._import_repo.update_import(
+                            superseded_import_id,
+                            {
+                                "import_status": "superseded",
+                                "validation_status": "superseded_by_operator",
+                            },
+                            conn=conn,
+                        )
+                    self._activity_repo.upsert_schedule_version_row(
+                        {
+                            "record_key": record_key,
+                            "raw_payload_id": None,
+                            "endpoint_key": "schedule_import",
+                            "endpoint_family": "schedules",
+                            "project_key": project_key,
+                            "project_id": bundle.procore_project_id,
+                            "record_id": schedule_id,
+                            "schedule_id": schedule_id,
+                            "schedule_name": bundle.schedule_name,
+                            "data_date": bundle.data_date,
+                            "start_date": bundle.planned_start,
+                            "source_quality": "file_import",
+                            "is_current": 0,
+                            "created_utc": now,
+                            "updated_utc": now,
+                            "external_writeback_performed": 0,
+                            "raw_payload_emitted_to_read_model": 0,
+                            "raw_payload_emitted_to_evidence": 0,
+                        },
+                        conn=conn,
+                    )
+                    self._import_repo.insert_import(import_row, conn=conn)
+                    self._persist_bundle(
+                        bundle=bundle,
+                        project_key=project_key,
+                        schedule_id=schedule_id,
+                        version_key=version_key,
+                        import_id=import_id,
+                        schedule_table_id=record_key,
+                        source_type=cached["source_type"],
+                        source_format=cached["source_format"],
+                        conn=conn,
+                        activity_rows=activity_rows,
+                    )
+            finally:
+                conn.close()
+        except sqlite3.IntegrityError as exc:
+            _logger.warning(
+                "schedule import commit persistence failed import_id=%s project_key=%s version_key=%s",
+                import_id,
+                project_key,
+                version_key,
+            )
+            raise ScheduleImportError(
+                "schedule_import_persistence_failed",
+                message="Schedule import could not be written to the local database.",
+                payload={
+                    "source_format": cached["source_format"],
+                    "project_key": project_key,
+                    "schedule_version_key": version_key,
+                    "import_id": import_id,
+                },
+            ) from exc
 
         evidence_id = write_import_evidence(
             import_id=import_id,
@@ -294,71 +508,7 @@ class ScheduleImportService:
                 "schedule_version_key": version_key,
             },
         )
-
-        self._import_repo.insert_import(
-            {
-                "import_id": import_id,
-                "project_key": project_key,
-                "procore_project_id": bundle.procore_project_id,
-                "source_type": cached["source_type"],
-                "source_format": cached["source_format"],
-                "source_filename_redacted": cached["filename"],
-                "source_file_sha256": cached["file_sha256"],
-                "source_payload_sha256": cached["payload_sha256"],
-                "parser_name": cached["parser_name"],
-                "parser_version": cached["parser_version"],
-                "import_status": "committed",
-                "validation_status": "ok" if not bundle.validation_findings else "warnings",
-                "activity_count": len(bundle.activities),
-                "relationship_count": len(bundle.relationships),
-                "wbs_count": len(bundle.wbs_nodes),
-                "calendar_count": len(bundle.calendars),
-                "code_count": len(bundle.code_assignments),
-                "udf_count": len(bundle.udf_values),
-                "cost_loaded_status": cost_status,
-                "schedule_version_key": version_key,
-                "evidence_package_id": evidence_id,
-                "created_by_operator": "operator",
-                "compute_total_float_type": (bundle.schedule_options or {}).get(
-                    "compute_total_float_type"
-                ),
-                "critical_activity_path_type": (bundle.schedule_options or {}).get(
-                    "critical_activity_path_type"
-                ),
-                "critical_activity_float_threshold": str(
-                    (bundle.schedule_options or {}).get("critical_activity_float_threshold")
-                )
-                if (bundle.schedule_options or {}).get("critical_activity_float_threshold")
-                is not None
-                else None,
-                "calculate_float_based_on_finish_date": (bundle.schedule_options or {}).get(
-                    "calculate_float_based_on_finish_date"
-                ),
-                "critical_path_type": (bundle.schedule_options or {}).get("critical_path_type"),
-                "critical_float_threshold": str(
-                    (bundle.schedule_options or {}).get("critical_float_threshold")
-                )
-                if (bundle.schedule_options or {}).get("critical_float_threshold") is not None
-                else None,
-                "schedule_options_json": json.dumps(
-                    (bundle.schedule_options or {}).get("schedule_options_json") or {},
-                    sort_keys=True,
-                    default=str,
-                ),
-                "baseline_source": (bundle.schedule_options or {}).get("baseline_source"),
-            }
-        )
-
-        self._persist_bundle(
-            bundle=bundle,
-            project_key=project_key,
-            schedule_id=schedule_id,
-            version_key=version_key,
-            import_id=import_id,
-            schedule_table_id=record_key,
-            source_type=cached["source_type"],
-            source_format=cached["source_format"],
-        )
+        self._import_repo.update_import(import_id, {"evidence_package_id": evidence_id})
 
         from hb_assistant.construction.analytics.schedule_quality_service import (
             ScheduleQualityService,
@@ -377,8 +527,13 @@ class ScheduleImportService:
         poll_and_process(db_path=self._db_path, limit=1)
 
         _PREVIEW_CACHE.pop(import_id, None)
+        from .schedule_project_catalog import ScheduleProjectCatalog
+
+        catalog = ScheduleProjectCatalog(db_path=self._db_path)
         return {
             "import_id": import_id,
+            "project_key": project_key,
+            "project_display_name": catalog.resolve_display_name(project_key),
             "schedule_version_key": version_key,
             "activity_count": len(bundle.activities),
             "cost_loaded_status": cost_status,
@@ -386,9 +541,100 @@ class ScheduleImportService:
             "evaluation_run_id": queued.get("evaluation_run_id"),
             "committed_at": now,
             "superseded_import_id": superseded_import_id,
+            "supersede_performed": superseded_import_id is not None,
         }
 
-    def _persist_bundle(
+    @staticmethod
+    def _build_import_row(
+        *,
+        import_id: str,
+        project_key: str,
+        bundle: ParsedScheduleBundle,
+        cached: dict[str, Any],
+        version_key: str,
+        cost_status: str,
+        evidence_package_id: str | None,
+    ) -> dict[str, Any]:
+        return {
+            "import_id": import_id,
+            "project_key": project_key,
+            "procore_project_id": bundle.procore_project_id,
+            "source_type": cached["source_type"],
+            "source_format": cached["source_format"],
+            "source_filename_redacted": cached["filename"],
+            "source_file_sha256": cached["file_sha256"],
+            "source_payload_sha256": cached["payload_sha256"],
+            "parser_name": cached["parser_name"],
+            "parser_version": cached["parser_version"],
+            "import_status": "committed",
+            "validation_status": "ok" if not bundle.validation_findings else "warnings",
+            "activity_count": len(bundle.activities),
+            "relationship_count": len(bundle.relationships),
+            "wbs_count": len(bundle.wbs_nodes),
+            "calendar_count": len(bundle.calendars),
+            "code_count": len(bundle.code_assignments),
+            "udf_count": len(bundle.udf_values),
+            "cost_loaded_status": cost_status,
+            "schedule_version_key": version_key,
+            "evidence_package_id": evidence_package_id,
+            "created_by_operator": "operator",
+            "source_project_id": bundle.source_project_id,
+            "source_project_name": bundle.source_project_name,
+            "source_project_short_name": bundle.source_project_short_name,
+            "source_project_metadata_json": bundle.source_project_metadata_json,
+            "compute_total_float_type": (bundle.schedule_options or {}).get(
+                "compute_total_float_type"
+            ),
+            "critical_activity_path_type": (bundle.schedule_options or {}).get(
+                "critical_activity_path_type"
+            ),
+            "critical_activity_float_threshold": str(
+                (bundle.schedule_options or {}).get("critical_activity_float_threshold")
+            )
+            if (bundle.schedule_options or {}).get("critical_activity_float_threshold") is not None
+            else None,
+            "calculate_float_based_on_finish_date": (bundle.schedule_options or {}).get(
+                "calculate_float_based_on_finish_date"
+            ),
+            "critical_path_type": (bundle.schedule_options or {}).get("critical_path_type"),
+            "critical_float_threshold": str(
+                (bundle.schedule_options or {}).get("critical_float_threshold")
+            )
+            if (bundle.schedule_options or {}).get("critical_float_threshold") is not None
+            else None,
+            "schedule_options_json": json.dumps(
+                ScheduleImportService._schedule_options_json_with_analytics(bundle),
+                sort_keys=True,
+                default=str,
+            ),
+            "baseline_source": (bundle.schedule_options or {}).get("baseline_source"),
+        }
+
+    @staticmethod
+    def _schedule_options_json_with_analytics(bundle: ParsedScheduleBundle) -> dict[str, Any]:
+        from .schedule_critical_path_analytics import compute_source_critical_path_analytics
+
+        schedule_opts = bundle.schedule_options or {}
+        opts = dict(schedule_opts.get("schedule_options_json") or {})
+        capabilities = schedule_opts.get("source_capabilities") or {}
+        if str(capabilities.get("source_format") or "") == "primavera_xer" and bundle.activities:
+            import_meta = {
+                "critical_path_type": schedule_opts.get("critical_path_type"),
+                "critical_float_threshold": schedule_opts.get("critical_float_threshold"),
+            }
+            analytics = compute_source_critical_path_analytics(
+                import_meta,
+                bundle.activities,
+                schedule_options=schedule_opts,
+            )
+            opts["source_critical_path_analytics"] = {
+                k: v
+                for k, v in analytics.items()
+                if k not in {"source_critical_path_evidence_json", "status"}
+            }
+        return opts
+
+    def _build_activity_rows(
         self,
         *,
         bundle: ParsedScheduleBundle,
@@ -399,7 +645,7 @@ class ScheduleImportService:
         schedule_table_id: str,
         source_type: str,
         source_format: str,
-    ) -> None:
+    ) -> list[dict[str, Any]]:
         base = {
             "project_key": project_key,
             "schedule_table_id": schedule_table_id,
@@ -407,8 +653,7 @@ class ScheduleImportService:
             "schedule_version_key": version_key,
             "import_id": import_id,
         }
-
-        activities = []
+        activities: list[dict[str, Any]] = []
         for act in bundle.activities:
             activities.append(
                 {
@@ -510,22 +755,101 @@ class ScheduleImportService:
                     "source_row_hash": act.get("source_row_hash"),
                 }
             )
-        self._activity_repo.bulk_upsert_activities(activities)
+        return activities
+
+    @staticmethod
+    def _log_commit_context(
+        *,
+        import_id: str,
+        project_key: str,
+        preview_project_key: str,
+        schedule_id: str,
+        version_key: str,
+        schedule_table_id: str,
+        source_type: str,
+        source_format: str,
+        parser_name: str,
+        parser_version: str,
+        activity_rows: list[dict[str, Any]],
+    ) -> None:
+        sample = [
+            {
+                "import_id": row.get("import_id"),
+                "project_key": row.get("project_key"),
+                "schedule_table_id": row.get("schedule_table_id"),
+                "schedule_id": row.get("schedule_id"),
+                "schedule_version_key": row.get("schedule_version_key"),
+                "activity_id": row.get("activity_id"),
+            }
+            for row in activity_rows[:3]
+        ]
+        _logger.info(
+            "schedule import commit context import_id=%s project_key=%s preview_project_key=%s "
+            "schedule_id=%s schedule_version_key=%s schedule_table_id=%s source_type=%s "
+            "source_format=%s parser_name=%s parser_version=%s activity_sample=%s",
+            import_id,
+            project_key,
+            preview_project_key,
+            schedule_id,
+            version_key,
+            schedule_table_id,
+            source_type,
+            source_format,
+            parser_name,
+            parser_version,
+            sample,
+        )
+
+    def _persist_bundle(
+        self,
+        *,
+        bundle: ParsedScheduleBundle,
+        project_key: str,
+        schedule_id: str,
+        version_key: str,
+        import_id: str,
+        schedule_table_id: str,
+        source_type: str,
+        source_format: str,
+        conn: sqlite3.Connection | None = None,
+        activity_rows: list[dict[str, Any]] | None = None,
+    ) -> None:
+        base = {
+            "project_key": project_key,
+            "schedule_table_id": schedule_table_id,
+            "schedule_id": schedule_id,
+            "schedule_version_key": version_key,
+            "import_id": import_id,
+        }
+
+        activities = activity_rows or self._build_activity_rows(
+            bundle=bundle,
+            project_key=project_key,
+            schedule_id=schedule_id,
+            version_key=version_key,
+            import_id=import_id,
+            schedule_table_id=schedule_table_id,
+            source_type=source_type,
+            source_format=source_format,
+        )
+        self._activity_repo.bulk_upsert_activities(activities, conn=conn)
 
         rels = [{**base, **r, "raw_json_redacted": json.dumps(r, default=str)} for r in bundle.relationships]
-        self._activity_repo.bulk_insert_table("procore_ep_schedule_relationships", rels)
+        self._activity_repo.bulk_insert_table("procore_ep_schedule_relationships", rels, conn=conn)
 
         wbs = [{**base, **w} for w in bundle.wbs_nodes]
-        self._activity_repo.bulk_insert_table("procore_ep_schedule_wbs_nodes", wbs)
+        self._activity_repo.bulk_insert_table("procore_ep_schedule_wbs_nodes", wbs, conn=conn)
 
         cals = [{**base, **c, "raw_json_redacted": json.dumps(c, default=str)} for c in bundle.calendars]
-        self._activity_repo.bulk_insert_table("procore_ep_schedule_calendars", cals)
+        self._activity_repo.bulk_insert_table("procore_ep_schedule_calendars", cals, conn=conn)
 
         codes = [{**base, **c} for c in bundle.code_assignments]
-        self._activity_repo.bulk_insert_table("procore_ep_schedule_activity_code_assignments", codes)
+        self._activity_repo.bulk_insert_table(
+            "procore_ep_schedule_activity_code_assignments", codes, conn=conn
+        )
 
         udfs = [{**base, **u} for u in bundle.udf_values]
-        self._activity_repo.bulk_insert_table("procore_ep_schedule_udf_values", udfs)
+        self._activity_repo.bulk_insert_table("procore_ep_schedule_udf_values", udfs, conn=conn)
 
     def _parse_bundle(
         self,
@@ -575,49 +899,74 @@ class ScheduleReadService:
     def _ensure_schema(self) -> None:
         ensure_schedule_schema(self._db_path)
 
-    def list_projects(self) -> list[dict[str, str]]:
-        self._ensure_schema()
-        keys = self._activity_repo.list_projects_with_schedules()
-        return [{"project_key": k, "display_label": k.replace("_", " ").title()} for k in keys]
+    def list_projects(self) -> dict[str, Any]:
+        from .schedule_project_catalog import ScheduleProjectCatalog
 
-    def list_versions(self, project_key: str) -> list[dict[str, Any]]:
+        self._ensure_schema()
+        catalog = ScheduleProjectCatalog(db_path=self._db_path)
+        projects = catalog.list_browse_projects()
+        return {
+            "catalog_status": catalog.catalog_status(),
+            "projects": projects,
+        }
+
+    def _version_summary_row(self, r: dict[str, Any]) -> dict[str, Any] | None:
+        from .schedule_project_catalog import ScheduleProjectCatalog
+
+        svk = r.get("schedule_version_key")
+        if not svk:
+            return None
+        row_project = str(r.get("project_key") or str(svk).split("|")[0])
+        q_count = len(self._mapping_repo.list_quality_findings(str(svk)))
+        run = self._quality_repo.get_latest_run(str(svk)) or self._quality_repo.get_pending_run(
+            str(svk)
+        )
+        scorecard = self._quality_repo.get_latest_scorecard(str(svk)) if run else None
+        parts = str(svk).split("|")
+        data_date = parts[2] if len(parts) >= 3 else None
+        completion_posture = scorecard.get("completion_posture") if scorecard else None
+        catalog = ScheduleProjectCatalog(db_path=self._db_path)
+        dto = ScheduleVersionSummaryDTO(
+            schedule_version_key=str(svk),
+            project_key=row_project,
+            source_type=str(r.get("source_type") or ""),
+            source_format=str(r.get("source_format") or ""),
+            display_label=str(r.get("source_filename_redacted") or svk),
+            data_date=data_date,
+            planned_start=None,
+            scheduled_finish=None,
+            activity_count=int(r.get("activity_count_live") or r.get("activity_count") or 0),
+            relationship_count=int(
+                r.get("relationship_count_live") or r.get("relationship_count") or 0
+            ),
+            cost_loaded_status=str(r.get("cost_loaded_status") or "not_cost_loaded"),
+            imported_at=str(r.get("created_at") or ""),
+            quality_finding_count=q_count,
+            quality_status=str(run.get("status")) if run else "not_evaluated",
+            quality_score=scorecard.get("quality_score") if scorecard else None,
+            quality_grade=scorecard.get("quality_grade") if scorecard else None,
+            quality_profile=str(run.get("assessment_profile")) if run else None,
+            project_display_name=catalog.resolve_display_name(row_project),
+            completion_posture=str(completion_posture) if completion_posture else None,
+            evaluated_at=str(run.get("completed_at")) if run and run.get("completed_at") else None,
+        )
+        return dto.public()
+
+    def list_versions(
+        self,
+        project_key: str | None = None,
+        *,
+        sort: str = "imported_at",
+        order: str = "desc",
+    ) -> list[dict[str, Any]]:
         self._ensure_schema()
         rows = self._activity_repo.list_versions(project_key)
-        out = []
+        out: list[dict[str, Any]] = []
         for r in rows:
-            svk = r.get("schedule_version_key")
-            if not svk:
-                continue
-            q_count = len(self._mapping_repo.list_quality_findings(str(svk)))
-            run = self._quality_repo.get_latest_run(str(svk)) or self._quality_repo.get_pending_run(
-                str(svk)
-            )
-            scorecard = self._quality_repo.get_latest_scorecard(str(svk)) if run else None
-            parts = str(svk).split("|")
-            data_date = parts[2] if len(parts) >= 3 else None
-            dto = ScheduleVersionSummaryDTO(
-                schedule_version_key=str(svk),
-                project_key=project_key,
-                source_type=str(r.get("source_type") or ""),
-                source_format=str(r.get("source_format") or ""),
-                display_label=str(r.get("source_filename_redacted") or svk),
-                data_date=data_date,
-                planned_start=None,
-                scheduled_finish=None,
-                activity_count=int(r.get("activity_count_live") or r.get("activity_count") or 0),
-                relationship_count=int(
-                    r.get("relationship_count_live") or r.get("relationship_count") or 0
-                ),
-                cost_loaded_status=str(r.get("cost_loaded_status") or "not_cost_loaded"),
-                imported_at=str(r.get("created_at") or ""),
-                quality_finding_count=q_count,
-                quality_status=str(run.get("status")) if run else "not_evaluated",
-                quality_score=scorecard.get("quality_score") if scorecard else None,
-                quality_grade=scorecard.get("quality_grade") if scorecard else None,
-                quality_profile=str(run.get("assessment_profile")) if run else None,
-            )
-            out.append(dto.public())
-        return out
+            summary = self._version_summary_row(r)
+            if summary:
+                out.append(summary)
+        return sort_version_summaries(out, sort=sort, order=order)
 
     def get_summary(self, schedule_version_key: str) -> dict[str, Any] | None:
         self._ensure_schema()

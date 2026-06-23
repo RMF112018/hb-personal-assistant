@@ -31,6 +31,12 @@ from hb_assistant.store.connection import open_connection, transaction
 from . import endpoints as endpoint_registry
 from . import projection_paths as pp
 from . import projection_registry as registry
+from .projects_projection import (
+    PROJECTS_PRIMARY_TABLE,
+    payload_matches_projects_context,
+    primary_upsert_conflict_key,
+    projects_record_key_for_project_key,
+)
 from .structured_analytics import (
     RAW_LANDING_TABLE,
     _existing_source_quality_rank,
@@ -156,9 +162,21 @@ def project_endpoint_specific(
         )
         return receipt
 
-    record_key = structured_record_key(
-        endpoint_id, project_key, record_id, parent_record_id or None
-    )
+    if not payload_matches_projects_context(
+        endpoint_id=endpoint_id,
+        procore_project_id=procore_project_id,
+        record_id=record_id,
+        payload=payload,
+    ):
+        receipt["endpoint_specific_projection_status"] = "skipped_non_matching_project"
+        return receipt
+
+    if plan.primary_table == PROJECTS_PRIMARY_TABLE and project_key:
+        record_key = projects_record_key_for_project_key(str(project_key))
+    else:
+        record_key = structured_record_key(
+            endpoint_id, project_key, record_id, parent_record_id or None
+        )
     incoming_rank = _rank(source_quality)
     if _existing_source_quality_rank(conn, plan.primary_table, record_key) > incoming_rank:
         receipt["endpoint_specific_projection_status"] = "skipped_higher_quality"
@@ -261,7 +279,12 @@ def _upsert_primary(
             "updated_utc": now_utc,
         }
     )
-    _upsert(conn, plan.primary_table, values, conflict_key="record_key")
+    conflict_key = primary_upsert_conflict_key(plan.primary_table)
+    if conflict_key == "project_key":
+        if not project_key or not str(project_key).strip():
+            return
+        values["record_key"] = projects_record_key_for_project_key(str(project_key))
+    _upsert(conn, plan.primary_table, values, conflict_key=conflict_key)
 
 
 def _insert_child_rows(

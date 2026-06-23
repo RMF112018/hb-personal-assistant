@@ -84,7 +84,7 @@ class ForecastRuntimeResetRequest(BaseModel):
 
 class ScheduleImportCommitRequest(BaseModel):
     import_id: str
-    project_key: str = "tropical"
+    project_key: str
     confirm: bool = False
     confirm_supersede: bool = False
     column_roles: dict[str, str] | None = None
@@ -2104,6 +2104,15 @@ def create_app(*, db_path: str | None = None) -> Any:
             raise HTTPException(status_code=413, detail="schedule_file_too_large")
         if code == "duplicate_schedule_version":
             raise HTTPException(status_code=409, detail={"code": code, **payload})
+        if code in {"schedule_project_required", "schedule_project_unknown"}:
+            raise HTTPException(status_code=422, detail={"code": code, **payload})
+        if code in {
+            "schedule_project_mismatch",
+            "schedule_import_persistence_failed",
+            "schedule_supersede_confirmation_required",
+            "schedule_supersede_state_mismatch",
+        }:
+            raise HTTPException(status_code=409, detail={"code": code, **payload})
         if code == "schedule_multipart_unavailable":
             raise HTTPException(status_code=503, detail="schedule_multipart_unavailable")
         if code == "schedule_quality_not_ready":
@@ -2133,22 +2142,65 @@ def create_app(*, db_path: str | None = None) -> Any:
             raise AssertionError("unreachable") from exc
 
     @app.get("/api/schedules/projects")
-    def schedule_list_projects(role: dict[str, str] = role_dep) -> list[dict[str, Any]]:
+    def schedule_list_projects(role: dict[str, str] = role_dep) -> dict[str, Any]:
         del role
         return _schedule_call(_schedule_read_service().list_projects)
 
-    @app.get("/api/schedules/projects/{project_key}/versions")
-    def schedule_list_versions(project_key: str, role: dict[str, str] = role_dep) -> list[dict[str, Any]]:
+    @app.get("/api/schedules/versions")
+    def schedule_list_versions_query(
+        project_key: str | None = None,
+        sort: str = Query(default="imported_at"),
+        order: str = Query(default="desc"),
+        role: dict[str, str] = role_dep,
+    ) -> list[dict[str, Any]]:
         del role
-        return _schedule_call(_schedule_read_service().list_versions, project_key)
+        return _schedule_call(
+            _schedule_read_service().list_versions,
+            project_key,
+            sort=sort,
+            order=order,
+        )
+
+    @app.get("/api/schedules/projects/{project_key}/versions")
+    def schedule_list_versions(
+        project_key: str,
+        sort: str = Query(default="imported_at"),
+        order: str = Query(default="desc"),
+        role: dict[str, str] = role_dep,
+    ) -> list[dict[str, Any]]:
+        del role
+        return _schedule_call(
+            _schedule_read_service().list_versions,
+            project_key,
+            sort=sort,
+            order=order,
+        )
+
+    def _enforce_version_project_scope(
+        schedule_version_key: str, project_key: str | None
+    ) -> None:
+        from hb_assistant.construction.analytics.schedule_import_service import (
+            assert_version_matches_project,
+        )
+        from hb_assistant.construction.analytics.schedule_file_parser import (
+            ScheduleImportError,
+        )
+
+        try:
+            assert_version_matches_project(schedule_version_key, project_key)
+        except ScheduleImportError as exc:
+            _raise_schedule_import_error(exc)
 
     @app.get("/api/schedules/versions/{schedule_version_key}/summary")
     def schedule_version_summary(
-        schedule_version_key: str, role: dict[str, str] = role_dep
+        schedule_version_key: str,
+        project_key: str | None = None,
+        role: dict[str, str] = role_dep,
     ) -> dict[str, Any]:
         del role
         from fastapi import HTTPException
 
+        _enforce_version_project_scope(schedule_version_key, project_key)
         out = _schedule_call(_schedule_read_service().get_summary, schedule_version_key)
         if out is None:
             raise HTTPException(status_code=404, detail="schedule_not_found")
@@ -2159,9 +2211,11 @@ def create_app(*, db_path: str | None = None) -> Any:
         schedule_version_key: str,
         limit: int | None = Query(default=None, ge=1, le=10000),
         offset: int = Query(default=0, ge=0),
+        project_key: str | None = None,
         role: dict[str, str] = role_dep,
     ) -> dict[str, Any]:
         del role
+        _enforce_version_project_scope(schedule_version_key, project_key)
         read = _schedule_read_service()
         items = _schedule_call(
             read.list_activities,
@@ -2181,9 +2235,12 @@ def create_app(*, db_path: str | None = None) -> Any:
 
     @app.get("/api/schedules/versions/{schedule_version_key}/relationships")
     def schedule_version_relationships(
-        schedule_version_key: str, role: dict[str, str] = role_dep
+        schedule_version_key: str,
+        project_key: str | None = None,
+        role: dict[str, str] = role_dep,
     ) -> dict[str, Any]:
         del role
+        _enforce_version_project_scope(schedule_version_key, project_key)
         items = _schedule_call(_schedule_read_service().list_relationships, schedule_version_key)
         return {"schedule_version_key": schedule_version_key, "relationships": items}
 
@@ -2194,11 +2251,32 @@ def create_app(*, db_path: str | None = None) -> Any:
 
         return ScheduleQualityService(db_path=_schedule_db_path())
 
-    @app.get("/api/schedules/versions/{schedule_version_key}/quality")
-    def schedule_version_quality(
-        schedule_version_key: str, role: dict[str, str] = role_dep
+    @app.get("/api/schedules/quality")
+    def schedule_list_quality(
+        project_key: str | None = None,
+        sort: str = Query(default="evaluated_at"),
+        order: str = Query(default="desc"),
+        include_history: bool = Query(default=False),
+        role: dict[str, str] = role_dep,
     ) -> dict[str, Any]:
         del role
+        evaluations = _schedule_call(
+            _schedule_quality_service().list_evaluations,
+            project_key=project_key,
+            sort=sort,
+            order=order,
+            include_history=include_history,
+        )
+        return {"project_key": project_key, "evaluations": evaluations}
+
+    @app.get("/api/schedules/versions/{schedule_version_key}/quality")
+    def schedule_version_quality(
+        schedule_version_key: str,
+        project_key: str | None = None,
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        del role
+        _enforce_version_project_scope(schedule_version_key, project_key)
         return _schedule_call(
             _schedule_quality_service().get_quality_summary,
             schedule_version_key,
@@ -2333,7 +2411,7 @@ def create_app(*, db_path: str | None = None) -> Any:
         role: dict[str, str] = role_dep,
         _schema: None = Depends(require_schedule_schema_ready),
         file: FastAPIUploadFile = FastAPIFile(...),
-        project_key: str = FastAPIForm("tropical"),
+        project_key: str = FastAPIForm(...),
         column_roles: str | None = FastAPIForm(None),
         confirm_supersede: bool = FastAPIForm(False),
     ) -> dict[str, Any]:

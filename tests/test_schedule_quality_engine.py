@@ -15,6 +15,7 @@ from hb_assistant.construction.analytics.schedule_quality_engine import (
 )
 from hb_assistant.construction.analytics.schedule_quality_service import ScheduleQualityService
 from hb_assistant.store.migrator import SQLiteMigrator
+from tests.schedule_project_test_helpers import seed_procore_ep_project
 
 FIXTURE = Path(__file__).resolve().parent / "fixtures" / "schedules" / "xml" / "minimal_schedule.xml"
 GMA = Path(__file__).resolve().parent / "fixtures" / "schedules" / "xml" / "gma_sample.xml"
@@ -23,6 +24,7 @@ GMA = Path(__file__).resolve().parent / "fixtures" / "schedules" / "xml" / "gma_
 def _db(tmp_path: Path) -> str:
     db = tmp_path / "q.db"
     SQLiteMigrator(db_path=str(db)).apply()
+    seed_procore_ep_project(db, project_key="tropical", display_name="Tropical Wind")
     return str(db)
 
 

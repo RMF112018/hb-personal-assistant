@@ -24,7 +24,7 @@ def _cols(conn: sqlite3.Connection, table: str) -> set[str]:
 
 def test_v65_drift_repair_when_migration_row_exists_without_columns(tmp_path: Path) -> None:
     db = tmp_path / "drift.db"
-    assert LATEST_SCHEMA_VERSION == 67
+    assert LATEST_SCHEMA_VERSION == 70
     migrator = SQLiteMigrator(db_path=str(db))
     migrator.apply()
 

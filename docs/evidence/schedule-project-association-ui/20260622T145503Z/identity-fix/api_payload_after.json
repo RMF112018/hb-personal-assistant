@@ -1,0 +1,84 @@
+{
+  "catalog_status": "ok",
+  "selectable_count": 6,
+  "projects": [
+    {
+      "project_key": "alton-hilltop-pbg",
+      "display_name": "23-435-01 - Tropical World Nursery Senior Living Facility",
+      "project_number": "23-435-01",
+      "procore_project_id": "2982068",
+      "record_key": "psa-d561e88792d65b43d79b44cca84a9bc3",
+      "source_system": "procore_ep_projects",
+      "display_label": "alton-hilltop-pbg \u2014 23-435-01 - Tropical World Nursery Senior Living Facility \u00b7 #23-435-01 \u00b7 Procore 2982068 \u26a0",
+      "project_identity_label": "alton-hilltop-pbg \u2014 23-435-01 - Tropical World Nursery Senior Living Facility \u00b7 #23-435-01 \u00b7 Procore 2982068 \u26a0",
+      "identity_warning": "inconsistent_display_metadata_within_project_key, multiple_current_rows, duplicate_display_metadata_across_project_keys",
+      "selectable_for_import": true,
+      "has_schedule_imports": false
+    },
+    {
+      "project_key": "caretta",
+      "display_name": "23-435-01 - Tropical World Nursery Senior Living Facility",
+      "project_number": "23-435-01",
+      "procore_project_id": "2145250",
+      "record_key": "psa-c3fc9592bddbc438a96ab97e9960411b",
+      "source_system": "procore_ep_projects",
+      "display_label": "caretta \u2014 23-435-01 - Tropical World Nursery Senior Living Facility \u00b7 #23-435-01 \u00b7 Procore 2145250 \u26a0",
+      "project_identity_label": "caretta \u2014 23-435-01 - Tropical World Nursery Senior Living Facility \u00b7 #23-435-01 \u00b7 Procore 2145250 \u26a0",
+      "identity_warning": "inconsistent_display_metadata_within_project_key, multiple_current_rows, duplicate_display_metadata_across_project_keys",
+      "selectable_for_import": true,
+      "has_schedule_imports": false
+    },
+    {
+      "project_key": "pga-modern-garage",
+      "display_name": "23-435-01 - Tropical World Nursery Senior Living Facility",
+      "project_number": "23-435-01",
+      "procore_project_id": "2091445",
+      "record_key": "psa-58e6ac2d1e3d20af9b14864515bfd33e",
+      "source_system": "procore_ep_projects",
+      "display_label": "pga-modern-garage \u2014 23-435-01 - Tropical World Nursery Senior Living Facility \u00b7 #23-435-01 \u00b7 Procore 2091445 \u26a0",
+      "project_identity_label": "pga-modern-garage \u2014 23-435-01 - Tropical World Nursery Senior Living Facility \u00b7 #23-435-01 \u00b7 Procore 2091445 \u26a0",
+      "identity_warning": "inconsistent_display_metadata_within_project_key, multiple_current_rows, duplicate_display_metadata_across_project_keys",
+      "selectable_for_import": true,
+      "has_schedule_imports": false
+    },
+    {
+      "project_key": "rybovich",
+      "display_name": "23-435-01 - Tropical World Nursery Senior Living Facility",
+      "project_number": "23-435-01",
+      "procore_project_id": "3133242",
+      "record_key": "psa-39087e3f9cf3e9a00accfadefc0f9769",
+      "source_system": "procore_ep_projects",
+      "display_label": "rybovich \u2014 23-435-01 - Tropical World Nursery Senior Living Facility \u00b7 #23-435-01 \u00b7 Procore 3133242 \u26a0",
+      "project_identity_label": "rybovich \u2014 23-435-01 - Tropical World Nursery Senior Living Facility \u00b7 #23-435-01 \u00b7 Procore 3133242 \u26a0",
+      "identity_warning": "inconsistent_display_metadata_within_project_key, multiple_current_rows, duplicate_display_metadata_across_project_keys",
+      "selectable_for_import": true,
+      "has_schedule_imports": false
+    },
+    {
+      "project_key": "the-wellington",
+      "display_name": "23-435-01 - Tropical World Nursery Senior Living Facility",
+      "project_number": "23-435-01",
+      "procore_project_id": "3215931",
+      "record_key": "psa-c1abf9e0f21f4587173b3cdf0de7345d",
+      "source_system": "procore_ep_projects",
+      "display_label": "the-wellington \u2014 23-435-01 - Tropical World Nursery Senior Living Facility \u00b7 #23-435-01 \u00b7 Procore 3215931 \u26a0",
+      "project_identity_label": "the-wellington \u2014 23-435-01 - Tropical World Nursery Senior Living Facility \u00b7 #23-435-01 \u00b7 Procore 3215931 \u26a0",
+      "identity_warning": "inconsistent_display_metadata_within_project_key, multiple_current_rows, duplicate_display_metadata_across_project_keys",
+      "selectable_for_import": true,
+      "has_schedule_imports": false
+    },
+    {
+      "project_key": "tropical",
+      "display_name": "23-435-01 - Tropical World Nursery Senior Living Facility",
+      "project_number": "23-435-01",
+      "procore_project_id": "2525840",
+      "record_key": "psa-c5a8b378de8aededb283dfb3ab2b3060",
+      "source_system": "procore_ep_projects",
+      "display_label": "tropical \u2014 23-435-01 - Tropical World Nursery Senior Living Facility \u00b7 #23-435-01 \u00b7 Procore 2525840 \u26a0",
+      "project_identity_label": "tropical \u2014 23-435-01 - Tropical World Nursery Senior Living Facility \u00b7 #23-435-01 \u00b7 Procore 2525840 \u26a0",
+      "identity_warning": "inconsistent_display_metadata_within_project_key, multiple_current_rows, duplicate_display_metadata_across_project_keys",
+      "selectable_for_import": true,
+      "has_schedule_imports": false
+    }
+  ]
+}

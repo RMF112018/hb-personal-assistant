@@ -30,6 +30,10 @@ class ParsedScheduleBundle:
     planned_start: str | None = None
     scheduled_finish: str | None = None
     procore_project_id: str | None = None
+    source_project_id: str | None = None
+    source_project_name: str | None = None
+    source_project_short_name: str | None = None
+    source_project_metadata_json: str | None = None
     activities: list[dict[str, Any]] = field(default_factory=list)
     relationships: list[dict[str, Any]] = field(default_factory=list)
     wbs_nodes: list[dict[str, Any]] = field(default_factory=list)

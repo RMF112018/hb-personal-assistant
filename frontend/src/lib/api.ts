@@ -975,8 +975,44 @@ export function getExternalEvaluation(evalId: string) {
 export function getScheduleProjects() {
   return fetchJson('/api/schedules/projects');
 }
-export function getScheduleVersions(projectKey: string) {
-  return fetchJson(`/api/schedules/projects/${encodeURIComponent(projectKey)}/versions`);
+export function listScheduleVersions(opts?: {
+  projectKey?: string;
+  sort?: string;
+  order?: 'asc' | 'desc';
+}) {
+  const params = new URLSearchParams();
+  if (opts?.projectKey) params.set('project_key', opts.projectKey);
+  if (opts?.sort) params.set('sort', opts.sort);
+  if (opts?.order) params.set('order', opts.order);
+  const qs = params.toString();
+  return fetchJson(`/api/schedules/versions${qs ? `?${qs}` : ''}`);
+}
+export function getScheduleVersions(
+  projectKey: string,
+  opts?: { sort?: string; order?: 'asc' | 'desc' },
+) {
+  const params = new URLSearchParams();
+  if (opts?.sort) params.set('sort', opts.sort);
+  if (opts?.order) params.set('order', opts.order);
+  const qs = params.toString();
+  const suffix = qs ? `?${qs}` : '';
+  return fetchJson(
+    `/api/schedules/projects/${encodeURIComponent(projectKey)}/versions${suffix}`,
+  );
+}
+export function listScheduleQualityEvaluations(opts?: {
+  projectKey?: string;
+  sort?: string;
+  order?: 'asc' | 'desc';
+  includeHistory?: boolean;
+}) {
+  const params = new URLSearchParams();
+  if (opts?.projectKey) params.set('project_key', opts.projectKey);
+  if (opts?.sort) params.set('sort', opts.sort);
+  if (opts?.order) params.set('order', opts.order);
+  if (opts?.includeHistory) params.set('include_history', 'true');
+  const qs = params.toString();
+  return fetchJson(`/api/schedules/quality${qs ? `?${qs}` : ''}`);
 }
 export function getScheduleVersionSummary(scheduleVersionKey: string) {
   return fetchJson(`/api/schedules/versions/${encodeURIComponent(scheduleVersionKey)}/summary`);
@@ -1036,14 +1072,18 @@ export function getScheduleVersionDiff(projectKey: string, fromVersion: string, 
 }
 export async function uploadScheduleImportPreview(
   file: File,
-  projectKey = 'tropical',
+  projectKey: string,
   columnRoles?: Record<string, string> | null,
+  confirmSupersede = false,
 ) {
   const form = new FormData();
   form.append('file', file);
   form.append('project_key', projectKey);
   if (columnRoles) {
     form.append('column_roles', JSON.stringify(columnRoles));
+  }
+  if (confirmSupersede) {
+    form.append('confirm_supersede', 'true');
   }
   const role = getLocalUiRole();
   let res: Response;
@@ -1077,8 +1117,9 @@ export async function uploadScheduleImportPreview(
 }
 export function commitScheduleImport(
   importId: string,
-  projectKey = 'tropical',
+  projectKey: string,
   columnRoles?: Record<string, string> | null,
+  confirmSupersede = false,
 ) {
   return fetchJson('/api/schedules/import-commit', {
     method: 'POST',
@@ -1086,6 +1127,7 @@ export function commitScheduleImport(
       import_id: importId,
       project_key: projectKey,
       confirm: true,
+      confirm_supersede: confirmSupersede,
       column_roles: columnRoles ?? null,
     }),
   });
@@ -1290,6 +1332,8 @@ export const api = {
   getExternalEvaluation,
   // Schedule Intelligence (V62).
   getScheduleProjects,
+  listScheduleVersions,
+  listScheduleQualityEvaluations,
   getScheduleVersions,
   getScheduleVersionSummary,
   getScheduleActivities,
