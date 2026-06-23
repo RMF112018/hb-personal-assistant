@@ -1,0 +1,9 @@
+[
+  "confidence_high",
+  "confidence_low",
+  "operator_assumption:labor_rate_locked",
+  "operator_assumption:scope_volatility",
+  "per_code_confidence",
+  "per_code_confidence",
+  "required_assumption_unsatisfied:owner_change_order_signoff"
+]
