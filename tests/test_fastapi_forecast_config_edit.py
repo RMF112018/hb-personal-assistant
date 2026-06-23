@@ -132,6 +132,13 @@ def test_list_and_detail_viewer_readable(ctx) -> None:
 def test_unconfigured_is_503(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     db, snap = _build_fixture_db(tmp_path)
     monkeypatch.delenv(ENV_CONFIG_EDIT_ROOT, raising=False)
+    # Isolate from the machine's persisted settings/managed default: the resolver falls back past the
+    # env var, so simulate a truly-unconfigured runtime by forcing it to None (patched on the source
+    # module, since api.py imports it locally at call time).
+    monkeypatch.setattr(
+        "hb_assistant.construction.analytics.forecast_runtime_config.resolve_config_edit_root_value",
+        lambda explicit=None: None,
+    )
     client = TestClient(create_app(db_path=str(db)))
     r = client.post("/api/forecast/config/edits", headers=_h("operator"), json=_edit(snap))
     assert r.status_code == 503

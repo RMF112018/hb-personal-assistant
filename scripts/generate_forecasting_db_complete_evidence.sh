@@ -7,6 +7,11 @@ cd "$REPO_ROOT"
 LIVE_DB="${LIVE_DB:-/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite}"
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 
+# Use the repo venv interpreter (has hb_assistant + deps) rather than a bare system python3, which may
+# lack pydantic/etc. Callers (e.g. tests) may override VENV_PYTHON; fall back to python3 if absent.
+VENV_PYTHON="${VENV_PYTHON:-$REPO_ROOT/.venv/bin/python}"
+[ -x "$VENV_PYTHON" ] || VENV_PYTHON="python3"
+
 ROOT="docs/evidence/forecasting-db-complete-evidence/$STAMP"
 SC_OUT="$ROOT/01-schemacrawler-schema"
 SQL_OUT="$ROOT/02-targeted-sql-profiles"
@@ -78,7 +83,7 @@ else
   echo '{"ok":false,"skipped":true,"reason":"schemacrawler not found on PATH"}' > "$SC_OUT/00-schemacrawler-skipped.json"
 fi
 
-python3 - "$LIVE_DB" "$ROOT" "$REPO_ROOT" <<'PY'
+"$VENV_PYTHON" - "$LIVE_DB" "$ROOT" "$REPO_ROOT" <<'PY'
 import datetime as dt
 import decimal
 import hashlib
@@ -717,7 +722,7 @@ write_json(root / "00-evidence-package-summary.json", {
 })
 PY
 
-find "$ROOT" -name '*.json' -print0 | xargs -0 -n1 python3 -m json.tool >/dev/null
+find "$ROOT" -name '*.json' -print0 | xargs -0 -n1 "$VENV_PYTHON" -m json.tool >/dev/null
 
 ZERO_TMP="$ROOT/99-zero-byte-files.tmp"
 find "$ROOT" -type f -size 0 ! -name '99-zero-byte-files.txt' ! -name '99-zero-byte-files.tmp' -print | tee "$ZERO_TMP" >/dev/null
@@ -737,7 +742,7 @@ else
   echo '{"ok":false,"skipped":true,"reason":"hb-assistant not found"}' > "$ROOT/98-no-raw-leak-scan.json"
 fi
 
-python3 -m json.tool "$ROOT/98-no-raw-leak-scan.json" >/dev/null
+"$VENV_PYTHON" -m json.tool "$ROOT/98-no-raw-leak-scan.json" >/dev/null
 
 TGZ="docs/evidence/forecasting-db-complete-evidence-$STAMP.tgz"
 CHECKSUM_SIDEcar="${TGZ}.sha256"

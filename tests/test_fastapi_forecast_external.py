@@ -141,6 +141,13 @@ def test_unknown_eval_is_404(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) ->
 
 def test_unconfigured_fails_closed_503(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("HB_FORECAST_EVAL_ROOT", raising=False)
+    # Isolate from the machine's persisted settings/managed default: the resolver falls back past the
+    # env var, so simulate a truly-unconfigured runtime by forcing it to None (patched on the source
+    # module, since api.py imports it locally at call time).
+    monkeypatch.setattr(
+        "hb_assistant.construction.analytics.forecast_runtime_config.resolve_eval_root_value",
+        lambda explicit=None: None,
+    )
     client = TestClient(create_app(db_path=str(tmp_path / "x.sqlite")))
     resp = client.get("/api/forecast/external/evaluations", headers=_viewer())
     assert resp.status_code == 503

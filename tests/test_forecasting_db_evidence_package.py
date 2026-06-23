@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+import sys
 import tarfile
 from pathlib import Path
 
@@ -116,7 +117,7 @@ r = classify_amount_field(table="t", column="grand_total")
 assert r["approved_for_aggregation"] is True
 """
     proc = subprocess.run(
-        ["python3", "-c", code],
+        [sys.executable, "-c", code],  # the venv interpreter (has hb_assistant), not bare python3
         cwd=REPO_ROOT,
         capture_output=True,
         text=True,

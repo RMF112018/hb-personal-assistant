@@ -106,7 +106,10 @@ def default_config() -> "ContextPackageConfig":
     CFR_CONTEXT_OUT_DIR the output package dir; CFR_CONTEXT_STAMP the wall-clock stamp. Unset =>
     byte-identical to the historical tropical defaults.
     """
-    from ..common.project_config import load_project_config, resolve_project_key
+    from construction_financial_review.common.project_config import (
+        load_project_config,
+        resolve_project_key,
+    )
 
     key = resolve_project_key()
     pcfg = load_project_config(key)

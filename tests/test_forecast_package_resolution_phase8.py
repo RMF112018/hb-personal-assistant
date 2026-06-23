@@ -134,7 +134,7 @@ def test_refuse_wrong_prefix(tmp_path):
 
 def test_refuse_wrong_project_key(tmp_path):
     ctx = _fake_context(tmp_path)
-    with pytest.raises(PackageResolutionError, match="unsupported project_key"):
+    with pytest.raises(PackageResolutionError, match="not eligible"):
         pr.resolve_explicit_package(
             package_kind="context", package_path=ctx, project_key="not-tropical"
         )

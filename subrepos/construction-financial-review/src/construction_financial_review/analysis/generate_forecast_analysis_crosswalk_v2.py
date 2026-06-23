@@ -77,7 +77,10 @@ def resolve_inputs():
     global ROOT, CTX, ANL, WP, XW_DIR, XW_FILE, XW_VALIDATION, OUT
     global CONTEXT_LINEAGE, ANALYSIS_LINEAGE, WORKPAPER_LINEAGE
     global PROJECT_KEY, PROJECT_NAME, JOB_REF, PERIOD, XW_AUTHORITATIVE_NAME
-    from ..common.project_config import load_project_config, resolve_project_key
+    from construction_financial_review.common.project_config import (
+        load_project_config,
+        resolve_project_key,
+    )
 
     PROJECT_KEY = resolve_project_key()
     _pcfg = load_project_config(PROJECT_KEY)

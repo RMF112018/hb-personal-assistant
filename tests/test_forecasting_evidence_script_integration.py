@@ -6,6 +6,7 @@ import json
 import os
 import sqlite3
 import subprocess
+import sys
 import tarfile
 from pathlib import Path
 
@@ -40,6 +41,7 @@ def test_evidence_script_smoke_with_minimal_db(tmp_path: Path) -> None:
     env = {
         **os.environ,
         "LIVE_DB": str(db),
+        "VENV_PYTHON": sys.executable,  # the venv interpreter (has hb_assistant + deps), not bare python3
         "HB_FORECASTING_EVIDENCE_SKIP_SCHEMACRAWLER": "1",
         "HB_FORECASTING_EVIDENCE_SKIP_NO_RAW": "1",
     }
