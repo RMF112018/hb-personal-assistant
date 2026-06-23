@@ -21,6 +21,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import sqlite3
+from collections.abc import Iterable
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
@@ -97,6 +99,30 @@ def _money_sub(a: Any, b: Any) -> str | None:
         return str((da - db).quantize(Decimal("0.01")))
     except (InvalidOperation, TypeError, ValueError):
         return None
+
+
+def _money_sum(values: Iterable[Any]) -> tuple[str | None, int]:
+    """Sum the parseable money values as a 2dp Decimal string. Returns ``(total, skipped)``.
+
+    Only values that parse as ``Decimal`` contribute; null/blank/unparseable entries are
+    skipped and counted. Returns ``(None, skipped)`` when nothing parsed — never fabricates a
+    ``0.00`` total from an empty set (no-fuzzy-fill).
+    """
+    total = Decimal("0")
+    parsed = 0
+    skipped = 0
+    for value in values:
+        if value is None or value == "":
+            skipped += 1
+            continue
+        try:
+            total += Decimal(str(value))
+            parsed += 1
+        except (InvalidOperation, TypeError, ValueError):
+            skipped += 1
+    if parsed == 0:
+        return None, skipped
+    return str(total.quantize(Decimal("0.01"))), skipped
 
 
 def _positive_weight(w: Any) -> bool:
@@ -220,6 +246,42 @@ def plan_run_output_projection(
                 "updated_utc": now_utc,
             }
         )
+
+    # P1: aggregate per-code totals into the header. These are pure functions of the in-memory
+    # per-code rows (Decimal, no float) and are persisted to DB on apply; the prior-run delta is
+    # added later in the DB-aware apply path. Header raw_json stays a faithful manifest+summary
+    # echo (totals live in dedicated columns only).
+    eac, eac_skipped = _money_sum(r.get("recommended_projected_cost") for r in rec_rows)
+    ctc, ctc_skipped = _money_sum(r.get("recommended_cost_to_complete") for r in rec_rows)
+    budget_sum, _budget_skipped = _money_sum(r.get("budget_amount") for r in rec_rows)
+    header = planned["outputs"][0]
+    header["estimated_final_cost"] = eac
+    header["forecast_at_completion"] = eac
+    header["cost_to_complete"] = ctc
+    header["variance_to_budget"] = (
+        _money_sub(eac, budget_sum) if eac is not None and budget_sum is not None else None
+    )
+    if rec_rows:
+        if eac is None:
+            warnings.append(
+                f"no parseable recommended_projected_cost across {len(rec_rows)} budget codes; "
+                "header EAC left null"
+            )
+        elif eac_skipped:
+            warnings.append(
+                f"{eac_skipped}/{len(rec_rows)} budget codes missing recommended_projected_cost; "
+                "header EAC aggregates the remainder"
+            )
+        if ctc is None:
+            warnings.append(
+                f"no parseable recommended_cost_to_complete across {len(rec_rows)} budget codes; "
+                "header cost_to_complete left null"
+            )
+        elif ctc_skipped:
+            warnings.append(
+                f"{ctc_skipped}/{len(rec_rows)} budget codes missing recommended_cost_to_complete; "
+                "header cost_to_complete aggregates the remainder"
+            )
 
     risk_rows = _read_jsonl(analysis_package / RISK_REGISTER_FILE)
     if not risk_rows:
@@ -394,7 +456,9 @@ def plan_run_output_projection(
     if context_package is not None:
         bc_rows = _read_jsonl(Path(context_package) / BUDGET_CODES_CANONICAL_FILE)
         if not bc_rows:
-            warnings.append(f"{BUDGET_CODES_CANONICAL_FILE} not found or empty; no commitment exposure")
+            warnings.append(
+                f"{BUDGET_CODES_CANONICAL_FILE} not found or empty; no commitment exposure"
+            )
         seq = 0
         for row in bc_rows:
             amounts = row.get("amounts") or {}
@@ -438,6 +502,59 @@ def plan_run_output_projection(
         "counts": counts,
         "warnings": warnings,
     }
+
+
+def _augment_prior_deltas(
+    conn: sqlite3.Connection,
+    *,
+    planned: dict[str, list[dict[str, Any]]],
+    project_key: str,
+    output_id: str,
+) -> None:
+    """DB-aware header augmentation: prior-run delta + a project-level ``current_vs_prior`` row.
+
+    Runs inside the apply transaction BEFORE the current output is written, so the prior-run
+    query (most recent ``forecast_outputs`` for the project, excluding the current ``output_id``)
+    returns the genuine prior run. No-op when no prior run exists (first run -> delta stays null).
+    Patches only dedicated columns + appends one change row, so DB↔package parity (raw_json-only)
+    is unaffected.
+    """
+    if not planned["outputs"]:
+        return
+    header = planned["outputs"][0]
+    current_eac = header.get("estimated_final_cost")
+    prior = conn.execute(
+        "SELECT run_id, estimated_final_cost FROM forecast_outputs "
+        "WHERE project_key = ? AND output_id != ? "
+        "ORDER BY created_utc DESC LIMIT 1",
+        (project_key, output_id),
+    ).fetchone()
+    if prior is None:
+        return
+    prior_run_id, prior_eac = prior[0], prior[1]
+    variance = _money_sub(current_eac, prior_eac)
+    header["variance_to_prior_forecast"] = variance
+    now_utc = header.get("created_utc") or _now()
+    payload = {
+        "change_type": "current_vs_prior",
+        "delta_amount": variance,
+        "prior_run_id": prior_run_id,
+    }
+    planned["changes"].append(
+        {
+            "id": f"foch-{_hash(f'{output_id}|__current_vs_prior__')[:32]}",
+            "output_id": output_id,
+            "project_key": project_key,
+            "budget_code_key": None,
+            "change_type": "current_vs_prior",
+            "delta_amount": variance,
+            "prior_run_id": prior_run_id,
+            "source_row_number": len(planned["changes"]) + 1,
+            "raw_json": json.dumps(payload, sort_keys=True),
+            "created_utc": now_utc,
+            "updated_utc": now_utc,
+        }
+    )
 
 
 def project_run_output(
@@ -505,6 +622,13 @@ def project_run_output(
     written: dict[str, int] = dict.fromkeys(_PLAN_KEYS, 0)
     if plan["ok"]:
         with open_connection(Path(db_path)) as conn, transaction(conn):
+            # DB-aware: resolve the prior-run delta before writing the current output.
+            _augment_prior_deltas(
+                conn,
+                planned=plan["planned"],
+                project_key=project_key,
+                output_id=plan["output_id"],
+            )
             written = repo.apply_plan(conn, plan["planned"])
     plan["mode"] = "apply"
     plan["written"] = written
