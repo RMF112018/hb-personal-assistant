@@ -761,6 +761,18 @@ export interface ForecastDbBudgetCode {
   recommended_cost_to_complete: string | null;
   confidence: string | null;
 }
+export interface ForecastDbCommitmentExposure {
+  budget_code_key: string | null;
+  committed_amount: string | null;
+  exposure_amount: string | null;
+}
+export interface ForecastDbSchedulePhasing {
+  budget_code_key: string | null;
+  phase: string | null;
+  start_month: string | null;
+  end_month: string | null;
+  amount: string | null;
+}
 export interface ForecastDbOutputDetail extends ForecastDbOutputSummary {
   forecast_at_completion: string | null;
   variance_to_prior_forecast: string | null;
@@ -770,6 +782,8 @@ export interface ForecastDbOutputDetail extends ForecastDbOutputSummary {
   probability: Record<string, unknown>[];
   changes: Record<string, unknown>[];
   staffing: Record<string, unknown>[];
+  commitment_exposure: ForecastDbCommitmentExposure[];
+  schedule_phasing: ForecastDbSchedulePhasing[];
 }
 export interface ForecastDbConfidenceFactor {
   factor_key: string;

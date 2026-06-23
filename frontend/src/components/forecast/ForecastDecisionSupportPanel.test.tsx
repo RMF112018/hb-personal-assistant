@@ -54,6 +54,12 @@ function mockPopulated() {
           probability: [],
           changes: [],
           staffing: [],
+          commitment_exposure: [
+            { budget_code_key: 'k1', committed_amount: '1000.00', exposure_amount: '750.00' },
+          ],
+          schedule_phasing: [
+            { budget_code_key: 'k1', phase: 'direct', start_month: '2026-07', end_month: '2026-08', amount: '3000.00' },
+          ],
         },
         isLoading: false,
         error: null,
@@ -97,6 +103,11 @@ describe('ForecastDecisionSupportPanel', () => {
     expect(screen.getByText('monthly_actuals')).toBeInTheDocument()
     expect(screen.getByText('burn_rate')).toBeInTheDocument()
     expect(screen.getByText('03-01-025')).toBeInTheDocument()
+    // commitment exposure + schedule phasing surfaces
+    expect(screen.getByText('Commitment exposure')).toBeInTheDocument()
+    expect(screen.getByText('750.00')).toBeInTheDocument()
+    expect(screen.getByText('Schedule phasing')).toBeInTheDocument()
+    expect(screen.getByText('2026-07–2026-08')).toBeInTheDocument()
   })
 
   it('renders a graceful empty state when no outputs are persisted', () => {
