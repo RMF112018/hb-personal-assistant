@@ -62,6 +62,11 @@ ENV_DB_CONFIG_RUN_ENABLED = "HB_FORECAST_DB_CONFIG_RUN_ENABLED"
 # Assumption-consumption opt-in (default OFF). A boolean flag (NOT a path root) gating whether the
 # decision-support engine CONSUMES operator/required assumptions (confidence modifiers + required gate).
 ENV_ASSUMPTION_CONSUMPTION_ENABLED = "HB_FORECAST_ASSUMPTION_CONSUMPTION_ENABLED"
+
+# Assumption value-override opt-in (default OFF). A boolean flag (NOT a path root) gating whether the
+# output-projection engine applies operator DOLLAR overrides (projected cost / cost-to-complete).
+# Separate from consumption above: this mutates real forecast dollars, so it is opted in on its own.
+ENV_ASSUMPTION_OVERRIDES_ENABLED = "HB_FORECAST_ASSUMPTION_OVERRIDES_ENABLED"
 _TRUTHY = {"1", "true", "yes", "on"}
 
 # Whitelisted keys. An unknown key in the on-disk file can never inject behaviour.
@@ -76,6 +81,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "promotion_enabled": False,  # bool flag (NOT a path); gates the Phase E2 live config promotion
     "db_config_run_enabled": False,  # bool flag (NOT a path); gates DB-config-backed comprehensive generation
     "assumption_consumption_enabled": False,  # bool flag (NOT a path); gates decision-support assumption consumption
+    "assumption_overrides_enabled": False,  # bool flag (NOT a path); gates output-projection dollar value-overrides
     "schema_version": 1,  # LOCAL file version only — NOT the DB schema; do not conflate
 }
 
@@ -336,6 +342,16 @@ def resolve_assumption_consumption_enabled(explicit: bool | str | None = None) -
     if env is not None:
         return env.strip().lower() in _TRUTHY
     return bool(_load_config().get("assumption_consumption_enabled"))
+
+
+def resolve_assumption_overrides_enabled(explicit: bool | str | None = None) -> bool:
+    """Resolve the assumption value-override opt-in (explicit > env > settings-file > default False)."""
+    if explicit is not None:
+        return explicit is True or str(explicit).strip().lower() in _TRUTHY
+    env = os.environ.get(ENV_ASSUMPTION_OVERRIDES_ENABLED)
+    if env is not None:
+        return env.strip().lower() in _TRUTHY
+    return bool(_load_config().get("assumption_overrides_enabled"))
 
 
 # -- non-mutating validation (status + save) ----------------------------------
@@ -651,6 +667,14 @@ def save_runtime_config(updates: dict[str, Any]) -> dict[str, Any]:
         cfg["assumption_consumption_enabled"] = bool(
             updates["assumption_consumption_enabled"] is True
             or str(updates["assumption_consumption_enabled"]).strip().lower() in _TRUTHY
+        )
+    if (
+        "assumption_overrides_enabled" in updates
+        and updates["assumption_overrides_enabled"] is not None
+    ):
+        cfg["assumption_overrides_enabled"] = bool(
+            updates["assumption_overrides_enabled"] is True
+            or str(updates["assumption_overrides_enabled"]).strip().lower() in _TRUTHY
         )
 
     # Effective data root for the write-root cross-check (settings value, since this is the

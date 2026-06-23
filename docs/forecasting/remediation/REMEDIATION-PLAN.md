@@ -28,7 +28,8 @@ P1 & P4 (production blockers) → P2, P3, P6, P10 → P5, P8, P9 → P7.
 |---|---|---|---|---|---|---|---|---|
 | P1 | Forecast output header totals + prior-run deltas | 1, 7 | production_blocker | merged | #104 | `docs/evidence/forecast-remediation/P1-header-totals-20260623T092610Z/` | 2026-06-23 | — |
 | P4 | Multi-project generalization (remove tropical-only guards) | 4 | production_blocker | merged | #105 | `docs/evidence/forecast-remediation/P4-multi-project-20260623T101104Z/` | 2026-06-23 | — |
-| P2 | Operator assumptions as consumed model inputs | 2 | high | in-review | (PR pending) | `docs/evidence/forecast-remediation/P2-assumptions-consume-20260623T141418Z/` | 2026-06-23 | — |
+| P2 | Operator assumptions as consumed model inputs | 2 | high | merged | #107 | `docs/evidence/forecast-remediation/P2-assumptions-consume-20260623T141418Z/` | 2026-06-23 | — |
+| P2b | Operator-assumption dollar value-overrides (output projection) | 2 | high | in-review | (PR pending) | `docs/evidence/forecast-remediation/P2b-value-overrides-20260623T162613Z/` | 2026-06-23 | — |
 | P3 | DB-native model input accessors (reduce package-as-source) | 3 | high | pending | — | — | — | — |
 | P6 | Model registry / versioning / weighting / calibration governance | 6 | high | pending | — | — | — | — |
 | P10 | Forecast-correctness & isolation test hardening | 10 | high | pending | — | — | — | — |
@@ -46,7 +47,11 @@ P1 & P4 (production blockers) → P2, P3, P6, P10 → P5, P8, P9 → P7.
   project-eligibility check; parameterize the `twn_cost_forecast_json_package` source name.
 - **P2** — consume `forecast_operator_assumptions`/`forecast_required_assumptions` as confidence
   modifiers + a required-satisfaction gate in `decision_support_engine`, behind a default-off flag.
-  Dollar value-overrides deferred to **P2b** (pending a blessed override convention).
+  Dollar value-overrides delivered in **P2b**.
+- **P2b** — operator dollar value-overrides in `output_projection_engine`: reserved `assumption_type`s
+  (`projected_cost_override` / `cost_to_complete_override`) override per-code typed columns + re-aggregate
+  the EAC/CTC header; auditable `operator_value_override` change rows; raw_json kept as source echo
+  (parity-safe). Default-off `HB_FORECAST_ASSUMPTION_OVERRIDES_ENABLED`. No schema change.
 - **P3** — DB-backed model-input accessors (v59/runtime) with packages as fallback; prove parity.
 - **P6** — DB-backed model registry (migration v72+); versioned estimators/weights/thresholds; persist
   `forecast_method_eligibility`/`forecast_model_selection_decisions` with rationale; per-run model-version metadata.
@@ -72,3 +77,5 @@ _Append one line per phase transition (date · phase · status · PR · note)._
 - 2026-06-23 · P4b · in-review · (PR pending) · detropicalize the context/analysis/crosswalk-v2/mapping/comprehensive generators + CLI to read project values from `config/projects/<key>.json` via new stdlib `common/project_config.py` (CFR_PROJECT_KEY env, default tropical); removed the `cmd_run_generator` tropical-only refusal (eligibility-gated; passes CFR_PROJECT_KEY to the subprocess); added `procore_export_folder`/cutoffs/`row_count_expectations`/`project_display_name` to `tropical.json` + new `fixtureproj.json`. Tropical byte-parity proven (config-equivalence tests + full CFR suite 670 passed incl. the real-generator proof tests); CFR imports no hb_assistant; no schema change. Deferred to **P4c**: synthetic `fixtureproj` data root + live second-project run. Evidence `P4b-generators-detropicalize-20260623T131334Z`.
 - 2026-06-23 · P4b · merged · PR #106 · landed to main at `d9523fa7`; closeout audit (hb-commit-diff-auditor) PASS (+497/−41, 16 files, no reformat churn, tropical parity intact, no hb_assistant source change). Deferred to **P4c**: synthetic `fixtureproj` data root + live second-project run.
 - 2026-06-23 · P2 · in-review · (PR pending) · consume operator/required assumptions in `decision_support_engine` behind default-off `HB_FORECAST_ASSUMPTION_CONSUMPTION_ENABLED`: new consume-only `forecast/assumptions_repository.py` (project-scoped `run_id IS NULL` reads of the v66 tables); confidence modifiers (`confidence_impact` raises/lowers/neutral → booster/penalty/neutral factor on the matching scorecard) + required-assumption gate (penalty factor + warning per unsatisfied required assumption); assumptions read read-only from the live managed DB (or explicit `assumptions_db_path`) and pre-hydrated into the planner (engines stay DB-decoupled); flag-off = byte-identical output. No schema change; no live-DB write. Dollar value-overrides deferred to **P2b**. Evidence `P2-assumptions-consume-20260623T141418Z`. ADR 301.
+- 2026-06-23 · P2 · merged · PR #107 · landed to main at `d633d5e8`; closeout audit (hb-commit-diff-auditor) PASS; zero forecast-suite regressions.
+- 2026-06-23 · P2b · in-review · (PR pending) · operator dollar value-overrides in `output_projection_engine` behind default-off `HB_FORECAST_ASSUMPTION_OVERRIDES_ENABLED`: reserved `assumption_type`s `projected_cost_override`/`cost_to_complete_override` (require budget_code_key + parseable value) override the per-code typed columns (raw_json kept as original source echo → parity-safe) and re-aggregate the EAC/FAC/CTC/variance header; one auditable `operator_value_override` change row per override; null-key/unmatched/unparseable → skip + warning; guarded post-pass so flag-off / no-override = byte-identical. Read read-only (`mode=ro`) from the live managed DB (or explicit `assumptions_db_path`) via a private engine hydrator (assumptions_repository stays conn-accepting). No schema change; no live-DB write. Evidence `P2b-value-overrides-20260623T162613Z`. ADR 302.
