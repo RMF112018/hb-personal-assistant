@@ -145,6 +145,38 @@ class KeywordExplainRequest(BaseModel):
     candidate: str | dict[str, Any] | None = None
 
 
+class OperatorAssumptionCreateRequest(BaseModel):
+    assumption_type: str
+    value: str | None = None
+    unit: str | None = None
+    budget_code_key: str | None = None
+    source: str | None = None
+    operator: str | None = None
+    confidence_impact: str | None = None
+    is_required: bool = False
+    notes: str | None = None
+
+
+class OperatorAssumptionEditRequest(BaseModel):
+    value: str | None = None
+    unit: str | None = None
+    source: str | None = None
+    operator: str | None = None
+    confidence_impact: str | None = None
+    is_required: bool | None = None
+    overridden: bool | None = None
+    notes: str | None = None
+
+
+class RequiredAssumptionCreateRequest(BaseModel):
+    assumption_type: str
+    reason: str | None = None
+
+
+class RequiredAssumptionSatisfyRequest(BaseModel):
+    satisfied: bool = True
+
+
 class RefreshRequest(BaseModel):
     note_redacted: str | None = None
 
@@ -1639,6 +1671,124 @@ def create_app(*, db_path: str | None = None) -> Any:
         del role
         return _forecast_readmodel_call(
             _forecast_readmodel_service().read_decision_support, output_id
+        )
+
+    # --- Operator assumptions capture — first interactive forecast WRITE surface ----------
+    # Operator-entered assumptions persist DIRECTLY into the v66 managed-DB tables (not the
+    # gated temp-swap-certify projection, which only fits re-derivable data). Mirrors the
+    # add_project_keyword write pattern. GET=viewer, POST/PATCH=operator. Read paths are
+    # redaction-safe (never raw_json/run_id); the tables sit outside the gated projection set.
+    def _forecast_assumptions_service() -> Any:
+        from hb_assistant.construction.analytics.forecast_operator_assumptions import (
+            ForecastOperatorAssumptionsService,
+        )
+        from hb_assistant.construction.analytics.forecast_runtime_config import resolve_db_path
+
+        return ForecastOperatorAssumptionsService(db_path=resolve_db_path(db_path))
+
+    def _forecast_assumptions_call(fn: Any, *args: Any) -> dict[str, Any]:
+        from fastapi import HTTPException
+
+        from hb_assistant.construction.analytics.forecast_operator_assumptions import (
+            ForecastOperatorAssumptionsError,
+        )
+
+        # Invalid input / not-found return ok:False dicts (200), matching the keyword convention;
+        # only fail-closed unavailability (missing/unreadable DB or schema < 66) maps to 503.
+        try:
+            return fn(*args)
+        except ForecastOperatorAssumptionsError as exc:
+            raise HTTPException(
+                status_code=503, detail="forecast_assumptions_not_available"
+            ) from exc
+
+    @app.get("/api/forecast/db/projects/{project_key}/operator-assumptions")
+    def forecast_operator_assumptions_list(
+        project_key: str, role: dict[str, str] = role_dep
+    ) -> dict[str, Any]:
+        del role
+        return _forecast_assumptions_call(
+            _forecast_assumptions_service().list_operator_assumptions, project_key
+        )
+
+    @app.post("/api/forecast/db/projects/{project_key}/operator-assumptions")
+    def forecast_operator_assumption_create(
+        project_key: str,
+        request: OperatorAssumptionCreateRequest,
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        require_operator_role(role)
+        svc = _forecast_assumptions_service()
+        return _forecast_assumptions_call(
+            lambda: svc.create_operator_assumption(
+                project_key,
+                request.assumption_type,
+                value=request.value,
+                unit=request.unit,
+                budget_code_key=request.budget_code_key,
+                source=request.source,
+                operator=request.operator,
+                confidence_impact=request.confidence_impact,
+                is_required=request.is_required,
+                notes=request.notes,
+            )
+        )
+
+    @app.patch("/api/forecast/db/operator-assumptions/{assumption_id}")
+    def forecast_operator_assumption_edit(
+        assumption_id: str,
+        request: OperatorAssumptionEditRequest,
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        require_operator_role(role)
+        svc = _forecast_assumptions_service()
+        return _forecast_assumptions_call(
+            lambda: svc.edit_operator_assumption(
+                assumption_id,
+                value=request.value,
+                unit=request.unit,
+                source=request.source,
+                operator=request.operator,
+                confidence_impact=request.confidence_impact,
+                is_required=request.is_required,
+                overridden=request.overridden,
+                notes=request.notes,
+            )
+        )
+
+    @app.get("/api/forecast/db/projects/{project_key}/required-assumptions")
+    def forecast_required_assumptions_list(
+        project_key: str, role: dict[str, str] = role_dep
+    ) -> dict[str, Any]:
+        del role
+        return _forecast_assumptions_call(
+            _forecast_assumptions_service().list_required_assumptions, project_key
+        )
+
+    @app.post("/api/forecast/db/projects/{project_key}/required-assumptions")
+    def forecast_required_assumption_create(
+        project_key: str,
+        request: RequiredAssumptionCreateRequest,
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        require_operator_role(role)
+        svc = _forecast_assumptions_service()
+        return _forecast_assumptions_call(
+            lambda: svc.create_required_assumption(
+                project_key, request.assumption_type, reason=request.reason
+            )
+        )
+
+    @app.patch("/api/forecast/db/required-assumptions/{required_id}")
+    def forecast_required_assumption_satisfy(
+        required_id: str,
+        request: RequiredAssumptionSatisfyRequest,
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        require_operator_role(role)
+        svc = _forecast_assumptions_service()
+        return _forecast_assumptions_call(
+            lambda: svc.set_required_assumption_satisfied(required_id, satisfied=request.satisfied)
         )
 
     # Forecast config editing — isolated proposals (Implementation Phase E). An operator proposes
