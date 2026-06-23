@@ -1,0 +1,11 @@
+[cfr] START run-context (fixtureproj) -> generate_forecast_context_package.py
+[cfr] writing only to a new timestamped output package folder under the configured data root.
+[cfr] END run-context (exit 0)
+eligible 'fixtureproj' -> rc=0, env has CFR_PROJECT_KEY='fixtureproj' (refusal removed)
+{
+  "command": "run-context",
+  "project": "other",
+  "status": "not_supported",
+  "reason": "project_key 'other' is not eligible; allowed: ['fixtureproj', 'tropical']"
+}
+ineligible 'other' -> rc=2 (fail closed, no subprocess)

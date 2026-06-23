@@ -1,8 +1,22 @@
 {
   "project_key": "tropical",
   "project_name": "Tropical World Nursery Senior Living Facility",
+  "project_display_name": "Tropical World Nursery",
   "job_reference": "23-435-01",
   "forecast_period": "2026-June",
+  "procore_export_folder": "cost_forecast_agent_db_json_export_tropical_20260614_080344",
+  "june_cutoff": "2026-06-01",
+  "july_cutoff": "2026-07-01",
+  "row_count_expectations": {
+    "canonical/budget_codes.jsonl": 127,
+    "canonical/cost_entries.jsonl": 6324,
+    "canonical/monthly_actuals_by_budget_code.jsonl": 1081,
+    "canonical/owner_pay_app_line_items_mapped.jsonl": 1657,
+    "canonical/owner_pay_app_totals.jsonl": 63,
+    "canonical/procore_subcontractor_payment_app_headers.jsonl": 219,
+    "canonical/procore_subcontractor_payment_app_line_items_mapped.jsonl": 13088,
+    "canonical/procore_commitments.jsonl": 73
+  },
   "default_data_root": "/Users/bobbyfetting/Library/CloudStorage/SynologyDrive-BFmacSync/Work/NAS - HB/Projects/2023/TWN - NAS/30_Financials/Forecasts/Data/2026-June",
   "forecast_context_package": "forecast_context_package_tropical_20260614_084510",
   "forecast_analysis_package": "forecast_analysis_package_tropical_20260614_095847",

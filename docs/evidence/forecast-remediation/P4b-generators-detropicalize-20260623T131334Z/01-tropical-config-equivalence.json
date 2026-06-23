@@ -1,0 +1,20 @@
+{
+  "forecast_period": "2026-June",
+  "job_reference": "23-435-01",
+  "july_cutoff": "2026-07-01",
+  "june_cutoff": "2026-06-01",
+  "owner_sov_crosswalk_stem": "owner_sov_scope_crosswalk_tropical_authoritative_20260614_final",
+  "procore_export_folder": "cost_forecast_agent_db_json_export_tropical_20260614_080344",
+  "project_display_name": "Tropical World Nursery",
+  "project_name": "Tropical World Nursery Senior Living Facility",
+  "row_count_expectations": {
+    "canonical/budget_codes.jsonl": 127,
+    "canonical/cost_entries.jsonl": 6324,
+    "canonical/monthly_actuals_by_budget_code.jsonl": 1081,
+    "canonical/owner_pay_app_line_items_mapped.jsonl": 1657,
+    "canonical/owner_pay_app_totals.jsonl": 63,
+    "canonical/procore_commitments.jsonl": 73,
+    "canonical/procore_subcontractor_payment_app_headers.jsonl": 219,
+    "canonical/procore_subcontractor_payment_app_line_items_mapped.jsonl": 13088
+  }
+}
