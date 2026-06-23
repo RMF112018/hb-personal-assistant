@@ -1,0 +1,1000 @@
+src/hb_assistant/launcher/service.py:49:        Both environments additionally get default forecast WRITE-roots (see
+src/hb_assistant/launcher/service.py:50:        ``_forecast_default_env``) so the launched app serves the write-backed forecast
+src/hb_assistant/launcher/service.py:65:        env.update(self._forecast_default_env())
+src/hb_assistant/launcher/service.py:68:    def _forecast_settings(self) -> dict[str, Any]:
+src/hb_assistant/launcher/service.py:69:        """Read this profile's forecast settings file (whitelist-tolerant; {} on any error)."""
+src/hb_assistant/launcher/service.py:70:        p = self.profile.app_support_root / "analytics" / "forecast_runtime_config.json"
+src/hb_assistant/launcher/service.py:79:    def _forecast_default_env(self) -> dict[str, str]:
+src/hb_assistant/launcher/service.py:82:        App-managed forecast roots are seeded into ``forecast_runtime_config.json`` and created by
+src/hb_assistant/launcher/service.py:83:        ``ensure_forecast_managed_storage`` at launch — env injection is no longer required for the
+src/hb_assistant/launcher/service.py:88:    def _forecast_readiness(self) -> dict[str, Any]:
+src/hb_assistant/launcher/service.py:89:        """Run the forecast bootstrap under the child env and return its redaction-safe report.
+src/hb_assistant/launcher/service.py:99:            from hb_assistant.construction.analytics.forecast_bootstrap import (
+src/hb_assistant/launcher/service.py:100:                ensure_forecast_managed_storage,
+src/hb_assistant/launcher/service.py:103:            return ensure_forecast_managed_storage()
+src/hb_assistant/launcher/service.py:286:            result["forecast_readiness"] = self._forecast_readiness()
+src/hb_assistant/config/path_policy.py:98:    def get_forecast_root(self) -> Path:
+src/hb_assistant/config/path_policy.py:99:        """App-managed forecast storage root under Application Support."""
+src/hb_assistant/config/path_policy.py:100:        return self.get_app_support() / "forecast"
+src/hb_assistant/config/path_policy.py:102:    def get_forecast_packages_dir(self) -> Path:
+src/hb_assistant/config/path_policy.py:103:        return self.get_forecast_root() / "packages"
+src/hb_assistant/config/path_policy.py:105:    def get_forecast_data_dir(self) -> Path:
+src/hb_assistant/config/path_policy.py:106:        return self.get_forecast_root() / "data"
+src/hb_assistant/config/path_policy.py:108:    def get_forecast_runs_dir(self) -> Path:
+src/hb_assistant/config/path_policy.py:109:        return self.get_forecast_root() / "runs"
+src/hb_assistant/config/path_policy.py:111:    def get_forecast_evaluations_dir(self) -> Path:
+src/hb_assistant/config/path_policy.py:112:        return self.get_forecast_root() / "evaluations"
+src/hb_assistant/config/path_policy.py:114:    def get_forecast_config_proposals_dir(self) -> Path:
+src/hb_assistant/config/path_policy.py:115:        return self.get_forecast_root() / "config-proposals"
+src/hb_assistant/config/path_policy.py:117:    def get_forecast_imports_dir(self) -> Path:
+src/hb_assistant/config/path_policy.py:118:        return self.get_forecast_root() / "imports"
+src/hb_assistant/config/path_policy.py:120:    def get_forecast_runtime_config_path(self) -> Path:
+src/hb_assistant/config/path_policy.py:121:        return self.get_app_support() / "analytics" / "forecast_runtime_config.json"
+src/hb_assistant/config/path_policy.py:123:    def managed_forecast_storage_dirs(self) -> tuple[Path, ...]:
+src/hb_assistant/config/path_policy.py:124:        """Directories created by forecast managed-storage bootstrap (idempotent)."""
+src/hb_assistant/config/path_policy.py:127:            self.get_forecast_packages_dir(),
+src/hb_assistant/config/path_policy.py:128:            self.get_forecast_data_dir(),
+src/hb_assistant/config/path_policy.py:129:            self.get_forecast_runs_dir(),
+src/hb_assistant/config/path_policy.py:130:            self.get_forecast_evaluations_dir(),
+src/hb_assistant/config/path_policy.py:131:            self.get_forecast_config_proposals_dir(),
+src/hb_assistant/config/path_policy.py:132:            self.get_forecast_imports_dir(),
+src/hb_assistant/resources/json/phase_08c_forecast_readiness_contract.json:7:  "contract_name": "phase_08c_forecast_readiness_contract",
+src/hb_assistant/resources/json/phase_08c_forecast_readiness_contract.json:21:  "forecast_output_allowed": false
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3:  "source": "Seeded from docs/evidence/construction-intelligence-phase-07a-data-quality/01-table-lifecycle-inventory.json (Phase 07A Prompt 00 manual inventory); operationalized for hb-assistant construction-agent data-quality table-inventory (Phase 07B Prompt 01); refreshed to map the V20/V21 Phase 07A data-quality and relationship tables that post-dated the manual inventory (Phase 07C Prompt 01 remediation); extended with the ten V25 Phase 07D cross-source relationship and meeting-prep substrate tables (Phase 07D Prompt 02); extended with the twenty-one V26 Phase 08A second-brain runtime substrate tables (Phase 08A Prompt 02); extended with the nineteen V38 Phase 09 retrieval/memory/agent metadata substrate tables (Phase 09 Prompt 12 \u2014 schema + contracts + table lifecycle; ships empty/placeholder_deferred); extended with the three V39 Phase 09 review-burden tables (Prompt 37 review burden reduction; advisory promotion policy; ships empty/placeholder_deferred); extended with the one V45 Phase 10 email follow-up raw enrichment table (email_followup_enrichments; review-safe model-enriched follow-up metadata; ships empty/placeholder_deferred); extended with the forty-seven V46 Procore structured analytics foundation tables (landing, capture control, endpoint-family bronze, and dimensions; ships empty/placeholder_deferred until local reprocessing or capture). ; extended with the seventy-eight V47 Procore endpoint-specific structured projection tables (procore_ep_* primary + child/detail tables derived from the committed projection registry; ships empty/placeholder_deferred until projection replay from full raw payloads). Extended with the thirteen V49 email/calendar structured projection + receipt tables (email_raw_*/calendar_raw_*/email_calendar_* + raw_content_source_quality_snapshots; build_v49_ddl); the three V55 Procore endpoint budget-detail tables (operational/populated from the budget-detail read model); the sixteen V50-V54 Phase 10 daily-brief/candidate/ranking tables (ships empty/placeholder_deferred); and the five V58 forecast DB-transition foundation tables (forecast_projects/runs/source_ingestions/package_manifests/validation_events; operational_empty_expected, intentionally empty until Phase 2+); extended with the three V59 forecast DB-transition source-domain tables (forecast_budget_details/cost_entries/monthly_actuals_by_budget_code; Phase 3 JSON/JSONL projection + DB read parity; operational_empty_expected, intentionally empty until projection is applied; forecast behavior remains file-backed); extended with the four V60 forecast DB-transition config-registry tables (forecast_config_sources/config_items/config_snapshots/config_snapshot_items; Phase 16 governed config import/export/snapshot/materialize; operational_empty_expected, intentionally empty until config is imported; forecast behavior remains file-backed); extended with the eight V61 forecast-UI external-forecast evaluation tables (forecast_external_forecasts/external_forecast_rows/external_forecast_mappings/accuracy_results/comparison_results/anomaly_findings/review_items/evidence_packages; Phase 4 operator-supplied external-forecast upload + evaluation against actuals/budget/ERP-JTD/model/prior baselines, distinguished from model forecasts via forecast_origin; operational_empty_expected, intentionally empty on the live DB \u2014 real rows live only in an isolated per-run eval SQLite; forecast behavior remains file-backed).; extended with the thirteen V62 schedule-intelligence tables (schedule_file_imports, procore_ep_schedule_activities, relationships, WBS, calendars, codes, UDFs, version diffs, quality findings, cost mapping runs/candidates/distributions, weighting results; operational_empty_expected until import or Procore sync projection).",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:1445:    "second_brain_financial_forecast_readiness_runs": {
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:1452:      "notes": "08C forecast readiness runs (advisory only; full guards + advisory_only)"
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3434:    "forecast_projects": {
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3435:      "table_family": "forecast_foundation_v58",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3438:      "phase_owner": "forecast_db_transition",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3441:      "notes": "V58 foundation table; intentionally empty at introduction; operational foundation for forecast DB-transition project identity/lineage; population begins Phase 2+; empty row count is not a data-quality failure."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3443:    "forecast_runs": {
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3444:      "table_family": "forecast_foundation_v58",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3447:      "phase_owner": "forecast_db_transition",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3450:      "notes": "V58 foundation table; intentionally empty at introduction; operational forecast run ledger (single source for run-lineage resolution); population begins Phase 2+; empty row count is not a data-quality failure."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3452:    "forecast_source_ingestions": {
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3453:      "table_family": "forecast_foundation_v58",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3456:      "phase_owner": "forecast_db_transition",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3461:    "forecast_package_manifests": {
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3462:      "table_family": "forecast_foundation_v58",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3465:      "phase_owner": "forecast_db_transition",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3470:    "forecast_validation_events": {
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3471:      "table_family": "forecast_foundation_v58",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3474:      "phase_owner": "forecast_db_transition",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3479:    "forecast_budget_details": {
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3480:      "table_family": "forecast_source_domain_v59",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3483:      "phase_owner": "forecast_db_transition",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3486:      "notes": "V59 source-domain tables for Phase 3 JSON/JSONL projection and DB read parity; intentionally empty until projection is applied; existing forecast behavior remains file-backed."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3488:    "forecast_cost_entries": {
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3489:      "table_family": "forecast_source_domain_v59",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3492:      "phase_owner": "forecast_db_transition",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3495:      "notes": "V59 source-domain tables for Phase 3 JSON/JSONL projection and DB read parity; intentionally empty until projection is applied; existing forecast behavior remains file-backed."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3497:    "forecast_monthly_actuals_by_budget_code": {
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3498:      "table_family": "forecast_source_domain_v59",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3501:      "phase_owner": "forecast_db_transition",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3504:      "notes": "V59 source-domain tables for Phase 3 JSON/JSONL projection and DB read parity; intentionally empty until projection is applied; existing forecast behavior remains file-backed."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3506:    "forecast_config_sources": {
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3507:      "table_family": "forecast_config_registry_v60",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3510:      "phase_owner": "forecast_db_transition",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3513:      "notes": "V60 config registry tables for Phase 16 governed forecast config (import/export/snapshot/materialize); intentionally empty until config is imported; existing forecast behavior remains file-backed."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3515:    "forecast_config_items": {
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3516:      "table_family": "forecast_config_registry_v60",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3519:      "phase_owner": "forecast_db_transition",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3522:      "notes": "V60 config registry tables for Phase 16 governed forecast config (import/export/snapshot/materialize); intentionally empty until config is imported; existing forecast behavior remains file-backed."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3524:    "forecast_config_snapshots": {
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3525:      "table_family": "forecast_config_registry_v60",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3528:      "phase_owner": "forecast_db_transition",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3531:      "notes": "V60 config registry tables for Phase 16 governed forecast config (import/export/snapshot/materialize); intentionally empty until config is imported; existing forecast behavior remains file-backed."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3533:    "forecast_config_snapshot_items": {
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3534:      "table_family": "forecast_config_registry_v60",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3537:      "phase_owner": "forecast_db_transition",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3540:      "notes": "V60 config registry tables for Phase 16 governed forecast config (import/export/snapshot/materialize); intentionally empty until config is imported; existing forecast behavior remains file-backed."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3542:    "forecast_external_forecasts": {
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3543:      "table_family": "forecast_external_v61",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3546:      "phase_owner": "forecast_ui_external_eval",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3549:      "notes": "V61 external-forecast evaluation header; operator-supplied external forecasts (Excel/CSV) with file fingerprint and forecast_origin='external'. Intentionally empty on the live DB; real rows are written only to an isolated per-run eval SQLite, never the live DB. Forecast behavior remains file-backed."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3551:    "forecast_external_forecast_rows": {
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3552:      "table_family": "forecast_external_v61",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3555:      "phase_owner": "forecast_ui_external_eval",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3558:      "notes": "V61 external-forecast line items (cost code x month value/EAC/remaining). Intentionally empty on the live DB; rows live in the isolated per-run eval SQLite only."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3560:    "forecast_external_forecast_mappings": {
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3561:      "table_family": "forecast_external_v61",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3564:      "phase_owner": "forecast_ui_external_eval",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3569:    "forecast_accuracy_results": {
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3570:      "table_family": "forecast_external_v61",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3573:      "phase_owner": "forecast_ui_external_eval",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3576:      "notes": "V61 accuracy metrics (variance/MAE/RMSE/WAPE/MAPE/bias) per external forecast x baseline. Intentionally empty on the live DB; rows live in the isolated per-run eval SQLite only."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3578:    "forecast_comparison_results": {
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3579:      "table_family": "forecast_external_v61",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3582:      "phase_owner": "forecast_ui_external_eval",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3587:    "forecast_anomaly_findings": {
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3588:      "table_family": "forecast_external_v61",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3591:      "phase_owner": "forecast_ui_external_eval",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3596:    "forecast_review_items": {
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3597:      "table_family": "forecast_external_v61",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3600:      "phase_owner": "forecast_ui_external_eval",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3605:    "forecast_evidence_packages": {
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3606:      "table_family": "forecast_external_v61",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3609:      "phase_owner": "forecast_ui_external_eval",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3612:      "notes": "V61 evidence-package ledger (one row per emitted external-forecast evaluation package). Intentionally empty on the live DB; rows live in the isolated per-run eval SQLite only."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3729:      "notes": "Advisory forecast weighting from approved mappings only."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3731:    "forecast_outputs": {
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3732:      "table_family": "forecast_output_v63",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3735:      "phase_owner": "forecast_db_transition",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3738:      "notes": "Per-run model-output header (one row per projected forecast run); distinct from v61 external-forecast evaluation."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3740:    "forecast_output_budget_codes": {
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3741:      "table_family": "forecast_output_v63",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3744:      "phase_owner": "forecast_db_transition",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3747:      "notes": "Per-budget-code recommendations projected from forecast_recommendations_by_budget_code.jsonl."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3749:    "forecast_output_monthly": {
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3750:      "table_family": "forecast_output_v63",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3753:      "phase_owner": "forecast_db_transition",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3756:      "notes": "Monthly forecast curve by budget code; projection deferred to a follow-on slice."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3758:    "forecast_output_probability": {
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3759:      "table_family": "forecast_output_v63",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3762:      "phase_owner": "forecast_db_transition",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3767:    "forecast_output_risks": {
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3768:      "table_family": "forecast_output_v63",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3771:      "phase_owner": "forecast_db_transition",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3774:      "notes": "Risk register projected from forecast_risk_register.jsonl."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3776:    "forecast_output_changes": {
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3777:      "table_family": "forecast_output_v63",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3780:      "phase_owner": "forecast_db_transition",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3785:    "forecast_output_commitment_exposure": {
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3786:      "table_family": "forecast_output_v63",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3789:      "phase_owner": "forecast_db_transition",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3794:    "forecast_output_staffing": {
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3795:      "table_family": "forecast_output_v63",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3798:      "phase_owner": "forecast_db_transition",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3803:    "forecast_output_schedule_phasing": {
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3804:      "table_family": "forecast_output_v63",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3807:      "phase_owner": "forecast_db_transition",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3810:      "notes": "Schedule phase mapping of forecast amounts; projection deferred to a follow-on slice."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3812:    "forecast_output_narratives": {
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3813:      "table_family": "forecast_output_v63",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3816:      "phase_owner": "forecast_db_transition",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3839:    "forecast_project_maturity_snapshots": {
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3840:      "table_family": "forecast_decision_support_v66",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3843:      "phase_owner": "forecast_db_transition",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3848:    "forecast_data_availability_profiles": {
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3849:      "table_family": "forecast_decision_support_v66",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3852:      "phase_owner": "forecast_db_transition",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3857:    "forecast_method_eligibility": {
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3858:      "table_family": "forecast_decision_support_v66",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3861:      "phase_owner": "forecast_db_transition",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3866:    "forecast_model_selection_decisions": {
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3867:      "table_family": "forecast_decision_support_v66",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3870:      "phase_owner": "forecast_db_transition",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3875:    "forecast_confidence_scorecards": {
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3876:      "table_family": "forecast_decision_support_v66",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3879:      "phase_owner": "forecast_db_transition",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3884:    "forecast_confidence_factors": {
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3885:      "table_family": "forecast_decision_support_v66",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3888:      "phase_owner": "forecast_db_transition",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3893:    "forecast_operator_assumptions": {
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3894:      "table_family": "forecast_decision_support_v66",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3897:      "phase_owner": "forecast_db_transition",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3902:    "forecast_required_assumptions": {
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3903:      "table_family": "forecast_decision_support_v66",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3906:      "phase_owner": "forecast_db_transition",
+src/hb_assistant/resources/json/phase_08c_data_quality_gates_contract.json:23:    "forecast_readiness",
+src/hb_assistant/source_refresh/orchestrator.py:1152:        for container_key in ("budget_details", "procore", "forecast_intelligence"):
+src/hb_assistant/cli/construction.py:112:from hb_assistant.construction.forecast import projection_engine as forecast_projection
+src/hb_assistant/cli/construction.py:113:from hb_assistant.construction.forecast import source_domain_engine as forecast_source_domain
+src/hb_assistant/cli/construction.py:324:forecast_app = typer.Typer(
+src/hb_assistant/cli/construction.py:325:    help="Phase 2 forecast JSON/JSONL → SQLite lineage projection (project). Dry-run safe by "
+src/hb_assistant/cli/construction.py:328:    "forecast model reads remain file-backed."
+src/hb_assistant/cli/construction.py:330:app.add_typer(forecast_app, name="forecast")
+src/hb_assistant/cli/construction.py:337:    "forecast_reads": "file_backed_unchanged",
+src/hb_assistant/cli/construction.py:348:@forecast_app.command("project")
+src/hb_assistant/cli/construction.py:349:def forecast_project(
+src/hb_assistant/cli/construction.py:369:    """Project a completed forecast run's lineage (run/project/sources/manifests/validation gates)
+src/hb_assistant/cli/construction.py:373:    receipt = forecast_projection.project_run(
+src/hb_assistant/cli/construction.py:381:        "command": "construction-agent forecast project",
+src/hb_assistant/cli/construction.py:396:    "forecast_reads": "file_backed_unchanged",
+src/hb_assistant/cli/construction.py:403:@forecast_app.command("source-domain")
+src/hb_assistant/cli/construction.py:404:def forecast_source_domain_cmd(
+src/hb_assistant/cli/construction.py:409:        help="Path to the TWN cost-forecast JSONL package (reads data/*.jsonl read-only).",
+src/hb_assistant/cli/construction.py:431:    """Project selected TWN cost-forecast JSONL source rows (BudgetDetails, CostEntries,
+src/hb_assistant/cli/construction.py:435:    receipt = forecast_source_domain.project_source_domain(
+src/hb_assistant/cli/construction.py:444:        "command": "construction-agent forecast source-domain",
+src/hb_assistant/cli/construction.py:463:@forecast_app.command("double-count-gate")
+src/hb_assistant/cli/construction.py:464:def forecast_double_count_gate_cmd(
+src/hb_assistant/cli/construction.py:469:    """Run forecasting double-count prevention gate (read-only SQLite)."""
+src/hb_assistant/cli/construction.py:470:    from hb_assistant.forecasting.gates import run_double_count_gate
+src/hb_assistant/cli/construction.py:474:        "command": "construction-agent forecast double-count-gate",
+src/hb_assistant/cli/construction.py:482:@forecast_app.command("actuals-reconciliation-gate")
+src/hb_assistant/cli/construction.py:483:def forecast_actuals_reconciliation_gate_cmd(
+src/hb_assistant/cli/construction.py:491:    from hb_assistant.forecasting.gates import run_actuals_reconciliation_gate
+src/hb_assistant/cli/construction.py:500:        "command": "construction-agent forecast actuals-reconciliation-gate",
+src/hb_assistant/cli/construction.py:508:@forecast_app.command("gates")
+src/hb_assistant/cli/construction.py:509:def forecast_all_gates_cmd(
+src/hb_assistant/cli/construction.py:514:    """Run all forecasting semantic gates (double-count, actuals, parity, cost-type guard)."""
+src/hb_assistant/cli/construction.py:515:    from hb_assistant.forecasting.gates import run_all_forecasting_gates
+src/hb_assistant/cli/construction.py:517:    report = run_all_forecasting_gates(db_path=db_path, mode=mode)  # type: ignore[arg-type]
+src/hb_assistant/cli/construction.py:519:        "command": "construction-agent forecast gates",
+src/hb_assistant/cli/procore.py:1424:    for container_key in ("procore", "budget_details", "forecast_intelligence"):
+src/hb_assistant/cli/second_brain.py:5306:        "advisory review aids only — no determinations, approvals, claims, entitlements, or forecasts.",
+src/hb_assistant/procore/budget_detail_read_model.py:44:    "forecast_to_complete",
+src/hb_assistant/procore/budget_detail_read_model.py:64:    "forecast_to_complete": (
+src/hb_assistant/procore/budget_detail_read_model.py:86:    "projectedcosttocomplete": "forecast_to_complete",
+src/hb_assistant/procore/budget_detail_read_model.py:87:    "costtocomplete": "forecast_to_complete",
+src/hb_assistant/procore/budget_detail_read_model.py:642:                   projected_costs, erp_job_to_date_costs, forecast_to_complete,
+src/hb_assistant/procore/budget_detail_read_model.py:685:                "forecast_to_complete",
+src/hb_assistant/procore/normalizers/budget.py:40:    "forecast_to_complete",
+src/hb_assistant/procore/normalizers/budget.py:160:    forecast = raw.get("budget_forecast")
+src/hb_assistant/procore/normalizers/budget.py:161:    if isinstance(forecast, dict):
+src/hb_assistant/procore/normalizers/budget.py:163:        _keep_amounts(forecast, ("amount", "automatic_amount", "manual_amount"), fc)
+src/hb_assistant/procore/normalizers/budget.py:164:        _summarize_into(fc, forecast, ("notes",))
+src/hb_assistant/procore/normalizers/budget.py:166:            cf["budget_forecast"] = fc
+src/hb_assistant/procore/normalizers/financial.py:147:    When ``table`` and ``column`` are provided, the forecasting field classifier
+src/hb_assistant/procore/normalizers/financial.py:151:        from hb_assistant.forecasting.normalization import normalize_amount_field
+src/hb_assistant/construction/forecast/output_repository.py:9:Coverage: the header (``forecast_outputs``), per-code recommendations
+src/hb_assistant/construction/forecast/output_repository.py:10:(``forecast_output_budget_codes``), risk register (``forecast_output_risks``), and — added in
+src/hb_assistant/construction/forecast/output_repository.py:26:    "forecast_period",
+src/hb_assistant/construction/forecast/output_repository.py:29:    "forecast_at_completion",
+src/hb_assistant/construction/forecast/output_repository.py:32:    "variance_to_prior_forecast",
+src/hb_assistant/construction/forecast/output_repository.py:46:    "forecast_action",
+src/hb_assistant/construction/forecast/output_repository.py:100:    _upsert(conn, "forecast_outputs", row, ("output_id",))
+src/hb_assistant/construction/forecast/output_repository.py:104:    _upsert(conn, "forecast_output_budget_codes", row, ("output_id", "budget_code_key"))
+src/hb_assistant/construction/forecast/output_repository.py:108:    _upsert(conn, "forecast_output_risks", row, ("output_id", "risk_id"))
+src/hb_assistant/construction/forecast/output_repository.py:115:    _upsert(conn, "forecast_output_monthly", row, ("id",))
+src/hb_assistant/construction/forecast/output_repository.py:119:    _upsert(conn, "forecast_output_probability", row, ("id",))
+src/hb_assistant/construction/forecast/output_repository.py:123:    _upsert(conn, "forecast_output_changes", row, ("id",))
+src/hb_assistant/construction/forecast/output_repository.py:127:    _upsert(conn, "forecast_output_staffing", row, ("id",))
+src/hb_assistant/construction/forecast/output_repository.py:131:    _upsert(conn, "forecast_output_commitment_exposure", row, ("id",))
+src/hb_assistant/construction/forecast/output_repository.py:135:    _upsert(conn, "forecast_output_schedule_phasing", row, ("id",))
+src/hb_assistant/construction/forecast/output_repository.py:177:    return _read_raw(conn, "forecast_outputs", "output_id", output_id=output_id)
+src/hb_assistant/construction/forecast/output_repository.py:184:    return _read_raw(conn, "forecast_output_budget_codes", "source_row_number", output_id=output_id)
+src/hb_assistant/construction/forecast/output_repository.py:191:    return _read_raw(conn, "forecast_output_risks", "source_row_number", output_id=output_id)
+src/hb_assistant/construction/forecast/output_repository.py:197:    """Monthly forecast rows in source-file order (source_row_number)."""
+src/hb_assistant/construction/forecast/output_repository.py:198:    return _read_raw(conn, "forecast_output_monthly", "source_row_number", output_id=output_id)
+src/hb_assistant/construction/forecast/output_repository.py:205:    return _read_raw(conn, "forecast_output_probability", "source_row_number", output_id=output_id)
+src/hb_assistant/construction/forecast/output_repository.py:212:    return _read_raw(conn, "forecast_output_changes", "source_row_number", output_id=output_id)
+src/hb_assistant/construction/forecast/output_repository.py:219:    return _read_raw(conn, "forecast_output_staffing", "source_row_number", output_id=output_id)
+src/hb_assistant/construction/forecast/output_repository.py:227:        conn, "forecast_output_commitment_exposure", "source_row_number", output_id=output_id
+src/hb_assistant/construction/forecast/output_repository.py:236:        conn, "forecast_output_schedule_phasing", "source_row_number", output_id=output_id
+src/hb_assistant/construction/forecast/decision_support_engine.py:1:"""Derive + project per-run forecast decision-support into the v65 tables.
+src/hb_assistant/construction/forecast/decision_support_engine.py:11:  projected into v63 ``forecast_output_budget_codes`` (Phase 2a).
+src/hb_assistant/construction/forecast/decision_support_engine.py:40:    "forecast_reads": "file_backed_unchanged",
+src/hb_assistant/construction/forecast/decision_support_engine.py:67:# Phase 2c — forecast_accuracy package sources for per-method rollups.
+src/hb_assistant/construction/forecast/decision_support_engine.py:69:RECONCILIATION_FILE = "forecast_reconciliation_by_budget_code.jsonl"
+src/hb_assistant/construction/forecast/decision_support_engine.py:116:    model-selection rollups are projected from the forecast_accuracy package files.
+src/hb_assistant/construction/forecast/decision_support_engine.py:126:        has_monthly = _table_exists(conn, "forecast_monthly_actuals_by_budget_code")
+src/hb_assistant/construction/forecast/decision_support_engine.py:127:        has_budget = _table_exists(conn, "forecast_budget_details")
+src/hb_assistant/construction/forecast/decision_support_engine.py:128:        has_cost = _table_exists(conn, "forecast_cost_entries")
+src/hb_assistant/construction/forecast/decision_support_engine.py:129:        has_outputs = _table_exists(conn, "forecast_output_budget_codes")
+src/hb_assistant/construction/forecast/decision_support_engine.py:135:                "SELECT COUNT(DISTINCT month) FROM forecast_monthly_actuals_by_budget_code WHERE project_key=?",
+src/hb_assistant/construction/forecast/decision_support_engine.py:139:                "SELECT COUNT(DISTINCT month) FROM forecast_monthly_actuals_by_budget_code "
+src/hb_assistant/construction/forecast/decision_support_engine.py:144:                "SELECT MAX(month) FROM forecast_monthly_actuals_by_budget_code WHERE project_key=?",
+src/hb_assistant/construction/forecast/decision_support_engine.py:149:                "SELECT COUNT(DISTINCT budget_code_key) FROM forecast_budget_details WHERE project_key=?",
+src/hb_assistant/construction/forecast/decision_support_engine.py:157:                "SELECT COUNT(*) FROM forecast_cost_entries WHERE project_key=?", (project_key,)
+src/hb_assistant/construction/forecast/decision_support_engine.py:233:        # ---- per-code confidence scorecards (reuse v63 forecast_output_budget_codes) -
+src/hb_assistant/construction/forecast/decision_support_engine.py:236:                "SELECT budget_code_key, confidence, forecast_action, raw_json "
+src/hb_assistant/construction/forecast/decision_support_engine.py:237:                "FROM forecast_output_budget_codes WHERE project_key=? ORDER BY source_row_number",
+src/hb_assistant/construction/forecast/decision_support_engine.py:245:            warnings.append("forecast_output_budget_codes absent; no per-code scorecards")
+src/hb_assistant/construction/forecast/decision_support_engine.py:249:    # ---- per-method rollups from the forecast_accuracy package (file reads only) -------
+src/hb_assistant/construction/forecast/decision_support_engine.py:304:            "score": None,  # numeric project score deferred (needs the forecast_accuracy artifact)
+src/hb_assistant/construction/forecast/decision_support_engine.py:352:                {"budget_code_key": key, "confidence": confidence, "forecast_action": action,
+src/hb_assistant/construction/forecast/decision_support_engine.py:401:    """Aggregate per-code forecast_accuracy estimates/contributions into per-method run rows.
+src/hb_assistant/construction/forecast/source_domain_engine.py:1:"""Project TWN cost-forecast JSONL source rows into the three v59 source-domain tables.
+src/hb_assistant/construction/forecast/source_domain_engine.py:30:    "tables": "forecast_budget_details/cost_entries/monthly_actuals_by_budget_code",
+src/hb_assistant/construction/forecast/source_domain_engine.py:32:    "forecast_reads": "file_backed_unchanged",
+src/hb_assistant/construction/forecast/source_reader.py:1:"""Read TWN cost-forecast JSONL source files for Phase 3 source-domain projection.
+src/hb_assistant/construction/forecast/source_reader.py:20:# Canonical source filenames within a TWN cost-forecast package's ``data/`` dir
+src/hb_assistant/construction/forecast/source_reader.py:21:# (construction-financial-review generate_forecast_context_package.py SRC_FILES).
+src/hb_assistant/construction/forecast/run_reader.py:3:A full-fresh forecast run mints ``.cfr_run_state/full_fresh_<project>_<run_id>.json``
+src/hb_assistant/construction/forecast/repository.py:1:"""Idempotent writers for the five v58 forecast foundation tables.
+src/hb_assistant/construction/forecast/repository.py:88:    _upsert(conn, "forecast_projects", row, ("project_key",))
+src/hb_assistant/construction/forecast/repository.py:92:    _upsert(conn, "forecast_runs", row, ("run_id",))
+src/hb_assistant/construction/forecast/repository.py:98:    _upsert(conn, "forecast_source_ingestions", row, ("ingestion_id",))
+src/hb_assistant/construction/forecast/repository.py:102:    _upsert(conn, "forecast_package_manifests", row, ("package_id",))
+src/hb_assistant/construction/forecast/repository.py:106:    _upsert(conn, "forecast_validation_events", row, ("run_id", "event_seq"))
+src/hb_assistant/construction/forecast/projection_engine.py:1:"""Project a CFR forecast run + packages into the five v58 foundation tables.
+src/hb_assistant/construction/forecast/projection_engine.py:24:    "forecast_reads": "file_backed_unchanged",
+src/hb_assistant/construction/forecast/projection_engine.py:120:        # forecast_package_manifests (1 per package)
+src/hb_assistant/construction/forecast/projection_engine.py:139:        # forecast_source_ingestions (N per package)
+src/hb_assistant/construction/forecast/projection_engine.py:156:        # forecast_validation_events (M per package; monotonic stable event_seq across the run)
+src/hb_assistant/construction/forecast/projection_engine.py:171:    # forecast_projects (1) — identity from the first package that carried a project block.
+src/hb_assistant/construction/forecast/projection_engine.py:184:    # forecast_runs (1)
+src/hb_assistant/construction/forecast/package_reader.py:1:"""Parse a single forecast package directory (read-only, plain JSON).
+src/hb_assistant/construction/forecast/package_reader.py:8:Authoritative manifest shape (from generate_forecast_context_package.py):
+src/hb_assistant/construction/forecast/package_reader.py:29:    ("forecast_context_package_", "context"),
+src/hb_assistant/construction/forecast/package_reader.py:30:    ("forecast_analysis_package_", "analysis"),
+src/hb_assistant/construction/forecast/package_reader.py:32:    ("forecast_accuracy_next_package_", "intelligence"),
+src/hb_assistant/construction/forecast/package_reader.py:33:    ("forecast_intelligence_package_", "intelligence"),
+src/hb_assistant/construction/forecast/package_reader.py:34:    ("schedule_integrated_forecast_package_", "schedule_integrated"),
+src/hb_assistant/construction/forecast/package_reader.py:35:    ("forecast_monthly_package_", "monthly"),
+src/hb_assistant/construction/forecast/package_reader.py:36:    ("forecast_probability_package_", "probability"),
+src/hb_assistant/construction/forecast/package_reader.py:37:    ("forecast_history_informed_package_", "history_informed"),
+src/hb_assistant/construction/forecast/package_reader.py:38:    ("forecast_cost_frequency_package_", "cost_frequency"),
+src/hb_assistant/construction/forecast/package_reader.py:39:    ("forecast_comprehensive_package_", "comprehensive"),
+src/hb_assistant/construction/forecast/package_reader.py:78:    Returns a dict with manifest fields, ``sources`` (for forecast_source_ingestions),
+src/hb_assistant/construction/forecast/package_reader.py:79:    ``validation_events`` (for forecast_validation_events), and ``warnings``.
+src/hb_assistant/construction/forecast/package_reader.py:114:    # --- sources (forecast_source_ingestions) from manifest.source_files ---
+src/hb_assistant/construction/forecast/package_reader.py:138:    # --- source_data_hashes / row_counts (forecast_package_manifests JSON cols) ---
+src/hb_assistant/construction/forecast/package_reader.py:145:    # --- validation events (forecast_validation_events) from manifest.validation_status ---
+src/hb_assistant/construction/forecast/output_projection_engine.py:1:"""Project a CFR forecast ANALYSIS package's model-run outputs into the v63 tables.
+src/hb_assistant/construction/forecast/output_projection_engine.py:14:Coverage this phase: the header (``forecast_outputs``), per-code recommendations
+src/hb_assistant/construction/forecast/output_projection_engine.py:15:(``forecast_output_budget_codes``) from ``forecast_recommendations_by_budget_code.jsonl``, and
+src/hb_assistant/construction/forecast/output_projection_engine.py:16:the risk register (``forecast_output_risks``) from ``forecast_risk_register.jsonl``. The other
+src/hb_assistant/construction/forecast/output_projection_engine.py:36:    "tables": "forecast_outputs/forecast_output_budget_codes/forecast_output_risks",
+src/hb_assistant/construction/forecast/output_projection_engine.py:38:    "forecast_reads": "file_backed_unchanged",
+src/hb_assistant/construction/forecast/output_projection_engine.py:57:RECOMMENDATIONS_FILE = "forecast_recommendations_by_budget_code.jsonl"
+src/hb_assistant/construction/forecast/output_projection_engine.py:58:RISK_REGISTER_FILE = "forecast_risk_register.jsonl"
+src/hb_assistant/construction/forecast/output_projection_engine.py:59:PROJECT_SUMMARY_FILE = "summaries/project_forecast_analysis.json"
+src/hb_assistant/construction/forecast/output_projection_engine.py:63:MONTHLY_FILE = "monthly_forecast_by_budget_code.jsonl"
+src/hb_assistant/construction/forecast/output_projection_engine.py:185:            "forecast_period": manifest.get("forecast_period") or manifest.get("stamp"),
+src/hb_assistant/construction/forecast/output_projection_engine.py:188:            "forecast_at_completion": None,
+src/hb_assistant/construction/forecast/output_projection_engine.py:191:            "variance_to_prior_forecast": None,
+src/hb_assistant/construction/forecast/output_projection_engine.py:213:                "forecast_action": row.get("forecast_action"),
+src/hb_assistant/construction/forecast/output_projection_engine.py:254:            month = row.get("forecast_month")
+src/hb_assistant/construction/forecast/output_projection_engine.py:323:            for item in row.get("staffing_plan_implied_monthly_forecast") or []:
+src/hb_assistant/construction/forecast/output_projection_engine.py:325:                month = item.get("forecast_month")
+src/hb_assistant/construction/forecast/__init__.py:3:Phase 2 (lineage-only): read-only projection of a completed CFR forecast *run* and
+src/hb_assistant/construction/forecast/__init__.py:4:its packages into the five v58 foundation/lineage tables (``forecast_projects``,
+src/hb_assistant/construction/forecast/__init__.py:5:``forecast_runs``, ``forecast_source_ingestions``, ``forecast_package_manifests``,
+src/hb_assistant/construction/forecast/__init__.py:6:``forecast_validation_events``) — project/run identity, per-package manifests,
+src/hb_assistant/construction/forecast/__init__.py:9:Phase 3 (source-domain read parity): projection of selected TWN cost-forecast JSONL
+src/hb_assistant/construction/forecast/__init__.py:10:source rows into the three v59 source-domain tables (``forecast_budget_details``,
+src/hb_assistant/construction/forecast/__init__.py:11:``forecast_cost_entries``, ``forecast_monthly_actuals_by_budget_code``) plus DB-backed
+src/hb_assistant/construction/forecast/__init__.py:13:Phase 3 does NOT change forecast behavior or read paths — forecast model reads remain
+src/hb_assistant/construction/forecast/source_domain_repository.py:94:        conn, "forecast_budget_details", row, ("project_key", "budget_code_key", "source_package")
+src/hb_assistant/construction/forecast/source_domain_repository.py:101:    _upsert(conn, "forecast_cost_entries", row, ("cost_entry_id",))
+src/hb_assistant/construction/forecast/source_domain_repository.py:107:        "forecast_monthly_actuals_by_budget_code",
+src/hb_assistant/construction/forecast/source_domain_repository.py:154:        "forecast_budget_details",
+src/hb_assistant/construction/forecast/source_domain_repository.py:167:        "forecast_cost_entries",
+src/hb_assistant/construction/forecast/source_domain_repository.py:180:        "forecast_monthly_actuals_by_budget_code",
+src/hb_assistant/construction/forecast/source_domain_repository.py:201:        "forecast_budget_details",
+src/hb_assistant/construction/forecast/source_domain_repository.py:214:        "forecast_cost_entries",
+src/hb_assistant/construction/forecast/source_domain_repository.py:227:        "forecast_monthly_actuals_by_budget_code",
+src/hb_assistant/construction/forecast/decision_support_repository.py:47:    _upsert(conn, "forecast_project_maturity_snapshots", row, ("snapshot_id",))
+src/hb_assistant/construction/forecast/decision_support_repository.py:51:    _upsert(conn, "forecast_data_availability_profiles", row, ("id",))
+src/hb_assistant/construction/forecast/decision_support_repository.py:55:    _upsert(conn, "forecast_confidence_scorecards", row, ("scorecard_id",))
+src/hb_assistant/construction/forecast/decision_support_repository.py:59:    _upsert(conn, "forecast_confidence_factors", row, ("id",))
+src/hb_assistant/construction/forecast/decision_support_repository.py:63:    _upsert(conn, "forecast_method_eligibility", row, ("id",))
+src/hb_assistant/construction/forecast/decision_support_repository.py:67:    _upsert(conn, "forecast_model_selection_decisions", row, ("id",))
+src/hb_assistant/construction/forecast/decision_support_repository.py:100:        conn, "forecast_project_maturity_snapshots", "run_id", run_id, "snapshot_id"
+src/hb_assistant/construction/forecast/decision_support_repository.py:105:    return _read_raw(conn, "forecast_data_availability_profiles", "run_id", run_id, "domain")
+src/hb_assistant/construction/forecast/decision_support_repository.py:110:        conn, "forecast_confidence_scorecards", "run_id", run_id, "scope, scope_key"
+src/hb_assistant/construction/forecast/decision_support_repository.py:118:        conn, "forecast_confidence_factors", "scorecard_id", scorecard_id, "factor_key"
+src/hb_assistant/construction/forecast/decision_support_repository.py:125:    return _read_raw(conn, "forecast_method_eligibility", "run_id", run_id, "method")
+src/hb_assistant/construction/forecast/decision_support_repository.py:131:    return _read_raw(conn, "forecast_model_selection_decisions", "run_id", run_id, "method")
+src/hb_assistant/construction/forecast/decision_support_repository.py:137:        "SELECT maturity_tier FROM forecast_project_maturity_snapshots WHERE run_id = ?",
+src/hb_assistant/construction/second_brain/contracts.py:124:    "forecast_readiness_contract": "phase_08c_forecast_readiness_contract.json",
+src/hb_assistant/construction/second_brain/financial_no_writeback.py:40:    "second_brain_financial_forecast_readiness_runs",
+src/hb_assistant/construction/second_brain/financial_no_writeback.py:253:            "determination, approval, claim, entitlement, or forecast."
+src/hb_assistant/construction/second_brain/financial_no_writeback.py:286:        "or forecast.",
+src/hb_assistant/construction/second_brain/financial_completeness.py:1175:        "notes": "Advisory exposure marts from V35 normalized facts + deterministic projections (cost/schedule exposure patterns). Deterministic = action signals/budget changes/known links; candidate = other/ambiguous. All amounts via normalized refs (TEXT). Not a final determination, claim, entitlement, or forecast. Source refs preserved; no raw payloads.",
+src/hb_assistant/construction/second_brain/financial_completeness.py:1235:    source coverage, exposure marts) + forecast/review outputs.
+src/hb_assistant/construction/second_brain/financial_completeness.py:1257:    # forecast and review contracts for completeness (even if stubs)
+src/hb_assistant/construction/second_brain/financial_completeness.py:1259:        load_phase_08c_contract("forecast_readiness_contract")
+src/hb_assistant/construction/second_brain/financial_completeness.py:1301:        fr = evaluate_forecast_readiness_gates(project_key=project_key, db_path=db_path)
+src/hb_assistant/construction/second_brain/financial_completeness.py:1302:        sub_results["forecast_readiness"] = {
+src/hb_assistant/construction/second_brain/financial_completeness.py:1313:        sub_results["forecast_readiness_error"] = str(e)
+src/hb_assistant/construction/second_brain/financial_completeness.py:1314:        sub_results["forecast_readiness"] = {"status": "error"}
+src/hb_assistant/construction/second_brain/financial_completeness.py:1321:    status = "succeeded"  # deterministic; sub gates determine readiness (no forecast decision)
+src/hb_assistant/construction/second_brain/financial_completeness.py:1357:        "notes": "Deterministic Financial Fact Readiness Agent orchestration of 08C fact pieces (P03-P06 subs + forecast/review). Model use absent or strictly optional/mock-safe; never required for core readiness. All outputs advisory review aids only — not determinations, claims, entitlements, or forecasts. Source preserved in V35 tables.",
+src/hb_assistant/construction/second_brain/financial_completeness.py:1380:def evaluate_forecast_readiness_gates(
+src/hb_assistant/construction/second_brain/financial_completeness.py:1388:    Deterministic only; no model, no forecasts computed or recommended.
+src/hb_assistant/construction/second_brain/financial_completeness.py:1389:    Emits V35 run to second_brain_financial_forecast_readiness_runs (with guards)
+src/hb_assistant/construction/second_brain/financial_completeness.py:1390:    and writes forecast-readiness-gates.md (human "readiness report") +
+src/hb_assistant/construction/second_brain/financial_completeness.py:1391:    forecast-readiness-proof.json (machine, with stop_checks.forecast_decision_made=false).
+src/hb_assistant/construction/second_brain/financial_completeness.py:1397:    run_id = f"08c-forecast-{uuid.uuid4().hex[:8]}"
+src/hb_assistant/construction/second_brain/financial_completeness.py:1403:        fr_contract = load_phase_08c_contract("forecast_readiness_contract") or {}
+src/hb_assistant/construction/second_brain/financial_completeness.py:1589:    semantic_forecast_gates: dict[str, Any] = {}
+src/hb_assistant/construction/second_brain/financial_completeness.py:1596:        from hb_assistant.forecasting.readiness import evaluate_forecast_semantic_gates
+src/hb_assistant/construction/second_brain/financial_completeness.py:1598:        semantic_forecast_gates = evaluate_forecast_semantic_gates(
+src/hb_assistant/construction/second_brain/financial_completeness.py:1602:        sem_summary = semantic_forecast_gates.get("summary", {})
+src/hb_assistant/construction/second_brain/financial_completeness.py:1603:        sem_gate_status = semantic_forecast_gates.get("gate_status", "warning")
+src/hb_assistant/construction/second_brain/financial_completeness.py:1606:                "gate_name": "forecast_semantic_gates",
+src/hb_assistant/construction/second_brain/financial_completeness.py:1612:                "gates": semantic_forecast_gates.get("gates", []),
+src/hb_assistant/construction/second_brain/financial_completeness.py:1613:                "note": semantic_forecast_gates.get("readiness_note"),
+src/hb_assistant/construction/second_brain/financial_completeness.py:1619:                "gate_name": "forecast_semantic_gates",
+src/hb_assistant/construction/second_brain/financial_completeness.py:1654:            INSERT OR REPLACE INTO second_brain_financial_forecast_readiness_runs
+src/hb_assistant/construction/second_brain/financial_completeness.py:1694:            "forecast_output_allowed": False,
+src/hb_assistant/construction/second_brain/financial_completeness.py:1698:            "This is a forecast readiness report only. It determines whether the local data is sufficiently normalized, covered, and review-tagged to support future (not performed here) trend analysis. No forecasts are computed or recommended.",
+src/hb_assistant/construction/second_brain/financial_completeness.py:1699:            "All outputs are advisory review aids only — not a final exposure determination or forecast or trend.",
+src/hb_assistant/construction/second_brain/financial_completeness.py:1705:            "forecast_decision_made": False,
+src/hb_assistant/construction/second_brain/financial_completeness.py:1717:        "advisory_status": "advisory review aid only. This is a readiness report. It does not generate or recommend any forecast.",
+src/hb_assistant/construction/second_brain/financial_completeness.py:1718:        "semantic_forecast_gates": semantic_forecast_gates,
+src/hb_assistant/construction/second_brain/financial_completeness.py:1720:        "contract": fr_contract.get("contract_name", "phase_08c_forecast_readiness_contract"),
+src/hb_assistant/construction/second_brain/financial_completeness.py:1722:    proof_path = out_dir / "forecast-readiness-proof.json"
+src/hb_assistant/construction/second_brain/financial_completeness.py:1730:        "This is a readiness report only. It determines whether the local data is sufficiently normalized, covered, and review-tagged to support future (not performed here) trend analysis. No forecasts are computed or recommended.",
+src/hb_assistant/construction/second_brain/financial_completeness.py:1751:            "- forecast_output_allowed: false",
+src/hb_assistant/construction/second_brain/financial_completeness.py:1754:            "This is a forecast readiness report only. It determines whether the local data is sufficiently normalized, covered, and review-tagged to support future (not performed here) trend analysis. No forecasts are computed or recommended.",
+src/hb_assistant/construction/second_brain/financial_completeness.py:1755:            "All outputs are advisory review aids only — not a final exposure determination or forecast or trend. Source preserved. Stop if any output presented as forecast decision or recommendation treated as final.",
+src/hb_assistant/construction/second_brain/financial_completeness.py:1766:    md_path = out_dir / "forecast-readiness-gates.md"
+src/hb_assistant/construction/second_brain/financial_completeness.py:1778:        "semantic_forecast_gates": semantic_forecast_gates,
+src/hb_assistant/construction/second_brain/financial_completeness.py:1781:        "note": "readiness report only; no forecasts computed or recommended",
+src/hb_assistant/construction/second_brain/data_quality.py:44:    evaluate_forecast_readiness_gates,
+src/hb_assistant/construction/second_brain/data_quality.py:123:    "forecast_readiness",
+src/hb_assistant/construction/second_brain/data_quality.py:697:        "second_brain_financial_forecast_readiness_runs",
+src/hb_assistant/construction/second_brain/data_quality.py:824:    # readiness agent / forecast / review policy (tables + contract) — real via agent
+src/hb_assistant/construction/second_brain/data_quality.py:840:    # forecast_readiness (Prompt 08): real evaluator, 4 gate_status + 5 readiness_status, 8 sub-gates
+src/hb_assistant/construction/second_brain/data_quality.py:842:        fr = evaluate_forecast_readiness_gates(project_key=None, db_path=db_path)
+src/hb_assistant/construction/second_brain/data_quality.py:846:                "forecast_readiness",
+src/hb_assistant/construction/second_brain/data_quality.py:856:        gates.append(_gate("forecast_readiness", "warning", reason=str(e)))
+src/hb_assistant/construction/second_brain/data_quality.py:929:        "aid only — not a determination, approval, claim, entitlement, or forecast. Gates never pass "
+src/hb_assistant/construction/second_brain/data_quality.py:1009:            f"{EVIDENCE_DIR}/forecast-readiness-proof.json",
+src/hb_assistant/construction/second_brain/data_quality.py:1016:            "coverage, exposure marts, readiness agent, forecast-readiness, review-required policy, "
+src/hb_assistant/construction/second_brain/data_quality.py:1018:            "claim, entitlement, or forecast. proof_passed is False when required evidence is missing."
+src/hb_assistant/construction/second_brain/safety.py:104:    "second_brain_financial_forecast_readiness_runs",
+src/hb_assistant/construction/second_brain/safety.py:582:        "only — not a determination, approval, claim, entitlement, or forecast. Fail-closed.",
+src/hb_assistant/construction/second_brain/financial_review_routing.py:24:determinations, or forecasts.
+src/hb_assistant/construction/second_brain/financial_review_routing.py:331:        "entitlement determination, contract interpretation, forecast, or executive financial "
+src/hb_assistant/construction/second_brain/financial_review_routing.py:480:            "determinations, approvals, claims, entitlements, or forecasts. Source preserved "
+src/hb_assistant/construction/second_brain/local_ai/daily_brief_presentation.py:160:    "budget_forecast_exceeds_budget": "forecast-exceeds-budget",
+src/hb_assistant/construction/second_brain/local_ai/daily_brief_presentation.py:170:    "budget_variance_negative": "Review variance driver and forecast exposure.",
+src/hb_assistant/construction/second_brain/local_ai/daily_brief_presentation.py:171:    "budget_forecast_exceeds_budget": "Check forecast-to-complete and escalation path.",
+src/hb_assistant/construction/second_brain/local_ai/calendar_category.py:12:- ``internal_company`` — company/admin events (financial forecast, leadership, all-hands…).
+src/hb_assistant/construction/second_brain/local_ai/calendar_category.py:62:# Company / admin / leadership (internal, non-project). "forecast" covers the audit's
+src/hb_assistant/construction/second_brain/local_ai/calendar_category.py:65:    r"\b(financial forecasts?|forecasts?|all[- ]?hands|town hall|company meeting|leadership|"
+src/hb_assistant/construction/analytics/forecast_bootstrap.py:3:This is the **single** module allowed to create forecast filesystem roots. The companion
+src/hb_assistant/construction/analytics/forecast_bootstrap.py:4:``forecast_runtime_config`` module is intentionally non-mutating (its validation never calls
+src/hb_assistant/construction/analytics/forecast_bootstrap.py:7:``ensure_forecast_managed_storage`` is the launch-time hook (FastAPI lifespan, launcher readiness).
+src/hb_assistant/construction/analytics/forecast_bootstrap.py:10:  - ensures standard + app-managed forecast directories under Application Support;
+src/hb_assistant/construction/analytics/forecast_bootstrap.py:11:  - seeds ``forecast_runtime_config.json`` when roots are missing (env still wins at runtime);
+src/hb_assistant/construction/analytics/forecast_bootstrap.py:15:``ensure_forecast_roots`` remains the write-root-only helper (tests + legacy callers).
+src/hb_assistant/construction/analytics/forecast_bootstrap.py:26:from hb_assistant.construction.analytics import forecast_runtime_config as rc
+src/hb_assistant/construction/analytics/forecast_bootstrap.py:37:# App-managed forecast dirs (keys only in reports — never path strings).
+src/hb_assistant/construction/analytics/forecast_bootstrap.py:40:    ("package_roots", lambda pp: pp.get_forecast_packages_dir()),
+src/hb_assistant/construction/analytics/forecast_bootstrap.py:41:    ("data_root", lambda pp: pp.get_forecast_data_dir()),
+src/hb_assistant/construction/analytics/forecast_bootstrap.py:42:    ("runs_root", lambda pp: pp.get_forecast_runs_dir()),
+src/hb_assistant/construction/analytics/forecast_bootstrap.py:43:    ("eval_root", lambda pp: pp.get_forecast_evaluations_dir()),
+src/hb_assistant/construction/analytics/forecast_bootstrap.py:44:    ("config_edit_root", lambda pp: pp.get_forecast_config_proposals_dir()),
+src/hb_assistant/construction/analytics/forecast_bootstrap.py:45:    ("imports_dir", lambda pp: pp.get_forecast_imports_dir()),
+src/hb_assistant/construction/analytics/forecast_bootstrap.py:50:    """Create app-managed forecast dirs; return keys that did not exist before this call."""
+src/hb_assistant/construction/analytics/forecast_bootstrap.py:78:def ensure_forecast_roots() -> dict[str, Any]:
+src/hb_assistant/construction/analytics/forecast_bootstrap.py:79:    """Create configured+valid forecast write-roots; return a redaction-safe readiness report.
+src/hb_assistant/construction/analytics/forecast_bootstrap.py:111:def ensure_forecast_managed_storage(*, repair: bool = False) -> dict[str, Any]:
+src/hb_assistant/construction/analytics/forecast_bootstrap.py:112:    """Bootstrap app-managed forecast storage (dirs, settings seed, DB, write-roots).
+src/hb_assistant/construction/analytics/forecast_bootstrap.py:120:    roots_report = ensure_forecast_roots()
+src/hb_assistant/construction/analytics/forecast_external_metrics.py:1:"""Deterministic accuracy metrics for external-forecast evaluation (Implementation Phase 4).
+src/hb_assistant/construction/analytics/forecast_external_metrics.py:3:Pure, stdlib-``Decimal`` arithmetic comparing an external forecast vector against a baseline
+src/hb_assistant/construction/analytics/forecast_external_metrics.py:8:These are net-new primitives: CFR's ``forecast_accuracy/backtest.py`` MAPE/bias are cohort-
+src/hb_assistant/construction/analytics/forecast_runtime_config.py:3:The five forecast UI surfaces (Phases 1-5) resolve their filesystem roots from environment
+src/hb_assistant/construction/analytics/forecast_runtime_config.py:35:from hb_assistant.construction.analytics.forecast_catalog import resolve_package_roots_from_env
+src/hb_assistant/construction/analytics/forecast_runtime_config.py:36:from hb_assistant.construction.analytics.forecast_external_ingest import (
+src/hb_assistant/construction/analytics/forecast_runtime_config.py:40:from hb_assistant.construction.analytics.forecast_run_service import (
+src/hb_assistant/construction/analytics/forecast_runtime_config.py:46:_SURFACE = "analytics.forecast_runtime"
+src/hb_assistant/construction/analytics/forecast_runtime_config.py:47:_CONFIG_NAME = "forecast_runtime_config.json"
+src/hb_assistant/construction/analytics/forecast_runtime_config.py:106:    path = pp.get_forecast_runtime_config_path()
+src/hb_assistant/construction/analytics/forecast_runtime_config.py:155:def managed_forecast_paths() -> dict[str, Any]:
+src/hb_assistant/construction/analytics/forecast_runtime_config.py:156:    """Canonical app-managed forecast paths (server-side only; never in status payloads)."""
+src/hb_assistant/construction/analytics/forecast_runtime_config.py:159:        "package_roots": [str(pp.get_forecast_packages_dir())],
+src/hb_assistant/construction/analytics/forecast_runtime_config.py:160:        "data_root": str(pp.get_forecast_data_dir()),
+src/hb_assistant/construction/analytics/forecast_runtime_config.py:161:        "runs_root": str(pp.get_forecast_runs_dir()),
+src/hb_assistant/construction/analytics/forecast_runtime_config.py:162:        "eval_root": str(pp.get_forecast_evaluations_dir()),
+src/hb_assistant/construction/analytics/forecast_runtime_config.py:163:        "config_edit_root": str(pp.get_forecast_config_proposals_dir()),
+src/hb_assistant/construction/analytics/forecast_runtime_config.py:170:    managed = managed_forecast_paths()
+src/hb_assistant/construction/analytics/forecast_runtime_config.py:175:    return list(managed_forecast_paths()["package_roots"])
+src/hb_assistant/construction/analytics/forecast_runtime_config.py:186:    managed = managed_forecast_paths()
+src/hb_assistant/construction/analytics/forecast_runtime_config.py:219:    managed = managed_forecast_paths()
+src/hb_assistant/construction/analytics/forecast_runtime_config.py:253:        managed_forecast_paths()["data_root"],
+src/hb_assistant/construction/analytics/forecast_runtime_config.py:262:        managed_forecast_paths()["runs_root"],
+src/hb_assistant/construction/analytics/forecast_runtime_config.py:271:        managed_forecast_paths()["eval_root"],
+src/hb_assistant/construction/analytics/forecast_runtime_config.py:280:        managed_forecast_paths()["db_path"],
+src/hb_assistant/construction/analytics/forecast_runtime_config.py:293:        managed_forecast_paths()["config_edit_root"],
+src/hb_assistant/construction/analytics/forecast_runtime_config.py:377:    the proven probe in forecast_config_catalog (schema_migrations MAX(version) + config snapshot
+src/hb_assistant/construction/analytics/forecast_runtime_config.py:399:            crow = conn.execute("SELECT COUNT(*) FROM forecast_config_snapshots").fetchone()
+src/hb_assistant/construction/analytics/forecast_runtime_config.py:431:    managed = managed_forecast_paths()
+src/hb_assistant/construction/analytics/forecast_external_baselines.py:1:"""Read-only baseline loaders for external-forecast evaluation (Implementation Phase 4).
+src/hb_assistant/construction/analytics/forecast_external_baselines.py:6:  (``forecast_monthly_actuals_by_budget_code``, ``forecast_budget_details``) opened ``mode=ro``;
+src/hb_assistant/construction/analytics/forecast_external_baselines.py:9:* **Backend model EAC / P50 / P80** — an operator-selected backend forecast package directory on
+src/hb_assistant/construction/analytics/forecast_external_baselines.py:28:from hb_assistant.construction.analytics.forecast_external_ingest import (
+src/hb_assistant/construction/analytics/forecast_external_baselines.py:32:from hb_assistant.construction.analytics.forecast_external_metrics import to_decimal
+src/hb_assistant/construction/analytics/forecast_external_baselines.py:78:            "SELECT DISTINCT budget_code_key FROM forecast_budget_details WHERE project_key = ?",
+src/hb_assistant/construction/analytics/forecast_external_baselines.py:99:            "SELECT budget_code_key, raw_json FROM forecast_budget_details WHERE project_key = ?",
+src/hb_assistant/construction/analytics/forecast_external_baselines.py:126:            "SELECT budget_code_key, raw_json FROM forecast_monthly_actuals_by_budget_code "
+src/hb_assistant/construction/analytics/forecast_external_baselines.py:163:    """Return {code: {model_eac, model_p50, model_p80}} from a backend forecast package directory."""
+src/hb_assistant/construction/analytics/forecast_config_edit_dto.py:3:Pure stdlib (no CFR, no FastAPI). The service layer (``forecast_config_edit_service``) does the DB
+src/hb_assistant/construction/analytics/forecast_config_edit_dto.py:6:  - which domains/fields an operator may edit (``forecast_controls`` is deprecated → rejected);
+src/hb_assistant/construction/analytics/forecast_config_edit_dto.py:23:from hb_assistant.construction.analytics.forecast_dto import find_redaction_leaks
+src/hb_assistant/construction/analytics/forecast_config_edit_dto.py:25:# Domains an operator may edit. forecast_controls is deprecated (superseded by
+src/hb_assistant/construction/analytics/forecast_config_edit_dto.py:26:# forecast_model_controls) and is rejected — it stays visible/read-only in the viewer.
+src/hb_assistant/construction/analytics/forecast_config_edit_dto.py:29:    "forecast_model_controls",
+src/hb_assistant/construction/analytics/forecast_config_edit_dto.py:30:    "forecast_staffing",
+src/hb_assistant/construction/analytics/forecast_config_edit_dto.py:33:DEPRECATED_DOMAINS = ("forecast_controls",)
+src/hb_assistant/construction/analytics/forecast_config_edit_dto.py:41:    "forecast_period",
+src/hb_assistant/construction/analytics/forecast_config_edit_dto.py:63:    if domain == "forecast_model_controls":
+src/hb_assistant/construction/analytics/forecast_config_edit_dto.py:65:    elif domain == "forecast_staffing":
+src/hb_assistant/construction/analytics/forecast_config_edit_dto.py:112:                "forecast_controls is deprecated and read-only (use forecast_model_controls)"
+src/hb_assistant/construction/analytics/forecast_catalog.py:1:"""Read-only forecast package catalog service (Implementation Phase 1).
+src/hb_assistant/construction/analytics/forecast_catalog.py:3:Browses deterministic forecast packages that the construction-financial-review backend
+src/hb_assistant/construction/analytics/forecast_catalog.py:12:  - **Structural redaction:** every payload is built from ``forecast_dto`` DTOs that omit
+src/hb_assistant/construction/analytics/forecast_catalog.py:28:from hb_assistant.construction.analytics.forecast_dto import (
+src/hb_assistant/construction/analytics/forecast_catalog.py:50:# Longest prefixes first so e.g. forecast_accuracy_next_package wins over forecast_accuracy_package.
+src/hb_assistant/construction/analytics/forecast_catalog.py:52:    ("forecast_accuracy_next_package", "accuracy_next"),
+src/hb_assistant/construction/analytics/forecast_catalog.py:53:    ("forecast_comprehensive_package", "comprehensive"),
+src/hb_assistant/construction/analytics/forecast_catalog.py:54:    ("forecast_history_informed_package", "history_informed"),
+src/hb_assistant/construction/analytics/forecast_catalog.py:55:    ("forecast_model_controls_package", "model_controls"),
+src/hb_assistant/construction/analytics/forecast_catalog.py:56:    ("forecast_cost_frequency_package", "cost_frequency"),
+src/hb_assistant/construction/analytics/forecast_catalog.py:57:    ("forecast_staffing_plan_package", "staffing_plan"),
+src/hb_assistant/construction/analytics/forecast_catalog.py:58:    ("schedule_integrated_forecast_package", "schedule_integrated"),
+src/hb_assistant/construction/analytics/forecast_catalog.py:60:    ("forecast_probability_package", "probability"),
+src/hb_assistant/construction/analytics/forecast_catalog.py:61:    ("forecast_intelligence_package", "intelligence"),
+src/hb_assistant/construction/analytics/forecast_catalog.py:63:    ("cost_forecast_agent_db_json_export", "db_json_export"),
+src/hb_assistant/construction/analytics/forecast_catalog.py:64:    ("forecast_accuracy_package", "accuracy"),
+src/hb_assistant/construction/analytics/forecast_catalog.py:65:    ("forecast_controls_package", "controls"),
+src/hb_assistant/construction/analytics/forecast_catalog.py:66:    ("forecast_analysis_package", "analysis"),
+src/hb_assistant/construction/analytics/forecast_catalog.py:67:    ("forecast_context_package", "context"),
+src/hb_assistant/construction/analytics/forecast_catalog.py:68:    ("forecast_monthly_package", "monthly"),
+src/hb_assistant/construction/analytics/forecast_catalog.py:74:    "integrated_forecast_by_budget_code.jsonl",
+src/hb_assistant/construction/analytics/forecast_catalog.py:79:    "forecast_accuracy_recommendations.jsonl",
+src/hb_assistant/construction/analytics/forecast_catalog.py:82:    "project_comprehensive_forecast_summary.json",
+src/hb_assistant/construction/analytics/forecast_catalog.py:83:    "project_forecast_accuracy_summary.json",
+src/hb_assistant/construction/analytics/forecast_catalog.py:87:_MONTHLY_BY_CODE_FILE = "integrated_monthly_forecast_by_budget_code.jsonl"
+src/hb_assistant/construction/analytics/forecast_catalog.py:88:_MONTHLY_PROJECT_FILE = "integrated_monthly_project_forecast.jsonl"
+src/hb_assistant/construction/analytics/forecast_catalog.py:93:_SURFACE = "analytics.forecast_catalog"
+src/hb_assistant/construction/analytics/forecast_catalog.py:165:    """Read-only browser over forecast package directories under explicit roots."""
+src/hb_assistant/construction/analytics/forecast_catalog.py:247:                ref.period = proj.get("forecast_period")
+src/hb_assistant/construction/analytics/forecast_catalog.py:494:    def read_forecast_rows(self, package_id: str) -> dict[str, Any]:
+src/hb_assistant/construction/analytics/forecast_catalog.py:527:            "surface": _SURFACE + ".forecast_rows",
+src/hb_assistant/construction/analytics/forecast_catalog.py:587:    def read_monthly_forecast(self, package_id: str) -> dict[str, Any]:
+src/hb_assistant/construction/analytics/forecast_catalog.py:604:                                    forecast_month=m.get("forecast_month"),
+src/hb_assistant/construction/analytics/forecast_catalog.py:624:                        forecast_month=p.get("forecast_month"),
+src/hb_assistant/construction/analytics/forecast_dto.py:1:"""Read-only, redacted DTOs for the forecast package browser (Implementation Phase 1).
+src/hb_assistant/construction/analytics/forecast_dto.py:3:These dataclasses are the boundary between on-disk forecast package internals and the
+src/hb_assistant/construction/analytics/forecast_dto.py:24:    "comprehensive": "Comprehensive forecast",
+src/hb_assistant/construction/analytics/forecast_dto.py:28:    "monthly": "Monthly forecast",
+src/hb_assistant/construction/analytics/forecast_dto.py:30:    "history_informed": "History-informed forecast",
+src/hb_assistant/construction/analytics/forecast_dto.py:37:    "schedule_integrated": "Schedule-integrated forecast",
+src/hb_assistant/construction/analytics/forecast_dto.py:206:    forecast_month: str | None = None  # e.g. "2026-06"
+src/hb_assistant/construction/analytics/forecast_run_dto.py:3:A forecast run generates a deterministic context->analysis package chain into an isolated
+src/hb_assistant/construction/analytics/forecast_run_dto.py:7:derived "no live writes" safety flag. ``forecast_dto.find_redaction_leaks`` is the backstop scan.
+src/hb_assistant/construction/analytics/forecast_run_dto.py:15:from hb_assistant.construction.analytics.forecast_dto import friendly_datetime_from_stamp
+src/hb_assistant/construction/analytics/forecast_run_dto.py:84:    base = "Context → analysis forecast"
+src/hb_assistant/construction/analytics/forecast_config_promotion_service.py:21:from hb_assistant.construction.analytics.forecast_config_edit_service import (
+src/hb_assistant/construction/analytics/forecast_config_promotion_service.py:24:from hb_assistant.construction.analytics.forecast_dto import friendly_datetime_from_stamp
+src/hb_assistant/construction/analytics/forecast_config_promotion_service.py:25:from hb_assistant.construction.analytics.forecast_run_service import (
+src/hb_assistant/construction/analytics/forecast_config_promotion_service.py:30:_SURFACE = "analytics.forecast_config_promotion"
+src/hb_assistant/construction/analytics/forecast_external_ingest.py:1:"""External-forecast file ingestion (Implementation Phase 4).
+src/hb_assistant/construction/analytics/forecast_external_ingest.py:3:Accepts an untrusted operator-supplied forecast file as base64 bytes (no ``python-multipart``
+src/hb_assistant/construction/analytics/forecast_external_ingest.py:26:from hb_assistant.construction.analytics.forecast_external_dto import ImportPreviewDTO, eval_label
+src/hb_assistant/construction/analytics/forecast_external_ingest.py:45:    """Raised when external-forecast ingestion/evaluation is misconfigured or input is invalid."""
+src/hb_assistant/construction/analytics/forecast_external_ingest.py:52:        raise ForecastExternalError("forecast eval root is not configured")
+src/hb_assistant/construction/analytics/forecast_external_ingest.py:55:        raise ForecastExternalError("forecast eval root must be an absolute path")
+src/hb_assistant/construction/analytics/forecast_external_ingest.py:56:    # Defense-in-depth: refuse if the eval-root sits under the live forecast DATA root (where the
+src/hb_assistant/construction/analytics/forecast_external_ingest.py:61:        raise ForecastExternalError("forecast eval root must not be under the live data root")
+src/hb_assistant/construction/analytics/forecast_external_ingest.py:65:        raise ForecastExternalError("forecast eval root could not be created") from exc
+src/hb_assistant/construction/analytics/forecast_external_ingest.py:137:    """Ingests + previews an uploaded external forecast file into the isolated eval-root."""
+src/hb_assistant/construction/analytics/forecast_config_dto.py:1:"""Read-only, redacted DTOs for the forecast configuration viewer (Implementation Phase 2).
+src/hb_assistant/construction/analytics/forecast_config_dto.py:3:These present the immutable v60 config-registry snapshot (forecast controls, model controls,
+src/hb_assistant/construction/analytics/forecast_config_dto.py:14:``forecast_dto.find_redaction_leaks`` is the shared backstop scan; every payload is asserted
+src/hb_assistant/construction/analytics/forecast_config_dto.py:27:    "forecast_controls": "Forecast controls",
+src/hb_assistant/construction/analytics/forecast_config_dto.py:28:    "forecast_model_controls": "Model controls",
+src/hb_assistant/construction/analytics/forecast_config_dto.py:29:    "forecast_staffing": "Staffing mappings",
+src/hb_assistant/construction/analytics/forecast_config_dto.py:39:    "forecast_period",
+src/hb_assistant/construction/analytics/schedule_cost_weighting.py:1:"""Advisory schedule-informed forecast weighting (approved mappings only)."""
+src/hb_assistant/construction/analytics/schedule_cost_weighting.py:42:                "forecast_confidence_modifier": modifier,
+src/hb_assistant/construction/analytics/__init__.py:8:from .forecast_catalog import ForecastCatalogError, ForecastCatalogService
+src/hb_assistant/construction/analytics/__init__.py:9:from .forecast_config_catalog import ForecastConfigCatalogService, ForecastConfigError
+src/hb_assistant/construction/analytics/__init__.py:10:from .forecast_external_eval_service import ForecastExternalEvalService
+src/hb_assistant/construction/analytics/__init__.py:11:from .forecast_external_ingest import ForecastExternalError, ForecastExternalIngestService
+src/hb_assistant/construction/analytics/__init__.py:12:from .forecast_external_mapping import ForecastExternalMappingService
+src/hb_assistant/construction/analytics/__init__.py:13:from .forecast_run_service import ForecastRunError, ForecastRunService
+src/hb_assistant/construction/analytics/forecast_external_mapping.py:1:"""Column + budget-code mapping for external-forecast evaluation (Implementation Phase 4).
+src/hb_assistant/construction/analytics/forecast_external_mapping.py:18:from hb_assistant.construction.analytics.forecast_external_baselines import (
+src/hb_assistant/construction/analytics/forecast_external_mapping.py:22:from hb_assistant.construction.analytics.forecast_external_dto import (
+src/hb_assistant/construction/analytics/forecast_external_mapping.py:26:from hb_assistant.construction.analytics.forecast_external_ingest import (
+src/hb_assistant/construction/analytics/forecast_external_mapping.py:35:    "value": ("forecast", "value", "amount", "projected"),
+src/hb_assistant/construction/analytics/forecast_external_mapping.py:61:    """Proposes and validates the column + budget-code mapping for an imported external forecast."""
+src/hb_assistant/construction/analytics/forecast_external_mapping.py:201:    from hb_assistant.construction.analytics.forecast_external_ingest import ForecastExternalError
+src/hb_assistant/construction/analytics/forecast_external_anomaly.py:1:"""Deterministic anomaly detection for external-forecast evaluation (Implementation Phase 4).
+src/hb_assistant/construction/analytics/forecast_external_anomaly.py:15:from hb_assistant.construction.analytics import forecast_external_baselines as bl
+src/hb_assistant/construction/analytics/forecast_external_anomaly.py:16:from hb_assistant.construction.analytics.forecast_external_metrics import to_decimal
+src/hb_assistant/construction/analytics/forecast_external_anomaly.py:54:    # 1. External EAC below actuals-to-date (a forecast can never be below money already spent).
+src/hb_assistant/construction/analytics/forecast_external_anomaly.py:60:                   "External forecast is below the actual cost already incurred.")
+src/hb_assistant/construction/analytics/forecast_external_anomaly.py:94:                                    "External forecast is materially below ERP job-to-date cost."))
+src/hb_assistant/construction/analytics/forecast_external_anomaly.py:98:                                    "External forecast is materially below the backend model P50."))
+src/hb_assistant/construction/analytics/forecast_external_anomaly.py:100:    # 7. Missing high-value cost code (a material budgeted code absent from the external forecast).
+src/hb_assistant/construction/analytics/forecast_external_anomaly.py:105:                   "A high-value budgeted cost code is missing from the external forecast.")
+src/hb_assistant/construction/analytics/forecast_external_anomaly.py:115:               "The external forecast period was not specified.")
+src/hb_assistant/construction/analytics/forecast_external_anomaly.py:124:               "Manually-entered forecast has no reviewer note.")
+src/hb_assistant/construction/analytics/forecast_config_catalog.py:1:"""Read-only forecast configuration catalog service (Implementation Phase 2).
+src/hb_assistant/construction/analytics/forecast_config_catalog.py:4:``forecast_config_snapshots`` / ``forecast_config_snapshot_items`` (plus ``forecast_config_sources``
+src/hb_assistant/construction/analytics/forecast_config_catalog.py:10:required config tables are absent. Payloads are built from ``forecast_config_dto`` DTOs with
+src/hb_assistant/construction/analytics/forecast_config_catalog.py:22:from hb_assistant.construction.analytics.forecast_config_dto import (
+src/hb_assistant/construction/analytics/forecast_config_catalog.py:31:_SURFACE = "analytics.forecast_config"
+src/hb_assistant/construction/analytics/forecast_config_catalog.py:34:    "forecast_config_snapshots",
+src/hb_assistant/construction/analytics/forecast_config_catalog.py:35:    "forecast_config_snapshot_items",
+src/hb_assistant/construction/analytics/forecast_config_catalog.py:36:    "forecast_config_sources",
+src/hb_assistant/construction/analytics/forecast_config_catalog.py:37:    "forecast_config_items",
+src/hb_assistant/construction/analytics/forecast_config_catalog.py:61:    """Read-only browser over the v60 forecast config-registry snapshot (mode=ro)."""
+src/hb_assistant/construction/analytics/forecast_config_catalog.py:74:            raise ForecastConfigError("forecast config DB is not available")
+src/hb_assistant/construction/analytics/forecast_config_catalog.py:80:            raise ForecastConfigError("forecast config DB could not be opened read-only") from exc
+src/hb_assistant/construction/analytics/forecast_config_catalog.py:93:            raise ForecastConfigError("forecast config DB schema is unreadable") from exc
+src/hb_assistant/construction/analytics/forecast_config_catalog.py:96:                f"forecast config requires schema v{_REQUIRED_SCHEMA_VERSION}; DB is at v{version}"
+src/hb_assistant/construction/analytics/forecast_config_catalog.py:101:                "SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'forecast_config_%'"
+src/hb_assistant/construction/analytics/forecast_config_catalog.py:106:            raise ForecastConfigError("forecast config tables are not present")
+src/hb_assistant/construction/analytics/forecast_config_catalog.py:122:            "SELECT config_domain, COUNT(*) AS n FROM forecast_config_snapshot_items "
+src/hb_assistant/construction/analytics/forecast_config_catalog.py:130:            "SELECT config_domain, COUNT(*) AS n FROM forecast_config_sources "
+src/hb_assistant/construction/analytics/forecast_config_catalog.py:140:            "FROM forecast_config_snapshots WHERE config_snapshot_id = ?",
+src/hb_assistant/construction/analytics/forecast_config_catalog.py:163:                "FROM forecast_config_snapshots WHERE project_key = ? "
+src/hb_assistant/construction/analytics/forecast_config_catalog.py:214:                "FROM forecast_config_snapshot_items "
+src/hb_assistant/construction/analytics/forecast_config_catalog.py:249:                "FROM forecast_config_snapshot_items "
+src/hb_assistant/construction/analytics/forecast_external_dto.py:7:dev-internal. ``forecast_dto.find_redaction_leaks`` is the backstop scan asserted by tests.
+src/hb_assistant/construction/analytics/forecast_external_dto.py:18:from hb_assistant.construction.analytics.forecast_dto import (
+src/hb_assistant/construction/analytics/forecast_external_dto.py:40:    "model_eac": "Backend model forecast",
+src/hb_assistant/construction/analytics/forecast_external_dto.py:43:    "prior_external": "Prior external forecast",
+src/hb_assistant/construction/analytics/forecast_external_dto.py:190:    """Friendly evaluation label, e.g. 'External forecast (Excel) — Jun 2026 — Jun 20, 2026 …'."""
+src/hb_assistant/construction/analytics/forecast_external_dto.py:191:    parts = ["External forecast"]
+src/hb_assistant/construction/analytics/forecast_external_dto.py:193:        parts[0] = f"External forecast ({source_system.capitalize()})"
+src/hb_assistant/construction/analytics/api.py:408:async def _forecast_lifespan(app: Any) -> Any:
+src/hb_assistant/construction/analytics/api.py:409:    """Startup bootstrap: ensure app-managed forecast storage before serving.
+src/hb_assistant/construction/analytics/api.py:418:        from hb_assistant.construction.analytics.forecast_bootstrap import (
+src/hb_assistant/construction/analytics/api.py:419:            ensure_forecast_managed_storage,
+src/hb_assistant/construction/analytics/api.py:422:        ensure_forecast_managed_storage()
+src/hb_assistant/construction/analytics/api.py:465:        lifespan=_forecast_lifespan,
+src/hb_assistant/construction/analytics/api.py:1471:    def _forecast_service() -> Any:
+src/hb_assistant/construction/analytics/api.py:1474:        from hb_assistant.construction.analytics.forecast_catalog import (
+src/hb_assistant/construction/analytics/api.py:1478:        from hb_assistant.construction.analytics.forecast_runtime_config import (
+src/hb_assistant/construction/analytics/api.py:1491:            raise HTTPException(status_code=503, detail="forecast_packages_not_configured")
+src/hb_assistant/construction/analytics/api.py:1493:    def _forecast_call(fn: Any, *args: Any) -> dict[str, Any]:
+src/hb_assistant/construction/analytics/api.py:1496:        from hb_assistant.construction.analytics.forecast_catalog import ForecastCatalogError
+src/hb_assistant/construction/analytics/api.py:1502:                raise HTTPException(status_code=404, detail="forecast_package_not_found")
+src/hb_assistant/construction/analytics/api.py:1503:            raise HTTPException(status_code=500, detail="forecast_catalog_error")
+src/hb_assistant/construction/analytics/api.py:1505:    @app.get("/api/forecast/projects")
+src/hb_assistant/construction/analytics/api.py:1506:    def forecast_projects(role: dict[str, str] = role_dep) -> dict[str, Any]:
+src/hb_assistant/construction/analytics/api.py:1508:        svc = _forecast_service()
+src/hb_assistant/construction/analytics/api.py:1509:        return _forecast_call(svc.list_projects)
+src/hb_assistant/construction/analytics/api.py:1511:    @app.get("/api/forecast/projects/{project_key}/periods")
+src/hb_assistant/construction/analytics/api.py:1512:    def forecast_periods(project_key: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+src/hb_assistant/construction/analytics/api.py:1514:        svc = _forecast_service()
+src/hb_assistant/construction/analytics/api.py:1515:        return _forecast_call(svc.list_periods, project_key)
+src/hb_assistant/construction/analytics/api.py:1517:    @app.get("/api/forecast/projects/{project_key}/periods/{period}/packages")
+src/hb_assistant/construction/analytics/api.py:1518:    def forecast_packages(
+src/hb_assistant/construction/analytics/api.py:1522:        svc = _forecast_service()
+src/hb_assistant/construction/analytics/api.py:1523:        return _forecast_call(svc.list_packages, project_key, period)
+src/hb_assistant/construction/analytics/api.py:1525:    @app.get("/api/forecast/packages/{package_id}/summary")
+src/hb_assistant/construction/analytics/api.py:1526:    def forecast_package_summary(package_id: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+src/hb_assistant/construction/analytics/api.py:1528:        svc = _forecast_service()
+src/hb_assistant/construction/analytics/api.py:1529:        return _forecast_call(svc.read_package_summary, package_id)
+src/hb_assistant/construction/analytics/api.py:1531:    @app.get("/api/forecast/packages/{package_id}/validation")
+src/hb_assistant/construction/analytics/api.py:1532:    def forecast_package_validation(package_id: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+src/hb_assistant/construction/analytics/api.py:1534:        svc = _forecast_service()
+src/hb_assistant/construction/analytics/api.py:1535:        return _forecast_call(svc.read_validation_status, package_id)
+src/hb_assistant/construction/analytics/api.py:1537:    @app.get("/api/forecast/packages/{package_id}/manifest")
+src/hb_assistant/construction/analytics/api.py:1538:    def forecast_package_manifest(package_id: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+src/hb_assistant/construction/analytics/api.py:1540:        svc = _forecast_service()
+src/hb_assistant/construction/analytics/api.py:1541:        return _forecast_call(svc.read_manifest, package_id)
+src/hb_assistant/construction/analytics/api.py:1543:    @app.get("/api/forecast/packages/{package_id}/review-items")
+src/hb_assistant/construction/analytics/api.py:1544:    def forecast_package_review_items(package_id: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+src/hb_assistant/construction/analytics/api.py:1546:        svc = _forecast_service()
+src/hb_assistant/construction/analytics/api.py:1547:        return _forecast_call(svc.read_review_items, package_id)
+src/hb_assistant/construction/analytics/api.py:1549:    @app.get("/api/forecast/packages/{package_id}/forecast-rows")
+src/hb_assistant/construction/analytics/api.py:1550:    def forecast_package_rows(package_id: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+src/hb_assistant/construction/analytics/api.py:1552:        svc = _forecast_service()
+src/hb_assistant/construction/analytics/api.py:1553:        return _forecast_call(svc.read_forecast_rows, package_id)
+src/hb_assistant/construction/analytics/api.py:1556:    @app.get("/api/forecast/packages/{package_id}/monthly")
+src/hb_assistant/construction/analytics/api.py:1557:    def forecast_package_monthly(package_id: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+src/hb_assistant/construction/analytics/api.py:1559:        svc = _forecast_service()
+src/hb_assistant/construction/analytics/api.py:1560:        return _forecast_call(svc.read_monthly_forecast, package_id)
+src/hb_assistant/construction/analytics/api.py:1562:    @app.get("/api/forecast/packages/{package_id}/probability")
+src/hb_assistant/construction/analytics/api.py:1563:    def forecast_package_probability(package_id: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+src/hb_assistant/construction/analytics/api.py:1565:        svc = _forecast_service()
+src/hb_assistant/construction/analytics/api.py:1566:        return _forecast_call(svc.read_probability, package_id)
+src/hb_assistant/construction/analytics/api.py:1568:    @app.get("/api/forecast/packages/{package_id}/risk-register")
+src/hb_assistant/construction/analytics/api.py:1569:    def forecast_package_risk_register(package_id: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+src/hb_assistant/construction/analytics/api.py:1571:        svc = _forecast_service()
+src/hb_assistant/construction/analytics/api.py:1572:        return _forecast_call(svc.read_risk_register, package_id)
+src/hb_assistant/construction/analytics/api.py:1574:    @app.get("/api/forecast/packages/{package_id}/top-risks")
+src/hb_assistant/construction/analytics/api.py:1575:    def forecast_package_top_risks(package_id: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+src/hb_assistant/construction/analytics/api.py:1577:        svc = _forecast_service()
+src/hb_assistant/construction/analytics/api.py:1578:        return _forecast_call(svc.read_top_risks, package_id)
+src/hb_assistant/construction/analytics/api.py:1582:    def _forecast_config_service() -> Any:
+src/hb_assistant/construction/analytics/api.py:1583:        from hb_assistant.construction.analytics.forecast_config_catalog import (
+src/hb_assistant/construction/analytics/api.py:1586:        from hb_assistant.construction.analytics.forecast_runtime_config import resolve_db_path
+src/hb_assistant/construction/analytics/api.py:1590:    def _forecast_config_call(fn: Any, *args: Any) -> dict[str, Any]:
+src/hb_assistant/construction/analytics/api.py:1593:        from hb_assistant.construction.analytics.forecast_config_catalog import ForecastConfigError
+src/hb_assistant/construction/analytics/api.py:1600:                raise HTTPException(status_code=404, detail="forecast_config_snapshot_not_found")
+src/hb_assistant/construction/analytics/api.py:1602:                raise HTTPException(status_code=404, detail="forecast_config_item_not_found")
+src/hb_assistant/construction/analytics/api.py:1604:            raise HTTPException(status_code=503, detail="forecast_config_not_available")
+src/hb_assistant/construction/analytics/api.py:1606:    @app.get("/api/forecast/config/snapshots")
+src/hb_assistant/construction/analytics/api.py:1607:    def forecast_config_snapshots(role: dict[str, str] = role_dep) -> dict[str, Any]:
+src/hb_assistant/construction/analytics/api.py:1609:        return _forecast_config_call(_forecast_config_service().list_snapshots)
+src/hb_assistant/construction/analytics/api.py:1611:    @app.get("/api/forecast/config/snapshots/{snapshot_id}")
+src/hb_assistant/construction/analytics/api.py:1612:    def forecast_config_snapshot(snapshot_id: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+src/hb_assistant/construction/analytics/api.py:1614:        return _forecast_config_call(_forecast_config_service().read_snapshot, snapshot_id)
+src/hb_assistant/construction/analytics/api.py:1616:    @app.get("/api/forecast/config/snapshots/{snapshot_id}/domains/{config_domain}")
+src/hb_assistant/construction/analytics/api.py:1617:    def forecast_config_domain(
+src/hb_assistant/construction/analytics/api.py:1621:        return _forecast_config_call(
+src/hb_assistant/construction/analytics/api.py:1622:            _forecast_config_service().read_domain, snapshot_id, config_domain
+src/hb_assistant/construction/analytics/api.py:1625:    @app.get("/api/forecast/config/snapshots/{snapshot_id}/items/{item_id}")
+src/hb_assistant/construction/analytics/api.py:1626:    def forecast_config_item(
+src/hb_assistant/construction/analytics/api.py:1630:        return _forecast_config_call(_forecast_config_service().read_item, snapshot_id, item_id)
+src/hb_assistant/construction/analytics/api.py:1635:    def _forecast_readmodel_service() -> Any:
+src/hb_assistant/construction/analytics/api.py:1636:        from hb_assistant.construction.analytics.forecast_run_readmodel import (
+src/hb_assistant/construction/analytics/api.py:1639:        from hb_assistant.construction.analytics.forecast_runtime_config import resolve_db_path
+src/hb_assistant/construction/analytics/api.py:1643:    def _forecast_readmodel_call(fn: Any, *args: Any) -> dict[str, Any]:
+src/hb_assistant/construction/analytics/api.py:1646:        from hb_assistant.construction.analytics.forecast_run_readmodel import (
+src/hb_assistant/construction/analytics/api.py:1654:                raise HTTPException(status_code=404, detail="forecast_output_not_found")
+src/hb_assistant/construction/analytics/api.py:1655:            raise HTTPException(status_code=503, detail="forecast_run_output_not_available")
+src/hb_assistant/construction/analytics/api.py:1657:    @app.get("/api/forecast/db/projects/{project_key}/outputs")
+src/hb_assistant/construction/analytics/api.py:1658:    def forecast_db_outputs(project_key: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+src/hb_assistant/construction/analytics/api.py:1660:        return _forecast_readmodel_call(_forecast_readmodel_service().list_outputs, project_key)
+src/hb_assistant/construction/analytics/api.py:1662:    @app.get("/api/forecast/db/outputs/{output_id}")
+src/hb_assistant/construction/analytics/api.py:1663:    def forecast_db_output(output_id: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+src/hb_assistant/construction/analytics/api.py:1665:        return _forecast_readmodel_call(_forecast_readmodel_service().read_output, output_id)
+src/hb_assistant/construction/analytics/api.py:1667:    @app.get("/api/forecast/db/outputs/{output_id}/decision-support")
+src/hb_assistant/construction/analytics/api.py:1668:    def forecast_db_decision_support(
+src/hb_assistant/construction/analytics/api.py:1672:        return _forecast_readmodel_call(
+src/hb_assistant/construction/analytics/api.py:1673:            _forecast_readmodel_service().read_decision_support, output_id
+src/hb_assistant/construction/analytics/api.py:1676:    # --- Operator assumptions capture — first interactive forecast WRITE surface ----------
+src/hb_assistant/construction/analytics/api.py:1681:    def _forecast_assumptions_service() -> Any:
+src/hb_assistant/construction/analytics/api.py:1682:        from hb_assistant.construction.analytics.forecast_operator_assumptions import (
+src/hb_assistant/construction/analytics/api.py:1685:        from hb_assistant.construction.analytics.forecast_runtime_config import resolve_db_path
+src/hb_assistant/construction/analytics/api.py:1689:    def _forecast_assumptions_call(fn: Any, *args: Any) -> dict[str, Any]:
+src/hb_assistant/construction/analytics/api.py:1692:        from hb_assistant.construction.analytics.forecast_operator_assumptions import (
+src/hb_assistant/construction/analytics/api.py:1702:                status_code=503, detail="forecast_assumptions_not_available"
+src/hb_assistant/construction/analytics/api.py:1705:    @app.get("/api/forecast/db/projects/{project_key}/operator-assumptions")
+src/hb_assistant/construction/analytics/api.py:1706:    def forecast_operator_assumptions_list(
+src/hb_assistant/construction/analytics/api.py:1710:        return _forecast_assumptions_call(
+src/hb_assistant/construction/analytics/api.py:1711:            _forecast_assumptions_service().list_operator_assumptions, project_key
+src/hb_assistant/construction/analytics/api.py:1714:    @app.post("/api/forecast/db/projects/{project_key}/operator-assumptions")
+src/hb_assistant/construction/analytics/api.py:1715:    def forecast_operator_assumption_create(
+src/hb_assistant/construction/analytics/api.py:1721:        svc = _forecast_assumptions_service()
+src/hb_assistant/construction/analytics/api.py:1722:        return _forecast_assumptions_call(
+src/hb_assistant/construction/analytics/api.py:1737:    @app.patch("/api/forecast/db/operator-assumptions/{assumption_id}")
+src/hb_assistant/construction/analytics/api.py:1738:    def forecast_operator_assumption_edit(
+src/hb_assistant/construction/analytics/api.py:1744:        svc = _forecast_assumptions_service()
+src/hb_assistant/construction/analytics/api.py:1745:        return _forecast_assumptions_call(
+src/hb_assistant/construction/analytics/api.py:1759:    @app.get("/api/forecast/db/projects/{project_key}/required-assumptions")
+src/hb_assistant/construction/analytics/api.py:1760:    def forecast_required_assumptions_list(
+src/hb_assistant/construction/analytics/api.py:1764:        return _forecast_assumptions_call(
+src/hb_assistant/construction/analytics/api.py:1765:            _forecast_assumptions_service().list_required_assumptions, project_key
+src/hb_assistant/construction/analytics/api.py:1768:    @app.post("/api/forecast/db/projects/{project_key}/required-assumptions")
+src/hb_assistant/construction/analytics/api.py:1769:    def forecast_required_assumption_create(
+src/hb_assistant/construction/analytics/api.py:1775:        svc = _forecast_assumptions_service()
+src/hb_assistant/construction/analytics/api.py:1776:        return _forecast_assumptions_call(
+src/hb_assistant/construction/analytics/api.py:1782:    @app.patch("/api/forecast/db/required-assumptions/{required_id}")
+src/hb_assistant/construction/analytics/api.py:1783:    def forecast_required_assumption_satisfy(
+src/hb_assistant/construction/analytics/api.py:1789:        svc = _forecast_assumptions_service()
+src/hb_assistant/construction/analytics/api.py:1790:        return _forecast_assumptions_call(
+src/hb_assistant/construction/analytics/api.py:1798:    def _forecast_config_edit_service() -> Any:
+src/hb_assistant/construction/analytics/api.py:1799:        from hb_assistant.construction.analytics.forecast_config_edit_service import (
+src/hb_assistant/construction/analytics/api.py:1802:        from hb_assistant.construction.analytics.forecast_runtime_config import (
+src/hb_assistant/construction/analytics/api.py:1814:    def _forecast_config_edit_call(fn: Any, *args: Any) -> dict[str, Any]:
+src/hb_assistant/construction/analytics/api.py:1817:        from hb_assistant.construction.analytics.forecast_config_edit_service import (
+src/hb_assistant/construction/analytics/api.py:1826:                raise HTTPException(status_code=404, detail="forecast_config_snapshot_not_found")
+src/hb_assistant/construction/analytics/api.py:1828:                raise HTTPException(status_code=404, detail="forecast_config_edit_not_found")
+src/hb_assistant/construction/analytics/api.py:1840:                raise HTTPException(status_code=400, detail="forecast_config_edit_invalid_input")
+src/hb_assistant/construction/analytics/api.py:1842:            raise HTTPException(status_code=503, detail="forecast_config_edit_not_configured")
+src/hb_assistant/construction/analytics/api.py:1844:    @app.post("/api/forecast/config/edits")
+src/hb_assistant/construction/analytics/api.py:1845:    def forecast_config_edit_create(
+src/hb_assistant/construction/analytics/api.py:1849:        return _forecast_config_edit_call(
+src/hb_assistant/construction/analytics/api.py:1850:            _forecast_config_edit_service().propose_config_edit,
+src/hb_assistant/construction/analytics/api.py:1856:    @app.get("/api/forecast/config/edits")
+src/hb_assistant/construction/analytics/api.py:1857:    def forecast_config_edits_list(role: dict[str, str] = role_dep) -> dict[str, Any]:
+src/hb_assistant/construction/analytics/api.py:1859:        return _forecast_config_edit_call(_forecast_config_edit_service().list_edits)
+src/hb_assistant/construction/analytics/api.py:1861:    @app.get("/api/forecast/config/edits/{edit_id}")
+src/hb_assistant/construction/analytics/api.py:1862:    def forecast_config_edit_detail(edit_id: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+src/hb_assistant/construction/analytics/api.py:1864:        return _forecast_config_edit_call(_forecast_config_edit_service().read_edit, edit_id)
+src/hb_assistant/construction/analytics/api.py:1866:    @app.get("/api/forecast/config/edits/{edit_id}/manifest")
+src/hb_assistant/construction/analytics/api.py:1867:    def forecast_config_edit_manifest(
+src/hb_assistant/construction/analytics/api.py:1871:        return _forecast_config_edit_call(
+src/hb_assistant/construction/analytics/api.py:1872:            _forecast_config_edit_service().read_edit_manifest, edit_id
+src/hb_assistant/construction/analytics/api.py:1878:    def _forecast_config_promotion_service() -> Any:
+src/hb_assistant/construction/analytics/api.py:1879:        from hb_assistant.construction.analytics.forecast_config_promotion_service import (
+src/hb_assistant/construction/analytics/api.py:1882:        from hb_assistant.construction.analytics.forecast_runtime_config import (
+src/hb_assistant/construction/analytics/api.py:1896:    def _forecast_config_promotion_call(fn: Any, *args: Any) -> dict[str, Any]:
+src/hb_assistant/construction/analytics/api.py:1899:        from hb_assistant.construction.analytics.forecast_config_promotion_service import (
+src/hb_assistant/construction/analytics/api.py:1908:                raise HTTPException(status_code=404, detail="forecast_config_promotion_edit_not_found")
+src/hb_assistant/construction/analytics/api.py:1910:                raise HTTPException(status_code=503, detail="forecast_config_promotion_disabled")
+src/hb_assistant/construction/analytics/api.py:1912:                raise HTTPException(status_code=400, detail="forecast_config_promotion_not_confirmed")
+src/hb_assistant/construction/analytics/api.py:1914:                raise HTTPException(status_code=400, detail="forecast_config_promotion_not_eligible")
+src/hb_assistant/construction/analytics/api.py:1916:            raise HTTPException(status_code=500, detail="forecast_config_promotion_failed")
+src/hb_assistant/construction/analytics/api.py:1918:    @app.post("/api/forecast/config/edits/{edit_id}/promote")
+src/hb_assistant/construction/analytics/api.py:1919:    def forecast_config_edit_promote(
+src/hb_assistant/construction/analytics/api.py:1923:        return _forecast_config_promotion_call(
+src/hb_assistant/construction/analytics/api.py:1924:            _forecast_config_promotion_service().promote_config_edit, edit_id, request.confirm
+src/hb_assistant/construction/analytics/api.py:1929:    def _forecast_run_service() -> Any:
+src/hb_assistant/construction/analytics/api.py:1930:        from hb_assistant.construction.analytics.forecast_run_service import ForecastRunService
+src/hb_assistant/construction/analytics/api.py:1931:        from hb_assistant.construction.analytics.forecast_runtime_config import (
+src/hb_assistant/construction/analytics/api.py:1940:    def _forecast_run_call(fn: Any, *args: Any) -> dict[str, Any]:
+src/hb_assistant/construction/analytics/api.py:1943:        from hb_assistant.construction.analytics.forecast_run_service import ForecastRunError
+src/hb_assistant/construction/analytics/api.py:1949:                raise HTTPException(status_code=404, detail="forecast_run_not_found")
+src/hb_assistant/construction/analytics/api.py:1951:            raise HTTPException(status_code=503, detail="forecast_runs_not_configured")
+src/hb_assistant/construction/analytics/api.py:1953:    @app.post("/api/forecast/runs")
+src/hb_assistant/construction/analytics/api.py:1954:    def forecast_run_create(role: dict[str, str] = role_dep) -> dict[str, Any]:
+src/hb_assistant/construction/analytics/api.py:1956:        return _forecast_run_call(_forecast_run_service().start_run)
+src/hb_assistant/construction/analytics/api.py:1958:    @app.get("/api/forecast/runs")
+src/hb_assistant/construction/analytics/api.py:1959:    def forecast_runs_list(role: dict[str, str] = role_dep) -> dict[str, Any]:
+src/hb_assistant/construction/analytics/api.py:1961:        return _forecast_run_call(_forecast_run_service().list_runs)
+src/hb_assistant/construction/analytics/api.py:1966:    def _forecast_db_config_run_service() -> Any:
+src/hb_assistant/construction/analytics/api.py:1967:        from hb_assistant.construction.analytics.forecast_db_config_run_service import (
+src/hb_assistant/construction/analytics/api.py:1970:        from hb_assistant.construction.analytics.forecast_runtime_config import (
+src/hb_assistant/construction/analytics/api.py:1984:    def _forecast_db_config_run_call(fn: Any, *args: Any) -> dict[str, Any]:
+src/hb_assistant/construction/analytics/api.py:1987:        from hb_assistant.construction.analytics.forecast_db_config_run_service import (
+src/hb_assistant/construction/analytics/api.py:1995:                raise HTTPException(status_code=404, detail="forecast_db_config_run_not_found")
+src/hb_assistant/construction/analytics/api.py:1997:                raise HTTPException(status_code=503, detail="forecast_db_config_run_disabled")
+src/hb_assistant/construction/analytics/api.py:1999:            raise HTTPException(status_code=503, detail="forecast_db_config_run_not_configured")
+src/hb_assistant/construction/analytics/api.py:2001:    @app.post("/api/forecast/runs/db-config")
+src/hb_assistant/construction/analytics/api.py:2002:    def forecast_db_config_run_create(
+src/hb_assistant/construction/analytics/api.py:2012:            raise HTTPException(status_code=400, detail="forecast_db_config_run_bad_kind")
+src/hb_assistant/construction/analytics/api.py:2013:        service = _forecast_db_config_run_service()
+src/hb_assistant/construction/analytics/api.py:2014:        return _forecast_db_config_run_call(
+src/hb_assistant/construction/analytics/api.py:2018:    @app.get("/api/forecast/runs/db-config")
+src/hb_assistant/construction/analytics/api.py:2019:    def forecast_db_config_runs_list(role: dict[str, str] = role_dep) -> dict[str, Any]:
+src/hb_assistant/construction/analytics/api.py:2021:        return _forecast_db_config_run_call(_forecast_db_config_run_service().list_db_config_runs)
+src/hb_assistant/construction/analytics/api.py:2023:    @app.get("/api/forecast/runs/db-config/{run_id}")
+src/hb_assistant/construction/analytics/api.py:2024:    def forecast_db_config_run_detail(run_id: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+src/hb_assistant/construction/analytics/api.py:2026:        return _forecast_db_config_run_call(
+src/hb_assistant/construction/analytics/api.py:2027:            _forecast_db_config_run_service().read_db_config_run, run_id
+src/hb_assistant/construction/analytics/api.py:2030:    @app.get("/api/forecast/runs/{run_id}")
+src/hb_assistant/construction/analytics/api.py:2031:    def forecast_run_detail(run_id: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+src/hb_assistant/construction/analytics/api.py:2033:        return _forecast_run_call(_forecast_run_service().read_run, run_id)
+src/hb_assistant/construction/analytics/api.py:2035:    # External-Forecast Evaluation — upload an operator forecast, map it, and compare it against
+src/hb_assistant/construction/analytics/api.py:2041:        from hb_assistant.construction.analytics.forecast_runtime_config import (
+src/hb_assistant/construction/analytics/api.py:2054:        from hb_assistant.construction.analytics.forecast_external_ingest import (
+src/hb_assistant/construction/analytics/api.py:2061:        from hb_assistant.construction.analytics.forecast_external_mapping import (
+src/hb_assistant/construction/analytics/api.py:2069:        from hb_assistant.construction.analytics.forecast_external_eval_service import (
+src/hb_assistant/construction/analytics/api.py:2078:    def _forecast_external_call(fn: Any, *args: Any) -> dict[str, Any]:
+src/hb_assistant/construction/analytics/api.py:2081:        from hb_assistant.construction.analytics.forecast_external_ingest import (
+src/hb_assistant/construction/analytics/api.py:2090:                raise HTTPException(status_code=404, detail="forecast_external_not_found")
+src/hb_assistant/construction/analytics/api.py:2098:                raise HTTPException(status_code=503, detail="forecast_external_not_configured")
+src/hb_assistant/construction/analytics/api.py:2100:            raise HTTPException(status_code=400, detail="forecast_external_invalid_input")
+src/hb_assistant/construction/analytics/api.py:2102:    @app.post("/api/forecast/external/preview")
+src/hb_assistant/construction/analytics/api.py:2103:    def forecast_external_preview(
+src/hb_assistant/construction/analytics/api.py:2107:        return _forecast_external_call(
+src/hb_assistant/construction/analytics/api.py:2115:    @app.post("/api/forecast/external/mapping")
+src/hb_assistant/construction/analytics/api.py:2116:    def forecast_external_mapping(
+src/hb_assistant/construction/analytics/api.py:2120:        return _forecast_external_call(
+src/hb_assistant/construction/analytics/api.py:2126:    @app.post("/api/forecast/external/evaluate")
+src/hb_assistant/construction/analytics/api.py:2127:    def forecast_external_evaluate(
+src/hb_assistant/construction/analytics/api.py:2131:        return _forecast_external_call(
+src/hb_assistant/construction/analytics/api.py:2138:    @app.get("/api/forecast/external/evaluations")
+src/hb_assistant/construction/analytics/api.py:2139:    def forecast_external_evaluations_list(role: dict[str, str] = role_dep) -> dict[str, Any]:
+src/hb_assistant/construction/analytics/api.py:2141:        return _forecast_external_call(_external_eval_service().list_evaluations)
+src/hb_assistant/construction/analytics/api.py:2143:    @app.get("/api/forecast/external/evaluations/{eval_id}")
+src/hb_assistant/construction/analytics/api.py:2144:    def forecast_external_evaluation_detail(
+src/hb_assistant/construction/analytics/api.py:2148:        return _forecast_external_call(_external_eval_service().read_evaluation, eval_id)
+src/hb_assistant/construction/analytics/api.py:2155:    @app.get("/api/forecast/runtime/status")
+src/hb_assistant/construction/analytics/api.py:2156:    def forecast_runtime_status(role: dict[str, str] = role_dep) -> dict[str, Any]:
+src/hb_assistant/construction/analytics/api.py:2158:        from hb_assistant.construction.analytics.forecast_runtime_config import (
+src/hb_assistant/construction/analytics/api.py:2164:    @app.get("/api/forecast/runtime/config")
+src/hb_assistant/construction/analytics/api.py:2165:    def forecast_runtime_config_read(role: dict[str, str] = role_dep) -> dict[str, Any]:
+src/hb_assistant/construction/analytics/api.py:2167:        from hb_assistant.construction.analytics.forecast_runtime_config import (
+src/hb_assistant/construction/analytics/api.py:2173:    @app.post("/api/forecast/runtime/config")
+src/hb_assistant/construction/analytics/api.py:2174:    def forecast_runtime_config_write(
+src/hb_assistant/construction/analytics/api.py:2180:        from hb_assistant.construction.analytics.forecast_runtime_config import (
+src/hb_assistant/construction/analytics/api.py:2189:            raise HTTPException(status_code=400, detail=f"forecast_runtime_invalid:{exc}")
+src/hb_assistant/construction/analytics/api.py:2191:    @app.post("/api/forecast/runtime/repair")
+src/hb_assistant/construction/analytics/api.py:2192:    def forecast_runtime_storage_repair(role: dict[str, str] = role_dep) -> dict[str, Any]:
+src/hb_assistant/construction/analytics/api.py:2194:        from hb_assistant.construction.analytics.forecast_bootstrap import (
+src/hb_assistant/construction/analytics/api.py:2195:            ensure_forecast_managed_storage,
+src/hb_assistant/construction/analytics/api.py:2198:        return ensure_forecast_managed_storage(repair=True)
+src/hb_assistant/construction/analytics/api.py:2200:    @app.post("/api/forecast/runtime/reset")
+src/hb_assistant/construction/analytics/api.py:2201:    def forecast_runtime_storage_reset(
+src/hb_assistant/construction/analytics/api.py:2207:        from hb_assistant.construction.analytics.forecast_bootstrap import (
+src/hb_assistant/construction/analytics/api.py:2208:            ensure_forecast_managed_storage,
+src/hb_assistant/construction/analytics/api.py:2210:        from hb_assistant.construction.analytics.forecast_runtime_config import (
+src/hb_assistant/construction/analytics/api.py:2215:            raise HTTPException(status_code=400, detail="forecast_runtime_reset_confirm_required")
+src/hb_assistant/construction/analytics/api.py:2217:        return ensure_forecast_managed_storage(repair=True)
+src/hb_assistant/construction/analytics/forecast_run_readmodel.py:1:"""Read-only DB-backed read-model for forecast run-output (v63) + decision-support (v66).
+src/hb_assistant/construction/analytics/forecast_run_readmodel.py:3:Surfaces the persisted forecast run graph the gated live write (Phase 3) lands:
+src/hb_assistant/construction/analytics/forecast_run_readmodel.py:4:``forecast_outputs`` + its child tables, and the v66 decision-support families
+src/hb_assistant/construction/analytics/forecast_run_readmodel.py:12:and renders timestamps as friendly dates. ``forecast_dto.find_redaction_leaks`` is the backstop
+src/hb_assistant/construction/analytics/forecast_run_readmodel.py:27:from hb_assistant.construction.analytics.forecast_config_dto import _friendly_utc
+src/hb_assistant/construction/analytics/forecast_run_readmodel.py:29:_SURFACE = "analytics.forecast_run_readmodel"
+src/hb_assistant/construction/analytics/forecast_run_readmodel.py:65:            raise ForecastRunReadModelError("forecast run-output DB is not available")
+src/hb_assistant/construction/analytics/forecast_run_readmodel.py:71:                "forecast run-output DB could not be opened read-only"
+src/hb_assistant/construction/analytics/forecast_run_readmodel.py:85:            raise ForecastRunReadModelError("forecast run-output DB schema is unreadable") from exc
+src/hb_assistant/construction/analytics/forecast_run_readmodel.py:88:                f"forecast run-output requires schema v{_REQUIRED_SCHEMA_VERSION}; DB is at v{version}"
+src/hb_assistant/construction/analytics/forecast_run_readmodel.py:99:            "SELECT output_id, project_key, estimated_final_cost, forecast_at_completion, "
+src/hb_assistant/construction/analytics/forecast_run_readmodel.py:100:            "cost_to_complete, variance_to_budget, variance_to_prior_forecast, created_utc "
+src/hb_assistant/construction/analytics/forecast_run_readmodel.py:101:            "FROM forecast_outputs WHERE output_id = ?",
+src/hb_assistant/construction/analytics/forecast_run_readmodel.py:110:            "forecast_at_completion": row["forecast_at_completion"],
+src/hb_assistant/construction/analytics/forecast_run_readmodel.py:113:            "variance_to_prior_forecast": row["variance_to_prior_forecast"],
+src/hb_assistant/construction/analytics/forecast_run_readmodel.py:134:                    "variance_to_budget, created_utc FROM forecast_outputs WHERE project_key = ? "
+src/hb_assistant/construction/analytics/forecast_run_readmodel.py:158:                "SELECT budget_code_key, cost_code, category, forecast_action, "
+src/hb_assistant/construction/analytics/forecast_run_readmodel.py:160:                "FROM forecast_output_budget_codes WHERE output_id = ? "
+src/hb_assistant/construction/analytics/forecast_run_readmodel.py:167:                "FROM forecast_output_risks WHERE output_id = ? ORDER BY source_row_number LIMIT ?",
+src/hb_assistant/construction/analytics/forecast_run_readmodel.py:173:                "FROM forecast_output_monthly WHERE output_id = ? ORDER BY source_row_number LIMIT ?",
+src/hb_assistant/construction/analytics/forecast_run_readmodel.py:179:                "FROM forecast_output_probability WHERE output_id = ? "
+src/hb_assistant/construction/analytics/forecast_run_readmodel.py:186:                "FROM forecast_output_changes WHERE output_id = ? ORDER BY source_row_number LIMIT ?",
+src/hb_assistant/construction/analytics/forecast_run_readmodel.py:192:                "FROM forecast_output_staffing WHERE output_id = ? ORDER BY source_row_number LIMIT ?",
+src/hb_assistant/construction/analytics/forecast_run_readmodel.py:198:                "FROM forecast_output_commitment_exposure WHERE output_id = ? "
+src/hb_assistant/construction/analytics/forecast_run_readmodel.py:205:                "FROM forecast_output_schedule_phasing WHERE output_id = ? "
+src/hb_assistant/construction/analytics/forecast_run_readmodel.py:230:                "SELECT run_id FROM forecast_outputs WHERE output_id = ?", (output_id,)
+src/hb_assistant/construction/analytics/forecast_run_readmodel.py:237:                "basis FROM forecast_project_maturity_snapshots WHERE run_id = ?",
+src/hb_assistant/construction/analytics/forecast_run_readmodel.py:244:                "maturity, score, reason FROM forecast_data_availability_profiles WHERE run_id = ? "
+src/hb_assistant/construction/analytics/forecast_run_readmodel.py:251:                "FROM forecast_confidence_scorecards WHERE run_id = ? ORDER BY scope, scope_key LIMIT ?",
+src/hb_assistant/construction/analytics/forecast_run_readmodel.py:258:                    "FROM forecast_confidence_factors WHERE scorecard_id = ? ORDER BY factor_key LIMIT ?",
+src/hb_assistant/construction/analytics/forecast_run_readmodel.py:264:                "FROM forecast_method_eligibility WHERE run_id = ? ORDER BY method LIMIT ?",
+src/hb_assistant/construction/analytics/forecast_run_readmodel.py:270:                "FROM forecast_model_selection_decisions WHERE run_id = ? ORDER BY method LIMIT ?",
+src/hb_assistant/construction/analytics/schedule_quality_engine.py:1730:            "forecast_context_ready": score is not None and score >= 60,
+src/hb_assistant/construction/analytics/forecast_db_config_run_dto.py:3:A DB-config-backed run generates the comprehensive forecast package CONSUMING the live config
+src/hb_assistant/construction/analytics/forecast_db_config_run_dto.py:8:result, validation, and safety booleans. ``forecast_dto.find_redaction_leaks`` is the backstop scan.
+src/hb_assistant/construction/analytics/forecast_db_config_run_dto.py:16:from hb_assistant.construction.analytics.forecast_dto import friendly_datetime_from_stamp
+src/hb_assistant/construction/analytics/forecast_db_config_run_dto.py:55:    "comprehensive": "Comprehensive forecast from live config",
+src/hb_assistant/construction/analytics/forecast_db_config_run_dto.py:56:    "model_controls": "Model controls forecast from live config",
+src/hb_assistant/construction/analytics/forecast_db_config_run_dto.py:57:    "monthly": "Monthly forecast from live config",
+src/hb_assistant/construction/analytics/forecast_db_config_run_dto.py:58:    "probability": "Probabilistic forecast from live config",
+src/hb_assistant/construction/analytics/forecast_external_eval_service.py:1:"""External-forecast evaluation orchestrator (Implementation Phase 4).
+src/hb_assistant/construction/analytics/forecast_external_eval_service.py:7:is opened ``mode=ro`` and the backend forecast package is read off disk.
+src/hb_assistant/construction/analytics/forecast_external_eval_service.py:25:from hb_assistant.construction.analytics import forecast_external_anomaly as anomaly
+src/hb_assistant/construction/analytics/forecast_external_eval_service.py:26:from hb_assistant.construction.analytics.forecast_external_compare import (
+src/hb_assistant/construction/analytics/forecast_external_eval_service.py:30:from hb_assistant.construction.analytics.forecast_external_dto import (
+src/hb_assistant/construction/analytics/forecast_external_eval_service.py:40:from hb_assistant.construction.analytics.forecast_external_ingest import (
+src/hb_assistant/construction/analytics/forecast_external_eval_service.py:45:from hb_assistant.construction.analytics.forecast_external_mapping import (
+src/hb_assistant/construction/analytics/forecast_external_eval_service.py:48:from hb_assistant.forecasting.project_eligibility import (
+src/hb_assistant/construction/analytics/forecast_external_eval_service.py:54:_SURFACE = "analytics.forecast_external"
+src/hb_assistant/construction/analytics/forecast_external_eval_service.py:59:_COMPREHENSIVE_PREFIX = "forecast_comprehensive_package_"
+src/hb_assistant/construction/analytics/forecast_external_eval_service.py:74:    """Runs and lists external-forecast evaluations confined to the isolated eval-root."""
+src/hb_assistant/construction/analytics/forecast_external_eval_service.py:360:        pkg_dir = eval_dir / f"external_forecast_evaluation_package_{project_key}_{stamp}"
+src/hb_assistant/construction/analytics/forecast_external_eval_service.py:390:            pkg_dir / "mapped_forecast_rows.csv",
+src/hb_assistant/construction/analytics/forecast_external_eval_service.py:416:            "package_kind": "external_forecast_evaluation",
+src/hb_assistant/construction/analytics/forecast_external_eval_service.py:454:                "INSERT INTO forecast_external_forecasts (external_forecast_id, project_key, "
+src/hb_assistant/construction/analytics/forecast_external_eval_service.py:455:                "source_system, forecast_origin, period, source_filename, file_sha256, "
+src/hb_assistant/construction/analytics/forecast_external_eval_service.py:468:                    "INSERT INTO forecast_external_forecast_rows (external_forecast_row_id, "
+src/hb_assistant/construction/analytics/forecast_external_eval_service.py:469:                    "external_forecast_id, project_key, budget_code_key, month, value, eac, "
+src/hb_assistant/construction/analytics/forecast_external_eval_service.py:480:                    "INSERT INTO forecast_external_forecast_mappings (external_forecast_mapping_id, "
+src/hb_assistant/construction/analytics/forecast_external_eval_service.py:481:                    "external_forecast_id, project_key, raw_label, canonical_budget_code_key, "
+src/hb_assistant/construction/analytics/forecast_external_eval_service.py:492:                    "INSERT INTO forecast_accuracy_results (accuracy_result_id, external_forecast_id, "
+src/hb_assistant/construction/analytics/forecast_external_eval_service.py:500:                    "INSERT INTO forecast_comparison_results (comparison_result_id, external_forecast_id, "
+src/hb_assistant/construction/analytics/forecast_external_eval_service.py:509:                    "INSERT INTO forecast_anomaly_findings (anomaly_finding_id, external_forecast_id, "
+src/hb_assistant/construction/analytics/forecast_external_eval_service.py:517:                    "INSERT INTO forecast_review_items (review_item_id, external_forecast_id, "
+src/hb_assistant/construction/analytics/forecast_external_eval_service.py:524:                "INSERT INTO forecast_evidence_packages (evidence_package_id, external_forecast_id, "
+src/hb_assistant/construction/analytics/forecast_external_eval_service.py:527:                (f"{ef_id}-pkg", ef_id, project, "external_forecast_evaluation",
+src/hb_assistant/construction/analytics/forecast_external_eval_service.py:539:    from hb_assistant.construction.analytics.forecast_dto import friendly_datetime_from_stamp
+src/hb_assistant/construction/analytics/forecast_external_eval_service.py:545:    from hb_assistant.construction.analytics.forecast_external_metrics import to_decimal
+src/hb_assistant/construction/analytics/forecast_external_eval_service.py:574:        "# External forecast evaluation",
+src/hb_assistant/construction/analytics/forecast_db_config_run_service.py:3:Wraps the CFR ``run_forecast_db_config_backed_generation`` workflow so the Run Center can generate the
+src/hb_assistant/construction/analytics/forecast_db_config_run_service.py:4:comprehensive forecast package CONSUMING the live config snapshot (so a PROMOTED config drives
+src/hb_assistant/construction/analytics/forecast_db_config_run_service.py:25:from hb_assistant.construction.analytics.forecast_db_config_run_dto import (
+src/hb_assistant/construction/analytics/forecast_db_config_run_service.py:29:from hb_assistant.construction.analytics.forecast_run_service import (
+src/hb_assistant/construction/analytics/forecast_db_config_run_service.py:34:_SURFACE = "analytics.forecast_db_config_run"
+src/hb_assistant/construction/analytics/forecast_db_config_run_service.py:45:        "Required upstream forecasts (context, intelligence, monthly) aren't available yet."
+src/hb_assistant/construction/analytics/forecast_db_config_run_service.py:48:        "The cost-frequency forecast is required but hasn't been generated yet."
+src/hb_assistant/construction/analytics/forecast_db_config_run_service.py:50:    "live_db_not_quiescent": "The forecast database is being updated right now; try again shortly.",
+src/hb_assistant/construction/analytics/forecast_db_config_run_service.py:51:    "generator_refused": "The forecast could not be generated from the current configuration.",
+src/hb_assistant/construction/analytics/forecast_db_config_run_service.py:90:        from hb_assistant.construction.analytics.forecast_run_service import ForecastRunService
+src/hb_assistant/construction/analytics/forecast_db_config_run_service.py:135:            from construction_financial_review.workflows.forecast_db_config_backed_generation import (
+src/hb_assistant/construction/analytics/forecast_db_config_run_service.py:137:                run_forecast_db_config_backed_generation_for_kind,
+src/hb_assistant/construction/analytics/forecast_db_config_run_service.py:142:                    report = run_forecast_db_config_backed_generation_for_kind(
+src/hb_assistant/construction/analytics/forecast_db_config_run_service.py:157:                    code, "The forecast generation was stopped for safety."
+src/hb_assistant/construction/analytics/forecast_config_edit_service.py:3:An operator proposes edits to forecast config items; this service seeds a base config tree from a
+src/hb_assistant/construction/analytics/forecast_config_edit_service.py:10:is out of scope. Confined to the config-edit root (mirrors ``forecast_external_eval_service``); CFR is
+src/hb_assistant/construction/analytics/forecast_config_edit_service.py:26:from hb_assistant.construction.analytics import forecast_config_edit_dto as dto
+src/hb_assistant/construction/analytics/forecast_config_edit_service.py:27:from hb_assistant.construction.analytics.forecast_dto import friendly_datetime_from_stamp
+src/hb_assistant/construction/analytics/forecast_config_edit_service.py:28:from hb_assistant.construction.analytics.forecast_run_service import (
+src/hb_assistant/construction/analytics/forecast_config_edit_service.py:32:from hb_assistant.construction.analytics.forecast_runtime_config import ENV_CONFIG_EDIT_ROOT
+src/hb_assistant/construction/analytics/forecast_config_edit_service.py:36:_SURFACE = "analytics.forecast_config_edit"
+src/hb_assistant/construction/analytics/forecast_config_edit_service.py:48:        raise ForecastConfigEditError("forecast config-edit root is not configured")
+src/hb_assistant/construction/analytics/forecast_config_edit_service.py:51:        raise ForecastConfigEditError("forecast config-edit root must be an absolute path")
+src/hb_assistant/construction/analytics/forecast_config_edit_service.py:54:        raise ForecastConfigEditError("forecast config-edit root must not be under the live data root")
+src/hb_assistant/construction/analytics/forecast_config_edit_service.py:58:        raise ForecastConfigEditError("forecast config-edit root could not be created") from exc
+src/hb_assistant/construction/analytics/forecast_config_edit_service.py:106:            raise ForecastConfigEditError("forecast config DB is not available")
+src/hb_assistant/construction/analytics/forecast_config_edit_service.py:117:            raise ForecastConfigEditError("forecast config DB could not be opened read-only") from exc
+src/hb_assistant/construction/analytics/forecast_config_edit_service.py:221:                "SELECT 1 FROM forecast_config_snapshots "
+src/hb_assistant/construction/analytics/forecast_config_edit_service.py:231:                "FROM forecast_config_snapshot_items si "
+src/hb_assistant/construction/analytics/forecast_config_edit_service.py:232:                "JOIN forecast_config_items ci ON ci.config_item_id = si.config_item_id "
+src/hb_assistant/construction/analytics/forecast_config_edit_service.py:233:                "JOIN forecast_config_sources s ON s.config_source_id = ci.config_source_id "
+src/hb_assistant/construction/analytics/forecast_config_edit_service.py:269:            create_forecast_config_snapshot,
+src/hb_assistant/construction/analytics/forecast_config_edit_service.py:270:            import_forecast_config_to_db,
+src/hb_assistant/construction/analytics/forecast_config_edit_service.py:271:            materialize_forecast_config_snapshot,
+src/hb_assistant/construction/analytics/forecast_config_edit_service.py:272:            run_forecast_config_db_parity,
+src/hb_assistant/construction/analytics/forecast_config_edit_service.py:281:        import_forecast_config_to_db(
+src/hb_assistant/construction/analytics/forecast_config_edit_service.py:287:        snap = create_forecast_config_snapshot(
+src/hb_assistant/construction/analytics/forecast_config_edit_service.py:294:        materialize_forecast_config_snapshot(
+src/hb_assistant/construction/analytics/forecast_config_edit_service.py:300:        parity = run_forecast_config_db_parity(
+src/hb_assistant/construction/analytics/forecast_run_service.py:29:from hb_assistant.construction.analytics.forecast_run_dto import (
+src/hb_assistant/construction/analytics/forecast_run_service.py:38:_SURFACE = "analytics.forecast_run"
+src/hb_assistant/construction/analytics/forecast_run_service.py:110:            raise ForecastRunError("forecast data root is not configured")
+src/hb_assistant/construction/analytics/forecast_run_service.py:113:            raise ForecastRunError("forecast data root is not a valid directory")
+src/hb_assistant/construction/analytics/forecast_run_service.py:119:            raise ForecastRunError("forecast runs root is not configured")
+src/hb_assistant/construction/analytics/forecast_run_service.py:122:            raise ForecastRunError("forecast runs root must be an absolute path")
+src/hb_assistant/construction/analytics/forecast_run_service.py:126:            raise ForecastRunError("forecast runs root could not be created") from exc
+src/hb_assistant/construction/analytics/forecast_run_service.py:163:            raise ForecastRunError("forecast runs root must not be under the data root")
+src/hb_assistant/construction/analytics/forecast_external_compare.py:1:"""Comparison + accuracy engine for external-forecast evaluation (Implementation Phase 4).
+src/hb_assistant/construction/analytics/forecast_external_compare.py:3:Takes the validated, mapped external rows and compares the external forecast (per canonical
+src/hb_assistant/construction/analytics/forecast_external_compare.py:6:forecast. Emits per-code comparison rows and per-baseline accuracy metrics. Pure composition over
+src/hb_assistant/construction/analytics/forecast_external_compare.py:7:``forecast_external_metrics`` and ``forecast_external_baselines``; never writes anything.
+src/hb_assistant/construction/analytics/forecast_external_compare.py:19:from hb_assistant.construction.analytics import forecast_external_baselines as bl
+src/hb_assistant/construction/analytics/forecast_external_compare.py:20:from hb_assistant.construction.analytics.forecast_external_dto import BASELINE_LABELS
+src/hb_assistant/construction/analytics/forecast_external_compare.py:21:from hb_assistant.construction.analytics.forecast_external_metrics import (
+src/hb_assistant/construction/analytics/forecast_external_compare.py:41:    """Aggregate mapped rows to one external forecast value per canonical budget code."""
+src/hb_assistant/construction/analytics/forecast_external_compare.py:62:    """Compares mapped external forecasts against all available baselines."""
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:1:"""Interactive write+read service for operator-supplied forecast assumptions (v66).
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:3:This is the first *interactive* write surface on the managed forecast DB. It persists

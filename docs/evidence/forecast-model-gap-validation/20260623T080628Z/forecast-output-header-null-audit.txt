@@ -1,0 +1,3 @@
+total_outputs  null_estimated_final_cost  null_forecast_at_completion  null_cost_to_complete  null_variance_to_budget  null_variance_to_prior_forecast
+-------------  -------------------------  ---------------------------  ---------------------  -----------------------  -------------------------------
+1              1                          1                            1                      1                        1                              

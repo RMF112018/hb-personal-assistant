@@ -1,0 +1,500 @@
+src/hb_assistant/classification/detector.py:4:Output: detection result + confidence + optional signals (for "direct ask" / "waiting-on" classification).
+src/hb_assistant/classification/detector.py:31:        confidence = 0.85 if mentioned else 0.15
+src/hb_assistant/classification/detector.py:35:            "confidence": confidence,
+src/hb_assistant/classification/classifier.py:31:    confidence: float
+src/hb_assistant/classification/classifier.py:104:            confidence=det["confidence"],
+src/hb_assistant/classification/classifier.py:113:                confidence=0.6,
+src/hb_assistant/classification/classifier.py:120:            confidence=det["confidence"],
+src/hb_assistant/classification/body_inspector.py:110:                "confidence": 0.0,
+src/hb_assistant/classification/body_inspector.py:136:        confidence = 0.92 if mentioned else 0.10  # slightly higher than preview-only
+src/hb_assistant/classification/body_inspector.py:145:            "confidence": confidence,
+src/hb_assistant/resources/config/phase_09_review_burden_policy.seed.yaml:28:    - confidence_class
+src/hb_assistant/resources/json/phase_09_vector_index_apply_contract.json:4:  "description": "Phase 09 Prompt 19 — vector index build APPLY. Governs the metadata-only receipts persisted to SQLite when approved nodes are embedded and written to a vector store that lives OUTSIDE SQLite (on the local filesystem under Application Support). The approved source manifest is the only authorization input; every node must carry review tier, confidence, source ref, freshness metadata, and pass the no-raw guardrail before it is embedded. Vectors, raw text, prompts, responses, tokens, URLs, and filesystem paths are never persisted to SQLite.",
+src/hb_assistant/resources/json/phase_09_vector_index_apply_contract.json:35:    "confidence_class",
+src/hb_assistant/resources/json/phase_09_vector_index_apply_contract.json:62:    "confidence_class",
+src/hb_assistant/resources/json/phase_09_approved_source_manifest_contract.json:21:    "confidence_class"
+src/hb_assistant/resources/json/retrieval_policy_contract.json:6:    "confidence_class",
+src/hb_assistant/resources/json/calendar_project_match_contract.json:11:  "confidence_classes": {
+src/hb_assistant/resources/json/phase_09_daily_brief_handoff_packet_v2_contract.json:42:    "confidence_class",
+src/hb_assistant/resources/json/phase_09_daily_brief_handoff_packet_v2_contract.json:151:    "review-required, stale, and low-confidence flags are preserved on renderable items.",
+src/hb_assistant/resources/json/phase_09_review_burden_policy_contract.json:45:    "confidence_class",
+src/hb_assistant/resources/json/phase_09_review_burden_policy_contract.json:100:    "confidence_class",
+src/hb_assistant/resources/json/source_reference_contract.json:7:    "confidence_class",
+src/hb_assistant/resources/json/meeting_email_relationship_candidate_contract.json:31:    "confidence",
+src/hb_assistant/resources/json/meeting_email_relationship_candidate_contract.json:32:    "confidence_class",
+src/hb_assistant/resources/json/phase_09_unsupported_claim_checks_contract.json:53:    "preserve_confidence_class",
+src/hb_assistant/resources/json/phase_09_memory_consolidation_preview_contract.json:20:    "confidence_class",
+src/hb_assistant/resources/json/phase_09_memory_consolidation_preview_contract.json:65:    "preserve_confidence_class",
+src/hb_assistant/resources/json/research_packet_contract.json:13:    "confidence_class",
+src/hb_assistant/resources/json/sqlite_query_tool_contract.json:39:    "confidence_class",
+src/hb_assistant/resources/json/phase_08c_exposure_summary_contract.json:26:    "confidence_label",
+src/hb_assistant/resources/json/project_issue_history_contract.json:11:    "confidence_class",
+src/hb_assistant/resources/json/phase_09_memory_acceptance_contract.json:14:    "candidate_has_confidence_class",
+src/hb_assistant/resources/json/phase_09_memory_acceptance_contract.json:36:    "confidence_class",
+src/hb_assistant/resources/json/obsidian_index_manifest_contract.json:9:    "confidence_class",
+src/hb_assistant/resources/json/cross_source_relationship_contract.json:13:    "confidence_score",
+src/hb_assistant/resources/json/cross_source_relationship_contract.json:14:    "confidence_class",
+src/hb_assistant/resources/json/cross_source_relationship_contract.json:19:  "confidence_classes": [
+src/hb_assistant/resources/json/phase_09_memory_quality_review_contract.json:48:    "preserve_confidence_class",
+src/hb_assistant/resources/json/phase_09_memory_candidate_preview_contract.json:13:    "confidence_class",
+src/hb_assistant/resources/json/phase_09_daily_brief_reproducibility_contract.json:63:    "preserve_confidence_class",
+src/hb_assistant/resources/json/phase_10_relationship_candidate_contract.json:16:  "confidence_classes": [
+src/hb_assistant/resources/json/phase_10_relationship_candidate_contract.json:24:    "low_confidence",
+src/hb_assistant/resources/json/phase_10_relationship_candidate_contract.json:52:  "confidence_thresholds": {
+src/hb_assistant/resources/json/phase_10_relationship_candidate_contract.json:57:    "strong": "confidence >= 0.80; may compile related packet",
+src/hb_assistant/resources/json/phase_10_relationship_candidate_contract.json:58:    "moderate": "0.55 <= confidence < 0.80; may compile only with review_required=true",
+src/hb_assistant/resources/json/phase_10_relationship_candidate_contract.json:59:    "weak": "confidence < 0.55; do not combine for extraction"
+src/hb_assistant/resources/json/phase_09_context_budget_optimization_contract.json:4:  "description": "Phase 09 Prompt 27 — context budget optimization. An additive, advisory best-effort context packer that recovers budget wasted by the baseline apply_context_budget (which breaks at the first overflowing item). It uses the same deterministic priority order (review tier -> recency -> confidence -> source_ref) and the same per-item / total budget bounds, but skips an oversized item and continues packing the rest. It preserves every kept item's review tier, confidence class, source reference, and freshness, and adds budget-drop coverage warnings so a sacrificed item is surfaced, never silently lost. Read-only and advisory: it never modifies the authoritative apply_context_budget, never exceeds the budget, assembles no final answer, and persists nothing (no DB writes).",
+src/hb_assistant/resources/json/phase_09_context_budget_optimization_contract.json:42:    "preserve_confidence_class",
+src/hb_assistant/resources/json/email_thread_summary_contract.json:31:    "low_project_confidence",
+src/hb_assistant/resources/json/interactive_query_contract.json:7:    "confidence_labels",
+src/hb_assistant/resources/json/phase_09_retrieval_eval_set_contract.json:30:    "confidence_class"
+src/hb_assistant/resources/json/phase_09_retrieval_eval_set_contract.json:58:    "preserve_confidence_class",
+src/hb_assistant/resources/json/phase_10_daily_brief_action_candidate_contract.json:17:    "confidence",
+src/hb_assistant/resources/json/phase_09_embedding_vector_policy_contract.json:14:    "confidence_class",
+src/hb_assistant/resources/json/document_card_contract.json:9:    "confidence_class",
+src/hb_assistant/resources/json/phase_09_hybrid_retrieval_contract.json:4:  "description": "Phase 09 Prompt 20 — hybrid retrieval broker. Combines the deterministic Retrieval Broker (A03, the source of truth over the allowlisted families) with an advisory semantic path that queries the applied vector index. Deterministic results are authoritative; semantic results are advisory 'suggested context' only — source-linked back to approved/reviewed nodes, with review tier, confidence class, source references, and freshness preserved, never raw. The broker returns a merged RetrievalEnvelope and must never assemble a final answer (that stays in the Research Packet and Evaluation layers). Receipts are metadata-only; the raw query string is never persisted (only its hash); vectors live outside SQLite.",
+src/hb_assistant/resources/json/phase_09_hybrid_retrieval_contract.json:36:    "confidence_class",
+src/hb_assistant/resources/json/phase_09_hybrid_retrieval_contract.json:77:    "preserve_confidence_class",
+src/hb_assistant/resources/json/document_project_match_contract.json:4:  "confidence_classes": [
+src/hb_assistant/resources/json/phase_09_output_evaluation_integration_contract.json:57:    "preserve_confidence_class",
+src/hb_assistant/resources/json/evaluation_criteria_contract.json:18:    "confidence_class_present",
+src/hb_assistant/resources/json/long_term_memory_contract.json:8:    "confidence_class",
+src/hb_assistant/resources/json/long_term_memory_contract.json:22:    "low_confidence",
+src/hb_assistant/resources/json/phase_09_project_retrieval_benchmark_contract.json:44:    "preserve_confidence_class",
+src/hb_assistant/resources/json/phase_09_daily_brief_handoff_packet_contract.json:20:    "stale_or_low_confidence_warnings",
+src/hb_assistant/resources/json/phase_09_daily_brief_handoff_packet_contract.json:33:    "stale_or_low_confidence_warnings",
+src/hb_assistant/resources/json/phase_09_daily_brief_handoff_packet_contract.json:48:    "confidence_class",
+src/hb_assistant/resources/json/phase_09_daily_brief_handoff_packet_contract.json:61:    "stale_or_low_confidence_warnings": "any_family_with_stale_flags_or_low_confidence"
+src/hb_assistant/resources/json/phase_09_daily_brief_handoff_packet_contract.json:95:    "Preserve all warnings (stale, low-confidence, and review-required).",
+src/hb_assistant/resources/json/phase_08c_financial_fact_contract.json:16:    "confidence_label",
+src/hb_assistant/resources/json/phase_09_agent_performance_feedback_contract.json:8:    "recommend_confidence_tuning",
+src/hb_assistant/resources/json/phase_09_agent_performance_feedback_contract.json:60:    "preserve_confidence_class"
+src/hb_assistant/resources/json/phase_10_action_candidate_output_schema.json:10:    "confidence",
+src/hb_assistant/resources/json/phase_10_action_candidate_output_schema.json:80:    "confidence": {
+src/hb_assistant/resources/json/controlled_extraction_contract.json:15:    "confidence",
+src/hb_assistant/resources/json/controlled_extraction_contract.json:23:    "low_project_confidence",
+src/hb_assistant/resources/json/risk_digest_contract.json:10:    "confidence_class",
+src/hb_assistant/resources/json/phase_09_metadata_filter_contract.json:4:  "description": "Phase 09 Prompt 21 — metadata filter enforcement. Enforces project / source / date / review / confidence / source-coverage filters before retrieval (constrain which allowlisted families/sources are queried; reject excluded families) and after retrieval (drop items outside the requested window/tier/confidence and emit source-coverage warnings). Read-only and metadata-only: no raw content/query/excerpt is persisted or echoed, the filter never assembles a final answer, and review tier / confidence class / source references / freshness / coverage warnings are preserved on kept items.",
+src/hb_assistant/resources/json/phase_09_metadata_filter_contract.json:11:    "min_confidence",
+src/hb_assistant/resources/json/phase_09_metadata_filter_contract.json:22:  "confidence_order": ["deterministic", "high", "medium", "low", "unknown"],
+src/hb_assistant/resources/json/phase_09_metadata_filter_contract.json:31:    "confidence_below_min"
+src/hb_assistant/resources/json/phase_09_metadata_filter_contract.json:60:    "preserve_confidence_class",
+src/hb_assistant/resources/json/review_tier_contract.json:21:      "description": "Model-only, low-confidence, unsupported, stale, conflicting, or sensitive/high-impact items. Never treated as an accepted fact and never auto-accepted.",
+src/hb_assistant/resources/json/review_tier_contract.json:40:    "low_confidence",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3567:      "notes": "V61 raw-label to canonical budget-code/month mappings with confidence/status. Intentionally empty on the live DB; rows live in the isolated per-run eval SQLite only."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3875:    "forecast_confidence_scorecards": {
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3882:      "notes": "Per-run confidence scorecards (project/budget_code/method scope) projected from confidence_rollup.json and v63 outputs."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3884:    "forecast_confidence_factors": {
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3891:      "notes": "Per-scorecard factor-level explanation (penalty/booster + reason); no confidence persisted without factors."
+src/hb_assistant/resources/json/phase_09_retrieval_benchmark_contract.json:62:    "preserve_confidence_class",
+src/hb_assistant/resources/json/phase_09_hallucination_risk_checks_contract.json:4:  "description": "Phase 09 Prompt 29 — hallucination risk checks. A read-only, advisory measurement over the deterministic retrieval corpus that scores hallucination-risk and overconfidence indicators (how risky the corpus is to present as fact), for human awareness. Hallucination-risk indicators: unsupported claims (fabrication), tier-3 items presented as fact, stale/conflict items, coverage gaps, degradation mode. Overconfidence indicators: high confidence assigned to weakly-grounded items (tier-3 / unsupported / stale-or-conflict), and a high-confidence-tier-3 mismatch count. It computes a deterministic risk band (low/medium/high) with an indicators list. It makes NO determination and blocks nothing — it scores risk only. assembles_final_answer is always false; persists nothing (no DB writes); metadata-only (counts, bucketed bands, distributions, family names, indicator flags — no raw content/source ref).",
+src/hb_assistant/resources/json/phase_09_hallucination_risk_checks_contract.json:12:    "overconfidence",
+src/hb_assistant/resources/json/phase_09_hallucination_risk_checks_contract.json:13:    "high_confidence_tier3"
+src/hb_assistant/resources/json/phase_09_hallucination_risk_checks_contract.json:44:    "preserve_confidence_class",
+src/hb_assistant/resources/json/phase_10_claude_mcp_packet_contract.json:16:    "confidence",
+src/hb_assistant/resources/json/phase_10_email_task_signal_contract.json:19:    "project_source_confidence"
+src/hb_assistant/resources/json/phase_10_email_task_signal_contract.json:28:    "project_source_confidence",
+src/hb_assistant/resources/json/operator_preference_profile_contract.json:8:    "confidence_class",
+src/hb_assistant/resources/json/phase_09_research_packet_integration_contract.json:4:  "description": "Phase 09 Prompt 22 — research packet integration. Semantic (vector) retrieval context may enter answer generation ONLY through Research Packet generation: the hybrid broker's merged envelope (deterministic authoritative + advisory semantic) is routed through build_research_packet_from_envelope, producing a metadata-only ResearchPacket (advisory) — never a final answer. The route never calls the synthesis adapter; semantic results never assemble a final answer outside the Research Packet / Evaluation layers. Review tier, confidence class, source references, freshness, and source-coverage warnings are preserved; no raw content / query / excerpt is persisted or emitted.",
+src/hb_assistant/resources/json/phase_09_research_packet_integration_contract.json:40:    "preserve_confidence_class",
+src/hb_assistant/resources/json/meeting_prep_brief_contract.json:14:    "confidence_labels",
+src/hb_assistant/resources/json/source_evidence_trail_contract.json:7:    "confidence_class",
+src/hb_assistant/cli/construction.py:24:  — Phase 07A local-only relationship orphan and confidence diagnostics (Prompt 04).
+src/hb_assistant/cli/construction.py:27:  Classifies per 08_ categories; assigns confidence from policy JSON; computes
+src/hb_assistant/cli/construction.py:1641:            "low_confidence_threshold": rules.low_confidence_threshold,
+src/hb_assistant/cli/construction.py:1714:    "low_confidence_routes_to_review": True,
+src/hb_assistant/cli/construction.py:1733:                '"confidence":0.92,"rationale":"daily photo upload",'
+src/hb_assistant/cli/construction.py:1746:                '"confidence":0.95,"rationale":"contract document",'
+src/hb_assistant/cli/construction.py:1759:                '"confidence":0.35,"rationale":"ambiguous draft",'
+src/hb_assistant/cli/construction.py:2149:            "low_confidence_threshold": rr.low_confidence_threshold,
+src/hb_assistant/cli/construction.py:2160:            "low_confidence_threshold": mr.low_confidence_threshold,
+src/hb_assistant/cli/construction.py:2236:        "detail": f"version={rr.version}; {len(rr.rules)} rules; threshold={rr.low_confidence_threshold}",
+src/hb_assistant/cli/construction.py:2544:    """Local-only relationship orphan and confidence diagnostics (Phase 07A Prompt 04).
+src/hb_assistant/cli/diagnostics.py:447:            confidence=det["confidence"],
+src/hb_assistant/cli/graph.py:687:    Dry-run by default: computes the type/signal/confidence breakdown without any
+src/hb_assistant/cli/graph.py:712:    Dry-run by default: computes the project-key / candidate-type / confidence
+src/hb_assistant/cli/graph.py:791:    redacted summary of the project's document corpus (types, confidence, extraction
+src/hb_assistant/cli/graph.py:792:    dispositions, relationship candidates, review state) with a rolled-up confidence
+src/hb_assistant/cli/graph.py:815:    Document Register (counts by document type / confidence / extraction disposition /
+src/hb_assistant/cli/graph.py:1417:    """Match indexed files to projects (deterministic + heuristic) with confidence/
+src/hb_assistant/cli/graph.py:1418:    status/reason, routing low-confidence and unmatched files to review. Operates on
+src/hb_assistant/cli/graph.py:1456:    manual_approval_required / review_required / blocked / low_confidence) BEFORE any
+src/hb_assistant/cli/graph.py:1457:    download or extraction. Sensitive/large/low-confidence files never auto-extract.
+src/hb_assistant/cli/graph.py:1592:    low-confidence project matches into the review queue before any extraction. Idempotent
+src/hb_assistant/cli/graph.py:3032:    call, NO mailbox access. Candidates are NOT determinations: each carries confidence,
+src/hb_assistant/cli/graph.py:3075:    """Route sensitive/low-confidence email to review + compute encrypted-body eligibility.
+src/hb_assistant/cli/second_brain.py:285:    help="Phase 09 metadata filter enforcement (project/source/date/review/confidence; read-only).",
+src/hb_assistant/cli/second_brain.py:341:    help="Phase 09 hallucination risk + overconfidence indicators (advisory measurement; read-only).",
+src/hb_assistant/cli/second_brain.py:669:            "confidence_class": packet.confidence_class,
+src/hb_assistant/cli/second_brain.py:752:    confidence: str = typer.Option("medium", "--confidence", help="high|medium|low."),
+src/hb_assistant/cli/second_brain.py:778:        confidence_class=confidence,
+src/hb_assistant/cli/second_brain.py:827:        confidence_class=row["confidence_class"],
+src/hb_assistant/cli/second_brain.py:1041:    "preserve_review_tier_confidence_source_refs": True,
+src/hb_assistant/cli/second_brain.py:1406:    "preserve_review_tier_confidence_source_refs": True,
+src/hb_assistant/cli/second_brain.py:1504:    "preserve_review_tier_confidence": True,
+src/hb_assistant/cli/second_brain.py:2119:    matches, person/company/project relationships, likely-duplicate entities, low-confidence
+src/hb_assistant/cli/second_brain.py:2159:    min_confidence: float = typer.Option(  # noqa: B008
+src/hb_assistant/cli/second_brain.py:2160:        0.55, "--min-confidence", help="Minimum confidence to keep (default moderate floor; weak excluded)."
+src/hb_assistant/cli/second_brain.py:2204:        if not 0.0 <= min_confidence <= 1.0:
+src/hb_assistant/cli/second_brain.py:2206:                "command": cmd, "ok": False, "applied": False, "error": "min_confidence_out_of_range",
+src/hb_assistant/cli/second_brain.py:2220:            min_confidence=min_confidence,
+src/hb_assistant/cli/second_brain.py:3025:    refs, redacted titles, preserved review/stale/low-confidence flags, source coverage, advisory-only
+src/hb_assistant/cli/second_brain.py:3192:    source refs + review/stale/confidence flags, rejects raw-shaped and final-determination
+src/hb_assistant/cli/second_brain.py:4665:            "confidence_class": e.confidence_class,
+src/hb_assistant/cli/second_brain.py:5301:            "by_confidence": proof.get("by_confidence"),
+src/hb_assistant/cli/second_brain.py:5859:    needs Bobby's review (low-confidence/unclear), and a bounded dry-run preview of the accepted set
+src/hb_assistant/cli/second_brain.py:5860:    an apply would act on — each item source-linked with confidence/safety reasons. Persists nothing;
+src/hb_assistant/cli/second_brain.py:6385:    confidence-class distribution and score spread, and orphan / duplicate quality signals
+src/hb_assistant/cli/second_brain.py:6855:    "preserve_review_tier_confidence_source_refs_freshness": True,
+src/hb_assistant/cli/second_brain.py:6866:    "preserve_review_tier_confidence_source_refs_freshness": True,
+src/hb_assistant/cli/second_brain.py:6878:    "preserve_review_tier_confidence_source_refs_freshness": True,
+src/hb_assistant/cli/second_brain.py:6889:    "preserve_review_tier_confidence_source_refs_freshness": True,
+src/hb_assistant/cli/second_brain.py:6902:    "preserve_review_tier_confidence_source_refs_freshness": True,
+src/hb_assistant/cli/second_brain.py:6916:    "preserve_review_tier_confidence_source_refs_freshness_coverage_warnings": True,
+src/hb_assistant/cli/second_brain.py:6931:    "preserve_review_tier_confidence_source_refs_freshness_coverage_warnings": True,
+src/hb_assistant/cli/second_brain.py:6944:    "preserve_review_tier_confidence_source_refs_freshness_coverage_warnings": True,
+src/hb_assistant/cli/second_brain.py:6957:    "preserve_review_tier_confidence_source_refs_freshness_coverage_warnings": True,
+src/hb_assistant/cli/second_brain.py:6980:    review tier / confidence / source ref / freshness / no-raw proof — computing **no embeddings**.
+src/hb_assistant/cli/second_brain.py:7295:    """Metadata-filter policy view — filterable keys, date-capable families, confidence order (read-only)."""
+src/hb_assistant/cli/second_brain.py:7320:        "confidence_order": seed.get("confidence_order"),
+src/hb_assistant/cli/second_brain.py:7333:        f"  confidence order: {report['confidence_order']}",
+src/hb_assistant/cli/second_brain.py:7352:    min_confidence: str | None = typer.Option(
+src/hb_assistant/cli/second_brain.py:7353:        None, "--min-confidence", help="Keep items at or above this confidence class."
+src/hb_assistant/cli/second_brain.py:7363:    """Apply project/source/date/review/confidence filters to a hybrid retrieval (read-only, fail-closed).
+src/hb_assistant/cli/second_brain.py:7366:    (drop items outside the window/tier/confidence with recorded reasons + source-coverage warnings).
+src/hb_assistant/cli/second_brain.py:7390:            min_confidence=min_confidence,
+src/hb_assistant/cli/second_brain.py:7431:    project/family/date/review/confidence with reasons + coverage warnings; no raw, no answer assembly."""
+src/hb_assistant/cli/second_brain.py:7470:    min_confidence: str | None = typer.Option(
+src/hb_assistant/cli/second_brain.py:7471:        None, "--min-confidence", help="Keep items at or above this confidence class."
+src/hb_assistant/cli/second_brain.py:7500:    if families or max_review_tier is not None or min_confidence is not None:
+src/hb_assistant/cli/second_brain.py:7504:            min_confidence=min_confidence,
+src/hb_assistant/cli/second_brain.py:7585:    min_confidence: str | None = typer.Option(
+src/hb_assistant/cli/second_brain.py:7586:        None, "--min-confidence", help="Keep items at or above this confidence class."
+src/hb_assistant/cli/second_brain.py:7615:    if families or max_review_tier is not None or min_confidence is not None:
+src/hb_assistant/cli/second_brain.py:7619:            min_confidence=min_confidence,
+src/hb_assistant/cli/second_brain.py:8110:    """Measure hallucination risk + overconfidence indicators over the deterministic corpus (read-only).
+src/hb_assistant/cli/second_brain.py:8113:    conflict, coverage gaps, degradation, high-confidence-on-weak-grounding) into a deterministic risk
+src/hb_assistant/cli/second_brain.py:8137:        "Phase 09 hallucination risk + overconfidence indicators (read-only, advisory)",
+src/hb_assistant/cli/second_brain.py:8140:        f"  overconfidence: {result['overconfidence_indicators']}",
+src/hb_assistant/cli/second_brain.py:8156:    """Prove the risk + overconfidence indicators fire, with no determination and no DB writes."""
+src/hb_assistant/cli/second_brain.py:9344:    Read-only. Each candidate carries confidence, relationship_class, reason_codes, and per-feature
+src/hb_assistant/cli/second_brain.py:11904:    project/source confidence) are scored over redacted summary read models, then the schema-enforced
+src/hb_assistant/cli/second_brain.py:12277:    """Raw-safe feedback read model (counts/rates/reason codes/confidence buckets; deterministic)."""
+src/hb_assistant/procore/normalizers/punch_item.py:45:    "schedule_risk_confidence",
+src/hb_assistant/procore/normalizers/financial.py:143:    minor_units (or None), rejection_reason (or None), confidence_label,
+src/hb_assistant/procore/normalizers/financial.py:223:        "confidence_label": conf,
+src/hb_assistant/links/registry.py:51:        confidence: float | None = 1.0,
+src/hb_assistant/links/registry.py:60:            confidence=confidence,
+src/hb_assistant/links/registry.py:76:                    confidence=link.get("confidence"),
+src/hb_assistant/links/registry.py:91:                    confidence=link.get("confidence"),
+src/hb_assistant/links/registry.py:110:    def link_sources(self, from_id: int, to_id: int, link_type: str, confidence: float | None = None) -> int:
+src/hb_assistant/links/registry.py:116:            confidence=confidence,
+src/hb_assistant/links/registry.py:125:        confidence: Optional[float] = None,
+src/hb_assistant/links/registry.py:144:            confidence=confidence,
+src/hb_assistant/actions/service.py:58:                        confidence=c.confidence,
+src/hb_assistant/actions/service.py:70:                        confidence=c.confidence,
+src/hb_assistant/actions/service.py:93:                    confidence=r.get("confidence", 0.5),
+src/hb_assistant/construction/forecast/output_repository.py:49:    "confidence",
+src/hb_assistant/actions/models.py:23:    confidence: float
+src/hb_assistant/construction/calendar_email_obsidian.py:253:                        c.get("confidence_class") or "",
+src/hb_assistant/construction/calendar_email_obsidian.py:254:                        f"{float(c.get('confidence') or 0.0):.2f}",
+src/hb_assistant/actions/extractor.py:204:                confidence=conf,
+src/hb_assistant/actions/extractor.py:225:                            confidence=r.get("confidence", 0.5),
+src/hb_assistant/construction/source_projection.py:30:``crawl_mode``, ``indexing_depth``, ``match_status``, ``match_confidence``,
+src/hb_assistant/construction/source_projection.py:109:    if src.match_confidence is not None:
+src/hb_assistant/construction/source_projection.py:110:        lossy.append("match_confidence")
+src/hb_assistant/construction/drive_item_bridge.py:89:    match_confidence: Optional[str] = None
+src/hb_assistant/construction/forecast/output_projection_engine.py:216:                "confidence": row.get("confidence"),
+src/hb_assistant/construction/classification/__init__.py:3:The model proposes a classification label + confidence + rationale. The
+src/hb_assistant/construction/calendar/project_matcher.py:74:    confidence: float
+src/hb_assistant/construction/calendar/project_matcher.py:75:    confidence_class: str
+src/hb_assistant/construction/calendar/project_matcher.py:157:                    confidence=conf,
+src/hb_assistant/construction/calendar/project_matcher.py:158:                    confidence_class=cclass,
+src/hb_assistant/construction/calendar/project_matcher.py:201:                        confidence=c.confidence,
+src/hb_assistant/construction/calendar/project_matcher.py:202:                        confidence_class=c.confidence_class,
+src/hb_assistant/construction/calendar/project_matcher.py:215:                1 for c in all_candidates if c.confidence_class == "deterministic"
+src/hb_assistant/construction/calendar/project_matcher.py:217:            "moderate": sum(1 for c in all_candidates if c.confidence_class == "moderate"),
+src/hb_assistant/construction/calendar/project_matcher.py:218:            "weak": sum(1 for c in all_candidates if c.confidence_class == "weak"),
+src/hb_assistant/construction/forecast/decision_support_repository.py:8:Populated this phase: maturity snapshot, data-availability profiles, confidence scorecards
+src/hb_assistant/construction/forecast/decision_support_repository.py:54:def upsert_confidence_scorecard(conn: sqlite3.Connection, row: dict[str, Any]) -> None:
+src/hb_assistant/construction/forecast/decision_support_repository.py:55:    _upsert(conn, "forecast_confidence_scorecards", row, ("scorecard_id",))
+src/hb_assistant/construction/forecast/decision_support_repository.py:58:def upsert_confidence_factor(conn: sqlite3.Connection, row: dict[str, Any]) -> None:
+src/hb_assistant/construction/forecast/decision_support_repository.py:59:    _upsert(conn, "forecast_confidence_factors", row, ("id",))
+src/hb_assistant/construction/forecast/decision_support_repository.py:74:    "scorecards": upsert_confidence_scorecard,
+src/hb_assistant/construction/forecast/decision_support_repository.py:75:    "factors": upsert_confidence_factor,
+src/hb_assistant/construction/forecast/decision_support_repository.py:110:        conn, "forecast_confidence_scorecards", "run_id", run_id, "scope, scope_key"
+src/hb_assistant/construction/forecast/decision_support_repository.py:118:        conn, "forecast_confidence_factors", "scorecard_id", scorecard_id, "factor_key"
+src/hb_assistant/construction/forecast/decision_support_engine.py:9:- the project confidence scorecard is PROJECTED from the analysis package's
+src/hb_assistant/construction/forecast/decision_support_engine.py:10:  ``confidence_rollup.json``; per-code scorecards reuse the per-code ``confidence`` already
+src/hb_assistant/construction/forecast/decision_support_engine.py:13:Every confidence scorecard emits at least one factor row (the persisted explanation).
+src/hb_assistant/construction/forecast/decision_support_engine.py:38:    "tables": "maturity_snapshots/data_availability_profiles/confidence_scorecards/confidence_factors",
+src/hb_assistant/construction/forecast/decision_support_engine.py:65:CONFIDENCE_ROLLUP_FILE = "confidence_rollup.json"
+src/hb_assistant/construction/forecast/decision_support_engine.py:112:    """Derive maturity/availability from DB inputs + project confidence from the package.
+src/hb_assistant/construction/forecast/decision_support_engine.py:220:                    reason="no v59 source-domain table for this domain yet (confidence penalty, not a block)",
+src/hb_assistant/construction/forecast/decision_support_engine.py:225:        # ---- project confidence scorecard (from confidence_rollup.json) -------------
+src/hb_assistant/construction/forecast/decision_support_engine.py:231:            warnings.append(f"{CONFIDENCE_ROLLUP_FILE} not found; no project confidence scorecard")
+src/hb_assistant/construction/forecast/decision_support_engine.py:233:        # ---- per-code confidence scorecards (reuse v63 forecast_output_budget_codes) -
+src/hb_assistant/construction/forecast/decision_support_engine.py:236:                "SELECT budget_code_key, confidence, forecast_action, raw_json "
+src/hb_assistant/construction/forecast/decision_support_engine.py:240:            for key, confidence, action, raw in rows:
+src/hb_assistant/construction/forecast/decision_support_engine.py:242:                    planned, run_id, project_key, key, confidence, action, raw, now_utc
+src/hb_assistant/construction/forecast/decision_support_engine.py:292:    by_conf = rollup.get("count_by_confidence") or {}
+src/hb_assistant/construction/forecast/decision_support_engine.py:312:    # one factor per confidence band (booster/penalty) — the persisted explanation
+src/hb_assistant/construction/forecast/decision_support_engine.py:316:            _factor_row(scorecard_id, run_id, project_key, f"confidence_{band}", direction,
+src/hb_assistant/construction/forecast/decision_support_engine.py:317:                        str(count), f"{count} budget codes at {band} confidence", now_utc)
+src/hb_assistant/construction/forecast/decision_support_engine.py:330:                        "confidence rollup present with no per-band counts", now_utc)
+src/hb_assistant/construction/forecast/decision_support_engine.py:334:def _emit_code_scorecard(planned, run_id, project_key, key, confidence, action, raw, now_utc) -> None:
+src/hb_assistant/construction/forecast/decision_support_engine.py:349:            "label": confidence,
+src/hb_assistant/construction/forecast/decision_support_engine.py:352:                {"budget_code_key": key, "confidence": confidence, "forecast_action": action,
+src/hb_assistant/construction/forecast/decision_support_engine.py:354:                 "confidence_reason": rec.get("confidence_reason")},
+src/hb_assistant/construction/forecast/decision_support_engine.py:361:    direction = "booster" if confidence == "high" else ("penalty" if confidence in ("low", "none") else "neutral")
+src/hb_assistant/construction/forecast/decision_support_engine.py:363:        _factor_row(scorecard_id, run_id, project_key, "per_code_confidence", direction,
+src/hb_assistant/construction/forecast/decision_support_engine.py:364:                    None, rec.get("confidence_reason") or f"confidence={confidence}", now_utc)
+src/hb_assistant/construction/calendar/contracts.py:10:These contracts govern candidate typing, confidence classes, review routing, and
+src/hb_assistant/construction/calendar/contracts.py:65:            "confidence_classes",
+src/hb_assistant/construction/classification/models.py:6:2. The model confidence meets the configured threshold, AND
+src/hb_assistant/construction/classification/models.py:47:    confidence: float
+src/hb_assistant/construction/classification/models.py:53:    @field_validator("confidence")
+src/hb_assistant/construction/classification/models.py:55:    def _confidence_range(cls, v: float) -> float:
+src/hb_assistant/construction/classification/models.py:57:            raise ValueError(f"confidence must be in [0.0, 1.0]; got {v}")
+src/hb_assistant/construction/classification/models.py:100:    low_confidence_threshold: float = 0.7
+src/hb_assistant/construction/classification/models.py:121:    @field_validator("low_confidence_threshold")
+src/hb_assistant/construction/classification/models.py:125:            raise ValueError(f"low_confidence_threshold must be in [0.0, 1.0]; got {v}")
+src/hb_assistant/construction/classification/models.py:210:    confidence: float
+src/hb_assistant/construction/classification/models.py:219:    @field_validator("confidence")
+src/hb_assistant/construction/classification/models.py:221:    def _confidence_range(cls, v: float) -> float:
+src/hb_assistant/construction/classification/models.py:223:            raise ValueError(f"confidence must be in [0.0, 1.0]; got {v}")
+src/hb_assistant/construction/data_quality/__init__.py:14:confidence classes, and review-required conventions.
+src/hb_assistant/construction/calendar/policy.py:146:    confidence_classes: list[str] | None = None
+src/hb_assistant/construction/classification/router.py:9:2. confidence < threshold                  -> review
+src/hb_assistant/construction/classification/router.py:73:        if classification.confidence < self._config.low_confidence_threshold:
+src/hb_assistant/construction/classification/router.py:75:            reasons.append(f"low_confidence:{classification.confidence:.3f}")
+src/hb_assistant/construction/classification/router.py:98:            confidence=classification.confidence,
+src/hb_assistant/construction/data_quality/obsidian.py:218:                       confidence_class, review_required
+src/hb_assistant/construction/data_quality/obsidian.py:238:                       confidence_class, confidence, evidence_redacted, review_required, promotion_status
+src/hb_assistant/construction/data_quality/obsidian.py:240:                ORDER BY review_required DESC, confidence DESC
+src/hb_assistant/construction/data_quality/obsidian.py:255:                SELECT relationship_type, confidence_class, relationship_status, total_count,
+src/hb_assistant/construction/data_quality/obsidian.py:258:                ORDER BY relationship_type, confidence_class
+src/hb_assistant/construction/data_quality/obsidian.py:355:                    f"{title} | {r.get('confidence_class')} | {bool(r.get('review_required'))} |\n"
+src/hb_assistant/construction/data_quality/obsidian.py:380:                    f"| {q.get('relationship_type')} | {q.get('confidence_class')} | {q.get('relationship_status')} | "
+src/hb_assistant/construction/data_quality/obsidian.py:399:                    f"{r.get('confidence_class')} | {bool(r.get('review_required'))} | {r.get('promotion_status') or ''} | {evid} |\n"
+src/hb_assistant/construction/data_quality/source_record_map.py:13:- confidence_class follows 07_CANONICAL... policy (deterministic_exact_id,
+src/hb_assistant/construction/data_quality/source_record_map.py:176:                    "confidence_class": conf,
+src/hb_assistant/construction/data_quality/source_record_map.py:232:                    "confidence_class": conf,
+src/hb_assistant/construction/data_quality/source_record_map.py:265:                       subject_redacted, project_match_confidence,
+src/hb_assistant/construction/data_quality/source_record_map.py:296:                    "confidence_class": conf_class,
+src/hb_assistant/construction/data_quality/source_record_map.py:329:                       project_key, project_number_detected, match_confidence, match_status,
+src/hb_assistant/construction/data_quality/source_record_map.py:361:                    "confidence_class": conf_class,
+src/hb_assistant/construction/data_quality/source_record_map.py:417:                    "confidence_class": "deterministic_exact_id"
+src/hb_assistant/construction/data_quality/source_record_map.py:472:                    "confidence_class": "deterministic_exact_id"
+src/hb_assistant/construction/data_quality/source_record_map.py:503:                       match_signal, confidence, review_required
+src/hb_assistant/construction/data_quality/source_record_map.py:533:                    "confidence_class": conf_class,
+src/hb_assistant/construction/data_quality/gates.py:484:                    "SELECT COUNT(*) FROM relationship_resolution_queue WHERE confidence_class='deterministic_exact_id' AND relationship_status='orphaned'",
+src/hb_assistant/construction/data_quality/gates.py:491:                    "SELECT COUNT(*) FROM relationship_resolution_queue WHERE confidence_class='deterministic_exact_id'",
+src/hb_assistant/construction/data_quality/gates.py:513:                    "SELECT COUNT(*) FROM relationship_resolution_queue WHERE confidence_class IN ('weak_heuristic_single_signal','model_proposed_candidate') AND relationship_status='orphaned'",
+src/hb_assistant/construction/data_quality/gates.py:520:                    "SELECT COUNT(*) FROM relationship_resolution_queue WHERE confidence_class IN ('weak_heuristic_single_signal','model_proposed_candidate')",
+src/hb_assistant/construction/data_quality/gates.py:803:        A deterministic edge must carry the deterministic confidence class and must never be
+src/hb_assistant/construction/data_quality/gates.py:815:                if c.get("confidence_class") != _DETERMINISTIC_CONFIDENCE_CLASS or c.get(
+src/hb_assistant/construction/data_quality/gates.py:865:        confidence class must have review_required=True (never silently treated as fact).
+src/hb_assistant/construction/data_quality/gates.py:877:                    or c.get("confidence_class") in _WEAK_CONFIDENCE_CLASSES
+src/hb_assistant/construction/data_quality/marts.py:31:- Review-required / low-confidence / orphaned / model-proposed records
+src/hb_assistant/construction/data_quality/marts.py:196:                    SELECT project_key, relationship_type, confidence_class,
+src/hb_assistant/construction/data_quality/marts.py:200:                    GROUP BY project_key, relationship_type, confidence_class, relationship_status
+src/hb_assistant/construction/data_quality/marts.py:212:                                "confidence_class": conf,
+src/hb_assistant/construction/data_quality/relationships.py:1:"""Local-only relationship orphan and confidence diagnostics (Phase 07A Prompt 04).
+src/hb_assistant/construction/data_quality/relationships.py:17:Assigns confidence_class + optional numeric confidence strictly per
+src/hb_assistant/construction/data_quality/relationships.py:18:resources/json/relationship_confidence_policy.json:
+src/hb_assistant/construction/data_quality/relationships.py:41:relationship_confidence_policy.json, and prior Prompt 02/03 artifacts for rules.
+src/hb_assistant/construction/data_quality/relationships.py:207:                        "confidence_class": conf,
+src/hb_assistant/construction/data_quality/relationships.py:280:                                "confidence_class": conf,
+src/hb_assistant/construction/data_quality/relationships.py:281:                                "confidence": 0.9 if is_det else 0.4,
+src/hb_assistant/construction/data_quality/relationships.py:345:                                "confidence_class": conf,
+src/hb_assistant/construction/data_quality/relationships.py:346:                                "confidence": 0.85 if is_det else 0.55,
+src/hb_assistant/construction/data_quality/relationships.py:369:                       confidence, project_key, review_required
+src/hb_assistant/construction/data_quality/relationships.py:412:                                "confidence_class": conf,
+src/hb_assistant/construction/data_quality/relationships.py:413:                                "confidence": float(cconf or 0.5),
+src/hb_assistant/construction/data_quality/relationships.py:436:                       match_confidence, match_status, review_required
+src/hb_assistant/construction/data_quality/relationships.py:481:                                "confidence_class": conf,
+src/hb_assistant/construction/data_quality/relationships.py:482:                                "confidence": 0.8 if mconf in ("high", "medium") else 0.5,
+src/hb_assistant/construction/data_quality/relationships.py:505:                       confidence_class, review_required
+src/hb_assistant/construction/data_quality/relationships.py:554:                                "confidence_class": conf,
+src/hb_assistant/construction/data_quality/relationships.py:555:                                "confidence": 0.95 if is_det else 0.5,
+src/hb_assistant/construction/data_quality/relationships.py:585:            "by_confidence_class": by_conf,
+src/hb_assistant/construction/meeting_prep/brief_builder.py:7:risk_exposure_watchlist, review_required_warnings, confidence_and_stale_unknown_warnings.
+src/hb_assistant/construction/meeting_prep/brief_builder.py:10:confidence label, an optional evidence-trail ref, a review-required flag, and stale/unknown
+src/hb_assistant/construction/meeting_prep/brief_builder.py:53:# confidence-and-stale warnings section (mirrors the substrate vocabulary).
+src/hb_assistant/construction/meeting_prep/brief_builder.py:64:    "confidence_and_stale_unknown_warnings",
+src/hb_assistant/construction/meeting_prep/brief_builder.py:197:                        confidence_class=s["confidence_class"],
+src/hb_assistant/construction/meeting_prep/brief_builder.py:259:            self._section_confidence_stale_warnings(candidates, evidence_trails),
+src/hb_assistant/construction/meeting_prep/brief_builder.py:266:        confidence_class: str,
+src/hb_assistant/construction/meeting_prep/brief_builder.py:276:            "confidence_class": confidence_class,
+src/hb_assistant/construction/meeting_prep/brief_builder.py:395:            by_class[str(c.get("confidence_class"))] = (
+src/hb_assistant/construction/meeting_prep/brief_builder.py:396:                by_class.get(str(c.get("confidence_class")), 0) + 1
+src/hb_assistant/construction/meeting_prep/brief_builder.py:404:            "by_confidence_class": dict(sorted(by_class.items())),
+src/hb_assistant/construction/meeting_prep/brief_builder.py:453:    def _section_confidence_stale_warnings(
+src/hb_assistant/construction/meeting_prep/brief_builder.py:456:        weak = sum(1 for c in candidates if c.get("confidence_class") in _WEAK_CONFIDENCE_CLASSES)
+src/hb_assistant/construction/meeting_prep/brief_builder.py:466:            "confidence_and_stale_unknown_warnings",
+src/hb_assistant/construction/aging_exposure/aging_exposure_builder.py:15:``confidence_class=NULL`` — never overstated.
+src/hb_assistant/construction/aging_exposure/aging_exposure_builder.py:254:                        confidence_class=item["confidence_class"],
+src/hb_assistant/construction/aging_exposure/aging_exposure_builder.py:309:            confidence_class: Optional[str] = None
+src/hb_assistant/construction/aging_exposure/aging_exposure_builder.py:312:            confidence_class = "deterministic"
+src/hb_assistant/construction/aging_exposure/aging_exposure_builder.py:333:            "confidence_class": confidence_class,
+src/hb_assistant/construction/data_quality/project_identity.py:146:                    # Use the best confidence from existing
+src/hb_assistant/construction/data_quality/project_identity.py:148:                        (d.get("match_confidence", "medium") for d in drive_matches),
+src/hb_assistant/construction/data_quality/project_identity.py:161:                    confs = [float(e.get("confidence", 0.8)) for e in email_matches]
+src/hb_assistant/construction/data_quality/project_identity.py:227:                    match_confidence=match_conf,
+src/hb_assistant/construction/data_quality/project_identity.py:239:                            match_confidence=match_conf,
+src/hb_assistant/construction/data_quality/project_identity.py:254:                            match_confidence=match_conf,
+src/hb_assistant/construction/data_quality/project_identity.py:267:                            match_confidence=match_conf,
+src/hb_assistant/construction/graph/file_review_router.py:5:cost/schedule impact) and low-confidence project matches into the existing
+src/hb_assistant/construction/graph/file_review_router.py:36:_LOW_CONFIDENCE_STATUSES = frozenset({"low_confidence", "unmatched"})
+src/hb_assistant/construction/graph/file_review_router.py:37:_LOW_CONFIDENCE_RULE_ID = "low-confidence-project-match"
+src/hb_assistant/construction/graph/file_review_router.py:49:    low_confidence_routed: int = 0
+src/hb_assistant/construction/graph/file_review_router.py:58:    """Route sensitive + low-confidence V5 driveItems into the review queue."""
+src/hb_assistant/construction/graph/file_review_router.py:111:            # Route low-confidence / unmatched project matches as a hint, even
+src/hb_assistant/construction/graph/file_review_router.py:114:                matches.append(self._low_confidence_match(item_dict, source_id, project_key))
+src/hb_assistant/construction/graph/file_review_router.py:123:                    result.low_confidence_routed += 1
+src/hb_assistant/construction/graph/file_review_router.py:146:    def _low_confidence_match(
+src/hb_assistant/construction/graph/file_review_router.py:157:            classification_label="low_confidence_project_match",
+src/hb_assistant/construction/graph/file_review_router.py:158:            reason="project match is low-confidence or unmatched",
+src/hb_assistant/construction/graph/file_review_router.py:160:            confidence=0.5,
+src/hb_assistant/construction/config/models.py:299:    match_confidence: MatchConfidence | None = None
+src/hb_assistant/construction/graph/file_obsidian_projection.py:418:            "Sensitive / low-confidence files routed for controller review before any extraction.",
+src/hb_assistant/construction/graph/ingestion_eligibility.py:4:low-confidence files never auto-extract. Pure SQLite + policy + source registry —
+src/hb_assistant/construction/graph/ingestion_eligibility.py:158:        # 5. Low-confidence / unmatched project match → review.
+src/hb_assistant/construction/graph/ingestion_eligibility.py:159:        if match_status in ("low_confidence", "unmatched"):
+src/hb_assistant/construction/graph/ingestion_eligibility.py:161:                "low_confidence",
+src/hb_assistant/construction/graph/ingestion_eligibility.py:163:                reason="low_confidence_project_match",
+src/hb_assistant/construction/graph/site_drive_discovery.py:91:    match_confidence: Optional[str] = None  # high | medium | low | none
+src/hb_assistant/construction/graph/site_drive_discovery.py:244:        matched, method, confidence = _match_drive(source, candidates)
+src/hb_assistant/construction/graph/site_drive_discovery.py:252:            match_confidence=confidence,
+src/hb_assistant/construction/graph/site_drive_discovery.py:404:    ``(matched_drive, match_method, match_confidence)`` or ``(None, None, "none")``.
+src/hb_assistant/construction/document/project_matcher.py:10:only the project key, candidate type, confidence, and hashed/typed signal evidence are
+src/hb_assistant/construction/document/project_matcher.py:57:    by_confidence_class: dict[str, int] = {}
+src/hb_assistant/construction/document/project_matcher.py:77:            confidence_class = "deterministic"
+src/hb_assistant/construction/document/project_matcher.py:78:            confidence = 0.95
+src/hb_assistant/construction/document/project_matcher.py:88:            confidence_class = "weak_heuristic"
+src/hb_assistant/construction/document/project_matcher.py:89:            confidence = 0.3
+src/hb_assistant/construction/document/project_matcher.py:99:            confidence_class = "deterministic"
+src/hb_assistant/construction/document/project_matcher.py:100:            confidence = 0.9
+src/hb_assistant/construction/document/project_matcher.py:112:        by_confidence_class[confidence_class] = by_confidence_class.get(confidence_class, 0) + 1
+src/hb_assistant/construction/document/project_matcher.py:124:                confidence=confidence,
+src/hb_assistant/construction/document/project_matcher.py:125:                confidence_class=confidence_class,
+src/hb_assistant/construction/document/project_matcher.py:146:            "by_confidence_class": dict(sorted(by_confidence_class.items())),
+src/hb_assistant/construction/graph/file_project_matcher.py:4:with a qualitative confidence (high|medium|low|none), a status (matched|
+src/hb_assistant/construction/graph/file_project_matcher.py:5:low_confidence|unmatched), and reason codes (the signals that fired). Low-confidence
+src/hb_assistant/construction/graph/file_project_matcher.py:14:confidence (never auto-picked), no signal → unmatched (never forced to a target).
+src/hb_assistant/construction/graph/file_project_matcher.py:50:    match_confidence: str  # high | medium | low | none
+src/hb_assistant/construction/graph/file_project_matcher.py:51:    match_status: str  # matched | low_confidence | unmatched
+src/hb_assistant/construction/graph/file_project_matcher.py:106:        confidence = "none"
+src/hb_assistant/construction/graph/file_project_matcher.py:112:            # Deterministic, highest-confidence signal: the source is registry-bound.
+src/hb_assistant/construction/graph/file_project_matcher.py:114:            confidence = "high"
+src/hb_assistant/construction/graph/file_project_matcher.py:140:                confidence = "high"
+src/hb_assistant/construction/graph/file_project_matcher.py:149:                confidence = "low"
+src/hb_assistant/construction/graph/file_project_matcher.py:153:                confidence = "medium"
+src/hb_assistant/construction/graph/file_project_matcher.py:160:                confidence = "low"
+src/hb_assistant/construction/graph/file_project_matcher.py:164:                confidence = "medium"
+src/hb_assistant/construction/graph/file_project_matcher.py:167:                confidence = "none"
+src/hb_assistant/construction/graph/file_project_matcher.py:171:            if confidence in ("high", "medium")
+src/hb_assistant/construction/graph/file_project_matcher.py:172:            else "low_confidence"
+src/hb_assistant/construction/graph/file_project_matcher.py:173:            if confidence == "low"
+src/hb_assistant/construction/graph/file_project_matcher.py:176:        review_required = status in ("low_confidence", "unmatched")
+src/hb_assistant/construction/graph/file_project_matcher.py:178:            "low_confidence_project_match"
+src/hb_assistant/construction/graph/file_project_matcher.py:179:            if status == "low_confidence"
+src/hb_assistant/construction/graph/file_project_matcher.py:190:            match_confidence=confidence,
+src/hb_assistant/construction/graph/file_project_matcher.py:220:                        match_confidence=r.match_confidence,
+src/hb_assistant/construction/graph/file_project_matcher.py:229:            "matched_high": sum(1 for r in results if r.match_confidence == "high"),
+src/hb_assistant/construction/graph/file_project_matcher.py:230:            "matched_medium": sum(1 for r in results if r.match_confidence == "medium"),
+src/hb_assistant/construction/graph/file_project_matcher.py:231:            "low_confidence": sum(1 for r in results if r.match_status == "low_confidence"),
+src/hb_assistant/construction/document/classifier.py:11:confidence, and hashed/typed signal evidence are persisted — never a raw filename,
+src/hb_assistant/construction/document/classifier.py:146:    confidence = 0.0
+src/hb_assistant/construction/document/classifier.py:147:    confidence_class = "unknown"
+src/hb_assistant/construction/document/classifier.py:152:        signal_class, confidence_class, confidence = "deterministic", "deterministic", 0.95
+src/hb_assistant/construction/document/classifier.py:158:        signal_class, confidence_class, confidence = "deterministic", "deterministic", 0.9
+src/hb_assistant/construction/document/classifier.py:163:        signal_class, confidence_class, confidence = "deterministic", "high_heuristic", 0.85
+src/hb_assistant/construction/document/classifier.py:168:        signal_class, confidence_class, confidence = "deterministic", "high_heuristic", 0.8
+src/hb_assistant/construction/document/classifier.py:179:        "confidence": confidence,
+src/hb_assistant/construction/document/classifier.py:180:        "confidence_class": confidence_class,
+src/hb_assistant/construction/document/classifier.py:216:    by_confidence: dict[str, int] = {}
+src/hb_assistant/construction/document/classifier.py:223:        # Review routing: sensitivity (folder/name rules) + type/confidence/flags.
+src/hb_assistant/construction/document/classifier.py:247:        if result["confidence_class"] in rules.review_required_when.confidence_class:
+src/hb_assistant/construction/document/classifier.py:249:            review_reasons.append("low_or_advisory_confidence")
+src/hb_assistant/construction/document/classifier.py:259:        by_confidence[result["confidence_class"]] = (
+src/hb_assistant/construction/document/classifier.py:260:            by_confidence.get(result["confidence_class"], 0) + 1
+src/hb_assistant/construction/document/classifier.py:285:                confidence=result["confidence"],
+src/hb_assistant/construction/document/classifier.py:286:                confidence_class=result["confidence_class"],
+src/hb_assistant/construction/document/classifier.py:304:            "by_confidence_class": dict(sorted(by_confidence.items())),
+src/hb_assistant/construction/document/relationship_builder.py:72:    by_confidence_class: dict[str, int] = {}
+src/hb_assistant/construction/document/relationship_builder.py:96:        confidence_class = "moderate_heuristic"
+src/hb_assistant/construction/document/relationship_builder.py:97:        confidence = 0.55
+src/hb_assistant/construction/document/relationship_builder.py:105:        by_confidence_class[confidence_class] = by_confidence_class.get(confidence_class, 0) + 1
+src/hb_assistant/construction/document/relationship_builder.py:137:                confidence=confidence,
+src/hb_assistant/construction/document/relationship_builder.py:138:                confidence_class=confidence_class,
+src/hb_assistant/construction/document/relationship_builder.py:159:            "by_confidence_class": dict(sorted(by_confidence_class.items())),
+src/hb_assistant/construction/issue_history/issue_history_builder.py:50:# Eligible confidence classes for issue-family grouping (excludes weak/model/human/rejected/stale).
+src/hb_assistant/construction/issue_history/issue_history_builder.py:133:            if c.get("confidence_class") in _ELIGIBLE_CONFIDENCE_CLASSES
+src/hb_assistant/construction/issue_history/issue_history_builder.py:178:        by_confidence: dict[str, int] = {}
+src/hb_assistant/construction/issue_history/issue_history_builder.py:195:                by_confidence[item["confidence_class"]] = (
+src/hb_assistant/construction/issue_history/issue_history_builder.py:196:                    by_confidence.get(item["confidence_class"], 0) + 1
+src/hb_assistant/construction/issue_history/issue_history_builder.py:213:                        confidence_class=item["confidence_class"],
+src/hb_assistant/construction/issue_history/issue_history_builder.py:237:                "by_confidence_class": dict(sorted(by_confidence.items())),
+src/hb_assistant/construction/issue_history/issue_history_builder.py:256:        all_deterministic = all(e.get("confidence_class") == "deterministic" for e in edges)
+src/hb_assistant/construction/issue_history/issue_history_builder.py:257:        confidence_class = "deterministic" if all_deterministic else "strong_heuristic"
+src/hb_assistant/construction/issue_history/issue_history_builder.py:258:        review_required = (confidence_class != "deterministic") or any(
+src/hb_assistant/construction/issue_history/issue_history_builder.py:305:            "confidence_class": confidence_class,
+src/hb_assistant/construction/issue_history/issue_history_builder.py:319:    by_confidence: dict[str, int] = {}
+src/hb_assistant/construction/issue_history/issue_history_builder.py:326:        by_confidence[str(it["confidence_class"])] = (
+src/hb_assistant/construction/issue_history/issue_history_builder.py:327:            by_confidence.get(str(it["confidence_class"]), 0) + 1
+src/hb_assistant/construction/issue_history/issue_history_builder.py:344:            "by_confidence_class": dict(sorted(by_confidence.items())),
+src/hb_assistant/construction/document/obsidian_projection.py:8:- Project Document Register (one per project): counts grouped by document type, confidence
+src/hb_assistant/construction/document/obsidian_projection.py:171:                    "confidence_class": prev.get("confidence_class"),
+src/hb_assistant/construction/document/obsidian_projection.py:265:            f"confidence_class: {_md_cell(prev.get('confidence_class'))}",
+src/hb_assistant/construction/document/obsidian_projection.py:275:            f"{classified} classified; confidence {_md_cell(prev.get('confidence_class'))}._",
+src/hb_assistant/construction/document/obsidian_projection.py:283:        lines += ["", "## Counts by confidence class", ""]
+src/hb_assistant/construction/document/obsidian_projection.py:284:        lines += [f"- {_md_cell(k)}: {v}" for k, v in _counts(clf, "confidence_class").items()] or [
+src/hb_assistant/construction/document/card_materializer.py:121:        "confidence": None,
+src/hb_assistant/construction/document/card_materializer.py:147:        "confidence_class": "unknown",
+src/hb_assistant/construction/document/extraction_eligibility.py:68:        return "manual_approval_required", "low_project_confidence"
+src/hb_assistant/construction/document/preview_builder.py:6:confidence class, a warnings list, and visible review state, written to
+src/hb_assistant/construction/document/preview_builder.py:28:def _rollup_confidence_class(classified: int, total: int) -> str:
+src/hb_assistant/construction/document/preview_builder.py:29:    """Project preview confidence from the classified fraction (deterministic rule)."""
+src/hb_assistant/construction/document/preview_builder.py:61:    confidence class, warnings, and review state.
+src/hb_assistant/construction/document/preview_builder.py:94:    by_confidence_class: dict[str, int] = {}
+src/hb_assistant/construction/document/preview_builder.py:106:        confidence_class = _rollup_confidence_class(classified, total)
+src/hb_assistant/construction/document/preview_builder.py:118:        by_clf_confidence = _counts(clf, "confidence_class")
+src/hb_assistant/construction/document/preview_builder.py:150:                f"(by confidence {json.dumps(by_clf_confidence, sort_keys=True)})",
+src/hb_assistant/construction/document/preview_builder.py:180:        by_confidence_class[confidence_class] = by_confidence_class.get(confidence_class, 0) + 1
+src/hb_assistant/construction/document/preview_builder.py:187:                "confidence_class": confidence_class,
+src/hb_assistant/construction/document/preview_builder.py:203:                confidence_class=confidence_class,
+src/hb_assistant/construction/document/preview_builder.py:219:            "by_confidence_class": dict(sorted(by_confidence_class.items())),
+src/hb_assistant/construction/risk_digest/risk_digest_builder.py:145:        by_confidence: dict[str, int] = {}
+src/hb_assistant/construction/risk_digest/risk_digest_builder.py:156:                by_confidence[item["confidence_class"]] = (
+src/hb_assistant/construction/risk_digest/risk_digest_builder.py:157:                    by_confidence.get(item["confidence_class"], 0) + 1
+src/hb_assistant/construction/risk_digest/risk_digest_builder.py:168:                        confidence_class=item["confidence_class"],
+src/hb_assistant/construction/risk_digest/risk_digest_builder.py:190:                "by_confidence_class": dict(sorted(by_confidence.items())),
+src/hb_assistant/construction/risk_digest/risk_digest_builder.py:211:        confidence_class: str,
+src/hb_assistant/construction/risk_digest/risk_digest_builder.py:232:            "confidence_class": confidence_class,
+src/hb_assistant/construction/risk_digest/risk_digest_builder.py:255:                confidence_class="deterministic",
+src/hb_assistant/construction/risk_digest/risk_digest_builder.py:290:                confidence_class="strong_heuristic",
+src/hb_assistant/construction/risk_digest/risk_digest_builder.py:317:            elif c.get("review_required") or c.get("confidence_class") == "weak_heuristic":
+src/hb_assistant/construction/risk_digest/risk_digest_builder.py:327:                confidence_class="weak_heuristic",
+src/hb_assistant/construction/risk_digest/risk_digest_builder.py:340:                confidence_class="model_proposed",
+src/hb_assistant/construction/risk_digest/risk_digest_builder.py:358:    by_confidence: dict[str, int] = {}
+src/hb_assistant/construction/risk_digest/risk_digest_builder.py:367:        by_confidence[str(it["confidence_class"])] = (
+src/hb_assistant/construction/risk_digest/risk_digest_builder.py:368:            by_confidence.get(str(it["confidence_class"]), 0) + 1
+src/hb_assistant/construction/risk_digest/risk_digest_builder.py:382:            "by_confidence_class": dict(sorted(by_confidence.items())),
+src/hb_assistant/construction/second_brain/reasoning.py:78:    confidence_class: str = "low"
+src/hb_assistant/construction/second_brain/reasoning.py:114:    confidence: str
+src/hb_assistant/construction/second_brain/reasoning.py:166:                confidence=envelope.confidence_class,
+src/hb_assistant/construction/second_brain/reasoning.py:188:            confidence=envelope.confidence_class,
+src/hb_assistant/construction/second_brain/reasoning.py:424:        confidence_class="high",
+src/hb_assistant/construction/second_brain/agent_performance_feedback.py:224:            recommendation = "recommend_confidence_tuning"
+src/hb_assistant/construction/second_brain/daily_brief_reproducibility.py:55:            "confidence_class": "human_promoted",
+src/hb_assistant/construction/second_brain/daily_brief_reproducibility.py:65:            "confidence_class": "medium",
+src/hb_assistant/construction/second_brain/daily_brief_reproducibility.py:193:            confidence_class=rel["confidence_class"],
+src/hb_assistant/construction/second_brain/daily_brief_reproducibility.py:206:            confidence_class=iss["confidence_class"],
+src/hb_assistant/construction/second_brain/obsidian_linkage_proof.py:10:  and a parseable ``source_refs_json`` carrying ``review_tier`` + ``confidence_class`` +
+src/hb_assistant/construction/second_brain/obsidian_linkage_proof.py:11:  ``review_status`` (review tier / confidence class / freshness metadata preserved);
+src/hb_assistant/construction/second_brain/obsidian_linkage_proof.py:56:    "confidence_class",
+src/hb_assistant/construction/second_brain/obsidian_linkage_proof.py:162:                    "confidence_class",
+src/hb_assistant/construction/second_brain/safety.py:531:            confidence_class="human_promoted",

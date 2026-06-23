@@ -1,0 +1,12 @@
+project_key  maturity_tier  completed_month_count  nonzero_month_count  lifecycle_signal  basis                                                      
+-----------  -------------  ---------------------  -------------------  ----------------  -----------------------------------------------------------
+tropical     M4             29                     29                                     completed_month_count_vs_model_engines_readiness_thresholds
+domain           availability  coverage  freshness  completeness  mapping_quality  maturity  score  reason                                                                          
+---------------  ------------  --------  ---------  ------------  ---------------  --------  -----  --------------------------------------------------------------------------------
+budget           available     127                                                                  rows present in v59 source-domain table                                         
+commitment       unavailable                                                                        no v59 source-domain table for this domain yet (confidence penalty, not a block)
+cost_actuals     available     6324                                                                 rows present in v59 source-domain table                                         
+monthly_actuals  available     29        2026-06                                                    rows present in v59 source-domain table                                         
+owner            unavailable                                                                        no v59 source-domain table for this domain yet (confidence penalty, not a block)
+schedule         unavailable                                                                        no v59 source-domain table for this domain yet (confidence penalty, not a block)
+staffing         unavailable                                                                        no v59 source-domain table for this domain yet (confidence penalty, not a block)

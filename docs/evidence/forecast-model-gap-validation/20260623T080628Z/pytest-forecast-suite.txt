@@ -1,0 +1,536 @@
+Scope: 67 forecast-related test files under tests/ (origin/main worktree, PYTHONPATH=src:CFR/src).
+Out-of-scope: subrepos/construction-financial-review/tests (separate pytest env; collection errors there are environmental, not forecast-logic).
+---
+...........F.........................F.................................. [  9%]
+........................................................................ [ 19%]
+........................................................................ [ 29%]
+................................................................F....... [ 39%]
+........................................................................ [ 48%]
+..F.........................FF.......................................... [ 58%]
+........................................................................ [ 68%]
+........................................................................ [ 78%]
+...........................s..................F..F...................... [ 87%]
+...FF................................................................... [ 97%]
+.........F.F......                                                       [100%]
+=================================== FAILURES ===================================
+___________________________ test_unconfigured_is_503 ___________________________
+tests/test_fastapi_forecast_config_edit.py:137: in test_unconfigured_is_503
+    assert r.status_code == 503
+E   assert 200 == 503
+E    +  where 200 = <Response [200 OK]>.status_code
+______________________ test_unconfigured_fails_closed_503 ______________________
+tests/test_fastapi_forecast_external.py:146: in test_unconfigured_fails_closed_503
+    assert resp.status_code == 503
+E   assert 200 == 503
+E    +  where 200 = <Response [200 OK]>.status_code
+________________________ test_report_includes_db_checks ________________________
+tests/test_forecast_db_cutover_readiness_phase10.py:146: in test_report_includes_db_checks
+    assert checks["schema_version"] == 61  # Phase 4: migrator now at v61 (synthetic temp DB)
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   assert 71 == 61
+----------------------------- Captured stdout call -----------------------------
+{
+  "output_package": "/private/var/folders/0r/nb8twlsd6pvbcz_k1pc4jlc40000gn/T/pytest-of-bobbyfetting/pytest-1920/test_report_includes_db_checks0/work/readiness/file/forecast_context_package_tropical_20260101_000000",
+  "conclusion": "forecast_context_not_ready",
+  "rowcount_ok": false,
+  "valid_ok": true,
+  "cutoff_passed": true,
+  "safety_passed": true,
+  "mutation_passed": true,
+  "owner_counts": {
+    "mapped": 1,
+    "ambiguous": 0,
+    "manual_required": 0,
+    "invalid_budget_code_key": 0,
+    "not_applicable": 0
+  },
+  "procore_counts": {
+    "mapped": 1,
+    "ambiguous": 0,
+    "manual_required": 0,
+    "invalid_budget_code_key": 0,
+    "not_applicable": 0
+  },
+  "june_actual_count": 1,
+  "june_actual_total": "200.00",
+  "keys_with_actuals": 1,
+  "keys_with_owner": 1,
+  "keys_with_procore": 1,
+  "keys_both": 1,
+  "keys_neither": 0,
+  "out_counts": {
+    "canonical/budget_codes.jsonl": 1,
+    "canonical/cost_entries.jsonl": 2,
+    "canonical/monthly_actuals_by_budget_code.jsonl": 2,
+    "canonical/owner_pay_app_line_items_mapped.jsonl": 1,
+    "canonical/owner_pay_app_totals.jsonl": 1,
+    "mapping/owner_cost_code_family_crosswalk.jsonl": 1,
+    "canonical/procore_subcontractor_payment_app_headers.jsonl": 1,
+    "canonical/procore_subcontractor_payment_app_line_items_mapped.jsonl": 1,
+    "canonical/procore_latest_subcontractor_invoice_by_budget_code.jsonl": 1,
+    "canonical/procore_commitments.jsonl": 1,
+    "mapping/enriched_forecast_mapping_template.json": 1,
+    "mapping/budget_code_mapping_decisions.jsonl": 4,
+    "mapping/owner_pay_app_mapping_results.jsonl": 1,
+    "mapping/procore_pay_app_mapping_results.jsonl": 2,
+    "mapping/unmapped_owner_pay_app_rows.jsonl": 0,
+    "mapping/unmapped_procore_pay_app_rows.jsonl": 0,
+    "mapping/ambiguous_mapping_candidates.jsonl": 0,
+    "summaries/budget_code_forecast_context.jsonl": 1,
+    "summaries/cost_code_rollup_forecast_context.jsonl": 1
+  }
+}
+{
+  "output_package": "/private/var/folders/0r/nb8twlsd6pvbcz_k1pc4jlc40000gn/T/pytest-of-bobbyfetting/pytest-1920/test_report_includes_db_checks0/work/readiness/db/forecast_context_package_tropical_20260101_000000",
+  "conclusion": "forecast_context_not_ready",
+  "rowcount_ok": false,
+  "valid_ok": true,
+  "cutoff_passed": true,
+  "safety_passed": true,
+  "mutation_passed": true,
+  "owner_counts": {
+    "mapped": 1,
+    "ambiguous": 0,
+    "manual_required": 0,
+    "invalid_budget_code_key": 0,
+    "not_applicable": 0
+  },
+  "procore_counts": {
+    "mapped": 1,
+    "ambiguous": 0,
+    "manual_required": 0,
+    "invalid_budget_code_key": 0,
+    "not_applicable": 0
+  },
+  "june_actual_count": 1,
+  "june_actual_total": "200.00",
+  "keys_with_actuals": 1,
+  "keys_with_owner": 1,
+  "keys_with_procore": 1,
+  "keys_both": 1,
+  "keys_neither": 0,
+  "out_counts": {
+    "canonical/budget_codes.jsonl": 1,
+    "canonical/cost_entries.jsonl": 2,
+    "canonical/monthly_actuals_by_budget_code.jsonl": 2,
+    "canonical/owner_pay_app_line_items_mapped.jsonl": 1,
+    "canonical/owner_pay_app_totals.jsonl": 1,
+    "mapping/owner_cost_code_family_crosswalk.jsonl": 1,
+    "canonical/procore_subcontractor_payment_app_headers.jsonl": 1,
+    "canonical/procore_subcontractor_payment_app_line_items_mapped.jsonl": 1,
+    "canonical/procore_latest_subcontractor_invoice_by_budget_code.jsonl": 1,
+    "canonical/procore_commitments.jsonl": 1,
+    "mapping/enriched_forecast_mapping_template.json": 1,
+    "mapping/budget_code_mapping_decisions.jsonl": 4,
+    "mapping/owner_pay_app_mapping_results.jsonl": 1,
+    "mapping/procore_pay_app_mapping_results.jsonl": 2,
+    "mapping/unmapped_owner_pay_app_rows.jsonl": 0,
+    "mapping/unmapped_procore_pay_app_rows.jsonl": 0,
+    "mapping/ambiguous_mapping_candidates.jsonl": 0,
+    "summaries/budget_code_forecast_context.jsonl": 1,
+    "summaries/cost_code_rollup_forecast_context.jsonl": 1
+  }
+}
+____________________ test_operator_run_succeeds_derived_db _____________________
+tests/test_forecast_guarded_db_operator_run_phase12.py:83: in test_operator_run_succeeds_derived_db
+    assert report["temp_db"]["schema_version"] == 61  # Phase 4: migrator now at v61 (synthetic temp DB)
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   assert 71 == 61
+----------------------------- Captured stdout call -----------------------------
+{
+  "output_package": "/private/var/folders/0r/nb8twlsd6pvbcz_k1pc4jlc40000gn/T/pytest-of-bobbyfetting/pytest-1920/test_operator_run_succeeds_der0/work/readiness/file/forecast_context_package_tropical_20260101_000000",
+  "conclusion": "forecast_context_not_ready",
+  "rowcount_ok": false,
+  "valid_ok": true,
+  "cutoff_passed": true,
+  "safety_passed": true,
+  "mutation_passed": true,
+  "owner_counts": {
+    "mapped": 1,
+    "ambiguous": 0,
+    "manual_required": 0,
+    "invalid_budget_code_key": 0,
+    "not_applicable": 0
+  },
+  "procore_counts": {
+    "mapped": 1,
+    "ambiguous": 0,
+    "manual_required": 0,
+    "invalid_budget_code_key": 0,
+    "not_applicable": 0
+  },
+  "june_actual_count": 1,
+  "june_actual_total": "200.00",
+  "keys_with_actuals": 1,
+  "keys_with_owner": 1,
+  "keys_with_procore": 1,
+  "keys_both": 1,
+  "keys_neither": 0,
+  "out_counts": {
+    "canonical/budget_codes.jsonl": 1,
+    "canonical/cost_entries.jsonl": 2,
+    "canonical/monthly_actuals_by_budget_code.jsonl": 2,
+    "canonical/owner_pay_app_line_items_mapped.jsonl": 1,
+    "canonical/owner_pay_app_totals.jsonl": 1,
+    "mapping/owner_cost_code_family_crosswalk.jsonl": 1,
+    "canonical/procore_subcontractor_payment_app_headers.jsonl": 1,
+    "canonical/procore_subcontractor_payment_app_line_items_mapped.jsonl": 1,
+    "canonical/procore_latest_subcontractor_invoice_by_budget_code.jsonl": 1,
+    "canonical/procore_commitments.jsonl": 1,
+    "mapping/enriched_forecast_mapping_template.json": 1,
+    "mapping/budget_code_mapping_decisions.jsonl": 4,
+    "mapping/owner_pay_app_mapping_results.jsonl": 1,
+    "mapping/procore_pay_app_mapping_results.jsonl": 2,
+    "mapping/unmapped_owner_pay_app_rows.jsonl": 0,
+    "mapping/unmapped_procore_pay_app_rows.jsonl": 0,
+    "mapping/ambiguous_mapping_candidates.jsonl": 0,
+    "summaries/budget_code_forecast_context.jsonl": 1,
+    "summaries/cost_code_rollup_forecast_context.jsonl": 1
+  }
+}
+{
+  "output_package": "/private/var/folders/0r/nb8twlsd6pvbcz_k1pc4jlc40000gn/T/pytest-of-bobbyfetting/pytest-1920/test_operator_run_succeeds_der0/work/readiness/db/forecast_context_package_tropical_20260101_000000",
+  "conclusion": "forecast_context_not_ready",
+  "rowcount_ok": false,
+  "valid_ok": true,
+  "cutoff_passed": true,
+  "safety_passed": true,
+  "mutation_passed": true,
+  "owner_counts": {
+    "mapped": 1,
+    "ambiguous": 0,
+    "manual_required": 0,
+    "invalid_budget_code_key": 0,
+    "not_applicable": 0
+  },
+  "procore_counts": {
+    "mapped": 1,
+    "ambiguous": 0,
+    "manual_required": 0,
+    "invalid_budget_code_key": 0,
+    "not_applicable": 0
+  },
+  "june_actual_count": 1,
+  "june_actual_total": "200.00",
+  "keys_with_actuals": 1,
+  "keys_with_owner": 1,
+  "keys_with_procore": 1,
+  "keys_both": 1,
+  "keys_neither": 0,
+  "out_counts": {
+    "canonical/budget_codes.jsonl": 1,
+    "canonical/cost_entries.jsonl": 2,
+    "canonical/monthly_actuals_by_budget_code.jsonl": 2,
+    "canonical/owner_pay_app_line_items_mapped.jsonl": 1,
+    "canonical/owner_pay_app_totals.jsonl": 1,
+    "mapping/owner_cost_code_family_crosswalk.jsonl": 1,
+    "canonical/procore_subcontractor_payment_app_headers.jsonl": 1,
+    "canonical/procore_subcontractor_payment_app_line_items_mapped.jsonl": 1,
+    "canonical/procore_latest_subcontractor_invoice_by_budget_code.jsonl": 1,
+    "canonical/procore_commitments.jsonl": 1,
+    "mapping/enriched_forecast_mapping_template.json": 1,
+    "mapping/budget_code_mapping_decisions.jsonl": 4,
+    "mapping/owner_pay_app_mapping_results.jsonl": 1,
+    "mapping/procore_pay_app_mapping_results.jsonl": 2,
+    "mapping/unmapped_owner_pay_app_rows.jsonl": 0,
+    "mapping/unmapped_procore_pay_app_rows.jsonl": 0,
+    "mapping/ambiguous_mapping_candidates.jsonl": 0,
+    "summaries/budget_code_forecast_context.jsonl": 1,
+    "summaries/cost_code_rollup_forecast_context.jsonl": 1
+  }
+}
+___________________ test_audit_reads_synthetic_live_readonly ___________________
+tests/test_forecast_live_db_certification_phase13.py:131: in test_audit_reads_synthetic_live_readonly
+    assert report["schema"]["schema_version"] == 61  # Phase 4: migrator now at v61 (synthetic temp DB)
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   assert 71 == 61
+______________________ test_audit_reports_migration_rows _______________________
+tests/test_forecast_live_db_certification_phase13.py:144: in test_audit_reports_migration_rows
+    assert max(m["version"] for m in migs) == 61  # Phase 4: migrator now at v61 (synthetic temp DB)
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   assert 71 == 61
+E    +  where 71 = max(<generator object test_audit_reports_migration_rows.<locals>.<genexpr> at 0x11336e670>)
+______________________ test_rehearsal_succeeds_derived_db ______________________
+tests/test_forecast_temp_db_readiness_rehearsal_phase11.py:71: in test_rehearsal_succeeds_derived_db
+    assert report["db"]["schema_version"] == 61  # Phase 4: migrator now at v61 (synthetic temp DB)
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   assert 71 == 61
+----------------------------- Captured stdout call -----------------------------
+{
+  "output_package": "/private/var/folders/0r/nb8twlsd6pvbcz_k1pc4jlc40000gn/T/pytest-of-bobbyfetting/pytest-1920/test_rehearsal_succeeds_derive0/work/readiness/file/forecast_context_package_tropical_20260101_000000",
+  "conclusion": "forecast_context_not_ready",
+  "rowcount_ok": false,
+  "valid_ok": true,
+  "cutoff_passed": true,
+  "safety_passed": true,
+  "mutation_passed": true,
+  "owner_counts": {
+    "mapped": 1,
+    "ambiguous": 0,
+    "manual_required": 0,
+    "invalid_budget_code_key": 0,
+    "not_applicable": 0
+  },
+  "procore_counts": {
+    "mapped": 1,
+    "ambiguous": 0,
+    "manual_required": 0,
+    "invalid_budget_code_key": 0,
+    "not_applicable": 0
+  },
+  "june_actual_count": 1,
+  "june_actual_total": "200.00",
+  "keys_with_actuals": 1,
+  "keys_with_owner": 1,
+  "keys_with_procore": 1,
+  "keys_both": 1,
+  "keys_neither": 0,
+  "out_counts": {
+    "canonical/budget_codes.jsonl": 1,
+    "canonical/cost_entries.jsonl": 2,
+    "canonical/monthly_actuals_by_budget_code.jsonl": 2,
+    "canonical/owner_pay_app_line_items_mapped.jsonl": 1,
+    "canonical/owner_pay_app_totals.jsonl": 1,
+    "mapping/owner_cost_code_family_crosswalk.jsonl": 1,
+    "canonical/procore_subcontractor_payment_app_headers.jsonl": 1,
+    "canonical/procore_subcontractor_payment_app_line_items_mapped.jsonl": 1,
+    "canonical/procore_latest_subcontractor_invoice_by_budget_code.jsonl": 1,
+    "canonical/procore_commitments.jsonl": 1,
+    "mapping/enriched_forecast_mapping_template.json": 1,
+    "mapping/budget_code_mapping_decisions.jsonl": 4,
+    "mapping/owner_pay_app_mapping_results.jsonl": 1,
+    "mapping/procore_pay_app_mapping_results.jsonl": 2,
+    "mapping/unmapped_owner_pay_app_rows.jsonl": 0,
+    "mapping/unmapped_procore_pay_app_rows.jsonl": 0,
+    "mapping/ambiguous_mapping_candidates.jsonl": 0,
+    "summaries/budget_code_forecast_context.jsonl": 1,
+    "summaries/cost_code_rollup_forecast_context.jsonl": 1
+  }
+}
+{
+  "output_package": "/private/var/folders/0r/nb8twlsd6pvbcz_k1pc4jlc40000gn/T/pytest-of-bobbyfetting/pytest-1920/test_rehearsal_succeeds_derive0/work/readiness/db/forecast_context_package_tropical_20260101_000000",
+  "conclusion": "forecast_context_not_ready",
+  "rowcount_ok": false,
+  "valid_ok": true,
+  "cutoff_passed": true,
+  "safety_passed": true,
+  "mutation_passed": true,
+  "owner_counts": {
+    "mapped": 1,
+    "ambiguous": 0,
+    "manual_required": 0,
+    "invalid_budget_code_key": 0,
+    "not_applicable": 0
+  },
+  "procore_counts": {
+    "mapped": 1,
+    "ambiguous": 0,
+    "manual_required": 0,
+    "invalid_budget_code_key": 0,
+    "not_applicable": 0
+  },
+  "june_actual_count": 1,
+  "june_actual_total": "200.00",
+  "keys_with_actuals": 1,
+  "keys_with_owner": 1,
+  "keys_with_procore": 1,
+  "keys_both": 1,
+  "keys_neither": 0,
+  "out_counts": {
+    "canonical/budget_codes.jsonl": 1,
+    "canonical/cost_entries.jsonl": 2,
+    "canonical/monthly_actuals_by_budget_code.jsonl": 2,
+    "canonical/owner_pay_app_line_items_mapped.jsonl": 1,
+    "canonical/owner_pay_app_totals.jsonl": 1,
+    "mapping/owner_cost_code_family_crosswalk.jsonl": 1,
+    "canonical/procore_subcontractor_payment_app_headers.jsonl": 1,
+    "canonical/procore_subcontractor_payment_app_line_items_mapped.jsonl": 1,
+    "canonical/procore_latest_subcontractor_invoice_by_budget_code.jsonl": 1,
+    "canonical/procore_commitments.jsonl": 1,
+    "mapping/enriched_forecast_mapping_template.json": 1,
+    "mapping/budget_code_mapping_decisions.jsonl": 4,
+    "mapping/owner_pay_app_mapping_results.jsonl": 1,
+    "mapping/procore_pay_app_mapping_results.jsonl": 2,
+    "mapping/unmapped_owner_pay_app_rows.jsonl": 0,
+    "mapping/unmapped_procore_pay_app_rows.jsonl": 0,
+    "mapping/ambiguous_mapping_candidates.jsonl": 0,
+    "summaries/budget_code_forecast_context.jsonl": 1,
+    "summaries/cost_code_rollup_forecast_context.jsonl": 1
+  }
+}
+_______________ test_rehearsal_report_includes_required_sections _______________
+tests/test_forecast_temp_db_readiness_rehearsal_phase11.py:113: in test_rehearsal_report_includes_required_sections
+    assert report["db"]["schema_version"] == 61  # Phase 4: migrator now at v61 (synthetic temp DB)  # migration status
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   assert 71 == 61
+----------------------------- Captured stdout call -----------------------------
+{
+  "output_package": "/private/var/folders/0r/nb8twlsd6pvbcz_k1pc4jlc40000gn/T/pytest-of-bobbyfetting/pytest-1920/test_rehearsal_report_includes0/work/readiness/file/forecast_context_package_tropical_20260101_000000",
+  "conclusion": "forecast_context_not_ready",
+  "rowcount_ok": false,
+  "valid_ok": true,
+  "cutoff_passed": true,
+  "safety_passed": true,
+  "mutation_passed": true,
+  "owner_counts": {
+    "mapped": 1,
+    "ambiguous": 0,
+    "manual_required": 0,
+    "invalid_budget_code_key": 0,
+    "not_applicable": 0
+  },
+  "procore_counts": {
+    "mapped": 1,
+    "ambiguous": 0,
+    "manual_required": 0,
+    "invalid_budget_code_key": 0,
+    "not_applicable": 0
+  },
+  "june_actual_count": 1,
+  "june_actual_total": "200.00",
+  "keys_with_actuals": 1,
+  "keys_with_owner": 1,
+  "keys_with_procore": 1,
+  "keys_both": 1,
+  "keys_neither": 0,
+  "out_counts": {
+    "canonical/budget_codes.jsonl": 1,
+    "canonical/cost_entries.jsonl": 2,
+    "canonical/monthly_actuals_by_budget_code.jsonl": 2,
+    "canonical/owner_pay_app_line_items_mapped.jsonl": 1,
+    "canonical/owner_pay_app_totals.jsonl": 1,
+    "mapping/owner_cost_code_family_crosswalk.jsonl": 1,
+    "canonical/procore_subcontractor_payment_app_headers.jsonl": 1,
+    "canonical/procore_subcontractor_payment_app_line_items_mapped.jsonl": 1,
+    "canonical/procore_latest_subcontractor_invoice_by_budget_code.jsonl": 1,
+    "canonical/procore_commitments.jsonl": 1,
+    "mapping/enriched_forecast_mapping_template.json": 1,
+    "mapping/budget_code_mapping_decisions.jsonl": 4,
+    "mapping/owner_pay_app_mapping_results.jsonl": 1,
+    "mapping/procore_pay_app_mapping_results.jsonl": 2,
+    "mapping/unmapped_owner_pay_app_rows.jsonl": 0,
+    "mapping/unmapped_procore_pay_app_rows.jsonl": 0,
+    "mapping/ambiguous_mapping_candidates.jsonl": 0,
+    "summaries/budget_code_forecast_context.jsonl": 1,
+    "summaries/cost_code_rollup_forecast_context.jsonl": 1
+  }
+}
+{
+  "output_package": "/private/var/folders/0r/nb8twlsd6pvbcz_k1pc4jlc40000gn/T/pytest-of-bobbyfetting/pytest-1920/test_rehearsal_report_includes0/work/readiness/db/forecast_context_package_tropical_20260101_000000",
+  "conclusion": "forecast_context_not_ready",
+  "rowcount_ok": false,
+  "valid_ok": true,
+  "cutoff_passed": true,
+  "safety_passed": true,
+  "mutation_passed": true,
+  "owner_counts": {
+    "mapped": 1,
+    "ambiguous": 0,
+    "manual_required": 0,
+    "invalid_budget_code_key": 0,
+    "not_applicable": 0
+  },
+  "procore_counts": {
+    "mapped": 1,
+    "ambiguous": 0,
+    "manual_required": 0,
+    "invalid_budget_code_key": 0,
+    "not_applicable": 0
+  },
+  "june_actual_count": 1,
+  "june_actual_total": "200.00",
+  "keys_with_actuals": 1,
+  "keys_with_owner": 1,
+  "keys_with_procore": 1,
+  "keys_both": 1,
+  "keys_neither": 0,
+  "out_counts": {
+    "canonical/budget_codes.jsonl": 1,
+    "canonical/cost_entries.jsonl": 2,
+    "canonical/monthly_actuals_by_budget_code.jsonl": 2,
+    "canonical/owner_pay_app_line_items_mapped.jsonl": 1,
+    "canonical/owner_pay_app_totals.jsonl": 1,
+    "mapping/owner_cost_code_family_crosswalk.jsonl": 1,
+    "canonical/procore_subcontractor_payment_app_headers.jsonl": 1,
+    "canonical/procore_subcontractor_payment_app_line_items_mapped.jsonl": 1,
+    "canonical/procore_latest_subcontractor_invoice_by_budget_code.jsonl": 1,
+    "canonical/procore_commitments.jsonl": 1,
+    "mapping/enriched_forecast_mapping_template.json": 1,
+    "mapping/budget_code_mapping_decisions.jsonl": 4,
+    "mapping/owner_pay_app_mapping_results.jsonl": 1,
+    "mapping/procore_pay_app_mapping_results.jsonl": 2,
+    "mapping/unmapped_owner_pay_app_rows.jsonl": 0,
+    "mapping/unmapped_procore_pay_app_rows.jsonl": 0,
+    "mapping/ambiguous_mapping_candidates.jsonl": 0,
+    "summaries/budget_code_forecast_context.jsonl": 1,
+    "summaries/cost_code_rollup_forecast_context.jsonl": 1
+  }
+}
+_______________ test_evidence_script_dry_run_imports_classifiers _______________
+tests/test_forecasting_db_evidence_package.py:125: in test_evidence_script_dry_run_imports_classifiers
+    assert proc.returncode == 0, proc.stderr
+E   AssertionError: Traceback (most recent call last):
+E       File "<string>", line 4, in <module>
+E         from hb_assistant.forecasting.field_classifiers import classify_amount_field
+E       File "/tmp/hb-gap-audit/src/hb_assistant/__init__.py", line 8, in <module>
+E         from . import links, obsidian, retrieval, store  # Phase 5 + 8 + 11
+E         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       File "/tmp/hb-gap-audit/src/hb_assistant/links/__init__.py", line 7, in <module>
+E         from .registry import SourceLinkRegistry, ALLOWED_LINK_TYPES
+E       File "/tmp/hb-gap-audit/src/hb_assistant/links/registry.py", line 12, in <module>
+E         from hb_assistant.normalize.attachment import Attachment
+E       File "/tmp/hb-gap-audit/src/hb_assistant/normalize/__init__.py", line 8, in <module>
+E         from .email import Email
+E       File "/tmp/hb-gap-audit/src/hb_assistant/normalize/email.py", line 11, in <module>
+E         from pydantic import BaseModel, Field
+E     ModuleNotFoundError: No module named 'pydantic'
+E     
+E   assert 1 == 0
+E    +  where 1 = CompletedProcess(args=['python3', '-c', '\nimport sys\nsys.path.insert(0, \'/tmp/hb-gap-audit/src\')\nfrom hb_... line 11, in <module>\n    from pydantic import BaseModel, Field\nModuleNotFoundError: No module named \'pydantic\'\n').returncode
+__________________ test_evidence_script_smoke_with_minimal_db __________________
+tests/test_forecasting_evidence_script_integration.py:55: in test_evidence_script_smoke_with_minimal_db
+    assert proc.returncode == 0, proc.stderr[-2000:]
+E   AssertionError: Traceback (most recent call last):
+E       File "<stdin>", line 15, in <module>
+E       File "/tmp/hb-gap-audit/src/hb_assistant/__init__.py", line 8, in <module>
+E         from . import links, obsidian, retrieval, store  # Phase 5 + 8 + 11
+E         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       File "/tmp/hb-gap-audit/src/hb_assistant/links/__init__.py", line 7, in <module>
+E         from .registry import SourceLinkRegistry, ALLOWED_LINK_TYPES
+E       File "/tmp/hb-gap-audit/src/hb_assistant/links/registry.py", line 12, in <module>
+E         from hb_assistant.normalize.attachment import Attachment
+E       File "/tmp/hb-gap-audit/src/hb_assistant/normalize/__init__.py", line 8, in <module>
+E         from .email import Email
+E       File "/tmp/hb-gap-audit/src/hb_assistant/normalize/email.py", line 11, in <module>
+E         from pydantic import BaseModel, Field
+E     ModuleNotFoundError: No module named 'pydantic'
+E     
+E   assert 1 == 0
+E    +  where 1 = CompletedProcess(args=['bash', '/tmp/hb-gap-audit/scripts/generate_forecasting_db_complete_evidence.sh'], retu... line 11, in <module>\n    from pydantic import BaseModel, Field\nModuleNotFoundError: No module named \'pydantic\'\n').returncode
+___________________________ test_v65_columns_present ___________________________
+tests/test_migrator_v65_schedule_float.py:14: in test_v65_columns_present
+    assert LATEST_SCHEMA_VERSION == 67
+E   assert 71 == 67
+_______ test_v65_drift_repair_when_migration_row_exists_without_columns ________
+tests/test_migrator_v65_schedule_schema_drift.py:27: in test_v65_drift_repair_when_migration_row_exists_without_columns
+    assert LATEST_SCHEMA_VERSION == 70
+E   assert 71 == 70
+=============================== warnings summary ===============================
+../../..~/hb-personal-assistant/.venv/lib/python3.14/site-packages/fastapi/testclient.py:1
+  ~/hb-personal-assistant/.venv/lib/python3.14/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_fastapi_forecast_config_edit.py::test_unconfigured_is_503
+FAILED tests/test_fastapi_forecast_external.py::test_unconfigured_fails_closed_503
+FAILED tests/test_forecast_db_cutover_readiness_phase10.py::test_report_includes_db_checks
+FAILED tests/test_forecast_guarded_db_operator_run_phase12.py::test_operator_run_succeeds_derived_db
+FAILED tests/test_forecast_live_db_certification_phase13.py::test_audit_reads_synthetic_live_readonly
+FAILED tests/test_forecast_live_db_certification_phase13.py::test_audit_reports_migration_rows
+FAILED tests/test_forecast_temp_db_readiness_rehearsal_phase11.py::test_rehearsal_succeeds_derived_db
+FAILED tests/test_forecast_temp_db_readiness_rehearsal_phase11.py::test_rehearsal_report_includes_required_sections
+FAILED tests/test_forecasting_db_evidence_package.py::test_evidence_script_dry_run_imports_classifiers
+FAILED tests/test_forecasting_evidence_script_integration.py::test_evidence_script_smoke_with_minimal_db
+FAILED tests/test_migrator_v65_schedule_float.py::test_v65_columns_present - ...
+FAILED tests/test_migrator_v65_schedule_schema_drift.py::test_v65_drift_repair_when_migration_row_exists_without_columns

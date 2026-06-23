@@ -1,0 +1,500 @@
+src/hb_assistant/launcher/service.py:80:        """Forecast env overrides for child processes (empty by default).
+src/hb_assistant/launcher/service.py:95:        overrides = self._child_env()
+src/hb_assistant/launcher/service.py:96:        saved = {k: os.environ.get(k) for k in overrides}
+src/hb_assistant/launcher/service.py:98:            os.environ.update(overrides)
+src/hb_assistant/launcher/service.py:300:        Resolution order for the URL: explicit ``frontend_url`` (CLI override) →
+src/hb_assistant/launcher/profiles.py:113:    Vite/static default with source ``"fallback"``. A CLI ``--frontend-url`` override
+src/hb_assistant/config/models.py:63:    require_manual_approval_above_mb: int = 300
+src/hb_assistant/config/models.py:77:    weekend_behavior: Literal["manual_only", "run"] = "manual_only"
+src/hb_assistant/config/loader.py:3:Loads YAML (with optional user override) and validates against AppConfig Pydantic model.
+src/hb_assistant/config/loader.py:28:def load_config(override_path: Optional[Path | str] = None) -> AppConfig:
+src/hb_assistant/config/loader.py:34:      3. explicit override_path (if provided)
+src/hb_assistant/config/loader.py:38:    production overrides should come from .env or keychain (future).
+src/hb_assistant/config/loader.py:48:    # 2. explicit override or env
+src/hb_assistant/config/loader.py:49:    candidate = override_path or os.environ.get("HB_PA_CONFIG")
+src/hb_assistant/resources/json/phase_08b_executor_validation_matrix.json:9:    "pytest -m \"not live and not integration and not manual\" -k \"08b or executor or automation_policy or contracts_and_seed\"",
+src/hb_assistant/resources/json/phase_08d_validation_matrix.json:8:    "pytest -m \"not live and not integration and not manual\"",
+src/hb_assistant/resources/json/phase_08c_validation_matrix.json:7:    "pytest -m \"not live and not integration and not manual\"",
+src/hb_assistant/resources/json/phase_07d_validation_matrix.json:8:    "pytest -m \"not live and not integration and not manual\"",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3:  "source": "Seeded from docs/evidence/construction-intelligence-phase-07a-data-quality/01-table-lifecycle-inventory.json (Phase 07A Prompt 00 manual inventory); operationalized for hb-assistant construction-agent data-quality table-inventory (Phase 07B Prompt 01); refreshed to map the V20/V21 Phase 07A data-quality and relationship tables that post-dated the manual inventory (Phase 07C Prompt 01 remediation); extended with the ten V25 Phase 07D cross-source relationship and meeting-prep substrate tables (Phase 07D Prompt 02); extended with the twenty-one V26 Phase 08A second-brain runtime substrate tables (Phase 08A Prompt 02); extended with the nineteen V38 Phase 09 retrieval/memory/agent metadata substrate tables (Phase 09 Prompt 12 \u2014 schema + contracts + table lifecycle; ships empty/placeholder_deferred); extended with the three V39 Phase 09 review-burden tables (Prompt 37 review burden reduction; advisory promotion policy; ships empty/placeholder_deferred); extended with the one V45 Phase 10 email follow-up raw enrichment table (email_followup_enrichments; review-safe model-enriched follow-up metadata; ships empty/placeholder_deferred); extended with the forty-seven V46 Procore structured analytics foundation tables (landing, capture control, endpoint-family bronze, and dimensions; ships empty/placeholder_deferred until local reprocessing or capture). ; extended with the seventy-eight V47 Procore endpoint-specific structured projection tables (procore_ep_* primary + child/detail tables derived from the committed projection registry; ships empty/placeholder_deferred until projection replay from full raw payloads). Extended with the thirteen V49 email/calendar structured projection + receipt tables (email_raw_*/calendar_raw_*/email_calendar_* + raw_content_source_quality_snapshots; build_v49_ddl); the three V55 Procore endpoint budget-detail tables (operational/populated from the budget-detail read model); the sixteen V50-V54 Phase 10 daily-brief/candidate/ranking tables (ships empty/placeholder_deferred); and the five V58 forecast DB-transition foundation tables (forecast_projects/runs/source_ingestions/package_manifests/validation_events; operational_empty_expected, intentionally empty until Phase 2+); extended with the three V59 forecast DB-transition source-domain tables (forecast_budget_details/cost_entries/monthly_actuals_by_budget_code; Phase 3 JSON/JSONL projection + DB read parity; operational_empty_expected, intentionally empty until projection is applied; forecast behavior remains file-backed); extended with the four V60 forecast DB-transition config-registry tables (forecast_config_sources/config_items/config_snapshots/config_snapshot_items; Phase 16 governed config import/export/snapshot/materialize; operational_empty_expected, intentionally empty until config is imported; forecast behavior remains file-backed); extended with the eight V61 forecast-UI external-forecast evaluation tables (forecast_external_forecasts/external_forecast_rows/external_forecast_mappings/accuracy_results/comparison_results/anomaly_findings/review_items/evidence_packages; Phase 4 operator-supplied external-forecast upload + evaluation against actuals/budget/ERP-JTD/model/prior baselines, distinguished from model forecasts via forecast_origin; operational_empty_expected, intentionally empty on the live DB \u2014 real rows live only in an isolated per-run eval SQLite; forecast behavior remains file-backed).; extended with the thirteen V62 schedule-intelligence tables (schedule_file_imports, procore_ep_schedule_activities, relationships, WBS, calendars, codes, UDFs, version diffs, quality findings, cost mapping runs/candidates/distributions, weighting results; operational_empty_expected until import or Procore sync projection).",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3893:    "forecast_operator_assumptions": {
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3900:      "notes": "Per-run operator-entered assumptions; population deferred until the operator UI exists."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3902:    "forecast_required_assumptions": {
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3909:      "notes": "Per-run required-assumption prerequisites; population deferred to a follow-on slice."
+src/hb_assistant/scheduler/runner.py:37:        """Force a run for a specific schedule date (manual `scheduler run --date`)."""
+src/hb_assistant/source_refresh/orchestrator.py:158:    # Per-source live-read switches. Default True preserves the manual
+src/hb_assistant/scheduler/daily_source_refresh.py:3:Never a manual Graph/Procore command chain. Live-read options are ALWAYS passed
+src/hb_assistant/scheduler/daily_source_refresh.py:85:        # Forced/manual runs do not inherit the launchd plist's NumberOfFiles limits, so
+src/hb_assistant/scheduler/daily_source_refresh.py:192:    """Best-effort raise of ``RLIMIT_NOFILE`` so forced/manual runs match the launchd budget.
+src/hb_assistant/scheduler/backends/launchd.py:32:            # also raises RLIMIT_NOFILE at runtime (covers manual/forced runs that do not
+src/hb_assistant/cli/graph.py:739:    column (one of not_evaluated/metadata_only/eligible/manual_approval_required/
+src/hb_assistant/cli/graph.py:743:    manual_approval_required); non-text-parseable kinds become metadata_only; oversize
+src/hb_assistant/cli/graph.py:1456:    manual_approval_required / review_required / blocked / low_confidence) BEFORE any
+src/hb_assistant/cli/construction.py:2831:    Operationalizes the previously-manual Phase 07A table lifecycle inventory.
+src/hb_assistant/cli/diagnostics.py:153:        "note": "No sudo commands are executed automatically. Recommendations may include manual sudo guidance.",
+src/hb_assistant/cli/diagnostics.py:250:            "launchd_overrides": {
+src/hb_assistant/cli/diagnostics.py:514:                "eligibility": {"eligible": True, "reason": "ok", "requires_manual_approval": False, "size_mb": 1.2},
+src/hb_assistant/cli/diagnostics.py:522:                "eligibility": {"eligible": True, "reason": "ok", "requires_manual_approval": False, "size_mb": 4.5},
+src/hb_assistant/cli/diagnostics.py:530:                "eligibility": {"eligible": False, "reason": "manual_approval_required", "requires_manual_approval": True, "size_mb": 320.0},
+src/hb_assistant/cli/diagnostics.py:531:                "decision": "manual_approval_required",
+src/hb_assistant/cli/procore.py:52:audit_app = typer.Typer(help="Procore endpoint audit (dry-run default; live opt-in manual only).")
+src/hb_assistant/cli/procore.py:912:# Prompt_07: audit subcommands (dry-run default; execute = explicit manual live opt-in only)
+src/hb_assistant/cli/procore.py:949:        help="Explicit opt-in for manual live GET (Bobby-only, never in tests/CI)",
+src/hb_assistant/cli/procore.py:956:            "ERROR: --confirm required for manual live audit (opt-in only). Dry-run is the safe default.",
+src/hb_assistant/cli/procore.py:971:    # For CLI surface we document that this path is manual-only and redacted.
+src/hb_assistant/cli/procore.py:977:        mode="live_manual",
+src/hb_assistant/cli/procore.py:978:        # live_client would be passed in a real manual script / higher-level orchestrator
+src/hb_assistant/cli/procore.py:981:        "command": "hb-assistant procore audit execute (manual live opt-in)",
+src/hb_assistant/cli/procore.py:984:        "warning": "This was an explicit manual live invocation. Bodies and secrets redacted by default.",
+src/hb_assistant/cli/procore.py:2578:            "procore_synced_entities": "legacy staging (manual `procore sync run` only)",
+src/hb_assistant/cli/scheduler.py:113:    # (e.g. a prior future-dated manual run). Surface it rather than reporting as normal.
+src/hb_assistant/cli/scheduler.py:231:        help="Fixtures/proofs only: permit a --date later than today (override; may "
+src/hb_assistant/cli/scheduler.py:251:    # Fail-closed guard: a manual run may not target a schedule date later than the
+src/hb_assistant/cli/scheduler.py:253:    # state mutation, or receipt write. --allow-future-date is an explicit override.
+src/hb_assistant/cli/scheduler.py:266:                        "manual scheduler runs may not target a schedule date later than "
+src/hb_assistant/cli/scheduler.py:288:    trigger = "manual_future_override" if (date_ and allow_future_date) else "manual"
+src/hb_assistant/cli/second_brain.py:86:    help="Reviewable operator preferences (presentation-only; never override safety).",
+src/hb_assistant/cli/second_brain.py:741:    "preferences_never_override_safety": True,
+src/hb_assistant/cli/second_brain.py:1611:    project: str | None = typer.Option(None, "--project", help="Optional project key override."),
+src/hb_assistant/cli/second_brain.py:1705:    project: str | None = typer.Option(None, "--project", help="Optional project key override."),
+src/hb_assistant/cli/second_brain.py:2008:    """Capture a reviewable operator preference (never auto-accepted; can't override safety)."""
+src/hb_assistant/cli/second_brain.py:2433:                        "guardrails": {"apply_requires_temp_db": True, "override_flag": "--allow-non-tmp-db"},
+src/hb_assistant/cli/second_brain.py:2629:                            "override_flag": "--allow-non-tmp-db",
+src/hb_assistant/cli/second_brain.py:2664:            result["apply_db_non_tmp_override_used"] = bool(
+src/hb_assistant/cli/second_brain.py:2699:        None, "--date", help="Brief date YYYY-MM-DD to render (overrides --as-of's date)."
+src/hb_assistant/cli/second_brain.py:2745:    governed vault brief note (``--vault-brief-dir`` overrides the base dir). Both write modes are
+src/hb_assistant/cli/second_brain.py:3647:        "manual_install_commands": preview.manual_install_commands,
+src/hb_assistant/cli/second_brain.py:4711:    mode: str = typer.Option("manual", "--mode", help="manual|launchd|catch_up|replay"),
+src/hb_assistant/cli/second_brain.py:4749:    mode: str = typer.Option("manual", "--mode", help="manual|launchd|catch_up|replay"),
+src/hb_assistant/cli/second_brain.py:4892:    mode = "catch_up" if catch_up else "manual"
+src/hb_assistant/cli/second_brain.py:10190:    """Scan-window overrides, when provided, must be >= 1 (else the run fails closed)."""
+src/hb_assistant/cli/second_brain.py:10200:        None, "--date", help="Brief date YYYY-MM-DD for the render stage (overrides --as-of's date)."
+src/hb_assistant/cli/second_brain.py:12210:    reason: str = typer.Option("manual_duplicate", "--reason", help="Merge reason code."),  # noqa: B008
+src/hb_assistant/procore/models.py:355:# Prompt_07: Endpoint audit dry-run + optional manual live (GET-only, redacted by default)
+src/hb_assistant/procore/models.py:382:    """Structured receipt for one endpoint audit (dry-run or manual live). Bodies redacted by default."""
+src/hb_assistant/procore/models.py:395:    mode: Literal["dry_run", "live_manual"] = "dry_run"
+src/hb_assistant/procore/models.py:405:    mode: Literal["dry_run", "live_manual"]
+src/hb_assistant/procore/config.py:99:            # Allow override in tests, but warn in real use
+src/hb_assistant/cli/email_calendar.py:79:    ``--no-dry-run`` (override the safe default), and an explicit ``--db`` (so it never targets
+src/hb_assistant/procore/daily_refresh_plan.py:138:# Codes that constitute genuine run degradation (manual run must exit nonzero).
+src/hb_assistant/procore/daily_log_selection.py:14:2. Optional repo override at ``config/<basename>.yml``.
+src/hb_assistant/procore/daily_log_selection.py:15:3. Explicit ``override_path`` argument.
+src/hb_assistant/procore/daily_log_selection.py:129:    override_path: Path | str | None = None,
+src/hb_assistant/procore/daily_log_selection.py:138:    repo_override = _resolve(DAILY_LOG_SELECTION_REPO_OVERRIDE_RELATIVE)
+src/hb_assistant/procore/daily_log_selection.py:139:    if repo_override.exists():
+src/hb_assistant/procore/daily_log_selection.py:140:        data = _load_yaml(repo_override)
+src/hb_assistant/procore/daily_log_selection.py:141:    if override_path is not None:
+src/hb_assistant/procore/daily_log_selection.py:142:        data = _load_yaml(Path(override_path).expanduser())
+src/hb_assistant/procore/token_provider.py:301:    # for environment selection. Explicit value overrides the profile.
+src/hb_assistant/procore/auditor.py:118:# Prompt_07 additions: endpoint dry-run request construction (no network) + optional explicit manual live (GET-only)
+src/hb_assistant/procore/auditor.py:220:        mode: Literal["dry_run", "live_manual"] = "dry_run",
+src/hb_assistant/procore/auditor.py:221:        live_client: Any | None = None,  # only for explicit manual live; must be Prompt_04 client
+src/hb_assistant/procore/auditor.py:225:        if mode == "live_manual" and live_client is None:
+src/hb_assistant/procore/auditor.py:227:                "live_manual requires explicit live_client (opt-in only; never in tests)"
+src/hb_assistant/procore/auditor.py:233:        # Optional: if live_client provided (manual only), execute real GETs here (still redacted via Prompt_04)
+src/hb_assistant/procore/auditor.py:256:            "live_calls": "opt_in_manual_only",
+src/hb_assistant/procore/projection_registry.json:18942:       "column": "manual_latest_cost_amount",
+src/hb_assistant/procore/projection_registry.json:18943:       "rel": "manual_latest_cost_amount"
+src/hb_assistant/procore/projection_registry.json:19855:     "path": "$.change_event.change_event_line_items[].manual_latest_cost_amount",
+src/hb_assistant/procore/projection_registry.json:21414:     "path": "$.ssr_manual_override",
+src/hb_assistant/procore/projection_registry.json:21592:     "column": "ssr_manual_override",
+src/hb_assistant/procore/projection_registry.json:21593:     "rel": "ssr_manual_override"
+src/hb_assistant/procore/projection_registry.json:21793:     "path": "$.ssr_manual_override",
+src/hb_assistant/procore/projection_registry.json:21954:     "column": "ssr_manual_override",
+src/hb_assistant/procore/projection_registry.json:21955:     "rel": "ssr_manual_override"
+src/hb_assistant/procore/projection_registry.json:22311:     "path": "$.payment_summary.manual",
+src/hb_assistant/procore/projection_registry.json:22317:     "path": "$.payment_summary.manual.amount",
+src/hb_assistant/procore/projection_registry.json:22675:     "column": "payment_summary_manual_amount",
+src/hb_assistant/procore/projection_registry.json:22676:     "rel": "payment_summary.manual.amount"
+src/hb_assistant/procore/loader.py:7:2. Optional repo override at ``config/<basename>.yml``.
+src/hb_assistant/procore/loader.py:8:3. Explicit ``override_path`` argument.
+src/hb_assistant/procore/loader.py:59:    override_path: Path | str | None = None,
+src/hb_assistant/procore/loader.py:68:    repo_override = _resolve(CONTRACT_REPO_OVERRIDE_RELATIVE)
+src/hb_assistant/procore/loader.py:69:    if repo_override.exists():
+src/hb_assistant/procore/loader.py:70:        data = _load_yaml(repo_override, EndpointContractError)
+src/hb_assistant/procore/loader.py:71:    if override_path is not None:
+src/hb_assistant/procore/loader.py:72:        data = _load_yaml(Path(override_path).expanduser(), EndpointContractError)
+src/hb_assistant/procore/loader.py:81:    override_path: Path | str | None = None,
+src/hb_assistant/procore/loader.py:90:    repo_override = _resolve(PROJECTS_REPO_OVERRIDE_RELATIVE)
+src/hb_assistant/procore/loader.py:91:    if repo_override.exists():
+src/hb_assistant/procore/loader.py:92:        data = _load_yaml(repo_override, ProcoreProjectsError)
+src/hb_assistant/procore/loader.py:93:    if override_path is not None:
+src/hb_assistant/procore/loader.py:94:        data = _load_yaml(Path(override_path).expanduser(), ProcoreProjectsError)
+src/hb_assistant/procore/errors.py:73:    is ``pending``. Callers must pass ``allow_pending=True`` to override.
+src/hb_assistant/procore/errors.py:86:                f"{sorted(pending_keys)}. Pass allow_pending=True to override."
+src/hb_assistant/procore/normalizers/budget.py:29:# fields are kept only when present — no assumption that every tenant exposes them.
+src/hb_assistant/procore/normalizers/budget.py:163:        _keep_amounts(forecast, ("amount", "automatic_amount", "manual_amount"), fc)
+src/hb_assistant/construction/classification/service.py:57:        # it back. If it doesn't match, treat as a routing override (force
+src/hb_assistant/construction/classification/loader.py:10:2. Optional repo override at ``config/ollama_model_routing.yml``.
+src/hb_assistant/construction/classification/loader.py:11:3. Explicit ``override_path`` argument.
+src/hb_assistant/construction/classification/loader.py:50:def _resolve_repo_override_path() -> Path:
+src/hb_assistant/construction/classification/loader.py:55:    override_path: Path | str | None = None,
+src/hb_assistant/construction/classification/loader.py:73:    repo_override = _resolve_repo_override_path()
+src/hb_assistant/construction/classification/loader.py:74:    if repo_override.exists():
+src/hb_assistant/construction/classification/loader.py:75:        data = _load_yaml(repo_override)
+src/hb_assistant/construction/classification/loader.py:77:    if override_path is not None:
+src/hb_assistant/construction/classification/loader.py:78:        data = _load_yaml(Path(override_path).expanduser())
+src/hb_assistant/construction/forecast/package_reader.py:77:    ``package_type`` (when known from the run-state) overrides name inference.
+src/hb_assistant/construction/classification/__init__.py:6:manual review. The model never overrides controller validation.
+src/hb_assistant/construction/forecast/decision_support_repository.py:10:assumptions) ship empty until a follow-on slice.
+src/hb_assistant/construction/classification/router.py:10:3. controller policy already fires         -> review (model cannot override)
+src/hb_assistant/construction/data_quality/table_inventory.py:3:Operationalizes the previously-manual Phase 07A table lifecycle inventory
+src/hb_assistant/construction/aging_exposure/aging_exposure_builder.py:150:        self._family_overrides = policy.get("record_family_overrides", {})
+src/hb_assistant/construction/aging_exposure/aging_exposure_builder.py:155:        override = self._family_overrides.get(record_family)
+src/hb_assistant/construction/aging_exposure/aging_exposure_builder.py:156:        return override if isinstance(override, dict) and override else self._default_bands
+src/hb_assistant/construction/config/loader.py:10:2. Optional repo override at ``config/construction_sources.yml``.
+src/hb_assistant/construction/config/loader.py:11:3. Explicit ``override_path`` argument.
+src/hb_assistant/construction/config/loader.py:56:def _resolve_repo_override_path() -> Path:
+src/hb_assistant/construction/config/loader.py:61:def load_source_registry(override_path: Path | str | None = None) -> SourceRegistry:
+src/hb_assistant/construction/config/loader.py:78:    repo_override = _resolve_repo_override_path()
+src/hb_assistant/construction/config/loader.py:79:    if repo_override.exists():
+src/hb_assistant/construction/config/loader.py:80:        data = _load_yaml(repo_override)
+src/hb_assistant/construction/config/loader.py:82:    if override_path is not None:
+src/hb_assistant/construction/config/loader.py:83:        data = _load_yaml(Path(override_path).expanduser())
+src/hb_assistant/construction/document/preview_builder.py:131:            f"{by_extraction.get('manual_approval_required', 0)} manual-approval, "
+src/hb_assistant/construction/graph/ingestion_eligibility.py:167:        # 6. Large-file warning band → manual approval before extraction.
+src/hb_assistant/construction/graph/ingestion_eligibility.py:170:                "manual_approval_required",
+src/hb_assistant/construction/graph/ingestion_eligibility.py:172:                reason="large_file_manual_approval",
+src/hb_assistant/construction/document/obsidian_projection.py:330:        manual = _counts(cards, "extraction_eligibility").get("manual_approval_required", 0)
+src/hb_assistant/construction/document/obsidian_projection.py:351:            f"- Documents requiring manual extraction approval: {manual}",
+src/hb_assistant/construction/document/extraction_eligibility.py:6:manual_approval_required / blocked / skipped). No download, no parse, no model, no
+src/hb_assistant/construction/document/extraction_eligibility.py:14:review-required cards route to ``manual_approval_required`` (honoring "review-required
+src/hb_assistant/construction/document/extraction_eligibility.py:64:        return "manual_approval_required", "review_required"
+src/hb_assistant/construction/document/extraction_eligibility.py:68:        return "manual_approval_required", "low_project_confidence"
+src/hb_assistant/construction/second_brain/launchd_scheduler.py:13:``launchctl``. The real-write path is reachable only with an override policy
+src/hb_assistant/construction/second_brain/launchd_scheduler.py:385:        "manual_install_commands": preview.manual_install_commands,
+src/hb_assistant/construction/second_brain/launchd_scheduler.py:432:    # Permitted real-write path (override policy + confirm).
+src/hb_assistant/construction/second_brain/daily_brief_notify.py:378:    optional V28 agent receipt is emit-gated. ``policy_emit`` overrides the seed flag (tests/proofs).
+src/hb_assistant/construction/second_brain/daily_brief_open.py:470:    overrides the seed flag (tests/proofs).
+src/hb_assistant/construction/second_brain/automation_executor.py:17:Modes: manual | launchd | catch_up | replay (affect weekend/catch-up/dup decisions).
+src/hb_assistant/construction/second_brain/automation_executor.py:95:    mode: Literal["manual", "launchd", "catch_up", "replay"] = "manual"
+src/hb_assistant/construction/second_brain/automation_executor.py:832:                # override the just-registered reason for clarity (or re-register; here record extra)
+src/hb_assistant/construction/second_brain/automation_executor.py:1460:        req = ExecutionRequest(run_kind="daily_brief", mode="manual")
+src/hb_assistant/construction/second_brain/automation_executor.py:1478:        req_fail = ExecutionRequest(run_kind="daily_brief", mode="manual", brief_date="2000-01-01")
+src/hb_assistant/construction/second_brain/automation_executor.py:1671:        res = ex.execute(ExecutionRequest(run_kind="daily_brief", mode="manual"))
+src/hb_assistant/construction/second_brain/automation_executor.py:1935:            ExecutionRequest(run_kind="daily_brief", mode="manual", brief_date=target_date)
+src/hb_assistant/construction/second_brain/review_burden_mart.py:54:# Re-use the table specs and high-impact baseline from the load mart (two-step will extend/override
+src/hb_assistant/construction/second_brain/daily_brief/closeout.py:61:    "Semantic retrieval is advisory only and never authoritative; accepted memory never overrides "
+src/hb_assistant/construction/second_brain/query_tools/policy.py:86:    """Load the query-tool allowlist seed (repo seed, env override)."""
+src/hb_assistant/construction/second_brain/daily_brief/models.py:399:    manual_install_commands: list[str] = []
+src/hb_assistant/construction/second_brain/daily_brief/output.py:7:``vault_brief_dir`` override. (The Phase 10 *scheduled* daily-run routes to the governed
+src/hb_assistant/construction/second_brain/daily_brief/output.py:81:    """Resolve the approved output path for a brief date (Phase 08A/09 product default; or override).
+src/hb_assistant/construction/second_brain/daily_brief/scheduling.py:120:    manual_install_commands = [
+src/hb_assistant/construction/second_brain/daily_brief/scheduling.py:139:        manual_install_commands=manual_install_commands,
+src/hb_assistant/construction/second_brain/daily_brief/scheduling.py:206:            "manual_install_commands": preview.manual_install_commands,
+src/hb_assistant/construction/second_brain/memory/models.py:134:    table stores ``review_status``); preferences are presentation-only and never override
+src/hb_assistant/construction/second_brain/memory/__init__.py:6:Operator preferences are reviewable, presentation-only records that can never override
+src/hb_assistant/construction/second_brain/memory/preference.py:6:override safety policy / review-tier routing / guardrails (enforced by
+src/hb_assistant/construction/second_brain/memory/preference.py:110:        # Accepted preferences can NEVER override safety / review-tier routing.
+src/hb_assistant/construction/second_brain/memory/preference.py:118:                "preference_key": "review_tier_override",
+src/hb_assistant/construction/second_brain/memory/preference.py:155:        and any("review_tier_override" in d for d in dropped)
+src/hb_assistant/construction/second_brain/memory/preference.py:183:        "accepted_preferences_cannot_override_safety": {
+src/hb_assistant/construction/second_brain/memory/preference.py:195:            "preferences_never_override_safety": True,
+src/hb_assistant/construction/second_brain/memory/policy.py:4:the hard rule that **accepted preferences can never override safety policy / review-tier
+src/hb_assistant/construction/second_brain/memory/policy.py:49:    "override",
+src/hb_assistant/construction/second_brain/memory/policy.py:155:    preference is dropped — preferences can never override safety policy / review-tier
+src/hb_assistant/construction/second_brain/memory/policy.py:187:    # Preferences must declare what they can never override (incl. safety).
+src/hb_assistant/construction/second_brain/memory/policy.py:188:    never = set(pref_seed.get("never_overrides", []))
+src/hb_assistant/construction/second_brain/memory/policy.py:190:        violations.append({"code": "preference_seed_missing_safety_never_override"})
+src/hb_assistant/construction/second_brain/local_ai/raw_action_intelligence.py:573:    # Authoritative source_family per ref: packet source_refs (thread/message/event) override the
+src/hb_assistant/construction/second_brain/local_ai/provider.py:243:    ``default_extract`` profile (``mistral-nemo:12b``); ``model`` overrides it; ``timeout_seconds``
+src/hb_assistant/construction/second_brain/local_ai/provider.py:244:    overrides the profile timeout. ``reason_if_none`` is a safe diagnostic code (``unsupported_provider``,
+src/hb_assistant/construction/second_brain/local_ai/email_task_extraction_proof.py:82:def _candidate(**overrides: Any) -> str:
+src/hb_assistant/construction/second_brain/local_ai/email_task_extraction_proof.py:99:    return json.dumps({**base, **overrides})
+src/hb_assistant/construction/second_brain/local_ai/candidate_lifecycle.py:743:    reason: str = "manual_duplicate",
+src/hb_assistant/construction/second_brain/local_ai/contracts.py:45:# Logical name -> (repo-root seed filename, env override var, Pydantic model).
+src/hb_assistant/construction/second_brain/local_ai/contracts.py:83:    env_override = os.environ.get(_SEED_ENV_VARS[name])
+src/hb_assistant/construction/second_brain/local_ai/contracts.py:84:    if env_override:
+src/hb_assistant/construction/second_brain/local_ai/contracts.py:85:        return Path(env_override).expanduser()
+src/hb_assistant/construction/second_brain/local_ai/project_aliases.py:80:    """Resolve the alias seed path (env override, else repo ``resources/config``)."""
+src/hb_assistant/construction/second_brain/local_ai/project_aliases.py:81:    override = os.environ.get(_SEED_ENV)
+src/hb_assistant/construction/second_brain/local_ai/project_aliases.py:82:    if override:
+src/hb_assistant/construction/second_brain/local_ai/project_aliases.py:83:        return Path(override).expanduser()
+src/hb_assistant/construction/second_brain/local_ai/ollama_candidate_ranking.py:34:    "source-ref gates are authoritative and you cannot override them. You may only: suggest relative "
+src/hb_assistant/construction/second_brain/local_ai/pipeline.py:124:        # Scan-window overrides are optional; when unset the builder's own defaults (50/50) apply.
+src/hb_assistant/construction/second_brain/local_ai/daily_run.py:288:    # override, else the policy-declared governed folder (``Work/Daily Brief``) — NEVER the legacy
+src/hb_assistant/construction/second_brain/local_ai/model_router.py:57:    override = os.environ.get(_SEED_ENV_VAR)
+src/hb_assistant/construction/second_brain/local_ai/model_router.py:58:    if override:
+src/hb_assistant/construction/second_brain/local_ai/model_router.py:59:        return Path(override).expanduser()
+src/hb_assistant/construction/second_brain/local_ai/vault_brief_policy.py:12:- it refuses to resolve the legacy Phase 08A folder unless an explicit override env var is set, and
+src/hb_assistant/construction/second_brain/local_ai/vault_brief_policy.py:30:#: Escape hatch: only an explicit operator override may re-enable the legacy folder.
+src/hb_assistant/construction/second_brain/local_ai/vault_brief_policy.py:38:def _legacy_override_enabled() -> bool:
+src/hb_assistant/construction/second_brain/local_ai/vault_brief_policy.py:53:    if subdir == LEGACY_BRIEF_SUBDIR and not _legacy_override_enabled():
+src/hb_assistant/construction/second_brain/local_ai/vault_brief_policy.py:56:            f"{LEGACY_OVERRIDE_ENV}=1 only to intentionally override"
+src/hb_assistant/construction/second_brain/local_ai/vault_brief_policy.py:75:    if is_legacy_brief_dir(target) and not _legacy_override_enabled():
+src/hb_assistant/construction/second_brain/local_ai/vault_brief_policy.py:78:            f"set {LEGACY_OVERRIDE_ENV}=1 only to intentionally override"
+src/hb_assistant/construction/second_brain/local_ai/daily_run_scheduler.py:166:            # Scan-window overrides ride along only when explicitly set (else stage defaults apply).
+src/hb_assistant/construction/second_brain/local_ai/email_followup_candidate_projection.py:463:        FAM_RESPONSE_NEEDED: "Draft a response (manually) — inbound request awaiting Bobby",
+src/hb_assistant/construction/second_brain/local_ai/batch_extraction.py:86:    """Select email-thread records, longest serialized thread first (matches the validated manual loop).
+src/hb_assistant/construction/second_brain/mcp/prompts.py:117:            "(no raw source replay); preferences never override safety."
+src/hb_assistant/construction/second_brain/mcp/proof.py:370:            "manual_paste_only": True,
+src/hb_assistant/construction/second_brain/agents/loader.py:4:repo root, replacement-semantics overrides (seed -> repo override -> explicit ->
+src/hb_assistant/construction/second_brain/agents/loader.py:53:def load_agent_registry(override_path: Path | str | None = None) -> AgentRegistry:
+src/hb_assistant/construction/second_brain/agents/loader.py:64:    repo_override = _resolve(REGISTRY_REPO_OVERRIDE_RELATIVE_PATH)
+src/hb_assistant/construction/second_brain/agents/loader.py:65:    if repo_override.exists():
+src/hb_assistant/construction/second_brain/agents/loader.py:66:        data = _load_yaml(repo_override, error=AgentRegistryError)
+src/hb_assistant/construction/second_brain/agents/loader.py:68:    if override_path is not None:
+src/hb_assistant/construction/second_brain/agents/loader.py:69:        data = _load_yaml(Path(override_path).expanduser(), error=AgentRegistryError)
+src/hb_assistant/construction/second_brain/agents/loader.py:78:def load_model_profiles(override_path: Path | str | None = None) -> dict[str, Any]:
+src/hb_assistant/construction/second_brain/agents/loader.py:92:    repo_override = _resolve(MODEL_PROFILES_REPO_OVERRIDE_RELATIVE_PATH)
+src/hb_assistant/construction/second_brain/agents/loader.py:93:    if repo_override.exists():
+src/hb_assistant/construction/second_brain/agents/loader.py:94:        data = _load_yaml(repo_override, error=ModelProfilesError)
+src/hb_assistant/construction/second_brain/agents/loader.py:96:    if override_path is not None:
+src/hb_assistant/construction/second_brain/agents/loader.py:97:        data = _load_yaml(Path(override_path).expanduser(), error=ModelProfilesError)
+src/hb_assistant/construction/second_brain/mcp/render_template_proof.py:40:    "claude_daily_brief_manual_run.md": "claude-daily-brief-manual-run-template.md",
+src/hb_assistant/construction/email/message_indexer.py:692:                    suggested_action="manual_review",
+src/hb_assistant/construction/email/message_indexer.py:730:            suggested_action="manual_review",
+src/hb_assistant/construction/relationships/cross_source_substrate.py:69:    confidence_class_override: Optional[str] = None
+src/hb_assistant/construction/relationships/cross_source_substrate.py:212:            confidence_class_override=r.get("confidence_class"),
+src/hb_assistant/construction/relationships/cross_source_substrate.py:232:    if edge.confidence_class_override in _VALID_CONFIDENCE_CLASSES:
+src/hb_assistant/construction/relationships/cross_source_substrate.py:233:        return edge.confidence_class_override
+src/hb_assistant/construction/policy/document_source_policy.py:4:override) into a validated :class:`DocumentSourcePolicy`. This makes the
+src/hb_assistant/construction/policy/document_source_policy.py:96:def load_document_source_policy(override_path: Path | str | None = None) -> DocumentSourcePolicy:
+src/hb_assistant/construction/policy/document_source_policy.py:97:    """Load + validate the document-source policy (seed → repo override → explicit)."""
+src/hb_assistant/construction/policy/document_source_policy.py:103:    repo_override = repo_root / REPO_OVERRIDE_RELATIVE_PATH
+src/hb_assistant/construction/policy/document_source_policy.py:104:    if repo_override.exists():
+src/hb_assistant/construction/policy/document_source_policy.py:105:        data.update(_load_yaml(repo_override))
+src/hb_assistant/construction/policy/document_source_policy.py:106:    if override_path:
+src/hb_assistant/construction/policy/document_source_policy.py:107:        data.update(_load_yaml(Path(override_path).expanduser()))
+src/hb_assistant/construction/email/email_classifier.py:7:and its output never overrides the deterministic Prompt-10 review rules.
+src/hb_assistant/construction/email/email_classifier.py:495:                suggested_action="manual_review",
+src/hb_assistant/construction/analytics/forecast_runtime_config.py:634:    # persisted config; env is a per-process override that must not weaken the persisted guard).
+src/hb_assistant/construction/email/thread_summary.py:303:        action = meta.recommended_review_action if meta else "manual_review"
+src/hb_assistant/construction/policy/email_active.py:20:2. Optional repo override at ``config/email_intelligence_active_policy.yml``.
+src/hb_assistant/construction/policy/email_active.py:21:3. Explicit ``override_path`` argument.
+src/hb_assistant/construction/policy/email_active.py:23:No environment-variable override — this is a security-locked policy, not an
+src/hb_assistant/construction/policy/email_active.py:130:def _resolve_repo_override_path() -> Path:
+src/hb_assistant/construction/policy/email_active.py:135:    override_path: Path | str | None = None,
+src/hb_assistant/construction/policy/email_active.py:152:    repo_override = _resolve_repo_override_path()
+src/hb_assistant/construction/policy/email_active.py:153:    if repo_override.exists():
+src/hb_assistant/construction/policy/email_active.py:154:        data = _load_yaml(repo_override)
+src/hb_assistant/construction/policy/email_active.py:156:    if override_path is not None:
+src/hb_assistant/construction/policy/email_active.py:157:        data = _load_yaml(Path(override_path).expanduser())
+src/hb_assistant/construction/policy/document_classification.py:6:policy). Both follow the seed -> repo override -> explicit pattern of the
+src/hb_assistant/construction/policy/document_classification.py:77:def _load(seed_rel: Path, override_rel: Path, override_path: Path | str | None) -> dict[str, Any]:
+src/hb_assistant/construction/policy/document_classification.py:83:    repo_override = repo_root / override_rel
+src/hb_assistant/construction/policy/document_classification.py:84:    if repo_override.exists():
+src/hb_assistant/construction/policy/document_classification.py:85:        data.update(_load_yaml(repo_override))
+src/hb_assistant/construction/policy/document_classification.py:86:    if override_path:
+src/hb_assistant/construction/policy/document_classification.py:87:        data.update(_load_yaml(Path(override_path).expanduser()))
+src/hb_assistant/construction/policy/document_classification.py:92:    override_path: Path | str | None = None,
+src/hb_assistant/construction/policy/document_classification.py:96:        _load(_CLASSIFICATION_SEED, _CLASSIFICATION_OVERRIDE, override_path)
+src/hb_assistant/construction/policy/document_classification.py:101:    override_path: Path | str | None = None,
+src/hb_assistant/construction/policy/document_classification.py:104:    return DocumentReviewRules.model_validate(_load(_REVIEW_SEED, _REVIEW_OVERRIDE, override_path))
+src/hb_assistant/construction/policy/loader.py:11:2. Optional repo override at ``config/review_required_rules.yml``.
+src/hb_assistant/construction/policy/loader.py:12:3. Explicit ``override_path`` argument.
+src/hb_assistant/construction/policy/loader.py:51:def _resolve_repo_override_path() -> Path:
+src/hb_assistant/construction/policy/loader.py:55:def load_review_rules(override_path: Path | str | None = None) -> ReviewRules:
+src/hb_assistant/construction/policy/loader.py:72:    repo_override = _resolve_repo_override_path()
+src/hb_assistant/construction/policy/loader.py:73:    if repo_override.exists():
+src/hb_assistant/construction/policy/loader.py:74:        data = _load_yaml(repo_override)
+src/hb_assistant/construction/policy/loader.py:76:    if override_path is not None:
+src/hb_assistant/construction/policy/loader.py:77:        data = _load_yaml(Path(override_path).expanduser())
+src/hb_assistant/construction/analytics/project_keywords.py:110:        provenance: str = "user_manual",
+src/hb_assistant/construction/analytics/project_keywords.py:181:                provenance=existing.get("provenance") or "user_manual",
+src/hb_assistant/construction/policy/file_ingestion.py:4:override) into a validated :class:`FileIngestionPolicy`. The runtime guardrail
+src/hb_assistant/construction/policy/file_ingestion.py:69:def load_file_ingestion_policy(override_path: Path | str | None = None) -> FileIngestionPolicy:
+src/hb_assistant/construction/policy/file_ingestion.py:70:    """Load + validate the file ingestion policy (seed → repo override → explicit)."""
+src/hb_assistant/construction/policy/file_ingestion.py:76:    repo_override = repo_root / REPO_OVERRIDE_RELATIVE_PATH
+src/hb_assistant/construction/policy/file_ingestion.py:77:    if repo_override.exists():
+src/hb_assistant/construction/policy/file_ingestion.py:78:        data.update(_load_yaml(repo_override))
+src/hb_assistant/construction/policy/file_ingestion.py:79:    if override_path:
+src/hb_assistant/construction/policy/file_ingestion.py:80:        data.update(_load_yaml(Path(override_path).expanduser()))
+src/hb_assistant/construction/analytics/auth_onboarding.py:503:    # These implement the split start + (callback or manual) + poll flow using the existing
+src/hb_assistant/construction/analytics/auth_onboarding.py:540:            "manual_code_fallback_available": True,
+src/hb_assistant/construction/analytics/auth_onboarding.py:624:        # If still present and not expired, it is pending (callback or manual exchange not yet performed).
+src/hb_assistant/construction/policy/email_deferred.py:11:2. Optional repo override at ``config/email_intelligence_deferred_policy.yml``.
+src/hb_assistant/construction/policy/email_deferred.py:12:3. Explicit ``override_path`` argument.
+src/hb_assistant/construction/policy/email_deferred.py:14:No environment-variable override this prompt — the policy is intentionally
+src/hb_assistant/construction/policy/email_deferred.py:73:def _resolve_repo_override_path() -> Path:
+src/hb_assistant/construction/policy/email_deferred.py:78:    override_path: Path | str | None = None,
+src/hb_assistant/construction/policy/email_deferred.py:96:    repo_override = _resolve_repo_override_path()
+src/hb_assistant/construction/policy/email_deferred.py:97:    if repo_override.exists():
+src/hb_assistant/construction/policy/email_deferred.py:98:        data = _load_yaml(repo_override)
+src/hb_assistant/construction/policy/email_deferred.py:100:    if override_path is not None:
+src/hb_assistant/construction/policy/email_deferred.py:101:        data = _load_yaml(Path(override_path).expanduser())
+src/hb_assistant/construction/analytics/forecast_config_promotion_service.py:62:        self._config_edit_root_override = config_edit_root
+src/hb_assistant/construction/analytics/forecast_config_promotion_service.py:63:        self._db_path_override = db_path
+src/hb_assistant/construction/analytics/forecast_config_promotion_service.py:64:        self._cfr_src_override = cfr_src
+src/hb_assistant/construction/analytics/forecast_config_promotion_service.py:68:        return resolve_config_edit_root(self._config_edit_root_override) / _EDITS_DIRNAME
+src/hb_assistant/construction/analytics/forecast_config_promotion_service.py:100:        if self._cfr_src_override:
+src/hb_assistant/construction/analytics/forecast_config_promotion_service.py:101:            os.environ[ENV_CFR_SRC] = self._cfr_src_override
+src/hb_assistant/construction/analytics/forecast_config_promotion_service.py:113:                live_db_path=Path(self._db_path_override) if self._db_path_override else None,
+src/hb_assistant/construction/analytics/forecast_external_mapping.py:6:   remaining, by header-name heuristics; the operator can override.
+src/hb_assistant/construction/analytics/forecast_external_mapping.py:69:        self._db_path_override = db_path
+src/hb_assistant/construction/analytics/forecast_external_mapping.py:72:        return load_canonical_budget_codes(resolve_db_path(self._db_path_override), project_key)
+src/hb_assistant/construction/analytics/daily_brief.py:406:        self, platform: str | None = None, overrides: dict[str, Any] | None = None
+src/hb_assistant/construction/analytics/daily_brief.py:409:        if overrides:
+src/hb_assistant/construction/analytics/daily_brief.py:410:            cfg.update(overrides)
+src/hb_assistant/construction/analytics/daily_brief.py:436:                "run manually daily and save the answer as .md to the folder. Manual save is the "
+src/hb_assistant/construction/analytics/daily_brief.py:456:            "test_steps": "After the first scheduled or manual run, use 'Test detection' or 'Validate folder' in Settings, then check the Daily Brief section on Today.",
+src/hb_assistant/construction/analytics/forecast_external_baselines.py:47:def resolve_db_path(override: str | None = None) -> Path | None:
+src/hb_assistant/construction/analytics/forecast_external_baselines.py:49:    raw = override or os.environ.get(ENV_DB_PATH)
+src/hb_assistant/construction/analytics/forecast_external_ingest.py:36:SUPPORTED_SOURCE_SYSTEMS = ("excel", "procore", "sage", "manual", "other")
+src/hb_assistant/construction/analytics/forecast_external_ingest.py:48:def resolve_eval_root(override: str | None = None) -> Path:
+src/hb_assistant/construction/analytics/forecast_external_ingest.py:50:    raw = override or os.environ.get(ENV_EVAL_ROOT)
+src/hb_assistant/construction/analytics/forecast_external_ingest.py:140:        self._eval_root_override = eval_root
+src/hb_assistant/construction/analytics/forecast_external_ingest.py:143:        return resolve_eval_root(self._eval_root_override)
+src/hb_assistant/construction/analytics/api.py:149:    assumption_type: str
+src/hb_assistant/construction/analytics/api.py:172:    assumption_type: str
+src/hb_assistant/construction/analytics/api.py:594:    # - exchange-code: operator, manual OOB fallback.
+src/hb_assistant/construction/analytics/api.py:908:            platform=data.get("platform"), overrides=data
+src/hb_assistant/construction/analytics/api.py:1676:    # --- Operator assumptions capture — first interactive forecast WRITE surface ----------
+src/hb_assistant/construction/analytics/api.py:1677:    # Operator-entered assumptions persist DIRECTLY into the v66 managed-DB tables (not the
+src/hb_assistant/construction/analytics/api.py:1681:    def _forecast_assumptions_service() -> Any:
+src/hb_assistant/construction/analytics/api.py:1682:        from hb_assistant.construction.analytics.forecast_operator_assumptions import (
+src/hb_assistant/construction/analytics/api.py:1689:    def _forecast_assumptions_call(fn: Any, *args: Any) -> dict[str, Any]:
+src/hb_assistant/construction/analytics/api.py:1692:        from hb_assistant.construction.analytics.forecast_operator_assumptions import (
+src/hb_assistant/construction/analytics/api.py:1702:                status_code=503, detail="forecast_assumptions_not_available"
+src/hb_assistant/construction/analytics/api.py:1705:    @app.get("/api/forecast/db/projects/{project_key}/operator-assumptions")
+src/hb_assistant/construction/analytics/api.py:1706:    def forecast_operator_assumptions_list(
+src/hb_assistant/construction/analytics/api.py:1710:        return _forecast_assumptions_call(
+src/hb_assistant/construction/analytics/api.py:1711:            _forecast_assumptions_service().list_operator_assumptions, project_key
+src/hb_assistant/construction/analytics/api.py:1714:    @app.post("/api/forecast/db/projects/{project_key}/operator-assumptions")
+src/hb_assistant/construction/analytics/api.py:1715:    def forecast_operator_assumption_create(
+src/hb_assistant/construction/analytics/api.py:1721:        svc = _forecast_assumptions_service()
+src/hb_assistant/construction/analytics/api.py:1722:        return _forecast_assumptions_call(
+src/hb_assistant/construction/analytics/api.py:1723:            lambda: svc.create_operator_assumption(
+src/hb_assistant/construction/analytics/api.py:1725:                request.assumption_type,
+src/hb_assistant/construction/analytics/api.py:1737:    @app.patch("/api/forecast/db/operator-assumptions/{assumption_id}")
+src/hb_assistant/construction/analytics/api.py:1738:    def forecast_operator_assumption_edit(
+src/hb_assistant/construction/analytics/api.py:1739:        assumption_id: str,
+src/hb_assistant/construction/analytics/api.py:1744:        svc = _forecast_assumptions_service()
+src/hb_assistant/construction/analytics/api.py:1745:        return _forecast_assumptions_call(
+src/hb_assistant/construction/analytics/api.py:1746:            lambda: svc.edit_operator_assumption(
+src/hb_assistant/construction/analytics/api.py:1747:                assumption_id,
+src/hb_assistant/construction/analytics/api.py:1759:    @app.get("/api/forecast/db/projects/{project_key}/required-assumptions")
+src/hb_assistant/construction/analytics/api.py:1760:    def forecast_required_assumptions_list(
+src/hb_assistant/construction/analytics/api.py:1764:        return _forecast_assumptions_call(
+src/hb_assistant/construction/analytics/api.py:1765:            _forecast_assumptions_service().list_required_assumptions, project_key
+src/hb_assistant/construction/analytics/api.py:1768:    @app.post("/api/forecast/db/projects/{project_key}/required-assumptions")
+src/hb_assistant/construction/analytics/api.py:1769:    def forecast_required_assumption_create(
+src/hb_assistant/construction/analytics/api.py:1775:        svc = _forecast_assumptions_service()
+src/hb_assistant/construction/analytics/api.py:1776:        return _forecast_assumptions_call(
+src/hb_assistant/construction/analytics/api.py:1777:            lambda: svc.create_required_assumption(
+src/hb_assistant/construction/analytics/api.py:1778:                project_key, request.assumption_type, reason=request.reason
+src/hb_assistant/construction/analytics/api.py:1782:    @app.patch("/api/forecast/db/required-assumptions/{required_id}")
+src/hb_assistant/construction/analytics/api.py:1783:    def forecast_required_assumption_satisfy(
+src/hb_assistant/construction/analytics/api.py:1789:        svc = _forecast_assumptions_service()
+src/hb_assistant/construction/analytics/api.py:1790:        return _forecast_assumptions_call(
+src/hb_assistant/construction/analytics/api.py:1791:            lambda: svc.set_required_assumption_satisfied(required_id, satisfied=request.satisfied)
+src/hb_assistant/construction/analytics/api.py:2177:        require_admin_role(role)  # advanced manual path override — admin-only carve-out
+src/hb_assistant/construction/analytics/schedule_quality_engine.py:312:                    "display_name_override": "Source critical path analytics",
+src/hb_assistant/construction/analytics/schedule_quality_engine.py:1220:                    "display_name_override": "Source driving path integrity (proxy)",
+src/hb_assistant/construction/analytics/forecast_external_anomaly.py:119:    if (source_system or "").lower() == "manual" and not any(
+src/hb_assistant/construction/analytics/forecast_external_anomaly.py:123:            _f("manual_without_note", "informational", None,
+src/hb_assistant/construction/analytics/schedule_quality_service.py:118:        key = f"manual_rerun:{schedule_version_key}:{profile.profile_id}:{now}"
+src/hb_assistant/construction/analytics/schedule_quality_service.py:128:            trigger_source="manual_rerun",
+src/hb_assistant/files/service.py:145:                "requires_manual_approval": elig.requires_manual_approval,
+src/hb_assistant/files/service.py:148:            if not elig.eligible and not elig.requires_manual_approval:
+src/hb_assistant/files/service.py:156:                rec["decision"] = "manual_approval_required"
+src/hb_assistant/construction/analytics/forecast_config_edit_service.py:44:def resolve_config_edit_root(override: str | None = None) -> Path:
+src/hb_assistant/construction/analytics/forecast_config_edit_service.py:46:    raw = override or os.environ.get(ENV_CONFIG_EDIT_ROOT)
+src/hb_assistant/construction/analytics/forecast_config_edit_service.py:91:        self._config_edit_root_override = config_edit_root
+src/hb_assistant/construction/analytics/forecast_config_edit_service.py:92:        self._db_path_override = db_path
+src/hb_assistant/construction/analytics/forecast_config_edit_service.py:93:        self._cfr_src_override = cfr_src
+src/hb_assistant/construction/analytics/forecast_config_edit_service.py:98:        root = resolve_config_edit_root(self._config_edit_root_override) / _EDITS_DIRNAME
+src/hb_assistant/construction/analytics/forecast_config_edit_service.py:103:        raw = self._db_path_override or str(PathPolicy().get_db_path())
+src/hb_assistant/construction/analytics/forecast_config_edit_service.py:265:        if self._cfr_src_override:
+src/hb_assistant/construction/analytics/forecast_config_edit_service.py:266:            os.environ[ENV_CFR_SRC] = self._cfr_src_override
+src/hb_assistant/construction/analytics/schedule_float_derivation.py:31:    base: dict[str, Any] | None, override: dict[str, Any] | None
+src/hb_assistant/construction/analytics/schedule_float_derivation.py:34:    for key, val in (override or {}).items():
+src/hb_assistant/construction/analytics/forecast_external_eval_service.py:82:        self._eval_root_override = eval_root
+src/hb_assistant/construction/analytics/forecast_external_eval_service.py:83:        self._db_path_override = db_path
+src/hb_assistant/construction/analytics/forecast_external_eval_service.py:92:        return resolve_eval_root(self._eval_root_override)
+src/hb_assistant/construction/analytics/forecast_external_eval_service.py:134:        assert_eval_project_eligible(project_key, db_path=self._db_path_override)
+src/hb_assistant/construction/analytics/forecast_external_eval_service.py:419:                resolve_eligible_eval_projects(db_path=self._db_path_override)["projects"]
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:1:"""Interactive write+read service for operator-supplied forecast assumptions (v66).
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:4:operator-entered assumptions directly into the two v66 schema tables —
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:5:``forecast_operator_assumptions`` (operator create + edit) and
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:6:``forecast_required_assumptions`` (operator create + mark-satisfied). These tables are
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:16:always NULL. Required-assumption idempotency is keyed on a deterministic PRIMARY-KEY hash of
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:17:``project_key:assumption_type`` (``ON CONFLICT(id)``) — NOT the table's
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:18:``UNIQUE(run_id, assumption_type)``, which does not dedupe when ``run_id`` is NULL (SQLite treats
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:41:_SURFACE = "analytics.forecast_operator_assumptions"
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:42:_REQUIRED_SCHEMA_VERSION = 66  # v66 decision-support family (incl. the two assumption tables)
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:75:    """Create/edit operator assumptions and create/mark-satisfied required assumptions (v66)."""
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:88:            raise ForecastOperatorAssumptionsError("forecast assumptions DB is not available")
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:98:                "forecast assumptions DB could not be opened read-only"
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:109:                "forecast assumptions DB could not be opened for write"
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:127:                "forecast assumptions DB schema is unreadable"
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:131:                f"forecast assumptions require schema v{_REQUIRED_SCHEMA_VERSION}; DB is at v{version}"
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:134:    # -- operator assumptions -------------------------------------------------
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:136:    def create_operator_assumption(
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:139:        assumption_type: str,
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:151:        assumption_type = _clean(assumption_type) or ""
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:152:        if not project_key or not assumption_type:
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:153:            return self._rejected("assumption_rejected", "project_key and assumption_type required")
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:156:            return self._rejected("assumption_rejected", "value rejected: confidence_impact")
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:158:        assumption_id = uuid.uuid4().hex[:12]
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:172:                "INSERT INTO forecast_operator_assumptions ("
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:173:                "assumption_id, run_id, project_key, assumption_type, budget_code_key, value, unit, "
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:178:                    assumption_id,
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:180:                    assumption_type,
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:198:            "kind": "assumption_created",
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:199:            "assumption_id": assumption_id,
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:201:            "assumption_type": assumption_type,
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:205:    def edit_operator_assumption(
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:207:        assumption_id: str,
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:220:            return self._rejected("assumption_rejected", "value rejected: confidence_impact")
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:225:                "budget_code_key FROM forecast_operator_assumptions WHERE assumption_id = ?",
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:226:                (assumption_id,),
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:230:                    "assumption_not_found", "unknown assumption", assumption_id=assumption_id
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:253:                "UPDATE forecast_operator_assumptions SET value = ?, unit = ?, source = ?, "
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:255:                "raw_json = ?, updated_utc = ? WHERE assumption_id = ?",
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:266:                    assumption_id,
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:274:            "kind": "assumption_updated",
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:275:            "assumption_id": assumption_id,
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:279:    def list_operator_assumptions(self, project_key: str) -> dict[str, Any]:
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:284:                "SELECT assumption_id, project_key, assumption_type, budget_code_key, value, unit, "
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:286:                "created_utc, updated_utc FROM forecast_operator_assumptions WHERE project_key = ? "
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:287:                "ORDER BY created_utc DESC, assumption_id LIMIT ?",
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:295:            "assumptions": [
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:297:                    "assumption_id": r["assumption_id"],
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:299:                    "assumption_type": r["assumption_type"],
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:317:    # -- required assumptions -------------------------------------------------
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:319:    def create_required_assumption(
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:320:        self, project_key: str, assumption_type: str, *, reason: str | None = None
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:323:        assumption_type = _clean(assumption_type) or ""
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:324:        if not project_key or not assumption_type:
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:325:            return self._rejected("required_assumption_rejected", "project_key and type required")
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:327:        # UNIQUE(run_id, assumption_type) does NOT dedupe with run_id NULL, so we key on the PK.
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:328:        required_id = hash_value(f"{project_key}:{assumption_type}") or ""
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:334:                "INSERT INTO forecast_required_assumptions ("
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:335:                "id, run_id, project_key, assumption_type, reason, satisfied, raw_json, "
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:342:                    assumption_type,
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:354:            "kind": "required_assumption_created",
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:357:            "assumption_type": assumption_type,
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:361:    def set_required_assumption_satisfied(
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:367:                "SELECT id FROM forecast_required_assumptions WHERE id = ?", (required_id,)
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:371:                    "required_assumption_not_found", "unknown required assumption", id=required_id
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:374:                "UPDATE forecast_required_assumptions SET satisfied = ?, updated_utc = ? "
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:383:            "kind": "required_assumption_updated",
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:389:    def list_required_assumptions(self, project_key: str) -> dict[str, Any]:
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:394:                "SELECT id, project_key, assumption_type, reason, satisfied, created_utc, "
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:395:                "updated_utc FROM forecast_required_assumptions WHERE project_key = ? "
+src/hb_assistant/construction/analytics/forecast_operator_assumptions.py:408:                    "assumption_type": r["assumption_type"],
+src/hb_assistant/automation/orchestrator.py:5:- Applies catch-up (ledger + wake heuristic), weekend gate (manual_only), ledger status.
+src/hb_assistant/automation/orchestrator.py:111:            if self._is_weekend() and self.cfg.weekend_behavior == "manual_only":
+src/hb_assistant/automation/orchestrator.py:112:                evidence["decision"] = "skipped_weekend_manual_only"
+src/hb_assistant/automation/orchestrator.py:122:                # Recent successful run already happened today before/around 5am; still allow manual kick but note it
+src/hb_assistant/obsidian/writer.py:84:        # Merge: new keys override, but keep user keys not in our set
+src/hb_assistant/files/eligibility.py:5:- warn 100MB, manual approval >300MB
+src/hb_assistant/files/eligibility.py:7:- failure codes: unsupported_type, too_large, manual_approval_required, ...
+src/hb_assistant/files/eligibility.py:8:- ApprovalGate: explicit allow-list for items hitting manual gate (dry-run / CLI --approve for tests)
+src/hb_assistant/files/eligibility.py:35:    requires_manual_approval: bool = False
+src/hb_assistant/files/eligibility.py:64:                return EligibilityResult(eligible=False, reason="manual_approval_required", size_mb=size_mb, requires_manual_approval=True)
+src/hb_assistant/files/eligibility.py:72:            requires_manual_approval=requires_approval,
+src/hb_assistant/files/eligibility.py:78:    """Explicit approval gate for items that hit requires_manual_approval (08 + 20 gates).
+src/hb_assistant/files/eligibility.py:90:        if not eligibility.requires_manual_approval:
+src/hb_assistant/files/eligibility.py:94:        return False, eligibility.reason or "manual_approval_required"
+src/hb_assistant/construction/analytics/forecast_run_service.py:60:    override = os.environ.get(ENV_CFR_SRC)
+src/hb_assistant/construction/analytics/forecast_run_service.py:62:        Path(override)
+src/hb_assistant/construction/analytics/forecast_run_service.py:63:        if override
+src/hb_assistant/construction/analytics/forecast_run_service.py:102:        self._data_root_override = data_root
+src/hb_assistant/construction/analytics/forecast_run_service.py:103:        self._runs_root_override = runs_root
+src/hb_assistant/construction/analytics/forecast_run_service.py:108:        raw = self._data_root_override or os.environ.get(ENV_DATA_ROOT)
+src/hb_assistant/construction/analytics/forecast_run_service.py:117:        raw = self._runs_root_override or os.environ.get(ENV_RUNS_ROOT)
+src/hb_assistant/forecasting/project_eligibility.py:26:    """Return env-only allowlist override (empty when unset)."""
+src/hb_assistant/construction/analytics/forecast_external_compare.py:65:        self._db_path_override = db_path
+src/hb_assistant/construction/analytics/forecast_external_compare.py:73:        db = bl.resolve_db_path(self._db_path_override)

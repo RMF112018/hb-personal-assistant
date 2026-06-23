@@ -1,0 +1,148 @@
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3839:    "forecast_project_maturity_snapshots": {
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3846:      "notes": "Per-run project maturity tier (M0-M5) derived from completed-month count; reuses model_engines_readiness thresholds."
+src/hb_assistant/construction/forecast/decision_support_engine.py:6:- maturity tier + per-domain data availability are DERIVED from the v59 source-domain tables in
+src/hb_assistant/construction/forecast/decision_support_engine.py:38:    "tables": "maturity_snapshots/data_availability_profiles/confidence_scorecards/confidence_factors",
+src/hb_assistant/construction/forecast/decision_support_engine.py:48:    "maturity",
+src/hb_assistant/construction/forecast/decision_support_engine.py:80:def _maturity_tier(completed_months: int, budget_present: bool) -> str:
+src/hb_assistant/construction/forecast/decision_support_engine.py:112:    """Derive maturity/availability from DB inputs + project confidence from the package.
+src/hb_assistant/construction/forecast/decision_support_engine.py:163:        # ---- maturity snapshot -------------------------------------------------------
+src/hb_assistant/construction/forecast/decision_support_engine.py:164:        tier = _maturity_tier(completed, budget_codes > 0)
+src/hb_assistant/construction/forecast/decision_support_engine.py:166:        planned["maturity"].append(
+src/hb_assistant/construction/forecast/decision_support_engine.py:172:                "maturity_tier": tier,
+src/hb_assistant/construction/forecast/decision_support_engine.py:179:                        "maturity_tier": tier,
+src/hb_assistant/construction/forecast/decision_support_engine.py:278:        "maturity": None,
+src/hb_assistant/construction/forecast/decision_support_engine.py:546:    """Read maturity/availability/scorecards back and compare counts to the plan."""
+src/hb_assistant/construction/forecast/decision_support_engine.py:552:            "maturity": repo.read_maturity_from_db(conn, run_id=run_id),
+src/hb_assistant/construction/forecast/decision_support_repository.py:8:Populated this phase: maturity snapshot, data-availability profiles, confidence scorecards
+src/hb_assistant/construction/forecast/decision_support_repository.py:46:def upsert_maturity_snapshot(conn: sqlite3.Connection, row: dict[str, Any]) -> None:
+src/hb_assistant/construction/forecast/decision_support_repository.py:47:    _upsert(conn, "forecast_project_maturity_snapshots", row, ("snapshot_id",))
+src/hb_assistant/construction/forecast/decision_support_repository.py:72:    "maturity": upsert_maturity_snapshot,
+src/hb_assistant/construction/forecast/decision_support_repository.py:98:def read_maturity_from_db(conn: sqlite3.Connection, *, run_id: str) -> list[dict[str, Any]]:
+src/hb_assistant/construction/forecast/decision_support_repository.py:100:        conn, "forecast_project_maturity_snapshots", "run_id", run_id, "snapshot_id"
+src/hb_assistant/construction/forecast/decision_support_repository.py:134:def maturity_tier(conn: sqlite3.Connection, *, run_id: str) -> str | None:
+src/hb_assistant/construction/forecast/decision_support_repository.py:135:    """The maturity_tier column for a run's snapshot (typed read for assertions)."""
+src/hb_assistant/construction/forecast/decision_support_repository.py:137:        "SELECT maturity_tier FROM forecast_project_maturity_snapshots WHERE run_id = ?",
+src/hb_assistant/construction/analytics/forecast_run_readmodel.py:5:(maturity / data-availability / confidence scorecards+factors / method eligibility /
+src/hb_assistant/construction/analytics/forecast_run_readmodel.py:235:            maturity_row = conn.execute(
+src/hb_assistant/construction/analytics/forecast_run_readmodel.py:236:                "SELECT maturity_tier, completed_month_count, nonzero_month_count, lifecycle_signal, "
+src/hb_assistant/construction/analytics/forecast_run_readmodel.py:237:                "basis FROM forecast_project_maturity_snapshots WHERE run_id = ?",
+src/hb_assistant/construction/analytics/forecast_run_readmodel.py:240:            maturity = dict(maturity_row) if maturity_row is not None else None
+src/hb_assistant/construction/analytics/forecast_run_readmodel.py:244:                "maturity, score, reason FROM forecast_data_availability_profiles WHERE run_id = ? "
+src/hb_assistant/construction/analytics/forecast_run_readmodel.py:278:            "maturity": maturity,
+src/hb_assistant/store/forecast_decision_support_tables.py:3:The maturity-aware / resilient-to-incomplete-data layer: per-run, queryable persistence of
+src/hb_assistant/store/forecast_decision_support_tables.py:4:decision-support that is already *computed* elsewhere (CFR model_engines_readiness maturity
+src/hb_assistant/store/forecast_decision_support_tables.py:18:    "forecast_project_maturity_snapshots",
+src/hb_assistant/store/forecast_decision_support_tables.py:29:    # --- project maturity snapshot (M0-M5 per run) -------------------------------------
+src/hb_assistant/store/forecast_decision_support_tables.py:31:    CREATE TABLE IF NOT EXISTS forecast_project_maturity_snapshots (
+src/hb_assistant/store/forecast_decision_support_tables.py:36:      maturity_tier TEXT,
+src/hb_assistant/store/forecast_decision_support_tables.py:48:    "CREATE INDEX IF NOT EXISTS idx_forecast_project_maturity_snapshots_run ON forecast_project_maturity_snapshots(run_id);",
+src/hb_assistant/store/forecast_decision_support_tables.py:49:    "CREATE INDEX IF NOT EXISTS idx_forecast_project_maturity_snapshots_project ON forecast_project_maturity_snapshots(project_key);",
+src/hb_assistant/store/forecast_decision_support_tables.py:63:      maturity TEXT,
+src/hb_assistant/store/migrator.py:6775:    # v66 Forecast decision-support family: per-run maturity snapshot, data-availability
+src/hb_assistant/store/migrator.py:7928:            # v66 Forecast decision-support family: maturity/availability/confidence
+subrepos/construction-financial-review/src/construction_financial_review/workflows/live_db_run_output_projection.py:60:    "forecast_project_maturity_snapshots",
+tests/test_migrator_v66_forecast_decision_support.py:71:            "PRAGMA foreign_key_list(forecast_project_maturity_snapshots)"
+tests/test_fastapi_forecast_run_readmodel.py:96:            "INSERT INTO forecast_project_maturity_snapshots (snapshot_id, run_id, project_key, "
+tests/test_fastapi_forecast_run_readmodel.py:97:            "maturity_tier, completed_month_count, nonzero_month_count, basis, raw_json, created_utc) "
+tests/test_fastapi_forecast_run_readmodel.py:177:    assert body["maturity"]["maturity_tier"] == "M2"
+tests/test_forecast_decision_support_phase2b.py:3:Proves: maturity tier is derived from completed-month count (M0/M1/M2/M4 cases); absent
+tests/test_forecast_decision_support_phase2b.py:89:def test_maturity_tier_m0_when_no_actuals_no_budget() -> None:
+tests/test_forecast_decision_support_phase2b.py:97:        assert plan["planned"]["maturity"][0]["maturity_tier"] == "M0"
+tests/test_forecast_decision_support_phase2b.py:100:def test_maturity_tier_m1_when_budget_no_actuals() -> None:
+tests/test_forecast_decision_support_phase2b.py:108:        assert plan["planned"]["maturity"][0]["maturity_tier"] == "M1"
+tests/test_forecast_decision_support_phase2b.py:111:def test_maturity_tier_m2_then_m4() -> None:
+tests/test_forecast_decision_support_phase2b.py:120:        assert m2["planned"]["maturity"][0]["maturity_tier"] == "M2"
+tests/test_forecast_decision_support_phase2b.py:121:        assert m4["planned"]["maturity"][0]["maturity_tier"] == "M4"
+tests/test_forecast_decision_support_phase2b.py:166:        assert conn.execute("SELECT COUNT(*) FROM forecast_project_maturity_snapshots").fetchone()[0] == 0
+tests/test_forecast_decision_support_phase2b.py:191:        assert plan["written"]["maturity"] == 1
+tests/test_forecast_decision_support_phase2b.py:199:        assert conn.execute("SELECT COUNT(*) FROM forecast_project_maturity_snapshots").fetchone()[0] == 1
+tests/test_forecast_decision_support_phase2b.py:201:        assert conn.execute("SELECT maturity_tier FROM forecast_project_maturity_snapshots").fetchone()[0] == "M4"
+tests/test_forecast_live_db_run_output_projection.py:207:    assert _tropical(live, "forecast_project_maturity_snapshots") == 1
+docs/evidence/construction-intelligence-phase-03/00-repo-truth-and-phase-02-rebaseline.md:149:- Phase 03 research (Desktop, authorized as package): Desktop/procore_hbintel_data_model_package/README.md (full structure + layered posture + priorities), 01-Procore-API-Surface-Inventory.md, 03-Canonical-Entity-Inventory.md, 07-Transactional..., 10-SharePoint..., 12-Core-vs-Extended..., 13-Assumptions-Gaps-and-API-Limitations.md (structure + key risk "API maturity, access, and modeling caveats"), crosswalk json/csv (sampled).
+docs/evidence/construction-intelligence-phase-03/00-repo-truth-and-phase-02-rebaseline.md:169:**Desktop research cross-check (effective Phase 03 package):** Recommends layered (raw/archive → canonical relational → curated HB Intel/SharePoint → selective publish). Priorities: company/project/user/vendor/WBS masters + budget/change/events + commitments/invoices/costs/billing + RFIs/submittals/correspondence + observations/inspections/incidents/punch + daily-log/labor. Current seeds + procore/4 modules cover the "validated + sensitive_validated GETs" for many priorities (RFI/submittal/daily/punch/change/commitments/invoices) with correct review routing for high-sens financials, but limited to contract layer (no full canonical entity hydration per Desktop 03/04/05/06/07 models, no SharePoint integration yet per 10). /vapid/ paths in seed are provisional (risk flagged in Desktop 13 "API maturity, access, and modeling caveats" + query "provisional paths that are not official REST").
+docs/evidence/construction-intelligence-phase-03/00-repo-truth-and-phase-02-rebaseline.md:194:- Procore tenant/docs may differ from Desktop research assumptions or seed /vapid/ paths (Desktop 13 "API maturity, access, and modeling caveats" + query known risk; provisional paths noted).
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-forecast-head1000.txt:155:src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3839:    "forecast_project_maturity_snapshots": {
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-forecast-head1000.txt:350:src/hb_assistant/construction/forecast/decision_support_repository.py:47:    _upsert(conn, "forecast_project_maturity_snapshots", row, ("snapshot_id",))
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-forecast-head1000.txt:356:src/hb_assistant/construction/forecast/decision_support_repository.py:100:        conn, "forecast_project_maturity_snapshots", "run_id", run_id, "snapshot_id"
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-forecast-head1000.txt:362:src/hb_assistant/construction/forecast/decision_support_repository.py:137:        "SELECT maturity_tier FROM forecast_project_maturity_snapshots WHERE run_id = ?",
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-forecast-head1000.txt:900:src/hb_assistant/construction/analytics/forecast_run_readmodel.py:237:                "basis FROM forecast_project_maturity_snapshots WHERE run_id = ?",
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-forecast-head1000.txt:901:src/hb_assistant/construction/analytics/forecast_run_readmodel.py:244:                "maturity, score, reason FROM forecast_data_availability_profiles WHERE run_id = ? "
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-maturity-head500.txt:1:src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3839:    "forecast_project_maturity_snapshots": {
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-maturity-head500.txt:2:src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3846:      "notes": "Per-run project maturity tier (M0-M5) derived from completed-month count; reuses model_engines_readiness thresholds."
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-maturity-head500.txt:3:src/hb_assistant/construction/forecast/decision_support_engine.py:6:- maturity tier + per-domain data availability are DERIVED from the v59 source-domain tables in
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-maturity-head500.txt:4:src/hb_assistant/construction/forecast/decision_support_engine.py:38:    "tables": "maturity_snapshots/data_availability_profiles/confidence_scorecards/confidence_factors",
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-maturity-head500.txt:5:src/hb_assistant/construction/forecast/decision_support_engine.py:48:    "maturity",
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-maturity-head500.txt:6:src/hb_assistant/construction/forecast/decision_support_engine.py:80:def _maturity_tier(completed_months: int, budget_present: bool) -> str:
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-maturity-head500.txt:7:src/hb_assistant/construction/forecast/decision_support_engine.py:112:    """Derive maturity/availability from DB inputs + project confidence from the package.
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-maturity-head500.txt:8:src/hb_assistant/construction/forecast/decision_support_engine.py:163:        # ---- maturity snapshot -------------------------------------------------------
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-maturity-head500.txt:9:src/hb_assistant/construction/forecast/decision_support_engine.py:164:        tier = _maturity_tier(completed, budget_codes > 0)
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-maturity-head500.txt:10:src/hb_assistant/construction/forecast/decision_support_engine.py:166:        planned["maturity"].append(
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-maturity-head500.txt:11:src/hb_assistant/construction/forecast/decision_support_engine.py:172:                "maturity_tier": tier,
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-maturity-head500.txt:12:src/hb_assistant/construction/forecast/decision_support_engine.py:179:                        "maturity_tier": tier,
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-maturity-head500.txt:13:src/hb_assistant/construction/forecast/decision_support_engine.py:278:        "maturity": None,
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-maturity-head500.txt:14:src/hb_assistant/construction/forecast/decision_support_engine.py:546:    """Read maturity/availability/scorecards back and compare counts to the plan."""
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-maturity-head500.txt:15:src/hb_assistant/construction/forecast/decision_support_engine.py:552:            "maturity": repo.read_maturity_from_db(conn, run_id=run_id),
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-maturity-head500.txt:16:src/hb_assistant/construction/forecast/decision_support_repository.py:8:Populated this phase: maturity snapshot, data-availability profiles, confidence scorecards
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-maturity-head500.txt:17:src/hb_assistant/construction/forecast/decision_support_repository.py:46:def upsert_maturity_snapshot(conn: sqlite3.Connection, row: dict[str, Any]) -> None:
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-maturity-head500.txt:18:src/hb_assistant/construction/forecast/decision_support_repository.py:47:    _upsert(conn, "forecast_project_maturity_snapshots", row, ("snapshot_id",))
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-maturity-head500.txt:19:src/hb_assistant/construction/forecast/decision_support_repository.py:72:    "maturity": upsert_maturity_snapshot,
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-maturity-head500.txt:20:src/hb_assistant/construction/forecast/decision_support_repository.py:98:def read_maturity_from_db(conn: sqlite3.Connection, *, run_id: str) -> list[dict[str, Any]]:
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-maturity-head500.txt:21:src/hb_assistant/construction/forecast/decision_support_repository.py:100:        conn, "forecast_project_maturity_snapshots", "run_id", run_id, "snapshot_id"
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-maturity-head500.txt:22:src/hb_assistant/construction/forecast/decision_support_repository.py:134:def maturity_tier(conn: sqlite3.Connection, *, run_id: str) -> str | None:
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-maturity-head500.txt:23:src/hb_assistant/construction/forecast/decision_support_repository.py:135:    """The maturity_tier column for a run's snapshot (typed read for assertions)."""
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-maturity-head500.txt:24:src/hb_assistant/construction/forecast/decision_support_repository.py:137:        "SELECT maturity_tier FROM forecast_project_maturity_snapshots WHERE run_id = ?",
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-maturity-head500.txt:25:src/hb_assistant/construction/analytics/forecast_run_readmodel.py:5:(maturity / data-availability / confidence scorecards+factors / method eligibility /
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-maturity-head500.txt:26:src/hb_assistant/construction/analytics/forecast_run_readmodel.py:235:            maturity_row = conn.execute(
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-maturity-head500.txt:27:src/hb_assistant/construction/analytics/forecast_run_readmodel.py:236:                "SELECT maturity_tier, completed_month_count, nonzero_month_count, lifecycle_signal, "
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-maturity-head500.txt:28:src/hb_assistant/construction/analytics/forecast_run_readmodel.py:237:                "basis FROM forecast_project_maturity_snapshots WHERE run_id = ?",
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-maturity-head500.txt:29:src/hb_assistant/construction/analytics/forecast_run_readmodel.py:240:            maturity = dict(maturity_row) if maturity_row is not None else None
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-maturity-head500.txt:30:src/hb_assistant/construction/analytics/forecast_run_readmodel.py:244:                "maturity, score, reason FROM forecast_data_availability_profiles WHERE run_id = ? "
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-maturity-head500.txt:31:src/hb_assistant/construction/analytics/forecast_run_readmodel.py:278:            "maturity": maturity,
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-maturity-head500.txt:32:src/hb_assistant/store/forecast_decision_support_tables.py:3:The maturity-aware / resilient-to-incomplete-data layer: per-run, queryable persistence of
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-maturity-head500.txt:33:src/hb_assistant/store/forecast_decision_support_tables.py:4:decision-support that is already *computed* elsewhere (CFR model_engines_readiness maturity
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-maturity-head500.txt:34:src/hb_assistant/store/forecast_decision_support_tables.py:18:    "forecast_project_maturity_snapshots",
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-maturity-head500.txt:35:src/hb_assistant/store/forecast_decision_support_tables.py:29:    # --- project maturity snapshot (M0-M5 per run) -------------------------------------
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-maturity-head500.txt:36:src/hb_assistant/store/forecast_decision_support_tables.py:31:    CREATE TABLE IF NOT EXISTS forecast_project_maturity_snapshots (
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-maturity-head500.txt:37:src/hb_assistant/store/forecast_decision_support_tables.py:36:      maturity_tier TEXT,
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-maturity-head500.txt:38:src/hb_assistant/store/forecast_decision_support_tables.py:48:    "CREATE INDEX IF NOT EXISTS idx_forecast_project_maturity_snapshots_run ON forecast_project_maturity_snapshots(run_id);",
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-maturity-head500.txt:39:src/hb_assistant/store/forecast_decision_support_tables.py:49:    "CREATE INDEX IF NOT EXISTS idx_forecast_project_maturity_snapshots_project ON forecast_project_maturity_snapshots(project_key);",
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-maturity-head500.txt:40:src/hb_assistant/store/forecast_decision_support_tables.py:63:      maturity TEXT,
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-maturity-head500.txt:41:src/hb_assistant/store/migrator.py:6775:    # v66 Forecast decision-support family: per-run maturity snapshot, data-availability
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-maturity-head500.txt:42:src/hb_assistant/store/migrator.py:7928:            # v66 Forecast decision-support family: maturity/availability/confidence
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-maturity-head500.txt:43:subrepos/construction-financial-review/src/construction_financial_review/workflows/live_db_run_output_projection.py:60:    "forecast_project_maturity_snapshots",
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-maturity-head500.txt:44:tests/test_migrator_v66_forecast_decision_support.py:71:            "PRAGMA foreign_key_list(forecast_project_maturity_snapshots)"
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-maturity-head500.txt:45:tests/test_fastapi_forecast_run_readmodel.py:96:            "INSERT INTO forecast_project_maturity_snapshots (snapshot_id, run_id, project_key, "
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-maturity-head500.txt:46:tests/test_fastapi_forecast_run_readmodel.py:97:            "maturity_tier, completed_month_count, nonzero_month_count, basis, raw_json, created_utc) "
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-maturity-head500.txt:47:tests/test_fastapi_forecast_run_readmodel.py:177:    assert body["maturity"]["maturity_tier"] == "M2"
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-maturity-head500.txt:48:tests/test_forecast_decision_support_phase2b.py:3:Proves: maturity tier is derived from completed-month count (M0/M1/M2/M4 cases); absent
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-maturity-head500.txt:49:tests/test_forecast_decision_support_phase2b.py:89:def test_maturity_tier_m0_when_no_actuals_no_budget() -> None:
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-maturity-head500.txt:50:tests/test_forecast_decision_support_phase2b.py:97:        assert plan["planned"]["maturity"][0]["maturity_tier"] == "M0"
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-maturity-head500.txt:51:tests/test_forecast_decision_support_phase2b.py:100:def test_maturity_tier_m1_when_budget_no_actuals() -> None:
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-maturity-head500.txt:52:tests/test_forecast_decision_support_phase2b.py:108:        assert plan["planned"]["maturity"][0]["maturity_tier"] == "M1"
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-maturity-head500.txt:53:tests/test_forecast_decision_support_phase2b.py:111:def test_maturity_tier_m2_then_m4() -> None:
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-maturity-head500.txt:54:tests/test_forecast_decision_support_phase2b.py:120:        assert m2["planned"]["maturity"][0]["maturity_tier"] == "M2"
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-maturity-head500.txt:55:tests/test_forecast_decision_support_phase2b.py:121:        assert m4["planned"]["maturity"][0]["maturity_tier"] == "M4"
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-maturity-head500.txt:56:tests/test_forecast_decision_support_phase2b.py:166:        assert conn.execute("SELECT COUNT(*) FROM forecast_project_maturity_snapshots").fetchone()[0] == 0
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-maturity-head500.txt:57:tests/test_forecast_decision_support_phase2b.py:191:        assert plan["written"]["maturity"] == 1
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-maturity-head500.txt:58:tests/test_forecast_decision_support_phase2b.py:199:        assert conn.execute("SELECT COUNT(*) FROM forecast_project_maturity_snapshots").fetchone()[0] == 1
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-maturity-head500.txt:59:tests/test_forecast_decision_support_phase2b.py:201:        assert conn.execute("SELECT maturity_tier FROM forecast_project_maturity_snapshots").fetchone()[0] == "M4
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-confidence-head500.txt:219:src/hb_assistant/construction/forecast/decision_support_repository.py:8:Populated this phase: maturity snapshot, data-availability profiles, confidence scorecards
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-confidence-head500.txt:231:src/hb_assistant/construction/forecast/decision_support_engine.py:38:    "tables": "maturity_snapshots/data_availability_profiles/confidence_scorecards/confidence_factors",
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-confidence-head500.txt:233:src/hb_assistant/construction/forecast/decision_support_engine.py:112:    """Derive maturity/availability from DB inputs + project confidence from the package.
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/forecast-v63-v66-coverage.txt:13:forecast_project_maturity_snapshots  1   
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/sqlite-tables.txt:142:forecast_project_maturity_snapshots                         
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/forecast-decision-support-domain-audit.txt:1:project_key  maturity_tier  completed_month_count  nonzero_month_count  lifecycle_signal  basis                                                      
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/forecast-decision-support-domain-audit.txt:4:domain           availability  coverage  freshness  completeness  mapping_quality  maturity  score  reason                                                                          
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/forecast-tropical-hardcoding.txt:1509:tests/test_forecast_live_db_run_output_projection.py:207:    assert _tropical(live, "forecast_project_maturity_snapshots") == 1
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/forecast-tropical-hardcoding.txt:85282:docs/architecture/297-forecast-phase-3-live-db-run-output-decision-support.md:15:tables = 0 tropical. V63/V66 FK `forecast_runs`, and the V66 engine derives maturity/availability
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/forecast-candidate-table-row-counts.json:41:  "forecast_project_maturity_snapshots": 1,
+docs/architecture/295-forecast-phase-2b-decision-support.md:9:The remediation's controlling principle is **maturity-aware, resilient to incomplete data**:
+docs/architecture/295-forecast-phase-2b-decision-support.md:15:- CFR `workflows/model_engines_readiness.py` — maturity tiers (`3/6/12` months) + coverage gates.
+docs/architecture/295-forecast-phase-2b-decision-support.md:28:maturity/availability from the DB and projects the already-computed confidence — into a temp DB
+docs/architecture/295-forecast-phase-2b-decision-support.md:35:`SQLiteMigrator._v65_statements()`: `forecast_project_maturity_snapshots`,
+docs/architecture/295-forecast-phase-2b-decision-support.md:47:- **Derives** maturity tier (M0–M5 from completed-month count, reusing the `3/6/12` thresholds —
+docs/architecture/295-forecast-phase-2b-decision-support.md:75:- `tests/test_forecast_decision_support_phase2b.py` — maturity tiers (M0/M1/M2/M4); absent domains
+docs/runbooks/forecast-run-output-live-write-runbook.md:22:  (`forecast_project_maturity_snapshots`, `forecast_data_availability_profiles`,
+docs/runbooks/forecast-run-output-live-write-runbook.md:161:  curl -s localhost:8000/api/forecast/db/outputs/<output_id>/decision-support | jq '.maturity, (.confidence_scorecards|length)'
+docs/architecture/298-forecast-phase-4-db-read-model-api.md:26:- `GET /api/forecast/db/outputs/{output_id}/decision-support` — maturity / data-availability /
+docs/architecture/297-forecast-phase-3-live-db-run-output-decision-support.md:15:tables = 0 tropical. V63/V66 FK `forecast_runs`, and the V66 engine derives maturity/availability
