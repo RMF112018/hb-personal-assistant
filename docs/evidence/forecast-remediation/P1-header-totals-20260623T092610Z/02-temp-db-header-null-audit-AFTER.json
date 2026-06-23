@@ -1,0 +1,20 @@
+[
+  {
+    "output_id": "fout-af66495a0388ca4dc80f9653039a44b2",
+    "estimated_final_cost": "33049244.52",
+    "forecast_at_completion": "33049244.52",
+    "cost_to_complete": "5450096.56",
+    "variance_to_budget": "-22607715.19",
+    "variance_to_prior_forecast": null,
+    "null_count": 1
+  },
+  {
+    "output_id": "fout-88530b5328595d4baf412501b87363dc",
+    "estimated_final_cost": "34049244.52",
+    "forecast_at_completion": "34049244.52",
+    "cost_to_complete": "5450096.56",
+    "variance_to_budget": "-21607715.19",
+    "variance_to_prior_forecast": "1000000.00",
+    "null_count": 0
+  }
+]

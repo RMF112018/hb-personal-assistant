@@ -26,7 +26,7 @@ P1 & P4 (production blockers) → P2, P3, P6, P10 → P5, P8, P9 → P7.
 
 | Phase | Title | Gaps | Severity | Status | PR | Evidence | Date | Blocked-by |
 |---|---|---|---|---|---|---|---|---|
-| P1 | Forecast output header totals + prior-run deltas | 1, 7 | production_blocker | pending | — | — | — | — |
+| P1 | Forecast output header totals + prior-run deltas | 1, 7 | production_blocker | in-review | (pending) | `docs/evidence/forecast-remediation/P1-header-totals-20260623T092610Z/` | 2026-06-23 | — |
 | P4 | Multi-project generalization (remove tropical-only guards) | 4 | production_blocker | pending | — | — | — | — |
 | P2 | Operator assumptions as consumed model inputs | 2 | high | pending | — | — | — | — |
 | P3 | DB-native model input accessors (reduce package-as-source) | 3 | high | pending | — | — | — | — |
@@ -64,4 +64,4 @@ P1 & P4 (production blockers) → P2, P3, P6, P10 → P5, P8, P9 → P7.
 
 _Append one line per phase transition (date · phase · status · PR · note)._
 
-- _(none yet — ledger seeded; all phases pending)_
+- 2026-06-23 · P1 · in-review · (PR pending) · header EAC/FAC/CTC/variance_to_budget aggregated from per-code rows; variance_to_prior_forecast + project-level `current_vs_prior` change row from the prior run; no schema change; evidence `P1-header-totals-20260623T092610Z`.
