@@ -843,6 +843,78 @@ export function getForecastDbDecisionSupport(outputId: string) {
   );
 }
 
+/* Operator assumptions capture (first interactive forecast write surface). Operator-entered
+ * assumptions persist directly into the v66 managed-DB tables. GET=viewer, POST/PATCH=operator
+ * (role header auto-injected by fetchJson). Read paths never surface raw_json/run_id. */
+export interface ForecastOperatorAssumption {
+  assumption_id: string;
+  project_key: string;
+  assumption_type: string;
+  budget_code_key: string | null;
+  value: string | null;
+  unit: string | null;
+  source: string | null;
+  operator: string | null;
+  confidence_impact: string | null;
+  is_required: boolean;
+  reused_from_prior: boolean;
+  overridden: boolean;
+  created_display: string | null;
+  updated_display: string | null;
+}
+export interface ForecastRequiredAssumption {
+  id: string;
+  project_key: string;
+  assumption_type: string;
+  reason: string | null;
+  satisfied: boolean;
+  created_display: string | null;
+  updated_display: string | null;
+}
+export function getForecastOperatorAssumptions(projectKey = 'tropical') {
+  return fetchJson<{ assumptions: ForecastOperatorAssumption[] }>(
+    `/api/forecast/db/projects/${encodeURIComponent(projectKey)}/operator-assumptions`,
+  );
+}
+export function createForecastOperatorAssumption(
+  projectKey: string,
+  body: Record<string, unknown>,
+) {
+  return fetchJson(
+    `/api/forecast/db/projects/${encodeURIComponent(projectKey)}/operator-assumptions`,
+    { method: 'POST', body: JSON.stringify(body) },
+  );
+}
+export function editForecastOperatorAssumption(
+  assumptionId: string,
+  patch: Record<string, unknown>,
+) {
+  return fetchJson(`/api/forecast/db/operator-assumptions/${encodeURIComponent(assumptionId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(patch),
+  });
+}
+export function getForecastRequiredAssumptions(projectKey = 'tropical') {
+  return fetchJson<{ required: ForecastRequiredAssumption[] }>(
+    `/api/forecast/db/projects/${encodeURIComponent(projectKey)}/required-assumptions`,
+  );
+}
+export function createForecastRequiredAssumption(
+  projectKey: string,
+  body: Record<string, unknown>,
+) {
+  return fetchJson(
+    `/api/forecast/db/projects/${encodeURIComponent(projectKey)}/required-assumptions`,
+    { method: 'POST', body: JSON.stringify(body) },
+  );
+}
+export function setForecastRequiredAssumptionSatisfied(requiredId: string, satisfied: boolean) {
+  return fetchJson(`/api/forecast/db/required-assumptions/${encodeURIComponent(requiredId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ satisfied }),
+  });
+}
+
 /* Forecast configuration — read-only viewer over the v60 config snapshot (Implementation Phase 2).
  * Read-only metadata: business config settings only (no paths, run stamps, endpoints, or internals). */
 export function getForecastConfigSnapshots() {
@@ -1305,6 +1377,12 @@ export const api = {
   getForecastDbOutputs,
   getForecastDbOutput,
   getForecastDbDecisionSupport,
+  getForecastOperatorAssumptions,
+  createForecastOperatorAssumption,
+  editForecastOperatorAssumption,
+  getForecastRequiredAssumptions,
+  createForecastRequiredAssumption,
+  setForecastRequiredAssumptionSatisfied,
   // Forecast configuration viewer (Implementation Phase 2). Read-only metadata.
   getForecastConfigSnapshots,
   getForecastConfigSnapshot,

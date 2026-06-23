@@ -15,6 +15,7 @@ import {
   ForecastTh,
 } from '../components/forecast/ForecastPageChrome'
 import { ForecastDecisionSupportPanel } from '../components/forecast/ForecastDecisionSupportPanel'
+import { ForecastOperatorAssumptionsPanel } from '../components/forecast/ForecastOperatorAssumptionsPanel'
 import { ForecastStatusPill } from '../components/forecast/ForecastStatusPill'
 import { EmptyState } from '../components/ui/EmptyState'
 import { api } from '../lib/api'
@@ -280,6 +281,7 @@ export function ForecastRunCenterPage() {
       )}
 
       <ForecastDecisionSupportPanel />
+      <ForecastOperatorAssumptionsPanel />
     </ForecastShell>
   )
 }
