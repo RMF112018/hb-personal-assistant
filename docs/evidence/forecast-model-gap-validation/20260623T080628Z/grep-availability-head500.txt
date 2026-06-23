@@ -1,0 +1,500 @@
+src/hb_assistant/resources/json/phase_09_daily_brief_handoff_packet_v2_contract.json:49:    "detail_availability"
+src/hb_assistant/resources/json/phase_09_daily_brief_handoff_packet_v2_contract.json:79:    "missing_field_policy": "Fields not persisted by repo truth (e.g. responsible-party/vendor NAMES) are emitted null with a per-record detail_availability reason; opaque ids are carried separately where available; days_open/age derives only from a real start timestamp else null + reason. Never fabricate.",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3848:    "forecast_data_availability_profiles": {
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3855:      "notes": "Per-run x domain availability/coverage/freshness/completeness/mapping profile; absent domains recorded as unavailable."
+src/hb_assistant/cli/graph.py:3191:        help="Include safe encrypted-body availability booleans/counts only (never plaintext/ref)",
+src/hb_assistant/cli/second_brain.py:7:  availability, schema/contract versions, guardrails) and write a metadata-only
+src/hb_assistant/cli/second_brain.py:529:    """List the allowlisted query tools + their backing read-model availability."""
+src/hb_assistant/cli/second_brain.py:6772:    Reports core SDK availability (`llama-index-core` from `retrieval` extra; probed without import),
+src/hb_assistant/cli/second_brain.py:8759:    Reports the startup checks, SDK availability, and why serving is not yet ready
+src/hb_assistant/cli/second_brain.py:9958:    hashes / window-builder availability metadata — raw email body text is never loaded or printed.
+src/hb_assistant/cli/second_brain.py:11376:    """List local model profiles with served task families and current availability (read-only)."""
+src/hb_assistant/cli/second_brain.py:11479:    For every routed task family: selected profile, candidate model chain, probe/availability status,
+src/hb_assistant/procore/budget_detail_read_model.py:634:    """Return body-free availability summary for one canonical code."""
+src/hb_assistant/retrieval/retriever.py:40:    availability flags — never raw subjects, bodies, or join URLs. Prefers higher source-quality
+src/hb_assistant/construction/forecast/decision_support_engine.py:6:- maturity tier + per-domain data availability are DERIVED from the v59 source-domain tables in
+src/hb_assistant/construction/forecast/decision_support_engine.py:38:    "tables": "maturity_snapshots/data_availability_profiles/confidence_scorecards/confidence_factors",
+src/hb_assistant/construction/forecast/decision_support_engine.py:49:    "availability",
+src/hb_assistant/construction/forecast/decision_support_engine.py:112:    """Derive maturity/availability from DB inputs + project confidence from the package.
+src/hb_assistant/construction/forecast/decision_support_engine.py:196:        # ---- data availability profiles ---------------------------------------------
+src/hb_assistant/construction/forecast/decision_support_engine.py:204:            planned["availability"].append(
+src/hb_assistant/construction/forecast/decision_support_engine.py:205:                _availability_row(
+src/hb_assistant/construction/forecast/decision_support_engine.py:207:                    availability="available" if present else "unavailable",
+src/hb_assistant/construction/forecast/decision_support_engine.py:216:            planned["availability"].append(
+src/hb_assistant/construction/forecast/decision_support_engine.py:217:                _availability_row(
+src/hb_assistant/construction/forecast/decision_support_engine.py:219:                    availability="unavailable", coverage=None, freshness=None,
+src/hb_assistant/construction/forecast/decision_support_engine.py:265:def _availability_row(run_id, project_key, source_package, domain, *, availability, coverage,
+src/hb_assistant/construction/forecast/decision_support_engine.py:273:        "availability": availability,
+src/hb_assistant/construction/forecast/decision_support_engine.py:282:            {"domain": domain, "availability": availability, "coverage": coverage,
+src/hb_assistant/construction/forecast/decision_support_engine.py:546:    """Read maturity/availability/scorecards back and compare counts to the plan."""
+src/hb_assistant/construction/forecast/decision_support_engine.py:553:            "availability": repo.read_availability_from_db(conn, run_id=run_id),
+src/hb_assistant/construction/forecast/decision_support_repository.py:8:Populated this phase: maturity snapshot, data-availability profiles, confidence scorecards
+src/hb_assistant/construction/forecast/decision_support_repository.py:50:def upsert_availability_profile(conn: sqlite3.Connection, row: dict[str, Any]) -> None:
+src/hb_assistant/construction/forecast/decision_support_repository.py:51:    _upsert(conn, "forecast_data_availability_profiles", row, ("id",))
+src/hb_assistant/construction/forecast/decision_support_repository.py:73:    "availability": upsert_availability_profile,
+src/hb_assistant/construction/forecast/decision_support_repository.py:104:def read_availability_from_db(conn: sqlite3.Connection, *, run_id: str) -> list[dict[str, Any]]:
+src/hb_assistant/construction/forecast/decision_support_repository.py:105:    return _read_raw(conn, "forecast_data_availability_profiles", "run_id", run_id, "domain")
+src/hb_assistant/construction/meeting_prep/brief_builder.py:311:        # section stays redacted-safe: it carries availability FLAGS + attendee roles + a
+src/hb_assistant/construction/email_calendar/read_models.py:20:These objects are **redacted-safe**: they carry business metadata, availability flags, child
+src/hb_assistant/construction/email_calendar/projection_registry.py:11:  body-availability flag for body columns, which stay local-private in the raw table),
+src/hb_assistant/construction/email_calendar/projection_registry.py:53:    only a queryable availability flag + char length (linked back via ``raw_row_id``)."""
+src/hb_assistant/construction/email_calendar/projection_registry.py:80:    body_item_fields: tuple[BodyField, ...]  # item body keys -> availability flag columns
+src/hb_assistant/construction/second_brain/config.py:67:        """JSON-safe dependency/availability booleans (no values)."""
+src/hb_assistant/construction/second_brain/store.py:5:posture (mode, config status, dependency availability, policy version). The table
+src/hb_assistant/construction/second_brain/query_tools/tools.py:157:    """Return the allowlist with each tool's backing read-model + availability."""
+src/hb_assistant/construction/second_brain/query_tools/tools.py:167:                "availability": "backed" if backed else "no_read_model",
+src/hb_assistant/construction/second_brain/daily_brief/enrichment.py:149:        "detail_availability": {
+src/hb_assistant/construction/second_brain/daily_brief/enrichment.py:234:        "detail_availability": {
+src/hb_assistant/construction/second_brain/daily_brief/enrichment.py:320:                    "detail_availability": {
+src/hb_assistant/construction/second_brain/daily_brief/enrichment.py:359:        "detail_availability": {
+src/hb_assistant/construction/second_brain/daily_brief/packet.py:154:# sourced from the V1 retrieval path are emitted as null and flagged via ``detail_availability``.
+src/hb_assistant/construction/second_brain/daily_brief/packet.py:175:    "detail_availability",
+src/hb_assistant/construction/second_brain/daily_brief/packet.py:877:    ``detail_availability``. Carries no raw ref (hash only).
+src/hb_assistant/construction/second_brain/daily_brief/packet.py:922:        "detail_availability": {
+src/hb_assistant/construction/second_brain/daily_brief/packet.py:974:                    "detail_availability": {
+src/hb_assistant/construction/second_brain/daily_brief/packet.py:1005:                "detail_availability": {
+src/hb_assistant/construction/second_brain/local_ai/new_today_usefulness.py:12:    unavailability) is NOT product degradation — it never sets ``degraded`` and never surfaces an
+src/hb_assistant/construction/second_brain/local_ai/email_followup_route.py:224:    output dict when ok), ``violations``, ``route`` (selected profile / availability), plus the
+src/hb_assistant/construction/second_brain/local_ai/email_followup_candidate_projection.py:13:  counts, body *availability flags* (never body text), ``project_key``, ``thread_ref``,
+src/hb_assistant/construction/second_brain/local_ai/email_followup_readiness.py:9:This module performs no model call (it only checks route availability), no persistence, and no
+src/hb_assistant/construction/second_brain/local_ai/email_followup_readiness.py:92:    unreachable) is used only to check route availability. ``raw_policy_enabled=False`` reports every
+src/hb_assistant/construction/second_brain/local_ai/email_followup_readiness.py:100:    # Route availability (local-only; fail-closed). One probe; no generation.
+src/hb_assistant/construction/second_brain/local_ai/email_followup_readiness.py:182:        # Raw availability — ONLY the window's safe metadata is read (never window_text).
+src/hb_assistant/construction/second_brain/local_ai/model_diagnostics.py:4:selected profile, the ordered candidate model chain, availability/probe status, the fallback reason
+src/hb_assistant/construction/second_brain/local_ai/model_diagnostics.py:39:    ``present_models`` None) means availability is unknown → every family reports fail-closed rather
+src/hb_assistant/construction/second_brain/local_ai/daily_brief_intelligence.py:209:    # -- candidate availability / dry-run semantics (Phase 10 remediation) --------------------
+src/hb_assistant/construction/second_brain/local_ai/daily_brief_intelligence.py:212:    candidate_availability: dict[str, Any] = field(default_factory=dict)
+src/hb_assistant/construction/second_brain/local_ai/daily_brief_intelligence.py:238:            # candidate availability / dry-run semantics:
+src/hb_assistant/construction/second_brain/local_ai/daily_brief_intelligence.py:241:            "candidate_availability": self.candidate_availability,
+src/hb_assistant/construction/second_brain/local_ai/daily_brief_intelligence.py:491:def _candidate_availability(
+src/hb_assistant/construction/second_brain/local_ai/daily_brief_intelligence.py:494:    """Compute operator-visible candidate availability + dry-run dependency warnings (raw-safe).
+src/hb_assistant/construction/second_brain/local_ai/daily_brief_intelligence.py:513:    availability = {
+src/hb_assistant/construction/second_brain/local_ai/daily_brief_intelligence.py:534:    return availability, warnings
+src/hb_assistant/construction/second_brain/local_ai/daily_brief_intelligence.py:556:    ``generation_mode`` drive operator-visible candidate-availability diagnostics (they never change
+src/hb_assistant/construction/second_brain/local_ai/daily_brief_intelligence.py:570:    availability, avail_warnings = _candidate_availability(candidates, brief_date, generation_mode)
+src/hb_assistant/construction/second_brain/local_ai/daily_brief_intelligence.py:571:    result.candidate_count = availability["candidate_count"]
+src/hb_assistant/construction/second_brain/local_ai/daily_brief_intelligence.py:572:    result.candidate_freshness = availability["candidate_freshness"]
+src/hb_assistant/construction/second_brain/local_ai/daily_brief_intelligence.py:573:    result.candidate_availability = availability
+src/hb_assistant/construction/second_brain/local_ai/model_router.py:130:    availability unknown). Availability is reported but the routing *decision* is always returned so
+src/hb_assistant/construction/second_brain/local_ai/model_router.py:224:    """Report every profile with its served task families and current availability (raw-safe)."""
+src/hb_assistant/construction/second_brain/mcp/server.py:30:def _import_mcp() -> Any:  # pragma: no cover - thin availability probe
+src/hb_assistant/construction/second_brain/mcp/policy.py:221:    Reports the startup checks, SDK availability, and why the server is not yet
+src/hb_assistant/construction/second_brain/retrieval/llamaindex_config.py:87:    This is the core availability for the `retrieval` extra. It powers status/dry-run surfaces
+src/hb_assistant/construction/email/relationship_builder.py:66:# Procore endpoints surfaced as availability context.
+src/hb_assistant/construction/email/relationship_builder.py:102:    """Outcome of a relationships run (counts + availability; no subjects/addresses)."""
+src/hb_assistant/construction/email/relationship_builder.py:146:        procore_available = self._procore_availability(project_key)
+src/hb_assistant/construction/email/relationship_builder.py:361:    # --- availability context (read-only counts) ----------------------------
+src/hb_assistant/construction/email/relationship_builder.py:363:    def _procore_availability(self, project_key: Optional[str]) -> dict[str, int]:
+src/hb_assistant/construction/analytics/api.py:1697:        # only fail-closed unavailability (missing/unreadable DB or schema < 66) maps to 503.
+src/hb_assistant/construction/analytics/forecast_run_readmodel.py:5:(maturity / data-availability / confidence scorecards+factors / method eligibility /
+src/hb_assistant/construction/analytics/forecast_run_readmodel.py:226:        """Maturity / availability / confidence / method-eligibility for an output's run."""
+src/hb_assistant/construction/analytics/forecast_run_readmodel.py:241:            availability = self._rows(
+src/hb_assistant/construction/analytics/forecast_run_readmodel.py:243:                "SELECT domain, availability, coverage, freshness, completeness, mapping_quality, "
+src/hb_assistant/construction/analytics/forecast_run_readmodel.py:244:                "maturity, score, reason FROM forecast_data_availability_profiles WHERE run_id = ? "
+src/hb_assistant/construction/analytics/forecast_run_readmodel.py:279:            "data_availability": availability,
+src/hb_assistant/forecasting/gates.py:89:        "parity_availability": "unsupported_ep_scope_subset",
+src/hb_assistant/forecasting/gates.py:999:            parity_availability = cfg.get("parity_availability")
+src/hb_assistant/forecasting/gates.py:1024:            if parity_availability:
+src/hb_assistant/forecasting/gates.py:1031:                        "parity_availability": parity_availability,
+src/hb_assistant/forecasting/gates.py:1060:            count_mismatch_severity = "info" if parity_availability else "warning"
+src/hb_assistant/forecasting/gates.py:1061:            if ep_count != adjusted_fin_count and not parity_availability:
+src/hb_assistant/store/forecast_decision_support_tables.py:19:    "forecast_data_availability_profiles",
+src/hb_assistant/store/forecast_decision_support_tables.py:50:    # --- per-domain data availability profile ------------------------------------------
+src/hb_assistant/store/forecast_decision_support_tables.py:52:    CREATE TABLE IF NOT EXISTS forecast_data_availability_profiles (
+src/hb_assistant/store/forecast_decision_support_tables.py:58:      availability TEXT,
+src/hb_assistant/store/forecast_decision_support_tables.py:73:    "CREATE INDEX IF NOT EXISTS idx_forecast_data_availability_profiles_run ON forecast_data_availability_profiles(run_id);",
+src/hb_assistant/store/forecast_decision_support_tables.py:74:    "CREATE INDEX IF NOT EXISTS idx_forecast_data_availability_profiles_project ON forecast_data_availability_profiles(project_key);",
+src/hb_assistant/store/migrator.py:6775:    # v66 Forecast decision-support family: per-run maturity snapshot, data-availability
+src/hb_assistant/store/migrator.py:7928:            # v66 Forecast decision-support family: maturity/availability/confidence
+subrepos/construction-financial-review/src/construction_financial_review/forecast_intelligence/model_engine_adapter.py:5:discipline of ``analysis/final_forecast_runner`` and the graceful-availability pattern of the Ollama
+subrepos/construction-financial-review/src/construction_financial_review/forecast_intelligence/model_engine_adapter.py:68:    except Exception as exc:  # noqa: BLE001 - availability probe must never raise
+subrepos/construction-financial-review/src/construction_financial_review/forecast_intelligence/generate_forecast_intelligence_package.py:617:    # the backtest). Any unavailability falls back to the classical in-process engine.
+subrepos/construction-financial-review/src/construction_financial_review/workflows/live_db_run_output_projection.py:61:    "forecast_data_availability_profiles",
+subrepos/construction-financial-review/src/construction_financial_review/forecast_cost_frequency/generate_forecast_cost_frequency_package.py:519:        "availability + monthly-aggregate-fallback flags, latest-complete-month + weekday-normalized "
+tests/test_email_calendar_structured_projection_remediation.py:4:bodies stay local-private in the raw tables (the structured row carries availability flags +
+tests/test_daily_brief_intelligence.py:322:# -- Candidate availability / dry-run semantics (Phase 10 remediation) -----------------------
+tests/test_daily_brief_intelligence.py:330:def test_no_candidate_availability_warns_and_requires_apply() -> None:
+tests/test_daily_brief_intelligence.py:343:    assert result.candidate_availability["requires_apply_for_fresh_candidates"] is True
+tests/test_daily_brief_intelligence.py:358:    av = result.candidate_availability
+tests/test_daily_brief_intelligence.py:374:    assert result.candidate_availability["requires_apply_for_fresh_candidates"] is True
+tests/test_daily_brief_intelligence.py:386:    av = result.candidate_availability
+tests/test_daily_brief_intelligence.py:407:def test_candidate_availability_keys_in_safe_payload() -> None:
+tests/test_daily_brief_intelligence.py:426:        assert key in sp["candidate_availability"]
+tests/test_phase_10_follow_up_watch_report.py:4:contradictory items to needs-review, that the report uses no model (so model availability never
+tests/test_fastapi_forecast_run_readmodel.py:102:            "INSERT INTO forecast_data_availability_profiles (id, run_id, project_key, domain, "
+tests/test_fastapi_forecast_run_readmodel.py:103:            "availability, coverage, reason, raw_json, created_utc) VALUES (?,?,?,?,?,?,?,?,?)",
+tests/test_fastapi_forecast_run_readmodel.py:178:    assert body["data_availability"][0]["availability"] == "available"
+tests/test_forecast_decision_support_phase2b.py:130:        avail = {r["domain"]: r["availability"] for r in plan["planned"]["availability"]}
+tests/test_forecast_decision_support_phase2b.py:192:        assert plan["written"]["availability"] == 7  # 3 db domains + 4 absent
+tests/test_forecast_decision_support_phase2b.py:200:        assert conn.execute("SELECT COUNT(*) FROM forecast_data_availability_profiles").fetchone()[0] == 7
+tests/test_phase_10_daily_brief_simplified.py:9:  degradation / MEI-withheld / optional-Ollama-unavailability never flip it to degraded and never
+tests/test_phase_10_daily_brief_simplified.py:142:    """Optional Ollama overlay unavailability is diagnostics, never product degradation."""
+tests/test_phase_10_model_routing_diagnostics.py:3:Proves the consolidated diagnostics sweep covers every routed task family, reports availability /
+docs/evidence/procore-change-events-open-questions/20260621T100808Z/00-repo-truth.txt:38:78f86a5f local availability
+docs/evidence/procore-change-events-open-questions/20260621T100136Z/00-repo-truth.txt:32:78f86a5f availability:
+docs/evidence/phase-10-email-followup-candidate-projection/01-schema-and-read-model-audit.md:21:sent_at_utc, received_at_utc, recipient_count, attachment_count, has_attachments, body **availability
+docs/evidence/phase-10-full-candidate-implementation/05-local-model-routing-refinement/00-repo-truth-audit.md:7:| Router | `…/local_ai/model_router.py` `route_task_family` → `RouteResult` | Deterministic, fail-closed, never cloud; per-family decision with profile/model/availability/blockers/reason_code/considered chain/no_cloud. |
+docs/evidence/phase-10-full-candidate-implementation/05-local-model-routing-refinement/README.md:9:Phase 10 task family and reports selected profile, candidate model chain, probe/availability status,
+docs/evidence/phase-10-full-candidate-implementation/05-local-model-routing-refinement/final-output-manifest.md:6:all Phase 10 task families — selected profile, candidate model chain, availability/probe status,
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:29:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:57:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:85:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:113:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:178:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:214:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:250:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:286:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:322:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:358:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:394:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:430:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:466:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:502:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:538:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:574:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:610:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:646:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:682:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:718:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:754:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:790:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:826:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:862:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:898:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:934:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:970:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:1006:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:1042:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:1078:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:1114:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:1150:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:1186:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:1222:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:1258:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:1294:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:1330:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:1366:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:1402:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:1438:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:1474:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:1510:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:1546:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:1582:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:1618:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:1654:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:1690:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:1726:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:1762:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:1798:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:1834:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:1870:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:1906:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:1942:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:2012:        "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:2034:        "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:2063:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:2089:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:2115:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:2141:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:2167:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:2193:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:2219:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:2245:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:2271:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:2297:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:2323:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:2349:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:2375:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:2401:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:2427:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:2453:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:2479:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:2505:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:2531:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:2557:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:2583:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:2609:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:2635:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:2661:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:2687:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:2713:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:2739:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:2765:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:2791:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:2817:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:2843:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:2869:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:2895:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:2921:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:2947:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:2973:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:2999:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:3025:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:3051:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:3077:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:3103:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:3129:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:3155:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:3181:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:3207:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:3233:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:3259:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:3285:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:3311:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:3337:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:3375:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:3403:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:3431:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:3459:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:3487:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:3515:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:3543:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:3571:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:3599:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:3627:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:3655:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:3683:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:3711:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:3739:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:3767:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:3795:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:3823:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:3851:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:3879:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:3907:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:3935:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:3963:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:3991:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:4019:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:4047:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:4075:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:4103:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:4131:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:4159:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:4187:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:4215:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:4243:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:4271:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:4299:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:4327:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:4355:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:4383:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:4411:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:4439:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:4467:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:4495:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:4523:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:4551:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:4579:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:4607:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:4635:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:4663:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:4691:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:4719:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:4747:          "detail_availability": {
+docs/evidence/forecast-model-engines-upload-next/20260622T084450Z/live-db/live-db-summary.json:2:  "amount_field_availability": [
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/daily-brief-packet-v2-contract.json:48:    "detail_availability"
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/daily-brief-packet-v2-contract.json:78:    "missing_field_policy": "Fields not persisted by repo truth (e.g. responsible-party/vendor NAMES) are emitted null with a per-record detail_availability reason; opaque ids are carried separately where available; days_open/age derives only from a real start timestamp else null + reason. Never fabricate.",
+docs/evidence/forecast-model-engines-upload-next/20260622T084450Z/README.md:15:Statsforecast runtime availability: `unavailable`
+docs/evidence/forecast-model-engines-upload-next/20260622T084450Z/statsforecast-shadow/statsforecast-shadow-evidence.json:2:  "adapter_availability": "unverified: no statsforecast/model_engine_runtime source directory present",
+docs/evidence/forecast-model-engines-upload-next/20260622T084450Z/statsforecast-shadow/statsforecast-shadow-evidence.json:8:  "runtime_availability": "unavailable",
+docs/evidence/email-calendar-full-raw-content-ingestion/05_consumer_read_models_and_model_context.md:27:| `meeting_prep/brief_builder.py::_section_meeting_context` | agenda/attendee detail now sourced from the structured event projection; the persisted `section_redacted` carries availability FLAGS + attendee roles + source-quality, and **no longer** the agenda body or join URL (a redaction improvement) |
+docs/evidence/email-calendar-full-raw-content-ingestion/05_consumer_read_models_and_model_context.md:31:| `retrieval/retriever.py` | new `retrieve_email_calendar_structured` — ranks structured rows, returns redacted results (hashed subject ref + source-quality + availability flags), prefers higher source-quality |
+docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/daily-brief-packet-v2-contract.md:50:`detail_availability` reason; opaque ids are carried separately where available; `days_open`/`age`
+docs/evidence/phase-10-intelligence-daily-brief-remediation/standalone-intelligence-pre-summary.json:38:  "candidate_availability": {
+docs/evidence/phase-10-intelligence-daily-brief-remediation/standalone-intelligence-post-summary.json:38:  "candidate_availability": {
+docs/evidence/phase-10-intelligence-daily-brief-remediation/final-audit.md:11:| `58ed3161` | fix(second-brain): surface daily brief candidate availability semantics |
+docs/evidence/email-calendar-full-raw-content-ingestion/04D_final_structured_projection_coverage.md:62:- full text & HTML body persist locally; the structured row carries availability flags + char
+docs/evidence/phase-10-top3-local-model-agent-convergence/22-cli-help-snapshots.md:42: model unavailable, …). Existence of raw email content is determined ONLY from safe source refs / hashes / window-builder availability metadata — raw email body text is never loaded or printed. 
+docs/evidence/phase-10-intelligence-daily-brief-remediation/README.md:33:| `58ed3161` | surface daily brief candidate availability semantics |
+docs/evidence/phase-10-top3-local-model-agent-convergence/04-unified-design-contract.md:86:  refs / hashes / window-builder availability metadata only.
+docs/evidence/phase-10-top3-local-model-agent-convergence/03-current-surface-audit.md:10:| `construction/second_brain/local_ai/daily_brief_intelligence.py` | `build_daily_brief_intelligence(...) -> DailyBriefIntelligenceResult` | Source-linked advisory bullets (6 sections + catchup). Routes via `model_router.route_task_family("daily_brief_synthesis_quality")`. Drops bullets not citing a known candidate id; withholds whole object on model/JSON/schema/source-link/redaction failure. `safe_payload()` already exposes: `status, enriched, withheld_reason, profile_id, model_name, candidate_count, candidate_freshness, candidate_availability, route_selected_profile, route_model_name, terminal_profile_id, generation_profile_id, fallback_chain, models_attempted, blockers, warnings, metrics{model_bullets_seen,bullets_kept,bullets_dropped,unknown_source_ids_count,source_link_coverage,...}, intelligence`. |
+docs/evidence/prompt-14b-settings-ux/prompt-14b-settings-connection-management-ux-summary.md:50:- Revoke-local credential action is not implemented in this prompt (the prompt allowed "if already supported or safely stubbed"; surface shows reconnect/revoke availability as future or disabled where no backend yet). A later prompt may add a local-cache clear (no IdP call).
+docs/evidence/forecasting-db-audit-20260621/phase5-projection-parity-evidence.json:33:      "parity_availability": "unsupported_ep_scope_subset",
+docs/evidence/construction-intelligence-phase-07b-calendar-email/00-repo-truth-rebaseline.md:93:## 2. Validation / command-availability matrix
+docs/evidence/phase-13-validation-outputs/ruff-full.txt:1797:[1m[91mF401 [0m[1m`pptx.util.Inches` imported but unused; consider using `importlib.util.find_spec` to test for availability[0m
+docs/evidence/phase-13-validation-outputs/ruff-full.txt:1809:[1m[91mF401 [0m[1m`pptx.util.Pt` imported but unused; consider using `importlib.util.find_spec` to test for availability[0m
+docs/evidence/construction-intelligence-phase-09-daily-brief-mcp-handoff/mcp-daily-brief-handoff-tool.json:165:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-daily-brief-mcp-handoff/mcp-daily-brief-handoff-tool.json:206:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-daily-brief-mcp-handoff/mcp-daily-brief-handoff-tool.json:247:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-daily-brief-mcp-handoff/mcp-daily-brief-handoff-tool.json:288:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-daily-brief-mcp-handoff/mcp-daily-brief-handoff-tool.json:318:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-daily-brief-mcp-handoff/mcp-daily-brief-handoff-tool.json:333:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-daily-brief-mcp-handoff/mcp-daily-brief-handoff-tool.json:348:          "detail_availability": {
+docs/evidence/construction-intelligence-phase-09-daily-brief-mcp-handoff/mcp-daily-brief-handoff-tool.json:371:          "detail_availability": {
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-forecast-head1000.txt:158:src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3848:    "forecast_data_availability_profiles": {
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-forecast-head1000.txt:351:src/hb_assistant/construction/forecast/decision_support_repository.py:51:    _upsert(conn, "forecast_data_availability_profiles", row, ("id",))
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-forecast-head1000.txt:357:src/hb_assistant/construction/forecast/decision_support_repository.py:105:    return _read_raw(conn, "forecast_data_availability_profiles", "run_id", run_id, "domain")
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-forecast-head1000.txt:901:src/hb_assistant/construction/analytics/forecast_run_readmodel.py:244:                "maturity, score, reason FROM forecast_data_availability_profiles WHERE run_id = ? "
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:1:src/hb_assistant/resources/json/phase_09_daily_brief_handoff_packet_v2_contract.json:49:    "detail_availability"
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:2:src/hb_assistant/resources/json/phase_09_daily_brief_handoff_packet_v2_contract.json:79:    "missing_field_policy": "Fields not persisted by repo truth (e.g. responsible-party/vendor NAMES) are emitted null with a per-record detail_availability reason; opaque ids are carried separately where available; days_open/age derives only from a real start timestamp else null + reason. Never fabricate.",
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:3:src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3848:    "forecast_data_availability_profiles": {
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:4:src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3855:      "notes": "Per-run x domain availability/coverage/freshness/completeness/mapping profile; absent domains recorded as unavailable."
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:5:src/hb_assistant/cli/graph.py:3191:        help="Include safe encrypted-body availability booleans/counts only (never plaintext/ref)",
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:6:src/hb_assistant/cli/second_brain.py:7:  availability, schema/contract versions, guardrails) and write a metadata-only
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:7:src/hb_assistant/cli/second_brain.py:529:    """List the allowlisted query tools + their backing read-model availability."""
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:8:src/hb_assistant/cli/second_brain.py:6772:    Reports core SDK availability (`llama-index-core` from `retrieval` extra; probed without import),
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:9:src/hb_assistant/cli/second_brain.py:8759:    Reports the startup checks, SDK availability, and why serving is not yet ready
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:10:src/hb_assistant/cli/second_brain.py:9958:    hashes / window-builder availability metadata — raw email body text is never loaded or printed.
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:11:src/hb_assistant/cli/second_brain.py:11376:    """List local model profiles with served task families and current availability (read-only)."""
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:12:src/hb_assistant/cli/second_brain.py:11479:    For every routed task family: selected profile, candidate model chain, probe/availability status,
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:13:src/hb_assistant/procore/budget_detail_read_model.py:634:    """Return body-free availability summary for one canonical code."""
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:14:src/hb_assistant/retrieval/retriever.py:40:    availability flags — never raw subjects, bodies, or join URLs. Prefers higher source-quality
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:15:src/hb_assistant/construction/forecast/decision_support_engine.py:6:- maturity tier + per-domain data availability are DERIVED from the v59 source-domain tables in
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:16:src/hb_assistant/construction/forecast/decision_support_engine.py:38:    "tables": "maturity_snapshots/data_availability_profiles/confidence_scorecards/confidence_factors",
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:17:src/hb_assistant/construction/forecast/decision_support_engine.py:49:    "availability",
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:18:src/hb_assistant/construction/forecast/decision_support_engine.py:112:    """Derive maturity/availability from DB inputs + project confidence from the package.
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:19:src/hb_assistant/construction/forecast/decision_support_engine.py:196:        # ---- data availability profiles ---------------------------------------------
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:20:src/hb_assistant/construction/forecast/decision_support_engine.py:204:            planned["availability"].append(
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:21:src/hb_assistant/construction/forecast/decision_support_engine.py:205:                _availability_row(
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:22:src/hb_assistant/construction/forecast/decision_support_engine.py:207:                    availability="available" if present else "unavailable",
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:23:src/hb_assistant/construction/forecast/decision_support_engine.py:216:            planned["availability"].append(
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:24:src/hb_assistant/construction/forecast/decision_support_engine.py:217:                _availability_row(
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:25:src/hb_assistant/construction/forecast/decision_support_engine.py:219:                    availability="unavailable", coverage=None, freshness=None,
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:26:src/hb_assistant/construction/forecast/decision_support_engine.py:265:def _availability_row(run_id, project_key, source_package, domain, *, availability, coverage,
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:27:src/hb_assistant/construction/forecast/decision_support_engine.py:273:        "availability": availability,
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:28:src/hb_assistant/construction/forecast/decision_support_engine.py:282:            {"domain": domain, "availability": availability, "coverage": coverage,
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:29:src/hb_assistant/construction/forecast/decision_support_engine.py:546:    """Read maturity/availability/scorecards back and compare counts to the plan."""
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:30:src/hb_assistant/construction/forecast/decision_support_engine.py:553:            "availability": repo.read_availability_from_db(conn, run_id=run_id),
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:31:src/hb_assistant/construction/forecast/decision_support_repository.py:8:Populated this phase: maturity snapshot, data-availability profiles, confidence scorecards
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:32:src/hb_assistant/construction/forecast/decision_support_repository.py:50:def upsert_availability_profile(conn: sqlite3.Connection, row: dict[str, Any]) -> None:
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:33:src/hb_assistant/construction/forecast/decision_support_repository.py:51:    _upsert(conn, "forecast_data_availability_profiles", row, ("id",))
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:34:src/hb_assistant/construction/forecast/decision_support_repository.py:73:    "availability": upsert_availability_profile,
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:35:src/hb_assistant/construction/forecast/decision_support_repository.py:104:def read_availability_from_db(conn: sqlite3.Connection, *, run_id: str) -> list[dict[str, Any]]:
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:36:src/hb_assistant/construction/forecast/decision_support_repository.py:105:    return _read_raw(conn, "forecast_data_availability_profiles", "run_id", run_id, "domain")
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:37:src/hb_assistant/construction/meeting_prep/brief_builder.py:311:        # section stays redacted-safe: it carries availability FLAGS + attendee roles + a
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:38:src/hb_assistant/construction/email_calendar/read_models.py:20:These objects are **redacted-safe**: they carry business metadata, availability flags, child
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:39:src/hb_assistant/construction/email_calendar/projection_registry.py:11:  body-availability flag for body columns, which stay local-private in the raw table),
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:40:src/hb_assistant/construction/email_calendar/projection_registry.py:53:    only a queryable availability flag + char length (linked back via ``raw_row_id``)."""
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:41:src/hb_assistant/construction/email_calendar/projection_registry.py:80:    body_item_fields: tuple[BodyField, ...]  # item body keys -> availability flag columns
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:42:src/hb_assistant/construction/second_brain/config.py:67:        """JSON-safe dependency/availability booleans (no values)."""
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:43:src/hb_assistant/construction/second_brain/store.py:5:posture (mode, config status, dependency availability, policy version). The table
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:44:src/hb_assistant/construction/second_brain/query_tools/tools.py:157:    """Return the allowlist with each tool's backing read-model + availability."""
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:45:src/hb_assistant/construction/second_brain/query_tools/tools.py:167:                "availability": "backed" if backed else "no_read_model",
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:46:src/hb_assistant/construction/second_brain/daily_brief/enrichment.py:149:        "detail_availability": {
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:47:src/hb_assistant/construction/second_brain/daily_brief/enrichment.py:234:        "detail_availability": {
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:48:src/hb_assistant/construction/second_brain/daily_brief/enrichment.py:320:                    "detail_availability": {
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:49:src/hb_assistant/construction/second_brain/daily_brief/enrichment.py:359:        "detail_availability": {
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:50:src/hb_assistant/construction/second_brain/daily_brief/packet.py:154:# sourced from the V1 retrieval path are emitted as null and flagged via ``detail_availability``.
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:51:src/hb_assistant/construction/second_brain/daily_brief/packet.py:175:    "detail_availability",
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:52:src/hb_assistant/construction/second_brain/daily_brief/packet.py:877:    ``detail_availability``. Carries no raw ref (hash only).
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:53:src/hb_assistant/construction/second_brain/daily_brief/packet.py:922:        "detail_availability": {
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:54:src/hb_assistant/construction/second_brain/daily_brief/packet.py:974:                    "detail_availability": {
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:55:src/hb_assistant/construction/second_brain/daily_brief/packet.py:1005:                "detail_availability": {
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:56:src/hb_assistant/construction/second_brain/local_ai/new_today_usefulness.py:12:    unavailability) is NOT product degradation — it never sets ``degraded`` and never surfaces an
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:57:src/hb_assistant/construction/second_brain/local_ai/email_followup_route.py:224:    output dict when ok), ``violations``, ``route`` (selected profile / availability), plus the
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:58:src/hb_assistant/construction/second_brain/local_ai/email_followup_candidate_projection.py:13:  counts, body *availability flags* (never body text), ``project_key``, ``thread_ref``,
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:59:src/hb_assistant/construction/second_brain/local_ai/email_followup_readiness.py:9:This module performs no model call (it only checks route availability), no persistence, and no
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:60:src/hb_assistant/construction/second_brain/local_ai/email_followup_readiness.py:92:    unreachable) is used only to check route availability. ``raw_policy_enabled=False`` reports every
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:61:src/hb_assistant/construction/second_brain/local_ai/email_followup_readiness.py:100:    # Route availability (local-only; fail-closed). One probe; no generation.
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:62:src/hb_assistant/construction/second_brain/local_ai/email_followup_readiness.py:182:        # Raw availability — ONLY the window's safe metadata is read (never window_text).
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:63:src/hb_assistant/construction/second_brain/local_ai/model_diagnostics.py:4:selected profile, the ordered candidate model chain, availability/probe status, the fallback reason
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:64:src/hb_assistant/construction/second_brain/local_ai/model_diagnostics.py:39:    ``present_models`` None) means availability is unknown → every family reports fail-closed rather
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:65:src/hb_assistant/construction/second_brain/local_ai/daily_brief_intelligence.py:209:    # -- candidate availability / dry-run semantics (Phase 10 remediation) --------------------
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:66:src/hb_assistant/construction/second_brain/local_ai/daily_brief_intelligence.py:212:    candidate_availability: dict[str, Any] = field(default_factory=dict)
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:67:src/hb_assistant/construction/second_brain/local_ai/daily_brief_intelligence.py:238:            # candidate availability / dry-run semantics:
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:68:src/hb_assistant/construction/second_brain/local_ai/daily_brief_intelligence.py:241:            "candidate_availability": self.candidate_availability,
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:69:src/hb_assistant/construction/second_brain/local_ai/daily_brief_intelligence.py:491:def _candidate_availability(
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:70:src/hb_assistant/construction/second_brain/local_ai/daily_brief_intelligence.py:494:    """Compute operator-visible candidate availability + dry-run dependency warnings (raw-safe).
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:71:src/hb_assistant/construction/second_brain/local_ai/daily_brief_intelligence.py:513:    availability = {
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:72:src/hb_assistant/construction/second_brain/local_ai/daily_brief_intelligence.py:534:    return availability, warnings
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:73:src/hb_assistant/construction/second_brain/local_ai/daily_brief_intelligence.py:556:    ``generation_mode`` drive operator-visible candidate-availability diagnostics (they never change
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:74:src/hb_assistant/construction/second_brain/local_ai/daily_brief_intelligence.py:570:    availability, avail_warnings = _candidate_availability(candidates, brief_date, generation_mode)
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:75:src/hb_assistant/construction/second_brain/local_ai/daily_brief_intelligence.py:571:    result.candidate_count = availability["candidate_count"]
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:76:src/hb_assistant/construction/second_brain/local_ai/daily_brief_intelligence.py:572:    result.candidate_freshness = availability["candidate_freshness"]
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:77:src/hb_assistant/construction/second_brain/local_ai/daily_brief_intelligence.py:573:    result.candidate_availability = availability
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:78:src/hb_assistant/construction/second_brain/local_ai/model_router.py:130:    availability unknown). Availability is reported but the routing *decision* is always returned so
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:79:src/hb_assistant/construction/second_brain/local_ai/model_router.py:224:    """Report every profile with its served task families and current availability (raw-safe)."""
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:80:src/hb_assistant/construction/second_brain/mcp/server.py:30:def _import_mcp() -> Any:  # pragma: no cover - thin availability probe
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:81:src/hb_assistant/construction/second_brain/mcp/policy.py:221:    Reports the startup checks, SDK availability, and why the server is not yet
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:82:src/hb_assistant/construction/second_brain/retrieval/llamaindex_config.py:87:    This is the core availability for the `retrieval` extra. It powers status/dry-run surfaces
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:83:src/hb_assistant/construction/email/relationship_builder.py:66:# Procore endpoints surfaced as availability context.
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:84:src/hb_assistant/construction/email/relationship_builder.py:102:    """Outcome of a relationships run (counts + availability; no subjects/addresses)."""
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:85:src/hb_assistant/construction/email/relationship_builder.py:146:        procore_available = self._procore_availability(project_key)
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:86:src/hb_assistant/construction/email/relationship_builder.py:361:    # --- availability context (read-only counts) ----------------------------
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:87:src/hb_assistant/construction/email/relationship_builder.py:363:    def _procore_availability(self, project_key: Optional[str]) -> dict[str, int]:
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:88:src/hb_assistant/construction/analytics/api.py:1697:        # only fail-closed unavailability (missing/unreadable DB or schema < 66) maps to 503.
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:89:src/hb_assistant/construction/analytics/forecast_run_readmodel.py:5:(maturity / data-availability / confidence scorecards+factors / method eligibility /
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:90:src/hb_assistant/construction/analytics/forecast_run_readmodel.py:226:        """Maturity / availability / confidence / method-eligibility for an output's run."""
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:91:src/hb_assistant/construction/analytics/forecast_run_readmodel.py:241:            availability = self._rows(
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:92:src/hb_assistant/construction/analytics/forecast_run_readmodel.py:243:                "SELECT domain, availability, coverage, freshness, completeness, mapping_quality, "
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:93:src/hb_assistant/construction/analytics/forecast_run_readmodel.py:244:                "maturity, score, reason FROM forecast_data_availability_profiles WHERE run_id = ? "
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:94:src/hb_assistant/construction/analytics/forecast_run_readmodel.py:279:            "data_availability": availability,
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:95:src/hb_assistant/forecasting/gates.py:89:        "parity_availability": "unsupported_ep_scope_subset",
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:96:src/hb_assistant/forecasting/gates.py:999:            parity_availability = cfg.get("parity_availability")
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:97:src/hb_assistant/forecasting/gates.py:1024:            if parity_availability:
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:98:src/hb_assistant/forecasting/gates.py:1031:                        "parity_availability": parity_availability,
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:99:src/hb_assistant/forecasting/gates.py:1060:            count_mismatch_severity = "info" if parity_availability else "warning"
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:100:src/hb_assistant/forecasting/gates.py:1061:            if ep_count != adjusted_fin_count and not parity_availability:
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:101:src/hb_assistant/store/forecast_decision_support_tables.py:19:    "forecast_data_availability_profiles",
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:102:src/hb_assistant/store/forecast_decision_support_tables.py:50:    # --- per-domain data availability profile ------------------------------------------
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:103:src/hb_assistant/store/forecast_decision_support_tables.py:52:    CREATE TABLE IF NOT EXISTS forecast_data_availability_profiles (
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:104:src/hb_assistant/store/forecast_decision_support_tables.py:58:      availability TEXT,
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:105:src/hb_assistant/store/forecast_decision_support_tables.py:73:    "CREATE INDEX IF NOT EXISTS idx_forecast_data_availability_profiles_run ON forecast_data_availability_profiles(run_id);",
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:106:src/hb_assistant/store/forecast_decision_support_tables.py:74:    "CREATE INDEX IF NOT EXISTS idx_forecast_data_availability_profiles_project ON forecast_data_availability_profiles(project_key);",
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:107:src/hb_assistant/store/migrator.py:6775:    # v66 Forecast decision-support family: per-run maturity snapshot, data-availability
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:108:src/hb_assistant/store/migrator.py:7928:            # v66 Forecast decision-support family: maturity/availability/confidence
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:109:subrepos/construction-financial-review/src/construction_financial_review/forecast_intelligence/model_engine_adapter.py:5:discipline of ``analysis/final_forecast_runner`` and the graceful-availability pattern of the Ollama
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:110:subrepos/construction-financial-review/src/construction_financial_review/forecast_intelligence/model_engine_adapter.py:68:    except Exception as exc:  # noqa: BLE001 - availability probe must never raise
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:111:subrepos/construction-financial-review/src/construction_financial_review/forecast_intelligence/generate_forecast_intelligence_package.py:617:    # the backtest). Any unavailability falls back to the classical in-process engine.
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:112:subrepos/construction-financial-review/src/construction_financial_review/workflows/live_db_run_output_projection.py:61:    "forecast_data_availability_profiles",
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:113:subrepos/construction-financial-review/src/construction_financial_review/forecast_cost_frequency/generate_forecast_cost_frequency_package.py:519:        "availability + monthly-aggregate-fallback flags, latest-complete-month + weekday-normalized "
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:114:tests/test_email_calendar_structured_projection_remediation.py:4:bodies stay local-private in the raw tables (the structured row carries availability flags +
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:115:tests/test_daily_brief_intelligence.py:322:# -- Candidate availability / dry-run semantics (Phase 10 remediation) -----------------------
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:116:tests/test_daily_brief_intelligence.py:330:def test_no_candidate_availability_warns_and_requires_apply() -> None:
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:117:tests/test_daily_brief_intelligence.py:343:    assert result.candidate_availability["requires_apply_for_fresh_candidates"] is True
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:118:tests/test_daily_brief_intelligence.py:358:    av = result.candidate_availability
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:119:tests/test_daily_brief_intelligence.py:374:    assert result.candidate_availability["requires_apply_for_fresh_candidates"] is True
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:120:tests/test_daily_brief_intelligence.py:386:    av = result.candidate_availability
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:121:tests/test_daily_brief_intelligence.py:407:def test_candidate_availability_keys_in_safe_payload() -> None:
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:122:tests/test_daily_brief_intelligence.py:426:        assert key in sp["candidate_availability"]
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:123:tests/test_phase_10_follow_up_watch_report.py:4:contradictory items to needs-review, that the report uses no model (so model availability never
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:124:tests/test_fastapi_forecast_run_readmodel.py:102:            "INSERT INTO forecast_data_availability_profiles (id, run_id, project_key, domain, "
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:125:tests/test_fastapi_forecast_run_readmodel.py:103:            "availability, coverage, reason, raw_json, created_utc) VALUES (?,?,?,?,?,?,?,?,?)",
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:126:tests/test_fastapi_forecast_run_readmodel.py:178:    assert body["data_availability"][0]["availability"] == "available"
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:127:tests/test_forecast_decision_support_phase2b.py:130:        avail = {r["domain"]: r["availability"] for r in plan["planned"]["availability"]}
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:128:tests/test_forecast_decision_support_phase2b.py:192:        assert plan["written"]["availability"] == 7  # 3 db domains + 4 absent
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:129:tests/test_forecast_decision_support_phase2b.py:200:        assert conn.execute("SELECT COUNT(*) FROM forecast_data_availability_profiles").fetchone()[0] == 7
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:130:tests/test_phase_10_daily_brief_simplified.py:9:  degradation / MEI-withheld / optional-Ollama-unavailability never flip it to degraded and never
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:131:tests/test_phase_10_daily_brief_simplified.py:142:    """Optional Ollama overlay unavailability is diagnostics, never product degradation."""
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:132:tests/test_phase_10_model_routing_diagnostics.py:3:Proves the consolidated diagnostics sweep covers every routed task family, reports availability /
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:133:docs/evidence/procore-change-events-open-questions/20260621T100808Z/00-repo-truth.txt:38:78f86a5f local availability
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:134:docs/evidence/procore-change-events-open-questions/20260621T100136Z/00-repo-truth.txt:32:78f86a5f availability:
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:135:docs/evidence/phase-10-email-followup-candidate-projection/01-schema-and-read-model-audit.md:21:sent_at_utc, received_at_utc, recipient_count, attachment_count, has_attachments, body **availability
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:136:docs/evidence/phase-10-full-candidate-implementation/05-local-model-routing-refinement/00-repo-truth-audit.md:7:| Router | `…/local_ai/model_router.py` `route_task_family` → `RouteResult` | Deterministic, fail-closed, never cloud; per-family decision with profile/model/availability/blockers/reason_code/considered chain/no_cloud. |
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:137:docs/evidence/phase-10-full-candidate-implementation/05-local-model-routing-refinement/README.md:9:Phase 10 task family and reports selected profile, candidate model chain, probe/availability status,
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:138:docs/evidence/phase-10-full-candidate-implementation/05-local-model-routing-refinement/final-output-manifest.md:6:all Phase 10 task families — selected profile, candidate model chain, availability/probe status,
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:139:docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:29:          "detail_availability": {
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:140:docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:57:          "detail_availability": {
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:141:docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:85:          "detail_availability": {
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:142:docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:113:          "detail_availability": {
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:143:docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:178:          "detail_availability": {
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:144:docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:214:          "detail_availability": {
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:145:docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:250:          "detail_availability": {
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:146:docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:286:          "detail_availability": {
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:147:docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:322:          "detail_availability": {
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:148:docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:358:          "detail_availability": {
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:149:docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:394:          "detail_availability": {
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:150:docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:430:          "detail_availability": {
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:151:docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:466:          "detail_availability": {
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:152:docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:502:          "detail_availability": {
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:153:docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:538:          "detail_availability": {
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:154:docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:574:          "detail_availability": {
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:155:docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:610:          "detail_availability": {
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:156:docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:646:          "detail_availability": {
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:157:docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:682:          "detail_availability": {
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:158:docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:718:          "detail_availability": {
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:159:docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:754:          "detail_availability": {
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:160:docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:790:          "detail_availability": {
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:161:docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:826:          "detail_availability": {
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:162:docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:862:          "detail_availability": {
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:163:docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:898:          "detail_availability": {
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:164:docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:934:          "detail_availability": {
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:165:docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:970:          "detail_availability": {
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:166:docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:1006:          "detail_availability": {
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:167:docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:1042:          "detail_availability": {
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:168:docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:1078:          "detail_availability": {
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:169:docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:1114:          "detail_availability": {
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:170:docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:1150:          "detail_availability": {
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:171:docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:1186:          "detail_availability": {
+docs/evidence/forecast-model-gap-validation/20260623T080628Z/grep-availability-head500.txt:172:docs/evidence/construction-intelligence-phase-09-addendum-daily-brief-v2/validation-outputs-daily-brief-v2/daily-brief-packet-v2.json:1222:          "detail_availability": {

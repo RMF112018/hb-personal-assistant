@@ -1,0 +1,500 @@
+src/hb_assistant/classification/body_inspector.py:5:- Strips HTML safely via stdlib html.parser (no external deps, no network).
+src/hb_assistant/classification/body_inspector.py:26:    Never executes JS or fetches external resources.
+src/hb_assistant/launcher/close_policy.py:79:        MCP is never swept here (it is only ever a current-session PID) so external
+src/hb_assistant/launcher/frontend_open.py:26:    passes a 127.0.0.1/localhost URL, so no external network is contacted.
+src/hb_assistant/launcher/service.py:196:        # launcher-managed persistent service — it is reported as external and never
+src/hb_assistant/launcher/service.py:431:        mcp_status = _proc_status(state, "mcp") if mcp_managed else "external_client_managed"
+src/hb_assistant/launcher/production.py:5:(live external reads are config-gated and OFF by default). Intended for daily
+src/hb_assistant/launcher/process_scan.py:103:    Never returns ``"mcp"`` — the MCP stdio signature is shared with external IDE
+src/hb_assistant/config/models.py:90:    Live external reads for the scheduled production job are gated and default OFF:
+src/hb_assistant/config/models.py:143:    external_llm_enabled: bool = False
+src/hb_assistant/resources/config/phase_09_review_burden_policy.seed.yaml:46:    - external_delivery
+src/hb_assistant/resources/config/phase_09_review_burden_policy.seed.yaml:50:  - external_writeback
+src/hb_assistant/resources/json/phase_09_source_linked_retrieval_proof_contract.json:23:    "external_writeback_performed",
+src/hb_assistant/resources/json/phase_09_source_linked_retrieval_proof_contract.json:61:    "no_external_writeback",
+src/hb_assistant/resources/json/phase_09_vector_index_apply_contract.json:12:  "vector_store_persistence": "external_filesystem",
+src/hb_assistant/resources/json/phase_09_vector_index_apply_contract.json:73:    "no_external_writeback",
+src/hb_assistant/resources/json/phase_08b_automation_executor_contract.json:12:    "no_external_delivery": true,
+src/hb_assistant/resources/json/phase_08b_automation_executor_contract.json:13:    "no_external_writeback": true,
+src/hb_assistant/resources/json/phase_10_ai_job_contract.json:44:    "external_writeback_performed",
+src/hb_assistant/resources/json/operator_feedback_contract.json:28:    "no_external_writeback": true,
+src/hb_assistant/resources/json/phase_08b_executor_validation_matrix.json:17:    "external_writeback",
+src/hb_assistant/resources/json/phase_08b_data_quality_gates.json:134:    "external_systems": "read_only",
+src/hb_assistant/resources/json/phase_09_review_burden_policy_contract.json:56:    "external_writeback",
+src/hb_assistant/resources/json/phase_09_review_burden_policy_contract.json:73:    "external_writeback_performed",
+src/hb_assistant/resources/json/phase_09_memory_consolidation_preview_contract.json:58:    "no_external_writeback",
+src/hb_assistant/resources/json/phase_09_unsupported_claim_checks_contract.json:47:    "no_external_writeback",
+src/hb_assistant/resources/json/research_packet_contract.json:36:    "no_external_writeback": true,
+src/hb_assistant/resources/json/project_issue_history_contract.json:16:    "no_external_writeback": true,
+src/hb_assistant/resources/json/phase_09_memory_acceptance_contract.json:54:    "no_external_writeback",
+src/hb_assistant/resources/json/phase_08b_automation_execution_gate_contract.json:12:    "no_external_delivery_or_writeback",
+src/hb_assistant/resources/json/phase_08d_mcp_denied_tools_contract.json:27:    "external_delivery",
+src/hb_assistant/resources/json/phase_09_memory_quality_review_contract.json:42:    "no_external_writeback",
+src/hb_assistant/resources/json/phase_09_no_raw_vector_index_proof_contract.json:5:  "description": "Phase 09 Prompt 35 — no raw vector index proof. A read-only, advisory forensic scan that proves the operator DB, the vector-index metadata, and the committed Phase-09 evidence tree contain NO raw vector content and NO prohibited payloads. It (1) confirms the vector-index tables (second_brain_retrieval_vector_index_runs / _items) and every second_brain_retrieval_* table have all 23 guard columns summing to 0 (especially raw_vector_content_persisted), (2) confirms no embedding/vector/raw_vector blob column exists in SQLite (vectors are persisted outside SQLite under the external persist store), (3) scans the safe text columns (hashes / labels / namespaces / ids) for leaked secrets / PEM / bearer / JWT / signed-or-download URLs, and (4) scans the evidence tree for the same. A non-vacuity arm plants a synthetic forbidden value and confirms the scanner flags it. Metadata-only: persists (read-only by default; on emit_receipt) a single guard-clean gate-summary row to the reserved V38 second_brain_phase_09_validation_runs table (gate_count / pass_count / fail_count / overall_status + 23 guard columns). Findings are pattern labels + table.column / file locations only — never the offending value. Makes no determination; read-only; fail-closed on missing policy or stale schema.",
+src/hb_assistant/resources/json/phase_09_no_raw_vector_index_proof_contract.json:24:    "external_writeback_performed",
+src/hb_assistant/resources/json/phase_09_no_raw_vector_index_proof_contract.json:66:    "no_external_writeback",
+src/hb_assistant/resources/json/phase_08a_data_quality_gates.json:31:    "no_external_writeback": true,
+src/hb_assistant/resources/json/phase_10_frontend_review_queue_contract.json:34:    "external_writeback_performed",
+src/hb_assistant/resources/json/phase_09_daily_brief_reproducibility_contract.json:23:    "external_writeback_performed",
+src/hb_assistant/resources/json/phase_09_daily_brief_reproducibility_contract.json:59:    "no_external_writeback",
+src/hb_assistant/resources/json/phase_08d_mcp_server_config_contract.json:24:  "no_external_network_from_mcp_layer": true
+src/hb_assistant/resources/json/phase_08b_agent_receipts_contract.json:27:    "external_writeback_performed"
+src/hb_assistant/resources/json/phase_08b_agent_receipts_contract.json:43:    "no_external_writeback": true,
+src/hb_assistant/resources/json/phase_08b_agent_receipts_contract.json:45:    "model_direct_external_api_access": false
+src/hb_assistant/resources/json/phase_09_memory_candidate_preview_contract.json:62:    "no_external_writeback",
+src/hb_assistant/resources/json/phase_08a_agent_tool_contract.json:6:      "external_writeback": false
+src/hb_assistant/resources/json/phase_08a_agent_tool_contract.json:10:      "external_writeback": false
+src/hb_assistant/resources/json/phase_08a_agent_tool_contract.json:14:      "external_writeback": false
+src/hb_assistant/resources/json/phase_08a_agent_tool_contract.json:18:      "external_writeback": false
+src/hb_assistant/resources/json/phase_08a_agent_tool_contract.json:22:      "external_writeback": false
+src/hb_assistant/resources/json/phase_08a_agent_tool_contract.json:26:      "external_writeback": false
+src/hb_assistant/resources/json/phase_08a_agent_tool_contract.json:30:      "external_writeback": false
+src/hb_assistant/resources/json/phase_08a_agent_tool_contract.json:34:      "external_writeback": false
+src/hb_assistant/resources/json/phase_08a_agent_tool_contract.json:38:      "external_writeback": false,
+src/hb_assistant/resources/json/phase_08a_agent_tool_contract.json:53:    "external_writeback"
+src/hb_assistant/resources/json/phase_09_context_budget_optimization_contract.json:35:    "no_external_writeback",
+src/hb_assistant/resources/json/phase_07d_validation_matrix.json:16:    "external_writeback",
+src/hb_assistant/resources/json/phase_07d_data_quality_gates.json:25:    "no_external_writeback": true,
+src/hb_assistant/resources/json/phase_10_relationship_candidate_contract.json:70:    "external_writeback_performed",
+src/hb_assistant/resources/json/phase_10_follow_up_watch_contract.json:32:    "external_writeback_performed",
+src/hb_assistant/resources/json/phase_08b_executor_stage_contract.json:91:    "no_external_side_effects_in_preflight": true
+src/hb_assistant/resources/json/phase_09_retrieval_eval_set_contract.json:54:    "no_external_writeback",
+src/hb_assistant/resources/json/phase_09_data_quality_gates_contract.json:5:  "description": "Phase 09 Prompt 36 — Phase 09 data-quality gates. A read-only, advisory conformance evaluator that aggregates the Phase 09 retrieval/memory/quality posture into the pass / warning / fail_blocking / deferred_not_blocking taxonomy. Structural + safety gates (schema present, all 22 Phase-09 tables' 23 guard columns clean, no raw vector content, no external writeback, no semantic-retrieval policy bypass, the gates + lifecycle contracts loadable) must pass; the per-surface gates whose V38/V39 substrate ships empty/advisory are honestly deferred_not_blocking (never overstated). The evaluator is read-only (no persistence, no migration) and re-runs no heavy proof fixtures. Readiness is never overstated: a deferred or failed surface is never reported as ready.",
+src/hb_assistant/resources/json/phase_09_data_quality_gates_contract.json:17:    "no_external_writeback_posture",
+src/hb_assistant/resources/json/phase_09_data_quality_gates_contract.json:50:    "external_writeback_performed",
+src/hb_assistant/resources/json/phase_09_data_quality_gates_contract.json:70:    "no_external_writeback",
+src/hb_assistant/resources/json/phase_10_daily_brief_action_candidate_contract.json:30:    "external_writeback_performed",
+src/hb_assistant/resources/json/interactive_query_contract.json:16:    "no_external_writeback": true,
+src/hb_assistant/resources/json/phase_09_embedding_vector_policy_contract.json:44:    "no_external_embedding_provider_default",
+src/hb_assistant/resources/json/phase_10_obsidian_vault_manager_contract.json:36:    "external_writeback_performed",
+src/hb_assistant/resources/json/document_card_contract.json:36:    "external_writeback_performed"
+src/hb_assistant/resources/json/phase_07b_data_quality_gates.json:50:    "external_writeback_scan"
+src/hb_assistant/resources/json/phase_08a_agent_registry_contract.json:28:    "no_external_writeback": true,
+src/hb_assistant/resources/json/phase_09_hybrid_retrieval_contract.json:75:    "no_external_writeback",
+src/hb_assistant/resources/json/evaluation_criteria_contract.json:39:    "no_external_writeback": true
+src/hb_assistant/resources/json/second_brain_runtime_contract.json:24:    "model_direct_external_api_access": false,
+src/hb_assistant/resources/json/second_brain_runtime_contract.json:25:    "external_writeback": false
+src/hb_assistant/resources/json/phase_09_output_evaluation_integration_contract.json:51:    "no_external_writeback",
+src/hb_assistant/resources/json/phase_09_project_retrieval_benchmark_contract.json:38:    "no_external_writeback",
+src/hb_assistant/resources/json/phase_09_operator_status_contract.json:22:    "no_external_writeback",
+src/hb_assistant/resources/json/phase_09_agent_performance_feedback_contract.json:55:    "no_external_writeback",
+src/hb_assistant/resources/json/phase_09_daily_brief_handoff_packet_contract.json:106:    "no_external_writeback",
+src/hb_assistant/resources/json/phase_10_action_candidate_output_schema.json:13:    "external_action_requires_approval",
+src/hb_assistant/resources/json/phase_10_action_candidate_output_schema.json:150:    "external_action_requires_approval": {
+src/hb_assistant/resources/json/phase_09_llamaindex_config_contract.json:22:    "no_external_embedding_provider_default",
+src/hb_assistant/resources/json/phase_09_llamaindex_config_contract.json:25:    "deferred_external_providers_policy_gated"
+src/hb_assistant/resources/json/aging_exposure_report_contract.json:18:    "no_external_writeback": true,
+src/hb_assistant/resources/json/risk_digest_contract.json:15:    "no_external_writeback": true,
+src/hb_assistant/resources/json/daily_brief_contract.json:53:    "no_external_writeback": true,
+src/hb_assistant/resources/json/phase_09_metadata_filter_contract.json:57:    "no_external_writeback",
+src/hb_assistant/resources/json/phase_10_local_model_profile_contract.json:33:    "external_writeback_performed",
+src/hb_assistant/resources/json/phase_09_no_writeback_proof_contract.json:5:  "description": "Phase 09 Prompt 37 — Phase 09 no writeback proof. A read-only, advisory forensic proof that the Phase 09 retrieval / embeddings / memory / MCP-wrapper modules perform NO external writeback. It (1) statically scans every Phase-09 module (retrieval/, memory/, mcp/, and the Phase-09 root marts/schema/gates) for mutation verbs (.post/.put/.patch/.delete/send_mail/create_message/create_event/update_event/delete_event/invite/share/move/copy) and dangerous imports (requests/httpx/aiohttp/procore/msgraph/graph/msal) using the canonical no-writeback scanner; (2) confirms the 6 writeback guard columns and all 23 guard columns sum to 0 across the 22 Phase-09 tables; (3) confirms the MCP wrappers expose workflows only (no writeback) via the existing MCP no-writeback proof; (4) scans the Phase-09 evidence tree for leaked secrets/tokens/signed-URLs; and (5) proves the scanner is non-vacuous by planting a runtime-assembled synthetic writeback source and confirming it is flagged. Read-only: persists nothing, no migration. Findings carry module/file + a label only — never the offending value. Makes no determination; fail-closed on missing policy or stale schema.",
+src/hb_assistant/resources/json/phase_09_no_writeback_proof_contract.json:8:    "external_writeback_performed",
+src/hb_assistant/resources/json/phase_09_no_writeback_proof_contract.json:25:    "external_writeback_performed",
+src/hb_assistant/resources/json/phase_09_no_writeback_proof_contract.json:69:    "no_external_writeback",
+src/hb_assistant/resources/json/memory_quality_signal_contract.json:33:    "no_external_writeback": true,
+src/hb_assistant/resources/json/phase_09_retrieval_benchmark_contract.json:56:    "no_external_writeback",
+src/hb_assistant/resources/json/operator_preference_profile_contract.json:23:    "no_external_writeback": true,
+src/hb_assistant/resources/json/phase_10_claude_mcp_packet_contract.json:37:    "external_writeback_performed",
+src/hb_assistant/resources/json/phase_08b_automation_policy_contract.json:122:    "no_external_delivery": true,
+src/hb_assistant/resources/json/phase_08b_automation_policy_contract.json:123:    "no_external_writeback": true,
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3:  "source": "Seeded from docs/evidence/construction-intelligence-phase-07a-data-quality/01-table-lifecycle-inventory.json (Phase 07A Prompt 00 manual inventory); operationalized for hb-assistant construction-agent data-quality table-inventory (Phase 07B Prompt 01); refreshed to map the V20/V21 Phase 07A data-quality and relationship tables that post-dated the manual inventory (Phase 07C Prompt 01 remediation); extended with the ten V25 Phase 07D cross-source relationship and meeting-prep substrate tables (Phase 07D Prompt 02); extended with the twenty-one V26 Phase 08A second-brain runtime substrate tables (Phase 08A Prompt 02); extended with the nineteen V38 Phase 09 retrieval/memory/agent metadata substrate tables (Phase 09 Prompt 12 \u2014 schema + contracts + table lifecycle; ships empty/placeholder_deferred); extended with the three V39 Phase 09 review-burden tables (Prompt 37 review burden reduction; advisory promotion policy; ships empty/placeholder_deferred); extended with the one V45 Phase 10 email follow-up raw enrichment table (email_followup_enrichments; review-safe model-enriched follow-up metadata; ships empty/placeholder_deferred); extended with the forty-seven V46 Procore structured analytics foundation tables (landing, capture control, endpoint-family bronze, and dimensions; ships empty/placeholder_deferred until local reprocessing or capture). ; extended with the seventy-eight V47 Procore endpoint-specific structured projection tables (procore_ep_* primary + child/detail tables derived from the committed projection registry; ships empty/placeholder_deferred until projection replay from full raw payloads). Extended with the thirteen V49 email/calendar structured projection + receipt tables (email_raw_*/calendar_raw_*/email_calendar_* + raw_content_source_quality_snapshots; build_v49_ddl); the three V55 Procore endpoint budget-detail tables (operational/populated from the budget-detail read model); the sixteen V50-V54 Phase 10 daily-brief/candidate/ranking tables (ships empty/placeholder_deferred); and the five V58 forecast DB-transition foundation tables (forecast_projects/runs/source_ingestions/package_manifests/validation_events; operational_empty_expected, intentionally empty until Phase 2+); extended with the three V59 forecast DB-transition source-domain tables (forecast_budget_details/cost_entries/monthly_actuals_by_budget_code; Phase 3 JSON/JSONL projection + DB read parity; operational_empty_expected, intentionally empty until projection is applied; forecast behavior remains file-backed); extended with the four V60 forecast DB-transition config-registry tables (forecast_config_sources/config_items/config_snapshots/config_snapshot_items; Phase 16 governed config import/export/snapshot/materialize; operational_empty_expected, intentionally empty until config is imported; forecast behavior remains file-backed); extended with the eight V61 forecast-UI external-forecast evaluation tables (forecast_external_forecasts/external_forecast_rows/external_forecast_mappings/accuracy_results/comparison_results/anomaly_findings/review_items/evidence_packages; Phase 4 operator-supplied external-forecast upload + evaluation against actuals/budget/ERP-JTD/model/prior baselines, distinguished from model forecasts via forecast_origin; operational_empty_expected, intentionally empty on the live DB \u2014 real rows live only in an isolated per-run eval SQLite; forecast behavior remains file-backed).; extended with the thirteen V62 schedule-intelligence tables (schedule_file_imports, procore_ep_schedule_activities, relationships, WBS, calendars, codes, UDFs, version diffs, quality findings, cost mapping runs/candidates/distributions, weighting results; operational_empty_expected until import or Procore sync projection).",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:1371:      "notes": "Phase 08B local HTML brief render receipts (one metadata-only row per self-contained HTML rendering written to <app_support>/html/; no_external_assets=1 fail-closed CHECK; raw HTML never persisted; guard-checked); populated in 08B Prompt 10 via the Local HTML Brief Renderer apply path"
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:1911:      "notes": "V46 local capture/reprocessing run ledger; no external writeback."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3542:    "forecast_external_forecasts": {
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3543:      "table_family": "forecast_external_v61",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3546:      "phase_owner": "forecast_ui_external_eval",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3549:      "notes": "V61 external-forecast evaluation header; operator-supplied external forecasts (Excel/CSV) with file fingerprint and forecast_origin='external'. Intentionally empty on the live DB; real rows are written only to an isolated per-run eval SQLite, never the live DB. Forecast behavior remains file-backed."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3551:    "forecast_external_forecast_rows": {
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3552:      "table_family": "forecast_external_v61",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3555:      "phase_owner": "forecast_ui_external_eval",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3558:      "notes": "V61 external-forecast line items (cost code x month value/EAC/remaining). Intentionally empty on the live DB; rows live in the isolated per-run eval SQLite only."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3560:    "forecast_external_forecast_mappings": {
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3561:      "table_family": "forecast_external_v61",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3564:      "phase_owner": "forecast_ui_external_eval",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3570:      "table_family": "forecast_external_v61",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3573:      "phase_owner": "forecast_ui_external_eval",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3576:      "notes": "V61 accuracy metrics (variance/MAE/RMSE/WAPE/MAPE/bias) per external forecast x baseline. Intentionally empty on the live DB; rows live in the isolated per-run eval SQLite only."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3579:      "table_family": "forecast_external_v61",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3582:      "phase_owner": "forecast_ui_external_eval",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3585:      "notes": "V61 per code x baseline comparison (external vs baseline gap absolute/percent). Intentionally empty on the live DB; rows live in the isolated per-run eval SQLite only."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3587:    "forecast_anomaly_findings": {
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3588:      "table_family": "forecast_external_v61",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3591:      "phase_owner": "forecast_ui_external_eval",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3594:      "notes": "V61 deterministic anomaly findings with severity + evidence. Intentionally empty on the live DB; rows live in the isolated per-run eval SQLite only."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3597:      "table_family": "forecast_external_v61",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3600:      "phase_owner": "forecast_ui_external_eval",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3603:      "notes": "V61 human-review queue items derived from anomalies / material gaps. Intentionally empty on the live DB; rows live in the isolated per-run eval SQLite only."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3606:      "table_family": "forecast_external_v61",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3609:      "phase_owner": "forecast_ui_external_eval",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3612:      "notes": "V61 evidence-package ledger (one row per emitted external-forecast evaluation package). Intentionally empty on the live DB; rows live in the isolated per-run eval SQLite only."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3738:      "notes": "Per-run model-output header (one row per projected forecast run); distinct from v61 external-forecast evaluation."
+src/hb_assistant/resources/json/phase_09_research_packet_integration_contract.json:35:    "no_external_writeback",
+src/hb_assistant/resources/json/phase_10_evaluation_metrics_contract.json:36:    "external_writeback_performed",
+src/hb_assistant/resources/json/phase_10_email_task_signal_contract.json:41:    "external_writeback_performed",
+src/hb_assistant/resources/json/phase_09_hallucination_risk_checks_contract.json:38:    "no_external_writeback",
+src/hb_assistant/graph/calendar_endpoint_guard.py:204:    anomalies: list[str] = []
+src/hb_assistant/graph/calendar_endpoint_guard.py:213:            anomalies.append(f"GET {tmpl} unexpectedly blocked: {e.reason}")
+src/hb_assistant/graph/calendar_endpoint_guard.py:218:            anomalies.append(f"POST {tmpl} unexpectedly allowed")
+src/hb_assistant/graph/calendar_endpoint_guard.py:226:            anomalies.append(f"{verb} on a readable event path unexpectedly allowed")
+src/hb_assistant/graph/calendar_endpoint_guard.py:231:        "passed": not anomalies,
+src/hb_assistant/graph/calendar_endpoint_guard.py:234:        "anomalies": anomalies,
+src/hb_assistant/resources/json/meeting_prep_brief_contract.json:19:    "no_external_writeback": true,
+src/hb_assistant/resources/json/source_evidence_trail_contract.json:14:    "no_external_writeback": true,
+src/hb_assistant/resources/json/phase_09_memory_quality_controls_contract.json:46:    "no_external_writeback",
+src/hb_assistant/resources/json/phase_08b_safe_replay_contract.json:25:    "replay_never_mutates_external": true,
+src/hb_assistant/graph/files_endpoint_guard.py:225:    anomalies: list[str] = []
+src/hb_assistant/graph/files_endpoint_guard.py:234:            anomalies.append(f"GET {tmpl} unexpectedly blocked: {e.reason}")
+src/hb_assistant/graph/files_endpoint_guard.py:239:            anomalies.append(f"POST {tmpl} unexpectedly allowed")
+src/hb_assistant/graph/files_endpoint_guard.py:246:            anomalies.append(f"{verb} on an allowlisted path unexpectedly allowed")
+src/hb_assistant/graph/files_endpoint_guard.py:251:        "passed": not anomalies,
+src/hb_assistant/graph/files_endpoint_guard.py:254:        "anomalies": anomalies,
+src/hb_assistant/source_refresh/orchestrator.py:14:behind ``--confirm``) upserts to local SQLite only. Any *live external read*
+src/hb_assistant/source_refresh/orchestrator.py:154:    # Local-only / mock mode: never touch live external systems (no Procore/Graph
+src/hb_assistant/source_refresh/orchestrator.py:172:        """True only when this run may perform any live external read."""
+src/hb_assistant/source_refresh/orchestrator.py:576:            "externally_blocked": 0,
+src/hb_assistant/source_refresh/orchestrator.py:663:            "externally_blocked": sum(
+src/hb_assistant/source_refresh/orchestrator.py:700:        if summary.get("externally_blocked"):
+src/hb_assistant/source_refresh/orchestrator.py:825:                "degraded_external_blocked": 0,
+src/hb_assistant/source_refresh/orchestrator.py:1008:                "external_writeback_performed": 0,
+src/hb_assistant/source_refresh/orchestrator.py:1065:                    "external_writeback_performed": 0,
+src/hb_assistant/source_refresh/orchestrator.py:1102:                    "external_writeback_performed": int(
+src/hb_assistant/source_refresh/orchestrator.py:1103:                        receipt.get("external_writeback_performed", 0) or 0
+src/hb_assistant/source_refresh/orchestrator.py:1129:                "external_writeback_performed": 0,
+src/hb_assistant/source_refresh/orchestrator.py:1215:          - ``degraded_external_blocked`` transport / contract / normalizer failure (never green;
+src/hb_assistant/source_refresh/orchestrator.py:1228:            "degraded_external_blocked": 0,
+src/hb_assistant/source_refresh/orchestrator.py:1257:                status = "degraded_external_blocked"
+src/hb_assistant/source_refresh/orchestrator.py:1303:            "external_blocked_count": status_counts["degraded_external_blocked"],
+src/hb_assistant/source_refresh/orchestrator.py:1498:                "external_writeback_performed": 0,
+src/hb_assistant/source_refresh/orchestrator.py:1572:                "external_writeback_performed": 0,
+src/hb_assistant/source_refresh/orchestrator.py:1663:                "external_writeback_performed": 0,
+src/hb_assistant/source_refresh/orchestrator.py:1802:                "guardrails": {"external_writeback_performed": 0, "emits_values": False},
+src/hb_assistant/cli/diagnostics.py:89:            "writeback_prohibited": p.raw_content.prohibited_without_future_approval.external_writeback,
+src/hb_assistant/cli/diagnostics.py:91:            "note": "email_calendar mode first; external writeback remains disabled.",
+src/hb_assistant/cli/graph.py:205:    anomalies: List[str] = []
+src/hb_assistant/cli/graph.py:214:            anomalies.append(f"GET {tmpl} unexpectedly blocked: {e.reason}")
+src/hb_assistant/cli/graph.py:219:            anomalies.append(f"POST {tmpl} unexpectedly allowed")
+src/hb_assistant/cli/graph.py:226:            anomalies.append(f"{verb} on an allowlisted path unexpectedly allowed")
+src/hb_assistant/cli/graph.py:231:        "passed": not anomalies,
+src/hb_assistant/cli/graph.py:234:        "anomalies": anomalies,
+src/hb_assistant/cli/graph.py:507:            "external_systems": "read_only",
+src/hb_assistant/cli/graph.py:617:            "external_systems": "read_only",
+src/hb_assistant/cli/graph.py:796:    mutation, no auto-promotion, no external writeback.
+src/hb_assistant/cli/graph.py:830:    "external_systems": "read_only",
+src/hb_assistant/cli/graph.py:1248:            "external_systems": "read_only",
+src/hb_assistant/cli/graph.py:1436:            "external_systems": "read_only",
+src/hb_assistant/cli/graph.py:1473:            "external_systems": "read_only",
+src/hb_assistant/cli/graph.py:1566:            "external_systems": "read_only",
+src/hb_assistant/cli/graph.py:1612:            "external_systems": "read_only",
+src/hb_assistant/cli/graph.py:1832:            "external_systems": "read_only",
+src/hb_assistant/cli/graph.py:2090:                "external_systems": "read_only",
+src/hb_assistant/cli/graph.py:2379:                "external_systems": "read_only",
+src/hb_assistant/cli/graph.py:2445:                "external_systems": "read_only",
+src/hb_assistant/cli/procore.py:74:    "external_systems": "read_only",
+src/hb_assistant/cli/procore.py:205:        payload.setdefault("external_writeback_performed", 0)
+src/hb_assistant/cli/procore.py:1023:        help="EXPLICIT opt-in only. Writes local SQLite normalized rows after audit gate. Never external.",
+src/hb_assistant/cli/procore.py:1554:                "external_writeback_performed": 0,
+src/hb_assistant/cli/procore.py:1571:                "external_writeback_performed": 0,
+src/hb_assistant/cli/procore.py:1586:                "external_writeback_performed": 0,
+src/hb_assistant/cli/procore.py:1626:            "external_writeback_performed": 0,
+src/hb_assistant/cli/procore.py:1648:                        "external_writeback_performed": 0,
+src/hb_assistant/cli/procore.py:1667:                    "external_writeback_performed": 0,
+src/hb_assistant/cli/procore.py:1708:                        "external_writeback_performed": 0,
+src/hb_assistant/cli/procore.py:1719:        "external_writeback_performed": 0,
+src/hb_assistant/cli/procore.py:1752:                    "external_writeback_performed": 0,
+src/hb_assistant/cli/procore.py:1791:        "external_writeback_performed": 0,
+src/hb_assistant/cli/construction.py:45:  content outside markers). Zero raw content, zero external writeback.
+src/hb_assistant/cli/construction.py:63:All commands are read-only against external systems; only SQLite metadata is
+src/hb_assistant/cli/construction.py:183:    "promotes and never writes back to any external system."
+src/hb_assistant/cli/construction.py:188:    "external_systems": "read_only",
+src/hb_assistant/cli/construction.py:264:    "raw content, and never writes back to any external system."
+src/hb_assistant/cli/construction.py:269:    "external_systems": "read_only",
+src/hb_assistant/cli/construction.py:333:    "external_systems": "read_only",
+src/hb_assistant/cli/construction.py:392:    "external_systems": "read_only",
+src/hb_assistant/cli/construction.py:456:    "external_systems": "read_only",
+src/hb_assistant/cli/construction.py:530:    "deterministic/strong relationships, no raw content, and never writes back to any external "
+src/hb_assistant/cli/construction.py:536:    "external_systems": "read_only",
+src/hb_assistant/cli/construction.py:591:    "content, and never writes back to any external system."
+src/hb_assistant/cli/construction.py:596:    "external_systems": "read_only",
+src/hb_assistant/cli/construction.py:651:    "and never writes back to any external system."
+src/hb_assistant/cli/construction.py:656:    "external_systems": "read_only",
+src/hb_assistant/cli/construction.py:711:    "no writes (local or external), advisory, and never auto-promotes."
+src/hb_assistant/cli/construction.py:716:    "external_systems": "read_only",
+src/hb_assistant/cli/construction.py:770:    "notes to the local vault. No raw content, no external writeback, never auto-promotes."
+src/hb_assistant/cli/construction.py:775:    "external_systems": "read_only",
+src/hb_assistant/cli/construction.py:878:            "no_live_external_calls": True,
+src/hb_assistant/cli/construction.py:916:            "external_systems": "read_only",
+src/hb_assistant/cli/construction.py:1103:            "external_systems": "read_only",
+src/hb_assistant/cli/construction.py:1158:            "external_systems": "read_only",
+src/hb_assistant/cli/construction.py:1317:            "external_systems": "read_only",
+src/hb_assistant/cli/construction.py:1396:            "external_systems": "read_only",
+src/hb_assistant/cli/construction.py:1553:            "external_systems": "read_only",
+src/hb_assistant/cli/construction.py:1571:    "external_systems": "read_only",
+src/hb_assistant/cli/construction.py:1708:    "external_systems": "read_only",
+src/hb_assistant/cli/construction.py:2000:    "external_systems": "read_only",
+src/hb_assistant/cli/construction.py:2058:                "external_systems": "read_only",
+src/hb_assistant/cli/construction.py:2073:            "external_systems": "read_only",
+src/hb_assistant/cli/construction.py:2303:        help="Required with --apply, and required for any live external (Procore/Graph) read.",
+src/hb_assistant/cli/construction.py:2327:    requires ``--confirm``; any live external read additionally requires ``--confirm``
+src/hb_assistant/cli/construction.py:2376:    "external_systems": "read_only",
+src/hb_assistant/cli/construction.py:2425:    "external_systems": "read_only",
+src/hb_assistant/cli/construction.py:2530:    "external_systems": "read_only",
+src/hb_assistant/cli/construction.py:2570:    "external_systems": "read_only",
+src/hb_assistant/cli/construction.py:2607:    "external_systems": "read_only",
+src/hb_assistant/cli/construction.py:2642:    writes, no side effects on external systems.
+src/hb_assistant/cli/construction.py:2689:    "external_systems": "read_only",
+src/hb_assistant/cli/construction.py:2709:    content leakage, external writeback, and query latency including gate results
+src/hb_assistant/cli/construction.py:2742:    "external_systems": "read_only",
+src/hb_assistant/cli/construction.py:2759:    zero external mutation calls, zero raw bodies / full text / tokens /
+src/hb_assistant/cli/construction.py:2818:    "external_systems": "read_only",
+src/hb_assistant/cli/construction.py:2838:    Read-only and offline (no --apply, no writes, no external calls, no raw
+src/hb_assistant/cli/construction.py:2855:    "external_systems": "read_only",
+src/hb_assistant/procore/sync.py:169:            "read_only_external": True,
+src/hb_assistant/procore/sync.py:579:        Never external writeback. Never non-GET. Returns the (un-redacted) receipt
+src/hb_assistant/procore/projection_paths.py:170:    ("custom_field", re.compile(r"(custom_field|custom_fields|external_data)")),
+src/hb_assistant/procore/projection_paths.py:274:        "external_writeback_performed",
+src/hb_assistant/cli/second_brain.py:355:    "model_direct_external_api_access": False,
+src/hb_assistant/cli/second_brain.py:356:    "external_writeback": False,
+src/hb_assistant/cli/second_brain.py:423:    "no_external_writeback": True,
+src/hb_assistant/cli/second_brain.py:427:    "model_direct_external_api_access": False,
+src/hb_assistant/cli/second_brain.py:518:    "no_external_writeback": True,
+src/hb_assistant/cli/second_brain.py:601:    "no_external_writeback": True,
+src/hb_assistant/cli/second_brain.py:604:    "model_direct_external_api_access": False,
+src/hb_assistant/cli/second_brain.py:694:    "no_external_writeback": True,
+src/hb_assistant/cli/second_brain.py:699:    "model_direct_external_api_access": False,
+src/hb_assistant/cli/second_brain.py:737:    "no_external_writeback": True,
+src/hb_assistant/cli/second_brain.py:856:    "no_external_writeback": True,
+src/hb_assistant/cli/second_brain.py:1040:    "no_external_writeback": True,
+src/hb_assistant/cli/second_brain.py:1136:    "no_external_writeback": True,
+src/hb_assistant/cli/second_brain.py:1405:    "no_external_writeback": True,
+src/hb_assistant/cli/second_brain.py:1503:    "no_external_writeback": True,
+src/hb_assistant/cli/second_brain.py:1602:    "no_external_writeback": True,
+src/hb_assistant/cli/second_brain.py:1695:    "no_external_writeback": True,
+src/hb_assistant/cli/second_brain.py:1789:    "no_external_writeback": True,
+src/hb_assistant/cli/second_brain.py:2033:    "no_external_writeback": True,
+src/hb_assistant/cli/second_brain.py:2040:    "model_direct_external_api_access": False,
+src/hb_assistant/cli/second_brain.py:2935:    mode: str = typer.Option("dry_run", "--mode", help="dry_run|apply (no external writeback)."),
+src/hb_assistant/cli/second_brain.py:3016:    mode: str = typer.Option("dry_run", "--mode", help="dry_run|apply (no external writeback)."),
+src/hb_assistant/cli/second_brain.py:3193:    content, and writes nothing externally (read-only). Exit 0 on pass; 3 on failure."""
+src/hb_assistant/cli/second_brain.py:3425:    "no_external_delivery": True,
+src/hb_assistant/cli/second_brain.py:3428:    "no_external_writeback": True,
+src/hb_assistant/cli/second_brain.py:3430:    "model_direct_external_api_access": False,
+src/hb_assistant/cli/second_brain.py:3513:            "external_delivery_performed": handoff.external_delivery_performed,
+src/hb_assistant/cli/second_brain.py:3535:    "no_external_delivery": True,
+src/hb_assistant/cli/second_brain.py:3607:    "no_external_writeback": True,
+src/hb_assistant/cli/second_brain.py:3688:    "no_external_writeback": True,
+src/hb_assistant/cli/second_brain.py:3689:    "no_external_delivery": True,
+src/hb_assistant/cli/second_brain.py:3693:    "model_direct_external_api_access": False,
+src/hb_assistant/cli/second_brain.py:3738:    "no_external_writeback": True,
+src/hb_assistant/cli/second_brain.py:3739:    "no_external_delivery": True,
+src/hb_assistant/cli/second_brain.py:3741:    "model_direct_external_api_access": False,
+src/hb_assistant/cli/second_brain.py:3860:                "external_writeback_performed": 0,
+src/hb_assistant/cli/second_brain.py:3882:    "no_external_writeback": True,
+src/hb_assistant/cli/second_brain.py:3883:    "no_external_delivery": True,
+src/hb_assistant/cli/second_brain.py:3885:    "model_direct_external_api_access": False,
+src/hb_assistant/cli/second_brain.py:3988:    "no_external_writeback": True,
+src/hb_assistant/cli/second_brain.py:3989:    "no_external_delivery": True,
+src/hb_assistant/cli/second_brain.py:3991:    "model_direct_external_api_access": False,
+src/hb_assistant/cli/second_brain.py:4067:    "no_external_writeback": True,
+src/hb_assistant/cli/second_brain.py:4068:    "no_external_delivery": True,
+src/hb_assistant/cli/second_brain.py:4070:    "model_direct_external_api_access": False,
+src/hb_assistant/cli/second_brain.py:4216:    "no_external_writeback": True,
+src/hb_assistant/cli/second_brain.py:4217:    "no_external_delivery": True,
+src/hb_assistant/cli/second_brain.py:4219:    "model_direct_external_api_access": False,
+src/hb_assistant/cli/second_brain.py:4305:    "no_external_writeback": True,
+src/hb_assistant/cli/second_brain.py:4306:    "no_external_delivery": True,
+src/hb_assistant/cli/second_brain.py:4308:    "model_direct_external_api_access": False,
+src/hb_assistant/cli/second_brain.py:4397:    "no_external_writeback": True,
+src/hb_assistant/cli/second_brain.py:4398:    "no_external_delivery": True,
+src/hb_assistant/cli/second_brain.py:4400:    "model_direct_external_api_access": False,
+src/hb_assistant/cli/second_brain.py:4486:    "no_external_writeback": True,
+src/hb_assistant/cli/second_brain.py:4487:    "no_external_delivery": True,
+src/hb_assistant/cli/second_brain.py:4489:    "model_direct_external_api_access": False,
+src/hb_assistant/cli/second_brain.py:4736:    "no_external_delivery": True,
+src/hb_assistant/cli/second_brain.py:4737:    "no_external_writeback": True,
+src/hb_assistant/cli/second_brain.py:4849:    "no_external_delivery_or_writeback": True,
+src/hb_assistant/cli/second_brain.py:5070:    "no_external_writeback": True,
+src/hb_assistant/cli/second_brain.py:5082:    "external_writeback_performed": False,
+src/hb_assistant/cli/second_brain.py:5091:    "no_external_writeback": True,
+src/hb_assistant/cli/second_brain.py:5100:    "external_writeback_performed": False,
+src/hb_assistant/cli/second_brain.py:5277:    Deterministic, advisory, read-only externally: writes review items to the local
+src/hb_assistant/cli/second_brain.py:5278:    SQLite store and the evidence proof only (no external writeback, no determinations).
+src/hb_assistant/cli/second_brain.py:5899:        "no_external_writeback": True,
+src/hb_assistant/cli/second_brain.py:6565:    "no_external_writeback": True,
+src/hb_assistant/cli/second_brain.py:6583:    clean, no raw vector content, no external writeback, no semantic-retrieval policy bypass, the
+src/hb_assistant/cli/second_brain.py:6624:    "no_external_writeback": True,
+src/hb_assistant/cli/second_brain.py:6687:    "no_external_writeback": True,
+src/hb_assistant/cli/second_brain.py:6760:    "external_embedding_providers_deferred": True,
+src/hb_assistant/cli/second_brain.py:6827:    "no_external_writeback": True,
+src/hb_assistant/cli/second_brain.py:6841:    "no_external_writeback": True,
+src/hb_assistant/cli/second_brain.py:6853:    "no_external_writeback": True,
+src/hb_assistant/cli/second_brain.py:6865:    "no_external_writeback": True,
+src/hb_assistant/cli/second_brain.py:6877:    "no_external_writeback": True,
+src/hb_assistant/cli/second_brain.py:6888:    "no_external_writeback": True,
+src/hb_assistant/cli/second_brain.py:6901:    "no_external_writeback": True,
+src/hb_assistant/cli/second_brain.py:6915:    "no_external_writeback": True,
+src/hb_assistant/cli/second_brain.py:6930:    "no_external_writeback": True,
+src/hb_assistant/cli/second_brain.py:6943:    "no_external_writeback": True,
+src/hb_assistant/cli/second_brain.py:6956:    "no_external_writeback": True,
+src/hb_assistant/cli/second_brain.py:8192:    "external_embedding_providers_deferred": True,
+src/hb_assistant/cli/second_brain.py:9071:    """Prove no MCP surface performs writeback/direct-API/external-delivery (Prompt 14)."""
+src/hb_assistant/cli/second_brain.py:9102:    restricted raw content. No DB access, no Ollama call, no external request, no writeback. Exit 0
+src/hb_assistant/cli/second_brain.py:9577:    records. Duplicate stable keys already present are skipped. No raw-content or external writeback.
+src/hb_assistant/cli/second_brain.py:10035:    advisory narrative fed ONLY redacted aggregates. No Procore/external writeback, no cloud LLM.
+src/hb_assistant/cli/second_brain.py:10139:    advisory narrative fed ONLY redacted aggregates. No calendar/external writeback, no cloud LLM.
+src/hb_assistant/cli/second_brain.py:11981:        "no_external_writeback": True,
+src/hb_assistant/procore/projection_engine.py:453:                "external_writeback_performed": 0,
+src/hb_assistant/procore/projection_engine.py:557:        "external_writeback_performed": 0,
+src/hb_assistant/procore/budget_detail_read_model.py:116:            "external_writeback_performed": 0,
+src/hb_assistant/procore/budget_detail_read_model.py:572:            "external_writeback_performed": 0,
+src/hb_assistant/procore/projection_registry.py:463:# Zero-CHECK guards every generated table carries (no external writeback, no raw payload
+src/hb_assistant/procore/projection_registry.py:466:    "external_writeback_performed INTEGER NOT NULL DEFAULT 0 "
+src/hb_assistant/procore/projection_registry.py:467:    "CHECK(external_writeback_performed = 0)",
+src/hb_assistant/procore/normalizers/daily_log_live.py:65:def _manpower_anomaly(raw: Dict[str, Any]) -> bool:
+src/hb_assistant/procore/normalizers/daily_log_live.py:190:        .add_signal("daily_manpower_anomaly" if _manpower_anomaly(raw) else None)
+src/hb_assistant/procore/projection_registry.json:2505:     "path": "$.external_data",
+src/hb_assistant/procore/projection_registry.json:2875:     "column": "external_data",
+src/hb_assistant/procore/projection_registry.json:2876:     "rel": "external_data"
+src/hb_assistant/procore/validate.py:50:    "external_systems_called": False,
+src/hb_assistant/procore/structured_analytics.py:4:external writeback. The raw landing table is a replay/control layer; analytics
+src/hb_assistant/procore/structured_analytics.py:131:    external_writeback_performed: int = 0
+src/hb_assistant/procore/structured_analytics.py:142:            "external_writeback_performed": self.external_writeback_performed,
+src/hb_assistant/procore/structured_analytics.py:617:          raw_procore_payload_persisted, external_writeback_performed,
+src/hb_assistant/procore/structured_analytics.py:948:          raw_procore_payload_persisted, external_writeback_performed,
+src/hb_assistant/procore/structured_analytics.py:1234:        "external_writeback_performed": 0,
+src/hb_assistant/construction/forecast/projection_engine.py:23:    "external_systems": "read_only",
+src/hb_assistant/construction/forecast/output_projection_engine.py:37:    "external_systems": "none",
+src/hb_assistant/construction/calendar/policy.py:14:All loading is read-only and offline; no external calls, no raw content.
+src/hb_assistant/construction/calendar_email_obsidian.py:162:                "external_systems": "read_only",
+src/hb_assistant/construction/calendar_email_obsidian.py:267:            "- external systems: read-only · graph calls: none · writeback: none",
+src/hb_assistant/construction/data_quality/source_record_map.py:22:  enforce raw_body_persisted=0, full_text=0, external_writeback=0.
+src/hb_assistant/construction/data_quality/source_record_map.py:116:                "external_writeback_performed",
+src/hb_assistant/construction/forecast/source_domain_engine.py:31:    "external_systems": "read_only",
+src/hb_assistant/construction/data_quality/table_inventory.py:12:Read-only: no --apply, no writes, no external calls, no raw content. Safe to run
+src/hb_assistant/construction/data_quality/relationships.py:47:- Local-only; no external calls or writes except explicit safe queue inserts.
+src/hb_assistant/construction/baseline.py:44:    "external_systems": "read_only",
+src/hb_assistant/construction/data_quality/marts.py:12:All reads/writes are local SQLite only. No external calls.
+src/hb_assistant/construction/calendar/project_matcher.py:5:no Microsoft Graph calls, no token, no writeback to any external system.
+src/hb_assistant/construction/aging_exposure/aging_exposure_builder.py:17:Guardrails: local-first, read-only against external systems; ``record_ref`` is a local stable record
+src/hb_assistant/construction/aging_exposure/aging_exposure_builder.py:39:    "external_systems": "read_only",
+src/hb_assistant/construction/data_quality/phase_07d.py:36:    "external_systems": "read_only",
+src/hb_assistant/construction/data_quality/phase_07d.py:69:    "external_writeback_performed",
+src/hb_assistant/construction/calendar/contracts.py:15:filesystem fallback for dev/test. Read-only; no external calls; no raw content.
+src/hb_assistant/construction/forecast/decision_support_engine.py:39:    "external_systems": "none",
+src/hb_assistant/construction/data_quality/project_identity.py:15:All reads are local (config seeds + SQLite). No external calls.
+src/hb_assistant/construction/data_quality/gates.py:14:- All operations local-only, deterministic, offline. No external calls, no raw content.
+src/hb_assistant/construction/data_quality/gates.py:39:    "external_systems": "read_only",
+src/hb_assistant/construction/data_quality/gates.py:78:    "external_writeback_scan",
+src/hb_assistant/construction/data_quality/gates.py:145:    "safety": ["raw_content_leakage_scan", "external_writeback_scan"],
+src/hb_assistant/construction/data_quality/gates.py:214:            "external_writeback_allowed": 0,
+src/hb_assistant/construction/data_quality/gates.py:280:                "external_writeback_scan",
+src/hb_assistant/construction/data_quality/gates.py:711:                    "external_writeback_performed",
+src/hb_assistant/construction/data_quality/gates.py:721:                    "external_writeback_performed",
+src/hb_assistant/construction/data_quality/gates.py:727:                ["raw_document_text_persisted", "external_writeback_performed"],
+src/hb_assistant/construction/data_quality/gates.py:736:                    "external_writeback_performed",
+src/hb_assistant/construction/data_quality/gates.py:746:                    "external_writeback_performed",
+src/hb_assistant/construction/data_quality/gates.py:1100:    def _gate_external_writeback(self) -> dict[str, Any]:
+src/hb_assistant/construction/data_quality/gates.py:1105:                "SELECT COUNT(*) FROM data_quality_gate_results WHERE gate_name='external_writeback_scan' AND observed > 0 ORDER BY created_utc DESC LIMIT 1",
+src/hb_assistant/construction/data_quality/gates.py:1111:            "external_writeback_scan",
+src/hb_assistant/construction/data_quality/gates.py:1113:            self.thresholds.get("external_writeback_allowed"),
+src/hb_assistant/construction/data_quality/gates.py:1169:        self._gate_external_writeback()
+src/hb_assistant/construction/data_quality/safety.py:9:- Zero external-system mutation calls (no .post / .put / .patch / .delete /
+src/hb_assistant/construction/data_quality/safety.py:108:        "external_writeback_performed": 0,
+src/hb_assistant/construction/data_quality/safety.py:113:        "external_writeback_performed": 0,
+src/hb_assistant/construction/data_quality/safety.py:118:        "external_writeback_performed": 0,
+src/hb_assistant/construction/data_quality/safety.py:122:        "external_writeback_performed": 0,
+src/hb_assistant/construction/data_quality/safety.py:128:        "external_writeback_performed": 0,
+src/hb_assistant/construction/data_quality/safety.py:166:        "external_writeback_performed": 0,
+src/hb_assistant/construction/data_quality/safety.py:172:        "external_writeback_performed": 0,
+src/hb_assistant/construction/data_quality/safety.py:176:        "external_writeback_performed": 0,
+src/hb_assistant/construction/data_quality/safety.py:182:        "external_writeback_performed": 0,
+src/hb_assistant/construction/data_quality/safety.py:188:        "external_writeback_performed": 0,
+src/hb_assistant/construction/data_quality/safety.py:192:        "external_writeback_performed": 0,
+src/hb_assistant/construction/data_quality/safety.py:227:    "external_writeback_performed": 0,
+src/hb_assistant/construction/data_quality/safety.py:573:    "external_systems": "read_only",
+src/hb_assistant/construction/data_quality/safety.py:583:    "no_mutation_capable_external_calls_in_07a_modules",
+src/hb_assistant/construction/classification/readiness.py:39:    "external_systems": "read_only",
+src/hb_assistant/construction/meeting_prep/brief_builder.py:18:Guardrails: local-first, read-only against external systems; record refs are local stable
+src/hb_assistant/construction/meeting_prep/brief_builder.py:41:    "external_systems": "read_only",
+src/hb_assistant/construction/document/project_matcher.py:150:            "external_systems": "read_only",
+src/hb_assistant/construction/graph/file_obsidian_projection.py:252:            "external_systems": "read_only",
+src/hb_assistant/construction/graph/file_obsidian_projection.py:307:            "external_systems: read_only",
+src/hb_assistant/construction/calendar/event_indexer.py:8:Read-only externally: only ``get_me`` / ``list_calendar_view`` (guarded GETs with a
+src/hb_assistant/construction/document/source_scope.py:183:            "external_systems": "read_only",
+src/hb_assistant/construction/data_quality/__init__.py:6:read-only against external systems by default; writes require explicit --apply
+src/hb_assistant/construction/data_quality/__init__.py:7:and are limited to local SQLite metadata (no raw bodies, tokens, or external
+src/hb_assistant/construction/data_quality/obsidian.py:53:    "external_systems": "read_only",
+src/hb_assistant/construction/data_quality/obsidian.py:492:                "no_external_writeback",
+src/hb_assistant/construction/document/relationship_builder.py:5:(FK -> document_card_id). Candidates only — no card mutation, no auto-promotion, no external
+src/hb_assistant/construction/document/relationship_builder.py:162:            "external_systems": "read_only",
+src/hb_assistant/construction/document/relationship_builder.py:168:            "external_writeback": False,
+src/hb_assistant/construction/document/obsidian_projection.py:202:                "external_systems": "read_only",
+src/hb_assistant/construction/document/obsidian_projection.py:267:            "external_systems: read_only",
+src/hb_assistant/construction/issue_history/issue_history_builder.py:20:Guardrails: local-first, read-only against external systems; record refs are local stable
+src/hb_assistant/construction/issue_history/issue_history_builder.py:39:    "external_systems": "read_only",
+src/hb_assistant/construction/document/extraction_eligibility.py:122:            "external_systems": "read_only",
+src/hb_assistant/construction/document/classifier.py:307:            "external_systems": "read_only",
+src/hb_assistant/construction/second_brain/freshness.py:15:default). Read-only SELECTs, table-existence guarded; no external writeback, delivery, or raw
+src/hb_assistant/construction/second_brain/freshness.py:574:            "no_external_writeback": True,
+src/hb_assistant/construction/second_brain/freshness.py:575:            "no_external_delivery": True,
+src/hb_assistant/construction/second_brain/freshness.py:577:            "model_direct_external_api_access": False,
+src/hb_assistant/construction/email_calendar/projection_engine.py:635:        "external_writeback_performed": 0,
+src/hb_assistant/construction/risk_digest/risk_digest_builder.py:19:Guardrails: local-first, read-only against external systems; refs are local ids / hashes / Procore
+src/hb_assistant/construction/risk_digest/risk_digest_builder.py:39:    "external_systems": "read_only",
+src/hb_assistant/construction/second_brain/retry_recovery.py:13:No external writeback, no external delivery, no raw content. The retry/backoff EXECUTION wiring
+src/hb_assistant/construction/second_brain/retry_recovery.py:467:            if k.endswith("_persisted") or k == "external_writeback_performed"
+src/hb_assistant/construction/second_brain/retry_recovery.py:515:            "no_external_writeback": True,
+src/hb_assistant/construction/second_brain/retry_recovery.py:516:            "no_external_delivery": True,
+src/hb_assistant/construction/second_brain/retry_recovery.py:518:            "model_direct_external_api_access": False,
+src/hb_assistant/construction/second_brain/retry_recovery.py:532:    - Permanent (do not retry for this run): policy/safety/missing input, no-writeback violations, already delivered, disabled_by_policy, eval hard fail, external asset etc.
+src/hb_assistant/construction/second_brain/retry_recovery.py:542:    # Permanent / do-not-retry (policy, safety, no-input, no-writeback, already done, disabled, hard eval fail, external)
+src/hb_assistant/construction/second_brain/retry_recovery.py:551:        "external_asset",
+src/hb_assistant/construction/graph/file_retrieval.py:144:                "external_systems": "read_only",
+src/hb_assistant/construction/second_brain/daily_brief_health.py:14:default). No external writeback, no external delivery, no raw content.
+src/hb_assistant/construction/second_brain/daily_brief_health.py:317:            "no_external_writeback": True,
+src/hb_assistant/construction/second_brain/daily_brief_health.py:318:            "no_external_delivery": True,
+src/hb_assistant/construction/second_brain/daily_brief_health.py:320:            "model_direct_external_api_access": False,
+src/hb_assistant/construction/second_brain/__init__.py:7:prompts. No external API access, no writeback, no raw content.
+src/hb_assistant/construction/email_calendar/schema.py:10:emitted to evidence and no external writeback can be recorded at the SQLite layer.
+src/hb_assistant/construction/email_calendar/schema.py:25:    "external_writeback_performed INTEGER NOT NULL DEFAULT 0 "
+src/hb_assistant/construction/email_calendar/schema.py:26:    "CHECK(external_writeback_performed = 0)",
+src/hb_assistant/construction/email_calendar/schema.py:115:        "external_writeback_performed",
+src/hb_assistant/construction/email_calendar/schema.py:135:        "external_writeback_performed",
+src/hb_assistant/construction/email_calendar/schema.py:202:      external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0)
+src/hb_assistant/construction/email_calendar/schema.py:233:      external_writeback_performed INTEGER NOT NULL DEFAULT 0 CHECK(external_writeback_performed = 0)
+src/hb_assistant/construction/second_brain/phase_09_operator_status.py:190:    # deferred = explicit honest list (external providers, synthesis, MCP, UX, persist etc.)
+src/hb_assistant/construction/second_brain/phase_09_operator_status.py:225:        "external embedding providers (policy-gated; deferred per embedding policy)",
+src/hb_assistant/construction/second_brain/phase_09_operator_status.py:335:            "no_external_writeback": True,
+src/hb_assistant/construction/document/card_materializer.py:229:            "external_systems": "read_only",
+src/hb_assistant/construction/second_brain/daily_brief_delivery.py:9:NO external delivery (no email/Slack/Teams/SMS/push/webhook/Graph ``sendMail``) — the V31
+src/hb_assistant/construction/second_brain/daily_brief_delivery.py:568:            "no_external_writeback": True,
+src/hb_assistant/construction/second_brain/daily_brief_delivery.py:569:            "no_external_delivery": True,
+src/hb_assistant/construction/second_brain/daily_brief_delivery.py:571:            "model_direct_external_api_access": False,
+src/hb_assistant/construction/second_brain/phase_09_schema.py:78:    "external_writeback_performed",
+src/hb_assistant/construction/document/preview_builder.py:11:excerpt; no legal/claim/financial/personnel/safety conclusion; no external writeback; no card
+src/hb_assistant/construction/document/preview_builder.py:223:            "external_systems": "read_only",
+src/hb_assistant/construction/document/preview_builder.py:229:            "external_writeback": False,
+src/hb_assistant/construction/second_brain/reasoning.py:12:  bodies, signed/download URLs, secrets, tokens, or any external-system handle.
+src/hb_assistant/construction/second_brain/reasoning.py:465:            "no_external_writeback": True,
+src/hb_assistant/construction/second_brain/reasoning.py:467:            "model_direct_external_api_access": False,
+src/hb_assistant/construction/second_brain/daily_brief_reproducibility.py:434:            "no_external_writeback": True,
+src/hb_assistant/construction/second_brain/daily_brief_open.py:16:launch an app. No external writeback/delivery; no raw content persisted.
+src/hb_assistant/construction/second_brain/daily_brief_open.py:845:            "no_external_writeback": True,
+src/hb_assistant/construction/second_brain/daily_brief_open.py:846:            "no_external_delivery": True,
+src/hb_assistant/construction/second_brain/daily_brief_open.py:848:            "model_direct_external_api_access": False,
+src/hb_assistant/construction/second_brain/automation_policy.py:5:``automation_policy_contract``. Read-only; no model; no external delivery. Declarative substrate
+src/hb_assistant/construction/second_brain/automation_policy.py:105:    # Alerting must be local-only — external channels are never permitted.
+src/hb_assistant/construction/second_brain/financial_completeness_advisory.py:68:    "external_writeback_performed",
+src/hb_assistant/construction/second_brain/financial_completeness_advisory.py:247:                "no_external_writeback": True,
+src/hb_assistant/construction/second_brain/config.py:13:  existing ``security.external_llm_enabled`` master switch. Anything short of that
+src/hb_assistant/construction/second_brain/config.py:15:* No external API access, no writeback, no raw content. Dependency presence is
+src/hb_assistant/construction/second_brain/config.py:58:    external_llm_enabled: bool = False
+src/hb_assistant/construction/second_brain/config.py:71:            "external_llm_enabled": self.external_llm_enabled,
+src/hb_assistant/construction/second_brain/config.py:106:    external_llm_enabled = bool(cfg.security.external_llm_enabled)
+src/hb_assistant/construction/second_brain/config.py:122:        if not external_llm_enabled:
+src/hb_assistant/construction/second_brain/config.py:125:                "live requested but security.external_llm_enabled is false; degraded to mock"
+src/hb_assistant/construction/second_brain/config.py:160:        external_llm_enabled=external_llm_enabled,
+src/hb_assistant/construction/second_brain/automation_health.py:6:structured reason codes. It NEVER migrates, writes external systems, sends an alert, or persists raw
+src/hb_assistant/construction/second_brain/automation_health.py:249:            "no_external_writeback": True,
+src/hb_assistant/construction/second_brain/automation_health.py:250:            "no_external_delivery": True,
+src/hb_assistant/construction/second_brain/automation_health.py:253:            "model_direct_external_api_access": False,

@@ -1,0 +1,59 @@
+# Tropical hardcoding — category summary (excludes docs/evidence prior bundles)
+## Hard guards: project_key != SUPPORTED_PROJECT_KEY
+2189:subrepos/construction-financial-review/src/construction_financial_review/context/context_generation_runner.py:80:    if project_key != SUPPORTED_PROJECT_KEY:
+2223:subrepos/construction-financial-review/src/construction_financial_review/analysis/final_forecast_runner.py:79:    if project_key != SUPPORTED_PROJECT_KEY:
+2229:subrepos/construction-financial-review/src/construction_financial_review/config_registry.py:312:    if project_key != SUPPORTED_PROJECT_KEY:
+2232:subrepos/construction-financial-review/src/construction_financial_review/config_registry.py:435:    if project_key != SUPPORTED_PROJECT_KEY:
+2234:subrepos/construction-financial-review/src/construction_financial_review/config_registry.py:669:    if project_key != SUPPORTED_PROJECT_KEY:
+2244:subrepos/construction-financial-review/src/construction_financial_review/workflows/db_cutover_readiness.py:201:    if project_key != SUPPORTED_PROJECT_KEY:
+2251:subrepos/construction-financial-review/src/construction_financial_review/workflows/model_engines_readiness.py:375:    if project_key != SUPPORTED_PROJECT_KEY:
+2263:subrepos/construction-financial-review/src/construction_financial_review/workflows/live_db_config_registry_promotion.py:166:    if project_key != SUPPORTED_PROJECT_KEY:
+2272:subrepos/construction-financial-review/src/construction_financial_review/workflows/controlled_db_context_analysis.py:102:    if project_key != SUPPORTED_PROJECT_KEY:
+2275:subrepos/construction-financial-review/src/construction_financial_review/workflows/controlled_db_context_analysis.py:240:    if project_key != SUPPORTED_PROJECT_KEY:
+2282:subrepos/construction-financial-review/src/construction_financial_review/workflows/db_certified_final_output.py:293:    if project_key != SUPPORTED_PROJECT_KEY:
+2295:subrepos/construction-financial-review/src/construction_financial_review/workflows/forecast_monthly_db_config_proof.py:455:    if project_key != SUPPORTED_PROJECT_KEY:
+2303:subrepos/construction-financial-review/src/construction_financial_review/workflows/forecast_model_controls_db_config_proof.py:323:    if project_key != SUPPORTED_PROJECT_KEY:
+2317:subrepos/construction-financial-review/src/construction_financial_review/workflows/live_db_certification.py:256:    if project_key != SUPPORTED_PROJECT_KEY:
+2324:subrepos/construction-financial-review/src/construction_financial_review/workflows/live_db_certification.py:318:    if project_key != SUPPORTED_PROJECT_KEY:
+2338:subrepos/construction-financial-review/src/construction_financial_review/workflows/forecast_probability_db_config_proof.py:408:    if project_key != SUPPORTED_PROJECT_KEY:
+2362:subrepos/construction-financial-review/src/construction_financial_review/workflows/forecast_comprehensive_db_config_proof.py:450:    if project_key != SUPPORTED_PROJECT_KEY:
+2376:subrepos/construction-financial-review/src/construction_financial_review/workflows/guarded_db_operator_run.py:251:    if project_key != SUPPORTED_PROJECT_KEY:
+2382:subrepos/construction-financial-review/src/construction_financial_review/common/package_resolution.py:87:    if project_key != SUPPORTED_PROJECT_KEY:
+2385:subrepos/construction-financial-review/src/construction_financial_review/common/package_resolution.py:120:    if project_key != SUPPORTED_PROJECT_KEY:
+2387:subrepos/construction-financial-review/src/construction_financial_review/common/package_resolution.py:173:    if project_key != SUPPORTED_PROJECT_KEY:
+2398:subrepos/construction-financial-review/src/construction_financial_review/workflows/forecast_accuracy_gate.py:128:    if project_key != SUPPORTED_PROJECT_KEY:
+2420:subrepos/construction-financial-review/src/construction_financial_review/workflows/live_db_run_output_projection.py:260:    if project_key != SUPPORTED_PROJECT_KEY:
+2442:subrepos/construction-financial-review/src/construction_financial_review/workflows/temp_db_readiness_rehearsal.py:134:    if project_key != SUPPORTED_PROJECT_KEY:
+2459:subrepos/construction-financial-review/src/construction_financial_review/workflows/live_db_source_domain_projection.py:156:    if project_key != SUPPORTED_PROJECT_KEY:
+## SUPPORTED_PROJECT_KEY constant definitions
+2187:subrepos/construction-financial-review/src/construction_financial_review/context/context_generation_runner.py:39:SUPPORTED_PROJECT_KEY = "tropical"
+2219:subrepos/construction-financial-review/src/construction_financial_review/analysis/final_forecast_runner.py:34:SUPPORTED_PROJECT_KEY = "tropical"
+2226:subrepos/construction-financial-review/src/construction_financial_review/config_registry.py:35:SUPPORTED_PROJECT_KEY = "tropical"
+2236:subrepos/construction-financial-review/src/construction_financial_review/workflows/db_cutover_readiness.py:39:SUPPORTED_PROJECT_KEY = "tropical"
+2247:subrepos/construction-financial-review/src/construction_financial_review/workflows/model_engines_readiness.py:43:SUPPORTED_PROJECT_KEY = "tropical"
+2261:subrepos/construction-financial-review/src/construction_financial_review/workflows/live_db_config_registry_promotion.py:38:SUPPORTED_PROJECT_KEY = "tropical"
+2266:subrepos/construction-financial-review/src/construction_financial_review/workflows/controlled_db_context_analysis.py:38:SUPPORTED_PROJECT_KEY = "tropical"
+2278:subrepos/construction-financial-review/src/construction_financial_review/workflows/db_certified_final_output.py:41:SUPPORTED_PROJECT_KEY = "tropical"
+2288:subrepos/construction-financial-review/src/construction_financial_review/workflows/forecast_monthly_db_config_proof.py:46:SUPPORTED_PROJECT_KEY = "tropical"
+2298:subrepos/construction-financial-review/src/construction_financial_review/workflows/forecast_model_controls_db_config_proof.py:32:SUPPORTED_PROJECT_KEY = "tropical"
+2306:subrepos/construction-financial-review/src/construction_financial_review/workflows/live_db_certification.py:35:SUPPORTED_PROJECT_KEY = "tropical"
+2332:subrepos/construction-financial-review/src/construction_financial_review/workflows/forecast_probability_db_config_proof.py:41:SUPPORTED_PROJECT_KEY = "tropical"
+2344:subrepos/construction-financial-review/src/construction_financial_review/workflows/forecast_db_config_backed_core.py:45:SUPPORTED_PROJECT_KEY = "tropical"
+2348:subrepos/construction-financial-review/src/construction_financial_review/workflows/forecast_comprehensive_db_config_proof.py:46:SUPPORTED_PROJECT_KEY = "tropical"
+2373:subrepos/construction-financial-review/src/construction_financial_review/workflows/guarded_db_operator_run.py:48:SUPPORTED_PROJECT_KEY = "tropical"
+2378:subrepos/construction-financial-review/src/construction_financial_review/common/package_resolution.py:26:SUPPORTED_PROJECT_KEY = "tropical"
+2395:subrepos/construction-financial-review/src/construction_financial_review/workflows/forecast_accuracy_gate.py:20:SUPPORTED_PROJECT_KEY = "tropical"
+2410:subrepos/construction-financial-review/src/construction_financial_review/workflows/live_db_run_output_projection.py:34:SUPPORTED_PROJECT_KEY = "tropical"
+2434:subrepos/construction-financial-review/src/construction_financial_review/workflows/temp_db_readiness_rehearsal.py:32:SUPPORTED_PROJECT_KEY = "tropical"
+2450:subrepos/construction-financial-review/src/construction_financial_review/workflows/live_db_source_domain_projection.py:32:SUPPORTED_PROJECT_KEY = "tropical"
+## Hardcoded source package name
+114:tests/test_forecast_context_runner_phase6.py:78:    twn = root / "twn_cost_forecast_json_package"
+115:tests/test_forecast_context_runner_phase6.py:196:    _wjson(twn / "manifest.json", {"package_name": "twn_cost_forecast_json_package"})
+116:tests/test_forecast_context_runner_phase6.py:393:        source_package=root / "twn_cost_forecast_json_package",
+423:tests/test_forecast_controlled_workflow_phase9.py:466:        source_package=root / "twn_cost_forecast_json_package",
+425:tests/test_forecast_controlled_workflow_phase9.py:489:    twn = root / "twn_cost_forecast_json_package"
+426:tests/test_forecast_controlled_workflow_phase9.py:607:    _wjson(twn / "manifest.json", {"package_name": "twn_cost_forecast_json_package"})
+427:tests/test_forecast_db_read_adapter_phase4.py:118:def _make_package(root: Path, name: str = "twn_cost_forecast_json_package") -> Path:
+431:tests/test_forecast_db_read_adapter_phase4.py:251:            "source_package_name='twn_cost_forecast_json_package', project_key='tropical', read_jsonl_fn=rj)\n"
+747:tests/test_forecast_final_runner_phase7.py:75:    twn = root / "twn_cost_forecast_json_package"
+748:tests/test_forecast_final_runner_phase7.py:193:    _wjson(twn / "manifest.json", {"package_name": "twn_cost_forecast_json_package"})

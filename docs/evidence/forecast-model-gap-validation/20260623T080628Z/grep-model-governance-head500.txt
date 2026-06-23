@@ -1,0 +1,500 @@
+src/hb_assistant/classification/detector.py:16:    """Detects Bobby mentions (and lightweight signals) in redacted preview text only."""
+src/hb_assistant/classification/classifier.py:13:from hb_assistant.links.registry import SourceLinkRegistry
+src/hb_assistant/classification/classifier.py:50:        registry: Optional[SourceLinkRegistry] = None,
+src/hb_assistant/classification/classifier.py:56:        self.registry = registry or SourceLinkRegistry(self.store)
+src/hb_assistant/classification/classifier.py:100:        self.registry.link_sources(
+src/hb_assistant/classification/classifier.py:109:            self.registry.link_sources(
+src/hb_assistant/classification/classifier.py:130:        email.source_links = self.registry.get_links(email.source_record_id) or email.source_links
+src/hb_assistant/config/models.py:103:    # live-refresh-eligible mapping in the Procore project registry.
+src/hb_assistant/resources/json/phase_08b_executor_validation_matrix.json:13:    "python -c \"from hb_assistant.construction.second_brain.contracts import load_phase_08b_contract, load_all_phase_08b_contracts; from hb_assistant.construction.second_brain.automation_policy import load_phase_08b_automation_executor_policy_seed, load_phase_08b_executor_stage_registry_seed, load_phase_08b_retry_backoff_policy_seed, load_phase_08b_weekend_catchup_policy_seed; print('loads ok'); cs=load_all_phase_08b_contracts(); [load_phase_08b_contract(n) for n in ['automation_executor_contract','executor_stage_contract','safe_replay_contract','automation_execution_gate_contract','executor_validation_matrix']]; print('all 5 contracts + 4 seeds loaded')\""
+src/hb_assistant/resources/json/phase_08b_data_quality_gates.json:11:    "run_registry_locking",
+src/hb_assistant/resources/json/phase_08b_automation_execution_gate_contract.json:6:    "all_stages_declared_in_registry",
+src/hb_assistant/resources/json/phase_08b_automation_execution_gate_contract.json:13:    "lock_and_registry_used_for_overlap",
+src/hb_assistant/resources/json/phase_08d_mcp_server_config_contract.json:17:    "missing_registry",
+src/hb_assistant/resources/json/phase_08a_data_quality_gates.json:6:    "agent_registry",
+src/hb_assistant/resources/json/phase_08b_executor_stage_contract.json:3:  "purpose": "Canonical registry of executor stages and their ordering/dependencies for the Phase 08B automation executor. Stages are declarative; the actual stage runner + wiring is deferred. Safe replay and lock registry are prerequisites for all mutating stages.",
+src/hb_assistant/resources/json/phase_08b_executor_stage_contract.json:38:      "produces": "run_registry_entry",
+src/hb_assistant/resources/json/phase_09_table_lifecycle_contract.json:54:      "notes": "Retrieval quality eval-set registry (Prompt 24)."
+src/hb_assistant/resources/json/phase_08a_agent_registry_contract.json:2:  "version": "phase_08a_agent_registry_contract-v1",
+src/hb_assistant/resources/json/phase_09_agent_performance_feedback_contract.json:4:  "description": "Phase 09 Prompt 32 — agent performance and feedback. A read-only, advisory per-agent tracker over the Phase 08A agent registry that aggregates repeated corrections (operator feedback of class correct/reject), review burden (agent_run_receipts review tiers), and weak coverage (corpus-balance empty/deferred families), and emits advisory policy recommendation codes — for operator awareness. It makes NO determination; recommendations are advisory suggestions, never applied. Persists metadata-only per-(agent, metric) rows to the reserved V38 second_brain_agent_performance_feedback_runs table (read-only by default). No raw feedback reason / prompt / response is persisted or emitted — only counts, bucketed bands, agent names, metric names, and recommendation codes.",
+src/hb_assistant/resources/json/phase_09_operator_status_contract.json:5:  "description": "Phase 09 Prompt 38 — CLI and operator status. A read-only, advisory operator-status aggregator that exposes a repo-consistent view of every Phase-09 CLI surface (retrieval / memory / agent-performance / daily-brief-reproducibility / data-quality), its status/eval/build/proof command shape, and the rolled-up readiness posture. It enumerates the surfaces from a registry (seed) that mirrors the repo's actual CLI command set, reports each surface's contract presence + owning-table population (from the read-only Phase-09 schema-status report), and rolls up the existing read-only schema-status + Phase-09 gates signals. Readiness is never overstated: a surface whose substrate ships empty is reported advisory_ready (not operational). Read-only: persists nothing, no migration. Makes no determination; fail-closed on missing policy or stale schema.",
+src/hb_assistant/resources/json/phase_08d_mcp_permission_audit_contract.json:6:    "allowed_registry_safe",
+src/hb_assistant/resources/json/phase_08d_mcp_permission_audit_contract.json:7:    "denied_registry_complete",
+src/hb_assistant/resources/json/review_tier_contract.json:10:      "label": "auto-eligible / lightweight review",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3:  "source": "Seeded from docs/evidence/construction-intelligence-phase-07a-data-quality/01-table-lifecycle-inventory.json (Phase 07A Prompt 00 manual inventory); operationalized for hb-assistant construction-agent data-quality table-inventory (Phase 07B Prompt 01); refreshed to map the V20/V21 Phase 07A data-quality and relationship tables that post-dated the manual inventory (Phase 07C Prompt 01 remediation); extended with the ten V25 Phase 07D cross-source relationship and meeting-prep substrate tables (Phase 07D Prompt 02); extended with the twenty-one V26 Phase 08A second-brain runtime substrate tables (Phase 08A Prompt 02); extended with the nineteen V38 Phase 09 retrieval/memory/agent metadata substrate tables (Phase 09 Prompt 12 \u2014 schema + contracts + table lifecycle; ships empty/placeholder_deferred); extended with the three V39 Phase 09 review-burden tables (Prompt 37 review burden reduction; advisory promotion policy; ships empty/placeholder_deferred); extended with the one V45 Phase 10 email follow-up raw enrichment table (email_followup_enrichments; review-safe model-enriched follow-up metadata; ships empty/placeholder_deferred); extended with the forty-seven V46 Procore structured analytics foundation tables (landing, capture control, endpoint-family bronze, and dimensions; ships empty/placeholder_deferred until local reprocessing or capture). ; extended with the seventy-eight V47 Procore endpoint-specific structured projection tables (procore_ep_* primary + child/detail tables derived from the committed projection registry; ships empty/placeholder_deferred until projection replay from full raw payloads). Extended with the thirteen V49 email/calendar structured projection + receipt tables (email_raw_*/calendar_raw_*/email_calendar_* + raw_content_source_quality_snapshots; build_v49_ddl); the three V55 Procore endpoint budget-detail tables (operational/populated from the budget-detail read model); the sixteen V50-V54 Phase 10 daily-brief/candidate/ranking tables (ships empty/placeholder_deferred); and the five V58 forecast DB-transition foundation tables (forecast_projects/runs/source_ingestions/package_manifests/validation_events; operational_empty_expected, intentionally empty until Phase 2+); extended with the three V59 forecast DB-transition source-domain tables (forecast_budget_details/cost_entries/monthly_actuals_by_budget_code; Phase 3 JSON/JSONL projection + DB read parity; operational_empty_expected, intentionally empty until projection is applied; forecast behavior remains file-backed); extended with the four V60 forecast DB-transition config-registry tables (forecast_config_sources/config_items/config_snapshots/config_snapshot_items; Phase 16 governed config import/export/snapshot/materialize; operational_empty_expected, intentionally empty until config is imported; forecast behavior remains file-backed); extended with the eight V61 forecast-UI external-forecast evaluation tables (forecast_external_forecasts/external_forecast_rows/external_forecast_mappings/accuracy_results/comparison_results/anomaly_findings/review_items/evidence_packages; Phase 4 operator-supplied external-forecast upload + evaluation against actuals/budget/ERP-JTD/model/prior baselines, distinguished from model forecasts via forecast_origin; operational_empty_expected, intentionally empty on the live DB \u2014 real rows live only in an isolated per-run eval SQLite; forecast behavior remains file-backed).; extended with the thirteen V62 schedule-intelligence tables (schedule_file_imports, procore_ep_schedule_activities, relationships, WBS, calendars, codes, UDFs, version diffs, quality findings, cost mapping runs/candidates/distributions, weighting results; operational_empty_expected until import or Procore sync projection).",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:41:    "construction_table_lifecycle_registry": {
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:48:      "notes": "table lifecycle registry; operational read model"
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:311:    "construction_project_keyword_registry": {
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:318:      "notes": "user-managed project keyword training registry (add/edit/disable/exclude + strength); standard/template folder names excluded at service (never stored); supports explain-match with provenance; additive V40 for FastAPI analytics Prompt 05 / UI-05"
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:795:      "notes": "mailbox + folder registry"
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:1310:    "second_brain_run_registry": {
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:1317:      "notes": "Phase 08B run registry (run_kind/status/reason_code/lock_token/lock_status + nullable assistant_run_id bridge; metadata-only, guard-checked); populated in 08B Prompt 05 via emit-gated no-overlap runs"
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:1490:    "second_brain_mcp_tool_registry_snapshots": {
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:1497:      "notes": "08D MCP tool registry snapshots (metadata-only; full 20 guards)"
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:1499:    "second_brain_mcp_resource_registry_snapshots": {
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:1506:      "notes": "08D MCP resource registry snapshots (metadata-only; full 20 guards)"
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:1508:    "second_brain_mcp_prompt_registry_snapshots": {
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:1515:      "notes": "08D MCP prompt registry snapshots (metadata-only; full 20 guards)"
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:1641:      "notes": "Phase 09 retrieval evaluation-set registry (metadata-only; full 23 guards); populated by later Phase 09 prompts (13-39)"
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:1902:      "notes": "V46 Procore endpoint contract registry for durable local endpoint-family analytics mapping."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:2354:    "obsidian_managed_section_registry": {
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:2451:      "notes": "V47 endpoint-specific structured projection primary table for the 'billing-periods' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:2460:      "notes": "V47 endpoint-specific structured projection primary table for the 'budget-change-history' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:2469:      "notes": "V47 endpoint-specific structured projection primary table for the 'budget-modifications' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:2478:      "notes": "V47 endpoint-specific structured projection primary table for the 'budget-views' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:2487:      "notes": "V47 endpoint-specific structured projection primary table for the 'change-events' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:2496:      "notes": "V47 endpoint-specific structured projection child/detail table for the 'change-events' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:2505:      "notes": "V47 endpoint-specific structured projection child/detail table for the 'change-events' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:2514:      "notes": "V47 endpoint-specific structured projection child/detail table for the 'change-events' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:2523:      "notes": "V47 endpoint-specific structured projection child/detail table for the 'change-events' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:2532:      "notes": "V47 endpoint-specific structured projection child/detail table for the 'change-events' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:2541:      "notes": "V47 endpoint-specific structured projection primary table for the 'commitment-attachments' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:2550:      "notes": "V47 endpoint-specific structured projection primary table for the 'commitment-change-orders' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:2559:      "notes": "V47 endpoint-specific structured projection primary table for the 'commitment-compliance' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:2568:      "notes": "V47 endpoint-specific structured projection child/detail table for the 'commitment-compliance' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:2577:      "notes": "V47 endpoint-specific structured projection child/detail table for the 'commitment-compliance' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:2586:      "notes": "V47 endpoint-specific structured projection primary table for the 'commitment-contracts' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:2595:      "notes": "V47 endpoint-specific structured projection primary table for the 'commitment-line-items' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:2604:      "notes": "V47 endpoint-specific structured projection primary table for the 'daily-log-dcrs' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:2613:      "notes": "V47 endpoint-specific structured projection child/detail table for the 'daily-log-dcrs' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:2622:      "notes": "V47 endpoint-specific structured projection primary table for the 'daily-log-deliveries' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:2631:      "notes": "V47 endpoint-specific structured projection child/detail table for the 'daily-log-deliveries' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:2640:      "notes": "V47 endpoint-specific structured projection primary table for the 'daily-log-inspections' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:2649:      "notes": "V47 endpoint-specific structured projection child/detail table for the 'daily-log-inspections' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:2658:      "notes": "V47 endpoint-specific structured projection primary table for the 'daily-log-manpower' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:2667:      "notes": "V47 endpoint-specific structured projection child/detail table for the 'daily-log-manpower' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:2676:      "notes": "V47 endpoint-specific structured projection primary table for the 'daily-log-notes' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:2685:      "notes": "V47 endpoint-specific structured projection child/detail table for the 'daily-log-notes' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:2694:      "notes": "V47 endpoint-specific structured projection primary table for the 'daily-log-visitor' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:2703:      "notes": "V47 endpoint-specific structured projection primary table for the 'daily-log-weather' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:2712:      "notes": "V47 endpoint-specific structured projection primary table for the 'inspection-items' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:2721:      "notes": "V47 endpoint-specific structured projection child/detail table for the 'inspection-items' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:2730:      "notes": "V47 endpoint-specific structured projection primary table for the 'inspection-sections' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:2739:      "notes": "V47 endpoint-specific structured projection primary table for the 'inspections' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:2748:      "notes": "V47 endpoint-specific structured projection child/detail table for the 'inspections' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:2757:      "notes": "V47 endpoint-specific structured projection child/detail table for the 'inspections' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:2766:      "notes": "V47 endpoint-specific structured projection child/detail table for the 'inspections' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:2775:      "notes": "V47 endpoint-specific structured projection child/detail table for the 'inspections' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:2784:      "notes": "V47 endpoint-specific structured projection primary table for the 'meetings' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:2793:      "notes": "V47 endpoint-specific structured projection primary table for the 'observations' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:2802:      "notes": "V47 endpoint-specific structured projection child/detail table for the 'observations' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:2811:      "notes": "V47 endpoint-specific structured projection primary table for the 'prime-change-order-line-items' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:2820:      "notes": "V47 endpoint-specific structured projection primary table for the 'prime-change-orders' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:2829:      "notes": "V47 endpoint-specific structured projection primary table for the 'prime-contract-line-items' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:2838:      "notes": "V47 endpoint-specific structured projection primary table for the 'prime-contracts' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:2847:      "notes": "V47 endpoint-specific structured projection primary table for the 'punch-items' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:2856:      "notes": "V47 endpoint-specific structured projection child/detail table for the 'punch-items' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:2865:      "notes": "V47 endpoint-specific structured projection child/detail table for the 'punch-items' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:2874:      "notes": "V47 endpoint-specific structured projection child/detail table for the 'punch-items' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:2883:      "notes": "V47 endpoint-specific structured projection primary table for the 'purchase-order-contracts' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:2892:      "notes": "V47 endpoint-specific structured projection child/detail table for the 'purchase-order-contracts' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:2901:      "notes": "V47 endpoint-specific structured projection primary table for the 'purchase-order-line-items' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:2910:      "notes": "V47 endpoint-specific structured projection child/detail table for the 'purchase-order-line-items' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:2919:      "notes": "V47 endpoint-specific structured projection primary table for the 'rfis' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:2928:      "notes": "V47 endpoint-specific structured projection child/detail table for the 'rfis' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:2937:      "notes": "V47 endpoint-specific structured projection child/detail table for the 'rfis' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:2946:      "notes": "V47 endpoint-specific structured projection child/detail table for the 'rfis' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:2955:      "notes": "V47 endpoint-specific structured projection primary table for the 'rfqs' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:2964:      "notes": "V47 endpoint-specific structured projection child/detail table for the 'rfqs' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:2973:      "notes": "V47 endpoint-specific structured projection child/detail table for the 'rfqs' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:2982:      "notes": "V47 endpoint-specific structured projection child/detail table for the 'rfqs' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:2991:      "notes": "V47 endpoint-specific structured projection child/detail table for the 'rfqs' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3000:      "notes": "V47 endpoint-specific structured projection primary table for the 'schedules' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3009:      "notes": "V47 endpoint-specific structured projection primary table for the 'subcontractor-invoice-change-order-items' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3018:      "notes": "V47 endpoint-specific structured projection primary table for the 'subcontractor-invoice-contract-detail-items' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3027:      "notes": "V47 endpoint-specific structured projection primary table for the 'subcontractor-invoices' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3036:      "notes": "V47 endpoint-specific structured projection child/detail table for the 'subcontractor-invoices' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3045:      "notes": "V47 endpoint-specific structured projection primary table for the 'submittals' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3054:      "notes": "V47 endpoint-specific structured projection child/detail table for the 'submittals' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3063:      "notes": "V47 endpoint-specific structured projection child/detail table for the 'submittals' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3072:      "notes": "V47 endpoint-specific structured projection child/detail table for the 'submittals' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3081:      "notes": "V47 endpoint-specific structured projection primary table for the 'projects' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3090:      "notes": "V47 endpoint-specific structured projection child/detail table for the 'projects' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3099:      "notes": "V47 endpoint-specific structured projection child/detail table for the 'projects' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3108:      "notes": "V47 endpoint-specific structured projection child/detail table for the 'projects' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3117:      "notes": "V47 endpoint-specific structured projection child/detail table for the 'projects' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3126:      "notes": "V47 endpoint-specific structured projection child/detail table for the 'projects' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3135:      "notes": "V47 endpoint-specific structured projection child/detail table for the 'projects' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3144:      "notes": "V47 endpoint-specific structured projection child/detail table for the 'projects' endpoint; populated by registry-driven projection replay from full raw payloads."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3459:      "notes": "V58 foundation table; intentionally empty at introduction; operational source-ingestion lineage registry; population begins Phase 2+; empty row count is not a data-quality failure."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3468:      "notes": "V58 foundation table; intentionally empty at introduction; operational package/run manifest registry (DB analog of manifest.json); population begins Phase 2+; empty row count is not a data-quality failure."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3507:      "table_family": "forecast_config_registry_v60",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3513:      "notes": "V60 config registry tables for Phase 16 governed forecast config (import/export/snapshot/materialize); intentionally empty until config is imported; existing forecast behavior remains file-backed."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3516:      "table_family": "forecast_config_registry_v60",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3522:      "notes": "V60 config registry tables for Phase 16 governed forecast config (import/export/snapshot/materialize); intentionally empty until config is imported; existing forecast behavior remains file-backed."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3525:      "table_family": "forecast_config_registry_v60",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3531:      "notes": "V60 config registry tables for Phase 16 governed forecast config (import/export/snapshot/materialize); intentionally empty until config is imported; existing forecast behavior remains file-backed."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3534:      "table_family": "forecast_config_registry_v60",
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3540:      "notes": "V60 config registry tables for Phase 16 governed forecast config (import/export/snapshot/materialize); intentionally empty until config is imported; existing forecast behavior remains file-backed."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3722:    "schedule_cost_weighting_results": {
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3729:      "notes": "Advisory forecast weighting from approved mappings only."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3857:    "forecast_method_eligibility": {
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3864:      "notes": "Per-run method eligibility/weight/status; population deferred to a follow-on slice."
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3866:    "forecast_model_selection_decisions": {
+src/hb_assistant/resources/json/table_lifecycle_status_contract.json:3873:      "notes": "Per-run audit of contributing methods + weights; population deferred to a follow-on slice."
+src/hb_assistant/graph/mail_client.py:8:- Source links populated for later registry
+src/hb_assistant/resources/json/phase_08b_safe_replay_contract.json:3:  "purpose": "Rules for safe replay / idempotent execution of the Phase 08B automation executor. Uses run registry status, lock state, delivery/HTML receipts, and content hashes to decide replay-allowed vs. blocked (never duplicate side effects). Declarative only; enforcement in executor impl (deferred).",
+src/hb_assistant/source_refresh/orchestrator.py:428:        registry = load_procore_projects()
+src/hb_assistant/source_refresh/orchestrator.py:429:        scope = self._resolve_procore_project_scope(registry, options)
+src/hb_assistant/source_refresh/orchestrator.py:462:            assert_live_mapping_strict(registry, project_keys)
+src/hb_assistant/source_refresh/orchestrator.py:464:        # Daily refresh now reads through the canonical EndpointAdapter registry via
+src/hb_assistant/source_refresh/orchestrator.py:473:    def _resolve_procore_project_scope(registry: Any, options: RefreshOptions) -> dict[str, Any]:
+src/hb_assistant/source_refresh/orchestrator.py:477:        by_key = {p.hb_project_key: p for p in registry.projects}
+src/hb_assistant/source_refresh/orchestrator.py:486:        for project in registry.projects:
+src/hb_assistant/source_refresh/orchestrator.py:1669:        from hb_assistant.construction.config import load_source_registry
+src/hb_assistant/source_refresh/orchestrator.py:1674:        registry = load_source_registry()
+src/hb_assistant/source_refresh/orchestrator.py:1677:        for src in registry.sources:
+src/hb_assistant/cli/diagnostics.py:378:    from hb_assistant.links.registry import SourceLinkRegistry
+src/hb_assistant/cli/construction.py:5:  validate the seeded source registry (Phase 01 Step 2).
+src/hb_assistant/cli/construction.py:94:    load_source_registry,
+src/hb_assistant/cli/construction.py:159:sources_app = typer.Typer(help="Source registry inspection.")
+src/hb_assistant/cli/construction.py:846:def _build_report(registry: SourceRegistry) -> dict[str, Any]:
+src/hb_assistant/cli/construction.py:847:    resolved = [s for s in registry.sources if s.resolution_status == "resolved"]
+src/hb_assistant/cli/construction.py:848:    pending = [s for s in registry.sources if s.resolution_status == "pending"]
+src/hb_assistant/cli/construction.py:849:    deprecated = [s for s in registry.sources if s.resolution_status == "deprecated"]
+src/hb_assistant/cli/construction.py:857:    all_read_only = all(s.read_only is True for s in registry.sources)
+src/hb_assistant/cli/construction.py:862:        "step": "2-source-registry",
+src/hb_assistant/cli/construction.py:864:            "project_count": len(registry.projects),
+src/hb_assistant/cli/construction.py:865:            "source_count": len(registry.sources),
+src/hb_assistant/cli/construction.py:872:        "projects": [p.model_dump() for p in registry.projects],
+src/hb_assistant/cli/construction.py:873:        "sources": [s.model_dump() for s in registry.sources],
+src/hb_assistant/cli/construction.py:891:        registry = load_source_registry()
+src/hb_assistant/cli/construction.py:895:            "status": "source_registry_unavailable",
+src/hb_assistant/cli/construction.py:909:        for s in registry.sources
+src/hb_assistant/cli/construction.py:929:    """Validate the construction-agent source registry and emit a report."""
+src/hb_assistant/cli/construction.py:932:        registry = load_source_registry()
+src/hb_assistant/cli/construction.py:937:            "step": "2-source-registry",
+src/hb_assistant/cli/construction.py:939:            "error": "source_registry_unavailable",
+src/hb_assistant/cli/construction.py:948:            "step": "2-source-registry",
+src/hb_assistant/cli/construction.py:956:    report = _build_report(registry)
+src/hb_assistant/cli/construction.py:1056:    registry = load_source_registry()
+src/hb_assistant/cli/construction.py:1057:    targets = [s for s in registry.sources if source is None or s.source_key == source]
+src/hb_assistant/cli/construction.py:1063:            "available": [s.source_key for s in registry.sources],
+src/hb_assistant/cli/construction.py:1114:    source: str = typer.Option(..., "--source", help="source_key from the registry."),
+src/hb_assistant/cli/construction.py:1122:    registry = load_source_registry()
+src/hb_assistant/cli/construction.py:1123:    matching = [s for s in registry.sources if s.source_key == source]
+src/hb_assistant/cli/construction.py:1129:            "available": [s.source_key for s in registry.sources],
+src/hb_assistant/cli/construction.py:1203:    registry = load_source_registry()
+src/hb_assistant/cli/construction.py:1204:    targets = [s for s in registry.sources if source is None or s.source_key == source]
+src/hb_assistant/cli/construction.py:1210:            "available": [s.source_key for s in registry.sources],
+src/hb_assistant/cli/construction.py:1434:    """Render (or write) registry overview + project cards + review note + opt-in document card."""
+src/hb_assistant/cli/construction.py:1436:    registry = load_source_registry()
+src/hb_assistant/cli/construction.py:1440:    overview = svc.build_registry_overview(registry)
+src/hb_assistant/cli/construction.py:1441:    rendered_overview = ManifestRenderer.render_registry_overview(overview)
+src/hb_assistant/cli/construction.py:1444:        [p for p in registry.projects if p.project_key == project]
+src/hb_assistant/cli/construction.py:1446:        else list(registry.projects)
+src/hb_assistant/cli/construction.py:1448:    project_cards = [svc.build_project_card(registry, p.project_key) for p in target_projects]
+src/hb_assistant/cli/construction.py:1478:        src_match = next((s for s in registry.sources if s.source_key == source), None)
+src/hb_assistant/cli/construction.py:1484:                "available": [s.source_key for s in registry.sources],
+src/hb_assistant/cli/construction.py:1509:            wr = writer.write_registry_overview(rendered=rendered_overview)
+src/hb_assistant/cli/construction.py:1541:        "registry_overview": overview.model_dump(),
+src/hb_assistant/cli/construction.py:1546:            "registry_overview_md": rendered_overview,
+src/hb_assistant/cli/construction.py:1607:    registry = load_source_registry()
+src/hb_assistant/cli/construction.py:1608:    if source is not None and not any(s.source_key == source for s in registry.sources):
+src/hb_assistant/cli/construction.py:1613:            "available": [s.source_key for s in registry.sources],
+src/hb_assistant/cli/construction.py:1621:    results = router.evaluate_registry(
+src/hb_assistant/cli/construction.py:1622:        registry=registry,
+src/hb_assistant/cli/construction.py:1913:    registry = load_source_registry()
+src/hb_assistant/cli/construction.py:1914:    src_entry = next((s for s in registry.sources if s.source_key == source), None)
+src/hb_assistant/cli/construction.py:2105:    # Source registry (required)
+src/hb_assistant/cli/construction.py:2107:        registry = load_source_registry()
+src/hb_assistant/cli/construction.py:2111:            "status": "source_registry_unavailable",
+src/hb_assistant/cli/construction.py:2117:    if source is not None and not any(s.source_key == source for s in registry.sources):
+src/hb_assistant/cli/construction.py:2122:            "available": [s.source_key for s in registry.sources],
+src/hb_assistant/cli/construction.py:2130:    targets = [s for s in registry.sources if source is None or s.source_key == source]
+src/hb_assistant/cli/construction.py:2170:            "project_count": len(registry.projects),
+src/hb_assistant/cli/construction.py:2171:            "source_count": len(registry.sources),
+src/hb_assistant/cli/construction.py:2201:def _validate_source_registry() -> dict[str, Any]:
+src/hb_assistant/cli/construction.py:2203:        registry = load_source_registry()
+src/hb_assistant/cli/construction.py:2205:        return {"name": "source_registry", "ok": False, "detail": None, "error": str(e)}
+src/hb_assistant/cli/construction.py:2208:            "name": "source_registry",
+src/hb_assistant/cli/construction.py:2214:        "name": "source_registry",
+src/hb_assistant/cli/construction.py:2216:        "detail": f"{len(registry.projects)} projects, {len(registry.sources)} sources",
+src/hb_assistant/cli/construction.py:2265:    """Multi-layer config sanity check (schema + source registry + review rules + model routing)."""
+src/hb_assistant/cli/construction.py:2269:        _validate_source_registry(),
+src/hb_assistant/cli/construction.py:2392:            "graph_delta | source_registry | review_policy | model_output | procore."
+src/hb_assistant/cli/run.py:27:        from hb_assistant.links.registry import SourceLinkRegistry
+src/hb_assistant/procore/live_gate.py:15:This is a runtime gate at the live boundary; the registry-level
+src/hb_assistant/procore/live_gate.py:73:    registry: ProcoreProjectsRegistry,
+src/hb_assistant/procore/live_gate.py:81:    keys are rejected with an offender list. Distinct from the registry-
+src/hb_assistant/procore/live_gate.py:82:    level ``mapping_consistent`` check, which scores the whole registry
+src/hb_assistant/procore/live_gate.py:85:    by_key = {p.hb_project_key: p for p in registry.projects}
+src/hb_assistant/procore/live_gate.py:111:    registry: ProcoreProjectsRegistry,
+src/hb_assistant/procore/live_gate.py:120:    by_key = {p.hb_project_key: p for p in registry.projects}
+src/hb_assistant/cli/graph.py:34:from hb_assistant.construction.config import load_source_registry
+src/hb_assistant/cli/graph.py:86:    project_registry_to_v5_source_locations,
+src/hb_assistant/cli/graph.py:451:    registry counts (by system, by resolution status, enabled), the V5 projection count, the open
+src/hb_assistant/cli/graph.py:456:        registry = load_source_registry()
+src/hb_assistant/cli/graph.py:464:    for src in registry.sources:
+src/hb_assistant/cli/graph.py:472:    # Lightweight store reads only (no heavy V5 table scans); resilient to an empty store.
+src/hb_assistant/cli/graph.py:494:            "registry_total": len(registry.sources),
+src/hb_assistant/cli/graph.py:499:            "pending": len(registry.sources) - resolved,
+src/hb_assistant/cli/graph.py:631:    Offline and read-only: loads the source registry + the Phase 07C document-source
+src/hb_assistant/cli/graph.py:640:        registry = load_source_registry()
+src/hb_assistant/cli/graph.py:650:    payload = evaluate_source_scope_compliance(registry, policy)
+src/hb_assistant/cli/graph.py:716:    full project-number hash) corroborated against the project registry; no Graph
+src/hb_assistant/cli/graph.py:718:    disagrees with the registry routes to review as a ``conflict`` candidate; nothing
+src/hb_assistant/cli/graph.py:893:        registry = load_source_registry()
+src/hb_assistant/cli/graph.py:900:        for s in registry.sources
+src/hb_assistant/cli/graph.py:909:                s.source_key for s in registry.sources if s.kind in _SHAREPOINT_SOURCE_KINDS
+src/hb_assistant/cli/graph.py:955:    source: str = typer.Option(..., "--source", help="source_key from the registry."),
+src/hb_assistant/cli/graph.py:963:        registry = load_source_registry()
+src/hb_assistant/cli/graph.py:968:    matching = [s for s in registry.sources if s.source_key == source]
+src/hb_assistant/cli/graph.py:974:            "available": [s.source_key for s in registry.sources],
+src/hb_assistant/cli/graph.py:1011:    source: str = typer.Option(..., "--source", help="source_key from the registry."),
+src/hb_assistant/cli/graph.py:1020:        registry = load_source_registry()
+src/hb_assistant/cli/graph.py:1025:    matching = [s for s in registry.sources if s.source_key == source]
+src/hb_assistant/cli/graph.py:1031:            "available": [s.source_key for s in registry.sources],
+src/hb_assistant/cli/graph.py:1087:        registry = load_source_registry()
+src/hb_assistant/cli/graph.py:1094:        for s in registry.sources
+src/hb_assistant/cli/graph.py:1103:                s.source_key for s in registry.sources if s.kind in _ONEDRIVE_SOURCE_KINDS
+src/hb_assistant/cli/graph.py:1151:    source: str = typer.Option(..., "--source", help="source_key from the registry."),
+src/hb_assistant/cli/graph.py:1165:        registry = load_source_registry()
+src/hb_assistant/cli/graph.py:1170:    matching = [s for s in registry.sources if s.source_key == source]
+src/hb_assistant/cli/graph.py:1176:            "available": [s.source_key for s in registry.sources],
+src/hb_assistant/cli/graph.py:1257:        # Shares-API resolution was skipped (no token); registry/parse fallbacks ran.
+src/hb_assistant/cli/graph.py:1265:    source: str = typer.Option(..., "--source", help="source_key from the registry."),
+src/hb_assistant/cli/graph.py:1283:        registry = load_source_registry()
+src/hb_assistant/cli/graph.py:1288:    matching = [s for s in registry.sources if s.source_key == source]
+src/hb_assistant/cli/graph.py:1294:            "available": [s.source_key for s in registry.sources],
+src/hb_assistant/cli/graph.py:1343:    source: str = typer.Option(..., "--source", help="source_key from the registry."),
+src/hb_assistant/cli/graph.py:1356:        registry = load_source_registry()
+src/hb_assistant/cli/graph.py:1361:    matching = [s for s in registry.sources if s.source_key == source]
+src/hb_assistant/cli/graph.py:1367:            "available": [s.source_key for s in registry.sources],
+src/hb_assistant/cli/graph.py:1419:    already-indexed SQLite rows + the source registry — no Graph calls. Dry-run default."""
+src/hb_assistant/cli/graph.py:1421:        load_source_registry()  # surface registry/schema errors early
+src/hb_assistant/cli/graph.py:1460:        load_source_registry()
+src/hb_assistant/cli/graph.py:1488:    source: str = typer.Option(..., "--source", help="source_key from the registry."),
+src/hb_assistant/cli/graph.py:1513:        registry = load_source_registry()
+src/hb_assistant/cli/graph.py:1518:    matching = [s for s in registry.sources if s.source_key == source]
+src/hb_assistant/cli/graph.py:1524:            "available": [s.source_key for s in registry.sources],
+src/hb_assistant/cli/graph.py:1583:        None, "--source", help="Limit to one source key (default: every registry source)."
+src/hb_assistant/cli/graph.py:1596:        load_source_registry()  # surface registry/schema errors early
+src/hb_assistant/cli/graph.py:1638:        load_source_registry()  # surface registry/schema errors early
+src/hb_assistant/cli/graph.py:1671:        load_source_registry()  # surface registry/schema errors early
+src/hb_assistant/cli/graph.py:1692:    """Emit a blocking JSON envelope for registry load/validation failures."""
+src/hb_assistant/cli/graph.py:1705:            "error": "source_registry_unavailable",
+src/hb_assistant/cli/graph.py:1713:    """Read-only classification of one registry source for the projection plan.
+src/hb_assistant/cli/graph.py:1772:    """Project the SharePoint/OneDrive source registry into the canonical V5
+src/hb_assistant/cli/graph.py:1781:        registry = load_source_registry()
+src/hb_assistant/cli/graph.py:1786:            "error": "source_registry_unavailable",
+src/hb_assistant/cli/graph.py:1801:    rows = [_classify_source(s) for s in registry.sources]
+src/hb_assistant/cli/graph.py:1803:    all_read_only = all(s.read_only is True for s in registry.sources)
+src/hb_assistant/cli/graph.py:1808:        report = project_registry_to_v5_source_locations(registry, store)
+src/hb_assistant/cli/graph.py:1811:        report = project_registry_to_v5_source_locations(registry, dry_run=True)
+src/hb_assistant/cli/graph.py:2363:    event index is never written. Pure local SQLite + source registry — no Graph
+src/hb_assistant/cli/graph.py:2526:    Resolves the policy folder registry against the live mailbox (read-only) and,
+src/hb_assistant/procore/daily_refresh_plan.py:49:    """Live-verified daily-log subtype adapter ids, in registry order.
+src/hb_assistant/procore/daily_refresh_plan.py:88:# pilot projects) and has no adapter in the registry.
+src/hb_assistant/procore/daily_refresh_plan.py:133:        "mapping_registry_unavailable",
+src/hb_assistant/procore/projection_audit.py:9:- ``projection_audit`` compares the live inventory against the committed registry
+src/hb_assistant/procore/projection_audit.py:27:from . import endpoints as endpoint_registry
+src/hb_assistant/procore/projection_audit.py:29:from . import projection_registry as registry
+src/hb_assistant/procore/projection_audit.py:32:# Endpoints present in the registry are the mandatory in-scope set: they have full raw
+src/hb_assistant/procore/projection_audit.py:153:def inventory_for_registry(*, db_path: str | Path | None = None) -> dict[str, dict[str, list[str]]]:
+src/hb_assistant/procore/projection_audit.py:154:    """Structural inventory consumed by ``projection_registry.build_registry``."""
+src/hb_assistant/procore/projection_audit.py:209:        payload["candidate_registry"] = registry.build_registry(structural)
+src/hb_assistant/procore/projection_audit.py:222:    """Compare live inventory to the registry allow-list (Gate C + amendment 1)."""
+src/hb_assistant/procore/projection_audit.py:224:    plans = registry.load_registry()
+src/hb_assistant/procore/projection_audit.py:232:    # Endpoints with full payloads but no registry entry are reported but, per amendment 5,
+src/hb_assistant/procore/projection_audit.py:249:                        "registry_present": False,
+src/hb_assistant/procore/projection_audit.py:266:                    "status": "no_registry_plan",
+src/hb_assistant/procore/projection_audit.py:267:                    "registry_present": False,
+src/hb_assistant/procore/projection_audit.py:292:                "registry_present": True,
+src/hb_assistant/procore/projection_audit.py:309:            r["registry_present"] or r["status"] == "custom_read_model_managed" for r in rows
+src/hb_assistant/procore/projection_audit.py:347:    """Registry-eligible endpoint ids known to the adapter registry that are NOT in the
+src/hb_assistant/procore/projection_audit.py:348:    committed projection registry (i.e. ``no_full_payload_available`` this pass)."""
+src/hb_assistant/procore/projection_audit.py:349:    in_scope = registry.in_scope_endpoints()
+src/hb_assistant/procore/projection_audit.py:350:    return [ep.endpoint_id for ep in endpoint_registry.list_all() if ep.endpoint_id not in in_scope]
+src/hb_assistant/procore/projection_audit.py:358:# required ``procore_ep_*`` table exists. Without this gate, a registry regenerated after
+src/hb_assistant/procore/projection_audit.py:376:    plans = registry.load_registry()
+src/hb_assistant/procore/projection_paths.py:8:  ``attachments[1].url`` map to the one registry path ``$.attachments[].url``. The
+src/hb_assistant/procore/projection_paths.py:14:  the registry exclusions can never diverge from the runtime payload scrubber.
+src/hb_assistant/procore/projection_paths.py:29:# registry's transport-secret exclusions and the runtime scrub can never diverge.
+src/hb_assistant/cli/procore.py:5:projection over the seeded contract + projects registry.
+src/hb_assistant/cli/procore.py:50:projects_app = typer.Typer(help="Procore projects registry (read-only).")
+src/hb_assistant/cli/procore.py:274:        help="Also emit a candidate projection registry (dev-only; structural metadata only).",
+src/hb_assistant/cli/procore.py:297:    """Completeness audit: compare live payload paths to the registry allow-list.
+src/hb_assistant/cli/procore.py:700:                "status": "projects_registry_unavailable",
+src/hb_assistant/cli/procore.py:710:                "status": "projects_registry_invalid",
+src/hb_assistant/cli/procore.py:835:    """Validate the Procore project mapping registry (informational; covers primary company context and pending pilots)."""
+src/hb_assistant/cli/procore.py:879:    """List projects from Procore projects registry (read-only; status coverage)."""
+src/hb_assistant/cli/procore.py:1070:            registry = load_procore_projects()
+src/hb_assistant/cli/procore.py:1074:                else [p.hb_project_key for p in registry.projects if p.status == "pilot"]
+src/hb_assistant/cli/procore.py:1076:            assert_live_mapping_strict(registry, target_keys)
+src/hb_assistant/cli/procore.py:1149:    from hb_assistant.procore import endpoints as ep_registry
+src/hb_assistant/cli/procore.py:1152:    for adapter in ep_registry.list_all():
+src/hb_assistant/cli/procore.py:1175:        registry = load_procore_projects()
+src/hb_assistant/cli/procore.py:1176:        assert_live_mapping_strict(registry, [project_key])
+src/hb_assistant/cli/procore.py:1177:        for row in registry.projects:
+src/hb_assistant/cli/procore.py:1187:        errors.append("mapping_registry_unavailable")
+src/hb_assistant/cli/procore.py:1285:    Deterministic projection of the canonical registry: promotion status,
+src/hb_assistant/cli/procore.py:1859:    from hb_assistant.procore import endpoints as ep_registry
+src/hb_assistant/cli/procore.py:1865:    adapter = ep_registry.get(endpoint)
+src/hb_assistant/cli/procore.py:2192:    from hb_assistant.procore import endpoints as ep_registry
+src/hb_assistant/cli/procore.py:2194:    adapter = ep_registry.get(endpoint)
+src/hb_assistant/cli/procore.py:2511:        registry = load_procore_projects()
+src/hb_assistant/cli/procore.py:2512:        pilots = [p.hb_project_key for p in registry.projects if p.status == "pilot"]
+src/hb_assistant/cli/procore.py:2601:        None, "--project", help="Project key (default: all pilot projects from the registry)."
+src/hb_assistant/cli/procore.py:2615:    tables + the static endpoint registry — no live HTTP call, no writeback, no raw values.
+src/hb_assistant/cli/procore.py:2631:            registry = load_procore_projects()
+src/hb_assistant/cli/procore.py:2632:            project_keys = [p.hb_project_key for p in registry.projects if p.status == "pilot"]
+src/hb_assistant/cli/procore.py:3346:    from hb_assistant.procore import endpoints as ep_registry
+src/hb_assistant/cli/procore.py:3350:    adapter = ep_registry.get(endpoint)
+src/hb_assistant/cli/procore.py:3969:    from hb_assistant.procore import endpoints as ep_registry
+src/hb_assistant/cli/procore.py:3972:    adapter = ep_registry.get(endpoint)
+src/hb_assistant/procore/validate.py:288:    registry = load_procore_projects()
+src/hb_assistant/procore/validate.py:289:    pending_by_key = {p.hb_project_key: (p.status == "pending") for p in registry.projects}
+src/hb_assistant/procore/auditor.py:5:and validates the mapping registry against the source registry.
+src/hb_assistant/procore/auditor.py:120:# Reuses existing contract + projects registry + Prompt_04 redaction/error patterns + Prompt_05 categories + Prompt_06 pending handling.
+src/hb_assistant/procore/structured_analytics.py:21:from . import endpoints as endpoint_registry
+src/hb_assistant/procore/structured_analytics.py:360:    for ep in endpoint_registry.list_all():
+src/hb_assistant/procore/structured_analytics.py:541:    adapter = endpoint_registry.get(endpoint_id)
+src/hb_assistant/procore/structured_analytics.py:598:    adapter = endpoint_registry.get(endpoint_id)
+src/hb_assistant/procore/structured_analytics.py:799:    adapter = endpoint_registry.get(endpoint_id)
+src/hb_assistant/procore/structured_analytics.py:866:    adapter = endpoint_registry.get(endpoint_id)
+src/hb_assistant/procore/structured_analytics.py:1063:    adapter = endpoint_registry.get(endpoint_id)
+src/hb_assistant/procore/structured_analytics.py:1111:        # Endpoint-specific structured projection (V47): additive, registry-driven. Imported
+src/hb_assistant/procore/structured_analytics.py:1168:            for ep in endpoint_registry.list_all()
+src/hb_assistant/procore/structured_analytics.py:1258:            ep.endpoint_id for ep in endpoint_registry.list_all() if ep.family == family and ep.endpoint_id in STRUCTURED_TABLE_BY_ENDPOINT
+src/hb_assistant/procore/structured_analytics.py:1417:    for ep in endpoint_registry.list_all():
+src/hb_assistant/procore/sync.py:190:        registry = self._load_project_registry()
+src/hb_assistant/procore/sync.py:191:        return [p.hb_project_key for p in registry.projects if p.status == "pilot"]
+src/hb_assistant/procore/sync.py:193:    def _load_project_registry(self) -> ProcoreProjectsRegistry:
+src/hb_assistant/procore/sync.py:194:        """Load the real Procore projects registry. Fail closed if unavailable."""
+src/hb_assistant/procore/sync.py:205:        registry = self._load_project_registry()
+src/hb_assistant/procore/sync.py:208:            mapping = registry.get(key)
+src/hb_assistant/procore/sync.py:223:        exist in the registry; an unknown explicit key raises
+src/hb_assistant/procore/sync.py:229:        registry = self._load_project_registry()
+src/hb_assistant/procore/sync.py:230:        unknown = [k for k in pilots if registry.get(k) is None]
+src/hb_assistant/procore/sync.py:395:            projects = self._load_project_registry()
+src/hb_assistant/procore/sync.py:602:        mapping = self._load_project_registry().get(project_key)
+src/hb_assistant/procore/sync.py:614:            projects = self._load_project_registry()
+src/hb_assistant/procore/projection_registry.py:1:"""Endpoint-specific projection registry: the single source of truth that drives the
+src/hb_assistant/procore/projection_registry.py:4:The committed artifact is ``projection_registry.json`` — an explicit *allow-list* of
+src/hb_assistant/procore/projection_registry.py:16:registry is ``unknown`` and makes the audit fail / the reprocess path fail closed. The
+src/hb_assistant/procore/projection_registry.py:17:registry is *generated* from the production payload inventory (so it covers the 2,277
+src/hb_assistant/procore/projection_registry.py:21:``build_registry`` is a pure function over a structural inventory (paths + observed JSON
+src/hb_assistant/procore/projection_registry.py:35:from . import endpoints as endpoint_registry
+src/hb_assistant/procore/projection_registry.py:39:REGISTRY_PATH = Path(__file__).with_name("projection_registry.json")
+src/hb_assistant/procore/projection_registry.py:123:def build_registry(inventory: dict[str, dict[str, Iterable[str]]]) -> dict[str, Any]:
+src/hb_assistant/procore/projection_registry.py:124:    """Build the registry dict from a structural inventory.
+src/hb_assistant/procore/projection_registry.py:127:    paths/types are consumed — never values. Returns the full registry document.
+src/hb_assistant/procore/projection_registry.py:133:    return {"registry_version": REGISTRY_VERSION, "endpoints": endpoints}
+src/hb_assistant/procore/projection_registry.py:137:    adapter = endpoint_registry.get(endpoint_id)
+src/hb_assistant/procore/projection_registry.py:361:def load_registry() -> dict[str, EndpointPlan]:
+src/hb_assistant/procore/projection_registry.py:362:    """Load, validate, and return the committed registry as endpoint -> plan."""
+src/hb_assistant/procore/projection_registry.py:364:        raise RegistryError(f"projection registry not found: {REGISTRY_PATH.name}")
+src/hb_assistant/procore/projection_registry.py:366:    if doc.get("registry_version") != REGISTRY_VERSION:
+src/hb_assistant/procore/projection_registry.py:367:        raise RegistryError(f"unexpected registry_version: {doc.get('registry_version')}")
+src/hb_assistant/procore/projection_registry.py:446:    """Endpoint ids covered by the committed registry."""
+src/hb_assistant/procore/projection_registry.py:447:    return frozenset(load_registry().keys())
+src/hb_assistant/procore/projection_registry.py:451:    return load_registry().get(endpoint_id)
+src/hb_assistant/procore/projection_registry.py:456:    for plan in load_registry().values():
+src/hb_assistant/procore/projection_registry.py:550:    """Return CREATE TABLE / CREATE INDEX statements for every registry table.
+src/hb_assistant/procore/projection_registry.py:552:    Derived from the committed registry so the schema and the projection engine share one
+src/hb_assistant/procore/projection_registry.py:557:    for endpoint_id in sorted(load_registry()):
+src/hb_assistant/procore/projection_registry.py:558:        plan = load_registry()[endpoint_id]
+src/hb_assistant/procore/projection_registry.py:575:    """Map each registry table -> its curated (non-standard) column names.
+src/hb_assistant/procore/projection_registry.py:578:    table; only the curated, registry-derived columns can drift when the registry is
+src/hb_assistant/procore/projection_registry.py:582:    for plan in load_registry().values():
+src/hb_assistant/procore/projection_registry.py:590:    """``ALTER TABLE … ADD COLUMN`` statements for registry curated columns missing from
+src/hb_assistant/procore/projection_registry.py:595:    created by the V47 CREATE DDL). Column names are pre-sanitised registry identifiers.
+src/hb_assistant/procore/endpoint_ledger.py:3:A pure, deterministic derivation layer over the canonical endpoint registry
+src/hb_assistant/procore/endpoint_ledger.py:7:registry (which is repo truth) and without any live Procore call.
+src/hb_assistant/procore/endpoint_ledger.py:9:Status is mirrored from the registry's ``live_verified`` gate only; this module
+src/hb_assistant/procore/endpoint_ledger.py:19:from hb_assistant.procore import endpoints as ep_registry
+src/hb_assistant/procore/endpoint_ledger.py:40:# A test guards that this map's keys exactly equal the registry's held set.
+src/hb_assistant/procore/endpoint_ledger.py:108:    for adapter in ep_registry.list_all():
+src/hb_assistant/procore/endpoint_ledger.py:148:    ``ledger_row_count`` always equals ``registry_endpoint_count`` — the ledger
+src/hb_assistant/procore/endpoint_ledger.py:149:    is a one-to-one projection of the registry, never a filtered view.
+src/hb_assistant/procore/endpoint_ledger.py:152:    registry_count = len(ep_registry.list_all())
+src/hb_assistant/procore/endpoint_ledger.py:159:        "registry_endpoint_count": registry_count,
+src/hb_assistant/cli/second_brain.py:30:    help="Phase 08A internal service-agent registry (read-only).",
+src/hb_assistant/cli/second_brain.py:432:@agents_app.command("registry")
+src/hb_assistant/cli/second_brain.py:433:def agents_registry(
+src/hb_assistant/cli/second_brain.py:437:    from hb_assistant.construction.second_brain.agents import load_agent_registry
+src/hb_assistant/cli/second_brain.py:439:    registry = load_agent_registry()
+src/hb_assistant/cli/second_brain.py:453:        for a in registry.agents
+src/hb_assistant/cli/second_brain.py:456:        "command": "second-brain agents registry",
+src/hb_assistant/cli/second_brain.py:457:        "registry_version": registry.version,
+src/hb_assistant/cli/second_brain.py:470:    """Report agent registry status + policy validity (offline, fail-closed)."""
+src/hb_assistant/cli/second_brain.py:472:        build_agent_registry_proof,
+src/hb_assistant/cli/second_brain.py:478:    registry_proof = build_agent_registry_proof()
+src/hb_assistant/cli/second_brain.py:486:    registry_valid = bool(registry_proof["proof_passed"])
+src/hb_assistant/cli/second_brain.py:488:    violations_count = len(registry_proof["violations"]) + len(tool_proof["violations"])
+src/hb_assistant/cli/second_brain.py:492:        "agent_count": registry_proof["agent_count"],
+src/hb_assistant/cli/second_brain.py:493:        "enabled_count": registry_proof["enabled_count"],
+src/hb_assistant/cli/second_brain.py:494:        "registry_valid": registry_valid,
+src/hb_assistant/cli/second_brain.py:497:        "required_agents_present": registry_proof["required_agents_present"],
+src/hb_assistant/cli/second_brain.py:498:        "tier3_handling_visible": registry_proof["tier3_handling_visible"],
+src/hb_assistant/cli/second_brain.py:500:            "agent_registry_contract": registry_proof["contract_version"],
+src/hb_assistant/cli/second_brain.py:510:    raise typer.Exit(0 if registry_valid and tool_policy_valid else 3)
+src/hb_assistant/cli/second_brain.py:1844:@retrieval_app.command("reader-registry-parity-proof")
+src/hb_assistant/cli/second_brain.py:1845:def retrieval_reader_registry_parity_proof(
+src/hb_assistant/cli/second_brain.py:1847:        True, "--evidence/--no-evidence", help="Write the reader-registry-parity proof to evidence."
+src/hb_assistant/cli/second_brain.py:1851:    """Prove the deterministic retrieval allowlist and the reader registry are in parity.
+src/hb_assistant/cli/second_brain.py:1857:        build_reader_registry_parity_proof,
+src/hb_assistant/cli/second_brain.py:1860:    result = build_reader_registry_parity_proof(write_evidence=evidence)
+src/hb_assistant/cli/second_brain.py:1862:        f"Reader registry parity passed={result['proof_passed']} "
+src/hb_assistant/cli/second_brain.py:3889:@automation_app.command("run-registry-status")
+src/hb_assistant/cli/second_brain.py:3890:def automation_run_registry_status(
+src/hb_assistant/cli/second_brain.py:3891:    limit: int = typer.Option(10, "--limit", help="Max recent registry rows to report."),
+src/hb_assistant/cli/second_brain.py:3894:    """Report recent run-registry rows + step counts + reason codes (read-only)."""
+src/hb_assistant/cli/second_brain.py:3895:    from hb_assistant.construction.second_brain.run_registry import read_latest_run_registry
+src/hb_assistant/cli/second_brain.py:3898:        rows = read_latest_run_registry(limit=limit)
+src/hb_assistant/cli/second_brain.py:3901:            "command": "second-brain automation run-registry-status",
+src/hb_assistant/cli/second_brain.py:3908:        "command": "second-brain automation run-registry-status",
+src/hb_assistant/cli/second_brain.py:3922:    from hb_assistant.construction.second_brain.run_registry import read_run_lock
+src/hb_assistant/cli/second_brain.py:3958:    from hb_assistant.construction.second_brain.run_registry import (
+src/hb_assistant/cli/second_brain.py:4764:        None, "--replay-of", help="original run_registry_id when --mode=replay"
+src/hb_assistant/cli/second_brain.py:4776:    Uses the executor service: lock before registry before ordered stages, stage receipts via V29+,
+src/hb_assistant/cli/second_brain.py:4793:        original_run_registry_id=replay_of,
+src/hb_assistant/cli/second_brain.py:4821:    """Report recent daily_brief execution runs + per-stage steps from the run registry (read-only)."""
+src/hb_assistant/cli/second_brain.py:4822:    from hb_assistant.construction.second_brain.run_registry import read_latest_run_registry
+src/hb_assistant/cli/second_brain.py:4825:        rows = read_latest_run_registry(run_kind="daily_brief", limit=limit) or []
+src/hb_assistant/cli/second_brain.py:4847:    "replay_idempotent_via_registry": True,
+src/hb_assistant/cli/second_brain.py:4909:        "run_id": getattr(result, "run_registry_id", None),
+src/hb_assistant/cli/second_brain.py:4936:    run_id: str = typer.Option(..., "--run-id", help="original failed run_registry_id"),
+src/hb_assistant/cli/second_brain.py:4954:        original_run_registry_id=run_id,
+src/hb_assistant/cli/second_brain.py:4970:        "run_id": getattr(result, "run_registry_id", None),
+src/hb_assistant/cli/second_brain.py:4993:    """High-level automation status (P06; aggregates registry/lock/eligibility)."""
+src/hb_assistant/cli/second_brain.py:5032:    from hb_assistant.construction.second_brain.run_registry import last_good_run
+src/hb_assistant/cli/second_brain.py:5045:        "run_id": good.get("run_registry_id") if good else None,
+src/hb_assistant/cli/second_brain.py:5383:    Evaluates the 14 contract gates at the registry/contract level (never dispatches the
+src/hb_assistant/cli/second_brain.py:8855:        True, "--snapshot/--no-snapshot", help="Persist a metadata-only tool-registry snapshot."
+src/hb_assistant/cli/second_brain.py:8859:    """List the allowed MCP tool registry (read-only; lists metadata, never dispatches)."""
+src/hb_assistant/cli/second_brain.py:8864:        snapshot_tool_registry,
+src/hb_assistant/cli/second_brain.py:8879:    snapshot_id = snapshot_tool_registry(persist=snapshot)
+src/hb_assistant/cli/second_brain.py:8903:        True, "--snapshot/--no-snapshot", help="Persist a metadata-only resource-registry snapshot."
+src/hb_assistant/cli/second_brain.py:8907:    """List the safe MCP resource registry (read-only; lists URIs, never reads content)."""
+src/hb_assistant/cli/second_brain.py:8910:    from hb_assistant.construction.second_brain.mcp.resources import snapshot_resource_registry
+src/hb_assistant/cli/second_brain.py:8914:    snapshot_id = snapshot_resource_registry(persist=snapshot)
+src/hb_assistant/cli/second_brain.py:8936:        True, "--snapshot/--no-snapshot", help="Persist a metadata-only prompt-registry snapshot."
+src/hb_assistant/cli/second_brain.py:8940:    """List the reusable MCP prompt registry (read-only; lists routing, never executes)."""
+src/hb_assistant/cli/second_brain.py:8943:    from hb_assistant.construction.second_brain.mcp.prompts import snapshot_prompt_registry
+src/hb_assistant/cli/second_brain.py:8947:    snapshot_id = snapshot_prompt_registry(persist=snapshot)
+src/hb_assistant/cli/second_brain.py:8973:        True, "--snapshot/--no-snapshot", help="Persist the registry snapshots + audit run."
+src/hb_assistant/procore/projection_registry.json:24218: "registry_version": 1
+src/hb_assistant/procore/projection_engine.py:6:- **Registry-driven** — the committed projection registry decides every column, child
+src/hb_assistant/procore/projection_engine.py:8:- **Fail closed on unknown paths** — a payload path absent from the registry allow-list
+src/hb_assistant/procore/projection_engine.py:31:from . import endpoints as endpoint_registry
+src/hb_assistant/procore/projection_engine.py:33:from . import projection_registry as registry
+src/hb_assistant/procore/projection_engine.py:52:    """Raised in enforce mode when a payload contains a path absent from the registry."""
+src/hb_assistant/procore/projection_engine.py:140:    plan = registry.plan_for(endpoint_id)
+src/hb_assistant/procore/projection_engine.py:142:        receipt["endpoint_specific_projection_status"] = "no_registry_endpoint"
+src/hb_assistant/procore/projection_engine.py:185:    adapter = endpoint_registry.get(endpoint_id)
+src/hb_assistant/procore/projection_engine.py:237:    plan: registry.EndpointPlan,
+src/hb_assistant/procore/projection_engine.py:293:    plan: registry.EndpointPlan,
+src/hb_assistant/procore/projection_engine.py:294:    child: registry.ChildTable,
+src/hb_assistant/procore/projection_engine.py:351:def _primary_sidecar(plan: registry.EndpointPlan, payload: dict[str, Any]) -> str | None:
+src/hb_assistant/procore/projection_engine.py:365:    plan: registry.EndpointPlan, child: registry.ChildTable, item: dict[str, Any]
+src/hb_assistant/procore/projection_engine.py:458:    in_scope = registry.in_scope_endpoints()
+src/hb_assistant/procore/loader.py:1:"""Loaders for the Procore endpoint contract and projects registry.
+src/hb_assistant/procore/loader.py:30:# Projects registry
+src/hb_assistant/procore/loader.py:41:    """Raised when the Procore projects registry cannot be loaded."""
+src/hb_assistant/procore/loader.py:86:            f"Seed Procore projects registry not found at {seed}. "
+src/hb_assistant/procore/coverage.py:15:from . import endpoints as ep_registry
+src/hb_assistant/procore/coverage.py:149:# guards that every registry family has an entry.
+src/hb_assistant/procore/coverage.py:333:    for adapter in sorted(ep_registry.list_all(), key=lambda a: (a.family, a.endpoint_id)):
+src/hb_assistant/procore/live_sync.py:302:    """Find the registry's child adapter for a given parent, if any.
