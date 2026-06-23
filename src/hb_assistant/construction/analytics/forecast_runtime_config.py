@@ -67,6 +67,13 @@ ENV_ASSUMPTION_CONSUMPTION_ENABLED = "HB_FORECAST_ASSUMPTION_CONSUMPTION_ENABLED
 # output-projection engine applies operator DOLLAR overrides (projected cost / cost-to-complete).
 # Separate from consumption above: this mutates real forecast dollars, so it is opted in on its own.
 ENV_ASSUMPTION_OVERRIDES_ENABLED = "HB_FORECAST_ASSUMPTION_OVERRIDES_ENABLED"
+
+# DB-native model-input opt-in (Phase P3, default OFF). A boolean flag (NOT a path root) gating
+# whether a forecast run sources the three covered source domains (budget_details, cost_entries,
+# monthly_actuals) from a NON-LIVE v59 DB (mode="db") instead of the source JSONL package. The file
+# package remains the default and the fallback; the v59 DB is read-only (mode=ro). Threaded through
+# ``forecast_run_service.start_run``; pairs with ``db_path`` (which must resolve to a non-live DB).
+ENV_DB_BACKED_INPUTS_ENABLED = "HB_FORECAST_DB_BACKED_INPUTS_ENABLED"
 _TRUTHY = {"1", "true", "yes", "on"}
 
 # Whitelisted keys. An unknown key in the on-disk file can never inject behaviour.
@@ -82,6 +89,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "db_config_run_enabled": False,  # bool flag (NOT a path); gates DB-config-backed comprehensive generation
     "assumption_consumption_enabled": False,  # bool flag (NOT a path); gates decision-support assumption consumption
     "assumption_overrides_enabled": False,  # bool flag (NOT a path); gates output-projection dollar value-overrides
+    "db_backed_inputs_enabled": False,  # bool flag (NOT a path); gates DB-native source-domain reads in a run
     "schema_version": 1,  # LOCAL file version only — NOT the DB schema; do not conflate
 }
 
@@ -354,6 +362,16 @@ def resolve_assumption_overrides_enabled(explicit: bool | str | None = None) -> 
     return bool(_load_config().get("assumption_overrides_enabled"))
 
 
+def resolve_db_backed_inputs_enabled(explicit: bool | str | None = None) -> bool:
+    """Resolve the P3 DB-native model-input opt-in (explicit > env > settings-file > default False)."""
+    if explicit is not None:
+        return explicit is True or str(explicit).strip().lower() in _TRUTHY
+    env = os.environ.get(ENV_DB_BACKED_INPUTS_ENABLED)
+    if env is not None:
+        return env.strip().lower() in _TRUTHY
+    return bool(_load_config().get("db_backed_inputs_enabled"))
+
+
 # -- non-mutating validation (status + save) ----------------------------------
 
 
@@ -608,6 +626,7 @@ def build_runtime_status() -> dict[str, Any]:
         "surfaces_ready": surfaces_ready,
         "promotion": {"enabled": resolve_promotion_enabled()},
         "db_config_run": {"enabled": resolve_db_config_run_enabled()},
+        "db_backed_inputs": {"enabled": resolve_db_backed_inputs_enabled()},
         "guardrails": {
             "read_only": True,
             "local_first": True,
@@ -675,6 +694,14 @@ def save_runtime_config(updates: dict[str, Any]) -> dict[str, Any]:
         cfg["assumption_overrides_enabled"] = bool(
             updates["assumption_overrides_enabled"] is True
             or str(updates["assumption_overrides_enabled"]).strip().lower() in _TRUTHY
+        )
+    if (
+        "db_backed_inputs_enabled" in updates
+        and updates["db_backed_inputs_enabled"] is not None
+    ):
+        cfg["db_backed_inputs_enabled"] = bool(
+            updates["db_backed_inputs_enabled"] is True
+            or str(updates["db_backed_inputs_enabled"]).strip().lower() in _TRUTHY
         )
 
     # Effective data root for the write-root cross-check (settings value, since this is the

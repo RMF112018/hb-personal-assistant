@@ -1,10 +1,12 @@
 """Forecast Run Center service (Implementation Phase 3).
 
 Generates a deterministic context->analysis package chain by wrapping the existing CFR Phase 9
-controlled workflow (``run_controlled_context_analysis_workflow`` in ``file`` mode). This is the
-first write-bearing surface, but writes are confined to an explicitly-configured **isolated
-runs-root**: it reads the source ``data_root`` read-only, never writes the live data root or the
-live DB, and never calls an LLM.
+controlled workflow (``run_controlled_context_analysis_workflow``). Default ``file`` mode reads the
+source JSONL package; the P3 opt-in (``HB_FORECAST_DB_BACKED_INPUTS_ENABLED``) selects ``db`` mode,
+sourcing the three covered source domains from a NON-LIVE v59 DB read-only. This is the first
+write-bearing surface, but writes are confined to an explicitly-configured **isolated runs-root**:
+it reads the source ``data_root`` read-only, never writes the live data root or the live DB, and
+never calls an LLM.
 
 CFR integration: ``construction_financial_review`` is not installed in the hb_assistant venv, so
 the service injects the subrepo ``src`` onto ``sys.path`` and ``PYTHONPATH`` (so the Phase 7
@@ -87,12 +89,12 @@ def _summarize_report(report: dict[str, Any]) -> dict[str, Any]:
         packages.append("context")
     if report.get("analysis_package"):
         packages.append("analysis")
-    no_live = (
-        report.get("mode") == "file"
-        and report.get("db_backed") is False
-        and bool(checks.get("work_root_outside_live_root"))
-    )
-    return {"packages": packages, "checks": dict(checks), "no_live_writes": bool(no_live)}
+    # No-live-writes holds in BOTH modes: file-mode opens no DB; db-mode reads a NON-LIVE v59 DB
+    # read-only (mode=ro) — the workflow fails closed before producing a report if the db_path is
+    # live, so a successful report guarantees the source-of-truth signal below. The decisive check
+    # is that the isolated work root is outside the live forecast root.
+    no_live = bool(checks.get("work_root_outside_live_root"))
+    return {"packages": packages, "checks": dict(checks), "no_live_writes": no_live}
 
 
 class ForecastRunService:
@@ -163,6 +165,24 @@ class ForecastRunService:
             raise ForecastRunError("forecast runs root must not be under the data root")
         _ensure_cfr_importable()
 
+        # P3: default-off opt-in to source the 3 covered domains (budget_details, cost_entries,
+        # monthly_actuals) from a NON-LIVE v59 DB (mode="db"). Resolve the flag HERE (not via a
+        # constructor arg) so the API factory and forecast_db_config_run_service stay uncoupled. When
+        # off, behavior is byte-identical to file-mode. When on, fail closed BEFORE the workflow if
+        # no db_path resolves or it points at the live/default DB — defense-in-depth ahead of the
+        # workflow's own (and the adapter's) live-DB guards.
+        #
+        # Lazy import: forecast_runtime_config imports ENV_DATA_ROOT/ENV_RUNS_ROOT from THIS module,
+        # so a module-level reverse import would be circular.
+        from hb_assistant.construction.analytics.forecast_runtime_config import (
+            resolve_db_backed_inputs_enabled,
+            resolve_db_path,
+        )
+
+        db_backed = resolve_db_backed_inputs_enabled()
+        mode = "db" if db_backed else "file"
+        db_path: Path | None = None
+
         run_id = uuid.uuid4().hex[:12]
         created_stamp = datetime.now().strftime("%Y%m%d_%H%M%S")  # noqa: DTZ005 (local run stamp)
         work_root = runs_root / run_id
@@ -170,12 +190,24 @@ class ForecastRunService:
             "run_id": run_id,
             "created_stamp": created_stamp,
             "project_key": project_key,
-            "mode": "file",
+            "mode": mode,
         }
         try:
             from construction_financial_review.workflows.controlled_db_context_analysis import (
                 run_controlled_context_analysis_workflow,
             )
+
+            if db_backed:
+                from hb_assistant.construction.forecast.source_domain_engine import is_live_db_path
+
+                raw_db = resolve_db_path()
+                if not raw_db:
+                    raise ForecastRunError("db-backed inputs enabled but no db_path is configured")
+                db_path = Path(raw_db)
+                if is_live_db_path(db_path):
+                    raise ForecastRunError(
+                        "db-backed inputs refuse the live/default DB (configure a non-live v59 DB)"
+                    )
 
             # Suppress the generators' stdout (they print progress JSON) so it never pollutes
             # the server console or the response thread; the structured report is the return value.
@@ -184,7 +216,8 @@ class ForecastRunService:
                     data_root=data_root,
                     work_root=work_root,
                     context_stamp=created_stamp,
-                    mode="file",
+                    mode=mode,
+                    db_path=db_path,
                     project_key=project_key,
                 )
             record.update(_summarize_report(report))
