@@ -1,0 +1,30 @@
+{
+  "flag_off_file_mode": {
+    "message": null,
+    "no_live_writes": true,
+    "status": "succeeded",
+    "workflow_calls": [
+      {
+        "db_path": null,
+        "mode": "file"
+      }
+    ]
+  },
+  "flag_on_db_mode_nonlive": {
+    "message": null,
+    "no_live_writes": true,
+    "status": "succeeded",
+    "workflow_calls": [
+      {
+        "db_path": "/var/folders/0r/nb8twlsd6pvbcz_k1pc4jlc40000gn/T/p3_nonlive_v59.db",
+        "mode": "db"
+      }
+    ]
+  },
+  "flag_on_live_db_fails_closed": {
+    "message": "Forecast generation did not complete (ForecastRunError).",
+    "no_live_writes": true,
+    "status": "failed",
+    "workflow_calls": "[] (workflow never called)"
+  }
+}

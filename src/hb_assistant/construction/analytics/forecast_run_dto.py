@@ -41,7 +41,7 @@ class RunSummaryDTO:
     checks_total: int = 0
     checks_passed: int = 0
     validation_passed: bool = False
-    no_live_writes: bool = False  # derived: file mode + work-root outside live root
+    no_live_writes: bool = False  # derived: work-root outside live root (holds for file and db mode)
     message: str | None = None  # generic, redacted reason on failure
 
     def public(self) -> dict[str, Any]:
