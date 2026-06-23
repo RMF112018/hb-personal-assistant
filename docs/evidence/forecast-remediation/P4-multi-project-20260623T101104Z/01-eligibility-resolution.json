@@ -1,0 +1,17 @@
+{
+  "default_allowlist": [
+    "fixtureproj",
+    "tropical"
+  ],
+  "is_eligible": {
+    "fixtureproj": true,
+    "other": false,
+    "tropical": true
+  },
+  "source_package_name_tropical": "twn_cost_forecast_json_package",
+  "with_forecast_projects_registry": [
+    "fixtureproj",
+    "hilltop",
+    "tropical"
+  ]
+}

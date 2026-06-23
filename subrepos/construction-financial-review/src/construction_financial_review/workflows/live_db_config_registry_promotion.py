@@ -28,6 +28,7 @@ import sqlite3
 from pathlib import Path
 from typing import Any
 
+from ..common.project_eligibility import eligible_projects, is_project_eligible
 from ..config_registry import (
     create_forecast_config_snapshot,
     import_forecast_config_to_db,
@@ -84,7 +85,9 @@ def _snapshot_headers(conn: sqlite3.Connection) -> dict[str, str]:
     """Map config_snapshot_id -> snapshot_sha256 for every snapshot (additive/unchanged proof)."""
     return {
         r[0]: r[1]
-        for r in conn.execute("SELECT config_snapshot_id, snapshot_sha256 FROM forecast_config_snapshots")
+        for r in conn.execute(
+            "SELECT config_snapshot_id, snapshot_sha256 FROM forecast_config_snapshots"
+        )
     }
 
 
@@ -163,9 +166,9 @@ def run_live_db_config_registry_promotion(
     snapshot is unchanged; ``certified_match`` → rc 0, else ``not_ready`` rc 1 (backup recorded).
     """
     # --- Gate + preflight (fail closed; no output/temp/backup/write before it passes). -----------
-    if project_key != SUPPORTED_PROJECT_KEY:
+    if not is_project_eligible(project_key):
         raise LiveDbConfigRegistryPromotionError(
-            f"unsupported project_key {project_key!r}; only {SUPPORTED_PROJECT_KEY!r} is supported"
+            f"project_key {project_key!r} is not eligible; allowed: {sorted(eligible_projects())}"
         )
     if not allow_live_db_write:
         raise LiveDbConfigRegistryPromotionError(
@@ -185,14 +188,18 @@ def run_live_db_config_registry_promotion(
     if not snapshot_name or not snapshot_reason:
         raise LiveDbConfigRegistryPromotionError("snapshot_name and snapshot_reason are required")
     if not work_root:
-        raise LiveDbConfigRegistryPromotionError("work_root is required (explicit; no implicit root)")
+        raise LiveDbConfigRegistryPromotionError(
+            "work_root is required (explicit; no implicit root)"
+        )
     work_root = Path(work_root)
     if cert._is_under(work_root, _LIVE_ROOT):
         raise LiveDbConfigRegistryPromotionError(
             f"work_root is at/under the live forecast root (refused): {work_root}"
         )
     if not context_stamp:
-        raise LiveDbConfigRegistryPromotionError("context_stamp is required (explicit; no latest-glob)")
+        raise LiveDbConfigRegistryPromotionError(
+            "context_stamp is required (explicit; no latest-glob)"
+        )
 
     live_db_path = Path(live_db_path) if live_db_path is not None else cert._resolve_live_db_path()
     if not cert._is_live_db(live_db_path):

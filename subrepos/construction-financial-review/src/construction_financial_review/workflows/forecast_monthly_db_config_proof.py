@@ -41,6 +41,7 @@ from typing import Any
 from .. import config_registry as cr
 from ..common.config_root import ENV_CONFIG_ROOT
 from ..common.hashing import sha256_file
+from ..common.project_eligibility import eligible_projects, is_project_eligible
 from . import live_db_certification as cert
 
 SUPPORTED_PROJECT_KEY = "tropical"
@@ -391,12 +392,14 @@ def _compare_packages(
     return diffs
 
 
-def _run_monthly(*, cfg: dict, data_root: Path, run_stamp: str, out_root: Path) -> dict:
+def _run_monthly(
+    *, project_key: str, cfg: dict, data_root: Path, run_stamp: str, out_root: Path
+) -> dict:
     """Run the real forecast_monthly generator (deterministic; LLM off; no comprehensive/probability)."""
     from ..forecast_monthly import generate_monthly_forecast_package as gen
 
     return gen.generate(
-        SUPPORTED_PROJECT_KEY,
+        project_key,
         cfg,
         data_root=data_root,
         frozen_stamp=run_stamp,
@@ -452,9 +455,9 @@ def run_forecast_monthly_db_config_proof(
     ``decision=forecast_monthly_db_config_parity_ready`` (rc 0); mismatch -> ``not_ready`` (rc 1).
     """
     # --- Gate 1-2: project + work-root artifact isolation. ----------------------------------------
-    if project_key != SUPPORTED_PROJECT_KEY:
+    if not is_project_eligible(project_key):
         raise ForecastMonthlyDbConfigProofError(
-            f"unsupported project_key {project_key!r}; only {SUPPORTED_PROJECT_KEY!r} is supported"
+            f"project_key {project_key!r} is not eligible; allowed: {sorted(eligible_projects())}"
         )
     _require(bool(work_root), "work_root is required (explicit; no implicit output root)")
     work_root = Path(work_root)
@@ -586,6 +589,7 @@ def run_forecast_monthly_db_config_proof(
         )
         file_cfg = _load_project_cfg(project_key)
         file_meta = _run_monthly(
+            project_key=project_key,
             cfg=file_cfg,
             data_root=eff_data_root,
             run_stamp=run_stamp,
@@ -599,6 +603,7 @@ def run_forecast_monthly_db_config_proof(
         try:
             db_cfg = _load_project_cfg(project_key)  # project domain consumed from the snapshot
             db_meta = _run_monthly(
+                project_key=project_key,
                 cfg=db_cfg,
                 data_root=eff_data_root,
                 run_stamp=run_stamp,

@@ -26,6 +26,11 @@ import sqlite3
 from pathlib import Path
 from typing import Any
 
+from ..common.project_eligibility import (
+    eligible_projects,
+    is_project_eligible,
+    source_package_name,
+)
 from . import live_db_certification as cert
 from .db_cutover_readiness import REQUIRED_SCHEMA_VERSION, REQUIRED_SOURCE_DOMAIN_TABLES
 
@@ -33,7 +38,6 @@ SUPPORTED_PROJECT_KEY = "tropical"
 REPORT_SCHEMA_VERSION = 1
 REPORT_NAME = "live_db_source_domain_projection_report.json"
 
-EXPECTED_SOURCE_PACKAGE_NAME = "twn_cost_forecast_json_package"
 BACKUP_SUBDIR = "backups"
 BACKUP_NAME = "hb-personal-assistant.before-phase14.sqlite"
 TEMP_DB_SUBDIR = "temp_dbs"
@@ -153,9 +157,9 @@ def run_controlled_live_db_source_domain_projection(
     the three v59 tables' ``project_key='tropical'`` rows are touched; non-tropical rows are preserved.
     """
     # --- Preflight (fail closed; no output/backup/write before it passes). ------------------------
-    if project_key != SUPPORTED_PROJECT_KEY:
+    if not is_project_eligible(project_key):
         raise LiveDbSourceDomainProjectionError(
-            f"unsupported project_key {project_key!r}; only {SUPPORTED_PROJECT_KEY!r} is supported"
+            f"project_key {project_key!r} is not eligible; allowed: {sorted(eligible_projects())}"
         )
     if not allow_live_db_write:
         raise LiveDbSourceDomainProjectionError(
@@ -168,10 +172,11 @@ def run_controlled_live_db_source_domain_projection(
         raise LiveDbSourceDomainProjectionError(
             f"source_package not found or not a directory: {source_package}"
         )
-    if source_package.name != EXPECTED_SOURCE_PACKAGE_NAME:
+    expected_source = source_package_name(project_key)
+    if source_package.name != expected_source:
         raise LiveDbSourceDomainProjectionError(
             f"source_package is not the expected Tropical package "
-            f"{EXPECTED_SOURCE_PACKAGE_NAME!r}: {source_package.name}"
+            f"{expected_source!r}: {source_package.name}"
         )
     if not work_root:
         raise LiveDbSourceDomainProjectionError(

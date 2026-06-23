@@ -28,6 +28,7 @@ import os
 from pathlib import Path
 from typing import Any
 
+from ..common.project_eligibility import eligible_projects, is_project_eligible
 from .generate_forecast_context_package import (
     _DEFAULT_DATA_ROOT,
     ContextPackageConfig,
@@ -77,10 +78,9 @@ def run_context_generation(
         raise ContextRunnerError("out_dir is required for a controlled run")
     if not stamp:
         raise ContextRunnerError("stamp is required for a deterministic controlled run")
-    if project_key != SUPPORTED_PROJECT_KEY:
+    if not is_project_eligible(project_key):
         raise ContextRunnerError(
-            f"unsupported project_key {project_key!r}; only {SUPPORTED_PROJECT_KEY!r} is "
-            "supported in Phase 6 (multi-project generalization is deferred)"
+            f"project_key {project_key!r} is not eligible; allowed: {sorted(eligible_projects())}"
         )
 
     data_root = Path(data_root)

@@ -38,6 +38,7 @@ from ..common.package_resolution import (
     read_package_chain_manifest,
     resolve_explicit_package,
 )
+from ..common.project_eligibility import eligible_projects, is_project_eligible
 from .db_cutover_readiness import REQUIRED_SOURCE_DOMAIN_TABLES
 from .temp_db_readiness_rehearsal import (
     REQUIRED_SCHEMA_VERSION,
@@ -248,10 +249,9 @@ def run_guarded_db_operator_run(
     structural/provenance inconsistency after a passed rehearsal is a controlled refusal (fail closed).
     """
     # --- Lightweight preflight (fail closed before any output). -----------------------------------
-    if project_key != SUPPORTED_PROJECT_KEY:
+    if not is_project_eligible(project_key):
         raise GuardedDbOperatorRunError(
-            f"unsupported project_key {project_key!r}; only {SUPPORTED_PROJECT_KEY!r} is supported "
-            "in Phase 12 (multi-project generalization is deferred)"
+            f"project_key {project_key!r} is not eligible; allowed: {sorted(eligible_projects())}"
         )
     if not source_package:
         raise GuardedDbOperatorRunError("source_package is required for a guarded operator run")

@@ -27,6 +27,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from ..common.project_eligibility import (
+    eligible_projects,
+    is_project_eligible,
+    source_package_name,
+)
 from . import live_db_certification as cert
 from . import live_db_source_domain_projection as p14
 from .db_cutover_readiness import REQUIRED_SOURCE_DOMAIN_TABLES
@@ -36,7 +41,6 @@ REPORT_SCHEMA_VERSION = 1
 REPORT_NAME = "live_db_run_output_projection_report.json"
 
 REQUIRED_SCHEMA_VERSION = 66  # v63 (run-output) + v66 (decision-support) must be present
-EXPECTED_SOURCE_PACKAGE_NAME = "twn_cost_forecast_json_package"
 BACKUP_SUBDIR = "backups"
 BACKUP_NAME = "hb-personal-assistant.before-phase3-run-output.sqlite"
 WRITE_TEMP_SUBDIR = "temp_dbs"
@@ -203,7 +207,9 @@ def _build_temp_projection(
         rows: dict[str, list[tuple]] = {}
         counts: dict[str, int] = {}
         digests: dict[str, dict[str, str]] = {}
-        v59_counts = {t: p14._tropical_count(conn, t, project_key) for t in REQUIRED_SOURCE_DOMAIN_TABLES}
+        v59_counts = {
+            t: p14._tropical_count(conn, t, project_key) for t in REQUIRED_SOURCE_DOMAIN_TABLES
+        }
         for t in WRITE_TABLES:
             cols = p14._columns(conn, t)
             columns[t] = cols
@@ -257,9 +263,9 @@ def run_controlled_live_db_run_output_projection(
     run-graph tables are replaced; non-tropical rows are preserved.
     """
     # --- Preflight (fail closed). ----------------------------------------------------------------
-    if project_key != SUPPORTED_PROJECT_KEY:
+    if not is_project_eligible(project_key):
         raise LiveDbRunOutputProjectionError(
-            f"unsupported project_key {project_key!r}; only {SUPPORTED_PROJECT_KEY!r} is supported"
+            f"project_key {project_key!r} is not eligible; allowed: {sorted(eligible_projects())}"
         )
     if not allow_live_db_write:
         raise LiveDbRunOutputProjectionError(
@@ -279,10 +285,11 @@ def run_controlled_live_db_run_output_projection(
         raise LiveDbRunOutputProjectionError(
             f"source_package not found or not a directory: {source_package}"
         )
-    if source_package.name != EXPECTED_SOURCE_PACKAGE_NAME:
+    expected_source = source_package_name(project_key)
+    if source_package.name != expected_source:
         raise LiveDbRunOutputProjectionError(
             f"source_package is not the expected Tropical package "
-            f"{EXPECTED_SOURCE_PACKAGE_NAME!r}: {source_package.name}"
+            f"{expected_source!r}: {source_package.name}"
         )
     if not work_root:
         raise LiveDbRunOutputProjectionError("work_root is required (explicit; no implicit root)")
@@ -445,11 +452,13 @@ def run_controlled_live_db_run_output_projection(
             )
             ref = cert_temp["digests"][t]
             match = live_byte == ref["raw_json_digest"] and live_canon == ref["canonical_digest"]
-            cert_tables[t] = {"match": match, "live": live_byte, "reprojected": ref["raw_json_digest"]}
+            cert_tables[t] = {
+                "match": match,
+                "live": live_byte,
+                "reprojected": ref["raw_json_digest"],
+            }
             all_match = all_match and match
-        anchor_present = (
-            cert._rowcount(live_conn, RUN_ANCHOR_TABLE, project_key=project_key) > 0
-        )
+        anchor_present = cert._rowcount(live_conn, RUN_ANCHOR_TABLE, project_key=project_key) > 0
     finally:
         live_conn.close()
     certified = all_match and anchor_present

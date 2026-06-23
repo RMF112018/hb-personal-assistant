@@ -25,6 +25,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 from .common.io import read_json, write_csv, write_json
+from .common.project_eligibility import eligible_projects, is_project_eligible
 from .forecast_controls.load_controls import DEFAULT_CONTROL_FILE as _CONTROLS_DEFAULT
 from .forecast_controls.load_controls import controls_config as _controls_config
 from .forecast_model_controls.load_controls import DEFAULT_CONTROL_FILE as _MODEL_DEFAULT
@@ -309,9 +310,9 @@ def import_forecast_config_to_db(
     duplicate item-key. Writing the live/default DB requires ``allow_live_db_write=True`` (and is never
     done in tests). Non-live temp DBs are migrated automatically.
     """
-    if project_key != SUPPORTED_PROJECT_KEY:
+    if not is_project_eligible(project_key):
         raise ConfigRegistryError(
-            f"unsupported project_key {project_key!r}; only {SUPPORTED_PROJECT_KEY!r} is supported"
+            f"project_key {project_key!r} is not eligible; allowed: {sorted(eligible_projects())}"
         )
     db_path = Path(db_path)
     live = _is_live_db(db_path)
@@ -432,8 +433,10 @@ def create_forecast_config_snapshot(
     source_mode: str = "db_current",
 ) -> dict[str, Any]:
     """Create an immutable snapshot of the active config items for ``project_key``."""
-    if project_key != SUPPORTED_PROJECT_KEY:
-        raise ConfigRegistryError(f"unsupported project_key {project_key!r}")
+    if not is_project_eligible(project_key):
+        raise ConfigRegistryError(
+            f"project_key {project_key!r} is not eligible; allowed: {sorted(eligible_projects())}"
+        )
     if not snapshot_name or not snapshot_reason:
         raise ConfigRegistryError("snapshot_name and snapshot_reason are required")
     db_path = Path(db_path)
@@ -666,8 +669,10 @@ def export_forecast_config_from_db(
     config_snapshot_id: str | None = None,
 ) -> dict[str, Any]:
     """Export DB config back to a file-compatible tree under ``out_root`` (audit/rollback)."""
-    if project_key != SUPPORTED_PROJECT_KEY:
-        raise ConfigRegistryError(f"unsupported project_key {project_key!r}")
+    if not is_project_eligible(project_key):
+        raise ConfigRegistryError(
+            f"project_key {project_key!r} is not eligible; allowed: {sorted(eligible_projects())}"
+        )
     db_path = Path(db_path)
     out_root = Path(out_root)
     conn = sqlite3.connect(str(db_path))

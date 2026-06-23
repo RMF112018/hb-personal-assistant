@@ -27,6 +27,7 @@ from typing import Any
 from .. import config_registry as cr
 from ..common.config_root import ENV_CONFIG_ROOT
 from ..common.hashing import sha256_file
+from ..common.project_eligibility import eligible_projects, is_project_eligible
 from . import live_db_certification as cert
 
 SUPPORTED_PROJECT_KEY = "tropical"
@@ -278,12 +279,14 @@ def _compare_text(
     }
 
 
-def _run_model_controls(*, cfg: dict, data_root: Path, run_stamp: str, out_root: Path) -> dict:
+def _run_model_controls(
+    *, project_key: str, cfg: dict, data_root: Path, run_stamp: str, out_root: Path
+) -> dict:
     """Run the real forecast_model_controls generator (deterministic; no LLM/Ollama)."""
     from ..forecast_model_controls import generate_forecast_model_controls_package as gen
 
     return gen.generate(
-        SUPPORTED_PROJECT_KEY,
+        project_key,
         cfg,
         data_root=data_root,
         frozen_stamp=run_stamp,
@@ -320,9 +323,9 @@ def run_forecast_model_controls_db_config_proof(
     ``decision=forecast_model_controls_db_config_parity_ready`` (rc 0); mismatch -> ``not_ready`` (rc 1).
     """
     # --- Gate 1-2: project + work root. -----------------------------------------------------------
-    if project_key != SUPPORTED_PROJECT_KEY:
+    if not is_project_eligible(project_key):
         raise ForecastModelControlsDbConfigProofError(
-            f"unsupported project_key {project_key!r}; only {SUPPORTED_PROJECT_KEY!r} is supported"
+            f"project_key {project_key!r} is not eligible; allowed: {sorted(eligible_projects())}"
         )
     _require(bool(work_root), "work_root is required (explicit; no implicit output root)")
     work_root = Path(work_root)
@@ -419,6 +422,7 @@ def run_forecast_model_controls_db_config_proof(
         "CFR_CONFIG_ROOT must be unset for the file-backed run (default preservation)",
     )
     file_meta = _run_model_controls(
+        project_key=project_key,
         cfg=cfg,
         data_root=eff_data_root,
         run_stamp=run_stamp,
@@ -431,6 +435,7 @@ def run_forecast_model_controls_db_config_proof(
     os.environ[ENV_CONFIG_ROOT] = materialized_config_root
     try:
         db_meta = _run_model_controls(
+            project_key=project_key,
             cfg=cfg,
             data_root=eff_data_root,
             run_stamp=run_stamp,

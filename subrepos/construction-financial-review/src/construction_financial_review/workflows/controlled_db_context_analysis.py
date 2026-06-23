@@ -32,6 +32,7 @@ from ..common.package_resolution import (
     resolve_explicit_package,
     write_package_chain_manifest,
 )
+from ..common.project_eligibility import eligible_projects, is_project_eligible
 from ..context.context_generation_runner import run_context_generation
 
 # Phase 9 is Tropical-only, exactly like the underlying Phase 6/7/8 runners.
@@ -99,10 +100,9 @@ def run_controlled_context_analysis_workflow(
     fail-closed errors (unsafe DB path, live root, missing v59 rows, etc.) propagate unchanged.
     """
     # --- Phase 9 preflight: fail closed before creating <work_root>/<mode> or calling a runner. ---
-    if project_key != SUPPORTED_PROJECT_KEY:
+    if not is_project_eligible(project_key):
         raise ControlledWorkflowError(
-            f"unsupported project_key {project_key!r}; only {SUPPORTED_PROJECT_KEY!r} is supported "
-            "in Phase 9 (multi-project generalization is deferred)"
+            f"project_key {project_key!r} is not eligible; allowed: {sorted(eligible_projects())}"
         )
     if not data_root:
         raise ControlledWorkflowError("data_root is required for a controlled workflow")
@@ -237,9 +237,9 @@ def run_controlled_context_analysis_parity(
     {"pass", "fail"}. Fails closed (``ControlledWorkflowError``) on unsafe inputs via the per-mode
     workflow preflight.
     """
-    if project_key != SUPPORTED_PROJECT_KEY:
+    if not is_project_eligible(project_key):
         raise ControlledWorkflowError(
-            f"unsupported project_key {project_key!r}; only {SUPPORTED_PROJECT_KEY!r} is supported"
+            f"project_key {project_key!r} is not eligible; allowed: {sorted(eligible_projects())}"
         )
     if not db_path:
         raise ControlledWorkflowError("parity mode requires an explicit db_path (fail closed)")

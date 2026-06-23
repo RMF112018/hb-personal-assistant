@@ -30,13 +30,17 @@ import urllib.parse
 from pathlib import Path
 from typing import Any
 
+from ..common.project_eligibility import (
+    eligible_projects,
+    is_project_eligible,
+    source_package_name,
+)
 from .db_cutover_readiness import REQUIRED_SCHEMA_VERSION, REQUIRED_SOURCE_DOMAIN_TABLES
 
 SUPPORTED_PROJECT_KEY = "tropical"
 AUDIT_REPORT_SCHEMA_VERSION = 1
 CERT_REPORT_SCHEMA_VERSION = 1
 
-EXPECTED_SOURCE_PACKAGE_NAME = "twn_cost_forecast_json_package"
 TEMP_DB_SUBDIR = "temp_dbs"
 DEFAULT_TEMP_DB_NAME = "forecast_source_domain_tropical.sqlite"
 AUDIT_REPORT_NAME = "live_db_provenance_audit_report.json"
@@ -253,9 +257,9 @@ def run_live_db_provenance_audit(
     DB. Returns the audit report dict; if ``work_root`` (not under the live root) is given, also writes
     ``<work_root>/live_db_provenance_audit_report.json`` (plus ``report_path``).
     """
-    if project_key != SUPPORTED_PROJECT_KEY:
+    if not is_project_eligible(project_key):
         raise LiveDbCertificationError(
-            f"unsupported project_key {project_key!r}; only {SUPPORTED_PROJECT_KEY!r} is supported"
+            f"project_key {project_key!r} is not eligible; allowed: {sorted(eligible_projects())}"
         )
     live_db_path = Path(live_db_path) if live_db_path is not None else _resolve_live_db_path()
     if not live_db_path.exists():
@@ -315,9 +319,9 @@ def run_live_db_readonly_certification(
     ``stale_or_mismatch`` (live tropical rows differ), or ``uncertified``. The live DB is opened
     read-only only; it is never migrated, projected, or written.
     """
-    if project_key != SUPPORTED_PROJECT_KEY:
+    if not is_project_eligible(project_key):
         raise LiveDbCertificationError(
-            f"unsupported project_key {project_key!r}; only {SUPPORTED_PROJECT_KEY!r} is supported"
+            f"project_key {project_key!r} is not eligible; allowed: {sorted(eligible_projects())}"
         )
     if not source_package:
         raise LiveDbCertificationError("source_package is required for a certification run")
@@ -326,10 +330,11 @@ def run_live_db_readonly_certification(
         raise LiveDbCertificationError(
             f"source_package not found or not a directory: {source_package}"
         )
-    if source_package.name != EXPECTED_SOURCE_PACKAGE_NAME:
+    expected_source = source_package_name(project_key)
+    if source_package.name != expected_source:
         raise LiveDbCertificationError(
             f"source_package is not the expected Tropical package "
-            f"{EXPECTED_SOURCE_PACKAGE_NAME!r}: {source_package.name}"
+            f"{expected_source!r}: {source_package.name}"
         )
     if not work_root:
         raise LiveDbCertificationError("work_root is required (explicit; no implicit output root)")
