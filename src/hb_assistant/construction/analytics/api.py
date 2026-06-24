@@ -1994,9 +1994,12 @@ def create_app(*, db_path: str | None = None) -> Any:
             raise HTTPException(status_code=503, detail="forecast_runs_not_configured")
 
     @app.post("/api/forecast/runs")
-    def forecast_run_create(role: dict[str, str] = role_dep) -> dict[str, Any]:
+    def forecast_run_create(
+        payload: dict[str, Any] | None = optional_json_body,
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
         require_operator_role(role)  # generation executes + writes (isolated work-root)
-        return _forecast_run_call(_forecast_run_service().start_run)
+        return _persist_and_run(mode="file_config", body=payload, role=role)
 
     @app.get("/api/forecast/runs")
     def forecast_runs_list(role: dict[str, str] = role_dep) -> dict[str, Any]:
@@ -2041,27 +2044,190 @@ def create_app(*, db_path: str | None = None) -> Any:
             # not configured / config DB not ready — fail closed, path-free.
             raise HTTPException(status_code=503, detail="forecast_db_config_run_not_configured")
 
+    # -- Phase P-C: durable generation-request contract + persistence ---------
+    # Both generation routes parse + validate a typed request body, persist a forecast_generation_requests
+    # row BEFORE invoking generation, then update it with the outcome (run linkage + terminal status).
+    # project_key is REQUIRED (no silent tropical default). Existing fail-closed 503/404 codes are
+    # preserved by re-raising the service's HTTPException after recording the rejection.
+    def _forecast_request_repository() -> Any:
+        from hb_assistant.construction.analytics.forecast_runtime_config import resolve_db_path
+        from hb_assistant.store.forecast_generation_request_repository import (
+            ForecastGenerationRequestRepository,
+        )
+
+        return ForecastGenerationRequestRepository(db_path=resolve_db_path(db_path))
+
+    def _resolve_generation_project(project_key: str) -> tuple[bool, dict[str, Any] | None]:
+        # (resolvable, project). resolvable=False ⇒ read model unavailable: skip the unknown-project
+        # check so the downstream service's fail-closed codes (disabled/not_configured) are preserved.
+        from hb_assistant.construction.analytics.forecast_generation_project_readmodel import (
+            ForecastGenerationProjectReadModelError,
+            ForecastGenerationProjectReadModelService,
+        )
+        from hb_assistant.construction.analytics.forecast_runtime_config import resolve_db_path
+
+        svc = ForecastGenerationProjectReadModelService(db_path=resolve_db_path(db_path))
+        try:
+            listing = svc.list_generation_projects()
+        except ForecastGenerationProjectReadModelError:
+            return (False, None)
+        for proj in listing.get("projects", []):
+            if proj.get("project_key") == project_key:
+                return (True, proj)
+        return (True, None)
+
+    def _validation_status_code(errors: list[str]) -> int:
+        date_errors = {
+            "invalid_forecast_start_date",
+            "invalid_forecast_cutoff_date",
+            "forecast_start_after_cutoff",
+        }
+        return 422 if errors and errors[0] in date_errors else 400
+
+    def _failure_code_for(detail: Any) -> str:
+        text = str(detail)
+        if "disabled" in text:
+            return "generation_disabled"
+        if "not_configured" in text:
+            return "generation_not_configured"
+        return "generation_rejected"
+
+    def _persist_and_run(
+        *, mode: str, body: dict[str, Any] | None, role: dict[str, str]
+    ) -> dict[str, Any]:
+        from fastapi import HTTPException
+
+        from hb_assistant.construction.analytics.forecast_generation_request_dto import (
+            request_row_to_public,
+            validate_request,
+        )
+
+        parsed, errors = validate_request(body, mode=mode)
+        repo = _forecast_request_repository()
+        requested_by_role = role.get("role")
+
+        readiness_status: str | None = None
+        readiness_reasons: list[str] = []
+        if parsed["project_key"]:
+            resolvable, project = _resolve_generation_project(parsed["project_key"])
+            if resolvable and project is None:
+                errors.append("unknown_project_key")
+            if project is not None:
+                readiness_status = project.get("readiness_status")
+                readiness_reasons = list(project.get("readiness_reasons") or [])
+
+        if errors:
+            # missing_project_key cannot persist (project_key is NOT NULL) — raise without a row.
+            if parsed["project_key"]:
+                repo.record_validation_rejection(
+                    project_key=parsed["project_key"],
+                    generation_mode=mode,
+                    validation_errors=errors,
+                    generator_kind=parsed["generator_kind"],
+                    forecast_start_date=parsed["forecast_start_date"],
+                    forecast_cutoff_date=parsed["forecast_cutoff_date"],
+                    forecast_cutoff_date_basis=parsed["forecast_cutoff_date_basis"],
+                    requested_by_role=requested_by_role,
+                    readiness_status_at_request=readiness_status,
+                    readiness_reasons=readiness_reasons,
+                )
+            raise HTTPException(status_code=_validation_status_code(errors), detail=errors[0])
+
+        request_id = repo.create(
+            project_key=parsed["project_key"],
+            generation_mode=mode,
+            request_status="running",
+            validation_status="valid",
+            generator_kind=parsed["generator_kind"],
+            forecast_start_date=parsed["forecast_start_date"],
+            forecast_cutoff_date=parsed["forecast_cutoff_date"],
+            forecast_cutoff_date_basis=parsed["forecast_cutoff_date_basis"],
+            requested_by_role=requested_by_role,
+            readiness_status_at_request=readiness_status,
+            readiness_reasons=readiness_reasons,
+        )
+
+        if mode == "file_config":
+            error_mapper = _forecast_run_call
+
+            def _call() -> dict[str, Any]:
+                return _forecast_run_service().start_run(project_key=parsed["project_key"])
+
+        else:
+            error_mapper = _forecast_db_config_run_call
+
+            def _call() -> dict[str, Any]:
+                return _forecast_db_config_run_service().start_db_config_run(
+                    generator_kind=parsed["generator_kind"], project_key=parsed["project_key"]
+                )
+
+        try:
+            summary = error_mapper(_call)
+        except HTTPException as exc:
+            # Service fail-closed (disabled / not_configured / ...). Record the rejection, then
+            # re-raise UNCHANGED so the existing 503/404 contract is preserved.
+            repo.record_failure(
+                request_id, _failure_code_for(exc.detail), request_status="rejected"
+            )
+            raise
+
+        run_id = summary.get("run_id")
+        if summary.get("status") == "failed":
+            repo.update_status(
+                request_id, "failed", run_id=run_id, failure_code="generation_failed"
+            )
+        else:
+            repo.update_status(request_id, "completed", run_id=run_id)
+
+        public = request_row_to_public(repo.get(request_id) or {})
+        return {
+            **summary,
+            "request_id": request_id,
+            "generation_mode": mode,
+            "generator_kind": parsed["generator_kind"],
+            "request_status": public["request_status"],
+            "validation_status": public["validation_status"],
+            "forecast_start_date": parsed["forecast_start_date"],
+            "forecast_cutoff_date": parsed["forecast_cutoff_date"],
+            "forecast_cutoff_date_basis": parsed["forecast_cutoff_date_basis"],
+            "readiness_status_at_request": readiness_status,
+            "readiness_reasons": readiness_reasons,
+        }
+
     @app.post("/api/forecast/runs/db-config")
     def forecast_db_config_run_create(
         payload: dict[str, Any] | None = optional_json_body,
         role: dict[str, str] = role_dep,
     ) -> dict[str, Any]:
+        require_operator_role(role)  # executes + writes isolated work-root; reads live config DB ro
+        return _persist_and_run(mode="db_config", body=payload, role=role)
+
+    @app.get("/api/forecast/generation/requests")
+    def forecast_generation_requests(
+        project_key: str | None = None,
+        limit: int = 20,
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        del role  # viewer-readable; redaction-safe coded fields only
         from fastapi import HTTPException
 
-        require_operator_role(role)  # executes + writes isolated work-root; reads live config DB ro
-        # Optional body {"generator_kind": ..., "project_key": ...}. Absent/empty body defaults to
-        # comprehensive (back-compat); absent/blank project_key defaults to the supported project. The
-        # service validates project_key and fails closed for an unsupported / unconfigured project.
-        body = payload or {}
-        generator_kind = body.get("generator_kind", "comprehensive")
-        if generator_kind not in ("comprehensive", "model_controls", "monthly", "probability"):
-            raise HTTPException(status_code=400, detail="forecast_db_config_run_bad_kind")
-        project_key = str(body.get("project_key") or "").strip()
-        service = _forecast_db_config_run_service()
-        kwargs: dict[str, Any] = {"generator_kind": generator_kind}
-        if project_key:
-            kwargs["project_key"] = project_key
-        return _forecast_db_config_run_call(lambda: service.start_db_config_run(**kwargs))
+        from hb_assistant.construction.analytics.forecast_generation_request_dto import (
+            request_row_to_public,
+        )
+
+        key = (project_key or "").strip() or None
+        try:
+            rows = _forecast_request_repository().list_recent(project_key=key, limit=limit)
+        except Exception:
+            # Repo DB unavailable — fail closed, path-free (mirrors the read-model list pattern).
+            raise HTTPException(
+                status_code=503, detail="forecast_generation_requests_not_available"
+            )
+        return {
+            "surface": "analytics.forecast_generation_requests",
+            "requests": [request_row_to_public(r) for r in rows],
+            "guardrails": {"read_only": True, "redaction_safe": True},
+        }
 
     @app.get("/api/forecast/runs/db-config")
     def forecast_db_config_runs_list(role: dict[str, str] = role_dep) -> dict[str, Any]:

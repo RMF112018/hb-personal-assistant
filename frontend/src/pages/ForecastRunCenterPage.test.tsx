@@ -23,6 +23,7 @@ vi.mock('../lib/api', () => ({
     startForecastDbConfigRun: (...args: unknown[]) => startDbConfigMock(...args),
     getForecastDbProjects: vi.fn(),
     getForecastGenerationProjects: vi.fn(),
+    getForecastGenerationRequests: vi.fn(),
     getForecastDbOutputs: vi.fn(),
     getForecastDbNarratives: vi.fn(),
     getForecastDbDecisionSupport: vi.fn(),
@@ -187,7 +188,14 @@ describe('ForecastRunCenterPage', () => {
 
     fireEvent.change(select, { target: { value: 'monthly' } })
     fireEvent.click(screen.getByRole('button', { name: /^Generate$/i }))
-    await waitFor(() => expect(startDbConfigMock).toHaveBeenCalledWith('monthly', 'tropical'))
+    await waitFor(() =>
+      expect(startDbConfigMock).toHaveBeenCalledWith({
+        project_key: 'tropical',
+        generator_kind: 'monthly',
+        forecast_start_date: null,
+        forecast_cutoff_date: null,
+      }),
+    )
   })
 
   it('disables live-config generation and shows actionable reasons before click when not ready', () => {
@@ -235,6 +243,27 @@ describe('ForecastRunCenterPage', () => {
     expect(startDbConfigMock).not.toHaveBeenCalled()
   })
 
+  it('threads operator-supplied forecast dates into the generation request body', async () => {
+    mockData()
+    renderPage()
+    fireEvent.change(screen.getByLabelText('Forecast project'), { target: { value: 'tropical' } })
+    fireEvent.change(screen.getByLabelText('Forecast start date'), {
+      target: { value: '2026-06-01' },
+    })
+    fireEvent.change(screen.getByLabelText('Forecast cut-off date'), {
+      target: { value: '2026-06-24' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /^Generate$/i }))
+    await waitFor(() =>
+      expect(startDbConfigMock).toHaveBeenCalledWith({
+        project_key: 'tropical',
+        generator_kind: 'comprehensive',
+        forecast_start_date: '2026-06-01',
+        forecast_cutoff_date: '2026-06-24',
+      }),
+    )
+  })
+
   it('does not render raw stamps or filesystem paths', () => {
     mockData()
     const { container } = renderPage()
@@ -273,6 +302,13 @@ describe('ForecastRunCenterPage', () => {
     fireEvent.change(screen.getByLabelText('Forecast project'), { target: { value: 'tropical' } })
     expect(button()).not.toBeDisabled()
     fireEvent.click(button())
-    await waitFor(() => expect(startDbConfigMock).toHaveBeenCalledWith('comprehensive', 'tropical'))
+    await waitFor(() =>
+      expect(startDbConfigMock).toHaveBeenCalledWith({
+        project_key: 'tropical',
+        generator_kind: 'comprehensive',
+        forecast_start_date: null,
+        forecast_cutoff_date: null,
+      }),
+    )
   })
 })

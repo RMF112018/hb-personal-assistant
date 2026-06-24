@@ -930,6 +930,34 @@ export interface ForecastGenerationProjectsResponse {
 export function getForecastGenerationProjects() {
   return fetchJson<ForecastGenerationProjectsResponse>('/api/forecast/generation/projects');
 }
+
+/* Recent generation requests (Phase P-C). Read-only, redaction-safe coded fields only. */
+export interface ForecastGenerationRequest {
+  request_id: string;
+  run_id: string | null;
+  project_key: string;
+  generation_mode: string;
+  generator_kind: string | null;
+  request_status: string;
+  validation_status: string;
+  forecast_start_date: string | null;
+  forecast_cutoff_date: string | null;
+  forecast_cutoff_date_basis: string | null;
+  readiness_status_at_request: string | null;
+  readiness_reasons: string[];
+  failure_code: string | null;
+  created_utc: string | null;
+  updated_utc: string | null;
+}
+export interface ForecastGenerationRequestsResponse {
+  surface: string;
+  requests: ForecastGenerationRequest[];
+  guardrails: Record<string, boolean>;
+}
+export function getForecastGenerationRequests(projectKey?: string) {
+  const qs = projectKey ? `?project_key=${encodeURIComponent(projectKey)}` : '';
+  return fetchJson<ForecastGenerationRequestsResponse>(`/api/forecast/generation/requests${qs}`);
+}
 export function getForecastDbOutputs(projectKey = 'tropical') {
   return fetchJson<{ outputs: ForecastDbOutputSummary[] }>(
     `/api/forecast/db/projects/${encodeURIComponent(projectKey)}/outputs`,
@@ -1082,8 +1110,28 @@ export function promoteForecastConfigEdit(editId: string, confirm: boolean) {
 /* Forecast Run Center — isolated context→analysis generation (Implementation Phase 3).
  * POST triggers a deterministic generation into an isolated work-root (operator); GET reads runs.
  * Responses are advisory metadata only (no paths, run stamps, or internals). */
-export function startForecastRun() {
-  return fetchJson('/api/forecast/runs', { method: 'POST' });
+/* Generation request contract (Phase P-C). Every Generate Forecast attempt carries the selected
+ * project and optional operator-supplied forecast start / cut-off dates; the UI never sends an empty
+ * body and never hardcodes a project. Dates are ISO YYYY-MM-DD; schedule-derived cut-off is P-D. */
+export interface ForecastGenerationRequestInput {
+  project_key: string;
+  forecast_start_date?: string | null;
+  forecast_cutoff_date?: string | null;
+}
+export interface ForecastDbConfigGenerationRequestInput extends ForecastGenerationRequestInput {
+  generator_kind: ForecastGeneratorKind;
+}
+function _generationBody(input: ForecastGenerationRequestInput): Record<string, string> {
+  const body: Record<string, string> = { project_key: input.project_key };
+  if (input.forecast_start_date) body.forecast_start_date = input.forecast_start_date;
+  if (input.forecast_cutoff_date) body.forecast_cutoff_date = input.forecast_cutoff_date;
+  return body;
+}
+export function startForecastRun(input: ForecastGenerationRequestInput) {
+  return fetchJson('/api/forecast/runs', {
+    method: 'POST',
+    body: JSON.stringify(_generationBody(input)),
+  });
 }
 export function getForecastRuns() {
   return fetchJson('/api/forecast/runs');
@@ -1092,18 +1140,12 @@ export function getForecastRun(runId: string) {
   return fetchJson(`/api/forecast/runs/${encodeURIComponent(runId)}`);
 }
 /* DB-config-backed generation: a forecast package consuming the live config snapshot (operator).
- * generatorKind selects which generator (comprehensive [default] / model_controls / monthly /
- * probability); the default keeps existing callers backward-compatible. */
+ * generator_kind selects which generator (comprehensive / model_controls / monthly / probability). */
 export type ForecastGeneratorKind = 'comprehensive' | 'model_controls' | 'monthly' | 'probability';
-export function startForecastDbConfigRun(
-  generatorKind: ForecastGeneratorKind = 'comprehensive',
-  projectKey?: string,
-) {
-  const body: Record<string, string> = { generator_kind: generatorKind };
-  if (projectKey) body.project_key = projectKey;
+export function startForecastDbConfigRun(input: ForecastDbConfigGenerationRequestInput) {
   return fetchJson('/api/forecast/runs/db-config', {
     method: 'POST',
-    body: JSON.stringify(body),
+    body: JSON.stringify({ ..._generationBody(input), generator_kind: input.generator_kind }),
   });
 }
 export function getForecastDbConfigRuns() {
@@ -1507,6 +1549,7 @@ export const api = {
   getForecastPackageTopRisks,
   getForecastDbProjects,
   getForecastGenerationProjects,
+  getForecastGenerationRequests,
   getForecastDbOutputs,
   getForecastDbOutput,
   getForecastDbDecisionSupport,

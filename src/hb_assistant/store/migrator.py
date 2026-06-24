@@ -14,7 +14,7 @@ from .connection import get_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 72
+LATEST_SCHEMA_VERSION = 73
 
 
 class SQLiteMigrator:
@@ -6794,6 +6794,16 @@ class SQLiteMigrator:
 
         return V72_STATEMENTS
 
+    # v73 Forecast generation-request contract (Phase P-C): durable per-attempt request ledger —
+    # selected project, optional forecast start/cut-off dates (+ cut-off basis), generation mode +
+    # generator kind, readiness snapshot, request-contract validation state, and run linkage.
+    # Additive CREATE TABLE IF NOT EXISTS only; populated at runtime by the generation routes.
+    @staticmethod
+    def _v73_statements() -> list[str]:
+        from hb_assistant.store.forecast_generation_requests_tables import V73_STATEMENTS
+
+        return V73_STATEMENTS
+
     # v44 Phase 10 Graph drive-item modified-by raw operational metadata.
     # Additive ADD COLUMN only on construction_drive_items; raw identity JSON is
     # local SQLite operational metadata and must not be emitted in committed evidence.
@@ -7996,6 +8006,17 @@ class SQLiteMigrator:
             if cur.fetchone() is None:
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (72, 'v72_forecast_model_registry', ?)",
+                    (now,),
+                )
+
+            # v73 Forecast generation-request contract: additive request-ledger table, empty until
+            # the generation routes persist requests into the app-managed DB.
+            for stmt in self._v73_statements():
+                conn.execute(stmt)
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 73")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (73, 'v73_forecast_generation_requests', ?)",
                     (now,),
                 )
 
