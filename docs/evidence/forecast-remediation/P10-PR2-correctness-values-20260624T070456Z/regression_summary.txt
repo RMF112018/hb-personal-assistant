@@ -1,0 +1,54 @@
+P10 PR2 — forecast-correctness VALUE tests (gap-only) + SQLiteMigrator.apply() leak fix
+Branch: feature/forecast-correctness-values-p10-pr2 (off origin/main @ 548d55d2)
+Command: PYTHONPATH=src .venv/bin/pytest -k forecast -q --tb=short -rA
+
+Baseline (clean main, no new file): 0 failing.
+
+Investigation of the new module's interaction with the suite:
+  - new module in isolation .......................... 6 passed
+  - full -k forecast WITH new file (1st)............... 1 FAILED (phase17 canary)
+  - full -k forecast WITHOUT new file ................. 0 FAILED (canary passes)
+  - phase17 canary in isolation ...................... PASSED
+  - new module + phase17 canary ...................... 7 passed (no leak from new module)
+  - full -k forecast WITH new file (2nd, 3rd) ........ 1 FAILED each (deterministic)
+
+Root cause: SQLiteMigrator.apply() (store/migrator.py) leaked two WAL get_connection()
+connections (never closed; contract = caller closes). A leaked WAL connection checkpoints its
+-wal into the main DB file only on Python GC; the new tests shifted GC timing so a benign
+checkpoint landed during phase17's read-only _run, changing db.read_bytes() (no new data —
+read-only intent intact). Surfaced, not caused, by the additive tests.
+
+Fix: apply() reads MAX(version) on the existing connection and closes it before returning
+(both leaks removed; WAL checkpoint deterministic). Canary passes without modifying the canary.
+
+After fix:
+  - full -k forecast ................................. 0 FAILED, 770 passed
+      incl. all 6 new tests (test_forecast_correctness_values_p10.py) PASSED
+      incl. phase17 test_live_db_and_source_config_not_mutated PASSED
+  - full default-safe suite (-m "not integration and not live and not manual"): see fullsuite line below
+
+Perturbation sanity check (reverted): corrupting an expected band value
+(test_probability_bands_round_trip_values) and an expected cross-project header
+(test_two_projects_headers_isolated) each made the corresponding assertion FAIL — tests are
+non-vacuous.
+
+--- Bundle-based validation (after incorporating origin/main FF to 8703f7c) ---
+Branch fast-forwarded 548d55d2 -> 8703f7ce; origin/main added scripts/test-forecasting.sh,
+scripts/test-schedule.sh, docs/testing/forecasting-and-schedule-test-bundles.md (3 new files, FF, no
+conflicts). The bundle docs explicitly EXCLUDE
+test_forecast_model_controls_db_config_phase17.py::test_live_db_and_source_config_not_mutated as "a
+byte-for-byte SQLite comparison that is not stable under the current local runtime" — corroborating
+the apply() leak diagnosis. The migrator fix is kept (removes the root-cause leak; benefits full-suite
+/release validation even though the bundle sidesteps the symptom).
+
+  scripts/test-forecasting.sh -q -rA  -> 0 FAILED/ERROR; ~7:00 wall. New test file added to the
+      bundle's target list; collect-only confirms it collects the 6 new tests; all 6 PASSED.
+  scripts/test-schedule.sh   -q -rA  -> 0 FAILED/ERROR; ~1:24 wall; 103 passed. Migrator/schema tests
+      PASSED (test_migrator_v64/v65/v70/v71, test_schedule_schema_migration incl. idempotent +
+      integrity) -> apply() connection-close does NOT regress migration/schedule paths.
+
+Full default suite NOT run (bundle-first directive). The earlier broader-suite run surfaced ~53
+pre-existing/environmental failures OUTSIDE both bundles (e.g. test_retrieval 768-vs-64 embedder dim,
+email/model-availability, repo_sensitive_scan); migrator v65/v69 byte/column tests fail identically
+with and without the apply() fix (pre-existing, not branch-caused).
+

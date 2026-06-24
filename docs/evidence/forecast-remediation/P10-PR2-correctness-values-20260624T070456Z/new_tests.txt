@@ -1,0 +1,8 @@
+tests/test_forecast_correctness_values_p10.py::test_probability_bands_round_trip_values
+tests/test_forecast_correctness_values_p10.py::test_probability_band_ordering_invariant
+tests/test_forecast_correctness_values_p10.py::test_probability_bands_surface_via_read
+tests/test_forecast_correctness_values_p10.py::test_two_projects_headers_isolated
+tests/test_forecast_correctness_values_p10.py::test_prior_delta_is_project_scoped
+tests/test_forecast_correctness_values_p10.py::test_readmodel_filters_by_project_key
+
+# 6 passed (PYTHONPATH=src .venv/bin/pytest tests/test_forecast_correctness_values_p10.py)

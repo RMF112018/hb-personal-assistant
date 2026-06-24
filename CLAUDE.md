@@ -14,9 +14,11 @@ Run inside the venv (`source .venv/bin/activate`) or prefix with `.venv/bin/`.
 
 ```bash
 pip install -e ".[dev]"                                    # package + dev tooling
-pytest                                                     # full suite
+pytest                                                     # full suite (broad/release validation only)
 pytest tests/test_procore_cli_validate.py::test_name       # one test (or pass a file)
 pytest -m "not integration and not live and not manual"    # default-safe subset
+scripts/test-forecasting.sh                                # fast focused bundle: forecasting domain
+scripts/test-schedule.sh                                   # fast focused bundle: schedule domain
 ruff check . && ruff format .                              # lint + format (line-length 100)
 mypy src                                                   # type-check
 hb-assistant --help                                        # CLI entry point
@@ -25,6 +27,8 @@ construction-agent validate --json                         # `construction-agent
 
 - **Lint/type scope is intentionally partial.** `pyproject.toml` (`[tool.ruff] extend-exclude`, `per-file-ignores`, `[[tool.mypy.overrides]]`) lists exactly which modules are held to strict ruff/mypy; new phases opt their modules in. Check whether a module is in-scope before trusting a clean `ruff check .` / `mypy src`.
 - **Markers** `integration`/`manual`/`live` are opt-in. `live` hits real Procore HTTP and needs `HB_PROCORE_LIVE=1` — never run without explicit intent.
+- **Fast test bundles (preferred focused validation).** `scripts/test-forecasting.sh` and `scripts/test-schedule.sh` run a curated, fast subset (`-m "not integration and not manual and not live"`) for inner-loop and pre-PR validation; full coverage spec in `docs/testing/forecasting-and-schedule-test-bundles.md`. Use the forecasting bundle for forecast generation/config/read-model/gates/UI/API or forecast-related financial-source-domain changes; the schedule bundle for schedule ingestion/quality/mapping/migration changes; **run both** for cross-cutting DB/`store/migrator.py` or CLI changes touching both domains (the schedule bundle's migrator/schema tests are the cross-domain canary for migrator edits). Reserve the full suite for broad/release validation, test-infra changes, or behavior that can affect unrelated areas. The scripts set `PYTHONPATH` (`src:subrepos/construction-financial-review/src`) themselves and auto-detect `.venv/bin/python` (works in git worktrees).
+- **Maintaining the bundles.** The bundles use **explicit pytest target allowlists**, not auto-discovery — a newly added/renamed forecast or schedule test is silently uncovered until it is added to the matching `scripts/test-*.sh` target list (alphabetical), and a deleted/renamed target must be removed. When you add, rename, or delete a forecasting or schedule test, update the corresponding bundle (and `docs/testing/forecasting-and-schedule-test-bundles.md` if you intentionally exclude a test, with the reason). Sanity-check after editing: `bash -n scripts/test-forecasting.sh` and `scripts/test-forecasting.sh --collect-only -q` (likewise for the schedule bundle). Do not add `integration`/`manual`/`live` tests or anything needing live external services to a bundle.
 
 ## Architecture
 

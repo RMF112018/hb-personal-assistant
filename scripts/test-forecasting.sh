@@ -47,6 +47,7 @@ pytest_targets=(
   "tests/test_forecast_context_generator_phase5.py::test_toggle_off_default_is_file_backed"
   "tests/test_forecast_context_runner_phase6.py"
   "tests/test_forecast_controlled_workflow_phase9.py"
+  "tests/test_forecast_correctness_values_p10.py"
   "tests/test_forecast_db_certified_final_output_phase15.py"
   "tests/test_forecast_db_config_backed_generation.py"
   "tests/test_forecast_db_config_backed_generation_kinds.py"
