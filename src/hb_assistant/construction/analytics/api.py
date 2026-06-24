@@ -2092,6 +2092,35 @@ def create_app(*, db_path: str | None = None) -> Any:
             return "generation_not_configured"
         return "generation_rejected"
 
+    def _date_defaults_service() -> Any:
+        from hb_assistant.construction.analytics.forecast_generation_date_defaults import (
+            ForecastGenerationDateDefaultsService,
+        )
+        from hb_assistant.construction.analytics.forecast_runtime_config import resolve_db_path
+
+        return ForecastGenerationDateDefaultsService(db_path=resolve_db_path(db_path))
+
+    def _verify_cutoff_basis(parsed: dict[str, Any]) -> str | None:
+        # Returns schedule_version_key when a schedule-derived basis is confirmed; otherwise downgrades
+        # parsed["forecast_cutoff_date_basis"] to operator_supplied and returns None.
+        basis = parsed.get("forecast_cutoff_date_basis")
+        cutoff = parsed.get("forecast_cutoff_date")
+        if not cutoff or basis in (None, "operator_supplied"):
+            return None
+        from hb_assistant.construction.analytics.forecast_generation_date_defaults import (
+            ForecastGenerationDateDefaultsError,
+        )
+
+        try:
+            defaults = _date_defaults_service().resolve(parsed["project_key"])
+        except ForecastGenerationDateDefaultsError:
+            parsed["forecast_cutoff_date_basis"] = "operator_supplied"
+            return None
+        if defaults.forecast_cutoff_date == cutoff and defaults.forecast_cutoff_date_basis == basis:
+            return defaults.schedule_version_key
+        parsed["forecast_cutoff_date_basis"] = "operator_supplied"
+        return None
+
     def _persist_and_run(
         *, mode: str, body: dict[str, Any] | None, role: dict[str, str]
     ) -> dict[str, Any]:
@@ -2133,6 +2162,11 @@ def create_app(*, db_path: str | None = None) -> Any:
                 )
             raise HTTPException(status_code=_validation_status_code(errors), detail=errors[0])
 
+        # P-D: a schedule-derived cut-off basis is re-verified server-side against the resolver. If
+        # the (date, basis) matches we keep it and capture the schedule_version_key; otherwise we
+        # downgrade to operator_supplied (deterministic, non-blocking). Never trust the client basis.
+        schedule_version_key = _verify_cutoff_basis(parsed)
+
         request_id = repo.create(
             project_key=parsed["project_key"],
             generation_mode=mode,
@@ -2142,6 +2176,7 @@ def create_app(*, db_path: str | None = None) -> Any:
             forecast_start_date=parsed["forecast_start_date"],
             forecast_cutoff_date=parsed["forecast_cutoff_date"],
             forecast_cutoff_date_basis=parsed["forecast_cutoff_date_basis"],
+            schedule_version_key=schedule_version_key,
             requested_by_role=requested_by_role,
             readiness_status_at_request=readiness_status,
             readiness_reasons=readiness_reasons,
@@ -2190,6 +2225,7 @@ def create_app(*, db_path: str | None = None) -> Any:
             "forecast_start_date": parsed["forecast_start_date"],
             "forecast_cutoff_date": parsed["forecast_cutoff_date"],
             "forecast_cutoff_date_basis": parsed["forecast_cutoff_date_basis"],
+            "schedule_version_key": schedule_version_key,
             "readiness_status_at_request": readiness_status,
             "readiness_reasons": readiness_reasons,
         }
@@ -2228,6 +2264,33 @@ def create_app(*, db_path: str | None = None) -> Any:
             "requests": [request_row_to_public(r) for r in rows],
             "guardrails": {"read_only": True, "redaction_safe": True},
         }
+
+    @app.get("/api/forecast/generation/date-defaults")
+    def forecast_generation_date_defaults(
+        project_key: str,
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        del role  # viewer-readable; redaction-safe coded fields only (missing param → 422)
+        from fastapi import HTTPException
+
+        from hb_assistant.construction.analytics.forecast_generation_date_defaults import (
+            ForecastGenerationDateDefaultsError,
+        )
+
+        key = (project_key or "").strip()
+        if not key:
+            raise HTTPException(status_code=422, detail="missing_project_key")
+        # Unknown project (resolvable but absent) → 404; if the read model can't resolve, fall through
+        # to the defaults service which fails closed (503) on an unavailable DB.
+        resolvable, project = _resolve_generation_project(key)
+        if resolvable and project is None:
+            raise HTTPException(status_code=404, detail="unknown_project_key")
+        try:
+            return _date_defaults_service().public(key)
+        except ForecastGenerationDateDefaultsError:
+            raise HTTPException(
+                status_code=503, detail="forecast_generation_date_defaults_not_available"
+            )
 
     @app.get("/api/forecast/runs/db-config")
     def forecast_db_config_runs_list(role: dict[str, str] = role_dep) -> dict[str, Any]:

@@ -43,6 +43,26 @@ function dateOrderError(start: string, cutoff: string): string | null {
   return null
 }
 
+// P-D: cut-off basis code → plain-language label (table-name-free).
+const CUTOFF_BASIS_LABEL: Record<string, string> = {
+  schedule_data_date: 'Schedule data date',
+  schedule_import_created_at: 'Schedule import date',
+  latest_actual_activity_date: 'Latest actual activity date',
+  operator_supplied: 'Operator supplied',
+}
+// P-D: schedule date-default warning code → plain-language copy.
+const DATE_DEFAULT_WARNING_TEXT: Record<string, string> = {
+  schedule_data_date_missing_using_import_date:
+    'No schedule data date was found; using the schedule import date instead.',
+  schedule_data_date_missing_using_activity_actual_date:
+    'No schedule data or import date was found; using the latest actual activity date instead.',
+  no_schedule_cutoff_default_available:
+    'No schedule-derived cut-off date is available for this project; enter one manually.',
+  no_forecast_start_default_available: 'No forecast start date could be derived for this project.',
+  project_has_no_schedule_versions: 'This project has no committed schedule versions yet.',
+  invalid_schedule_dates_ignored: 'Some schedule dates were invalid and were ignored.',
+}
+
 // Coded readiness reasons → actionable, path-free copy. Mirrors the backend reason codes from
 // GET /api/forecast/generation/readiness so an operator sees WHY generation is blocked before click.
 const READINESS_REASON_TEXT: Record<string, string> = {
@@ -102,9 +122,11 @@ export function ForecastRunCenterPage() {
   const [dbDisabled, setDbDisabled] = useState(false)
   const [genKind, setGenKind] = useState<ForecastGeneratorKind>('comprehensive')
 
-  // P-C: operator-supplied forecast window (optional). Schedule-derived cut-off defaulting is P-D.
-  const [forecastStartDate, setForecastStartDate] = useState('')
-  const [forecastCutoffDate, setForecastCutoffDate] = useState('')
+  // P-C/P-D: forecast window. Values are DERIVED at render from the schedule-derived resolver
+  // defaults unless the operator has overridden them (null override = use the advisory default).
+  // Editing flips the cut-off basis to operator_supplied. (Derived below, after the defaults query.)
+  const [startOverride, setStartOverride] = useState<string | null>(null)
+  const [cutoffOverride, setCutoffOverride] = useState<string | null>(null)
   const [dateError, setDateError] = useState<string | null>(null)
   const [lastRequestId, setLastRequestId] = useState<string | null>(null)
 
@@ -130,6 +152,40 @@ export function ForecastRunCenterPage() {
     enabled: Boolean(projectKey),
   })
   const recentRequests = requestsResp?.requests ?? []
+
+  // P-D: schedule-derived advisory date defaults for the selected project.
+  const { data: dateDefaults } = useQuery({
+    queryKey: ['forecast', 'generation', 'date-defaults', projectKey],
+    queryFn: () => api.getForecastGenerationDateDefaults(projectKey as string),
+    enabled: Boolean(projectKey),
+  })
+
+  // Derived forecast window: an operator override wins; otherwise the advisory resolver default fills
+  // the (blank) field. No effects/auto-fill writes → operator edits are never clobbered.
+  const forecastStartDate = startOverride ?? dateDefaults?.forecast_start_date ?? ''
+  const forecastCutoffDate = cutoffOverride ?? dateDefaults?.forecast_cutoff_date ?? ''
+  const cutoffBasis: string | null =
+    cutoffOverride !== null
+      ? cutoffOverride
+        ? 'operator_supplied'
+        : null
+      : forecastCutoffDate
+        ? (dateDefaults?.forecast_cutoff_date_basis ?? null)
+        : null
+
+  function onCutoffChange(value: string) {
+    setCutoffOverride(value)
+  }
+  function onStartChange(value: string) {
+    setStartOverride(value)
+  }
+  function onProjectChange(value: string) {
+    setProjectKey(value || undefined)
+    setStartOverride(null) // new project → fall back to its advisory defaults
+    setCutoffOverride(null)
+    setDateError(null)
+    setLastRequestId(null)
+  }
 
   const { data: detailResp } = useQuery({
     queryKey: ['forecast', 'run-detail', selected?.source, selected?.id],
@@ -157,6 +213,7 @@ export function ForecastRunCenterPage() {
         project_key: projectKey,
         forecast_start_date: forecastStartDate || null,
         forecast_cutoff_date: forecastCutoffDate || null,
+        forecast_cutoff_date_basis: forecastCutoffDate ? cutoffBasis : null,
       })
       setLastRequestId((resp as { request_id?: string })?.request_id ?? null)
       await refetch()
@@ -192,6 +249,7 @@ export function ForecastRunCenterPage() {
         generator_kind: genKind,
         forecast_start_date: forecastStartDate || null,
         forecast_cutoff_date: forecastCutoffDate || null,
+        forecast_cutoff_date_basis: forecastCutoffDate ? cutoffBasis : null,
       })
       setLastRequestId((resp as { request_id?: string })?.request_id ?? null)
       await refetchDb()
@@ -242,7 +300,7 @@ export function ForecastRunCenterPage() {
                 aria-label="Forecast project"
                 className="rounded border border-[var(--hb-border)] bg-[var(--hb-bg)] px-2 py-1 text-sm disabled:opacity-50"
                 value={projectKey ?? ''}
-                onChange={(e) => setProjectKey(e.target.value || undefined)}
+                onChange={(e) => onProjectChange(e.target.value)}
                 disabled={projects.length === 0}
               >
                 <option value="" disabled>
@@ -278,7 +336,7 @@ export function ForecastRunCenterPage() {
               type="date"
               aria-label="Forecast start date"
               value={forecastStartDate}
-              onChange={(e) => setForecastStartDate(e.target.value)}
+              onChange={(e) => onStartChange(e.target.value)}
               className="rounded border border-[var(--hb-border)] bg-[var(--hb-bg)] px-2 py-1 text-sm"
             />
           </label>
@@ -288,11 +346,26 @@ export function ForecastRunCenterPage() {
               type="date"
               aria-label="Forecast cut-off date"
               value={forecastCutoffDate}
-              onChange={(e) => setForecastCutoffDate(e.target.value)}
+              onChange={(e) => onCutoffChange(e.target.value)}
               className="rounded border border-[var(--hb-border)] bg-[var(--hb-bg)] px-2 py-1 text-sm"
             />
           </label>
         </div>
+        {projectKey && (
+          <p className="text-xs text-[var(--hb-muted)] mt-1">
+            Cut-off basis:{' '}
+            {cutoffBasis
+              ? (CUTOFF_BASIS_LABEL[cutoffBasis] ?? cutoffBasis)
+              : 'No schedule-derived default available'}
+          </p>
+        )}
+        {projectKey && (dateDefaults?.warnings.length ?? 0) > 0 && (
+          <div className="text-xs text-amber-300 mt-1" role="status">
+            {dateDefaults!.warnings.map((w) => (
+              <p key={w}>{DATE_DEFAULT_WARNING_TEXT[w] ?? 'Schedule date information is incomplete.'}</p>
+            ))}
+          </div>
+        )}
         {dateError && (
           <p className="text-sm text-rose-300 mt-2" role="status">
             {dateError}

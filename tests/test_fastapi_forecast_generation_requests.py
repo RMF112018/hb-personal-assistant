@@ -286,3 +286,71 @@ def test_requests_list_filters_by_project_and_clamps_limit(
     ).json()
     assert all(r["project_key"] == "tropical" for r in trop["requests"])
     assert find_redaction_leaks(trop) == []
+
+
+# -- P-D: schedule-derived cut-off basis verification -------------------------
+
+
+def test_accepted_schedule_data_date_basis_persists_with_version_key(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # The seeded committed import encodes data date 2026-01-01 (schedule_version_key tropical|S1|...).
+    client = _client(tmp_path, monkeypatch)
+    body = _post_db(
+        client,
+        project_key="tropical",
+        generator_kind="comprehensive",
+        forecast_cutoff_date="2026-01-01",
+        forecast_cutoff_date_basis="schedule_data_date",
+    ).json()
+    assert body["forecast_cutoff_date_basis"] == "schedule_data_date"
+    assert body["schedule_version_key"] == "tropical|S1|2026-01-01"
+    item = client.get(
+        "/api/forecast/generation/requests", params={"project_key": "tropical"}, headers=_viewer()
+    ).json()["requests"][0]
+    assert item["forecast_cutoff_date_basis"] == "schedule_data_date"
+    assert item["schedule_version_key"] == "tropical|S1|2026-01-01"
+
+
+def test_operator_edited_cutoff_persists_operator_supplied(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    client = _client(tmp_path, monkeypatch)
+    body = _post_db(
+        client,
+        project_key="tropical",
+        generator_kind="comprehensive",
+        forecast_cutoff_date="2026-05-05",
+        forecast_cutoff_date_basis="operator_supplied",
+    ).json()
+    assert body["forecast_cutoff_date_basis"] == "operator_supplied"
+
+
+def test_mismatched_schedule_basis_downgrades_to_operator_supplied(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Claims schedule_data_date but the date does not match the resolver → deterministic downgrade.
+    client = _client(tmp_path, monkeypatch)
+    body = _post_db(
+        client,
+        project_key="tropical",
+        generator_kind="comprehensive",
+        forecast_cutoff_date="2099-12-31",
+        forecast_cutoff_date_basis="schedule_data_date",
+    ).json()
+    assert body["forecast_cutoff_date_basis"] == "operator_supplied"
+    assert body["schedule_version_key"] is None
+
+
+def test_invalid_cutoff_basis_rejected(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    client = _client(tmp_path, monkeypatch)
+    resp = _post_db(
+        client,
+        project_key="tropical",
+        forecast_cutoff_date="2026-01-01",
+        forecast_cutoff_date_basis="bogus_basis",
+    )
+    assert resp.status_code == 400
+    assert resp.json()["detail"] == "invalid_forecast_cutoff_date_basis"
