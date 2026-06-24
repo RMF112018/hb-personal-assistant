@@ -1,0 +1,19 @@
+P8 — Explainability / audit trail (Gap 9): new tests
+
+tests/test_forecast_output_narratives_p8.py (6)
+  test_narratives_present_when_enabled
+  test_flag_off_byte_identical
+  test_human_override_narrative
+  test_apply_persists_narratives_and_parity
+  test_reapply_is_idempotent
+  test_flag_off_writes_no_narratives
+
+tests/test_forecast_lineage_completeness_p8.py (4)
+  test_source_sha256_set_and_chain_present
+  test_context_sha_present_with_context_package
+  test_methodology_sha_folded_in_from_governance
+  test_lineage_chain_is_deterministic
+
+tests/test_forecast_source_qa_p8.py (2)
+  test_source_qa_reports_null_zero_dup_and_staleness
+  test_source_qa_clean_package_has_no_findings

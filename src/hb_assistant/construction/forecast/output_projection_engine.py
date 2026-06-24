@@ -30,12 +30,13 @@ from typing import Any
 
 from hb_assistant.store.connection import open_connection, transaction
 
+from . import output_narrative_builder
 from . import output_repository as repo
 from .source_domain_engine import is_live_db_path  # reuse the fail-closed live-DB guard
 
 GUARDRAILS = {
     "scope": "v63_run_output_projection_only",
-    "tables": "forecast_outputs/forecast_output_budget_codes/forecast_output_risks",
+    "tables": "forecast_outputs/forecast_output_budget_codes/forecast_output_risks/forecast_output_narratives",
     "external_systems": "none",
     "forecast_reads": "file_backed_unchanged",
     "cfr_import": False,
@@ -54,6 +55,7 @@ _PLAN_KEYS = (
     "staffing",
     "commitment_exposure",
     "schedule_phasing",
+    "narratives",
 )
 
 RECOMMENDATIONS_FILE = "forecast_recommendations_by_budget_code.jsonl"
@@ -155,6 +157,50 @@ def _read_jsonl(path: Path) -> list[dict[str, Any]]:
 
 def _empty_planned() -> dict[str, list[dict[str, Any]]]:
     return {key: [] for key in _PLAN_KEYS}
+
+
+# P8 sha-chain. Source files that constitute the analysis package's authoritative content.
+_ANALYSIS_SHA_FILES = (MANIFEST_FILE, RECOMMENDATIONS_FILE, RISK_REGISTER_FILE)
+
+
+def _package_files_sha256(package: Path, files: tuple[str, ...]) -> str | None:
+    """sha256 over the named package files (in the given order), or None if none are present.
+
+    A missing file contributes nothing; an empty result (no file found) returns None so the chain
+    records the absence rather than a hash of nothing (degraded-not-fatal).
+    """
+    digest = hashlib.sha256()
+    present = False
+    for name in files:
+        path = package / name
+        if path.is_file():
+            present = True
+            digest.update(path.read_bytes())
+    return digest.hexdigest() if present else None
+
+
+# Per-row fields excluded from the output content sha: the absolute source path (location, not
+# content) and the run timestamps (every run differs). Excluding them makes the output sha a stable
+# hash of the projected OUTPUT content, identical across runs of the same inputs.
+_OUTPUT_SHA_VOLATILE_KEYS = frozenset({"source_path", "created_utc", "updated_utc"})
+
+
+def _output_content_sha256(planned: dict[str, list[dict[str, Any]]]) -> str:
+    """Content sha256 over the projected output detail rows, EXCLUDING the audit-trail narratives.
+
+    Excluding ``narratives`` avoids the lineage row hashing the sibling narratives it sits beside;
+    excluding the volatile path/timestamp keys makes it a pure content hash.
+    """
+    canonical = sorted(
+        json.dumps(
+            {k: v for k, v in row.items() if k not in _OUTPUT_SHA_VOLATILE_KEYS},
+            sort_keys=True,
+        )
+        for key, rows in planned.items()
+        if key != "narratives"
+        for row in rows
+    )
+    return hashlib.sha256("\n".join(canonical).encode("utf-8", "replace")).hexdigest()
 
 
 # P2b: reserved operator assumption_types that override per-code dollar values, mapped to the
@@ -289,6 +335,7 @@ def plan_run_output_projection(
     staffing_package: Path | None = None,
     context_package: Path | None = None,
     operator_assumptions: list[dict[str, Any]] | None = None,
+    explainability_enabled: bool = False,
 ) -> dict[str, Any]:
     """Build planned v63 run-output rows from an explicit analysis package. No DB access.
 
@@ -620,6 +667,26 @@ def plan_run_output_projection(
                 }
             )
 
+    # P8 (Gap 9): when explainability is on, set the analysis-package sha on the header (the only
+    # place source_sha256 is written) and build the per-output explainability narratives from the
+    # now-effective plan (after the override pass + downstream coverage). Flag-off -> none of this
+    # runs, so source_sha256 stays None and no narrative rows are planned (byte-identical output).
+    # The ``lineage`` narrative needs a DB connection (methodology sha + prior_run_id) and is added
+    # later in the apply path.
+    if explainability_enabled and planned["outputs"]:
+        planned["outputs"][0]["source_sha256"] = _package_files_sha256(
+            analysis_package, _ANALYSIS_SHA_FILES
+        )
+        planned["narratives"].extend(
+            output_narrative_builder.build_output_narratives(
+                planned=planned,
+                output_id=output_id,
+                project_key=project_key,
+                now_utc=now_utc,
+                warning_count=len(warnings),
+            )
+        )
+
     counts = {key: len(rows) for key, rows in planned.items()}
     return {
         "ok": True,
@@ -687,6 +754,71 @@ def _augment_prior_deltas(
     )
 
 
+def _augment_lineage_narrative(
+    conn: sqlite3.Connection,
+    *,
+    plan: dict[str, Any],
+    run_id: str | None,
+    context_package: Path | None,
+    output_sha256: str,
+) -> None:
+    """Append + write the P8 ``lineage`` narrative (the context→analysis→output sha chain).
+
+    Runs in the apply transaction AFTER ``apply_plan``, so it can read the prior-run linkage (the
+    ``current_vs_prior`` change row added by ``_augment_prior_deltas``) and the model-version
+    provenance (``forecast_run_model_versions``, populated only when P6 governance ran into this
+    same temp DB). Every upstream sha / stamp degrades to ``None`` when its package or provenance is
+    absent — never blocks the run.
+    """
+    planned = plan["planned"]
+    if not planned["outputs"]:
+        return
+    header = planned["outputs"][0]
+    now_utc = header.get("created_utc") or _now()
+
+    context_sha = (
+        _package_files_sha256(Path(context_package), (BUDGET_CODES_CANONICAL_FILE,))
+        if context_package is not None
+        else None
+    )
+    prior_run_id = next(
+        (
+            c.get("prior_run_id")
+            for c in planned["changes"]
+            if c.get("change_type") == "current_vs_prior"
+        ),
+        None,
+    )
+    methodology_sha256: str | None = None
+    accuracy_package_stamp: str | None = None
+    if run_id is not None:
+        try:
+            row = conn.execute(
+                "SELECT methodology_sha256, accuracy_package_stamp "
+                "FROM forecast_run_model_versions WHERE run_id = ?",
+                (run_id,),
+            ).fetchone()
+        except sqlite3.Error:
+            row = None
+        if row is not None:
+            methodology_sha256, accuracy_package_stamp = row[0], row[1]
+
+    lineage = output_narrative_builder.build_lineage_narrative(
+        output_id=plan["output_id"],
+        project_key=header["project_key"],
+        now_utc=now_utc,
+        source_row_number=len(planned["narratives"]) + 1,
+        context_sha256=context_sha,
+        analysis_sha256=header.get("source_sha256"),
+        output_sha256=output_sha256,
+        methodology_sha256=methodology_sha256,
+        accuracy_package_stamp=accuracy_package_stamp,
+        prior_run_id=prior_run_id,
+    )
+    planned["narratives"].append(lineage)
+    repo.upsert_output_narrative(conn, lineage)
+
+
 def project_run_output(
     *,
     analysis_package: Path,
@@ -712,6 +844,11 @@ def project_run_output(
     ``apply``/``is_live_db_path`` write-guards on ``db_path`` are unchanged; this read is a separate
     read-only connection.
     """
+    from hb_assistant.construction.analytics.forecast_runtime_config import (
+        resolve_explainability_enabled,
+    )
+
+    explainability_enabled = resolve_explainability_enabled()
     operator_assumptions = _hydrate_operator_assumptions(
         project_key=project_key, assumptions_db_path=assumptions_db_path
     )
@@ -726,6 +863,7 @@ def project_run_output(
         staffing_package=staffing_package,
         context_package=context_package,
         operator_assumptions=operator_assumptions,
+        explainability_enabled=explainability_enabled,
     )
     plan["guardrails"] = GUARDRAILS
 
@@ -773,6 +911,17 @@ def project_run_output(
                 output_id=plan["output_id"],
             )
             written = repo.apply_plan(conn, plan["planned"])
+            # P8: the lineage narrative needs the written rows (output sha) + the prior-run linkage,
+            # so it is built and written here, after apply_plan, and folded into the plan + counts.
+            if explainability_enabled:
+                _augment_lineage_narrative(
+                    conn,
+                    plan=plan,
+                    run_id=run_id,
+                    context_package=context_package,
+                    output_sha256=_output_content_sha256(plan["planned"]),
+                )
+                written["narratives"] = len(plan["planned"]["narratives"])
     plan["mode"] = "apply"
     plan["written"] = written
 
@@ -808,6 +957,7 @@ def _prove_parity(
         "staffing": repo.read_output_staffing_from_db,
         "commitment_exposure": repo.read_output_commitment_exposure_from_db,
         "schedule_phasing": repo.read_output_schedule_phasing_from_db,
+        "narratives": repo.read_output_narratives_from_db,
     }
     per_table: dict[str, Any] = {}
     proven = True
