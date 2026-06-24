@@ -7977,11 +7977,15 @@ class SQLiteMigrator:
                     (now,),
                 )
 
-        # Return latest version
-        conn2 = get_connection(self._db_path)
-        cur = conn2.execute("SELECT MAX(version) FROM schema_migrations")
+        # Return latest version, then release the migration connection. get_connection's
+        # contract is that the caller closes it; left open, this WAL connection is only
+        # checkpointed when Python GC finalizes it, which non-deterministically flushes the
+        # -wal into the main DB file and perturbs read-only callers that byte-compare the file.
+        cur = conn.execute("SELECT MAX(version) FROM schema_migrations")
         row = cur.fetchone()
-        return int(row[0]) if row and row[0] is not None else 0
+        version = int(row[0]) if row and row[0] is not None else 0
+        conn.close()
+        return version
 
     @staticmethod
     def _reconcile_v68_procore_ep_projects_one_per_key(conn: sqlite3.Connection) -> None:
