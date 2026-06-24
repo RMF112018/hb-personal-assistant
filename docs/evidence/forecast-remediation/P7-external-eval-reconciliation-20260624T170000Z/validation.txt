@@ -1,0 +1,39 @@
+P7 validation — external forecast eval completion (tests + reconciliation)
+=========================================================================
+
+Worktree: /Users/bobbyfetting/hb-personal-assistant-p7
+Branch:   feature/forecast-external-eval-reconciliation-p7 (off origin/main @ 2cce1394)
+Python:   .venv (3.14), PYTHONPATH=src:subrepos/construction-financial-review/src
+
+1. Targeted run (edited file)
+   pytest tests/test_forecasting_external_fixture.py
+   -> 4 passed (2 existing + 2 new):
+     - test_external_forecast_xlsx_ingest_parses_sheet      PASS
+     - test_external_forecast_fixtureproj_full_evaluate     PASS
+
+2. Full forecasting bundle (required — edited file is in the bundle)
+   scripts/test-forecasting.sh
+   -> exit 0 (no failures). Collected 902 tests (prior 900 + 2 new).
+   (Count via `--collect-only -q` summing per-file counts; the piped `-q` pass-count summary line
+   is suppressed by the trailing warnings block, so exit-0 + collect-count is the evidence.)
+
+3. Lint
+   ruff check tests/test_forecasting_external_fixture.py  -> All checks passed!
+   (No ruff format; diff is in-style additions only.)
+
+4. Scope hygiene
+   git status: exactly tests/test_forecasting_external_fixture.py +
+   docs/forecasting/remediation/REMEDIATION-PLAN.md + ADR 312 + the P7 evidence bundle.
+   docs/evidence/construction-intelligence-phase-08c-financial-readiness/ test side-effects
+   reverted before staging; never `git add .`.
+
+5. No production src/ change (XLSX ingest + multi-project eligibility already implemented on main);
+   no schema/migration/table_count change; no live-DB/external/secret/CLI surface → no sensitive-op
+   gate. Schedule bundle not required (no migrator/store change).
+
+6. Isolation: the new tests use the synthetic isolated eval-root + a read-only baseline DB; no live
+   DB or external system touched. fixtureproj evaluate asserts the baseline DB external tables stay
+   empty.
+
+Gate: hb-commit-diff-auditor — (recorded at PR time).
+Stale-spec reconciliation: gap-validation report left immutable; correction in the ledger + ADR 312.
