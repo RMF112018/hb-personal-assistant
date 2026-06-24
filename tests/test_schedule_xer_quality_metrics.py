@@ -14,8 +14,13 @@ from hb_assistant.construction.analytics.schedule_quality_engine import (
     ScheduleQualityDataLoader,
     run_evaluation_for_run,
 )
-from hb_assistant.construction.analytics.schedule_quality_normalization import normalize_duration_days
-from hb_assistant.construction.analytics.schedule_quality_profiles import DCMA_METRIC_SPECS, get_profile
+from hb_assistant.construction.analytics.schedule_quality_normalization import (
+    normalize_duration_days,
+)
+from hb_assistant.construction.analytics.schedule_quality_profiles import (
+    DCMA_METRIC_SPECS,
+    get_profile,
+)
 from hb_assistant.construction.analytics.schedule_xer_parser import parse_xer_bytes
 from hb_assistant.store.connection import get_connection
 from hb_assistant.store.migrator import SQLiteMigrator
@@ -42,6 +47,14 @@ def test_xer_parser_maps_actual_dates_from_act_fields_only() -> None:
     assert complete["actual_finish"] == "2026-03-10 17:00"
     assert complete["early_finish"] == "2026-03-10 17:00"
     assert complete["actual_finish"] == complete.get("actual_finish")
+
+
+def test_xer_parser_preserves_relationship_lag_hours() -> None:
+    bundle = parse_xer_bytes(XER.read_bytes())
+    assert bundle.relationships
+    rel = bundle.relationships[0]
+    assert rel["lag_value"] == "0"
+    assert rel["lag_unit"] == "hour"
 
 
 def test_xer_parser_maps_actual_dates_and_duration_unit(tmp_path: Path) -> None:

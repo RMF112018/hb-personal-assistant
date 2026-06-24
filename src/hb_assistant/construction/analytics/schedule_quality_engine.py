@@ -4,11 +4,19 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
+from decimal import Decimal
 from typing import Any
 
 from hb_assistant.store.schedule_activity_repository import ScheduleActivityRepository
 from hb_assistant.store.schedule_mapping_repository import ScheduleMappingRepository
 
+from .schedule_critical_path_analytics import (
+    METRIC_STATUS_AVAILABLE_XER_DRIVING,
+    METRIC_STATUS_AVAILABLE_XER_TOTFLOAT,
+    METRIC_STATUS_PARTIAL_XER_FLOAT,
+    compute_source_critical_path_analytics,
+    resolve_analytics_status,
+)
 from .schedule_float_derivation import supports_finish_float_derivation
 from .schedule_graph import orphan_relationship_ids
 from .schedule_quality_normalization import (
@@ -16,15 +24,9 @@ from .schedule_quality_normalization import (
     cost_resource_posture,
     is_logic_excluded_activity,
     normalize_duration_days,
+    normalize_lag_result,
     normalize_relationship_type,
     relationship_type_distribution,
-)
-from .schedule_critical_path_analytics import (
-    METRIC_STATUS_AVAILABLE_XER_DRIVING,
-    METRIC_STATUS_AVAILABLE_XER_TOTFLOAT,
-    METRIC_STATUS_PARTIAL_XER_FLOAT,
-    compute_source_critical_path_analytics,
-    resolve_analytics_status,
 )
 from .schedule_quality_profiles import (
     DCMA_METRIC_SPECS,
@@ -39,6 +41,7 @@ HIGH_FLOAT_DAYS = 44.0
 HIGH_DURATION_DAYS = 44.0
 EXCESSIVE_LAG_DAYS = 44.0
 MAX_EVIDENCE_IDS = 10
+EXCESSIVE_LAG_DAYS_DECIMAL = Decimal(str(EXCESSIVE_LAG_DAYS))
 
 METRIC_STATUS_MEASURED = "measured"
 METRIC_STATUS_PASS = "passed_threshold"
@@ -95,6 +98,12 @@ def _parse_threshold(value: Any) -> float:
         return float(value)
     except (TypeError, ValueError):
         return 0.0
+
+
+def _decimal_evidence_value(value: Decimal | None) -> str | None:
+    if value is None:
+        return None
+    return format(value.normalize(), "f")
 
 
 @dataclass
@@ -525,18 +534,67 @@ class ScheduleQualityAssessmentEngine:
                 findings,
             )
         bad = 0
+        normalized_count = 0
+        assumed_day_count = 0
+        skipped_unparseable_count = 0
+        unit_distribution: dict[str, int] = {}
+        conversion_status_distribution = {
+            "known_unit": 0,
+            "assumed_days": 0,
+            "unparseable": 0,
+        }
+        max_positive_lag_days: Decimal | None = None
+        min_negative_lag_days: Decimal | None = None
+        finding_samples: list[dict[str, Any]] = []
         for rel in rels:
-            try:
-                lag = float(rel.get("lag_value") or 0)
-            except (TypeError, ValueError):
-                lag = 0.0
+            result = normalize_lag_result(rel.get("lag_value"), rel.get("lag_unit"))
+            unit_key = result.source_unit_label or "(missing)"
+            unit_distribution[unit_key] = unit_distribution.get(unit_key, 0) + 1
+            conversion_status_distribution[result.conversion_status] += 1
+            if result.conversion_status == "known_unit":
+                normalized_count += 1
+            elif result.conversion_status == "assumed_days":
+                assumed_day_count += 1
+            else:
+                skipped_unparseable_count += 1
+                continue
+            lag_days = result.normalized_days
+            if lag_days is None:
+                skipped_unparseable_count += 1
+                continue
+            if lag_days > 0 and (
+                max_positive_lag_days is None or lag_days > max_positive_lag_days
+            ):
+                max_positive_lag_days = lag_days
+            if lag_days < 0 and (
+                min_negative_lag_days is None or lag_days < min_negative_lag_days
+            ):
+                min_negative_lag_days = lag_days
             hit = False
-            if negative_only and lag < 0:
-                hit = True
-            elif excessive_only and lag > EXCESSIVE_LAG_DAYS:
+            if negative_only and lag_days < 0 or excessive_only and lag_days > EXCESSIVE_LAG_DAYS_DECIMAL:
                 hit = True
             if hit:
                 bad += 1
+                relationship_id = (
+                    rel.get("relationship_id")
+                    or rel.get("source_relationship_object_id")
+                    or rel.get("relationship_row_id")
+                    or (
+                        f"{rel.get('predecessor_activity_id')}->"
+                        f"{rel.get('successor_activity_id')}"
+                    )
+                )
+                finding_evidence = {
+                    "relationship_id": relationship_id,
+                    "predecessor_activity_id": rel.get("predecessor_activity_id"),
+                    "successor_activity_id": rel.get("successor_activity_id"),
+                    "raw_lag_value": rel.get("lag_value"),
+                    "raw_lag_unit": rel.get("lag_unit"),
+                    "normalized_lag_days": _decimal_evidence_value(lag_days),
+                    "conversion_status": result.conversion_status,
+                }
+                if len(finding_samples) < MAX_EVIDENCE_IDS:
+                    finding_samples.append(finding_evidence)
                 findings.append(
                     self._finding(
                         ctx,
@@ -545,10 +603,30 @@ class ScheduleQualityAssessmentEngine:
                         finding_type="lags",
                         category="dcma",
                         metric_code=code,
-                        summary=f"Relationship lag value {lag} is out of expected range",
+                        relationship_id=relationship_id,
+                        summary=(
+                            "Relationship lag value "
+                            f"{_decimal_evidence_value(lag_days)} days is out of expected range"
+                        ),
+                        evidence=finding_evidence,
                     )
                 )
         ratio = bad / len(rels)
+        evidence = {
+            "total_relationships_assessed": len(rels),
+            "lag_values_normalized_count": normalized_count,
+            "assumed_day_count": assumed_day_count,
+            "skipped_unparseable_count": skipped_unparseable_count,
+            "unit_distribution": unit_distribution,
+            "conversion_status_distribution": conversion_status_distribution,
+            "observed_units": sorted(unit_distribution)[:MAX_EVIDENCE_IDS],
+            "max_positive_lag_days": _decimal_evidence_value(max_positive_lag_days),
+            "min_negative_lag_days": _decimal_evidence_value(min_negative_lag_days),
+            "excessive_lag_threshold_days": _decimal_evidence_value(
+                EXCESSIVE_LAG_DAYS_DECIMAL
+            ),
+            "finding_samples": finding_samples,
+        }
         return (
             self._base_metric(
                 ctx,
@@ -558,6 +636,7 @@ class ScheduleQualityAssessmentEngine:
                 numerator=bad,
                 denominator=len(rels),
                 value=round(ratio, 4),
+                evidence=evidence,
             ),
             findings,
         )

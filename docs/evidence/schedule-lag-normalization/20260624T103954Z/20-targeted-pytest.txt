@@ -1,0 +1,4 @@
+$ env PYTHONPATH=src /Library/Frameworks/Python.framework/Versions/3.13/bin/pytest tests/test_schedule_quality_normalization.py tests/test_schedule_quality_engine.py tests/test_schedule_xer_quality_metrics.py tests/test_schedule_msp_xml_parser.py -m not\ integration\ and\ not\ manual\ and\ not\ live
+.....................                                                    [100%]
+21 passed, 1 deselected in 9.16s
+exit_code=0

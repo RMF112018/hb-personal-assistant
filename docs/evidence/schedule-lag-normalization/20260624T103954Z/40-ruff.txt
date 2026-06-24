@@ -1,0 +1,814 @@
+$ /Users/bobbyfetting/hb-personal-assistant/.venv/bin/ruff check src tests
+I001 [*] Import block is un-sorted or un-formatted
+  --> src/hb_assistant/cli/main.py:12:1
+   |
+10 |   """
+11 |
+12 | / from __future__ import annotations
+13 | |
+14 | | import json
+15 | |
+16 | | import typer
+17 | |
+18 | | from hb_assistant import __version__
+19 | |
+20 | | from . import actions as actions_mod
+21 | | from . import auth as auth_mod
+22 | | from . import automation as auto_mod
+23 | | from . import construction as construction_mod
+24 | | from . import diagnostics as diag_mod
+25 | | from . import files as files_mod
+26 | | from . import graph as graph_mod
+27 | | from . import launcher as launcher_mod
+28 | | from . import email_calendar as email_calendar_mod
+29 | | from . import procore as procore_mod
+30 | | from . import run as run_mod
+31 | | from . import scheduler as scheduler_mod
+32 | | from . import search as search_mod
+33 | | from . import second_brain as second_brain_mod
+   | |______________________________________________^
+34 |
+35 |   app = typer.Typer(
+   |
+help: Organize imports
+
+I001 [*] Import block is un-sorted or un-formatted
+  --> src/hb_assistant/construction/analytics/api.py:7:1
+   |
+ 5 |   """
+ 6 |
+ 7 | / from __future__ import annotations
+ 8 | |
+ 9 | | import json
+10 | | from contextlib import asynccontextmanager
+11 | | from enum import Enum
+12 | | from pathlib import Path
+13 | | import logging
+14 | | from typing import Annotated, Any
+15 | |
+16 | | from pydantic import BaseModel
+   | |______________________________^
+17 |
+18 |   try:
+   |
+help: Organize imports
+
+F401 [*] `typing.Annotated` imported but unused
+  --> src/hb_assistant/construction/analytics/api.py:14:20
+   |
+12 | from pathlib import Path
+13 | import logging
+14 | from typing import Annotated, Any
+   |                    ^^^^^^^^^
+15 |
+16 | from pydantic import BaseModel
+   |
+help: Remove unused import: `typing.Annotated`
+
+E402 Module level import not at top of file
+  --> src/hb_assistant/construction/analytics/api.py:33:1
+   |
+31 | _logger = logging.getLogger(__name__)
+32 |
+33 | from hb_assistant.config.path_policy import PathPolicy  # Prompt 20 prefs + daily_brief config path
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+34 | from hb_assistant.store.migrator import LATEST_SCHEMA_VERSION, SQLiteMigrator
+   |
+
+E402 Module level import not at top of file
+  --> src/hb_assistant/construction/analytics/api.py:34:1
+   |
+33 | from hb_assistant.config.path_policy import PathPolicy  # Prompt 20 prefs + daily_brief config path
+34 | from hb_assistant.store.migrator import LATEST_SCHEMA_VERSION, SQLiteMigrator
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+35 |
+36 | ALLOWED_UI_ROLES = frozenset({"viewer", "operator", "admin"})
+   |
+
+SIM105 Use `contextlib.suppress(Exception)` instead of `try`-`except`-`pass`
+   --> src/hb_assistant/construction/analytics/api.py:433:13
+    |
+431 |           db = str(configured) if configured else str(PathPolicy().get_db_path())
+432 |           while True:
+433 | /             try:
+434 | |                 await asyncio.to_thread(poll_and_process, db_path=db, limit=3)
+435 | |             except Exception:
+436 | |                 pass
+    | |____________________^
+437 |               await asyncio.sleep(60)
+    |
+help: Replace `try`-`except`-`pass` with `with contextlib.suppress(Exception): ...`
+
+SIM105 Use `contextlib.suppress(asyncio.CancelledError)` instead of `try`-`except`-`pass`
+   --> src/hb_assistant/construction/analytics/api.py:448:9
+    |
+446 |       if poll_task is not None:
+447 |           poll_task.cancel()
+448 | /         try:
+449 | |             await poll_task
+450 | |         except asyncio.CancelledError:
+451 | |             pass
+    | |________________^
+    |
+help: Replace `try`-`except`-`pass` with `with contextlib.suppress(asyncio.CancelledError): ...`
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+    --> src/hb_assistant/construction/analytics/api.py:1491:13
+     |
+1489 |         except ForecastCatalogError:
+1490 |             # Misconfigured / unset roots — fail closed with a generic, path-free message.
+1491 |             raise HTTPException(status_code=503, detail="forecast_packages_not_configured")
+     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1492 |
+1493 |     def _forecast_call(fn: Any, *args: Any) -> dict[str, Any]:
+     |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+    --> src/hb_assistant/construction/analytics/api.py:1502:17
+     |
+1500 |         except ForecastCatalogError as exc:
+1501 |             if str(exc).startswith("unknown package_id"):
+1502 |                 raise HTTPException(status_code=404, detail="forecast_package_not_found")
+     |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1503 |             raise HTTPException(status_code=500, detail="forecast_catalog_error")
+     |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+    --> src/hb_assistant/construction/analytics/api.py:1503:13
+     |
+1501 |             if str(exc).startswith("unknown package_id"):
+1502 |                 raise HTTPException(status_code=404, detail="forecast_package_not_found")
+1503 |             raise HTTPException(status_code=500, detail="forecast_catalog_error")
+     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1504 |
+1505 |     @app.get("/api/forecast/projects")
+     |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+    --> src/hb_assistant/construction/analytics/api.py:1600:17
+     |
+1598 |             msg = str(exc)
+1599 |             if msg.startswith("unknown snapshot_id"):
+1600 |                 raise HTTPException(status_code=404, detail="forecast_config_snapshot_not_found")
+     |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1601 |             if msg.startswith("unknown item_id"):
+1602 |                 raise HTTPException(status_code=404, detail="forecast_config_item_not_found")
+     |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+    --> src/hb_assistant/construction/analytics/api.py:1602:17
+     |
+1600 |                 raise HTTPException(status_code=404, detail="forecast_config_snapshot_not_found")
+1601 |             if msg.startswith("unknown item_id"):
+1602 |                 raise HTTPException(status_code=404, detail="forecast_config_item_not_found")
+     |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1603 |             # DB missing / schema too low / tables absent — fail closed, path-free.
+1604 |             raise HTTPException(status_code=503, detail="forecast_config_not_available")
+     |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+    --> src/hb_assistant/construction/analytics/api.py:1604:13
+     |
+1602 |                 raise HTTPException(status_code=404, detail="forecast_config_item_not_found")
+1603 |             # DB missing / schema too low / tables absent — fail closed, path-free.
+1604 |             raise HTTPException(status_code=503, detail="forecast_config_not_available")
+     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1605 |
+1606 |     @app.get("/api/forecast/config/snapshots")
+     |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+    --> src/hb_assistant/construction/analytics/api.py:1654:17
+     |
+1652 |         except ForecastRunReadModelError as exc:
+1653 |             if str(exc).startswith("unknown output_id"):
+1654 |                 raise HTTPException(status_code=404, detail="forecast_output_not_found")
+     |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1655 |             raise HTTPException(status_code=503, detail="forecast_run_output_not_available")
+     |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+    --> src/hb_assistant/construction/analytics/api.py:1655:13
+     |
+1653 |             if str(exc).startswith("unknown output_id"):
+1654 |                 raise HTTPException(status_code=404, detail="forecast_output_not_found")
+1655 |             raise HTTPException(status_code=503, detail="forecast_run_output_not_available")
+     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1656 |
+1657 |     @app.get("/api/forecast/db/projects/{project_key}/outputs")
+     |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+    --> src/hb_assistant/construction/analytics/api.py:1826:17
+     |
+1824 |             msg = str(exc)
+1825 |             if msg.startswith("unknown snapshot_id"):
+1826 |                 raise HTTPException(status_code=404, detail="forecast_config_snapshot_not_found")
+     |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1827 |             if msg.startswith("unknown edit_id"):
+1828 |                 raise HTTPException(status_code=404, detail="forecast_config_edit_not_found")
+     |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+    --> src/hb_assistant/construction/analytics/api.py:1828:17
+     |
+1826 |                 raise HTTPException(status_code=404, detail="forecast_config_snapshot_not_found")
+1827 |             if msg.startswith("unknown edit_id"):
+1828 |                 raise HTTPException(status_code=404, detail="forecast_config_edit_not_found")
+     |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1829 |             if (
+1830 |                 msg.startswith("invalid input")
+     |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+    --> src/hb_assistant/construction/analytics/api.py:1840:17
+     |
+1838 |                 or "has no config items" in msg
+1839 |             ):
+1840 |                 raise HTTPException(status_code=400, detail="forecast_config_edit_invalid_input")
+     |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1841 |             # not configured / under data root / CFR unavailable / DB not ro-openable — fail closed.
+1842 |             raise HTTPException(status_code=503, detail="forecast_config_edit_not_configured")
+     |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+    --> src/hb_assistant/construction/analytics/api.py:1842:13
+     |
+1840 |                 raise HTTPException(status_code=400, detail="forecast_config_edit_invalid_input")
+1841 |             # not configured / under data root / CFR unavailable / DB not ro-openable — fail closed.
+1842 |             raise HTTPException(status_code=503, detail="forecast_config_edit_not_configured")
+     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1843 |
+1844 |     @app.post("/api/forecast/config/edits")
+     |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+    --> src/hb_assistant/construction/analytics/api.py:1908:17
+     |
+1906 |             msg = str(exc)
+1907 |             if msg.startswith("unknown edit_id"):
+1908 |                 raise HTTPException(status_code=404, detail="forecast_config_promotion_edit_not_found")
+     |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1909 |             if msg == "promotion disabled":
+1910 |                 raise HTTPException(status_code=503, detail="forecast_config_promotion_disabled")
+     |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+    --> src/hb_assistant/construction/analytics/api.py:1910:17
+     |
+1908 |                 raise HTTPException(status_code=404, detail="forecast_config_promotion_edit_not_found")
+1909 |             if msg == "promotion disabled":
+1910 |                 raise HTTPException(status_code=503, detail="forecast_config_promotion_disabled")
+     |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1911 |             if msg == "not confirmed":
+1912 |                 raise HTTPException(status_code=400, detail="forecast_config_promotion_not_confirmed")
+     |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+    --> src/hb_assistant/construction/analytics/api.py:1912:17
+     |
+1910 |                 raise HTTPException(status_code=503, detail="forecast_config_promotion_disabled")
+1911 |             if msg == "not confirmed":
+1912 |                 raise HTTPException(status_code=400, detail="forecast_config_promotion_not_confirmed")
+     |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1913 |             if msg.startswith("proposal not eligible"):
+1914 |                 raise HTTPException(status_code=400, detail="forecast_config_promotion_not_eligible")
+     |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+    --> src/hb_assistant/construction/analytics/api.py:1914:17
+     |
+1912 |                 raise HTTPException(status_code=400, detail="forecast_config_promotion_not_confirmed")
+1913 |             if msg.startswith("proposal not eligible"):
+1914 |                 raise HTTPException(status_code=400, detail="forecast_config_promotion_not_eligible")
+     |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1915 |             # CFR workflow refusal / live-write failure — fail closed, path-free.
+1916 |             raise HTTPException(status_code=500, detail="forecast_config_promotion_failed")
+     |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+    --> src/hb_assistant/construction/analytics/api.py:1916:13
+     |
+1914 |                 raise HTTPException(status_code=400, detail="forecast_config_promotion_not_eligible")
+1915 |             # CFR workflow refusal / live-write failure — fail closed, path-free.
+1916 |             raise HTTPException(status_code=500, detail="forecast_config_promotion_failed")
+     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1917 |
+1918 |     @app.post("/api/forecast/config/edits/{edit_id}/promote")
+     |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+    --> src/hb_assistant/construction/analytics/api.py:1949:17
+     |
+1947 |         except ForecastRunError as exc:
+1948 |             if str(exc).startswith("unknown run_id"):
+1949 |                 raise HTTPException(status_code=404, detail="forecast_run_not_found")
+     |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1950 |             # not configured / invalid roots / CFR source unavailable — fail closed, path-free.
+1951 |             raise HTTPException(status_code=503, detail="forecast_runs_not_configured")
+     |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+    --> src/hb_assistant/construction/analytics/api.py:1951:13
+     |
+1949 |                 raise HTTPException(status_code=404, detail="forecast_run_not_found")
+1950 |             # not configured / invalid roots / CFR source unavailable — fail closed, path-free.
+1951 |             raise HTTPException(status_code=503, detail="forecast_runs_not_configured")
+     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1952 |
+1953 |     @app.post("/api/forecast/runs")
+     |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+    --> src/hb_assistant/construction/analytics/api.py:1995:17
+     |
+1993 |         except ForecastDbConfigRunError as exc:
+1994 |             if str(exc).startswith("unknown run_id"):
+1995 |                 raise HTTPException(status_code=404, detail="forecast_db_config_run_not_found")
+     |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1996 |             if str(exc).startswith("db_config_run disabled"):
+1997 |                 raise HTTPException(status_code=503, detail="forecast_db_config_run_disabled")
+     |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+    --> src/hb_assistant/construction/analytics/api.py:1997:17
+     |
+1995 |                 raise HTTPException(status_code=404, detail="forecast_db_config_run_not_found")
+1996 |             if str(exc).startswith("db_config_run disabled"):
+1997 |                 raise HTTPException(status_code=503, detail="forecast_db_config_run_disabled")
+     |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1998 |             # not configured / config DB not ready — fail closed, path-free.
+1999 |             raise HTTPException(status_code=503, detail="forecast_db_config_run_not_configured")
+     |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+    --> src/hb_assistant/construction/analytics/api.py:1999:13
+     |
+1997 |                 raise HTTPException(status_code=503, detail="forecast_db_config_run_disabled")
+1998 |             # not configured / config DB not ready — fail closed, path-free.
+1999 |             raise HTTPException(status_code=503, detail="forecast_db_config_run_not_configured")
+     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2000 |
+2001 |     @app.post("/api/forecast/runs/db-config")
+     |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+    --> src/hb_assistant/construction/analytics/api.py:2090:17
+     |
+2088 |             msg = str(exc)
+2089 |             if msg.startswith("unknown import_id") or msg.startswith("unknown eval_id"):
+2090 |                 raise HTTPException(status_code=404, detail="forecast_external_not_found")
+     |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2091 |             if (
+2092 |                 "not configured" in msg
+     |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+    --> src/hb_assistant/construction/analytics/api.py:2098:17
+     |
+2096 |             ):
+2097 |                 # misconfigured environment — fail closed, path-free.
+2098 |                 raise HTTPException(status_code=503, detail="forecast_external_not_configured")
+     |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2099 |             # invalid/untrusted input (bad base64, unsupported type, unmapped columns, …).
+2100 |             raise HTTPException(status_code=400, detail="forecast_external_invalid_input")
+     |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+    --> src/hb_assistant/construction/analytics/api.py:2100:13
+     |
+2098 |                 raise HTTPException(status_code=503, detail="forecast_external_not_configured")
+2099 |             # invalid/untrusted input (bad base64, unsupported type, unmapped columns, …).
+2100 |             raise HTTPException(status_code=400, detail="forecast_external_invalid_input")
+     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2101 |
+2102 |     @app.post("/api/forecast/external/preview")
+     |
+
+B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+    --> src/hb_assistant/construction/analytics/api.py:2189:13
+     |
+2187 |         except ForecastRuntimeConfigError as exc:
+2188 |             # Path-free blocker code ("<root>:<blocker>"); never persisted on failure.
+2189 |             raise HTTPException(status_code=400, detail=f"forecast_runtime_invalid:{exc}")
+     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2190 |
+2191 |     @app.post("/api/forecast/runtime/repair")
+     |
+
+I001 [*] Import block is un-sorted or un-formatted
+    --> src/hb_assistant/construction/analytics/api.py:2275:9
+     |
+2274 |     def require_schedule_schema_ready() -> None:
+2275 |         from hb_assistant.construction.analytics.schedule_import_service import ensure_schedule_schema
+     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2276 |
+2277 |         try:
+     |
+help: Organize imports
+
+I001 [*] Import block is un-sorted or un-formatted
+    --> src/hb_assistant/construction/analytics/api.py:2332:9
+     |
+2330 |           schedule_version_key: str, project_key: str | None
+2331 |       ) -> None:
+2332 | /         from hb_assistant.construction.analytics.schedule_import_service import (
+2333 | |             assert_version_matches_project,
+2334 | |         )
+2335 | |         from hb_assistant.construction.analytics.schedule_file_parser import (
+2336 | |             ScheduleImportError,
+2337 | |         )
+     | |_________^
+2338 |
+2339 |           try:
+     |
+help: Organize imports
+
+B008 Do not perform function call `FastAPIFile` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+    --> src/hb_assistant/construction/analytics/api.py:2563:35
+     |
+2561 |         role: dict[str, str] = role_dep,
+2562 |         _schema: None = Depends(require_schedule_schema_ready),
+2563 |         file: FastAPIUploadFile = FastAPIFile(...),
+     |                                   ^^^^^^^^^^^^^^^^
+2564 |         project_key: str = FastAPIForm(...),
+2565 |         column_roles: str | None = FastAPIForm(None),
+     |
+
+E402 Module level import not at top of file
+  --> src/hb_assistant/construction/analytics/schedule_import_service.py:15:1
+   |
+13 | _logger = logging.getLogger(__name__)
+14 |
+15 | from hb_assistant.store.migrator import LATEST_SCHEMA_VERSION, SQLiteMigrator
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+16 | from hb_assistant.store.schedule_activity_repository import ScheduleActivityRepository
+17 | from hb_assistant.store.schedule_import_repository import ScheduleImportRepository
+   |
+
+E402 Module level import not at top of file
+  --> src/hb_assistant/construction/analytics/schedule_import_service.py:16:1
+   |
+15 | from hb_assistant.store.migrator import LATEST_SCHEMA_VERSION, SQLiteMigrator
+16 | from hb_assistant.store.schedule_activity_repository import ScheduleActivityRepository
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+17 | from hb_assistant.store.schedule_import_repository import ScheduleImportRepository
+18 | from hb_assistant.store.schedule_mapping_repository import ScheduleMappingRepository
+   |
+
+E402 Module level import not at top of file
+  --> src/hb_assistant/construction/analytics/schedule_import_service.py:17:1
+   |
+15 | from hb_assistant.store.migrator import LATEST_SCHEMA_VERSION, SQLiteMigrator
+16 | from hb_assistant.store.schedule_activity_repository import ScheduleActivityRepository
+17 | from hb_assistant.store.schedule_import_repository import ScheduleImportRepository
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+18 | from hb_assistant.store.schedule_mapping_repository import ScheduleMappingRepository
+   |
+
+E402 Module level import not at top of file
+  --> src/hb_assistant/construction/analytics/schedule_import_service.py:18:1
+   |
+16 | from hb_assistant.store.schedule_activity_repository import ScheduleActivityRepository
+17 | from hb_assistant.store.schedule_import_repository import ScheduleImportRepository
+18 | from hb_assistant.store.schedule_mapping_repository import ScheduleMappingRepository
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+19 |
+20 | from .schedule_cost_loading import assess_cost_loaded_status
+   |
+
+E402 Module level import not at top of file
+  --> src/hb_assistant/construction/analytics/schedule_import_service.py:20:1
+   |
+18 | from hb_assistant.store.schedule_mapping_repository import ScheduleMappingRepository
+19 |
+20 | from .schedule_cost_loading import assess_cost_loaded_status
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+21 | from .schedule_csv_parser import PARSER_NAME as CSV_PARSER
+22 | from .schedule_csv_parser import PARSER_VERSION as CSV_VER
+   |
+
+E402 Module level import not at top of file
+  --> src/hb_assistant/construction/analytics/schedule_import_service.py:21:1
+   |
+20 | from .schedule_cost_loading import assess_cost_loaded_status
+21 | from .schedule_csv_parser import PARSER_NAME as CSV_PARSER
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+22 | from .schedule_csv_parser import PARSER_VERSION as CSV_VER
+23 | from .schedule_csv_parser import parse_csv_bytes
+   |
+
+E402 Module level import not at top of file
+  --> src/hb_assistant/construction/analytics/schedule_import_service.py:22:1
+   |
+20 | from .schedule_cost_loading import assess_cost_loaded_status
+21 | from .schedule_csv_parser import PARSER_NAME as CSV_PARSER
+22 | from .schedule_csv_parser import PARSER_VERSION as CSV_VER
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+23 | from .schedule_csv_parser import parse_csv_bytes
+24 | from .schedule_dto import ScheduleImportPreviewDTO, ScheduleVersionSummaryDTO
+   |
+
+E402 Module level import not at top of file
+  --> src/hb_assistant/construction/analytics/schedule_import_service.py:23:1
+   |
+21 | from .schedule_csv_parser import PARSER_NAME as CSV_PARSER
+22 | from .schedule_csv_parser import PARSER_VERSION as CSV_VER
+23 | from .schedule_csv_parser import parse_csv_bytes
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+24 | from .schedule_dto import ScheduleImportPreviewDTO, ScheduleVersionSummaryDTO
+25 | from .schedule_evidence import write_import_evidence
+   |
+
+E402 Module level import not at top of file
+  --> src/hb_assistant/construction/analytics/schedule_import_service.py:24:1
+   |
+22 | from .schedule_csv_parser import PARSER_VERSION as CSV_VER
+23 | from .schedule_csv_parser import parse_csv_bytes
+24 | from .schedule_dto import ScheduleImportPreviewDTO, ScheduleVersionSummaryDTO
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+25 | from .schedule_evidence import write_import_evidence
+26 | from .schedule_file_parser import (
+   |
+
+E402 Module level import not at top of file
+  --> src/hb_assistant/construction/analytics/schedule_import_service.py:25:1
+   |
+23 | from .schedule_csv_parser import parse_csv_bytes
+24 | from .schedule_dto import ScheduleImportPreviewDTO, ScheduleVersionSummaryDTO
+25 | from .schedule_evidence import write_import_evidence
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+26 | from .schedule_file_parser import (
+27 |     ParsedScheduleBundle,
+   |
+
+E402 Module level import not at top of file
+  --> src/hb_assistant/construction/analytics/schedule_import_service.py:26:1
+   |
+24 |   from .schedule_dto import ScheduleImportPreviewDTO, ScheduleVersionSummaryDTO
+25 |   from .schedule_evidence import write_import_evidence
+26 | / from .schedule_file_parser import (
+27 | |     ParsedScheduleBundle,
+28 | |     ScheduleImportError,
+29 | |     detect_source,
+30 | |     safe_basename,
+31 | | )
+   | |_^
+32 |   from .schedule_xml_parser import PARSER_NAME as XML_PARSER
+33 |   from .schedule_xml_parser import PARSER_VERSION as XML_VER
+   |
+
+E402 Module level import not at top of file
+  --> src/hb_assistant/construction/analytics/schedule_import_service.py:32:1
+   |
+30 |     safe_basename,
+31 | )
+32 | from .schedule_xml_parser import PARSER_NAME as XML_PARSER
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+33 | from .schedule_xml_parser import PARSER_VERSION as XML_VER
+34 | from .schedule_xml_parser import parse_pmxml_bytes
+   |
+
+E402 Module level import not at top of file
+  --> src/hb_assistant/construction/analytics/schedule_import_service.py:33:1
+   |
+31 | )
+32 | from .schedule_xml_parser import PARSER_NAME as XML_PARSER
+33 | from .schedule_xml_parser import PARSER_VERSION as XML_VER
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+34 | from .schedule_xml_parser import parse_pmxml_bytes
+   |
+
+E402 Module level import not at top of file
+  --> src/hb_assistant/construction/analytics/schedule_import_service.py:34:1
+   |
+32 | from .schedule_xml_parser import PARSER_NAME as XML_PARSER
+33 | from .schedule_xml_parser import PARSER_VERSION as XML_VER
+34 | from .schedule_xml_parser import parse_pmxml_bytes
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+35 |
+36 | MAX_UPLOAD_BYTES = 50 * 1024 * 1024
+   |
+
+F841 Local variable `pv` is assigned to but never used
+   --> src/hb_assistant/construction/second_brain/mcp/wrappers.py:214:21
+    |
+212 |                     pv = _pv()
+213 |                 except Exception:
+214 |                     pv = "unknown"
+    |                     ^^
+215 |                 return _bounded(
+216 |                     "ok",
+    |
+help: Remove assignment to unused variable `pv`
+
+SIM300 [*] Yoda condition detected
+  --> tests/test_agent_registry.py:58:12
+   |
+56 |     ids = {a.agent_id for a in reg.agents}
+57 |     assert ids == _EXPECTED_AGENTS
+58 |     assert _REQUIRED_AGENTS <= ids  # all 9 required still present (subset check)
+   |            ^^^^^^^^^^^^^^^^^^^^^^^
+59 |     assert all(a.enabled for a in reg.agents)
+60 |     assert all(a.receipt_required for a in reg.agents)
+   |
+help: Rewrite as `ids >= _REQUIRED_AGENTS`
+
+SIM222 Use `True` instead of `... or True`
+   --> tests/test_calendar_event_indexing.py:460:12
+    |
+458 |     subj, bt, bh, jurl, attj = row
+459 |     assert subj and "Tropical" in subj  # subject captured
+460 |     assert (bt and "Site" in bt) or (bh and "Site" in bh) or True  # body present (html or text)
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+461 |     assert RAW_JOIN in (jurl or "")
+462 |     atts = json.loads(attj or "[]")
+    |
+help: Replace with `True`
+
+I001 [*] Import block is un-sorted or un-formatted
+  --> tests/test_forecast_db_config_backed_generation_kinds.py:26:1
+   |
+24 |           sys.path.insert(0, _p)
+25 |
+26 | / from construction_financial_review.common import config_root as crootmod  # noqa: E402
+27 | | from construction_financial_review.workflows import (  # noqa: E402
+28 | |     forecast_db_config_backed_generation as genwf,
+29 | | )
+30 | | from construction_financial_review.workflows import (  # noqa: E402
+31 | |     forecast_monthly_db_config_proof as moproof,
+32 | | )
+33 | |
+34 | | # Reuse the four phase proof fixtures (each self-bootstraps CFR on sys.path).
+35 | | from test_forecast_comprehensive_db_config_phase20 import _setup as _setup_comprehensive  # noqa: E402
+36 | | from test_forecast_model_controls_db_config_phase17 import SUBPROJ as _MC_SUBPROJ  # noqa: E402
+37 | | from test_forecast_model_controls_db_config_phase17 import _setup as _setup_model_controls  # noqa: E402
+38 | | from test_forecast_monthly_db_config_phase18 import _setup as _setup_monthly  # noqa: E402
+39 | | from test_forecast_probability_db_config_phase19 import _setup as _setup_probability  # noqa: E402
+   | |____________________________________________________________________________________^
+40 |
+41 |   STAMP = "20260101_000000"
+   |
+help: Organize imports
+
+C408 Unnecessary `dict()` call (rewrite as a literal)
+   --> tests/test_forecast_output_coverage.py:120:12
+    |
+119 |   def _all_pkgs(root: Path):
+120 |       return dict(
+    |  ____________^
+121 | |         analysis_package=_analysis_pkg(root),
+122 | |         monthly_package=_monthly_pkg(root),
+123 | |         probability_package=_probability_pkg(root),
+124 | |         comprehensive_package=_comprehensive_pkg(root),
+125 | |         staffing_package=_staffing_pkg(root),
+126 | |         context_package=_context_pkg(root),
+127 | |     )
+    | |_____^
+    |
+help: Rewrite as a literal
+
+F841 Local variable `db` is assigned to but never used
+   --> tests/test_forecast_output_coverage.py:133:9
+    |
+131 |     with tempfile.TemporaryDirectory() as td:
+132 |         root = Path(td)
+133 |         db = _migrated_db(root)
+    |         ^^
+134 |         pkgs = _all_pkgs(root)
+135 |         plan = eng.plan_run_output_projection(project_key=PROJECT_KEY, run_id="r1", **pkgs)
+    |
+help: Remove assignment to unused variable `db`
+
+I001 [*] Import block is un-sorted or un-formatted
+  --> tests/test_phase_10_daily_brief_user_facing_render.py:9:1
+   |
+ 7 |   """
+ 8 |
+ 9 | / from __future__ import annotations
+10 | |
+11 | | import tempfile
+12 | | from pathlib import Path
+13 | |
+14 | | import pytest
+15 | |
+16 | | from hb_assistant.construction.second_brain.local_ai import (
+17 | |     run_candidate_ranking_and_assembly,
+18 | | )
+19 | | from hb_assistant.construction.second_brain.local_ai import (
+20 | |     daily_brief_presentation as P,
+21 | | )
+22 | | from hb_assistant.construction.second_brain.local_ai.daily_brief_candidate_writer import (
+23 | |     persist_candidate_with_refs,
+24 | | )
+25 | | from hb_assistant.construction.second_brain.local_ai.daily_brief_render import render_daily_brief
+26 | | from hb_assistant.construction.second_brain.local_ai.daily_run_html import render_daily_run_html
+27 | | from hb_assistant.construction.store import ConstructionStore
+28 | | from hb_assistant.store.migrator import SQLiteMigrator
+   | |______________________________________________________^
+29 |
+30 |   BRIEF_DATE = "2026-06-12"
+   |
+help: Organize imports
+
+I001 [*] Import block is un-sorted or un-formatted
+  --> tests/test_phase_10_daily_run.py:10:1
+   |
+ 8 |   """
+ 9 |
+10 | / from __future__ import annotations
+11 | |
+12 | | import json
+13 | | import sqlite3
+14 | | from pathlib import Path
+15 | |
+16 | | import pytest
+17 | | from typer.testing import CliRunner
+18 | |
+19 | | from hb_assistant.cli.second_brain import app
+20 | | from hb_assistant.construction.second_brain.local_ai import daily_run as dr
+21 | | from hb_assistant.construction.second_brain.local_ai import pipeline as pipeline_mod
+22 | | from hb_assistant.construction.second_brain.local_ai import (
+23 | |     DailyRunLaunchdManager,
+24 | |     run_daily_local_agent,
+25 | | )
+26 | | from hb_assistant.construction.store import ConstructionStore
+   | |_____________________________________________________________^
+27 |
+28 |   _GUARD_COLUMNS = (
+   |
+help: Organize imports
+
+I001 [*] Import block is un-sorted or un-formatted
+  --> tests/test_phase_10_mcp_packet_hardening.py:9:1
+   |
+ 7 |   """
+ 8 |
+ 9 | / from __future__ import annotations
+10 | |
+11 | | import json
+12 | | from pathlib import Path
+13 | |
+14 | | import pytest
+15 | |
+16 | | import hb_assistant.construction.second_brain.local_ai.mcp_packet_hardening as mph
+17 | | from hb_assistant.cli.main import app
+18 | | from hb_assistant.construction.second_brain.local_ai.mcp_packet_hardening import (
+19 | |     OMITTED_RAW_CATEGORIES,
+20 | |     build_hardened_mcp_packet,
+21 | |     render_hardened_mcp_packet_markdown,
+22 | |     scan_for_forbidden_content,
+23 | | )
+24 | | from hb_assistant.construction.store import ConstructionStore
+25 | | from typer.testing import CliRunner
+   | |___________________________________^
+26 |
+27 |   runner = CliRunner()
+   |
+help: Organize imports
+
+F401 [*] `tempfile` imported but unused
+  --> tests/test_phase_10_procore_monitor.py:13:8
+   |
+11 | import json
+12 | import sqlite3
+13 | import tempfile
+   |        ^^^^^^^^
+14 | from pathlib import Path
+   |
+help: Remove unused import: `tempfile`
+
+C408 Unnecessary `dict()` call (rewrite as a literal)
+  --> tests/test_phase_10_relationship_entity_report.py:28:12
+   |
+27 |   def _seed(store: ConstructionStore, cid: str, **kw) -> None:
+28 |       base = dict(
+   |  ____________^
+29 | |         candidate_id=cid, source_family="person", source_record_type="contact",
+30 | |         source_record_ref=f"ent:{cid}:a", target_family="company", target_record_type="org",
+31 | |         target_record_ref=f"ent:{cid}:b", relationship_type="related_to",
+32 | |         confidence_score=0.8, confidence_class="strong_heuristic",
+33 | |         source_reference_json=json.dumps(["srh-1", "srh-2"]), review_required=False,
+34 | |         promotion_status="candidate", deterministic=True,
+35 | |     )
+   | |_____^
+36 |       base.update(kw)
+37 |       store.upsert_cross_source_relationship_candidate(**base)
+   |
+help: Rewrite as a literal
+
+F401 [*] `tempfile` imported but unused
+ --> tests/test_schedule_import_api.py:7:8
+  |
+5 | import os
+6 | import sqlite3
+7 | import tempfile
+  |        ^^^^^^^^
+8 | from pathlib import Path
+9 | from typing import Any
+  |
+help: Remove unused import: `tempfile`
+
+Found 62 errors.
+[*] 12 fixable with the `--fix` option (7 hidden fixes can be enabled with the `--unsafe-fixes` option).
+exit_code=1

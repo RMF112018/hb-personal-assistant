@@ -1,0 +1,2 @@
+$ bash -n scripts/test-schedule.sh
+exit_code=0

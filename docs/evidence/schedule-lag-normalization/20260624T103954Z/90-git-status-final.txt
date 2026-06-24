@@ -1,0 +1,8 @@
+ M src/hb_assistant/construction/analytics/schedule_quality_engine.py
+ M src/hb_assistant/construction/analytics/schedule_quality_normalization.py
+ M src/hb_assistant/store/schedule_activity_repository.py
+ M tests/test_schedule_msp_xml_parser.py
+ M tests/test_schedule_quality_engine.py
+ M tests/test_schedule_quality_normalization.py
+ M tests/test_schedule_xer_quality_metrics.py
+?? docs/evidence/schedule-lag-normalization/
