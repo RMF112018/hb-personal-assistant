@@ -72,6 +72,10 @@ class PathPolicy:
     def get_db_path(self) -> Path:
         return self.get_app_support() / "db" / "hb-personal-assistant.sqlite"
 
+    def get_db_backups_dir(self) -> Path:
+        """Durable backup root for gated live-DB writes (sibling of the managed DB)."""
+        return self.get_db_path().parent / "backups"
+
     def get_cache_dir(self, sub: str = "files") -> Path:
         return self.get_app_support() / "cache" / sub
 

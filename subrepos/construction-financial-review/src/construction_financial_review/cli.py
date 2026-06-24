@@ -946,7 +946,8 @@ def cmd_live_db_source_domain_project(*, source_package: str, work_root: str, co
                                       allow_replace_existing: bool, run_guarded_operator_check: bool,
                                       expect_budget_details: int | None,
                                       expect_cost_entries: int | None,
-                                      expect_monthly: int | None, project: str) -> int:
+                                      expect_monthly: int | None, project: str,
+                                      backup_root: str | None = None) -> int:
     """Controlled live-DB source-domain projection (Phase 14; first gated live write).
 
     Builds a fresh non-live temp projection, BACKS UP the live DB, then in one transaction replaces only
@@ -970,6 +971,14 @@ def cmd_live_db_source_domain_project(*, source_package: str, work_root: str, co
         )
         if v is not None
     }
+    if backup_root:
+        resolved_backup_root = Path(backup_root)
+    else:
+        # Lazy import keeps this module hb_assistant-free at import time; the durable default
+        # (<app_support>/db/backups) is resolved host-side, never hardcoded in CFR.
+        from hb_assistant.config.path_policy import PathPolicy
+
+        resolved_backup_root = PathPolicy().get_db_backups_dir()
     try:
         # Keep stdout a clean machine-readable JSON channel: workflow chatter -> stderr.
         with contextlib.redirect_stdout(sys.stderr):
@@ -980,7 +989,7 @@ def cmd_live_db_source_domain_project(*, source_package: str, work_root: str, co
                 allow_live_db_write=allow_live_db_write,
                 allow_replace_existing=allow_replace_existing,
                 run_guarded_operator_check=run_guarded_operator_check,
-                expected_counts=expected or None)
+                expected_counts=expected or None, backup_root=resolved_backup_root)
     except LiveDbSourceDomainProjectionError as exc:
         print(json.dumps({"command": "live-db-source-domain-project", "project": project,
                           "status": "refused", "reason": str(exc)}, indent=2))
@@ -1492,7 +1501,10 @@ def build_parser() -> argparse.ArgumentParser:
     lsp.add_argument("--source-package", required=True,
                      help="Explicit Tropical twn_cost_forecast_json_package directory to project.")
     lsp.add_argument("--work-root", required=True,
-                     help="Explicit non-live work root (temp DB + backup + report + sub-runs under it).")
+                     help="Explicit non-live work root (temp DB + report + sub-runs under it).")
+    lsp.add_argument("--backup-root", default=None,
+                     help="Durable backup root for the pre-write live-DB backup; defaults to "
+                          "<app_support>/db/backups via PathPolicy when omitted.")
     lsp.add_argument("--context-stamp", required=True,
                      help="Deterministic context-package stamp for the run.")
     lsp.add_argument("--live-db-path", default=None,
@@ -1925,7 +1937,8 @@ def main(argv=None) -> int:
             run_guarded_operator_check=args.run_guarded_operator_check,
             expect_budget_details=args.expect_budget_details,
             expect_cost_entries=args.expect_cost_entries,
-            expect_monthly=args.expect_monthly, project=args.project)
+            expect_monthly=args.expect_monthly, project=args.project,
+            backup_root=args.backup_root)
     if args.command == "live-db-run-output-project":
         return cmd_live_db_run_output_project(
             analysis_package=args.analysis_package, source_package=args.source_package,

@@ -22,6 +22,11 @@ def test_path_policy_resolves_correctly(path_policy: PathPolicy, tmp_app_support
     assert "hb-personal-assistant" in s["db_path"]
 
 
+def test_db_backups_dir_is_sibling_of_db(path_policy: PathPolicy) -> None:
+    """Durable live-DB backup root sits next to the managed DB under <app_support>/db/backups."""
+    assert path_policy.get_db_backups_dir() == path_policy.get_db_path().parent / "backups"
+
+
 def test_ensure_dirs_creates_with_perms(path_policy: PathPolicy) -> None:
     """ensure_dirs must create auth dir with 0o700 (best effort on macOS)."""
     auth = path_policy.get_auth_dir()
