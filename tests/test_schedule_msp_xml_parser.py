@@ -134,6 +134,27 @@ def test_parse_msp_preserves_critical_and_slack_source_fields() -> None:
     assert missing["explicit_total_float_days"] == "1.0"
 
 
+def test_parse_msp_preserves_baseline_fields() -> None:
+    data = _msp_xml_tasks(
+        """
+    <Task>
+      <UID>1</UID>
+      <ID>10</ID>
+      <Name>Baseline task</Name>
+      <BaselineStart>2026-01-01T08:00:00</BaselineStart>
+      <BaselineFinish>2026-01-05T17:00:00</BaselineFinish>
+      <BaselineDuration>PT40H0M0S</BaselineDuration>
+    </Task>
+"""
+    )
+    bundle = parse_msp_xml_bytes(data)
+    activity = bundle.activities[0]
+
+    assert activity["baseline_start"] == "2026-01-01T08:00:00"
+    assert activity["baseline_finish"] == "2026-01-05T17:00:00"
+    assert activity["baseline_duration"] == "PT40H0M0S"
+
+
 @pytest.mark.manual
 def test_parse_msp_twnu18_when_present() -> None:
     if not MSP_ZIP.is_file():
