@@ -37,14 +37,12 @@ function mockData() {
     if (kind === 'generation' && sub === 'readiness') {
       return {
         data: {
-          surface: 'analytics.forecast_runtime',
-          generator: 'db_config_run',
+          generation_enabled: true,
           ready: true,
-          enabled: true,
-          storage_ready: true,
-          engine_ready: true,
-          config_db_ready: true,
-          reasons: [],
+          disabled_reasons: [],
+          warnings: [],
+          actions: [],
+          guardrails: { read_only: true, no_output_package_generation: true },
         },
         isLoading: false,
         error: null,
@@ -148,12 +146,18 @@ describe('ForecastRunCenterPage', () => {
       if (kind === 'generation' && sub === 'readiness') {
         return {
           data: {
+            generation_enabled: false,
             ready: false,
-            enabled: false,
-            storage_ready: false,
-            engine_ready: true,
-            config_db_ready: false,
-            reasons: ['db_config_run_disabled', 'forecast_runtime_storage_not_configured'],
+            disabled_reasons: [
+              'db_config_run_disabled',
+              'forecast_runtime_storage_not_configured',
+            ],
+            warnings: [],
+            actions: [
+              { code: 'enable_db_config_run', label: 'Enable generation from live configuration' },
+              { code: 'open_storage_settings', label: 'Open storage settings' },
+            ],
+            guardrails: { read_only: true },
           },
           isLoading: false,
           error: null,
@@ -167,12 +171,13 @@ describe('ForecastRunCenterPage', () => {
     const button = screen.getByRole('button', { name: /^Generate$/i })
     expect(button).toBeDisabled()
     expect(screen.getByLabelText('Forecast type')).toBeDisabled()
-    // Actionable, path-free copy is shown BEFORE any click.
+    // Actionable, path-free copy + operator actions are shown BEFORE any click.
     expect(
       screen.getByText("Generating from live configuration isn't enabled in this environment."),
     ).toBeInTheDocument()
     expect(screen.getByText('Forecast storage is not configured yet.')).toBeInTheDocument()
-    expect(screen.getByText('Storage settings')).toBeInTheDocument()
+    expect(screen.getByText('Open storage settings')).toBeInTheDocument()
+    expect(screen.getByText('Enable generation from live configuration')).toBeInTheDocument()
 
     // A disabled control cannot start a run.
     fireEvent.click(button)

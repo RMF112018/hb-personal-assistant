@@ -689,41 +689,135 @@ def _live_config_db_ready() -> bool:
         return False
 
 
+def _cfr_importable() -> bool:
+    """Whether the construction-financial-review source is present (non-mutating; never a path).
+
+    Mirrors ``forecast_run_service._cfr_src`` resolution (env override else the bundled subrepo
+    default) and checks that the package is on disk. We deliberately do NOT call
+    ``_ensure_cfr_importable`` (it mutates ``sys.path``/``PYTHONPATH``) nor ``find_spec`` (CFR is
+    injected lazily at run time, so it would false-negative in a fresh process). A filesystem
+    existence check is the accurate, side-effect-free signal. Returns ``False`` on any error.
+    """
+    try:
+        override = os.environ.get(ENV_CFR_SRC)
+        src = (
+            Path(override)
+            if override
+            else Path(__file__).resolve().parents[4]
+            / "subrepos"
+            / "construction-financial-review"
+            / "src"
+        )
+        return (src / "construction_financial_review" / "__init__.py").exists()
+    except Exception:
+        return False
+
+
+def _config_db_snapshot_count() -> int | None:
+    """Read-only count of live config snapshots (ints only; ``None`` on any error/absent table).
+
+    Opens the live app DB ``mode=ro`` (mirrors ``_db_advisory``) so the readiness read never
+    mutates state. Used only for a non-blocking warning — a missing/old DB simply yields no warning.
+    """
+    try:
+        p = PathPolicy().get_db_path()
+    except Exception:
+        return None
+    if not p.exists():
+        return None
+    try:
+        conn = sqlite3.connect(f"{p.resolve().as_uri()}?mode=ro", uri=True)
+    except sqlite3.Error:
+        return None
+    try:
+        with contextlib.suppress(sqlite3.Error):
+            row = conn.execute("SELECT COUNT(*) FROM forecast_config_snapshots").fetchone()
+            return int(row[0]) if row and row[0] is not None else 0
+        return None
+    finally:
+        conn.close()
+
+
+# Operator next-steps keyed by blocking reason (deduped by code downstream). Path-free: the frontend
+# maps each code to a UI route — the backend never emits routes or filesystem paths.
+_READINESS_ACTIONS: dict[str, dict[str, str]] = {
+    "db_config_run_disabled": {
+        "code": "enable_db_config_run",
+        "label": "Enable generation from live configuration",
+    },
+    "forecast_runtime_storage_not_configured": {
+        "code": "open_storage_settings",
+        "label": "Open storage settings",
+    },
+    "config_db_not_ready": {
+        "code": "open_storage_settings",
+        "label": "Open storage settings",
+    },
+    "cfr_src_not_available": {
+        "code": "check_engine_source",
+        "label": "Forecast engine source is unavailable",
+    },
+}
+
+
+def _readiness_actions(disabled_reasons: list[str]) -> list[dict[str, str]]:
+    """Map blocking reasons to deduped, path-free operator actions (stable order)."""
+    actions: list[dict[str, str]] = []
+    seen: set[str] = set()
+    for reason in disabled_reasons:
+        action = _READINESS_ACTIONS.get(reason)
+        if action and action["code"] not in seen:
+            seen.add(action["code"])
+            actions.append(dict(action))
+    return actions
+
+
 def build_generation_readiness() -> dict[str, Any]:
-    """DB-config-backed generation readiness (booleans + coded reasons; never a path).
+    """DB-config-backed generation readiness (coded fields only; never a path).
 
     Surfaces, before the operator clicks Generate, whether a DB-config run can start and — if not —
-    the coded reasons why. The codes mirror the service's fail-closed blockers so the UI can disable
-    the control and show actionable text instead of catching a raw 503 after the fact.
+    the coded reasons + operator actions. The codes mirror the service's fail-closed blockers so the
+    UI can disable the control and show actionable text instead of catching a raw 503 after the fact.
     """
-    enabled = resolve_db_config_run_enabled()
+    generation_enabled = resolve_db_config_run_enabled()
     data_raw = resolve_data_root()
-    data_blocker = _existing_dir_blocker(data_raw)
-    runs_blocker = _write_root_blocker(resolve_runs_root(), data_raw)
-    cfr_raw = _first(os.environ.get(ENV_CFR_SRC), _load_config().get("cfr_src"))
-    # cfr_src is optional: unset means "use the bundled subrepo default" (valid).
-    cfr_blocker = _existing_dir_blocker(cfr_raw) if cfr_raw else None
+    storage_ok = (
+        _existing_dir_blocker(data_raw) is None
+        and _write_root_blocker(resolve_runs_root(), data_raw) is None
+    )
     config_db_ready = _live_config_db_ready()
+    cfr_ok = _cfr_importable()
 
-    reasons: list[str] = []
-    if not enabled:
-        reasons.append("db_config_run_disabled")
-    if data_blocker is not None or runs_blocker is not None:
-        reasons.append("forecast_runtime_storage_not_configured")
-    if cfr_blocker is not None:
-        reasons.append("cfr_src_not_available")
+    disabled_reasons: list[str] = []
+    if not generation_enabled:
+        disabled_reasons.append("db_config_run_disabled")
+    if not storage_ok:
+        disabled_reasons.append("forecast_runtime_storage_not_configured")
     if not config_db_ready:
-        reasons.append("config_db_not_ready")
+        disabled_reasons.append("config_db_not_ready")
+    if not cfr_ok:
+        disabled_reasons.append("cfr_src_not_available")
+
+    # Non-blocking advisory: enabled + fully configured, but no config snapshots to generate from.
+    warnings: list[str] = []
+    if not disabled_reasons and _config_db_snapshot_count() == 0:
+        warnings.append("config_db_has_no_snapshots")
 
     return {
-        "surface": _SURFACE,
-        "generator": "db_config_run",
-        "ready": not reasons,
-        "enabled": enabled,
-        "storage_ready": data_blocker is None and runs_blocker is None,
-        "engine_ready": cfr_blocker is None,
-        "config_db_ready": config_db_ready,
-        "reasons": reasons,
+        "generation_enabled": generation_enabled,
+        "ready": not disabled_reasons,
+        "disabled_reasons": disabled_reasons,
+        "warnings": warnings,
+        "actions": _readiness_actions(disabled_reasons),
+        "guardrails": {
+            "read_only": True,
+            "no_live_db_write": True,
+            "no_live_data_root_write": True,
+            "no_output_package_generation": True,
+            "no_live_endpoint_calls": True,
+            "local_first": True,
+            "no_path_strings": True,
+        },
     }
 
 

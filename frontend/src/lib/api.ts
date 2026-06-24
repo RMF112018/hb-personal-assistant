@@ -1075,16 +1075,18 @@ export function getForecastDbConfigRuns() {
 }
 /* DB-config-backed generation readiness (viewer-readable, redaction-safe). Lets the UI disable the
  * Generate control BEFORE click and explain why, instead of surfacing a raw 503 after the POST.
- * Returns booleans + coded reasons only — never a path. */
+ * Returns coded fields only — never a path. The frontend maps each action code to a UI route. */
+export interface ReadinessAction {
+  code: string;
+  label: string;
+}
 export interface ForecastGenerationReadiness {
-  surface: string;
-  generator: string;
+  generation_enabled: boolean;
   ready: boolean;
-  enabled: boolean;
-  storage_ready: boolean;
-  engine_ready: boolean;
-  config_db_ready: boolean;
-  reasons: string[];
+  disabled_reasons: string[];
+  warnings: string[];
+  actions: ReadinessAction[];
+  guardrails: Record<string, boolean>;
 }
 export function getForecastGenerationReadiness() {
   return fetchJson<ForecastGenerationReadiness>('/api/forecast/generation/readiness');

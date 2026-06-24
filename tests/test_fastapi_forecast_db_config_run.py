@@ -21,6 +21,7 @@ from hb_assistant.config.path_policy import PathPolicy  # noqa: E402
 from hb_assistant.construction.analytics import create_app  # noqa: E402
 from hb_assistant.construction.analytics.forecast_dto import find_redaction_leaks  # noqa: E402
 from hb_assistant.construction.analytics.forecast_run_service import (  # noqa: E402
+    ENV_CFR_SRC,
     ENV_DATA_ROOT,
     ENV_RUNS_ROOT,
 )
@@ -214,16 +215,31 @@ def test_workflow_refusal_recorded_as_failed_run(tmp_path: Path, monkeypatch: py
 # -- generation readiness (GET /api/forecast/generation/readiness) ------------
 
 
+def _action_codes(body: dict) -> set[str]:
+    return {a["code"] for a in body["actions"]}
+
+
 def test_generation_readiness_ready(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     client = _configured_client(tmp_path, monkeypatch)  # configured + enabled + live DB present
     resp = client.get("/api/forecast/generation/readiness", headers=_viewer())
     assert resp.status_code == 200
     body = resp.json()
+    assert body["generation_enabled"] is True
     assert body["ready"] is True
-    assert body["enabled"] is True
-    assert body["storage_ready"] is True
-    assert body["config_db_ready"] is True
-    assert body["reasons"] == []
+    assert body["disabled_reasons"] == []
+    assert isinstance(body["warnings"], list)
+    assert body["actions"] == []
+    assert body["guardrails"]["read_only"] is True
+    assert body["guardrails"]["no_output_package_generation"] is True
+    # Only the coded contract fields are present.
+    assert set(body) == {
+        "generation_enabled",
+        "ready",
+        "disabled_reasons",
+        "warnings",
+        "actions",
+        "guardrails",
+    }
     assert find_redaction_leaks(body) == []
 
 
@@ -238,8 +254,9 @@ def test_generation_readiness_disabled(tmp_path: Path, monkeypatch: pytest.Monke
     client = _configured_client(tmp_path, monkeypatch, enabled=False)
     body = client.get("/api/forecast/generation/readiness", headers=_viewer()).json()
     assert body["ready"] is False
-    assert body["enabled"] is False
-    assert "db_config_run_disabled" in body["reasons"]
+    assert body["generation_enabled"] is False
+    assert "db_config_run_disabled" in body["disabled_reasons"]
+    assert "enable_db_config_run" in _action_codes(body)
     assert find_redaction_leaks(body) == []
 
 
@@ -253,9 +270,9 @@ def test_generation_readiness_storage_not_configured(
     client = TestClient(create_app(db_path=str(PathPolicy().get_db_path())))
     body = client.get("/api/forecast/generation/readiness", headers=_viewer()).json()
     assert body["ready"] is False
-    assert body["storage_ready"] is False
-    assert "forecast_runtime_storage_not_configured" in body["reasons"]
-    assert "db_config_run_disabled" not in body["reasons"]
+    assert "forecast_runtime_storage_not_configured" in body["disabled_reasons"]
+    assert "db_config_run_disabled" not in body["disabled_reasons"]
+    assert "open_storage_settings" in _action_codes(body)
     assert find_redaction_leaks(body) == []
 
 
@@ -271,6 +288,18 @@ def test_generation_readiness_config_db_not_ready(
     client = TestClient(create_app(db_path=str(tmp_path / "x.sqlite")))
     body = client.get("/api/forecast/generation/readiness", headers=_viewer()).json()
     assert body["ready"] is False
-    assert body["config_db_ready"] is False
-    assert "config_db_not_ready" in body["reasons"]
+    assert "config_db_not_ready" in body["disabled_reasons"]
+    assert find_redaction_leaks(body) == []
+
+
+def test_generation_readiness_cfr_not_available(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Point the CFR source at a non-existent dir → engine source is unavailable.
+    monkeypatch.setenv(ENV_CFR_SRC, str(tmp_path / "no-such-cfr-src"))
+    client = _configured_client(tmp_path, monkeypatch)  # otherwise fully configured + enabled
+    body = client.get("/api/forecast/generation/readiness", headers=_viewer()).json()
+    assert body["ready"] is False
+    assert "cfr_src_not_available" in body["disabled_reasons"]
+    assert "check_engine_source" in _action_codes(body)
     assert find_redaction_leaks(body) == []
