@@ -18,7 +18,7 @@
     "phase_owner",
     "blocking_for_phase"
   ],
-  "table_count": 436,
+  "table_count": 437,
   "tables": {
     "construction_data_quality_runs": {
       "table_family": "data_quality_v20v21",
@@ -3934,6 +3934,15 @@
       "blocking_for_phase": "none",
       "v": "V72",
       "notes": "Per-run, per-method calibration provenance from the backtest; calibration_source distinguishes backtested from non-backtested methods."
+    },
+    "forecast_generation_requests": {
+      "table_family": "forecast_generation_request_v73",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "forecast_generation_request",
+      "blocking_for_phase": "none",
+      "v": "V73",
+      "notes": "Durable Generate-Forecast request contract (Phase P-C); one row per generation attempt (project/dates/mode/kind/readiness/validation/run linkage); empty at introduction, populated at runtime by the generation routes writing the app-managed DB."
     }
   }
 }

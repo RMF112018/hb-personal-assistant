@@ -32,9 +32,15 @@ const GENERATOR_KINDS: { value: ForecastGeneratorKind; label: string }[] = [
 ]
 
 function runStatusPill(status: string | undefined): string {
-  if (status === 'succeeded' || status === 'generated') return 'validated'
-  if (status === 'failed') return 'invalid'
+  if (status === 'succeeded' || status === 'generated' || status === 'completed') return 'validated'
+  if (status === 'failed' || status === 'rejected') return 'invalid'
   return 'attention'
+}
+
+// Client-side date order check (the <input type="date"> already enforces ISO YYYY-MM-DD format).
+function dateOrderError(start: string, cutoff: string): string | null {
+  if (start && cutoff && start > cutoff) return 'Start date must be on or before the cut-off date.'
+  return null
 }
 
 // Coded readiness reasons → actionable, path-free copy. Mirrors the backend reason codes from
@@ -96,6 +102,12 @@ export function ForecastRunCenterPage() {
   const [dbDisabled, setDbDisabled] = useState(false)
   const [genKind, setGenKind] = useState<ForecastGeneratorKind>('comprehensive')
 
+  // P-C: operator-supplied forecast window (optional). Schedule-derived cut-off defaulting is P-D.
+  const [forecastStartDate, setForecastStartDate] = useState('')
+  const [forecastCutoffDate, setForecastCutoffDate] = useState('')
+  const [dateError, setDateError] = useState<string | null>(null)
+  const [lastRequestId, setLastRequestId] = useState<string | null>(null)
+
   const [selected, setSelected] = useState<Selected | undefined>(undefined)
 
   // P-B: project selector driven by the generation-ready read model (procore identity + committed
@@ -111,6 +123,14 @@ export function ForecastRunCenterPage() {
   // Browse panels may default to the first available project (never a hardcoded 'tropical').
   const browseProject = projectKey ?? projects[0]?.project_key
 
+  // P-C: durable request history for the selected project.
+  const { data: requestsResp, refetch: refetchRequests } = useQuery({
+    queryKey: ['forecast', 'generation', 'requests', projectKey],
+    queryFn: () => api.getForecastGenerationRequests(projectKey),
+    enabled: Boolean(projectKey),
+  })
+  const recentRequests = requestsResp?.requests ?? []
+
   const { data: detailResp } = useQuery({
     queryKey: ['forecast', 'run-detail', selected?.source, selected?.id],
     queryFn: () =>
@@ -121,12 +141,26 @@ export function ForecastRunCenterPage() {
   })
 
   async function onGenerate() {
+    if (!projectKey) return
+    const orderErr = dateOrderError(forecastStartDate, forecastCutoffDate)
+    if (orderErr) {
+      setDateError(orderErr)
+      return
+    }
+    setDateError(null)
     setGenerating(true)
     setGenError(null)
     setGenUnconfigured(false)
+    setLastRequestId(null)
     try {
-      await api.startForecastRun()
+      const resp = await api.startForecastRun({
+        project_key: projectKey,
+        forecast_start_date: forecastStartDate || null,
+        forecast_cutoff_date: forecastCutoffDate || null,
+      })
+      setLastRequestId((resp as { request_id?: string })?.request_id ?? null)
       await refetch()
+      await refetchRequests()
     } catch (e: unknown) {
       const status = (e as { status?: number })?.status
       setGenUnconfigured(status === 503)
@@ -141,12 +175,27 @@ export function ForecastRunCenterPage() {
   }
 
   async function onGenerateDbConfig() {
+    if (!projectKey) return
+    const orderErr = dateOrderError(forecastStartDate, forecastCutoffDate)
+    if (orderErr) {
+      setDateError(orderErr)
+      return
+    }
+    setDateError(null)
     setGenDb(true)
     setDbError(null)
     setDbDisabled(false)
+    setLastRequestId(null)
     try {
-      await api.startForecastDbConfigRun(genKind, projectKey)
+      const resp = await api.startForecastDbConfigRun({
+        project_key: projectKey,
+        generator_kind: genKind,
+        forecast_start_date: forecastStartDate || null,
+        forecast_cutoff_date: forecastCutoffDate || null,
+      })
+      setLastRequestId((resp as { request_id?: string })?.request_id ?? null)
       await refetchDb()
+      await refetchRequests()
     } catch (e: unknown) {
       const status = (e as { status?: number })?.status
       setDbDisabled(status === 503)
@@ -222,6 +271,38 @@ export function ForecastRunCenterPage() {
             ))}
           </div>
         )}
+        <div className="flex flex-wrap items-center gap-4 mt-3">
+          <label className="text-sm text-[var(--hb-muted)] flex items-center gap-2">
+            Forecast start date
+            <input
+              type="date"
+              aria-label="Forecast start date"
+              value={forecastStartDate}
+              onChange={(e) => setForecastStartDate(e.target.value)}
+              className="rounded border border-[var(--hb-border)] bg-[var(--hb-bg)] px-2 py-1 text-sm"
+            />
+          </label>
+          <label className="text-sm text-[var(--hb-muted)] flex items-center gap-2">
+            Forecast cut-off date
+            <input
+              type="date"
+              aria-label="Forecast cut-off date"
+              value={forecastCutoffDate}
+              onChange={(e) => setForecastCutoffDate(e.target.value)}
+              className="rounded border border-[var(--hb-border)] bg-[var(--hb-bg)] px-2 py-1 text-sm"
+            />
+          </label>
+        </div>
+        {dateError && (
+          <p className="text-sm text-rose-300 mt-2" role="status">
+            {dateError}
+          </p>
+        )}
+        {lastRequestId && (
+          <p className="text-sm text-emerald-300 mt-2" role="status">
+            Generation request submitted (tracking id {lastRequestId}).
+          </p>
+        )}
       </section>
 
       <section className="forecast-panel">
@@ -229,7 +310,10 @@ export function ForecastRunCenterPage() {
           title="Generate forecast"
           subtitle="Creates an isolated forecast package using current local storage and configuration. Procore and live project data are never modified."
           actions={
-            <ForecastActionButton onClick={onGenerate} disabled={generating}>
+            <ForecastActionButton
+              onClick={onGenerate}
+              disabled={generating || !projectKey || selectedBlocked}
+            >
               {generating ? 'Generating…' : 'Generate forecast'}
             </ForecastActionButton>
           }
@@ -334,7 +418,10 @@ export function ForecastRunCenterPage() {
             title="No forecast runs yet"
             hint="Generate your first forecast to see it here. Output stays in local workspaces only."
             actions={
-              <ForecastActionButton onClick={onGenerate} disabled={generating}>
+              <ForecastActionButton
+                onClick={onGenerate}
+                disabled={generating || !projectKey || selectedBlocked}
+              >
                 Generate first forecast
               </ForecastActionButton>
             }
@@ -414,6 +501,39 @@ export function ForecastRunCenterPage() {
           <div className="mt-2">
             <ForecastQuickLink to="/forecasting">Review packages on overview</ForecastQuickLink>
           </div>
+        </section>
+      )}
+
+      {projectKey && recentRequests.length > 0 && (
+        <section className="forecast-panel">
+          <h2 className="forecast-section-label">Recent generation requests</h2>
+          <ForecastTable
+            headers={
+              <>
+                <ForecastTh>Mode</ForecastTh>
+                <ForecastTh>Type</ForecastTh>
+                <ForecastTh>Window</ForecastTh>
+                <ForecastTh>Status</ForecastTh>
+                <ForecastTh>Requested</ForecastTh>
+              </>
+            }
+          >
+            {recentRequests.map((r) => (
+              <tr key={r.request_id}>
+                <ForecastTd className="text-[var(--hb-muted)]">
+                  {r.generation_mode === 'db_config' ? 'Live configuration' : 'File configuration'}
+                </ForecastTd>
+                <ForecastTd className="text-[var(--hb-muted)]">{r.generator_kind || '—'}</ForecastTd>
+                <ForecastTd className="text-[var(--hb-muted)]">
+                  {r.forecast_start_date || '—'} → {r.forecast_cutoff_date || '—'}
+                </ForecastTd>
+                <ForecastTd>
+                  <ForecastStatusPill status={runStatusPill(r.request_status)} />
+                </ForecastTd>
+                <ForecastTd className="text-[var(--hb-muted)]">{r.created_utc || '—'}</ForecastTd>
+              </tr>
+            ))}
+          </ForecastTable>
         </section>
       )}
 

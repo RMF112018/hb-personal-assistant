@@ -23,6 +23,8 @@ from hb_assistant.construction.analytics.forecast_run_service import (  # noqa: 
     ENV_DATA_ROOT,
     ENV_RUNS_ROOT,
 )
+from hb_assistant.store.migrator import SQLiteMigrator  # noqa: E402
+from tests.schedule_project_test_helpers import seed_procore_ep_project  # noqa: E402
 
 
 def _fake_report(**kwargs):
@@ -74,7 +76,11 @@ def _configured_client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestC
     monkeypatch.setenv(ENV_DATA_ROOT, str(data))
     monkeypatch.setenv(ENV_RUNS_ROOT, str(tmp_path / "runs"))
     _install_fake_workflow(monkeypatch)
-    return TestClient(create_app(db_path=str(tmp_path / "x.sqlite")))
+    # P-C: migrate + seed the app DB so request persistence + the project resolver work.
+    db = tmp_path / "x.sqlite"
+    SQLiteMigrator(db_path=str(db)).apply()
+    seed_procore_ep_project(db, project_key="tropical", display_name="Tropical Resort")
+    return TestClient(create_app(db_path=str(db)))
 
 
 def _op() -> dict[str, str]:
@@ -87,7 +93,7 @@ def _viewer() -> dict[str, str]:
 
 def test_create_list_read_run_flow(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     client = _configured_client(tmp_path, monkeypatch)
-    created = client.post("/api/forecast/runs", headers=_op())
+    created = client.post("/api/forecast/runs", headers=_op(), json={"project_key": "tropical"})
     assert created.status_code == 200
     body = created.json()
     assert body["status"] == "succeeded"
@@ -113,8 +119,11 @@ def test_post_requires_operator(tmp_path: Path, monkeypatch: pytest.MonkeyPatch)
 def test_not_configured_fails_closed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv(ENV_DATA_ROOT, raising=False)
     monkeypatch.delenv(ENV_RUNS_ROOT, raising=False)
-    client = TestClient(create_app(db_path=str(tmp_path / "x.sqlite")))
-    resp = client.post("/api/forecast/runs", headers=_op())
+    db = tmp_path / "x.sqlite"
+    SQLiteMigrator(db_path=str(db)).apply()
+    seed_procore_ep_project(db, project_key="tropical", display_name="Tropical Resort")
+    client = TestClient(create_app(db_path=str(db)))
+    resp = client.post("/api/forecast/runs", headers=_op(), json={"project_key": "tropical"})
     assert resp.status_code == 503
     assert resp.json()["detail"] == "forecast_runs_not_configured"
 

@@ -28,6 +28,8 @@ from hb_assistant.construction.analytics.forecast_run_service import (  # noqa: 
 from hb_assistant.construction.analytics.forecast_runtime_config import (  # noqa: E402
     ENV_DB_CONFIG_RUN_ENABLED,
 )
+from hb_assistant.store.migrator import SQLiteMigrator  # noqa: E402
+from tests.schedule_project_test_helpers import seed_procore_ep_project  # noqa: E402
 
 
 def _fake_report(**kwargs):
@@ -77,9 +79,12 @@ def _install_fake_workflow(monkeypatch: pytest.MonkeyPatch, *, report_fn=_fake_r
 
 
 def _make_live_db() -> None:
+    # P-C: the app DB is now migrated + seeded with the supported project so request persistence
+    # and the project resolver work (project_key is required; no silent tropical default).
     db = Path(PathPolicy().get_db_path())
     db.parent.mkdir(parents=True, exist_ok=True)
-    db.write_bytes(b"")  # only existence is required (the fake workflow does not read it)
+    SQLiteMigrator(db_path=str(db)).apply()
+    seed_procore_ep_project(db, project_key="tropical", display_name="Tropical Resort")
 
 
 def _configured_client(
@@ -108,7 +113,9 @@ def _viewer() -> dict[str, str]:
 
 def test_create_list_read_flow(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     client = _configured_client(tmp_path, monkeypatch)
-    created = client.post("/api/forecast/runs/db-config", headers=_op())
+    created = client.post(
+        "/api/forecast/runs/db-config", headers=_op(), json={"project_key": "tropical"}
+    )
     assert created.status_code == 200
     body = created.json()
     assert body["status"] == "generated"
@@ -138,7 +145,9 @@ def test_post_requires_operator(tmp_path: Path, monkeypatch: pytest.MonkeyPatch)
 
 def test_disabled_fails_closed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     client = _configured_client(tmp_path, monkeypatch, enabled=False)
-    resp = client.post("/api/forecast/runs/db-config", headers=_op())
+    resp = client.post(
+        "/api/forecast/runs/db-config", headers=_op(), json={"project_key": "tropical"}
+    )
     assert resp.status_code == 503
     assert resp.json()["detail"] == "forecast_db_config_run_disabled"
 
@@ -147,8 +156,14 @@ def test_not_configured_fails_closed(tmp_path: Path, monkeypatch: pytest.MonkeyP
     monkeypatch.delenv(ENV_DATA_ROOT, raising=False)
     monkeypatch.delenv(ENV_RUNS_ROOT, raising=False)
     monkeypatch.setenv(ENV_DB_CONFIG_RUN_ENABLED, "1")
-    client = TestClient(create_app(db_path=str(tmp_path / "x.sqlite")))
-    resp = client.post("/api/forecast/runs/db-config", headers=_op())
+    # App DB migrated + seeded so the request contract is valid; data root unset → service fails closed.
+    db = tmp_path / "x.sqlite"
+    SQLiteMigrator(db_path=str(db)).apply()
+    seed_procore_ep_project(db, project_key="tropical", display_name="Tropical Resort")
+    client = TestClient(create_app(db_path=str(db)))
+    resp = client.post(
+        "/api/forecast/runs/db-config", headers=_op(), json={"project_key": "tropical"}
+    )
     assert resp.status_code == 503
     assert resp.json()["detail"] == "forecast_db_config_run_not_configured"
 
@@ -162,7 +177,9 @@ def test_unknown_run_404(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Non
 
 def test_default_post_is_comprehensive(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     client = _configured_client(tmp_path, monkeypatch)
-    body = client.post("/api/forecast/runs/db-config", headers=_op()).json()
+    body = client.post(
+        "/api/forecast/runs/db-config", headers=_op(), json={"project_key": "tropical"}
+    ).json()
     assert body["kind"] == "comprehensive"
     assert body["display_label"].startswith("Comprehensive forecast from live config")
     assert find_redaction_leaks(body) == []
@@ -171,7 +188,9 @@ def test_default_post_is_comprehensive(tmp_path: Path, monkeypatch: pytest.Monke
 def test_post_generator_kind_threads_through(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     client = _configured_client(tmp_path, monkeypatch)
     created = client.post(
-        "/api/forecast/runs/db-config", headers=_op(), json={"generator_kind": "monthly"}
+        "/api/forecast/runs/db-config",
+        headers=_op(),
+        json={"generator_kind": "monthly", "project_key": "tropical"},
     )
     assert created.status_code == 200
     body = created.json()
@@ -192,8 +211,8 @@ def test_post_generator_kind_threads_through(tmp_path: Path, monkeypatch: pytest
 def test_post_accepts_optional_project_key(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    # P-B: the body may carry project_key (threaded to the service, which validates it). The supported
-    # project still succeeds; an absent project_key remains back-compat (defaults in the service).
+    # P-C: project_key is required and threaded to the service (which validates it). The supported
+    # project resolves + succeeds.
     client = _configured_client(tmp_path, monkeypatch)
     resp = client.post(
         "/api/forecast/runs/db-config",
@@ -208,10 +227,12 @@ def test_post_accepts_optional_project_key(
 def test_post_invalid_kind_400(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     client = _configured_client(tmp_path, monkeypatch)
     resp = client.post(
-        "/api/forecast/runs/db-config", headers=_op(), json={"generator_kind": "bogus"}
+        "/api/forecast/runs/db-config",
+        headers=_op(),
+        json={"generator_kind": "bogus", "project_key": "tropical"},
     )
     assert resp.status_code == 400
-    assert resp.json()["detail"] == "forecast_db_config_run_bad_kind"
+    assert resp.json()["detail"] == "invalid_generator_kind"
 
 
 def test_workflow_refusal_recorded_as_failed_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -219,7 +240,9 @@ def test_workflow_refusal_recorded_as_failed_run(tmp_path: Path, monkeypatch: py
         raise _FakeError("cost_frequency_package_missing: forecast_cost_frequency package missing")
 
     client = _configured_client(tmp_path, monkeypatch, report_fn=_refuse)
-    resp = client.post("/api/forecast/runs/db-config", headers=_op())
+    resp = client.post(
+        "/api/forecast/runs/db-config", headers=_op(), json={"project_key": "tropical"}
+    )
     assert resp.status_code == 200  # a controlled refusal is a failed RUN, not an HTTP error
     body = resp.json()
     assert body["status"] == "failed"
