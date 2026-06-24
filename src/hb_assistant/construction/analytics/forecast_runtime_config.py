@@ -59,6 +59,12 @@ ENV_PROMOTION_ENABLED = "HB_FORECAST_PROMOTION_ENABLED"
 # Run Center may generate the comprehensive package CONSUMING the live DB config snapshot.
 ENV_DB_CONFIG_RUN_ENABLED = "HB_FORECAST_DB_CONFIG_RUN_ENABLED"
 
+# Run-output DB-write opt-in (Phase P-E, default OFF). A boolean flag (NOT a path root) gating whether
+# Generate Forecast performs the GATED authorized live-DB run-output projection (backup → temp project
+# → replace → certify) that lands forecast_outputs + child rows. Default OFF keeps generation
+# fail-closed toward the live DB; only an explicit opt-in authorizes the write.
+ENV_RUN_OUTPUT_DB_WRITE_ENABLED = "HB_FORECAST_RUN_OUTPUT_DB_WRITE_ENABLED"
+
 # Assumption-consumption opt-in (default OFF). A boolean flag (NOT a path root) gating whether the
 # decision-support engine CONSUMES operator/required assumptions (confidence modifiers + required gate).
 ENV_ASSUMPTION_CONSUMPTION_ENABLED = "HB_FORECAST_ASSUMPTION_CONSUMPTION_ENABLED"
@@ -356,6 +362,16 @@ def resolve_db_config_run_enabled(explicit: bool | str | None = None) -> bool:
     if env is not None:
         return env.strip().lower() in _TRUTHY
     return bool(_load_config().get("db_config_run_enabled"))
+
+
+def resolve_run_output_db_write_enabled(explicit: bool | str | None = None) -> bool:
+    """Resolve the P-E run-output DB-write opt-in (explicit > env > settings-file > default False)."""
+    if explicit is not None:
+        return explicit is True or str(explicit).strip().lower() in _TRUTHY
+    env = os.environ.get(ENV_RUN_OUTPUT_DB_WRITE_ENABLED)
+    if env is not None:
+        return env.strip().lower() in _TRUTHY
+    return bool(_load_config().get("run_output_db_write_enabled"))
 
 
 def resolve_assumption_consumption_enabled(explicit: bool | str | None = None) -> bool:
