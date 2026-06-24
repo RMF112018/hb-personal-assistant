@@ -284,7 +284,8 @@ class ScheduleActivityRepository:
                        float_source, source_critical_flag, source_driving_path_flag,
                        source_longest_path_flag, critical_path_source,
                        cost_code, percent_complete, physical_percent_complete,
-                       duration_percent_complete, cost_loaded_amount, cost_loaded_source_type
+                       duration_percent_complete, cost_loaded_amount, cost_loaded_source_type,
+                       raw_source_fields_json
                 FROM procore_ep_schedule_activities
                 WHERE schedule_version_key=?
                 ORDER BY activity_id

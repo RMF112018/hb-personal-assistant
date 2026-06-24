@@ -44,6 +44,19 @@ def _lag_context(relationships: list[dict[str, object]]) -> EvaluationContext:
     )
 
 
+def _msp_context(activities: list[dict[str, object]]) -> EvaluationContext:
+    return EvaluationContext(
+        project_key="tropical",
+        schedule_version_key="tropical|1|2026-01-01",
+        schedule_table_id=None,
+        import_id="imp-msp",
+        evaluation_run_id="sq-msp-source",
+        assessment_profile=get_profile(),
+        activities=activities,
+        import_meta={"source_format": "ms_project_xml"},
+    )
+
+
 def test_dcma_lag_metric_normalizes_source_units_before_thresholding() -> None:
     engine = ScheduleQualityAssessmentEngine()
     ctx = _lag_context(
@@ -176,6 +189,52 @@ def test_dcma_lead_metric_counts_negative_normalized_lags_only() -> None:
     assert evidence["min_negative_lag_days"] == "-2"
     assert evidence["max_positive_lag_days"] == "6"
     assert evidence["skipped_unparseable_count"] == 1
+
+
+def test_msp_source_export_metric_and_dcma_separation() -> None:
+    engine = ScheduleQualityAssessmentEngine()
+    ctx = _msp_context(
+        [
+            {
+                "activity_id": "C0",
+                "source_critical_flag": 1,
+                "source_critical_flag_present": True,
+                "explicit_total_float_days": "0.0",
+            },
+            {
+                "activity_id": "CP",
+                "source_critical_flag": 1,
+                "source_critical_flag_present": True,
+                "explicit_total_float_days": "2.0",
+            },
+            {
+                "activity_id": "FP",
+                "source_critical_flag": 0,
+                "source_critical_flag_present": True,
+                "explicit_total_float_days": "1.0",
+            },
+        ]
+    )
+
+    dcma, _ = engine._metric_critical_path_test(
+        ctx, "dcma_critical_path_test", DCMA_METRIC_SPECS["dcma_critical_path_test"]
+    )
+    assert dcma["status"] == METRIC_STATUS_NOT_MEASURABLE_RECALC
+
+    metrics = engine._evaluate_source_export_metrics(ctx)
+    assert len(metrics) == 1
+    metric = metrics[0]
+    evidence = json.loads(metric["evidence_json"])
+    assert metric["metric_code"] == "source_msp_critical_slack_available"
+    assert metric["metric_family"] == "source_export"
+    assert metric["status"] == "measured_from_msp_critical_flag"
+    assert metric["numerator"] == "2"
+    assert metric["denominator"] == "3"
+    assert metric["value"] == "0.6667"
+    assert evidence["consistent_critical_slack_count"] == 2
+    assert evidence["inconsistent_critical_slack_count"] == 1
+    assert evidence["not_a_dcma_critical_path_test"] is True
+    assert evidence["cpm_recalculation_performed"] is False
 
 
 def test_dcma_baseline_metrics_not_measurable(tmp_path: Path) -> None:

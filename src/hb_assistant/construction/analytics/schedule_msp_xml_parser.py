@@ -90,6 +90,7 @@ def parse_msp_xml_bytes(data: bytes) -> ParsedScheduleBundle:
             free_slack = _float_or_none(_text(task.find(f"{{{MSP_NS}}}FreeSlack")))
             critical_raw = _text(task.find(f"{{{MSP_NS}}}Critical"))
             critical = critical_raw == "1"
+            critical_present = critical_raw is not None
             baseline_start = _text(task.find(f"{{{MSP_NS}}}BaselineStart"))
             baseline_finish = _text(task.find(f"{{{MSP_NS}}}BaselineFinish"))
             baseline_dur = _text(task.find(f"{{{MSP_NS}}}BaselineDuration"))
@@ -117,6 +118,8 @@ def parse_msp_xml_bytes(data: bytes) -> ParsedScheduleBundle:
                 "explicit_free_float_hours": str(free_slack / 60.0) if free_slack is not None else None,
                 "explicit_free_float_days": _minutes_to_days(free_slack),
                 "source_critical_flag": 1 if critical else 0,
+                "source_critical_flag_present": critical_present,
+                "source_critical_raw": critical_raw,
                 "is_critical": critical,
                 "calendar_id": _text(task.find(f"{{{MSP_NS}}}CalendarUID")),
                 "percent_complete": _text(task.find(f"{{{MSP_NS}}}PercentComplete")),

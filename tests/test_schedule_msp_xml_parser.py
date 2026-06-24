@@ -23,6 +23,18 @@ MSP_ZIP = Path(
 P6_FIXTURE = Path(__file__).parent / "fixtures" / "schedules" / "xml" / "minimal_schedule.xml"
 
 
+def _msp_xml_tasks(tasks: str) -> bytes:
+    return f"""<?xml version="1.0" encoding="UTF-8"?>
+<Project xmlns="http://schemas.microsoft.com/project/2007">
+  <Name>MSP Source Fields Test</Name>
+  <UID>msp-source-fields-test</UID>
+  <Tasks>
+{tasks}
+  </Tasks>
+</Project>
+""".encode()
+
+
 def test_sniff_msp_namespace() -> None:
     if not MSP_ZIP.is_file():
         pytest.skip("MSP fixture zip not available")
@@ -38,11 +50,8 @@ def test_sniff_p6_xml_defaults_to_pmxml() -> None:
 
 
 def test_parse_msp_relationship_preserves_link_lag_minute_tenths() -> None:
-    data = b"""<?xml version="1.0" encoding="UTF-8"?>
-<Project xmlns="http://schemas.microsoft.com/project/2007">
-  <Name>Lag Unit Test</Name>
-  <UID>msp-lag-test</UID>
-  <Tasks>
+    data = _msp_xml_tasks(
+        """
     <Task>
       <UID>1</UID>
       <ID>10</ID>
@@ -58,9 +67,8 @@ def test_parse_msp_relationship_preserves_link_lag_minute_tenths() -> None:
         <LinkLag>4800</LinkLag>
       </PredecessorLink>
     </Task>
-  </Tasks>
-</Project>
 """
+    )
     bundle = parse_msp_xml_bytes(data)
     assert len(bundle.relationships) == 1
     rel = bundle.relationships[0]
@@ -69,6 +77,61 @@ def test_parse_msp_relationship_preserves_link_lag_minute_tenths() -> None:
     assert rel["relationship_type"] == "FS"
     assert rel["lag_value"] == "4800"
     assert rel["lag_unit"] == "minute_tenth"
+
+
+def test_parse_msp_preserves_critical_and_slack_source_fields() -> None:
+    data = _msp_xml_tasks(
+        """
+    <Task>
+      <UID>1</UID>
+      <ID>10</ID>
+      <Name>Critical zero slack</Name>
+      <Critical>1</Critical>
+      <TotalSlack>0</TotalSlack>
+      <FreeSlack>0</FreeSlack>
+    </Task>
+    <Task>
+      <UID>2</UID>
+      <ID>20</ID>
+      <Name>Noncritical positive slack</Name>
+      <Critical>0</Critical>
+      <TotalSlack>960</TotalSlack>
+      <FreeSlack>480</FreeSlack>
+    </Task>
+    <Task>
+      <UID>3</UID>
+      <ID>30</ID>
+      <Name>Missing critical</Name>
+      <TotalSlack>480</TotalSlack>
+    </Task>
+"""
+    )
+    bundle = parse_msp_xml_bytes(data)
+    by_id = {activity["activity_id"]: activity for activity in bundle.activities}
+
+    critical = by_id["10"]
+    assert critical["source_critical_flag"] == 1
+    assert critical["source_critical_flag_present"] is True
+    assert critical["source_critical_raw"] == "1"
+    assert critical["explicit_total_float_hours"] == "0.0"
+    assert critical["explicit_total_float_days"] == "0.0"
+    assert critical["explicit_free_float_hours"] == "0.0"
+    assert critical["explicit_free_float_days"] == "0.0"
+
+    noncritical = by_id["20"]
+    assert noncritical["source_critical_flag"] == 0
+    assert noncritical["source_critical_flag_present"] is True
+    assert noncritical["source_critical_raw"] == "0"
+    assert noncritical["explicit_total_float_hours"] == "16.0"
+    assert noncritical["explicit_total_float_days"] == "2.0"
+    assert noncritical["explicit_free_float_hours"] == "8.0"
+    assert noncritical["explicit_free_float_days"] == "1.0"
+
+    missing = by_id["30"]
+    assert missing["source_critical_flag"] == 0
+    assert missing["source_critical_flag_present"] is False
+    assert missing["source_critical_raw"] is None
+    assert missing["explicit_total_float_days"] == "1.0"
 
 
 @pytest.mark.manual

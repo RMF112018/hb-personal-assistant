@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 from typing import Any
 
+from .schedule_quality_normalization import is_logic_excluded_activity
+
 SOURCE_CRITICAL_BASIS_XER_DRIVING = "xer_driving_path_flag"
 SOURCE_CRITICAL_BASIS_XER_TOTFLOAT = "xer_total_float_threshold"
 SOURCE_CRITICAL_BASIS_MSP = "msp_critical_flag"
@@ -18,6 +20,8 @@ METRIC_STATUS_AVAILABLE_XER_DRIVING = "available_xer_driving_path"
 METRIC_STATUS_AVAILABLE_XER_TOTFLOAT = "available_xer_total_float_threshold"
 METRIC_STATUS_PARTIAL_XER_FLOAT = "partial_xer_float_coverage"
 METRIC_STATUS_MISSING_SOURCE_CRITICAL = "missing_source_critical_data"
+MSP_SLACK_ZERO_TOLERANCE_DAYS = 0.0001
+MAX_SOURCE_EXPORT_SAMPLES = 10
 
 
 def _truthy_flag(value: Any) -> bool:
@@ -33,6 +37,194 @@ def _float_or_none(value: Any) -> float | None:
         return float(value)
     except (TypeError, ValueError):
         return None
+
+
+def _raw_source_fields(activity: dict[str, Any]) -> dict[str, Any]:
+    for key in ("raw_source_fields_json", "raw_json_redacted"):
+        raw = activity.get(key)
+        if not raw:
+            continue
+        try:
+            parsed = json.loads(str(raw))
+        except (TypeError, ValueError, json.JSONDecodeError):
+            continue
+        if isinstance(parsed, dict):
+            return parsed
+    return {}
+
+
+def _msp_critical_present(activity: dict[str, Any], raw: dict[str, Any]) -> bool:
+    if "source_critical_flag_present" in activity:
+        return _truthy_flag(activity.get("source_critical_flag_present"))
+    if "source_critical_flag_present" in raw:
+        return _truthy_flag(raw.get("source_critical_flag_present"))
+    if raw.get("source_critical_raw") is not None:
+        return True
+    if activity.get("critical_path_source") == SOURCE_CRITICAL_BASIS_MSP:
+        return True
+    if activity.get("source_critical_flag") in (0, 1, False, True):
+        return True
+    return activity.get("is_critical") in (0, 1, False, True)
+
+
+def _msp_critical_value(activity: dict[str, Any], raw: dict[str, Any]) -> bool:
+    if raw.get("source_critical_raw") is not None:
+        return _truthy_flag(raw.get("source_critical_raw"))
+    if activity.get("source_critical_flag") is not None:
+        return _truthy_flag(activity.get("source_critical_flag"))
+    return _truthy_flag(activity.get("is_critical"))
+
+
+def _msp_total_slack_days(activity: dict[str, Any]) -> float | None:
+    days = _float_or_none(activity.get("explicit_total_float_days"))
+    if days is not None:
+        return days
+    hours = _float_or_none(activity.get("explicit_total_float_hours"))
+    if hours is not None:
+        return hours / 8.0
+    return None
+
+
+def compute_msp_critical_slack_analytics(
+    activities: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Aggregate MSP source Critical/Slack consistency as export evidence only."""
+    total_activities = len(activities)
+    eligible_activities = 0
+    excluded_count = 0
+    exclusion_reasons: dict[str, int] = {}
+    critical_true_count = 0
+    critical_false_count = 0
+    critical_missing_count = 0
+    total_slack_present_count = 0
+    total_slack_missing_count = 0
+    free_slack_present_count = 0
+    free_slack_missing_count = 0
+    eligible_evidence_count = 0
+    consistent_count = 0
+    inconsistency_count = 0
+    critical_true_nonpositive_slack_count = 0
+    critical_true_positive_slack_count = 0
+    critical_false_negative_slack_count = 0
+    samples: list[dict[str, Any]] = []
+
+    for activity in activities:
+        excluded, reason = is_logic_excluded_activity(activity)
+        if excluded:
+            excluded_count += 1
+            key = reason or "excluded"
+            exclusion_reasons[key] = exclusion_reasons.get(key, 0) + 1
+            continue
+        eligible_activities += 1
+        raw = _raw_source_fields(activity)
+        critical_present = _msp_critical_present(activity, raw)
+        critical_value = _msp_critical_value(activity, raw) if critical_present else None
+        total_slack_days = _msp_total_slack_days(activity)
+        total_slack_present = total_slack_days is not None
+        free_slack_present = _float_or_none(activity.get("explicit_free_float_days")) is not None
+
+        if critical_present and critical_value:
+            critical_true_count += 1
+        elif critical_present:
+            critical_false_count += 1
+        else:
+            critical_missing_count += 1
+        if total_slack_present:
+            total_slack_present_count += 1
+        else:
+            total_slack_missing_count += 1
+        if free_slack_present:
+            free_slack_present_count += 1
+        else:
+            free_slack_missing_count += 1
+
+        if not (critical_present or total_slack_present):
+            continue
+        eligible_evidence_count += 1
+
+        consistency_status = "indeterminate_missing_critical_or_total_slack"
+        if critical_present and total_slack_days is not None:
+            if critical_value:
+                if total_slack_days <= MSP_SLACK_ZERO_TOLERANCE_DAYS:
+                    consistent_count += 1
+                    critical_true_nonpositive_slack_count += 1
+                    consistency_status = "consistent"
+                else:
+                    inconsistency_count += 1
+                    critical_true_positive_slack_count += 1
+                    consistency_status = "critical_true_positive_slack"
+            elif total_slack_days < -MSP_SLACK_ZERO_TOLERANCE_DAYS:
+                inconsistency_count += 1
+                critical_false_negative_slack_count += 1
+                consistency_status = "critical_false_negative_slack"
+            else:
+                consistent_count += 1
+                consistency_status = "consistent"
+
+        if consistency_status != "consistent" and len(samples) < MAX_SOURCE_EXPORT_SAMPLES:
+            samples.append(
+                {
+                    "activity_id": activity.get("activity_id"),
+                    "activity_name": activity.get("activity_name"),
+                    "critical_present": critical_present,
+                    "critical_value": critical_value,
+                    "total_slack_days": total_slack_days,
+                    "consistency_status": consistency_status,
+                }
+            )
+
+    consistency_ratio = (
+        round(consistent_count / eligible_evidence_count, 4)
+        if eligible_evidence_count
+        else None
+    )
+    evidence = {
+        "source_format": "ms_project_xml",
+        "source_critical_basis": SOURCE_CRITICAL_BASIS_MSP,
+        "source_field_names": {
+            "critical": "Critical",
+            "total_slack": "TotalSlack",
+            "free_slack": "FreeSlack",
+            "total_slack_days": "explicit_total_float_days",
+            "free_slack_days": "explicit_free_float_days",
+        },
+        "total_activity_count": total_activities,
+        "eligible_activity_count": eligible_activities,
+        "excluded_activity_count": excluded_count,
+        "exclusion_reasons": exclusion_reasons,
+        "eligible_evidence_activity_count": eligible_evidence_count,
+        "critical_true_count": critical_true_count,
+        "critical_false_count": critical_false_count,
+        "critical_missing_count": critical_missing_count,
+        "total_slack_present_count": total_slack_present_count,
+        "total_slack_missing_count": total_slack_missing_count,
+        "free_slack_present_count": free_slack_present_count,
+        "free_slack_missing_count": free_slack_missing_count,
+        "critical_true_nonpositive_slack_count": critical_true_nonpositive_slack_count,
+        "critical_true_positive_slack_count": critical_true_positive_slack_count,
+        "critical_false_negative_slack_count": critical_false_negative_slack_count,
+        "consistent_critical_slack_count": consistent_count,
+        "inconsistent_critical_slack_count": inconsistency_count,
+        "consistency_ratio": consistency_ratio,
+        "near_zero_tolerance_days": MSP_SLACK_ZERO_TOLERANCE_DAYS,
+        "inconsistency_samples": samples,
+        "source_export_only": True,
+        "not_a_dcma_critical_path_test": True,
+        "cpm_recalculation_performed": False,
+        "cpm_recalculation": "not_implemented",
+        "dcma_critical_path_test": "not_measurable_requires_recalculation",
+        "caveat": (
+            "MSP Critical and slack values are source-export evidence only; "
+            "they do not prove the DCMA Critical Path Test without CPM recalculation."
+        ),
+    }
+    return {
+        **evidence,
+        "source_critical_path_evidence_json": json.dumps(evidence, sort_keys=True, default=str),
+        "status": "measured_from_msp_critical_flag"
+        if eligible_evidence_count
+        else METRIC_STATUS_MISSING_SOURCE_CRITICAL,
+    }
 
 
 def resolve_xer_critical_basis(critical_path_type: str | None) -> str:
