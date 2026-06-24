@@ -81,6 +81,13 @@ ENV_DB_BACKED_INPUTS_ENABLED = "HB_FORECAST_DB_BACKED_INPUTS_ENABLED"
 # DB, read from the supplied accuracy_package's model_methodology.json + calibration snapshot.
 # Off by default: decision-support output is then byte-identical (no model-registry rows written).
 ENV_MODEL_GOVERNANCE_ENABLED = "HB_FORECAST_MODEL_GOVERNANCE_ENABLED"
+
+# P8 (Gap 9): when set, the run-output projection writes an explainability/audit trail into the
+# (previously empty) forecast_output_narratives table — per-output reason narratives, a
+# human-override audit view, source-data QA rationale, and a context→analysis→output package-sha256
+# chain — and sets the long-empty forecast_outputs.source_sha256 (analysis-package sha). Off by
+# default: output is then byte-identical (no narrative rows written, source_sha256 stays NULL).
+ENV_EXPLAINABILITY_ENABLED = "HB_FORECAST_EXPLAINABILITY_ENABLED"
 _TRUTHY = {"1", "true", "yes", "on"}
 
 # Whitelisted keys. An unknown key in the on-disk file can never inject behaviour.
@@ -98,6 +105,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "assumption_overrides_enabled": False,  # bool flag (NOT a path); gates output-projection dollar value-overrides
     "db_backed_inputs_enabled": False,  # bool flag (NOT a path); gates DB-native source-domain reads in a run
     "model_governance_enabled": False,  # bool flag (NOT a path); gates P6 model-registry provenance persistence
+    "explainability_enabled": False,  # bool flag (NOT a path); gates P8 narrative/audit-trail population
     "schema_version": 1,  # LOCAL file version only — NOT the DB schema; do not conflate
 }
 
@@ -388,6 +396,16 @@ def resolve_model_governance_enabled(explicit: bool | str | None = None) -> bool
     if env is not None:
         return env.strip().lower() in _TRUTHY
     return bool(_load_config().get("model_governance_enabled"))
+
+
+def resolve_explainability_enabled(explicit: bool | str | None = None) -> bool:
+    """Resolve the P8 explainability/audit-trail opt-in (explicit > env > settings-file > default False)."""
+    if explicit is not None:
+        return explicit is True or str(explicit).strip().lower() in _TRUTHY
+    env = os.environ.get(ENV_EXPLAINABILITY_ENABLED)
+    if env is not None:
+        return env.strip().lower() in _TRUTHY
+    return bool(_load_config().get("explainability_enabled"))
 
 
 # -- non-mutating validation (status + save) ----------------------------------

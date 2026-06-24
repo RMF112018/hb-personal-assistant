@@ -1,0 +1,8 @@
+P8 validation — 2026-06-24T13:17:45Z
+
+scripts/test-forecasting.sh -q -rA : 895 passed, 0 failed (P5 baseline 883 + 12 P8)
+scripts/test-schedule.sh   -q -rA : 113 passed, 0 failed (schema canary; no drift)
+ruff check (P8 files)             : All checks passed
+new P8 files                     : 12 passed (3 files)
+
+No migration: LATEST_SCHEMA_VERSION unchanged (72); table_count unchanged (436).

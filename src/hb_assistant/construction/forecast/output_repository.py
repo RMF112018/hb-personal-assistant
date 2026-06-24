@@ -67,6 +67,18 @@ FORECAST_OUTPUT_RISKS_COLS = (
     "created_utc",
     "updated_utc",
 )
+# P8 explainability / audit-trail narratives. UNIQUE(output_id, scope, narrative_key).
+FORECAST_OUTPUT_NARRATIVES_COLS = (
+    "id",
+    "output_id",
+    "project_key",
+    "scope",
+    "narrative_key",
+    "source_row_number",
+    "raw_json",
+    "created_utc",
+    "updated_utc",
+)
 
 # Columns never overwritten on conflict, beyond the conflict-key columns themselves.
 _IMMUTABLE = {"created_utc"}
@@ -135,6 +147,11 @@ def upsert_output_schedule_phasing(conn: sqlite3.Connection, row: dict[str, Any]
     _upsert(conn, "forecast_output_schedule_phasing", row, ("id",))
 
 
+# P8: idempotent on the table UNIQUE (output_id, scope, narrative_key).
+def upsert_output_narrative(conn: sqlite3.Connection, row: dict[str, Any]) -> None:
+    _upsert(conn, "forecast_output_narratives", row, ("output_id", "scope", "narrative_key"))
+
+
 # Maps the engine's planned-table keys to their per-row upsert helper.
 _WRITERS = {
     "outputs": upsert_output,
@@ -146,6 +163,7 @@ _WRITERS = {
     "staffing": upsert_output_staffing,
     "commitment_exposure": upsert_output_commitment_exposure,
     "schedule_phasing": upsert_output_schedule_phasing,
+    "narratives": upsert_output_narrative,
 }
 
 
@@ -235,3 +253,10 @@ def read_output_schedule_phasing_from_db(
     return _read_raw(
         conn, "forecast_output_schedule_phasing", "source_row_number", output_id=output_id
     )
+
+
+def read_output_narratives_from_db(
+    conn: sqlite3.Connection, *, output_id: str
+) -> list[dict[str, Any]]:
+    """P8 explainability/audit narrative rows in build order (source_row_number)."""
+    return _read_raw(conn, "forecast_output_narratives", "source_row_number", output_id=output_id)
