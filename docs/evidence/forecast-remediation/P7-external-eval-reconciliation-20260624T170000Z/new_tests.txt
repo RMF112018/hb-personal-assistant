@@ -1,0 +1,35 @@
+P7 new tests (no production code change)
+========================================
+
+tests/test_forecasting_external_fixture.py  (already in the forecasting bundle)
+  ADDED:
+    test_external_forecast_xlsx_ingest_parses_sheet
+        Builds a workbook with openpyxl (sheet "Forecast", header [Cost Code, EAC], 2 rows),
+        base64-encodes the saved bytes, calls ForecastExternalIngestService().preview(
+        filename="external_forecast.xlsx", source_system="excel"). Asserts:
+          - "Forecast" in preview["sheet_names"]  (xlsx-specific; CSV yields [])
+          - preview["columns"] == ["Cost Code", "EAC"]
+          - preview["row_count"] == 2
+          - preview["sample_rows"][0]["Cost Code"] == "01-100"
+          - find_redaction_leaks(preview) == []
+          - <eval_root>/imports/<id>/source.xlsx is a file
+
+    test_external_forecast_fixtureproj_full_evaluate
+        Full pipeline for the SECOND project: ingest FIXTURE_CSV -> propose_mapping(
+        project_key="fixtureproj") -> ForecastExternalEvalService().evaluate(..., project_key=
+        "fixtureproj"). Asserts:
+          - res["status"] == "succeeded"
+          - res["mapped_count"] >= 1   (01-100 is in the fixtureproj baseline)
+          - res["guardrails"]["no_live_db_write"] is True
+          - find_redaction_leaks(res) == []
+          - eval_record.json project_key == "fixtureproj"
+          - per-run eval.sqlite present, forecast_external_forecasts count == 1
+          - exactly one external_forecast_evaluation_package_* under the eval-root
+          - baseline DB (mode=ro) forecast_external_forecasts count == 0 (untouched)
+
+Imports added to the test file: find_redaction_leaks, ForecastExternalEvalService.
+
+Targeted run (PYTHONPATH=src:subrepos/construction-financial-review/src):
+  pytest tests/test_forecasting_external_fixture.py  -> 4 passed (2 existing + 2 new).
+
+No bundle allowlist change (file already listed). No production src/ change.
