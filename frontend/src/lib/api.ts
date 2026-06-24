@@ -899,6 +899,37 @@ export interface ForecastDbNarratives {
 export function getForecastDbProjects() {
   return fetchJson<{ projects: ForecastDbProject[] }>('/api/forecast/db/projects');
 }
+
+/* Generation-ready project read model (Phase P-B). Discovers projects from procore identity +
+ * committed schedule imports + forecast outputs; exposes per-project availability + readiness
+ * (ready/degraded/blocked, coded reasons). Read-only, redaction-safe (no paths/source payloads). */
+export type ForecastProjectReadinessStatus = 'ready' | 'degraded' | 'blocked';
+export interface ForecastGenerationProject {
+  project_key: string;
+  display_name: string | null;
+  project_number: string | null;
+  procore_project_id: string | null;
+  has_schedule_data: boolean;
+  has_activity_data: boolean;
+  latest_schedule_version_key: string | null;
+  latest_schedule_date: string | null;
+  has_prior_forecast_output: boolean;
+  latest_forecast_status: string | null;
+  latest_forecast_display: string | null;
+  has_budget_cost_data: boolean;
+  config_snapshot_available: boolean;
+  readiness_status: ForecastProjectReadinessStatus;
+  readiness_reasons: string[];
+}
+export interface ForecastGenerationProjectsResponse {
+  surface: string;
+  generation_enabled: boolean;
+  projects: ForecastGenerationProject[];
+  guardrails: Record<string, boolean | string>;
+}
+export function getForecastGenerationProjects() {
+  return fetchJson<ForecastGenerationProjectsResponse>('/api/forecast/generation/projects');
+}
 export function getForecastDbOutputs(projectKey = 'tropical') {
   return fetchJson<{ outputs: ForecastDbOutputSummary[] }>(
     `/api/forecast/db/projects/${encodeURIComponent(projectKey)}/outputs`,
@@ -1064,10 +1095,15 @@ export function getForecastRun(runId: string) {
  * generatorKind selects which generator (comprehensive [default] / model_controls / monthly /
  * probability); the default keeps existing callers backward-compatible. */
 export type ForecastGeneratorKind = 'comprehensive' | 'model_controls' | 'monthly' | 'probability';
-export function startForecastDbConfigRun(generatorKind: ForecastGeneratorKind = 'comprehensive') {
+export function startForecastDbConfigRun(
+  generatorKind: ForecastGeneratorKind = 'comprehensive',
+  projectKey?: string,
+) {
+  const body: Record<string, string> = { generator_kind: generatorKind };
+  if (projectKey) body.project_key = projectKey;
   return fetchJson('/api/forecast/runs/db-config', {
     method: 'POST',
-    body: JSON.stringify({ generator_kind: generatorKind }),
+    body: JSON.stringify(body),
   });
 }
 export function getForecastDbConfigRuns() {
@@ -1470,6 +1506,7 @@ export const api = {
   getForecastPackageRiskRegister,
   getForecastPackageTopRisks,
   getForecastDbProjects,
+  getForecastGenerationProjects,
   getForecastDbOutputs,
   getForecastDbOutput,
   getForecastDbDecisionSupport,
