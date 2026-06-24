@@ -116,6 +116,8 @@ export function ForecastRunCenterPage() {
   const [generating, setGenerating] = useState(false)
   const [genError, setGenError] = useState<string | null>(null)
   const [genUnconfigured, setGenUnconfigured] = useState(false)
+  // P-E: bumped after a successful generation to force the DB-backed read-model panels to refetch.
+  const [refreshNonce, setRefreshNonce] = useState(0)
 
   const [genDb, setGenDb] = useState(false)
   const [dbError, setDbError] = useState<string | null>(null)
@@ -216,6 +218,7 @@ export function ForecastRunCenterPage() {
         forecast_cutoff_date_basis: forecastCutoffDate ? cutoffBasis : null,
       })
       setLastRequestId((resp as { request_id?: string })?.request_id ?? null)
+      setRefreshNonce((n) => n + 1)
       await refetch()
       await refetchRequests()
     } catch (e: unknown) {
@@ -252,6 +255,7 @@ export function ForecastRunCenterPage() {
         forecast_cutoff_date_basis: forecastCutoffDate ? cutoffBasis : null,
       })
       setLastRequestId((resp as { request_id?: string })?.request_id ?? null)
+      setRefreshNonce((n) => n + 1)
       await refetchDb()
       await refetchRequests()
     } catch (e: unknown) {
@@ -381,7 +385,7 @@ export function ForecastRunCenterPage() {
       <section className="forecast-panel">
         <ForecastPageHeader
           title="Generate forecast"
-          subtitle="Creates an isolated forecast package using current local storage and configuration. Procore and live project data are never modified."
+          subtitle="Writes the selected project's forecast to the local application database. Procore and live project data are never modified; use export actions separately when a human-readable report is needed."
           actions={
             <ForecastActionButton
               onClick={onGenerate}
@@ -407,7 +411,7 @@ export function ForecastRunCenterPage() {
       <section className="forecast-panel">
         <ForecastPageHeader
           title="Generate from live configuration"
-          subtitle="Uses the promoted configuration snapshot from the local database. Still read-only toward live systems."
+          subtitle="Generates from the promoted configuration snapshot and writes the forecast to the local application database. No download/export package is produced here."
           actions={
             <div className="flex items-center gap-2">
               <label htmlFor="db-config-kind" className="text-sm text-[var(--hb-muted)]">
@@ -612,9 +616,9 @@ export function ForecastRunCenterPage() {
 
       {browseProject && (
         <>
-          <ForecastDecisionSupportPanel project={browseProject} />
-          <ForecastNarrativesPanel project={browseProject} />
-          <ForecastOperatorAssumptionsPanel project={browseProject} />
+          <ForecastDecisionSupportPanel key={`ds-${browseProject}-${refreshNonce}`} project={browseProject} />
+          <ForecastNarrativesPanel key={`nr-${browseProject}-${refreshNonce}`} project={browseProject} />
+          <ForecastOperatorAssumptionsPanel key={`oa-${browseProject}-${refreshNonce}`} project={browseProject} />
         </>
       )}
     </ForecastShell>

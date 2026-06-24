@@ -199,6 +199,14 @@ describe('ForecastRunCenterPage', () => {
     expect(screen.getByText('File configuration')).toBeInTheDocument()
   })
 
+  it('describes Generate Forecast as writing to the local database, not a package/download', () => {
+    mockData()
+    const { container } = renderPage()
+    const text = container.textContent || ''
+    expect(text).toMatch(/local application database/i)
+    expect(text).not.toMatch(/isolated forecast package/i)
+  })
+
   it('offers all four generator kinds and passes the selected kind + project to the API', async () => {
     mockData()
     renderPage()

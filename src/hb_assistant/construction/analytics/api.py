@@ -2182,6 +2182,52 @@ def create_app(*, db_path: str | None = None) -> Any:
             readiness_reasons=readiness_reasons,
         )
 
+        # P-E: gated authorized live-DB run-output write (default OFF). When enabled, Generate
+        # Forecast persists forecast_outputs + child rows to the app DB (backup+certify) instead of
+        # producing a package; success requires DB persistence + certification.
+        from hb_assistant.construction.analytics.forecast_runtime_config import (
+            resolve_db_path,
+            resolve_run_output_db_write_enabled,
+            resolve_runs_root,
+        )
+
+        if mode == "db_config" and resolve_run_output_db_write_enabled():
+            from hb_assistant.construction.analytics.forecast_run_output_persistence_service import (
+                generate_and_persist,
+            )
+
+            work_root = Path(resolve_runs_root(None) or "") / f"runoutput-{request_id}"
+            receipt = generate_and_persist(
+                project_key=parsed["project_key"],
+                db_path=Path(resolve_db_path(db_path)),
+                work_root=work_root,
+            )
+            if receipt.db_persisted:
+                repo.update_status(request_id, "completed")
+                final_status = "completed"
+            else:
+                repo.record_failure(
+                    request_id, receipt.failure_code or "db_persistence_failed"
+                )
+                final_status = "failed"
+            return {
+                "request_id": request_id,
+                "forecast_output_id": receipt.forecast_output_id,
+                "project_key": parsed["project_key"],
+                "generation_mode": mode,
+                "generator_kind": parsed["generator_kind"],
+                "request_status": final_status,
+                "validation_status": "valid",
+                "forecast_start_date": parsed["forecast_start_date"],
+                "forecast_cutoff_date": parsed["forecast_cutoff_date"],
+                "forecast_cutoff_date_basis": parsed["forecast_cutoff_date_basis"],
+                "db_persisted": receipt.db_persisted,
+                "package_generated": False,
+                "failure_code": receipt.failure_code,
+                "readiness_status_at_request": readiness_status,
+                "readiness_reasons": readiness_reasons,
+            }
+
         if mode == "file_config":
             error_mapper = _forecast_run_call
 
@@ -2226,6 +2272,8 @@ def create_app(*, db_path: str | None = None) -> Any:
             "forecast_cutoff_date": parsed["forecast_cutoff_date"],
             "forecast_cutoff_date_basis": parsed["forecast_cutoff_date_basis"],
             "schedule_version_key": schedule_version_key,
+            "db_persisted": False,
+            "package_generated": False,
             "readiness_status_at_request": readiness_status,
             "readiness_reasons": readiness_reasons,
         }
