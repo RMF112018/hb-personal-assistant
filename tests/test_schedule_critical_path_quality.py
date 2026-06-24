@@ -49,6 +49,10 @@ def _import_xer_and_evaluate(
 ) -> tuple[str, dict[str, dict]]:
     if not fixture.is_file():
         pytest.skip(f"missing XER fixture: {fixture}")
+    try:
+        data = fixture.read_bytes()
+    except PermissionError:
+        pytest.skip(f"XER fixture not readable: {fixture}")
     db = tmp_path / f"{project_key}.db"
     SQLiteMigrator(db_path=str(db)).apply()
     seed_procore_ep_project(
@@ -62,7 +66,7 @@ def _import_xer_and_evaluate(
     svc = ScheduleImportService(db_path=str(db))
     preview = svc.preview_bytes(
         filename=fixture.name,
-        data=fixture.read_bytes(),
+        data=data,
         project_key=project_key,
     )
     commit = svc.commit(

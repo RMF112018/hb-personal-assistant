@@ -104,6 +104,10 @@ SOURCE_EXPORT_METRIC_SPECS: dict[str, dict[str, Any]] = {
         "metric_name": "Source critical path available",
         "unit": "count",
     },
+    "source_msp_critical_slack_available": {
+        "metric_name": "MSP source critical/slack consistency",
+        "unit": "ratio",
+    },
 }
 
 GAO_CATEGORIES: tuple[str, ...] = (

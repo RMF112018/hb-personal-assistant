@@ -14,6 +14,7 @@ from .schedule_critical_path_analytics import (
     METRIC_STATUS_AVAILABLE_XER_DRIVING,
     METRIC_STATUS_AVAILABLE_XER_TOTFLOAT,
     METRIC_STATUS_PARTIAL_XER_FLOAT,
+    compute_msp_critical_slack_analytics,
     compute_source_critical_path_analytics,
     resolve_analytics_status,
 )
@@ -252,15 +253,23 @@ class ScheduleQualityAssessmentEngine:
         self, ctx: EvaluationContext
     ) -> list[dict[str, Any]]:
         source_fmt = self._import_source_format(ctx)
-        if source_fmt != "primavera_xer":
-            return []
-        spec = SOURCE_EXPORT_METRIC_SPECS["source_critical_path_available"]
-        metric, _ = self._metric_source_critical_path_available(
-            ctx,
-            "source_critical_path_available",
-            spec,
-        )
-        return [metric]
+        if source_fmt == "primavera_xer":
+            spec = SOURCE_EXPORT_METRIC_SPECS["source_critical_path_available"]
+            metric, _ = self._metric_source_critical_path_available(
+                ctx,
+                "source_critical_path_available",
+                spec,
+            )
+            return [metric]
+        if source_fmt == "ms_project_xml":
+            spec = SOURCE_EXPORT_METRIC_SPECS["source_msp_critical_slack_available"]
+            metric, _ = self._metric_source_msp_critical_slack_available(
+                ctx,
+                "source_msp_critical_slack_available",
+                spec,
+            )
+            return [metric]
+        return []
 
     def _evaluate_supplemental_metrics(
         self, ctx: EvaluationContext
@@ -320,6 +329,37 @@ class ScheduleQualityAssessmentEngine:
                     **analytics,
                     "display_name_override": "Source critical path analytics",
                     "not_a_dcma_critical_path_test": True,
+                },
+            ),
+            [],
+        )
+
+    def _metric_source_msp_critical_slack_available(
+        self,
+        ctx: EvaluationContext,
+        code: str,
+        spec: dict[str, Any],
+    ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+        analytics = compute_msp_critical_slack_analytics(ctx.activities)
+        status = resolve_analytics_status(analytics)
+        consistent = int(analytics.get("consistent_critical_slack_count") or 0)
+        eligible = int(analytics.get("eligible_evidence_activity_count") or 0)
+        return (
+            self._base_metric(
+                ctx,
+                code=code,
+                spec=spec,
+                status=status,
+                numerator=consistent,
+                denominator=eligible,
+                value=analytics.get("consistency_ratio"),
+                metric_family="source_export",
+                not_measurable_reason=None
+                if eligible
+                else "no MSP critical/slack source-export evidence",
+                evidence={
+                    **analytics,
+                    "display_name_override": "MSP source critical/slack consistency",
                 },
             ),
             [],

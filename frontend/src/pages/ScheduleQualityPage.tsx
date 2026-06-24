@@ -136,6 +136,16 @@ function formatMetricValue(metric: Record<string, unknown>): { value: string; ba
     }
   }
 
+  if (code === 'source_msp_critical_slack_available') {
+    const consistent = num ?? evidence.consistent_critical_slack_count ?? 0
+    const eligible = denom ?? evidence.eligible_evidence_activity_count ?? '—'
+    const inconsistent = evidence.inconsistent_critical_slack_count ?? 0
+    return {
+      value: `${String(consistent)} consistent / ${String(eligible)} eligible`,
+      basis: `${String(inconsistent)} inconsistencies · source-export only, not a DCMA critical path test`,
+    }
+  }
+
   if (code === 'dcma_invalid_dates') {
     const total = evidence.total_findings ?? num ?? 0
     const basisLabel = evidence.primary_denominator_basis

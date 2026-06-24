@@ -10,10 +10,36 @@ pytest.importorskip("fastapi")
 from fastapi.testclient import TestClient
 
 from hb_assistant.construction.analytics import create_app
+from hb_assistant.construction.analytics.schedule_quality_service import ScheduleQualityService
 from hb_assistant.store.migrator import SQLiteMigrator
 from tests.schedule_project_test_helpers import seed_procore_ep_project
 
 FIXTURE = Path(__file__).resolve().parent / "fixtures" / "schedules" / "xml" / "minimal_schedule.xml"
+
+MSP_XML = b"""<?xml version="1.0" encoding="UTF-8"?>
+<Project xmlns="http://schemas.microsoft.com/project/2007">
+  <Name>MSP Quality API Test</Name>
+  <UID>msp-quality-api-test</UID>
+  <Tasks>
+    <Task>
+      <UID>1</UID>
+      <ID>10</ID>
+      <Name>Critical zero slack</Name>
+      <Critical>1</Critical>
+      <TotalSlack>0</TotalSlack>
+      <FreeSlack>0</FreeSlack>
+    </Task>
+    <Task>
+      <UID>2</UID>
+      <ID>20</ID>
+      <Name>Noncritical positive slack</Name>
+      <Critical>0</Critical>
+      <TotalSlack>960</TotalSlack>
+      <FreeSlack>480</FreeSlack>
+    </Task>
+  </Tasks>
+</Project>
+"""
 
 
 def _op() -> dict[str, str]:
@@ -29,6 +55,13 @@ def _client(tmp_path: Path) -> TestClient:
     SQLiteMigrator(db_path=str(db)).apply()
     seed_procore_ep_project(db, project_key="tropical", display_name="Tropical Wind")
     return TestClient(create_app(db_path=str(db)))
+
+
+def _client_with_db(tmp_path: Path) -> tuple[TestClient, Path]:
+    db = tmp_path / "quality_api.db"
+    SQLiteMigrator(db_path=str(db)).apply()
+    seed_procore_ep_project(db, project_key="tropical", display_name="Tropical Wind")
+    return TestClient(create_app(db_path=str(db))), db
 
 
 def _commit_version(client: TestClient) -> str:
@@ -81,6 +114,37 @@ def test_project_quality_summary(tmp_path: Path) -> None:
     assert len(resp.json()["versions"]) >= 1
 
 
+def test_msp_quality_summary_exposes_source_export_metric(tmp_path: Path) -> None:
+    client, db = _client_with_db(tmp_path)
+    preview = client.post(
+        "/api/schedules/import-preview",
+        headers=_op(),
+        files={"file": ("msp-source.xml", MSP_XML, "application/xml")},
+        data={"project_key": "tropical"},
+    )
+    assert preview.status_code == 200
+    import_id = preview.json()["import_id"]
+    commit = client.post(
+        "/api/schedules/import-commit",
+        headers=_op(),
+        json={"import_id": import_id, "project_key": "tropical", "confirm": True},
+    )
+    assert commit.status_code == 200
+    svk = commit.json()["schedule_version_key"]
+    ScheduleQualityService(db_path=str(db)).process_next_pending()
+
+    quality = client.get(f"/api/schedules/versions/{svk}/quality", headers=_viewer())
+    assert quality.status_code == 200
+    body = quality.json()
+    metrics = {m["metric_code"]: m for m in body.get("metrics") or []}
+    assert metrics["dcma_critical_path_test"]["status"] == "not_measurable_requires_recalculation"
+    source = metrics["source_msp_critical_slack_available"]
+    assert source["metric_family"] == "source_export"
+    assert source["status"] == "measured_from_msp_critical_flag"
+    assert source["numerator"] == "2"
+    assert source["denominator"] == "2"
+
+
 @pytest.mark.parametrize("filename", ["TWNU07.xml", "TWNU16.xml", "TWNU18.xml"])
 def test_twnu_quality_scorecard_when_zip_present(tmp_path: Path, filename: str) -> None:
     zip_path = Path("/Users/bobbyfetting/Downloads/schedule-xml-files.zip")
@@ -89,8 +153,11 @@ def test_twnu_quality_scorecard_when_zip_present(tmp_path: Path, filename: str) 
 
     import zipfile
 
-    with zipfile.ZipFile(zip_path) as zf:
-        data = zf.read(filename)
+    try:
+        with zipfile.ZipFile(zip_path) as zf:
+            data = zf.read(filename)
+    except PermissionError:
+        pytest.skip(f"schedule fixture zip not readable: {zip_path}")
 
     client = _client(tmp_path)
     preview = client.post(
