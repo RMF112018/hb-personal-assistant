@@ -10,6 +10,7 @@ from typing import Any
 from hb_assistant.store.schedule_activity_repository import ScheduleActivityRepository
 from hb_assistant.store.schedule_mapping_repository import ScheduleMappingRepository
 
+from .schedule_baseline_quality import compute_baseline_quality_evidence
 from .schedule_critical_path_analytics import (
     METRIC_STATUS_AVAILABLE_XER_DRIVING,
     METRIC_STATUS_AVAILABLE_XER_TOTFLOAT,
@@ -1237,13 +1238,41 @@ class ScheduleQualityAssessmentEngine:
     def _metric_missed_tasks(
         self, ctx: EvaluationContext, code: str, spec: dict[str, Any]
     ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+        evidence = compute_baseline_quality_evidence(
+            activities=ctx.activities,
+            ctx_data_date=ctx.data_date,
+            import_meta=ctx.import_meta,
+            schedule_version_key=ctx.schedule_version_key,
+        )
+        if not evidence["missed_tasks_measurable"]:
+            reason = "; ".join(evidence["missing_prerequisites"]) or "missing baseline prerequisites"
+            return (
+                self._base_metric(
+                    ctx,
+                    code=code,
+                    spec=spec,
+                    status=METRIC_STATUS_NOT_MEASURABLE,
+                    not_measurable_reason=reason,
+                    evidence=evidence,
+                ),
+                [],
+            )
+        denominator = int(evidence["baseline_due_activity_count"])
+        numerator = int(evidence["missed_due_activity_count"])
+        value = round(numerator / denominator, 4) if denominator else None
         return (
             self._base_metric(
                 ctx,
                 code=code,
                 spec=spec,
-                status=METRIC_STATUS_NOT_MEASURABLE,
-                not_measurable_reason="baseline schedule data not available in canonical store",
+                status=METRIC_STATUS_MEASURED,
+                numerator=numerator,
+                denominator=denominator,
+                value=value,
+                evidence={
+                    **evidence,
+                    "metric_formula": "missed_due_activity_count / baseline_due_activity_count",
+                },
             ),
             [],
         )
@@ -1484,13 +1513,45 @@ class ScheduleQualityAssessmentEngine:
     def _metric_cpli(
         self, ctx: EvaluationContext, code: str, spec: dict[str, Any]
     ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+        baseline_evidence = compute_baseline_quality_evidence(
+            activities=ctx.activities,
+            ctx_data_date=ctx.data_date,
+            import_meta=ctx.import_meta,
+            schedule_version_key=ctx.schedule_version_key,
+        )
+        missing_baseline_prerequisites = []
+        if not baseline_evidence["true_baseline_finish_dates_available"]:
+            missing_baseline_prerequisites.append("missing baseline finish dates")
+        if not baseline_evidence["status_date_parse_success"]:
+            missing_baseline_prerequisites.append(
+                baseline_evidence["status_date_missing_reason"] or "missing status date"
+            )
         return (
             self._base_metric(
                 ctx,
                 code=code,
                 spec=spec,
-                status=METRIC_STATUS_NOT_MEASURABLE,
-                not_measurable_reason="baseline and critical-path length data not available",
+                status=METRIC_STATUS_NOT_MEASURABLE_RECALC,
+                not_measurable_reason="critical path length unavailable without CPM recalculation",
+                evidence={
+                    "method": "requires_cpm_recalculation",
+                    "cpm_recalculation": "not_implemented",
+                    "critical_path_length_prerequisites_available": False,
+                    "project_completion_finish_basis_available": False,
+                    "missing_recalculation_prerequisites": [
+                        "critical path length unavailable without CPM recalculation",
+                        "project completion constraint unavailable",
+                    ],
+                    "missing_baseline_status_prerequisites": missing_baseline_prerequisites,
+                    "source_export_critical_flags_sufficient": False,
+                    "msp_slack_sufficient": False,
+                    "derived_float_sufficient": False,
+                    "caveat": (
+                        "Source-export critical flags, MSP slack, and derived finish float "
+                        "do not satisfy CPLI prerequisites."
+                    ),
+                    "baseline_evidence": baseline_evidence,
+                },
             ),
             [],
         )
@@ -1498,13 +1559,41 @@ class ScheduleQualityAssessmentEngine:
     def _metric_bei(
         self, ctx: EvaluationContext, code: str, spec: dict[str, Any]
     ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+        evidence = compute_baseline_quality_evidence(
+            activities=ctx.activities,
+            ctx_data_date=ctx.data_date,
+            import_meta=ctx.import_meta,
+            schedule_version_key=ctx.schedule_version_key,
+        )
+        if not evidence["bei_measurable"]:
+            reason = "; ".join(evidence["missing_prerequisites"]) or "missing baseline prerequisites"
+            return (
+                self._base_metric(
+                    ctx,
+                    code=code,
+                    spec=spec,
+                    status=METRIC_STATUS_NOT_MEASURABLE,
+                    not_measurable_reason=reason,
+                    evidence=evidence,
+                ),
+                [],
+            )
+        denominator = int(evidence["baseline_due_activity_count"])
+        numerator = int(evidence["completed_due_activity_count"])
+        value = round(numerator / denominator, 4) if denominator else None
         return (
             self._base_metric(
                 ctx,
                 code=code,
                 spec=spec,
-                status=METRIC_STATUS_NOT_MEASURABLE,
-                not_measurable_reason="baseline execution data not available",
+                status=METRIC_STATUS_MEASURED,
+                numerator=numerator,
+                denominator=denominator,
+                value=value,
+                evidence={
+                    **evidence,
+                    "metric_formula": "completed_due_activity_count / baseline_due_activity_count",
+                },
             ),
             [],
         )

@@ -32,6 +32,32 @@ def test_parse_minimal_xml_fixture() -> None:
     assert bundle.calendars
 
 
+def test_parse_pmxml_planned_dates_are_not_baseline_fields() -> None:
+    data = b"""<?xml version="1.0" encoding="UTF-8"?>
+<APIBusinessObjects>
+  <Project>
+    <ObjectId>PRJ-001</ObjectId>
+    <Name>Planned Date Preservation</Name>
+    <DataDate>2026-06-01</DataDate>
+  </Project>
+  <Activity>
+    <ObjectId>A100</ObjectId>
+    <Name>Planned Task</Name>
+    <PlannedStartDate>2026-01-01</PlannedStartDate>
+    <PlannedFinishDate>2026-01-05</PlannedFinishDate>
+    <FinishDate>2026-01-06</FinishDate>
+  </Activity>
+</APIBusinessObjects>
+"""
+    bundle = parse_pmxml_bytes(data)
+    activity = bundle.activities[0]
+
+    assert activity["planned_start"] == "2026-01-01"
+    assert activity["planned_finish"] == "2026-01-05"
+    assert activity.get("baseline_start") is None
+    assert activity.get("baseline_finish") is None
+
+
 def test_parse_gma_real_sample() -> None:
     data = (FIXTURE_DIR / "gma_sample.xml").read_bytes()
     bundle = parse_pmxml_bytes(data)
@@ -68,11 +94,14 @@ def test_parse_gma_real_sample() -> None:
 def test_parse_downloads_zip_samples(filename: str, expected: dict[str, int]) -> None:
     if not DOWNLOADS_ZIP.exists():
         pytest.skip("schedule-xml-files.zip not present in Downloads")
-    with zipfile.ZipFile(DOWNLOADS_ZIP) as zf:
-        try:
-            data = zf.read(filename)
-        except KeyError:
-            pytest.skip(f"{filename} missing from zip")
+    try:
+        with zipfile.ZipFile(DOWNLOADS_ZIP) as zf:
+            try:
+                data = zf.read(filename)
+            except KeyError:
+                pytest.skip(f"{filename} missing from zip")
+    except PermissionError:
+        pytest.skip(f"schedule fixture zip not readable: {DOWNLOADS_ZIP}")
     bundle = parse_pmxml_bytes(data)
     assert len(bundle.activities) == expected["activities"]
     assert len(bundle.relationships) == expected["relationships"]

@@ -57,6 +57,25 @@ def _msp_context(activities: list[dict[str, object]]) -> EvaluationContext:
     )
 
 
+def _baseline_context(
+    activities: list[dict[str, object]],
+    *,
+    data_date: str | None = "2026-01-10",
+    schedule_version_key: str = "tropical|1|2026-01-10",
+) -> EvaluationContext:
+    return EvaluationContext(
+        project_key="tropical",
+        schedule_version_key=schedule_version_key,
+        schedule_table_id=None,
+        import_id="imp-baseline",
+        evaluation_run_id="sq-baseline",
+        assessment_profile=get_profile(),
+        data_date=data_date,
+        activities=activities,
+        import_meta={"source_format": "ms_project_xml", "baseline_source": "msp_baseline"},
+    )
+
+
 def test_dcma_lag_metric_normalizes_source_units_before_thresholding() -> None:
     engine = ScheduleQualityAssessmentEngine()
     ctx = _lag_context(
@@ -257,10 +276,221 @@ def test_dcma_baseline_metrics_not_measurable(tmp_path: Path) -> None:
         import_id=preview["import_id"],
     )
     codes = {m["metric_code"]: m for m in result.metrics}
-    assert codes["dcma_cpli"]["status"] == "not_measurable_missing_data"
+    assert codes["dcma_cpli"]["status"] == METRIC_STATUS_NOT_MEASURABLE_RECALC
     assert codes["dcma_bei"]["status"] == "not_measurable_missing_data"
     assert codes["dcma_missed_tasks"]["status"] == "not_measurable_missing_data"
     assert result.scorecard["quality_grade"] in {"A", "B", "C", "D", "F", "insufficient_data"}
+
+
+def test_dcma_missed_tasks_measures_true_baseline_due_population() -> None:
+    engine = ScheduleQualityAssessmentEngine()
+    ctx = _baseline_context(
+        [
+            {
+                "activity_id": "DONE",
+                "activity_name": "Completed due",
+                "baseline_finish": "2026-01-05",
+                "activity_status": "TK_Complete",
+                "actual_finish": "2026-01-04",
+            },
+            {
+                "activity_id": "MISS",
+                "activity_name": "Incomplete due",
+                "baseline_finish": "2026-01-06",
+                "activity_status": "TK_Active",
+            },
+            {
+                "activity_id": "LATE",
+                "activity_name": "Finished after status date",
+                "baseline_finish": "2026-01-07",
+                "activity_status": "TK_Complete",
+                "actual_finish": "2026-01-12",
+            },
+            {
+                "activity_id": "FUTURE",
+                "activity_name": "Not due yet",
+                "baseline_finish": "2026-01-20",
+                "activity_status": "TK_NotStart",
+            },
+        ]
+    )
+
+    metric, findings = engine._metric_missed_tasks(
+        ctx, "dcma_missed_tasks", DCMA_METRIC_SPECS["dcma_missed_tasks"]
+    )
+    evidence = json.loads(metric["evidence_json"])
+
+    assert findings == []
+    assert metric["status"] == "measured"
+    assert metric["numerator"] == "2"
+    assert metric["denominator"] == "3"
+    assert metric["value"] == "0.6667"
+    assert evidence["profile_thresholds_defined"] is False
+    assert evidence["threshold_status_available"] is False
+    assert evidence["metric_interpretation"] == "reported_indicator_no_profile_threshold"
+    assert evidence["status_date"] == "2026-01-10"
+    assert evidence["status_date_source"] == "ctx.data_date"
+    assert evidence["denominator_definition"] == (
+        "eligible activities with true baseline_finish on or before status_date"
+    )
+    assert [sample["activity_id"] for sample in evidence["missed_activity_samples"]] == [
+        "MISS",
+        "LATE",
+    ]
+    assert evidence["missed_activity_samples"][1]["reason"] == "actual_finish_after_status_date"
+    assert [sample["activity_id"] for sample in evidence["completed_due_activity_samples"]] == [
+        "DONE"
+    ]
+
+
+def test_dcma_missed_tasks_not_measurable_prerequisites() -> None:
+    engine = ScheduleQualityAssessmentEngine()
+    cases = [
+        (
+            _baseline_context(
+                [{"activity_id": "A1", "planned_finish": "2026-01-05"}],
+                data_date="2026-01-10",
+            ),
+            "missing baseline finish dates",
+        ),
+        (
+            _baseline_context(
+                [{"activity_id": "A1", "baseline_finish": "2026-01-05"}],
+                data_date=None,
+                schedule_version_key="tropical|1|not-a-date",
+            ),
+            "invalid_status_date",
+        ),
+        (
+            _baseline_context(
+                [{"activity_id": "A1", "baseline_finish": "2026-01-20"}],
+                data_date="2026-01-10",
+            ),
+            "baseline due denominator is zero",
+        ),
+    ]
+
+    for ctx, expected_reason in cases:
+        metric, _ = engine._metric_missed_tasks(
+            ctx, "dcma_missed_tasks", DCMA_METRIC_SPECS["dcma_missed_tasks"]
+        )
+        evidence = json.loads(metric["evidence_json"])
+        assert metric["status"] == "not_measurable_missing_data"
+        assert expected_reason in metric["not_measurable_reason"]
+        assert expected_reason in evidence["missing_prerequisites"]
+
+
+def test_dcma_bei_measures_completed_due_ratio() -> None:
+    engine = ScheduleQualityAssessmentEngine()
+    ctx = _baseline_context(
+        [
+            {
+                "activity_id": "DONE",
+                "baseline_finish": "2026-01-05",
+                "activity_status": "TK_Complete",
+                "actual_finish": "2026-01-04",
+            },
+            {
+                "activity_id": "LATE",
+                "baseline_finish": "2026-01-06",
+                "activity_status": "TK_Complete",
+                "actual_finish": "2026-01-12",
+            },
+            {
+                "activity_id": "OPEN",
+                "baseline_finish": "2026-01-07",
+                "activity_status": "TK_Active",
+            },
+        ]
+    )
+
+    metric, findings = engine._metric_bei(ctx, "dcma_bei", DCMA_METRIC_SPECS["dcma_bei"])
+    evidence = json.loads(metric["evidence_json"])
+
+    assert findings == []
+    assert metric["status"] == "measured"
+    assert metric["numerator"] == "1"
+    assert metric["denominator"] == "3"
+    assert metric["value"] == "0.3333"
+    assert evidence["profile_thresholds_defined"] is False
+    assert evidence["threshold_status_available"] is False
+    assert evidence["metric_interpretation"] == "reported_indicator_no_profile_threshold"
+    assert [sample["activity_id"] for sample in evidence["completed_due_activity_samples"]] == [
+        "DONE"
+    ]
+    assert [sample["activity_id"] for sample in evidence["missed_activity_samples"]] == [
+        "LATE",
+        "OPEN",
+    ]
+
+
+def test_dcma_bei_not_measurable_prerequisites() -> None:
+    engine = ScheduleQualityAssessmentEngine()
+    cases = [
+        (
+            _baseline_context(
+                [{"activity_id": "A1", "target_finish": "2026-01-05"}],
+                data_date="2026-01-10",
+            ),
+            "missing baseline finish dates",
+        ),
+        (
+            _baseline_context(
+                [{"activity_id": "A1", "baseline_finish": "2026-01-05"}],
+                data_date=None,
+                schedule_version_key="tropical|1|not-a-date",
+            ),
+            "invalid_status_date",
+        ),
+        (
+            _baseline_context(
+                [{"activity_id": "A1", "baseline_finish": "2026-01-20"}],
+                data_date="2026-01-10",
+            ),
+            "baseline due denominator is zero",
+        ),
+    ]
+
+    for ctx, expected_reason in cases:
+        metric, _ = engine._metric_bei(ctx, "dcma_bei", DCMA_METRIC_SPECS["dcma_bei"])
+        evidence = json.loads(metric["evidence_json"])
+        assert metric["status"] == "not_measurable_missing_data"
+        assert expected_reason in metric["not_measurable_reason"]
+        assert expected_reason in evidence["missing_prerequisites"]
+
+
+def test_dcma_cpli_remains_recalculation_gated_with_source_export_evidence() -> None:
+    engine = ScheduleQualityAssessmentEngine()
+    ctx = _baseline_context(
+        [
+            {
+                "activity_id": "C0",
+                "baseline_finish": "2026-01-05",
+                "source_critical_flag": 1,
+                "source_critical_flag_present": True,
+                "explicit_total_float_days": "0.0",
+                "critical_path_source": "msp_critical_flag",
+                "derived_total_float_days": "0.0",
+                "derived_float_basis": "remaining_late_finish_minus_remaining_early_finish",
+            }
+        ]
+    )
+
+    metric, findings = engine._metric_cpli(ctx, "dcma_cpli", DCMA_METRIC_SPECS["dcma_cpli"])
+    evidence = json.loads(metric["evidence_json"])
+
+    assert findings == []
+    assert metric["status"] == METRIC_STATUS_NOT_MEASURABLE_RECALC
+    assert metric["not_measurable_reason"] == (
+        "critical path length unavailable without CPM recalculation"
+    )
+    assert evidence["critical_path_length_prerequisites_available"] is False
+    assert evidence["source_export_critical_flags_sufficient"] is False
+    assert evidence["msp_slack_sufficient"] is False
+    assert evidence["derived_float_sufficient"] is False
+    assert "critical path length unavailable without CPM recalculation" in evidence[
+        "missing_recalculation_prerequisites"
+    ]
 
 
 def test_queue_and_process_completes_run(tmp_path: Path) -> None:
