@@ -53,7 +53,11 @@ def _w(path: Path, rows):
 def _build_config_root(root: Path) -> Path:
     proj = {
         "project_key": "tropical",
-        "project_name": "T",
+        # project_name + project_display_name MUST mirror the real config/projects/tropical.json so
+        # file-backed (real config) and db-backed (this synthetic snapshot) comprehensive
+        # manifest.json/README.md match for byte-exact parity (job_reference/forecast_period already do).
+        "project_name": "Tropical World Nursery Senior Living Facility",
+        "project_display_name": "Tropical World Nursery",
         "job_reference": "23-435-01",
         "forecast_period": "2026-June",
         "default_data_root": str(root / "unused"),

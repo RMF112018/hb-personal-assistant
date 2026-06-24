@@ -1306,31 +1306,34 @@ def timedelta_days(n: int) -> Any:
 
 
 @pytest.mark.parametrize("environment", ["dev", "production"])
-def test_child_env_injects_forecast_write_root_defaults(
+def test_child_env_does_not_inject_forecast_write_root_defaults(
     environment: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Both environments default the 3 forecast WRITE-roots under app-support; read-roots never."""
+    """Forecast roots are seeded into forecast_runtime_config.json, NOT injected into the child env
+    (deliberate since the live-app launch bootstrap; see service._forecast_default_env)."""
     for v in ("HB_FORECAST_RUNS_ROOT", "HB_FORECAST_EVAL_ROOT", "HB_FORECAST_CONFIG_EDIT_ROOT"):
         monkeypatch.delenv(v, raising=False)
     profile = resolve_profile(environment)  # type: ignore[arg-type]
     env = LauncherService(profile)._child_env()
 
-    base = profile.app_support_root / "analytics" / "forecast"
-    assert env["HB_FORECAST_RUNS_ROOT"] == str(base / "runs")
-    assert env["HB_FORECAST_EVAL_ROOT"] == str(base / "eval")
-    assert env["HB_FORECAST_CONFIG_EDIT_ROOT"] == str(base / "config-edit")
-    # Read-roots are never auto-defaulted.
-    for read_root_key in ("HB_FORECAST_DATA_ROOT", "HB_FORECAST_DB_PATH", "HB_FORECAST_PACKAGE_ROOTS"):
-        assert read_root_key not in env
+    # Neither write-roots nor read-roots are injected — managed storage handles them at launch.
+    for key in (
+        "HB_FORECAST_RUNS_ROOT",
+        "HB_FORECAST_EVAL_ROOT",
+        "HB_FORECAST_CONFIG_EDIT_ROOT",
+        "HB_FORECAST_DATA_ROOT",
+        "HB_FORECAST_DB_PATH",
+        "HB_FORECAST_PACKAGE_ROOTS",
+    ):
+        assert key not in env
 
 
-def test_child_env_respects_preexisting_forecast_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    """An operator-set HB_FORECAST_RUNS_ROOT is never overridden by the launcher default."""
+def test_child_env_never_carries_forecast_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The child env carries no HB_FORECAST_* keys, even when one is set in the ambient env (the
+    child inherits os.environ separately; _child_env only adds HB_PA_CONFIG for dev)."""
     monkeypatch.setenv("HB_FORECAST_RUNS_ROOT", "/operator/runs")
     monkeypatch.delenv("HB_FORECAST_EVAL_ROOT", raising=False)
     profile = resolve_profile("dev")
     env = LauncherService(profile)._child_env()
 
-    assert "HB_FORECAST_RUNS_ROOT" not in env  # inherited env wins → no default injected
-    base = profile.app_support_root / "analytics" / "forecast"
-    assert env["HB_FORECAST_EVAL_ROOT"] == str(base / "eval")  # the unset one still gets a default
+    assert not any(k.startswith("HB_FORECAST_") for k in env)

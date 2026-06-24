@@ -57,7 +57,13 @@ def _w(path: Path, rows):
 def _build_config_root(root: Path) -> Path:
     proj = {
         "project_key": "tropical",
-        "project_name": "T",
+        # project_name + project_display_name MUST mirror the real config/projects/tropical.json: the
+        # comprehensive generator reads them via load_project_config, so the file-backed run (real
+        # config, CFR_CONFIG_ROOT unset) and the db-backed run (this synthetic snapshot) only produce
+        # byte-identical manifest.json/README.md when the values match (job_reference/forecast_period
+        # already mirror for the same reason).
+        "project_name": "Tropical World Nursery Senior Living Facility",
+        "project_display_name": "Tropical World Nursery",
         "job_reference": "23-435-01",
         "forecast_period": "2026-June",
         "default_data_root": str(root / "unused"),
@@ -462,8 +468,14 @@ def test_csv_byte_diff_fails_parity(tmp_path, monkeypatch):
     db, snap, data_root, cfg_root = _setup(tmp_path, monkeypatch)
     real_run = p20._run_comprehensive
 
-    def _perturb(*, cfg, data_root, run_stamp, out_root):
-        meta = real_run(cfg=cfg, data_root=data_root, run_stamp=run_stamp, out_root=out_root)
+    def _perturb(*, project_key, cfg, data_root, run_stamp, out_root):
+        meta = real_run(
+            project_key=project_key,
+            cfg=cfg,
+            data_root=data_root,
+            run_stamp=run_stamp,
+            out_root=out_root,
+        )
         if Path(out_root).name == p20.DB_BACKED_SUBDIR:
             csv = next(
                 Path(meta["output_package"]).rglob("actuals_plus_forecast_monthly_by_cost_code.csv")
@@ -660,8 +672,14 @@ def test_cli_mismatch_rc1(tmp_path, monkeypatch, capsys):
     db, snap, data_root, cfg_root = _setup(tmp_path, monkeypatch)
     real_run = p20._run_comprehensive
 
-    def _perturb(*, cfg, data_root, run_stamp, out_root):
-        meta = real_run(cfg=cfg, data_root=data_root, run_stamp=run_stamp, out_root=out_root)
+    def _perturb(*, project_key, cfg, data_root, run_stamp, out_root):
+        meta = real_run(
+            project_key=project_key,
+            cfg=cfg,
+            data_root=data_root,
+            run_stamp=run_stamp,
+            out_root=out_root,
+        )
         if Path(out_root).name == p20.DB_BACKED_SUBDIR:
             f = Path(meta["output_package"]) / "audit" / "db_inventory.json"
             obj = json.loads(f.read_text(encoding="utf-8"))

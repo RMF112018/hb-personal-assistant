@@ -46,9 +46,9 @@ class LauncherService:
 
         Dev children get an HB_PA_CONFIG pointing at a dev config file so they resolve
         the isolated dev app-support root; production children inherit the current env.
-        Both environments additionally get default forecast WRITE-roots (see
-        ``_forecast_default_env``) so the launched app serves the write-backed forecast
-        surfaces out of the box.
+        Forecast WRITE-roots are NOT injected here: they are seeded into
+        ``forecast_runtime_config.json`` and created by ``ensure_forecast_managed_storage``
+        at launch (see ``_forecast_default_env``), so env injection is no longer required.
         """
         env: dict[str, str] = {}
         if self.profile.environment == "dev":

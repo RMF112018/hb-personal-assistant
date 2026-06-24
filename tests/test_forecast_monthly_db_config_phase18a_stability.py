@@ -346,8 +346,14 @@ def test_db_inventory_drift_is_real_parity_failure(tmp_path, monkeypatch):
     db, snap, data_root, cfg_root = _setup(tmp_path, monkeypatch)
     real_run = p18._run_monthly
 
-    def _perturb(*, cfg, data_root, run_stamp, out_root):
-        meta = real_run(cfg=cfg, data_root=data_root, run_stamp=run_stamp, out_root=out_root)
+    def _perturb(*, project_key, cfg, data_root, run_stamp, out_root):
+        meta = real_run(
+            project_key=project_key,
+            cfg=cfg,
+            data_root=data_root,
+            run_stamp=run_stamp,
+            out_root=out_root,
+        )
         if (
             Path(out_root).name == p18.DB_BACKED_SUBDIR
         ):  # simulate the live-DB inventory drifting db-side

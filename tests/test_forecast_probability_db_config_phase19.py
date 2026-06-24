@@ -567,8 +567,11 @@ def test_cli_mismatch_rc1(tmp_path, monkeypatch, capsys):
     db, snap, data_root, cfg_root = _setup(tmp_path, monkeypatch)
     real_run = p19._run_probability
 
-    def _perturb(*, cfg, data_root, run_stamp, out_root, runs, seed, forecast_start_month):
+    def _perturb(
+        *, project_key, cfg, data_root, run_stamp, out_root, runs, seed, forecast_start_month
+    ):
         meta = real_run(
+            project_key=project_key,
             cfg=cfg,
             data_root=data_root,
             run_stamp=run_stamp,
