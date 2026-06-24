@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+# Fast, local construction schedule-domain pytest bundle.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$ROOT"
+
+PYTHON_BIN="${PYTHON:-}"
+if [[ -z "$PYTHON_BIN" ]]; then
+  if [[ -x "$ROOT/.venv/bin/python" ]]; then
+    PYTHON_BIN="$ROOT/.venv/bin/python"
+  elif [[ -x "/Users/bobbyfetting/hb-personal-assistant/.venv/bin/python" ]]; then
+    PYTHON_BIN="/Users/bobbyfetting/hb-personal-assistant/.venv/bin/python"
+  else
+    PYTHON_BIN="python"
+  fi
+fi
+
+export PYTHONPATH="$ROOT/src:$ROOT/subrepos/construction-financial-review/src${PYTHONPATH:+:$PYTHONPATH}"
+
+pytest_targets=(
+  "tests/test_migrator_v64_schedule_quality.py"
+  "tests/test_migrator_v65_schedule_float.py::test_v65_metric_status_check_allows_derived_float"
+  "tests/test_migrator_v70_schedule_quality_supplemental.py"
+  "tests/test_migrator_v71_schedule_quality_source_export.py"
+  "tests/test_procore_schedule_activity_projection.py"
+  "tests/test_procore_schedule_exposure.py"
+  "tests/test_procore_schedule_normalizer.py"
+  "tests/test_procore_schedule_projection.py"
+  "tests/test_schedule_activity_repository.py"
+  "tests/test_schedule_cost_mapping_controls.py"
+  "tests/test_schedule_critical_path_analytics.py"
+  "tests/test_schedule_critical_path_quality.py::test_xer_dcma_critical_path_not_measurable_with_source_and_proxy"
+  "tests/test_schedule_critical_path_quality.py::test_gma_p6_still_not_measurable_critical_path"
+  "tests/test_schedule_dto_redaction.py"
+  "tests/test_schedule_float_derivation.py"
+  "tests/test_schedule_import_api.py::test_import_preview_and_commit_xer"
+  "tests/test_schedule_import_api.py::test_xer_commit_persists_critical_path_fields"
+  "tests/test_schedule_import_api.py::test_xer_quality_critical_path_measurable_via_api"
+  "tests/test_schedule_import_api.py::test_import_commit_supersede_same_version_key"
+  "tests/test_schedule_import_api.py::test_import_preview_and_commit_flow"
+  "tests/test_schedule_import_api.py::test_schedule_routes_self_heal_stale_schema_version"
+  "tests/test_schedule_import_api.py::test_preview_self_heals_missing_v65_columns"
+  "tests/test_schedule_import_api.py::test_post_routes_require_operator"
+  "tests/test_schedule_import_api.py::test_import_commit_gma_real_sample"
+  "tests/test_schedule_import_api.py::test_commit_without_confirm_is_400"
+  "tests/test_schedule_import_api.py::test_preview_file_too_large"
+  "tests/test_schedule_import_api.py::test_preview_duplicate_version"
+  "tests/test_schedule_import_api.py::test_preview_failure_writes_no_db_rows"
+  "tests/test_schedule_import_api.py::test_unsupported_schedule_format"
+  "tests/test_schedule_import_api.py::test_commit_after_supersede_preview_requires_commit_confirmation"
+  "tests/test_schedule_import_api.py::test_commit_supersede_state_mismatch_when_cache_not_supersede"
+  "tests/test_schedule_import_api.py::test_supersede_leaves_one_committed_version"
+  "tests/test_schedule_import_api.py::test_commit_duplicate_blocked"
+  "tests/test_schedule_import_api.py::test_xer_preview_returns_selected_project_key"
+  "tests/test_schedule_import_api.py::test_commit_rejects_project_mismatch"
+  "tests/test_schedule_import_api.py::test_commit_persistence_failure_returns_structured_error"
+  "tests/test_schedule_import_api.py::test_xer_commit_persists_import_parent_and_counts"
+  "tests/test_schedule_msp_xml_parser.py"
+  "tests/test_schedule_project_association.py"
+  "tests/test_schedule_quality_api.py::test_quality_summary_after_commit"
+  "tests/test_schedule_quality_api.py::test_quality_rerun_and_run_detail"
+  "tests/test_schedule_quality_api.py::test_project_quality_summary"
+  "tests/test_schedule_quality_engine.py"
+  "tests/test_schedule_quality_normalization.py"
+  "tests/test_schedule_quality_weighting_gate.py"
+  "tests/test_schedule_schema_migration.py"
+  "tests/test_schedule_version_diff.py::test_version_diff_across_imports"
+  "tests/test_schedule_xer_parser.py"
+  "tests/test_schedule_xer_quality_metrics.py"
+  "tests/test_schedule_xml_parser.py::test_parse_minimal_xml_fixture"
+  "tests/test_schedule_xml_parser.py::test_parse_gma_real_sample"
+)
+
+echo "=== Fast schedule test bundle ==="
+"$PYTHON_BIN" -m pytest -m "not integration and not manual and not live" "${pytest_targets[@]}" "$@"
