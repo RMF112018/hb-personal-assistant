@@ -958,6 +958,25 @@ export function getForecastGenerationRequests(projectKey?: string) {
   const qs = projectKey ? `?project_key=${encodeURIComponent(projectKey)}` : '';
   return fetchJson<ForecastGenerationRequestsResponse>(`/api/forecast/generation/requests${qs}`);
 }
+
+/* Schedule-derived forecast date defaults (Phase P-D). Read-only, redaction-safe, advisory. */
+export interface ForecastGenerationDateDefaults {
+  project_key: string;
+  forecast_start_date: string | null;
+  forecast_start_date_basis: string | null;
+  forecast_cutoff_date: string | null;
+  forecast_cutoff_date_basis: string | null;
+  schedule_version_key: string | null;
+  schedule_data_date: string | null;
+  schedule_data_date_basis: string | null;
+  schedule_source_status: 'available' | 'degraded' | 'missing';
+  warnings: string[];
+}
+export function getForecastGenerationDateDefaults(projectKey: string) {
+  return fetchJson<ForecastGenerationDateDefaults>(
+    `/api/forecast/generation/date-defaults?project_key=${encodeURIComponent(projectKey)}`,
+  );
+}
 export function getForecastDbOutputs(projectKey = 'tropical') {
   return fetchJson<{ outputs: ForecastDbOutputSummary[] }>(
     `/api/forecast/db/projects/${encodeURIComponent(projectKey)}/outputs`,
@@ -1117,6 +1136,8 @@ export interface ForecastGenerationRequestInput {
   project_key: string;
   forecast_start_date?: string | null;
   forecast_cutoff_date?: string | null;
+  // P-D: the cut-off basis (operator_supplied or a schedule-derived code); re-verified server-side.
+  forecast_cutoff_date_basis?: string | null;
 }
 export interface ForecastDbConfigGenerationRequestInput extends ForecastGenerationRequestInput {
   generator_kind: ForecastGeneratorKind;
@@ -1125,6 +1146,7 @@ function _generationBody(input: ForecastGenerationRequestInput): Record<string, 
   const body: Record<string, string> = { project_key: input.project_key };
   if (input.forecast_start_date) body.forecast_start_date = input.forecast_start_date;
   if (input.forecast_cutoff_date) body.forecast_cutoff_date = input.forecast_cutoff_date;
+  if (input.forecast_cutoff_date_basis) body.forecast_cutoff_date_basis = input.forecast_cutoff_date_basis;
   return body;
 }
 export function startForecastRun(input: ForecastGenerationRequestInput) {
@@ -1550,6 +1572,7 @@ export const api = {
   getForecastDbProjects,
   getForecastGenerationProjects,
   getForecastGenerationRequests,
+  getForecastGenerationDateDefaults,
   getForecastDbOutputs,
   getForecastDbOutput,
   getForecastDbDecisionSupport,

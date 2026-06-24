@@ -12,6 +12,14 @@ from datetime import datetime
 from typing import Any
 
 _GENERATOR_KINDS = ("comprehensive", "model_controls", "monthly", "probability")
+# Accepted cut-off basis codes (P-D). operator_supplied is the default; the schedule-derived codes are
+# verified server-side against the date-defaults resolver before they are trusted.
+_CUTOFF_BASES = (
+    "operator_supplied",
+    "schedule_data_date",
+    "schedule_import_created_at",
+    "latest_actual_activity_date",
+)
 
 
 def _valid_iso_date(value: str) -> bool:
@@ -55,13 +63,20 @@ def validate_request(body: dict[str, Any] | None, *, mode: str) -> tuple[dict[st
     if start_date is not None and cutoff_date is not None and start_date > cutoff_date:
         errors.append("forecast_start_after_cutoff")
 
+    # P-D: an optional cut-off basis may accompany the date. Unknown codes are rejected; schedule-
+    # derived codes are re-verified server-side. Absent basis (with a cut-off) defaults operator_supplied.
+    basis_raw = body.get("forecast_cutoff_date_basis")
+    basis = str(basis_raw).strip() if basis_raw not in (None, "") else None
+    if basis is not None and basis not in _CUTOFF_BASES:
+        errors.append("invalid_forecast_cutoff_date_basis")
+        basis = None
+
     parsed = {
         "project_key": project_key,
         "generator_kind": generator_kind,
         "forecast_start_date": start_date,
         "forecast_cutoff_date": cutoff_date,
-        # P-C: an operator-supplied cut-off is the only basis. Schedule-derived defaulting is P-D.
-        "forecast_cutoff_date_basis": "operator_supplied" if cutoff_date is not None else None,
+        "forecast_cutoff_date_basis": (basis or "operator_supplied") if cutoff_date is not None else None,
     }
     return parsed, errors
 
@@ -79,6 +94,7 @@ def request_row_to_public(row: dict[str, Any]) -> dict[str, Any]:
         "forecast_start_date": row.get("forecast_start_date"),
         "forecast_cutoff_date": row.get("forecast_cutoff_date"),
         "forecast_cutoff_date_basis": row.get("forecast_cutoff_date_basis"),
+        "schedule_version_key": row.get("schedule_version_key"),
         "readiness_status_at_request": row.get("readiness_status_at_request"),
         "readiness_reasons": _loads_list(row.get("readiness_reasons_json")),
         "failure_code": row.get("failure_code"),

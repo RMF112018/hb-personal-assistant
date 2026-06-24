@@ -24,6 +24,7 @@ vi.mock('../lib/api', () => ({
     getForecastDbProjects: vi.fn(),
     getForecastGenerationProjects: vi.fn(),
     getForecastGenerationRequests: vi.fn(),
+    getForecastGenerationDateDefaults: vi.fn(),
     getForecastDbOutputs: vi.fn(),
     getForecastDbNarratives: vi.fn(),
     getForecastDbDecisionSupport: vi.fn(),
@@ -36,6 +37,27 @@ function mockData() {
   useQueryMock.mockImplementation((opts: { queryKey: unknown[] }) => {
     const kind = opts.queryKey[1]
     const sub = opts.queryKey[2]
+    if (kind === 'generation' && sub === 'date-defaults') {
+      // Default mock: no schedule-derived defaults (auto-fill fills nothing) so generation-call
+      // assertions stay stable. P-D value cases install their own mock below.
+      return {
+        data: {
+          project_key: 'tropical',
+          forecast_start_date: null,
+          forecast_start_date_basis: null,
+          forecast_cutoff_date: null,
+          forecast_cutoff_date_basis: null,
+          schedule_version_key: null,
+          schedule_data_date: null,
+          schedule_data_date_basis: null,
+          schedule_source_status: 'missing',
+          warnings: ['no_schedule_cutoff_default_available'],
+        },
+        isLoading: false,
+        error: null,
+        refetch: vi.fn(),
+      }
+    }
     if (kind === 'generation' && sub === 'readiness') {
       return {
         data: {
@@ -194,6 +216,7 @@ describe('ForecastRunCenterPage', () => {
         generator_kind: 'monthly',
         forecast_start_date: null,
         forecast_cutoff_date: null,
+        forecast_cutoff_date_basis: null,
       }),
     )
   })
@@ -260,6 +283,7 @@ describe('ForecastRunCenterPage', () => {
         generator_kind: 'comprehensive',
         forecast_start_date: '2026-06-01',
         forecast_cutoff_date: '2026-06-24',
+        forecast_cutoff_date_basis: 'operator_supplied',
       }),
     )
   })
@@ -308,6 +332,98 @@ describe('ForecastRunCenterPage', () => {
         generator_kind: 'comprehensive',
         forecast_start_date: null,
         forecast_cutoff_date: null,
+        forecast_cutoff_date_basis: null,
+      }),
+    )
+  })
+
+  function mockWithScheduleDefaults() {
+    useQueryMock.mockImplementation((opts: { queryKey: unknown[] }) => {
+      const kind = opts.queryKey[1]
+      const sub = opts.queryKey[2]
+      if (kind === 'generation' && sub === 'date-defaults') {
+        return {
+          data: {
+            project_key: 'tropical',
+            forecast_start_date: '2025-01-01',
+            forecast_start_date_basis: 'earliest_actual_cost_month',
+            forecast_cutoff_date: '2026-06-01',
+            forecast_cutoff_date_basis: 'schedule_data_date',
+            schedule_version_key: 'tropical|S1|2026-06-01',
+            schedule_data_date: '2026-06-01',
+            schedule_data_date_basis: 'schedule_version_key',
+            schedule_source_status: 'available',
+            warnings: [],
+          },
+          isLoading: false,
+          error: null,
+          refetch: vi.fn(),
+        }
+      }
+      if (kind === 'generation' && sub === 'readiness') {
+        return {
+          data: { ready: true, generation_enabled: true, disabled_reasons: [], warnings: [], actions: [], guardrails: {} },
+          isLoading: false,
+          error: null,
+          refetch: vi.fn(),
+        }
+      }
+      if (kind === 'generation' && sub === 'projects') {
+        return {
+          data: {
+            projects: [
+              { project_key: 'tropical', display_name: 'Tropical', readiness_status: 'ready', readiness_reasons: [] },
+            ],
+          },
+          isLoading: false,
+          error: null,
+          refetch: vi.fn(),
+        }
+      }
+      return { data: { runs: [] }, isLoading: false, error: null, refetch: vi.fn() }
+    })
+  }
+
+  it('auto-fills blank dates from schedule defaults and submits the schedule_data_date basis', async () => {
+    mockWithScheduleDefaults()
+    renderPage()
+    fireEvent.change(screen.getByLabelText('Forecast project'), { target: { value: 'tropical' } })
+
+    const cutoff = screen.getByLabelText('Forecast cut-off date') as HTMLInputElement
+    await waitFor(() => expect(cutoff.value).toBe('2026-06-01'))
+    expect((screen.getByLabelText('Forecast start date') as HTMLInputElement).value).toBe('2025-01-01')
+    expect(screen.getByText(/Cut-off basis:/)).toHaveTextContent('Schedule data date')
+
+    fireEvent.click(screen.getByRole('button', { name: /^Generate$/i }))
+    await waitFor(() =>
+      expect(startDbConfigMock).toHaveBeenCalledWith({
+        project_key: 'tropical',
+        generator_kind: 'comprehensive',
+        forecast_start_date: '2025-01-01',
+        forecast_cutoff_date: '2026-06-01',
+        forecast_cutoff_date_basis: 'schedule_data_date',
+      }),
+    )
+  })
+
+  it('operator override of the defaulted cut-off flips the basis to operator_supplied', async () => {
+    mockWithScheduleDefaults()
+    renderPage()
+    fireEvent.change(screen.getByLabelText('Forecast project'), { target: { value: 'tropical' } })
+    const cutoff = screen.getByLabelText('Forecast cut-off date') as HTMLInputElement
+    await waitFor(() => expect(cutoff.value).toBe('2026-06-01'))
+
+    fireEvent.change(cutoff, { target: { value: '2026-07-15' } }) // operator edit
+    expect(screen.getByText(/Cut-off basis:/)).toHaveTextContent('Operator supplied')
+
+    fireEvent.click(screen.getByRole('button', { name: /^Generate$/i }))
+    await waitFor(() =>
+      expect(startDbConfigMock).toHaveBeenCalledWith({
+        project_key: 'tropical',
+        generator_kind: 'comprehensive',
+        forecast_start_date: '2025-01-01',
+        forecast_cutoff_date: '2026-07-15',
+        forecast_cutoff_date_basis: 'operator_supplied',
       }),
     )
   })
