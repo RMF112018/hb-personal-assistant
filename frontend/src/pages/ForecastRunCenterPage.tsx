@@ -14,6 +14,10 @@ import {
   ForecastTd,
   ForecastTh,
 } from '../components/forecast/ForecastPageChrome'
+import {
+  ForecastContextHeader,
+  type ForecastReadinessPill,
+} from '../components/forecast/ForecastContextHeader'
 import { ForecastDecisionSupportPanel } from '../components/forecast/ForecastDecisionSupportPanel'
 import { ForecastNarrativesPanel } from '../components/forecast/ForecastNarrativesPanel'
 import { ForecastOperatorAssumptionsPanel } from '../components/forecast/ForecastOperatorAssumptionsPanel'
@@ -35,6 +39,40 @@ function runStatusPill(status: string | undefined): string {
   if (status === 'succeeded' || status === 'generated' || status === 'completed') return 'validated'
   if (status === 'failed' || status === 'rejected') return 'invalid'
   return 'attention'
+}
+
+// UI-A: per-project readiness status → context-header pill variant.
+function projectReadinessPill(status: string | undefined): ForecastReadinessPill {
+  if (status === 'ready') return 'validated'
+  if (status === 'degraded') return 'attention'
+  if (status === 'blocked') return 'invalid'
+  return 'unknown'
+}
+
+// UI-A: one plain-language "next step" line derived from the current selection. A failed opened run
+// takes priority so the operator is told explicitly that no output was produced.
+function deriveNextAction(args: {
+  projectKey: string | undefined
+  selectedProjectObj: { readiness_status?: string; has_prior_forecast_output?: boolean } | undefined
+  detail: Record<string, unknown> | null
+}): string {
+  const { projectKey, selectedProjectObj, detail } = args
+  const runStatus = detail?.status as string | undefined
+  if (detail && (runStatus === 'failed' || runStatus === 'rejected')) {
+    return 'The selected run did not complete; no forecast output was produced.'
+  }
+  if (!projectKey || !selectedProjectObj) {
+    return 'Select a project to view its forecast.'
+  }
+  if (selectedProjectObj.readiness_status === 'blocked') {
+    return 'Resolve readiness items before generating.'
+  }
+  if (selectedProjectObj.readiness_status === 'ready') {
+    return selectedProjectObj.has_prior_forecast_output
+      ? 'Review the latest forecast or generate a new one.'
+      : 'Generate a forecast for this project.'
+  }
+  return 'Review readiness, then generate a forecast for this project.'
 }
 
 // Client-side date order check (the <input type="date"> already enforces ISO YYYY-MM-DD format).
@@ -134,7 +172,7 @@ export function ForecastRunCenterPage() {
 
   const [selected, setSelected] = useState<Selected | undefined>(undefined)
 
-  // P-B: project selector driven by the generation-ready read model (procore identity + committed
+  // P-B: project selector driven by the generation-ready project projection (procore identity + committed
   // schedule + forecast outputs), with per-project readiness. No 'tropical' fallback for generation.
   const { data: projectsResp } = useQuery({
     queryKey: ['forecast', 'generation', 'projects'],
@@ -144,8 +182,6 @@ export function ForecastRunCenterPage() {
   const [projectKey, setProjectKey] = useState<string | undefined>(undefined)
   const selectedProjectObj = projects.find((p) => p.project_key === projectKey)
   const selectedBlocked = selectedProjectObj?.readiness_status === 'blocked'
-  // Browse panels may default to the first available project (never a hardcoded 'tropical').
-  const browseProject = projectKey ?? projects[0]?.project_key
 
   // P-C: durable request history for the selected project.
   const { data: requestsResp, refetch: refetchRequests } = useQuery({
@@ -288,10 +324,40 @@ export function ForecastRunCenterPage() {
   const readinessActions = readiness?.actions ?? []
   const readinessWarnings = readiness?.warnings ?? []
 
+  // UI-A: display-ready context-header props. The header is presentational, so the page resolves
+  // reason codes here (via PROJECT_READINESS_REASON_TEXT, the single source of that copy).
+  const headerReadinessReasons =
+    selectedProjectObj && selectedProjectObj.readiness_status !== 'ready'
+      ? selectedProjectObj.readiness_reasons.map(
+          (code) =>
+            PROJECT_READINESS_REASON_TEXT[code] ?? 'This project is not ready for generation.',
+        )
+      : []
+  const headerSelectedRun = detail
+    ? {
+        label: (detail.display_label as string) || 'Run detail',
+        status: (detail.status as string) || 'unknown',
+      }
+    : null
+  const nextAction = deriveNextAction({ projectKey, selectedProjectObj, detail })
+
   return (
     <ForecastShell>
       <ForecastBackLink />
       <ForecastSubnav />
+
+      <ForecastContextHeader
+        projectName={selectedProjectObj?.display_name ?? null}
+        projectKey={projectKey ?? null}
+        readinessStatus={
+          selectedProjectObj ? projectReadinessPill(selectedProjectObj.readiness_status) : null
+        }
+        readinessReasons={headerReadinessReasons}
+        latestForecastDisplay={selectedProjectObj?.latest_forecast_display ?? null}
+        selectedRun={headerSelectedRun}
+        outputContext="No output selected"
+        nextAction={nextAction}
+      />
 
       <section className="forecast-panel">
         <ForecastPageHeader
@@ -322,16 +388,6 @@ export function ForecastRunCenterPage() {
         />
         {projects.length === 0 && (
           <p className="text-sm text-[var(--hb-muted)] mt-2">No projects are available yet.</p>
-        )}
-        {selectedProjectObj && selectedProjectObj.readiness_status !== 'ready' && (
-          <div className="text-sm text-rose-300 mt-2" role="status">
-            {selectedProjectObj.readiness_reasons.map((reason) => (
-              <p key={reason}>
-                {PROJECT_READINESS_REASON_TEXT[reason] ??
-                  'This project is not ready for generation.'}
-              </p>
-            ))}
-          </div>
         )}
         <div className="flex flex-wrap items-center gap-4 mt-3">
           <label className="text-sm text-[var(--hb-muted)] flex items-center gap-2">
@@ -614,12 +670,19 @@ export function ForecastRunCenterPage() {
         </section>
       )}
 
-      {browseProject && (
+      {projectKey ? (
         <>
-          <ForecastDecisionSupportPanel key={`ds-${browseProject}-${refreshNonce}`} project={browseProject} />
-          <ForecastNarrativesPanel key={`nr-${browseProject}-${refreshNonce}`} project={browseProject} />
-          <ForecastOperatorAssumptionsPanel key={`oa-${browseProject}-${refreshNonce}`} project={browseProject} />
+          <ForecastDecisionSupportPanel key={`ds-${projectKey}-${refreshNonce}`} project={projectKey} />
+          <ForecastNarrativesPanel key={`nr-${projectKey}-${refreshNonce}`} project={projectKey} />
+          <ForecastOperatorAssumptionsPanel key={`oa-${projectKey}-${refreshNonce}`} project={projectKey} />
         </>
+      ) : (
+        <section className="forecast-panel">
+          <h2 className="forecast-section-label">Forecast results</h2>
+          <p className="text-sm text-[var(--hb-muted)]">
+            Select a project to view its forecast results.
+          </p>
+        </section>
       )}
     </ForecastShell>
   )
