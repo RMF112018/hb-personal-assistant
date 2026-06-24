@@ -15,6 +15,7 @@ import {
   ForecastTh,
 } from '../components/forecast/ForecastPageChrome'
 import { ForecastDecisionSupportPanel } from '../components/forecast/ForecastDecisionSupportPanel'
+import { ForecastNarrativesPanel } from '../components/forecast/ForecastNarrativesPanel'
 import { ForecastOperatorAssumptionsPanel } from '../components/forecast/ForecastOperatorAssumptionsPanel'
 import { ForecastStatusPill } from '../components/forecast/ForecastStatusPill'
 import { EmptyState } from '../components/ui/EmptyState'
@@ -56,6 +57,15 @@ export function ForecastRunCenterPage() {
   const [genKind, setGenKind] = useState<ForecastGeneratorKind>('comprehensive')
 
   const [selected, setSelected] = useState<Selected | undefined>(undefined)
+
+  // P9: multi-project selector over projects that have persisted DB outputs.
+  const { data: projectsResp } = useQuery({
+    queryKey: ['forecast', 'db-projects'],
+    queryFn: () => api.getForecastDbProjects(),
+  })
+  const projects = projectsResp?.projects ?? []
+  const [projectKey, setProjectKey] = useState<string | undefined>(undefined)
+  const activeProject = projectKey ?? projects[0]?.project_key ?? 'tropical'
 
   const { data: detailResp } = useQuery({
     queryKey: ['forecast', 'run-detail', selected?.source, selected?.id],
@@ -280,8 +290,29 @@ export function ForecastRunCenterPage() {
         </section>
       )}
 
-      <ForecastDecisionSupportPanel />
-      <ForecastOperatorAssumptionsPanel />
+      {projects.length > 1 && (
+        <section className="forecast-panel">
+          <label className="text-sm text-[var(--hb-muted)] flex items-center gap-2">
+            Project
+            <select
+              aria-label="Forecast project"
+              className="rounded border border-[var(--hb-border)] bg-[var(--hb-bg)] px-2 py-1 text-sm"
+              value={activeProject}
+              onChange={(e) => setProjectKey(e.target.value)}
+            >
+              {projects.map((p) => (
+                <option key={p.project_key} value={p.project_key}>
+                  {p.project_key} ({p.output_count})
+                </option>
+              ))}
+            </select>
+          </label>
+        </section>
+      )}
+
+      <ForecastDecisionSupportPanel project={activeProject} />
+      <ForecastNarrativesPanel project={activeProject} />
+      <ForecastOperatorAssumptionsPanel project={activeProject} />
     </ForecastShell>
   )
 }

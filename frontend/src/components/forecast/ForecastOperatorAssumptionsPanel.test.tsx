@@ -92,7 +92,7 @@ describe('ForecastOperatorAssumptionsPanel', () => {
 
   it('renders captured assumptions and required rows with a satisfied pill', () => {
     mockPopulated()
-    render(<ForecastOperatorAssumptionsPanel />)
+    render(<ForecastOperatorAssumptionsPanel project="tropical" />)
     expect(screen.getByText('labor_rate')).toBeInTheDocument()
     expect(screen.getByText('125.00')).toBeInTheDocument()
     expect(screen.getByText('escalation_rate')).toBeInTheDocument()
@@ -102,7 +102,7 @@ describe('ForecastOperatorAssumptionsPanel', () => {
 
   it('submits a new operator assumption and refetches', async () => {
     mockPopulated()
-    render(<ForecastOperatorAssumptionsPanel />)
+    render(<ForecastOperatorAssumptionsPanel project="tropical" />)
     fireEvent.change(screen.getByLabelText('Assumption type'), {
       target: { value: 'escalation_rate' },
     })
@@ -118,7 +118,7 @@ describe('ForecastOperatorAssumptionsPanel', () => {
 
   it('blocks submit with an empty assumption type', () => {
     mockPopulated()
-    render(<ForecastOperatorAssumptionsPanel />)
+    render(<ForecastOperatorAssumptionsPanel project="tropical" />)
     fireEvent.click(screen.getByText('Add assumption'))
     expect(createOperator).not.toHaveBeenCalled()
     expect(screen.getByText('Assumption type is required.')).toBeInTheDocument()
@@ -126,7 +126,7 @@ describe('ForecastOperatorAssumptionsPanel', () => {
 
   it('toggles a required assumption satisfied', async () => {
     mockPopulated()
-    render(<ForecastOperatorAssumptionsPanel />)
+    render(<ForecastOperatorAssumptionsPanel project="tropical" />)
     fireEvent.click(screen.getByText('Mark satisfied'))
     await waitFor(() => expect(setSatisfied).toHaveBeenCalledWith('r1', true))
     await waitFor(() => expect(refetchReq).toHaveBeenCalled())

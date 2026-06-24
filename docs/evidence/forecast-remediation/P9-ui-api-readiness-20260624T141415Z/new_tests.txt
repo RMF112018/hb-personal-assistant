@@ -1,0 +1,12 @@
+P9 — UI/API readiness + operator workflow: new/extended tests
+
+tests/test_fastapi_forecast_run_readmodel.py (extended, +3 tests)
+  test_list_projects
+  test_read_narratives  (stamp bait in fields AND free-text narrative; find_redaction_leaks==[])
+  test_narratives_unknown_output_404
+  test_list_outputs  (extended: asserts variance_to_prior_forecast in list view)
+
+frontend vitest
+  src/components/forecast/ForecastNarrativesPanel.test.tsx (3)  NEW
+  src/pages/ForecastRunCenterPage.test.tsx (+2: selector shown >1 project; hidden at 1)
+  ForecastDecisionSupportPanel.test.tsx / ForecastOperatorAssumptionsPanel.test.tsx (updated: project prop)

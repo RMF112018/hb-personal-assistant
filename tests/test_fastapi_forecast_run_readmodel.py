@@ -8,6 +8,7 @@ unknown output_id.
 
 from __future__ import annotations
 
+import json
 import sqlite3
 from pathlib import Path
 
@@ -36,10 +37,10 @@ def _seed(db: Path) -> None:
         )
         conn.execute(
             "INSERT INTO forecast_outputs (output_id, run_id, project_key, source_package, "
-            "estimated_final_cost, cost_to_complete, variance_to_budget, source_path, raw_json, created_utc) "
-            "VALUES (?,?,?,?,?,?,?,?,?,?)",
+            "estimated_final_cost, cost_to_complete, variance_to_budget, variance_to_prior_forecast, "
+            "source_path, raw_json, created_utc) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
             (OID, RUN_ID, "tropical", "forecast_analysis_package_tropical_20260101_000000",
-             "500.00", "100.00", "10.00", "/Users/bobbyfetting/secret/path", "{}", TS),
+             "500.00", "100.00", "10.00", "5.00", "/Users/bobbyfetting/secret/path", "{}", TS),
         )
         conn.execute(
             "INSERT INTO forecast_output_budget_codes (id, output_id, project_key, budget_code_key, "
@@ -126,6 +127,41 @@ def _seed(db: Path) -> None:
             ("md1", RUN_ID, "tropical", "burn_rate", 1, "0.7000", "contributed to 1 budget codes",
              "{}", TS),
         )
+        # P8 narratives — payloads carry stamp bait both as structured fields (forecast_period /
+        # accuracy_package_stamp / prior_run_id) AND inside the free-text narrative, to prove the
+        # read-model drops the keys AND scrubs the narrative string.
+        _narr = [
+            ("project", "header", json.dumps({
+                "estimated_final_cost": "500.00", "forecast_at_completion": "500.00",
+                "cost_to_complete": "100.00", "variance_to_budget": "10.00",
+                "budget_code_count": 1, "risk_count": 1, "override_count": 1, "warning_count": 0,
+                "narrative": "Forecast EAC 500.00 across 1 budget code(s)."})),
+            ("budget_code", "0000.03-01-025.MAT", json.dumps({
+                "budget_code_key": "0000.03-01-025.MAT", "recommended_projected_cost": "500.00",
+                "recommended_cost_to_complete": "100.00", "forecast_action": "hold",
+                "confidence": "high", "risk_count": 1, "overridden": True,
+                "narrative": "Budget code 0000.03-01-025.MAT: projected cost 500.00, operator-overridden."})),
+            ("human_override", "0000.03-01-025.MAT", json.dumps({
+                "budget_code_key": "0000.03-01-025.MAT", "assumption_type": "escalation",
+                "column": "recommended_projected_cost", "original": "450.00", "override": "500.00",
+                "delta_amount": "50.00", "source": "operator", "applied_utc": TS,
+                "narrative": "Operator override on 0000.03-01-025.MAT: 450.00 -> 500.00."})),
+            ("source_qa", "analysis_package", json.dumps({
+                "budget_code_count": 1, "null_projected_cost_count": 0, "zero_projected_cost_count": 0,
+                "duplicate_budget_code_keys": [], "forecast_period": "20260101_000000",
+                "narrative": "Source QA over 1 budget code(s); forecast period 20260101_000000."})),
+            ("lineage", "package_sha256_chain", json.dumps({
+                "context_sha256": "a" * 64, "analysis_sha256": "b" * 64, "output_sha256": "c" * 64,
+                "methodology_sha256": "d" * 64, "accuracy_package_stamp": "20251201_120000",
+                "prior_run_id": "20251201_120000",
+                "narrative": "Package sha256 chain output=" + "c" * 64 + " prior_run=20251201_120000."})),
+        ]
+        for i, (scope, nkey, payload) in enumerate(_narr, start=1):
+            conn.execute(
+                "INSERT INTO forecast_output_narratives (id, output_id, project_key, scope, "
+                "narrative_key, source_row_number, raw_json, created_utc) VALUES (?,?,?,?,?,?,?,?)",
+                (f"nr{i}", OID, "tropical", scope, nkey, i, payload, TS),
+            )
         conn.commit()
     finally:
         conn.close()
@@ -150,7 +186,50 @@ def test_list_outputs(seeded):
     body = _client(seeded).get("/api/forecast/db/projects/tropical/outputs", headers=_h()).json()
     assert body["guardrails"]["read_only"] is True
     assert [o["output_id"] for o in body["outputs"]] == [OID]
+    assert body["outputs"][0]["variance_to_prior_forecast"] == "5.00"  # P9: prior delta in list view
     assert find_redaction_leaks(body) == []
+
+
+def test_list_projects(seeded):
+    resp = _client(seeded).get("/api/forecast/db/projects", headers=_h())
+    assert resp.status_code == 200
+    body = resp.json()
+    assert [p["project_key"] for p in body["projects"]] == ["tropical"]
+    assert body["projects"][0]["output_count"] == 1
+    assert body["projects"][0]["latest_display"] == "Jun 19, 2026"
+    assert find_redaction_leaks(body) == []
+
+
+def test_read_narratives(seeded):
+    resp = _client(seeded).get(f"/api/forecast/db/outputs/{OID}/narratives", headers=_h())
+    assert resp.status_code == 200
+    body = resp.json()
+    n = body["narratives"]
+    # curated content present per scope
+    assert n["project"][0]["estimated_final_cost"] == "500.00"
+    assert n["project"][0]["budget_code_count"] == 1
+    assert n["budget_code"][0]["overridden"] is True
+    assert n["human_override"][0]["original"] == "450.00" and n["human_override"][0]["override"] == "500.00"
+    assert n["human_override"][0]["applied_display"] == "Jun 19, 2026"  # friendly, not raw stamp
+    assert n["lineage"][0]["context_sha256"] == "a" * 64  # sha256 hex is leak-safe
+    # stamp-format structured keys dropped
+    assert "applied_utc" not in n["human_override"][0]
+    assert "forecast_period" not in n["source_qa"][0]
+    assert "accuracy_package_stamp" not in n["lineage"][0]
+    assert "prior_run_id" not in n["lineage"][0]
+    # free-text narrative scrubbed of embedded stamps
+    assert "[redacted]" in n["source_qa"][0]["narrative"]
+    assert "[redacted]" in n["lineage"][0]["narrative"]
+    # no-raw-leak: nothing stamp-format / no raw_json / no source_path reaches the client
+    assert find_redaction_leaks(body) == []
+    assert "20260101_000000" not in resp.text and "20251201_120000" not in resp.text
+    assert RUN_ID not in resp.text
+
+
+def test_narratives_unknown_output_404(seeded):
+    resp = _client(seeded).get("/api/forecast/db/outputs/fout-nope/narratives", headers=_h())
+    assert resp.status_code == 404
+    assert resp.json()["detail"] == "forecast_output_not_found"
 
 
 def test_read_output_with_all_children(seeded):

@@ -91,7 +91,7 @@ describe('ForecastDecisionSupportPanel', () => {
 
   it('renders metrics, maturity, confidence, availability, method eligibility, and recommendations', () => {
     mockPopulated()
-    render(<ForecastDecisionSupportPanel />)
+    render(<ForecastDecisionSupportPanel project="tropical" />)
     expect(screen.getByText('Estimated final cost')).toBeInTheDocument()
     expect(screen.getByText('Project maturity')).toBeInTheDocument()
     expect(screen.getByText('M2')).toBeInTheDocument()
@@ -117,7 +117,7 @@ describe('ForecastDecisionSupportPanel', () => {
       }
       return EMPTY
     })
-    render(<ForecastDecisionSupportPanel />)
+    render(<ForecastDecisionSupportPanel project="tropical" />)
     expect(screen.getByText('No persisted forecast outputs yet')).toBeInTheDocument()
   })
 
@@ -128,7 +128,7 @@ describe('ForecastDecisionSupportPanel', () => {
       }
       return EMPTY
     })
-    render(<ForecastDecisionSupportPanel />)
+    render(<ForecastDecisionSupportPanel project="tropical" />)
     expect(screen.getByText(/Forecast database not available/)).toBeInTheDocument()
   })
 })

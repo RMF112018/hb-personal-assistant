@@ -1,0 +1,8 @@
+P9 validation — 2026-06-24T14:14:53Z
+
+scripts/test-forecasting.sh -q -rA : 898 passed, 0 failed (P8 baseline 895 + 3 API)
+frontend npm run typecheck (tsc -b): clean
+frontend vitest (4 forecast files) : 16 passed, 0 failed
+ruff check (read-model + test)      : clean (api.py: 35 PRE-EXISTING errors, identical on origin/main, none on new routes)
+
+No schema/migration/table_count change; no live-DB write; no sensitive-op (P9b deferred).

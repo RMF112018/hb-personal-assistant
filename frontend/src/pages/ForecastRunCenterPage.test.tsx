@@ -20,6 +20,12 @@ vi.mock('../lib/api', () => ({
     getForecastRun: vi.fn(),
     startForecastRun: vi.fn().mockResolvedValue({}),
     startForecastDbConfigRun: (...args: unknown[]) => startDbConfigMock(...args),
+    getForecastDbProjects: vi.fn(),
+    getForecastDbOutputs: vi.fn(),
+    getForecastDbNarratives: vi.fn(),
+    getForecastDbDecisionSupport: vi.fn(),
+    getForecastOperatorAssumptions: vi.fn(),
+    getForecastRequiredAssumptions: vi.fn(),
   },
 }))
 
@@ -123,5 +129,43 @@ describe('ForecastRunCenterPage', () => {
     const text = container.textContent || ''
     expect(text).not.toMatch(/\d{8}_\d{6}/)
     expect(text).not.toMatch(/\/Users\//)
+  })
+
+  it('renders a multi-project selector when more than one project has outputs', () => {
+    useQueryMock.mockImplementation((opts: { queryKey: unknown[] }) => {
+      if (opts.queryKey[1] === 'db-projects') {
+        return {
+          data: {
+            projects: [
+              { project_key: 'tropical', output_count: 2, latest_display: 'Jun 19, 2026' },
+              { project_key: 'harbor', output_count: 1, latest_display: 'Jun 18, 2026' },
+            ],
+          },
+          isLoading: false,
+          error: null,
+          refetch: vi.fn(),
+        }
+      }
+      return { data: undefined, isLoading: false, error: null, refetch: vi.fn() }
+    })
+    renderPage()
+    const select = screen.getByLabelText('Forecast project') as HTMLSelectElement
+    expect(Array.from(select.options).map((o) => o.value)).toEqual(['tropical', 'harbor'])
+  })
+
+  it('hides the project selector when only one project has outputs', () => {
+    useQueryMock.mockImplementation((opts: { queryKey: unknown[] }) => {
+      if (opts.queryKey[1] === 'db-projects') {
+        return {
+          data: { projects: [{ project_key: 'tropical', output_count: 2, latest_display: null }] },
+          isLoading: false,
+          error: null,
+          refetch: vi.fn(),
+        }
+      }
+      return { data: undefined, isLoading: false, error: null, refetch: vi.fn() }
+    })
+    renderPage()
+    expect(screen.queryByLabelText('Forecast project')).toBeNull()
   })
 })

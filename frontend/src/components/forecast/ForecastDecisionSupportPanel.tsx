@@ -19,8 +19,6 @@ import {
 import { ForecastStatusPill } from './ForecastStatusPill'
 import { ForecastSummaryCard, ForecastSummaryGrid } from './ForecastSummary'
 
-const PROJECT = 'tropical'
-
 function money(v: string | null | undefined): string {
   return v == null || v === '' ? '—' : v
 }
@@ -49,10 +47,10 @@ function methodPill(status: string | null): string {
 }
 
 /** Persisted run-output + decision-support panel (hosted in the Run Center). */
-export function ForecastDecisionSupportPanel() {
+export function ForecastDecisionSupportPanel({ project }: { project: string }) {
   const { data: list, isLoading, error } = useQuery({
-    queryKey: ['forecast', 'db-outputs', PROJECT],
-    queryFn: () => api.getForecastDbOutputs(PROJECT),
+    queryKey: ['forecast', 'db-outputs', project],
+    queryFn: () => api.getForecastDbOutputs(project),
   })
   const outputs = list?.outputs ?? []
   const [selectedId, setSelectedId] = useState<string | undefined>(undefined)
@@ -89,7 +87,7 @@ export function ForecastDecisionSupportPanel() {
     )
   }
 
-  const project = ds?.confidence_scorecards?.find((s) => s.scope === 'project')
+  const projectScorecard = ds?.confidence_scorecards?.find((s) => s.scope === 'project')
   const maturity = ds?.maturity
 
   return (
@@ -136,9 +134,9 @@ export function ForecastDecisionSupportPanel() {
         <div className="forecast-metric-card">
           <div className="forecast-metric-label">Forecast confidence</div>
           <div className="mt-1">
-            <ForecastStatusPill status={confidencePill(project?.label)} />
+            <ForecastStatusPill status={confidencePill(projectScorecard?.label)} />
           </div>
-          <div className="forecast-metric-detail">{project?.label ?? 'no scorecard'}</div>
+          <div className="forecast-metric-detail">{projectScorecard?.label ?? 'no scorecard'}</div>
         </div>
         <div className="forecast-metric-card">
           <div className="forecast-metric-label">Maturity status</div>
