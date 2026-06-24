@@ -40,7 +40,9 @@ GUARDRAILS = {
     "tables": "maturity_snapshots/data_availability_profiles/confidence_scorecards/confidence_factors",
     "external_systems": "none",
     "forecast_reads": "file_backed_unchanged",
-    "new_scoring_math": False,
+    # P5: the only derived number is a deterministic, count-derived per-domain availability score
+    # (availability-gated completeness ratio). No model/ML scoring is invented.
+    "new_scoring_math": "deterministic_count_derived_availability_score_only",
     "dry_run_writes": False,
     "apply_requires_explicit_db_path": True,
     "apply_refuses_live_db": True,
@@ -60,9 +62,41 @@ MIN_MONTHS_CANDIDATE = 3
 MIN_MONTHS_RELIABLE = 6
 MIN_MONTHS_SEASONAL = 12
 
-# Domains that have a v59 source-domain table today; the rest are recorded "unavailable".
+# Domains backed by a v59 source-domain table (presence/coverage from the source rows).
 _DB_DOMAINS = ("budget", "cost_actuals", "monthly_actuals")
-_ABSENT_DOMAINS = ("owner", "commitment", "schedule", "staffing")
+
+# P5: domains backed by a v63 forecast-output table (presence/coverage from the run's output rows).
+# (domain, output table, is_per_code) — per-code domains carry budget_code_key and get
+# completeness/mapping_quality derived from budget-code coverage.
+_OUTPUT_DOMAINS = (
+    ("commitment", "forecast_output_commitment_exposure", True),
+    ("schedule", "forecast_output_schedule_phasing", True),
+    ("changes", "forecast_output_changes", True),
+    ("risk", "forecast_output_risks", True),
+    ("probability", "forecast_output_probability", True),
+    ("staffing", "forecast_output_staffing", False),
+)
+
+# P5: domains with NO forecast backing table yet — recorded "unavailable" (confidence penalty,
+# not a block). procore data lives in the schedule source domain, not a forecast output table.
+_NO_TABLE_DOMAINS = ("owner", "procore")
+
+# P5: project closeout (M5) is declared when the run's output header shows cost-to-complete has
+# fallen to a small fraction of the estimated-final-cost. A ratio (not absolute dollars) so a tiny
+# retainage/warranty residual does not block it. NOTE (accepted risk, see ADR 308): a project
+# stalled with budget exhausted before completion produces the same near-zero CTC and would be
+# labeled closeout — the engine has no source signal to distinguish stall from genuine closeout.
+M5_CLOSEOUT_CTC_FRACTION = Decimal("0.005")
+
+# Coded lifecycle signal per maturity tier (path-free enum; safe for the read-model/API surface).
+_LIFECYCLE_SIGNAL = {
+    "M0": "pre_start",
+    "M1": "mobilizing",
+    "M2": "in_progress",
+    "M3": "in_progress",
+    "M4": "mature",
+    "M5": "closeout",
+}
 
 CONFIDENCE_ROLLUP_FILE = "confidence_rollup.json"
 
@@ -79,14 +113,97 @@ def _hash(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8", "replace")).hexdigest()
 
 
-def _maturity_tier(completed_months: int, budget_present: bool) -> str:
-    if completed_months >= MIN_MONTHS_RELIABLE:  # >=6 (incl. >=12) -> mature; M5 closeout deferred
+def _maturity_tier(completed_months: int, budget_present: bool, closeout: bool = False) -> str:
+    if closeout:  # output evidence shows work essentially complete (CTC -> ~0 of EAC)
+        return "M5"
+    if completed_months >= MIN_MONTHS_RELIABLE:  # >=6 (incl. >=12) -> mature
         return "M4"
     if completed_months >= MIN_MONTHS_CANDIDATE:  # 3-5
         return "M3"
     if completed_months >= 1:  # 1-2
         return "M2"
     return "M1" if budget_present else "M0"  # 0 completed: mobilization vs pre-start
+
+
+def _dec(value: Any) -> Decimal:
+    """Parse a Decimal-string cell to Decimal; missing/garbage -> 0 (deterministic)."""
+    if value in (None, ""):
+        return Decimal("0")
+    try:
+        return Decimal(str(value))
+    except (InvalidOperation, TypeError, ValueError):
+        return Decimal("0")
+
+
+def _ratio(numerator: int, denominator: int) -> str | None:
+    """Deterministic 4dp ratio string (capped at 1.0000); None when denominator is 0."""
+    if denominator <= 0:
+        return None
+    r = Decimal(numerator) / Decimal(denominator)
+    if r > 1:
+        r = Decimal("1")
+    return str(r.quantize(Decimal("0.0001")))
+
+
+def _is_closeout(conn: sqlite3.Connection, run_id: str | None, project_key: str) -> bool:
+    """M5 closeout: the run's output header CTC is <= M5_CLOSEOUT_CTC_FRACTION of EAC."""
+    if run_id is None or not _table_exists(conn, "forecast_outputs"):
+        return False
+    rows = conn.execute(
+        "SELECT estimated_final_cost, cost_to_complete FROM forecast_outputs "
+        "WHERE run_id=? AND project_key=?",
+        (run_id, project_key),
+    ).fetchall()
+    if not rows:
+        return False
+    eac = sum((_dec(r[0]) for r in rows), Decimal("0"))
+    ctc = sum((_dec(r[1]) for r in rows), Decimal("0"))
+    if eac <= 0:
+        return False
+    return (ctc / eac) <= M5_CLOSEOUT_CTC_FRACTION
+
+
+def _count_output_rows(conn: sqlite3.Connection, table: str, run_id: str | None,
+                       project_key: str) -> int:
+    """Two-hop count of a v63 output child table for this run (child.output_id -> forecast_outputs).
+
+    Child tables carry output_id, NOT run_id; the run/project scope lives on the header. Both
+    run_id AND project_key are in the predicate so a shared run_id never cross-counts projects.
+    """
+    if run_id is None or not _table_exists(conn, table) or not _table_exists(conn, "forecast_outputs"):
+        return 0
+    return conn.execute(
+        f"SELECT COUNT(*) FROM {table} t "
+        "JOIN forecast_outputs fo ON fo.output_id = t.output_id "
+        "WHERE fo.run_id=? AND fo.project_key=?",
+        (run_id, project_key),
+    ).fetchone()[0]
+
+
+def _output_code_coverage(conn: sqlite3.Connection, table: str, run_id: str | None,
+                          project_key: str) -> tuple[int, int]:
+    """(mapped_codes, domain_codes) for a per-code output table: distinct budget_code_key in the
+    domain, and how many resolve to a forecast_budget_details code for this project. Two-hop join,
+    run_id + project_key scoped."""
+    if run_id is None or not _table_exists(conn, table) or not _table_exists(conn, "forecast_outputs"):
+        return 0, 0
+    domain_codes = conn.execute(
+        f"SELECT COUNT(DISTINCT t.budget_code_key) FROM {table} t "
+        "JOIN forecast_outputs fo ON fo.output_id = t.output_id "
+        "WHERE fo.run_id=? AND fo.project_key=?",
+        (run_id, project_key),
+    ).fetchone()[0]
+    mapped = 0
+    if _table_exists(conn, "forecast_budget_details"):
+        mapped = conn.execute(
+            f"SELECT COUNT(DISTINCT t.budget_code_key) FROM {table} t "
+            "JOIN forecast_outputs fo ON fo.output_id = t.output_id "
+            "JOIN forecast_budget_details bd "
+            "  ON bd.budget_code_key = t.budget_code_key AND bd.project_key = fo.project_key "
+            "WHERE fo.run_id=? AND fo.project_key=?",
+            (run_id, project_key),
+        ).fetchone()[0]
+    return mapped, domain_codes
 
 
 def _connect_ro(db_path: Path) -> sqlite3.Connection:
@@ -171,7 +288,9 @@ def plan_decision_support(
         )
 
         # ---- maturity snapshot -------------------------------------------------------
-        tier = _maturity_tier(completed, budget_codes > 0)
+        closeout = _is_closeout(conn, run_id, project_key) if has_outputs else False
+        tier = _maturity_tier(completed, budget_codes > 0, closeout)
+        lifecycle_signal = _LIFECYCLE_SIGNAL[tier]
         snapshot_id = f"fms-{_hash(f'{run_id}|{project_key}|{source_package}')[:32]}"
         planned["maturity"].append(
             {
@@ -182,11 +301,13 @@ def plan_decision_support(
                 "maturity_tier": tier,
                 "completed_month_count": completed,
                 "nonzero_month_count": nonzero,
-                "lifecycle_signal": None,
-                "basis": "completed_month_count_vs_model_engines_readiness_thresholds",
+                "lifecycle_signal": lifecycle_signal,
+                "basis": "completed_month_count_vs_model_engines_readiness_thresholds+closeout_ctc",
                 "raw_json": json.dumps(
                     {
                         "maturity_tier": tier,
+                        "lifecycle_signal": lifecycle_signal,
+                        "closeout": closeout,
                         "completed_month_count": completed,
                         "nonzero_month_count": nonzero,
                         "budget_codes": budget_codes,
@@ -194,6 +315,7 @@ def plan_decision_support(
                             "candidate": MIN_MONTHS_CANDIDATE,
                             "reliable": MIN_MONTHS_RELIABLE,
                             "seasonal": MIN_MONTHS_SEASONAL,
+                            "closeout_ctc_fraction": str(M5_CLOSEOUT_CTC_FRACTION),
                         },
                     },
                     sort_keys=True,
@@ -203,34 +325,65 @@ def plan_decision_support(
             }
         )
 
-        # ---- data availability profiles ---------------------------------------------
-        domain_facts = {
-            "budget": (budget_codes > 0, str(budget_codes), None),
-            "cost_actuals": (cost_rows > 0, str(cost_rows), None),
-            "monthly_actuals": (completed > 0, str(completed), freshness),
-        }
-        for domain in _DB_DOMAINS:
-            present, count_str, fresh = domain_facts[domain]
+        # ---- data availability profiles (P5: v59 source + v63 output + v66 + no-table) ----
+        # The project maturity tier is layered onto every domain row; score is the
+        # availability-gated completeness ratio (per-code domains) or the availability flag.
+        def _avail(domain, *, present, coverage, freshness, reason,
+                   completeness=None, mapping_quality=None):
+            score = (completeness if (present and completeness is not None)
+                     else ("1.0000" if present else "0.0000"))
             planned["availability"].append(
                 _availability_row(
                     run_id, project_key, source_package, domain,
                     availability="available" if present else "unavailable",
-                    coverage=count_str if present else "0",
-                    freshness=fresh,
-                    reason=("rows present in v59 source-domain table" if present
-                            else "no rows in v59 source-domain table"),
-                    now_utc=now_utc,
+                    coverage=coverage, freshness=freshness, reason=reason,
+                    completeness=completeness, mapping_quality=mapping_quality,
+                    maturity=tier, score=score, now_utc=now_utc,
                 )
             )
-        for domain in _ABSENT_DOMAINS:
-            planned["availability"].append(
-                _availability_row(
-                    run_id, project_key, source_package, domain,
-                    availability="unavailable", coverage=None, freshness=None,
-                    reason="no v59 source-domain table for this domain yet (confidence penalty, not a block)",
-                    now_utc=now_utc,
-                )
-            )
+
+        _present_reason = "rows present in v59 source-domain table"
+        _absent_reason = "no rows in v59 source-domain table"
+        _avail("budget", present=budget_codes > 0,
+               coverage=str(budget_codes) if budget_codes else "0", freshness=None,
+               reason=_present_reason if budget_codes else _absent_reason)
+        _avail("cost_actuals", present=cost_rows > 0,
+               coverage=str(cost_rows) if cost_rows else "0", freshness=None,
+               reason=_present_reason if cost_rows else _absent_reason)
+        _avail("monthly_actuals", present=completed > 0,
+               coverage=str(completed) if completed else "0", freshness=freshness,
+               reason=_present_reason if completed else _absent_reason)
+
+        # v63 forecast-output backed (P5: output-aware — no longer always "unavailable")
+        for domain, table, per_code in _OUTPUT_DOMAINS:
+            total = _count_output_rows(conn, table, run_id, project_key)
+            completeness = mapping_quality = None
+            if per_code and total:
+                mapped, domain_codes = _output_code_coverage(conn, table, run_id, project_key)
+                completeness = _ratio(mapped, budget_codes)
+                mapping_quality = _ratio(mapped, domain_codes)
+            _avail(domain, present=total > 0, coverage=str(total) if total else "0",
+                   freshness=None, completeness=completeness, mapping_quality=mapping_quality,
+                   reason=("rows present in v63 forecast-output table" if total
+                           else "no rows in v63 forecast-output table for this run"))
+
+        # v66 assumptions (run-scoped; ship empty until the operator UI populates them)
+        assume_total = 0
+        for atable in ("forecast_operator_assumptions", "forecast_required_assumptions"):
+            if _table_exists(conn, atable):
+                assume_total += conn.execute(
+                    f"SELECT COUNT(*) FROM {atable} WHERE run_id=? AND project_key=?",
+                    (run_id, project_key),
+                ).fetchone()[0]
+        _avail("assumptions", present=assume_total > 0,
+               coverage=str(assume_total) if assume_total else "0", freshness=None,
+               reason=("operator/required assumptions recorded for this run" if assume_total
+                       else "no operator/required assumptions recorded for this run"))
+
+        # no forecast backing table yet (procore lives in the schedule source domain)
+        for domain in _NO_TABLE_DOMAINS:
+            _avail(domain, present=False, coverage=None, freshness=None,
+                   reason="no forecast backing table for this domain yet (confidence penalty, not a block)")
 
         # ---- project confidence scorecard (from confidence_rollup.json) -------------
         rollup_path = analysis_package / CONFIDENCE_ROLLUP_FILE
@@ -280,7 +433,8 @@ def plan_decision_support(
 
 
 def _availability_row(run_id, project_key, source_package, domain, *, availability, coverage,
-                      freshness, reason, now_utc) -> dict[str, Any]:
+                      freshness, reason, now_utc, completeness=None, mapping_quality=None,
+                      maturity=None, score=None) -> dict[str, Any]:
     return {
         "id": f"fdap-{_hash(f'{run_id}|{domain}')[:32]}",
         "run_id": run_id,
@@ -290,14 +444,16 @@ def _availability_row(run_id, project_key, source_package, domain, *, availabili
         "availability": availability,
         "coverage": coverage,
         "freshness": freshness,
-        "completeness": None,
-        "mapping_quality": None,
-        "maturity": None,
-        "score": None,
+        "completeness": completeness,
+        "mapping_quality": mapping_quality,
+        "maturity": maturity,
+        "score": score,
         "reason": reason,
         "raw_json": json.dumps(
             {"domain": domain, "availability": availability, "coverage": coverage,
-             "freshness": freshness, "reason": reason},
+             "freshness": freshness, "completeness": completeness,
+             "mapping_quality": mapping_quality, "maturity": maturity, "score": score,
+             "reason": reason},
             sort_keys=True,
         ),
         "created_utc": now_utc,
