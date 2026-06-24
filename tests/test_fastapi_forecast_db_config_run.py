@@ -209,3 +209,68 @@ def test_workflow_refusal_recorded_as_failed_run(tmp_path: Path, monkeypatch: py
     assert body["config_snapshot_consumed"] is False
     assert "cost-frequency" in (body["message"] or "")
     assert find_redaction_leaks(body) == []
+
+
+# -- generation readiness (GET /api/forecast/generation/readiness) ------------
+
+
+def test_generation_readiness_ready(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    client = _configured_client(tmp_path, monkeypatch)  # configured + enabled + live DB present
+    resp = client.get("/api/forecast/generation/readiness", headers=_viewer())
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["ready"] is True
+    assert body["enabled"] is True
+    assert body["storage_ready"] is True
+    assert body["config_db_ready"] is True
+    assert body["reasons"] == []
+    assert find_redaction_leaks(body) == []
+
+
+def test_generation_readiness_is_viewer_readable(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    client = _configured_client(tmp_path, monkeypatch)
+    assert client.get("/api/forecast/generation/readiness", headers=_viewer()).status_code == 200
+
+
+def test_generation_readiness_disabled(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    client = _configured_client(tmp_path, monkeypatch, enabled=False)
+    body = client.get("/api/forecast/generation/readiness", headers=_viewer()).json()
+    assert body["ready"] is False
+    assert body["enabled"] is False
+    assert "db_config_run_disabled" in body["reasons"]
+    assert find_redaction_leaks(body) == []
+
+
+def test_generation_readiness_storage_not_configured(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv(ENV_DATA_ROOT, raising=False)
+    monkeypatch.delenv(ENV_RUNS_ROOT, raising=False)
+    monkeypatch.setenv(ENV_DB_CONFIG_RUN_ENABLED, "1")
+    _make_live_db()  # config DB present, so the ONLY blocker is storage
+    client = TestClient(create_app(db_path=str(PathPolicy().get_db_path())))
+    body = client.get("/api/forecast/generation/readiness", headers=_viewer()).json()
+    assert body["ready"] is False
+    assert body["storage_ready"] is False
+    assert "forecast_runtime_storage_not_configured" in body["reasons"]
+    assert "db_config_run_disabled" not in body["reasons"]
+    assert find_redaction_leaks(body) == []
+
+
+def test_generation_readiness_config_db_not_ready(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    data = tmp_path / "data"
+    data.mkdir()
+    monkeypatch.setenv(ENV_DATA_ROOT, str(data))
+    monkeypatch.setenv(ENV_RUNS_ROOT, str(tmp_path / "runs"))
+    monkeypatch.setenv(ENV_DB_CONFIG_RUN_ENABLED, "1")
+    # Deliberately do NOT create the live config DB → config_db_not_ready is the blocker.
+    client = TestClient(create_app(db_path=str(tmp_path / "x.sqlite")))
+    body = client.get("/api/forecast/generation/readiness", headers=_viewer()).json()
+    assert body["ready"] is False
+    assert body["config_db_ready"] is False
+    assert "config_db_not_ready" in body["reasons"]
+    assert find_redaction_leaks(body) == []

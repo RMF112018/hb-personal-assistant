@@ -673,6 +673,60 @@ def build_runtime_status() -> dict[str, Any]:
     }
 
 
+# -- generation readiness (redaction-safe, coded reasons) ---------------------
+
+
+def _live_config_db_ready() -> bool:
+    """Whether the live app DB holding the config snapshots exists (fail-closed on any error).
+
+    Mirrors the intent of ``forecast_db_config_run_service._live_config_db`` (which opens
+    ``PathPolicy().get_db_path()`` read-only downstream) without instantiating the service.
+    Returns ``False`` — never raises — so a bad/missing DB reads as not-ready, not an exception.
+    """
+    try:
+        return PathPolicy().get_db_path().exists()
+    except Exception:
+        return False
+
+
+def build_generation_readiness() -> dict[str, Any]:
+    """DB-config-backed generation readiness (booleans + coded reasons; never a path).
+
+    Surfaces, before the operator clicks Generate, whether a DB-config run can start and — if not —
+    the coded reasons why. The codes mirror the service's fail-closed blockers so the UI can disable
+    the control and show actionable text instead of catching a raw 503 after the fact.
+    """
+    enabled = resolve_db_config_run_enabled()
+    data_raw = resolve_data_root()
+    data_blocker = _existing_dir_blocker(data_raw)
+    runs_blocker = _write_root_blocker(resolve_runs_root(), data_raw)
+    cfr_raw = _first(os.environ.get(ENV_CFR_SRC), _load_config().get("cfr_src"))
+    # cfr_src is optional: unset means "use the bundled subrepo default" (valid).
+    cfr_blocker = _existing_dir_blocker(cfr_raw) if cfr_raw else None
+    config_db_ready = _live_config_db_ready()
+
+    reasons: list[str] = []
+    if not enabled:
+        reasons.append("db_config_run_disabled")
+    if data_blocker is not None or runs_blocker is not None:
+        reasons.append("forecast_runtime_storage_not_configured")
+    if cfr_blocker is not None:
+        reasons.append("cfr_src_not_available")
+    if not config_db_ready:
+        reasons.append("config_db_not_ready")
+
+    return {
+        "surface": _SURFACE,
+        "generator": "db_config_run",
+        "ready": not reasons,
+        "enabled": enabled,
+        "storage_ready": data_blocker is None and runs_blocker is None,
+        "engine_ready": cfr_blocker is None,
+        "config_db_ready": config_db_ready,
+        "reasons": reasons,
+    }
+
+
 # -- admin echo (carve-out: DOES return raw paths) ----------------------------
 
 
