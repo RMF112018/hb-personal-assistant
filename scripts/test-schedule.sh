@@ -61,6 +61,7 @@ pytest_targets=(
   "tests/test_schedule_quality_api.py::test_quality_summary_after_commit"
   "tests/test_schedule_quality_api.py::test_quality_rerun_and_run_detail"
   "tests/test_schedule_quality_api.py::test_project_quality_summary"
+  "tests/test_schedule_quality_posture.py"
   "tests/test_schedule_quality_engine.py"
   "tests/test_schedule_quality_normalization.py"
   "tests/test_schedule_quality_weighting_gate.py"

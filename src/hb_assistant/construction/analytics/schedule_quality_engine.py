@@ -30,6 +30,11 @@ from .schedule_quality_normalization import (
     normalize_relationship_type,
     relationship_type_distribution,
 )
+from .schedule_quality_posture import (
+    classify_critical_path_readiness,
+    evaluate_schedule_category,
+    resolve_scorecard_metric_status,
+)
 from .schedule_quality_profiles import (
     DCMA_METRIC_SPECS,
     DISCLAIMER_VERSION,
@@ -1602,196 +1607,38 @@ class ScheduleQualityAssessmentEngine:
         self, ctx: EvaluationContext, category: str
     ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
         findings: list[dict[str, Any]] = []
-        posture = "pass"
-        reason = None
-
-        if category == "capturing_all_activities":
-            if not ctx.activities:
-                posture = "fail"
-                findings.append(
-                    self._finding(
-                        ctx,
-                        finding_code="no_activities",
-                        severity="critical",
-                        finding_type="completeness",
-                        category="gao",
-                        summary="Schedule version contains no activities",
-                        requires_review=1,
-                    )
+        summary = evaluate_schedule_category(ctx, category)
+        if category == "capturing_all_activities" and summary["posture"] == "fail":
+            findings.append(
+                self._finding(
+                    ctx,
+                    finding_code="no_activities",
+                    severity="critical",
+                    finding_type="completeness",
+                    category="gao",
+                    summary="Schedule version contains no activities",
+                    requires_review=1,
                 )
-        elif category == "sequencing_all_activities":
-            if ctx.activities and not ctx.relationships:
-                posture = "warn"
-                reason = "activities present but no relationships"
-        elif category == "duration_reasonableness":
-            if not any(a.get("duration_original") for a in ctx.activities):
-                posture = "not_measurable"
-                reason = "no duration fields"
-        elif category == "resource_cost_loading":
-            schedule_posture = cost_resource_posture(ctx.import_meta)
-            coding = self._coding_coverage(ctx)
-            import_meta = ctx.import_meta or {}
-            coding_payload = {
-                "schedule_posture": schedule_posture,
-                "activity_code_coverage_count": coding["activity_code_coverage_count"],
-                "schedule_coding_coverage_count": coding["schedule_coding_coverage_count"],
-                "udf_coverage_count": coding["udf_coverage_count"],
-                "code_assignment_row_count": coding["code_assignment_row_count"],
-                "udf_row_count": coding["udf_row_count"],
-                "import_code_count": import_meta.get("code_count"),
-                "import_udf_count": import_meta.get("udf_count"),
-            }
-            if schedule_posture in {"not_cost_loaded", "unknown"}:
-                posture = "not_cost_resource_loaded"
-                reason = json.dumps(coding_payload)
-            elif not any(
-                a.get("cost_loaded_amount") or a.get("resource_id") for a in ctx.activities
-            ):
-                posture = "not_measurable"
-                reason = "no resource or cost loading fields"
-        elif category == "horizontal_vertical_traceability":
-            missing_wbs = sum(1 for a in ctx.activities if not a.get("wbs_code"))
-            if ctx.activities and missing_wbs / len(ctx.activities) > 0.25:
-                posture = "warn"
-                findings.append(
-                    self._finding(
-                        ctx,
-                        finding_code="missing_wbs_reference",
-                        severity="warning",
-                        finding_type="traceability",
-                        category="gao",
-                        summary=f"{missing_wbs} activities missing WBS reference",
-                    )
-                )
-        elif category == "critical_path_validity":
-            source_fmt = self._import_source_format(ctx)
-            if source_fmt == "primavera_xer":
-                analytics = compute_source_critical_path_analytics(
-                    ctx.import_meta,
-                    ctx.activities,
-                    schedule_options=ctx.schedule_options,
-                )
-                driving_count = int(analytics.get("source_driving_path_count") or 0)
-                if analytics.get("source_critical_basis") != "missing" or driving_count > 0:
-                    posture = "xer_export_critical_path_analytics"
-                    reason = json.dumps(
-                        {
-                            **analytics,
-                            "longest_path_driving_path": {
-                                "posture": "xer_export_critical_path_analytics",
-                                "reason": "XER export critical path metadata; not forensic delay analysis",
-                            },
-                        }
-                    )
-                else:
-                    posture = "not_measurable"
-                    reason = "no XER critical path export data"
-            elif source_fmt == "ms_project_xml" and any(
-                a.get("source_critical_flag") for a in ctx.activities
-            ):
-                posture = METRIC_STATUS_MSP_CRITICAL
-                reason = json.dumps(
-                    {
-                        "critical_path_source": "msp_critical_flag",
-                        "critical_flag_count": sum(
-                            1 for a in ctx.activities if a.get("source_critical_flag")
-                        ),
-                        "posture": "msp_export_critical",
-                    }
-                )
-            else:
-                derivable = [a for a in ctx.activities if a.get("derived_float_basis")]
-                critical_by_threshold = [
-                    a for a in ctx.activities if a.get("derived_is_critical_by_float_threshold")
-                ]
-                has_longest = any(a.get("is_longest_path") for a in ctx.activities)
-                if derivable and supports_finish_float_derivation(ctx.schedule_options):
-                    posture = METRIC_STATUS_PARTIAL_CRITICAL_FLOAT
-                    reason = json.dumps(
-                        {
-                            "critical_float_classification": {
-                                "posture": METRIC_STATUS_PARTIAL_CRITICAL_FLOAT,
-                                "derivable_count": len(derivable),
-                                "critical_by_float_threshold_count": len(critical_by_threshold),
-                            },
-                            "longest_path_driving_path": {
-                                "posture": METRIC_STATUS_NOT_MEASURABLE_LONGEST_PATH
-                                if not has_longest
-                                else "export_flags_only",
-                                "reason": "no longest-path or driving-path export flags"
-                                if not has_longest
-                                else "longest-path flags present; not authoritative CPM",
-                            },
-                        }
-                    )
-                elif not any(a.get("is_critical") for a in ctx.activities) and not any(
-                    a.get("total_float") is not None for a in ctx.activities
-                ):
-                    posture = "not_measurable"
-                    reason = "no critical path or float export data"
-        elif category == "float_reasonableness":
-            if not any(a.get("derived_float_basis") for a in ctx.activities) and not any(
-                a.get("total_float") is not None for a in ctx.activities
-            ):
-                posture = "not_measurable"
-                reason = "no derived or export float data"
-        elif category == "schedule_risk_readiness":
-            posture = "pass" if ctx.activities else "fail"
-        elif category == "update_status_integrity":
-            bad = sum(
-                1
-                for a in ctx.activities
-                if (a.get("percent_complete") or 0) and not a.get("actual_start")
             )
-            if bad:
-                posture = "warn"
-        elif category == "baseline_maintenance":
-            posture = "not_measurable"
-            reason = "no baseline data in canonical store"
-        elif category == "source_validation":
-            if not ctx.import_meta:
-                posture = "warn"
-                reason = "missing import metadata"
-        elif category == "data_date_integrity":
-            if not ctx.data_date:
-                posture = "warn"
-                reason = "data date not recorded"
-        elif category == "version_over_version_churn":
-            if ctx.prior_diff:
-                try:
-                    churn = float(ctx.prior_diff.get("logic_churn_rate") or 0)
-                    if churn > 0.25:
-                        posture = "warn"
-                        findings.append(
-                            self._finding(
-                                ctx,
-                                finding_code="logic_churn_elevated",
-                                severity="advisory",
-                                finding_type="churn",
-                                category="gao",
-                                summary="Logic churn elevated versus prior version",
-                            )
-                        )
-                except (TypeError, ValueError):
-                    pass
-            else:
-                posture = "not_measurable"
-                reason = "no prior version diff available"
-
-        return (
-            {
-                "category": category,
-                "posture": posture,
-                "reason": reason,
-                "finding_count": len([f for f in findings if f.get("category") == "gao"]),
-            },
-            findings,
-        )
+        if category == "horizontal_vertical_traceability" and summary["posture"] == "warn":
+            missing = int(summary.get("evidence", {}).get("missing_wbs_reference_count") or 0)
+            findings.append(
+                self._finding(
+                    ctx,
+                    finding_code="missing_wbs_reference",
+                    severity="warning",
+                    finding_type="traceability",
+                    category="gao",
+                    summary=f"{missing} activities missing WBS reference",
+                )
+            )
+        summary["finding_count"] = len([f for f in findings if f.get("category") == "gao"])
+        return summary, findings
 
     def _evaluate_aace_category(
         self, ctx: EvaluationContext, category: str
     ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
-        return self._evaluate_gao_category(ctx, category)
+        return evaluate_schedule_category(ctx, category, aace=True), []
 
     def _build_scorecard(
         self,
@@ -1814,35 +1661,30 @@ class ScheduleQualityAssessmentEngine:
             )
         ]
 
-        def _threshold_status(metric: dict[str, Any]) -> str:
-            if metric["status"] == METRIC_STATUS_DERIVED_FINISH_FLOAT:
-                try:
-                    ev = json.loads(metric.get("evidence_json") or "{}")
-                except json.JSONDecodeError:
-                    ev = {}
-                return str(ev.get("threshold_status") or METRIC_STATUS_MEASURED)
-            return str(metric["status"])
+        scorecard_metric_classification = [
+            resolve_scorecard_metric_status(m) for m in metrics
+        ]
+        dcma_classification = [
+            c
+            for c in scorecard_metric_classification
+            if c["metric_family"] == "dcma" and c["included"]
+        ]
 
-        pass_c = sum(1 for m in measured if _threshold_status(m) == METRIC_STATUS_PASS)
-        warn_c = sum(1 for m in measured if _threshold_status(m) == METRIC_STATUS_WARN)
-        fail_c = sum(1 for m in measured if _threshold_status(m) == METRIC_STATUS_FAIL)
+        pass_c = sum(1 for c in dcma_classification if c["resolved_status"] == METRIC_STATUS_PASS)
+        warn_c = sum(1 for c in dcma_classification if c["resolved_status"] == METRIC_STATUS_WARN)
+        fail_c = sum(1 for c in dcma_classification if c["resolved_status"] == METRIC_STATUS_FAIL)
 
         score = None
         grade = "insufficient_data"
-        scorable = [
-            m
-            for m in measured
-            if _threshold_status(m)
-            in (METRIC_STATUS_PASS, METRIC_STATUS_WARN, METRIC_STATUS_FAIL)
-        ]
+        scorable = dcma_classification
         if len(scorable) >= 5:
             points = sum(
                 1.0
-                if _threshold_status(m) == METRIC_STATUS_PASS
+                if c["resolved_status"] == METRIC_STATUS_PASS
                 else 0.5
-                if _threshold_status(m) == METRIC_STATUS_WARN
+                if c["resolved_status"] == METRIC_STATUS_WARN
                 else 0.0
-                for m in scorable
+                for c in scorable
             )
             score = round(100.0 * points / len(scorable), 1)
             if score >= 90:
@@ -1883,32 +1725,8 @@ class ScheduleQualityAssessmentEngine:
         if has_expected_gaps and len(measured) >= 5:
             completion_posture = "completed_with_limitations"
 
-        has_critical_path_recalc = any(
-            m["metric_code"] == "dcma_critical_path_test"
-            and m["status"] == METRIC_STATUS_NOT_MEASURABLE_RECALC
-            for m in dcma
-        )
-        has_source_critical_analytics = any(
-            m.get("metric_code") == "source_critical_path_available"
-            and m.get("status")
-            in (
-                METRIC_STATUS_AVAILABLE_XER_DRIVING,
-                METRIC_STATUS_AVAILABLE_XER_TOTFLOAT,
-                METRIC_STATUS_PARTIAL_XER_FLOAT,
-            )
-            for m in metrics
-        )
-        source_fmt = self._import_source_format(ctx)
-        if has_source_critical_analytics:
-            critical_path_analytics = "available_source_export_critical_path"
-        elif source_fmt == "primavera_xer":
-            critical_path_analytics = "unavailable_requires_cpm_recalculation"
-        elif source_fmt == "ms_project_xml":
-            critical_path_analytics = "available_msp_critical_slack"
-        elif has_critical_path_recalc:
-            critical_path_analytics = "unavailable_requires_cpm_recalculation"
-        else:
-            critical_path_analytics = "available_export_flags_only"
+        critical_path_readiness = classify_critical_path_readiness(ctx, metrics)
+        critical_path_analytics = critical_path_readiness["state"]
         critical_blockers = any(f.get("severity") == "critical" for f in findings)
         cost_weighting = "blocked"
         if completion_posture == "completed_with_limitations" and not critical_blockers:
@@ -1922,6 +1740,7 @@ class ScheduleQualityAssessmentEngine:
             "cost_weighting": cost_weighting,
             "critical_path_analytics": critical_path_analytics,
             "cpm_recalculation": "not_implemented",
+            "critical_path_readiness_evidence": critical_path_readiness,
             "baseline_analytics": "unavailable_missing_baseline",
             "true_cost_loaded_analytics": (
                 "unavailable_not_cost_loaded"
@@ -1936,9 +1755,13 @@ class ScheduleQualityAssessmentEngine:
             "cost_mapping_ready": bool(ctx.activities),
             "cost_weighting_ready": cost_weighting in {"ready", "ready_with_quality_penalty"},
             "forecast_context_ready": score is not None and score >= 60,
+            "scorecard_metric_classification": scorecard_metric_classification,
         }
+        readiness["caveats"] = list(critical_path_readiness.get("caveats") or [])
         if cost_weighting == "blocked":
             readiness["blockers"].append("quality_scorecard_incomplete_or_failed")
+        if critical_path_readiness["state"] != "available_cpm_recalculated":
+            readiness["blockers"].append("critical_path_requires_cpm_recalculation")
         elif cost_weighting == "ready_with_quality_penalty":
             readiness["blockers"] = []
 

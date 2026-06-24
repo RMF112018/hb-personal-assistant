@@ -143,6 +143,14 @@ def test_msp_quality_summary_exposes_source_export_metric(tmp_path: Path) -> Non
     assert source["status"] == "measured_from_msp_critical_flag"
     assert source["numerator"] == "2"
     assert source["denominator"] == "2"
+    readiness = body["downstream_readiness"]
+    assert readiness["critical_path_analytics"] == "available_source_export_only"
+    assert readiness["critical_path_readiness_evidence"]["available_cpm_recalculated"] is False
+    assert (
+        readiness["critical_path_readiness_evidence"]["critical_path_requires_cpm_recalculation"]
+        is True
+    )
+    assert "critical_path_requires_cpm_recalculation" in readiness["blockers"]
 
 
 @pytest.mark.parametrize("filename", ["TWNU07.xml", "TWNU16.xml", "TWNU18.xml"])

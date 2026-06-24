@@ -537,10 +537,45 @@ def test_gma_derived_float_metrics_measured(tmp_path: Path) -> None:
     import json
 
     gao = json.loads(result.scorecard.get("gao_category_summary_json") or "{}")
-    assert (
-        gao.get("critical_path_validity", {}).get("posture")
-        == "partially_measurable_critical_float_available"
+    critical_path = gao.get("critical_path_validity", {})
+    assert critical_path.get("posture") == "partial"
+    assert critical_path["evidence"]["critical_path_requires_cpm_recalculation"] is True
+    assert critical_path["evidence"]["cpm_recalculation_performed"] is False
+
+
+def test_scorecard_classification_excludes_source_export_from_dcma_counts() -> None:
+    engine = ScheduleQualityAssessmentEngine()
+    ctx = _msp_context(
+        [
+            {
+                "activity_id": "A1",
+                "source_critical_flag": True,
+                "explicit_total_float_days": "0",
+            }
+        ]
     )
+    dcma_pass = engine._base_metric(
+        ctx,
+        code="dcma_logic",
+        spec=DCMA_METRIC_SPECS["dcma_logic"],
+        status="passed_threshold",
+    )
+    source_export = engine._evaluate_source_export_metrics(ctx)[0]
+    scorecard = engine._build_scorecard(ctx, [dcma_pass, source_export], [], {})
+    readiness = json.loads(scorecard["downstream_readiness_json"])
+
+    assert scorecard["dcma_pass_count"] == 1
+    assert scorecard["dcma_warn_count"] == 0
+    assert scorecard["dcma_fail_count"] == 0
+    source_class = next(
+        item
+        for item in readiness["scorecard_metric_classification"]
+        if item["metric_code"] == "source_msp_critical_slack_available"
+    )
+    assert source_class["included"] is False
+    assert source_class["exclusion_reason"] == "non_dcma_advisory_metric"
+    assert readiness["critical_path_analytics"] == "available_source_export_only"
+    assert "critical_path_requires_cpm_recalculation" in readiness["blockers"]
 
 
 def test_relationship_types_normalize_finish_to_start_labels(tmp_path: Path) -> None:
