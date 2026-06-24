@@ -216,7 +216,7 @@ class GeneratorDescriptor:
     """The per-generator pieces the shared core needs; everything else is generator-agnostic."""
 
     kind: str
-    run: Callable[..., dict]  # (*, cfg, data_root, run_stamp, out_root) -> generator meta
+    run: Callable[..., dict]  # (*, project_key, cfg, data_root, run_stamp, out_root) -> generator meta
     required_globs: tuple[tuple[str, str], ...]
     optional_globs: tuple[tuple[str, str], ...]
     consumed_domains: Callable[[dict, str, dict], dict]
@@ -275,8 +275,11 @@ def _probability_descriptor(
 ) -> GeneratorDescriptor:
     from . import forecast_probability_db_config_proof as pproof
 
-    def _run(*, cfg: dict, data_root: Path, run_stamp: str, out_root: Path) -> dict:
+    def _run(
+        *, project_key: str, cfg: dict, data_root: Path, run_stamp: str, out_root: Path
+    ) -> dict:
         return pproof._run_probability(
+            project_key=project_key,
             cfg=cfg,
             data_root=data_root,
             run_stamp=run_stamp,
@@ -481,6 +484,7 @@ def run_db_config_backed_generation(
             db_cfg = proof._load_project_cfg(project_key)
             try:
                 db_meta = descriptor.run(
+                    project_key=project_key,
                     cfg=db_cfg,
                     data_root=eff_data_root,
                     run_stamp=run_stamp,
@@ -514,6 +518,7 @@ def run_db_config_backed_generation(
                 )
             file_cfg = proof._load_project_cfg(project_key)
             file_meta = descriptor.run(
+                project_key=project_key,
                 cfg=file_cfg,
                 data_root=eff_data_root,
                 run_stamp=run_stamp,
