@@ -18,7 +18,7 @@
     "phase_owner",
     "blocking_for_phase"
   ],
-  "table_count": 433,
+  "table_count": 436,
   "tables": {
     "construction_data_quality_runs": {
       "table_family": "data_quality_v20v21",
@@ -3907,6 +3907,33 @@
       "blocking_for_phase": "none",
       "v": "V66",
       "notes": "Per-run required-assumption prerequisites; population deferred to a follow-on slice."
+    },
+    "forecast_model_versions": {
+      "table_family": "forecast_model_registry_v72",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "forecast_model_remediation",
+      "blocking_for_phase": "none",
+      "v": "V72",
+      "notes": "One immutable row per distinct forecast methodology (deduped by methodology_sha256); written only by the read-only governance path into a temp DB."
+    },
+    "forecast_run_model_versions": {
+      "table_family": "forecast_model_registry_v72",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "forecast_model_remediation",
+      "blocking_for_phase": "none",
+      "v": "V72",
+      "notes": "Per-run linkage to the model version in effect (run_id -> forecast_runs.run_id); accuracy-package stamp recorded as separate provenance."
+    },
+    "forecast_calibration_weights": {
+      "table_family": "forecast_model_registry_v72",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "forecast_model_remediation",
+      "blocking_for_phase": "none",
+      "v": "V72",
+      "notes": "Per-run, per-method calibration provenance from the backtest; calibration_source distinguishes backtested from non-backtested methods."
     }
   }
 }

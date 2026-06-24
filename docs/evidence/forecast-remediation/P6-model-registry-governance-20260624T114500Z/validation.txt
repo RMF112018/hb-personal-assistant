@@ -1,0 +1,5 @@
+scripts/test-forecasting.sh -q -rA  => 0 FAILED/ERROR, 876 PASSED (main 863 + 13 new)
+scripts/test-schedule.sh   -q -rA   => 0 FAILED/ERROR; migrator/schema tests green (v72 + 433->436 safe cross-domain)
+CFR test_forecast_accuracy_e2e.py   => 4 passed incl. test_deterministic_mock_output (byte-exact, with new model_methodology.json)
+LATEST_SCHEMA_VERSION 71 -> 72 ; lifecycle table_count 433 -> 436 ; 19 hardcoded asserts bumped
+No live-DB write; temp/copied-DB only. CFR diff surgical (48 insertions, 0 deletions).
