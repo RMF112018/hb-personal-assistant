@@ -37,6 +37,15 @@ function runStatusPill(status: string | undefined): string {
   return 'attention'
 }
 
+// Coded readiness reasons → actionable, path-free copy. Mirrors the backend reason codes from
+// GET /api/forecast/generation/readiness so an operator sees WHY generation is blocked before click.
+const READINESS_REASON_TEXT: Record<string, string> = {
+  db_config_run_disabled: "Generating from live configuration isn't enabled in this environment.",
+  forecast_runtime_storage_not_configured: 'Forecast storage is not configured yet.',
+  config_db_not_ready: 'The configuration database is not available yet.',
+  cfr_src_not_available: 'The forecast engine source is not available.',
+}
+
 export function ForecastRunCenterPage() {
   const { data: runsResp, isLoading, error, refetch } = useQuery({
     queryKey: ['forecast', 'runs'],
@@ -45,6 +54,13 @@ export function ForecastRunCenterPage() {
   const { data: dbRunsResp, refetch: refetchDb } = useQuery({
     queryKey: ['forecast', 'runs', 'db-config'],
     queryFn: () => api.getForecastDbConfigRuns(),
+  })
+  // Readiness for DB-config-backed generation: lets us disable the control BEFORE click and explain
+  // why, instead of catching a raw 503 afterwards. The backend POST stays fail-closed regardless.
+  const { data: readiness } = useQuery({
+    queryKey: ['forecast', 'generation', 'readiness'],
+    queryFn: () => api.getForecastGenerationReadiness(),
+    staleTime: 15_000,
   })
 
   const [generating, setGenerating] = useState(false)
@@ -126,6 +142,12 @@ export function ForecastRunCenterPage() {
   )
   const detail = detailResp || null
 
+  // Disable the DB-config control only when readiness is KNOWN not-ready (fail-open during the brief
+  // load; the backend POST is still fail-closed). Reasons drive the actionable before-click message.
+  const dbNotReady = readiness?.ready === false
+  const readinessReasons = readiness?.reasons ?? []
+  const readinessStorageBlocked = readinessReasons.includes('forecast_runtime_storage_not_configured')
+
   return (
     <ForecastShell>
       <ForecastBackLink />
@@ -168,7 +190,7 @@ export function ForecastRunCenterPage() {
                 aria-label="Forecast type"
                 value={genKind}
                 onChange={(e) => setGenKind(e.target.value as ForecastGeneratorKind)}
-                disabled={genDb}
+                disabled={genDb || dbNotReady}
                 className="rounded border border-[var(--hb-border)] bg-transparent px-2 py-1.5 text-sm disabled:opacity-50"
               >
                 {GENERATOR_KINDS.map((k) => (
@@ -177,12 +199,26 @@ export function ForecastRunCenterPage() {
                   </option>
                 ))}
               </select>
-              <ForecastActionButton onClick={onGenerateDbConfig} disabled={genDb}>
+              <ForecastActionButton onClick={onGenerateDbConfig} disabled={genDb || dbNotReady}>
                 {genDb ? 'Generating…' : 'Generate'}
               </ForecastActionButton>
             </div>
           }
         />
+        {dbNotReady && (
+          <div className="text-sm text-rose-300 mt-2" role="status">
+            {readinessReasons.map((reason) => (
+              <p key={reason}>
+                {READINESS_REASON_TEXT[reason] ?? 'Generation from live configuration is not available yet.'}
+              </p>
+            ))}
+            {readinessStorageBlocked && (
+              <p>
+                <ForecastActionLink to="/forecasting/runtime">Storage settings</ForecastActionLink>
+              </p>
+            )}
+          </div>
+        )}
         {dbError && (
           <p className="text-sm text-rose-300 mt-2">
             {dbError}

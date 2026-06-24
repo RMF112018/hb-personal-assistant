@@ -1073,6 +1073,22 @@ export function startForecastDbConfigRun(generatorKind: ForecastGeneratorKind = 
 export function getForecastDbConfigRuns() {
   return fetchJson('/api/forecast/runs/db-config');
 }
+/* DB-config-backed generation readiness (viewer-readable, redaction-safe). Lets the UI disable the
+ * Generate control BEFORE click and explain why, instead of surfacing a raw 503 after the POST.
+ * Returns booleans + coded reasons only — never a path. */
+export interface ForecastGenerationReadiness {
+  surface: string;
+  generator: string;
+  ready: boolean;
+  enabled: boolean;
+  storage_ready: boolean;
+  engine_ready: boolean;
+  config_db_ready: boolean;
+  reasons: string[];
+}
+export function getForecastGenerationReadiness() {
+  return fetchJson<ForecastGenerationReadiness>('/api/forecast/generation/readiness');
+}
 export function getForecastDbConfigRun(runId: string) {
   return fetchJson(`/api/forecast/runs/db-config/${encodeURIComponent(runId)}`);
 }
@@ -1480,6 +1496,7 @@ export const api = {
   // DB-config-backed comprehensive generation (consumes the live config snapshot).
   startForecastDbConfigRun,
   getForecastDbConfigRuns,
+  getForecastGenerationReadiness,
   getForecastDbConfigRun,
   // External-Forecast Evaluation (Implementation Phase 4).
   previewExternalForecast,

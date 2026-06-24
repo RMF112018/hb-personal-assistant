@@ -2173,6 +2173,18 @@ def create_app(*, db_path: str | None = None) -> Any:
 
         return build_runtime_status()
 
+    # DB-config-backed generation readiness (viewer-readable, redaction-safe). Lets the UI disable
+    # the Generate control BEFORE click and explain why, instead of surfacing a raw 503 after the
+    # POST. Returns booleans + coded reasons only — never a path. The POST route stays fail-closed.
+    @app.get("/api/forecast/generation/readiness")
+    def forecast_generation_readiness(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        from hb_assistant.construction.analytics.forecast_runtime_config import (
+            build_generation_readiness,
+        )
+
+        return build_generation_readiness()
+
     @app.get("/api/forecast/runtime/config")
     def forecast_runtime_config_read(role: dict[str, str] = role_dep) -> dict[str, Any]:
         require_admin_role(role)  # echoes raw filesystem paths — admin-only carve-out
