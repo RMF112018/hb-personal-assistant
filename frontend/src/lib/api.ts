@@ -900,7 +900,7 @@ export function getForecastDbProjects() {
   return fetchJson<{ projects: ForecastDbProject[] }>('/api/forecast/db/projects');
 }
 
-/* Generation-ready project read model (Phase P-B). Discovers projects from procore identity +
+/* Generation-ready project projection (Phase P-B). Discovers projects from procore identity +
  * committed schedule imports + forecast outputs; exposes per-project availability + readiness
  * (ready/degraded/blocked, coded reasons). Read-only, redaction-safe (no paths/source payloads). */
 export type ForecastProjectReadinessStatus = 'ready' | 'degraded' | 'blocked';

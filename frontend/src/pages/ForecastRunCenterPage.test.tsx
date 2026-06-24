@@ -435,4 +435,117 @@ describe('ForecastRunCenterPage', () => {
       }),
     )
   })
+
+  // UI-A: context header.
+  it('renders the forecast context header with a no-selection state', () => {
+    mockData()
+    renderPage()
+    expect(screen.getByText('Forecast context')).toBeInTheDocument()
+    expect(screen.getByText('No project selected')).toBeInTheDocument()
+    expect(screen.getByText('No output selected')).toBeInTheDocument()
+    // The single next-step line guides the operator before any selection.
+    expect(screen.getByText('Select a project to view its forecast.')).toBeInTheDocument()
+  })
+
+  it('hides forecast result panels until a project is explicitly selected', () => {
+    mockData()
+    renderPage()
+    // No project selected → labelled empty state, no implicit projects[0] browsing.
+    expect(screen.getByText('Select a project to view its forecast results.')).toBeInTheDocument()
+    expect(screen.queryByText('Persisted forecast outputs')).not.toBeInTheDocument()
+    expect(screen.queryByText('Forecast explainability')).not.toBeInTheDocument()
+    expect(screen.queryByText('Operator assumptions')).not.toBeInTheDocument()
+
+    fireEvent.change(screen.getByLabelText('Forecast project'), { target: { value: 'tropical' } })
+    expect(screen.getByText('Persisted forecast outputs')).toBeInTheDocument()
+    expect(screen.getByText('Forecast explainability')).toBeInTheDocument()
+    expect(screen.getByText('Operator assumptions')).toBeInTheDocument()
+  })
+
+  it('updates the header and enables generation only for a ready project', () => {
+    mockData()
+    renderPage()
+    const dbGenerate = () => screen.getByRole('button', { name: /^Generate$/i })
+
+    // Blocked project: header surfaces the reason + a resolve-first next step; generation disabled.
+    fireEvent.change(screen.getByLabelText('Forecast project'), { target: { value: 'harbor' } })
+    expect(
+      screen.getByText('No configuration snapshot is available for this project.'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Resolve readiness items before generating.')).toBeInTheDocument()
+    expect(dbGenerate()).toBeDisabled()
+
+    // Ready project: header shows the latest forecast + review-or-generate next step; control enables.
+    fireEvent.change(screen.getByLabelText('Forecast project'), { target: { value: 'tropical' } })
+    expect(screen.getByText('Jun 19, 2026')).toBeInTheDocument()
+    expect(screen.getByText('Review the latest forecast or generate a new one.')).toBeInTheDocument()
+    expect(dbGenerate()).not.toBeDisabled()
+  })
+
+  it('shows a failed selected run without implying a persisted output exists', () => {
+    useQueryMock.mockImplementation((opts: { queryKey: unknown[] }) => {
+      const kind = opts.queryKey[1]
+      const sub = opts.queryKey[2]
+      if (kind === 'run-detail') {
+        return {
+          data: {
+            display_label: 'Context → analysis forecast — Jun 20, 2026 1:07 PM',
+            status: 'failed',
+            message: 'Generation did not complete.',
+            no_live_writes: true,
+          },
+          isLoading: false,
+          error: null,
+          refetch: vi.fn(),
+        }
+      }
+      if (kind === 'runs' && sub === 'db-config') {
+        return { data: { runs: [] }, isLoading: false, error: null, refetch: vi.fn() }
+      }
+      if (kind === 'runs') {
+        return {
+          data: {
+            runs: [
+              {
+                run_id: 'abc123',
+                display_label: 'Context → analysis forecast — Jun 20, 2026 1:07 PM',
+                status: 'failed',
+                generated_display: 'Jun 20, 2026 1:07 PM',
+              },
+            ],
+          },
+          isLoading: false,
+          error: null,
+          refetch: vi.fn(),
+        }
+      }
+      if (kind === 'generation' && sub === 'readiness') {
+        return {
+          data: { ready: true, generation_enabled: true, disabled_reasons: [], warnings: [], actions: [], guardrails: {} },
+          isLoading: false,
+          error: null,
+          refetch: vi.fn(),
+        }
+      }
+      if (kind === 'generation' && sub === 'projects') {
+        return {
+          data: { projects: [] },
+          isLoading: false,
+          error: null,
+          refetch: vi.fn(),
+        }
+      }
+      return { data: undefined, isLoading: false, error: null, refetch: vi.fn() }
+    })
+    renderPage()
+    fireEvent.click(screen.getAllByRole('button', { name: 'Open' })[0])
+
+    // The header states plainly that no output was produced, and shows no viewed output.
+    expect(
+      screen.getByText('The selected run did not complete; no forecast output was produced.'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('No output selected')).toBeInTheDocument()
+    // The failed status is visible (header selected-run line + run-detail panel).
+    expect(screen.getAllByText('failed').length).toBeGreaterThan(0)
+  })
 })
