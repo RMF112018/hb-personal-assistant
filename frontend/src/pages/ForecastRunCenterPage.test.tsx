@@ -174,11 +174,12 @@ describe('ForecastRunCenterPage', () => {
     startDbConfigMock.mockClear()
   })
 
-  it('renders the generate action and run history', () => {
+  it('renders the primary DB-backed generate action and run history', () => {
     mockData()
     renderPage()
-    expect(screen.getAllByText('Generate forecast').length).toBeGreaterThan(0)
-    expect(screen.getAllByRole('button', { name: /Generate forecast/i }).length).toBeGreaterThan(0)
+    expect(
+      screen.getByRole('button', { name: 'Generate DB-backed forecast' }),
+    ).toBeInTheDocument()
     expect(screen.getByText('Generation history')).toBeInTheDocument()
     expect(
       screen.getByText('Context → analysis forecast — Jun 20, 2026 1:07 PM'),
@@ -189,7 +190,7 @@ describe('ForecastRunCenterPage', () => {
     mockData()
     renderPage()
     expect(
-      screen.getByRole('button', { name: /^Generate$/i }),
+      screen.getByRole('button', { name: 'Generate DB-backed forecast' }),
     ).toBeInTheDocument()
     // both a file-config and a live-config run appear, with a Source column distinguishing them
     expect(
@@ -217,7 +218,7 @@ describe('ForecastRunCenterPage', () => {
     expect(optionValues).toEqual(['comprehensive', 'model_controls', 'monthly', 'probability'])
 
     fireEvent.change(select, { target: { value: 'monthly' } })
-    fireEvent.click(screen.getByRole('button', { name: /^Generate$/i }))
+    fireEvent.click(screen.getByRole('button', { name: 'Generate DB-backed forecast' }))
     await waitFor(() =>
       expect(startDbConfigMock).toHaveBeenCalledWith({
         project_key: 'tropical',
@@ -258,7 +259,7 @@ describe('ForecastRunCenterPage', () => {
     })
     renderPage()
 
-    const button = screen.getByRole('button', { name: /^Generate$/i })
+    const button = screen.getByRole('button', { name: 'Generate DB-backed forecast' })
     expect(button).toBeDisabled()
     expect(screen.getByLabelText('Forecast type')).toBeDisabled()
     // Actionable, path-free copy + operator actions are shown BEFORE any click.
@@ -284,7 +285,7 @@ describe('ForecastRunCenterPage', () => {
     fireEvent.change(screen.getByLabelText('Forecast cut-off date'), {
       target: { value: '2026-06-24' },
     })
-    fireEvent.click(screen.getByRole('button', { name: /^Generate$/i }))
+    fireEvent.click(screen.getByRole('button', { name: 'Generate DB-backed forecast' }))
     await waitFor(() =>
       expect(startDbConfigMock).toHaveBeenCalledWith({
         project_key: 'tropical',
@@ -319,7 +320,7 @@ describe('ForecastRunCenterPage', () => {
   it('disables generation until a non-blocked project is selected, then passes project_key', async () => {
     mockData()
     renderPage()
-    const button = () => screen.getByRole('button', { name: /^Generate$/i })
+    const button = () => screen.getByRole('button', { name: 'Generate DB-backed forecast' })
     // Nothing selected → disabled (no tropical fallback).
     expect(button()).toBeDisabled()
 
@@ -402,7 +403,7 @@ describe('ForecastRunCenterPage', () => {
     expect((screen.getByLabelText('Forecast start date') as HTMLInputElement).value).toBe('2025-01-01')
     expect(screen.getByText(/Cut-off basis:/)).toHaveTextContent('Schedule data date')
 
-    fireEvent.click(screen.getByRole('button', { name: /^Generate$/i }))
+    fireEvent.click(screen.getByRole('button', { name: 'Generate DB-backed forecast' }))
     await waitFor(() =>
       expect(startDbConfigMock).toHaveBeenCalledWith({
         project_key: 'tropical',
@@ -424,7 +425,7 @@ describe('ForecastRunCenterPage', () => {
     fireEvent.change(cutoff, { target: { value: '2026-07-15' } }) // operator edit
     expect(screen.getByText(/Cut-off basis:/)).toHaveTextContent('Operator supplied')
 
-    fireEvent.click(screen.getByRole('button', { name: /^Generate$/i }))
+    fireEvent.click(screen.getByRole('button', { name: 'Generate DB-backed forecast' }))
     await waitFor(() =>
       expect(startDbConfigMock).toHaveBeenCalledWith({
         project_key: 'tropical',
@@ -465,7 +466,7 @@ describe('ForecastRunCenterPage', () => {
   it('updates the header and enables generation only for a ready project', () => {
     mockData()
     renderPage()
-    const dbGenerate = () => screen.getByRole('button', { name: /^Generate$/i })
+    const dbGenerate = () => screen.getByRole('button', { name: 'Generate DB-backed forecast' })
 
     // Blocked project: header surfaces the reason + a resolve-first next step; generation disabled.
     fireEvent.change(screen.getByLabelText('Forecast project'), { target: { value: 'harbor' } })
@@ -547,5 +548,42 @@ describe('ForecastRunCenterPage', () => {
     expect(screen.getByText('No output selected')).toBeInTheDocument()
     // The failed status is visible (header selected-run line + run-detail panel).
     expect(screen.getAllByText('failed').length).toBeGreaterThan(0)
+    // UI-B: the failed run is visually separated from output — its detail shows a no-output
+    // statement and does NOT offer the "review output" affordance that implies a usable forecast.
+    expect(screen.getByText('Run did not complete')).toBeInTheDocument()
+    expect(
+      screen.getByText('No forecast output was produced for this run.'),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('Review packages on overview')).not.toBeInTheDocument()
+  })
+
+  // UI-B: generation workflow.
+  it('shows exactly one primary Generate CTA and hides the legacy path by default', () => {
+    mockData()
+    renderPage()
+    fireEvent.change(screen.getByLabelText('Forecast project'), { target: { value: 'tropical' } })
+    expect(
+      screen.getAllByRole('button', { name: /Generate DB-backed forecast/i }),
+    ).toHaveLength(1)
+    // The legacy file-config generation is not a primary visible action.
+    expect(
+      screen.queryByRole('button', { name: /Generate file-config forecast/i }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('reveals the legacy file-config generation only behind the advanced disclosure', () => {
+    mockData()
+    renderPage()
+    fireEvent.change(screen.getByLabelText('Forecast project'), { target: { value: 'tropical' } })
+    expect(
+      screen.queryByRole('button', { name: /Generate file-config forecast/i }),
+    ).not.toBeInTheDocument()
+
+    fireEvent.click(
+      screen.getByRole('button', { name: /Advanced \/ legacy file-configuration generation/i }),
+    )
+    expect(
+      screen.getByRole('button', { name: /Generate file-config forecast/i }),
+    ).toBeInTheDocument()
   })
 })

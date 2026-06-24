@@ -4,7 +4,6 @@ import { useQuery } from '@tanstack/react-query'
 
 import {
   ForecastActionButton,
-  ForecastActionLink,
   ForecastBackLink,
   ForecastPageHeader,
   ForecastQuickLink,
@@ -18,6 +17,8 @@ import {
   ForecastContextHeader,
   type ForecastReadinessPill,
 } from '../components/forecast/ForecastContextHeader'
+import { ForecastErrorCallout } from '../components/forecast/ForecastErrorCallout'
+import { ForecastGeneratePanel } from '../components/forecast/ForecastGeneratePanel'
 import { ForecastDecisionSupportPanel } from '../components/forecast/ForecastDecisionSupportPanel'
 import { ForecastNarrativesPanel } from '../components/forecast/ForecastNarrativesPanel'
 import { ForecastOperatorAssumptionsPanel } from '../components/forecast/ForecastOperatorAssumptionsPanel'
@@ -341,6 +342,21 @@ export function ForecastRunCenterPage() {
     : null
   const nextAction = deriveNextAction({ projectKey, selectedProjectObj, detail })
 
+  // UI-B: map readiness codes → path-free copy for the generation panel (maps stay the single source).
+  const dbBlockerReasons = disabledReasons.map(
+    (reason) => READINESS_REASON_TEXT[reason] ?? 'Generation from live configuration is not available yet.',
+  )
+  const dbBlockerActions = readinessActions.map((action) => ({
+    label: action.label,
+    to: READINESS_ACTION_ROUTE[action.code] ?? null,
+  }))
+  const dbWarningLines = readinessWarnings.map(
+    (w) => READINESS_WARNING_TEXT[w] ?? 'Generation may not produce output in the current configuration.',
+  )
+  const runFailed = detail
+    ? detail.status === 'failed' || detail.status === 'rejected'
+    : false
+
   return (
     <ForecastShell>
       <ForecastBackLink />
@@ -438,107 +454,30 @@ export function ForecastRunCenterPage() {
         )}
       </section>
 
-      <section className="forecast-panel">
-        <ForecastPageHeader
-          title="Generate forecast"
-          subtitle="Writes the selected project's forecast to the local application database. Procore and live project data are never modified; use export actions separately when a human-readable report is needed."
-          actions={
-            <ForecastActionButton
-              onClick={onGenerate}
-              disabled={generating || !projectKey || selectedBlocked}
-            >
-              {generating ? 'Generating…' : 'Generate forecast'}
-            </ForecastActionButton>
-          }
-        />
-        {genError && (
-          <p className="text-sm text-rose-300 mt-2">
-            {genError}
-            {genUnconfigured && (
-              <>
-                {' '}
-                <ForecastActionLink to="/forecasting/runtime">Open storage settings</ForecastActionLink>
-              </>
-            )}
-          </p>
-        )}
-      </section>
-
-      <section className="forecast-panel">
-        <ForecastPageHeader
-          title="Generate from live configuration"
-          subtitle="Generates from the promoted configuration snapshot and writes the forecast to the local application database. No download/export package is produced here."
-          actions={
-            <div className="flex items-center gap-2">
-              <label htmlFor="db-config-kind" className="text-sm text-[var(--hb-muted)]">
-                Type
-              </label>
-              <select
-                id="db-config-kind"
-                aria-label="Forecast type"
-                value={genKind}
-                onChange={(e) => setGenKind(e.target.value as ForecastGeneratorKind)}
-                disabled={genDb || dbNotReady}
-                className="rounded border border-[var(--hb-border)] bg-transparent px-2 py-1.5 text-sm disabled:opacity-50"
-              >
-                {GENERATOR_KINDS.map((k) => (
-                  <option key={k.value} value={k.value}>
-                    {k.label}
-                  </option>
-                ))}
-              </select>
-              <ForecastActionButton
-                onClick={onGenerateDbConfig}
-                disabled={genDb || dbNotReady || !projectKey || selectedBlocked}
-              >
-                {genDb ? 'Generating…' : 'Generate'}
-              </ForecastActionButton>
-            </div>
-          }
-        />
-        {dbNotReady && (
-          <div className="text-sm text-rose-300 mt-2" role="status">
-            {disabledReasons.map((reason) => (
-              <p key={reason}>
-                {READINESS_REASON_TEXT[reason] ?? 'Generation from live configuration is not available yet.'}
-              </p>
-            ))}
-            {readinessActions.map((action) => {
-              const route = READINESS_ACTION_ROUTE[action.code]
-              return (
-                <p key={action.code}>
-                  {route ? (
-                    <ForecastActionLink to={route}>{action.label}</ForecastActionLink>
-                  ) : (
-                    action.label
-                  )}
-                </p>
-              )
-            })}
-          </div>
-        )}
-        {!dbNotReady && readinessWarnings.length > 0 && (
-          <div className="text-sm text-amber-300 mt-2" role="status">
-            {readinessWarnings.map((w) => (
-              <p key={w}>
-                {READINESS_WARNING_TEXT[w] ??
-                  'Generation may not produce output in the current configuration.'}
-              </p>
-            ))}
-          </div>
-        )}
-        {dbError && (
-          <p className="text-sm text-rose-300 mt-2">
-            {dbError}
-            {dbDisabled && (
-              <>
-                {' '}
-                <ForecastActionLink to="/forecasting/runtime">Storage settings</ForecastActionLink>
-              </>
-            )}
-          </p>
-        )}
-      </section>
+      <ForecastGeneratePanel
+        projectKey={projectKey ?? null}
+        selectedBlocked={selectedBlocked}
+        dateError={dateError}
+        generatorKinds={GENERATOR_KINDS}
+        primary={{
+          genKind,
+          onKindChange: setGenKind,
+          onGenerate: onGenerateDbConfig,
+          generating: genDb,
+          notReady: dbNotReady,
+          blockerReasons: dbBlockerReasons,
+          blockerActions: dbBlockerActions,
+          warnings: dbWarningLines,
+          error: dbError,
+          errorActionTo: dbDisabled ? '/forecasting/runtime' : null,
+        }}
+        legacy={{
+          onGenerate,
+          generating,
+          error: genError,
+          errorActionTo: genUnconfigured ? '/forecasting/runtime' : null,
+        }}
+      />
 
       <section className="forecast-panel">
         <h2 className="forecast-section-label">Generation history</h2>
@@ -549,15 +488,7 @@ export function ForecastRunCenterPage() {
         ) : allRuns.length === 0 ? (
           <EmptyState
             title="No forecast runs yet"
-            hint="Generate your first forecast to see it here. Output stays in local workspaces only."
-            actions={
-              <ForecastActionButton
-                onClick={onGenerate}
-                disabled={generating || !projectKey || selectedBlocked}
-              >
-                Generate first forecast
-              </ForecastActionButton>
-            }
+            hint="Use the Generate panel above to create your first forecast. Output is written to the local application database."
           />
         ) : (
           <ForecastTable
@@ -597,7 +528,31 @@ export function ForecastRunCenterPage() {
         )}
       </section>
 
-      {detail && (
+      {detail && runFailed && (
+        // Failed runs are kept visually separate from persisted/latest output: no packages, no
+        // "review output" affordance — only the failure and the explicit no-output statement.
+        <section className="forecast-panel">
+          <h2 className="forecast-section-label">Run did not complete</h2>
+          <p className="text-sm">
+            {(detail.display_label as string) || 'Selected run'} · Status:{' '}
+            <span className="font-medium">{detail.status as string}</span>
+          </p>
+          <ForecastErrorCallout
+            tone="error"
+            lines={[
+              ...(detail.message ? [detail.message as string] : []),
+              'No forecast output was produced for this run.',
+            ]}
+          />
+          {detail.no_live_writes && (
+            <p className="text-xs text-emerald-300 mt-2">
+              No changes were made to live project data or external systems.
+            </p>
+          )}
+        </section>
+      )}
+
+      {detail && !runFailed && (
         <section className="forecast-panel">
           <h2 className="forecast-section-label">{(detail.display_label as string) || 'Run detail'}</h2>
           <p className="text-sm">
