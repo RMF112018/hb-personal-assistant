@@ -1664,6 +1664,37 @@ def create_app(*, db_path: str | None = None) -> Any:
         del role
         return _forecast_readmodel_call(_forecast_readmodel_service().list_outputs, project_key)
 
+    # Generation-ready project read model (Phase P-B). Discovers projects across procore_ep_projects,
+    # committed schedule imports, and forecast outputs; reports per-project availability + readiness
+    # (ready/degraded/blocked, coded reasons). Viewer-readable, redaction-safe. Additive: the existing
+    # /api/forecast/db/projects (output-derived) is unchanged.
+    def _forecast_generation_projects_service() -> Any:
+        from hb_assistant.construction.analytics.forecast_generation_project_readmodel import (
+            ForecastGenerationProjectReadModelService,
+        )
+        from hb_assistant.construction.analytics.forecast_runtime_config import resolve_db_path
+
+        return ForecastGenerationProjectReadModelService(db_path=resolve_db_path(db_path))
+
+    def _forecast_generation_projects_call(fn: Any, *args: Any) -> dict[str, Any]:
+        from fastapi import HTTPException
+
+        from hb_assistant.construction.analytics.forecast_generation_project_readmodel import (
+            ForecastGenerationProjectReadModelError,
+        )
+
+        try:
+            return fn(*args)
+        except ForecastGenerationProjectReadModelError:
+            raise HTTPException(status_code=503, detail="forecast_generation_projects_not_available")
+
+    @app.get("/api/forecast/generation/projects")
+    def forecast_generation_projects(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        return _forecast_generation_projects_call(
+            _forecast_generation_projects_service().list_generation_projects
+        )
+
     @app.get("/api/forecast/db/outputs/{output_id}")
     def forecast_db_output(output_id: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
         del role
@@ -2018,14 +2049,19 @@ def create_app(*, db_path: str | None = None) -> Any:
         from fastapi import HTTPException
 
         require_operator_role(role)  # executes + writes isolated work-root; reads live config DB ro
-        # Optional body {"generator_kind": ...}; absent/empty body defaults to comprehensive (back-compat).
-        generator_kind = (payload or {}).get("generator_kind", "comprehensive")
+        # Optional body {"generator_kind": ..., "project_key": ...}. Absent/empty body defaults to
+        # comprehensive (back-compat); absent/blank project_key defaults to the supported project. The
+        # service validates project_key and fails closed for an unsupported / unconfigured project.
+        body = payload or {}
+        generator_kind = body.get("generator_kind", "comprehensive")
         if generator_kind not in ("comprehensive", "model_controls", "monthly", "probability"):
             raise HTTPException(status_code=400, detail="forecast_db_config_run_bad_kind")
+        project_key = str(body.get("project_key") or "").strip()
         service = _forecast_db_config_run_service()
-        return _forecast_db_config_run_call(
-            lambda: service.start_db_config_run(generator_kind=generator_kind)
-        )
+        kwargs: dict[str, Any] = {"generator_kind": generator_kind}
+        if project_key:
+            kwargs["project_key"] = project_key
+        return _forecast_db_config_run_call(lambda: service.start_db_config_run(**kwargs))
 
     @app.get("/api/forecast/runs/db-config")
     def forecast_db_config_runs_list(role: dict[str, str] = role_dep) -> dict[str, Any]:

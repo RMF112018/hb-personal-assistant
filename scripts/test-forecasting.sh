@@ -25,6 +25,7 @@ pytest_targets=(
   "tests/test_fastapi_forecast_config_promotion.py"
   "tests/test_fastapi_forecast_db_config_run.py"
   "tests/test_fastapi_forecast_external.py"
+  "tests/test_fastapi_forecast_generation_projects.py"
   "tests/test_fastapi_forecast_operator_assumptions.py"
   "tests/test_fastapi_forecast_run.py"
   "tests/test_fastapi_forecast_run_readmodel.py"

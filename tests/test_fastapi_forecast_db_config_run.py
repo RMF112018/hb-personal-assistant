@@ -189,6 +189,22 @@ def test_post_generator_kind_threads_through(tmp_path: Path, monkeypatch: pytest
     assert find_redaction_leaks(listed) == [] and find_redaction_leaks(detail) == []
 
 
+def test_post_accepts_optional_project_key(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # P-B: the body may carry project_key (threaded to the service, which validates it). The supported
+    # project still succeeds; an absent project_key remains back-compat (defaults in the service).
+    client = _configured_client(tmp_path, monkeypatch)
+    resp = client.post(
+        "/api/forecast/runs/db-config",
+        headers=_op(),
+        json={"generator_kind": "comprehensive", "project_key": "tropical"},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "generated"
+    assert find_redaction_leaks(resp.json()) == []
+
+
 def test_post_invalid_kind_400(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     client = _configured_client(tmp_path, monkeypatch)
     resp = client.post(

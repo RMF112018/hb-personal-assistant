@@ -59,6 +59,17 @@ const READINESS_ACTION_ROUTE: Record<string, string> = {
   open_storage_settings: '/forecasting/runtime',
 }
 
+// Per-project readiness reason codes → actionable, table-name-free copy (P-B). Mirrors the backend
+// reason codes from GET /api/forecast/generation/projects.
+const PROJECT_READINESS_REASON_TEXT: Record<string, string> = {
+  missing_config_snapshot: 'No configuration snapshot is available for this project.',
+  missing_budget_cost_data: 'Budget and cost data is not available for this project yet.',
+  missing_schedule_data: 'No schedule data has been imported for this project yet.',
+  generation_disabled: "Generating from live configuration isn't enabled in this environment.",
+  no_project_identity: 'This project cannot be resolved to a known source.',
+  no_prior_forecast_output: 'No prior forecast has been generated for this project yet.',
+}
+
 export function ForecastRunCenterPage() {
   const { data: runsResp, isLoading, error, refetch } = useQuery({
     queryKey: ['forecast', 'runs'],
@@ -87,14 +98,18 @@ export function ForecastRunCenterPage() {
 
   const [selected, setSelected] = useState<Selected | undefined>(undefined)
 
-  // P9: multi-project selector over projects that have persisted DB outputs.
+  // P-B: project selector driven by the generation-ready read model (procore identity + committed
+  // schedule + forecast outputs), with per-project readiness. No 'tropical' fallback for generation.
   const { data: projectsResp } = useQuery({
-    queryKey: ['forecast', 'db-projects'],
-    queryFn: () => api.getForecastDbProjects(),
+    queryKey: ['forecast', 'generation', 'projects'],
+    queryFn: () => api.getForecastGenerationProjects(),
   })
   const projects = projectsResp?.projects ?? []
   const [projectKey, setProjectKey] = useState<string | undefined>(undefined)
-  const activeProject = projectKey ?? projects[0]?.project_key ?? 'tropical'
+  const selectedProjectObj = projects.find((p) => p.project_key === projectKey)
+  const selectedBlocked = selectedProjectObj?.readiness_status === 'blocked'
+  // Browse panels may default to the first available project (never a hardcoded 'tropical').
+  const browseProject = projectKey ?? projects[0]?.project_key
 
   const { data: detailResp } = useQuery({
     queryKey: ['forecast', 'run-detail', selected?.source, selected?.id],
@@ -130,7 +145,7 @@ export function ForecastRunCenterPage() {
     setDbError(null)
     setDbDisabled(false)
     try {
-      await api.startForecastDbConfigRun(genKind)
+      await api.startForecastDbConfigRun(genKind, projectKey)
       await refetchDb()
     } catch (e: unknown) {
       const status = (e as { status?: number })?.status
@@ -166,6 +181,48 @@ export function ForecastRunCenterPage() {
     <ForecastShell>
       <ForecastBackLink />
       <ForecastSubnav />
+
+      <section className="forecast-panel">
+        <ForecastPageHeader
+          title="Project"
+          subtitle="Select a project to generate a forecast. Availability reflects the latest local database evidence."
+          actions={
+            <label className="text-sm text-[var(--hb-muted)] flex items-center gap-2">
+              Project
+              <select
+                aria-label="Forecast project"
+                className="rounded border border-[var(--hb-border)] bg-[var(--hb-bg)] px-2 py-1 text-sm disabled:opacity-50"
+                value={projectKey ?? ''}
+                onChange={(e) => setProjectKey(e.target.value || undefined)}
+                disabled={projects.length === 0}
+              >
+                <option value="" disabled>
+                  Select a project
+                </option>
+                {projects.map((p) => (
+                  <option key={p.project_key} value={p.project_key}>
+                    {(p.display_name || p.project_key) +
+                      (p.readiness_status !== 'ready' ? ` — ${p.readiness_status}` : '')}
+                  </option>
+                ))}
+              </select>
+            </label>
+          }
+        />
+        {projects.length === 0 && (
+          <p className="text-sm text-[var(--hb-muted)] mt-2">No projects are available yet.</p>
+        )}
+        {selectedProjectObj && selectedProjectObj.readiness_status !== 'ready' && (
+          <div className="text-sm text-rose-300 mt-2" role="status">
+            {selectedProjectObj.readiness_reasons.map((reason) => (
+              <p key={reason}>
+                {PROJECT_READINESS_REASON_TEXT[reason] ??
+                  'This project is not ready for generation.'}
+              </p>
+            ))}
+          </div>
+        )}
+      </section>
 
       <section className="forecast-panel">
         <ForecastPageHeader
@@ -213,7 +270,10 @@ export function ForecastRunCenterPage() {
                   </option>
                 ))}
               </select>
-              <ForecastActionButton onClick={onGenerateDbConfig} disabled={genDb || dbNotReady}>
+              <ForecastActionButton
+                onClick={onGenerateDbConfig}
+                disabled={genDb || dbNotReady || !projectKey || selectedBlocked}
+              >
                 {genDb ? 'Generating…' : 'Generate'}
               </ForecastActionButton>
             </div>
@@ -357,29 +417,13 @@ export function ForecastRunCenterPage() {
         </section>
       )}
 
-      {projects.length > 1 && (
-        <section className="forecast-panel">
-          <label className="text-sm text-[var(--hb-muted)] flex items-center gap-2">
-            Project
-            <select
-              aria-label="Forecast project"
-              className="rounded border border-[var(--hb-border)] bg-[var(--hb-bg)] px-2 py-1 text-sm"
-              value={activeProject}
-              onChange={(e) => setProjectKey(e.target.value)}
-            >
-              {projects.map((p) => (
-                <option key={p.project_key} value={p.project_key}>
-                  {p.project_key} ({p.output_count})
-                </option>
-              ))}
-            </select>
-          </label>
-        </section>
+      {browseProject && (
+        <>
+          <ForecastDecisionSupportPanel project={browseProject} />
+          <ForecastNarrativesPanel project={browseProject} />
+          <ForecastOperatorAssumptionsPanel project={browseProject} />
+        </>
       )}
-
-      <ForecastDecisionSupportPanel project={activeProject} />
-      <ForecastNarrativesPanel project={activeProject} />
-      <ForecastOperatorAssumptionsPanel project={activeProject} />
     </ForecastShell>
   )
 }
