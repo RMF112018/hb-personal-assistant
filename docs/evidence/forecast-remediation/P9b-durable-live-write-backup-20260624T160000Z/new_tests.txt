@@ -1,0 +1,28 @@
+P9b new / modified tests
+=========================
+
+tests/test_forecast_live_db_source_domain_projection_phase14.py  (already in the forecasting bundle)
+  MODIFIED:
+    test_rolls_back_on_insert_failure
+        backup-present assertion retargeted to the stamp-qualified name:
+        (tmp_path/"work"/"backups"/proj._backup_name(STAMP)).is_file()
+  ADDED:
+    test_backup_root_param_durable
+        backup_root=<durable> -> backup lands at <durable>/_backup_name(STAMP);
+        report["backup"]["backup_root"] == str(<durable>);
+        ephemeral work_root/backups NOT created (durable replaces fallback, not both).
+    test_backup_root_under_live_root_refused
+        monkeypatch proj._LIVE_ROOT; backup_root under it -> LiveDbSourceDomainProjectionError
+        ("backup_root is at/under"); no backup dir created (refused before any backup).
+    (test_refuses_nonzero_wal / test_expected_counts_mismatch_fails_before_write left unchanged:
+     default backup_root=None still uses work_root/backups, so the "no backup before the gate"
+     assertions remain valid gate-ordering proof.)
+
+tests/test_config.py
+  ADDED:
+    test_db_backups_dir_is_sibling_of_db
+        PathPolicy.get_db_backups_dir() == get_db_path().parent / "backups".
+
+Targeted run (worktree, PYTHONPATH=src:subrepos/construction-financial-review/src):
+  pytest tests/test_forecast_live_db_source_domain_projection_phase14.py tests/test_config.py
+  -> 34 passed.

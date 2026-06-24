@@ -1,0 +1,51 @@
+P9b validation — durable gated live-write backup relocation (CFR Phase 14)
+=========================================================================
+
+Worktree: /Users/bobbyfetting/hb-personal-assistant-p9b
+Branch:   feature/forecast-durable-live-write-backup-p9b (off origin/main @ bd45a8b7)
+Python:   .venv (3.14), PYTHONPATH=src:subrepos/construction-financial-review/src
+
+1. Targeted run (the two changed test files)
+   pytest tests/test_forecast_live_db_source_domain_projection_phase14.py tests/test_config.py
+   -> 34 passed in ~32s.
+   Includes the 3 new/updated assertions:
+     - test_backup_root_param_durable            PASS
+     - test_backup_root_under_live_root_refused  PASS
+     - test_db_backups_dir_is_sibling_of_db      PASS
+     - test_creates_and_verifies_backup / test_rolls_back_on_insert_failure
+       (retargeted to proj._backup_name(STAMP)) PASS
+
+2. Full forecasting bundle (required — Phase-14 file is in the bundle allowlist)
+   scripts/test-forecasting.sh
+   -> exit 0 (no failures). Collected 900 tests
+      (P9 baseline 898 + 2 new Phase-14 tests; test_config.py is NOT in the
+      forecasting bundle, so its +1 is not counted here).
+   Note: the bundle's trailing pass-count summary line is suppressed when piped
+   under -q (warnings block is last); count derived from `--collect-only -q`
+   (sum of per-file counts = 900) + exit 0.
+
+3. Lint
+   ruff check src/hb_assistant/config/path_policy.py \
+     subrepos/.../workflows/live_db_source_domain_projection.py \
+     tests/test_forecast_live_db_source_domain_projection_phase14.py tests/test_config.py
+   -> All checks passed!
+   (cli.py is not in the enforced ruff set per CLAUDE.md; not reformatted —
+    in-style line edits only. Import-checked: cli + workflow modules import cleanly.)
+
+4. Scope hygiene
+   git status: exactly the 6 intended tracked files + ADR 311 + the evidence bundle.
+   docs/evidence/construction-intelligence-phase-08c-financial-readiness/ test
+   side-effects were reverted (git checkout --) before staging; not committed.
+
+5. Schedule bundle: NOT run — no migrator/store/schema change (the schedule
+   bundle's migrator/schema tests are the schema canary; nothing here touches it).
+
+6. Live DB: never written. Phase-14 tests exercise a monkeypatched synthetic
+   live DB under tmp_path. The real managed DB is untouched.
+
+Gates:
+- hb-sensitive-operation-gate: Proceed with constraints (capability only; no live
+  write at land time; all fail-closed safeguards intact). Constraints honored.
+- hb-commit-diff-auditor: PASS (surgical diff, no reformat churn, Phase-3/E2 not
+  touched, no schema/lockfile drift, gates preserved). The one doc flag (changelog
+  ordering) was fixed: entries now read P9 in-review -> P9 merged -> P9b in-review.

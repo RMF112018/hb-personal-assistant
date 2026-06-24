@@ -39,7 +39,7 @@ REPORT_SCHEMA_VERSION = 1
 REPORT_NAME = "live_db_source_domain_projection_report.json"
 
 BACKUP_SUBDIR = "backups"
-BACKUP_NAME = "hb-personal-assistant.before-phase14.sqlite"
+BACKUP_NAME_PREFIX = "hb-personal-assistant.before-phase14"
 TEMP_DB_SUBDIR = "temp_dbs"
 DEFAULT_TEMP_DB_NAME = "forecast_source_domain_tropical.sqlite"
 POST_WRITE_CERT_SUBDIR = "post_write_cert"
@@ -101,14 +101,32 @@ def _verify_inserted(conn: sqlite3.Connection, table: str, project_key: str, exp
     return got
 
 
-def _backup_live_db(*, live_db_path: Path, work_root: Path, wal_size: int) -> dict[str, Any]:
-    """Byte-for-byte backup of the main DB file (fail closed if a nonzero WAL would make it inconsistent)."""
+def _backup_name(context_stamp: str) -> str:
+    """Stamp-qualified backup filename so durable re-runs don't collide and stay traceable."""
+    return f"{BACKUP_NAME_PREFIX}.{context_stamp}.sqlite"
+
+
+def _backup_live_db(
+    *,
+    live_db_path: Path,
+    work_root: Path,
+    context_stamp: str,
+    wal_size: int,
+    backup_root: Path | None = None,
+) -> dict[str, Any]:
+    """Byte-for-byte backup of the main DB file (fail closed if a nonzero WAL would make it inconsistent).
+
+    Writes to ``backup_root`` when supplied (a durable location resolved by the caller), otherwise to
+    the ephemeral ``work_root / BACKUP_SUBDIR``. The filename is stamp-qualified to keep durable
+    backups distinct and traceable.
+    """
     if wal_size > 0:
         raise LiveDbSourceDomainProjectionError(
             f"live DB has a nonzero WAL ({wal_size} bytes); refusing a byte-copy backup that would "
             "miss WAL frames (no safe consistent-snapshot mechanism is enabled in Phase 14)"
         )
-    backup_path = work_root / BACKUP_SUBDIR / BACKUP_NAME
+    base = backup_root if backup_root is not None else (work_root / BACKUP_SUBDIR)
+    backup_path = base / _backup_name(context_stamp)
     if backup_path.exists():
         raise LiveDbSourceDomainProjectionError(
             f"backup path already exists (refusing to overwrite): {backup_path}"
@@ -128,6 +146,7 @@ def _backup_live_db(*, live_db_path: Path, work_root: Path, wal_size: int) -> di
         )
     return {
         "path": str(backup_path),
+        "backup_root": str(base),
         "size_bytes": int(Path(backup_path).stat().st_size),
         "sha256": _sha256_file(backup_path),
         "verified_readable": True,
@@ -146,6 +165,7 @@ def run_controlled_live_db_source_domain_projection(
     allow_replace_existing: bool = False,
     run_guarded_operator_check: bool = False,
     expected_counts: dict[str, int] | None = None,
+    backup_root: Path | None = None,
 ) -> dict[str, Any]:
     """Populate the live DB's v59 source-domain tables for tropical, gated + backed up + certified.
 
@@ -191,6 +211,12 @@ def run_controlled_live_db_source_domain_projection(
         raise LiveDbSourceDomainProjectionError(
             "context_stamp is required (explicit; no latest-glob)"
         )
+    if backup_root is not None:
+        backup_root = Path(backup_root)
+        if _is_under(backup_root, _LIVE_ROOT):
+            raise LiveDbSourceDomainProjectionError(
+                f"backup_root is at/under the live forecast root (refused): {backup_root}"
+            )
 
     live_db_path = Path(live_db_path) if live_db_path is not None else cert._resolve_live_db_path()
     if not cert._is_live_db(live_db_path):
@@ -286,7 +312,9 @@ def run_controlled_live_db_source_domain_projection(
     backup = _backup_live_db(
         live_db_path=live_db_path,
         work_root=work_root,
+        context_stamp=context_stamp,
         wal_size=int(live_before.get("wal_size_bytes", 0)),
+        backup_root=backup_root,
     )
 
     # --- Live write: one transaction; tropical rows of the three v59 tables only. -----------------

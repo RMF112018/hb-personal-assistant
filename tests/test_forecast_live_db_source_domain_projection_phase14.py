@@ -297,6 +297,36 @@ def test_creates_and_verifies_backup(tmp_path, monkeypatch):
     assert b["size_bytes"] > 0 and len(b["sha256"]) == 64
 
 
+def test_backup_root_param_durable(tmp_path, monkeypatch):
+    durable = tmp_path / "durable"
+    report = _run_success(tmp_path, monkeypatch, backup_root=durable)
+    b = report["backup"]
+    expected = durable / proj._backup_name(STAMP)
+    assert Path(b["path"]) == expected and expected.is_file()
+    assert b["backup_root"] == str(durable)
+    # The durable root replaces the ephemeral work_root/backups fallback (not both).
+    assert not (tmp_path / "work" / "backups").exists()
+
+
+def test_backup_root_under_live_root_refused(tmp_path, monkeypatch):
+    sp = _source_package(tmp_path / "src")
+    live = tmp_path / "live" / "hb.sqlite"
+    _build_live_db(live)
+    _flag_live(monkeypatch, live)
+    fake_live_root = tmp_path / "fake_live_root"
+    monkeypatch.setattr(proj, "_LIVE_ROOT", fake_live_root)
+    with pytest.raises(LiveDbSourceDomainProjectionError, match="backup_root is at/under"):
+        run_controlled_live_db_source_domain_projection(
+            source_package=sp,
+            work_root=tmp_path / "work",
+            context_stamp=STAMP,
+            live_db_path=live,
+            allow_live_db_write=True,
+            backup_root=fake_live_root / "backups",
+        )
+    assert not (fake_live_root / "backups").exists()  # refused before any backup
+
+
 def test_builds_temp_and_counts(tmp_path, monkeypatch):
     report = _run_success(tmp_path, monkeypatch)
     assert Path(report["temp_db"]["path"]).is_file()
@@ -427,7 +457,7 @@ def test_rolls_back_on_insert_failure(tmp_path, monkeypatch):
     # transaction rolled back: live content unchanged, non-tropical row intact, backup still present
     assert _content_sig(live) == before
     assert _tropical_total(live) == 0
-    assert (tmp_path / "work" / "backups" / proj.BACKUP_NAME).is_file()
+    assert (tmp_path / "work" / "backups" / proj._backup_name(STAMP)).is_file()
 
 
 def test_post_write_audit_and_certification(tmp_path, monkeypatch):
