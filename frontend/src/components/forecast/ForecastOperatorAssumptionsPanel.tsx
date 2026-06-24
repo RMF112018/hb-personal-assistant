@@ -17,7 +17,6 @@ import {
 } from './ForecastPrimitives'
 import { ForecastStatusPill } from './ForecastStatusPill'
 
-const PROJECT = 'tropical'
 const CONFIDENCE_IMPACTS = ['', 'raises', 'lowers', 'neutral']
 const INPUT_CLASS =
   'w-full rounded border border-[var(--hb-border)] bg-transparent px-2 py-1 text-sm'
@@ -31,14 +30,14 @@ function describeError(e: unknown): string {
   return 'Could not save. Please try again.'
 }
 
-export function ForecastOperatorAssumptionsPanel() {
+export function ForecastOperatorAssumptionsPanel({ project }: { project: string }) {
   const { data: opData, error: opError, refetch: refetchOps } = useQuery({
-    queryKey: ['forecast', 'operator-assumptions', PROJECT],
-    queryFn: () => api.getForecastOperatorAssumptions(PROJECT),
+    queryKey: ['forecast', 'operator-assumptions', project],
+    queryFn: () => api.getForecastOperatorAssumptions(project),
   })
   const { data: reqData, refetch: refetchReq } = useQuery({
-    queryKey: ['forecast', 'required-assumptions', PROJECT],
-    queryFn: () => api.getForecastRequiredAssumptions(PROJECT),
+    queryKey: ['forecast', 'required-assumptions', project],
+    queryFn: () => api.getForecastRequiredAssumptions(project),
   })
   const assumptions = opData?.assumptions ?? []
   const required = reqData?.required ?? []
@@ -72,7 +71,7 @@ export function ForecastOperatorAssumptionsPanel() {
     setSaving(true)
     setSaveError(null)
     try {
-      await api.createForecastOperatorAssumption(PROJECT, {
+      await api.createForecastOperatorAssumption(project, {
         assumption_type: assumptionType.trim(),
         value: value.trim() || undefined,
         unit: unit.trim() || undefined,
@@ -115,7 +114,7 @@ export function ForecastOperatorAssumptionsPanel() {
     setReqSaving(true)
     setReqError(null)
     try {
-      await api.createForecastRequiredAssumption(PROJECT, {
+      await api.createForecastRequiredAssumption(project, {
         assumption_type: reqType.trim(),
         reason: reqReason.trim() || undefined,
       })

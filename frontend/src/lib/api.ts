@@ -744,12 +744,18 @@ export function getForecastPackageTopRisks(packageId: string) {
 /* Forecast DB read-model — persisted v63 run-output + v66 decision-support (Phase 4/5).
  * Read-only, redaction-safe (navigates by hash-based output_id; never the run_id/paths). Renders
  * gracefully empty until an operator runs the authorized live-write. */
+export interface ForecastDbProject {
+  project_key: string;
+  output_count: number;
+  latest_display: string | null;
+}
 export interface ForecastDbOutputSummary {
   output_id: string;
   project_key: string;
   estimated_final_cost: string | null;
   cost_to_complete: string | null;
   variance_to_budget: string | null;
+  variance_to_prior_forecast: string | null;
   created_display: string | null;
 }
 export interface ForecastDbBudgetCode {
@@ -827,9 +833,80 @@ export interface ForecastDbDecisionSupport {
   model_selection: Record<string, unknown>[];
 }
 
+// P9: per-scope explainability / audit narratives (curated, redaction-safe) for one output.
+export interface ForecastNarrativeProject {
+  narrative_key: string | null;
+  estimated_final_cost: string | null;
+  forecast_at_completion: string | null;
+  cost_to_complete: string | null;
+  variance_to_budget: string | null;
+  budget_code_count: number | null;
+  risk_count: number | null;
+  override_count: number | null;
+  warning_count: number | null;
+  narrative: string | null;
+}
+export interface ForecastNarrativeBudgetCode {
+  narrative_key: string | null;
+  budget_code_key: string | null;
+  recommended_projected_cost: string | null;
+  recommended_cost_to_complete: string | null;
+  forecast_action: string | null;
+  confidence: string | null;
+  risk_count: number | null;
+  overridden: boolean | null;
+  narrative: string | null;
+}
+export interface ForecastNarrativeOverride {
+  narrative_key: string | null;
+  budget_code_key: string | null;
+  assumption_type: string | null;
+  column: string | null;
+  original: string | null;
+  override: string | null;
+  delta_amount: string | null;
+  source: string | null;
+  applied_display: string | null;
+  narrative: string | null;
+}
+export interface ForecastNarrativeSourceQa {
+  narrative_key: string | null;
+  budget_code_count: number | null;
+  null_projected_cost_count: number | null;
+  zero_projected_cost_count: number | null;
+  duplicate_budget_code_keys: string[] | null;
+  narrative: string | null;
+}
+export interface ForecastNarrativeLineage {
+  narrative_key: string | null;
+  context_sha256: string | null;
+  analysis_sha256: string | null;
+  output_sha256: string | null;
+  methodology_sha256: string | null;
+  narrative: string | null;
+}
+export interface ForecastDbNarratives {
+  output_id: string;
+  narratives: {
+    project?: ForecastNarrativeProject[];
+    budget_code?: ForecastNarrativeBudgetCode[];
+    human_override?: ForecastNarrativeOverride[];
+    source_qa?: ForecastNarrativeSourceQa[];
+    lineage?: ForecastNarrativeLineage[];
+  };
+}
+
+export function getForecastDbProjects() {
+  return fetchJson<{ projects: ForecastDbProject[] }>('/api/forecast/db/projects');
+}
 export function getForecastDbOutputs(projectKey = 'tropical') {
   return fetchJson<{ outputs: ForecastDbOutputSummary[] }>(
     `/api/forecast/db/projects/${encodeURIComponent(projectKey)}/outputs`,
+  );
+}
+export function getForecastDbNarratives(outputId: string) {
+  return fetchJson<ForecastDbNarratives>(
+    `/api/forecast/db/outputs/${encodeURIComponent(outputId)}/narratives`,
   );
 }
 export function getForecastDbOutput(outputId: string) {
@@ -1374,9 +1451,11 @@ export const api = {
   getForecastPackageProbability,
   getForecastPackageRiskRegister,
   getForecastPackageTopRisks,
+  getForecastDbProjects,
   getForecastDbOutputs,
   getForecastDbOutput,
   getForecastDbDecisionSupport,
+  getForecastDbNarratives,
   getForecastOperatorAssumptions,
   createForecastOperatorAssumption,
   editForecastOperatorAssumption,

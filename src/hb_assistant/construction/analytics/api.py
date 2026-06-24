@@ -1654,6 +1654,11 @@ def create_app(*, db_path: str | None = None) -> Any:
                 raise HTTPException(status_code=404, detail="forecast_output_not_found")
             raise HTTPException(status_code=503, detail="forecast_run_output_not_available")
 
+    @app.get("/api/forecast/db/projects")
+    def forecast_db_projects(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        return _forecast_readmodel_call(_forecast_readmodel_service().list_projects)
+
     @app.get("/api/forecast/db/projects/{project_key}/outputs")
     def forecast_db_outputs(project_key: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
         del role
@@ -1672,6 +1677,13 @@ def create_app(*, db_path: str | None = None) -> Any:
         return _forecast_readmodel_call(
             _forecast_readmodel_service().read_decision_support, output_id
         )
+
+    @app.get("/api/forecast/db/outputs/{output_id}/narratives")
+    def forecast_db_narratives(
+        output_id: str, role: dict[str, str] = role_dep
+    ) -> dict[str, Any]:
+        del role
+        return _forecast_readmodel_call(_forecast_readmodel_service().read_narratives, output_id)
 
     # --- Operator assumptions capture — first interactive forecast WRITE surface ----------
     # Operator-entered assumptions persist DIRECTLY into the v66 managed-DB tables (not the
