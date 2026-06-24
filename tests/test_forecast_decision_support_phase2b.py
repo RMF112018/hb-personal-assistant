@@ -189,7 +189,7 @@ def test_apply_writes_with_parity_and_idempotent() -> None:
         )
         assert plan["ok"] is True
         assert plan["written"]["maturity"] == 1
-        assert plan["written"]["availability"] == 7  # 3 db domains + 4 absent
+        assert plan["written"]["availability"] == 12  # P5: 3 v59 + 6 v63 output + 1 assumptions + 2 no-table
         assert plan["parity"]["proven"] is True
 
         eng.project_decision_support(
@@ -197,6 +197,6 @@ def test_apply_writes_with_parity_and_idempotent() -> None:
         )
         conn = sqlite3.connect(str(db))
         assert conn.execute("SELECT COUNT(*) FROM forecast_project_maturity_snapshots").fetchone()[0] == 1
-        assert conn.execute("SELECT COUNT(*) FROM forecast_data_availability_profiles").fetchone()[0] == 7
+        assert conn.execute("SELECT COUNT(*) FROM forecast_data_availability_profiles").fetchone()[0] == 12
         assert conn.execute("SELECT maturity_tier FROM forecast_project_maturity_snapshots").fetchone()[0] == "M4"
         conn.close()

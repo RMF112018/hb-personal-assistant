@@ -1,0 +1,5 @@
+scripts/test-forecasting.sh -q -rA  => 0 FAILED/ERROR, 883 PASSED (main 876 + 7 new P5)
+scripts/test-schedule.sh   -q -rA   => 0 FAILED/ERROR
+NO migration (all V66 columns pre-existed); NO CFR change; NO flag (default-on).
+Updated existing test_forecast_decision_support_phase2b.py availability count 7 -> 12.
+No live-DB write; temp/copied-DB only. coded lifecycle_signal/score are path-free.

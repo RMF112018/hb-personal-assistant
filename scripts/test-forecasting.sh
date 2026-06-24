@@ -93,6 +93,7 @@ pytest_targets=(
   "tests/test_forecast_output_coverage.py"
   "tests/test_forecast_output_overrides_p2b.py"
   "tests/test_forecast_output_projection_phase2a.py"
+  "tests/test_forecast_p5_maturity_availability.py"
   "tests/test_forecast_package_resolution_phase8.py"
   "tests/test_forecast_probability_db_config_phase19.py"
   "tests/test_forecast_probability_db_config_phase19_stability.py"
