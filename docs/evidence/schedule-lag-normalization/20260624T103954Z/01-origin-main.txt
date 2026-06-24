@@ -1,0 +1,4 @@
+origin_main_short=e5e3aa8e
+origin_main_line=e5e3aa8e Forecast remediation P10 PR2: correctness VALUE tests + migrator leak fix (#113)
+branch=codex/schedule-lag-normalization-20260624
+worktree=/Users/bobbyfetting/hb-personal-assistant-worktrees/schedule-lag-normalization-20260624

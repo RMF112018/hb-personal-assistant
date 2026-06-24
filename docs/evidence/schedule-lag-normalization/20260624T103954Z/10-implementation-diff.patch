@@ -1,0 +1,683 @@
+diff --git a/src/hb_assistant/construction/analytics/schedule_quality_engine.py b/src/hb_assistant/construction/analytics/schedule_quality_engine.py
+index 410aa54f..a586d40f 100644
+--- a/src/hb_assistant/construction/analytics/schedule_quality_engine.py
++++ b/src/hb_assistant/construction/analytics/schedule_quality_engine.py
+@@ -4,11 +4,19 @@ from __future__ import annotations
+ 
+ import json
+ from dataclasses import dataclass, field
++from decimal import Decimal
+ from typing import Any
+ 
+ from hb_assistant.store.schedule_activity_repository import ScheduleActivityRepository
+ from hb_assistant.store.schedule_mapping_repository import ScheduleMappingRepository
+ 
++from .schedule_critical_path_analytics import (
++    METRIC_STATUS_AVAILABLE_XER_DRIVING,
++    METRIC_STATUS_AVAILABLE_XER_TOTFLOAT,
++    METRIC_STATUS_PARTIAL_XER_FLOAT,
++    compute_source_critical_path_analytics,
++    resolve_analytics_status,
++)
+ from .schedule_float_derivation import supports_finish_float_derivation
+ from .schedule_graph import orphan_relationship_ids
+ from .schedule_quality_normalization import (
+@@ -16,16 +24,10 @@ from .schedule_quality_normalization import (
+     cost_resource_posture,
+     is_logic_excluded_activity,
+     normalize_duration_days,
++    normalize_lag_result,
+     normalize_relationship_type,
+     relationship_type_distribution,
+ )
+-from .schedule_critical_path_analytics import (
+-    METRIC_STATUS_AVAILABLE_XER_DRIVING,
+-    METRIC_STATUS_AVAILABLE_XER_TOTFLOAT,
+-    METRIC_STATUS_PARTIAL_XER_FLOAT,
+-    compute_source_critical_path_analytics,
+-    resolve_analytics_status,
+-)
+ from .schedule_quality_profiles import (
+     DCMA_METRIC_SPECS,
+     DISCLAIMER_VERSION,
+@@ -39,6 +41,7 @@ HIGH_FLOAT_DAYS = 44.0
+ HIGH_DURATION_DAYS = 44.0
+ EXCESSIVE_LAG_DAYS = 44.0
+ MAX_EVIDENCE_IDS = 10
++EXCESSIVE_LAG_DAYS_DECIMAL = Decimal(str(EXCESSIVE_LAG_DAYS))
+ 
+ METRIC_STATUS_MEASURED = "measured"
+ METRIC_STATUS_PASS = "passed_threshold"
+@@ -97,6 +100,12 @@ def _parse_threshold(value: Any) -> float:
+         return 0.0
+ 
+ 
++def _decimal_evidence_value(value: Decimal | None) -> str | None:
++    if value is None:
++        return None
++    return format(value.normalize(), "f")
++
++
+ @dataclass
+ class EvaluationResult:
+     metrics: list[dict[str, Any]]
+@@ -525,18 +534,67 @@ class ScheduleQualityAssessmentEngine:
+                 findings,
+             )
+         bad = 0
++        normalized_count = 0
++        assumed_day_count = 0
++        skipped_unparseable_count = 0
++        unit_distribution: dict[str, int] = {}
++        conversion_status_distribution = {
++            "known_unit": 0,
++            "assumed_days": 0,
++            "unparseable": 0,
++        }
++        max_positive_lag_days: Decimal | None = None
++        min_negative_lag_days: Decimal | None = None
++        finding_samples: list[dict[str, Any]] = []
+         for rel in rels:
+-            try:
+-                lag = float(rel.get("lag_value") or 0)
+-            except (TypeError, ValueError):
+-                lag = 0.0
++            result = normalize_lag_result(rel.get("lag_value"), rel.get("lag_unit"))
++            unit_key = result.source_unit_label or "(missing)"
++            unit_distribution[unit_key] = unit_distribution.get(unit_key, 0) + 1
++            conversion_status_distribution[result.conversion_status] += 1
++            if result.conversion_status == "known_unit":
++                normalized_count += 1
++            elif result.conversion_status == "assumed_days":
++                assumed_day_count += 1
++            else:
++                skipped_unparseable_count += 1
++                continue
++            lag_days = result.normalized_days
++            if lag_days is None:
++                skipped_unparseable_count += 1
++                continue
++            if lag_days > 0 and (
++                max_positive_lag_days is None or lag_days > max_positive_lag_days
++            ):
++                max_positive_lag_days = lag_days
++            if lag_days < 0 and (
++                min_negative_lag_days is None or lag_days < min_negative_lag_days
++            ):
++                min_negative_lag_days = lag_days
+             hit = False
+-            if negative_only and lag < 0:
+-                hit = True
+-            elif excessive_only and lag > EXCESSIVE_LAG_DAYS:
++            if negative_only and lag_days < 0 or excessive_only and lag_days > EXCESSIVE_LAG_DAYS_DECIMAL:
+                 hit = True
+             if hit:
+                 bad += 1
++                relationship_id = (
++                    rel.get("relationship_id")
++                    or rel.get("source_relationship_object_id")
++                    or rel.get("relationship_row_id")
++                    or (
++                        f"{rel.get('predecessor_activity_id')}->"
++                        f"{rel.get('successor_activity_id')}"
++                    )
++                )
++                finding_evidence = {
++                    "relationship_id": relationship_id,
++                    "predecessor_activity_id": rel.get("predecessor_activity_id"),
++                    "successor_activity_id": rel.get("successor_activity_id"),
++                    "raw_lag_value": rel.get("lag_value"),
++                    "raw_lag_unit": rel.get("lag_unit"),
++                    "normalized_lag_days": _decimal_evidence_value(lag_days),
++                    "conversion_status": result.conversion_status,
++                }
++                if len(finding_samples) < MAX_EVIDENCE_IDS:
++                    finding_samples.append(finding_evidence)
+                 findings.append(
+                     self._finding(
+                         ctx,
+@@ -545,10 +603,30 @@ class ScheduleQualityAssessmentEngine:
+                         finding_type="lags",
+                         category="dcma",
+                         metric_code=code,
+-                        summary=f"Relationship lag value {lag} is out of expected range",
++                        relationship_id=relationship_id,
++                        summary=(
++                            "Relationship lag value "
++                            f"{_decimal_evidence_value(lag_days)} days is out of expected range"
++                        ),
++                        evidence=finding_evidence,
+                     )
+                 )
+         ratio = bad / len(rels)
++        evidence = {
++            "total_relationships_assessed": len(rels),
++            "lag_values_normalized_count": normalized_count,
++            "assumed_day_count": assumed_day_count,
++            "skipped_unparseable_count": skipped_unparseable_count,
++            "unit_distribution": unit_distribution,
++            "conversion_status_distribution": conversion_status_distribution,
++            "observed_units": sorted(unit_distribution)[:MAX_EVIDENCE_IDS],
++            "max_positive_lag_days": _decimal_evidence_value(max_positive_lag_days),
++            "min_negative_lag_days": _decimal_evidence_value(min_negative_lag_days),
++            "excessive_lag_threshold_days": _decimal_evidence_value(
++                EXCESSIVE_LAG_DAYS_DECIMAL
++            ),
++            "finding_samples": finding_samples,
++        }
+         return (
+             self._base_metric(
+                 ctx,
+@@ -558,6 +636,7 @@ class ScheduleQualityAssessmentEngine:
+                 numerator=bad,
+                 denominator=len(rels),
+                 value=round(ratio, 4),
++                evidence=evidence,
+             ),
+             findings,
+         )
+@@ -1809,4 +1888,4 @@ def run_evaluation_for_run(
+         code_assignments=data.get("code_assignments") or [],
+         udf_values=data.get("udf_values") or [],
+     )
+-    return ScheduleQualityAssessmentEngine().evaluate(ctx)
+\ No newline at end of file
++    return ScheduleQualityAssessmentEngine().evaluate(ctx)
+diff --git a/src/hb_assistant/construction/analytics/schedule_quality_normalization.py b/src/hb_assistant/construction/analytics/schedule_quality_normalization.py
+index aa1e446a..99a6e920 100644
+--- a/src/hb_assistant/construction/analytics/schedule_quality_normalization.py
++++ b/src/hb_assistant/construction/analytics/schedule_quality_normalization.py
+@@ -2,7 +2,9 @@
+ 
+ from __future__ import annotations
+ 
+-from typing import Any
++from dataclasses import dataclass
++from decimal import Decimal, InvalidOperation
++from typing import Any, Literal
+ 
+ RELATIONSHIP_TYPE_ALIASES: dict[str, str] = {
+     "FINISH TO START": "FS",
+@@ -21,6 +23,104 @@ RELATIONSHIP_TYPE_ALIASES: dict[str, str] = {
+ 
+ DEFAULT_HOURS_PER_DAY = 8.0
+ 
++LagConversionStatus = Literal["known_unit", "assumed_days", "unparseable"]
++
++
++@dataclass(frozen=True)
++class LagNormalizationResult:
++    normalized_days: Decimal | None
++    source_unit_label: str | None
++    conversion_status: LagConversionStatus
++
++
++_DAY_UNITS = {"d", "day", "days"}
++_HOUR_UNITS = {"h", "hr", "hrs", "hour", "hours"}
++_MINUTE_UNITS = {"m", "min", "mins", "minute", "minutes"}
++_MINUTE_TENTH_UNITS = {
++    "minute_tenth",
++    "minute_tenths",
++    "tenths_of_minute",
++    "tenth_of_minute",
++    "msp_link_lag",
++}
++_WEEK_UNITS = {"w", "wk", "wks", "week", "weeks"}
++_MONTH_UNITS = {"mo", "month", "months"}
++
++
++def _decimal_or_none(value: Any) -> Decimal | None:
++    if value is None:
++        return None
++    text = str(value).strip()
++    if not text:
++        return None
++    try:
++        return Decimal(text)
++    except (InvalidOperation, ValueError):
++        return None
++
++
++def _hours_per_day_decimal(hours_per_day: Decimal | float | int | None) -> Decimal:
++    parsed = _decimal_or_none(hours_per_day)
++    if parsed is None or parsed <= 0:
++        return Decimal(str(DEFAULT_HOURS_PER_DAY))
++    return parsed
++
++
++def normalize_lag_result(
++    lag_value: object,
++    lag_unit: object | None,
++    *,
++    hours_per_day: Decimal | float | int | None = None,
++) -> LagNormalizationResult:
++    raw = _decimal_or_none(lag_value)
++    unit_label = str(lag_unit).strip().lower() if lag_unit is not None else None
++    if unit_label == "":
++        unit_label = None
++    if raw is None:
++        return LagNormalizationResult(
++            normalized_days=None,
++            source_unit_label=unit_label,
++            conversion_status="unparseable",
++        )
++
++    hpd = _hours_per_day_decimal(hours_per_day)
++    if unit_label in _DAY_UNITS:
++        days = raw
++    elif unit_label in _HOUR_UNITS:
++        days = raw / hpd
++    elif unit_label in _MINUTE_UNITS:
++        days = raw / Decimal("60") / hpd
++    elif unit_label in _MINUTE_TENTH_UNITS:
++        days = raw / Decimal("10") / Decimal("60") / hpd
++    elif unit_label in _WEEK_UNITS:
++        days = raw * Decimal("5.0")
++    elif unit_label in _MONTH_UNITS:
++        days = raw * Decimal("22.0")
++    else:
++        return LagNormalizationResult(
++            normalized_days=raw,
++            source_unit_label=unit_label,
++            conversion_status="assumed_days",
++        )
++    return LagNormalizationResult(
++        normalized_days=days,
++        source_unit_label=unit_label,
++        conversion_status="known_unit",
++    )
++
++
++def normalize_lag_days(
++    lag_value: object,
++    lag_unit: object | None,
++    *,
++    hours_per_day: Decimal | float | int | None = None,
++) -> Decimal | None:
++    return normalize_lag_result(
++        lag_value,
++        lag_unit,
++        hours_per_day=hours_per_day,
++    ).normalized_days
++
+ 
+ def normalize_relationship_type(raw: Any) -> str:
+     label = str(raw or "FS").strip().upper()
+@@ -111,4 +211,4 @@ def cost_resource_posture(import_meta: dict[str, Any] | None) -> str:
+         return "partially_resource_loaded"
+     if status == "not_cost_loaded":
+         return "not_cost_loaded"
+-    return "unknown"
+\ No newline at end of file
++    return "unknown"
+diff --git a/src/hb_assistant/store/schedule_activity_repository.py b/src/hb_assistant/store/schedule_activity_repository.py
+index 491a16e4..0797c2e2 100644
+--- a/src/hb_assistant/store/schedule_activity_repository.py
++++ b/src/hb_assistant/store/schedule_activity_repository.py
+@@ -298,7 +298,8 @@ class ScheduleActivityRepository:
+         with self._conn() as conn:
+             cur = conn.execute(
+                 """
+-                SELECT predecessor_activity_id, successor_activity_id,
++                SELECT id AS relationship_row_id, source_relationship_object_id,
++                       predecessor_activity_id, successor_activity_id,
+                        relationship_type, lag_value, lag_unit
+                 FROM procore_ep_schedule_relationships
+                 WHERE schedule_version_key=?
+@@ -328,4 +329,4 @@ class ScheduleActivityRepository:
+                 "SELECT COUNT(*) FROM procore_ep_schedule_relationships WHERE schedule_version_key=?",
+                 (schedule_version_key,),
+             )
+-            return int(cur.fetchone()[0])
+\ No newline at end of file
++            return int(cur.fetchone()[0])
+diff --git a/tests/test_schedule_msp_xml_parser.py b/tests/test_schedule_msp_xml_parser.py
+index cd015deb..9fab2627 100644
+--- a/tests/test_schedule_msp_xml_parser.py
++++ b/tests/test_schedule_msp_xml_parser.py
+@@ -8,7 +8,10 @@ from pathlib import Path
+ 
+ import pytest
+ 
+-from hb_assistant.construction.analytics.schedule_file_parser import detect_source, sniff_xml_source_format
++from hb_assistant.construction.analytics.schedule_file_parser import (
++    detect_source,
++    sniff_xml_source_format,
++)
+ from hb_assistant.construction.analytics.schedule_msp_xml_parser import parse_msp_xml_bytes
+ 
+ MSP_ZIP = Path(
+@@ -34,6 +37,40 @@ def test_sniff_p6_xml_defaults_to_pmxml() -> None:
+     assert sniff_xml_source_format(data) == "primavera_pmxml"
+ 
+ 
++def test_parse_msp_relationship_preserves_link_lag_minute_tenths() -> None:
++    data = b"""<?xml version="1.0" encoding="UTF-8"?>
++<Project xmlns="http://schemas.microsoft.com/project/2007">
++  <Name>Lag Unit Test</Name>
++  <UID>msp-lag-test</UID>
++  <Tasks>
++    <Task>
++      <UID>1</UID>
++      <ID>10</ID>
++      <Name>Predecessor</Name>
++    </Task>
++    <Task>
++      <UID>2</UID>
++      <ID>20</ID>
++      <Name>Successor</Name>
++      <PredecessorLink>
++        <PredecessorUID>1</PredecessorUID>
++        <Type>1</Type>
++        <LinkLag>4800</LinkLag>
++      </PredecessorLink>
++    </Task>
++  </Tasks>
++</Project>
++"""
++    bundle = parse_msp_xml_bytes(data)
++    assert len(bundle.relationships) == 1
++    rel = bundle.relationships[0]
++    assert rel["predecessor_activity_id"] == "10"
++    assert rel["successor_activity_id"] == "20"
++    assert rel["relationship_type"] == "FS"
++    assert rel["lag_value"] == "4800"
++    assert rel["lag_unit"] == "minute_tenth"
++
++
+ @pytest.mark.manual
+ def test_parse_msp_twnu18_when_present() -> None:
+     if not MSP_ZIP.is_file():
+@@ -43,4 +80,4 @@ def test_parse_msp_twnu18_when_present() -> None:
+     bundle = parse_msp_xml_bytes(data)
+     assert len(bundle.activities) == 1378
+     assert bundle.source_capabilities["explicit_float_count"] == 677
+-    assert bundle.source_capabilities["source_format"] == "ms_project_xml"
+\ No newline at end of file
++    assert bundle.source_capabilities["source_format"] == "ms_project_xml"
+diff --git a/tests/test_schedule_quality_engine.py b/tests/test_schedule_quality_engine.py
+index 8a7c6cad..04e8b0b2 100644
+--- a/tests/test_schedule_quality_engine.py
++++ b/tests/test_schedule_quality_engine.py
+@@ -2,17 +2,21 @@
+ 
+ from __future__ import annotations
+ 
+-import tempfile
++import json
+ from pathlib import Path
+ 
+-import pytest
+-
+ from hb_assistant.construction.analytics.schedule_import_service import ScheduleImportService
+ from hb_assistant.construction.analytics.schedule_quality_engine import (
+     METRIC_STATUS_DERIVED_FINISH_FLOAT,
+     METRIC_STATUS_NOT_MEASURABLE_RECALC,
++    EvaluationContext,
++    ScheduleQualityAssessmentEngine,
+     run_evaluation_for_run,
+ )
++from hb_assistant.construction.analytics.schedule_quality_profiles import (
++    DCMA_METRIC_SPECS,
++    get_profile,
++)
+ from hb_assistant.construction.analytics.schedule_quality_service import ScheduleQualityService
+ from hb_assistant.store.migrator import SQLiteMigrator
+ from tests.schedule_project_test_helpers import seed_procore_ep_project
+@@ -28,6 +32,152 @@ def _db(tmp_path: Path) -> str:
+     return str(db)
+ 
+ 
++def _lag_context(relationships: list[dict[str, object]]) -> EvaluationContext:
++    return EvaluationContext(
++        project_key="tropical",
++        schedule_version_key="tropical|1|2026-01-01",
++        schedule_table_id=None,
++        import_id="imp-test",
++        evaluation_run_id="sq-lag-units",
++        assessment_profile=get_profile(),
++        relationships=relationships,
++    )
++
++
++def test_dcma_lag_metric_normalizes_source_units_before_thresholding() -> None:
++    engine = ScheduleQualityAssessmentEngine()
++    ctx = _lag_context(
++        [
++            {
++                "relationship_id": "r-48h",
++                "predecessor_activity_id": "A1",
++                "successor_activity_id": "A2",
++                "lag_value": "48",
++                "lag_unit": "hour",
++            },
++            {
++                "relationship_id": "r-360h",
++                "predecessor_activity_id": "A2",
++                "successor_activity_id": "A3",
++                "lag_value": "360",
++                "lag_unit": "hour",
++            },
++            {
++                "relationship_id": "r-msp",
++                "predecessor_activity_id": "A3",
++                "successor_activity_id": "A4",
++                "lag_value": "4800",
++                "lag_unit": "minute_tenth",
++            },
++            {
++                "relationship_id": "r-missing",
++                "predecessor_activity_id": "A4",
++                "successor_activity_id": "A5",
++                "lag_value": "12",
++                "lag_unit": None,
++            },
++            {
++                "relationship_id": "r-unknown",
++                "predecessor_activity_id": "A5",
++                "successor_activity_id": "A6",
++                "lag_value": "7",
++                "lag_unit": "fortnight",
++            },
++            {
++                "relationship_id": "r-blank",
++                "predecessor_activity_id": "A6",
++                "successor_activity_id": "A7",
++                "lag_value": "",
++                "lag_unit": "hour",
++            },
++            {
++                "relationship_id": "r-bad",
++                "predecessor_activity_id": "A7",
++                "successor_activity_id": "A8",
++                "lag_value": "not-a-number",
++                "lag_unit": "hour",
++            },
++        ]
++    )
++
++    metric, findings = engine._metric_lags(
++        ctx, "dcma_lags", DCMA_METRIC_SPECS["dcma_lags"]
++    )
++    evidence = json.loads(metric["evidence_json"])
++
++    assert metric["numerator"] == "1"
++    assert metric["denominator"] == "7"
++    assert len(findings) == 1
++    assert findings[0]["relationship_id"] == "r-360h"
++    finding_evidence = json.loads(findings[0]["evidence_json"])
++    assert finding_evidence == {
++        "relationship_id": "r-360h",
++        "predecessor_activity_id": "A2",
++        "successor_activity_id": "A3",
++        "raw_lag_value": "360",
++        "raw_lag_unit": "hour",
++        "normalized_lag_days": "45",
++        "conversion_status": "known_unit",
++    }
++    assert evidence["total_relationships_assessed"] == 7
++    assert evidence["lag_values_normalized_count"] == 3
++    assert evidence["assumed_day_count"] == 2
++    assert evidence["skipped_unparseable_count"] == 2
++    assert evidence["unit_distribution"]["hour"] == 4
++    assert evidence["unit_distribution"]["minute_tenth"] == 1
++    assert evidence["unit_distribution"]["(missing)"] == 1
++    assert evidence["unit_distribution"]["fortnight"] == 1
++    assert evidence["max_positive_lag_days"] == "45"
++    assert evidence["excessive_lag_threshold_days"] == "44"
++    assert evidence["finding_samples"][0]["normalized_lag_days"] == "45"
++
++
++def test_dcma_lead_metric_counts_negative_normalized_lags_only() -> None:
++    engine = ScheduleQualityAssessmentEngine()
++    ctx = _lag_context(
++        [
++            {
++                "relationship_id": "r-lead",
++                "predecessor_activity_id": "A1",
++                "successor_activity_id": "A2",
++                "lag_value": "-16",
++                "lag_unit": "hour",
++            },
++            {
++                "relationship_id": "r-blank",
++                "predecessor_activity_id": "A2",
++                "successor_activity_id": "A3",
++                "lag_value": "",
++                "lag_unit": "hour",
++            },
++            {
++                "relationship_id": "r-positive",
++                "predecessor_activity_id": "A3",
++                "successor_activity_id": "A4",
++                "lag_value": "48",
++                "lag_unit": "hour",
++            },
++        ]
++    )
++
++    metric, findings = engine._metric_leads(
++        ctx, "dcma_leads", DCMA_METRIC_SPECS["dcma_leads"]
++    )
++    evidence = json.loads(metric["evidence_json"])
++
++    assert metric["numerator"] == "1"
++    assert metric["denominator"] == "3"
++    assert len(findings) == 1
++    assert findings[0]["relationship_id"] == "r-lead"
++    finding_evidence = json.loads(findings[0]["evidence_json"])
++    assert finding_evidence["normalized_lag_days"] == "-2"
++    assert finding_evidence["raw_lag_value"] == "-16"
++    assert finding_evidence["raw_lag_unit"] == "hour"
++    assert evidence["min_negative_lag_days"] == "-2"
++    assert evidence["max_positive_lag_days"] == "6"
++    assert evidence["skipped_unparseable_count"] == 1
++
++
+ def test_dcma_baseline_metrics_not_measurable(tmp_path: Path) -> None:
+     db = _db(tmp_path)
+     svc = ScheduleImportService(db_path=db)
+@@ -162,4 +312,4 @@ def test_cost_loading_not_applicable_for_not_cost_loaded_import(tmp_path: Path)
+         import_id=preview["import_id"],
+     )
+     metric = next(m for m in result.metrics if m["metric_code"] == "dcma_resources_cost_loading")
+-    assert metric["status"] == "not_applicable"
+\ No newline at end of file
++    assert metric["status"] == "not_applicable"
+diff --git a/tests/test_schedule_quality_normalization.py b/tests/test_schedule_quality_normalization.py
+index 13ece147..5bd18a6a 100644
+--- a/tests/test_schedule_quality_normalization.py
++++ b/tests/test_schedule_quality_normalization.py
+@@ -2,7 +2,11 @@
+ 
+ from __future__ import annotations
+ 
++from decimal import Decimal
++
+ from hb_assistant.construction.analytics.schedule_quality_normalization import (
++    normalize_lag_days,
++    normalize_lag_result,
+     normalize_relationship_type,
+     relationship_type_distribution,
+ )
+@@ -29,4 +33,36 @@ def test_twnu18_relationship_distribution() -> None:
+     assert dist["FF"] == 1357
+     assert dist["SS"] == 125
+     assert dist["SF"] == 1
+-    assert dist["non_fs_count"] == 1483
+\ No newline at end of file
++    assert dist["non_fs_count"] == 1483
++
++
++def test_normalize_lag_days_converts_source_units() -> None:
++    assert normalize_lag_days(48, "hour") == Decimal("6")
++    assert normalize_lag_days(360, "hour") == Decimal("45")
++    assert normalize_lag_days(4800, "minute_tenth") == Decimal("1")
++    assert normalize_lag_days(-16, "hour") == Decimal("-2")
++
++
++def test_normalize_lag_result_classifies_known_assumed_and_unparseable() -> None:
++    known = normalize_lag_result("48", "hour")
++    assert known.normalized_days == Decimal("6")
++    assert known.source_unit_label == "hour"
++    assert known.conversion_status == "known_unit"
++
++    missing = normalize_lag_result("12", None)
++    assert missing.normalized_days == Decimal("12")
++    assert missing.source_unit_label is None
++    assert missing.conversion_status == "assumed_days"
++
++    unknown = normalize_lag_result("7.5", "fortnight")
++    assert unknown.normalized_days == Decimal("7.5")
++    assert unknown.source_unit_label == "fortnight"
++    assert unknown.conversion_status == "assumed_days"
++
++    blank = normalize_lag_result("", "hour")
++    assert blank.normalized_days is None
++    assert blank.conversion_status == "unparseable"
++
++    invalid = normalize_lag_result("not-a-number", "hour")
++    assert invalid.normalized_days is None
++    assert invalid.conversion_status == "unparseable"
+diff --git a/tests/test_schedule_xer_quality_metrics.py b/tests/test_schedule_xer_quality_metrics.py
+index f8bb2bab..dc901f8c 100644
+--- a/tests/test_schedule_xer_quality_metrics.py
++++ b/tests/test_schedule_xer_quality_metrics.py
+@@ -14,8 +14,13 @@ from hb_assistant.construction.analytics.schedule_quality_engine import (
+     ScheduleQualityDataLoader,
+     run_evaluation_for_run,
+ )
+-from hb_assistant.construction.analytics.schedule_quality_normalization import normalize_duration_days
+-from hb_assistant.construction.analytics.schedule_quality_profiles import DCMA_METRIC_SPECS, get_profile
++from hb_assistant.construction.analytics.schedule_quality_normalization import (
++    normalize_duration_days,
++)
++from hb_assistant.construction.analytics.schedule_quality_profiles import (
++    DCMA_METRIC_SPECS,
++    get_profile,
++)
+ from hb_assistant.construction.analytics.schedule_xer_parser import parse_xer_bytes
+ from hb_assistant.store.connection import get_connection
+ from hb_assistant.store.migrator import SQLiteMigrator
+@@ -44,6 +49,14 @@ def test_xer_parser_maps_actual_dates_from_act_fields_only() -> None:
+     assert complete["actual_finish"] == complete.get("actual_finish")
+ 
+ 
++def test_xer_parser_preserves_relationship_lag_hours() -> None:
++    bundle = parse_xer_bytes(XER.read_bytes())
++    assert bundle.relationships
++    rel = bundle.relationships[0]
++    assert rel["lag_value"] == "0"
++    assert rel["lag_unit"] == "hour"
++
++
+ def test_xer_parser_maps_actual_dates_and_duration_unit(tmp_path: Path) -> None:
+     db = _db(tmp_path)
+     svc = ScheduleImportService(db_path=db)
+@@ -237,4 +250,4 @@ def _seed_and_evaluate(tmp_path: Path) -> str:
+         schedule_table_id=None,
+         import_id=preview["import_id"],
+     )
+-    return commit["schedule_version_key"]
+\ No newline at end of file
++    return commit["schedule_version_key"]

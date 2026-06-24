@@ -298,7 +298,8 @@ class ScheduleActivityRepository:
         with self._conn() as conn:
             cur = conn.execute(
                 """
-                SELECT predecessor_activity_id, successor_activity_id,
+                SELECT id AS relationship_row_id, source_relationship_object_id,
+                       predecessor_activity_id, successor_activity_id,
                        relationship_type, lag_value, lag_unit
                 FROM procore_ep_schedule_relationships
                 WHERE schedule_version_key=?

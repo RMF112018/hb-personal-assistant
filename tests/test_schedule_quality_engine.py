@@ -2,16 +2,20 @@
 
 from __future__ import annotations
 
-import tempfile
+import json
 from pathlib import Path
-
-import pytest
 
 from hb_assistant.construction.analytics.schedule_import_service import ScheduleImportService
 from hb_assistant.construction.analytics.schedule_quality_engine import (
     METRIC_STATUS_DERIVED_FINISH_FLOAT,
     METRIC_STATUS_NOT_MEASURABLE_RECALC,
+    EvaluationContext,
+    ScheduleQualityAssessmentEngine,
     run_evaluation_for_run,
+)
+from hb_assistant.construction.analytics.schedule_quality_profiles import (
+    DCMA_METRIC_SPECS,
+    get_profile,
 )
 from hb_assistant.construction.analytics.schedule_quality_service import ScheduleQualityService
 from hb_assistant.store.migrator import SQLiteMigrator
@@ -26,6 +30,152 @@ def _db(tmp_path: Path) -> str:
     SQLiteMigrator(db_path=str(db)).apply()
     seed_procore_ep_project(db, project_key="tropical", display_name="Tropical Wind")
     return str(db)
+
+
+def _lag_context(relationships: list[dict[str, object]]) -> EvaluationContext:
+    return EvaluationContext(
+        project_key="tropical",
+        schedule_version_key="tropical|1|2026-01-01",
+        schedule_table_id=None,
+        import_id="imp-test",
+        evaluation_run_id="sq-lag-units",
+        assessment_profile=get_profile(),
+        relationships=relationships,
+    )
+
+
+def test_dcma_lag_metric_normalizes_source_units_before_thresholding() -> None:
+    engine = ScheduleQualityAssessmentEngine()
+    ctx = _lag_context(
+        [
+            {
+                "relationship_id": "r-48h",
+                "predecessor_activity_id": "A1",
+                "successor_activity_id": "A2",
+                "lag_value": "48",
+                "lag_unit": "hour",
+            },
+            {
+                "relationship_id": "r-360h",
+                "predecessor_activity_id": "A2",
+                "successor_activity_id": "A3",
+                "lag_value": "360",
+                "lag_unit": "hour",
+            },
+            {
+                "relationship_id": "r-msp",
+                "predecessor_activity_id": "A3",
+                "successor_activity_id": "A4",
+                "lag_value": "4800",
+                "lag_unit": "minute_tenth",
+            },
+            {
+                "relationship_id": "r-missing",
+                "predecessor_activity_id": "A4",
+                "successor_activity_id": "A5",
+                "lag_value": "12",
+                "lag_unit": None,
+            },
+            {
+                "relationship_id": "r-unknown",
+                "predecessor_activity_id": "A5",
+                "successor_activity_id": "A6",
+                "lag_value": "7",
+                "lag_unit": "fortnight",
+            },
+            {
+                "relationship_id": "r-blank",
+                "predecessor_activity_id": "A6",
+                "successor_activity_id": "A7",
+                "lag_value": "",
+                "lag_unit": "hour",
+            },
+            {
+                "relationship_id": "r-bad",
+                "predecessor_activity_id": "A7",
+                "successor_activity_id": "A8",
+                "lag_value": "not-a-number",
+                "lag_unit": "hour",
+            },
+        ]
+    )
+
+    metric, findings = engine._metric_lags(
+        ctx, "dcma_lags", DCMA_METRIC_SPECS["dcma_lags"]
+    )
+    evidence = json.loads(metric["evidence_json"])
+
+    assert metric["numerator"] == "1"
+    assert metric["denominator"] == "7"
+    assert len(findings) == 1
+    assert findings[0]["relationship_id"] == "r-360h"
+    finding_evidence = json.loads(findings[0]["evidence_json"])
+    assert finding_evidence == {
+        "relationship_id": "r-360h",
+        "predecessor_activity_id": "A2",
+        "successor_activity_id": "A3",
+        "raw_lag_value": "360",
+        "raw_lag_unit": "hour",
+        "normalized_lag_days": "45",
+        "conversion_status": "known_unit",
+    }
+    assert evidence["total_relationships_assessed"] == 7
+    assert evidence["lag_values_normalized_count"] == 3
+    assert evidence["assumed_day_count"] == 2
+    assert evidence["skipped_unparseable_count"] == 2
+    assert evidence["unit_distribution"]["hour"] == 4
+    assert evidence["unit_distribution"]["minute_tenth"] == 1
+    assert evidence["unit_distribution"]["(missing)"] == 1
+    assert evidence["unit_distribution"]["fortnight"] == 1
+    assert evidence["max_positive_lag_days"] == "45"
+    assert evidence["excessive_lag_threshold_days"] == "44"
+    assert evidence["finding_samples"][0]["normalized_lag_days"] == "45"
+
+
+def test_dcma_lead_metric_counts_negative_normalized_lags_only() -> None:
+    engine = ScheduleQualityAssessmentEngine()
+    ctx = _lag_context(
+        [
+            {
+                "relationship_id": "r-lead",
+                "predecessor_activity_id": "A1",
+                "successor_activity_id": "A2",
+                "lag_value": "-16",
+                "lag_unit": "hour",
+            },
+            {
+                "relationship_id": "r-blank",
+                "predecessor_activity_id": "A2",
+                "successor_activity_id": "A3",
+                "lag_value": "",
+                "lag_unit": "hour",
+            },
+            {
+                "relationship_id": "r-positive",
+                "predecessor_activity_id": "A3",
+                "successor_activity_id": "A4",
+                "lag_value": "48",
+                "lag_unit": "hour",
+            },
+        ]
+    )
+
+    metric, findings = engine._metric_leads(
+        ctx, "dcma_leads", DCMA_METRIC_SPECS["dcma_leads"]
+    )
+    evidence = json.loads(metric["evidence_json"])
+
+    assert metric["numerator"] == "1"
+    assert metric["denominator"] == "3"
+    assert len(findings) == 1
+    assert findings[0]["relationship_id"] == "r-lead"
+    finding_evidence = json.loads(findings[0]["evidence_json"])
+    assert finding_evidence["normalized_lag_days"] == "-2"
+    assert finding_evidence["raw_lag_value"] == "-16"
+    assert finding_evidence["raw_lag_unit"] == "hour"
+    assert evidence["min_negative_lag_days"] == "-2"
+    assert evidence["max_positive_lag_days"] == "6"
+    assert evidence["skipped_unparseable_count"] == 1
 
 
 def test_dcma_baseline_metrics_not_measurable(tmp_path: Path) -> None:

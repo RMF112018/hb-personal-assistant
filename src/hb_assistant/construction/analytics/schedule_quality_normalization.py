@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Any
+from dataclasses import dataclass
+from decimal import Decimal, InvalidOperation
+from typing import Any, Literal
 
 RELATIONSHIP_TYPE_ALIASES: dict[str, str] = {
     "FINISH TO START": "FS",
@@ -20,6 +22,104 @@ RELATIONSHIP_TYPE_ALIASES: dict[str, str] = {
 }
 
 DEFAULT_HOURS_PER_DAY = 8.0
+
+LagConversionStatus = Literal["known_unit", "assumed_days", "unparseable"]
+
+
+@dataclass(frozen=True)
+class LagNormalizationResult:
+    normalized_days: Decimal | None
+    source_unit_label: str | None
+    conversion_status: LagConversionStatus
+
+
+_DAY_UNITS = {"d", "day", "days"}
+_HOUR_UNITS = {"h", "hr", "hrs", "hour", "hours"}
+_MINUTE_UNITS = {"m", "min", "mins", "minute", "minutes"}
+_MINUTE_TENTH_UNITS = {
+    "minute_tenth",
+    "minute_tenths",
+    "tenths_of_minute",
+    "tenth_of_minute",
+    "msp_link_lag",
+}
+_WEEK_UNITS = {"w", "wk", "wks", "week", "weeks"}
+_MONTH_UNITS = {"mo", "month", "months"}
+
+
+def _decimal_or_none(value: Any) -> Decimal | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    if not text:
+        return None
+    try:
+        return Decimal(text)
+    except (InvalidOperation, ValueError):
+        return None
+
+
+def _hours_per_day_decimal(hours_per_day: Decimal | float | int | None) -> Decimal:
+    parsed = _decimal_or_none(hours_per_day)
+    if parsed is None or parsed <= 0:
+        return Decimal(str(DEFAULT_HOURS_PER_DAY))
+    return parsed
+
+
+def normalize_lag_result(
+    lag_value: object,
+    lag_unit: object | None,
+    *,
+    hours_per_day: Decimal | float | int | None = None,
+) -> LagNormalizationResult:
+    raw = _decimal_or_none(lag_value)
+    unit_label = str(lag_unit).strip().lower() if lag_unit is not None else None
+    if unit_label == "":
+        unit_label = None
+    if raw is None:
+        return LagNormalizationResult(
+            normalized_days=None,
+            source_unit_label=unit_label,
+            conversion_status="unparseable",
+        )
+
+    hpd = _hours_per_day_decimal(hours_per_day)
+    if unit_label in _DAY_UNITS:
+        days = raw
+    elif unit_label in _HOUR_UNITS:
+        days = raw / hpd
+    elif unit_label in _MINUTE_UNITS:
+        days = raw / Decimal("60") / hpd
+    elif unit_label in _MINUTE_TENTH_UNITS:
+        days = raw / Decimal("10") / Decimal("60") / hpd
+    elif unit_label in _WEEK_UNITS:
+        days = raw * Decimal("5.0")
+    elif unit_label in _MONTH_UNITS:
+        days = raw * Decimal("22.0")
+    else:
+        return LagNormalizationResult(
+            normalized_days=raw,
+            source_unit_label=unit_label,
+            conversion_status="assumed_days",
+        )
+    return LagNormalizationResult(
+        normalized_days=days,
+        source_unit_label=unit_label,
+        conversion_status="known_unit",
+    )
+
+
+def normalize_lag_days(
+    lag_value: object,
+    lag_unit: object | None,
+    *,
+    hours_per_day: Decimal | float | int | None = None,
+) -> Decimal | None:
+    return normalize_lag_result(
+        lag_value,
+        lag_unit,
+        hours_per_day=hours_per_day,
+    ).normalized_days
 
 
 def normalize_relationship_type(raw: Any) -> str:

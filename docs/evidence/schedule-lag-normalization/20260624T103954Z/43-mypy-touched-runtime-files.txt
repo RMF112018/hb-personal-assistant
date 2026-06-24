@@ -1,0 +1,3 @@
+$ env PYTHONPATH=src /Library/Frameworks/Python.framework/Versions/3.13/bin/mypy src/hb_assistant/construction/analytics/schedule_quality_engine.py src/hb_assistant/construction/analytics/schedule_quality_normalization.py src/hb_assistant/store/schedule_activity_repository.py
+Success: no issues found in 3 source files
+exit_code=0
