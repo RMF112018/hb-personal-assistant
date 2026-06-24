@@ -14,7 +14,7 @@ from .connection import get_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 71
+LATEST_SCHEMA_VERSION = 72
 
 
 class SQLiteMigrator:
@@ -6783,6 +6783,17 @@ class SQLiteMigrator:
 
         return V66_STATEMENTS
 
+    # v72 Forecast model-registry (remediation P6, Gap 6): per-run model-version provenance —
+    # estimator order / reliability weights / thresholds / backtest-cohort (forecast_model_versions),
+    # the per-run methodology in effect (forecast_run_model_versions), and per-method calibration
+    # provenance (forecast_calibration_weights). Additive CREATE TABLE IF NOT EXISTS only; populated
+    # only by the read-only governance path into a temp DB, never the live DB.
+    @staticmethod
+    def _v72_statements() -> list[str]:
+        from hb_assistant.store.forecast_model_registry_tables import V72_STATEMENTS
+
+        return V72_STATEMENTS
+
     # v44 Phase 10 Graph drive-item modified-by raw operational metadata.
     # Additive ADD COLUMN only on construction_drive_items; raw identity JSON is
     # local SQLite operational metadata and must not be emitted in committed evidence.
@@ -7974,6 +7985,17 @@ class SQLiteMigrator:
             if cur.fetchone() is None:
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (71, 'v71_schedule_quality_source_export', ?)",
+                    (now,),
+                )
+
+            # v72 Forecast model-registry: additive provenance tables, empty until the
+            # read-only governance path populates a temp DB. Never the live DB.
+            for stmt in self._v72_statements():
+                conn.execute(stmt)
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 72")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (72, 'v72_forecast_model_registry', ?)",
                     (now,),
                 )
 

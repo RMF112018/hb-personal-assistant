@@ -74,6 +74,13 @@ ENV_ASSUMPTION_OVERRIDES_ENABLED = "HB_FORECAST_ASSUMPTION_OVERRIDES_ENABLED"
 # package remains the default and the fallback; the v59 DB is read-only (mode=ro). Threaded through
 # ``forecast_run_service.start_run``; pairs with ``db_path`` (which must resolve to a non-live DB).
 ENV_DB_BACKED_INPUTS_ENABLED = "HB_FORECAST_DB_BACKED_INPUTS_ENABLED"
+
+# P6 (Gap 6): when set, the decision-support apply path persists model-registry provenance —
+# the methodology version in effect (forecast_model_versions/forecast_run_model_versions) and
+# per-method calibration provenance (forecast_calibration_weights) — into the same NON-LIVE temp
+# DB, read from the supplied accuracy_package's model_methodology.json + calibration snapshot.
+# Off by default: decision-support output is then byte-identical (no model-registry rows written).
+ENV_MODEL_GOVERNANCE_ENABLED = "HB_FORECAST_MODEL_GOVERNANCE_ENABLED"
 _TRUTHY = {"1", "true", "yes", "on"}
 
 # Whitelisted keys. An unknown key in the on-disk file can never inject behaviour.
@@ -90,6 +97,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "assumption_consumption_enabled": False,  # bool flag (NOT a path); gates decision-support assumption consumption
     "assumption_overrides_enabled": False,  # bool flag (NOT a path); gates output-projection dollar value-overrides
     "db_backed_inputs_enabled": False,  # bool flag (NOT a path); gates DB-native source-domain reads in a run
+    "model_governance_enabled": False,  # bool flag (NOT a path); gates P6 model-registry provenance persistence
     "schema_version": 1,  # LOCAL file version only — NOT the DB schema; do not conflate
 }
 
@@ -370,6 +378,16 @@ def resolve_db_backed_inputs_enabled(explicit: bool | str | None = None) -> bool
     if env is not None:
         return env.strip().lower() in _TRUTHY
     return bool(_load_config().get("db_backed_inputs_enabled"))
+
+
+def resolve_model_governance_enabled(explicit: bool | str | None = None) -> bool:
+    """Resolve the P6 model-registry governance opt-in (explicit > env > settings-file > default False)."""
+    if explicit is not None:
+        return explicit is True or str(explicit).strip().lower() in _TRUTHY
+    env = os.environ.get(ENV_MODEL_GOVERNANCE_ENABLED)
+    if env is not None:
+        return env.strip().lower() in _TRUTHY
+    return bool(_load_config().get("model_governance_enabled"))
 
 
 # -- non-mutating validation (status + save) ----------------------------------

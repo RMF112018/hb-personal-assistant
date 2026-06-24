@@ -32,6 +32,7 @@ from hb_assistant.store.connection import open_connection, transaction
 
 from . import assumptions_repository as assumptions_repo
 from . import decision_support_repository as repo
+from . import model_registry_repository as model_registry
 from .source_domain_engine import is_live_db_path  # reuse the fail-closed live-DB guard
 
 GUARDRAILS = {
@@ -645,12 +646,43 @@ def project_decision_support(
             plan["warnings"].append("--parity needs --apply against an explicit temp DB")
         return plan
 
+    # P6: when model governance is on, persist model-registry provenance alongside the apply.
+    # Fail closed before any write if the accuracy package / methodology descriptor / run_id is
+    # missing, so we never record a half-provenance. Flag-off => no governance, byte-identical.
+    from ..analytics.forecast_runtime_config import resolve_model_governance_enabled
+
+    governance_on = resolve_model_governance_enabled()
+    if governance_on and (
+        run_id is None
+        or accuracy_package is None
+        or not model_registry.has_methodology(Path(accuracy_package))
+    ):
+        plan["ok"] = False
+        plan["mode"] = "apply"
+        plan["reason"] = "model_governance_requires_accuracy_methodology"
+        plan["warnings"].append(
+            "HB_FORECAST_MODEL_GOVERNANCE_ENABLED is set but no run_id / accuracy_package "
+            "model_methodology.json was supplied; refusing to write a partial provenance"
+        )
+        return plan
+
     written: dict[str, int] = dict.fromkeys(_PLAN_KEYS, 0)
+    provenance: dict[str, Any] | None = None
     if plan["ok"]:
         with open_connection(Path(db_path)) as conn, transaction(conn):
             written = repo.apply_plan(conn, plan["planned"])
+            if governance_on and accuracy_package is not None and run_id is not None:
+                provenance = model_registry.persist_run_model_provenance(
+                    conn,
+                    run_id=run_id,
+                    project_key=project_key,
+                    accuracy_package=Path(accuracy_package),
+                    now_utc=now_utc or _now(),
+                )
     plan["mode"] = "apply"
     plan["written"] = written
+    if provenance is not None:
+        plan["model_provenance"] = provenance
 
     if parity and run_id is not None:
         plan["parity"] = _prove_parity(db_path=Path(db_path), run_id=run_id, planned=plan["planned"])

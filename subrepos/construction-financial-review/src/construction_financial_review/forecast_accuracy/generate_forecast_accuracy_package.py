@@ -11,6 +11,7 @@ Run via the CLI:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import subprocess
 import sys
@@ -267,6 +268,11 @@ def generate(project_key: str, cfg: dict, data_root: Optional[Path] = None,
         ("summary_by_method", backtest_result["summary_by_method"]),
         ("calibration_weights", calibration),
     ]))
+    # Model methodology descriptor (remediation P6 / Gap 6): the estimator order, reliability
+    # weights, thresholds, and backtest cohort in effect, plus a methodology_sha256 over those
+    # constants. Deterministic and path-free, so hb_assistant can version the methodology that
+    # produced this run without duplicating CFR constants. No timestamps/paths => byte-stable.
+    write_json(out / "model_methodology.json", _model_methodology())
     write_json(out / "input_inventory.json", OrderedDict([
         ("generation", meta),
         ("inputs", OrderedDict([
@@ -298,6 +304,48 @@ def generate(project_key: str, cfg: dict, data_root: Optional[Path] = None,
         "llm_narratives_generated": len(narratives),
         "summary": summary,
     }
+
+
+def _model_methodology() -> OrderedDict:
+    """Deterministic, path-free descriptor of the forecast methodology in effect.
+
+    Captures the estimator registry order, reliability weights, estimator thresholds, and the
+    backtest cohort definition straight from the CFR constants, plus a methodology_sha256 over
+    them. Contains no timestamps and no filesystem paths, so it is byte-stable across runs and
+    changes only when the underlying methodology constants change. (Remediation P6 / Gap 6.)
+    """
+    estimator_order = [fn.__name__ for fn in estimators.ALL_ESTIMATORS]
+    reliability_weights = OrderedDict(
+        (k, str(reconcile.RELIABILITY_WEIGHT[k])) for k in ("high", "medium", "low")
+    )
+    thresholds = OrderedDict([
+        ("owner_pct_floor", str(estimators.OWNER_PCT_FLOOR)),
+        ("complete_pct", str(estimators.COMPLETE_PCT)),
+        ("complete_pct_near", str(estimators.COMPLETE_PCT_NEAR)),
+        ("workdays_per_month", str(estimators.WORKDAYS_PER_MONTH)),
+    ])
+    cohort = OrderedDict([
+        ("gold_owner_pct", str(bt.GOLD_OWNER_PCT)),
+        ("min_realized", str(bt.MIN_REALIZED)),
+        ("target_asof_pct", str(bt.TARGET_ASOF_PCT)),
+        ("backtest_methods", list(bt.BACKTEST_METHODS)),
+    ])
+    body = OrderedDict([
+        ("independent_methods", list(estimators.INDEPENDENT_METHODS)),
+        ("erp_methods", list(estimators.ERP_METHODS)),
+        ("estimator_order", estimator_order),
+        ("reliability_weights", reliability_weights),
+        ("thresholds", thresholds),
+        ("cohort", cohort),
+    ])
+    methodology_sha256 = hashlib.sha256(
+        json.dumps(body, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    descriptor = OrderedDict([("schema_version", 1)])
+    descriptor.update(body)
+    descriptor["methodology_sha256"] = methodology_sha256
+    descriptor["version_label"] = f"methodology-{methodology_sha256[:12]}"
+    return descriptor
 
 
 def _generation_metadata(command, packages, sched_integrated, stamp, generated_ts, ollama_status,
