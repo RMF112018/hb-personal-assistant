@@ -46,6 +46,19 @@ const READINESS_REASON_TEXT: Record<string, string> = {
   cfr_src_not_available: 'The forecast engine source is not available.',
 }
 
+// Non-blocking readiness advisories (generation is allowed, but may not produce useful output).
+const READINESS_WARNING_TEXT: Record<string, string> = {
+  config_db_has_no_snapshots:
+    'No configuration snapshot has been promoted yet, so generation may have nothing to run.',
+}
+
+// Action codes from the backend mapped to UI routes (the backend stays path/route-free). Codes
+// without a route render as plain label text.
+const READINESS_ACTION_ROUTE: Record<string, string> = {
+  enable_db_config_run: '/forecasting/runtime',
+  open_storage_settings: '/forecasting/runtime',
+}
+
 export function ForecastRunCenterPage() {
   const { data: runsResp, isLoading, error, refetch } = useQuery({
     queryKey: ['forecast', 'runs'],
@@ -145,8 +158,9 @@ export function ForecastRunCenterPage() {
   // Disable the DB-config control only when readiness is KNOWN not-ready (fail-open during the brief
   // load; the backend POST is still fail-closed). Reasons drive the actionable before-click message.
   const dbNotReady = readiness?.ready === false
-  const readinessReasons = readiness?.reasons ?? []
-  const readinessStorageBlocked = readinessReasons.includes('forecast_runtime_storage_not_configured')
+  const disabledReasons = readiness?.disabled_reasons ?? []
+  const readinessActions = readiness?.actions ?? []
+  const readinessWarnings = readiness?.warnings ?? []
 
   return (
     <ForecastShell>
@@ -207,16 +221,33 @@ export function ForecastRunCenterPage() {
         />
         {dbNotReady && (
           <div className="text-sm text-rose-300 mt-2" role="status">
-            {readinessReasons.map((reason) => (
+            {disabledReasons.map((reason) => (
               <p key={reason}>
                 {READINESS_REASON_TEXT[reason] ?? 'Generation from live configuration is not available yet.'}
               </p>
             ))}
-            {readinessStorageBlocked && (
-              <p>
-                <ForecastActionLink to="/forecasting/runtime">Storage settings</ForecastActionLink>
+            {readinessActions.map((action) => {
+              const route = READINESS_ACTION_ROUTE[action.code]
+              return (
+                <p key={action.code}>
+                  {route ? (
+                    <ForecastActionLink to={route}>{action.label}</ForecastActionLink>
+                  ) : (
+                    action.label
+                  )}
+                </p>
+              )
+            })}
+          </div>
+        )}
+        {!dbNotReady && readinessWarnings.length > 0 && (
+          <div className="text-sm text-amber-300 mt-2" role="status">
+            {readinessWarnings.map((w) => (
+              <p key={w}>
+                {READINESS_WARNING_TEXT[w] ??
+                  'Generation may not produce output in the current configuration.'}
               </p>
-            )}
+            ))}
           </div>
         )}
         {dbError && (
