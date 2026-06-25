@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -584,6 +584,101 @@ describe('ForecastRunCenterPage', () => {
     expect(
       screen.queryByRole('button', { name: /Generate file-config forecast/i }),
     ).not.toBeInTheDocument()
+  })
+
+  it('labels a failed generation request "Failed" (not "Unreadable") with safe coded copy', () => {
+    useQueryMock.mockImplementation((opts: { queryKey: unknown[] }) => {
+      const kind = opts.queryKey[1]
+      const sub = opts.queryKey[2]
+      if (kind === 'generation' && sub === 'requests') {
+        return {
+          data: {
+            surface: 'analytics.forecast_generation_requests',
+            requests: [
+              {
+                request_id: 'req-1',
+                run_id: null,
+                project_key: 'tropical',
+                generation_mode: 'db_config',
+                generator_kind: 'comprehensive',
+                request_status: 'failed',
+                validation_status: 'valid',
+                forecast_start_date: null,
+                forecast_cutoff_date: null,
+                forecast_cutoff_date_basis: null,
+                readiness_status_at_request: 'ready',
+                readiness_reasons: [],
+                failure_code: 'source_package_missing',
+                // null message forces the coded-copy fallback (the riskier path): the raw code
+                // must be translated to safe copy and never rendered verbatim.
+                failure_message: null,
+                created_utc: '2026-06-25T10:00:00+00:00',
+                updated_utc: '2026-06-25T10:00:00+00:00',
+              },
+            ],
+            guardrails: { read_only: true },
+          },
+          isLoading: false,
+          error: null,
+          refetch: vi.fn(),
+        }
+      }
+      if (kind === 'generation' && sub === 'readiness') {
+        return {
+          data: { ready: true, generation_enabled: true, disabled_reasons: [], warnings: [], actions: [], guardrails: {} },
+          isLoading: false,
+          error: null,
+          refetch: vi.fn(),
+        }
+      }
+      if (kind === 'generation' && sub === 'projects') {
+        return {
+          data: {
+            projects: [
+              { project_key: 'tropical', display_name: 'Tropical', readiness_status: 'ready', readiness_reasons: [] },
+            ],
+          },
+          isLoading: false,
+          error: null,
+          refetch: vi.fn(),
+        }
+      }
+      if (kind === 'generation' && sub === 'date-defaults') {
+        return {
+          data: {
+            project_key: 'tropical',
+            forecast_start_date: null,
+            forecast_cutoff_date: null,
+            forecast_cutoff_date_basis: null,
+            schedule_version_key: null,
+            schedule_data_date: null,
+            warnings: [],
+          },
+          isLoading: false,
+          error: null,
+          refetch: vi.fn(),
+        }
+      }
+      return { data: { runs: [] }, isLoading: false, error: null, refetch: vi.fn() }
+    })
+    const { container } = renderPage()
+    fireEvent.change(screen.getByLabelText('Forecast project'), { target: { value: 'tropical' } })
+
+    // Scope to the request row: other surfaces (e.g. the no-output health pill) legitimately
+    // still use "Unreadable" — only failed/rejected generation requests must not.
+    const requestsSection = screen.getByText('Recent generation requests').closest('section')!
+    const requests = within(requestsSection)
+    // Accurate outcome label — never the misleading "Unreadable" for a failed request.
+    expect(requests.getByText('Failed')).toBeInTheDocument()
+    expect(requests.queryByText('Unreadable')).not.toBeInTheDocument()
+    // The failure_code is surfaced as safe, path-free copy (mapped, not the raw code).
+    expect(requests.getByText("Forecast source data isn't available yet.")).toBeInTheDocument()
+
+    // No raw code, source-package path, or filesystem path leaks to the operator.
+    const text = container.textContent || ''
+    expect(text).not.toMatch(/source_package_missing/)
+    expect(text).not.toMatch(/cost_forecast_json_package/)
+    expect(text).not.toMatch(/\/Users\//)
   })
 
   it('reveals the legacy file-config generation only behind the advanced disclosure', () => {

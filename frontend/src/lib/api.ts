@@ -946,6 +946,7 @@ export interface ForecastGenerationRequest {
   readiness_status_at_request: string | null;
   readiness_reasons: string[];
   failure_code: string | null;
+  failure_message: string | null;
   created_utc: string | null;
   updated_utc: string | null;
 }

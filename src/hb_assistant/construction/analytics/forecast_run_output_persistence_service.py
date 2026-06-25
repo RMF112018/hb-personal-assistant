@@ -26,8 +26,23 @@ from pathlib import Path
 FAILURE_DB_PERSISTENCE = "db_persistence_failed"
 FAILURE_OUTPUT_WRITE = "forecast_output_write_failed"
 FAILURE_CALCULATION = "generation_calculation_failed"
+FAILURE_SOURCE_PACKAGE_MISSING = "source_package_missing"
 FAILURE_DISABLED = "run_output_db_write_disabled"
 FAILURE_NOT_ELIGIBLE = "project_not_eligible_for_db_write"
+
+# Curated, path-free messages keyed by failure code (never echo exception text / data_root paths).
+_FAILURE_MESSAGES = {
+    FAILURE_SOURCE_PACKAGE_MISSING: "Forecast source data package isn't available yet.",
+    FAILURE_CALCULATION: "The forecast could not be calculated.",
+}
+
+
+class SourcePackageMissing(RuntimeError):
+    """Raised when no forecast source package exists under the configured data root.
+
+    Distinguished from a genuine calculation failure so the request records the precise,
+    path-free ``source_package_missing`` code instead of generic ``generation_calculation_failed``.
+    """
 
 
 @dataclass(frozen=True)
@@ -56,6 +71,7 @@ class RunOutputPersistenceReceipt:
     certified: bool = False
     counts: dict[str, int] = field(default_factory=dict)
     failure_code: str | None = None
+    failure_message: str | None = None
 
 
 def _gen_run_id() -> str:
@@ -156,7 +172,7 @@ def _run_generation(*, project_key: str, work_root: Path) -> GenerationPackages:
     # Upstream source package consumed by the v59 source-domain projection.
     source_candidates = sorted(data_root_path.glob("*cost_forecast_json_package"))
     if not source_candidates:
-        raise RuntimeError("source package not found under data root")
+        raise SourcePackageMissing("source package not found under data root")
 
     _ensure_cfr_importable()
     from construction_financial_review.workflows.controlled_db_context_analysis import (
@@ -187,8 +203,20 @@ def generate_and_persist(
     """Run generation then the gated DB persistence; coded fail-closed on calculation failure."""
     try:
         packages = _run_generation(project_key=project_key, work_root=work_root)
+    except SourcePackageMissing:
+        # Precise, path-free reason: the upstream source package isn't present yet (the confirmed
+        # file-backed dependency), not a generic calculation failure.
+        return RunOutputPersistenceReceipt(
+            db_persisted=False,
+            failure_code=FAILURE_SOURCE_PACKAGE_MISSING,
+            failure_message=_FAILURE_MESSAGES[FAILURE_SOURCE_PACKAGE_MISSING],
+        )
     except Exception:
-        return RunOutputPersistenceReceipt(db_persisted=False, failure_code=FAILURE_CALCULATION)
+        return RunOutputPersistenceReceipt(
+            db_persisted=False,
+            failure_code=FAILURE_CALCULATION,
+            failure_message=_FAILURE_MESSAGES[FAILURE_CALCULATION],
+        )
     return persist_run_output(
         project_key=project_key, db_path=Path(db_path), packages=packages, run_id=run_id
     )

@@ -98,6 +98,9 @@ def request_row_to_public(row: dict[str, Any]) -> dict[str, Any]:
         "readiness_status_at_request": row.get("readiness_status_at_request"),
         "readiness_reasons": _loads_list(row.get("readiness_reasons_json")),
         "failure_code": row.get("failure_code"),
+        # Curated, path-free coded message only (set by the persistence service / fail-closed
+        # branches). Never carries exception text, data_root paths, or raw payloads.
+        "failure_message": row.get("failure_message"),
         "created_utc": row.get("created_utc"),
         "updated_utc": row.get("updated_utc"),
     }
