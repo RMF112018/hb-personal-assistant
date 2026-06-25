@@ -2197,10 +2197,14 @@ def create_app(*, db_path: str | None = None) -> Any:
             )
 
             work_root = Path(resolve_runs_root(None) or "") / f"runoutput-{request_id}"
+            # The Generate-Forecast DB-output-write route is DB-native-intended; the engine is not yet
+            # DB-native, so this fails closed up front (db_native_generation_not_implemented) and never
+            # falls back to file-backed CFR generation. See ADR 313.
             receipt = generate_and_persist(
                 project_key=parsed["project_key"],
                 db_path=Path(resolve_db_path(db_path)),
                 work_root=work_root,
+                db_native_intended=True,
             )
             if receipt.db_persisted:
                 repo.update_status(request_id, "completed")

@@ -27,6 +27,7 @@ FAILURE_DB_PERSISTENCE = "db_persistence_failed"
 FAILURE_OUTPUT_WRITE = "forecast_output_write_failed"
 FAILURE_CALCULATION = "generation_calculation_failed"
 FAILURE_SOURCE_PACKAGE_MISSING = "source_package_missing"
+FAILURE_DB_NATIVE_NOT_IMPLEMENTED = "db_native_generation_not_implemented"
 FAILURE_DISABLED = "run_output_db_write_disabled"
 FAILURE_NOT_ELIGIBLE = "project_not_eligible_for_db_write"
 
@@ -34,6 +35,10 @@ FAILURE_NOT_ELIGIBLE = "project_not_eligible_for_db_write"
 _FAILURE_MESSAGES = {
     FAILURE_SOURCE_PACKAGE_MISSING: "Forecast source data package isn't available yet.",
     FAILURE_CALCULATION: "The forecast could not be calculated.",
+    FAILURE_DB_NATIVE_NOT_IMPLEMENTED: (
+        "DB-native forecast generation isn't implemented yet for this runtime path; "
+        "the engine still requires a file-backed CFR workflow."
+    ),
 }
 
 
@@ -198,9 +203,35 @@ def _run_generation(*, project_key: str, work_root: Path) -> GenerationPackages:
 
 
 def generate_and_persist(
-    *, project_key: str, db_path: Path, work_root: Path, run_id: str | None = None
+    *,
+    project_key: str,
+    db_path: Path,
+    work_root: Path,
+    run_id: str | None = None,
+    db_native_intended: bool = True,
 ) -> RunOutputPersistenceReceipt:
-    """Run generation then the gated DB persistence; coded fail-closed on calculation failure."""
+    """Generate a forecast and persist it to the app DB; coded fail-closed receipt.
+
+    The Generate-Forecast DB-output-write route is DB-native-INTENDED, but the engine is NOT yet
+    DB-native: generation still depends on a file-backed CFR workflow (``_run_generation`` reads a
+    ``*cost_forecast_json_package`` under the data root and persistence requires file package dirs).
+    So when ``db_native_intended`` (the default, used by the API route) we **fail closed up front** —
+    before any file lookup, ``_run_generation`` call, or CFR workflow — with
+    ``db_native_generation_not_implemented`` and write nothing. This guarantees the DB-native route
+    never silently falls back to file-backed generation, regardless of whether a source package exists.
+
+    ``db_native_intended=False`` selects the internal/legacy file-backed path (unit tests / any legacy
+    caller): it runs ``_run_generation`` and persists, mapping a missing source package to
+    ``source_package_missing`` and any other failure to ``generation_calculation_failed``. That path is
+    NOT the DB-native Generate-Forecast path. See ADR 313.
+    """
+    if db_native_intended:
+        return RunOutputPersistenceReceipt(
+            db_persisted=False,
+            package_generated=False,
+            failure_code=FAILURE_DB_NATIVE_NOT_IMPLEMENTED,
+            failure_message=_FAILURE_MESSAGES[FAILURE_DB_NATIVE_NOT_IMPLEMENTED],
+        )
     try:
         packages = _run_generation(project_key=project_key, work_root=work_root)
     except SourcePackageMissing:
