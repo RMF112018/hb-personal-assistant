@@ -34,7 +34,7 @@ def validate_request(body: dict[str, Any] | None, *, mode: str) -> tuple[dict[st
     """Return (parsed, errors). errors is a list of coded strings (empty == valid).
 
     parsed always carries: project_key, generator_kind (db_config/db_native only, else None),
-    forecast_start_date, forecast_cutoff_date, forecast_cutoff_date_basis.
+    forecast_start_date, forecast_cutoff_date, forecast_end_date, forecast_cutoff_date_basis.
     """
     body = body or {}
     errors: list[str] = []
@@ -52,8 +52,11 @@ def validate_request(body: dict[str, Any] | None, *, mode: str) -> tuple[dict[st
 
     start_raw = body.get("forecast_start_date")
     cutoff_raw = body.get("forecast_cutoff_date")
+    end_raw = body.get("forecast_end_date")
     start_date = str(start_raw).strip() if start_raw not in (None, "") else None
     cutoff_date = str(cutoff_raw).strip() if cutoff_raw not in (None, "") else None
+    # forecast_end_date is the operator-supplied forecast horizon end (DB-native monthly phasing).
+    end_date = str(end_raw).strip() if end_raw not in (None, "") else None
 
     if start_date is not None and not _valid_iso_date(start_date):
         errors.append("invalid_forecast_start_date")
@@ -61,8 +64,15 @@ def validate_request(body: dict[str, Any] | None, *, mode: str) -> tuple[dict[st
     if cutoff_date is not None and not _valid_iso_date(cutoff_date):
         errors.append("invalid_forecast_cutoff_date")
         cutoff_date = None
+    if end_date is not None and not _valid_iso_date(end_date):
+        errors.append("invalid_forecast_end_date")
+        end_date = None
     if start_date is not None and cutoff_date is not None and start_date > cutoff_date:
         errors.append("forecast_start_after_cutoff")
+    if cutoff_date is not None and end_date is not None and cutoff_date > end_date:
+        errors.append("forecast_cutoff_after_end")
+    if start_date is not None and end_date is not None and start_date > end_date:
+        errors.append("forecast_start_after_end")
 
     # P-D: an optional cut-off basis may accompany the date. Unknown codes are rejected; schedule-
     # derived codes are re-verified server-side. Absent basis (with a cut-off) defaults operator_supplied.
@@ -77,6 +87,7 @@ def validate_request(body: dict[str, Any] | None, *, mode: str) -> tuple[dict[st
         "generator_kind": generator_kind,
         "forecast_start_date": start_date,
         "forecast_cutoff_date": cutoff_date,
+        "forecast_end_date": end_date,
         "forecast_cutoff_date_basis": (basis or "operator_supplied") if cutoff_date is not None else None,
     }
     return parsed, errors

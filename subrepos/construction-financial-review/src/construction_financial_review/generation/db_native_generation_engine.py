@@ -30,7 +30,7 @@ Phase E behaviour). See ADR 317 (engine) and ADR 318 (BudgetDetails cost-basis i
 from __future__ import annotations
 
 from dataclasses import dataclass
-from decimal import Decimal
+from decimal import ROUND_DOWN, Decimal
 from typing import Any
 
 from ..common.money import dec, money_str
@@ -43,6 +43,7 @@ from ..forecast_cost_basis.classify import (
 )
 
 ZERO = Decimal("0")
+CENTS = Decimal("0.01")
 
 SCHEMA_VERSION = 1
 ENGINE_VERSION = "db_native_generation_engine/1"
@@ -67,6 +68,24 @@ UNSUPPORTED_KIND_CODES = {
 }
 
 _SUPPORTED_KIND = "comprehensive"
+
+# Monthly phasing (within a comprehensive output): a deterministic even-spread of each budget code's
+# forecast_cost_to_complete across the future window (NOT schedule-weighted). When the operator does
+# not supply ``forecast_end_date`` — or the window yields no usable future horizon / boundary — the
+# monthly output is omitted honestly (no fabricated rows) and the reason is surfaced via
+# ``unsupported_outputs["monthly"]`` + a warning. Schedule-weighted phasing is a later patch.
+MONTHLY_EVEN_SPREAD_DISCLOSURE = "db_native_monthly_even_spread_not_schedule_weighted"
+MONTHLY_NO_SOURCE_ACTUALS_WARNING = "db_native_monthly_no_source_actuals_in_window"
+MONTHLY_NO_END_DATE = "db_native_monthly_requires_forecast_end_date"
+MONTHLY_NO_FUTURE_HORIZON = "db_native_monthly_no_future_horizon"
+MONTHLY_NO_BOUNDARY_ANCHOR = "db_native_monthly_no_boundary_anchor"
+MONTHLY_RECONCILIATION_FAILED = "db_native_monthly_reconciliation_failed"
+
+# Kinds that stay unsupported even inside a comprehensive output (monthly is added conditionally).
+_COMPREHENSIVE_UNSUPPORTED = {
+    "probability": UNSUPPORTED_KIND_CODES["probability"],
+    "model_controls": UNSUPPORTED_KIND_CODES["model_controls"],
+}
 
 # Per-code row state for a budget code with no usable basis (no budget amounts AND no actuals).
 _ROW_STATUS_OK = "ok"
@@ -141,6 +160,7 @@ class DbNativeForecastResult:
     summary: dict[str, Any]
     assumptions: tuple[dict[str, Any], ...]
     risks: tuple[dict[str, Any], ...]
+    monthly: tuple[dict[str, Any], ...]
     unsupported_outputs: dict[str, Any]
     warnings: tuple[str, ...]
     blockers: tuple[str, ...]
@@ -162,6 +182,7 @@ class DbNativeForecastResult:
             "summary": dict(self.summary),
             "assumptions": [dict(r) for r in self.assumptions],
             "risks": [dict(r) for r in self.risks],
+            "monthly": [dict(r) for r in self.monthly],
             "unsupported_outputs": dict(self.unsupported_outputs),
             "warnings": list(self.warnings),
             "blockers": list(self.blockers),
@@ -192,6 +213,7 @@ def _generate_comprehensive(inp: DbNativeGenerationEngineInput) -> DbNativeForec
     lines: list[dict[str, Any]] = []
     assumptions: list[dict[str, Any]] = []
     risks: list[dict[str, Any]] = []
+    forecast_ctc_by_key: dict[str, Decimal] = {}
     total_final = ZERO
     total_ctc = ZERO
     total_actual = ZERO
@@ -224,6 +246,7 @@ def _generate_comprehensive(inp: DbNativeGenerationEngineInput) -> DbNativeForec
         revised = dec(amounts.get("revised_budget"))
         total_final += new_final
         total_ctc += new_ctc
+        forecast_ctc_by_key[line["budget_code_key"]] = new_ctc
         total_actual += actual
         if revised is not None:
             total_revised += revised
@@ -237,6 +260,18 @@ def _generate_comprehensive(inp: DbNativeGenerationEngineInput) -> DbNativeForec
             }
         )
         risks.extend(_line_risks(line, decision, revised, new_final))
+
+    # Monthly phasing (window-bounded actuals + even-spread forecast). Omitted honestly when no
+    # forecast_end_date / no usable horizon — monthly is then disclosed as unsupported for this output.
+    monthly_rows, monthly_supported, monthly_reason, monthly_warnings = _build_monthly(
+        ctx, dict(inp.forecast_window or {}), forecast_ctc_by_key
+    )
+    unsupported = dict(_COMPREHENSIVE_UNSUPPORTED)
+    if monthly_supported:
+        warnings.extend(monthly_warnings)
+    else:
+        unsupported["monthly"] = monthly_reason
+        warnings.append(monthly_reason or MONTHLY_NO_END_DATE)
 
     warnings = _dedup(warnings)
     blockers: list[str] = []
@@ -277,7 +312,8 @@ def _generate_comprehensive(inp: DbNativeGenerationEngineInput) -> DbNativeForec
         summary=summary,
         assumptions=tuple(assumptions),
         risks=tuple(risks),
-        unsupported_outputs=dict(UNSUPPORTED_KIND_CODES),
+        monthly=tuple(monthly_rows),
+        unsupported_outputs=unsupported,
         warnings=tuple(warnings),
         blockers=tuple(blockers),
         provenance=_provenance(ctx),
@@ -497,6 +533,7 @@ def _unsupported(
         summary={},
         assumptions=(),
         risks=(),
+        monthly=(),
         unsupported_outputs={inp.generator_kind: code},
         warnings=(),
         blockers=(code,),
@@ -520,3 +557,130 @@ def _dedup(items: list[str]) -> list[str]:
             seen.add(item)
             out.append(item)
     return out
+
+
+def _month(value: Any) -> str | None:
+    """Canonical ``YYYY-MM`` from a date/month string (``None``/empty -> None)."""
+    text = str(value)[:7] if value else ""
+    return text or None
+
+
+def _next_month(ym: str) -> str:
+    """The ``YYYY-MM`` immediately after ``ym`` (zero-padded, so string ordering stays monotonic)."""
+    year, month = int(ym[:4]), int(ym[5:7])
+    return f"{year + 1:04d}-01" if month == 12 else f"{year:04d}-{month + 1:02d}"
+
+
+def _months_between(after_exclusive: str, end_inclusive: str) -> list[str]:
+    """Contiguous ``YYYY-MM`` months strictly after ``after_exclusive`` through ``end_inclusive``."""
+    out: list[str] = []
+    cur = _next_month(after_exclusive)
+    while cur <= end_inclusive:
+        out.append(cur)
+        cur = _next_month(cur)
+    return out
+
+
+def _spread(ctc: Decimal, months: list[str]) -> list[tuple[str, Decimal]]:
+    """Even-spread ``ctc`` (>= 0) across ``months`` in cents; the rounding residual lands on the
+    final month so the per-code sum equals ``ctc`` exactly."""
+    n = len(months)
+    base = (ctc / n).quantize(CENTS, rounding=ROUND_DOWN)
+    out = [(m, base) for m in months]
+    residual = ctc - base * n
+    last_month, last_value = out[-1]
+    out[-1] = (last_month, last_value + residual)
+    return out
+
+
+def _build_monthly(
+    ctx: DbNativeForecastContext,
+    window: dict[str, Any],
+    forecast_ctc_by_key: dict[str, Decimal],
+) -> tuple[list[dict[str, Any]], bool, str | None, list[str]]:
+    """Window-bounded actual rows + even-spread forecast rows for a comprehensive output.
+
+    Returns ``(rows, supported, degrade_code, warnings)``. When ``supported`` is False the monthly
+    output is omitted (no rows) and ``degrade_code`` explains why honestly; the caller surfaces it via
+    ``unsupported_outputs["monthly"]``. Each row is ``{budget_code_key, month (YYYY-MM), value
+    (canonical money), is_actual (0/1)}``.
+
+    Actual rows are bounded to the requested window ``[actual_lo, actual_hi]`` so a narrower selected
+    window never drags in stale source actuals; forecast rows begin strictly after the effective actual
+    boundary (the latest *included* actual month, or the cut-off when no actuals are included) and run
+    through ``forecast_end_date``.
+    """
+    end_month = _month(window.get("forecast_end_date"))
+    if not end_month:
+        return [], False, MONTHLY_NO_END_DATE, []
+
+    start_month = _month(window.get("forecast_start_date"))
+    cutoff_month = _month(window.get("forecast_cutoff_date"))
+
+    # Per-code aggregated actuals by month (sum across ``type``), plus the global source span.
+    agg: dict[str, dict[str, Decimal]] = {}
+    source_months: list[str] = []
+    for row in ctx.budget_code_context:
+        key = str(row.get("budget_code_key") or "")
+        for entry in (dict(row.get("actuals") or {}).get("monthly_actuals") or []):
+            month = _month(entry.get("month"))
+            amount = dec(entry.get("amount"))
+            if month is None or amount is None:
+                continue
+            source_months.append(month)
+            agg.setdefault(key, {})
+            agg[key][month] = agg[key].get(month, ZERO) + amount
+
+    actual_lo = start_month or (min(source_months) if source_months else None)
+    actual_hi = cutoff_month or (max(source_months) if source_months else None)
+
+    rows: list[dict[str, Any]] = []
+    boundary: str | None = None
+    if actual_lo is not None and actual_hi is not None and actual_lo <= actual_hi:
+        for key in sorted(agg):
+            for month in sorted(agg[key]):
+                if month < actual_lo or month > actual_hi:
+                    continue
+                rows.append(
+                    {
+                        "budget_code_key": key,
+                        "month": month,
+                        "value": money_str(agg[key][month]),
+                        "is_actual": 1,
+                    }
+                )
+                if boundary is None or month > boundary:
+                    boundary = month
+
+    had_actuals = bool(rows)
+    if boundary is None:
+        # No actuals fell inside the window; anchor the forecast start on the cut-off when supplied.
+        boundary = cutoff_month
+    if boundary is None:
+        return [], False, MONTHLY_NO_BOUNDARY_ANCHOR, []
+
+    future_months = _months_between(boundary, end_month)
+    if not future_months:
+        return [], False, MONTHLY_NO_FUTURE_HORIZON, []
+
+    for key in sorted(forecast_ctc_by_key):
+        ctc = forecast_ctc_by_key[key]
+        if ctc <= ZERO:
+            continue
+        spread = _spread(ctc, future_months)
+        if sum((value for _, value in spread), ZERO) != ctc:
+            return [], False, MONTHLY_RECONCILIATION_FAILED, []
+        for month, value in spread:
+            rows.append(
+                {
+                    "budget_code_key": key,
+                    "month": month,
+                    "value": money_str(value),
+                    "is_actual": 0,
+                }
+            )
+
+    warnings = [] if had_actuals else [MONTHLY_NO_SOURCE_ACTUALS_WARNING]
+    warnings.append(MONTHLY_EVEN_SPREAD_DISCLOSURE)
+    rows.sort(key=lambda r: (r["budget_code_key"], r["month"], r["is_actual"]))
+    return rows, True, None, warnings

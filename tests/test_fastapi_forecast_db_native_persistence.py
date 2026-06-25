@@ -183,6 +183,52 @@ def test_no_package_fallback_on_generated_path(
     assert body["db_persisted"] is True
 
 
+# -- monthly output: persisted when a forecast horizon is supplied -----------
+
+
+def test_monthly_persisted_when_forecast_end_date_supplied(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from decimal import Decimal
+
+    client, db = _client(tmp_path, monkeypatch, enabled=True)
+    body = _post(
+        client,
+        forecast_start_date="2026-05-01",
+        forecast_cutoff_date="2026-05-31",
+        forecast_end_date="2026-08-31",
+    )
+    assert body["request_status"] == "completed"
+    assert body["db_persisted"] is True
+    assert body["forecast_end_date"] == "2026-08-31"
+    # One seeded actual (2026-05) + three even-spread forecast months (2026-06..2026-08).
+    assert svc.verify_run_output_persistence(db, "tropical")["monthly_rows_count"] == 4
+
+    output_id = body["persisted_output_ids"][0]
+    detail = client.get(f"/api/forecast/db/outputs/{output_id}", headers=_viewer()).json()
+    monthly = detail["monthly"]
+    actual = [m for m in monthly if m["is_actual"] == 1]
+    forecast = [m for m in monthly if m["is_actual"] == 0]
+    assert len(actual) == 1 and len(forecast) == 3
+    # Forecast monthly rows reconcile to the header cost_to_complete.
+    assert sum(Decimal(m["value"]) for m in forecast) == Decimal(detail["cost_to_complete"])
+    assert find_redaction_leaks(detail) == []
+
+
+def test_monthly_empty_without_forecast_end_date(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # No forecast horizon supplied: header + budget-code rows persist, monthly is honestly empty.
+    client, db = _client(tmp_path, monkeypatch, enabled=True)
+    body = _post(client)
+    assert body["request_status"] == "completed"
+    assert body["db_persisted"] is True
+    assert svc.verify_run_output_persistence(db, "tropical")["monthly_rows_count"] == 0
+    output_id = body["persisted_output_ids"][0]
+    detail = client.get(f"/api/forecast/db/outputs/{output_id}", headers=_viewer()).json()
+    assert detail["monthly"] == []
+
+
 # -- gate off / unsupported / no-basis: coded refusal, nothing written --------
 
 
