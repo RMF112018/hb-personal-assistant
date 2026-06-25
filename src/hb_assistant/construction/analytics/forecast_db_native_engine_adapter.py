@@ -123,6 +123,7 @@ def _insufficient_basis_result(
         "summary": {},
         "assumptions": [],
         "risks": [],
+        "monthly": [],
         "unsupported_outputs": {},
         "warnings": [],
         "blockers": [reason],

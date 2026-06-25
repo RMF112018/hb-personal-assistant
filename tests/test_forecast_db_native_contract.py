@@ -90,6 +90,35 @@ def test_validate_request_generator_kind_by_mode() -> None:
     assert "invalid_generator_kind" in errors
 
 
+def test_validate_request_forecast_end_date_and_ordering() -> None:
+    base = {"project_key": "tropical"}
+    # Valid optional forecast_end_date is parsed through.
+    parsed, errors = validate_request(
+        {**base, "forecast_cutoff_date": "2026-06-30", "forecast_end_date": "2026-12-31"},
+        mode="db_native",
+    )
+    assert errors == []
+    assert parsed["forecast_end_date"] == "2026-12-31"
+    # Absent forecast_end_date is None (degraded monthly downstream, not an error).
+    parsed, errors = validate_request(base, mode="db_native")
+    assert parsed["forecast_end_date"] is None and errors == []
+    # Malformed end date is rejected.
+    _, errors = validate_request({**base, "forecast_end_date": "2026-13-40"}, mode="db_native")
+    assert "invalid_forecast_end_date" in errors
+    # cutoff after end is rejected.
+    _, errors = validate_request(
+        {**base, "forecast_cutoff_date": "2026-12-31", "forecast_end_date": "2026-06-30"},
+        mode="db_native",
+    )
+    assert "forecast_cutoff_after_end" in errors
+    # start after end is rejected.
+    _, errors = validate_request(
+        {**base, "forecast_start_date": "2027-01-01", "forecast_end_date": "2026-06-30"},
+        mode="db_native",
+    )
+    assert "forecast_start_after_end" in errors
+
+
 # -- service-level fail-closed seam -------------------------------------------
 
 

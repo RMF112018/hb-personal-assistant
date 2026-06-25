@@ -228,13 +228,123 @@ def test_unknown_kind_is_unsupported() -> None:
 
 
 def test_comprehensive_discloses_unsupported_outputs_and_spine_only_warning() -> None:
+    # No forecast_end_date in the window -> monthly is honestly degraded with the horizon-specific
+    # reason (not the generic phasing-signals code, which only applies to the standalone monthly kind).
     pub = _run(_ctx()).public()
     assert pub["unsupported_outputs"] == {
-        "monthly": "db_native_monthly_requires_phasing_signals",
+        "monthly": "db_native_monthly_requires_forecast_end_date",
         "probability": "db_native_probability_requires_monte_carlo_inputs",
         "model_controls": "db_native_model_controls_requires_operator_config",
     }
     assert "owner_procore_crosswalk_evidence_unavailable_financial_spine_only" in pub["warnings"]
+
+
+# =====================================================================================
+# DB-native comprehensive monthly output — window-bounded actuals + even-spread forecast.
+# =====================================================================================
+
+# 10-A: projected 1000 > actual 300 -> existing_model_basis, final 1000, CTC 700.
+_M_BUDGET = [{"budget_code_key": "10-A", "projected_costs": "1000.00", "revised_budget": "2000.00"}]
+_M_COST = [{"budget_code_key": "10-A", "amount": "300.00"}]
+_M_MONTHLY = [
+    {"budget_code_key": "10-A", "month": "2026-04", "type": "actual", "amount": "100.00"},
+    {"budget_code_key": "10-A", "month": "2026-05", "type": "actual", "amount": "200.00"},
+]
+_M_WINDOW = {
+    "forecast_start_date": "2026-04-01",
+    "forecast_cutoff_date": "2026-05-31",
+    "forecast_end_date": "2026-08-31",
+}
+
+
+def _monthly_run():
+    return _run(_ctx(budget=_M_BUDGET, cost=_M_COST, monthly=_M_MONTHLY), window=_M_WINDOW).public()
+
+
+def test_comprehensive_emits_monthly_actuals_and_forecast() -> None:
+    from decimal import Decimal
+
+    pub = _monthly_run()
+    rows = pub["monthly"]
+    actuals = [r for r in rows if r["is_actual"] == 1]
+    forecast = [r for r in rows if r["is_actual"] == 0]
+    # Window-bounded actuals: both source months sit inside [2026-04, 2026-05].
+    assert {(r["month"], r["value"]) for r in actuals} == {
+        ("2026-04", "100.00"),
+        ("2026-05", "200.00"),
+    }
+    # CTC 700 even-spread across the 3 future months after the effective actual boundary (2026-05).
+    assert [r["month"] for r in forecast] == ["2026-06", "2026-07", "2026-08"]
+    # Deterministic residual lands on the final month: 700/3 -> 233.33, 233.33, 233.34.
+    assert [r["value"] for r in forecast] == ["233.33", "233.33", "233.34"]
+    assert sum(Decimal(r["value"]) for r in forecast) == Decimal("700.00")
+    # monthly no longer unsupported; even-spread is disclosed; the other two kinds remain unsupported.
+    assert "monthly" not in pub["unsupported_outputs"]
+    assert set(pub["unsupported_outputs"]) == {"probability", "model_controls"}
+    assert "db_native_monthly_even_spread_not_schedule_weighted" in pub["warnings"]
+
+
+def test_monthly_forecast_reconciles_to_header_ctc() -> None:
+    from decimal import Decimal
+
+    pub = _monthly_run()
+    forecast = [r for r in pub["monthly"] if r["is_actual"] == 0]
+    assert sum(Decimal(r["value"]) for r in forecast) == Decimal(pub["summary"]["total_cost_to_complete"])
+
+
+def test_monthly_actual_rows_bounded_by_requested_window() -> None:
+    # An older source actual (2026-01) outside the selected [start, cutoff] window is excluded.
+    monthly = _M_MONTHLY + [
+        {"budget_code_key": "10-A", "month": "2026-01", "type": "actual", "amount": "999.00"}
+    ]
+    rows = _run(_ctx(budget=_M_BUDGET, cost=_M_COST, monthly=monthly), window=_M_WINDOW).public()["monthly"]
+    actual_months = {r["month"] for r in rows if r["is_actual"] == 1}
+    assert actual_months == {"2026-04", "2026-05"}
+
+
+def test_monthly_actuals_aggregated_across_type() -> None:
+    # Two rows for the same (code, month) under different ``type`` are summed into one actual row.
+    monthly = [
+        {"budget_code_key": "10-A", "month": "2026-05", "type": "actual", "amount": "200.00"},
+        {"budget_code_key": "10-A", "month": "2026-05", "type": "actual_committed", "amount": "50.00"},
+    ]
+    rows = _run(_ctx(budget=_M_BUDGET, cost=_M_COST, monthly=monthly), window=_M_WINDOW).public()["monthly"]
+    may = [r for r in rows if r["is_actual"] == 1 and r["month"] == "2026-05"]
+    assert len(may) == 1
+    assert may[0]["value"] == "250.00"
+
+
+def test_monthly_degraded_without_forecast_end_date() -> None:
+    pub = _run(
+        _ctx(budget=_M_BUDGET, cost=_M_COST, monthly=_M_MONTHLY),
+        window={"forecast_start_date": "2026-04-01", "forecast_cutoff_date": "2026-05-31"},
+    ).public()
+    assert pub["monthly"] == []
+    assert pub["unsupported_outputs"]["monthly"] == "db_native_monthly_requires_forecast_end_date"
+    assert "db_native_monthly_requires_forecast_end_date" in pub["warnings"]
+
+
+def test_monthly_degraded_when_end_not_after_boundary() -> None:
+    # forecast_end_date == the effective actual boundary -> no future horizon -> honest degrade.
+    pub = _run(
+        _ctx(budget=_M_BUDGET, cost=_M_COST, monthly=_M_MONTHLY),
+        window={**_M_WINDOW, "forecast_end_date": "2026-05-31"},
+    ).public()
+    assert pub["monthly"] == []
+    assert pub["unsupported_outputs"]["monthly"] == "db_native_monthly_no_future_horizon"
+
+
+def test_monthly_forecast_without_source_actuals_uses_cutoff_boundary() -> None:
+    from decimal import Decimal
+
+    pub = _run(_ctx(budget=_M_BUDGET, cost=_M_COST, monthly=[]), window=_M_WINDOW).public()
+    rows = pub["monthly"]
+    assert [r for r in rows if r["is_actual"] == 1] == []
+    forecast = [r for r in rows if r["is_actual"] == 0]
+    # Cut-off 2026-05 anchors the start when no actuals fall in the window -> 2026-06..2026-08.
+    assert [r["month"] for r in forecast] == ["2026-06", "2026-07", "2026-08"]
+    assert sum(Decimal(r["value"]) for r in forecast) == Decimal("700.00")
+    assert "db_native_monthly_no_source_actuals_in_window" in pub["warnings"]
 
 
 # -- determinism --------------------------------------------------------------

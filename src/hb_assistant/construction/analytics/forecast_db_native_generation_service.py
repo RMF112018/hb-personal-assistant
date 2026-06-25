@@ -78,6 +78,7 @@ class DbNativeGenerationRequest:
     generator_kind: str
     forecast_start_date: str | None = None
     forecast_cutoff_date: str | None = None
+    forecast_end_date: str | None = None
     forecast_cutoff_date_basis: str | None = None
     source_snapshot_id: str | None = None
     request_id: str | None = None
@@ -130,6 +131,8 @@ def generate_db_native(request: DbNativeGenerationRequest) -> DbNativeGeneration
         window["forecast_start_date"] = request.forecast_start_date
     if request.forecast_cutoff_date:
         window["forecast_cutoff_date"] = request.forecast_cutoff_date
+    if request.forecast_end_date:
+        window["forecast_end_date"] = request.forecast_end_date
 
     result = compute_db_native_forecast(
         request.project_key,

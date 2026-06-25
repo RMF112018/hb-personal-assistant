@@ -106,7 +106,7 @@ def _result(**overrides) -> dict:
                 "variance_to_budget": "200.00",
             }
         ],
-        "unsupported_outputs": {"monthly": "db_native_monthly_requires_phasing_signals"},
+        "unsupported_outputs": {"monthly": "db_native_monthly_requires_forecast_end_date"},
         "warnings": [],
         "blockers": [],
         "provenance": {
@@ -116,6 +116,15 @@ def _result(**overrides) -> dict:
     }
     base.update(overrides)
     return base
+
+
+# Monthly rows that reconcile to the fixture's CTC: code 01-100 CTC 850 (one actual + two forecast),
+# code 02-200 CTC 0 (no forecast rows). Header CTC 850 == sum of all forecast rows.
+_MONTHLY_ROWS = [
+    {"budget_code_key": "01-100", "month": "2026-05", "value": "300.00", "is_actual": 1},
+    {"budget_code_key": "01-100", "month": "2026-06", "value": "425.00", "is_actual": 0},
+    {"budget_code_key": "01-100", "month": "2026-07", "value": "425.00", "is_actual": 0},
+]
 
 
 def _db(tmp_path: Path) -> Path:
@@ -162,6 +171,60 @@ def test_build_planned_maps_v63_header_lines_risks_narratives() -> None:
     assert bc["01-100"]["recommended_cost_to_complete"] == "850.00"
     assert bc["01-100"]["forecast_action"] == "budgetdetails_projected_cost_basis"
     assert planned["risks"][0]["risk_id"] == "01-100:forecast_exceeds_revised_budget"
+
+
+def test_build_planned_includes_reconciled_monthly_rows() -> None:
+    planned = persist.build_db_native_planned(
+        _result(monthly=_MONTHLY_ROWS),
+        output_id="fout-x",
+        run_id="run-x",
+        project_key=_PROJECT,
+        now_utc="2026-06-25T00:00:00+00:00",
+    )
+    monthly = planned["monthly"]
+    assert len(monthly) == 3
+    for row in monthly:
+        assert row["id"].startswith("fomo-")
+        assert row["output_id"] == "fout-x"
+        assert row["budget_code_key"] and row["month"]
+        assert row["value"] is not None
+        assert row["is_actual"] in (0, 1)
+    # Certification of the reconciled planned rows is clean.
+    assert (
+        persist.certify_db_native_result(
+            _result(monthly=_MONTHLY_ROWS),
+            planned,
+            request_id="req-1",
+            project_key=_PROJECT,
+            generator_kind="comprehensive",
+        )
+        == []
+    )
+
+
+def test_persist_writes_monthly_rows_round_trip(tmp_path: Path) -> None:
+    db = _db(tmp_path)
+    outcome = persist.persist_db_native_result(
+        result=_result(monthly=_MONTHLY_ROWS),
+        project_key=_PROJECT,
+        generator_kind="comprehensive",
+        request_id="req-1",
+        db_path=db,
+    )
+    assert outcome.db_persisted is True
+    assert verify_run_output_persistence(db, _PROJECT)["monthly_rows_count"] == 3
+    import sqlite3 as _sqlite3
+
+    conn = _sqlite3.connect(str(db))
+    try:
+        monthly = persist.repo.read_output_monthly_from_db(conn, output_id=outcome.output_id)
+    finally:
+        conn.close()
+    assert len(monthly) == 3
+    actual = [r for r in monthly if r["is_actual"] == 1]
+    forecast = [r for r in monthly if r["is_actual"] == 0]
+    assert len(actual) == 1 and len(forecast) == 2
+    assert find_redaction_leaks(monthly) == []
 
 
 def test_derive_output_id_is_deterministic_and_independent_of_run_id() -> None:
@@ -228,8 +291,32 @@ def test_persist_is_idempotent(tmp_path: Path) -> None:
         (lambda r: r["forecast_lines"].__setitem__(0, {**r["forecast_lines"][0], "forecast_final_cost": "not-a-number"}), "comprehensive"),
         (lambda r: r.__setitem__("forecast_lines", []), "comprehensive"),
         (lambda r: None, "monthly"),  # unsupported kind
+        # Monthly forecast rows that don't reconcile to the budget-code / header CTC.
+        (
+            lambda r: r.__setitem__(
+                "monthly",
+                [{"budget_code_key": "01-100", "month": "2026-06", "value": "1.00", "is_actual": 0}],
+            ),
+            "comprehensive",
+        ),
+        # Monthly value that isn't decimal-safe.
+        (
+            lambda r: r.__setitem__(
+                "monthly",
+                [{"budget_code_key": "01-100", "month": "2026-06", "value": "not-a-number", "is_actual": 0}],
+            ),
+            "comprehensive",
+        ),
     ],
-    ids=["missing_budget_code_key", "final_below_actual", "non_decimal_money", "no_lines", "unsupported_kind"],
+    ids=[
+        "missing_budget_code_key",
+        "final_below_actual",
+        "non_decimal_money",
+        "no_lines",
+        "unsupported_kind",
+        "monthly_ctc_mismatch",
+        "monthly_value_not_decimal",
+    ],
 )
 def test_certification_failure_writes_nothing(tmp_path: Path, mutate, kind) -> None:
     db = _db(tmp_path)

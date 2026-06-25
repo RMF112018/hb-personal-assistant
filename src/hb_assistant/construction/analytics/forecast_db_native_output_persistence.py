@@ -10,9 +10,11 @@ DB-native boundary (ADR 313/314/317).
 Scope (Phase F, ADR 319):
 - v63 only — ``forecast_outputs`` (header), ``forecast_output_budget_codes`` (one row per forecast
   line), ``forecast_output_risks`` (engine-emitted risks only), ``forecast_output_narratives`` (one
-  row per assumption). The remaining v63 detail tables (monthly / probability / changes /
-  commitment_exposure / staffing / schedule_phasing) stay empty: the financial-spine comprehensive
-  result emits none of them. No v66 decision-support rows are written.
+  row per assumption), and ``forecast_output_monthly`` (month-by-month actual + even-spread forecast
+  rows, when the engine emits them — operator supplied ``forecast_end_date``). The remaining v63
+  detail tables (probability / changes / commitment_exposure / staffing / schedule_phasing) stay
+  empty: the financial-spine comprehensive result emits none of them. No v66 decision-support rows
+  are written.
 - A mandatory, package-free certification preflight runs against the *built planned rows* before any
   write. On any failure it returns a coded failure and writes nothing (no partial rows).
 - The write is gated by the route (``resolve_run_output_db_write_enabled``); this module assumes the
@@ -53,14 +55,18 @@ _GENERATED_STATUSES = frozenset({"generated", "generated_degraded"})
 _SOURCE_PACKAGE_SENTINEL = "db_native"
 
 # v63 planned-table keys this module populates; the rest are emitted empty (apply_plan writes 0 rows).
+# ``monthly`` is populated for a comprehensive output when the engine emits month-by-month rows
+# (operator supplied ``forecast_end_date``); otherwise the engine emits none and it stays empty.
 _EMPTY_KEYS = (
-    "monthly",
     "probability",
     "changes",
     "commitment_exposure",
     "staffing",
     "schedule_phasing",
 )
+
+# Cent tolerance for the monthly reconciliation invariants (even-spread is exact; this is a guard).
+_CENT = Decimal("0.01")
 
 
 @dataclass(frozen=True)
@@ -221,11 +227,32 @@ def build_db_native_planned(
         for i, a in enumerate(result.get("assumptions") or [], start=1)
     ]
 
+    # Month-by-month rows: window-bounded actuals (is_actual=1) + even-spread forecast (is_actual=0).
+    # The engine emits none when the operator supplied no forecast horizon, in which case monthly
+    # stays empty (no fabricated phasing).
+    monthly = [
+        {
+            "id": _row_id("fomo", output_id, f"{m.get('budget_code_key')}|{m.get('month')}"),
+            "output_id": output_id,
+            "project_key": project_key,
+            "budget_code_key": m.get("budget_code_key"),
+            "month": m.get("month"),
+            "value": m.get("value"),
+            "is_actual": int(m.get("is_actual") or 0),
+            "source_row_number": i,
+            "raw_json": json.dumps(m, sort_keys=True),
+            "created_utc": now_utc,
+            "updated_utc": now_utc,
+        }
+        for i, m in enumerate(result.get("monthly") or [], start=1)
+    ]
+
     planned: dict[str, list[dict[str, Any]]] = {
         "outputs": outputs,
         "budget_codes": budget_codes,
         "risks": risks,
         "narratives": narratives,
+        "monthly": monthly,
     }
     for key in _EMPTY_KEYS:
         planned[key] = []
@@ -315,12 +342,64 @@ def certify_db_native_result(
                 reasons.append("header_money_not_decimal")
                 break
 
+    reasons.extend(_certify_monthly(planned))
+
     leaks = find_redaction_leaks(planned)
     if leaks:
         reasons.append("redaction_leak")
 
     # Stable, de-duplicated coded reasons.
     return sorted(set(reasons))
+
+
+def _certify_monthly(planned: dict[str, list[dict[str, Any]]]) -> list[str]:
+    """Reconcile the planned monthly rows before any write (empty monthly is a valid degraded state).
+
+    Forecast rows (is_actual=0) per budget code must sum to that code's recommended_cost_to_complete,
+    and all forecast rows must sum to the header cost_to_complete. Actual rows (is_actual=1) are
+    field-validated but never folded into the CTC reconciliation.
+    """
+    monthly = planned.get("monthly", [])
+    if not monthly:
+        return []
+
+    reasons: list[str] = []
+    forecast_sum_by_key: dict[str, Decimal] = {}
+    for row in monthly:
+        if not row.get("output_id") or not row.get("budget_code_key") or not row.get("month"):
+            reasons.append("monthly_row_missing_identity")
+        value = row.get("value")
+        if value is None or not _is_decimal(value):
+            reasons.append("monthly_value_not_decimal")
+            continue
+        is_actual = int(row.get("is_actual") or 0)
+        if is_actual not in (0, 1):
+            reasons.append("monthly_is_actual_invalid")
+        if is_actual == 0:
+            key = str(row.get("budget_code_key") or "")
+            forecast_sum_by_key[key] = forecast_sum_by_key.get(key, Decimal("0")) + Decimal(str(value))
+
+    # Per budget-code: forecast monthly rows must reconcile to the code's recommended CTC.
+    for code in planned.get("budget_codes", []):
+        ctc = code.get("recommended_cost_to_complete")
+        if not _is_decimal(ctc) or ctc is None:
+            continue
+        ctc_dec = Decimal(str(ctc))
+        if ctc_dec <= Decimal("0"):
+            continue
+        key = str(code.get("budget_code_key") or "")
+        if abs(forecast_sum_by_key.get(key, Decimal("0")) - ctc_dec) > _CENT:
+            reasons.append("monthly_forecast_code_ctc_mismatch")
+
+    # Header: all forecast monthly rows must reconcile to the header cost_to_complete.
+    header = (planned.get("outputs") or [{}])[0]
+    header_ctc = header.get("cost_to_complete")
+    if _is_decimal(header_ctc) and header_ctc is not None:
+        total_forecast = sum(forecast_sum_by_key.values(), Decimal("0"))
+        if abs(total_forecast - Decimal(str(header_ctc))) > _CENT:
+            reasons.append("monthly_forecast_header_ctc_mismatch")
+
+    return reasons
 
 
 def persist_db_native_result(
