@@ -11,6 +11,7 @@ vi.mock('@tanstack/react-query', () => ({
 }))
 
 const startDbConfigMock = vi.fn().mockResolvedValue({})
+const startDbNativeMock = vi.fn().mockResolvedValue({})
 
 vi.mock('../lib/api', () => ({
   api: {
@@ -20,6 +21,7 @@ vi.mock('../lib/api', () => ({
     getForecastDbConfigRun: vi.fn(),
     getForecastRun: vi.fn(),
     startForecastRun: vi.fn().mockResolvedValue({}),
+    startForecastDbNativeRun: (...args: unknown[]) => startDbNativeMock(...args),
     startForecastDbConfigRun: (...args: unknown[]) => startDbConfigMock(...args),
     getForecastDbProjects: vi.fn(),
     getForecastGenerationProjects: vi.fn(),
@@ -194,13 +196,14 @@ describe('ForecastRunCenterPage', () => {
   beforeEach(() => {
     useQueryMock.mockReset()
     startDbConfigMock.mockClear()
+    startDbNativeMock.mockClear()
   })
 
   it('renders the primary DB-backed generate action and run history', () => {
     mockData()
     renderPage()
     expect(
-      screen.getByRole('button', { name: 'Generate DB-backed forecast' }),
+      screen.getByRole('button', { name: 'Generate forecast' }),
     ).toBeInTheDocument()
     expect(screen.getByText('Generation history')).toBeInTheDocument()
     expect(
@@ -212,7 +215,7 @@ describe('ForecastRunCenterPage', () => {
     mockData()
     renderPage()
     expect(
-      screen.getByRole('button', { name: 'Generate DB-backed forecast' }),
+      screen.getByRole('button', { name: 'Generate forecast' }),
     ).toBeInTheDocument()
     // both a file-config and a live-config run appear, with a Source column distinguishing them
     expect(
@@ -222,30 +225,47 @@ describe('ForecastRunCenterPage', () => {
     expect(screen.getByText('File configuration')).toBeInTheDocument()
   })
 
-  it('describes Generate Forecast as live-config generation without a package/download, and does not promise a DB write it cannot keep', () => {
+  it('frames the primary path as DB-native, is honest about conditional persistence, and leaks no paths/artifacts', () => {
     mockData()
     const { container } = renderPage()
     const text = container.textContent || ''
-    // Honest framing: generates from the promoted live configuration, no package/download.
-    expect(text).toMatch(/live configuration/i)
-    expect(text).not.toMatch(/isolated forecast package/i)
-    // Must NOT imply DB-native generation persists the forecast to the database (backend still
-    // returns db_native_generation_not_implemented). No "writes/written … to the … database" promise.
-    expect(text).not.toMatch(/writes? the selected project's forecast to the local application database/i)
-    expect(text).not.toMatch(/output is written to the local application database/i)
+    // Honest db-native framing: reads from / saves to the local database.
+    expect(text).toMatch(/local database/i)
+    // Honest about the write gate: persistence is conditional, not an unconditional promise.
+    expect(text).toMatch(/when output writes are enabled/i)
+    // No filesystem paths, source-package values, or artifact/run-root references leak. The bare word
+    // "package" is allowed in legacy labels, so we assert on path/artifact refs, not the token.
+    expect(text).not.toMatch(/\/Users\//)
+    expect(text).not.toMatch(/source_package/i)
+    expect(text).not.toMatch(/cost_forecast_json_package/i)
   })
 
-  it('offers all four generator kinds and passes the selected kind + project to the API', async () => {
+  it('restricts the primary db-native path to comprehensive; the 4-kind selector lives on the legacy db-config path', async () => {
     mockData()
     renderPage()
     // Generation is gated on an explicit project selection (no tropical fallback).
     fireEvent.change(screen.getByLabelText('Forecast project'), { target: { value: 'tropical' } })
-    const select = screen.getByLabelText('Forecast type') as HTMLSelectElement
-    const optionValues = Array.from(select.options).map((o) => o.value)
-    expect(optionValues).toEqual(['comprehensive', 'model_controls', 'monthly', 'probability'])
 
-    fireEvent.change(select, { target: { value: 'monthly' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Generate DB-backed forecast' }))
+    // Primary (db-native): the type control is fixed/disabled at comprehensive — no guaranteed-fail
+    // monthly/probability/model_controls options are offered.
+    const primaryType = screen.getByLabelText('Forecast type') as HTMLSelectElement
+    expect(primaryType).toBeDisabled()
+    expect(primaryType.value).toBe('comprehensive')
+    expect(Array.from(primaryType.options).map((o) => o.value)).toEqual(['comprehensive'])
+
+    // Legacy package-backed db-config path retains the full 4-kind selector.
+    fireEvent.click(
+      screen.getByRole('button', { name: /Advanced \/ legacy package-backed generation/i }),
+    )
+    const legacyType = screen.getByLabelText('Legacy DB-config forecast type') as HTMLSelectElement
+    expect(Array.from(legacyType.options).map((o) => o.value)).toEqual([
+      'comprehensive',
+      'model_controls',
+      'monthly',
+      'probability',
+    ])
+    fireEvent.change(legacyType, { target: { value: 'monthly' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Generate from DB config' }))
     await waitFor(() =>
       expect(startDbConfigMock).toHaveBeenCalledWith({
         project_key: 'tropical',
@@ -255,9 +275,11 @@ describe('ForecastRunCenterPage', () => {
         forecast_cutoff_date_basis: null,
       }),
     )
+    // The primary db-native action was never invoked by the legacy path.
+    expect(startDbNativeMock).not.toHaveBeenCalled()
   })
 
-  it('disables live-config generation and shows actionable reasons before click when not ready', () => {
+  it('gates the legacy db-config path on readiness (reasons + actions) while the primary db-native path stays available', () => {
     useQueryMock.mockImplementation((opts: { queryKey: unknown[] }) => {
       const kind = opts.queryKey[1]
       const sub = opts.queryKey[2]
@@ -282,14 +304,47 @@ describe('ForecastRunCenterPage', () => {
           refetch: vi.fn(),
         }
       }
+      if (kind === 'generation' && sub === 'projects') {
+        return {
+          data: {
+            projects: [
+              { project_key: 'tropical', display_name: 'Tropical', readiness_status: 'ready', readiness_reasons: [] },
+            ],
+          },
+          isLoading: false,
+          error: null,
+          refetch: vi.fn(),
+        }
+      }
+      if (kind === 'generation' && sub === 'date-defaults') {
+        return {
+          data: {
+            project_key: 'tropical',
+            forecast_start_date: null,
+            forecast_cutoff_date: null,
+            forecast_cutoff_date_basis: null,
+            warnings: [],
+          },
+          isLoading: false,
+          error: null,
+          refetch: vi.fn(),
+        }
+      }
       return { data: { runs: [] }, isLoading: false, error: null, refetch: vi.fn() }
     })
     renderPage()
+    fireEvent.change(screen.getByLabelText('Forecast project'), { target: { value: 'tropical' } })
 
-    const button = screen.getByRole('button', { name: 'Generate DB-backed forecast' })
-    expect(button).toBeDisabled()
-    expect(screen.getByLabelText('Forecast type')).toBeDisabled()
-    // Actionable, path-free copy + operator actions are shown BEFORE any click.
+    // The primary db-native action is NOT gated by db-config readiness — it stays enabled for a
+    // ready project. The write gate is surfaced post-submit, not as a pre-click block.
+    expect(screen.getByRole('button', { name: 'Generate forecast' })).not.toBeDisabled()
+
+    // The legacy db-config action (under the disclosure) carries the readiness block + actions.
+    fireEvent.click(
+      screen.getByRole('button', { name: /Advanced \/ legacy package-backed generation/i }),
+    )
+    const dbConfigBtn = screen.getByRole('button', { name: 'Generate from DB config' })
+    expect(dbConfigBtn).toBeDisabled()
     expect(
       screen.getByText("Generating from live configuration isn't enabled in this environment."),
     ).toBeInTheDocument()
@@ -297,8 +352,8 @@ describe('ForecastRunCenterPage', () => {
     expect(screen.getByText('Open storage settings')).toBeInTheDocument()
     expect(screen.getByText('Enable generation from live configuration')).toBeInTheDocument()
 
-    // A disabled control cannot start a run.
-    fireEvent.click(button)
+    // A disabled legacy control cannot start a run.
+    fireEvent.click(dbConfigBtn)
     expect(startDbConfigMock).not.toHaveBeenCalled()
   })
 
@@ -312,11 +367,10 @@ describe('ForecastRunCenterPage', () => {
     fireEvent.change(screen.getByLabelText('Forecast cut-off date'), {
       target: { value: '2026-06-24' },
     })
-    fireEvent.click(screen.getByRole('button', { name: 'Generate DB-backed forecast' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Generate forecast' }))
     await waitFor(() =>
-      expect(startDbConfigMock).toHaveBeenCalledWith({
+      expect(startDbNativeMock).toHaveBeenCalledWith({
         project_key: 'tropical',
-        generator_kind: 'comprehensive',
         forecast_start_date: '2026-06-01',
         forecast_cutoff_date: '2026-06-24',
         forecast_cutoff_date_basis: 'operator_supplied',
@@ -354,7 +408,7 @@ describe('ForecastRunCenterPage', () => {
   it('disables generation until a non-blocked project is selected, then passes project_key', async () => {
     mockData()
     renderPage()
-    const button = () => screen.getByRole('button', { name: 'Generate DB-backed forecast' })
+    const button = () => screen.getByRole('button', { name: 'Generate forecast' })
     // Nothing selected → disabled (no tropical fallback).
     expect(button()).toBeDisabled()
 
@@ -370,9 +424,8 @@ describe('ForecastRunCenterPage', () => {
     expect(button()).not.toBeDisabled()
     fireEvent.click(button())
     await waitFor(() =>
-      expect(startDbConfigMock).toHaveBeenCalledWith({
+      expect(startDbNativeMock).toHaveBeenCalledWith({
         project_key: 'tropical',
-        generator_kind: 'comprehensive',
         forecast_start_date: null,
         forecast_cutoff_date: null,
         forecast_cutoff_date_basis: null,
@@ -383,15 +436,14 @@ describe('ForecastRunCenterPage', () => {
   it('allows generation for a degraded (sparse / first-run) project, not just a fully-ready one', async () => {
     mockData()
     renderPage()
-    const button = () => screen.getByRole('button', { name: 'Generate DB-backed forecast' })
+    const button = () => screen.getByRole('button', { name: 'Generate forecast' })
     // A budget-only first-run project is degraded (limited data), NOT blocked → generation allowed.
     fireEvent.change(screen.getByLabelText('Forecast project'), { target: { value: 'summit' } })
     expect(button()).not.toBeDisabled()
     fireEvent.click(button())
     await waitFor(() =>
-      expect(startDbConfigMock).toHaveBeenCalledWith({
+      expect(startDbNativeMock).toHaveBeenCalledWith({
         project_key: 'summit',
-        generator_kind: 'comprehensive',
         forecast_start_date: null,
         forecast_cutoff_date: null,
         forecast_cutoff_date_basis: null,
@@ -456,11 +508,10 @@ describe('ForecastRunCenterPage', () => {
     expect((screen.getByLabelText('Forecast start date') as HTMLInputElement).value).toBe('2025-01-01')
     expect(screen.getByText(/Cut-off basis:/)).toHaveTextContent('Schedule data date')
 
-    fireEvent.click(screen.getByRole('button', { name: 'Generate DB-backed forecast' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Generate forecast' }))
     await waitFor(() =>
-      expect(startDbConfigMock).toHaveBeenCalledWith({
+      expect(startDbNativeMock).toHaveBeenCalledWith({
         project_key: 'tropical',
-        generator_kind: 'comprehensive',
         forecast_start_date: '2025-01-01',
         forecast_cutoff_date: '2026-06-01',
         forecast_cutoff_date_basis: 'schedule_data_date',
@@ -478,11 +529,10 @@ describe('ForecastRunCenterPage', () => {
     fireEvent.change(cutoff, { target: { value: '2026-07-15' } }) // operator edit
     expect(screen.getByText(/Cut-off basis:/)).toHaveTextContent('Operator supplied')
 
-    fireEvent.click(screen.getByRole('button', { name: 'Generate DB-backed forecast' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Generate forecast' }))
     await waitFor(() =>
-      expect(startDbConfigMock).toHaveBeenCalledWith({
+      expect(startDbNativeMock).toHaveBeenCalledWith({
         project_key: 'tropical',
-        generator_kind: 'comprehensive',
         forecast_start_date: '2025-01-01',
         forecast_cutoff_date: '2026-07-15',
         forecast_cutoff_date_basis: 'operator_supplied',
@@ -534,7 +584,7 @@ describe('ForecastRunCenterPage', () => {
   it('updates the header and enables generation only for a ready project', () => {
     mockData()
     renderPage()
-    const dbGenerate = () => screen.getByRole('button', { name: 'Generate DB-backed forecast' })
+    const dbGenerate = () => screen.getByRole('button', { name: 'Generate forecast' })
 
     // Blocked project: header surfaces the reason + a resolve-first next step; generation disabled.
     fireEvent.change(screen.getByLabelText('Forecast project'), { target: { value: 'harbor' } })
@@ -626,16 +676,17 @@ describe('ForecastRunCenterPage', () => {
   })
 
   // UI-B: generation workflow.
-  it('shows exactly one primary Generate CTA and hides the legacy path by default', () => {
+  it('shows exactly one primary Generate CTA and hides the legacy package-backed paths by default', () => {
     mockData()
     renderPage()
     fireEvent.change(screen.getByLabelText('Forecast project'), { target: { value: 'tropical' } })
+    expect(screen.getAllByRole('button', { name: /Generate forecast/i })).toHaveLength(1)
+    // The legacy package-backed paths are not primary visible actions (collapsed by default).
     expect(
-      screen.getAllByRole('button', { name: /Generate DB-backed forecast/i }),
-    ).toHaveLength(1)
-    // The legacy file-config generation is not a primary visible action.
+      screen.queryByRole('button', { name: /Generate from file config/i }),
+    ).not.toBeInTheDocument()
     expect(
-      screen.queryByRole('button', { name: /Generate file-config forecast/i }),
+      screen.queryByRole('button', { name: /Generate from DB config/i }),
     ).not.toBeInTheDocument()
   })
 
@@ -829,7 +880,7 @@ describe('ForecastRunCenterPage', () => {
     // Readiness stays driven by project maturity, NOT the runtime failure code: a degraded (calculable)
     // project is still selectable and generatable.
     expect(
-      screen.getByRole('button', { name: 'Generate DB-backed forecast' }),
+      screen.getByRole('button', { name: 'Generate forecast' }),
     ).not.toBeDisabled()
 
     // No raw code, package name, or filesystem path leaks.
@@ -839,13 +890,14 @@ describe('ForecastRunCenterPage', () => {
     expect(text).not.toMatch(/\/Users\//)
   })
 
-  it('treats a db-config POST that returns request_status="failed" as an honest failed request, not a successful submission', async () => {
-    // Backend fails closed with HTTP 200 + request_status="failed" (db_native not implemented).
-    // The POST handler must surface curated copy and suppress the success banner.
-    startDbConfigMock.mockResolvedValueOnce({
+  it('treats a db-native POST that returns request_status="failed" as an honest failed request, not a success', async () => {
+    // Write gate off: HTTP 200 + request_status="failed" + run_output_db_write_disabled. The handler
+    // must surface curated copy and suppress the success banner (no compute-and-drop success).
+    startDbNativeMock.mockResolvedValueOnce({
       request_id: 'req-x',
       request_status: 'failed',
-      failure_code: 'db_native_generation_not_implemented',
+      db_persisted: false,
+      failure_code: 'run_output_db_write_disabled',
       failure_message: null, // force the coded-copy fallback; raw code must never render
     })
     useQueryMock.mockImplementation((opts: { queryKey: unknown[] }) => {
@@ -900,48 +952,200 @@ describe('ForecastRunCenterPage', () => {
     })
     const { container } = renderPage()
     fireEvent.change(screen.getByLabelText('Forecast project'), { target: { value: 'tropical' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Generate DB-backed forecast' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Generate forecast' }))
 
-    // Honest unsupported/failed state: curated, path-free copy is shown in the Generate panel.
-    const generatePanel = (await screen.findByText('Generate forecast')).closest('section')!
-    const generate = within(generatePanel)
+    // Curated, path-free copy is shown for the write-gate-disabled failure.
     expect(
-      generate.getByText(/DB-native (forecast )?generation isn't available yet/i),
+      await screen.findByText(/Saving forecast output to the database is turned off/i),
     ).toBeInTheDocument()
-    // The optimistic success banner must NOT render for a failed request.
+    // Neither the "submitted" nor the "saved" success banner may render for a failed request.
     expect(screen.queryByText(/Generation request submitted/i)).not.toBeInTheDocument()
-    // A failed generation request is never labelled "Unreadable" (other surfaces — e.g. the
-    // no-output health pill — legitimately still use it, so scope to the Generate panel).
-    expect(generate.queryByText('Unreadable')).not.toBeInTheDocument()
-    // No raw code, source package name, or filesystem path leaks to the operator.
+    expect(screen.queryByText(/Forecast generated and saved/i)).not.toBeInTheDocument()
+    // No raw code or filesystem path leaks to the operator.
     const text = container.textContent || ''
-    expect(text).not.toMatch(/db_native_generation_not_implemented/)
+    expect(text).not.toMatch(/run_output_db_write_disabled/)
     expect(text).not.toMatch(/cost_forecast_json_package/)
     expect(text).not.toMatch(/\/Users\//)
   })
 
-  it('still shows the success banner when a db-config POST returns a completed request', async () => {
+  it('shows the "generated and saved" success banner when a db-native POST completes and persists', async () => {
     mockData()
-    startDbConfigMock.mockResolvedValueOnce({ request_id: 'req-ok', request_status: 'completed' })
+    startDbNativeMock.mockResolvedValueOnce({
+      request_id: 'req-ok',
+      request_status: 'completed',
+      db_persisted: true,
+      persisted_output_ids: ['fout-1'],
+    })
     renderPage()
     fireEvent.change(screen.getByLabelText('Forecast project'), { target: { value: 'tropical' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Generate DB-backed forecast' }))
-    expect(await screen.findByText(/Generation request submitted/i)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Generate forecast' }))
+    expect(await screen.findByText(/Forecast generated and saved/i)).toBeInTheDocument()
   })
 
-  it('reveals the legacy file-config generation only behind the advanced disclosure', () => {
+  it('does not claim success for a completed-but-not-persisted db-native response', async () => {
+    mockData()
+    startDbNativeMock.mockResolvedValueOnce({
+      request_id: 'req-np',
+      request_status: 'completed',
+      db_persisted: false,
+      failure_code: 'db_native_output_certification_failed',
+      failure_message: null,
+    })
+    renderPage()
+    fireEvent.change(screen.getByLabelText('Forecast project'), { target: { value: 'tropical' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Generate forecast' }))
+    expect(
+      await screen.findByText(/did not pass its safety checks and was not saved/i),
+    ).toBeInTheDocument()
+    expect(screen.queryByText(/Forecast generated and saved/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Generation request submitted/i)).not.toBeInTheDocument()
+  })
+
+  it('rejects an unsupported db-native generator kind with curated copy and no success banner', async () => {
+    // The primary UI is comprehensive-only; this exercises the response handler (e.g. an advanced/API
+    // caller) without exposing a guaranteed-fail kind selector on the primary path.
+    mockData()
+    startDbNativeMock.mockResolvedValueOnce({
+      request_id: 'req-u',
+      request_status: 'failed',
+      db_persisted: false,
+      failure_code: 'db_native_generator_kind_unsupported',
+      failure_message: null,
+    })
+    renderPage()
+    fireEvent.change(screen.getByLabelText('Forecast project'), { target: { value: 'tropical' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Generate forecast' }))
+    expect(await screen.findByText(/This forecast type isn't available yet/i)).toBeInTheDocument()
+    expect(screen.queryByText(/Forecast generated and saved/i)).not.toBeInTheDocument()
+  })
+
+  it('rejects a db-native request_status="rejected" honestly (curated copy, no success, not "Unreadable")', async () => {
+    mockData()
+    startDbNativeMock.mockResolvedValueOnce({
+      request_id: 'req-r',
+      request_status: 'rejected',
+      db_persisted: false,
+      failure_code: 'generation_rejected',
+      failure_message: null,
+    })
+    renderPage()
+    fireEvent.change(screen.getByLabelText('Forecast project'), { target: { value: 'tropical' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Generate forecast' }))
+    const rejectedCopy = await screen.findByText(/The request was rejected\./i)
+    expect(screen.queryByText(/Forecast generated and saved/i)).not.toBeInTheDocument()
+    // A rejected generation request is never labelled "Unreadable" within the generate surface
+    // (other surfaces — e.g. the no-output health pill — legitimately still use it).
+    const panel = rejectedCopy.closest('section')!
+    expect(within(panel).queryByText('Unreadable')).not.toBeInTheDocument()
+  })
+
+  it('reveals the legacy package-backed paths only behind the advanced disclosure', () => {
     mockData()
     renderPage()
     fireEvent.change(screen.getByLabelText('Forecast project'), { target: { value: 'tropical' } })
     expect(
-      screen.queryByRole('button', { name: /Generate file-config forecast/i }),
+      screen.queryByRole('button', { name: /Generate from file config/i }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /Generate from DB config/i }),
     ).not.toBeInTheDocument()
 
     fireEvent.click(
-      screen.getByRole('button', { name: /Advanced \/ legacy file-configuration generation/i }),
+      screen.getByRole('button', { name: /Advanced \/ legacy package-backed generation/i }),
     )
+    // Both legacy package-backed actions appear, clearly labelled and demoted.
     expect(
-      screen.getByRole('button', { name: /Generate file-config forecast/i }),
+      screen.getByRole('button', { name: /Generate from DB config/i }),
     ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /Generate from file config/i }),
+    ).toBeInTheDocument()
+  })
+
+  it('renders persisted db-native outputs in the results summary panel on selection', () => {
+    useQueryMock.mockImplementation((opts: { queryKey: unknown[] }) => {
+      const k0 = opts.queryKey[0]
+      const kind = opts.queryKey[1]
+      const sub = opts.queryKey[2]
+      if (k0 === 'forecast' && kind === 'db-outputs') {
+        return {
+          data: {
+            outputs: [
+              {
+                output_id: 'fout-1',
+                project_key: 'tropical',
+                estimated_final_cost: '1700.00',
+                cost_to_complete: '850.00',
+                variance_to_budget: '200.00',
+                variance_to_prior_forecast: null,
+                created_display: 'Jun 25, 2026',
+              },
+            ],
+          },
+          isLoading: false,
+          error: null,
+          refetch: vi.fn(),
+        }
+      }
+      if (k0 === 'forecast' && kind === 'db-output') {
+        return {
+          data: {
+            output_id: 'fout-1',
+            estimated_final_cost: '1700.00',
+            forecast_at_completion: '1700.00',
+            cost_to_complete: '850.00',
+            variance_to_budget: '200.00',
+            variance_to_prior_forecast: null,
+            budget_codes: [],
+            risks: [],
+            monthly: [],
+            probability: [],
+            changes: [],
+            staffing: [],
+            commitment_exposure: [],
+            schedule_phasing: [],
+          },
+          isLoading: false,
+          error: null,
+          refetch: vi.fn(),
+        }
+      }
+      // Phase F is v63-only: decision-support (v66) is empty for db-native runs → honest "unavailable".
+      if (k0 === 'forecast' && kind === 'db-decision-support') {
+        return {
+          data: {
+            output_id: 'fout-1',
+            maturity: null,
+            data_availability: [],
+            confidence_scorecards: [],
+            method_eligibility: [],
+            model_selection: [],
+          },
+          isLoading: false,
+          error: null,
+          refetch: vi.fn(),
+        }
+      }
+      if (kind === 'generation' && sub === 'projects') {
+        return {
+          data: {
+            projects: [
+              { project_key: 'tropical', display_name: 'Tropical', readiness_status: 'ready', readiness_reasons: [] },
+            ],
+          },
+          isLoading: false,
+          error: null,
+          refetch: vi.fn(),
+        }
+      }
+      return { data: undefined, isLoading: false, error: null, refetch: vi.fn() }
+    })
+    renderPage()
+    fireEvent.change(screen.getByLabelText('Forecast project'), { target: { value: 'tropical' } })
+    // Persisted v63 headline numbers render (currency-formatted).
+    expect(screen.getByText('Results summary')).toBeInTheDocument()
+    expect(screen.getAllByText(/\$1,700/).length).toBeGreaterThan(0)
+    // The empty v66 decision-support degrades honestly, not as fabricated data.
+    expect(screen.getAllByText('no scorecard').length).toBeGreaterThan(0)
   })
 })

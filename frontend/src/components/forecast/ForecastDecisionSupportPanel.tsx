@@ -81,7 +81,7 @@ export function ForecastDecisionSupportPanel({ project }: { project: string }) {
       <ForecastPanel icon={Gauge} title="Persisted forecast outputs">
         <EmptyState
           title="No persisted forecast outputs yet"
-          hint="Run the authorized live-write to populate run outputs and decision support."
+          hint="Generate a forecast for this project to populate run outputs and decision support."
         />
       </ForecastPanel>
     )

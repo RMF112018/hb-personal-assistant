@@ -1212,6 +1212,38 @@ export function getForecastDbConfigRun(runId: string) {
   return fetchJson(`/api/forecast/runs/db-config/${encodeURIComponent(runId)}`);
 }
 
+/* True DB-native generation (Phase F+): reads the app DB, computes in memory, and persists v63
+ * forecast outputs when the run-output DB-write gate is enabled. No source/context/analysis package.
+ * This is the primary operator Generate path; the legacy db-config/file-config routes are package-backed.
+ * A request fails closed with HTTP 200 + request_status="failed"/"rejected" and a curated failure_code
+ * (e.g. run_output_db_write_disabled, db_native_insufficient_basis). Success is request_status=
+ * "completed" with db_persisted=true. The primary path is restricted to the comprehensive kind. */
+export interface ForecastDbNativeGenerationResponse {
+  request_id: string;
+  project_key: string;
+  generation_mode: string;
+  generator_kind: string | null;
+  request_status: string;
+  validation_status: string;
+  forecast_start_date: string | null;
+  forecast_cutoff_date: string | null;
+  forecast_cutoff_date_basis: string | null;
+  source_snapshot_id: string | null;
+  db_persisted: boolean;
+  package_generated: boolean;
+  persisted_output_ids: string[];
+  failure_code: string | null;
+  failure_message: string | null;
+  readiness_status_at_request: string | null;
+  readiness_reasons: string[];
+}
+export function startForecastDbNativeRun(input: ForecastGenerationRequestInput) {
+  return fetchJson<ForecastDbNativeGenerationResponse>('/api/forecast/runs/db-native', {
+    method: 'POST',
+    body: JSON.stringify({ ..._generationBody(input), generator_kind: 'comprehensive' }),
+  });
+}
+
 /* External-Forecast Evaluation — upload an operator forecast, map it, and compare it against
  * actuals / budget / ERP-JTD / backend-model / prior baselines (Implementation Phase 4).
  * Upload is base64-in-JSON (no multipart). POST routes are operator-gated; results are viewer
@@ -1615,7 +1647,9 @@ export const api = {
   startForecastRun,
   getForecastRuns,
   getForecastRun,
-  // DB-config-backed comprehensive generation (consumes the live config snapshot).
+  // True DB-native generation (primary operator path; persists v63 outputs).
+  startForecastDbNativeRun,
+  // DB-config-backed comprehensive generation (legacy package-backed; consumes the live config snapshot).
   startForecastDbConfigRun,
   getForecastDbConfigRuns,
   getForecastGenerationReadiness,
