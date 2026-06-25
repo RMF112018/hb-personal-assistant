@@ -108,6 +108,24 @@ def test_comprehensive_produces_result() -> None:
     assert pub["summary"]["degraded_budget_code_count"] == 1
 
 
+def test_summary_revised_budget_and_variance_from_nested_amounts() -> None:
+    """Regression: real DB-native budget_details nest money under `amounts`. The engine summary must
+    then carry a NON-ZERO total_revised_budget and variance_to_budget = EAC - revised_budget — not
+    the full EAC (the false-$0 budget-basis bug)."""
+    from decimal import Decimal
+
+    budget = [
+        {"budget_code_key": "10-EXIST", "cost_code": "10", "category": "labor",
+         "amounts": {"projected_costs": "1200.00", "revised_budget": "1000.00"}},
+    ]
+    cost = [{"budget_code_key": "10-EXIST", "amount": "350.00"}]
+    summary = _run(_ctx(budget=budget, cost=cost)).public()["summary"]
+    assert summary["total_revised_budget"] == "1000.00"  # resolved from nested amounts, not 0.00
+    eac = summary["total_forecast_final_cost"]
+    assert summary["variance_to_budget"] == str(Decimal(eac) - Decimal("1000.00"))
+    assert summary["variance_to_budget"] != eac  # variance is over revised budget, not full EAC
+
+
 # -- comprehensive reuses the cost_basis classify/apply path ------------------
 
 

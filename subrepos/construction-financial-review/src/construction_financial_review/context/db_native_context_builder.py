@@ -73,6 +73,20 @@ def _canon_opt(value: Any) -> str | None:
     return _canon(parsed) if parsed is not None else None
 
 
+def _amount_field(row: dict[str, Any], field: str) -> Any:
+    """Resolve a per-code money field from the DB-native budget_details row.
+
+    The normalized ``forecast_budget_details`` rows nest every money field under a top-level
+    ``amounts`` object (the original cost-forecast JSONL shape) — so read from ``row["amounts"]``
+    first. Fall back to a top-level ``row[field]`` for any flattened shape (e.g. legacy-style
+    fixtures). ``amounts`` wins when present.
+    """
+    amounts = row.get("amounts")
+    if isinstance(amounts, dict) and field in amounts:
+        return amounts.get(field)
+    return row.get(field)
+
+
 # Per-code cost-basis fields carried verbatim from the snapshot's selected BudgetDetails view.
 _COST_BASIS_BLOCK_FIELDS = (
     "committed_costs",
@@ -242,8 +256,8 @@ def build_db_native_context(source: DbNativeContextInput) -> DbNativeForecastCon
     for row in sorted(source.budget_details, key=lambda r: str(r.get("budget_code_key") or "")):
         key = str(row.get("budget_code_key") or "")
         budget_codes.append(key)
-        budget_amounts = {f: _canon_opt(row.get(f)) for f in _BUDGET_AMOUNT_FIELDS}
-        revised = _dec(row.get("revised_budget"))
+        budget_amounts = {f: _canon_opt(_amount_field(row, f)) for f in _BUDGET_AMOUNT_FIELDS}
+        revised = _dec(_amount_field(row, "revised_budget"))
         if revised is not None:
             total_revised += revised
         actual = actuals_by_key.get(key, Decimal("0"))

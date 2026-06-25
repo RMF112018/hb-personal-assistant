@@ -163,6 +163,49 @@ def test_builds_from_snapshot_public_fixture() -> None:
     assert pub["project_totals"]["total_actual_cost_to_date"] == "350.00"
 
 
+# Real DB-native shape: the normalized forecast_budget_details rows (from the cost-forecast JSONL
+# package) nest every money field under a top-level `amounts` object — NOT flattened at top level.
+_BUDGET_NESTED = [
+    {
+        "budget_code_key": "01-100",
+        "cost_code": "01-100",
+        "category": "labor",
+        "amounts": {
+            "revised_budget": "1000.00",
+            "original_budget_amount": "900.00",
+            "projected_costs": "1200.00",
+            "committed_costs": "800.00",
+        },
+    },
+    {
+        "budget_code_key": "02-200",
+        "cost_code": "02-200",
+        "category": "material",
+        "amounts": {"revised_budget": "0.00"},  # a real zero, nested
+    },
+]
+
+
+def test_builds_from_nested_amounts_shape() -> None:
+    """Regression: real DB-native rows nest money under `amounts`. The builder must resolve
+    `revised_budget` (and all budget_amounts) from there — otherwise total_revised_budget is a
+    false 0.00 while the source carries a non-zero revised budget."""
+    db = _db()
+    seed_procore_ep_project(db, project_key="tropical", display_name="Tropical Resort")
+    _seed_v59(db, "tropical", source_package=_PKG, budget=_BUDGET_NESTED, cost=_COST, monthly=_MONTHLY)
+    pub = _context_public("tropical", db)
+    by_key = {r["budget_code_key"]: r for r in pub["budget_code_context"]}
+    # Nested amounts resolve into budget_amounts.
+    assert by_key["01-100"]["budget_amounts"]["revised_budget"] == "1000.00"
+    assert by_key["01-100"]["budget_amounts"]["original_budget_amount"] == "900.00"
+    assert by_key["01-100"]["budget_amounts"]["committed_costs"] == "800.00"
+    # Nested real zero stays a real zero; a field absent from amounts stays null.
+    assert by_key["02-200"]["budget_amounts"]["revised_budget"] == "0.00"
+    assert by_key["02-200"]["budget_amounts"]["committed_costs"] is None
+    # Project total is NON-ZERO from the nested amounts (the bug produced 0.00 here).
+    assert pub["project_totals"]["total_revised_budget"] == "1000.00"
+
+
 # -- 2/3. no package directory created or read; no manifest required ----------
 
 
