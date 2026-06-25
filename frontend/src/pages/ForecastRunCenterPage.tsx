@@ -164,9 +164,17 @@ export function ForecastRunCenterPage() {
   // P-E: bumped after a successful generation to force the DB-backed read-model panels to refetch.
   const [refreshNonce, setRefreshNonce] = useState(0)
 
+  // Primary path: true DB-native generation (persists v63 outputs when the write gate is enabled).
   const [genDb, setGenDb] = useState(false)
   const [dbError, setDbError] = useState<string | null>(null)
   const [dbDisabled, setDbDisabled] = useState(false)
+  // True only when the primary run completed AND persisted — drives honest "saved" success copy.
+  const [genCompleted, setGenCompleted] = useState(false)
+
+  // Legacy package-backed DB-config (live-config snapshot) path — kept behind the advanced disclosure.
+  const [genDbCfg, setGenDbCfg] = useState(false)
+  const [dbCfgError, setDbCfgError] = useState<string | null>(null)
+  const [dbCfgDisabled, setDbCfgDisabled] = useState(false)
   const [genKind, setGenKind] = useState<ForecastGeneratorKind>('comprehensive')
 
   // P-C/P-D: forecast window. Values are DERIVED at render from the schedule-derived resolver
@@ -230,6 +238,7 @@ export function ForecastRunCenterPage() {
     setCutoffOverride(null)
     setDateError(null)
     setLastRequestId(null)
+    setGenCompleted(false)
   }
 
   const { data: detailResp } = useQuery({
@@ -277,7 +286,12 @@ export function ForecastRunCenterPage() {
     }
   }
 
-  async function onGenerateDbConfig() {
+  // Primary operator path: true DB-native generation (persists v63 outputs when the write gate is on).
+  // Restricted to the comprehensive kind. A request fails closed with HTTP 200 + request_status=
+  // "failed"/"rejected" and a curated failure_code (e.g. run_output_db_write_disabled,
+  // db_native_insufficient_basis); that is NOT a success. Success is request_status="completed" AND
+  // db_persisted=true.
+  async function onGenerateDbNative() {
     if (!projectKey) return
     const orderErr = dateOrderError(forecastStartDate, forecastCutoffDate)
     if (orderErr) {
@@ -289,33 +303,29 @@ export function ForecastRunCenterPage() {
     setDbError(null)
     setDbDisabled(false)
     setLastRequestId(null)
+    setGenCompleted(false)
     try {
-      const resp = await api.startForecastDbConfigRun({
+      const resp = await api.startForecastDbNativeRun({
         project_key: projectKey,
-        generator_kind: genKind,
         forecast_start_date: forecastStartDate || null,
         forecast_cutoff_date: forecastCutoffDate || null,
         forecast_cutoff_date_basis: forecastCutoffDate ? cutoffBasis : null,
       })
-      // A db-config request fails closed with HTTP 200 + request_status="failed"/"rejected"
-      // (e.g. db_native_generation_not_implemented). Treat that as a failed generation request,
-      // not a successful submission: surface curated, path-free copy and suppress the success
-      // banner. Either way, refetch so history + the request log reflect the outcome immediately.
-      const requestStatus = (resp as { request_status?: string })?.request_status
-      const failureCode = (resp as { failure_code?: string | null })?.failure_code ?? null
-      const failureMessage = (resp as { failure_message?: string | null })?.failure_message ?? null
-      const requestId = (resp as { request_id?: string })?.request_id ?? null
-
-      if (requestStatus === 'failed' || requestStatus === 'rejected') {
+      if (resp.request_status === 'failed' || resp.request_status === 'rejected') {
+        // Curated copy only — never the raw failure_code. No success banner.
         setDbError(
-          failureMessage ||
-            failureCodeCopy(failureCode) ||
-            'Config-backed generation did not complete.',
+          resp.failure_message ||
+            failureCodeCopy(resp.failure_code) ||
+            'The forecast request did not complete.',
         )
-        setDbDisabled(false)
         setLastRequestId(null)
+      } else if (resp.request_status === 'completed' && resp.db_persisted) {
+        setLastRequestId(resp.request_id ?? null)
+        setGenCompleted(true)
       } else {
-        setLastRequestId(requestId)
+        // Defensive: a non-failed status that did not persist is not a success we can claim.
+        setDbError(failureCodeCopy(resp.failure_code) || 'The forecast request did not complete.')
+        setLastRequestId(null)
       }
       setRefreshNonce((n) => n + 1)
       await refetchDb()
@@ -325,11 +335,64 @@ export function ForecastRunCenterPage() {
       setDbDisabled(status === 503)
       setDbError(
         status === 503
+          ? 'DB-native generation is not enabled in this environment.'
+          : 'The forecast could not be started.',
+      )
+    } finally {
+      setGenDb(false)
+    }
+  }
+
+  // Legacy package-backed DB-config (live-config snapshot) path — advanced disclosure only.
+  async function onGenerateDbConfig() {
+    if (!projectKey) return
+    const orderErr = dateOrderError(forecastStartDate, forecastCutoffDate)
+    if (orderErr) {
+      setDateError(orderErr)
+      return
+    }
+    setDateError(null)
+    setGenDbCfg(true)
+    setDbCfgError(null)
+    setDbCfgDisabled(false)
+    setLastRequestId(null)
+    setGenCompleted(false)
+    try {
+      const resp = await api.startForecastDbConfigRun({
+        project_key: projectKey,
+        generator_kind: genKind,
+        forecast_start_date: forecastStartDate || null,
+        forecast_cutoff_date: forecastCutoffDate || null,
+        forecast_cutoff_date_basis: forecastCutoffDate ? cutoffBasis : null,
+      })
+      const requestStatus = (resp as { request_status?: string })?.request_status
+      const failureCode = (resp as { failure_code?: string | null })?.failure_code ?? null
+      const failureMessage = (resp as { failure_message?: string | null })?.failure_message ?? null
+      const requestId = (resp as { request_id?: string })?.request_id ?? null
+
+      if (requestStatus === 'failed' || requestStatus === 'rejected') {
+        setDbCfgError(
+          failureMessage ||
+            failureCodeCopy(failureCode) ||
+            'Config-backed generation did not complete.',
+        )
+        setLastRequestId(null)
+      } else {
+        setLastRequestId(requestId)
+      }
+      setRefreshNonce((n) => n + 1)
+      await refetchDb()
+      await refetchRequests()
+    } catch (e: unknown) {
+      const status = (e as { status?: number })?.status
+      setDbCfgDisabled(status === 503)
+      setDbCfgError(
+        status === 503
           ? 'Config-backed generation is not enabled in this environment.'
           : 'Config-backed generation could not be started.',
       )
     } finally {
-      setGenDb(false)
+      setGenDbCfg(false)
     }
   }
 
@@ -474,7 +537,9 @@ export function ForecastRunCenterPage() {
         )}
         {lastRequestId && (
           <p className="text-sm text-emerald-300 mt-2" role="status">
-            Generation request submitted (tracking id {lastRequestId}).
+            {genCompleted
+              ? `Forecast generated and saved (tracking id ${lastRequestId}).`
+              : `Generation request submitted (tracking id ${lastRequestId}).`}
           </p>
         )}
       </section>
@@ -485,18 +550,24 @@ export function ForecastRunCenterPage() {
         dateError={dateError}
         generatorKinds={GENERATOR_KINDS}
         primary={{
+          onGenerate: onGenerateDbNative,
+          generating: genDb,
+          error: dbError,
+          errorActionTo: dbDisabled ? '/forecasting/runtime' : null,
+        }}
+        legacyDbConfig={{
           genKind,
           onKindChange: setGenKind,
           onGenerate: onGenerateDbConfig,
-          generating: genDb,
+          generating: genDbCfg,
           notReady: dbNotReady,
           blockerReasons: dbBlockerReasons,
           blockerActions: dbBlockerActions,
           warnings: dbWarningLines,
-          error: dbError,
-          errorActionTo: dbDisabled ? '/forecasting/runtime' : null,
+          error: dbCfgError,
+          errorActionTo: dbCfgDisabled ? '/forecasting/runtime' : null,
         }}
-        legacy={{
+        legacyFile={{
           onGenerate,
           generating,
           error: genError,
