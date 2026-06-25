@@ -31,6 +31,8 @@ export const BLOCKER_COPY: Record<string, string> = {
 // render a raw failure_code or backend message verbatim. Unknown codes fall back via
 // failureCodeCopy() so a new backend code never leaks as a raw token to the operator.
 export const FAILURE_CODE_COPY: Record<string, string> = {
+  db_native_generation_not_implemented:
+    "DB-native forecast generation isn't available yet for this path — the project's readiness result is still valid, and no live data or export package was produced.",
   source_package_missing: "Forecast source data isn't available yet.",
   db_persistence_failed: 'The forecast could not be saved.',
   forecast_output_write_failed: 'The forecast could not be saved.',

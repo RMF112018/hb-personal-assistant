@@ -729,6 +729,111 @@ describe('ForecastRunCenterPage', () => {
     expect(text).not.toMatch(/\/Users\//)
   })
 
+  it('renders safe copy for db_native_generation_not_implemented and keeps readiness maturity-driven', () => {
+    useQueryMock.mockImplementation((opts: { queryKey: unknown[] }) => {
+      const kind = opts.queryKey[1]
+      const sub = opts.queryKey[2]
+      if (kind === 'generation' && sub === 'requests') {
+        return {
+          data: {
+            surface: 'analytics.forecast_generation_requests',
+            requests: [
+              {
+                request_id: 'req-dbn',
+                run_id: null,
+                project_key: 'summit',
+                generation_mode: 'db_config',
+                generator_kind: 'comprehensive',
+                request_status: 'failed',
+                validation_status: 'valid',
+                forecast_start_date: null,
+                forecast_cutoff_date: null,
+                forecast_cutoff_date_basis: null,
+                readiness_status_at_request: 'degraded',
+                readiness_reasons: ['missing_config_snapshot'],
+                failure_code: 'db_native_generation_not_implemented',
+                failure_message: null, // force the coded-copy fallback; raw code must never render
+                created_utc: '2026-06-25T10:00:00+00:00',
+                updated_utc: '2026-06-25T10:00:00+00:00',
+              },
+            ],
+            guardrails: { read_only: true },
+          },
+          isLoading: false,
+          error: null,
+          refetch: vi.fn(),
+        }
+      }
+      if (kind === 'generation' && sub === 'readiness') {
+        return {
+          data: { ready: true, generation_enabled: true, disabled_reasons: [], warnings: [], actions: [], guardrails: {} },
+          isLoading: false,
+          error: null,
+          refetch: vi.fn(),
+        }
+      }
+      if (kind === 'generation' && sub === 'projects') {
+        return {
+          data: {
+            // A sparse, degraded (but calculable) project — readiness stays maturity-driven.
+            projects: [
+              {
+                project_key: 'summit',
+                display_name: 'Summit Center',
+                readiness_status: 'degraded',
+                readiness_reasons: ['missing_config_snapshot'],
+                forecast_maturity: 'baseline_only',
+                confidence_level: 'low',
+              },
+            ],
+          },
+          isLoading: false,
+          error: null,
+          refetch: vi.fn(),
+        }
+      }
+      if (kind === 'generation' && sub === 'date-defaults') {
+        return {
+          data: {
+            project_key: 'summit',
+            forecast_start_date: null,
+            forecast_cutoff_date: null,
+            forecast_cutoff_date_basis: null,
+            schedule_version_key: null,
+            schedule_data_date: null,
+            warnings: [],
+          },
+          isLoading: false,
+          error: null,
+          refetch: vi.fn(),
+        }
+      }
+      return { data: { runs: [] }, isLoading: false, error: null, refetch: vi.fn() }
+    })
+    const { container } = renderPage()
+    fireEvent.change(screen.getByLabelText('Forecast project'), { target: { value: 'summit' } })
+
+    const requestsSection = screen.getByText('Recent generation requests').closest('section')!
+    const requests = within(requestsSection)
+    // Honest runtime-capability failure: "Failed", never "Unreadable".
+    expect(requests.getByText('Failed')).toBeInTheDocument()
+    expect(requests.queryByText('Unreadable')).not.toBeInTheDocument()
+    // Safe, path-free copy mapped from the code (conveys readiness is still valid).
+    expect(requests.getByText(/DB-native (forecast )?generation isn't available yet/i)).toBeInTheDocument()
+
+    // Readiness stays driven by project maturity, NOT the runtime failure code: a degraded (calculable)
+    // project is still selectable and generatable.
+    expect(
+      screen.getByRole('button', { name: 'Generate DB-backed forecast' }),
+    ).not.toBeDisabled()
+
+    // No raw code, package name, or filesystem path leaks.
+    const text = container.textContent || ''
+    expect(text).not.toMatch(/db_native_generation_not_implemented/)
+    expect(text).not.toMatch(/cost_forecast_json_package/)
+    expect(text).not.toMatch(/\/Users\//)
+  })
+
   it('reveals the legacy file-config generation only behind the advanced disclosure', () => {
     mockData()
     renderPage()
