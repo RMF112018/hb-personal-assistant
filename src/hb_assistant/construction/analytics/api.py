@@ -2182,6 +2182,51 @@ def create_app(*, db_path: str | None = None) -> Any:
             readiness_reasons=readiness_reasons,
         )
 
+        # Phase B: the explicit true-DB-native mode. This seam is fail-closed and package-free — it
+        # never calls _run_generation / generate_and_persist / the db-config service / any CFR
+        # package workflow. It returns a curated, path-free db_native_generation_not_implemented
+        # result. The DB-native generation engine is supplied by later phases. See ADR 314 / 313.
+        if mode == "db_native":
+            from hb_assistant.construction.analytics.forecast_db_native_generation_service import (
+                DbNativeGenerationRequest,
+                generate_db_native,
+            )
+            from hb_assistant.construction.analytics.forecast_generation_modes import GenerationMode
+
+            result = generate_db_native(
+                DbNativeGenerationRequest(
+                    project_key=parsed["project_key"],
+                    generator_kind=parsed["generator_kind"],
+                    forecast_start_date=parsed["forecast_start_date"],
+                    forecast_cutoff_date=parsed["forecast_cutoff_date"],
+                    forecast_cutoff_date_basis=parsed["forecast_cutoff_date_basis"],
+                    source_snapshot_id=(body or {}).get("source_snapshot_id"),
+                )
+            )
+            if result.db_persisted:
+                repo.update_status(request_id, "completed")
+            else:
+                repo.record_failure(request_id, result.failure_code or "db_native_generation_failed", result.failure_message)
+            return {
+                "request_id": request_id,
+                "project_key": parsed["project_key"],
+                "generation_mode": GenerationMode.DB_NATIVE.value,
+                "generator_kind": parsed["generator_kind"],
+                "request_status": result.request_status,
+                "validation_status": "valid",
+                "forecast_start_date": parsed["forecast_start_date"],
+                "forecast_cutoff_date": parsed["forecast_cutoff_date"],
+                "forecast_cutoff_date_basis": parsed["forecast_cutoff_date_basis"],
+                "source_snapshot_id": result.source_snapshot_id,
+                "db_persisted": result.db_persisted,
+                "package_generated": False,
+                "persisted_output_ids": list(result.persisted_output_ids),
+                "failure_code": result.failure_code,
+                "failure_message": result.failure_message,
+                "readiness_status_at_request": readiness_status,
+                "readiness_reasons": readiness_reasons,
+            }
+
         # P-E: gated authorized live-DB run-output write (default OFF). When enabled, Generate
         # Forecast persists forecast_outputs + child rows to the app DB (backup+certify) instead of
         # producing a package; success requires DB persistence + certification.
@@ -2292,6 +2337,17 @@ def create_app(*, db_path: str | None = None) -> Any:
     ) -> dict[str, Any]:
         require_operator_role(role)  # executes + writes isolated work-root; reads live config DB ro
         return _persist_and_run(mode="db_config", body=payload, role=role)
+
+    @app.post("/api/forecast/runs/db-native")
+    def forecast_db_native_run_create(
+        payload: dict[str, Any] | None = optional_json_body,
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        # Phase B: explicit true-DB-native route. Fail-closed + package-free seam (no source/context/
+        # analysis package, no CFR generation); records a db_native request and returns a curated,
+        # path-free db_native_generation_not_implemented result. Engine deferred to later phases.
+        require_operator_role(role)
+        return _persist_and_run(mode="db_native", body=payload, role=role)
 
     @app.get("/api/forecast/generation/requests")
     def forecast_generation_requests(

@@ -33,7 +33,7 @@ def _valid_iso_date(value: str) -> bool:
 def validate_request(body: dict[str, Any] | None, *, mode: str) -> tuple[dict[str, Any], list[str]]:
     """Return (parsed, errors). errors is a list of coded strings (empty == valid).
 
-    parsed always carries: project_key, generator_kind (db_config only, else None),
+    parsed always carries: project_key, generator_kind (db_config/db_native only, else None),
     forecast_start_date, forecast_cutoff_date, forecast_cutoff_date_basis.
     """
     body = body or {}
@@ -43,8 +43,9 @@ def validate_request(body: dict[str, Any] | None, *, mode: str) -> tuple[dict[st
     if not project_key:
         errors.append("missing_project_key")
 
+    # generator_kind applies to the config/DB-native generators, not the legacy file_config run.
     generator_kind: str | None = None
-    if mode == "db_config":
+    if mode in ("db_config", "db_native"):
         generator_kind = body.get("generator_kind", "comprehensive")
         if generator_kind not in _GENERATOR_KINDS:
             errors.append("invalid_generator_kind")
