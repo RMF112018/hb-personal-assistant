@@ -58,6 +58,8 @@ pytest_targets=(
   "tests/test_forecast_db_cutover_readiness_phase10.py"
   "tests/test_forecast_db_native_context_builder.py"
   "tests/test_forecast_db_native_contract.py"
+  "tests/test_forecast_db_native_engine_adapter.py"
+  "tests/test_forecast_db_native_generation_engine.py"
   "tests/test_forecast_db_native_inputs_p3.py"
   "tests/test_forecast_db_native_source_snapshot.py"
   "tests/test_forecast_db_read_adapter_phase4.py"

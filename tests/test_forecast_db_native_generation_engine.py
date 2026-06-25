@@ -1,0 +1,279 @@
+"""Phase E — package-free DB-native forecast generation engine (CFR).
+
+Proves the engine turns a Phase D ``DbNativeForecastContext`` into a typed forecast result by reusing
+the canonical ``forecast_cost_basis`` rules — financial-spine-only ``comprehensive`` output, honest
+*unsupported* results for the other three kinds, coded degraded rows (never fabricated values),
+money-safe lines, and a redaction-safe, hb_assistant-free module. The realistic DB-native spine
+carries no ``erp_direct_costs`` breakdown, so the projected-cost formula cannot reconcile and
+committed-cost codes route to ``manual_review_required`` (the no-fabrication safety property of the
+asymmetric BudgetDetails basis is preserved). Dormancy/operator suppression and the asymmetric raise
+itself require input families that are not yet DB-native (see ADR 317).
+"""
+
+from __future__ import annotations
+
+import ast
+import sys
+from pathlib import Path
+
+# CFR src on path for direct invocation (the forecasting bundle sets PYTHONPATH itself).
+_CFR_SRC = Path(__file__).resolve().parents[1] / "subrepos/construction-financial-review/src"
+if str(_CFR_SRC) not in sys.path:
+    sys.path.insert(0, str(_CFR_SRC))
+
+from construction_financial_review.context.db_native_context_builder import (  # noqa: E402
+    DbNativeContextInput,
+    build_db_native_context,
+)
+from construction_financial_review.generation.db_native_generation_engine import (  # noqa: E402
+    DbNativeForecastResult,
+    DbNativeGenerationEngineInput,
+    generate_db_native_forecast,
+)
+
+from hb_assistant.construction.analytics.forecast_dto import find_redaction_leaks  # noqa: E402
+
+_MODULE = (
+    _CFR_SRC
+    / "construction_financial_review/generation/db_native_generation_engine.py"
+)
+
+_READINESS = {
+    "forecast_maturity": "M4",
+    "confidence_level": "medium",
+    "readiness_status": "ready",
+    "sparse": False,
+    "initial_forecast": False,
+    "prior_forecast_available": True,
+}
+
+# A realistic mixed budget: existing-model, committed (formula can't reconcile -> manual review),
+# actuals-floor, zero-committed suppression, and a no-basis degraded code.
+_BUDGET = [
+    {"budget_code_key": "10-EXIST", "cost_code": "10", "category": "labor",
+     "projected_costs": "1200.00", "revised_budget": "1000.00"},
+    {"budget_code_key": "20-COMMIT", "projected_costs": "1000.00",
+     "committed_costs": "800.00", "revised_budget": "1000.00"},
+    {"budget_code_key": "30-FLOOR", "projected_costs": "100.00", "revised_budget": "100.00"},
+    {"budget_code_key": "40-SUPPRESS", "committed_costs": "0.00", "revised_budget": "0.00"},
+    {"budget_code_key": "50-DEGRADED"},
+]
+_COST = [
+    {"budget_code_key": "10-EXIST", "amount": "350.00"},
+    {"budget_code_key": "20-COMMIT", "amount": "200.00"},
+    {"budget_code_key": "30-FLOOR", "amount": "500.00"},
+]
+
+
+def _ctx(budget=None, cost=None, monthly=None, readiness=None):
+    src = DbNativeContextInput(
+        project_key="proj-x",
+        display_name="Project X",
+        project_number="PX-1",
+        procore_project_id="999",
+        forecast_window={"forecast_start_date": "2026-06-01", "forecast_cutoff_date": "2026-12-31"},
+        readiness=dict(readiness or _READINESS),
+        budget_details=list(budget if budget is not None else _BUDGET),
+        cost_entries=list(cost if cost is not None else _COST),
+        monthly_actuals=list(monthly or []),
+    )
+    return build_db_native_context(src)
+
+
+def _run(ctx, kind="comprehensive", window=None) -> DbNativeForecastResult:
+    return generate_db_native_forecast(
+        DbNativeGenerationEngineInput("proj-x", kind, dict(window or {}), ctx)
+    )
+
+
+def _lines_by_key(result: DbNativeForecastResult) -> dict:
+    return {ln["budget_code_key"]: ln for ln in result.public()["forecast_lines"]}
+
+
+# -- 1. comprehensive produces a result from a minimal valid fixture ----------
+
+
+def test_comprehensive_produces_result() -> None:
+    pub = _run(_ctx(), window={"forecast_start_date": "2026-06-01"}).public()
+    assert pub["generator_kind"] == "comprehensive"
+    assert pub["result_code"] == "db_native_forecast_generated"
+    assert pub["generation_scope"] == "financial_spine_db_native"
+    assert pub["status"] == "generated_degraded"  # one no-basis code present
+    # The result window is the requested generation window (echoed from the engine input).
+    assert pub["forecast_window"]["forecast_start_date"] == "2026-06-01"
+    assert pub["maturity"]["tier"] == "M4"
+    assert pub["confidence"]["level"] == "medium"
+    assert pub["summary"]["valued_budget_code_count"] == 4
+    assert pub["summary"]["degraded_budget_code_count"] == 1
+
+
+# -- comprehensive reuses the cost_basis classify/apply path ------------------
+
+
+def test_comprehensive_uses_cost_basis_classifications() -> None:
+    by_key = _lines_by_key(_run(_ctx()))
+    # existing_model_basis when no committed cost is present.
+    assert by_key["10-EXIST"]["cost_basis_classification"] == "existing_model_basis"
+    assert by_key["10-EXIST"]["method_code"] == "existing_model_basis"
+    # committed cost + non-reconciling formula (no erp_direct_costs on the spine) -> manual review.
+    assert by_key["20-COMMIT"]["cost_basis_classification"] == "manual_review_required"
+    # zero committed + no remaining evidence -> suppression to actuals.
+    assert by_key["40-SUPPRESS"]["cost_basis_classification"] == "suppressed_no_remaining_commitment"
+
+
+def test_final_cost_floored_to_actuals() -> None:
+    by_key = _lines_by_key(_run(_ctx()))
+    # projected 100 < actual 500 -> final is floored up to the actual cost to date.
+    assert by_key["30-FLOOR"]["actual_cost_to_date"] == "500.00"
+    assert by_key["30-FLOOR"]["forecast_final_cost"] == "500.00"
+    assert by_key["30-FLOOR"]["forecast_cost_to_complete"] == "0.00"
+
+
+def test_manual_review_does_not_fabricate_projected_basis() -> None:
+    # The formula-guard (a present-but-non-reconciling formula never yields a projected basis) is
+    # preserved: a committed-cost code surfaces the projected number but flags it for review.
+    line = _lines_by_key(_run(_ctx()))["20-COMMIT"]
+    assert line["forecast_final_cost"] == "1000.00"  # inbound projected, not a synthesised raise
+    assert "projected_cost_formula_mismatch" in line["reason_codes"]
+    risks = {(r["budget_code_key"], r["risk_type"]) for r in _run(_ctx()).public()["risks"]}
+    assert ("20-COMMIT", "cost_basis_manual_review_required") in risks
+
+
+def test_cost_to_complete_never_negative_and_final_ge_actual() -> None:
+    from decimal import Decimal
+
+    for line in _run(_ctx()).public()["forecast_lines"]:
+        if line["row_status"] != "ok":
+            continue
+        final = Decimal(line["forecast_final_cost"])
+        actual = Decimal(line["actual_cost_to_date"])
+        ctc = Decimal(line["forecast_cost_to_complete"])
+        assert final >= actual
+        assert ctc >= 0
+        assert ctc == max(final - actual, Decimal("0"))
+
+
+def test_overrun_risk_flagged() -> None:
+    risks = {(r["budget_code_key"], r["risk_type"]) for r in _run(_ctx()).public()["risks"]}
+    assert ("10-EXIST", "forecast_exceeds_revised_budget") in risks  # 1200 > 1000
+    assert ("30-FLOOR", "forecast_exceeds_revised_budget") in risks  # 500 > 100
+
+
+# -- missing required row inputs -> coded degraded row, NOT fabricated values --
+
+
+def test_no_basis_code_produces_degraded_row() -> None:
+    line = _lines_by_key(_run(_ctx()))["50-DEGRADED"]
+    assert line["row_status"] == "degraded_no_basis"
+    assert line["cost_basis_classification"] == "insufficient_row_basis"
+    assert line["forecast_final_cost"] is None
+    assert line["forecast_cost_to_complete"] is None
+    assert line["confidence"] == "none"
+
+
+def test_all_degraded_is_insufficient_basis() -> None:
+    # A project whose only budget code has no basis and no actuals -> insufficient_basis.
+    pub = _run(_ctx(budget=[{"budget_code_key": "99-EMPTY"}], cost=[])).public()
+    assert pub["status"] == "insufficient_basis"
+    assert pub["result_code"] == "db_native_insufficient_financial_basis"
+    assert "db_native_insufficient_financial_basis" in pub["blockers"]
+
+
+def test_sparse_readiness_degrades_status() -> None:
+    sparse = dict(_READINESS, sparse=True, forecast_maturity="M1")
+    pub = _run(
+        _ctx(
+            budget=[{"budget_code_key": "10-EXIST", "projected_costs": "100.00"}],
+            cost=[{"budget_code_key": "10-EXIST", "amount": "10.00"}],
+            readiness=sparse,
+        )
+    ).public()
+    assert pub["status"] == "generated_degraded"
+    assert pub["maturity"]["sparse"] is True
+
+
+# -- 2. each non-comprehensive kind returns a specific unsupported code --------
+
+
+def test_unsupported_kinds_return_curated_codes() -> None:
+    expected = {
+        "monthly": "db_native_monthly_requires_phasing_signals",
+        "probability": "db_native_probability_requires_monte_carlo_inputs",
+        "model_controls": "db_native_model_controls_requires_operator_config",
+    }
+    ctx = _ctx()
+    for kind, code in expected.items():
+        pub = _run(ctx, kind=kind).public()
+        assert pub["status"] == "unsupported"
+        assert pub["result_code"] == code
+        assert pub["blockers"] == [code]
+        assert pub["generator_kind"] == kind
+        # no fabricated forecast values on an unsupported path.
+        assert pub["forecast_lines"] == []
+        assert pub["summary"] == {}
+        assert pub["assumptions"] == []
+        assert pub["risks"] == []
+        assert pub["message"]  # curated, path-free copy
+
+
+def test_unknown_kind_is_unsupported() -> None:
+    pub = _run(_ctx(), kind="totally_made_up").public()
+    assert pub["status"] == "unsupported"
+    assert pub["result_code"] == "db_native_unknown_generator_kind"
+    assert pub["forecast_lines"] == []
+
+
+# -- comprehensive discloses what it does NOT produce on the DB-native path ----
+
+
+def test_comprehensive_discloses_unsupported_outputs_and_spine_only_warning() -> None:
+    pub = _run(_ctx()).public()
+    assert pub["unsupported_outputs"] == {
+        "monthly": "db_native_monthly_requires_phasing_signals",
+        "probability": "db_native_probability_requires_monte_carlo_inputs",
+        "model_controls": "db_native_model_controls_requires_operator_config",
+    }
+    assert "owner_procore_crosswalk_evidence_unavailable_financial_spine_only" in pub["warnings"]
+
+
+# -- determinism --------------------------------------------------------------
+
+
+def test_deterministic_output() -> None:
+    assert _run(_ctx()).public() == _run(_ctx()).public()
+
+
+# -- redaction-safe -----------------------------------------------------------
+
+
+def test_result_is_redaction_safe() -> None:
+    for kind in ("comprehensive", "monthly", "probability", "totally_made_up"):
+        assert find_redaction_leaks(_run(_ctx(), kind=kind).public()) == [], kind
+
+
+# -- module is package-free and imports no hb_assistant -----------------------
+
+
+def test_module_imports_no_hb_assistant_or_package_code() -> None:
+    names: set[str] = set()
+    for node in ast.walk(ast.parse(_MODULE.read_text())):
+        if isinstance(node, ast.Name):
+            names.add(node.id)
+        elif isinstance(node, ast.Attribute):
+            names.add(node.attr)
+        elif isinstance(node, ast.ImportFrom):
+            names.add(node.module or "")
+            names.update(a.name for a in node.names)
+        elif isinstance(node, ast.Import):
+            names.update(a.name for a in node.names)
+    forbidden = (
+        "hb_assistant",
+        "generate_forecast_context_package",
+        "generate_forecast_analysis_package",
+        "run_lineage",
+        "package_resolution",
+        "resolve_upstream",
+        "SRC_FILES",
+    )
+    leaked = sorted(n for n in forbidden if any(n in name for name in names))
+    assert leaked == [], f"forbidden references in engine module: {leaked}"
