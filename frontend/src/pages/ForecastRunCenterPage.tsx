@@ -19,6 +19,8 @@ import {
 } from '../components/forecast/ForecastContextHeader'
 import { ForecastErrorCallout } from '../components/forecast/ForecastErrorCallout'
 import { ForecastGeneratePanel } from '../components/forecast/ForecastGeneratePanel'
+import { ForecastHealthSummary } from '../components/forecast/ForecastHealthSummary'
+import { ForecastResultsSummary } from '../components/forecast/ForecastResultsSummary'
 import { ForecastDecisionSupportPanel } from '../components/forecast/ForecastDecisionSupportPanel'
 import { ForecastNarrativesPanel } from '../components/forecast/ForecastNarrativesPanel'
 import { ForecastOperatorAssumptionsPanel } from '../components/forecast/ForecastOperatorAssumptionsPanel'
@@ -627,6 +629,13 @@ export function ForecastRunCenterPage() {
 
       {projectKey ? (
         <>
+          <ForecastHealthSummary
+            key={`fh-${projectKey}-${refreshNonce}`}
+            project={projectKey}
+            readinessStatus={selectedProjectObj?.readiness_status ?? null}
+            runFailed={runFailed}
+          />
+          <ForecastResultsSummary key={`rs-${projectKey}-${refreshNonce}`} project={projectKey} />
           <ForecastDecisionSupportPanel key={`ds-${projectKey}-${refreshNonce}`} project={projectKey} />
           <ForecastNarrativesPanel key={`nr-${projectKey}-${refreshNonce}`} project={projectKey} />
           <ForecastOperatorAssumptionsPanel key={`oa-${projectKey}-${refreshNonce}`} project={projectKey} />
