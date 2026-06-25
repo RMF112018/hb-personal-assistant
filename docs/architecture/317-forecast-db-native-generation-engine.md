@@ -85,6 +85,12 @@ not yet DB-native (ERP direct-cost breakdown; dormancy classification; operator 
 not reachable on the Phase E spine. The preserved safety property is the formula-guard: a
 present-but-non-reconciling formula never yields a synthesised projected basis.
 
+> **Update (Phase E2 — ADR 318):** the `erp_direct_costs` / `pending_cost_changes` blocker is resolved.
+> The engine now consumes a per-code `cost_basis_inputs` block (sourced from `procore_ep_budget_detail_rows`
+> + `procore_ep_budget_detail_row_cells`); when present and reconciling with `projected_costs > EAC`,
+> committed-cost codes reach `budgetdetails_projected_cost_basis`. The spine-fallback behaviour in the
+> table above still applies when `cost_basis_inputs` is unavailable.
+
 ## Consequences
 
 - A typed, package-free forecast result exists for Phase F to persist directly to the DB.

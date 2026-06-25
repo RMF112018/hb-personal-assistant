@@ -16,10 +16,15 @@ Unsupported kinds (honest terminal state — never fabricate values):
   * ``probability``    -> ``db_native_probability_requires_monte_carlo_inputs``
   * ``model_controls`` -> ``db_native_model_controls_requires_operator_config``
 
-The DB-native financial spine does not carry ``erp_direct_costs`` / ``pending_cost_changes``, so the
-projected-cost *formula* cannot reconcile; the cost-basis rules then honestly route committed-cost
-codes to ``manual_review_required`` rather than synthesise a reconciled projected basis. This is the
-intended conservative behaviour. See ADR 317.
+Cost-basis inputs (Phase E2): when the per-code ``cost_basis_inputs`` block is available (DB-native
+BudgetDetails formula fields ``committed_costs``/``erp_direct_costs``/``pending_cost_changes``/
+``projected_costs`` selected upstream from the structured Procore table), the engine feeds them to the
+canonical rules with Procore EAC as the pre-basis model baseline — so a reconciling formula whose
+``projected_costs`` exceeds EAC reaches ``budgetdetails_projected_cost_basis`` (the asymmetric raise),
+and a non-reconciling formula routes to ``manual_review_required``. When that block is unavailable, the
+engine falls back to the v59 spine amounts, which carry no ``erp_direct_costs``/``pending_cost_changes``
+— so the formula cannot reconcile and committed-cost codes route to ``manual_review_required`` (the
+Phase E behaviour). See ADR 317 (engine) and ADR 318 (BudgetDetails cost-basis inputs).
 """
 
 from __future__ import annotations
@@ -284,30 +289,76 @@ def _comprehensive_line(
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Compute one budget-code forecast line by reusing the canonical cost-basis decision."""
     key = str(row.get("budget_code_key") or "")
-    projected = dec(amounts.get("projected_costs"))
-    eac = dec(amounts.get("estimated_cost_at_completion"))
     revised = dec(amounts.get("revised_budget"))
+    cbi = row.get("cost_basis_inputs") or {}
 
-    # Existing-model proxy from the spine, floored to actuals (final must never fall below actual).
-    baseline = projected or eac or revised or actual
+    if cbi.get("available"):
+        # Phase E2: real DB-native BudgetDetails formula inputs drive the canonical decision. The
+        # model baseline is Procore EAC (the pre-basis model estimate) so the asymmetric raise can
+        # fire when projected_costs (committed + erp_direct + pending_cost_changes) exceeds it.
+        eac = dec(cbi.get("estimated_cost_at_completion"))
+        baseline = _first_present(
+            eac,
+            dec(cbi.get("projected_costs")),
+            dec(amounts.get("estimated_cost_at_completion")),
+            revised,
+        )
+        evidence = {
+            "budget_code_key": key,
+            "cost_code": row.get("cost_code"),
+            "category": row.get("category"),
+            "committed_costs": cbi.get("committed_costs"),
+            "erp_direct_costs": cbi.get("erp_direct_costs"),
+            "pending_cost_changes": cbi.get("pending_cost_changes"),
+            "projected_costs": cbi.get("projected_costs"),
+            "commitment_invoiced": cbi.get("commitment_invoiced"),
+            "estimated_cost_at_completion": cbi.get("estimated_cost_at_completion"),
+            "has_recent_actual_activity": has_actuals,
+        }
+        budget_basis = {
+            "committed_costs": cbi.get("committed_costs"),
+            "erp_direct_costs": cbi.get("erp_direct_costs"),
+            "pending_cost_changes": cbi.get("pending_cost_changes"),
+            "projected_costs": cbi.get("projected_costs"),
+            "estimated_cost_at_completion": cbi.get("estimated_cost_at_completion"),
+            "commitment_invoiced": cbi.get("commitment_invoiced"),
+            "formula_reconciles": cbi.get("formula_reconciles"),
+        }
+        cost_basis_source = "db_native_budgetdetails"
+    else:
+        # Phase E fallback: the v59 spine carries no erp_direct_costs / pending_cost_changes, so the
+        # projected-cost formula cannot reconcile and committed-cost codes route to manual_review.
+        baseline = (
+            dec(amounts.get("projected_costs"))
+            or dec(amounts.get("estimated_cost_at_completion"))
+            or revised
+            or actual
+        )
+        evidence = {
+            "budget_code_key": key,
+            "cost_code": row.get("cost_code"),
+            "category": row.get("category"),
+            "committed_costs": amounts.get("committed_costs"),
+            "projected_costs": amounts.get("projected_costs"),
+            "revised_budget": amounts.get("revised_budget"),
+            "estimated_cost_at_completion": amounts.get("estimated_cost_at_completion"),
+            "has_recent_actual_activity": has_actuals,
+        }
+        budget_basis = {
+            "projected_costs": amounts.get("projected_costs"),
+            "estimated_cost_at_completion": amounts.get("estimated_cost_at_completion"),
+            "revised_budget": amounts.get("revised_budget"),
+            "committed_costs": amounts.get("committed_costs"),
+        }
+        cost_basis_source = "spine_budget_amounts"
+
+    if baseline is None:
+        baseline = actual
     inbound_final = baseline if baseline > actual else actual
     inbound_ctc = inbound_final - actual
     if inbound_ctc < ZERO:
         inbound_ctc = ZERO
 
-    # Only the fields the DB-native spine actually carries are handed to the cost-basis rules.
-    # erp_direct_costs / pending_cost_changes are absent by design, so the projected-cost formula
-    # cannot reconcile and committed-cost codes route to manual_review_required (honest).
-    evidence = {
-        "budget_code_key": key,
-        "cost_code": row.get("cost_code"),
-        "category": row.get("category"),
-        "committed_costs": amounts.get("committed_costs"),
-        "projected_costs": amounts.get("projected_costs"),
-        "revised_budget": amounts.get("revised_budget"),
-        "estimated_cost_at_completion": amounts.get("estimated_cost_at_completion"),
-        "has_recent_actual_activity": has_actuals,
-    }
     new_final, new_ctc, decision = apply_cost_basis_decision(
         inbound_final, inbound_ctc, actual, evidence
     )
@@ -325,12 +376,8 @@ def _comprehensive_line(
         "cost_code": row.get("cost_code"),
         "category": row.get("category"),
         "actual_cost_to_date": money_str(actual),
-        "budget_basis": {
-            "projected_costs": amounts.get("projected_costs"),
-            "estimated_cost_at_completion": amounts.get("estimated_cost_at_completion"),
-            "revised_budget": amounts.get("revised_budget"),
-            "committed_costs": amounts.get("committed_costs"),
-        },
+        "budget_basis": budget_basis,
+        "cost_basis_source": cost_basis_source,
         "cost_basis_classification": status,
         "forecast_final_cost": money_str(new_final),
         "forecast_cost_to_complete": money_str(new_ctc),
@@ -455,6 +502,14 @@ def _unsupported(
         blockers=(code,),
         provenance=_provenance(inp.context),
     )
+
+
+def _first_present(*values: Decimal | None) -> Decimal | None:
+    """First non-None Decimal (so a real ``0.00`` is honoured, unlike ``a or b``)."""
+    for value in values:
+        if value is not None:
+            return value
+    return None
 
 
 def _dedup(items: list[str]) -> list[str]:

@@ -73,6 +73,33 @@ def _canon_opt(value: Any) -> str | None:
     return _canon(parsed) if parsed is not None else None
 
 
+# Per-code cost-basis fields carried verbatim from the snapshot's selected BudgetDetails view.
+_COST_BASIS_BLOCK_FIELDS = (
+    "committed_costs",
+    "erp_direct_costs",
+    "pending_cost_changes",
+    "projected_costs",
+    "actual_cost",
+    "commitment_invoiced",
+    "estimated_cost_at_completion",
+    "formula_reconciles",
+    "formula_variance",
+    "missing_formula_fields",
+    "selected_budget_view_id",
+    "selection_warnings",
+)
+
+
+def _cost_basis_block(row: dict[str, Any] | None) -> dict[str, Any]:
+    """Per-code DB-native BudgetDetails cost-basis block. Absent -> coded unavailable (never raises)."""
+    if not row:
+        return {"available": False, "reason": "budgetdetails_cost_basis_inputs_unavailable"}
+    block: dict[str, Any] = {"available": True, "source": "db_native_budgetdetails"}
+    for f in _COST_BASIS_BLOCK_FIELDS:
+        block[f] = row.get(f)
+    return block
+
+
 @dataclass(frozen=True)
 class DbNativeContextInput:
     """Plain, path-free input to the package-free builder, derived from ``snapshot.public()``.
@@ -94,6 +121,8 @@ class DbNativeContextInput:
     warnings: list[str] = field(default_factory=list)
     owner_line_items: list[dict[str, Any]] = field(default_factory=list)
     procore_line_items: list[dict[str, Any]] = field(default_factory=list)
+    # DB-native BudgetDetails cost-basis formula inputs (Phase E2), one selected view per budget code.
+    budgetdetails_cost_basis_inputs: list[dict[str, Any]] = field(default_factory=list)
 
 
 def context_input_from_snapshot_public(public: dict[str, Any]) -> DbNativeContextInput:
@@ -103,6 +132,8 @@ def context_input_from_snapshot_public(public: dict[str, Any]) -> DbNativeContex
     def _rows(name: str) -> list[dict[str, Any]]:
         fam = fin.get(name) or {}
         return list(fam.get("rows") or [])
+
+    cost_basis = public.get("budgetdetails_cost_basis_inputs") or {}
 
     return DbNativeContextInput(
         project_key=str(public.get("project_key") or ""),
@@ -116,6 +147,7 @@ def context_input_from_snapshot_public(public: dict[str, Any]) -> DbNativeContex
         monthly_actuals=_rows("monthly_actuals"),
         blockers=[str(b) for b in (public.get("blockers") or [])],
         warnings=[str(w) for w in (public.get("warnings") or [])],
+        budgetdetails_cost_basis_inputs=list(cost_basis.get("rows") or []),
     )
 
 
@@ -166,6 +198,12 @@ def build_db_native_context(source: DbNativeContextInput) -> DbNativeForecastCon
         raise DbNativeContextError(f"forecast_context_{reason}")
 
     warnings: list[str] = list(source.warnings)
+
+    # DB-native BudgetDetails cost-basis formula inputs, indexed by budget_code_key (Phase E2).
+    cost_basis_by_key: dict[str, dict[str, Any]] = {
+        str(r.get("budget_code_key") or ""): r for r in source.budgetdetails_cost_basis_inputs
+    }
+    cost_basis_unavailable = 0
 
     # Index actuals by budget_code_key (Decimal sums; missing amounts -> warning, not a crash).
     actuals_by_key: dict[str, Decimal] = {}
@@ -221,18 +259,25 @@ def build_db_native_context(source: DbNativeContextInput) -> DbNativeForecastCon
                     "actual_entry_count": entry_count_by_key.get(key, 0),
                     "monthly_actuals": monthly_by_key.get(key, []),
                 },
+                # Phase E2: DB-native BudgetDetails cost-basis formula inputs (one selected view).
+                "cost_basis_inputs": _cost_basis_block(cost_basis_by_key.get(key)),
                 # Phase E: not yet DB-native source rows.
                 "owner_pay_app": {"available": False},
                 "procore_subcontractor_pay_apps": {"available": False},
                 "commitments": {"available": False},
             }
         )
+        if key not in cost_basis_by_key:
+            cost_basis_unavailable += 1
 
     # Cost entries whose budget_code_key isn't in the canonical budget universe.
     code_set = set(budget_codes)
     unmatched = sorted(k for k in actuals_by_key if k and k not in code_set)
     if unmatched:
         warnings.append("cost_entries_unmatched_budget_code")
+
+    if cost_basis_unavailable:
+        warnings.append("budgetdetails_cost_basis_inputs_unavailable")
 
     # Optional families unavailable by design in Phase D.
     optional_availability: dict[str, Any] = {}
