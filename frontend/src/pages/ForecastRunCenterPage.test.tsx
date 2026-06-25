@@ -463,6 +463,21 @@ describe('ForecastRunCenterPage', () => {
     expect(screen.getByText('Operator assumptions')).toBeInTheDocument()
   })
 
+  it('renders the results summary and forecast health above the detail tables', () => {
+    mockData()
+    renderPage()
+    // Summaries are gated on selection, like the detail panels.
+    expect(screen.queryByText('Results summary')).not.toBeInTheDocument()
+    expect(screen.queryByText('Forecast health')).not.toBeInTheDocument()
+
+    fireEvent.change(screen.getByLabelText('Forecast project'), { target: { value: 'tropical' } })
+    expect(screen.getByText('Results summary')).toBeInTheDocument()
+    expect(screen.getByText('Forecast health')).toBeInTheDocument()
+    // Default mock has no persisted outputs → an explicit, readable verdict (not raw data).
+    expect(screen.getByText('Blocked / no output')).toBeInTheDocument()
+    expect(screen.getByText('No forecast output yet')).toBeInTheDocument()
+  })
+
   it('updates the header and enables generation only for a ready project', () => {
     mockData()
     renderPage()
