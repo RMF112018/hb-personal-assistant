@@ -170,6 +170,9 @@ class LauncherService:
                 )
             )
         else:
+            # Production: a small repo-owned static + reverse-proxy server. Unlike bare
+            # ``http.server`` it forwards the SPA's relative ``/api`` (and ``/health``) calls to the
+            # backend (same origin → no CORS), so the built UI works without Vite. See static_proxy.py.
             dist = frontend_dir / "dist"
             specs.append(
                 ManagedProcessSpec(
@@ -177,10 +180,15 @@ class LauncherService:
                     argv=[
                         sys.executable,
                         "-m",
-                        "http.server",
+                        "hb_assistant.launcher.static_proxy",
+                        "--port",
                         str(frontend_port),
                         "--directory",
                         str(dist),
+                        "--backend-host",
+                        "127.0.0.1",
+                        "--backend-port",
+                        str(backend_port),
                     ],
                     cwd=repo_root,
                     env=env,

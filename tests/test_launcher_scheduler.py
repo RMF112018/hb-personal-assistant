@@ -513,6 +513,22 @@ def test_dev_frontend_spec_uses_strict_port(monkeypatch: pytest.MonkeyPatch) -> 
     assert profile.frontend_url.endswith(":5173")  # opened URL matches the bound port
 
 
+def test_production_frontend_spec_uses_static_proxy() -> None:
+    from hb_assistant.launcher.service import LauncherService
+
+    # Production never takes the dev (vite) branch, so this holds regardless of npm presence.
+    profile = resolve_profile("production")
+    specs = {s.name: s for s in LauncherService(profile).build_specs()}
+    fe = specs["frontend"]
+    # The bug fix: production serves via the repo-owned static + reverse-proxy, NOT bare http.server.
+    assert "hb_assistant.launcher.static_proxy" in fe.argv
+    assert "http.server" not in fe.argv
+    # It is told the backend port so it can forward /api to the backend.
+    assert "--backend-port" in fe.argv and str(profile.backend_port) in fe.argv
+    assert "--directory" in fe.argv
+    assert fe.port == profile.frontend_port == 5173
+
+
 def test_spawn_redirects_child_output_to_logfile(monkeypatch: pytest.MonkeyPatch) -> None:
     import subprocess
 
