@@ -779,9 +779,32 @@ export interface ForecastDbSchedulePhasing {
   end_month: string | null;
   amount: string | null;
 }
+/* Consolidated, typed Forecast Summary KPI object for the active output. Read-model-only bridge
+ * (whitelist over the v63 header envelope; the envelope itself is never surfaced). Money fields are
+ * canonical strings preserving missing(null)-vs-zero("0.00"); *_status fields carry explicit
+ * provenance ("reconciled" / "reconciliation_mismatch" / "budget_unavailable" / "no_prior_forecast"
+ * / "computed"). Confidence/maturity come from the HB readiness ladder, not the v66 scorecard. */
+export interface ForecastDbForecastSummary {
+  estimated_at_completion: string | null;
+  total_cost_to_date: string | null;
+  cost_to_complete: string | null;
+  current_budget: string | null;
+  budget_basis_label: string | null;
+  budget_status: string | null;
+  variance_to_budget: string | null;
+  variance_to_budget_status: string | null;
+  variance_to_prior_forecast: string | null;
+  variance_to_prior_forecast_status: string | null;
+  forecast_confidence_label: string | null;
+  forecast_confidence_basis: string | null;
+  forecast_maturity_label: string | null;
+  forecast_maturity_basis: string | null;
+  basis_limitations: string[];
+}
 export interface ForecastDbOutputDetail extends ForecastDbOutputSummary {
   forecast_at_completion: string | null;
   variance_to_prior_forecast: string | null;
+  summary: ForecastDbForecastSummary | null;
   budget_codes: ForecastDbBudgetCode[];
   risks: Record<string, unknown>[];
   monthly: Record<string, unknown>[];

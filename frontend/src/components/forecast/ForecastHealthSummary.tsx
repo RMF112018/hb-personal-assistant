@@ -14,31 +14,33 @@ export function ForecastHealthSummary({
   project,
   readinessStatus,
   runFailed,
+  activeOutputId,
 }: {
   project: string
   readinessStatus: string | null
   runFailed: boolean
+  activeOutputId?: string
 }) {
   const { data: list } = useQuery({
     queryKey: ['forecast', 'db-outputs', project],
     queryFn: () => api.getForecastDbOutputs(project),
   })
   const outputs = list?.outputs ?? []
-  const activeId = outputs[0]?.output_id
+  const activeId = activeOutputId ?? outputs[0]?.output_id
 
-  const { data: ds } = useQuery({
-    queryKey: ['forecast', 'db-decision-support', activeId],
-    queryFn: () => api.getForecastDbDecisionSupport(activeId as string),
+  const { data: detail } = useQuery({
+    queryKey: ['forecast', 'db-output', activeId],
+    queryFn: () => api.getForecastDbOutput(activeId as string),
     enabled: Boolean(activeId),
   })
 
-  const scorecard = ds?.confidence_scorecards?.find((s) => s.scope === 'project')
+  const summary = detail?.summary
   const health = deriveForecastHealth({
     runFailed,
     readinessBlocked: readinessStatus === 'blocked',
     hasOutput: outputs.length > 0,
-    confidenceLabel: scorecard?.label,
-    maturityTier: ds?.maturity?.maturity_tier,
+    confidenceLabel: summary?.forecast_confidence_label,
+    maturityLabel: summary?.forecast_maturity_label,
   })
 
   return (

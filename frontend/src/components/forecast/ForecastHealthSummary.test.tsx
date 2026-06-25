@@ -17,8 +17,8 @@ describe('deriveForecastHealth', () => {
     runFailed: false,
     readinessBlocked: false,
     hasOutput: true,
-    confidenceLabel: 'high' as string | null | undefined,
-    maturityTier: 'M4' as string | null | undefined,
+    confidenceLabel: 'High' as string | null | undefined,
+    maturityLabel: 'Full context' as string | null | undefined,
   }
 
   it('reports a failed selected run first', () => {
@@ -30,30 +30,37 @@ describe('deriveForecastHealth', () => {
     expect(deriveForecastHealth({ ...base, hasOutput: false }).level).toBe('blocked_no_output')
   })
 
-  it('reports needs-attention for limited confidence or maturity', () => {
-    expect(deriveForecastHealth({ ...base, confidenceLabel: 'moderate' }).level).toBe('attention')
-    expect(deriveForecastHealth({ ...base, maturityTier: 'M2' }).level).toBe('attention')
+  it('reports needs-attention for limited readiness confidence or maturity', () => {
+    expect(deriveForecastHealth({ ...base, confidenceLabel: 'Low' }).level).toBe('attention')
+    expect(deriveForecastHealth({ ...base, maturityLabel: 'Baseline only' }).level).toBe('attention')
+    expect(deriveForecastHealth({ ...base, maturityLabel: 'No financial basis' }).level).toBe('attention')
   })
 
-  it('reports usable when output, confidence, and maturity are all strong', () => {
+  it('reports usable when output, readiness confidence, and maturity are all strong', () => {
     expect(deriveForecastHealth(base).level).toBe('usable')
+    expect(
+      deriveForecastHealth({ ...base, confidenceLabel: 'Medium', maturityLabel: 'Cost-informed' }).level,
+    ).toBe('usable')
   })
 })
 
 function mockHealth(opts: {
   outputs: unknown[]
   confidenceLabel?: string
-  maturityTier?: string
+  maturityLabel?: string
 }) {
   useQueryMock.mockImplementation((q?: { queryKey: unknown[] }) => {
     if (q?.queryKey[1] === 'db-outputs') {
       return { data: { outputs: opts.outputs }, isLoading: false, error: null }
     }
-    if (q?.queryKey[1] === 'db-decision-support') {
+    if (q?.queryKey[1] === 'db-output') {
       return {
         data: {
-          maturity: { maturity_tier: opts.maturityTier ?? 'M4' },
-          confidence_scorecards: [{ scope: 'project', label: opts.confidenceLabel ?? 'high' }],
+          output_id: 'fout-x',
+          summary: {
+            forecast_confidence_label: opts.confidenceLabel ?? 'High',
+            forecast_maturity_label: opts.maturityLabel ?? 'Full context',
+          },
         },
         isLoading: false,
         error: null,
@@ -67,14 +74,14 @@ describe('ForecastHealthSummary', () => {
   beforeEach(() => useQueryMock.mockReset())
 
   it('shows a usable verdict with a visible text label', () => {
-    mockHealth({ outputs: [{ output_id: 'fout-x' }], confidenceLabel: 'high', maturityTier: 'M4' })
+    mockHealth({ outputs: [{ output_id: 'fout-x' }], confidenceLabel: 'High', maturityLabel: 'Full context' })
     render(<ForecastHealthSummary project="tropical" readinessStatus="ready" runFailed={false} />)
     expect(screen.getByText('Forecast health')).toBeInTheDocument()
     expect(screen.getByText('Usable')).toBeInTheDocument()
   })
 
   it('shows needs-attention for limited maturity', () => {
-    mockHealth({ outputs: [{ output_id: 'fout-x' }], confidenceLabel: 'high', maturityTier: 'M2' })
+    mockHealth({ outputs: [{ output_id: 'fout-x' }], confidenceLabel: 'High', maturityLabel: 'Baseline only' })
     render(<ForecastHealthSummary project="tropical" readinessStatus="ready" runFailed={false} />)
     // The verdict label and the status pill both read "Needs attention" (consistent), so >= 1.
     expect(screen.getAllByText('Needs attention').length).toBeGreaterThanOrEqual(1)

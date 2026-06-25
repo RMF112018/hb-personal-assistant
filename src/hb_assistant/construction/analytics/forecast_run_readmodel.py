@@ -22,6 +22,7 @@ from __future__ import annotations
 import json
 import re
 import sqlite3
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any
 
@@ -92,6 +93,84 @@ class ForecastRunReadModelError(RuntimeError):
 def _redact_stamps(text: Any) -> Any:
     """Replace stamp-format substrings in free text with ``[redacted]`` (pass non-strings through)."""
     return _STAMP_RE.sub("[redacted]", text) if isinstance(text, str) else text
+
+
+# -- consolidated Forecast Summary bridge (read-model-only over the v63 header envelope) ----------
+#
+# The DB-native header ``raw_json`` envelope carries the HB-authoritative readiness confidence/
+# maturity and the engine cost summary (total_actual_cost_to_date / total_revised_budget) that the
+# typed columns do not expose. ``_output_summary`` whitelist-extracts only the keys below — the
+# envelope itself is never surfaced — and computes prior-forecast variance at read time. v66
+# decision-support emptiness never reaches this path (confidence/maturity come from v63).
+
+# Readiness confidence levels (engine ``confidence.level``) → display labels. Distinct from the v66
+# M0–M5 scorecard, which DB-native Phase F never writes.
+_CONFIDENCE_LABELS = {"none": "None", "low": "Low", "medium": "Medium", "high": "High"}
+
+# Readiness maturity ladder (engine ``maturity.tier``) → display labels. Distinct from v66 M0–M5.
+_MATURITY_LABELS = {
+    "no_financial_basis": "No financial basis",
+    "baseline_only": "Baseline only",
+    "cost_informed": "Cost-informed",
+    "schedule_informed": "Schedule-informed",
+    "full_context": "Full context",
+}
+
+
+def _parse_envelope(raw: Any) -> dict[str, Any]:
+    """Defensively parse the v63 header ``raw_json`` envelope; malformed/missing → ``{}`` (never raises)."""
+    if not raw:
+        return {}
+    try:
+        env = json.loads(raw)
+    except (json.JSONDecodeError, TypeError, ValueError):
+        return {}
+    return env if isinstance(env, dict) else {}
+
+
+def _money_or_none(value: Any) -> str | None:
+    """Canonical money string passthrough preserving missing(``None``)-vs-zero(``"0.00"``).
+
+    Returns the original string for any Decimal-parseable value (so a real ``"0.00"`` stays), and
+    ``None`` for missing/unparseable — the read model never coerces a missing budget to zero.
+    """
+    if value is None:
+        return None
+    try:
+        Decimal(str(value))
+    except (InvalidOperation, ValueError):
+        return None
+    return str(value)
+
+
+def _reconcile_variance(variance: Any, eac: Any, current_budget: str | None) -> str:
+    """Reconcile the persisted ``variance_to_budget`` against ``EAC − current_budget``.
+
+    Returns ``budget_unavailable`` when there is no budget basis, ``reconciled`` when the persisted
+    value matches the derivation within a cent, ``reconciliation_mismatch`` when it disagrees (a
+    coded signal — the read model surfaces the discrepancy rather than silently picking a value),
+    and ``unknown`` when either operand is non-numeric.
+    """
+    if current_budget is None:
+        return "budget_unavailable"
+    try:
+        persisted = Decimal(str(variance))
+        derived = Decimal(str(eac)) - Decimal(str(current_budget))
+    except (InvalidOperation, ValueError, TypeError):
+        return "unknown"
+    return "reconciled" if abs(persisted - derived) <= Decimal("0.01") else "reconciliation_mismatch"
+
+
+def _confidence_label(level: Any) -> str | None:
+    if not level:
+        return None
+    return _CONFIDENCE_LABELS.get(str(level).lower(), str(level).title())
+
+
+def _maturity_label(tier: Any) -> str | None:
+    if not tier:
+        return None
+    return _MATURITY_LABELS.get(str(tier), str(tier))
 
 
 def _curate_narrative(
@@ -193,6 +272,87 @@ class ForecastRunReadModelService:
             "created_display": _friendly_utc(row["created_utc"]),
         }
 
+    def _output_summary(self, conn: sqlite3.Connection, output_id: str) -> dict[str, Any] | None:
+        """Consolidated, typed Forecast Summary for one output (read-model-only envelope bridge).
+
+        Whitelist-extracts the cost summary and readiness confidence/maturity from the v63 header
+        ``raw_json`` envelope (never surfacing the envelope itself), reconciles variance-to-budget,
+        and computes prior-forecast variance at read time. Preserves missing(``None``)-vs-zero.
+        """
+        row = conn.execute(
+            "SELECT output_id, project_key, source_package, estimated_final_cost, "
+            "forecast_at_completion, cost_to_complete, variance_to_budget, created_utc, raw_json "
+            "FROM forecast_outputs WHERE output_id = ?",
+            (output_id,),
+        ).fetchone()
+        if row is None:
+            return None
+
+        env = _parse_envelope(row["raw_json"])
+        summary_env = env.get("summary") if isinstance(env.get("summary"), dict) else {}
+        confidence_env = env.get("confidence") if isinstance(env.get("confidence"), dict) else {}
+        maturity_env = env.get("maturity") if isinstance(env.get("maturity"), dict) else {}
+
+        eac = row["forecast_at_completion"] or row["estimated_final_cost"]
+        total_cost_to_date = _money_or_none(summary_env.get("total_actual_cost_to_date"))
+        current_budget = _money_or_none(summary_env.get("total_revised_budget"))
+        variance_to_budget = row["variance_to_budget"]
+
+        budget_basis_label = "Revised budget" if current_budget is not None else None
+        budget_status = "available" if current_budget is not None else "budget_unavailable"
+
+        prior_value, prior_status = self._prior_forecast_variance(conn, row, eac)
+
+        basis_limitations = confidence_env.get("basis_limitations")
+        if not isinstance(basis_limitations, list):
+            basis_limitations = []
+        confidence_basis = confidence_env.get("forecast_basis")
+        maturity_basis = (
+            "; ".join(str(x) for x in basis_limitations) if basis_limitations else confidence_basis
+        )
+
+        return {
+            "estimated_at_completion": _money_or_none(eac),
+            "total_cost_to_date": total_cost_to_date,
+            "cost_to_complete": _money_or_none(row["cost_to_complete"]),
+            "current_budget": current_budget,
+            "budget_basis_label": budget_basis_label,
+            "budget_status": budget_status,
+            "variance_to_budget": _money_or_none(variance_to_budget),
+            "variance_to_budget_status": _reconcile_variance(variance_to_budget, eac, current_budget),
+            "variance_to_prior_forecast": prior_value,
+            "variance_to_prior_forecast_status": prior_status,
+            "forecast_confidence_label": _confidence_label(confidence_env.get("level")),
+            "forecast_confidence_basis": confidence_basis,
+            "forecast_maturity_label": _maturity_label(maturity_env.get("tier")),
+            "forecast_maturity_basis": maturity_basis,
+            "basis_limitations": basis_limitations,
+        }
+
+    def _prior_forecast_variance(
+        self, conn: sqlite3.Connection, row: sqlite3.Row, eac: Any
+    ) -> tuple[str | None, str]:
+        """Current EAC − prior comparable output EAC (same project + source_package, strictly older).
+
+        Limitation: ``derive_output_id`` is deterministic over (project, kind, snapshot), so a
+        same-snapshot rerun overwrites its own header row — prior history exists only across distinct
+        source snapshots. Returns (``None``, ``"no_prior_forecast"``) when no comparable prior exists.
+        """
+        prior = conn.execute(
+            "SELECT estimated_final_cost, forecast_at_completion FROM forecast_outputs "
+            "WHERE project_key = ? AND source_package = ? AND output_id != ? AND created_utc < ? "
+            "ORDER BY created_utc DESC, output_id DESC LIMIT 1",
+            (row["project_key"], row["source_package"], row["output_id"], row["created_utc"]),
+        ).fetchone()
+        if prior is None:
+            return None, "no_prior_forecast"
+        prior_eac = prior["forecast_at_completion"] or prior["estimated_final_cost"]
+        try:
+            delta = Decimal(str(eac)) - Decimal(str(prior_eac))
+        except (InvalidOperation, ValueError, TypeError):
+            return None, "unavailable"
+        return str(delta.quantize(Decimal("0.01"))), "computed"
+
     # -- public API (each returns surface + guardrails) -----------------------
 
     def list_outputs(self, project_key: str = _DEFAULT_PROJECT) -> dict[str, Any]:
@@ -254,6 +414,7 @@ class ForecastRunReadModelService:
             header = self._output_header(conn, output_id)
             if header is None:
                 raise ForecastRunReadModelError(f"unknown output_id: {output_id!r}")
+            summary = self._output_summary(conn, output_id)
             budget_codes = self._rows(
                 conn,
                 "SELECT budget_code_key, cost_code, category, forecast_action, "
@@ -312,6 +473,7 @@ class ForecastRunReadModelService:
         return {
             "surface": _SURFACE + ".output",
             **header,
+            "summary": summary,
             "budget_codes": budget_codes,
             "risks": risks,
             "monthly": monthly,
