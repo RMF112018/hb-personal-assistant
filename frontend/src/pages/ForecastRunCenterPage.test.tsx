@@ -222,12 +222,17 @@ describe('ForecastRunCenterPage', () => {
     expect(screen.getByText('File configuration')).toBeInTheDocument()
   })
 
-  it('describes Generate Forecast as writing to the local database, not a package/download', () => {
+  it('describes Generate Forecast as live-config generation without a package/download, and does not promise a DB write it cannot keep', () => {
     mockData()
     const { container } = renderPage()
     const text = container.textContent || ''
-    expect(text).toMatch(/local application database/i)
+    // Honest framing: generates from the promoted live configuration, no package/download.
+    expect(text).toMatch(/live configuration/i)
     expect(text).not.toMatch(/isolated forecast package/i)
+    // Must NOT imply DB-native generation persists the forecast to the database (backend still
+    // returns db_native_generation_not_implemented). No "writes/written … to the … database" promise.
+    expect(text).not.toMatch(/writes? the selected project's forecast to the local application database/i)
+    expect(text).not.toMatch(/output is written to the local application database/i)
   })
 
   it('offers all four generator kinds and passes the selected kind + project to the API', async () => {
@@ -832,6 +837,96 @@ describe('ForecastRunCenterPage', () => {
     expect(text).not.toMatch(/db_native_generation_not_implemented/)
     expect(text).not.toMatch(/cost_forecast_json_package/)
     expect(text).not.toMatch(/\/Users\//)
+  })
+
+  it('treats a db-config POST that returns request_status="failed" as an honest failed request, not a successful submission', async () => {
+    // Backend fails closed with HTTP 200 + request_status="failed" (db_native not implemented).
+    // The POST handler must surface curated copy and suppress the success banner.
+    startDbConfigMock.mockResolvedValueOnce({
+      request_id: 'req-x',
+      request_status: 'failed',
+      failure_code: 'db_native_generation_not_implemented',
+      failure_message: null, // force the coded-copy fallback; raw code must never render
+    })
+    useQueryMock.mockImplementation((opts: { queryKey: unknown[] }) => {
+      const kind = opts.queryKey[1]
+      const sub = opts.queryKey[2]
+      if (kind === 'generation' && sub === 'requests') {
+        // Empty request log so the ONLY source of failure copy is the POST handler itself.
+        return {
+          data: { surface: 'analytics.forecast_generation_requests', requests: [] },
+          isLoading: false,
+          error: null,
+          refetch: vi.fn(),
+        }
+      }
+      if (kind === 'generation' && sub === 'readiness') {
+        return {
+          data: { ready: true, generation_enabled: true, disabled_reasons: [], warnings: [], actions: [], guardrails: {} },
+          isLoading: false,
+          error: null,
+          refetch: vi.fn(),
+        }
+      }
+      if (kind === 'generation' && sub === 'projects') {
+        return {
+          data: {
+            projects: [
+              { project_key: 'tropical', display_name: 'Tropical', readiness_status: 'ready', readiness_reasons: [] },
+            ],
+          },
+          isLoading: false,
+          error: null,
+          refetch: vi.fn(),
+        }
+      }
+      if (kind === 'generation' && sub === 'date-defaults') {
+        return {
+          data: {
+            project_key: 'tropical',
+            forecast_start_date: null,
+            forecast_cutoff_date: null,
+            forecast_cutoff_date_basis: null,
+            schedule_version_key: null,
+            schedule_data_date: null,
+            warnings: [],
+          },
+          isLoading: false,
+          error: null,
+          refetch: vi.fn(),
+        }
+      }
+      return { data: { runs: [] }, isLoading: false, error: null, refetch: vi.fn() }
+    })
+    const { container } = renderPage()
+    fireEvent.change(screen.getByLabelText('Forecast project'), { target: { value: 'tropical' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Generate DB-backed forecast' }))
+
+    // Honest unsupported/failed state: curated, path-free copy is shown in the Generate panel.
+    const generatePanel = (await screen.findByText('Generate forecast')).closest('section')!
+    const generate = within(generatePanel)
+    expect(
+      generate.getByText(/DB-native (forecast )?generation isn't available yet/i),
+    ).toBeInTheDocument()
+    // The optimistic success banner must NOT render for a failed request.
+    expect(screen.queryByText(/Generation request submitted/i)).not.toBeInTheDocument()
+    // A failed generation request is never labelled "Unreadable" (other surfaces — e.g. the
+    // no-output health pill — legitimately still use it, so scope to the Generate panel).
+    expect(generate.queryByText('Unreadable')).not.toBeInTheDocument()
+    // No raw code, source package name, or filesystem path leaks to the operator.
+    const text = container.textContent || ''
+    expect(text).not.toMatch(/db_native_generation_not_implemented/)
+    expect(text).not.toMatch(/cost_forecast_json_package/)
+    expect(text).not.toMatch(/\/Users\//)
+  })
+
+  it('still shows the success banner when a db-config POST returns a completed request', async () => {
+    mockData()
+    startDbConfigMock.mockResolvedValueOnce({ request_id: 'req-ok', request_status: 'completed' })
+    renderPage()
+    fireEvent.change(screen.getByLabelText('Forecast project'), { target: { value: 'tropical' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Generate DB-backed forecast' }))
+    expect(await screen.findByText(/Generation request submitted/i)).toBeInTheDocument()
   })
 
   it('reveals the legacy file-config generation only behind the advanced disclosure', () => {

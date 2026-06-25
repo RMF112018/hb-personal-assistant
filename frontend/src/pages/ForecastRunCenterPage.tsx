@@ -297,7 +297,26 @@ export function ForecastRunCenterPage() {
         forecast_cutoff_date: forecastCutoffDate || null,
         forecast_cutoff_date_basis: forecastCutoffDate ? cutoffBasis : null,
       })
-      setLastRequestId((resp as { request_id?: string })?.request_id ?? null)
+      // A db-config request fails closed with HTTP 200 + request_status="failed"/"rejected"
+      // (e.g. db_native_generation_not_implemented). Treat that as a failed generation request,
+      // not a successful submission: surface curated, path-free copy and suppress the success
+      // banner. Either way, refetch so history + the request log reflect the outcome immediately.
+      const requestStatus = (resp as { request_status?: string })?.request_status
+      const failureCode = (resp as { failure_code?: string | null })?.failure_code ?? null
+      const failureMessage = (resp as { failure_message?: string | null })?.failure_message ?? null
+      const requestId = (resp as { request_id?: string })?.request_id ?? null
+
+      if (requestStatus === 'failed' || requestStatus === 'rejected') {
+        setDbError(
+          failureMessage ||
+            failureCodeCopy(failureCode) ||
+            'Config-backed generation did not complete.',
+        )
+        setDbDisabled(false)
+        setLastRequestId(null)
+      } else {
+        setLastRequestId(requestId)
+      }
       setRefreshNonce((n) => n + 1)
       await refetchDb()
       await refetchRequests()
@@ -494,7 +513,7 @@ export function ForecastRunCenterPage() {
         ) : allRuns.length === 0 ? (
           <EmptyState
             title="No forecast runs yet"
-            hint="Use the Generate panel above to create your first forecast. Output is written to the local application database."
+            hint="Use the Generate panel above to create your first forecast."
           />
         ) : (
           <ForecastTable
