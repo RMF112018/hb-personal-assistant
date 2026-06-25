@@ -42,6 +42,15 @@ _FAILURE_MESSAGES = {
 }
 
 
+def failure_message_for(code: str) -> str | None:
+    """Curated, path-free message for a coded failure (single spelling for all callers).
+
+    Lets sibling services (e.g. the DB-native seam) reuse the exact curated copy without reaching
+    into the private ``_FAILURE_MESSAGES`` table. Returns ``None`` for codes without curated copy.
+    """
+    return _FAILURE_MESSAGES.get(code)
+
+
 class SourcePackageMissing(RuntimeError):
     """Raised when no forecast source package exists under the configured data root.
 
