@@ -2193,6 +2193,11 @@ def create_app(*, db_path: str | None = None) -> Any:
             )
             from hb_assistant.construction.analytics.forecast_generation_modes import GenerationMode
 
+            from hb_assistant.construction.analytics.forecast_runtime_config import (
+                resolve_db_path,
+                resolve_run_output_db_write_enabled,
+            )
+
             result = generate_db_native(
                 DbNativeGenerationRequest(
                     project_key=parsed["project_key"],
@@ -2201,10 +2206,13 @@ def create_app(*, db_path: str | None = None) -> Any:
                     forecast_cutoff_date=parsed["forecast_cutoff_date"],
                     forecast_cutoff_date_basis=parsed["forecast_cutoff_date_basis"],
                     source_snapshot_id=(body or {}).get("source_snapshot_id"),
+                    request_id=request_id,
+                    db_path=resolve_db_path(db_path),
+                    write_enabled=resolve_run_output_db_write_enabled(),
                 )
             )
             if result.db_persisted:
-                repo.update_status(request_id, "completed")
+                repo.update_status(request_id, "completed", run_id=result.run_id)
             else:
                 repo.record_failure(request_id, result.failure_code or "db_native_generation_failed", result.failure_message)
             return {

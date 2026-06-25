@@ -94,12 +94,14 @@ def test_validate_request_generator_kind_by_mode() -> None:
 
 
 def test_generate_db_native_is_fail_closed_and_path_free() -> None:
+    # Phase F: with the run-output DB-write gate OFF (default), the seam refuses honestly rather than
+    # computing-and-dropping — and never reports the legacy db_native_generation_not_implemented.
     result = generate_db_native(
         DbNativeGenerationRequest(project_key="tropical", generator_kind="comprehensive")
     )
     assert result.request_status == "failed"
     assert result.db_persisted is False
-    assert result.failure_code == "db_native_generation_not_implemented"
+    assert result.failure_code == "run_output_db_write_disabled"
     assert result.failure_message  # curated, present
     assert result.persisted_output_ids == ()
     assert result.mode == "db_native"
@@ -151,7 +153,8 @@ def test_db_native_route_fails_closed_path_free() -> None:
     body = resp.json()
     assert body["generation_mode"] == "db_native"
     assert body["request_status"] == "failed"
-    assert body["failure_code"] == "db_native_generation_not_implemented"
+    # Phase F: gate OFF by default → honest run_output_db_write_disabled refusal (no compute/persist).
+    assert body["failure_code"] == "run_output_db_write_disabled"
     assert body["db_persisted"] is False
     assert body["package_generated"] is False
     assert body["persisted_output_ids"] == []
@@ -212,7 +215,9 @@ def test_db_native_route_does_not_call_package_generation(monkeypatch: pytest.Mo
         "/api/forecast/runs/db-native", headers=_op(), json={"project_key": "tropical"}
     ).json()
     assert body["request_status"] == "failed"
-    assert body["failure_code"] == "db_native_generation_not_implemented"
+    # Gate OFF (default): the route refuses before any compute/import, so package generation and a
+    # CFR import are never reached.
+    assert body["failure_code"] == "run_output_db_write_disabled"
 
 
 def test_db_native_request_recorded_in_public_dto_path_free() -> None:
@@ -223,7 +228,7 @@ def test_db_native_request_recorded_in_public_dto_path_free() -> None:
     ).json()
     row = next(r for r in listed["requests"] if r["generation_mode"] == "db_native")
     assert row["request_status"] == "failed"
-    assert row["failure_code"] == "db_native_generation_not_implemented"
+    assert row["failure_code"] == "run_output_db_write_disabled"
     assert find_redaction_leaks(listed) == []
 
 
