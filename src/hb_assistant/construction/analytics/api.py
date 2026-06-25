@@ -2207,7 +2207,9 @@ def create_app(*, db_path: str | None = None) -> Any:
                 final_status = "completed"
             else:
                 repo.record_failure(
-                    request_id, receipt.failure_code or "db_persistence_failed"
+                    request_id,
+                    receipt.failure_code or "db_persistence_failed",
+                    receipt.failure_message,
                 )
                 final_status = "failed"
             return {
@@ -2224,6 +2226,7 @@ def create_app(*, db_path: str | None = None) -> Any:
                 "db_persisted": receipt.db_persisted,
                 "package_generated": False,
                 "failure_code": receipt.failure_code,
+                "failure_message": receipt.failure_message,
                 "readiness_status_at_request": readiness_status,
                 "readiness_reasons": readiness_reasons,
             }

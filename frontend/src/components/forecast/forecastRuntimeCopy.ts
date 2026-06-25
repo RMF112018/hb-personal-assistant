@@ -27,6 +27,25 @@ export const BLOCKER_COPY: Record<string, string> = {
   not_creatable: 'Cannot be created',
 }
 
+// Business-facing copy for a generation request/run failure_code. Path-free and curated; never
+// render a raw failure_code or backend message verbatim. Unknown codes fall back via
+// failureCodeCopy() so a new backend code never leaks as a raw token to the operator.
+export const FAILURE_CODE_COPY: Record<string, string> = {
+  source_package_missing: "Forecast source data isn't available yet.",
+  db_persistence_failed: 'The forecast could not be saved.',
+  forecast_output_write_failed: 'The forecast could not be saved.',
+  generation_calculation_failed: 'The forecast could not be calculated.',
+  generation_failed: 'The forecast did not complete.',
+  generation_disabled: 'Configuration-backed generation is turned off.',
+  generation_not_configured: 'Forecast generation is not configured yet.',
+  generation_rejected: 'The request was rejected.',
+}
+
+export function failureCodeCopy(code: string | null | undefined): string | null {
+  if (!code) return null
+  return FAILURE_CODE_COPY[code] || 'The forecast request did not complete.'
+}
+
 export const SURFACE_LABELS: Record<string, string> = {
   catalog: 'Package browser',
   config: 'Configuration viewer',

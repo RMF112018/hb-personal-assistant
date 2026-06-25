@@ -25,6 +25,7 @@ import { ForecastDecisionSupportPanel } from '../components/forecast/ForecastDec
 import { ForecastNarrativesPanel } from '../components/forecast/ForecastNarrativesPanel'
 import { ForecastOperatorAssumptionsPanel } from '../components/forecast/ForecastOperatorAssumptionsPanel'
 import { ForecastStatusPill } from '../components/forecast/ForecastStatusPill'
+import { failureCodeCopy } from '../components/forecast/forecastRuntimeCopy'
 import { EmptyState } from '../components/ui/EmptyState'
 import { api } from '../lib/api'
 import type { ForecastGeneratorKind } from '../lib/api'
@@ -40,7 +41,8 @@ const GENERATOR_KINDS: { value: ForecastGeneratorKind; label: string }[] = [
 
 function runStatusPill(status: string | undefined): string {
   if (status === 'succeeded' || status === 'generated' || status === 'completed') return 'validated'
-  if (status === 'failed' || status === 'rejected') return 'invalid'
+  if (status === 'rejected') return 'rejected'
+  if (status === 'failed') return 'failed'
   return 'attention'
 }
 
@@ -543,6 +545,11 @@ export function ForecastRunCenterPage() {
             tone="error"
             lines={[
               ...(detail.message ? [detail.message as string] : []),
+              ...(() => {
+                // Curated, path-free reason from the coded failure (deduped against message).
+                const coded = failureCodeCopy(detail.failure_code as string | null | undefined)
+                return coded && coded !== detail.message ? [coded] : []
+              })(),
               'No forecast output was produced for this run.',
             ]}
           />
@@ -619,6 +626,12 @@ export function ForecastRunCenterPage() {
                 </ForecastTd>
                 <ForecastTd>
                   <ForecastStatusPill status={runStatusPill(r.request_status)} />
+                  {(r.request_status === 'failed' || r.request_status === 'rejected') &&
+                    (r.failure_message || failureCodeCopy(r.failure_code)) && (
+                      <p className="mt-1 text-xs text-[var(--hb-muted)]">
+                        {r.failure_message || failureCodeCopy(r.failure_code)}
+                      </p>
+                    )}
                 </ForecastTd>
                 <ForecastTd className="text-[var(--hb-muted)]">{r.created_utc || '—'}</ForecastTd>
               </tr>
