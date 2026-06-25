@@ -110,7 +110,7 @@ def classify(proc: ProcInfo, profile: Profile) -> str | None:
         return "scheduler"
 
     if (
-        ("vite" in cmd or "http.server" in cmd)
+        ("vite" in cmd or "http.server" in cmd or "static_proxy" in cmd)
         and "/frontend" in cmd
         and _has_port_token(cmd, profile.frontend_port)
     ):
