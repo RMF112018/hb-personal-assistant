@@ -904,6 +904,12 @@ export function getForecastDbProjects() {
  * committed schedule imports + forecast outputs; exposes per-project availability + readiness
  * (ready/degraded/blocked, coded reasons). Read-only, redaction-safe (no paths/source payloads). */
 export type ForecastProjectReadinessStatus = 'ready' | 'degraded' | 'blocked';
+export type ForecastProjectMaturity =
+  | 'no_financial_basis'
+  | 'baseline_only'
+  | 'cost_informed'
+  | 'schedule_informed'
+  | 'full_context';
 export interface ForecastGenerationProject {
   project_key: string;
   display_name: string | null;
@@ -920,6 +926,16 @@ export interface ForecastGenerationProject {
   config_snapshot_available: boolean;
   readiness_status: ForecastProjectReadinessStatus;
   readiness_reasons: string[];
+  // Phase P-2 best-effort maturity metadata (optional; emitted by the read model).
+  forecast_maturity?: ForecastProjectMaturity;
+  confidence_level?: 'none' | 'low' | 'medium' | 'high';
+  forecast_basis?: string;
+  basis_limitations?: string[];
+  initial_forecast?: boolean;
+  prior_forecast_available?: boolean;
+  schedule_available?: boolean;
+  actual_cost_available?: boolean;
+  commitment_available?: boolean;
 }
 export interface ForecastGenerationProjectsResponse {
   surface: string;

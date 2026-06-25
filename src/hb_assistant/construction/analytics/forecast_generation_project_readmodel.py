@@ -16,6 +16,27 @@ freshly migrated DB degrades to empty rather than raising. Redaction: only coded
 are emitted (no ``source_path``/``raw_json``/``run_id``/stamps); ``find_redaction_leaks`` is the
 backstop (tests assert every payload is leak-free). Exact schedule cutoff-date derivation
 (``latest_schedule_date``) is deferred to a later phase — emitted as ``None`` here.
+
+Readiness is an EVIDENCE-COMPLETENESS maturity ladder (Phase P-2), not a binary gate:
+
+    no_financial_basis → baseline_only → cost_informed → schedule_informed → full_context
+
+A first forecast is a normal case: a project is ``blocked`` ONLY when it cannot be resolved to an
+identity OR has no calculable financial basis at all. A financial basis is the PRESENCE (per
+``project_key``) of any of: ``forecast_budget_details`` / ``forecast_cost_entries`` /
+``forecast_monthly_actuals_by_budget_code`` (v59 source) OR imported ``forecast_external_forecast_rows``
+(v61). Dollar magnitudes live in ``raw_json`` and are NOT parsed here — presence detection only is a
+documented v1 limitation. Missing config snapshot, missing schedule, and missing prior forecast are
+degraded/informational (confidence-lowering), never blockers. ``forecast_output_commitment_exposure``
+is prior-run-derived (``commitment_available``) and never counts as a first-run basis.
+
+Project readiness is evidence-only and INDEPENDENT of the global generation flag: the runtime
+``generation_enabled`` toggle is emitted at the top level and gates execution via the global
+generation-readiness endpoint + Generate button — it never marks an individual project ``blocked``.
+
+This maturity is intentionally DISTINCT from
+``construction.forecast.decision_support_engine._maturity_tier`` (M0–M5), which is a post-generation
+LIFECYCLE/time-depth axis (months of actuals); that engine is not reused or modified here.
 """
 
 from __future__ import annotations
@@ -35,12 +56,58 @@ _SURFACE = "analytics.forecast_generation_projects"
 # schedule/config/budget tables are v59–v62 (<= 63). Procore-endpoint tables are handled defensively.
 _REQUIRED_SCHEMA_VERSION = 63
 
-# Budget/cost source-domain tables — presence in ANY proves budget/cost availability for a project.
-_BUDGET_COST_TABLES = (
-    "forecast_budget_details",
-    "forecast_cost_entries",
-    "forecast_monthly_actuals_by_budget_code",
-)
+# Minimum nonzero monthly-actual months below which monthly trend is "sparse" (confidence note).
+_SPARSE_MONTHLY_MONTHS = 3
+
+# Evidence-completeness maturity ladder → base confidence band (lifecycle-independent).
+_CONFIDENCE_BY_MATURITY = {
+    "no_financial_basis": "none",
+    "baseline_only": "low",
+    "cost_informed": "medium",
+    "schedule_informed": "medium",
+    "full_context": "high",
+}
+_CONFIDENCE_ORDER = ("none", "low", "medium", "high")
+
+
+def _maturity(
+    *, has_financial_basis: bool, has_actual_cost: bool, has_schedule: bool, has_prior: bool
+) -> str:
+    """Evidence-completeness tier (see module docstring). Distinct from decision_support lifecycle."""
+    if not has_financial_basis:
+        return "no_financial_basis"
+    if not has_actual_cost:
+        return "baseline_only"
+    if not has_schedule:
+        return "cost_informed"
+    if not has_prior:
+        return "schedule_informed"
+    return "full_context"
+
+
+def _confidence(maturity: str, *, has_config: bool) -> str:
+    """Confidence from maturity; a missing config snapshot lowers it one tier (floor ``low``)."""
+    if maturity == "no_financial_basis":
+        return "none"
+    base = _CONFIDENCE_BY_MATURITY[maturity]
+    if not has_config:  # methodology default in play → lower confidence, never a block
+        return _CONFIDENCE_ORDER[max(1, _CONFIDENCE_ORDER.index(base) - 1)]
+    return base
+
+
+def _forecast_basis(
+    *, has_monthly: bool, has_cost_entries: bool, has_external: bool, has_budget: bool
+) -> str:
+    """Coded label for the strongest financial basis present (informational)."""
+    if has_monthly:
+        return "monthly_actuals"
+    if has_cost_entries:
+        return "cost_entries"
+    if has_external:
+        return "external_forecast"
+    if has_budget:
+        return "budget_details"
+    return "none"
 
 
 class ForecastGenerationProjectReadModelError(RuntimeError):
@@ -194,17 +261,32 @@ class ForecastGenerationProjectReadModelService:
             if r[0]
         }
 
-    def _budget_cost_keys(self, conn: sqlite3.Connection) -> set[str]:
-        keys: set[str] = set()
-        for table in _BUDGET_COST_TABLES:  # fixed allowlist — safe to interpolate
-            if not _table_exists(conn, table):
-                continue
-            keys |= {
-                str(r[0])
-                for r in conn.execute(f"SELECT DISTINCT project_key FROM {table}").fetchall()
-                if r[0]
-            }
-        return keys
+    def _distinct_project_keys(self, conn: sqlite3.Connection, table: str) -> set[str]:
+        """Distinct non-empty project_key in ``table`` (empty if absent). ``table`` is a fixed
+        literal allowlist at every call site — safe to interpolate."""
+        if not _table_exists(conn, table):
+            return set()
+        return {
+            str(r[0])
+            for r in conn.execute(f"SELECT DISTINCT project_key FROM {table}").fetchall()
+            if r[0]
+        }
+
+    def _monthly_nonzero_counts(self, conn: sqlite3.Connection) -> dict[str, int]:
+        """{project_key: distinct months with nonzero actuals}. Nonzero ⇒ real cost incurred
+        (zero-amount actual months are tracked but are not an actual-cost signal)."""
+        if not _table_exists(conn, "forecast_monthly_actuals_by_budget_code"):
+            return {}
+        return {
+            str(r[0]): int(r[1] or 0)
+            for r in conn.execute(
+                "SELECT project_key, COUNT(DISTINCT month) FROM "
+                "forecast_monthly_actuals_by_budget_code "
+                "WHERE project_key IS NOT NULL AND amount IS NOT NULL AND amount != 0 "
+                "GROUP BY project_key"
+            ).fetchall()
+            if r[0]
+        }
 
     # -- public read ----------------------------------------------------------
 
@@ -218,7 +300,13 @@ class ForecastGenerationProjectReadModelService:
             activity_keys = self._activity_keys(conn)
             outputs = self._output_meta(conn)
             config_keys = self._config_keys(conn)
-            budget_keys = self._budget_cost_keys(conn)
+            budget_keys = self._distinct_project_keys(conn, "forecast_budget_details")
+            cost_entry_keys = self._distinct_project_keys(conn, "forecast_cost_entries")
+            monthly_nonzero = self._monthly_nonzero_counts(conn)
+            external_keys = self._distinct_project_keys(conn, "forecast_external_forecast_rows")
+            commitment_keys = self._distinct_project_keys(
+                conn, "forecast_output_commitment_exposure"
+            )
         finally:
             conn.close()
 
@@ -228,28 +316,64 @@ class ForecastGenerationProjectReadModelService:
             has_schedule = key in committed or key in activity_keys
             has_activity = key in activity_keys
             has_output = key in outputs
-            has_budget_cost = key in budget_keys
+            has_budget = key in budget_keys
+            has_cost_entries = key in cost_entry_keys
+            nonzero_months = monthly_nonzero.get(key, 0)
+            has_monthly = nonzero_months > 0
+            has_external = key in external_keys
+            has_actual_cost = has_cost_entries or has_monthly
+            # Financial basis (first-run safe): any v59 source signal OR an imported baseline.
+            # Commitment exposure is prior-run-derived and is NOT a first-run basis.
+            has_financial_basis = has_budget or has_cost_entries or has_monthly or has_external
+            has_budget_cost = has_budget or has_cost_entries or has_monthly
             has_config = key in config_keys
+            has_commitment = key in commitment_keys
             has_identity = key in identity or has_schedule or has_output
 
-            blocking: list[str] = []
-            if not generation_enabled:
-                blocking.append("generation_disabled")
+            maturity = _maturity(
+                has_financial_basis=has_financial_basis,
+                has_actual_cost=has_actual_cost,
+                has_schedule=has_schedule,
+                has_prior=has_output,
+            )
+            confidence = _confidence(maturity, has_config=has_config)
+            basis = _forecast_basis(
+                has_monthly=has_monthly,
+                has_cost_entries=has_cost_entries,
+                has_external=has_external,
+                has_budget=has_budget,
+            )
+            basis_limitations: list[str] = []
             if not has_config:
-                blocking.append("missing_config_snapshot")
-            if not has_budget_cost:
-                blocking.append("missing_budget_cost_data")
+                basis_limitations.append("no_config_snapshot")
+            if not has_actual_cost:
+                basis_limitations.append("no_actual_cost")
+            if not has_schedule:
+                basis_limitations.append("no_schedule_data")
+            if not has_output:
+                basis_limitations.append("no_prior_forecast")
+            if has_monthly and nonzero_months < _SPARSE_MONTHLY_MONTHS:
+                basis_limitations.append("sparse_monthly_actuals")
+
+            # Project readiness is evidence-only. The global generation flag (generation_enabled,
+            # surfaced at the top level) gates execution elsewhere and never blocks a project here.
+            blocking: list[str] = []
             if not has_identity:
                 blocking.append("no_project_identity")
-            degraded: list[str] = []
+            if not has_financial_basis:
+                blocking.append("no_financial_basis")
+            degraded_factors: list[str] = []
+            if not has_config:
+                degraded_factors.append("missing_config_snapshot")
             if not has_schedule:
-                degraded.append("missing_schedule_data")
+                degraded_factors.append("missing_schedule_data")
+            informational: list[str] = []
             if not has_output:
-                degraded.append("no_prior_forecast_output")
+                informational.append("no_prior_forecast_output")
 
             if blocking:
                 status = "blocked"
-            elif degraded:
+            elif degraded_factors or maturity in ("baseline_only", "cost_informed"):
                 status = "degraded"
             else:
                 status = "ready"
@@ -269,8 +393,18 @@ class ForecastGenerationProjectReadModelService:
                     "latest_forecast_display": _friendly_utc(outputs.get(key)),
                     "has_budget_cost_data": has_budget_cost,
                     "config_snapshot_available": has_config,
+                    # Phase P-2 maturity / best-effort metadata (coded, redaction-safe).
+                    "forecast_maturity": maturity,
+                    "confidence_level": confidence,
+                    "forecast_basis": basis,
+                    "basis_limitations": basis_limitations,
+                    "initial_forecast": not has_output,
+                    "prior_forecast_available": has_output,
+                    "schedule_available": has_schedule,
+                    "actual_cost_available": has_actual_cost,
+                    "commitment_available": has_commitment,
                     "readiness_status": status,
-                    "readiness_reasons": blocking + degraded,
+                    "readiness_reasons": blocking + degraded_factors + informational,
                 }
             )
 

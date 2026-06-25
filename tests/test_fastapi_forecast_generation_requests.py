@@ -115,6 +115,17 @@ def _seed_ready_tropical(db: Path) -> None:
             "raw_json, created_utc) VALUES (?,?,?,?,?)",
             ("tropical", "0000.03.MAT", "pkg-t", "{}", TS),
         )
+        # Actual cost so readiness is full_context/ready (budget + cost + schedule + prior + config).
+        conn.execute(
+            "INSERT INTO forecast_cost_entries (cost_entry_id, project_key, source_package, "
+            "source_row_number, budget_code_key, raw_json, created_utc) VALUES (?,?,?,?,?,?,?)",
+            ("ce-req-1", "tropical", "pkg-t", 1, "0000.03.MAT", "{}", TS),
+        )
+        conn.execute(
+            "INSERT INTO forecast_monthly_actuals_by_budget_code (project_key, budget_code_key, "
+            "month, type, source_package, amount, raw_json, created_utc) VALUES (?,?,?,?,?,?,?,?)",
+            ("tropical", "0000.03.MAT", "2026-01", "actual", "pkg-t", 1500.0, "{}", TS),
+        )
         conn.commit()
     finally:
         conn.close()

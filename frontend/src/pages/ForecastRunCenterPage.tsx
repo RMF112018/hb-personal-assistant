@@ -131,7 +131,9 @@ const READINESS_ACTION_ROUTE: Record<string, string> = {
 // Per-project readiness reason codes → actionable, table-name-free copy (P-B). Mirrors the backend
 // reason codes from GET /api/forecast/generation/projects.
 const PROJECT_READINESS_REASON_TEXT: Record<string, string> = {
-  missing_config_snapshot: 'No configuration snapshot is available for this project.',
+  no_financial_basis: 'No budget, cost, or baseline data is available to forecast from yet.',
+  missing_config_snapshot:
+    'No configuration snapshot is available; a methodology default would be used (lower confidence).',
   missing_budget_cost_data: 'Budget and cost data is not available for this project yet.',
   missing_schedule_data: 'No schedule data has been imported for this project yet.',
   generation_disabled: "Generating from live configuration isn't enabled in this environment.",
