@@ -89,15 +89,16 @@ function mockPopulated() {
 describe('ForecastDecisionSupportPanel', () => {
   beforeEach(() => useQueryMock.mockReset())
 
-  it('renders metrics, maturity, confidence, availability, method eligibility, and recommendations', () => {
+  it('renders detail-only: availability, method eligibility, recommendations, exposure, phasing', () => {
     mockPopulated()
     render(<ForecastDecisionSupportPanel project="tropical" />)
-    expect(screen.getByText('Estimated final cost')).toBeInTheDocument()
-    expect(screen.getByText('Project maturity')).toBeInTheDocument()
-    expect(screen.getByText('M2')).toBeInTheDocument()
-    // confidence high -> "Ready" pill; availability available -> "Ready"; at least one present
+    // Detail panel — the headline cost KPI / maturity-status cards moved to the Forecast Summary.
+    expect(screen.queryByText('Estimated final cost')).not.toBeInTheDocument()
+    expect(screen.queryByText('Project maturity')).not.toBeInTheDocument()
+    expect(screen.queryByText('Maturity status')).not.toBeInTheDocument()
+    expect(screen.queryByText('no scorecard')).not.toBeInTheDocument()
+    // availability available -> "Ready" pill present; unavailable owner -> "Unsupported"
     expect(screen.getAllByText('Ready').length).toBeGreaterThanOrEqual(1)
-    // unavailable owner domain surfaces as a missing-data "Unsupported" signal
     expect(screen.getByText('owner')).toBeInTheDocument()
     expect(screen.getAllByText('Unsupported').length).toBeGreaterThanOrEqual(1)
     expect(screen.getByText('monthly_actuals')).toBeInTheDocument()
@@ -108,6 +109,36 @@ describe('ForecastDecisionSupportPanel', () => {
     expect(screen.getByText('750.00')).toBeInTheDocument()
     expect(screen.getByText('Schedule phasing')).toBeInTheDocument()
     expect(screen.getByText('2026-07–2026-08')).toBeInTheDocument()
+  })
+
+  it('shows a neutral not-populated note (not an error) when v66 decision support is empty', () => {
+    useQueryMock.mockImplementation((opts?: { queryKey: unknown[] }) => {
+      const kind = opts?.queryKey[1]
+      if (kind === 'db-outputs') {
+        return { data: { outputs: [{ output_id: 'fout-x', created_display: 'Jun 19, 2026' }] }, isLoading: false, error: null }
+      }
+      if (kind === 'db-output') {
+        return {
+          data: {
+            output_id: 'fout-x',
+            budget_codes: [{ budget_code_key: 'k1', cost_code: '03-01-025', forecast_action: 'hold', confidence: 'high', recommended_projected_cost: '500.00' }],
+            risks: [],
+            commitment_exposure: [],
+            schedule_phasing: [],
+          },
+          isLoading: false,
+          error: null,
+        }
+      }
+      if (kind === 'db-decision-support') {
+        return { data: { output_id: 'fout-x', maturity: null, data_availability: [], confidence_scorecards: [], method_eligibility: [], model_selection: [] }, isLoading: false, error: null }
+      }
+      return EMPTY
+    })
+    render(<ForecastDecisionSupportPanel project="tropical" />)
+    expect(screen.getByText(/not populated for this output/)).toBeInTheDocument()
+    // recommendations from v63 still render — v66 emptiness does not poison the v63 output
+    expect(screen.getByText('03-01-025')).toBeInTheDocument()
   })
 
   it('renders a graceful empty state when no outputs are persisted', () => {

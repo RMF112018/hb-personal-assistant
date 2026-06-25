@@ -2,7 +2,6 @@
  * Read-only DB read-model surface: confidence, project maturity, data-availability ("missing data"),
  * method eligibility, and per-code recommendations. Navigates by the hash-based output_id; renders
  * gracefully empty until the authorized live-write has populated the tables. */
-import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Gauge } from 'lucide-react'
 
@@ -17,7 +16,6 @@ import {
   ForecastTh,
 } from './ForecastPrimitives'
 import { ForecastStatusPill } from './ForecastStatusPill'
-import { ForecastSummaryCard, ForecastSummaryGrid } from './ForecastSummary'
 
 function money(v: string | null | undefined): string {
   return v == null || v === '' ? '—' : v
@@ -26,11 +24,6 @@ function money(v: string | null | undefined): string {
 function availabilityPill(a: string | null): string {
   if (a === 'available') return 'validated'
   if (a === 'partial') return 'attention'
-  return 'unsupported'
-}
-function maturityPill(tier: string | null | undefined): string {
-  if (tier === 'M4' || tier === 'M5') return 'validated'
-  if (tier === 'M2' || tier === 'M3') return 'attention'
   return 'unsupported'
 }
 function confidencePill(label: string | null | undefined): string {
@@ -46,15 +39,23 @@ function methodPill(status: string | null): string {
   return 'unsupported'
 }
 
-/** Persisted run-output + decision-support panel (hosted in the Run Center). */
-export function ForecastDecisionSupportPanel({ project }: { project: string }) {
+/** Decision-support detail panel (recommendations, data availability, method eligibility) for the
+ * page-owned active output. Headline KPI cards live in the consolidated Forecast Summary; this panel
+ * is detail-only. v66 decision-support emptiness is neutral here (subsections omit) — never an error
+ * and never a poison for the v63-sourced summary. */
+export function ForecastDecisionSupportPanel({
+  project,
+  activeOutputId,
+}: {
+  project: string
+  activeOutputId?: string
+}) {
   const { data: list, isLoading, error } = useQuery({
     queryKey: ['forecast', 'db-outputs', project],
     queryFn: () => api.getForecastDbOutputs(project),
   })
   const outputs = list?.outputs ?? []
-  const [selectedId, setSelectedId] = useState<string | undefined>(undefined)
-  const activeId = selectedId ?? outputs[0]?.output_id
+  const activeId = activeOutputId ?? outputs[0]?.output_id
 
   const { data: detail } = useQuery({
     queryKey: ['forecast', 'db-output', activeId],
@@ -69,82 +70,40 @@ export function ForecastDecisionSupportPanel({ project }: { project: string }) {
 
   if (error) {
     return (
-      <ForecastPanel icon={Gauge} title="Persisted forecast outputs">
+      <ForecastPanel icon={Gauge} title="Decision support">
         <ForecastAdvisoryStrip>
-          Forecast database not available. Persisted run outputs appear here once configured.
+          Forecast database not available. Decision-support detail appears here once configured.
         </ForecastAdvisoryStrip>
       </ForecastPanel>
     )
   }
   if (!isLoading && outputs.length === 0) {
     return (
-      <ForecastPanel icon={Gauge} title="Persisted forecast outputs">
+      <ForecastPanel icon={Gauge} title="Decision support">
         <EmptyState
           title="No persisted forecast outputs yet"
-          hint="Generate a forecast for this project to populate run outputs and decision support."
+          hint="Generate a forecast for this project to populate recommendations and decision support."
         />
       </ForecastPanel>
     )
   }
 
-  const projectScorecard = ds?.confidence_scorecards?.find((s) => s.scope === 'project')
-  const maturity = ds?.maturity
+  const hasDecisionSupport = Boolean(
+    ds && (ds.data_availability.length > 0 || ds.method_eligibility.length > 0),
+  )
 
   return (
     <ForecastPanel
       icon={Gauge}
-      title="Persisted forecast outputs"
-      description="Read-only model run outputs and decision support from the local database."
+      title="Decision support"
+      description="Read-only recommendations, data availability, and method eligibility from the local database."
     >
-      {outputs.length > 1 && (
-        <label className="text-sm text-[var(--hb-muted)] flex items-center gap-2">
-          Output
-          <select
-            className="rounded border border-[var(--hb-border)] bg-[var(--hb-bg)] px-2 py-1 text-sm"
-            value={activeId}
-            onChange={(e) => setSelectedId(e.target.value)}
-          >
-            {outputs.map((o) => (
-              <option key={o.output_id} value={o.output_id}>
-                {o.created_display ?? o.output_id}
-              </option>
-            ))}
-          </select>
-        </label>
+      {detail && !hasDecisionSupport && (
+        <p className="text-sm text-[var(--hb-muted)]">
+          Decision-support scoring is not populated for this output. Recommendations below come from the
+          persisted forecast.
+        </p>
       )}
-
-      {detail && (
-        <ForecastSummaryGrid>
-          <ForecastSummaryCard label="Estimated final cost" value={money(detail.estimated_final_cost)} />
-          <ForecastSummaryCard label="Cost to complete" value={money(detail.cost_to_complete)} />
-          <ForecastSummaryCard
-            label="Variance to budget"
-            value={money(detail.variance_to_budget)}
-            status={detail.variance_to_budget?.startsWith('-') ? 'ready' : 'neutral'}
-          />
-        </ForecastSummaryGrid>
-      )}
-
-      <div className="forecast-metric-grid mt-4">
-        <ForecastSummaryCard
-          label="Project maturity"
-          value={maturity?.maturity_tier ?? '—'}
-          detail={maturity ? `${maturity.completed_month_count ?? 0} completed months` : undefined}
-        />
-        <div className="forecast-metric-card">
-          <div className="forecast-metric-label">Forecast confidence</div>
-          <div className="mt-1">
-            <ForecastStatusPill status={confidencePill(projectScorecard?.label)} />
-          </div>
-          <div className="forecast-metric-detail">{projectScorecard?.label ?? 'no scorecard'}</div>
-        </div>
-        <div className="forecast-metric-card">
-          <div className="forecast-metric-label">Maturity status</div>
-          <div className="mt-1">
-            <ForecastStatusPill status={maturityPill(maturity?.maturity_tier)} />
-          </div>
-        </div>
-      </div>
 
       {ds && ds.data_availability.length > 0 && (
         <div className="mt-4">

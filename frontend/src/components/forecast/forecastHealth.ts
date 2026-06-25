@@ -10,13 +10,18 @@ export const HEALTH_PILL: Record<ForecastHealthLevel, string> = {
 /**
  * One-line "is this forecast usable?" verdict. Pure so it can be unit-tested directly. Priority:
  * a failed opened run first, then blocked/no-output, then a confidence/maturity caveat, else usable.
+ *
+ * Confidence/maturity are the HB readiness-based display labels from the DB-native v63 summary
+ * ("High"/"Medium"/"Low"/"None"; "Full context" / "Schedule-informed" / "Cost-informed" /
+ * "Baseline only" / "No financial basis") — NOT the v66 M0–M5 scorecard, which DB-native never
+ * populates. A forecast is usable with strong confidence (High/Medium) and an informed maturity.
  */
 export function deriveForecastHealth(i: {
   runFailed: boolean
   readinessBlocked: boolean
   hasOutput: boolean
   confidenceLabel: string | null | undefined
-  maturityTier: string | null | undefined
+  maturityLabel: string | null | undefined
 }): { level: ForecastHealthLevel; label: string; detail: string } {
   if (i.runFailed) {
     return {
@@ -32,8 +37,12 @@ export function deriveForecastHealth(i: {
       detail: 'No usable forecast output is available for this project yet.',
     }
   }
-  const maturityReady = i.maturityTier === 'M4' || i.maturityTier === 'M5'
-  if (i.confidenceLabel !== 'high' || !maturityReady) {
+  const strongConfidence = i.confidenceLabel === 'High' || i.confidenceLabel === 'Medium'
+  const informedMaturity =
+    i.maturityLabel != null &&
+    i.maturityLabel !== 'No financial basis' &&
+    i.maturityLabel !== 'Baseline only'
+  if (!strongConfidence || !informedMaturity) {
     return {
       level: 'attention',
       label: 'Needs attention',

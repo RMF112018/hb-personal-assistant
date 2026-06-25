@@ -64,6 +64,7 @@ pytest_targets=(
   "tests/test_forecast_db_native_inputs_p3.py"
   "tests/test_forecast_db_native_output_persistence.py"
   "tests/test_forecast_db_native_source_snapshot.py"
+  "tests/test_forecast_db_native_summary.py"
   "tests/test_forecast_db_read_adapter_phase4.py"
   "tests/test_forecast_db_read_repositories_phase3.py"
   "tests/test_forecast_db_transition_schema_v58.py"

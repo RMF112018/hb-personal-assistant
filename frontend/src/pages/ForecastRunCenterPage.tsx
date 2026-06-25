@@ -187,6 +187,11 @@ export function ForecastRunCenterPage() {
 
   const [selected, setSelected] = useState<Selected | undefined>(undefined)
 
+  // Page-owned active persisted output: the Forecast Summary selector writes it; every output-scoped
+  // panel (summary, decision support, narratives, health) reads it so they stay in lockstep. Undefined
+  // = each panel falls back to its own latest output (same list → same default, still consistent).
+  const [activeOutputId, setActiveOutputId] = useState<string | undefined>(undefined)
+
   // P-B: project selector driven by the generation-ready project projection (procore identity + committed
   // schedule + forecast outputs), with per-project readiness. No 'tropical' fallback for generation.
   const { data: projectsResp } = useQuery({
@@ -239,6 +244,7 @@ export function ForecastRunCenterPage() {
     setDateError(null)
     setLastRequestId(null)
     setGenCompleted(false)
+    setActiveOutputId(undefined) // new project → fall back to its own latest persisted output
   }
 
   const { data: detailResp } = useQuery({
@@ -739,10 +745,24 @@ export function ForecastRunCenterPage() {
             project={projectKey}
             readinessStatus={selectedProjectObj?.readiness_status ?? null}
             runFailed={runFailed}
+            activeOutputId={activeOutputId}
           />
-          <ForecastResultsSummary key={`rs-${projectKey}-${refreshNonce}`} project={projectKey} />
-          <ForecastDecisionSupportPanel key={`ds-${projectKey}-${refreshNonce}`} project={projectKey} />
-          <ForecastNarrativesPanel key={`nr-${projectKey}-${refreshNonce}`} project={projectKey} />
+          <ForecastResultsSummary
+            key={`rs-${projectKey}-${refreshNonce}`}
+            project={projectKey}
+            activeOutputId={activeOutputId}
+            onSelectOutput={setActiveOutputId}
+          />
+          <ForecastDecisionSupportPanel
+            key={`ds-${projectKey}-${refreshNonce}`}
+            project={projectKey}
+            activeOutputId={activeOutputId}
+          />
+          <ForecastNarrativesPanel
+            key={`nr-${projectKey}-${refreshNonce}`}
+            project={projectKey}
+            activeOutputId={activeOutputId}
+          />
           <ForecastOperatorAssumptionsPanel key={`oa-${projectKey}-${refreshNonce}`} project={projectKey} />
         </>
       ) : (

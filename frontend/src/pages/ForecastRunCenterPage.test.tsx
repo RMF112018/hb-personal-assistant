@@ -556,12 +556,12 @@ describe('ForecastRunCenterPage', () => {
     renderPage()
     // No project selected → labelled empty state, no implicit projects[0] browsing.
     expect(screen.getByText('Select a project to view its forecast results.')).toBeInTheDocument()
-    expect(screen.queryByText('Persisted forecast outputs')).not.toBeInTheDocument()
+    expect(screen.queryByText('Decision support')).not.toBeInTheDocument()
     expect(screen.queryByText('Forecast explainability')).not.toBeInTheDocument()
     expect(screen.queryByText('Operator assumptions')).not.toBeInTheDocument()
 
     fireEvent.change(screen.getByLabelText('Forecast project'), { target: { value: 'tropical' } })
-    expect(screen.getByText('Persisted forecast outputs')).toBeInTheDocument()
+    expect(screen.getByText('Decision support')).toBeInTheDocument()
     expect(screen.getByText('Forecast explainability')).toBeInTheDocument()
     expect(screen.getByText('Operator assumptions')).toBeInTheDocument()
   })
@@ -570,11 +570,11 @@ describe('ForecastRunCenterPage', () => {
     mockData()
     renderPage()
     // Summaries are gated on selection, like the detail panels.
-    expect(screen.queryByText('Results summary')).not.toBeInTheDocument()
+    expect(screen.queryByText('Forecast Summary')).not.toBeInTheDocument()
     expect(screen.queryByText('Forecast health')).not.toBeInTheDocument()
 
     fireEvent.change(screen.getByLabelText('Forecast project'), { target: { value: 'tropical' } })
-    expect(screen.getByText('Results summary')).toBeInTheDocument()
+    expect(screen.getByText('Forecast Summary')).toBeInTheDocument()
     expect(screen.getByText('Forecast health')).toBeInTheDocument()
     // Default mock has no persisted outputs → an explicit, readable verdict (not raw data).
     expect(screen.getByText('Blocked / no output')).toBeInTheDocument()
@@ -1062,7 +1062,7 @@ describe('ForecastRunCenterPage', () => {
     ).toBeInTheDocument()
   })
 
-  it('renders persisted db-native outputs in the results summary panel on selection', () => {
+  it('renders persisted db-native outputs in the Forecast Summary panel on selection', () => {
     useQueryMock.mockImplementation((opts: { queryKey: unknown[] }) => {
       const k0 = opts.queryKey[0]
       const kind = opts.queryKey[1]
@@ -1096,6 +1096,24 @@ describe('ForecastRunCenterPage', () => {
             cost_to_complete: '850.00',
             variance_to_budget: '200.00',
             variance_to_prior_forecast: null,
+            // Consolidated read-model summary (v63-sourced; v66 stays empty for db-native).
+            summary: {
+              estimated_at_completion: '1700.00',
+              total_cost_to_date: '600.00',
+              cost_to_complete: '850.00',
+              current_budget: '1500.00',
+              budget_basis_label: 'Revised budget',
+              budget_status: 'available',
+              variance_to_budget: '200.00',
+              variance_to_budget_status: 'reconciled',
+              variance_to_prior_forecast: null,
+              variance_to_prior_forecast_status: 'no_prior_forecast',
+              forecast_confidence_label: 'Medium',
+              forecast_confidence_basis: 'cost_informed_financial_spine',
+              forecast_maturity_label: 'Cost-informed',
+              forecast_maturity_basis: 'cost_informed_financial_spine',
+              basis_limitations: [],
+            },
             budget_codes: [],
             risks: [],
             monthly: [],
@@ -1142,10 +1160,14 @@ describe('ForecastRunCenterPage', () => {
     })
     renderPage()
     fireEvent.change(screen.getByLabelText('Forecast project'), { target: { value: 'tropical' } })
-    // Persisted v63 headline numbers render (currency-formatted).
-    expect(screen.getByText('Results summary')).toBeInTheDocument()
+    // Persisted v63 headline numbers render (currency-formatted) in the consolidated Forecast Summary.
+    expect(screen.getByText('Forecast Summary')).toBeInTheDocument()
     expect(screen.getAllByText(/\$1,700/).length).toBeGreaterThan(0)
-    // The empty v66 decision-support degrades honestly, not as fabricated data.
-    expect(screen.getAllByText('no scorecard').length).toBeGreaterThan(0)
+    // Readiness-based confidence/maturity come from v63 — empty v66 never poisons the summary.
+    expect(screen.getByText('Cost-informed')).toBeInTheDocument()
+    expect(screen.getByText('No prior forecast')).toBeInTheDocument()
+    expect(screen.queryByText('no scorecard')).not.toBeInTheDocument()
+    expect(screen.queryByText('Unknown')).not.toBeInTheDocument()
+    expect(screen.queryByText('Unsupported')).not.toBeInTheDocument()
   })
 })

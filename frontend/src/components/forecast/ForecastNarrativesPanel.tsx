@@ -3,7 +3,6 @@
  * QA, and the context→analysis→output package-sha256 lineage chain. Navigates by the hash-based
  * output_id; renders gracefully empty until the authorized live-write has populated the tables.
  * The API curates each narrative (no raw_json, no stamps); this panel only displays it. */
-import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { FileText } from 'lucide-react'
 
@@ -16,21 +15,27 @@ import {
   ForecastTd,
   ForecastTh,
 } from './ForecastPrimitives'
-import { ForecastSummaryCard, ForecastSummaryGrid } from './ForecastSummary'
 
 function money(v: string | null | undefined): string {
   return v == null || v === '' ? '—' : v
 }
 
-/** Persisted explainability / audit-trail panel (hosted in the Run Center). */
-export function ForecastNarrativesPanel({ project }: { project: string }) {
+/** Persisted explainability / audit-trail panel (hosted in the Run Center). Headline KPI cards live
+ * in the consolidated Forecast Summary; this panel shows the project narrative, human-override audit,
+ * source-data QA, and lineage. The active output is page-owned (lifted state). */
+export function ForecastNarrativesPanel({
+  project,
+  activeOutputId,
+}: {
+  project: string
+  activeOutputId?: string
+}) {
   const { data: list, isLoading, error } = useQuery({
     queryKey: ['forecast', 'db-outputs', project],
     queryFn: () => api.getForecastDbOutputs(project),
   })
   const outputs = list?.outputs ?? []
-  const [selectedId, setSelectedId] = useState<string | undefined>(undefined)
-  const activeId = selectedId ?? outputs[0]?.output_id
+  const activeId = activeOutputId ?? outputs[0]?.output_id
 
   const { data: narr } = useQuery({
     queryKey: ['forecast', 'db-narratives', activeId],
@@ -70,41 +75,8 @@ export function ForecastNarrativesPanel({ project }: { project: string }) {
       title="Forecast explainability"
       description="Read-only reason narratives, human-override audit, and provenance lineage from the local database."
     >
-      {outputs.length > 1 && (
-        <label className="text-sm text-[var(--hb-muted)] flex items-center gap-2">
-          Output
-          <select
-            className="rounded border border-[var(--hb-border)] bg-[var(--hb-bg)] px-2 py-1 text-sm"
-            value={activeId}
-            onChange={(e) => setSelectedId(e.target.value)}
-          >
-            {outputs.map((o) => (
-              <option key={o.output_id} value={o.output_id}>
-                {o.created_display ?? o.output_id}
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
-
-      {project_narr && (
-        <>
-          <ForecastSummaryGrid>
-            <ForecastSummaryCard
-              label="Estimated final cost"
-              value={money(project_narr.estimated_final_cost)}
-            />
-            <ForecastSummaryCard label="Cost to complete" value={money(project_narr.cost_to_complete)} />
-            <ForecastSummaryCard
-              label="Variance to budget"
-              value={money(project_narr.variance_to_budget)}
-            />
-            <ForecastSummaryCard label="Operator overrides" value={String(project_narr.override_count ?? 0)} />
-          </ForecastSummaryGrid>
-          {project_narr.narrative && (
-            <p className="mt-3 text-sm text-[var(--hb-muted)]">{project_narr.narrative}</p>
-          )}
-        </>
+      {project_narr?.narrative && (
+        <p className="text-sm text-[var(--hb-muted)]">{project_narr.narrative}</p>
       )}
 
       {overrides.length > 0 && (

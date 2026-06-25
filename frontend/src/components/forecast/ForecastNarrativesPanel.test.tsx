@@ -85,9 +85,10 @@ describe('ForecastNarrativesPanel', () => {
   it('renders project totals, override audit, source QA, and lineage chips', () => {
     mockPopulated()
     render(<ForecastNarrativesPanel project="tropical" />)
-    // project header totals + override count
-    expect(screen.getByText('Estimated final cost')).toBeInTheDocument()
-    expect(screen.getByText('Operator overrides')).toBeInTheDocument()
+    // project narrative text renders (the headline cost KPI cards moved to the Forecast Summary)
+    expect(screen.getByText('Forecast EAC 500.00 across 1 budget code(s).')).toBeInTheDocument()
+    expect(screen.queryByText('Estimated final cost')).not.toBeInTheDocument()
+    expect(screen.queryByText('Operator overrides')).not.toBeInTheDocument()
     // human-override audit row (original → override)
     expect(screen.getByText('Human overrides · 1')).toBeInTheDocument()
     expect(screen.getByText('450.00 → 500.00')).toBeInTheDocument()
