@@ -33,9 +33,17 @@ def _seed(db: Path) -> None:
     seed_procore_ep_project(
         db, project_key="tropical", display_name="Tropical Resort", project_number="PR-001"
     )
-    # harbor — identity only (no schedule / output / config / budget).
+    # harbor — identity only (no schedule / output / config / financial basis).
     seed_procore_ep_project(
         db, project_key="harbor", display_name="Harbor Tower", project_number="PR-002"
+    )
+    # summit — budget-only first-run (identity + budget_details; no cost/schedule/config/output).
+    seed_procore_ep_project(
+        db, project_key="summit", display_name="Summit Center", project_number="PR-003"
+    )
+    # rincon — cost + schedule, no config / no prior forecast (sparse first-run, cost-informed+).
+    seed_procore_ep_project(
+        db, project_key="rincon", display_name="Rincon Plaza", project_number="PR-004"
     )
     conn = sqlite3.connect(str(db))
     try:
@@ -84,6 +92,46 @@ def _seed(db: Path) -> None:
             "raw_json, created_utc) VALUES (?,?,?,?,?)",
             ("tropical", "0000.03-01-001.MAT", "pkg-trop", "{}", TS),
         )
+        # tropical actual cost → full_context (budget + cost + schedule + prior output + config).
+        conn.execute(
+            "INSERT INTO forecast_cost_entries (cost_entry_id, project_key, source_package, "
+            "source_row_number, budget_code_key, raw_json, created_utc) VALUES (?,?,?,?,?,?,?)",
+            ("ce-trop-1", "tropical", "pkg-trop", 1, "0000.03-01-001.MAT", "{}", TS),
+        )
+        for i, month in enumerate(("2026-01", "2026-02", "2026-03"), start=1):
+            conn.execute(
+                "INSERT INTO forecast_monthly_actuals_by_budget_code (project_key, budget_code_key, "
+                "month, type, source_package, amount, raw_json, created_utc) "
+                "VALUES (?,?,?,?,?,?,?,?)",
+                ("tropical", "0000.03-01-001.MAT", month, "actual", "pkg-trop", 1000.0 * i, "{}", TS),
+            )
+        # summit — budget_details only (baseline_only first-run).
+        conn.execute(
+            "INSERT INTO forecast_budget_details (project_key, budget_code_key, source_package, "
+            "raw_json, created_utc) VALUES (?,?,?,?,?)",
+            ("summit", "0000.04-01-001.MAT", "pkg-summit", "{}", TS),
+        )
+        # rincon — budget + nonzero monthly actuals + committed schedule (no config / no prior output).
+        conn.execute(
+            "INSERT INTO forecast_budget_details (project_key, budget_code_key, source_package, "
+            "raw_json, created_utc) VALUES (?,?,?,?,?)",
+            ("rincon", "0000.05-01-001.MAT", "pkg-rincon", "{}", TS),
+        )
+        for month in ("2026-01", "2026-02"):
+            conn.execute(
+                "INSERT INTO forecast_monthly_actuals_by_budget_code (project_key, budget_code_key, "
+                "month, type, source_package, amount, raw_json, created_utc) "
+                "VALUES (?,?,?,?,?,?,?,?)",
+                ("rincon", "0000.05-01-001.MAT", month, "actual", "pkg-rincon", 2500.0, "{}", TS),
+            )
+        conn.execute(
+            "INSERT INTO schedule_file_imports (import_id, project_key, source_type, source_format, "
+            "import_status, activity_count, relationship_count, wbs_count, calendar_count, "
+            "code_count, udf_count, cost_loaded_status, schedule_version_key, created_at) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            ("imp-rincon", "rincon", "xer", "primavera_xer", "committed", 1, 0, 0, 0, 0, 0,
+             "not_cost_loaded", "rincon|S1|2026-03-01", TS),
+        )
         conn.commit()
     finally:
         conn.close()
@@ -115,8 +163,8 @@ def test_discovers_and_unions_all_sources(seeded: Path) -> None:
     body = resp.json()
     assert body["generation_enabled"] is True
     keys = {p["project_key"] for p in body["projects"]}
-    # tropical+harbor from procore_ep_projects, delta from committed schedule import (no procore row).
-    assert keys == {"tropical", "harbor", "delta"}
+    # tropical/harbor/summit/rincon from procore_ep_projects, delta from committed schedule import.
+    assert keys == {"tropical", "harbor", "delta", "summit", "rincon"}
     assert find_redaction_leaks(body) == []
 
 
@@ -137,15 +185,25 @@ def test_tropical_is_ready_with_full_metadata(seeded: Path) -> None:
     assert p["latest_forecast_display"] == "Jun 19, 2026"
     assert p["has_budget_cost_data"] is True
     assert p["config_snapshot_available"] is True
+    # P-2: full evidence (budget + actual cost + schedule + prior output + config) → full_context/ready.
+    assert p["forecast_maturity"] == "full_context"
+    assert p["confidence_level"] == "high"
+    assert p["actual_cost_available"] is True
+    assert p["prior_forecast_available"] is True
+    assert p["initial_forecast"] is False
+    assert p["basis_limitations"] == []
 
 
 def test_identity_only_project_is_blocked(seeded: Path) -> None:
     p = _by_key(_client(seeded).get("/api/forecast/generation/projects", headers=_viewer()).json())[
         "harbor"
     ]
+    # No calculable financial basis → the ONLY data-readiness block.
     assert p["readiness_status"] == "blocked"
-    assert "missing_config_snapshot" in p["readiness_reasons"]
-    assert "missing_budget_cost_data" in p["readiness_reasons"]
+    assert "no_financial_basis" in p["readiness_reasons"]
+    assert "missing_budget_cost_data" not in p["readiness_reasons"]
+    assert p["forecast_maturity"] == "no_financial_basis"
+    assert p["confidence_level"] == "none"
     assert p["has_schedule_data"] is False
     assert p["has_prior_forecast_output"] is False
 
@@ -157,18 +215,67 @@ def test_schedule_only_project_appears_without_prior_forecast(seeded: Path) -> N
     assert p["has_schedule_data"] is True
     assert p["has_prior_forecast_output"] is False
     assert p["display_name"] is None  # no procore identity row
-    assert p["readiness_status"] == "blocked"  # no config/budget
+    # Schedule alone is not a financial basis → blocked on no_financial_basis (not config/budget).
+    assert p["readiness_status"] == "blocked"
+    assert "no_financial_basis" in p["readiness_reasons"]
+    assert p["forecast_maturity"] == "no_financial_basis"
+
+
+def test_budget_only_project_is_baseline_only_not_blocked(seeded: Path) -> None:
+    p = _by_key(_client(seeded).get("/api/forecast/generation/projects", headers=_viewer()).json())[
+        "summit"
+    ]
+    # Budget-only first run: a defensible baseline exists → degraded, never blocked.
+    assert p["readiness_status"] == "degraded"
+    assert p["forecast_maturity"] == "baseline_only"
+    assert "no_financial_basis" not in p["readiness_reasons"]
+    assert p["initial_forecast"] is True
+    assert p["prior_forecast_available"] is False
+    assert p["actual_cost_available"] is False
+    assert p["forecast_basis"] == "budget_details"
+    # Missing config snapshot is a confidence/degradation factor here, not a blocker.
     assert "missing_config_snapshot" in p["readiness_reasons"]
+    assert "no_config_snapshot" in p["basis_limitations"]
+    assert p["confidence_level"] == "low"
 
 
-def test_generation_disabled_blocks_all(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_cost_and_schedule_project_is_schedule_informed_not_blocked(seeded: Path) -> None:
+    p = _by_key(_client(seeded).get("/api/forecast/generation/projects", headers=_viewer()).json())[
+        "rincon"
+    ]
+    assert p["readiness_status"] == "degraded"  # cost + schedule, but no config / no prior forecast
+    assert p["forecast_maturity"] == "schedule_informed"
+    assert p["actual_cost_available"] is True
+    assert p["schedule_available"] is True
+    assert p["initial_forecast"] is True
+    assert "no_financial_basis" not in p["readiness_reasons"]
+
+
+def test_no_prior_forecast_output_never_blocks(seeded: Path) -> None:
+    body = _client(seeded).get("/api/forecast/generation/projects", headers=_viewer()).json()
+    for p in body["projects"]:
+        if p["readiness_status"] == "blocked":
+            # The only true data blockers are identity + financial basis — never a missing prior forecast.
+            assert set(p["readiness_reasons"]) & {"no_project_identity", "no_financial_basis"}
+        if not p["has_prior_forecast_output"] and p["readiness_status"] != "blocked":
+            # A missing prior forecast is informational and surfaced, never blocking.
+            assert "no_prior_forecast_output" in p["readiness_reasons"]
+
+
+def test_generation_flag_off_does_not_block_projects(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # The global generation flag is a separate axis from project data readiness/maturity.
     monkeypatch.delenv(ENV_DB_CONFIG_RUN_ENABLED, raising=False)
     db = tmp_path / "hb.sqlite"
     _seed(db)
     body = _client(db).get("/api/forecast/generation/projects", headers=_viewer()).json()
     assert body["generation_enabled"] is False
-    assert all(p["readiness_status"] == "blocked" for p in body["projects"])
-    assert all("generation_disabled" in p["readiness_reasons"] for p in body["projects"])
+    by = {p["project_key"]: p for p in body["projects"]}
+    # Per-project readiness is unchanged by the global flag; generation_disabled is NOT a project reason.
+    assert by["tropical"]["readiness_status"] == "ready"
+    assert by["summit"]["readiness_status"] == "degraded"
+    assert all("generation_disabled" not in p["readiness_reasons"] for p in body["projects"])
     assert find_redaction_leaks(body) == []
 
 

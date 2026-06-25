@@ -111,7 +111,29 @@ function mockData() {
               has_budget_cost_data: false,
               config_snapshot_available: false,
               readiness_status: 'blocked',
-              readiness_reasons: ['missing_config_snapshot', 'missing_budget_cost_data'],
+              readiness_reasons: ['no_financial_basis'],
+              forecast_maturity: 'no_financial_basis',
+              confidence_level: 'none',
+            },
+            {
+              project_key: 'summit',
+              display_name: 'Summit Center',
+              project_number: 'PR-003',
+              procore_project_id: '9003',
+              has_schedule_data: false,
+              has_activity_data: false,
+              latest_schedule_version_key: null,
+              latest_schedule_date: null,
+              has_prior_forecast_output: false,
+              latest_forecast_status: null,
+              latest_forecast_display: null,
+              has_budget_cost_data: true,
+              config_snapshot_available: false,
+              readiness_status: 'degraded',
+              readiness_reasons: ['missing_config_snapshot', 'no_prior_forecast_output'],
+              forecast_maturity: 'baseline_only',
+              confidence_level: 'low',
+              initial_forecast: true,
             },
           ],
           guardrails: { read_only: true },
@@ -313,8 +335,15 @@ describe('ForecastRunCenterPage', () => {
     expect(labels).toContain('Select a project')
     expect(labels).toContain('Tropical Resort')
     expect(labels).toContain('Harbor Tower — blocked')
+    // A degraded (sparse / first-run) project surfaces its status but is still selectable.
+    expect(labels).toContain('Summit Center — degraded')
     // Option values are project keys, not a hardcoded tropical default.
-    expect(Array.from(select.options).map((o) => o.value)).toEqual(['', 'tropical', 'harbor'])
+    expect(Array.from(select.options).map((o) => o.value)).toEqual([
+      '',
+      'tropical',
+      'harbor',
+      'summit',
+    ])
   })
 
   it('disables generation until a non-blocked project is selected, then passes project_key', async () => {
@@ -328,7 +357,7 @@ describe('ForecastRunCenterPage', () => {
     fireEvent.change(screen.getByLabelText('Forecast project'), { target: { value: 'harbor' } })
     expect(button()).toBeDisabled()
     expect(
-      screen.getByText('No configuration snapshot is available for this project.'),
+      screen.getByText('No budget, cost, or baseline data is available to forecast from yet.'),
     ).toBeInTheDocument()
 
     // A ready project enables generation and threads the selected project_key.
@@ -338,6 +367,25 @@ describe('ForecastRunCenterPage', () => {
     await waitFor(() =>
       expect(startDbConfigMock).toHaveBeenCalledWith({
         project_key: 'tropical',
+        generator_kind: 'comprehensive',
+        forecast_start_date: null,
+        forecast_cutoff_date: null,
+        forecast_cutoff_date_basis: null,
+      }),
+    )
+  })
+
+  it('allows generation for a degraded (sparse / first-run) project, not just a fully-ready one', async () => {
+    mockData()
+    renderPage()
+    const button = () => screen.getByRole('button', { name: 'Generate DB-backed forecast' })
+    // A budget-only first-run project is degraded (limited data), NOT blocked → generation allowed.
+    fireEvent.change(screen.getByLabelText('Forecast project'), { target: { value: 'summit' } })
+    expect(button()).not.toBeDisabled()
+    fireEvent.click(button())
+    await waitFor(() =>
+      expect(startDbConfigMock).toHaveBeenCalledWith({
+        project_key: 'summit',
         generator_kind: 'comprehensive',
         forecast_start_date: null,
         forecast_cutoff_date: null,
@@ -486,7 +534,7 @@ describe('ForecastRunCenterPage', () => {
     // Blocked project: header surfaces the reason + a resolve-first next step; generation disabled.
     fireEvent.change(screen.getByLabelText('Forecast project'), { target: { value: 'harbor' } })
     expect(
-      screen.getByText('No configuration snapshot is available for this project.'),
+      screen.getByText('No budget, cost, or baseline data is available to forecast from yet.'),
     ).toBeInTheDocument()
     expect(screen.getByText('Resolve readiness items before generating.')).toBeInTheDocument()
     expect(dbGenerate()).toBeDisabled()
