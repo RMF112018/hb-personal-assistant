@@ -154,3 +154,49 @@ def test_results_are_redaction_safe() -> None:
     for kind in ("comprehensive", "probability"):
         result = compute_db_native_forecast("tropical", kind, db_path=db)
         assert find_redaction_leaks(result) == [], kind
+
+
+# -- Phase E2: full DB->snapshot->context->engine chain with BudgetDetails cost-basis inputs ----
+
+_K = "1000.15-01-426.MAT"
+
+
+def _seed_budgetdetails(db: str, project_key: str) -> None:
+    """One reconciling BudgetDetails view (committed 600 + erp 300 + pending-cell 100 == projected
+    1000) whose projected exceeds EAC (850) -> the asymmetric raise should fire."""
+    conn = sqlite3.connect(db)
+    try:
+        conn.execute(
+            "INSERT INTO procore_ep_budget_detail_rows (record_key, endpoint_key, project_key, "
+            "record_id, budget_view_id, wbs_flat_code, canonical_budget_code_key, source_quality, "
+            "is_current, committed_costs, erp_direct_costs, projected_costs, actual_cost, "
+            "estimated_cost_at_completion) VALUES (?,?,?,?,?,?,?,?,1,?,?,?,?,?)",
+            ("rec1", "budget-details", project_key, "rec1", "5885", _K, _K, "live_full_payload",
+             "600.00", "300.00", "1000.00", "200.00", "850.00"),
+        )
+        conn.execute(
+            "INSERT INTO procore_ep_budget_detail_row_cells (cell_key, record_key, endpoint_key, "
+            "column_label, value_decimal_text, source_quality, is_current) VALUES (?,?,?,?,?,?,1)",
+            ("c1", "rec1", "budget-details", "Pending Cost Changes", "100.00", "live_full_payload"),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def test_e2_chain_reaches_budgetdetails_projected_basis() -> None:
+    db = _db()
+    seed_procore_ep_project(db, project_key="tropical", display_name="Tropical Resort")
+    _seed_v59(db, "tropical", source_package=_PKG,
+              budget=[{"budget_code_key": _K, "cost_code": "15-01-426", "category": "MAT",
+                       "revised_budget": "900.00"}],
+              cost=[{"budget_code_key": _K, "accounting_month": "2026-05", "amount": "200.00"}])
+    _seed_budgetdetails(db, "tropical")
+
+    result = compute_db_native_forecast("tropical", "comprehensive", db_path=db)
+    line = {ln["budget_code_key"]: ln for ln in result["forecast_lines"]}[_K]
+    assert line["cost_basis_classification"] == "budgetdetails_projected_cost_basis"
+    assert line["cost_basis_source"] == "db_native_budgetdetails"
+    assert line["forecast_final_cost"] == "1000.00"
+    assert line["forecast_cost_to_complete"] == "800.00"
+    assert find_redaction_leaks(result) == []

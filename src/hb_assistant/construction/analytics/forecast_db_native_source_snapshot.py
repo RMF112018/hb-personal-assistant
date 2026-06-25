@@ -18,7 +18,8 @@ is never emitted by ``public()`` (route-facing output stays package/path-free).
 from __future__ import annotations
 
 import sqlite3
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any
 
@@ -29,6 +30,31 @@ from hb_assistant.construction.forecast.source_domain_repository import (
 )
 
 SCHEMA_VERSION = 1
+
+_CENT = Decimal("0.01")
+
+# Canonical BudgetDetails projected-cost formula (forecast_cost_basis): all four must be present and
+# reconcile for the cost-basis projected basis to be applicable. pending_cost_changes is COST-side and
+# is sourced only from a dynamic row-cell mapped to that role — never from budget-side
+# pending_budget_changes.
+_FORMULA_FIELDS = ("committed_costs", "erp_direct_costs", "pending_cost_changes", "projected_costs")
+
+# Stable named money columns read from procore_ep_budget_detail_rows (TEXT). pending_budget_changes is
+# carried as budget-side context only (never a formula input).
+_BUDGETDETAILS_ROW_AMOUNT_FIELDS = (
+    "committed_costs",
+    "erp_direct_costs",
+    "projected_costs",
+    "actual_cost",
+    "job_to_date_costs",
+    "erp_job_to_date_costs",
+    "forecast_to_complete",
+    "estimated_cost_at_completion",
+    "pending_budget_changes",
+)
+
+# Dynamic (row-cell) cost-basis roles resolved via budget_column_roles.procore_label_to_role_key.
+_DYNAMIC_CELL_ROLES = ("pending_cost_changes", "commitment_invoiced")
 
 # Readiness codes that BLOCK generation (everything else is a non-blocking warning). The read model
 # (ForecastGenerationProjectReadModelService) is authoritative; we only split its coded reasons here.
@@ -85,6 +111,20 @@ class EnrichmentFamily:
 
 
 @dataclass(frozen=True)
+class CostBasisInputs:
+    """DB-native BudgetDetails cost-basis formula inputs, one deterministically-selected view per
+    budget code (Phase E2). Path-free; rows carry only amounts + formula diagnostics + selection
+    provenance (never record_key / payload_hash / raw payload)."""
+
+    present: bool
+    row_count: int
+    rows: tuple[dict[str, Any], ...] = ()
+
+    def public(self) -> dict[str, Any]:
+        return {"present": self.present, "row_count": self.row_count, "rows": [dict(r) for r in self.rows]}
+
+
+@dataclass(frozen=True)
 class DbNativeSourceSnapshot:
     """Typed, path-free DB-native source snapshot. ``public()`` is the serializable, redaction-safe
     contract; ``active_source_package`` is INTERNAL (an active-batch selector) and never emitted."""
@@ -104,6 +144,11 @@ class DbNativeSourceSnapshot:
     prior_forecast: dict[str, Any]
     warnings: tuple[str, ...]
     blockers: tuple[str, ...]
+    # DB-native BudgetDetails cost-basis formula inputs (Phase E2); empty when the structured Procore
+    # budget-detail table is absent/unseeded (the financial spine still drives the build).
+    budgetdetails_cost_basis_inputs: CostBasisInputs = field(
+        default_factory=lambda: CostBasisInputs(present=False, row_count=0)
+    )
     # INTERNAL ONLY — used to select the active v59 batch; never surfaced by public().
     active_source_package: str | None = None
 
@@ -133,6 +178,7 @@ class DbNativeSourceSnapshot:
                 "monthly_actuals": self.monthly_actuals.public(),
             },
             "enrichment_families": {name: fam.public() for name, fam in self.enrichment.items()},
+            "budgetdetails_cost_basis_inputs": self.budgetdetails_cost_basis_inputs.public(),
             "schedule_summary": dict(self.schedule_summary),
             "prior_forecast": dict(self.prior_forecast),
             "provenance": {
@@ -188,6 +234,179 @@ def _count_enrichment_family(conn: sqlite3.Connection, table: str, project_key: 
         f"SELECT COUNT(*) FROM {table} WHERE project_key = ? AND is_current = 1", (project_key,)
     ).fetchone()
     return int(row[0]) if row else 0
+
+
+def _dec(value: Any) -> Decimal | None:
+    """Defensive Decimal parse. None/'' -> None; unparseable -> None (never raises)."""
+    if value is None:
+        return None
+    text = str(value).strip()
+    if text == "":
+        return None
+    try:
+        return Decimal(text)
+    except (InvalidOperation, ValueError):
+        return None
+
+
+def _money_opt(value: Any) -> str | None:
+    """Canonical 2-dp money string for an optional amount: missing/unparseable -> None, '0.00' kept."""
+    parsed = _dec(value)
+    return str(parsed.quantize(_CENT)) if parsed is not None else None
+
+
+def _read_budgetdetails_cost_basis_inputs(
+    conn: sqlite3.Connection, project_key: str
+) -> tuple[dict[str, Any], ...]:
+    """One deterministically-selected BudgetDetails cost-basis input row per budget code (Phase E2).
+
+    Reads stable money columns from ``procore_ep_budget_detail_rows`` and the two dynamic cost-basis
+    fields (``pending_cost_changes`` / ``commitment_invoiced``) from ``procore_ep_budget_detail_row_cells``
+    via ``budget_column_roles.procore_label_to_role_key``. ``pending_budget_changes`` is budget-side
+    context only and is never used as the cost-side ``pending_cost_changes``. Selection is DB-only and
+    deterministic; output is path-free (no record_key / payload_hash). Returns ``()`` when the table is
+    absent (never raises).
+    """
+    if not _table_exists(conn, "procore_ep_budget_detail_rows"):
+        return ()
+
+    # Lazy (keeps module import light; avoids pulling the procore registry unless this path runs).
+    from hb_assistant.forecasting.budget_column_roles import procore_label_to_role_key
+    from hb_assistant.procore.structured_analytics import SOURCE_QUALITY_RANK
+
+    select_cols = [
+        "canonical_budget_code_key",
+        "wbs_flat_code",
+        "budget_view_id",
+        "record_key",
+        "source_quality",
+        "payload_seen_last_utc",
+        "updated_utc",
+        *_BUDGETDETAILS_ROW_AMOUNT_FIELDS,
+    ]
+    raw = [
+        dict(zip(select_cols, r, strict=True))
+        for r in conn.execute(
+            f"SELECT {', '.join(select_cols)} FROM procore_ep_budget_detail_rows "
+            "WHERE project_key = ? AND is_current = 1",
+            (project_key,),
+        ).fetchall()
+    ]
+    if not raw:
+        return ()
+
+    # Dynamic cost-basis cells for the candidate rows: record_key -> role -> set(canonical values).
+    rec_keys = [r["record_key"] for r in raw if r.get("record_key")]
+    cells: dict[str, dict[str, set[str]]] = {}
+    if rec_keys and _table_exists(conn, "procore_ep_budget_detail_row_cells"):
+        placeholders = ", ".join("?" for _ in rec_keys)
+        for rec, label, value_decimal_text in conn.execute(
+            "SELECT record_key, column_label, value_decimal_text "
+            f"FROM procore_ep_budget_detail_row_cells WHERE is_current = 1 AND record_key IN ({placeholders})",
+            tuple(rec_keys),
+        ).fetchall():
+            role = procore_label_to_role_key(label or "")
+            if role not in _DYNAMIC_CELL_ROLES:
+                continue
+            canon = _money_opt(value_decimal_text)
+            if canon is None:
+                continue
+            cells.setdefault(str(rec), {}).setdefault(role, set()).add(canon)
+
+    def _dynamic(rec: str, role: str) -> tuple[str | None, bool]:
+        """(value, conflict). Absent -> (None, False); duplicated-distinct -> (None, True)."""
+        values = cells.get(rec, {}).get(role)
+        if not values:
+            return None, False
+        if len(values) > 1:
+            return None, True
+        return next(iter(values)), False
+
+    candidates_by_code: dict[str, list[dict[str, Any]]] = {}
+    for r in raw:
+        code = str(r.get("canonical_budget_code_key") or r.get("wbs_flat_code") or "").strip()
+        if not code:
+            continue
+        rec = str(r.get("record_key") or "")
+        pending_cost_changes, pcc_conflict = _dynamic(rec, "pending_cost_changes")
+        commitment_invoiced, ci_conflict = _dynamic(rec, "commitment_invoiced")
+
+        amounts = {f: _money_opt(r.get(f)) for f in _BUDGETDETAILS_ROW_AMOUNT_FIELDS}
+        formula_values = {
+            "committed_costs": amounts["committed_costs"],
+            "erp_direct_costs": amounts["erp_direct_costs"],
+            "pending_cost_changes": pending_cost_changes,
+            "projected_costs": amounts["projected_costs"],
+        }
+        missing = [f for f in _FORMULA_FIELDS if formula_values[f] is None]
+        formula_variance: str | None = None
+        reconciles = False
+        if not missing:
+            computed = (
+                _dec(formula_values["committed_costs"])  # type: ignore[operator]
+                + _dec(formula_values["erp_direct_costs"])
+                + _dec(formula_values["pending_cost_changes"])
+            )
+            projected = _dec(formula_values["projected_costs"])
+            formula_variance = str((projected - computed).quantize(_CENT))  # type: ignore[operator]
+            reconciles = abs(projected - computed) <= _CENT  # type: ignore[operator]
+
+        candidates_by_code.setdefault(code, []).append(
+            {
+                "budget_code_key": code,
+                "committed_costs": amounts["committed_costs"],
+                "erp_direct_costs": amounts["erp_direct_costs"],
+                "pending_cost_changes": pending_cost_changes,
+                "projected_costs": amounts["projected_costs"],
+                "actual_cost": amounts["actual_cost"],
+                "job_to_date_costs": amounts["job_to_date_costs"],
+                "erp_job_to_date_costs": amounts["erp_job_to_date_costs"],
+                "forecast_to_complete": amounts["forecast_to_complete"],
+                "estimated_cost_at_completion": amounts["estimated_cost_at_completion"],
+                "commitment_invoiced": commitment_invoiced,
+                "pending_budget_changes": amounts["pending_budget_changes"],
+                "formula_reconciles": reconciles,
+                "formula_variance": formula_variance,
+                "missing_formula_fields": missing,
+                "selected_budget_view_id": (str(r["budget_view_id"]) if r.get("budget_view_id") else None),
+                "selected_source_quality": r.get("source_quality"),
+                "selection_method": "db_deterministic",
+                # internal-only ranking aids (stripped before public output):
+                "_rank_quality": SOURCE_QUALITY_RANK.get(r.get("source_quality") or "", 0),
+                "_completeness": len(_FORMULA_FIELDS) - len(missing),
+                "_recency": str(r.get("payload_seen_last_utc") or r.get("updated_utc") or ""),
+                "_view": str(r.get("budget_view_id") or ""),
+                "_rec": rec,
+                "_dynamic_conflict": pcc_conflict or ci_conflict,
+            }
+        )
+
+    out: list[dict[str, Any]] = []
+    for code in sorted(candidates_by_code):
+        cands = candidates_by_code[code]
+        # Deterministic tiebreak first (ascending budget_view_id then record_key), then a stable
+        # descending sort on the ranking dimensions — Python's stable sort preserves the tiebreak.
+        cands.sort(key=lambda c: (c["_view"], c["_rec"]))
+        cands.sort(
+            key=lambda c: (c["_rank_quality"], 1 if c["formula_reconciles"] else 0, c["_completeness"], c["_recency"]),
+            reverse=True,
+        )
+        selected = cands[0]
+        candidate_view_count = len(cands)
+        warnings: list[str] = []
+        if selected["_dynamic_conflict"]:
+            warnings.append("budgetdetails_dynamic_cell_conflict")
+        if candidate_view_count > 1:
+            warnings.append("budgetdetails_multiple_budget_views_detected")
+            warnings.append("budgetdetails_selected_view_unverified")
+
+        row = {k: v for k, v in selected.items() if not k.startswith("_")}
+        row["candidate_view_count"] = candidate_view_count
+        row["selected_formula_reconciles"] = selected["formula_reconciles"]
+        row["selection_warnings"] = warnings
+        out.append(row)
+
+    return tuple(out)
 
 
 def _find_project(listing: dict[str, Any], project_key: str) -> dict[str, Any] | None:
@@ -260,6 +479,7 @@ def build_db_native_source_snapshot(
             enrichment[family] = EnrichmentFamily(present=count > 0, row_count=count)
             if count == 0:
                 enrichment_warnings.append(f"enrichment_family_unavailable:{family}")
+        cost_basis_rows = _read_budgetdetails_cost_basis_inputs(conn, project_key)
     finally:
         conn.close()
 
@@ -310,6 +530,9 @@ def build_db_native_source_snapshot(
         },
         warnings=warnings,
         blockers=blockers,
+        budgetdetails_cost_basis_inputs=CostBasisInputs(
+            present=bool(cost_basis_rows), row_count=len(cost_basis_rows), rows=cost_basis_rows
+        ),
         active_source_package=active_pkg,
     )
 

@@ -267,5 +267,58 @@ def test_build_is_deterministic() -> None:
     assert _context_public("tropical", db) == _context_public("tropical", db)
 
 
+# -- Phase E2: per-code cost_basis_inputs mapping -----------------------------
+
+
+def _ctx_public_with_cost_basis(budget_rows: list[dict], cbi_rows: list[dict]) -> dict:
+    public = {
+        "project_key": "tropical",
+        "display_name": "Tropical",
+        "project_number": None,
+        "procore_project_id": None,
+        "forecast_window": {},
+        "readiness": {"forecast_maturity": "M4", "confidence_level": "medium"},
+        "financial_basis": {
+            "budget_details": {"rows": budget_rows},
+            "cost_entries": {"rows": []},
+            "monthly_actuals": {"rows": []},
+        },
+        "budgetdetails_cost_basis_inputs": {"rows": cbi_rows},
+        "blockers": [],
+        "warnings": [],
+    }
+    return build_db_native_context(context_input_from_snapshot_public(public)).public()
+
+
+def test_cost_basis_inputs_mapped_per_budget_code() -> None:
+    pub = _ctx_public_with_cost_basis(
+        budget_rows=[{"budget_code_key": "1000.15-01-426.MAT", "projected_costs": "1000.00"}],
+        cbi_rows=[{
+            "budget_code_key": "1000.15-01-426.MAT", "committed_costs": "600.00",
+            "erp_direct_costs": "300.00", "pending_cost_changes": "100.00", "projected_costs": "1000.00",
+            "commitment_invoiced": "550.00", "estimated_cost_at_completion": "850.00",
+            "formula_reconciles": True, "formula_variance": "0.00", "missing_formula_fields": [],
+            "selected_budget_view_id": "5885", "selection_warnings": [],
+        }],
+    )
+    block = pub["budget_code_context"][0]["cost_basis_inputs"]
+    assert block["available"] is True
+    assert block["source"] == "db_native_budgetdetails"
+    assert block["pending_cost_changes"] == "100.00"
+    assert block["erp_direct_costs"] == "300.00"
+    assert block["formula_reconciles"] is True
+
+
+def test_cost_basis_inputs_absent_marks_unavailable_and_warns() -> None:
+    pub = _ctx_public_with_cost_basis(
+        budget_rows=[{"budget_code_key": "1000.15-01-426.MAT", "projected_costs": "1000.00"}],
+        cbi_rows=[],  # no BudgetDetails formula row for this code
+    )
+    block = pub["budget_code_context"][0]["cost_basis_inputs"]
+    assert block["available"] is False
+    assert block["reason"] == "budgetdetails_cost_basis_inputs_unavailable"
+    assert "budgetdetails_cost_basis_inputs_unavailable" in pub["data_quality"]["warnings"]
+
+
 if __name__ == "__main__":  # pragma: no cover
     pytest.main([__file__, "-q"])

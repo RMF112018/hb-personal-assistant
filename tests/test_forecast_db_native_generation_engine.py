@@ -65,7 +65,7 @@ _COST = [
 ]
 
 
-def _ctx(budget=None, cost=None, monthly=None, readiness=None):
+def _ctx(budget=None, cost=None, monthly=None, readiness=None, cost_basis=None):
     src = DbNativeContextInput(
         project_key="proj-x",
         display_name="Project X",
@@ -76,6 +76,7 @@ def _ctx(budget=None, cost=None, monthly=None, readiness=None):
         budget_details=list(budget if budget is not None else _BUDGET),
         cost_entries=list(cost if cost is not None else _COST),
         monthly_actuals=list(monthly or []),
+        budgetdetails_cost_basis_inputs=list(cost_basis or []),
     )
     return build_db_native_context(src)
 
@@ -277,3 +278,83 @@ def test_module_imports_no_hb_assistant_or_package_code() -> None:
     )
     leaked = sorted(n for n in forbidden if any(n in name for name in names))
     assert leaked == [], f"forbidden references in engine module: {leaked}"
+
+
+# =====================================================================================
+# Phase E2 — engine uses DB-native BudgetDetails cost-basis inputs when available.
+# =====================================================================================
+
+# A single budget code with cost entries summing 200 (the actuals floor).
+_E2_BUDGET = [{"budget_code_key": "1000.15-01-426.MAT", "cost_code": "15-01-426",
+               "category": "MAT", "revised_budget": "900.00"}]
+_E2_COST = [{"budget_code_key": "1000.15-01-426.MAT", "amount": "200.00"}]
+
+
+def _cbi(**over) -> list[dict]:
+    base = {
+        "budget_code_key": "1000.15-01-426.MAT",
+        "committed_costs": "600.00", "erp_direct_costs": "300.00", "pending_cost_changes": "100.00",
+        "projected_costs": "1000.00", "actual_cost": "200.00", "commitment_invoiced": "550.00",
+        "estimated_cost_at_completion": "850.00", "formula_reconciles": True, "formula_variance": "0.00",
+        "missing_formula_fields": [], "selected_budget_view_id": "5885", "selection_warnings": [],
+    }
+    base.update(over)
+    return [base]
+
+
+def test_reconciling_formula_reaches_budgetdetails_projected_basis() -> None:
+    # committed 600 + erp 300 + pending 100 == projected 1000, and projected (1000) > EAC (850) -> raise.
+    line = _lines_by_key(_run(_ctx(budget=_E2_BUDGET, cost=_E2_COST, cost_basis=_cbi())))[
+        "1000.15-01-426.MAT"
+    ]
+    assert line["cost_basis_classification"] == "budgetdetails_projected_cost_basis"
+    assert line["cost_basis_source"] == "db_native_budgetdetails"
+    assert line["forecast_final_cost"] == "1000.00"
+    assert line["forecast_cost_to_complete"] == "800.00"  # 1000 - 200 actual
+    assert line["budget_basis"]["formula_reconciles"] is True
+
+
+def test_non_reconciling_formula_routes_to_manual_review() -> None:
+    # pending_cost_changes missing -> formula cannot reconcile -> manual_review_required (no fabrication).
+    cbi = _cbi(pending_cost_changes=None, formula_reconciles=False,
+               missing_formula_fields=["pending_cost_changes"], formula_variance=None)
+    line = _lines_by_key(_run(_ctx(budget=_E2_BUDGET, cost=_E2_COST, cost_basis=cbi)))[
+        "1000.15-01-426.MAT"
+    ]
+    assert line["cost_basis_classification"] == "manual_review_required"
+    assert line["cost_basis_source"] == "db_native_budgetdetails"
+
+
+def test_cost_basis_inputs_preserve_money_invariants() -> None:
+    from decimal import Decimal
+
+    line = _lines_by_key(_run(_ctx(budget=_E2_BUDGET, cost=_E2_COST, cost_basis=_cbi())))[
+        "1000.15-01-426.MAT"
+    ]
+    final = Decimal(line["forecast_final_cost"])
+    actual = Decimal(line["actual_cost_to_date"])
+    ctc = Decimal(line["forecast_cost_to_complete"])
+    assert final >= actual
+    assert ctc == max(final - actual, Decimal("0"))
+
+
+def test_reconciling_but_eac_above_projected_keeps_existing_model() -> None:
+    # EAC (1200) already >= projected (1000): never cap an overrun down to ERP -> existing_model_basis.
+    cbi = _cbi(estimated_cost_at_completion="1200.00")
+    line = _lines_by_key(_run(_ctx(budget=_E2_BUDGET, cost=_E2_COST, cost_basis=cbi)))[
+        "1000.15-01-426.MAT"
+    ]
+    assert line["cost_basis_classification"] == "existing_model_basis"
+    assert line["forecast_final_cost"] == "1200.00"  # model EAC preserved, not lowered to ERP
+
+
+def test_phase_e_behavior_unchanged_without_cost_basis_inputs() -> None:
+    # No cost_basis_inputs -> v59-spine fallback: committed code still routes to manual_review.
+    by_key = _lines_by_key(_run(_ctx()))
+    assert by_key["20-COMMIT"]["cost_basis_classification"] == "manual_review_required"
+    assert by_key["20-COMMIT"]["cost_basis_source"] == "spine_budget_amounts"
+
+
+def test_cost_basis_inputs_result_redaction_safe() -> None:
+    res = _run(_ctx(budget=_E2_BUDGET, cost=_E2_COST, cost_basis=_cbi()))
+    assert find_redaction_leaks(res.public()) == []
