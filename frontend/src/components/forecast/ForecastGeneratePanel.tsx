@@ -53,7 +53,7 @@ export function ForecastGeneratePanel({
   return (
     <ForecastPanel
       title="Generate forecast"
-      description="Writes the selected project's forecast to the local application database from the promoted live configuration. Procore and live project data are never modified, and no download/export package is produced here."
+      description="Generates the selected project's forecast from the promoted live configuration. Procore and live project data are never modified, and no download/export package is produced here. If a run can't complete in this environment, it's reported below as a failed request."
     >
       <div className="flex flex-wrap items-center gap-2">
         <label htmlFor="db-config-kind" className="text-sm text-[var(--hb-muted)]">
