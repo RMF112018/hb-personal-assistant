@@ -5,9 +5,12 @@ import { EmptyState } from '../common/EmptyState'
 import { ErrorState } from '../common/ErrorState'
 import { LoadingState } from '../common/LoadingState'
 import { ForecastResultsSummary } from '../forecast/ForecastResultsSummary'
+import { selectForecastOutput } from './projectForecastOutputSelection'
 
 type ProjectForecastingSummaryProps = {
   projectKey: string
+  /** Requested output id from the route (`?outputId=`); resolved/validated against this project. */
+  requestedOutputId?: string | null
 }
 
 /**
@@ -17,7 +20,10 @@ type ProjectForecastingSummaryProps = {
  * {@link ForecastResultsSummary}. Both queries key off the same projectKey, so react-query serves
  * the outputs list from a single fetch. Never triggers forecast generation.
  */
-export function ProjectForecastingSummary({ projectKey }: ProjectForecastingSummaryProps) {
+export function ProjectForecastingSummary({
+  projectKey,
+  requestedOutputId,
+}: ProjectForecastingSummaryProps) {
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['forecast', 'db-outputs', projectKey],
     queryFn: () => api.getForecastDbOutputs(projectKey),
@@ -50,14 +56,16 @@ export function ProjectForecastingSummary({ projectKey }: ProjectForecastingSumm
     )
   }
 
-  const latestUpdate = outputs[0]?.created_display
+  const { selectedOutputId } = selectForecastOutput(outputs, requestedOutputId)
+  const selectedOutput = outputs.find((o) => o.output_id === selectedOutputId) ?? outputs[0]
+  const lastUpdate = selectedOutput?.created_display
 
   return (
     <section className="space-y-3">
-      {latestUpdate && (
-        <p className="text-sm text-[var(--hb-muted)]">Last forecast update: {latestUpdate}</p>
+      {lastUpdate && (
+        <p className="text-sm text-[var(--hb-muted)]">Last forecast update: {lastUpdate}</p>
       )}
-      <ForecastResultsSummary project={projectKey} />
+      <ForecastResultsSummary project={projectKey} activeOutputId={selectedOutputId ?? undefined} />
     </section>
   )
 }

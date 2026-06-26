@@ -1,11 +1,29 @@
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 
+import { ProjectForecastOutputSelector } from '../components/projects/ProjectForecastOutputSelector'
 import { ProjectMonthlyForecastingPanel } from '../components/projects/ProjectMonthlyForecastingPanel'
 import { ProjectWorkspaceShell } from '../components/projects/ProjectWorkspaceShell'
 
 export function ProjectMonthlyForecastingPage() {
   const { projectKey = '' } = useParams()
-  const forecastingHref = `/projects/${encodeURIComponent(projectKey)}/forecasting`
+  const [searchParams, setSearchParams] = useSearchParams()
+  const requestedOutputId = searchParams.get('outputId')
+
+  const base = `/projects/${encodeURIComponent(projectKey)}`
+  const forecastingHref = requestedOutputId
+    ? `${base}/forecasting?outputId=${encodeURIComponent(requestedOutputId)}`
+    : `${base}/forecasting`
+
+  function selectOutput(outputId: string) {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        next.set('outputId', outputId)
+        return next
+      },
+      { replace: true },
+    )
+  }
 
   return (
     <ProjectWorkspaceShell>
@@ -22,7 +40,13 @@ export function ProjectMonthlyForecastingPage() {
           </Link>
         </div>
 
-        <ProjectMonthlyForecastingPanel projectKey={projectKey} />
+        <ProjectForecastOutputSelector
+          projectKey={projectKey}
+          requestedOutputId={requestedOutputId}
+          onSelectOutput={selectOutput}
+        />
+
+        <ProjectMonthlyForecastingPanel projectKey={projectKey} requestedOutputId={requestedOutputId} />
       </section>
     </ProjectWorkspaceShell>
   )

@@ -1,13 +1,31 @@
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 
 import { SectionCard } from '../components/common/SectionCard'
 import { ProjectForecastCreationCard } from '../components/projects/ProjectForecastCreationCard'
+import { ProjectForecastOutputSelector } from '../components/projects/ProjectForecastOutputSelector'
 import { ProjectForecastingSummary } from '../components/projects/ProjectForecastingSummary'
 import { ProjectWorkspaceShell } from '../components/projects/ProjectWorkspaceShell'
 
 export function ProjectForecastingPage() {
   const { projectKey = '' } = useParams()
-  const monthlyHref = `/projects/${encodeURIComponent(projectKey)}/forecasting/monthly`
+  const [searchParams, setSearchParams] = useSearchParams()
+  const requestedOutputId = searchParams.get('outputId')
+
+  const base = `/projects/${encodeURIComponent(projectKey)}`
+  const monthlyHref = requestedOutputId
+    ? `${base}/forecasting/monthly?outputId=${encodeURIComponent(requestedOutputId)}`
+    : `${base}/forecasting/monthly`
+
+  function selectOutput(outputId: string) {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        next.set('outputId', outputId)
+        return next
+      },
+      { replace: true },
+    )
+  }
 
   return (
     <ProjectWorkspaceShell>
@@ -19,7 +37,13 @@ export function ProjectForecastingPage() {
           </p>
         </div>
 
-        <ProjectForecastingSummary projectKey={projectKey} />
+        <ProjectForecastingSummary projectKey={projectKey} requestedOutputId={requestedOutputId} />
+
+        <ProjectForecastOutputSelector
+          projectKey={projectKey}
+          requestedOutputId={requestedOutputId}
+          onSelectOutput={selectOutput}
+        />
 
         <div className="grid gap-4 md:grid-cols-2">
           <SectionCard
