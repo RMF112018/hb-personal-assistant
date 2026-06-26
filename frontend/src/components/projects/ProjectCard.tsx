@@ -1,39 +1,41 @@
 import { Link } from 'react-router-dom'
 
-import { safeDisplayText } from '../../lib/errorCopy'
-import { FreshnessBadge } from '../ui/Badge'
+import type { ProjectSummary } from '../../lib/api'
 
 type ProjectCardProps = {
-  project: Record<string, unknown>
-  fallbackKey: string
+  project: ProjectSummary
 }
 
-export function ProjectCard({ project, fallbackKey }: ProjectCardProps) {
-  const key = String(project.key || project.project_key || project.id || fallbackKey)
-  const name = safeDisplayText(project, key)
-  const status = typeof project.status === 'string' ? project.status : 'active'
-  const freshness = project.freshness || project.freshness_status
-  const freshnessStatus = typeof freshness === 'string'
-    ? freshness
-    : freshness && typeof freshness === 'object' && 'overall' in freshness
-      ? String((freshness as { overall?: unknown }).overall || 'unknown')
-      : 'unknown'
+export function ProjectCard({ project }: ProjectCardProps) {
+  const name = cleanText(project.display_name) || project.project_key
+  const address = formatAddress(project)
 
   return (
     <Link
-      to={`/projects/${encodeURIComponent(key)}`}
-      className="block rounded-md border border-[var(--hb-border)] bg-[var(--hb-bg)] p-3 hover:border-[var(--hb-accent)]"
+      to={`/projects/${encodeURIComponent(project.project_key)}`}
+      className="block rounded-md border border-[var(--hb-border)] bg-[var(--hb-bg)] p-3 transition-colors hover:border-[var(--hb-accent)]"
     >
       <div className="font-medium">{name}</div>
-      <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-[var(--hb-muted)]">
-        <span className="badge">{status}</span>
-        <FreshnessBadge status={asFreshness(freshnessStatus)} compact />
-      </div>
+      <div className="mt-2 text-sm text-[var(--hb-muted)]">{address}</div>
     </Link>
   )
 }
 
-function asFreshness(status: string): 'fresh' | 'stale' | 'unknown' {
-  if (status === 'fresh' || status === 'stale') return status
-  return 'unknown'
+function formatAddress(project: ProjectSummary): string {
+  const address = cleanText(project.address)
+  const city = cleanText(project.city)
+  const state = cleanText(project.state_code)
+  const zip = cleanText(project.zip)
+  const region = [state, zip].filter(Boolean).join(' ')
+  const locality = [city, region].filter(Boolean).join(', ')
+
+  if (address && locality) return `${address} · ${locality}`
+  if (address) return address
+  if (locality) return locality
+  return 'Address not available'
+}
+
+function cleanText(value: string | null | undefined): string | null {
+  const text = value?.trim()
+  return text || null
 }

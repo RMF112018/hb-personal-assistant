@@ -110,6 +110,7 @@ def test_openapi_exposes_only_shell_routes(tmp_path: Path) -> None:
         "/api/today/meetings",
         "/api/today/action-items",
         "/api/today/portfolio-signals",
+        "/api/projects",
         "/api/projects/portfolio",
         "/api/projects/all/overview",
         "/api/projects/{project_key}/overview",
