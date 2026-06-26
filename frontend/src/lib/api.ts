@@ -949,7 +949,7 @@ export interface ForecastGenerationProject {
   config_snapshot_available: boolean;
   readiness_status: ForecastProjectReadinessStatus;
   readiness_reasons: string[];
-  // Phase P-2 best-effort maturity metadata (optional; emitted by the read model).
+  // Phase P-2 best-effort maturity metadata (optional; emitted by the backend readiness API).
   forecast_maturity?: ForecastProjectMaturity;
   confidence_level?: 'none' | 'low' | 'medium' | 'high';
   forecast_basis?: string;
@@ -1010,6 +1010,13 @@ export interface ForecastGenerationDateDefaults {
   schedule_data_date: string | null;
   schedule_data_date_basis: string | null;
   schedule_source_status: 'available' | 'degraded' | 'missing';
+  // Operator month-window defaults (YYYY-MM). forecast_end_month is null when no reliable schedule
+  // finish is resolvable — the UI then requires operator confirmation (no arbitrary horizon).
+  actuals_start_month: string | null;
+  actuals_through_month: string | null;
+  forecast_start_month: string | null;
+  forecast_end_month: string | null;
+  forecast_end_month_basis: string | null;
   warnings: string[];
 }
 export function getForecastGenerationDateDefaults(projectKey: string) {
@@ -1178,6 +1185,11 @@ export interface ForecastGenerationRequestInput {
   forecast_cutoff_date?: string | null;
   // P-D: the cut-off basis (operator_supplied or a schedule-derived code); re-verified server-side.
   forecast_cutoff_date_basis?: string | null;
+  // Operator month windows (YYYY-MM) — the source of truth for the monthly matrix.
+  actuals_start_month?: string | null;
+  actuals_through_month?: string | null;
+  forecast_start_month?: string | null;
+  forecast_end_month?: string | null;
 }
 export interface ForecastDbConfigGenerationRequestInput extends ForecastGenerationRequestInput {
   generator_kind: ForecastGeneratorKind;
@@ -1187,6 +1199,10 @@ function _generationBody(input: ForecastGenerationRequestInput): Record<string, 
   if (input.forecast_start_date) body.forecast_start_date = input.forecast_start_date;
   if (input.forecast_cutoff_date) body.forecast_cutoff_date = input.forecast_cutoff_date;
   if (input.forecast_cutoff_date_basis) body.forecast_cutoff_date_basis = input.forecast_cutoff_date_basis;
+  if (input.actuals_start_month) body.actuals_start_month = input.actuals_start_month;
+  if (input.actuals_through_month) body.actuals_through_month = input.actuals_through_month;
+  if (input.forecast_start_month) body.forecast_start_month = input.forecast_start_month;
+  if (input.forecast_end_month) body.forecast_end_month = input.forecast_end_month;
   return body;
 }
 export function startForecastRun(input: ForecastGenerationRequestInput) {
@@ -1265,6 +1281,65 @@ export function startForecastDbNativeRun(input: ForecastGenerationRequestInput) 
     method: 'POST',
     body: JSON.stringify({ ..._generationBody(input), generator_kind: 'comprehensive' }),
   });
+}
+
+/* Table-ready operator month-window matrix for a persisted output. The backend returns the displayed
+ * month columns (each tagged actual/forecast), one row per budget code with a DENSE month_values map
+ * (missing cells are backend-certified "0.00" — the UI never infers zeros), and the persisted total
+ * row. Outputs that predate operator month windows return status "legacy_output_no_operator_window".
+ * All values are authoritative (backend-calculated); the UI only formats / sorts / filters / groups. */
+export interface ForecastDbMonthlyTableMonth {
+  month: string;
+  label: string;
+  value_type: 'actual' | 'forecast';
+}
+export interface ForecastDbMonthlyTableRow {
+  budget_code_key: string;
+  budget_code: string | null;
+  cost_code: string | null;
+  cost_type: string | null;
+  // Cost Category derived (read-time) from the cost_code prefix; always present (else "Other").
+  cost_category: string;
+  projected_budget: string;
+  projected_budget_source: string | null;
+  projected_budget_source_warning: string | null;
+  month_values: Record<string, string>;
+  completed_to_date: string;
+  forecast_to_complete: string;
+  estimated_at_completion: string;
+  variance_to_budget: string;
+  confidence: string | null;
+  method_code: string | null;
+  reason_codes: string[];
+}
+export interface ForecastDbMonthlyTableTotalRow {
+  projected_budget: string;
+  month_values: Record<string, string>;
+  completed_to_date: string;
+  forecast_to_complete: string;
+  estimated_at_completion: string;
+  variance_to_budget: string;
+}
+export interface ForecastDbMonthlyTable {
+  surface: string;
+  output_id: string;
+  project_key: string;
+  status: 'ready' | 'legacy_output_no_operator_window';
+  actuals_start_month?: string;
+  actuals_through_month?: string;
+  forecast_start_month?: string;
+  forecast_end_month?: string;
+  month_window_basis?: string | null;
+  month_window_warnings?: string[];
+  months?: ForecastDbMonthlyTableMonth[];
+  rows?: ForecastDbMonthlyTableRow[];
+  total_row?: ForecastDbMonthlyTableTotalRow | null;
+  guardrails?: Record<string, boolean>;
+}
+export function getForecastDbMonthlyTable(outputId: string) {
+  return fetchJson<ForecastDbMonthlyTable>(
+    `/api/forecast/db/outputs/${encodeURIComponent(outputId)}/monthly-table`,
+  );
 }
 
 /* External-Forecast Evaluation — upload an operator forecast, map it, and compare it against
@@ -1436,7 +1511,7 @@ export async function uploadScheduleImportPreview(
     throw new ScheduleNetworkError('schedule_upload_network_error', err);
   }
   if (!res.ok) {
-    let body: unknown = null;
+    let body: unknown;
     try {
       body = await res.json();
     } catch {
@@ -1647,6 +1722,7 @@ export const api = {
   getForecastGenerationDateDefaults,
   getForecastDbOutputs,
   getForecastDbOutput,
+  getForecastDbMonthlyTable,
   getForecastDbDecisionSupport,
   getForecastDbNarratives,
   getForecastOperatorAssumptions,

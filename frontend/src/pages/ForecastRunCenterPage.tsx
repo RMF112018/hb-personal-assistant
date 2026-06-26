@@ -21,6 +21,7 @@ import { ForecastErrorCallout } from '../components/forecast/ForecastErrorCallou
 import { ForecastGeneratePanel } from '../components/forecast/ForecastGeneratePanel'
 import { ForecastHealthSummary } from '../components/forecast/ForecastHealthSummary'
 import { ForecastResultsSummary } from '../components/forecast/ForecastResultsSummary'
+import { ForecastMonthlyMatrixPanel } from '../components/forecast/ForecastMonthlyMatrixPanel'
 import { ForecastDecisionSupportPanel } from '../components/forecast/ForecastDecisionSupportPanel'
 import { ForecastNarrativesPanel } from '../components/forecast/ForecastNarrativesPanel'
 import { ForecastOperatorAssumptionsPanel } from '../components/forecast/ForecastOperatorAssumptionsPanel'
@@ -83,6 +84,30 @@ function deriveNextAction(args: {
 // Client-side date order check (the <input type="date"> already enforces ISO YYYY-MM-DD format).
 function dateOrderError(start: string, cutoff: string): string | null {
   if (start && cutoff && start > cutoff) return 'Start date must be on or before the cut-off date.'
+  return null
+}
+
+// Operator month-window validation (the <input type="month"> enforces YYYY-MM format). Mirrors the
+// backend contract: all four required; each window ordered; the forecast window starts strictly after
+// the actuals window (no overlap). Returns operator-facing copy (no implementation terms) or null.
+function monthWindowValidation(
+  actualsStart: string,
+  actualsThrough: string,
+  forecastStart: string,
+  forecastEnd: string,
+): string | null {
+  if (!actualsStart || !actualsThrough || !forecastStart || !forecastEnd) {
+    return 'Select all four month windows to generate a forecast.'
+  }
+  if (actualsStart > actualsThrough) {
+    return 'Actuals start month must be on or before the actuals-through month.'
+  }
+  if (forecastStart > forecastEnd) {
+    return 'Forecast start month must be on or before the forecast end month.'
+  }
+  if (forecastStart <= actualsThrough) {
+    return 'The forecast window must start after the actuals window.'
+  }
   return null
 }
 
@@ -185,6 +210,13 @@ export function ForecastRunCenterPage() {
   const [dateError, setDateError] = useState<string | null>(null)
   const [lastRequestId, setLastRequestId] = useState<string | null>(null)
 
+  // Operator month windows (YYYY-MM) — the source of truth for the monthly matrix. Like the dates,
+  // values are derived from the schedule-resolver defaults unless the operator overrides them.
+  const [actualsStartOverride, setActualsStartOverride] = useState<string | null>(null)
+  const [actualsThroughOverride, setActualsThroughOverride] = useState<string | null>(null)
+  const [forecastStartMonthOverride, setForecastStartMonthOverride] = useState<string | null>(null)
+  const [forecastEndMonthOverride, setForecastEndMonthOverride] = useState<string | null>(null)
+
   const [selected, setSelected] = useState<Selected | undefined>(undefined)
 
   // Page-owned active persisted output: the Forecast Summary selector writes it; every output-scoped
@@ -231,6 +263,17 @@ export function ForecastRunCenterPage() {
         ? (dateDefaults?.forecast_cutoff_date_basis ?? null)
         : null
 
+  // Derived operator month windows (override wins; else the resolver default; else blank).
+  const actualsStartMonth = actualsStartOverride ?? dateDefaults?.actuals_start_month ?? ''
+  const actualsThroughMonth = actualsThroughOverride ?? dateDefaults?.actuals_through_month ?? ''
+  const forecastStartMonth = forecastStartMonthOverride ?? dateDefaults?.forecast_start_month ?? ''
+  const forecastEndMonth = forecastEndMonthOverride ?? dateDefaults?.forecast_end_month ?? ''
+  // Live month-window validation (YYYY-MM strings compare correctly). Drives the disabled state +
+  // operator-facing messages without any implementation terminology.
+  const monthWindowError = projectKey
+    ? monthWindowValidation(actualsStartMonth, actualsThroughMonth, forecastStartMonth, forecastEndMonth)
+    : null
+
   function onCutoffChange(value: string) {
     setCutoffOverride(value)
   }
@@ -241,6 +284,10 @@ export function ForecastRunCenterPage() {
     setProjectKey(value || undefined)
     setStartOverride(null) // new project → fall back to its advisory defaults
     setCutoffOverride(null)
+    setActualsStartOverride(null)
+    setActualsThroughOverride(null)
+    setForecastStartMonthOverride(null)
+    setForecastEndMonthOverride(null)
     setDateError(null)
     setLastRequestId(null)
     setGenCompleted(false)
@@ -299,9 +346,15 @@ export function ForecastRunCenterPage() {
   // db_persisted=true.
   async function onGenerateDbNative() {
     if (!projectKey) return
-    const orderErr = dateOrderError(forecastStartDate, forecastCutoffDate)
-    if (orderErr) {
-      setDateError(orderErr)
+    // Operator month windows are the source of truth for the matrix; validate them first.
+    const windowErr = monthWindowValidation(
+      actualsStartMonth,
+      actualsThroughMonth,
+      forecastStartMonth,
+      forecastEndMonth,
+    )
+    if (windowErr) {
+      setDateError(windowErr)
       return
     }
     setDateError(null)
@@ -316,6 +369,10 @@ export function ForecastRunCenterPage() {
         forecast_start_date: forecastStartDate || null,
         forecast_cutoff_date: forecastCutoffDate || null,
         forecast_cutoff_date_basis: forecastCutoffDate ? cutoffBasis : null,
+        actuals_start_month: actualsStartMonth || null,
+        actuals_through_month: actualsThroughMonth || null,
+        forecast_start_month: forecastStartMonth || null,
+        forecast_end_month: forecastEndMonth || null,
       })
       if (resp.request_status === 'failed' || resp.request_status === 'rejected') {
         // Curated copy only — never the raw failure_code. No success banner.
@@ -521,6 +578,60 @@ export function ForecastRunCenterPage() {
             />
           </label>
         </div>
+        <div className="mt-3">
+          <p className="text-sm font-medium">Forecast month windows</p>
+          <p className="text-xs text-[var(--hb-muted)] mt-0.5">
+            Defaults populate from the project's actuals and schedule after selection — review and
+            adjust, then generate.
+          </p>
+          <div className="flex flex-wrap items-center gap-4 mt-2">
+            <label className="text-sm text-[var(--hb-muted)] flex items-center gap-2">
+              Actuals start month
+              <input
+                type="month"
+                aria-label="Actuals start month"
+                value={actualsStartMonth}
+                onChange={(e) => setActualsStartOverride(e.target.value)}
+                className="rounded border border-[var(--hb-border)] bg-[var(--hb-bg)] px-2 py-1 text-sm"
+              />
+            </label>
+            <label className="text-sm text-[var(--hb-muted)] flex items-center gap-2">
+              Actuals through month
+              <input
+                type="month"
+                aria-label="Actuals through month"
+                value={actualsThroughMonth}
+                onChange={(e) => setActualsThroughOverride(e.target.value)}
+                className="rounded border border-[var(--hb-border)] bg-[var(--hb-bg)] px-2 py-1 text-sm"
+              />
+            </label>
+            <label className="text-sm text-[var(--hb-muted)] flex items-center gap-2">
+              Forecast start month
+              <input
+                type="month"
+                aria-label="Forecast start month"
+                value={forecastStartMonth}
+                onChange={(e) => setForecastStartMonthOverride(e.target.value)}
+                className="rounded border border-[var(--hb-border)] bg-[var(--hb-bg)] px-2 py-1 text-sm"
+              />
+            </label>
+            <label className="text-sm text-[var(--hb-muted)] flex items-center gap-2">
+              Forecast end month
+              <input
+                type="month"
+                aria-label="Forecast end month"
+                value={forecastEndMonth}
+                onChange={(e) => setForecastEndMonthOverride(e.target.value)}
+                className="rounded border border-[var(--hb-border)] bg-[var(--hb-bg)] px-2 py-1 text-sm"
+              />
+            </label>
+          </div>
+          {projectKey && monthWindowError && (
+            <p className="text-xs text-amber-300 mt-1" role="status">
+              {monthWindowError}
+            </p>
+          )}
+        </div>
         {projectKey && (
           <p className="text-xs text-[var(--hb-muted)] mt-1">
             Cut-off basis:{' '}
@@ -560,6 +671,7 @@ export function ForecastRunCenterPage() {
           generating: genDb,
           error: dbError,
           errorActionTo: dbDisabled ? '/forecasting/runtime' : null,
+          disabled: Boolean(monthWindowError),
         }}
         legacyDbConfig={{
           genKind,
@@ -752,6 +864,11 @@ export function ForecastRunCenterPage() {
             project={projectKey}
             activeOutputId={activeOutputId}
             onSelectOutput={setActiveOutputId}
+          />
+          <ForecastMonthlyMatrixPanel
+            key={`mm-${projectKey}-${refreshNonce}`}
+            project={projectKey}
+            activeOutputId={activeOutputId}
           />
           <ForecastDecisionSupportPanel
             key={`ds-${projectKey}-${refreshNonce}`}

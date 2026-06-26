@@ -44,6 +44,13 @@ class ForecastGenerationDateDefaults:
     schedule_data_date: str | None = None
     schedule_data_date_basis: str | None = None
     schedule_source_status: str = "missing"
+    # Operator month-window defaults (YYYY-MM): actuals span from earliest→latest actual-cost month,
+    # forecast from the month after actuals_through through the latest reliable schedule-finish month.
+    actuals_start_month: str | None = None
+    actuals_through_month: str | None = None
+    forecast_start_month: str | None = None
+    forecast_end_month: str | None = None
+    forecast_end_month_basis: str | None = None
     warnings: list[str] = field(default_factory=list)
 
 
@@ -117,6 +124,58 @@ def _activity_dates(conn: sqlite3.Connection, project_key: str, columns: tuple[s
     for r in rows:
         out.extend(r[c] for c in columns)
     return out
+
+
+def _actual_month_bounds(conn: sqlite3.Connection, project_key: str) -> tuple[str | None, str | None]:
+    """Earliest and latest actual-cost month (YYYY-MM) across the two actual source tables."""
+    earliest: str | None = None
+    latest: str | None = None
+    for table, col in (
+        ("forecast_monthly_actuals_by_budget_code", "month"),
+        ("forecast_cost_entries", "accounting_month"),
+    ):
+        if not _table_exists(conn, table):
+            continue
+        row = conn.execute(
+            f"SELECT MIN({col}) AS lo, MAX({col}) AS hi FROM {table} "
+            f"WHERE project_key=? AND {col} IS NOT NULL AND {col} <> ''",
+            (project_key,),
+        ).fetchone()
+        lo = str(row["lo"]).strip()[:7] if row and row["lo"] else None
+        hi = str(row["hi"]).strip()[:7] if row and row["hi"] else None
+        if lo and (earliest is None or lo < earliest):
+            earliest = lo
+        if hi and (latest is None or hi > latest):
+            latest = hi
+    return earliest, latest
+
+
+def _next_month(year_month: str) -> str | None:
+    """The YYYY-MM that follows ``year_month`` (None if unparseable)."""
+    try:
+        year, month = (int(part) for part in year_month.split("-"))
+    except ValueError:
+        return None
+    if month >= 12:
+        return f"{year + 1:04d}-01"
+    return f"{year:04d}-{month + 1:02d}"
+
+
+def _schedule_finish_month(conn: sqlite3.Connection, project_key: str) -> str | None:
+    """Latest reliable schedule-finish month (YYYY-MM) from committed schedule activities, or None.
+
+    Scans the planned/forecast/actual finish columns and takes the latest valid date. Returns None
+    (never a fabricated horizon) when no finish date can be resolved — the caller surfaces a warning
+    and the UI requires operator confirmation rather than defaulting to an arbitrary horizon.
+    """
+    finish = _max_valid(
+        _activity_dates(
+            conn,
+            project_key,
+            ("planned_finish", "finish_date", "early_finish", "late_finish", "actual_finish"),
+        )
+    )
+    return finish[:7] if finish else None
 
 
 def _resolve_start_date(conn: sqlite3.Connection, project_key: str) -> tuple[str | None, str | None, list[str]]:
@@ -220,6 +279,28 @@ def resolve_forecast_generation_date_defaults(
     start_date, start_basis, start_warnings = _resolve_start_date(conn, project_key)
     warnings.extend(start_warnings)
 
+    # Operator month-window defaults. Actuals span earliest→latest actual-cost month; forecast starts
+    # the month after actuals_through. forecast_end_month is the latest reliable schedule-finish month —
+    # NEVER a silent actuals_through+12; when no schedule finish is resolvable we leave it None and warn
+    # so the UI requires operator confirmation.
+    actuals_start_month, actuals_through_month = _actual_month_bounds(conn, project_key)
+    if actuals_start_month is None or actuals_through_month is None:
+        warnings.append("no_actual_months_for_window_defaults")
+    forecast_start_month = (
+        _next_month(actuals_through_month) if actuals_through_month is not None else None
+    )
+    forecast_end_month = _schedule_finish_month(conn, project_key)
+    forecast_end_month_basis: str | None = None
+    if forecast_end_month is not None:
+        forecast_end_month_basis = "latest_schedule_finish_month"
+        # A finish that is not strictly after the forecast start is not a usable horizon default.
+        if forecast_start_month is not None and forecast_end_month < forecast_start_month:
+            forecast_end_month = None
+            forecast_end_month_basis = None
+            warnings.append("schedule_finish_before_forecast_start_operator_confirmation_required")
+    if forecast_end_month is None:
+        warnings.append("no_forecast_end_month_default_operator_confirmation_required")
+
     return ForecastGenerationDateDefaults(
         project_key=project_key,
         forecast_start_date=start_date,
@@ -230,6 +311,11 @@ def resolve_forecast_generation_date_defaults(
         schedule_data_date=schedule_data_date,
         schedule_data_date_basis=schedule_data_date_basis,
         schedule_source_status=source_status,
+        actuals_start_month=actuals_start_month,
+        actuals_through_month=actuals_through_month,
+        forecast_start_month=forecast_start_month,
+        forecast_end_month=forecast_end_month,
+        forecast_end_month_basis=forecast_end_month_basis,
         warnings=warnings,
     )
 

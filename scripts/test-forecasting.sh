@@ -105,6 +105,7 @@ pytest_targets=(
   "tests/test_forecast_model_registry_p6.py"
   "tests/test_forecast_monthly_db_config_phase18.py"
   "tests/test_forecast_monthly_db_config_phase18a_stability.py"
+  "tests/test_forecast_monthly_matrix.py"
   "tests/test_forecast_operator_assumptions_service.py"
   "tests/test_forecast_output_coverage.py"
   "tests/test_forecast_output_narratives_p8.py"

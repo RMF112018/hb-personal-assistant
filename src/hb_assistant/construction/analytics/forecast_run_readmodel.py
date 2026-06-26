@@ -143,6 +143,60 @@ def _money_or_none(value: Any) -> str | None:
     return str(value)
 
 
+def _loads_list(raw: Any) -> list[str]:
+    """Parse a JSON string list into ``list[str]``; malformed/missing -> ``[]`` (never raises)."""
+    if not raw:
+        return []
+    try:
+        value = json.loads(raw)
+    except (json.JSONDecodeError, TypeError, ValueError):
+        return []
+    return [str(v) for v in value] if isinstance(value, list) else []
+
+
+# Cost Category from the cost_code prefix (first two characters). Defensive + prefix-based (no regex,
+# no required dash): unknown / blank / short / None all classify as "Other". Derived at read time and
+# surfaced on each /monthly-table row so the frontend never duplicates this business classification.
+_COST_CATEGORY_BY_PREFIX = {
+    "03": "Preconstruction",
+    "10": "General Conditions & Requirements",
+    "15": "Cost of Work",
+    "20": "Overhead & Profit",
+}
+
+
+def derive_cost_category(cost_code: str | None) -> str:
+    """Map a cost_code to its Cost Category by the leading two-character prefix (else 'Other')."""
+    text = (cost_code or "").strip()
+    prefix = text[:2] if len(text) >= 2 else ""
+    return _COST_CATEGORY_BY_PREFIX.get(prefix, "Other")
+
+
+def _month_label(year_month: str) -> str:
+    """Human month-column label, e.g. ``"2026-01"`` -> ``"Jan 2026"`` (passthrough if unparseable)."""
+    import calendar
+
+    try:
+        year, month = (int(part) for part in year_month.split("-"))
+        return f"{calendar.month_abbr[month]} {year}"
+    except (ValueError, IndexError):
+        return year_month
+
+
+def _months_inclusive(lo: str, hi: str) -> list[str]:
+    """Contiguous ``YYYY-MM`` months from ``lo`` through ``hi`` inclusive (empty if lo > hi/invalid)."""
+    out: list[str] = []
+    cur = lo
+    while cur <= hi:
+        out.append(cur)
+        try:
+            year, month = (int(part) for part in cur.split("-"))
+        except ValueError:
+            break
+        cur = f"{year + 1:04d}-01" if month >= 12 else f"{year:04d}-{month + 1:02d}"
+    return out
+
+
 def _reconcile_variance(variance: Any, eac: Any, current_budget: str | None) -> str:
     """Reconcile the persisted ``variance_to_budget`` against ``EAC − current_budget``.
 
@@ -354,6 +408,136 @@ class ForecastRunReadModelService:
         return str(delta.quantize(Decimal("0.01"))), "computed"
 
     # -- public API (each returns surface + guardrails) -----------------------
+
+    def read_monthly_table(self, output_id: str) -> dict[str, Any]:
+        """Table-ready operator month-window matrix for one output (read-fill, redaction-safe).
+
+        Assembles the dense budget-code-by-month matrix from the persisted (sparse) cells + the
+        per-row matrix metadata + the dense total row. Missing row/month combinations resolve to a
+        backend-certified ``"0.00"`` (the frontend never infers zeros). Outputs that predate operator
+        month windows (no persisted window) return a curated ``legacy_output_no_operator_window``
+        status rather than a fabricated table.
+        """
+        conn = self._connect()
+        try:
+            row = conn.execute(
+                "SELECT output_id, project_key, actuals_start_month, actuals_through_month, "
+                "forecast_start_month, forecast_end_month, month_window_basis, "
+                "month_window_warnings_json FROM forecast_outputs WHERE output_id = ?",
+                (output_id,),
+            ).fetchone()
+            if row is None:
+                raise ForecastRunReadModelError(f"unknown output_id: {output_id!r}")
+
+            am_start = row["actuals_start_month"]
+            am_through = row["actuals_through_month"]
+            fm_start = row["forecast_start_month"]
+            fm_end = row["forecast_end_month"]
+            base = {
+                "surface": _SURFACE + ".monthly_table",
+                "output_id": row["output_id"],
+                "project_key": row["project_key"],
+                "guardrails": _guardrails(),
+            }
+            if not all((am_start, am_through, fm_start, fm_end)):
+                # Legacy output — never fabricate operator-selected windows.
+                return {**base, "status": "legacy_output_no_operator_window"}
+
+            matrix_rows = self._rows(
+                conn,
+                "SELECT budget_code_key, budget_code, cost_code, cost_type, projected_budget_display, "
+                "projected_budget_display_source, projected_budget_source_warning, completed_to_date, "
+                "forecast_to_complete, estimated_at_completion, variance_to_budget, confidence, "
+                "method_code, reason_codes_json FROM forecast_output_monthly_table_rows "
+                "WHERE output_id = ? ORDER BY sort_key LIMIT ?",
+                (output_id, _MAX_ROWS),
+            )
+            cell_rows = self._rows(
+                conn,
+                "SELECT budget_code_key, month, value, value_type "
+                "FROM forecast_output_monthly WHERE output_id = ? LIMIT ?",
+                (output_id, _MAX_ROWS),
+            )
+            totals_row = conn.execute(
+                "SELECT month_values_json, projected_budget_total, completed_to_date_total, "
+                "forecast_to_complete_total, estimated_at_completion_total, variance_to_budget_total "
+                "FROM forecast_output_monthly_table_totals WHERE output_id = ?",
+                (output_id,),
+            ).fetchone()
+        finally:
+            conn.close()
+
+        # Displayed columns: ordered union of the two operator windows, each tagged + labelled.
+        month_meta: dict[str, str] = {}
+        for month in _months_inclusive(am_start, am_through):
+            month_meta[month] = "actual"
+        for month in _months_inclusive(fm_start, fm_end):
+            month_meta.setdefault(month, "forecast")
+        ordered_months = sorted(month_meta)
+        months = [
+            {"month": m, "label": _month_label(m), "value_type": month_meta[m]} for m in ordered_months
+        ]
+
+        # Sparse cells -> (budget_code_key, month) -> value, then read-fill every displayed month.
+        cell_by_key_month: dict[tuple[str, str], str] = {}
+        for c in cell_rows:
+            cell_by_key_month[(str(c["budget_code_key"]), str(c["month"]))] = c["value"]
+
+        rows = []
+        for r in matrix_rows:
+            key = str(r["budget_code_key"])
+            month_values = {
+                m: cell_by_key_month.get((key, m), "0.00") for m in ordered_months
+            }
+            rows.append(
+                {
+                    "budget_code_key": r["budget_code_key"],
+                    "budget_code": r["budget_code"],
+                    "cost_code": r["cost_code"],
+                    "cost_type": r["cost_type"],
+                    "cost_category": derive_cost_category(r["cost_code"]),
+                    "projected_budget": r["projected_budget_display"],
+                    "projected_budget_source": r["projected_budget_display_source"],
+                    "projected_budget_source_warning": r["projected_budget_source_warning"],
+                    "month_values": month_values,
+                    "completed_to_date": r["completed_to_date"],
+                    "forecast_to_complete": r["forecast_to_complete"],
+                    "estimated_at_completion": r["estimated_at_completion"],
+                    "variance_to_budget": r["variance_to_budget"],
+                    "confidence": r["confidence"],
+                    "method_code": r["method_code"],
+                    "reason_codes": _loads_list(r["reason_codes_json"]),
+                }
+            )
+
+        total_row = None
+        if totals_row is not None:
+            try:
+                total_month_values = json.loads(totals_row["month_values_json"] or "{}")
+            except (ValueError, TypeError):
+                total_month_values = {}
+            total_row = {
+                "projected_budget": totals_row["projected_budget_total"],
+                "month_values": {m: total_month_values.get(m, "0.00") for m in ordered_months},
+                "completed_to_date": totals_row["completed_to_date_total"],
+                "forecast_to_complete": totals_row["forecast_to_complete_total"],
+                "estimated_at_completion": totals_row["estimated_at_completion_total"],
+                "variance_to_budget": totals_row["variance_to_budget_total"],
+            }
+
+        return {
+            **base,
+            "status": "ready",
+            "actuals_start_month": am_start,
+            "actuals_through_month": am_through,
+            "forecast_start_month": fm_start,
+            "forecast_end_month": fm_end,
+            "month_window_basis": row["month_window_basis"],
+            "month_window_warnings": _loads_list(row["month_window_warnings_json"]),
+            "months": months,
+            "rows": rows,
+            "total_row": total_row,
+        }
 
     def list_outputs(self, project_key: str = _DEFAULT_PROJECT) -> dict[str, Any]:
         """List run-output headers for a project (newest first). Empty list when unpopulated."""

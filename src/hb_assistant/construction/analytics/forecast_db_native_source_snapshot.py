@@ -277,6 +277,11 @@ def _read_budgetdetails_cost_basis_inputs(
     select_cols = [
         "canonical_budget_code_key",
         "wbs_flat_code",
+        # Matrix display fields (Procore-authoritative): budget_code (drives cost_type = last 3 chars),
+        # cost_code, and projected_budget. Carried verbatim/trimmed; cost_type is derived downstream.
+        "budget_code",
+        "cost_code",
+        "projected_budget",
         "budget_view_id",
         "record_key",
         "source_quality",
@@ -351,9 +356,15 @@ def _read_budgetdetails_cost_basis_inputs(
             formula_variance = str((projected - computed).quantize(_CENT))  # type: ignore[operator]
             reconciles = abs(projected - computed) <= _CENT  # type: ignore[operator]
 
+        display_budget_code = str(r.get("budget_code")).strip() if r.get("budget_code") else None
+        display_cost_code = str(r.get("cost_code")).strip() if r.get("cost_code") else None
         candidates_by_code.setdefault(code, []).append(
             {
                 "budget_code_key": code,
+                # Procore-authoritative matrix display fields (trimmed / canonical money).
+                "display_budget_code": display_budget_code or None,
+                "display_cost_code": display_cost_code or None,
+                "display_projected_budget": _money_opt(r.get("projected_budget")),
                 "committed_costs": amounts["committed_costs"],
                 "erp_direct_costs": amounts["erp_direct_costs"],
                 "pending_cost_changes": pending_cost_changes,
@@ -399,6 +410,13 @@ def _read_budgetdetails_cost_basis_inputs(
         if candidate_view_count > 1:
             warnings.append("budgetdetails_multiple_budget_views_detected")
             warnings.append("budgetdetails_selected_view_unverified")
+        # Display-field conflict: mapped Procore rows for this canonical key disagree on a display
+        # value. Selection is still deterministic (above); warn so certification can surface it.
+        for fld in ("display_budget_code", "display_cost_code", "display_projected_budget"):
+            distinct = {c[fld] for c in cands if c[fld] is not None}
+            if len(distinct) > 1:
+                warnings.append("budgetdetails_display_fields_conflict")
+                break
 
         row = {k: v for k, v in selected.items() if not k.startswith("_")}
         row["candidate_view_count"] = candidate_view_count

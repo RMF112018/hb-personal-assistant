@@ -152,6 +152,16 @@ def upsert_output_narrative(conn: sqlite3.Connection, row: dict[str, Any]) -> No
     _upsert(conn, "forecast_output_narratives", row, ("output_id", "scope", "narrative_key"))
 
 
+# v74 operator month-window matrix: per-budget-code table rows + the dense per-month total row.
+# Idempotent on the table UNIQUE constraints (matches existing budget-code / header conventions).
+def upsert_output_monthly_table_row(conn: sqlite3.Connection, row: dict[str, Any]) -> None:
+    _upsert(conn, "forecast_output_monthly_table_rows", row, ("output_id", "budget_code_key"))
+
+
+def upsert_output_monthly_table_total(conn: sqlite3.Connection, row: dict[str, Any]) -> None:
+    _upsert(conn, "forecast_output_monthly_table_totals", row, ("output_id",))
+
+
 # Maps the engine's planned-table keys to their per-row upsert helper.
 _WRITERS = {
     "outputs": upsert_output,
@@ -164,6 +174,8 @@ _WRITERS = {
     "commitment_exposure": upsert_output_commitment_exposure,
     "schedule_phasing": upsert_output_schedule_phasing,
     "narratives": upsert_output_narrative,
+    "monthly_table_rows": upsert_output_monthly_table_row,
+    "monthly_table_totals": upsert_output_monthly_table_total,
 }
 
 
@@ -260,3 +272,33 @@ def read_output_narratives_from_db(
 ) -> list[dict[str, Any]]:
     """P8 explainability/audit narrative rows in build order (source_row_number)."""
     return _read_raw(conn, "forecast_output_narratives", "source_row_number", output_id=output_id)
+
+
+def _read_columns(
+    conn: sqlite3.Connection, table: str, order_by: str, *, output_id: str
+) -> list[dict[str, Any]]:
+    """Read full column rows (for the v74 matrix tables, which carry no raw_json)."""
+    prior = conn.row_factory
+    conn.row_factory = sqlite3.Row
+    try:
+        cur = conn.execute(
+            f"SELECT * FROM {table} WHERE output_id = ? ORDER BY {order_by}", (output_id,)
+        )
+        return [dict(r) for r in cur.fetchall()]
+    finally:
+        conn.row_factory = prior
+
+
+def read_output_monthly_table_rows_from_db(
+    conn: sqlite3.Connection, *, output_id: str
+) -> list[dict[str, Any]]:
+    """v74 per-budget-code matrix rows, ordered by sort_key (budget_code_key)."""
+    return _read_columns(conn, "forecast_output_monthly_table_rows", "sort_key", output_id=output_id)
+
+
+def read_output_monthly_table_totals_from_db(
+    conn: sqlite3.Connection, *, output_id: str
+) -> dict[str, Any] | None:
+    """v74 dense per-month total row for an output (one row), or None."""
+    rows = _read_columns(conn, "forecast_output_monthly_table_totals", "output_id", output_id=output_id)
+    return rows[0] if rows else None

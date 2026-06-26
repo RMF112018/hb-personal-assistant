@@ -18,7 +18,7 @@
     "phase_owner",
     "blocking_for_phase"
   ],
-  "table_count": 437,
+  "table_count": 439,
   "tables": {
     "construction_data_quality_runs": {
       "table_family": "data_quality_v20v21",
@@ -3943,6 +3943,24 @@
       "blocking_for_phase": "none",
       "v": "V73",
       "notes": "Durable Generate-Forecast request contract (Phase P-C); one row per generation attempt (project/dates/mode/kind/readiness/validation/run linkage); empty at introduction, populated at runtime by the generation routes writing the app-managed DB."
+    },
+    "forecast_output_monthly_table_rows": {
+      "table_family": "forecast_output_matrix_v74",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "forecast_monthly_matrix",
+      "blocking_for_phase": "none",
+      "v": "V74",
+      "notes": "Operator month-window matrix: persisted per-row table metadata (Completed-to-Date/Forecast-to-Complete/EAC/Variance) plus the Procore-display vs financial-spine projected-budget split; empty at introduction, populated at runtime by the DB-native generation/persistence path."
+    },
+    "forecast_output_monthly_table_totals": {
+      "table_family": "forecast_output_matrix_v74",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "forecast_monthly_matrix",
+      "blocking_for_phase": "none",
+      "v": "V74",
+      "notes": "Operator month-window matrix: persisted dense per-month total row (every displayed month) plus scalar column totals; part of the certified output contract; empty at introduction, populated at runtime by the DB-native generation/persistence path."
     }
   }
 }

@@ -24,6 +24,8 @@ export interface ForecastGeneratePanelProps {
     generating: boolean
     error: string | null
     errorActionTo: string | null
+    /** Extra disable signal (e.g. an invalid/incomplete operator month window). */
+    disabled?: boolean
   }
   /** Legacy package-backed DB-config (live-config snapshot) path. Keeps the generator-kind selector. */
   legacyDbConfig: {
@@ -59,7 +61,7 @@ export function ForecastGeneratePanel({
   const [showLegacy, setShowLegacy] = useState(false)
 
   const noProject = !projectKey
-  const primaryDisabled = primary.generating || noProject || selectedBlocked
+  const primaryDisabled = primary.generating || noProject || selectedBlocked || Boolean(primary.disabled)
   const dbConfigDisabled =
     legacyDbConfig.generating || legacyDbConfig.notReady || noProject || selectedBlocked
   const fileDisabled = legacyFile.generating || noProject || selectedBlocked

@@ -68,6 +68,29 @@ _EMPTY_KEYS = (
 # Cent tolerance for the monthly reconciliation invariants (even-spread is exact; this is a guard).
 _CENT = Decimal("0.01")
 
+# The four operator month-window fields persisted on the request ledger AND the immutable output.
+_MONTH_WINDOW_FIELDS = (
+    "actuals_start_month",
+    "actuals_through_month",
+    "forecast_start_month",
+    "forecast_end_month",
+)
+
+# Warning-grade codes (never hard-fail) surfaced into the output's month_window_warnings_json — the
+# Procore-vs-spine display divergences and even-spread disclosure. Kept distinct from cert reasons.
+_MONTH_WINDOW_WARNING_CODES = frozenset(
+    {
+        "projected_budget_source_mismatch",
+        "procore_projected_budget_missing",
+        "display_row_not_procore_authoritative",
+        "projected_budget_unavailable",
+        "cost_type_underivable",
+        "budgetdetails_display_fields_conflict",
+        "db_native_monthly_even_spread_not_schedule_weighted",
+        "db_native_monthly_no_source_actuals_in_window",
+    }
+)
+
 
 @dataclass(frozen=True)
 class PersistOutcome:
@@ -134,6 +157,16 @@ def build_db_native_planned(
     window = result.get("forecast_window") or {}
     confidence = result.get("confidence") or {}
 
+    # Operator month windows (persisted on the immutable output for standalone explainability) + the
+    # warning-grade month-window/display warnings (never cert failures).
+    month_window = {f: window.get(f) for f in _MONTH_WINDOW_FIELDS}
+    month_window_basis = (
+        "operator_supplied" if all(month_window[f] for f in _MONTH_WINDOW_FIELDS) else None
+    )
+    month_window_warnings = sorted(
+        {w for w in (result.get("warnings") or []) if w in _MONTH_WINDOW_WARNING_CODES}
+    )
+
     header_envelope = {
         "schema_version": result.get("schema_version"),
         "generation_mode": "db_native",
@@ -164,6 +197,12 @@ def build_db_native_planned(
             "source_path": None,
             "source_sha256": source_snapshot_id,
             "raw_json": json.dumps(header_envelope, sort_keys=True),
+            "actuals_start_month": month_window["actuals_start_month"],
+            "actuals_through_month": month_window["actuals_through_month"],
+            "forecast_start_month": month_window["forecast_start_month"],
+            "forecast_end_month": month_window["forecast_end_month"],
+            "month_window_basis": month_window_basis,
+            "month_window_warnings_json": json.dumps(month_window_warnings),
             "created_utc": now_utc,
             "updated_utc": now_utc,
         }
@@ -239,6 +278,9 @@ def build_db_native_planned(
             "month": m.get("month"),
             "value": m.get("value"),
             "is_actual": int(m.get("is_actual") or 0),
+            # v74 unambiguous classification (retains is_actual for backward compatibility).
+            "value_type": m.get("value_type"),
+            "source_status": m.get("source_status"),
             "source_row_number": i,
             "raw_json": json.dumps(m, sort_keys=True),
             "created_utc": now_utc,
@@ -247,12 +289,63 @@ def build_db_native_planned(
         for i, m in enumerate(result.get("monthly") or [], start=1)
     ]
 
+    # v74 table-ready matrix: per-budget-code rows + the dense per-month total row. Built by the engine
+    # only on a supported monthly output; absent otherwise (no fabricated matrix).
+    monthly_table_rows = [
+        {
+            "id": _row_id("fomtr", output_id, tr.get("budget_code_key")),
+            "output_id": output_id,
+            "project_key": project_key,
+            "budget_code_key": tr.get("budget_code_key"),
+            "budget_code": tr.get("budget_code"),
+            "cost_code": tr.get("cost_code"),
+            "cost_type": tr.get("cost_type"),
+            "projected_budget_display": tr.get("projected_budget_display"),
+            "projected_budget_display_source": tr.get("projected_budget_display_source"),
+            "projected_budget_calculation_basis": tr.get("projected_budget_calculation_basis"),
+            "projected_budget_calculation_source": tr.get("projected_budget_calculation_source"),
+            "projected_budget_source_warning": tr.get("projected_budget_source_warning"),
+            "completed_to_date": tr.get("completed_to_date"),
+            "forecast_to_complete": tr.get("forecast_to_complete"),
+            "estimated_at_completion": tr.get("estimated_at_completion"),
+            "variance_to_budget": tr.get("variance_to_budget"),
+            "confidence": tr.get("confidence"),
+            "method_code": tr.get("method_code"),
+            "reason_codes_json": json.dumps(list(tr.get("reason_codes") or [])),
+            "sort_key": tr.get("sort_key") or tr.get("budget_code_key"),
+            "created_utc": now_utc,
+            "updated_utc": now_utc,
+        }
+        for tr in (result.get("monthly_table_rows") or [])
+    ]
+
+    totals = result.get("monthly_table_totals")
+    monthly_table_totals: list[dict[str, Any]] = []
+    if totals:
+        monthly_table_totals = [
+            {
+                "id": _row_id("fomtt", output_id, "totals"),
+                "output_id": output_id,
+                "project_key": project_key,
+                "month_values_json": json.dumps(totals.get("month_values") or {}, sort_keys=True),
+                "projected_budget_total": totals.get("projected_budget_total"),
+                "completed_to_date_total": totals.get("completed_to_date_total"),
+                "forecast_to_complete_total": totals.get("forecast_to_complete_total"),
+                "estimated_at_completion_total": totals.get("estimated_at_completion_total"),
+                "variance_to_budget_total": totals.get("variance_to_budget_total"),
+                "created_utc": now_utc,
+                "updated_utc": now_utc,
+            }
+        ]
+
     planned: dict[str, list[dict[str, Any]]] = {
         "outputs": outputs,
         "budget_codes": budget_codes,
         "risks": risks,
         "narratives": narratives,
         "monthly": monthly,
+        "monthly_table_rows": monthly_table_rows,
+        "monthly_table_totals": monthly_table_totals,
     }
     for key in _EMPTY_KEYS:
         planned[key] = []
@@ -343,6 +436,7 @@ def certify_db_native_result(
                 break
 
     reasons.extend(_certify_monthly(planned))
+    reasons.extend(_certify_monthly_matrix(planned))
 
     leaks = find_redaction_leaks(planned)
     if leaks:
@@ -350,6 +444,137 @@ def certify_db_native_result(
 
     # Stable, de-duplicated coded reasons.
     return sorted(set(reasons))
+
+
+def _d(value: Any) -> Decimal:
+    """Decimal of a canonical money string (cert runs on already-validated planned rows)."""
+    return Decimal(str(value)) if value is not None else Decimal("0")
+
+
+def _is_year_month(value: Any) -> bool:
+    text = str(value or "")
+    if len(text) != 7 or text[4] != "-":
+        return False
+    year, _, month = text.partition("-")
+    return year.isdigit() and month.isdigit() and 1 <= int(month) <= 12
+
+
+def _certify_monthly_matrix(planned: dict[str, list[dict[str, Any]]]) -> list[str]:
+    """Certify the v74 operator month-window matrix before any write (SOW §6).
+
+    Runs only when the matrix is present (a supported monthly output). Validates: month-window
+    fields present/valid + non-overlapping; every cell inside its selected window; no duplicate
+    cells; one matrix row per budget-code row; exact CtD/FtC/EAC/Variance per row (against the
+    persisted cells + the Procore display projected budget); the dense total row equals the sum of
+    rows and the per-month cell totals. Budget-source divergence is warning-grade (recorded in
+    month_window_warnings_json) and is NOT a reason here.
+    """
+    rows = planned.get("monthly_table_rows", [])
+    cells = planned.get("monthly", [])
+    totals_list = planned.get("monthly_table_totals", [])
+    reasons: list[str] = []
+
+    header = (planned.get("outputs") or [{}])[0]
+    am_start = header.get("actuals_start_month")
+    am_through = header.get("actuals_through_month")
+    fm_start = header.get("forecast_start_month")
+    fm_end = header.get("forecast_end_month")
+    has_window = all(_is_year_month(m) for m in (am_start, am_through, fm_start, fm_end))
+
+    # The matrix is an operator-month-window feature. Without the window (legacy date-only callers)
+    # the cells-only output is valid and there must be NO matrix; with the window the matrix is required.
+    if not has_window:
+        return ["monthly_matrix_without_month_window"] if rows else []
+    if cells and not rows:
+        reasons.append("monthly_matrix_missing_for_monthly_output")
+        return reasons
+    if rows and not totals_list:
+        reasons.append("monthly_matrix_missing_totals")
+        return reasons
+    if not (am_start <= am_through):
+        reasons.append("monthly_matrix_actual_window_reversed")
+    if not (fm_start <= fm_end):
+        reasons.append("monthly_matrix_forecast_window_reversed")
+    if not (fm_start > am_through):
+        reasons.append("monthly_matrix_window_overlap")
+
+    # Cells: in-window + no duplicates + per-code actual/forecast sums.
+    seen: set[tuple[str, str]] = set()
+    ctd_cells: dict[str, Decimal] = {}
+    ftc_cells: dict[str, Decimal] = {}
+    month_cell_totals: dict[str, Decimal] = {}
+    for cell in cells:
+        key = str(cell.get("budget_code_key") or "")
+        month = str(cell.get("month") or "")
+        natural = (key, month)
+        if natural in seen:
+            reasons.append("monthly_duplicate_cell")
+        seen.add(natural)
+        value = _d(cell.get("value"))
+        month_cell_totals[month] = month_cell_totals.get(month, Decimal("0")) + value
+        if cell.get("value_type") == "actual":
+            if not (am_start <= month <= am_through):
+                reasons.append("monthly_cell_outside_actual_window")
+            ctd_cells[key] = ctd_cells.get(key, Decimal("0")) + value
+        else:
+            if not (fm_start <= month <= fm_end):
+                reasons.append("monthly_cell_outside_forecast_window")
+            ftc_cells[key] = ftc_cells.get(key, Decimal("0")) + value
+
+    # One matrix row per budget-code row.
+    row_keys = {str(r.get("budget_code_key") or "") for r in rows}
+    code_keys = {str(c.get("budget_code_key") or "") for c in planned.get("budget_codes", [])}
+    if row_keys != code_keys or len(rows) != len(planned.get("budget_codes", [])):
+        reasons.append("monthly_matrix_row_budget_code_mismatch")
+
+    # Per-row formula exactness (CtD = Σ actual cells, FtC = Σ forecast cells, EAC, Variance).
+    pb_sum = ctd_sum = ftc_sum = eac_sum = var_sum = Decimal("0")
+    for r in rows:
+        key = str(r.get("budget_code_key") or "")
+        ctd = _d(r.get("completed_to_date"))
+        ftc = _d(r.get("forecast_to_complete"))
+        eac = _d(r.get("estimated_at_completion"))
+        pb = _d(r.get("projected_budget_display"))
+        var = _d(r.get("variance_to_budget"))
+        if ctd != ctd_cells.get(key, Decimal("0")):
+            reasons.append("monthly_matrix_completed_to_date_mismatch")
+        if ftc != ftc_cells.get(key, Decimal("0")):
+            reasons.append("monthly_matrix_forecast_to_complete_mismatch")
+        if eac != ctd + ftc:
+            reasons.append("monthly_matrix_eac_mismatch")
+        # Variance convention: projected_budget_display - EAC (positive = under budget, negative = overrun).
+        if var != pb - eac:
+            reasons.append("monthly_matrix_variance_mismatch")
+        pb_sum += pb
+        ctd_sum += ctd
+        ftc_sum += ftc
+        eac_sum += eac
+        var_sum += var
+
+    # Total row == sum of rows; dense per-month total == per-month cell sums.
+    totals = totals_list[0]
+    if _d(totals.get("projected_budget_total")) != pb_sum:
+        reasons.append("monthly_matrix_total_projected_budget_mismatch")
+    if _d(totals.get("completed_to_date_total")) != ctd_sum:
+        reasons.append("monthly_matrix_total_completed_to_date_mismatch")
+    if _d(totals.get("forecast_to_complete_total")) != ftc_sum:
+        reasons.append("monthly_matrix_total_forecast_to_complete_mismatch")
+    if _d(totals.get("estimated_at_completion_total")) != eac_sum:
+        reasons.append("monthly_matrix_total_eac_mismatch")
+    if _d(totals.get("variance_to_budget_total")) != var_sum:
+        reasons.append("monthly_matrix_total_variance_mismatch")
+    try:
+        month_values = json.loads(totals.get("month_values_json") or "{}")
+    except (ValueError, TypeError):
+        month_values = {}
+        reasons.append("monthly_matrix_total_month_values_unreadable")
+    # Every cell's month must be a declared total column, and each total column must equal its cell sum.
+    for month, cell_total in month_cell_totals.items():
+        if month not in month_values or _d(month_values[month]) != cell_total:
+            reasons.append("monthly_matrix_total_month_value_mismatch")
+            break
+
+    return reasons
 
 
 def _certify_monthly(planned: dict[str, list[dict[str, Any]]]) -> list[str]:
