@@ -25,6 +25,7 @@ const TABLE: ForecastDbMonthlyTable = {
       budget_code: '1000.03-01-1000.LAB',
       cost_code: '03-01-1000',
       cost_type: 'LAB',
+      cost_category: 'Preconstruction',
       projected_budget: '100000.00',
       projected_budget_source: 'procore_ep_budget_detail_rows',
       projected_budget_source_warning: null,
@@ -42,6 +43,7 @@ const TABLE: ForecastDbMonthlyTable = {
       budget_code: '1000.03-01-2000.MAT',
       cost_code: '03-01-2000',
       cost_type: 'MAT',
+      cost_category: 'Cost of Work',
       projected_budget: '50000.00',
       projected_budget_source: 'procore_ep_budget_detail_rows',
       projected_budget_source_warning: null,
@@ -98,7 +100,7 @@ describe('ForecastMonthlyMatrixTable', () => {
 
   it('renders the persisted total row with formatted currency', () => {
     render(<ForecastMonthlyMatrixTable table={TABLE} />)
-    const footer = screen.getByText('Total').closest('tr') as HTMLElement
+    const footer = screen.getByText('Project total').closest('tr') as HTMLElement
     expect(within(footer).getByText('$150,000')).toBeInTheDocument()
     // Positive total variance (under budget) renders without parentheses.
     expect(within(footer).getByText('$145,000')).toBeInTheDocument()
@@ -150,9 +152,70 @@ describe('ForecastMonthlyMatrixTable', () => {
     expect(screen.getByText('03-01-2000')).toBeInTheDocument()
   })
 
-  it('groups by Cost Type when toggled', () => {
+  const groupBy = (value: string) =>
+    fireEvent.change(screen.getByLabelText('Group rows'), { target: { value } })
+
+  it('offers None / Cost Type / Cost Category in the grouping dropdown', () => {
     render(<ForecastMonthlyMatrixTable table={TABLE} />)
-    fireEvent.click(screen.getByLabelText('Group by Cost Type'))
+    const options = Array.from(
+      (screen.getByLabelText('Group rows') as HTMLSelectElement).options,
+    ).map((o) => o.textContent)
+    expect(options).toEqual(['No grouping', 'Cost Type', 'Cost Category'])
+  })
+
+  it('groups by Cost Type', () => {
+    render(<ForecastMonthlyMatrixTable table={TABLE} />)
+    groupBy('cost_type')
+    expect(screen.getByText(/Cost Type: LAB/)).toBeInTheDocument()
+    expect(screen.getByText(/Cost Type: MAT/)).toBeInTheDocument()
+  })
+
+  it('groups by Cost Category using the backend-derived category', () => {
+    render(<ForecastMonthlyMatrixTable table={TABLE} />)
+    groupBy('cost_category')
+    expect(screen.getByText(/Cost Category: Preconstruction/)).toBeInTheDocument()
+    expect(screen.getByText(/Cost Category: Cost of Work/)).toBeInTheDocument()
+    // The grouping convention note is shown only while grouped.
+    expect(screen.getByText(/Group subtotals reflect the currently visible rows/i)).toBeInTheDocument()
+  })
+
+  it('collapses and expands a group, toggling child rows and the trailing subtotal row', () => {
+    render(<ForecastMonthlyMatrixTable table={TABLE} />)
+    groupBy('cost_type')
+    // Expanded by default: child cost code + a trailing Subtotal row are present.
+    expect(screen.getByText('03-01-1000')).toBeInTheDocument()
+    expect(screen.getAllByText('Subtotal').length).toBeGreaterThan(0)
+    // Collapse the LAB group header → its child row hides; subtotal moves inline into the header.
+    const labToggle = screen.getByRole('button', { name: /Cost Type: LAB/ })
+    fireEvent.click(labToggle)
+    expect(screen.queryByText('03-01-1000')).not.toBeInTheDocument()
+    expect(screen.getByText(/Cost Type: LAB/)).toBeInTheDocument()
+  })
+
+  it('subtotals reconcile to the grouped rows (BigInt-exact) for each metric and month', () => {
+    render(<ForecastMonthlyMatrixTable table={TABLE} />)
+    groupBy('cost_category')
+    // Preconstruction has only k-lab; its subtotal row equals that row's values.
+    // EAC 3500 → $3,500 appears in both the leaf and the subtotal row.
+    expect(screen.getAllByText('$3,500').length).toBeGreaterThanOrEqual(2)
+    // Cost of Work has only k-mat: EAC 1500.
+    expect(screen.getAllByText('$1,500').length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('updates group subtotals when a filter narrows the visible rows', () => {
+    render(<ForecastMonthlyMatrixTable table={TABLE} />)
+    groupBy('cost_category')
+    // Filter to MAT only → the Preconstruction (LAB) group disappears, Cost of Work remains.
+    fireEvent.change(screen.getByLabelText('Filter by Cost Type'), { target: { value: 'MAT' } })
+    expect(screen.queryByText(/Cost Category: Preconstruction/)).not.toBeInTheDocument()
+    expect(screen.getByText(/Cost Category: Cost of Work/)).toBeInTheDocument()
+  })
+
+  it('keeps sorting working while grouped', () => {
+    render(<ForecastMonthlyMatrixTable table={TABLE} />)
+    groupBy('cost_type')
+    // Sorting the EAC column while grouped must not throw / freeze and the headers remain.
+    fireEvent.click(screen.getByRole('button', { name: /^EAC/ }))
     expect(screen.getByText(/Cost Type: LAB/)).toBeInTheDocument()
     expect(screen.getByText(/Cost Type: MAT/)).toBeInTheDocument()
   })
@@ -199,10 +262,11 @@ describe('ForecastMonthlyMatrixTable', () => {
     fireEvent.change(screen.getByLabelText('Filter by Cost Code'), { target: { value: '' } })
     fireEvent.change(screen.getByLabelText('Filter by Cost Type'), { target: { value: 'MAT' } })
     fireEvent.change(screen.getByLabelText('Filter by Cost Type'), { target: { value: '' } })
-    fireEvent.click(screen.getByLabelText('Group by Cost Type'))
-    fireEvent.click(screen.getByLabelText('Group by Cost Type'))
-    fireEvent.click(screen.getByRole('button', { name: /Cost Type/ }))
-    fireEvent.click(screen.getByRole('button', { name: /Cost Type/ }))
+    fireEvent.change(screen.getByLabelText('Group rows'), { target: { value: 'cost_type' } })
+    fireEvent.change(screen.getByLabelText('Group rows'), { target: { value: 'cost_category' } })
+    fireEvent.change(screen.getByLabelText('Group rows'), { target: { value: 'none' } })
+    fireEvent.click(screen.getByRole('button', { name: /^Cost Type/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^Cost Type/ }))
 
     // No React "Maximum update depth exceeded" (the loop signature) was logged.
     const loopLogged = errorSpy.mock.calls.some((args) =>

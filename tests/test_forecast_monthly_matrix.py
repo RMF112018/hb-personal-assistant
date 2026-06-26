@@ -40,6 +40,7 @@ from hb_assistant.construction.analytics.forecast_generation_request_dto import 
 )
 from hb_assistant.construction.analytics.forecast_run_readmodel import (  # noqa: E402
     ForecastRunReadModelService,
+    derive_cost_category,
 )
 from hb_assistant.store.migrator import SQLiteMigrator  # noqa: E402
 
@@ -297,6 +298,7 @@ def test_read_monthly_table_is_dense_and_redaction_safe():
     # Dense: every row has a value for every displayed month (read-fill of 0.00).
     for row in table["rows"]:
         assert set(row["month_values"]) == set(months)
+        assert "cost_category" in row  # read-layer derives + surfaces the grouping category
     assert set(table["total_row"]["month_values"]) == set(months)
     # Redaction: no raw payloads / paths / run ids leak.
     import json as _json
@@ -304,6 +306,24 @@ def test_read_monthly_table_is_dense_and_redaction_safe():
     blob = _json.dumps(table)
     for forbidden in ("raw_json", "run_id", ".sqlite", "source_path", "source_package"):
         assert forbidden not in blob
+
+
+def test_derive_cost_category_known_prefixes():
+    assert derive_cost_category("03-01-025 - PLAN COPY EXPENSE") == "Preconstruction"
+    assert derive_cost_category("10-01-100 - PRECONSTRUCTION") == "General Conditions & Requirements"
+    assert derive_cost_category("15-23-000 - HVAC") == "Cost of Work"
+    assert derive_cost_category("20-00-000 - FEE") == "Overhead & Profit"
+
+
+def test_derive_cost_category_other_and_defensive_cases():
+    assert derive_cost_category("90-01-000 - CONTINGENCY") == "Other"  # 90 -> Other
+    assert derive_cost_category("99-foo") == "Other"  # unknown prefix
+    assert derive_cost_category(None) == "Other"
+    assert derive_cost_category("") == "Other"
+    assert derive_cost_category("   ") == "Other"
+    assert derive_cost_category("0") == "Other"  # too short (< 2 chars)
+    assert derive_cost_category("  03-x  ") == "Preconstruction"  # trimmed, prefix-based (no dash needed)
+    assert derive_cost_category("03") == "Preconstruction"  # bare prefix, no dash
 
 
 def _seed_actual_month(conn, project_key, month, amount):

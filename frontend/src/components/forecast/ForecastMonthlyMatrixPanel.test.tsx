@@ -24,6 +24,7 @@ const TABLE: ForecastDbMonthlyTable = {
       budget_code: '1000.03-01-1000.LAB',
       cost_code: '03-01-1000',
       cost_type: 'LAB',
+      cost_category: 'Preconstruction',
       projected_budget: '100000.00',
       projected_budget_source: 'procore_ep_budget_detail_rows',
       projected_budget_source_warning: null,
@@ -41,6 +42,7 @@ const TABLE: ForecastDbMonthlyTable = {
       budget_code: '2000.03-01-2000.MAT',
       cost_code: '03-01-2000',
       cost_type: 'MAT',
+      cost_category: 'Cost of Work',
       projected_budget: '50000.00',
       projected_budget_source: 'procore_ep_budget_detail_rows',
       projected_budget_source_warning: null,
@@ -99,9 +101,11 @@ describe('ForecastMonthlyMatrixPanel', () => {
     fireEvent.change(screen.getByLabelText('Search the monthly forecast table'), { target: { value: '' } })
     fireEvent.change(screen.getByLabelText('Filter by Cost Code'), { target: { value: '2000' } })
     fireEvent.change(screen.getByLabelText('Filter by Cost Code'), { target: { value: '' } })
-    fireEvent.click(screen.getByLabelText('Group by Cost Type'))
-    fireEvent.click(screen.getByLabelText('Group by Cost Type'))
-    fireEvent.click(screen.getByRole('button', { name: /Cost Type/ }))
+    // Grouping (dropdown) + expand/collapse are local table state — they must not re-hit the endpoint.
+    fireEvent.change(screen.getByLabelText('Group rows'), { target: { value: 'cost_type' } })
+    fireEvent.change(screen.getByLabelText('Group rows'), { target: { value: 'cost_category' } })
+    fireEvent.click(screen.getByRole('button', { name: /Cost Category: Cost of Work/ }))
+    fireEvent.change(screen.getByLabelText('Group rows'), { target: { value: 'none' } })
     await waitFor(() => {})
 
     expect(vi.mocked(api.getForecastDbMonthlyTable)).toHaveBeenCalledTimes(1)

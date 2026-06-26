@@ -154,6 +154,24 @@ def _loads_list(raw: Any) -> list[str]:
     return [str(v) for v in value] if isinstance(value, list) else []
 
 
+# Cost Category from the cost_code prefix (first two characters). Defensive + prefix-based (no regex,
+# no required dash): unknown / blank / short / None all classify as "Other". Derived at read time and
+# surfaced on each /monthly-table row so the frontend never duplicates this business classification.
+_COST_CATEGORY_BY_PREFIX = {
+    "03": "Preconstruction",
+    "10": "General Conditions & Requirements",
+    "15": "Cost of Work",
+    "20": "Overhead & Profit",
+}
+
+
+def derive_cost_category(cost_code: str | None) -> str:
+    """Map a cost_code to its Cost Category by the leading two-character prefix (else 'Other')."""
+    text = (cost_code or "").strip()
+    prefix = text[:2] if len(text) >= 2 else ""
+    return _COST_CATEGORY_BY_PREFIX.get(prefix, "Other")
+
+
 def _month_label(year_month: str) -> str:
     """Human month-column label, e.g. ``"2026-01"`` -> ``"Jan 2026"`` (passthrough if unparseable)."""
     import calendar
@@ -477,6 +495,7 @@ class ForecastRunReadModelService:
                     "budget_code": r["budget_code"],
                     "cost_code": r["cost_code"],
                     "cost_type": r["cost_type"],
+                    "cost_category": derive_cost_category(r["cost_code"]),
                     "projected_budget": r["projected_budget_display"],
                     "projected_budget_source": r["projected_budget_display_source"],
                     "projected_budget_source_warning": r["projected_budget_source_warning"],

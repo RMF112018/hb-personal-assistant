@@ -1298,6 +1298,8 @@ export interface ForecastDbMonthlyTableRow {
   budget_code: string | null;
   cost_code: string | null;
   cost_type: string | null;
+  // Cost Category derived (read-time) from the cost_code prefix; always present (else "Other").
+  cost_category: string;
   projected_budget: string;
   projected_budget_source: string | null;
   projected_budget_source_warning: string | null;

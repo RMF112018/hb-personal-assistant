@@ -40,3 +40,34 @@ export function formatMonthLabel(yearMonth: string): string {
   if (monthIndex < 0 || monthIndex > 11) return yearMonth
   return `${names[monthIndex]} ${m[1]}`
 }
+
+/**
+ * Exact money aggregation for presentation subtotals. Backend money values are 2-dp decimal STRINGS;
+ * these parse to integer cents via BigInt (never binary floating point), so group subtotals carry no
+ * float drift. Display still goes through formatCurrency/formatSignedCurrency. These are presentation
+ * aggregates only — they never replace backend-certified row values or the project total.
+ */
+export function moneyStringToCents(value: string | null | undefined): bigint {
+  const raw = String(value ?? '0').trim()
+  if (raw === '') return 0n
+  const negative = raw.startsWith('-')
+  const normalized = raw.replace(/^-/, '')
+  const [wholeRaw, decimalRaw = ''] = normalized.split('.')
+  const whole = BigInt(wholeRaw.replace(/[^0-9]/g, '') || '0')
+  const cents = BigInt((decimalRaw.replace(/[^0-9]/g, '') + '00').slice(0, 2))
+  const total = whole * 100n + cents
+  return negative ? -total : total
+}
+
+export function centsToMoneyString(cents: bigint): string {
+  const negative = cents < 0n
+  const abs = negative ? -cents : cents
+  const whole = abs / 100n
+  const fraction = abs % 100n
+  return `${negative ? '-' : ''}${whole}.${fraction.toString().padStart(2, '0')}`
+}
+
+/** Exact sum of money strings → a 2-dp money string (BigInt integer-cents, no float drift). */
+export function sumMoney(values: Array<string | null | undefined>): string {
+  return centsToMoneyString(values.reduce((acc, v) => acc + moneyStringToCents(v), 0n))
+}

@@ -11,11 +11,55 @@ import {
   type ExpandedState,
   type GroupingState,
   type SortingState,
+  type VisibilityState,
 } from '@tanstack/react-table'
-import { useMemo, useState, type CSSProperties } from 'react'
+import { Fragment, useMemo, useState, type CSSProperties } from 'react'
 
-import type { ForecastDbMonthlyTable, ForecastDbMonthlyTableRow } from '../../lib/api'
-import { formatCurrency, formatSignedCurrency } from '../../lib/format'
+import type {
+  ForecastDbMonthlyTable,
+  ForecastDbMonthlyTableMonth,
+  ForecastDbMonthlyTableRow,
+} from '../../lib/api'
+import { formatCurrency, formatSignedCurrency, sumMoney } from '../../lib/format'
+
+// Group subtotal values (presentation aggregation only — never a replacement for backend-certified
+// row values or the project total). Exact BigInt-cents sums via sumMoney; no binary-float drift.
+type SubtotalValues = {
+  projected_budget: string
+  month_values: Record<string, string>
+  completed_to_date: string
+  forecast_to_complete: string
+  estimated_at_completion: string
+  variance_to_budget: string
+}
+
+function computeSubtotal(
+  leaves: ForecastDbMonthlyTableRow[],
+  months: ForecastDbMonthlyTableMonth[],
+): SubtotalValues {
+  const month_values: Record<string, string> = {}
+  for (const m of months) {
+    month_values[m.month] = sumMoney(leaves.map((r) => r.month_values[m.month]))
+  }
+  return {
+    projected_budget: sumMoney(leaves.map((r) => r.projected_budget)),
+    month_values,
+    completed_to_date: sumMoney(leaves.map((r) => r.completed_to_date)),
+    forecast_to_complete: sumMoney(leaves.map((r) => r.forecast_to_complete)),
+    estimated_at_completion: sumMoney(leaves.map((r) => r.estimated_at_completion)),
+    variance_to_budget: sumMoney(leaves.map((r) => r.variance_to_budget)),
+  }
+}
+
+const GROUP_OPTIONS = [
+  { value: 'none', label: 'No grouping' },
+  { value: 'cost_type', label: 'Cost Type' },
+  { value: 'cost_category', label: 'Cost Category' },
+] as const
+const GROUP_DIMENSION_LABEL: Record<string, string> = {
+  cost_type: 'Cost Type',
+  cost_category: 'Cost Category',
+}
 
 /**
  * Table-ready operator month-window matrix. The backend supplies every authoritative value (row
@@ -72,6 +116,8 @@ export function ForecastMonthlyMatrixTable({
   const [grouping, setGrouping] = useState<GroupingState>([])
   const [expanded, setExpanded] = useState<ExpandedState>({})
   const [globalFilter, setGlobalFilter] = useState('')
+  // cost_category is a hidden grouping-only column (no visible column added to the matrix layout).
+  const [columnVisibility] = useState<VisibilityState>({ cost_category: false })
 
   const months = useMemo(() => table?.months ?? [], [table])
   const rows = useMemo(() => table?.rows ?? [], [table])
@@ -88,6 +134,12 @@ export function ForecastMonthlyMatrixTable({
         id: 'cost_type',
         header: 'Cost Type',
         accessorFn: (r) => r.cost_type ?? '—',
+      },
+      // Hidden grouping-only column (Cost Category derived backend-side from the cost_code prefix).
+      {
+        id: 'cost_category',
+        header: 'Cost Category',
+        accessorFn: (r) => r.cost_category ?? 'Other',
       },
       {
         id: 'projected_budget',
@@ -142,7 +194,7 @@ export function ForecastMonthlyMatrixTable({
   const reactTable = useReactTable({
     data: rows,
     columns,
-    state: { sorting, columnFilters, grouping, expanded, globalFilter },
+    state: { sorting, columnFilters, grouping, expanded, globalFilter, columnVisibility },
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onGroupingChange: setGrouping,
@@ -199,7 +251,41 @@ export function ForecastMonthlyMatrixTable({
   const total = table.total_row
   const costCodeFilter = (reactTable.getColumn('cost_code')?.getFilterValue() as string) ?? ''
   const costTypeFilter = (reactTable.getColumn('cost_type')?.getFilterValue() as string) ?? ''
-  const isGrouped = grouping.includes('cost_type')
+  const groupBy = grouping[0] ?? 'none'
+  const groupingActive = groupBy !== 'none'
+  const visibleColCount = reactTable.getVisibleLeafColumns().length
+
+  // Subtotal data cells (everything after Cost Code + Cost Type): Projected Budget (sticky), each
+  // displayed month, then CtD / FtC / EAC / Variance. Reused for the collapsed group header and the
+  // trailing subtotal row of an expanded group.
+  const subtotalDataCells = (vals: SubtotalValues) => (
+    <>
+      <td style={stickyStyle('projected_budget', false)}>
+        <span className="tabular-nums font-semibold">{formatCurrency(vals.projected_budget)}</span>
+      </td>
+      {months.map((m) => (
+        <td key={m.month}>
+          <span className="tabular-nums">{formatCurrency(vals.month_values[m.month])}</span>
+        </td>
+      ))}
+      <td>
+        <span className="tabular-nums font-semibold">{formatCurrency(vals.completed_to_date)}</span>
+      </td>
+      <td>
+        <span className="tabular-nums font-semibold">{formatCurrency(vals.forecast_to_complete)}</span>
+      </td>
+      <td>
+        <span className="tabular-nums font-semibold">{formatCurrency(vals.estimated_at_completion)}</span>
+      </td>
+      <td>
+        <span
+          className={`tabular-nums font-semibold ${Number(vals.variance_to_budget) < 0 ? 'text-[var(--hb-danger,#b91c1c)]' : ''}`}
+        >
+          {formatSignedCurrency(vals.variance_to_budget)}
+        </span>
+      </td>
+    </>
+  )
 
   return (
     <div className="forecast-monthly-matrix">
@@ -229,15 +315,23 @@ export function ForecastMonthlyMatrixTable({
           className="forecast-input"
         />
         <label className="flex items-center gap-1.5 text-sm">
-          <input
-            type="checkbox"
-            checked={isGrouped}
+          Group by
+          <select
+            aria-label="Group rows"
+            value={groupBy}
             onChange={(e) => {
-              setGrouping(e.target.checked ? ['cost_type'] : [])
-              setExpanded(e.target.checked ? true : {})
+              const v = e.target.value
+              setGrouping(v === 'none' ? [] : [v])
+              setExpanded(v === 'none' ? {} : true)
             }}
-          />
-          Group by Cost Type
+            className="forecast-input"
+          >
+            {GROUP_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
         </label>
       </div>
 
@@ -245,12 +339,21 @@ export function ForecastMonthlyMatrixTable({
         Variance to Budget: a positive value is under budget (favorable); a negative value is over
         budget (unfavorable).
       </p>
+      {groupingActive && (
+        <p className="text-xs text-[var(--hb-muted)] mb-2">
+          Group subtotals reflect the currently visible rows. Project total remains the certified
+          output total.
+        </p>
+      )}
 
       <div className="forecast-table-wrap" style={{ overflowX: 'auto' }}>
         <table className="forecast-table forecast-matrix-table">
           <thead>
             <tr>
-              {reactTable.getFlatHeaders().map((h) => {
+              {reactTable
+                .getFlatHeaders()
+                .filter((h) => h.column.getIsVisible())
+                .map((h) => {
                 const valueType = (h.column.columnDef.meta as { valueType?: string } | undefined)
                   ?.valueType
                 return (
@@ -286,16 +389,69 @@ export function ForecastMonthlyMatrixTable({
           </thead>
           <tbody>
             {reactTable.getRowModel().rows.map((row) => {
+              // When grouping is active, skip the flattened leaves (depth > 0); each group's leaves
+              // are rendered under their own header so a trailing subtotal row can be appended.
+              if (groupingActive && row.depth > 0) return null
+
               if (row.getIsGrouped()) {
+                const leaves = row.subRows
+                const sub = computeSubtotal(
+                  leaves.map((lr) => lr.original),
+                  months,
+                )
+                const isExpandedGroup = row.getIsExpanded()
+                const dim = GROUP_DIMENSION_LABEL[groupBy] ?? 'Group'
+                const label = String(row.getGroupingValue(groupBy) ?? '—')
                 return (
-                  <tr key={row.id} className="forecast-matrix-group-row">
-                    <td colSpan={columns.length} style={{ position: 'sticky', left: 0 }}>
-                      <span className="font-medium">Cost Type: {String(row.getGroupingValue('cost_type') ?? '—')}</span>{' '}
-                      <span className="text-[var(--hb-muted)]">({row.subRows.length})</span>
-                    </td>
-                  </tr>
+                  <Fragment key={row.id}>
+                    <tr className="forecast-matrix-group-row">
+                      <td style={stickyStyle('cost_code', false)}>
+                        <button
+                          type="button"
+                          className="forecast-matrix-th-btn"
+                          aria-expanded={isExpandedGroup}
+                          onClick={row.getToggleExpandedHandler()}
+                        >
+                          <span aria-hidden>{isExpandedGroup ? '▾' : '▸'}</span>{' '}
+                          <span className="font-medium">
+                            {dim}: {label}
+                          </span>{' '}
+                          <span className="text-[var(--hb-muted)]">({leaves.length})</span>
+                        </button>
+                      </td>
+                      {isExpandedGroup ? (
+                        <td colSpan={visibleColCount - 1} />
+                      ) : (
+                        // Collapsed: the group header shows the subtotal values inline.
+                        <>
+                          <td style={stickyStyle('cost_type', false)} />
+                          {subtotalDataCells(sub)}
+                        </>
+                      )}
+                    </tr>
+                    {isExpandedGroup &&
+                      leaves.map((leaf) => (
+                        <tr key={leaf.id}>
+                          {leaf.getVisibleCells().map((cell) => (
+                            <td key={cell.id} style={stickyStyle(cell.column.id, false)}>
+                              {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    {isExpandedGroup && (
+                      <tr className="forecast-matrix-subtotal-row">
+                        <td style={stickyStyle('cost_code', false)}>
+                          <span className="font-semibold">Subtotal</span>
+                        </td>
+                        <td style={stickyStyle('cost_type', false)} />
+                        {subtotalDataCells(sub)}
+                      </tr>
+                    )}
+                  </Fragment>
                 )
               }
+
               return (
                 <tr key={row.id}>
                   {row.getVisibleCells().map((cell) => (
@@ -311,7 +467,7 @@ export function ForecastMonthlyMatrixTable({
             <tfoot>
               <tr className="forecast-matrix-total-row">
                 <td style={stickyStyle('cost_code', false)}>
-                  <span className="font-semibold">Total</span>
+                  <span className="font-semibold">Project total</span>
                 </td>
                 <td style={stickyStyle('cost_type', false)} />
                 <td style={stickyStyle('projected_budget', false)}>
