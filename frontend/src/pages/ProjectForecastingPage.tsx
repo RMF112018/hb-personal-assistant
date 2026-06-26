@@ -1,6 +1,7 @@
 import { Link, useParams } from 'react-router-dom'
 
 import { SectionCard } from '../components/common/SectionCard'
+import { ProjectForecastCreationCard } from '../components/projects/ProjectForecastCreationCard'
 import { ProjectForecastingSummary } from '../components/projects/ProjectForecastingSummary'
 import { ProjectWorkspaceShell } from '../components/projects/ProjectWorkspaceShell'
 
@@ -34,11 +35,7 @@ export function ProjectForecastingPage() {
             </p>
           </SectionCard>
 
-          <SectionCard title="Create Forecast">
-            <p className="text-sm text-[var(--hb-muted)]">
-              Project-specific forecast creation will be wired in a future pass.
-            </p>
-          </SectionCard>
+          <ProjectForecastCreationCard projectKey={projectKey} />
         </div>
       </section>
     </ProjectWorkspaceShell>

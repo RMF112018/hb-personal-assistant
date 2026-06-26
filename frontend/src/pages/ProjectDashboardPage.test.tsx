@@ -13,6 +13,7 @@ const useQueryMock = vi.fn()
 
 vi.mock('@tanstack/react-query', () => ({
   useQuery: (options: { queryKey: unknown[]; queryFn: () => unknown }) => useQueryMock(options),
+  useQueryClient: () => ({ invalidateQueries: vi.fn() }),
 }))
 
 const projectsResponse = {
