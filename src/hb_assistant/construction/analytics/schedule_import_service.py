@@ -307,6 +307,8 @@ class ScheduleImportService:
                 payload={"warnings": warnings},
             )
 
+        if package_mode == "zip_package":
+            self._guard_ambiguous_current(entities)
         selected = self._select_current_entity(entities)
         baselines = [e for e in entities if e.role == "baseline"]
         package = ParsedSchedulePackage(
@@ -338,6 +340,18 @@ class ScheduleImportService:
             normalized = posixpath.normpath(name)
             if info.is_dir():
                 continue
+            # Skip macOS archive metadata and hidden/system entries: __MACOSX/ sidecars,
+            # AppleDouble ._* resource forks, and dotfiles. These are not schedule files and
+            # otherwise get mis-detected by extension (e.g. ._FOO.xer parsed as XER) and surface
+            # as noisy parse failures.
+            member_base = posixpath.basename(normalized)
+            if (
+                normalized.startswith("__MACOSX/")
+                or "/__MACOSX/" in normalized
+                or member_base.startswith("._")
+                or member_base.startswith(".")
+            ):
+                continue
             if normalized.startswith("../") or normalized == ".." or normalized.startswith("/"):
                 raise ScheduleImportError("schedule_zip_unsafe_path", message="zip contains unsafe path")
             if lower_name := safe_basename(normalized).lower():
@@ -357,6 +371,40 @@ class ScheduleImportService:
             except RuntimeError as exc:
                 raise ScheduleImportError("schedule_zip_read_failed", message="could not read zip member") from exc
         return out
+
+    @staticmethod
+    def _guard_ambiguous_current(entities: list[ParsedScheduleEntity]) -> None:
+        """Block packages that carry multiple non-equivalent current schedules.
+
+        v1 equivalence: a ``.xer`` and ``.xml`` of the SAME schedule snapshot share a calendar
+        data date (the time-of-day and string format differ by parser, so only the ``YYYY-MM-DD``
+        prefix is compared). More than one distinct data date among current candidates means the
+        package mixes different schedule snapshots, which we refuse rather than silently
+        auto-select. Explicit operator selection for ambiguous packages is deferred to Phase 2.
+        """
+        currents = [e for e in entities if e.role == "current" and e.activities]
+        dates = {(e.data_date or "")[:10] for e in currents if (e.data_date or "")[:10]}
+        if len(dates) > 1:
+            raise ScheduleImportError(
+                "schedule_package_multiple_current_candidates",
+                message=(
+                    "zip package contains multiple non-equivalent current schedules; "
+                    "remove extra schedules or upload a single current schedule file"
+                ),
+                payload={
+                    "candidates": [
+                        {
+                            "source_file_id": e.source_file_id,
+                            "project_id": e.project_id,
+                            "project_name": e.project_name,
+                            "data_date": e.data_date,
+                            "source_format": e.source_format,
+                            "activity_count": len(e.activities),
+                        }
+                        for e in currents
+                    ]
+                },
+            )
 
     @staticmethod
     def _select_current_entity(entities: list[ParsedScheduleEntity]) -> ParsedScheduleEntity | None:

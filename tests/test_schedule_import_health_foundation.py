@@ -86,6 +86,25 @@ def _zip_payload() -> bytes:
     return buf.getvalue()
 
 
+def _current_only_xml(*, object_id: str, project_id: str, name: str, data_date: str) -> bytes:
+    return f"""<?xml version="1.0" encoding="UTF-8"?>
+<APIBusinessObjects>
+  <Project>
+    <ObjectId>{object_id}</ObjectId>
+    <Id>{project_id}</Id>
+    <Name>{name}</Name>
+    <DataDate>{data_date}</DataDate>
+  </Project>
+  <WBS><ObjectId>W1</ObjectId><Code>ROOT</Code><Name>Root</Name></WBS>
+  <Activity>
+    <ObjectId>A1O</ObjectId><Id>A1</Id><Name>Start Work</Name>
+    <WBSObjectId>W1</WBSObjectId><PlannedStartDate>{data_date}</PlannedStartDate>
+    <PlannedFinishDate>{data_date}</PlannedFinishDate>
+  </Activity>
+</APIBusinessObjects>
+""".encode()
+
+
 def test_v75_schedule_import_health_tables_present(tmp_path: Path) -> None:
     db = tmp_path / "schema.db"
     assert SQLiteMigrator(db_path=str(db)).apply() == LATEST_SCHEMA_VERSION >= 75
@@ -179,3 +198,63 @@ def test_zip_rejects_path_traversal(tmp_path: Path) -> None:
     )
     assert resp.status_code == 400
     assert resp.json()["detail"] == "schedule_zip_unsafe_path"
+
+
+def test_zip_ignores_macosx_and_appledouble_members(tmp_path: Path) -> None:
+    db = tmp_path / "api.db"
+    SQLiteMigrator(db_path=str(db)).apply()
+    seed_procore_ep_project(db, project_key="tropical", display_name="Tropical Wind")
+    client = TestClient(create_app(db_path=str(db)))
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, mode="w") as zf:
+        zf.writestr("schedule.xml", _baseline_xml())
+        # macOS archive metadata: AppleDouble resource forks (named like a real .xml/.xer)
+        # plus a __MACOSX/ sidecar must be ignored, not mis-parsed as schedule files.
+        zf.writestr("__MACOSX/._schedule.xml", b"\x00\x05\x16\x07apple-double")
+        zf.writestr("._schedule.xml", b"\x00\x05\x16\x07apple-double")
+
+    preview = client.post(
+        "/api/schedules/import-preview",
+        headers=_operator(),
+        files={"file": ("schedule-package.zip", buf.getvalue(), "application/zip")},
+        data={"project_key": "tropical"},
+    )
+    assert preview.status_code == 200
+    body = preview.json()
+    assert body["package_mode"] == "zip_package"
+    assert [f["filename"] for f in body["files"]] == ["schedule.xml"]
+    # No parse-failure noise referencing the macOS metadata members.
+    noisy = [
+        w
+        for w in body["warnings"]
+        if "MACOSX" in str(w.get("filename", "")) or str(w.get("filename", "")).startswith("._")
+    ]
+    assert noisy == []
+
+
+def test_zip_blocks_multiple_non_equivalent_current_schedules(tmp_path: Path) -> None:
+    db = tmp_path / "api.db"
+    SQLiteMigrator(db_path=str(db)).apply()
+    seed_procore_ep_project(db, project_key="tropical", display_name="Tropical Wind")
+    client = TestClient(create_app(db_path=str(db)))
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, mode="w") as zf:
+        zf.writestr(
+            "june.xml",
+            _current_only_xml(object_id="100", project_id="CURJUN", name="June", data_date="2026-06-01"),
+        )
+        zf.writestr(
+            "july.xml",
+            _current_only_xml(object_id="200", project_id="CURJUL", name="July", data_date="2026-07-01"),
+        )
+
+    resp = client.post(
+        "/api/schedules/import-preview",
+        headers=_operator(),
+        files={"file": ("ambiguous.zip", buf.getvalue(), "application/zip")},
+        data={"project_key": "tropical"},
+    )
+    assert resp.status_code == 409
+    detail = resp.json()["detail"]
+    assert detail["code"] == "schedule_package_multiple_current_candidates"
+    assert {c["data_date"][:10] for c in detail["candidates"]} == {"2026-06-01", "2026-07-01"}
