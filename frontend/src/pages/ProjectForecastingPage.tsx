@@ -2,6 +2,7 @@ import { Link, useParams, useSearchParams } from 'react-router-dom'
 
 import { SectionCard } from '../components/common/SectionCard'
 import { ProjectForecastCreationCard } from '../components/projects/ProjectForecastCreationCard'
+import { ProjectForecastDashboardVisualizations } from '../components/projects/ProjectForecastDashboardVisualizations'
 import { ProjectForecastOutputSelector } from '../components/projects/ProjectForecastOutputSelector'
 import { ProjectForecastingSummary } from '../components/projects/ProjectForecastingSummary'
 import { ProjectWorkspaceShell } from '../components/projects/ProjectWorkspaceShell'
@@ -43,6 +44,11 @@ export function ProjectForecastingPage() {
           projectKey={projectKey}
           requestedOutputId={requestedOutputId}
           onSelectOutput={selectOutput}
+        />
+
+        <ProjectForecastDashboardVisualizations
+          projectKey={projectKey}
+          requestedOutputId={requestedOutputId}
         />
 
         <div className="grid gap-4 md:grid-cols-2">
