@@ -11,6 +11,11 @@ import { AppShell } from '../layouts/AppShell'
 import { TodayPage } from '../pages/TodayPage'
 import { ProjectsPage } from '../pages/ProjectsPage'
 import { ProjectDashboardPage } from '../pages/ProjectDashboardPage'
+import { ProjectOverviewPage } from '../pages/ProjectOverviewPage'
+import { ProjectForecastingPage } from '../pages/ProjectForecastingPage'
+import { ProjectMonthlyForecastingPage } from '../pages/ProjectMonthlyForecastingPage'
+import { ProjectStaffingPlaceholderPage } from '../pages/ProjectStaffingPlaceholderPage'
+import { ProjectExposuresPlaceholderPage } from '../pages/ProjectExposuresPlaceholderPage'
 import { ProjectMeetingsPage } from '../pages/ProjectMeetingsPage'
 import { ProjectFieldOperationsPage } from '../pages/ProjectFieldOperationsPage'
 import { ProjectCostTimePage } from '../pages/ProjectCostTimePage'
@@ -124,7 +129,23 @@ const router = createBrowserRouter([
       },
       {
         path: 'projects/:projectKey',
-        element: <ProjectDashboardPage />,
+        element: <ProjectOverviewPage />,
+      },
+      {
+        path: 'projects/:projectKey/forecasting',
+        element: <ProjectForecastingPage />,
+      },
+      {
+        path: 'projects/:projectKey/forecasting/monthly',
+        element: <ProjectMonthlyForecastingPage />,
+      },
+      {
+        path: 'projects/:projectKey/staffing',
+        element: <ProjectStaffingPlaceholderPage />,
+      },
+      {
+        path: 'projects/:projectKey/exposures',
+        element: <ProjectExposuresPlaceholderPage />,
       },
       {
         path: 'projects/:projectKey/meetings',
