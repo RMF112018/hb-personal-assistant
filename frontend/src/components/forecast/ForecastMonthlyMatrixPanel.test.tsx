@@ -74,8 +74,15 @@ vi.mock('../../lib/api', () => ({
   },
 }))
 
-// The mocked module (import AFTER vi.mock; vitest hoists the mock).
+// Mock the side-effectful writers so the export-control tests assert wiring without touching exceljs/DOM.
+vi.mock('./forecastMonthlyExportWriters', () => ({
+  exportCsv: vi.fn(),
+  exportXlsx: vi.fn(() => Promise.resolve()),
+}))
+
+// The mocked modules (import AFTER vi.mock; vitest hoists the mocks).
 import { api } from '../../lib/api'
+import { exportCsv, exportXlsx } from './forecastMonthlyExportWriters'
 
 function renderPanel() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } })
@@ -136,6 +143,65 @@ describe('ForecastMonthlyMatrixPanel', () => {
     expect(container.querySelector('.forecast-monthly-panel.is-fullscreen')).toBeNull()
 
     // Toggling is pure presentation — the table endpoint is hit exactly once.
+    expect(vi.mocked(api.getForecastDbMonthlyTable)).toHaveBeenCalledTimes(1)
+    const loopLogged = errorSpy.mock.calls.some((args) =>
+      args.some((a) => typeof a === 'string' && /Maximum update depth/i.test(a)),
+    )
+    expect(loopLogged).toBe(false)
+  })
+
+  it('renders the Export control when the monthly table is ready', async () => {
+    renderPanel()
+    await waitFor(() => expect(screen.getByText('03-01-1000')).toBeInTheDocument())
+    expect(screen.getByRole('button', { name: 'Export' })).toBeEnabled()
+  })
+
+  it('CSV export invokes the writer without re-fetching the table', async () => {
+    renderPanel()
+    await waitFor(() => expect(screen.getByText('03-01-1000')).toBeInTheDocument())
+
+    fireEvent.click(screen.getByRole('button', { name: 'Export' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'CSV' }))
+
+    expect(vi.mocked(exportCsv)).toHaveBeenCalledTimes(1)
+    const payload = vi.mocked(exportCsv).mock.calls[0][0]
+    expect(payload.outputId).toBe('fout-1')
+    expect(payload.rows.some((r) => r.rowType === 'total')).toBe(true)
+    // Export reads the already-loaded view; it must not re-hit the endpoint.
+    expect(vi.mocked(api.getForecastDbMonthlyTable)).toHaveBeenCalledTimes(1)
+  })
+
+  it('Excel export invokes the workbook writer', async () => {
+    renderPanel()
+    await waitFor(() => expect(screen.getByText('03-01-1000')).toBeInTheDocument())
+
+    fireEvent.click(screen.getByRole('button', { name: 'Export' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Excel' }))
+
+    await waitFor(() => expect(vi.mocked(exportXlsx)).toHaveBeenCalledTimes(1))
+    expect(vi.mocked(api.getForecastDbMonthlyTable)).toHaveBeenCalledTimes(1)
+  })
+
+  it('shows PDF as disabled/deferred with explanatory copy', async () => {
+    renderPanel()
+    await waitFor(() => expect(screen.getByText('03-01-1000')).toBeInTheDocument())
+
+    fireEvent.click(screen.getByRole('button', { name: 'Export' }))
+    // PDF is not an actionable menu item; the deferred guidance is shown instead.
+    expect(screen.queryByRole('menuitem', { name: 'PDF' })).toBeNull()
+    expect(screen.getByText(/PDF export is not available for wide monthly forecasts yet/i)).toBeInTheDocument()
+  })
+
+  it('export still works after toggling full screen and logs no update-loop error', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    renderPanel()
+    await waitFor(() => expect(screen.getByText('03-01-1000')).toBeInTheDocument())
+
+    fireEvent.click(screen.getByRole('button', { name: 'Full screen' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Export' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'CSV' }))
+
+    expect(vi.mocked(exportCsv)).toHaveBeenCalledTimes(1)
     expect(vi.mocked(api.getForecastDbMonthlyTable)).toHaveBeenCalledTimes(1)
     const loopLogged = errorSpy.mock.calls.some((args) =>
       args.some((a) => typeof a === 'string' && /Maximum update depth/i.test(a)),

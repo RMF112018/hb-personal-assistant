@@ -13,43 +13,16 @@ import {
   type SortingState,
   type VisibilityState,
 } from '@tanstack/react-table'
-import { Fragment, useMemo, useState, type CSSProperties } from 'react'
+import { Fragment, useMemo, useState, type CSSProperties, type MutableRefObject } from 'react'
 
-import type {
-  ForecastDbMonthlyTable,
-  ForecastDbMonthlyTableMonth,
-  ForecastDbMonthlyTableRow,
-} from '../../lib/api'
-import { formatCurrency, formatSignedCurrency, sumMoney } from '../../lib/format'
-
-// Group subtotal values (presentation aggregation only — never a replacement for backend-certified
-// row values or the project total). Exact BigInt-cents sums via sumMoney; no binary-float drift.
-type SubtotalValues = {
-  projected_budget: string
-  month_values: Record<string, string>
-  completed_to_date: string
-  forecast_to_complete: string
-  estimated_at_completion: string
-  variance_to_budget: string
-}
-
-function computeSubtotal(
-  leaves: ForecastDbMonthlyTableRow[],
-  months: ForecastDbMonthlyTableMonth[],
-): SubtotalValues {
-  const month_values: Record<string, string> = {}
-  for (const m of months) {
-    month_values[m.month] = sumMoney(leaves.map((r) => r.month_values[m.month]))
-  }
-  return {
-    projected_budget: sumMoney(leaves.map((r) => r.projected_budget)),
-    month_values,
-    completed_to_date: sumMoney(leaves.map((r) => r.completed_to_date)),
-    forecast_to_complete: sumMoney(leaves.map((r) => r.forecast_to_complete)),
-    estimated_at_completion: sumMoney(leaves.map((r) => r.estimated_at_completion)),
-    variance_to_budget: sumMoney(leaves.map((r) => r.variance_to_budget)),
-  }
-}
+import type { ForecastDbMonthlyTable, ForecastDbMonthlyTableRow } from '../../lib/api'
+import { formatCurrency, formatSignedCurrency } from '../../lib/format'
+import {
+  buildMonthlyExportPayload,
+  computeSubtotal,
+  type MonthlyExportPayload,
+  type SubtotalValues,
+} from './forecastMonthlyExport'
 
 const GROUP_OPTIONS = [
   { value: 'none', label: 'No grouping' },
@@ -109,11 +82,16 @@ export function ForecastMonthlyMatrixTable({
   loading,
   error,
   fullScreen,
+  exportPayloadFactoryRef,
 }: {
   table: ForecastDbMonthlyTable | undefined
   loading?: boolean
   error?: string | null
   fullScreen?: boolean
+  // Stable bridge so the panel header's Export control can read the current visible view on demand
+  // WITHOUT lifting any TanStack state (which would thrash the controlled-state setup). Assigning a ref
+  // never triggers a re-render, so the no-refetch / no-update-loop guarantees are preserved.
+  exportPayloadFactoryRef?: MutableRefObject<(() => MonthlyExportPayload) | null>
 }) {
   // Fully-controlled, stable table state (each slice only changes when its setter runs).
   const [sorting, setSorting] = useState<SortingState>([])
@@ -215,6 +193,14 @@ export function ForecastMonthlyMatrixTable({
     autoResetPageIndex: false,
     enableGlobalFilter: true,
   })
+
+  // Publish a current-view export factory to the panel via a ref (no state write → no re-render). It is
+  // invoked only when the operator chooses an export; the timestamp is stamped at that moment.
+  if (exportPayloadFactoryRef) {
+    exportPayloadFactoryRef.current = table
+      ? () => buildMonthlyExportPayload({ table, reactTable, generatedAtIso: new Date().toISOString() })
+      : null
+  }
 
   if (error) {
     return (
