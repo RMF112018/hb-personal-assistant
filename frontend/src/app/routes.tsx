@@ -12,7 +12,8 @@ import { TodayPage } from '../pages/TodayPage'
 import { ProjectsPage } from '../pages/ProjectsPage'
 import { ProjectDashboardPage } from '../pages/ProjectDashboardPage'
 import { ProjectOverviewPage } from '../pages/ProjectOverviewPage'
-import { ProjectForecastingPlaceholderPage } from '../pages/ProjectForecastingPlaceholderPage'
+import { ProjectForecastingPage } from '../pages/ProjectForecastingPage'
+import { ProjectMonthlyForecastingPage } from '../pages/ProjectMonthlyForecastingPage'
 import { ProjectStaffingPlaceholderPage } from '../pages/ProjectStaffingPlaceholderPage'
 import { ProjectExposuresPlaceholderPage } from '../pages/ProjectExposuresPlaceholderPage'
 import { ProjectMeetingsPage } from '../pages/ProjectMeetingsPage'
@@ -132,7 +133,11 @@ const router = createBrowserRouter([
       },
       {
         path: 'projects/:projectKey/forecasting',
-        element: <ProjectForecastingPlaceholderPage />,
+        element: <ProjectForecastingPage />,
+      },
+      {
+        path: 'projects/:projectKey/forecasting/monthly',
+        element: <ProjectMonthlyForecastingPage />,
       },
       {
         path: 'projects/:projectKey/staffing',

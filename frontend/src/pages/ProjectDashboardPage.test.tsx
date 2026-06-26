@@ -4,7 +4,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { ProjectDashboardPage } from './ProjectDashboardPage'
 import { ProjectExposuresPlaceholderPage } from './ProjectExposuresPlaceholderPage'
-import { ProjectForecastingPlaceholderPage } from './ProjectForecastingPlaceholderPage'
+import { ProjectForecastingPage } from './ProjectForecastingPage'
+import { ProjectMonthlyForecastingPage } from './ProjectMonthlyForecastingPage'
 import { ProjectOverviewPage } from './ProjectOverviewPage'
 import { ProjectStaffingPlaceholderPage } from './ProjectStaffingPlaceholderPage'
 
@@ -52,7 +53,11 @@ function renderProjectRoutes(path = '/projects/tropical') {
         <Route path="/projects" element={<div>Projects list</div>} />
         <Route path="/projects/all" element={<ProjectDashboardPage />} />
         <Route path="/projects/:projectKey" element={<ProjectOverviewPage />} />
-        <Route path="/projects/:projectKey/forecasting" element={<ProjectForecastingPlaceholderPage />} />
+        <Route path="/projects/:projectKey/forecasting" element={<ProjectForecastingPage />} />
+        <Route
+          path="/projects/:projectKey/forecasting/monthly"
+          element={<ProjectMonthlyForecastingPage />}
+        />
         <Route path="/projects/:projectKey/staffing" element={<ProjectStaffingPlaceholderPage />} />
         <Route path="/projects/:projectKey/exposures" element={<ProjectExposuresPlaceholderPage />} />
       </Routes>
@@ -75,6 +80,14 @@ function mockProjectQueries() {
         data: legacyOverview,
         isLoading: false,
         error: null,
+      }
+    }
+    if (options.queryKey[0] === 'forecast') {
+      return {
+        data: { outputs: [] },
+        isLoading: false,
+        error: null,
+        refetch: vi.fn(),
       }
     }
     return {
@@ -131,7 +144,11 @@ describe('Project workspace shell', () => {
     expect(screen.getByRole('link', { name: 'Overview' })).not.toHaveAttribute('aria-current')
     expect(screen.getByRole('link', { name: 'Forecasting' })).toHaveAttribute('aria-current', 'page')
     expect(screen.getByRole('heading', { name: 'Forecasting' })).toBeInTheDocument()
-    expect(screen.getByText('Project-specific forecasting will be added here in the next phase.')).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'Review forecast status, latest forecast output, and project-specific forecasting tools.',
+      ),
+    ).toBeInTheDocument()
   })
 
   it('renders staffing and exposures placeholders under the same shell', () => {
@@ -179,8 +196,22 @@ describe('Project workspace shell', () => {
     expect(screen.getByRole('link', { name: 'Back to Projects' })).toHaveAttribute('href', '/projects')
   })
 
-  it('does not call forecast queries for the forecasting placeholder', () => {
+  it('scopes forecast reads to the route project key', () => {
     renderProjectRoutes('/projects/tropical/forecasting')
+
+    const queryKeys = useQueryMock.mock.calls.map(([options]) => options.queryKey)
+    expect(queryKeys).toContainEqual(['projects'])
+    expect(queryKeys).toContainEqual(['forecast', 'db-outputs', 'tropical'])
+    // No forecast read is ever issued with a missing/undefined project key.
+    expect(
+      queryKeys.some(
+        (key) => key[0] === 'forecast' && (key[2] === undefined || key[2] === ''),
+      ),
+    ).toBe(false)
+  })
+
+  it('does not issue forecast reads for an unknown project', () => {
+    renderProjectRoutes('/projects/unknown/forecasting')
 
     const queryKeys = useQueryMock.mock.calls.map(([options]) => options.queryKey)
     expect(queryKeys).toEqual([['projects']])
