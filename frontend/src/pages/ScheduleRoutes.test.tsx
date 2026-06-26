@@ -64,9 +64,14 @@ describe('Schedule routes', () => {
     expect(screen.getByRole('heading', { name: /Cost mapping/i })).toBeInTheDocument()
   })
 
-  it('renders quality under /schedules/quality', () => {
+  it('renders Schedule Health under /schedules/quality', () => {
     renderRoute('/schedules/quality', <ScheduleQualityPage />)
-    expect(screen.getByRole('heading', { name: /Schedule quality/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /Schedule Health/i })).toBeInTheDocument()
+  })
+
+  it('renders Schedule Health under /schedules/health', () => {
+    renderRoute('/schedules/health', <ScheduleQualityPage />)
+    expect(screen.getByRole('heading', { name: /Schedule Health/i })).toBeInTheDocument()
   })
 
   it('renders version diff under /schedules/version-diff', () => {

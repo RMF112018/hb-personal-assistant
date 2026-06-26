@@ -18,7 +18,7 @@ const NAV: { to: string; label: string; icon: LucideIcon }[] = [
   { to: '/schedules/imports', label: 'Imports', icon: Upload },
   { to: '/schedules/versions', label: 'Versions', icon: Layers },
   { to: '/schedules/activities', label: 'Activities', icon: Activity },
-  { to: '/schedules/quality', label: 'Quality', icon: AlertTriangle },
+  { to: '/schedules/quality', label: 'Schedule Health', icon: AlertTriangle },
   { to: '/schedules/version-diff', label: 'Version Diff', icon: GitCompare },
   { to: '/schedules/cost-mapping', label: 'Cost Mapping', icon: Link2 },
   { to: '/schedules/cost-weighting', label: 'Cost Weighting', icon: Scale },
@@ -50,6 +50,9 @@ export function ScheduleBackLink({
 }
 
 function isNavActive(pathname: string, to: string): boolean {
+  if (to === '/schedules/quality' && pathname.startsWith('/schedules/health')) {
+    return true
+  }
   return pathname === to || pathname.startsWith(`${to}/`)
 }
 
