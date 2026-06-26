@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -12,6 +12,7 @@ const useQueryMock = vi.fn()
 
 vi.mock('@tanstack/react-query', () => ({
   useQuery: (options: { queryKey: unknown[]; queryFn: () => unknown }) => useQueryMock(options),
+  useQueryClient: () => ({ invalidateQueries: vi.fn() }),
 }))
 
 const projectsResponse = {
@@ -209,7 +210,7 @@ describe('Project Forecasting page', () => {
     expect(screen.getByText('Project not found')).toBeInTheDocument()
   })
 
-  it('never invokes forecast generation from the forecasting tab', () => {
+  it('renders a real Create Forecast entry point that opens a modal without submitting', () => {
     const dbNative = vi.spyOn(api, 'startForecastDbNativeRun')
     const legacyRun = vi.spyOn(api, 'startForecastRun')
     setForecast({ outputs: availableOutput.outputs, detail: availableOutput.detail })
@@ -217,8 +218,16 @@ describe('Project Forecasting page', () => {
 
     expect(screen.getByRole('heading', { name: 'Create Forecast' })).toBeInTheDocument()
     expect(
-      screen.getByText('Project-specific forecast creation will be wired in a future pass.'),
+      screen.getByText(
+        'Create a new forecast run for this project using the selected forecast window and assumptions.',
+      ),
     ).toBeInTheDocument()
+    // Merely rendering the page never triggers generation.
+    expect(dbNative).not.toHaveBeenCalled()
+
+    // Clicking opens the modal (scoped to the route project) but does not submit.
+    fireEvent.click(screen.getByRole('button', { name: 'Create Forecast' }))
+    expect(screen.getByText('Create forecast — Tropical Resort')).toBeInTheDocument()
     expect(dbNative).not.toHaveBeenCalled()
     expect(legacyRun).not.toHaveBeenCalled()
     dbNative.mockRestore()
