@@ -18,7 +18,7 @@
     "phase_owner",
     "blocking_for_phase"
   ],
-  "table_count": 439,
+  "table_count": 451,
   "tables": {
     "construction_data_quality_runs": {
       "table_family": "data_quality_v20v21",
@@ -3961,6 +3961,114 @@
       "blocking_for_phase": "none",
       "v": "V74",
       "notes": "Operator month-window matrix: persisted dense per-month total row (every displayed month) plus scalar column totals; part of the certified output contract; empty at introduction, populated at runtime by the DB-native generation/persistence path."
+    },
+    "schedule_import_packages": {
+      "table_family": "schedule_import_health_v75",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "schedule_import_health_foundation",
+      "blocking_for_phase": "none",
+      "v": "V75",
+      "notes": "Logical upload package manifest for schedule imports; populated at commit for single-file and ZIP package imports."
+    },
+    "schedule_import_package_files": {
+      "table_family": "schedule_import_health_v75",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "schedule_import_health_foundation",
+      "blocking_for_phase": "none",
+      "v": "V75",
+      "notes": "File-level parser inventory, coverage, warnings, and role classification for schedule import packages."
+    },
+    "schedule_source_capabilities": {
+      "table_family": "schedule_import_health_v75",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "schedule_import_health_foundation",
+      "blocking_for_phase": "none",
+      "v": "V75",
+      "notes": "Capability-adaptive status rows for current, baseline, source-export, diff, and deferred schedule analytics."
+    },
+    "schedule_baseline_projects": {
+      "table_family": "schedule_import_health_v75",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "schedule_import_health_foundation",
+      "blocking_for_phase": "none",
+      "v": "V75",
+      "notes": "BaselineProject metadata preserved separately from the selected current schedule."
+    },
+    "schedule_baseline_activities": {
+      "table_family": "schedule_import_health_v75",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "schedule_import_health_foundation",
+      "blocking_for_phase": "none",
+      "v": "V75",
+      "notes": "Baseline activity rows persisted separately so duplicate activity IDs cannot overwrite current schedule rows."
+    },
+    "schedule_baseline_relationships": {
+      "table_family": "schedule_import_health_v75",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "schedule_import_health_foundation",
+      "blocking_for_phase": "none",
+      "v": "V75",
+      "notes": "Baseline relationship rows preserved in baseline context."
+    },
+    "schedule_baseline_wbs": {
+      "table_family": "schedule_import_health_v75",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "schedule_import_health_foundation",
+      "blocking_for_phase": "none",
+      "v": "V75",
+      "notes": "Baseline WBS evidence preserved for crosswalk and drift context."
+    },
+    "schedule_baseline_activity_codes": {
+      "table_family": "schedule_import_health_v75",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "schedule_import_health_foundation",
+      "blocking_for_phase": "none",
+      "v": "V75",
+      "notes": "Baseline activity-code evidence preserved separately from current code assignments."
+    },
+    "schedule_baseline_udfs": {
+      "table_family": "schedule_import_health_v75",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "schedule_import_health_foundation",
+      "blocking_for_phase": "none",
+      "v": "V75",
+      "notes": "Baseline UDF evidence, including nested Activity/UDF XML values."
+    },
+    "schedule_baseline_activity_crosswalk": {
+      "table_family": "schedule_import_health_v75",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "schedule_import_health_foundation",
+      "blocking_for_phase": "none",
+      "v": "V75",
+      "notes": "Current-to-baseline activity match evidence with method, confidence, and review status."
+    },
+    "schedule_baseline_health_facts": {
+      "table_family": "schedule_import_health_v75",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "schedule_import_health_foundation",
+      "blocking_for_phase": "none",
+      "v": "V75",
+      "notes": "Baseline health facts for future Schedule Health dashboard drilldowns."
+    },
+    "schedule_version_diff_facts": {
+      "table_family": "schedule_import_health_v75",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "schedule_import_health_foundation",
+      "blocking_for_phase": "none",
+      "v": "V75",
+      "notes": "Persisted detailed version-diff metrics for dashboard reads without recomputation."
     }
   }
 }

@@ -1,0 +1,50 @@
+[
+  {
+    "baseline_activity_count": 2555,
+    "baseline_crosswalk": 2504,
+    "baseline_facts": 18,
+    "baseline_project_count": 2,
+    "capabilities": 24,
+    "commit": 200,
+    "file": "TWN.zip",
+    "package_files": 3,
+    "package_mode": "zip_package",
+    "packages": 1,
+    "preview": 200,
+    "project_key": "twn-manual-proof",
+    "schedule_version_key": "twn-manual-proof|1071|2026-06-23 08:00",
+    "schema_version": 75
+  },
+  {
+    "baseline_activity_count": 2949,
+    "baseline_crosswalk": 2834,
+    "baseline_facts": 9,
+    "baseline_project_count": 1,
+    "capabilities": 24,
+    "commit": 200,
+    "file": "Caretta.zip",
+    "package_files": 4,
+    "package_mode": "zip_package",
+    "packages": 1,
+    "preview": 200,
+    "project_key": "caretta-manual-proof",
+    "schedule_version_key": "caretta-manual-proof|1070|2026-05-28 08:00",
+    "schema_version": 75
+  },
+  {
+    "baseline_activity_count": 3127,
+    "baseline_crosswalk": 2992,
+    "baseline_facts": 9,
+    "baseline_project_count": 1,
+    "capabilities": 24,
+    "commit": 200,
+    "file": "BlueLake.zip",
+    "package_files": 4,
+    "package_mode": "zip_package",
+    "packages": 1,
+    "preview": 200,
+    "project_key": "bluelake-manual-proof",
+    "schedule_version_key": "bluelake-manual-proof|820|2023-05-05 17:00",
+    "schema_version": 75
+  }
+]

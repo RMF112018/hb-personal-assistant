@@ -13,7 +13,7 @@ import json
 import xml.etree.ElementTree as ET
 from typing import Any
 
-from .schedule_file_parser import ParsedScheduleBundle, ScheduleImportError
+from .schedule_file_parser import ParsedScheduleBundle, ParsedScheduleEntity, ScheduleImportError
 from .schedule_float_derivation import (
     apply_derived_float_to_activities,
     merge_schedule_options,
@@ -115,6 +115,28 @@ def _parse_activity_codes(
                 "code_value": meta.get("value") or value_oid,
                 "code_description": meta.get("desc"),
                 "source_object_id": value_oid,
+            }
+        )
+    return out
+
+
+def _parse_activity_udfs(el: ET.Element, *, activity_id: str) -> list[dict[str, str | None]]:
+    out: list[dict[str, str | None]] = []
+    for child in el:
+        if _local(child.tag) != "UDF":
+            continue
+        fields = _field_map(child)
+        udf_type = fields.get("UDFType") or fields.get("UDFTypeName") or fields.get("UDFTypeObjectId")
+        udf_value = fields.get("UDFValue") or fields.get("Value") or fields.get("Text")
+        if not udf_type and udf_value is None:
+            continue
+        out.append(
+            {
+                "activity_id": activity_id,
+                "udf_type_name": udf_type,
+                "udf_data_type": fields.get("DataType"),
+                "udf_value": udf_value,
+                "source_object_id": fields.get("ObjectId") or fields.get("UDFTypeObjectId"),
             }
         )
     return out
@@ -426,3 +448,324 @@ def parse_pmxml_bytes(data: bytes | io.BufferedIOBase) -> ParsedScheduleBundle:
         act["source_row_hash"] = _row_hash({k: act[k] for k in act if k != "source_row_hash"})
 
     return bundle
+
+
+def parse_pmxml_package_bytes(
+    data: bytes | io.BufferedIOBase,
+    *,
+    source_file_id: str | None = None,
+) -> list[ParsedScheduleEntity]:
+    """Parse P6 XML into current/baseline schedule entities when hierarchy exists.
+
+    The legacy parser remains the compatibility path for flat exports. This parser is
+    intentionally hierarchy-aware: direct children of Project and BaselineProject stay
+    in their own entity lists and are never flattened together.
+    """
+    raw = data.read() if not isinstance(data, bytes) else data
+    if not raw:
+        raise ScheduleImportError("schedule_import_invalid", message="empty XML schedule payload")
+    try:
+        root = ET.fromstring(raw)
+    except ET.ParseError as exc:
+        raise ScheduleImportError("schedule_parse_failed", message="invalid XML schedule file") from exc
+
+    project_elements = [el for el in root.iter() if _local(el.tag) == "Project"]
+    baseline_elements = [el for el in root.iter() if _local(el.tag) == "BaselineProject"]
+    if not baseline_elements:
+        bundle = parse_pmxml_bytes(raw)
+        return [_entity_from_bundle(bundle, role="current", source_file_id=source_file_id)]
+
+    code_types, code_values = _global_code_maps(root)
+    entities: list[ParsedScheduleEntity] = []
+    for project in project_elements:
+        direct_activities = [c for c in list(project) if _local(c.tag) in _ACTIVITY_TAGS]
+        if direct_activities:
+            entities.append(
+                _entity_from_project_element(
+                    project,
+                    role="current",
+                    source_file_id=source_file_id,
+                    source_format="primavera_pmxml",
+                    code_types=code_types,
+                    code_values=code_values,
+                )
+            )
+
+    if not entities:
+        # Many P6 APIBusinessObjects exports place the current Project metadata and the
+        # current Activity/Relationship rows as root siblings. Preserve that behavior
+        # for current rows while parsing BaselineProject children separately.
+        current = _entity_from_root_siblings(
+            root,
+            source_file_id=source_file_id,
+            source_format="primavera_pmxml",
+            code_types=code_types,
+            code_values=code_values,
+        )
+        if current.activities:
+            entities.append(current)
+
+    for baseline in baseline_elements:
+        entities.append(
+            _entity_from_project_element(
+                baseline,
+                role="baseline",
+                source_file_id=source_file_id,
+                source_format="primavera_pmxml",
+                code_types=code_types,
+                code_values=code_values,
+            )
+        )
+    return entities
+
+
+def _global_code_maps(root: ET.Element) -> tuple[dict[str, str], dict[str, dict[str, str]]]:
+    code_types: dict[str, str] = {}
+    code_values: dict[str, dict[str, str]] = {}
+    for el in root.iter():
+        tag = _local(el.tag)
+        fields = _field_map(el)
+        if tag == "ActivityCodeType":
+            oid = fields.get("ObjectId")
+            if oid:
+                code_types[oid] = fields.get("Name") or oid
+        elif tag == "ActivityCode":
+            oid = fields.get("ObjectId")
+            if oid:
+                code_values[oid] = {
+                    "value": fields.get("CodeValue") or "",
+                    "desc": fields.get("Description") or "",
+                    "type_oid": fields.get("CodeTypeObjectId") or "",
+                }
+    return code_types, code_values
+
+
+def _entity_from_bundle(
+    bundle: ParsedScheduleBundle,
+    *,
+    role: str,
+    source_file_id: str | None,
+) -> ParsedScheduleEntity:
+    return ParsedScheduleEntity(
+        role=role,
+        source_format="primavera_pmxml",
+        source_file_id=source_file_id,
+        project_object_id=bundle.procore_project_id,
+        project_id=bundle.source_project_id or bundle.schedule_id,
+        project_name=bundle.source_project_name or bundle.schedule_name,
+        data_date=bundle.data_date,
+        planned_start=bundle.planned_start,
+        scheduled_finish=bundle.scheduled_finish,
+        activities=list(bundle.activities),
+        relationships=list(bundle.relationships),
+        wbs_nodes=list(bundle.wbs_nodes),
+        calendars=list(bundle.calendars),
+        code_assignments=list(bundle.code_assignments),
+        udf_values=list(bundle.udf_values),
+        source_options=dict(bundle.schedule_options),
+        source_capabilities=dict(bundle.source_capabilities),
+        parser_coverage={
+            "detected_project_count": 1,
+            "detected_baseline_project_count": 0,
+            "detected_activity_count": len(bundle.activities),
+            "detected_relationship_count": len(bundle.relationships),
+        },
+        warnings=[
+            {"code": f.get("code"), "message": f.get("message")}
+            for f in bundle.validation_findings
+        ],
+    )
+
+
+def _entity_from_root_siblings(
+    root: ET.Element,
+    *,
+    source_file_id: str | None,
+    source_format: str,
+    code_types: dict[str, str],
+    code_values: dict[str, dict[str, str]],
+) -> ParsedScheduleEntity:
+    project_fields = next((c for c in list(root) if _local(c.tag) == "Project"), None)
+    synthetic = ET.Element("Project")
+    if project_fields is not None:
+        for child in list(project_fields):
+            if _local(child.tag) not in _ACTIVITY_TAGS | _RELATIONSHIP_TAGS | _WBS_TAGS | _CALENDAR_TAGS:
+                copied = ET.SubElement(synthetic, _local(child.tag))
+                copied.text = child.text
+    for child in list(root):
+        if _local(child.tag) in _ACTIVITY_TAGS | _RELATIONSHIP_TAGS | _WBS_TAGS | _CALENDAR_TAGS:
+            synthetic.append(child)
+    return _entity_from_project_element(
+        synthetic,
+        role="current",
+        source_file_id=source_file_id,
+        source_format=source_format,
+        code_types=code_types,
+        code_values=code_values,
+    )
+
+
+def _entity_from_project_element(
+    project_el: ET.Element,
+    *,
+    role: str,
+    source_file_id: str | None,
+    source_format: str,
+    code_types: dict[str, str],
+    code_values: dict[str, dict[str, str]],
+) -> ParsedScheduleEntity:
+    fields = _field_map(project_el)
+    wbs_by_oid: dict[str, dict[str, str]] = {}
+    object_to_activity_id: dict[str, str] = {}
+    raw_relationships: list[dict[str, str | None]] = []
+    activities: list[dict[str, Any]] = []
+    relationships: list[dict[str, Any]] = []
+    wbs_nodes: list[dict[str, Any]] = []
+    calendars: list[dict[str, Any]] = []
+    code_assignments: list[dict[str, Any]] = []
+    udf_values: list[dict[str, Any]] = []
+
+    for child in list(project_el):
+        tag = _local(child.tag)
+        child_fields = _field_map(child)
+        if tag in _WBS_TAGS:
+            wbs_id = child_fields.get("ObjectId") or child_fields.get("WBSId")
+            if not wbs_id:
+                continue
+            parent = child_fields.get("ParentObjectId")
+            code = child_fields.get("Code")
+            node = {
+                "wbs_id": wbs_id,
+                "parent_wbs_id": parent,
+                "wbs_code": code,
+                "wbs_name": child_fields.get("Name"),
+                "wbs_path": f"{parent}/{code}" if parent and code else code,
+                "sequence_order": int(child_fields["SequenceNumber"])
+                if child_fields.get("SequenceNumber", "").isdigit()
+                else None,
+                "source_object_id": wbs_id,
+                "raw_json_redacted": json.dumps(child_fields, sort_keys=True, default=str),
+            }
+            wbs_by_oid[wbs_id] = node
+            wbs_nodes.append(node)
+        elif tag in _CALENDAR_TAGS:
+            cal_id = child_fields.get("ObjectId") or child_fields.get("calendar_id")
+            if cal_id:
+                calendars.append(
+                    {
+                        "calendar_id": cal_id,
+                        "calendar_name": child_fields.get("Name"),
+                        "calendar_type": child_fields.get("Type"),
+                        "hours_per_day": child_fields.get("HoursPerDay")
+                        or child_fields.get("StandardWorkHours"),
+                        "days_per_week": child_fields.get("DaysPerWeek"),
+                        "is_default": 1 if _truthy(child_fields.get("IsDefault")) else 0,
+                    }
+                )
+
+    for child in list(project_el):
+        tag = _local(child.tag)
+        child_fields = _field_map(child)
+        if tag in _ACTIVITY_TAGS:
+            nested_codes = _parse_activity_codes(child, code_types=code_types, code_values=code_values)
+            row = _activity_row(child_fields, nested_codes=nested_codes, wbs_by_oid=wbs_by_oid)
+            if row is None:
+                continue
+            object_id = child_fields.get("ObjectId")
+            if object_id:
+                object_to_activity_id[object_id] = row["activity_id"]
+            for code in nested_codes:
+                code_assignments.append(
+                    {
+                        "activity_id": row["activity_id"],
+                        "code_type": code.get("code_type"),
+                        "code_value": code.get("code_value"),
+                        "code_description": code.get("code_description"),
+                        "source_object_id": code.get("source_object_id"),
+                    }
+                )
+            udf_values.extend(_parse_activity_udfs(child, activity_id=row["activity_id"]))
+            row.pop("nested_codes", None)
+            row["source_row_hash"] = _row_hash(row)
+            activities.append(row)
+        elif tag in _RELATIONSHIP_TAGS:
+            pred = child_fields.get("PredecessorActivityObjectId") or child_fields.get(
+                "PredecessorActivityId"
+            )
+            succ = child_fields.get("SuccessorActivityObjectId") or child_fields.get(
+                "SuccessorActivityId"
+            )
+            if pred and succ:
+                raw_relationships.append(
+                    {
+                        "predecessor_activity_id": pred,
+                        "successor_activity_id": succ,
+                        "relationship_type": child_fields.get("Type") or "FS",
+                        "lag_value": child_fields.get("Lag"),
+                        "lag_unit": child_fields.get("LagUnit") or "hour",
+                        "source_relationship_object_id": child_fields.get("ObjectId"),
+                    }
+                )
+
+    for raw in raw_relationships:
+        pred_raw = str(raw["predecessor_activity_id"] or "")
+        succ_raw = str(raw["successor_activity_id"] or "")
+        rel = {
+            "predecessor_activity_id": object_to_activity_id.get(pred_raw, pred_raw),
+            "successor_activity_id": object_to_activity_id.get(succ_raw, succ_raw),
+            "relationship_type": raw["relationship_type"],
+            "lag_value": raw["lag_value"],
+            "lag_unit": raw["lag_unit"],
+            "source_relationship_object_id": raw.get("source_relationship_object_id"),
+        }
+        rel["source_row_hash"] = _row_hash(rel)
+        relationships.append(rel)
+
+    options = parse_schedule_options(
+        {
+            k: fields[k]
+            for k in (
+                "ComputeTotalFloatType",
+                "CriticalActivityPathType",
+                "CriticalActivityFloatThreshold",
+                "CalculateFloatBasedOnFinishDate",
+            )
+            if k in fields
+        }
+    )
+    apply_derived_float_to_activities(activities, options=options, calendars=calendars)
+    capabilities = apply_source_posture(
+        activities,
+        source_format=source_format,
+        schedule_options=options,
+    )
+    return ParsedScheduleEntity(
+        role=role,
+        source_format=source_format,
+        source_file_id=source_file_id,
+        project_object_id=fields.get("ObjectId"),
+        project_id=fields.get("Id") or fields.get("ObjectId"),
+        project_name=fields.get("Name"),
+        original_project_object_id=fields.get("OriginalProjectObjectId"),
+        baseline_type_name=fields.get("BaselineTypeName"),
+        baseline_type_object_id=fields.get("BaselineTypeObjectId"),
+        data_date=fields.get("DataDate"),
+        planned_start=fields.get("PlannedStartDate") or fields.get("AnticipatedStartDate"),
+        scheduled_finish=fields.get("ScheduledFinishDate")
+        or fields.get("FinishDate")
+        or fields.get("AnticipatedFinishDate"),
+        activities=activities,
+        relationships=relationships,
+        wbs_nodes=wbs_nodes,
+        calendars=calendars,
+        code_assignments=code_assignments,
+        udf_values=udf_values,
+        source_options={**options, "source_capabilities": capabilities},
+        source_capabilities=capabilities,
+        parser_coverage={
+            "detected_project_count": 1 if role == "current" else 0,
+            "detected_baseline_project_count": 1 if role == "baseline" else 0,
+            "detected_activity_count": len(activities),
+            "detected_relationship_count": len(relationships),
+        },
+    )

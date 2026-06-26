@@ -1,0 +1,82 @@
+{
+  "payload": {
+    "activity_count": 960,
+    "baseline_project_candidates": [],
+    "byte_count": 550727,
+    "calendar_count": 4,
+    "capabilities": {
+      "activity_codes": "available",
+      "baseline_activity_crosswalk": "unavailable",
+      "baseline_activity_rows": "requires_companion_file",
+      "baseline_assignment": "available",
+      "baseline_drift": "unavailable",
+      "baseline_project_rows": "requires_companion_file",
+      "baseline_relationship_rows": "unavailable",
+      "bei": "unavailable",
+      "cost_loading": "partially_available",
+      "cost_schedule_correlation": "deferred",
+      "cpm_recalculation": "deferred",
+      "current_activities": "available",
+      "current_calendars": "available",
+      "current_relationships": "available",
+      "current_wbs": "available",
+      "explicit_free_float": "available",
+      "explicit_total_float": "available",
+      "missed_tasks": "unavailable",
+      "resource_assignments": "unavailable",
+      "source_critical_flags": "available",
+      "source_driving_path": "available",
+      "udfs": "unavailable",
+      "version_comparison": "available"
+    },
+    "code_count": 23,
+    "cost_loaded_status": "not_cost_loaded",
+    "current_project_candidates": [
+      {
+        "activity_count": 960,
+        "project_id": "372",
+        "project_name": "AF",
+        "project_object_id": null,
+        "source_file_id": "pf-1-7847cf41",
+        "source_format": "primavera_xer"
+      }
+    ],
+    "data_date": "2025-04-14 08:00",
+    "display_label": "AF",
+    "file_sha256": "d501ad5fdab338000c123509b61c092782787be41601dc37b278555c5f14c0e7",
+    "files": [
+      {
+        "detected_activities": 960,
+        "detected_baseline_projects": 0,
+        "detected_projects": 1,
+        "detected_relationships": 1455,
+        "filename": "AF.xer",
+        "package_file_id": "pf-1-7847cf41",
+        "parse_status": "parsed",
+        "source_format": "primavera_xer",
+        "warnings": []
+      }
+    ],
+    "import_id": "bf0b0869b72c",
+    "package_id": "pkg-e6fac9e91f7e",
+    "package_mode": "single_file",
+    "planned_start": "2025-01-13 08:00",
+    "project_display_name": "Generic Schedule Manual Proof",
+    "project_key": "schedule-manual-proof",
+    "relationship_count": 1455,
+    "requires_column_mapping": false,
+    "schedule_name": "AF",
+    "scheduled_finish": "2027-08-26 10:00",
+    "source_filename": "AF.xer",
+    "source_format": "primavera_xer",
+    "source_project_id": "372",
+    "source_project_name": "AF",
+    "source_project_short_name": "372",
+    "source_type": "xer",
+    "udf_count": 0,
+    "validation_findings": [],
+    "warnings": [],
+    "wbs_count": 133
+  },
+  "status_code": 200
+}

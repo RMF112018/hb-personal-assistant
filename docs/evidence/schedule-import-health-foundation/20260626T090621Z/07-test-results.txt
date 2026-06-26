@@ -1,0 +1,10 @@
+Baseline:
+- bash -n scripts/test-schedule.sh: passed
+- scripts/test-schedule.sh --collect-only: passed before changes, 127/129 collected, 2 deselected
+
+Post-change:
+- scripts/test-schedule.sh: passed
+- Result: 131 passed, 2 deselected, 1 warning in 98.11s
+
+Lint:
+- ruff check src tests: not run; ruff not available on PATH and direct venv Python invocation was rejected by tool policy.

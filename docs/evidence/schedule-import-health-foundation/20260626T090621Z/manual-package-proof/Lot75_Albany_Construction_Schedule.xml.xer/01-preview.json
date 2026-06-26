@@ -1,0 +1,82 @@
+{
+  "payload": {
+    "activity_count": 189,
+    "baseline_project_candidates": [],
+    "byte_count": 103345,
+    "calendar_count": 2,
+    "capabilities": {
+      "activity_codes": "unavailable",
+      "baseline_activity_crosswalk": "unavailable",
+      "baseline_activity_rows": "requires_companion_file",
+      "baseline_assignment": "available",
+      "baseline_drift": "unavailable",
+      "baseline_project_rows": "requires_companion_file",
+      "baseline_relationship_rows": "unavailable",
+      "bei": "unavailable",
+      "cost_loading": "partially_available",
+      "cost_schedule_correlation": "deferred",
+      "cpm_recalculation": "deferred",
+      "current_activities": "available",
+      "current_calendars": "available",
+      "current_relationships": "available",
+      "current_wbs": "available",
+      "explicit_free_float": "available",
+      "explicit_total_float": "available",
+      "missed_tasks": "unavailable",
+      "resource_assignments": "unavailable",
+      "source_critical_flags": "available",
+      "source_driving_path": "available",
+      "udfs": "unavailable",
+      "version_comparison": "available"
+    },
+    "code_count": 0,
+    "cost_loaded_status": "not_cost_loaded",
+    "current_project_candidates": [
+      {
+        "activity_count": 189,
+        "project_id": "1399",
+        "project_name": "Lot75_Albany_Construction_Schedule.xml",
+        "project_object_id": null,
+        "source_file_id": "pf-1-eddfdae8",
+        "source_format": "primavera_xer"
+      }
+    ],
+    "data_date": "2026-09-07 08:00",
+    "display_label": "Lot75_Albany_Construction_Schedule.xml",
+    "file_sha256": "6fdd194e934c522c424f2c871f17c82d1de59aa5e50275ef3dd9274a898ce277",
+    "files": [
+      {
+        "detected_activities": 189,
+        "detected_baseline_projects": 0,
+        "detected_projects": 1,
+        "detected_relationships": 284,
+        "filename": "Lot75_Albany_Construction_Schedule.xml.xer",
+        "package_file_id": "pf-1-eddfdae8",
+        "parse_status": "parsed",
+        "source_format": "primavera_xer",
+        "warnings": []
+      }
+    ],
+    "import_id": "f08f7e3ece71",
+    "package_id": "pkg-1c5da397e9bb",
+    "package_mode": "single_file",
+    "planned_start": "2026-09-07 08:00",
+    "project_display_name": "Generic Schedule Manual Proof",
+    "project_key": "schedule-manual-proof",
+    "relationship_count": 284,
+    "requires_column_mapping": false,
+    "schedule_name": "Lot75_Albany_Construction_Schedule.xml",
+    "scheduled_finish": "",
+    "source_filename": "Lot75_Albany_Construction_Schedule.xml.xer",
+    "source_format": "primavera_xer",
+    "source_project_id": "1399",
+    "source_project_name": "Lot75_Albany_Construction_Schedule.xml",
+    "source_project_short_name": "1399",
+    "source_type": "xer",
+    "udf_count": 0,
+    "validation_findings": [],
+    "warnings": [],
+    "wbs_count": 22
+  },
+  "status_code": 200
+}

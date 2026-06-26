@@ -1,0 +1,161 @@
+{
+  "payload": {
+    "activity_count": 3315,
+    "baseline_project_candidates": [
+      {
+        "activity_count": 3127,
+        "project_id": "Blue Lake 09-09-21",
+        "project_name": "Blue Lake Baseline Live",
+        "project_object_id": "1072",
+        "source_file_id": "pf-3-a6e06b8f",
+        "source_format": "primavera_pmxml"
+      }
+    ],
+    "byte_count": 1263949,
+    "calendar_count": 3,
+    "capabilities": {
+      "activity_codes": "available",
+      "baseline_activity_crosswalk": "available",
+      "baseline_activity_rows": "available",
+      "baseline_assignment": "available",
+      "baseline_drift": "available",
+      "baseline_project_rows": "available",
+      "baseline_relationship_rows": "available",
+      "bei": "available",
+      "cost_loading": "partially_available",
+      "cost_schedule_correlation": "deferred",
+      "cpm_recalculation": "deferred",
+      "current_activities": "available",
+      "current_calendars": "available",
+      "current_relationships": "available",
+      "current_wbs": "available",
+      "explicit_free_float": "available",
+      "explicit_total_float": "available",
+      "missed_tasks": "available",
+      "resource_assignments": "unavailable",
+      "source_critical_flags": "available",
+      "source_driving_path": "available",
+      "udfs": "available",
+      "version_comparison": "available"
+    },
+    "code_count": 7328,
+    "cost_loaded_status": "not_cost_loaded",
+    "current_project_candidates": [
+      {
+        "activity_count": 3315,
+        "project_id": "820",
+        "project_name": "Blue Lake-5MAY23",
+        "project_object_id": null,
+        "source_file_id": "pf-1-c380316c",
+        "source_format": "primavera_xer"
+      },
+      {
+        "activity_count": 5,
+        "project_id": "KOLTER-HILLTOP",
+        "project_name": null,
+        "project_object_id": "956",
+        "source_file_id": "pf-3-a6e06b8f",
+        "source_format": "primavera_pmxml"
+      },
+      {
+        "activity_count": 3310,
+        "project_id": "Blue Lake-5MAY23",
+        "project_name": "Blue Lake-Update-5MAY23",
+        "project_object_id": "820",
+        "source_file_id": "pf-3-a6e06b8f",
+        "source_format": "primavera_pmxml"
+      }
+    ],
+    "data_date": "2023-05-05 17:00",
+    "display_label": "Blue Lake-5MAY23",
+    "file_sha256": "32648afd4d52f594072f543bb9f8703d3fab294883fbac1541fdffe83005e4e2",
+    "files": [
+      {
+        "detected_activities": 3315,
+        "detected_baseline_projects": 0,
+        "detected_projects": 1,
+        "detected_relationships": 6747,
+        "filename": "Blue Lake-5MAY23-wBL.xer",
+        "package_file_id": "pf-1-c380316c",
+        "parse_status": "parsed",
+        "source_format": "primavera_xer",
+        "warnings": []
+      },
+      {
+        "detected_activities": 0,
+        "detected_baseline_projects": 0,
+        "detected_projects": 0,
+        "detected_relationships": 0,
+        "filename": "._Blue Lake-5MAY23-wBL.xer",
+        "package_file_id": "pf-2-608b2030",
+        "parse_status": "failed",
+        "source_format": "primavera_xer",
+        "warnings": [
+          {
+            "code": "schedule_import_invalid",
+            "message": "xer missing PROJECT table"
+          }
+        ]
+      },
+      {
+        "detected_activities": 6442,
+        "detected_baseline_projects": 1,
+        "detected_projects": 2,
+        "detected_relationships": 11854,
+        "filename": "Blue Lake-5MAY23.xml",
+        "package_file_id": "pf-3-a6e06b8f",
+        "parse_status": "parsed",
+        "source_format": "primavera_pmxml",
+        "warnings": []
+      },
+      {
+        "detected_activities": 0,
+        "detected_baseline_projects": 0,
+        "detected_projects": 0,
+        "detected_relationships": 0,
+        "filename": "._Blue Lake-5MAY23.xml",
+        "package_file_id": "pf-4-d178a46b",
+        "parse_status": "failed",
+        "source_format": "primavera_pmxml",
+        "warnings": [
+          {
+            "code": "schedule_parse_failed",
+            "message": "invalid XML schedule file"
+          }
+        ]
+      }
+    ],
+    "import_id": "126779364d01",
+    "package_id": "pkg-96fc72b7c6d8",
+    "package_mode": "zip_package",
+    "planned_start": "2022-01-01 00:00",
+    "project_display_name": "Blue Lake Manual Proof",
+    "project_key": "bluelake-manual-proof",
+    "relationship_count": 6747,
+    "requires_column_mapping": false,
+    "schedule_name": "Blue Lake-5MAY23",
+    "scheduled_finish": "2027-04-23 17:00",
+    "source_filename": "BlueLake.zip",
+    "source_format": "primavera_xer",
+    "source_project_id": "820",
+    "source_project_name": "Blue Lake-5MAY23",
+    "source_project_short_name": "820",
+    "source_type": "xer",
+    "udf_count": 3238,
+    "validation_findings": [],
+    "warnings": [
+      {
+        "code": "schedule_import_invalid",
+        "filename": "._Blue Lake-5MAY23-wBL.xer",
+        "message": "xer missing PROJECT table"
+      },
+      {
+        "code": "schedule_parse_failed",
+        "filename": "._Blue Lake-5MAY23.xml",
+        "message": "invalid XML schedule file"
+      }
+    ],
+    "wbs_count": 187
+  },
+  "status_code": 200
+}

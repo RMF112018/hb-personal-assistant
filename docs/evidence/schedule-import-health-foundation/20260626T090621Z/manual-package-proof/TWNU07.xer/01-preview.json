@@ -1,0 +1,82 @@
+{
+  "payload": {
+    "activity_count": 1177,
+    "baseline_project_candidates": [],
+    "byte_count": 756701,
+    "calendar_count": 4,
+    "capabilities": {
+      "activity_codes": "available",
+      "baseline_activity_crosswalk": "unavailable",
+      "baseline_activity_rows": "requires_companion_file",
+      "baseline_assignment": "available",
+      "baseline_drift": "unavailable",
+      "baseline_project_rows": "requires_companion_file",
+      "baseline_relationship_rows": "unavailable",
+      "bei": "unavailable",
+      "cost_loading": "partially_available",
+      "cost_schedule_correlation": "deferred",
+      "cpm_recalculation": "deferred",
+      "current_activities": "available",
+      "current_calendars": "available",
+      "current_relationships": "available",
+      "current_wbs": "available",
+      "explicit_free_float": "available",
+      "explicit_total_float": "available",
+      "missed_tasks": "unavailable",
+      "resource_assignments": "unavailable",
+      "source_critical_flags": "available",
+      "source_driving_path": "available",
+      "udfs": "available",
+      "version_comparison": "available"
+    },
+    "code_count": 962,
+    "cost_loaded_status": "not_cost_loaded",
+    "current_project_candidates": [
+      {
+        "activity_count": 1177,
+        "project_id": "815",
+        "project_name": "TWNU07",
+        "project_object_id": null,
+        "source_file_id": "pf-1-323b7779",
+        "source_format": "primavera_xer"
+      }
+    ],
+    "data_date": "2025-08-07 08:00",
+    "display_label": "TWNU07",
+    "file_sha256": "dfe23949d6b5641c868688aa9bf0e1e9f96eec2d3787db521dec47a64cf3326b",
+    "files": [
+      {
+        "detected_activities": 1177,
+        "detected_baseline_projects": 0,
+        "detected_projects": 1,
+        "detected_relationships": 2658,
+        "filename": "TWNU07.xer",
+        "package_file_id": "pf-1-323b7779",
+        "parse_status": "parsed",
+        "source_format": "primavera_xer",
+        "warnings": []
+      }
+    ],
+    "import_id": "e7d89019d31b",
+    "package_id": "pkg-31ddf9cdb422",
+    "package_mode": "single_file",
+    "planned_start": "2024-09-06 08:00",
+    "project_display_name": "TWN Manual Proof",
+    "project_key": "twn-manual-proof",
+    "relationship_count": 2658,
+    "requires_column_mapping": false,
+    "schedule_name": "TWNU07",
+    "scheduled_finish": "2026-08-21 16:00",
+    "source_filename": "TWNU07.xer",
+    "source_format": "primavera_xer",
+    "source_project_id": "815",
+    "source_project_name": "TWNU07",
+    "source_project_short_name": "815",
+    "source_type": "xer",
+    "udf_count": 2,
+    "validation_findings": [],
+    "warnings": [],
+    "wbs_count": 136
+  },
+  "status_code": 200
+}

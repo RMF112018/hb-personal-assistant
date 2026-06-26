@@ -1,0 +1,99 @@
+{
+  "payload": {
+    "activity_count": 3310,
+    "baseline_project_candidates": [
+      {
+        "activity_count": 3127,
+        "project_id": "Blue Lake 09-09-21",
+        "project_name": "Blue Lake Baseline Live",
+        "project_object_id": "1072",
+        "source_file_id": "pf-1-a6e06b8f",
+        "source_format": "primavera_pmxml"
+      }
+    ],
+    "byte_count": 30640195,
+    "calendar_count": 0,
+    "capabilities": {
+      "activity_codes": "available",
+      "baseline_activity_crosswalk": "available",
+      "baseline_activity_rows": "available",
+      "baseline_assignment": "available",
+      "baseline_drift": "available",
+      "baseline_project_rows": "available",
+      "baseline_relationship_rows": "available",
+      "bei": "available",
+      "cost_loading": "partially_available",
+      "cost_schedule_correlation": "deferred",
+      "cpm_recalculation": "deferred",
+      "current_activities": "available",
+      "current_calendars": "unavailable",
+      "current_relationships": "available",
+      "current_wbs": "available",
+      "explicit_free_float": "partially_available",
+      "explicit_total_float": "partially_available",
+      "missed_tasks": "available",
+      "resource_assignments": "unavailable",
+      "source_critical_flags": "partially_available",
+      "source_driving_path": "requires_companion_file",
+      "udfs": "unavailable",
+      "version_comparison": "available"
+    },
+    "code_count": 7368,
+    "cost_loaded_status": "not_cost_loaded",
+    "current_project_candidates": [
+      {
+        "activity_count": 5,
+        "project_id": "KOLTER-HILLTOP",
+        "project_name": null,
+        "project_object_id": "956",
+        "source_file_id": "pf-1-a6e06b8f",
+        "source_format": "primavera_pmxml"
+      },
+      {
+        "activity_count": 3310,
+        "project_id": "Blue Lake-5MAY23",
+        "project_name": "Blue Lake-Update-5MAY23",
+        "project_object_id": "820",
+        "source_file_id": "pf-1-a6e06b8f",
+        "source_format": "primavera_pmxml"
+      }
+    ],
+    "data_date": "2023-05-05T17:00:00",
+    "display_label": "Blue Lake-Update-5MAY23",
+    "file_sha256": "66785c9caa11f7a50f6695dd7dd6ba15d6104dfeccdde8a8af579fc31dbbd02c",
+    "files": [
+      {
+        "detected_activities": 6442,
+        "detected_baseline_projects": 1,
+        "detected_projects": 2,
+        "detected_relationships": 11854,
+        "filename": "Blue Lake-5MAY23.xml",
+        "package_file_id": "pf-1-a6e06b8f",
+        "parse_status": "parsed",
+        "source_format": "primavera_pmxml",
+        "warnings": []
+      }
+    ],
+    "import_id": "5720b5c11df4",
+    "package_id": "pkg-b38a20d249b9",
+    "package_mode": "single_file",
+    "planned_start": "2022-01-01T00:00:00",
+    "project_display_name": "Blue Lake Manual Proof",
+    "project_key": "bluelake-manual-proof",
+    "relationship_count": 6747,
+    "requires_column_mapping": false,
+    "schedule_name": "Blue Lake-Update-5MAY23",
+    "scheduled_finish": "2027-04-23T17:00:00",
+    "source_filename": "Blue Lake-5MAY23.xml",
+    "source_format": "primavera_pmxml",
+    "source_project_id": "Blue Lake-5MAY23",
+    "source_project_name": "Blue Lake-Update-5MAY23",
+    "source_project_short_name": "Blue Lake-5MAY23",
+    "source_type": "xml",
+    "udf_count": 0,
+    "validation_findings": [],
+    "warnings": [],
+    "wbs_count": 185
+  },
+  "status_code": 200
+}

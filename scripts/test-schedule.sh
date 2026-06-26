@@ -56,6 +56,7 @@ pytest_targets=(
   "tests/test_schedule_import_api.py::test_commit_rejects_project_mismatch"
   "tests/test_schedule_import_api.py::test_commit_persistence_failure_returns_structured_error"
   "tests/test_schedule_import_api.py::test_xer_commit_persists_import_parent_and_counts"
+  "tests/test_schedule_import_health_foundation.py"
   "tests/test_schedule_msp_xml_parser.py"
   "tests/test_schedule_project_association.py"
   "tests/test_schedule_quality_api.py::test_quality_summary_after_commit"

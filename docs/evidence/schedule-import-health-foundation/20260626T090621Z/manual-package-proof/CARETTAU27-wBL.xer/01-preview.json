@@ -1,0 +1,82 @@
+{
+  "payload": {
+    "activity_count": 3953,
+    "baseline_project_candidates": [],
+    "byte_count": 2320597,
+    "calendar_count": 2,
+    "capabilities": {
+      "activity_codes": "available",
+      "baseline_activity_crosswalk": "unavailable",
+      "baseline_activity_rows": "requires_companion_file",
+      "baseline_assignment": "available",
+      "baseline_drift": "unavailable",
+      "baseline_project_rows": "requires_companion_file",
+      "baseline_relationship_rows": "unavailable",
+      "bei": "unavailable",
+      "cost_loading": "partially_available",
+      "cost_schedule_correlation": "deferred",
+      "cpm_recalculation": "deferred",
+      "current_activities": "available",
+      "current_calendars": "available",
+      "current_relationships": "available",
+      "current_wbs": "available",
+      "explicit_free_float": "available",
+      "explicit_total_float": "available",
+      "missed_tasks": "unavailable",
+      "resource_assignments": "unavailable",
+      "source_critical_flags": "available",
+      "source_driving_path": "available",
+      "udfs": "unavailable",
+      "version_comparison": "available"
+    },
+    "code_count": 12,
+    "cost_loaded_status": "not_cost_loaded",
+    "current_project_candidates": [
+      {
+        "activity_count": 3953,
+        "project_id": "1070",
+        "project_name": "CARETTAU27",
+        "project_object_id": null,
+        "source_file_id": "pf-1-185c73c3",
+        "source_format": "primavera_xer"
+      }
+    ],
+    "data_date": "2026-05-28 08:00",
+    "display_label": "CARETTAU27",
+    "file_sha256": "47efe691ccb9959d24f2ca28a81944be60b5a1c361d581d5cda6fb26d145d56a",
+    "files": [
+      {
+        "detected_activities": 3953,
+        "detected_baseline_projects": 0,
+        "detected_projects": 1,
+        "detected_relationships": 7257,
+        "filename": "CARETTAU27-wBL.xer",
+        "package_file_id": "pf-1-185c73c3",
+        "parse_status": "parsed",
+        "source_format": "primavera_xer",
+        "warnings": []
+      }
+    ],
+    "import_id": "6ded79f1c969",
+    "package_id": "pkg-c66a44607fc9",
+    "package_mode": "single_file",
+    "planned_start": "2023-09-15 00:00",
+    "project_display_name": "Caretta Manual Proof",
+    "project_key": "caretta-manual-proof",
+    "relationship_count": 7257,
+    "requires_column_mapping": false,
+    "schedule_name": "CARETTAU27",
+    "scheduled_finish": "2027-01-22 16:00",
+    "source_filename": "CARETTAU27-wBL.xer",
+    "source_format": "primavera_xer",
+    "source_project_id": "1070",
+    "source_project_name": "CARETTAU27",
+    "source_project_short_name": "1070",
+    "source_type": "xer",
+    "udf_count": 0,
+    "validation_findings": [],
+    "warnings": [],
+    "wbs_count": 555
+  },
+  "status_code": 200
+}
