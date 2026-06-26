@@ -168,13 +168,23 @@ describe('Project Forecasting page', () => {
     expect(screen.getByText('High')).toBeInTheDocument()
   })
 
+  it('renders the Forecast Dashboard for the selected output', () => {
+    setForecast({ outputs: availableOutput.outputs, detail: availableOutput.detail })
+    renderForecastingRoutes('/projects/tropical/forecasting')
+
+    expect(screen.getByRole('heading', { name: 'Forecast Dashboard' })).toBeInTheDocument()
+    expect(screen.getByText('Budget vs EAC')).toBeInTheDocument()
+    expect(screen.getByText('Cost Position')).toBeInTheDocument()
+  })
+
   it('renders the no-output state when the project has no forecast output', () => {
     setForecast({ outputs: [] })
     renderForecastingRoutes('/projects/tropical/forecasting')
 
+    // Both the summary and the dashboard honestly report the no-output state.
     expect(
-      screen.getByText('No forecast output is available for this project yet.'),
-    ).toBeInTheDocument()
+      screen.getAllByText('No forecast output is available for this project yet.').length,
+    ).toBeGreaterThan(0)
   })
 
   it('renders a loading state while forecast information is loading', () => {
