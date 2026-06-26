@@ -236,15 +236,11 @@ describe('Project Forecasting page', () => {
     )
   })
 
-  it('renders the monthly forecasting placeholder without the dashboard content', () => {
+  it('renders the monthly forecasting route without the dashboard content', () => {
+    setForecast({ outputs: [] })
     renderForecastingRoutes('/projects/tropical/forecasting/monthly')
 
     expect(screen.getByRole('heading', { name: 'Monthly Forecasting' })).toBeInTheDocument()
-    expect(
-      screen.getByText(
-        'The project-specific monthly forecast matrix will be added here in the next phase.',
-      ),
-    ).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Back to Forecasting' })).toHaveAttribute(
       'href',
       '/projects/tropical/forecasting',
@@ -257,8 +253,6 @@ describe('Project Forecasting page', () => {
         'Review forecast status, latest forecast output, and project-specific forecasting tools.',
       ),
     ).not.toBeInTheDocument()
-    // No forecast read should fire for the placeholder-only monthly page.
-    expect(issuedQueryKeys().some((key) => key[0] === 'forecast')).toBe(false)
   })
 
   it('keeps /projects/all on the legacy aggregate route, not captured as a project key', () => {
