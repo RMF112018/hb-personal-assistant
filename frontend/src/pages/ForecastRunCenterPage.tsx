@@ -19,7 +19,6 @@ import { ForecastCreationModal } from '../components/forecast/ForecastCreationMo
 import { ForecastHistoryModal } from '../components/forecast/ForecastHistoryModal'
 import { ForecastResultsSummary } from '../components/forecast/ForecastResultsSummary'
 import { ForecastMonthlyMatrixPanel } from '../components/forecast/ForecastMonthlyMatrixPanel'
-import { ForecastDecisionSupportPanel } from '../components/forecast/ForecastDecisionSupportPanel'
 import { ForecastNarrativesPanel } from '../components/forecast/ForecastNarrativesPanel'
 import { failureCodeCopy } from '../components/forecast/forecastRuntimeCopy'
 import { api } from '../lib/api'
@@ -417,11 +416,6 @@ export function ForecastRunCenterPage() {
           />
           <ForecastMonthlyMatrixPanel
             key={`mm-${projectKey}-${refreshNonce}`}
-            project={projectKey}
-            activeOutputId={activeOutputId}
-          />
-          <ForecastDecisionSupportPanel
-            key={`ds-${projectKey}-${refreshNonce}`}
             project={projectKey}
             activeOutputId={activeOutputId}
           />
