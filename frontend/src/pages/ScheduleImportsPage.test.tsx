@@ -72,22 +72,23 @@ describe('ScheduleImportsPage', () => {
     })
   })
 
-  it('shows 50 MB upload label with XER support', () => {
+  it('shows 50 MB upload label with XER and zip-package support', () => {
     renderPage()
     expect(
       screen.getByText(
-        /Upload Primavera XER, Primavera XML\/PMXML, Microsoft Project XML, or mapped CSV — max 50 MB/i,
+        /Upload Primavera XER, Primavera XML\/PMXML, Microsoft Project XML, or mapped CSV — or a \.zip\s+package of those files — max 50 MB/i,
       ),
     ).toBeInTheDocument()
   })
 
-  it('accepts xer in file input', () => {
+  it('accepts xer and zip in file input', () => {
     renderPage()
     const input = document.querySelector('input[type="file"]') as HTMLInputElement
     expect(input.accept).toContain('.xer')
     expect(input.accept).toContain('.xml')
     expect(input.accept).toContain('.pmxml')
     expect(input.accept).toContain('.csv')
+    expect(input.accept).toContain('.zip')
   })
 
   it('uploads xer with selected project', async () => {
@@ -450,6 +451,120 @@ describe('ScheduleImportsPage', () => {
       expect(
         screen.getByText(/Preview supersede before committing/i),
       ).toBeInTheDocument()
+    })
+  })
+
+  it('renders zip-package manifest with selected current, baselines, and ignored files', async () => {
+    uploadMock.mockResolvedValue({
+      import_id: 'pkg-1',
+      activity_count: 3953,
+      relationship_count: 100,
+      source_format: 'primavera_xer',
+      cost_loaded_status: 'not_cost_loaded',
+      wbs_count: 10,
+      calendar_count: 2,
+      validation_findings: [],
+      requires_column_mapping: false,
+      project_key: 'tropical',
+      schedule_name: 'CARETTAU27',
+      package_mode: 'zip_package',
+      files: [
+        {
+          filename: 'CARETTAU27-wBL.xer',
+          source_format: 'primavera_xer',
+          parse_status: 'parsed',
+          detected_activities: 3953,
+          detected_baseline_projects: 0,
+          warnings: [],
+        },
+        {
+          filename: 'CARETTAU27.xml',
+          source_format: 'primavera_pmxml',
+          parse_status: 'parsed',
+          detected_activities: 3953,
+          detected_baseline_projects: 1,
+          warnings: [],
+        },
+      ],
+      current_project_candidates: [],
+      baseline_project_candidates: [
+        {
+          source_file_id: 'pf-2',
+          project_id: 'BL1',
+          project_name: 'Approved Baseline',
+          activity_count: 120,
+          source_format: 'primavera_pmxml',
+        },
+      ],
+      warnings: [
+        { code: 'unsupported_package_file_ignored', filename: 'readme.txt', message: 'unsupported file ignored' },
+      ],
+      capabilities: {},
+    })
+    renderPage()
+    await selectTropicalProject()
+    const file = new File(['PK'], 'Caretta.zip', { type: 'application/zip' })
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement
+    fireEvent.change(input, { target: { files: [file] } })
+    await waitFor(() => expect(screen.getByText(/ZIP package — 2 files/i)).toBeInTheDocument())
+    expect(screen.getByText(/XER preferred over XML/i)).toBeInTheDocument()
+    expect(screen.getByText(/CARETTAU27-wBL\.xer/)).toBeInTheDocument()
+    expect(screen.getByText(/Approved Baseline/)).toBeInTheDocument()
+    expect(screen.getByText(/readme\.txt/)).toBeInTheDocument()
+  })
+
+  it('blocks ambiguous packages with multiple current schedules and lists candidates', async () => {
+    uploadMock.mockRejectedValue(
+      new ScheduleApiError(
+        'schedule_package_multiple_current_candidates',
+        {
+          code: 'schedule_package_multiple_current_candidates',
+          candidates: [
+            {
+              source_file_id: 'pf-1',
+              project_id: 'CURJUN',
+              project_name: 'June Schedule',
+              data_date: '2026-06-01 08:00',
+              activity_count: 10,
+              source_format: 'primavera_pmxml',
+            },
+            {
+              source_file_id: 'pf-2',
+              project_id: 'CURJUL',
+              project_name: 'July Schedule',
+              data_date: '2026-07-01 08:00',
+              activity_count: 12,
+              source_format: 'primavera_pmxml',
+            },
+          ],
+        },
+        409,
+      ),
+    )
+    renderPage()
+    await selectTropicalProject()
+    const file = new File(['PK'], 'ambiguous.zip', { type: 'application/zip' })
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement
+    fireEvent.change(input, { target: { files: [file] } })
+    await waitFor(() => {
+      expect(screen.getByText(/Multiple current schedules found/i)).toBeInTheDocument()
+      expect(screen.getByText(/contains more than one current schedule/i)).toBeInTheDocument()
+      expect(screen.getByText(/June Schedule/)).toBeInTheDocument()
+      expect(screen.getByText(/July Schedule/)).toBeInTheDocument()
+    })
+  })
+
+  it('shows curated copy for a zip-package safety error', async () => {
+    uploadMock.mockRejectedValue(
+      new ScheduleApiError('schedule_zip_too_large', { code: 'schedule_zip_too_large' }, 400),
+    )
+    renderPage()
+    await selectTropicalProject()
+    const file = new File(['PK'], 'big.zip', { type: 'application/zip' })
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement
+    fireEvent.change(input, { target: { files: [file] } })
+    await waitFor(() => {
+      expect(screen.getByText(/too large once decompressed \(150 MB limit\)/i)).toBeInTheDocument()
     })
   })
 

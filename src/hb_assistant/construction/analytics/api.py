@@ -2696,6 +2696,8 @@ def create_app(*, db_path: str | None = None) -> Any:
             "schedule_supersede_state_mismatch",
         }:
             raise HTTPException(status_code=409, detail={"code": code, **payload})
+        if code == "schedule_package_multiple_current_candidates":
+            raise HTTPException(status_code=409, detail={"code": code, **payload})
         if code == "schedule_multipart_unavailable":
             raise HTTPException(status_code=503, detail="schedule_multipart_unavailable")
         if code == "schedule_quality_not_ready":
