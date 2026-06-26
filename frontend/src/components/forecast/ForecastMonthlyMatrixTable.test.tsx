@@ -1,8 +1,9 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
-import { Profiler } from 'react'
+import { Profiler, type MutableRefObject } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import type { ForecastDbMonthlyTable } from '../../lib/api'
+import type { MonthlyExportPayload } from './forecastMonthlyExport'
 import { ForecastMonthlyMatrixTable } from './ForecastMonthlyMatrixTable'
 
 const TABLE: ForecastDbMonthlyTable = {
@@ -289,5 +290,80 @@ describe('ForecastMonthlyMatrixTable', () => {
     // Sticky identity columns + total row remain available in full-screen mode.
     expect(screen.getByText('Cost Code')).toBeInTheDocument()
     expect(screen.getByText('Project total')).toBeInTheDocument()
+  })
+
+  // The export payload factory the panel reads via a ref must reflect the CURRENT visible view (search /
+  // filter / sort / grouping / expand-collapse) exactly as rendered — without recomputing backend values.
+  function renderWithExportRef(table = TABLE) {
+    const factoryRef: MutableRefObject<(() => MonthlyExportPayload) | null> = { current: null }
+    const utils = render(<ForecastMonthlyMatrixTable table={table} exportPayloadFactoryRef={factoryRef} />)
+    return { ...utils, factoryRef }
+  }
+  const dataCodes = (p: MonthlyExportPayload) =>
+    p.rows.filter((r) => r.rowType === 'data').map((r) => r.values.cost_code)
+  const rowTypes = (p: MonthlyExportPayload) => p.rows.map((r) => r.rowType)
+
+  it('export payload respects the global search', () => {
+    const { factoryRef } = renderWithExportRef()
+    fireEvent.change(screen.getByLabelText('Search the monthly forecast table'), { target: { value: 'LAB' } })
+    const payload = factoryRef.current!()
+    expect(dataCodes(payload)).toEqual(['03-01-1000'])
+    expect(rowTypes(payload)).toContain('total')
+  })
+
+  it('export payload respects the Cost Code and Cost Type filters', () => {
+    const { factoryRef } = renderWithExportRef()
+    fireEvent.change(screen.getByLabelText('Filter by Cost Code'), { target: { value: '2000' } })
+    expect(dataCodes(factoryRef.current!())).toEqual(['03-01-2000'])
+    fireEvent.change(screen.getByLabelText('Filter by Cost Code'), { target: { value: '' } })
+    fireEvent.change(screen.getByLabelText('Filter by Cost Type'), { target: { value: 'MAT' } })
+    expect(dataCodes(factoryRef.current!())).toEqual(['03-01-2000'])
+  })
+
+  it('export payload respects sorting', () => {
+    const { factoryRef } = renderWithExportRef()
+    expect(dataCodes(factoryRef.current!())).toEqual(['03-01-1000', '03-01-2000'])
+    fireEvent.click(screen.getByRole('button', { name: /Cost Type/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Cost Type/ })) // descending
+    expect(dataCodes(factoryRef.current!())).toEqual(['03-01-2000', '03-01-1000'])
+  })
+
+  it('export payload mirrors an expanded group (header, child rows, subtotal) then total', () => {
+    const { factoryRef } = renderWithExportRef()
+    fireEvent.change(screen.getByLabelText('Group rows'), { target: { value: 'cost_type' } })
+    const payload = factoryRef.current!()
+    // Two expanded single-row groups: each = group header + 1 data row + subtotal; then the project total.
+    expect(rowTypes(payload)).toEqual([
+      'group',
+      'data',
+      'subtotal',
+      'group',
+      'data',
+      'subtotal',
+      'total',
+    ])
+    const header = payload.rows.find((r) => r.rowType === 'group')!
+    expect(String(header.values.cost_code)).toMatch(/^Cost Type: (LAB|MAT) \(1\)$/)
+    // Expanded headers carry no inline numbers; the subtotal row does.
+    expect(header.values.projected_budget).toBeNull()
+  })
+
+  it('export payload mirrors a collapsed group (single header with inline subtotal, no child rows)', () => {
+    const { factoryRef } = renderWithExportRef()
+    fireEvent.change(screen.getByLabelText('Group rows'), { target: { value: 'cost_type' } })
+    fireEvent.click(screen.getByRole('button', { name: /Cost Type: LAB/ }))
+    const payload = factoryRef.current!()
+    const labHeader = payload.rows.find(
+      (r) => r.rowType === 'group' && String(r.values.cost_code).includes('LAB'),
+    )!
+    // Collapsed: subtotal shown inline on the header, and k-lab's leaf row is not exported.
+    expect(labHeader.values.projected_budget).toBe('100000.00')
+    expect(dataCodes(payload)).not.toContain('03-01-1000')
+  })
+
+  it('export columns never include the hidden cost_category as a normal column', () => {
+    const { factoryRef } = renderWithExportRef()
+    const payload = factoryRef.current!()
+    expect(payload.columns.find((c) => c.id === 'cost_category')).toBeUndefined()
   })
 })
