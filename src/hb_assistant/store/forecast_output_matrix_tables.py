@@ -75,8 +75,9 @@ V74_CREATE_STATEMENTS: list[str] = [
     # projected_budget split (revision 3): *_display is Procore-authoritative (what the matrix
     # shows + variance is computed against); *_calculation_basis is the financial-spine value kept
     # for engine continuity; *_source_warning is set warning-grade when they diverge or no Procore
-    # row maps. variance_to_budget here = EAC - projected_budget_display (distinct from the header's
-    # spine-based variance, which is not overwritten).
+    # row maps. variance_to_budget here = projected_budget_display - EAC (controls convention: positive
+    # = under budget/favorable, negative = overrun), distinct from the header's spine-based variance,
+    # which keeps its own basis + framing and is not overwritten.
     """
     CREATE TABLE IF NOT EXISTS forecast_output_monthly_table_rows (
       id TEXT PRIMARY KEY,

@@ -542,7 +542,8 @@ def _certify_monthly_matrix(planned: dict[str, list[dict[str, Any]]]) -> list[st
             reasons.append("monthly_matrix_forecast_to_complete_mismatch")
         if eac != ctd + ftc:
             reasons.append("monthly_matrix_eac_mismatch")
-        if var != eac - pb:
+        # Variance convention: projected_budget_display - EAC (positive = under budget, negative = overrun).
+        if var != pb - eac:
             reasons.append("monthly_matrix_variance_mismatch")
         pb_sum += pb
         ctd_sum += ctd

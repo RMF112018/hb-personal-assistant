@@ -773,9 +773,11 @@ def _build_monthly_matrix(
     """Build the persisted per-budget-code matrix rows + the dense per-month total row.
 
     Completed-to-Date / Forecast-to-Complete come from the persisted monthly CELLS (so the matrix
-    reconciles to the cells exactly); EAC = CtD + FtC; Variance = EAC - projected_budget_display
-    (the Procore-authoritative display value). One matrix row per budget-code context entry. Returns
-    ``(rows, totals, warnings)``.
+    reconciles to the cells exactly); EAC = CtD + FtC; Variance = projected_budget_display - EAC
+    (the Procore-authoritative display value), using the controls convention where POSITIVE = under
+    budget / favorable and NEGATIVE = over budget / overrun. (This is distinct from the legacy
+    header/summary variance, which keeps its own basis + framing and is not changed here.) One matrix
+    row per budget-code context entry. Returns ``(rows, totals, warnings)``.
     """
     # Per-code actual/forecast cell sums (window-bounded, from the emitted cells).
     ctd_by_key: dict[str, Decimal] = {}
@@ -824,7 +826,8 @@ def _build_monthly_matrix(
         ctd = ctd_by_key.get(key, ZERO)
         ftc = ftc_by_key.get(key, ZERO)
         eac = ctd + ftc
-        variance = eac - pb_display
+        # Controls convention: positive = under budget (favorable), negative = over budget (overrun).
+        variance = pb_display - eac
         line = lines_by_key.get(key) or {}
 
         rows.append(

@@ -241,6 +241,11 @@ export function ForecastMonthlyMatrixTable({
         </label>
       </div>
 
+      <p className="text-xs text-[var(--hb-muted)] mb-2">
+        Variance to Budget: a positive value is under budget (favorable); a negative value is over
+        budget (unfavorable).
+      </p>
+
       <div className="forecast-table-wrap" style={{ overflowX: 'auto' }}>
         <table className="forecast-table forecast-matrix-table">
           <thead>

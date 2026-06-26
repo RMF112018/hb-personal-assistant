@@ -32,7 +32,7 @@ const TABLE: ForecastDbMonthlyTable = {
       completed_to_date: '1000.00',
       forecast_to_complete: '2500.00',
       estimated_at_completion: '3500.00',
-      variance_to_budget: '-96500.00',
+      variance_to_budget: '96500.00',
       confidence: 'medium',
       method_code: 'even_spread',
       reason_codes: [],
@@ -49,7 +49,7 @@ const TABLE: ForecastDbMonthlyTable = {
       completed_to_date: '500.00',
       forecast_to_complete: '1000.00',
       estimated_at_completion: '1500.00',
-      variance_to_budget: '-48500.00',
+      variance_to_budget: '48500.00',
       confidence: 'medium',
       method_code: 'even_spread',
       reason_codes: [],
@@ -61,7 +61,7 @@ const TABLE: ForecastDbMonthlyTable = {
     completed_to_date: '1500.00',
     forecast_to_complete: '3500.00',
     estimated_at_completion: '5000.00',
-    variance_to_budget: '-145000.00',
+    variance_to_budget: '145000.00',
   },
   month_window_warnings: [],
 }
@@ -100,8 +100,33 @@ describe('ForecastMonthlyMatrixTable', () => {
     render(<ForecastMonthlyMatrixTable table={TABLE} />)
     const footer = screen.getByText('Total').closest('tr') as HTMLElement
     expect(within(footer).getByText('$150,000')).toBeInTheDocument()
-    // Negative total variance renders in accounting parentheses.
-    expect(within(footer).getByText('($145,000)')).toBeInTheDocument()
+    // Positive total variance (under budget) renders without parentheses.
+    expect(within(footer).getByText('$145,000')).toBeInTheDocument()
+  })
+
+  it('shows the variance convention legend and styles overrun (negative) variance as unfavorable', () => {
+    // One over-budget row (EAC > projected budget → negative variance = overrun) and one under-budget
+    // row (positive variance = favorable).
+    const overBudget = {
+      ...TABLE.rows![0],
+      budget_code_key: 'k-over',
+      cost_code: '03-01-9999',
+      projected_budget: '1000.00',
+      estimated_at_completion: '3500.00',
+      variance_to_budget: '-2500.00',
+    }
+    const underBudget = { ...TABLE.rows![1], budget_code_key: 'k-under', cost_code: '03-01-1111', variance_to_budget: '48500.00' }
+    render(<ForecastMonthlyMatrixTable table={{ ...TABLE, rows: [overBudget, underBudget] }} />)
+
+    // UI-facing legend explains the convention.
+    expect(screen.getByText(/positive value is under budget/i)).toBeInTheDocument()
+    expect(screen.getByText(/negative value is over budget/i)).toBeInTheDocument()
+
+    // Negative (overrun) variance carries the danger styling; positive (favorable) does not.
+    const overCell = screen.getByText('($2,500)')
+    const underCell = screen.getByText('$48,500')
+    expect(overCell.className).toMatch(/hb-danger/)
+    expect(underCell.className).not.toMatch(/hb-danger/)
   })
 
   it('supports sorting by clicking a column header', () => {

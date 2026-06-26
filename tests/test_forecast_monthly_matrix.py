@@ -217,8 +217,8 @@ def test_engine_row_formulas_and_cost_type():
         assert Decimal(r["completed_to_date"]) == ctd
         assert Decimal(r["forecast_to_complete"]) == ftc
         assert Decimal(r["estimated_at_completion"]) == ctd + ftc
-        # Variance is against the Procore-display projected budget.
-        assert Decimal(r["variance_to_budget"]) == (ctd + ftc) - Decimal(r["projected_budget_display"])
+        # Variance = display projected budget - EAC (positive = under budget, negative = overrun).
+        assert Decimal(r["variance_to_budget"]) == Decimal(r["projected_budget_display"]) - (ctd + ftc)
     assert rows["A"]["cost_type"] == "LAB"  # last 3 of 1000.03-01-1000.LAB
     assert rows["B"]["cost_type"] == "MAT"
 
