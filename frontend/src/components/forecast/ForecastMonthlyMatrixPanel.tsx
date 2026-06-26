@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { Maximize2, Minimize2 } from 'lucide-react'
 
 import { api } from '../../lib/api'
 import { ForecastMonthlyMatrixTable } from './ForecastMonthlyMatrixTable'
@@ -34,17 +36,34 @@ export function ForecastMonthlyMatrixPanel({
     enabled: Boolean(outputId),
   })
 
+  // Full-screen is a pure presentation toggle. It is intentionally NOT part of any React Query key,
+  // so toggling never refetches the matrix.
+  const [fullScreen, setFullScreen] = useState(false)
+
   if (!outputId) return null
 
   return (
     <ForecastPanel
       title="Monthly forecast"
       description="Completed-to-date actuals and forecast-to-complete by budget code and month, with row totals, a total row, and estimated cost at completion. All values are calculated and saved by the application."
+      className={fullScreen ? 'forecast-monthly-panel is-fullscreen' : 'forecast-monthly-panel'}
+      actions={
+        <button
+          type="button"
+          className="forecast-btn-ghost"
+          aria-pressed={fullScreen}
+          onClick={() => setFullScreen((v) => !v)}
+        >
+          {fullScreen ? <Minimize2 size={14} strokeWidth={2} /> : <Maximize2 size={14} strokeWidth={2} />}
+          {fullScreen ? 'Exit full screen' : 'Full screen'}
+        </button>
+      }
     >
       <ForecastMonthlyMatrixTable
         table={table}
         loading={isLoading}
         error={error ? 'Please try again.' : null}
+        fullScreen={fullScreen}
       />
     </ForecastPanel>
   )
