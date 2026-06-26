@@ -814,6 +814,21 @@ def create_app(*, db_path: str | None = None) -> Any:
 
         return AnalyticsService(db_path=db_path).build_today_section("portfolio-signals")
 
+    @app.get("/api/projects")
+    def projects(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        from fastapi import HTTPException
+
+        from hb_assistant.construction.analytics.project_summary_readmodel import (
+            ProjectSummaryReadModelError,
+            ProjectSummaryReadModelService,
+        )
+
+        try:
+            return ProjectSummaryReadModelService(db_path=db_path).build()
+        except ProjectSummaryReadModelError as exc:
+            raise HTTPException(status_code=503, detail="project_summaries_not_available") from exc
+
     @app.get("/api/projects/portfolio")
     def projects_portfolio(role: dict[str, str] = role_dep) -> dict[str, Any]:
         del role

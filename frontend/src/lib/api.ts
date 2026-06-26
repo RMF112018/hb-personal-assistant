@@ -181,7 +181,28 @@ export function getTodayDailyBrief() {
   return fetchJson('/api/today/daily-brief');
 }
 
-/* Projects (Prompt 07/18). Portfolio + per-project (incl. all) envelopes. */
+/* Projects. Entry-page summaries + existing portfolio/per-project envelopes. */
+export type ProjectSummary = {
+  project_key: string
+  procore_project_id?: string | null
+  display_name?: string | null
+  address?: string | null
+  city?: string | null
+  state_code?: string | null
+  zip?: string | null
+  project_number?: string | null
+  status?: string | null
+}
+
+export type ProjectsListResponse = {
+  surface: string
+  projects: ProjectSummary[]
+  guardrails?: Record<string, unknown>
+}
+
+export function getProjects(): Promise<ProjectsListResponse> {
+  return fetchJson('/api/projects');
+}
 export function getProjectsPortfolio() {
   return fetchJson('/api/projects/portfolio');
 }
@@ -1680,6 +1701,7 @@ export const api = {
   getTodayActionItems,
   getTodayPortfolioSignals,
   getTodayDailyBrief,
+  getProjects,
   getProjectsPortfolio,
   getProjectOverview,
   getProjectMeetings,
