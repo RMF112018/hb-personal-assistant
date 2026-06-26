@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { ProjectDashboardPage } from './ProjectDashboardPage'
@@ -87,9 +87,15 @@ function mockQueries() {
   })
 }
 
+function LocationProbe() {
+  const location = useLocation()
+  return <div data-testid="location-search">{location.search}</div>
+}
+
 function renderForecastingRoutes(path: string) {
   return render(
     <MemoryRouter initialEntries={[path]}>
+      <LocationProbe />
       <Routes>
         <Route path="/projects" element={<div>Projects list</div>} />
         <Route path="/projects/all" element={<ProjectDashboardPage />} />
@@ -201,6 +207,84 @@ describe('Project Forecasting page', () => {
     expect(
       keys.some((key) => key[0] === 'forecast' && (key[2] === undefined || key[2] === '')),
     ).toBe(false)
+  })
+
+  const twoOutputs = [
+    {
+      output_id: 'out-002',
+      project_key: 'tropical',
+      created_display: 'Jun 26, 2026',
+      estimated_final_cost: '61366869',
+      cost_to_complete: null,
+      variance_to_budget: null,
+      variance_to_prior_forecast: null,
+    },
+    {
+      output_id: 'out-001',
+      project_key: 'tropical',
+      created_display: 'May 10, 2026',
+      estimated_final_cost: '60000000',
+      cost_to_complete: null,
+      variance_to_budget: null,
+      variance_to_prior_forecast: null,
+    },
+  ]
+
+  it('renders the Forecast History selector when outputs exist', () => {
+    setForecast({ outputs: twoOutputs, detail: availableOutput.detail })
+    renderForecastingRoutes('/projects/tropical/forecasting')
+
+    expect(screen.getByRole('heading', { name: 'Forecast History' })).toBeInTheDocument()
+    expect(screen.getByText('Jun 26, 2026')).toBeInTheDocument()
+    expect(screen.getByText('May 10, 2026')).toBeInTheDocument()
+  })
+
+  it('summary uses the latest output when no outputId is set', () => {
+    setForecast({ outputs: twoOutputs, detail: availableOutput.detail })
+    renderForecastingRoutes('/projects/tropical/forecasting')
+
+    const keys = issuedQueryKeys()
+    expect(keys).toContainEqual(['forecast', 'db-output', 'out-002'])
+    expect(keys).not.toContainEqual(['forecast', 'db-output', 'out-001'])
+  })
+
+  it('summary uses the requested valid output id', () => {
+    setForecast({ outputs: twoOutputs, detail: availableOutput.detail })
+    renderForecastingRoutes('/projects/tropical/forecasting?outputId=out-001')
+
+    expect(issuedQueryKeys()).toContainEqual(['forecast', 'db-output', 'out-001'])
+  })
+
+  it('warns and uses the latest output for an invalid outputId, never fetching it', () => {
+    setForecast({ outputs: twoOutputs, detail: availableOutput.detail })
+    renderForecastingRoutes('/projects/tropical/forecasting?outputId=bogus-id')
+
+    expect(
+      screen.getByText(
+        'The selected forecast output is not available for this project. Showing the latest available output.',
+      ),
+    ).toBeInTheDocument()
+    const keys = issuedQueryKeys()
+    expect(keys).toContainEqual(['forecast', 'db-output', 'out-002'])
+    expect(keys.some((key) => key[1] === 'db-output' && key[2] === 'bogus-id')).toBe(false)
+  })
+
+  it('selecting an output updates the URL query parameter', () => {
+    setForecast({ outputs: twoOutputs, detail: availableOutput.detail })
+    renderForecastingRoutes('/projects/tropical/forecasting')
+
+    fireEvent.click(screen.getByRole('button', { name: /May 10, 2026/ }))
+    expect(screen.getByTestId('location-search').textContent).toContain('outputId=out-001')
+  })
+
+  it('preserves the selected outputId in the Monthly Forecasting link', () => {
+    setForecast({ outputs: twoOutputs, detail: availableOutput.detail })
+    renderForecastingRoutes('/projects/tropical/forecasting?outputId=out-001')
+
+    expect(screen.getByRole('link', { name: 'Open' })).toHaveAttribute(
+      'href',
+      '/projects/tropical/forecasting/monthly?outputId=out-001',
+    )
   })
 
   it('does not issue forecast reads for an unknown project', () => {

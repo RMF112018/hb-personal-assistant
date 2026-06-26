@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -334,5 +334,66 @@ describe('Project Monthly Forecasting page', () => {
     ]) {
       expect(text).not.toContain(forbidden)
     }
+  })
+})
+
+const twoOutputs = [
+  { output_id: 'out-002', project_key: 'tropical', created_display: 'Jun 26, 2026' },
+  { output_id: 'out-001', project_key: 'tropical', created_display: 'May 10, 2026' },
+]
+
+describe('Project Monthly Forecasting output selection', () => {
+  beforeEach(() => {
+    useQueryMock.mockReset()
+    setMonthly({ outputs: twoOutputs, monthly: readyTable })
+    mockQueries()
+  })
+
+  it('renders the Forecast History selector', () => {
+    renderMonthlyRoutes('/projects/tropical/forecasting/monthly')
+
+    expect(screen.getByRole('heading', { name: 'Forecast History' })).toBeInTheDocument()
+    expect(screen.getByText('May 10, 2026')).toBeInTheDocument()
+  })
+
+  it('keys the monthly table to the selected valid output id', () => {
+    renderMonthlyRoutes('/projects/tropical/forecasting/monthly?outputId=out-001')
+
+    const keys = issuedQueryKeys()
+    expect(keys).toContainEqual(['forecast', 'db-monthly-table', 'out-001'])
+    expect(keys).not.toContainEqual(['forecast', 'db-monthly-table', 'out-002'])
+  })
+
+  it('does not fetch the monthly table for an invalid/foreign output id', () => {
+    renderMonthlyRoutes('/projects/tropical/forecasting/monthly?outputId=bogus-id')
+
+    const keys = issuedQueryKeys()
+    // Falls back to the latest valid output, never the invalid id.
+    expect(keys).toContainEqual(['forecast', 'db-monthly-table', 'out-002'])
+    expect(keys.some((key) => key[1] === 'db-monthly-table' && key[2] === 'bogus-id')).toBe(false)
+  })
+
+  it('preserves the selected outputId in the Back to Forecasting link', () => {
+    renderMonthlyRoutes('/projects/tropical/forecasting/monthly?outputId=out-001')
+
+    expect(screen.getByRole('link', { name: 'Back to Forecasting' })).toHaveAttribute(
+      'href',
+      '/projects/tropical/forecasting?outputId=out-001',
+    )
+  })
+
+  it('changes the monthly table query when another output is selected', () => {
+    renderMonthlyRoutes('/projects/tropical/forecasting/monthly?outputId=out-002')
+
+    fireEvent.click(screen.getByRole('button', { name: /May 10, 2026/ }))
+    expect(issuedQueryKeys()).toContainEqual(['forecast', 'db-monthly-table', 'out-001'])
+  })
+
+  it('adds no export/download control', () => {
+    renderMonthlyRoutes('/projects/tropical/forecasting/monthly?outputId=out-002')
+
+    expect(
+      screen.queryByRole('button', { name: /export|download|csv|excel/i }),
+    ).not.toBeInTheDocument()
   })
 })

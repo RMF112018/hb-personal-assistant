@@ -5,20 +5,26 @@ import { EmptyState } from '../common/EmptyState'
 import { ErrorState } from '../common/ErrorState'
 import { LoadingState } from '../common/LoadingState'
 import { ForecastMonthlyMatrixTable } from '../forecast/ForecastMonthlyMatrixTable'
+import { selectForecastOutput } from './projectForecastOutputSelection'
 
 type ProjectMonthlyForecastingPanelProps = {
   projectKey: string
+  /** Requested output id from the route (`?outputId=`); resolved/validated against this project. */
+  requestedOutputId?: string | null
 }
 
 /**
- * Project-scoped, read-only monthly forecast panel. Resolves the project's latest persisted output
- * (outputs are newest-first) and renders its month-by-month matrix via the pure, presentational
- * {@link ForecastMonthlyMatrixTable}. Every read passes the route projectKey explicitly (never the
- * API default); the monthly-table read is scoped transitively through the project-scoped output id.
- * No export, full-screen, or generation controls — gates loading/error/no-output/no-monthly states
- * with business-facing copy.
+ * Project-scoped, read-only monthly forecast panel. Resolves the selected (or latest) persisted
+ * output via the shared {@link selectForecastOutput} and renders its month-by-month matrix via the
+ * pure, presentational {@link ForecastMonthlyMatrixTable}. Every read passes the route projectKey
+ * explicitly (never the API default); the monthly-table read is scoped transitively through the
+ * project-scoped output id (an invalid/foreign requested id is never fetched — it falls back to the
+ * latest valid output). No export, full-screen, or generation controls.
  */
-export function ProjectMonthlyForecastingPanel({ projectKey }: ProjectMonthlyForecastingPanelProps) {
+export function ProjectMonthlyForecastingPanel({
+  projectKey,
+  requestedOutputId,
+}: ProjectMonthlyForecastingPanelProps) {
   // Both queries run unconditionally (stable hook order). The outputs list shares its key with
   // ProjectForecastingSummary so it is served from cache when arriving from the Forecasting page.
   const outputsQuery = useQuery({
@@ -27,8 +33,8 @@ export function ProjectMonthlyForecastingPanel({ projectKey }: ProjectMonthlyFor
   })
 
   const outputs = outputsQuery.data?.outputs ?? []
-  const latestOutput = outputs[0]
-  const outputId = latestOutput?.output_id
+  const { selectedOutputId } = selectForecastOutput(outputs, requestedOutputId)
+  const outputId = selectedOutputId ?? undefined
 
   const monthlyQuery = useQuery({
     queryKey: ['forecast', 'db-monthly-table', outputId],
@@ -76,12 +82,14 @@ export function ProjectMonthlyForecastingPanel({ projectKey }: ProjectMonthlyFor
     )
   }
 
+  const selectedOutput = outputs.find((o) => o.output_id === outputId) ?? outputs[0]
+
   return (
     <section className="space-y-3">
       <p className="text-sm text-[var(--hb-muted)]">
-        Latest forecast output
-        {latestOutput?.created_display ? ` · ${latestOutput.created_display}` : ''} · {months.length}{' '}
-        {months.length === 1 ? 'month' : 'months'} · {rows.length}{' '}
+        Forecast output
+        {selectedOutput?.created_display ? ` · ${selectedOutput.created_display}` : ''} ·{' '}
+        {months.length} {months.length === 1 ? 'month' : 'months'} · {rows.length}{' '}
         {rows.length === 1 ? 'cost code' : 'cost codes'}
       </p>
       <ForecastMonthlyMatrixTable table={table} />
