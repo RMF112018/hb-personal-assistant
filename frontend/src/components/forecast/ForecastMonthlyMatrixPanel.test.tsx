@@ -116,4 +116,30 @@ describe('ForecastMonthlyMatrixPanel', () => {
     )
     expect(loopLogged).toBe(false)
   })
+
+  it('toggles full screen on this panel only and never refetches', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { container } = renderPanel()
+    await waitFor(() => expect(screen.getByText('03-01-1000')).toBeInTheDocument())
+
+    // Not full-screen initially.
+    expect(container.querySelector('.forecast-monthly-panel.is-fullscreen')).toBeNull()
+    expect(container.querySelector('.forecast-monthly-matrix.is-fullscreen')).toBeNull()
+
+    // Enter full screen.
+    fireEvent.click(screen.getByRole('button', { name: 'Full screen' }))
+    expect(container.querySelector('.forecast-monthly-panel.is-fullscreen')).not.toBeNull()
+    expect(container.querySelector('.forecast-monthly-matrix.is-fullscreen')).not.toBeNull()
+
+    // Exit full screen.
+    fireEvent.click(screen.getByRole('button', { name: 'Exit full screen' }))
+    expect(container.querySelector('.forecast-monthly-panel.is-fullscreen')).toBeNull()
+
+    // Toggling is pure presentation — the table endpoint is hit exactly once.
+    expect(vi.mocked(api.getForecastDbMonthlyTable)).toHaveBeenCalledTimes(1)
+    const loopLogged = errorSpy.mock.calls.some((args) =>
+      args.some((a) => typeof a === 'string' && /Maximum update depth/i.test(a)),
+    )
+    expect(loopLogged).toBe(false)
+  })
 })

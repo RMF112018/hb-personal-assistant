@@ -1,4 +1,5 @@
-import { Compass } from 'lucide-react'
+import type { ReactNode } from 'react'
+import { Compass, History } from 'lucide-react'
 
 import { ForecastPanel } from './ForecastPrimitives'
 import { ForecastStatusPill } from './ForecastStatusPill'
@@ -29,6 +30,10 @@ export interface ForecastContextHeaderProps {
   outputContext: string
   /** One plain-language next-action line, derived by the caller. */
   nextAction: string
+  /** Optional forecast-health card (fetching is encapsulated by the caller's component). */
+  healthSlot?: ReactNode
+  /** When provided, renders a "Forecast History" button that opens the history modal. */
+  onOpenHistory?: () => void
 }
 
 export function ForecastContextHeader({
@@ -40,12 +45,22 @@ export function ForecastContextHeader({
   selectedRun,
   outputContext,
   nextAction,
+  healthSlot,
+  onOpenHistory,
 }: ForecastContextHeaderProps) {
   return (
     <ForecastPanel
       icon={Compass}
       title="Forecast context"
       description="What you're viewing right now and the next step for this project."
+      actions={
+        onOpenHistory ? (
+          <button type="button" className="forecast-btn-ghost" onClick={onOpenHistory}>
+            <History size={14} strokeWidth={2} />
+            Forecast History
+          </button>
+        ) : undefined
+      }
     >
       <ForecastSummaryGrid>
         <ForecastSummaryCard
@@ -66,6 +81,8 @@ export function ForecastContextHeader({
         <ForecastSummaryCard label="Latest forecast" value={latestForecastDisplay ?? 'None yet'} />
         <ForecastSummaryCard label="Viewed output" value={outputContext} />
       </ForecastSummaryGrid>
+
+      {healthSlot}
 
       {readinessReasons.length > 0 && (
         <div className="text-sm text-rose-300 mt-3" role="status">

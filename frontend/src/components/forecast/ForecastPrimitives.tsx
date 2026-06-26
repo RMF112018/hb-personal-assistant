@@ -41,12 +41,14 @@ export function ForecastPanel({
   description,
   children,
   className = '',
+  actions,
 }: {
   icon?: LucideIcon
   title: string
   description?: string
   children: ReactNode
   className?: string
+  actions?: ReactNode
 }) {
   return (
     <section className={`forecast-panel ${className}`}>
@@ -60,6 +62,7 @@ export function ForecastPanel({
           <h2 className="forecast-section-label">{title}</h2>
           {description && <p className="text-sm text-[var(--hb-muted)] mt-1 leading-relaxed">{description}</p>}
         </div>
+        {actions && <div className="ml-auto shrink-0">{actions}</div>}
       </div>
       {children}
     </section>

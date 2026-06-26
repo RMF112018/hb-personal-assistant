@@ -280,4 +280,14 @@ describe('ForecastMonthlyMatrixTable', () => {
     expect(screen.getByText('03-01-2000')).toBeInTheDocument()
     expect(screen.queryByText('03-01-1000')).not.toBeInTheDocument()
   })
+
+  it('applies the full-screen class to the matrix wrapper when fullScreen is set', () => {
+    const { container, rerender } = render(<ForecastMonthlyMatrixTable table={TABLE} />)
+    expect(container.querySelector('.forecast-monthly-matrix.is-fullscreen')).toBeNull()
+    rerender(<ForecastMonthlyMatrixTable table={TABLE} fullScreen />)
+    expect(container.querySelector('.forecast-monthly-matrix.is-fullscreen')).not.toBeNull()
+    // Sticky identity columns + total row remain available in full-screen mode.
+    expect(screen.getByText('Cost Code')).toBeInTheDocument()
+    expect(screen.getByText('Project total')).toBeInTheDocument()
+  })
 })

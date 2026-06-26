@@ -89,13 +89,16 @@ function num(v: string | null | undefined): number {
   return Number.isFinite(n) ? n : 0
 }
 
-// Module-scope so cells don't allocate a fresh closure/object factory each render.
-function stickyStyle(id: string, header: boolean): CSSProperties | undefined {
+// Module-scope so cells don't allocate a fresh closure/object factory each render. The sticky-left
+// identity cells must layer above the (CSS) sticky thead/tfoot in full-screen mode, so header/footer
+// intersections sit at z 5, sticky-left body cells at z 3 (above normal body cells), while the plain
+// sticky thead th / tfoot td get z 4 from CSS.
+function stickyStyle(id: string, section: 'header' | 'body' | 'footer'): CSSProperties | undefined {
   if (!STICKY_IDS.has(id)) return undefined
   return {
     position: 'sticky',
     left: STICKY_LEFT[id as keyof typeof STICKY_LEFT],
-    zIndex: header ? 3 : 1,
+    zIndex: section === 'body' ? 3 : 5,
     minWidth: id === 'cost_code' ? COST_CODE_W : id === 'cost_type' ? COST_TYPE_W : PROJECTED_W,
     background: 'var(--hb-surface, #fff)',
   }
@@ -105,10 +108,12 @@ export function ForecastMonthlyMatrixTable({
   table,
   loading,
   error,
+  fullScreen,
 }: {
   table: ForecastDbMonthlyTable | undefined
   loading?: boolean
   error?: string | null
+  fullScreen?: boolean
 }) {
   // Fully-controlled, stable table state (each slice only changes when its setter runs).
   const [sorting, setSorting] = useState<SortingState>([])
@@ -260,7 +265,7 @@ export function ForecastMonthlyMatrixTable({
   // trailing subtotal row of an expanded group.
   const subtotalDataCells = (vals: SubtotalValues) => (
     <>
-      <td style={stickyStyle('projected_budget', false)}>
+      <td style={stickyStyle('projected_budget', 'body')}>
         <span className="tabular-nums font-semibold">{formatCurrency(vals.projected_budget)}</span>
       </td>
       {months.map((m) => (
@@ -288,7 +293,7 @@ export function ForecastMonthlyMatrixTable({
   )
 
   return (
-    <div className="forecast-monthly-matrix">
+    <div className={`forecast-monthly-matrix ${fullScreen ? 'is-fullscreen' : ''}`}>
       <div className="flex flex-wrap items-center gap-2 mb-3">
         <input
           type="search"
@@ -359,7 +364,7 @@ export function ForecastMonthlyMatrixTable({
                 return (
                   <th
                     key={h.id}
-                    style={stickyStyle(h.column.id, true)}
+                    style={stickyStyle(h.column.id, 'header')}
                     aria-sort={
                       h.column.getIsSorted() === 'asc'
                         ? 'ascending'
@@ -405,7 +410,7 @@ export function ForecastMonthlyMatrixTable({
                 return (
                   <Fragment key={row.id}>
                     <tr className="forecast-matrix-group-row">
-                      <td style={stickyStyle('cost_code', false)}>
+                      <td style={stickyStyle('cost_code', 'body')}>
                         <button
                           type="button"
                           className="forecast-matrix-th-btn"
@@ -424,7 +429,7 @@ export function ForecastMonthlyMatrixTable({
                       ) : (
                         // Collapsed: the group header shows the subtotal values inline.
                         <>
-                          <td style={stickyStyle('cost_type', false)} />
+                          <td style={stickyStyle('cost_type', 'body')} />
                           {subtotalDataCells(sub)}
                         </>
                       )}
@@ -433,7 +438,7 @@ export function ForecastMonthlyMatrixTable({
                       leaves.map((leaf) => (
                         <tr key={leaf.id}>
                           {leaf.getVisibleCells().map((cell) => (
-                            <td key={cell.id} style={stickyStyle(cell.column.id, false)}>
+                            <td key={cell.id} style={stickyStyle(cell.column.id, 'body')}>
                               {flexRender(cell.column.columnDef.cell, cell.getContext())}
                             </td>
                           ))}
@@ -441,10 +446,10 @@ export function ForecastMonthlyMatrixTable({
                       ))}
                     {isExpandedGroup && (
                       <tr className="forecast-matrix-subtotal-row">
-                        <td style={stickyStyle('cost_code', false)}>
+                        <td style={stickyStyle('cost_code', 'body')}>
                           <span className="font-semibold">Subtotal</span>
                         </td>
-                        <td style={stickyStyle('cost_type', false)} />
+                        <td style={stickyStyle('cost_type', 'body')} />
                         {subtotalDataCells(sub)}
                       </tr>
                     )}
@@ -455,7 +460,7 @@ export function ForecastMonthlyMatrixTable({
               return (
                 <tr key={row.id}>
                   {row.getVisibleCells().map((cell) => (
-                    <td key={cell.id} style={stickyStyle(cell.column.id, false)}>
+                    <td key={cell.id} style={stickyStyle(cell.column.id, 'body')}>
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </td>
                   ))}
@@ -466,11 +471,11 @@ export function ForecastMonthlyMatrixTable({
           {total && (
             <tfoot>
               <tr className="forecast-matrix-total-row">
-                <td style={stickyStyle('cost_code', false)}>
+                <td style={stickyStyle('cost_code', 'footer')}>
                   <span className="font-semibold">Project total</span>
                 </td>
-                <td style={stickyStyle('cost_type', false)} />
-                <td style={stickyStyle('projected_budget', false)}>
+                <td style={stickyStyle('cost_type', 'footer')} />
+                <td style={stickyStyle('projected_budget', 'footer')}>
                   <span className="tabular-nums font-semibold">{formatCurrency(total.projected_budget)}</span>
                 </td>
                 {months.map((m) => (

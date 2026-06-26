@@ -417,6 +417,150 @@
   background: color-mix(in srgb, var(--hb-bg) 35%, var(--hb-surface));
 }
 
+/* Modal / dialog — fixed overlay layered above app shell (AppShell uses z-40/z-50) */
+.forecast-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 2.5rem 1rem;
+  overflow-y: auto;
+  background: color-mix(in srgb, var(--hb-bg) 70%, transparent);
+  backdrop-filter: blur(2px);
+}
+
+.forecast-dialog {
+  width: 100%;
+  max-width: 44rem;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 5rem);
+  border-radius: 0.75rem;
+  border: 1px solid var(--fc-border-subtle);
+  background: var(--hb-surface);
+  box-shadow: var(--hb-card-shadow);
+}
+
+.forecast-dialog-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 1.1rem 1.25rem 0.85rem;
+  border-bottom: 1px solid var(--hb-border);
+}
+
+.forecast-dialog-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 1.1rem 1.25rem;
+  overflow-y: auto;
+}
+
+.forecast-dialog-footer {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  padding: 0.85rem 1.25rem 1.1rem;
+  border-top: 1px solid var(--hb-border);
+}
+
+/* Dark forecast UI control — Monthly table search / filters / group-by. */
+.forecast-input {
+  border: 1px solid var(--hb-border);
+  background: var(--hb-bg);
+  color: var(--hb-text);
+  border-radius: 0.5rem;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.8125rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.forecast-input::placeholder {
+  color: var(--hb-muted);
+}
+
+.forecast-input:focus {
+  outline: none;
+  border-color: var(--hb-accent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--hb-accent) 45%, transparent);
+}
+
+.forecast-dialog-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 0.45rem;
+  flex-shrink: 0;
+  color: var(--hb-muted);
+  border: 1px solid var(--hb-border);
+  background: transparent;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.forecast-dialog-close:hover {
+  color: var(--hb-text);
+  border-color: var(--fc-border-subtle);
+}
+
+/* Monthly forecast full-screen mode — expands only this panel into a fixed working surface while
+ * keeping the matrix usable (contained scroll, sticky identity columns + header + total row). */
+.forecast-monthly-panel.is-fullscreen {
+  position: fixed;
+  inset: 0.75rem;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  /* Sharper border + a CSS-only scrim (the huge spread ring) that dims the page chrome showing
+   * through the inset gap, so the overlay reads as a distinct surface above the page. */
+  border-color: var(--fc-border-subtle);
+  box-shadow:
+    var(--hb-card-shadow),
+    0 0 0 100vmax color-mix(in srgb, var(--hb-bg) 72%, transparent);
+}
+
+.forecast-monthly-panel.is-fullscreen .forecast-panel-header {
+  flex-shrink: 0;
+}
+
+.forecast-monthly-matrix.is-fullscreen {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+
+.forecast-monthly-matrix.is-fullscreen .forecast-table-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* Sticky header + total row only inside the full-screen scroll container. The sticky-LEFT identity
+ * cells carry their own inline z-index (5 at header/footer intersections, 3 in the body) so they
+ * layer above these. */
+.forecast-monthly-matrix.is-fullscreen .forecast-matrix-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  background: var(--hb-surface);
+}
+
+.forecast-monthly-matrix.is-fullscreen .forecast-matrix-table tfoot td {
+  position: sticky;
+  bottom: 0;
+  z-index: 4;
+  background: var(--hb-surface);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .forecast-metric-card,
   .forecast-btn-primary,
