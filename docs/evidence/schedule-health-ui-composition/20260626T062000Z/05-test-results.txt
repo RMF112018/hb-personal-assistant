@@ -1,0 +1,55 @@
+Commands run from /Users/bobbyfetting/hb-personal-assistant-worktrees/schedule-health-ui-composition unless noted.
+
+1. git fetch origin --prune
+Result: passed. origin/main advanced to 185de7ff feat(schedule): add import health foundation (#151).
+
+2. V75 gate inspection
+Result: passed. origin/main contains LATEST_SCHEMA_VERSION = 75 and /api/schedules/versions/{schedule_version_key}/health-data.
+
+3. cat frontend/package.json
+Result: passed. Scripts present: test, typecheck, lint.
+
+4. npm run typecheck
+Result: blocked initially because this fresh worktree had no frontend/node_modules and tsc was not found.
+
+5. ./node_modules/.bin/tsc -b using temporary symlink to existing primary checkout node_modules
+Result: passed.
+
+6. ./node_modules/.bin/vitest run src/pages/ScheduleQualityPage.test.tsx src/pages/ScheduleRoutes.test.tsx src/navigation/navigationModel.test.ts src/lib/sourcesApi.test.ts
+Result: passed.
+Test files: 4 passed.
+Tests: 31 passed.
+
+7. ./node_modules/.bin/eslint src/pages/ScheduleQualityPage.tsx src/pages/ScheduleQualityPage.test.tsx src/pages/ScheduleRoutes.test.tsx src/navigation/navigationModel.ts src/navigation/navigationModel.test.ts src/components/schedule/SchedulePageChrome.tsx src/lib/api.ts src/lib/sourcesApi.test.ts
+Result: passed.
+
+8. ./node_modules/.bin/eslint .
+Result: failed on unrelated existing files:
+- frontend/src/components/schedule/ScheduleProjectPicker.tsx react-refresh/only-export-components
+- frontend/src/components/schedule/ScheduleVersionPicker.tsx react-refresh/only-export-components
+- frontend/src/pages/ScheduleActivitiesPage.tsx react-hooks/set-state-in-effect
+- frontend/src/pages/ScheduleImportsPage.tsx react-hooks/set-state-in-effect and no-extra-boolean-cast
+- frontend/src/components/forecast/ForecastMonthlyMatrixTable.tsx warning
+
+9. ./node_modules/.bin/vitest run
+Result: failed on unrelated existing tests:
+- frontend/src/pages/MyItemsPage.test.tsx: duplicate Details unavailable fallback text
+- frontend/src/pages/TodayPage.test.tsx: duplicate Details unavailable fallback text
+Schedule Health tests passed in this run.
+
+10. bash -n scripts/test-schedule.sh
+Result: passed.
+
+11. scripts/test-schedule.sh
+Result: passed.
+131 passed, 2 deselected, 1 warning in 94.62s.
+
+12. git diff --check
+Result: passed.
+
+Manual browser smoke:
+- /schedules/quality rendered Schedule Health.
+- /schedules/health alias rendered Schedule Health.
+- Schedule subnav label showed Schedule Health.
+- PM cards, capability panel, baseline health, and deferred/unavailable sections were manually reviewed.
+- Automated screenshot capture remained blocked by local command/browser tooling limits.

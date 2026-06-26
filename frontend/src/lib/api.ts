@@ -1386,6 +1386,46 @@ export function getExternalEvaluation(evalId: string) {
 }
 
 /* Schedule Intelligence (V62) — import, versions, activities, cost mapping. */
+export type ScheduleCapabilityStatus =
+  | 'available'
+  | 'partially_available'
+  | 'unavailable'
+  | 'not_applicable'
+  | 'requires_companion_file'
+  | 'requires_user_mapping'
+  | 'conflict_detected'
+  | 'deferred'
+  | string;
+
+export interface ScheduleSourceCapability {
+  capability_id?: string;
+  capability_key?: string;
+  capability_status?: ScheduleCapabilityStatus;
+  basis?: string | null;
+  source_format?: string | null;
+  unavailable_reason?: string | null;
+  recommended_action?: string | null;
+  evidence_json?: string | Record<string, unknown> | null;
+  [key: string]: unknown;
+}
+
+export interface ScheduleHealthData {
+  schedule_version_key?: string;
+  project_key?: string | null;
+  current_schedule?: Record<string, unknown> | null;
+  import_package?: Record<string, unknown> | null;
+  capabilities?: ScheduleSourceCapability[] | null;
+  quality_summary?: Record<string, unknown> | null;
+  default_prior_version?: Record<string, unknown> | null;
+  default_version_diff?: Record<string, unknown>[] | null;
+  available_version_diffs?: Record<string, unknown>[] | null;
+  baseline_projects?: Record<string, unknown>[] | null;
+  baseline_health_facts?: Record<string, unknown>[] | null;
+  top_health_findings?: Record<string, unknown>[] | null;
+  deferred_domains?: Record<string, unknown> | null;
+  [key: string]: unknown;
+}
+
 export function getScheduleProjects() {
   return fetchJson('/api/schedules/projects');
 }
@@ -1430,6 +1470,14 @@ export function listScheduleQualityEvaluations(opts?: {
 }
 export function getScheduleVersionSummary(scheduleVersionKey: string) {
   return fetchJson(`/api/schedules/versions/${encodeURIComponent(scheduleVersionKey)}/summary`);
+}
+export function getScheduleHealthData(scheduleVersionKey: string, projectKey?: string) {
+  const params = new URLSearchParams();
+  if (projectKey) params.set('project_key', projectKey);
+  const qs = params.toString();
+  return fetchJson<ScheduleHealthData>(
+    `/api/schedules/versions/${encodeURIComponent(scheduleVersionKey)}/health-data${qs ? `?${qs}` : ''}`,
+  );
 }
 export function getScheduleActivities(
   scheduleVersionKey: string,
@@ -1765,6 +1813,7 @@ export const api = {
   listScheduleQualityEvaluations,
   getScheduleVersions,
   getScheduleVersionSummary,
+  getScheduleHealthData,
   getScheduleActivities,
   getScheduleQuality,
   getScheduleQualityFindings,

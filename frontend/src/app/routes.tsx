@@ -210,7 +210,12 @@ const router = createBrowserRouter([
       {
         path: 'schedules/quality',
         element: <ScheduleQualityPage />,
-        handle: { title: 'Schedule Quality' },
+        handle: { title: 'Schedule Health' },
+      },
+      {
+        path: 'schedules/health',
+        element: <ScheduleQualityPage />,
+        handle: { title: 'Schedule Health' },
       },
       {
         path: 'schedules/version-diff',

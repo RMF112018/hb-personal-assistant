@@ -5,6 +5,7 @@ import {
   getGraphSourceAuthStatus,
   getGraphSourceStatus,
   getProcoreSourceStatus,
+  getScheduleHealthData,
   getSchedulerStatus,
   getSourcesStatus,
   refreshSources,
@@ -149,6 +150,18 @@ describe('source-refresh client — action URL selection', () => {
     fetchMock.mockResolvedValue(okJson({ flow_id: 'f1', status: 'pending' }))
     await getGraphSourceAuthStatus('f1/x')
     expect(lastCall(fetchMock)[0]).toContain('flow_id=f1%2Fx')
+  })
+})
+
+describe('schedule health client', () => {
+  it('encodes the health-data endpoint and optional project scope', async () => {
+    fetchMock.mockResolvedValue(okJson({ schedule_version_key: 'twn|1071|2026-06-23 08:00' }))
+
+    await getScheduleHealthData('twn|1071|2026-06-23 08:00', 'twn/project')
+
+    expect(lastCall(fetchMock)[0]).toBe(
+      '/api/schedules/versions/twn%7C1071%7C2026-06-23%2008%3A00/health-data?project_key=twn%2Fproject',
+    )
   })
 })
 
