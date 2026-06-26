@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { Profiler } from 'react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import type { ForecastDbMonthlyTable } from '../../lib/api'
 import { ForecastMonthlyMatrixTable } from './ForecastMonthlyMatrixTable'
@@ -146,5 +147,48 @@ describe('ForecastMonthlyMatrixTable', () => {
     expect(text).not.toMatch(/raw_json/)
     expect(text).not.toMatch(/\/Users\//)
     expect(text).not.toMatch(/read model/i)
+  })
+
+  // Regression: the controlled-state anti-pattern (fresh grouping/columnFilters arrays each render
+  // + no onChange handlers + no getRowId) drove TanStack's auto-reset into an unbounded render loop
+  // ("Maximum update depth"), freezing the page on any interaction. This asserts the full interaction
+  // sequence stays bounded and logs no update-loop error. The threshold is deliberately GENEROUS — it
+  // only needs to catch a runaway loop, not enforce an exact render count (React dev re-render /
+  // batching / TanStack internal recalculation all add commits).
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('stays responsive (bounded renders, no update-loop error) across search/filter/group/sort', () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    let commits = 0
+    render(
+      <Profiler id="matrix" onRender={() => { commits += 1 }}>
+        <ForecastMonthlyMatrixTable table={TABLE} />
+      </Profiler>,
+    )
+
+    fireEvent.change(screen.getByLabelText('Search the monthly forecast table'), { target: { value: 'LAB' } })
+    fireEvent.change(screen.getByLabelText('Search the monthly forecast table'), { target: { value: '' } })
+    fireEvent.change(screen.getByLabelText('Filter by Cost Code'), { target: { value: '1000' } })
+    fireEvent.change(screen.getByLabelText('Filter by Cost Code'), { target: { value: '' } })
+    fireEvent.change(screen.getByLabelText('Filter by Cost Type'), { target: { value: 'MAT' } })
+    fireEvent.change(screen.getByLabelText('Filter by Cost Type'), { target: { value: '' } })
+    fireEvent.click(screen.getByLabelText('Group by Cost Type'))
+    fireEvent.click(screen.getByLabelText('Group by Cost Type'))
+    fireEvent.click(screen.getByRole('button', { name: /Cost Type/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Cost Type/ }))
+
+    // No React "Maximum update depth exceeded" (the loop signature) was logged.
+    const loopLogged = errorSpy.mock.calls.some((args) =>
+      args.some((a) => typeof a === 'string' && /Maximum update depth/i.test(a)),
+    )
+    expect(loopLogged).toBe(false)
+    // Bounded, non-runaway rendering for ~10 interactions (a loop would be hundreds+).
+    expect(commits).toBeLessThan(25)
+    // Still interactive afterwards (re-sort + re-filter produce expected output).
+    fireEvent.change(screen.getByLabelText('Filter by Cost Code'), { target: { value: '2000' } })
+    expect(screen.getByText('03-01-2000')).toBeInTheDocument()
+    expect(screen.queryByText('03-01-1000')).not.toBeInTheDocument()
   })
 })

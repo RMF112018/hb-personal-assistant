@@ -7,10 +7,12 @@ import {
   getSortedRowModel,
   useReactTable,
   type ColumnDef,
+  type ColumnFiltersState,
+  type ExpandedState,
   type GroupingState,
   type SortingState,
 } from '@tanstack/react-table'
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type CSSProperties } from 'react'
 
 import type { ForecastDbMonthlyTable, ForecastDbMonthlyTableRow } from '../../lib/api'
 import { formatCurrency, formatSignedCurrency } from '../../lib/format'
@@ -20,6 +22,11 @@ import { formatCurrency, formatSignedCurrency } from '../../lib/format'
  * totals, the per-month dense map, and the total row); this component only formats, sorts, filters,
  * groups, and renders. It never recomputes financial values. Identity columns (Cost Code, Cost Type,
  * Projected Budget) are sticky for horizontal scrolling; month columns are dynamic and chronological.
+ *
+ * Sort/filter/group/search state is held LOCAL and FULLY CONTROLLED via stable useState slices with
+ * matching onChange handlers (never rebuilt as fresh arrays in the `state` object) so TanStack's
+ * row-model memoization holds and its auto-reset machinery never thrashes into a render loop. Row
+ * identity is pinned to budget_code_key.
  */
 
 // Sticky identity column geometry (fixed widths so cumulative left offsets are exact).
@@ -31,10 +38,23 @@ const STICKY_LEFT = {
   cost_type: COST_CODE_W,
   projected_budget: COST_CODE_W + COST_TYPE_W,
 }
+const STICKY_IDS = new Set(['cost_code', 'cost_type', 'projected_budget'])
 
 function num(v: string | null | undefined): number {
   const n = Number(v)
   return Number.isFinite(n) ? n : 0
+}
+
+// Module-scope so cells don't allocate a fresh closure/object factory each render.
+function stickyStyle(id: string, header: boolean): CSSProperties | undefined {
+  if (!STICKY_IDS.has(id)) return undefined
+  return {
+    position: 'sticky',
+    left: STICKY_LEFT[id as keyof typeof STICKY_LEFT],
+    zIndex: header ? 3 : 1,
+    minWidth: id === 'cost_code' ? COST_CODE_W : id === 'cost_type' ? COST_TYPE_W : PROJECTED_W,
+    background: 'var(--hb-surface, #fff)',
+  }
 }
 
 export function ForecastMonthlyMatrixTable({
@@ -46,11 +66,12 @@ export function ForecastMonthlyMatrixTable({
   loading?: boolean
   error?: string | null
 }) {
+  // Fully-controlled, stable table state (each slice only changes when its setter runs).
   const [sorting, setSorting] = useState<SortingState>([])
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
+  const [grouping, setGrouping] = useState<GroupingState>([])
+  const [expanded, setExpanded] = useState<ExpandedState>({})
   const [globalFilter, setGlobalFilter] = useState('')
-  const [costCodeFilter, setCostCodeFilter] = useState('')
-  const [costTypeFilter, setCostTypeFilter] = useState('')
-  const [grouped, setGrouped] = useState(false)
 
   const months = useMemo(() => table?.months ?? [], [table])
   const rows = useMemo(() => table?.rows ?? [], [table])
@@ -121,23 +142,20 @@ export function ForecastMonthlyMatrixTable({
   const reactTable = useReactTable({
     data: rows,
     columns,
-    state: {
-      sorting,
-      globalFilter,
-      grouping: grouped ? (['cost_type'] as GroupingState) : [],
-      columnFilters: [
-        ...(costCodeFilter ? [{ id: 'cost_code', value: costCodeFilter }] : []),
-        ...(costTypeFilter ? [{ id: 'cost_type', value: costTypeFilter }] : []),
-      ],
-    },
+    state: { sorting, columnFilters, grouping, expanded, globalFilter },
     onSortingChange: setSorting,
+    onColumnFiltersChange: setColumnFilters,
+    onGroupingChange: setGrouping,
+    onExpandedChange: setExpanded,
     onGlobalFilterChange: setGlobalFilter,
+    getRowId: (row) => row.budget_code_key,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getGroupedRowModel: getGroupedRowModel(),
     getExpandedRowModel: getExpandedRowModel(),
     autoResetExpanded: false,
+    autoResetPageIndex: false,
     enableGlobalFilter: true,
   })
 
@@ -179,18 +197,9 @@ export function ForecastMonthlyMatrixTable({
   }
 
   const total = table.total_row
-  const stickyId = new Set(['cost_code', 'cost_type', 'projected_budget'])
-  const stickyStyle = (id: string, header: boolean) => {
-    if (!stickyId.has(id)) return undefined
-    return {
-      position: 'sticky' as const,
-      left: STICKY_LEFT[id as keyof typeof STICKY_LEFT],
-      zIndex: header ? 3 : 1,
-      minWidth:
-        id === 'cost_code' ? COST_CODE_W : id === 'cost_type' ? COST_TYPE_W : PROJECTED_W,
-      background: 'var(--hb-surface, #fff)',
-    }
-  }
+  const costCodeFilter = (reactTable.getColumn('cost_code')?.getFilterValue() as string) ?? ''
+  const costTypeFilter = (reactTable.getColumn('cost_type')?.getFilterValue() as string) ?? ''
+  const isGrouped = grouping.includes('cost_type')
 
   return (
     <div className="forecast-monthly-matrix">
@@ -208,7 +217,7 @@ export function ForecastMonthlyMatrixTable({
           aria-label="Filter by Cost Code"
           placeholder="Filter Cost Code"
           value={costCodeFilter}
-          onChange={(e) => setCostCodeFilter(e.target.value)}
+          onChange={(e) => reactTable.getColumn('cost_code')?.setFilterValue(e.target.value)}
           className="forecast-input"
         />
         <input
@@ -216,16 +225,16 @@ export function ForecastMonthlyMatrixTable({
           aria-label="Filter by Cost Type"
           placeholder="Filter Cost Type"
           value={costTypeFilter}
-          onChange={(e) => setCostTypeFilter(e.target.value)}
+          onChange={(e) => reactTable.getColumn('cost_type')?.setFilterValue(e.target.value)}
           className="forecast-input"
         />
         <label className="flex items-center gap-1.5 text-sm">
           <input
             type="checkbox"
-            checked={grouped}
+            checked={isGrouped}
             onChange={(e) => {
-              setGrouped(e.target.checked)
-              reactTable.toggleAllRowsExpanded(e.target.checked)
+              setGrouping(e.target.checked ? ['cost_type'] : [])
+              setExpanded(e.target.checked ? true : {})
             }}
           />
           Group by Cost Type
