@@ -372,6 +372,16 @@ describe('ForecastRunCenterPage project gating + context', () => {
     expect(text).not.toMatch(/\d{8}_\d{6}/)
     expect(text).not.toMatch(/\/Users\//)
   })
+
+  it('hides the Decision Support panel but keeps Forecast Explainability', () => {
+    installMock()
+    renderPage()
+    selectProject('tropical')
+    // Decision Support is deferred to a later Forecast Review redesign — not rendered here.
+    expect(screen.queryByText('Decision support')).not.toBeInTheDocument()
+    // Forecast Explainability (narratives) still renders for the selected project.
+    expect(screen.getByText('Forecast explainability')).toBeInTheDocument()
+  })
 })
 
 describe('ForecastRunCenterPage history modal', () => {
