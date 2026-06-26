@@ -1,0 +1,82 @@
+{
+  "payload": {
+    "activity_count": 3176,
+    "baseline_project_candidates": [],
+    "byte_count": 1947048,
+    "calendar_count": 3,
+    "capabilities": {
+      "activity_codes": "available",
+      "baseline_activity_crosswalk": "unavailable",
+      "baseline_activity_rows": "requires_companion_file",
+      "baseline_assignment": "available",
+      "baseline_drift": "unavailable",
+      "baseline_project_rows": "requires_companion_file",
+      "baseline_relationship_rows": "unavailable",
+      "bei": "unavailable",
+      "cost_loading": "partially_available",
+      "cost_schedule_correlation": "deferred",
+      "cpm_recalculation": "deferred",
+      "current_activities": "available",
+      "current_calendars": "available",
+      "current_relationships": "available",
+      "current_wbs": "available",
+      "explicit_free_float": "available",
+      "explicit_total_float": "available",
+      "missed_tasks": "unavailable",
+      "resource_assignments": "unavailable",
+      "source_critical_flags": "available",
+      "source_driving_path": "available",
+      "udfs": "unavailable",
+      "version_comparison": "available"
+    },
+    "code_count": 3428,
+    "cost_loaded_status": "not_cost_loaded",
+    "current_project_candidates": [
+      {
+        "activity_count": 3176,
+        "project_id": "6844",
+        "project_name": "Blue Lake 09-09-21",
+        "project_object_id": null,
+        "source_file_id": "pf-1-086972c2",
+        "source_format": "primavera_xer"
+      }
+    ],
+    "data_date": "2022-01-04 00:00",
+    "display_label": "Blue Lake 09-09-21",
+    "file_sha256": "db2167be6fecff4adf85d72aeb354de8f065b44b1e24cac2a7226d02ed997c5c",
+    "files": [
+      {
+        "detected_activities": 3176,
+        "detected_baseline_projects": 0,
+        "detected_projects": 1,
+        "detected_relationships": 5158,
+        "filename": "02022022_BL_BaseLine.xer",
+        "package_file_id": "pf-1-086972c2",
+        "parse_status": "parsed",
+        "source_format": "primavera_xer",
+        "warnings": []
+      }
+    ],
+    "import_id": "0e335b757c92",
+    "package_id": "pkg-22bc20287a77",
+    "package_mode": "single_file",
+    "planned_start": "2021-07-01 00:00",
+    "project_display_name": "Generic Schedule Manual Proof",
+    "project_key": "schedule-manual-proof",
+    "relationship_count": 5158,
+    "requires_column_mapping": false,
+    "schedule_name": "Blue Lake 09-09-21",
+    "scheduled_finish": "2023-10-06 17:00",
+    "source_filename": "02022022_BL_BaseLine.xer",
+    "source_format": "primavera_xer",
+    "source_project_id": "6844",
+    "source_project_name": "Blue Lake 09-09-21",
+    "source_project_short_name": "6844",
+    "source_type": "xer",
+    "udf_count": 0,
+    "validation_findings": [],
+    "warnings": [],
+    "wbs_count": 228
+  },
+  "status_code": 200
+}

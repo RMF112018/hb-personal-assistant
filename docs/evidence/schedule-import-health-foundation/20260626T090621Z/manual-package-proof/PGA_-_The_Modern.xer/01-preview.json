@@ -1,0 +1,82 @@
+{
+  "payload": {
+    "activity_count": 1081,
+    "baseline_project_candidates": [],
+    "byte_count": 623870,
+    "calendar_count": 2,
+    "capabilities": {
+      "activity_codes": "available",
+      "baseline_activity_crosswalk": "unavailable",
+      "baseline_activity_rows": "requires_companion_file",
+      "baseline_assignment": "available",
+      "baseline_drift": "unavailable",
+      "baseline_project_rows": "requires_companion_file",
+      "baseline_relationship_rows": "unavailable",
+      "bei": "unavailable",
+      "cost_loading": "partially_available",
+      "cost_schedule_correlation": "deferred",
+      "cpm_recalculation": "deferred",
+      "current_activities": "available",
+      "current_calendars": "available",
+      "current_relationships": "available",
+      "current_wbs": "available",
+      "explicit_free_float": "available",
+      "explicit_total_float": "available",
+      "missed_tasks": "unavailable",
+      "resource_assignments": "unavailable",
+      "source_critical_flags": "available",
+      "source_driving_path": "available",
+      "udfs": "unavailable",
+      "version_comparison": "available"
+    },
+    "code_count": 15,
+    "cost_loaded_status": "not_cost_loaded",
+    "current_project_candidates": [
+      {
+        "activity_count": 1081,
+        "project_id": "61340",
+        "project_name": "PGATM-B0-R2",
+        "project_object_id": null,
+        "source_file_id": "pf-1-ce3efd51",
+        "source_format": "primavera_xer"
+      }
+    ],
+    "data_date": "2020-01-01 00:00",
+    "display_label": "PGATM-B0-R2",
+    "file_sha256": "2959d45afd7567fe4d32154a2a19f60acae5c4d293bcb0f6ef56323cea9a8c1e",
+    "files": [
+      {
+        "detected_activities": 1081,
+        "detected_baseline_projects": 0,
+        "detected_projects": 1,
+        "detected_relationships": 1499,
+        "filename": "PGA - The Modern.xer",
+        "package_file_id": "pf-1-ce3efd51",
+        "parse_status": "parsed",
+        "source_format": "primavera_xer",
+        "warnings": []
+      }
+    ],
+    "import_id": "c4e9b97950e8",
+    "package_id": "pkg-a2216b0bc7fb",
+    "package_mode": "single_file",
+    "planned_start": "2025-12-15 00:00",
+    "project_display_name": "Generic Schedule Manual Proof",
+    "project_key": "schedule-manual-proof",
+    "relationship_count": 1499,
+    "requires_column_mapping": false,
+    "schedule_name": "PGATM-B0-R2",
+    "scheduled_finish": "2028-03-02 17:00",
+    "source_filename": "PGA - The Modern.xer",
+    "source_format": "primavera_xer",
+    "source_project_id": "61340",
+    "source_project_name": "PGATM-B0-R2",
+    "source_project_short_name": "61340",
+    "source_type": "xer",
+    "udf_count": 0,
+    "validation_findings": [],
+    "warnings": [],
+    "wbs_count": 87
+  },
+  "status_code": 200
+}

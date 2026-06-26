@@ -181,8 +181,11 @@ class ScheduleMappingRepository:
             return [dict(r) for r in cur.fetchall()]
 
     def insert_version_diff(self, row: dict[str, Any]) -> int:
-        cols = list(row.keys())
         with self._conn() as conn:
+            table_cols = {
+                r[1] for r in conn.execute("PRAGMA table_info(schedule_version_diffs)").fetchall()
+            }
+            cols = [c for c in row.keys() if c in table_cols]
             cur = conn.execute(
                 f"INSERT INTO schedule_version_diffs ({', '.join(cols)}) VALUES ({', '.join('?' for _ in cols)})",
                 tuple(row[c] for c in cols),

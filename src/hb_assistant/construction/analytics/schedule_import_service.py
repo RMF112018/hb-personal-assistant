@@ -5,9 +5,13 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import posixpath
 import sqlite3
 import uuid
+import zipfile
 from datetime import datetime, timezone
+from difflib import SequenceMatcher
+from io import BytesIO
 from typing import Any
 
 _logger = logging.getLogger(__name__)
@@ -25,6 +29,9 @@ from .schedule_dto import ScheduleImportPreviewDTO, ScheduleVersionSummaryDTO
 from .schedule_evidence import write_import_evidence
 from .schedule_file_parser import (
     ParsedScheduleBundle,
+    ParsedScheduleEntity,
+    ParsedScheduleFile,
+    ParsedSchedulePackage,
     ScheduleImportError,
     detect_source,
     safe_basename,
@@ -34,6 +41,8 @@ from .schedule_xml_parser import PARSER_VERSION as XML_VER
 from .schedule_xml_parser import parse_pmxml_bytes
 
 MAX_UPLOAD_BYTES = 50 * 1024 * 1024
+MAX_ZIP_DECOMPRESSED_BYTES = 150 * 1024 * 1024
+MAX_ZIP_FILES = 100
 
 # In-memory preview cache keyed by import_id (process-local; tests use single client).
 _PREVIEW_CACHE: dict[str, dict[str, Any]] = {}
@@ -173,6 +182,655 @@ class ScheduleImportService:
     def _sha256(data: bytes) -> str:
         return hashlib.sha256(data).hexdigest()
 
+    def _parse_package(
+        self,
+        *,
+        filename: str,
+        data: bytes,
+        column_roles: dict[str, str] | None,
+    ) -> ParsedSchedulePackage:
+        lower = safe_basename(filename).lower()
+        package_id = f"pkg-{uuid.uuid4().hex[:12]}"
+        if lower.endswith(".zip"):
+            files = self._read_zip_schedule_files(filename=filename, data=data)
+            package_mode = "zip_package"
+        else:
+            files = [(safe_basename(filename), data)]
+            package_mode = "single_file"
+
+        parsed_files: list[ParsedScheduleFile] = []
+        entities: list[ParsedScheduleEntity] = []
+        warnings: list[dict[str, Any]] = []
+        for idx, (member_name, member_data) in enumerate(files):
+            source_file_id = f"pf-{idx + 1}-{hashlib.sha256(member_name.encode()).hexdigest()[:8]}"
+            try:
+                source_type, source_format = detect_source(member_name, data=member_data)
+            except ScheduleImportError:
+                if package_mode == "single_file":
+                    raise
+                warnings.append(
+                    {
+                        "code": "unsupported_package_file_ignored",
+                        "filename": safe_basename(member_name),
+                        "message": "unsupported file ignored",
+                    }
+                )
+                continue
+            try:
+                if source_type == "xml" and source_format == "primavera_pmxml":
+                    from .schedule_xml_parser import parse_pmxml_package_bytes
+
+                    file_entities = parse_pmxml_package_bytes(
+                        member_data, source_file_id=source_file_id
+                    )
+                    parser_name, parser_version = XML_PARSER, XML_VER
+                else:
+                    bundle, parser_name, parser_version = self._parse_bundle(
+                        member_data,
+                        source_type=source_type,
+                        source_format=source_format,
+                        column_roles=column_roles,
+                    )
+                    file_entities = [
+                        ParsedScheduleEntity(
+                            role="current",
+                            source_format=source_format,
+                            source_file_id=source_file_id,
+                            project_object_id=bundle.procore_project_id,
+                            project_id=bundle.source_project_id or bundle.schedule_id,
+                            project_name=bundle.source_project_name or bundle.schedule_name,
+                            data_date=bundle.data_date,
+                            planned_start=bundle.planned_start,
+                            scheduled_finish=bundle.scheduled_finish,
+                            activities=bundle.activities,
+                            relationships=bundle.relationships,
+                            wbs_nodes=bundle.wbs_nodes,
+                            calendars=bundle.calendars,
+                            code_assignments=bundle.code_assignments,
+                            udf_values=bundle.udf_values,
+                            source_options=bundle.schedule_options,
+                            source_capabilities=bundle.source_capabilities,
+                            parser_coverage=(bundle.schedule_options or {}).get(
+                                "parser_coverage", {}
+                            ),
+                            warnings=[
+                                {"code": f.get("code"), "message": f.get("message")}
+                                for f in bundle.validation_findings
+                            ],
+                        )
+                    ]
+                detected_baselines = [e for e in file_entities if e.role == "baseline"]
+                parsed_files.append(
+                    ParsedScheduleFile(
+                        source_file_id=source_file_id,
+                        filename=safe_basename(member_name),
+                        source_type=source_type,
+                        source_format=source_format,
+                        source_vendor="primavera" if source_format.startswith("primavera") else None,
+                        file_role="current_candidate"
+                        if any(e.role == "current" for e in file_entities)
+                        else "baseline_candidate",
+                        byte_size=len(member_data),
+                        sha256=self._sha256(member_data),
+                        parser_name=parser_name,
+                        parser_version=parser_version,
+                        parser_coverage=_merge_coverage(file_entities),
+                        detected_project_count=sum(1 for e in file_entities if e.role == "current"),
+                        detected_activity_count=sum(len(e.activities) for e in file_entities),
+                        detected_relationship_count=sum(len(e.relationships) for e in file_entities),
+                        detected_baseline_project_count=len(detected_baselines),
+                        warnings=[w for e in file_entities for w in e.warnings],
+                    )
+                )
+                entities.extend(file_entities)
+            except ScheduleImportError as exc:
+                if package_mode == "single_file":
+                    raise
+                parsed_files.append(
+                    ParsedScheduleFile(
+                        source_file_id=source_file_id,
+                        filename=safe_basename(member_name),
+                        source_type=source_type,
+                        source_format=source_format,
+                        byte_size=len(member_data),
+                        sha256=self._sha256(member_data),
+                        parse_status="failed",
+                        warnings=[{"code": exc.code, "message": str(exc)}],
+                    )
+                )
+                warnings.append({"code": exc.code, "filename": member_name, "message": str(exc)})
+
+        if not parsed_files or not any(f.parse_status == "parsed" for f in parsed_files):
+            raise ScheduleImportError(
+                "schedule_package_no_valid_files",
+                message="package contained no valid schedule-bearing files",
+                payload={"warnings": warnings},
+            )
+
+        selected = self._select_current_entity(entities)
+        baselines = [e for e in entities if e.role == "baseline"]
+        package = ParsedSchedulePackage(
+            package_id=package_id,
+            package_mode=package_mode,
+            files=parsed_files,
+            schedule_entities=entities,
+            selected_current_entity=selected,
+            baseline_entities=baselines,
+            warnings=warnings,
+        )
+        package.package_capabilities = self._compute_capabilities(package)
+        package.manifest = self._manifest(package)
+        return package
+
+    def _read_zip_schedule_files(self, *, filename: str, data: bytes) -> list[tuple[str, bytes]]:
+        del filename
+        try:
+            zf = zipfile.ZipFile(BytesIO(data))
+        except zipfile.BadZipFile as exc:
+            raise ScheduleImportError("schedule_zip_invalid", message="invalid zip package") from exc
+        out: list[tuple[str, bytes]] = []
+        total = 0
+        infos = zf.infolist()
+        if len(infos) > MAX_ZIP_FILES:
+            raise ScheduleImportError("schedule_zip_too_many_files", message="zip package has too many files")
+        for info in infos:
+            name = info.filename
+            normalized = posixpath.normpath(name)
+            if info.is_dir():
+                continue
+            if normalized.startswith("../") or normalized == ".." or normalized.startswith("/"):
+                raise ScheduleImportError("schedule_zip_unsafe_path", message="zip contains unsafe path")
+            if lower_name := safe_basename(normalized).lower():
+                if lower_name.endswith(".zip"):
+                    raise ScheduleImportError(
+                        "schedule_zip_nested_archive",
+                        message="nested archives are not supported",
+                    )
+            total += int(info.file_size or 0)
+            if total > MAX_ZIP_DECOMPRESSED_BYTES:
+                raise ScheduleImportError(
+                    "schedule_zip_too_large",
+                    message="zip package decompressed size exceeds limit",
+                )
+            try:
+                out.append((safe_basename(normalized), zf.read(info)))
+            except RuntimeError as exc:
+                raise ScheduleImportError("schedule_zip_read_failed", message="could not read zip member") from exc
+        return out
+
+    @staticmethod
+    def _select_current_entity(entities: list[ParsedScheduleEntity]) -> ParsedScheduleEntity | None:
+        current = [e for e in entities if e.role == "current" and e.activities]
+        if not current:
+            return None
+        # XER is the stronger source for current float/source-critical/source-option evidence.
+        xer = [e for e in current if e.source_format == "primavera_xer"]
+        if xer:
+            return max(xer, key=lambda e: (len(e.activities), e.data_date or ""))
+        return max(current, key=lambda e: (len(e.activities), e.data_date or ""))
+
+    @staticmethod
+    def _selected_file(package: ParsedSchedulePackage) -> ParsedScheduleFile:
+        selected = package.selected_current_entity
+        for file in package.files:
+            if selected and file.source_file_id == selected.source_file_id:
+                return file
+        return package.files[0]
+
+    @staticmethod
+    def _preview_package_payload(package: ParsedSchedulePackage) -> dict[str, Any]:
+        return {
+            "package_id": package.package_id,
+            "package_mode": package.package_mode,
+            "files": [
+                {
+                    "package_file_id": f.source_file_id,
+                    "filename": f.filename,
+                    "source_format": f.source_format,
+                    "parse_status": f.parse_status,
+                    "detected_projects": f.detected_project_count,
+                    "detected_baseline_projects": f.detected_baseline_project_count,
+                    "detected_activities": f.detected_activity_count,
+                    "detected_relationships": f.detected_relationship_count,
+                    "warnings": f.warnings,
+                }
+                for f in package.files
+            ],
+            "current_project_candidates": [
+                {
+                    "source_file_id": e.source_file_id,
+                    "project_object_id": e.project_object_id,
+                    "project_id": e.project_id,
+                    "project_name": e.project_name,
+                    "activity_count": len(e.activities),
+                    "source_format": e.source_format,
+                }
+                for e in package.schedule_entities
+                if e.role == "current"
+            ],
+            "baseline_project_candidates": [
+                {
+                    "source_file_id": e.source_file_id,
+                    "project_object_id": e.project_object_id,
+                    "project_id": e.project_id,
+                    "project_name": e.project_name,
+                    "activity_count": len(e.activities),
+                    "source_format": e.source_format,
+                }
+                for e in package.baseline_entities
+            ],
+            "capabilities": package.package_capabilities,
+            "warnings": package.warnings,
+        }
+
+    @staticmethod
+    def _manifest(package: ParsedSchedulePackage) -> dict[str, Any]:
+        selected = package.selected_current_entity
+        formats = sorted({f.source_format for f in package.files if f.source_format})
+        return {
+            "package_id": package.package_id,
+            "package_mode": package.package_mode,
+            "detected_source_formats": formats,
+            "selected_current_project_object_id": selected.project_object_id if selected else None,
+            "selected_current_project_id": selected.project_id if selected else None,
+            "selected_current_project_name": selected.project_name if selected else None,
+            "field_family_source_precedence": {
+                "current_float": "primavera_xer" if "primavera_xer" in formats else "selected_current",
+                "source_critical": "primavera_xer" if "primavera_xer" in formats else "selected_current",
+                "source_options": "primavera_xer" if "primavera_xer" in formats else "selected_current",
+                "baseline_entities": "primavera_pmxml"
+                if any(e.source_format == "primavera_pmxml" for e in package.baseline_entities)
+                else "unavailable",
+            },
+        }
+
+    @staticmethod
+    def _compute_capabilities(package: ParsedSchedulePackage) -> dict[str, Any]:
+        selected = package.selected_current_entity
+        formats = {f.source_format for f in package.files if f.parse_status == "parsed"}
+        has_current = selected is not None and bool(selected.activities)
+        has_rels = selected is not None and bool(selected.relationships)
+        has_baseline_rows = any(e.activities for e in package.baseline_entities)
+        has_xer = "primavera_xer" in formats
+        has_xml = "primavera_pmxml" in formats
+        caps: dict[str, str] = {
+            "current_activities": "available" if has_current else "unavailable",
+            "current_relationships": "available" if has_rels else "unavailable",
+            "current_wbs": "available" if selected and selected.wbs_nodes else "unavailable",
+            "current_calendars": "available" if selected and selected.calendars else "unavailable",
+            "activity_codes": "available" if selected and selected.code_assignments else "unavailable",
+            "udfs": "available" if selected and selected.udf_values else "unavailable",
+            "explicit_total_float": "available" if has_xer else "partially_available" if has_xml else "unavailable",
+            "explicit_free_float": "available" if has_xer else "partially_available" if has_xml else "unavailable",
+            "source_driving_path": "available" if has_xer else "requires_companion_file",
+            "source_critical_flags": "available" if has_xer else "partially_available" if has_xml else "unavailable",
+            "cpm_recalculation": "deferred",
+            "baseline_assignment": "available" if has_xer or has_baseline_rows else "unavailable",
+            "baseline_project_rows": "available" if package.baseline_entities else "requires_companion_file" if has_xer else "unavailable",
+            "baseline_activity_rows": "available" if has_baseline_rows else "requires_companion_file" if has_xer else "unavailable",
+            "baseline_relationship_rows": "available"
+            if any(e.relationships for e in package.baseline_entities)
+            else "unavailable",
+            "baseline_activity_crosswalk": "available" if has_baseline_rows and has_current else "unavailable",
+            "baseline_drift": "available" if has_baseline_rows and has_current else "unavailable",
+            "bei": "available" if has_baseline_rows and has_current else "unavailable",
+            "missed_tasks": "available" if has_baseline_rows and has_current else "unavailable",
+            "resource_assignments": "unavailable",
+            "cost_loading": "partially_available" if selected and selected.activities else "unavailable",
+            "version_comparison": "available",
+            "cost_schedule_correlation": "deferred",
+        }
+        return caps
+
+    def _persist_package_foundation(
+        self,
+        *,
+        package: ParsedSchedulePackage,
+        import_id: str,
+        project_key: str,
+        version_key: str,
+        current_entity: ParsedScheduleEntity | None,
+        committed_at: str,
+        activity_rows: list[dict[str, Any]],
+        conn: sqlite3.Connection,
+    ) -> None:
+        manifest = self._manifest(package)
+        package_row = {
+            "package_id": package.package_id,
+            "project_key": project_key,
+            "import_id": import_id,
+            "package_mode": package.package_mode,
+            "selected_current_schedule_version_key": version_key,
+            "selected_current_project_object_id": current_entity.project_object_id if current_entity else None,
+            "selected_current_project_id": current_entity.project_id if current_entity else None,
+            "selected_current_project_name": current_entity.project_name if current_entity else None,
+            "status": "committed",
+            "committed_at": committed_at,
+            "manifest_json": json.dumps(manifest, sort_keys=True, default=str),
+        }
+        file_rows = [
+            {
+                "package_file_id": f.source_file_id,
+                "package_id": package.package_id,
+                "import_id": import_id,
+                "filename": f.filename,
+                "source_format": f.source_format,
+                "source_vendor": f.source_vendor,
+                "file_role": f.file_role,
+                "sha256": f.sha256,
+                "byte_size": f.byte_size,
+                "parse_status": f.parse_status,
+                "parser_name": f.parser_name,
+                "parser_version": f.parser_version,
+                "detected_project_count": f.detected_project_count,
+                "detected_baseline_project_count": f.detected_baseline_project_count,
+                "detected_activity_count": f.detected_activity_count,
+                "detected_relationship_count": f.detected_relationship_count,
+                "coverage_json": json.dumps(f.parser_coverage, sort_keys=True, default=str),
+                "warnings_json": json.dumps(f.warnings, sort_keys=True, default=str),
+            }
+            for f in package.files
+        ]
+        capability_rows = self._capability_rows(
+            package=package,
+            schedule_version_key=version_key,
+        )
+        self._import_repo.insert_schedule_package(
+            package_row,
+            files=file_rows,
+            capabilities=capability_rows,
+            conn=conn,
+        )
+        baseline_payload = self._baseline_payload(
+            package=package,
+            import_id=import_id,
+            version_key=version_key,
+            current_entity=current_entity,
+            current_activity_rows=activity_rows,
+        )
+        self._import_repo.insert_baseline_evidence(**baseline_payload, conn=conn)
+
+    @staticmethod
+    def _capability_rows(
+        *,
+        package: ParsedSchedulePackage,
+        schedule_version_key: str,
+    ) -> list[dict[str, Any]]:
+        rows = []
+        for key, status in package.package_capabilities.items():
+            rows.append(
+                {
+                    "capability_id": f"cap-{package.package_id}-{key}",
+                    "package_id": package.package_id,
+                    "schedule_version_key": schedule_version_key,
+                    "source_format": None,
+                    "capability_key": key,
+                    "capability_status": status,
+                    "source_file_id": None,
+                    "basis": "package_manifest",
+                    "unavailable_reason": None
+                    if status in {"available", "partially_available"}
+                    else status,
+                    "recommended_action": _recommended_action(key, status),
+                    "evidence_json": json.dumps(package.manifest, sort_keys=True, default=str),
+                }
+            )
+        return rows
+
+    def _baseline_payload(
+        self,
+        *,
+        package: ParsedSchedulePackage,
+        import_id: str,
+        version_key: str,
+        current_entity: ParsedScheduleEntity | None,
+        current_activity_rows: list[dict[str, Any]],
+    ) -> dict[str, list[dict[str, Any]]]:
+        projects: list[dict[str, Any]] = []
+        activities: list[dict[str, Any]] = []
+        relationships: list[dict[str, Any]] = []
+        wbs_rows: list[dict[str, Any]] = []
+        code_rows: list[dict[str, Any]] = []
+        udf_rows: list[dict[str, Any]] = []
+        crosswalks: list[dict[str, Any]] = []
+        health_facts: list[dict[str, Any]] = []
+
+        current_by_id = {
+            str(a.get("activity_id")): a
+            for a in current_activity_rows
+            if a.get("activity_id")
+        }
+        for index, baseline in enumerate(package.baseline_entities, start=1):
+            baseline_project_key = (
+                f"bl-{package.package_id}-{baseline.project_object_id or baseline.project_id or index}"
+            )
+            projects.append(
+                {
+                    "baseline_project_key": baseline_project_key,
+                    "package_id": package.package_id,
+                    "import_id": import_id,
+                    "current_schedule_version_key": version_key,
+                    "current_project_object_id": current_entity.project_object_id
+                    if current_entity
+                    else None,
+                    "baseline_project_object_id": baseline.project_object_id,
+                    "baseline_project_id": baseline.project_id,
+                    "baseline_project_name": baseline.project_name,
+                    "original_project_object_id": baseline.original_project_object_id,
+                    "baseline_type_object_id": baseline.baseline_type_object_id,
+                    "baseline_type_name": baseline.baseline_type_name,
+                    "baseline_data_date": baseline.data_date,
+                    "planned_start": baseline.planned_start,
+                    "scheduled_finish": baseline.scheduled_finish,
+                    "source_format": baseline.source_format,
+                    "source_file_id": baseline.source_file_id,
+                    "activity_count": len(baseline.activities),
+                    "relationship_count": len(baseline.relationships),
+                    "wbs_count": len(baseline.wbs_nodes),
+                    "raw_metadata_json": json.dumps(
+                        {
+                            "project_object_id": baseline.project_object_id,
+                            "project_id": baseline.project_id,
+                            "project_name": baseline.project_name,
+                            "parser_coverage": baseline.parser_coverage,
+                        },
+                        sort_keys=True,
+                        default=str,
+                    ),
+                }
+            )
+            for act in baseline.activities:
+                activities.append(
+                    {
+                        "baseline_project_key": baseline_project_key,
+                        "package_id": package.package_id,
+                        "import_id": import_id,
+                        "current_schedule_version_key": version_key,
+                        "baseline_project_object_id": baseline.project_object_id,
+                        "activity_id": act.get("activity_id"),
+                        "source_activity_object_id": act.get("source_activity_object_id"),
+                        "activity_name": act.get("activity_name"),
+                        "activity_type": act.get("activity_type"),
+                        "activity_status": act.get("activity_status"),
+                        "wbs_id": act.get("wbs_id"),
+                        "wbs_code": act.get("wbs_code"),
+                        "wbs_path": act.get("wbs_path"),
+                        "calendar_id": act.get("calendar_id"),
+                        "planned_start": act.get("planned_start"),
+                        "planned_finish": act.get("planned_finish"),
+                        "start_date": act.get("start_date"),
+                        "finish_date": act.get("finish_date"),
+                        "actual_start": act.get("actual_start"),
+                        "actual_finish": act.get("actual_finish"),
+                        "remaining_early_start": act.get("remaining_early_start"),
+                        "remaining_early_finish": act.get("remaining_early_finish"),
+                        "remaining_late_start": act.get("remaining_late_start"),
+                        "remaining_late_finish": act.get("remaining_late_finish"),
+                        "early_start": act.get("early_start"),
+                        "early_finish": act.get("early_finish"),
+                        "late_start": act.get("late_start"),
+                        "late_finish": act.get("late_finish"),
+                        "duration_original": _str_or_none(act.get("duration_original")),
+                        "duration_remaining": _str_or_none(act.get("duration_remaining")),
+                        "duration_actual": _str_or_none(act.get("duration_actual")),
+                        "percent_complete": _str_or_none(act.get("percent_complete")),
+                        "physical_percent_complete": _str_or_none(act.get("physical_percent_complete")),
+                        "duration_percent_complete": _str_or_none(act.get("duration_percent_complete")),
+                        "constraint_type": act.get("constraint_type"),
+                        "constraint_date": act.get("constraint_date"),
+                        "secondary_constraint_type": act.get("secondary_constraint_type"),
+                        "secondary_constraint_date": act.get("secondary_constraint_date"),
+                        "deadline_date": act.get("deadline_date"),
+                        "is_critical": act.get("is_critical"),
+                        "is_longest_path": act.get("is_longest_path"),
+                        "total_float": _str_or_none(act.get("total_float")),
+                        "free_float": _str_or_none(act.get("free_float")),
+                        "cost_code": act.get("cost_code"),
+                        "cost_loaded_amount": _str_or_none(act.get("cost_loaded_amount")),
+                        "cost_loaded_source_type": act.get("cost_loaded_source_type"),
+                        "raw_source_fields_json": json.dumps(act, sort_keys=True, default=str),
+                        "source_row_hash": act.get("source_row_hash"),
+                    }
+                )
+            for rel in baseline.relationships:
+                relationships.append(
+                    {
+                        "baseline_project_key": baseline_project_key,
+                        "package_id": package.package_id,
+                        "import_id": import_id,
+                        "current_schedule_version_key": version_key,
+                        "baseline_project_object_id": baseline.project_object_id,
+                        "predecessor_activity_id": rel.get("predecessor_activity_id"),
+                        "successor_activity_id": rel.get("successor_activity_id"),
+                        "relationship_type": rel.get("relationship_type"),
+                        "lag_value": rel.get("lag_value"),
+                        "lag_unit": rel.get("lag_unit"),
+                        "source_relationship_object_id": rel.get("source_relationship_object_id"),
+                        "raw_source_fields_json": json.dumps(rel, sort_keys=True, default=str),
+                        "source_row_hash": rel.get("source_row_hash"),
+                    }
+                )
+            wbs_rows.extend(
+                [{"baseline_project_key": baseline_project_key, **w} for w in baseline.wbs_nodes]
+            )
+            code_rows.extend(
+                [{"baseline_project_key": baseline_project_key, **c} for c in baseline.code_assignments]
+            )
+            udf_rows.extend(
+                [{"baseline_project_key": baseline_project_key, **u} for u in baseline.udf_values]
+            )
+            cw = _build_crosswalk(
+                version_key=version_key,
+                baseline_project_key=baseline_project_key,
+                current_by_id=current_by_id,
+                baseline_activities=baseline.activities,
+            )
+            crosswalks.extend(cw)
+            health_facts.extend(
+                _baseline_health_facts(
+                    version_key=version_key,
+                    baseline_project_key=baseline_project_key,
+                    current_count=len(current_by_id),
+                    baseline=baseline,
+                    crosswalks=cw,
+                )
+            )
+        return {
+            "baseline_projects": projects,
+            "baseline_activities": activities,
+            "baseline_relationships": relationships,
+            "baseline_wbs": wbs_rows,
+            "baseline_codes": code_rows,
+            "baseline_udfs": udf_rows,
+            "crosswalks": crosswalks,
+            "health_facts": health_facts,
+        }
+
+    def _compute_default_version_diff_best_effort(
+        self,
+        *,
+        project_key: str,
+        version_key: str,
+        package_id: str | None,
+    ) -> int | None:
+        try:
+            versions = self._activity_repo.list_versions(project_key)
+            prior = next(
+                (
+                    v
+                    for v in versions
+                    if v.get("schedule_version_key") and v.get("schedule_version_key") != version_key
+                ),
+                None,
+            )
+            if prior is None:
+                self._persist_diff_capability(
+                    package_id=package_id,
+                    version_key=version_key,
+                    status="unavailable",
+                    reason="no_prior_version",
+                )
+                return None
+            from_version = str(prior["schedule_version_key"])
+            read = ScheduleReadService(db_path=self._db_path)
+            from_acts = read.list_activities(from_version, for_diff=True)
+            to_acts = read.list_activities(version_key, for_diff=True)
+            from_rels = read.list_relationships(from_version)
+            to_rels = read.list_relationships(version_key)
+            from .schedule_version_diff import compute_version_diff
+
+            diff = compute_version_diff(
+                project_key=project_key,
+                from_version=from_version,
+                to_version=version_key,
+                from_activities=from_acts,
+                to_activities=to_acts,
+                from_relationships=from_rels,
+                to_relationships=to_rels,
+            )
+            diff_id = self._mapping_repo.insert_version_diff(diff)
+            self._import_repo.insert_diff_facts(_diff_fact_rows(diff_id, diff))
+            return diff_id
+        except Exception as exc:  # best-effort: valid imports must not roll back
+            _logger.warning(
+                "default schedule version diff failed project_key=%s version_key=%s",
+                project_key,
+                version_key,
+                exc_info=True,
+            )
+            self._persist_diff_capability(
+                package_id=package_id,
+                version_key=version_key,
+                status="unavailable",
+                reason=type(exc).__name__,
+            )
+            return None
+
+    def _persist_diff_capability(
+        self,
+        *,
+        package_id: str | None,
+        version_key: str,
+        status: str,
+        reason: str,
+    ) -> None:
+        if not package_id:
+            return
+        self._import_repo.insert_capabilities(
+            [
+                {
+                    "capability_id": f"cap-{package_id}-default_version_diff",
+                    "package_id": package_id,
+                    "schedule_version_key": version_key,
+                    "capability_key": "default_version_diff",
+                    "capability_status": status,
+                    "basis": "best_effort_commit_diff",
+                    "unavailable_reason": reason,
+                    "evidence_json": json.dumps({"reason": reason}, sort_keys=True),
+                }
+            ],
+        )
+
     def preview_bytes(
         self,
         *,
@@ -193,13 +851,23 @@ class ScheduleImportService:
             raise ScheduleImportError("schedule_import_invalid", message="empty upload payload")
 
         basename = safe_basename(filename)
-        source_type, source_format = detect_source(basename, data=data)
-        bundle, parser_name, parser_version = self._parse_bundle(
-            data,
-            source_type=source_type,
-            source_format=source_format,
+        package = self._parse_package(
+            filename=basename,
+            data=data,
             column_roles=column_roles,
         )
+        if package.selected_current_entity is None:
+            raise ScheduleImportError(
+                "schedule_current_project_required",
+                message="schedule package did not contain a selectable current schedule",
+                payload={"warnings": package.warnings},
+            )
+        bundle = package.selected_current_entity.to_bundle()
+        selected_file = self._selected_file(package)
+        source_type = selected_file.source_type
+        source_format = selected_file.source_format
+        parser_name = selected_file.parser_name or ""
+        parser_version = selected_file.parser_version or ""
         bundle.source_capabilities = dict(
             (bundle.schedule_options or {}).get("source_capabilities") or {}
         )
@@ -245,6 +913,7 @@ class ScheduleImportService:
             "confirm_supersede": bool(confirm_supersede),
             "schedule_version_key": version_key,
             "duplicate_exists": duplicate_exists,
+            "package": package,
         }
 
         from .schedule_project_catalog import ScheduleProjectCatalog
@@ -277,7 +946,9 @@ class ScheduleImportService:
             source_project_name=bundle.source_project_name,
             source_project_short_name=bundle.source_project_short_name,
         )
-        return dto.public()
+        out = dto.public()
+        out.update(self._preview_package_payload(package))
+        return out
 
     def commit(
         self,
@@ -315,6 +986,7 @@ class ScheduleImportService:
             )
 
         bundle: ParsedScheduleBundle = cached["bundle"]
+        package: ParsedSchedulePackage | None = cached.get("package")
         if cached["source_type"] == "csv":
             if not column_roles and not cached.get("column_roles"):
                 raise ScheduleImportError(
@@ -478,6 +1150,17 @@ class ScheduleImportService:
                         conn=conn,
                         activity_rows=activity_rows,
                     )
+                    if package is not None:
+                        self._persist_package_foundation(
+                            package=package,
+                            import_id=import_id,
+                            project_key=project_key,
+                            version_key=version_key,
+                            current_entity=package.selected_current_entity,
+                            committed_at=now,
+                            activity_rows=activity_rows,
+                            conn=conn,
+                        )
             finally:
                 conn.close()
         except sqlite3.IntegrityError as exc:
@@ -526,6 +1209,12 @@ class ScheduleImportService:
         )
         poll_and_process(db_path=self._db_path, limit=1)
 
+        default_diff_id = self._compute_default_version_diff_best_effort(
+            project_key=project_key,
+            version_key=version_key,
+            package_id=package.package_id if package else None,
+        )
+
         _PREVIEW_CACHE.pop(import_id, None)
         from .schedule_project_catalog import ScheduleProjectCatalog
 
@@ -542,6 +1231,14 @@ class ScheduleImportService:
             "committed_at": now,
             "superseded_import_id": superseded_import_id,
             "supersede_performed": superseded_import_id is not None,
+            "package_id": package.package_id if package else None,
+            "package_mode": package.package_mode if package else "single_file",
+            "capability_summary": package.package_capabilities if package else {},
+            "baseline_project_count": len(package.baseline_entities) if package else 0,
+            "baseline_activity_count": sum(len(e.activities) for e in package.baseline_entities)
+            if package
+            else 0,
+            "default_diff_id": default_diff_id,
         }
 
     @staticmethod
@@ -885,12 +1582,224 @@ def _sha256(text: str) -> str:
     return hashlib.sha256(text.encode()).hexdigest()
 
 
+def _merge_coverage(entities: list[ParsedScheduleEntity]) -> dict[str, Any]:
+    out: dict[str, Any] = {
+        "detected_project_count": sum(1 for e in entities if e.role == "current"),
+        "detected_baseline_project_count": sum(1 for e in entities if e.role == "baseline"),
+        "detected_activity_count": sum(len(e.activities) for e in entities),
+        "detected_relationship_count": sum(len(e.relationships) for e in entities),
+    }
+    for entity in entities:
+        for key, value in (entity.parser_coverage or {}).items():
+            if key not in out:
+                out[key] = value
+    return out
+
+
+def _recommended_action(key: str, status: str) -> str | None:
+    if status in {"available", "partially_available", "not_applicable"}:
+        return None
+    if key.startswith("baseline"):
+        return "Upload P6 XML export with baseline projects included."
+    if key in {"explicit_total_float", "explicit_free_float", "source_driving_path"}:
+        return "Upload companion XER to improve source float and critical-path analytics."
+    if key == "cost_schedule_correlation":
+        return "Deferred until cost/schedule correlation is implemented."
+    return None
+
+
+def _str_or_none(value: Any) -> str | None:
+    return str(value) if value is not None else None
+
+
+def _norm(value: Any) -> str:
+    return "".join(ch for ch in str(value or "").lower() if ch.isalnum())
+
+
+def _build_crosswalk(
+    *,
+    version_key: str,
+    baseline_project_key: str,
+    current_by_id: dict[str, dict[str, Any]],
+    baseline_activities: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    current_by_norm_name = {
+        (_norm(a.get("activity_name")), _norm(a.get("wbs_code") or a.get("wbs_path"))): a
+        for a in current_by_id.values()
+        if a.get("activity_name")
+    }
+    for baseline in baseline_activities:
+        baseline_id = str(baseline.get("activity_id") or "")
+        current = current_by_id.get(baseline_id)
+        method = "exact_activity_id"
+        confidence = 1.0
+        review_required = False
+        if current is None:
+            key = (
+                _norm(baseline.get("activity_name")),
+                _norm(baseline.get("wbs_code") or baseline.get("wbs_path")),
+            )
+            current = current_by_norm_name.get(key)
+            method = "exact_activity_name_and_wbs"
+            confidence = 0.90
+        if current is None and baseline.get("activity_name"):
+            best: tuple[float, dict[str, Any] | None] = (0.0, None)
+            for candidate in current_by_id.values():
+                ratio = SequenceMatcher(
+                    None,
+                    _norm(baseline.get("activity_name")),
+                    _norm(candidate.get("activity_name")),
+                ).ratio()
+                if ratio > best[0]:
+                    best = (ratio, candidate)
+            if best[1] is not None and best[0] >= 0.75:
+                current = best[1]
+                method = "fuzzy_name"
+                confidence = round(best[0], 4)
+                review_required = True
+        if current is None:
+            continue
+        rows.append(
+            {
+                "crosswalk_id": _sha256(f"{version_key}|{baseline_project_key}|{baseline_id}"),
+                "current_schedule_version_key": version_key,
+                "baseline_project_key": baseline_project_key,
+                "current_activity_id": current.get("activity_id"),
+                "baseline_activity_id": baseline.get("activity_id"),
+                "current_activity_object_id": current.get("source_activity_object_id"),
+                "baseline_activity_object_id": baseline.get("source_activity_object_id"),
+                "match_method": method,
+                "match_confidence": str(confidence),
+                "name_similarity": str(confidence) if "name" in method else None,
+                "wbs_match": 1
+                if _norm(current.get("wbs_code") or current.get("wbs_path"))
+                == _norm(baseline.get("wbs_code") or baseline.get("wbs_path"))
+                else 0,
+                "duration_match": 1
+                if _str_or_none(current.get("duration_original"))
+                == _str_or_none(baseline.get("duration_original"))
+                else 0,
+                "date_proximity_score": None,
+                "review_required": 1 if review_required else 0,
+                "review_status": "review_required" if review_required else "accepted",
+                "evidence_json": json.dumps(
+                    {
+                        "current_name": current.get("activity_name"),
+                        "baseline_name": baseline.get("activity_name"),
+                    },
+                    sort_keys=True,
+                    default=str,
+                ),
+            }
+        )
+    return rows
+
+
+def _baseline_health_facts(
+    *,
+    version_key: str,
+    baseline_project_key: str,
+    current_count: int,
+    baseline: ParsedScheduleEntity,
+    crosswalks: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    matched = len(crosswalks)
+    facts = {
+        "baseline_activity_count": (len(baseline.activities), "available"),
+        "current_activity_count": (current_count, "available"),
+        "matched_activity_count": (matched, "available" if matched else "requires_user_mapping"),
+        "unmatched_current_activity_count": (max(current_count - matched, 0), "available"),
+        "unmatched_baseline_activity_count": (
+            max(len(baseline.activities) - matched, 0),
+            "available",
+        ),
+        "baseline_relationship_count": (len(baseline.relationships), "available"),
+        "baseline_drift_status": (
+            "measurable_by_crosswalk" if matched else "requires_user_mapping",
+            "available" if matched else "requires_user_mapping",
+        ),
+        "baseline_bei_status": (
+            "requires_status_date_and_accepted_crosswalk" if matched else "requires_user_mapping",
+            "requires_user_mapping" if not matched else "partially_available",
+        ),
+        "baseline_missed_tasks_status": (
+            "requires_status_date_and_accepted_crosswalk" if matched else "requires_user_mapping",
+            "requires_user_mapping" if not matched else "partially_available",
+        ),
+    }
+    rows: list[dict[str, Any]] = []
+    for key, (value, status) in facts.items():
+        rows.append(
+            {
+                "fact_id": _sha256(f"{version_key}|{baseline_project_key}|{key}"),
+                "current_schedule_version_key": version_key,
+                "baseline_project_key": baseline_project_key,
+                "metric_key": key,
+                "metric_value": str(value),
+                "metric_unit": "count" if str(key).endswith("_count") else None,
+                "status": status,
+                "basis": "baseline_crosswalk" if matched else "baseline_rows_only",
+                "evidence_json": json.dumps(
+                    {
+                        "baseline_project_id": baseline.project_id,
+                        "baseline_project_name": baseline.project_name,
+                        "matched_activity_count": matched,
+                    },
+                    sort_keys=True,
+                    default=str,
+                ),
+            }
+        )
+    return rows
+
+
+def _diff_fact_rows(diff_id: int, diff: dict[str, Any]) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    metric_keys = [
+        "activity_added_count",
+        "activity_removed_count",
+        "activity_changed_count",
+        "finish_drift_mean_days",
+        "finish_drift_median_days",
+        "finish_drift_max_days",
+        "start_drift_mean_days",
+        "relationship_added_count",
+        "relationship_removed_count",
+        "relationship_type_changed_count",
+        "lag_changed_count",
+        "logic_churn_rate",
+        "wbs_churn_count",
+        "calendar_churn_count",
+        "code_churn_count",
+        "constraint_changed_count",
+    ]
+    for key in metric_keys:
+        rows.append(
+            {
+                "diff_fact_id": _sha256(f"{diff_id}|{key}"),
+                "diff_id": diff_id,
+                "project_key": diff["project_key"],
+                "from_schedule_version_key": diff.get("from_schedule_version_key"),
+                "to_schedule_version_key": diff["to_schedule_version_key"],
+                "metric_key": key,
+                "metric_value": _str_or_none(diff.get(key)),
+                "metric_unit": "days" if key.endswith("_days") else "count" if key.endswith("_count") else None,
+                "status": "available" if diff.get(key) is not None else "unavailable",
+                "basis": "activity_id_aligned",
+                "evidence_json": diff.get("summary_json"),
+            }
+        )
+    return rows
+
+
 class ScheduleReadService:
     """Read-only schedule intelligence queries."""
 
     def __init__(self, *, db_path: str) -> None:
         self._db_path = db_path
         self._activity_repo = ScheduleActivityRepository(db_path=db_path)
+        self._import_repo = ScheduleImportRepository(db_path=db_path)
         self._mapping_repo = ScheduleMappingRepository(db_path=db_path)
         from hb_assistant.store.schedule_quality_repository import ScheduleQualityRepository
 
@@ -1014,3 +1923,37 @@ class ScheduleReadService:
     def list_quality(self, schedule_version_key: str) -> list[dict[str, Any]]:
         self._ensure_schema()
         return self._mapping_repo.list_quality_findings(schedule_version_key)
+
+    def get_health_data(self, schedule_version_key: str) -> dict[str, Any] | None:
+        self._ensure_schema()
+        summary = self.get_summary(schedule_version_key)
+        if summary is None:
+            return None
+        package = self._import_repo.get_package_for_version(schedule_version_key)
+        capabilities = self._import_repo.list_capabilities(schedule_version_key)
+        baselines = self._import_repo.list_baseline_projects(schedule_version_key)
+        baseline_facts = self._import_repo.list_baseline_health_facts(schedule_version_key)
+        diff_facts = self._import_repo.list_diff_facts(schedule_version_key)
+        run = self._quality_repo.get_latest_run(schedule_version_key) or self._quality_repo.get_pending_run(
+            schedule_version_key
+        )
+        scorecard = self._quality_repo.get_latest_scorecard(schedule_version_key) if run else None
+        return {
+            "schedule_version_key": schedule_version_key,
+            "project_key": summary.get("project_key"),
+            "current_schedule": summary,
+            "import_package": package or {},
+            "capabilities": capabilities,
+            "quality_summary": {
+                "status": run.get("status") if run else "not_evaluated",
+                "evaluation_run_id": run.get("evaluation_run_id") if run else None,
+                "scorecard": scorecard or {},
+            },
+            "default_prior_version": {},
+            "default_version_diff": diff_facts[:],
+            "available_version_diffs": diff_facts,
+            "baseline_projects": baselines,
+            "baseline_health_facts": baseline_facts,
+            "top_health_findings": self._mapping_repo.list_quality_findings(schedule_version_key)[:25],
+            "deferred_domains": {"cost_schedule_correlation": "deferred"},
+        }

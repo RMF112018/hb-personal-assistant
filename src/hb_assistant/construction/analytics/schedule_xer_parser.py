@@ -86,6 +86,7 @@ def parse_xer_bytes(data: bytes) -> ParsedScheduleBundle:
     if not data:
         raise ScheduleImportError("schedule_import_invalid", message="empty xer payload")
     tables = read_xer_tables(decode_xer_bytes(data))
+    coverage = _parser_coverage(tables)
     projects = tables.get("PROJECT") or []
     if not projects:
         raise ScheduleImportError("schedule_import_invalid", message="xer missing PROJECT table")
@@ -326,6 +327,7 @@ def parse_xer_bytes(data: bytes) -> ParsedScheduleBundle:
             "critical_path_type": project.get("critical_path_type"),
             "critical_float_threshold": project.get("critical_drtn_hr_cnt"),
             "baseline_source": baseline_source,
+            "parser_coverage": coverage,
             "source_capabilities": capabilities,
             "schedule_options_json": {
                 "project": {k: project.get(k) for k in (
@@ -348,3 +350,25 @@ def parse_xer_bytes(data: bytes) -> ParsedScheduleBundle:
             {"severity": "error", "code": "no_activities", "message": "xer contained no TASK rows"}
         )
     return bundle
+
+
+def _parser_coverage(tables: dict[str, list[dict[str, str]]]) -> dict[str, Any]:
+    fields_present: dict[str, int] = {}
+    for table_name, rows in tables.items():
+        for row in rows:
+            for field, value in row.items():
+                if str(value or "").strip():
+                    key = f"{table_name}.{field}"
+                    fields_present[key] = fields_present.get(key, 0) + 1
+    project = (tables.get("PROJECT") or [{}])[0]
+    return {
+        "tables_present": {name: len(rows) for name, rows in tables.items()},
+        "fields_present": fields_present,
+        "baseline_reference": {
+            "use_project_baseline_flag": project.get("use_project_baseline_flag"),
+            "sum_base_proj_id": project.get("sum_base_proj_id"),
+            "orig_proj_id": project.get("orig_proj_id"),
+            "source_proj_id": project.get("source_proj_id"),
+            "baseline_project_rows_exported": False,
+        },
+    }

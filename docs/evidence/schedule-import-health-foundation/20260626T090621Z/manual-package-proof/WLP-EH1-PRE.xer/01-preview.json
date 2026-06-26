@@ -1,0 +1,82 @@
+{
+  "payload": {
+    "activity_count": 106,
+    "baseline_project_candidates": [],
+    "byte_count": 76346,
+    "calendar_count": 1,
+    "capabilities": {
+      "activity_codes": "available",
+      "baseline_activity_crosswalk": "unavailable",
+      "baseline_activity_rows": "requires_companion_file",
+      "baseline_assignment": "available",
+      "baseline_drift": "unavailable",
+      "baseline_project_rows": "requires_companion_file",
+      "baseline_relationship_rows": "unavailable",
+      "bei": "unavailable",
+      "cost_loading": "partially_available",
+      "cost_schedule_correlation": "deferred",
+      "cpm_recalculation": "deferred",
+      "current_activities": "available",
+      "current_calendars": "available",
+      "current_relationships": "available",
+      "current_wbs": "available",
+      "explicit_free_float": "available",
+      "explicit_total_float": "available",
+      "missed_tasks": "unavailable",
+      "resource_assignments": "unavailable",
+      "source_critical_flags": "available",
+      "source_driving_path": "available",
+      "udfs": "unavailable",
+      "version_comparison": "available"
+    },
+    "code_count": 106,
+    "cost_loaded_status": "not_cost_loaded",
+    "current_project_candidates": [
+      {
+        "activity_count": 106,
+        "project_id": "846",
+        "project_name": "WLP-WAPH-EH1-T1",
+        "project_object_id": null,
+        "source_file_id": "pf-1-1284de3b",
+        "source_format": "primavera_xer"
+      }
+    ],
+    "data_date": "2026-11-30 00:00",
+    "display_label": "WLP-WAPH-EH1-T1",
+    "file_sha256": "d8f36b64fc14d330af7257b1211feb9fb1c052dd09c9b3e5319f5f1050be2854",
+    "files": [
+      {
+        "detected_activities": 106,
+        "detected_baseline_projects": 0,
+        "detected_projects": 1,
+        "detected_relationships": 176,
+        "filename": "WLP-EH1-PRE.xer",
+        "package_file_id": "pf-1-1284de3b",
+        "parse_status": "parsed",
+        "source_format": "primavera_xer",
+        "warnings": []
+      }
+    ],
+    "import_id": "0e0f6b1da947",
+    "package_id": "pkg-b2478fd5a6b3",
+    "package_mode": "single_file",
+    "planned_start": "2026-11-30 00:00",
+    "project_display_name": "Generic Schedule Manual Proof",
+    "project_key": "schedule-manual-proof",
+    "relationship_count": 176,
+    "requires_column_mapping": false,
+    "schedule_name": "WLP-WAPH-EH1-T1",
+    "scheduled_finish": "2028-03-08 17:00",
+    "source_filename": "WLP-EH1-PRE.xer",
+    "source_format": "primavera_xer",
+    "source_project_id": "846",
+    "source_project_name": "WLP-WAPH-EH1-T1",
+    "source_project_short_name": "846",
+    "source_type": "xer",
+    "udf_count": 0,
+    "validation_findings": [],
+    "warnings": [],
+    "wbs_count": 23
+  },
+  "status_code": 200
+}

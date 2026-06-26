@@ -1,0 +1,91 @@
+{
+  "payload": {
+    "activity_count": 3953,
+    "baseline_project_candidates": [
+      {
+        "activity_count": 2949,
+        "project_id": "CARETTABL",
+        "project_name": "Caretta - Baseline",
+        "project_object_id": "376",
+        "source_file_id": "pf-1-2c3fc2a7",
+        "source_format": "primavera_pmxml"
+      }
+    ],
+    "byte_count": 31039642,
+    "calendar_count": 0,
+    "capabilities": {
+      "activity_codes": "available",
+      "baseline_activity_crosswalk": "available",
+      "baseline_activity_rows": "available",
+      "baseline_assignment": "available",
+      "baseline_drift": "available",
+      "baseline_project_rows": "available",
+      "baseline_relationship_rows": "available",
+      "bei": "available",
+      "cost_loading": "partially_available",
+      "cost_schedule_correlation": "deferred",
+      "cpm_recalculation": "deferred",
+      "current_activities": "available",
+      "current_calendars": "unavailable",
+      "current_relationships": "available",
+      "current_wbs": "available",
+      "explicit_free_float": "partially_available",
+      "explicit_total_float": "partially_available",
+      "missed_tasks": "available",
+      "resource_assignments": "unavailable",
+      "source_critical_flags": "partially_available",
+      "source_driving_path": "requires_companion_file",
+      "udfs": "unavailable",
+      "version_comparison": "available"
+    },
+    "code_count": 12,
+    "cost_loaded_status": "not_cost_loaded",
+    "current_project_candidates": [
+      {
+        "activity_count": 3953,
+        "project_id": "CARETTAU27",
+        "project_name": "Caretta - Update 27 05/28/26",
+        "project_object_id": "1070",
+        "source_file_id": "pf-1-2c3fc2a7",
+        "source_format": "primavera_pmxml"
+      }
+    ],
+    "data_date": "2026-05-28T08:00:00",
+    "display_label": "Caretta - Update 27 05/28/26",
+    "file_sha256": "d2697d33353dcfdd11869a9ef75e8056c17be6b94aa0a09362243eabd3708f27",
+    "files": [
+      {
+        "detected_activities": 6902,
+        "detected_baseline_projects": 1,
+        "detected_projects": 1,
+        "detected_relationships": 12448,
+        "filename": "CARETTAU27.xml",
+        "package_file_id": "pf-1-2c3fc2a7",
+        "parse_status": "parsed",
+        "source_format": "primavera_pmxml",
+        "warnings": []
+      }
+    ],
+    "import_id": "a512a71517e5",
+    "package_id": "pkg-d640e08cfb94",
+    "package_mode": "single_file",
+    "planned_start": "2023-09-15T00:00:00",
+    "project_display_name": "Caretta Manual Proof",
+    "project_key": "caretta-manual-proof",
+    "relationship_count": 7257,
+    "requires_column_mapping": false,
+    "schedule_name": "Caretta - Update 27 05/28/26",
+    "scheduled_finish": "2027-01-22T16:00:00",
+    "source_filename": "CARETTAU27.xml",
+    "source_format": "primavera_pmxml",
+    "source_project_id": "CARETTAU27",
+    "source_project_name": "Caretta - Update 27 05/28/26",
+    "source_project_short_name": "CARETTAU27",
+    "source_type": "xml",
+    "udf_count": 0,
+    "validation_findings": [],
+    "warnings": [],
+    "wbs_count": 554
+  },
+  "status_code": 200
+}

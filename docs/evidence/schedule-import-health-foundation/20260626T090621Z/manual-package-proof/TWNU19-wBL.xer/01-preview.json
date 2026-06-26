@@ -1,0 +1,12 @@
+{
+  "payload": {
+    "detail": {
+      "activity_count": 1507,
+      "code": "duplicate_schedule_version",
+      "relationship_count": 3921,
+      "schedule_version_key": "twn-manual-proof|1071|2026-06-23 08:00",
+      "view_path": "/schedules/activities?version=twn-manual-proof%7C1071%7C2026-06-23%2008%3A00"
+    }
+  },
+  "status_code": 409
+}

@@ -1,0 +1,12 @@
+{
+  "payload": {
+    "detail": {
+      "activity_count": 3953,
+      "code": "duplicate_schedule_version",
+      "relationship_count": 7257,
+      "schedule_version_key": "caretta-manual-proof|1070|2026-05-28 08:00",
+      "view_path": "/schedules/activities?version=caretta-manual-proof%7C1070%7C2026-05-28%2008%3A00"
+    }
+  },
+  "status_code": 409
+}

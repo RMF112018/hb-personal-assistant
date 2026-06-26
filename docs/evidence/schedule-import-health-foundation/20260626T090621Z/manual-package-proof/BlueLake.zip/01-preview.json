@@ -1,0 +1,12 @@
+{
+  "payload": {
+    "detail": {
+      "activity_count": 3315,
+      "code": "duplicate_schedule_version",
+      "relationship_count": 6747,
+      "schedule_version_key": "bluelake-manual-proof|820|2023-05-05 17:00",
+      "view_path": "/schedules/activities?version=bluelake-manual-proof%7C820%7C2023-05-05%2017%3A00"
+    }
+  },
+  "status_code": 409
+}

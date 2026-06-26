@@ -1,0 +1,82 @@
+{
+  "payload": {
+    "activity_count": 3464,
+    "baseline_project_candidates": [],
+    "byte_count": 2079701,
+    "calendar_count": 3,
+    "capabilities": {
+      "activity_codes": "available",
+      "baseline_activity_crosswalk": "unavailable",
+      "baseline_activity_rows": "requires_companion_file",
+      "baseline_assignment": "available",
+      "baseline_drift": "unavailable",
+      "baseline_project_rows": "requires_companion_file",
+      "baseline_relationship_rows": "unavailable",
+      "bei": "unavailable",
+      "cost_loading": "partially_available",
+      "cost_schedule_correlation": "deferred",
+      "cpm_recalculation": "deferred",
+      "current_activities": "available",
+      "current_calendars": "available",
+      "current_relationships": "available",
+      "current_wbs": "available",
+      "explicit_free_float": "available",
+      "explicit_total_float": "available",
+      "missed_tasks": "unavailable",
+      "resource_assignments": "unavailable",
+      "source_critical_flags": "available",
+      "source_driving_path": "available",
+      "udfs": "unavailable",
+      "version_comparison": "available"
+    },
+    "code_count": 3460,
+    "cost_loaded_status": "not_cost_loaded",
+    "current_project_candidates": [
+      {
+        "activity_count": 3464,
+        "project_id": "820",
+        "project_name": "Blue Lake-5MAY23",
+        "project_object_id": null,
+        "source_file_id": "pf-1-1d670298",
+        "source_format": "primavera_xer"
+      }
+    ],
+    "data_date": "2023-05-05 17:00",
+    "display_label": "Blue Lake-5MAY23",
+    "file_sha256": "103cec2cb671291ce1deada748ab555d8cd78140c0faa5e2ecea2140c28fa682",
+    "files": [
+      {
+        "detected_activities": 3464,
+        "detected_baseline_projects": 0,
+        "detected_projects": 1,
+        "detected_relationships": 4822,
+        "filename": "KOLTER-HILLTOP.xer",
+        "package_file_id": "pf-1-1d670298",
+        "parse_status": "parsed",
+        "source_format": "primavera_xer",
+        "warnings": []
+      }
+    ],
+    "import_id": "ed780816d783",
+    "package_id": "pkg-bd1684a1bcb7",
+    "package_mode": "single_file",
+    "planned_start": "2022-01-01 00:00",
+    "project_display_name": "Generic Schedule Manual Proof",
+    "project_key": "schedule-manual-proof",
+    "relationship_count": 4822,
+    "requires_column_mapping": false,
+    "schedule_name": "Blue Lake-5MAY23",
+    "scheduled_finish": "2027-04-23 17:00",
+    "source_filename": "KOLTER-HILLTOP.xer",
+    "source_format": "primavera_xer",
+    "source_project_id": "820",
+    "source_project_name": "Blue Lake-5MAY23",
+    "source_project_short_name": "820",
+    "source_type": "xer",
+    "udf_count": 0,
+    "validation_findings": [],
+    "warnings": [],
+    "wbs_count": 187
+  },
+  "status_code": 200
+}

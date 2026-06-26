@@ -2789,6 +2789,21 @@ def create_app(*, db_path: str | None = None) -> Any:
             raise HTTPException(status_code=404, detail="schedule_not_found")
         return out
 
+    @app.get("/api/schedules/versions/{schedule_version_key}/health-data")
+    def schedule_version_health_data(
+        schedule_version_key: str,
+        project_key: str | None = None,
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        del role
+        from fastapi import HTTPException
+
+        _enforce_version_project_scope(schedule_version_key, project_key)
+        out = _schedule_call(_schedule_read_service().get_health_data, schedule_version_key)
+        if out is None:
+            raise HTTPException(status_code=404, detail="schedule_not_found")
+        return out
+
     @app.get("/api/schedules/versions/{schedule_version_key}/activities")
     def schedule_version_activities(
         schedule_version_key: str,

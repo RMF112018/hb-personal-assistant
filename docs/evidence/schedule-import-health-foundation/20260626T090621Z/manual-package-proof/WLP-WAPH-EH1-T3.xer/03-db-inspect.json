@@ -1,0 +1,60 @@
+{
+  "schedule_version_key": "schedule-manual-proof|1394|2026-11-30 00:00",
+  "schema_version": 75,
+  "tables": {
+    "schedule_baseline_activities": {
+      "exists": true,
+      "row_count": 11186,
+      "rows_for_version": 0
+    },
+    "schedule_baseline_activity_codes": {
+      "exists": true,
+      "row_count": 15702
+    },
+    "schedule_baseline_activity_crosswalk": {
+      "exists": true,
+      "row_count": 10834,
+      "rows_for_version": 0
+    },
+    "schedule_baseline_health_facts": {
+      "exists": true,
+      "row_count": 54,
+      "rows_for_version": 0
+    },
+    "schedule_baseline_projects": {
+      "exists": true,
+      "row_count": 6,
+      "rows_for_version": 0
+    },
+    "schedule_baseline_relationships": {
+      "exists": true,
+      "row_count": 23050,
+      "rows_for_version": 0
+    },
+    "schedule_baseline_udfs": {
+      "exists": true,
+      "row_count": 0
+    },
+    "schedule_baseline_wbs": {
+      "exists": true,
+      "row_count": 995
+    },
+    "schedule_import_package_files": {
+      "exists": true,
+      "row_count": 21
+    },
+    "schedule_import_packages": {
+      "exists": true,
+      "row_count": 20
+    },
+    "schedule_source_capabilities": {
+      "exists": true,
+      "row_count": 464,
+      "rows_for_version": 23
+    },
+    "schedule_version_diff_facts": {
+      "exists": true,
+      "row_count": 256
+    }
+  }
+}
