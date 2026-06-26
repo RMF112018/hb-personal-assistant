@@ -1,6 +1,6 @@
 import { Link, useParams } from 'react-router-dom'
 
-import { SectionCard } from '../components/common/SectionCard'
+import { ProjectMonthlyForecastingPanel } from '../components/projects/ProjectMonthlyForecastingPanel'
 import { ProjectWorkspaceShell } from '../components/projects/ProjectWorkspaceShell'
 
 export function ProjectMonthlyForecastingPage() {
@@ -9,18 +9,21 @@ export function ProjectMonthlyForecastingPage() {
 
   return (
     <ProjectWorkspaceShell>
-      <SectionCard
-        title="Monthly Forecasting"
-        actions={
+      <section className="space-y-4">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h3 className="section-title mb-0">Monthly Forecasting</h3>
+            <p className="mt-1 text-sm text-[var(--hb-muted)]">
+              Review month-by-month forecast values for this project.
+            </p>
+          </div>
           <Link to={forecastingHref} className="badge">
             Back to Forecasting
           </Link>
-        }
-      >
-        <p className="text-sm text-[var(--hb-muted)]">
-          The project-specific monthly forecast matrix will be added here in the next phase.
-        </p>
-      </SectionCard>
+        </div>
+
+        <ProjectMonthlyForecastingPanel projectKey={projectKey} />
+      </section>
     </ProjectWorkspaceShell>
   )
 }
