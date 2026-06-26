@@ -114,6 +114,54 @@ def _cost_basis_block(row: dict[str, Any] | None) -> dict[str, Any]:
     return block
 
 
+def _matrix_display_block(spine_row: dict[str, Any], cost_basis_row: dict[str, Any] | None) -> dict[str, Any]:
+    """Per-code matrix DISPLAY fields, separating the Procore-authoritative display value from the
+    financial-spine calculation basis (revision 3).
+
+    - budget_code / cost_code / projected_budget_display come from the selected Procore row when one
+      maps to this canonical budget code (cost_type is derived downstream from budget_code).
+    - projected_budget_calculation_basis is always the financial-spine projected_budget (engine
+      continuity); may be None when the spine lacks it (the persistence layer coalesces for NOT NULL).
+    - source_warning is warning-grade: a Procore/spine divergence, a missing Procore projected_budget,
+      or no mapped Procore row at all — never a hard failure here.
+    """
+    spine_cost_code = spine_row.get("cost_code")
+    spine_pb = _canon_opt(_amount_field(spine_row, "projected_budget"))
+    if cost_basis_row:
+        budget_code = cost_basis_row.get("display_budget_code")
+        cost_code = cost_basis_row.get("display_cost_code") or spine_cost_code
+        procore_pb = cost_basis_row.get("display_projected_budget")
+        if procore_pb is not None:
+            display_pb = procore_pb
+            display_source = "procore_ep_budget_detail_rows"
+            warning = (
+                "projected_budget_source_mismatch"
+                if spine_pb is not None and spine_pb != procore_pb
+                else None
+            )
+        else:
+            # Procore row mapped but carries no projected_budget — display the spine value, flagged.
+            display_pb = spine_pb
+            display_source = "forecast_budget_details"
+            warning = "procore_projected_budget_missing"
+    else:
+        # No Procore row maps to this canonical key — fall back to the spine, flagged not-authoritative.
+        budget_code = None
+        cost_code = spine_cost_code
+        display_pb = spine_pb
+        display_source = "forecast_budget_details"
+        warning = "display_row_not_procore_authoritative"
+    return {
+        "budget_code": budget_code,
+        "cost_code": cost_code,
+        "projected_budget_display": display_pb,
+        "projected_budget_display_source": display_source,
+        "projected_budget_calculation_basis": spine_pb,
+        "projected_budget_calculation_source": "forecast_budget_details",
+        "source_warning": warning,
+    }
+
+
 @dataclass(frozen=True)
 class DbNativeContextInput:
     """Plain, path-free input to the package-free builder, derived from ``snapshot.public()``.
@@ -275,6 +323,8 @@ def build_db_native_context(source: DbNativeContextInput) -> DbNativeForecastCon
                 },
                 # Phase E2: DB-native BudgetDetails cost-basis formula inputs (one selected view).
                 "cost_basis_inputs": _cost_basis_block(cost_basis_by_key.get(key)),
+                # Monthly-matrix display fields (Procore-authoritative; spine fallback + warnings).
+                "matrix_display": _matrix_display_block(row, cost_basis_by_key.get(key)),
                 # Phase E: not yet DB-native source rows.
                 "owner_pay_app": {"available": False},
                 "procore_subcontractor_pay_apps": {"available": False},

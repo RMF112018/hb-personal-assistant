@@ -53,6 +53,12 @@ function mockData() {
           schedule_data_date: null,
           schedule_data_date_basis: null,
           schedule_source_status: 'missing',
+          // Valid operator month-window defaults so the primary Generate control is enabled.
+          actuals_start_month: '2026-01',
+          actuals_through_month: '2026-05',
+          forecast_start_month: '2026-06',
+          forecast_end_month: '2026-10',
+          forecast_end_month_basis: 'latest_schedule_finish_month',
           warnings: ['no_schedule_cutoff_default_available'],
         },
         isLoading: false,
@@ -323,6 +329,11 @@ describe('ForecastRunCenterPage', () => {
             forecast_start_date: null,
             forecast_cutoff_date: null,
             forecast_cutoff_date_basis: null,
+            actuals_start_month: '2026-01',
+            actuals_through_month: '2026-05',
+            forecast_start_month: '2026-06',
+            forecast_end_month: '2026-10',
+            forecast_end_month_basis: 'latest_schedule_finish_month',
             warnings: [],
           },
           isLoading: false,
@@ -374,8 +385,70 @@ describe('ForecastRunCenterPage', () => {
         forecast_start_date: '2026-06-01',
         forecast_cutoff_date: '2026-06-24',
         forecast_cutoff_date_basis: 'operator_supplied',
+        actuals_start_month: '2026-01',
+        actuals_through_month: '2026-05',
+        forecast_start_month: '2026-06',
+        forecast_end_month: '2026-10',
       }),
     )
+  })
+
+  it('renders the four operator month-window controls', () => {
+    mockData()
+    renderPage()
+    fireEvent.change(screen.getByLabelText('Forecast project'), { target: { value: 'tropical' } })
+    expect(screen.getByLabelText('Actuals start month')).toBeInTheDocument()
+    expect(screen.getByLabelText('Actuals through month')).toBeInTheDocument()
+    expect(screen.getByLabelText('Forecast start month')).toBeInTheDocument()
+    expect(screen.getByLabelText('Forecast end month')).toBeInTheDocument()
+  })
+
+  it('auto-fills the default month windows after project selection', () => {
+    mockData()
+    renderPage()
+    fireEvent.change(screen.getByLabelText('Forecast project'), { target: { value: 'tropical' } })
+    expect((screen.getByLabelText('Actuals start month') as HTMLInputElement).value).toBe('2026-01')
+    expect((screen.getByLabelText('Actuals through month') as HTMLInputElement).value).toBe('2026-05')
+    expect((screen.getByLabelText('Forecast start month') as HTMLInputElement).value).toBe('2026-06')
+    expect((screen.getByLabelText('Forecast end month') as HTMLInputElement).value).toBe('2026-10')
+  })
+
+  it('submits the operator month windows in the db-native generation request', async () => {
+    mockData()
+    renderPage()
+    fireEvent.change(screen.getByLabelText('Forecast project'), { target: { value: 'tropical' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Generate forecast' }))
+    await waitFor(() =>
+      expect(startDbNativeMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          actuals_start_month: '2026-01',
+          actuals_through_month: '2026-05',
+          forecast_start_month: '2026-06',
+          forecast_end_month: '2026-10',
+        }),
+      ),
+    )
+  })
+
+  it('disables generation when the forecast window overlaps the actuals window', () => {
+    mockData()
+    renderPage()
+    fireEvent.change(screen.getByLabelText('Forecast project'), { target: { value: 'tropical' } })
+    // Push the forecast start back into the actuals window → overlap → disabled + operator message.
+    fireEvent.change(screen.getByLabelText('Forecast start month'), { target: { value: '2026-05' } })
+    expect(screen.getByRole('button', { name: 'Generate forecast' })).toBeDisabled()
+    expect(
+      screen.getByText('The forecast window must start after the actuals window.'),
+    ).toBeInTheDocument()
+  })
+
+  it('disables generation when a month window is reversed', () => {
+    mockData()
+    renderPage()
+    fireEvent.change(screen.getByLabelText('Forecast project'), { target: { value: 'tropical' } })
+    fireEvent.change(screen.getByLabelText('Forecast end month'), { target: { value: '2026-06' } })
+    fireEvent.change(screen.getByLabelText('Forecast start month'), { target: { value: '2026-09' } })
+    expect(screen.getByRole('button', { name: 'Generate forecast' })).toBeDisabled()
   })
 
   it('does not render raw stamps or filesystem paths', () => {
@@ -429,6 +502,10 @@ describe('ForecastRunCenterPage', () => {
         forecast_start_date: null,
         forecast_cutoff_date: null,
         forecast_cutoff_date_basis: null,
+        actuals_start_month: '2026-01',
+        actuals_through_month: '2026-05',
+        forecast_start_month: '2026-06',
+        forecast_end_month: '2026-10',
       }),
     )
   })
@@ -447,6 +524,10 @@ describe('ForecastRunCenterPage', () => {
         forecast_start_date: null,
         forecast_cutoff_date: null,
         forecast_cutoff_date_basis: null,
+        actuals_start_month: '2026-01',
+        actuals_through_month: '2026-05',
+        forecast_start_month: '2026-06',
+        forecast_end_month: '2026-10',
       }),
     )
   })
@@ -467,6 +548,11 @@ describe('ForecastRunCenterPage', () => {
             schedule_data_date: '2026-06-01',
             schedule_data_date_basis: 'schedule_version_key',
             schedule_source_status: 'available',
+            actuals_start_month: '2026-01',
+            actuals_through_month: '2026-05',
+            forecast_start_month: '2026-06',
+            forecast_end_month: '2026-10',
+            forecast_end_month_basis: 'latest_schedule_finish_month',
             warnings: [],
           },
           isLoading: false,
@@ -515,6 +601,10 @@ describe('ForecastRunCenterPage', () => {
         forecast_start_date: '2025-01-01',
         forecast_cutoff_date: '2026-06-01',
         forecast_cutoff_date_basis: 'schedule_data_date',
+        actuals_start_month: '2026-01',
+        actuals_through_month: '2026-05',
+        forecast_start_month: '2026-06',
+        forecast_end_month: '2026-10',
       }),
     )
   })
@@ -536,6 +626,10 @@ describe('ForecastRunCenterPage', () => {
         forecast_start_date: '2025-01-01',
         forecast_cutoff_date: '2026-07-15',
         forecast_cutoff_date_basis: 'operator_supplied',
+        actuals_start_month: '2026-01',
+        actuals_through_month: '2026-05',
+        forecast_start_month: '2026-06',
+        forecast_end_month: '2026-10',
       }),
     )
   })
@@ -756,6 +850,11 @@ describe('ForecastRunCenterPage', () => {
             forecast_cutoff_date_basis: null,
             schedule_version_key: null,
             schedule_data_date: null,
+            actuals_start_month: '2026-01',
+            actuals_through_month: '2026-05',
+            forecast_start_month: '2026-06',
+            forecast_end_month: '2026-10',
+            forecast_end_month_basis: 'latest_schedule_finish_month',
             warnings: [],
           },
           isLoading: false,
@@ -857,6 +956,11 @@ describe('ForecastRunCenterPage', () => {
             forecast_cutoff_date_basis: null,
             schedule_version_key: null,
             schedule_data_date: null,
+            actuals_start_month: '2026-01',
+            actuals_through_month: '2026-05',
+            forecast_start_month: '2026-06',
+            forecast_end_month: '2026-10',
+            forecast_end_month_basis: 'latest_schedule_finish_month',
             warnings: [],
           },
           isLoading: false,
@@ -941,6 +1045,11 @@ describe('ForecastRunCenterPage', () => {
             forecast_cutoff_date_basis: null,
             schedule_version_key: null,
             schedule_data_date: null,
+            actuals_start_month: '2026-01',
+            actuals_through_month: '2026-05',
+            forecast_start_month: '2026-06',
+            forecast_end_month: '2026-10',
+            forecast_end_month_basis: 'latest_schedule_finish_month',
             warnings: [],
           },
           isLoading: false,

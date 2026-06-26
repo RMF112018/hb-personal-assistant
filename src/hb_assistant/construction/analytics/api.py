@@ -1716,6 +1716,13 @@ def create_app(*, db_path: str | None = None) -> Any:
         del role
         return _forecast_readmodel_call(_forecast_readmodel_service().read_narratives, output_id)
 
+    @app.get("/api/forecast/db/outputs/{output_id}/monthly-table")
+    def forecast_db_monthly_table(
+        output_id: str, role: dict[str, str] = role_dep
+    ) -> dict[str, Any]:
+        del role  # viewer-readable; redaction-safe coded/money/label fields only
+        return _forecast_readmodel_call(_forecast_readmodel_service().read_monthly_table, output_id)
+
     # --- Operator assumptions capture — first interactive forecast WRITE surface ----------
     # Operator-entered assumptions persist DIRECTLY into the v66 managed-DB tables (not the
     # gated temp-swap-certify projection, which only fits re-derivable data). Mirrors the
@@ -2156,6 +2163,10 @@ def create_app(*, db_path: str | None = None) -> Any:
                     forecast_start_date=parsed["forecast_start_date"],
                     forecast_cutoff_date=parsed["forecast_cutoff_date"],
                     forecast_cutoff_date_basis=parsed["forecast_cutoff_date_basis"],
+                    actuals_start_month=parsed["actuals_start_month"],
+                    actuals_through_month=parsed["actuals_through_month"],
+                    forecast_start_month=parsed["forecast_start_month"],
+                    forecast_end_month=parsed["forecast_end_month"],
                     requested_by_role=requested_by_role,
                     readiness_status_at_request=readiness_status,
                     readiness_reasons=readiness_reasons,
@@ -2176,6 +2187,10 @@ def create_app(*, db_path: str | None = None) -> Any:
             forecast_start_date=parsed["forecast_start_date"],
             forecast_cutoff_date=parsed["forecast_cutoff_date"],
             forecast_cutoff_date_basis=parsed["forecast_cutoff_date_basis"],
+            actuals_start_month=parsed["actuals_start_month"],
+            actuals_through_month=parsed["actuals_through_month"],
+            forecast_start_month=parsed["forecast_start_month"],
+            forecast_end_month=parsed["forecast_end_month"],
             schedule_version_key=schedule_version_key,
             requested_by_role=requested_by_role,
             readiness_status_at_request=readiness_status,
@@ -2206,6 +2221,10 @@ def create_app(*, db_path: str | None = None) -> Any:
                     forecast_cutoff_date=parsed["forecast_cutoff_date"],
                     forecast_end_date=parsed["forecast_end_date"],
                     forecast_cutoff_date_basis=parsed["forecast_cutoff_date_basis"],
+                    actuals_start_month=parsed["actuals_start_month"],
+                    actuals_through_month=parsed["actuals_through_month"],
+                    forecast_start_month=parsed["forecast_start_month"],
+                    forecast_end_month=parsed["forecast_end_month"],
                     source_snapshot_id=(body or {}).get("source_snapshot_id"),
                     request_id=request_id,
                     db_path=resolve_db_path(db_path),
@@ -2227,6 +2246,10 @@ def create_app(*, db_path: str | None = None) -> Any:
                 "forecast_cutoff_date": parsed["forecast_cutoff_date"],
                 "forecast_end_date": parsed["forecast_end_date"],
                 "forecast_cutoff_date_basis": parsed["forecast_cutoff_date_basis"],
+                "actuals_start_month": parsed["actuals_start_month"],
+                "actuals_through_month": parsed["actuals_through_month"],
+                "forecast_start_month": parsed["forecast_start_month"],
+                "forecast_end_month": parsed["forecast_end_month"],
                 "source_snapshot_id": result.source_snapshot_id,
                 "db_persisted": result.db_persisted,
                 "package_generated": False,

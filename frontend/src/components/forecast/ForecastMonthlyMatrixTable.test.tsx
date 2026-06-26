@@ -1,0 +1,150 @@
+import { fireEvent, render, screen, within } from '@testing-library/react'
+import { describe, expect, it } from 'vitest'
+
+import type { ForecastDbMonthlyTable } from '../../lib/api'
+import { ForecastMonthlyMatrixTable } from './ForecastMonthlyMatrixTable'
+
+const TABLE: ForecastDbMonthlyTable = {
+  surface: 'analytics.forecast_run_readmodel.monthly_table',
+  output_id: 'fout-1',
+  project_key: 'tropical',
+  status: 'ready',
+  actuals_start_month: '2026-01',
+  actuals_through_month: '2026-02',
+  forecast_start_month: '2026-03',
+  forecast_end_month: '2026-03',
+  months: [
+    { month: '2026-01', label: 'Jan 2026', value_type: 'actual' },
+    { month: '2026-02', label: 'Feb 2026', value_type: 'actual' },
+    { month: '2026-03', label: 'Mar 2026', value_type: 'forecast' },
+  ],
+  rows: [
+    {
+      budget_code_key: 'k-lab',
+      budget_code: '1000.03-01-1000.LAB',
+      cost_code: '03-01-1000',
+      cost_type: 'LAB',
+      projected_budget: '100000.00',
+      projected_budget_source: 'procore_ep_budget_detail_rows',
+      projected_budget_source_warning: null,
+      month_values: { '2026-01': '1000.00', '2026-02': '0.00', '2026-03': '2500.00' },
+      completed_to_date: '1000.00',
+      forecast_to_complete: '2500.00',
+      estimated_at_completion: '3500.00',
+      variance_to_budget: '-96500.00',
+      confidence: 'medium',
+      method_code: 'even_spread',
+      reason_codes: [],
+    },
+    {
+      budget_code_key: 'k-mat',
+      budget_code: '1000.03-01-2000.MAT',
+      cost_code: '03-01-2000',
+      cost_type: 'MAT',
+      projected_budget: '50000.00',
+      projected_budget_source: 'procore_ep_budget_detail_rows',
+      projected_budget_source_warning: null,
+      month_values: { '2026-01': '0.00', '2026-02': '500.00', '2026-03': '1000.00' },
+      completed_to_date: '500.00',
+      forecast_to_complete: '1000.00',
+      estimated_at_completion: '1500.00',
+      variance_to_budget: '-48500.00',
+      confidence: 'medium',
+      method_code: 'even_spread',
+      reason_codes: [],
+    },
+  ],
+  total_row: {
+    projected_budget: '150000.00',
+    month_values: { '2026-01': '1000.00', '2026-02': '500.00', '2026-03': '3500.00' },
+    completed_to_date: '1500.00',
+    forecast_to_complete: '3500.00',
+    estimated_at_completion: '5000.00',
+    variance_to_budget: '-145000.00',
+  },
+  month_window_warnings: [],
+}
+
+describe('ForecastMonthlyMatrixTable', () => {
+  it('renders the sticky identity column headers', () => {
+    render(<ForecastMonthlyMatrixTable table={TABLE} />)
+    expect(screen.getByRole('button', { name: /Cost Code/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Cost Type/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Projected Budget/ })).toBeInTheDocument()
+  })
+
+  it('renders dynamic month columns in chronological order with actual/forecast markers', () => {
+    render(<ForecastMonthlyMatrixTable table={TABLE} />)
+    const headers = screen.getAllByRole('columnheader').map((h) => h.textContent || '')
+    const janIdx = headers.findIndex((t) => t.includes('Jan 2026'))
+    const febIdx = headers.findIndex((t) => t.includes('Feb 2026'))
+    const marIdx = headers.findIndex((t) => t.includes('Mar 2026'))
+    expect(janIdx).toBeGreaterThan(-1)
+    expect(janIdx).toBeLessThan(febIdx)
+    expect(febIdx).toBeLessThan(marIdx)
+    // Non-color marker text distinguishes actual vs forecast months.
+    expect(headers[janIdx]).toMatch(/Actual/)
+    expect(headers[marIdx]).toMatch(/Forecast/)
+  })
+
+  it('renders the row metric columns (Completed to Date / Forecast to Complete / EAC / Variance)', () => {
+    render(<ForecastMonthlyMatrixTable table={TABLE} />)
+    expect(screen.getByRole('button', { name: /Completed to Date/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Forecast to Complete/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /EAC/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Variance to Budget/ })).toBeInTheDocument()
+  })
+
+  it('renders the persisted total row with formatted currency', () => {
+    render(<ForecastMonthlyMatrixTable table={TABLE} />)
+    const footer = screen.getByText('Total').closest('tr') as HTMLElement
+    expect(within(footer).getByText('$150,000')).toBeInTheDocument()
+    // Negative total variance renders in accounting parentheses.
+    expect(within(footer).getByText('($145,000)')).toBeInTheDocument()
+  })
+
+  it('supports sorting by clicking a column header', () => {
+    render(<ForecastMonthlyMatrixTable table={TABLE} />)
+    const bodyCostTypes = () =>
+      screen
+        .getAllByRole('row')
+        .slice(1) // drop the header row
+        .map((r) => r.querySelectorAll('td')[1]?.textContent ?? '')
+        .filter((t) => t === 'LAB' || t === 'MAT')
+    expect(bodyCostTypes()).toEqual(['LAB', 'MAT'])
+    fireEvent.click(screen.getByRole('button', { name: /Cost Type/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Cost Type/ })) // toggle to descending
+    expect(bodyCostTypes()).toEqual(['MAT', 'LAB'])
+  })
+
+  it('filters rows by Cost Code', () => {
+    render(<ForecastMonthlyMatrixTable table={TABLE} />)
+    fireEvent.change(screen.getByLabelText('Filter by Cost Code'), { target: { value: '2000' } })
+    expect(screen.queryByText('03-01-1000')).not.toBeInTheDocument()
+    expect(screen.getByText('03-01-2000')).toBeInTheDocument()
+  })
+
+  it('groups by Cost Type when toggled', () => {
+    render(<ForecastMonthlyMatrixTable table={TABLE} />)
+    fireEvent.click(screen.getByLabelText('Group by Cost Type'))
+    expect(screen.getByText(/Cost Type: LAB/)).toBeInTheDocument()
+    expect(screen.getByText(/Cost Type: MAT/)).toBeInTheDocument()
+  })
+
+  it('shows a curated message for a legacy output with no operator window', () => {
+    render(
+      <ForecastMonthlyMatrixTable
+        table={{ ...TABLE, status: 'legacy_output_no_operator_window', months: undefined, rows: undefined, total_row: undefined }}
+      />,
+    )
+    expect(screen.getByText(/predates operator-selected month windows/)).toBeInTheDocument()
+  })
+
+  it('does not leak implementation terms or filesystem paths', () => {
+    const { container } = render(<ForecastMonthlyMatrixTable table={TABLE} />)
+    const text = container.textContent || ''
+    expect(text).not.toMatch(/raw_json/)
+    expect(text).not.toMatch(/\/Users\//)
+    expect(text).not.toMatch(/read model/i)
+  })
+})

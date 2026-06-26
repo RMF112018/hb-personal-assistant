@@ -69,6 +69,15 @@ UNSUPPORTED_KIND_CODES = {
 
 _SUPPORTED_KIND = "comprehensive"
 
+# The four operator month-window fields (YYYY-MM). Their presence in the window switches on the
+# table-ready monthly matrix; absent (legacy date-only callers) the engine emits cells only.
+_OPERATOR_MONTH_FIELDS = (
+    "actuals_start_month",
+    "actuals_through_month",
+    "forecast_start_month",
+    "forecast_end_month",
+)
+
 # Monthly phasing (within a comprehensive output): a deterministic even-spread of each budget code's
 # forecast_cost_to_complete across the future window (NOT schedule-weighted). When the operator does
 # not supply ``forecast_end_date`` — or the window yields no usable future horizon / boundary — the
@@ -161,6 +170,12 @@ class DbNativeForecastResult:
     assumptions: tuple[dict[str, Any], ...]
     risks: tuple[dict[str, Any], ...]
     monthly: tuple[dict[str, Any], ...]
+    # Operator month-window matrix (built only when the monthly output is supported): the displayed
+    # month columns (each tagged actual/forecast), the per-budget-code table rows, and the dense
+    # per-month total row. Empty / None when monthly is unsupported (no fabricated matrix).
+    monthly_months: tuple[dict[str, Any], ...]
+    monthly_table_rows: tuple[dict[str, Any], ...]
+    monthly_table_totals: dict[str, Any] | None
     unsupported_outputs: dict[str, Any]
     warnings: tuple[str, ...]
     blockers: tuple[str, ...]
@@ -183,6 +198,9 @@ class DbNativeForecastResult:
             "assumptions": [dict(r) for r in self.assumptions],
             "risks": [dict(r) for r in self.risks],
             "monthly": [dict(r) for r in self.monthly],
+            "monthly_months": [dict(r) for r in self.monthly_months],
+            "monthly_table_rows": [dict(r) for r in self.monthly_table_rows],
+            "monthly_table_totals": (dict(self.monthly_table_totals) if self.monthly_table_totals else None),
             "unsupported_outputs": dict(self.unsupported_outputs),
             "warnings": list(self.warnings),
             "blockers": list(self.blockers),
@@ -262,13 +280,26 @@ def _generate_comprehensive(inp: DbNativeGenerationEngineInput) -> DbNativeForec
         risks.extend(_line_risks(line, decision, revised, new_final))
 
     # Monthly phasing (window-bounded actuals + even-spread forecast). Omitted honestly when no
-    # forecast_end_date / no usable horizon — monthly is then disclosed as unsupported for this output.
-    monthly_rows, monthly_supported, monthly_reason, monthly_warnings = _build_monthly(
+    # forecast_end window / no usable horizon — monthly is then disclosed as unsupported for this output.
+    monthly_rows, monthly_supported, monthly_reason, monthly_warnings, displayed_months = _build_monthly(
         ctx, dict(inp.forecast_window or {}), forecast_ctc_by_key
     )
     unsupported = dict(_COMPREHENSIVE_UNSUPPORTED)
+    monthly_months: list[dict[str, Any]] = []
+    monthly_table_rows: list[dict[str, Any]] = []
+    monthly_table_totals: dict[str, Any] | None = None
     if monthly_supported:
         warnings.extend(monthly_warnings)
+        # Table-ready matrix is an OPERATOR-month-window feature: built only when the request carried
+        # the four YYYY-MM fields (legacy date-only callers keep the cells-only behaviour, no matrix).
+        window = dict(inp.forecast_window or {})
+        if all(window.get(f) for f in _OPERATOR_MONTH_FIELDS):
+            lines_by_key = {str(line.get("budget_code_key") or ""): line for line in lines}
+            monthly_months = displayed_months
+            monthly_table_rows, monthly_table_totals, matrix_warnings = _build_monthly_matrix(
+                ctx, monthly_rows, displayed_months, lines_by_key
+            )
+            warnings.extend(matrix_warnings)
     else:
         unsupported["monthly"] = monthly_reason
         warnings.append(monthly_reason or MONTHLY_NO_END_DATE)
@@ -313,6 +344,9 @@ def _generate_comprehensive(inp: DbNativeGenerationEngineInput) -> DbNativeForec
         assumptions=tuple(assumptions),
         risks=tuple(risks),
         monthly=tuple(monthly_rows),
+        monthly_months=tuple(monthly_months),
+        monthly_table_rows=tuple(monthly_table_rows),
+        monthly_table_totals=monthly_table_totals,
         unsupported_outputs=unsupported,
         warnings=tuple(warnings),
         blockers=tuple(blockers),
@@ -534,6 +568,9 @@ def _unsupported(
         assumptions=(),
         risks=(),
         monthly=(),
+        monthly_months=(),
+        monthly_table_rows=(),
+        monthly_table_totals=None,
         unsupported_outputs={inp.generator_kind: code},
         warnings=(),
         blockers=(code,),
@@ -593,31 +630,46 @@ def _spread(ctc: Decimal, months: list[str]) -> list[tuple[str, Decimal]]:
     return out
 
 
+def _months_inclusive(lo: str, hi: str) -> list[str]:
+    """Contiguous ``YYYY-MM`` months from ``lo`` through ``hi`` inclusive (empty if lo > hi)."""
+    out: list[str] = []
+    cur = lo
+    while cur <= hi:
+        out.append(cur)
+        cur = _next_month(cur)
+    return out
+
+
 def _build_monthly(
     ctx: DbNativeForecastContext,
     window: dict[str, Any],
     forecast_ctc_by_key: dict[str, Decimal],
-) -> tuple[list[dict[str, Any]], bool, str | None, list[str]]:
+) -> tuple[list[dict[str, Any]], bool, str | None, list[str], list[dict[str, Any]]]:
     """Window-bounded actual rows + even-spread forecast rows for a comprehensive output.
 
-    Returns ``(rows, supported, degrade_code, warnings)``. When ``supported`` is False the monthly
-    output is omitted (no rows) and ``degrade_code`` explains why honestly; the caller surfaces it via
-    ``unsupported_outputs["monthly"]``. Each row is ``{budget_code_key, month (YYYY-MM), value
-    (canonical money), is_actual (0/1)}``.
+    Returns ``(rows, supported, degrade_code, warnings, displayed_months)``. When ``supported`` is
+    False the monthly output is omitted (no rows) and ``degrade_code`` explains why honestly; the
+    caller surfaces it via ``unsupported_outputs["monthly"]``. Each row is ``{budget_code_key, month
+    (YYYY-MM), value (canonical money), is_actual (0/1), value_type, source_status}``.
 
-    Actual rows are bounded to the requested window ``[actual_lo, actual_hi]`` so a narrower selected
-    window never drags in stale source actuals; forecast rows begin strictly after the effective actual
-    boundary (the latest *included* actual month, or the cut-off when no actuals are included) and run
-    through ``forecast_end_date``.
+    The operator month windows drive the cells: actuals are summed within
+    ``[actuals_start_month, actuals_through_month]`` and forecast is even-spread across the EXPLICIT
+    ``[forecast_start_month, forecast_end_month]`` (gap-safe — a gap between the windows is honoured,
+    those months are simply not columns). Legacy date-only callers fall back to the derived window with
+    a boundary-anchored, contiguous forecast horizon. ``displayed_months`` is the ordered union of the
+    two windows, each ``{month, value_type}``.
     """
-    end_month = _month(window.get("forecast_end_date"))
-    if not end_month:
-        return [], False, MONTHLY_NO_END_DATE, []
+    # Operator month windows take precedence; fall back to the legacy derived date fields.
+    am_start = window.get("actuals_start_month") or _month(window.get("forecast_start_date"))
+    am_through = window.get("actuals_through_month") or _month(window.get("forecast_cutoff_date"))
+    fm_start_explicit = window.get("forecast_start_month")
+    fm_end = window.get("forecast_end_month") or _month(window.get("forecast_end_date"))
+    if not fm_end:
+        return [], False, MONTHLY_NO_END_DATE, [], []
 
-    start_month = _month(window.get("forecast_start_date"))
-    cutoff_month = _month(window.get("forecast_cutoff_date"))
+    cutoff_month = am_through  # the actual-window upper bound
 
-    # Per-code aggregated actuals by month (sum across ``type``), plus the global source span.
+    # Per-code aggregated actuals by month (sum across ``type`` — dedup by (code, month)).
     agg: dict[str, dict[str, Decimal]] = {}
     source_months: list[str] = []
     for row in ctx.budget_code_context:
@@ -631,8 +683,8 @@ def _build_monthly(
             agg.setdefault(key, {})
             agg[key][month] = agg[key].get(month, ZERO) + amount
 
-    actual_lo = start_month or (min(source_months) if source_months else None)
-    actual_hi = cutoff_month or (max(source_months) if source_months else None)
+    actual_lo = am_start or (min(source_months) if source_months else None)
+    actual_hi = am_through or (max(source_months) if source_months else None)
 
     rows: list[dict[str, Any]] = []
     boundary: str | None = None
@@ -647,21 +699,29 @@ def _build_monthly(
                         "month": month,
                         "value": money_str(agg[key][month]),
                         "is_actual": 1,
+                        "value_type": "actual",
+                        "source_status": "source_actual",
                     }
                 )
                 if boundary is None or month > boundary:
                     boundary = month
 
     had_actuals = bool(rows)
-    if boundary is None:
-        # No actuals fell inside the window; anchor the forecast start on the cut-off when supplied.
-        boundary = cutoff_month
-    if boundary is None:
-        return [], False, MONTHLY_NO_BOUNDARY_ANCHOR, []
 
-    future_months = _months_between(boundary, end_month)
+    # Forecast horizon: an explicit operator forecast_start_month is honoured verbatim (gap-safe);
+    # otherwise anchor on the latest included actual / the cut-off and run contiguously (legacy path).
+    if fm_start_explicit:
+        forecast_lo = fm_start_explicit
+        future_months = _months_inclusive(forecast_lo, fm_end)
+    else:
+        if boundary is None:
+            boundary = cutoff_month
+        if boundary is None:
+            return [], False, MONTHLY_NO_BOUNDARY_ANCHOR, [], []
+        forecast_lo = _next_month(boundary)
+        future_months = _months_between(boundary, fm_end)
     if not future_months:
-        return [], False, MONTHLY_NO_FUTURE_HORIZON, []
+        return [], False, MONTHLY_NO_FUTURE_HORIZON, [], []
 
     for key in sorted(forecast_ctc_by_key):
         ctc = forecast_ctc_by_key[key]
@@ -669,7 +729,7 @@ def _build_monthly(
             continue
         spread = _spread(ctc, future_months)
         if sum((value for _, value in spread), ZERO) != ctc:
-            return [], False, MONTHLY_RECONCILIATION_FAILED, []
+            return [], False, MONTHLY_RECONCILIATION_FAILED, [], []
         for month, value in spread:
             rows.append(
                 {
@@ -677,10 +737,130 @@ def _build_monthly(
                     "month": month,
                     "value": money_str(value),
                     "is_actual": 0,
+                    "value_type": "forecast",
+                    "source_status": "calculated_forecast",
                 }
             )
 
     warnings = [] if had_actuals else [MONTHLY_NO_SOURCE_ACTUALS_WARNING]
     warnings.append(MONTHLY_EVEN_SPREAD_DISCLOSURE)
     rows.sort(key=lambda r: (r["budget_code_key"], r["month"], r["is_actual"]))
-    return rows, True, None, warnings
+
+    # Displayed month columns: ordered union of the actual window and the forecast window.
+    displayed: list[dict[str, Any]] = []
+    if actual_lo is not None and actual_hi is not None and actual_lo <= actual_hi:
+        displayed.extend({"month": m, "value_type": "actual"} for m in _months_inclusive(actual_lo, actual_hi))
+    displayed.extend({"month": m, "value_type": "forecast"} for m in future_months)
+    displayed.sort(key=lambda d: d["month"])
+    return rows, True, None, warnings, displayed
+
+
+def _cost_type_from_budget_code(budget_code: Any) -> str | None:
+    """SOW rule: cost_type = last 3 characters of the Procore budget_code. Safe on null/short codes
+    (returns None so the caller can warn rather than emit a misleading value)."""
+    if budget_code is None:
+        return None
+    text = str(budget_code).strip()
+    return text[-3:] if len(text) >= 3 else None
+
+
+def _build_monthly_matrix(
+    ctx: DbNativeForecastContext,
+    monthly_rows: list[dict[str, Any]],
+    displayed_months: list[dict[str, Any]],
+    lines_by_key: dict[str, dict[str, Any]],
+) -> tuple[list[dict[str, Any]], dict[str, Any], list[str]]:
+    """Build the persisted per-budget-code matrix rows + the dense per-month total row.
+
+    Completed-to-Date / Forecast-to-Complete come from the persisted monthly CELLS (so the matrix
+    reconciles to the cells exactly); EAC = CtD + FtC; Variance = EAC - projected_budget_display
+    (the Procore-authoritative display value). One matrix row per budget-code context entry. Returns
+    ``(rows, totals, warnings)``.
+    """
+    # Per-code actual/forecast cell sums (window-bounded, from the emitted cells).
+    ctd_by_key: dict[str, Decimal] = {}
+    ftc_by_key: dict[str, Decimal] = {}
+    for cell in monthly_rows:
+        key = str(cell.get("budget_code_key") or "")
+        value = dec(cell.get("value")) or ZERO
+        if cell.get("value_type") == "actual":
+            ctd_by_key[key] = ctd_by_key.get(key, ZERO) + value
+        else:
+            ftc_by_key[key] = ftc_by_key.get(key, ZERO) + value
+
+    month_order = [d["month"] for d in displayed_months]
+    month_totals: dict[str, Decimal] = {m: ZERO for m in month_order}
+    for cell in monthly_rows:
+        month = str(cell.get("month") or "")
+        if month in month_totals:
+            month_totals[month] += dec(cell.get("value")) or ZERO
+
+    rows: list[dict[str, Any]] = []
+    warnings: list[str] = []
+    pb_total = ctd_total = ftc_total = eac_total = var_total = ZERO
+    for ctx_row in ctx.budget_code_context:
+        key = str(ctx_row.get("budget_code_key") or "")
+        md = dict(ctx_row.get("matrix_display") or {})
+        pb_display = dec(md.get("projected_budget_display"))
+        pb_basis = dec(md.get("projected_budget_calculation_basis"))
+        source_warning = md.get("source_warning")
+        if pb_display is None:
+            # Coalesce to the spine basis, else 0.00 — keeps the NOT NULL columns honest + flagged.
+            if pb_basis is not None:
+                pb_display = pb_basis
+                source_warning = source_warning or "display_row_not_procore_authoritative"
+            else:
+                pb_display = ZERO
+                source_warning = "projected_budget_unavailable"
+        basis_persist = pb_basis if pb_basis is not None else ZERO
+
+        budget_code = md.get("budget_code")
+        cost_type = _cost_type_from_budget_code(budget_code)
+        if budget_code and cost_type is None:
+            warnings.append("cost_type_underivable")
+        if source_warning:
+            warnings.append(source_warning)
+
+        ctd = ctd_by_key.get(key, ZERO)
+        ftc = ftc_by_key.get(key, ZERO)
+        eac = ctd + ftc
+        variance = eac - pb_display
+        line = lines_by_key.get(key) or {}
+
+        rows.append(
+            {
+                "budget_code_key": key,
+                "budget_code": budget_code,
+                "cost_code": md.get("cost_code"),
+                "cost_type": cost_type,
+                "projected_budget_display": money_str(pb_display),
+                "projected_budget_display_source": md.get("projected_budget_display_source"),
+                "projected_budget_calculation_basis": money_str(basis_persist),
+                "projected_budget_calculation_source": md.get("projected_budget_calculation_source"),
+                "projected_budget_source_warning": source_warning,
+                "completed_to_date": money_str(ctd),
+                "forecast_to_complete": money_str(ftc),
+                "estimated_at_completion": money_str(eac),
+                "variance_to_budget": money_str(variance),
+                "confidence": line.get("confidence"),
+                "method_code": line.get("method_code"),
+                "reason_codes": list(line.get("reason_codes") or []),
+                "sort_key": key,
+            }
+        )
+        pb_total += pb_display
+        ctd_total += ctd
+        ftc_total += ftc
+        eac_total += eac
+        var_total += variance
+
+    rows.sort(key=lambda r: r["sort_key"])
+    totals = {
+        "month_values": {m: money_str(month_totals[m]) for m in month_order},
+        "projected_budget_total": money_str(pb_total),
+        "completed_to_date_total": money_str(ctd_total),
+        "forecast_to_complete_total": money_str(ftc_total),
+        "estimated_at_completion_total": money_str(eac_total),
+        "variance_to_budget_total": money_str(var_total),
+    }
+    return rows, totals, _dedup(warnings)

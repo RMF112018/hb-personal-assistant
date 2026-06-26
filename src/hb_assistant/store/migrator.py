@@ -14,7 +14,7 @@ from .connection import get_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 73
+LATEST_SCHEMA_VERSION = 74
 
 
 class SQLiteMigrator:
@@ -6804,6 +6804,34 @@ class SQLiteMigrator:
 
         return V73_STATEMENTS
 
+    # v74 Forecast monthly-matrix: operator month-window fields on the request ledger + immutable
+    # output header, value_type/source_status classification on the sparse monthly cells, and the
+    # table-ready per-row matrix + dense per-month total row. Column adds are applied only when absent
+    # (idempotent under the schedule self-heal re-apply, which can leave columns present while the v74
+    # row is missing); the backfill + CREATEs are idempotent. Populated at runtime by the DB-native
+    # generation/persistence path.
+    def _apply_v74_forecast_monthly_matrix(self, conn: sqlite3.Connection) -> None:
+        from hb_assistant.store.forecast_output_matrix_tables import (
+            V74_BACKFILL_STATEMENTS,
+            V74_COLUMN_ADDITIONS,
+            V74_CREATE_STATEMENTS,
+        )
+
+        for table, columns in V74_COLUMN_ADDITIONS:
+            try:
+                existing = {row[1] for row in conn.execute(f"PRAGMA table_info({table})")}
+            except sqlite3.OperationalError:
+                continue
+            if not existing:
+                continue
+            for name, decl in columns:
+                if name not in existing:
+                    conn.execute(f"ALTER TABLE {table} ADD COLUMN {name} {decl}")
+        for stmt in V74_BACKFILL_STATEMENTS:
+            conn.execute(stmt)
+        for stmt in V74_CREATE_STATEMENTS:
+            conn.execute(stmt)
+
     # v44 Phase 10 Graph drive-item modified-by raw operational metadata.
     # Additive ADD COLUMN only on construction_drive_items; raw identity JSON is
     # local SQLite operational metadata and must not be emitted in committed evidence.
@@ -8017,6 +8045,19 @@ class SQLiteMigrator:
             if cur.fetchone() is None:
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (73, 'v73_forecast_generation_requests', ?)",
+                    (now,),
+                )
+
+            # v74 Forecast monthly-matrix: operator month-window columns (+ basis/warnings),
+            # value_type/source_status on the sparse monthly cells (with a one-time is_actual
+            # backfill), and the matrix row + dense total tables. The column adds/backfill/CREATEs are
+            # idempotent (column-existence-guarded), so they run on every apply (self-heal safe); only
+            # the schema_migrations row insert is guarded.
+            self._apply_v74_forecast_monthly_matrix(conn)
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 74")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (74, 'v74_forecast_monthly_matrix', ?)",
                     (now,),
                 )
 

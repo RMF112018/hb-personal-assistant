@@ -80,6 +80,12 @@ class DbNativeGenerationRequest:
     forecast_cutoff_date: str | None = None
     forecast_end_date: str | None = None
     forecast_cutoff_date_basis: str | None = None
+    # Operator month windows (YYYY-MM) — source of truth for the monthly matrix; threaded into the
+    # engine's forecast_window so the matrix is built/certified.
+    actuals_start_month: str | None = None
+    actuals_through_month: str | None = None
+    forecast_start_month: str | None = None
+    forecast_end_month: str | None = None
     source_snapshot_id: str | None = None
     request_id: str | None = None
     db_path: str | None = None
@@ -133,6 +139,15 @@ def generate_db_native(request: DbNativeGenerationRequest) -> DbNativeGeneration
         window["forecast_cutoff_date"] = request.forecast_cutoff_date
     if request.forecast_end_date:
         window["forecast_end_date"] = request.forecast_end_date
+    # Operator month windows drive the monthly matrix (legacy date-only callers omit these).
+    if request.actuals_start_month:
+        window["actuals_start_month"] = request.actuals_start_month
+    if request.actuals_through_month:
+        window["actuals_through_month"] = request.actuals_through_month
+    if request.forecast_start_month:
+        window["forecast_start_month"] = request.forecast_start_month
+    if request.forecast_end_month:
+        window["forecast_end_month"] = request.forecast_end_month
 
     result = compute_db_native_forecast(
         request.project_key,
