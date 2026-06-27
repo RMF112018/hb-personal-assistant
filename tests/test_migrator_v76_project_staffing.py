@@ -155,8 +155,13 @@ def test_v76_lifecycle_contract_count(tmp_path: Path) -> None:
     contract = json.loads(contract_path.read_text())
     assert contract["table_count"] == 469
     assert contract["table_count"] == len(contract["tables"])
+    # The two attribution tables were reshaped to the cost_code+category model in V81.
+    _reshaped_v81 = {
+        "forecast_project_staffing_attribution_rules",
+        "forecast_project_staffing_attribution_review_items",
+    }
     for table in V76_TABLES:
         assert table in contract["tables"], table
         entry = contract["tables"][table]
-        assert entry["v"] == "V76"
+        assert entry["v"] == ("V81" if table in _reshaped_v81 else "V76")
         assert entry["table_family"] == "project_staffing_v76"

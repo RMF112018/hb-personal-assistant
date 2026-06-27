@@ -58,7 +58,7 @@ def _commit(
 def test_v78_manual_actions_schema_and_contract_count(tmp_path: Path) -> None:
     db = tmp_path / "schema.db"
     migrator = SQLiteMigrator(db_path=str(db))
-    assert migrator.apply() == LATEST_SCHEMA_VERSION == 80
+    assert migrator.apply() == LATEST_SCHEMA_VERSION >= 80
     assert migrator.apply() == LATEST_SCHEMA_VERSION
     with sqlite3.connect(db) as conn:
         names = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}

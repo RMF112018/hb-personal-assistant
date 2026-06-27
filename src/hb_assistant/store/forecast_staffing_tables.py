@@ -357,3 +357,69 @@ V76_CREATE_STATEMENTS: list[str] = [
     "CREATE INDEX IF NOT EXISTS idx_forecast_project_staffing_snapshot_rows_snapshot "
     "ON forecast_project_staffing_snapshot_rows(staffing_snapshot_id);",
 ]
+
+
+# ---------------------------------------------------------------------------------------------
+# V81 attribution reshape (cost_code + category model).
+#
+# The V76 attribution_rules / review_items tables were person-centric (employee_name_* NOT NULL),
+# but real forecast_cost_entries carry no per-person identity in `description`, so attribution
+# keys on cost_code + category with manual operator rules. Both tables ship EMPTY, so the V81
+# migration drops + recreates them (abort-if-nonempty guarded, one-time). Count-neutral.
+V81_RESHAPE_TABLES: tuple[str, ...] = (
+    "forecast_project_staffing_attribution_rules",
+    "forecast_project_staffing_attribution_review_items",
+)
+V81_DROP_STATEMENTS: list[str] = [
+    "DROP TABLE IF EXISTS forecast_project_staffing_attribution_rules;",
+    "DROP TABLE IF EXISTS forecast_project_staffing_attribution_review_items;",
+]
+V81_CREATE_STATEMENTS: list[str] = [
+    # Manual LAB/LBN attribution rules: (project_key, cost_code, category) -> staffing_config_id.
+    # Active-uniqueness on (project_key, cost_code, category) is enforced at the service layer
+    # (the repo has no partial-unique-index precedent); a regular lookup index backs it.
+    """
+    CREATE TABLE IF NOT EXISTS forecast_project_staffing_attribution_rules (
+      attribution_rule_id TEXT PRIMARY KEY,
+      project_key TEXT NOT NULL,
+      cost_code TEXT NOT NULL,
+      category TEXT NOT NULL,
+      staffing_config_id TEXT NOT NULL,
+      match_source TEXT NOT NULL DEFAULT 'manual',
+      effective_start_date TEXT,
+      effective_finish_date TEXT,
+      active_status TEXT NOT NULL DEFAULT 'active',
+      created_by_role TEXT,
+      created_utc TEXT NOT NULL,
+      updated_utc TEXT NOT NULL,
+      raw_json TEXT NOT NULL DEFAULT '{}',
+      FOREIGN KEY (staffing_config_id)
+        REFERENCES forecast_project_staffing_config(staffing_config_id)
+    );
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_forecast_project_staffing_attribution_rules_lookup "
+    "ON forecast_project_staffing_attribution_rules(project_key, cost_code, category);",
+    # Aggregated unmatched LAB/LBN actual review bucket, keyed by project_key + cost_code + category
+    # (NOT person). description_label is context only.
+    """
+    CREATE TABLE IF NOT EXISTS forecast_project_staffing_attribution_review_items (
+      review_item_id TEXT PRIMARY KEY,
+      project_key TEXT NOT NULL,
+      cost_code TEXT NOT NULL,
+      category TEXT NOT NULL,
+      description_label TEXT,
+      actuals_start_month TEXT,
+      actuals_through_month TEXT,
+      actual_amount TEXT,
+      suggested_staffing_config_id TEXT,
+      review_status TEXT NOT NULL DEFAULT 'unmatched',
+      resolved_staffing_config_id TEXT,
+      resolved_by_role TEXT,
+      created_utc TEXT NOT NULL,
+      updated_utc TEXT NOT NULL,
+      raw_json TEXT NOT NULL DEFAULT '{}'
+    );
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_forecast_project_staffing_review_items_project "
+    "ON forecast_project_staffing_attribution_review_items(project_key, review_status);",
+]

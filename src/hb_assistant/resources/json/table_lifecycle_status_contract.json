@@ -4148,8 +4148,8 @@
       "expected_population_status": "empty",
       "phase_owner": "project_staffing_foundation",
       "blocking_for_phase": "none",
-      "v": "V76",
-      "notes": "Persistent LAB/LBN actual-to-staffing-row attribution rules; written by the attribution service in a later phase."
+      "v": "V81",
+      "notes": "Manual LAB/LBN attribution rules keyed by project_key + cost_code + category -> staffing_config_id (V81 reshape; person model dropped)."
     },
     "forecast_project_staffing_attribution_review_items": {
       "table_family": "project_staffing_v76",
@@ -4157,8 +4157,8 @@
       "expected_population_status": "empty",
       "phase_owner": "project_staffing_foundation",
       "blocking_for_phase": "none",
-      "v": "V76",
-      "notes": "Aggregated unmatched LAB/LBN actual review bucket (employee + cost_code + category); populated in a later phase."
+      "v": "V81",
+      "notes": "Aggregated unmatched LAB/LBN actual review bucket keyed by project_key + cost_code + category (V81 reshape; person model dropped)."
     },
     "forecast_cost_entry_staffing_actuals": {
       "table_family": "project_staffing_v76",

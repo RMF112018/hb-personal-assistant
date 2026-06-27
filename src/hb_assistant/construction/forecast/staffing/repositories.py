@@ -15,7 +15,8 @@ from typing import Any
 
 from hb_assistant.store.connection import open_connection, transaction
 
-from ._common import assert_schema, new_id, upsert, utc_now
+from ._common import assert_schema, new_id, stable_id, upsert, utc_now
+from ._common import sum_decimals as _sum_decimals
 
 
 def normalize_name(value: str | None) -> str | None:
@@ -660,3 +661,279 @@ class StaffingCostCodeRepository:
                     (now, cost_code_id),
                 )
         return self.get(cost_code_id)
+
+
+# ---------------------------------------------------------------------------
+# V81 attribution: manual rules + review bucket + normalized actuals (Phase 2b)
+# ---------------------------------------------------------------------------
+
+_RULE_COLS = (
+    "attribution_rule_id, project_key, cost_code, category, staffing_config_id, match_source, "
+    "effective_start_date, effective_finish_date, active_status, created_by_role, created_utc, "
+    "updated_utc"
+)
+_REVIEW_COLS = (
+    "review_item_id, project_key, cost_code, category, description_label, actuals_start_month, "
+    "actuals_through_month, actual_amount, suggested_staffing_config_id, review_status, "
+    "resolved_staffing_config_id, resolved_by_role, created_utc, updated_utc"
+)
+_ACTUAL_COLS = (
+    "staffing_actual_id, cost_entry_id, project_key, budget_code_key, cost_code, category, "
+    "accounting_date, accounting_month, amount, description, is_employee_attributable, "
+    "attribution_status, staffing_config_id, attribution_rule_id, created_utc, updated_utc"
+)
+
+
+class AttributionRuleRepository:
+    """Manual LAB/LBN attribution rules: (project_key, cost_code, category) -> staffing_config_id.
+
+    Active-uniqueness on the triple is enforced here (the schema has only a lookup index): an
+    upsert deactivates any existing active rule for the triple before inserting the new one.
+    """
+
+    def __init__(self, *, db_path: str) -> None:
+        self._db_path = db_path
+
+    def list(self, project_key: str, *, active_only: bool = True) -> list[dict[str, Any]]:
+        with open_connection(self._db_path) as conn:
+            assert_schema(conn)
+            sql = (
+                f"SELECT {_RULE_COLS} FROM forecast_project_staffing_attribution_rules "
+                "WHERE project_key = ?"
+            )
+            if active_only:
+                sql += " AND active_status = 'active'"
+            sql += " ORDER BY cost_code, category, created_utc"
+            return _rows(conn, sql, (project_key,))
+
+    def get(self, rule_id: str) -> dict[str, Any] | None:
+        with open_connection(self._db_path) as conn:
+            assert_schema(conn)
+            return _one(
+                conn,
+                f"SELECT {_RULE_COLS} FROM forecast_project_staffing_attribution_rules "
+                "WHERE attribution_rule_id = ?",
+                (rule_id,),
+            )
+
+    def find_active(self, project_key: str, cost_code: str, category: str) -> dict[str, Any] | None:
+        with open_connection(self._db_path) as conn:
+            assert_schema(conn)
+            return _one(
+                conn,
+                f"SELECT {_RULE_COLS} FROM forecast_project_staffing_attribution_rules "
+                "WHERE project_key = ? AND cost_code = ? AND category = ? AND active_status = 'active' "
+                "ORDER BY created_utc DESC LIMIT 1",
+                (project_key, cost_code, category),
+            )
+
+    def upsert_rule(
+        self,
+        *,
+        project_key: str,
+        cost_code: str,
+        category: str,
+        staffing_config_id: str,
+        match_source: str = "manual",
+        created_by_role: str | None = None,
+        effective_start_date: str | None = None,
+        effective_finish_date: str | None = None,
+    ) -> dict[str, Any]:
+        now = utc_now()
+        rule_id = new_id()
+        values = {
+            "attribution_rule_id": rule_id,
+            "project_key": project_key,
+            "cost_code": cost_code,
+            "category": category,
+            "staffing_config_id": staffing_config_id,
+            "match_source": match_source,
+            "effective_start_date": effective_start_date,
+            "effective_finish_date": effective_finish_date,
+            "active_status": "active",
+            "created_by_role": created_by_role,
+            "created_utc": now,
+            "updated_utc": now,
+            "raw_json": "{}",
+        }
+        with open_connection(self._db_path) as conn:
+            assert_schema(conn)
+            with transaction(conn):
+                # service-level active-uniqueness for the triple
+                conn.execute(
+                    "UPDATE forecast_project_staffing_attribution_rules "
+                    "SET active_status = 'deactivated', updated_utc = ? "
+                    "WHERE project_key = ? AND cost_code = ? AND category = ? "
+                    "AND active_status = 'active'",
+                    (now, project_key, cost_code, category),
+                )
+                upsert(
+                    conn,
+                    "forecast_project_staffing_attribution_rules",
+                    values,
+                    ("attribution_rule_id",),
+                )
+        got = self.get(rule_id)
+        assert got is not None
+        return got
+
+    def deactivate(self, rule_id: str) -> dict[str, Any] | None:
+        with open_connection(self._db_path) as conn:
+            assert_schema(conn)
+            with transaction(conn):
+                conn.execute(
+                    "UPDATE forecast_project_staffing_attribution_rules "
+                    "SET active_status = 'deactivated', updated_utc = ? WHERE attribution_rule_id = ?",
+                    (utc_now(), rule_id),
+                )
+        return self.get(rule_id)
+
+
+class AttributionReviewRepository:
+    """Aggregated unmatched LAB/LBN review bucket keyed by project_key + cost_code + category."""
+
+    def __init__(self, *, db_path: str) -> None:
+        self._db_path = db_path
+
+    @staticmethod
+    def _item_id(project_key: str, cost_code: str, category: str) -> str:
+        return stable_id("staffing-review", project_key, cost_code, category)
+
+    def list(self, project_key: str, *, status: str | None = None) -> list[dict[str, Any]]:
+        with open_connection(self._db_path) as conn:
+            assert_schema(conn)
+            sql = (
+                f"SELECT {_REVIEW_COLS} FROM forecast_project_staffing_attribution_review_items "
+                "WHERE project_key = ?"
+            )
+            params: list[Any] = [project_key]
+            if status is not None:
+                sql += " AND review_status = ?"
+                params.append(status)
+            sql += " ORDER BY cost_code, category"
+            return _rows(conn, sql, tuple(params))
+
+    def get(self, review_item_id: str) -> dict[str, Any] | None:
+        with open_connection(self._db_path) as conn:
+            assert_schema(conn)
+            return _one(
+                conn,
+                f"SELECT {_REVIEW_COLS} FROM forecast_project_staffing_attribution_review_items "
+                "WHERE review_item_id = ?",
+                (review_item_id,),
+            )
+
+    def upsert_item(
+        self,
+        *,
+        project_key: str,
+        cost_code: str,
+        category: str,
+        description_label: str | None,
+        actuals_start_month: str | None,
+        actuals_through_month: str | None,
+        actual_amount: str | None,
+        suggested_staffing_config_id: str | None = None,
+    ) -> str:
+        now = utc_now()
+        item_id = self._item_id(project_key, cost_code, category)
+        values = {
+            "review_item_id": item_id,
+            "project_key": project_key,
+            "cost_code": cost_code,
+            "category": category,
+            "description_label": description_label,
+            "actuals_start_month": actuals_start_month,
+            "actuals_through_month": actuals_through_month,
+            "actual_amount": actual_amount,
+            "suggested_staffing_config_id": suggested_staffing_config_id,
+            "review_status": "unmatched",
+            "resolved_staffing_config_id": None,
+            "resolved_by_role": None,
+            "created_utc": now,
+            "updated_utc": now,
+            "raw_json": "{}",
+        }
+        with open_connection(self._db_path) as conn:
+            assert_schema(conn)
+            with transaction(conn):
+                upsert(
+                    conn,
+                    "forecast_project_staffing_attribution_review_items",
+                    values,
+                    ("review_item_id",),
+                )
+        return item_id
+
+    def delete_for(self, project_key: str, cost_code: str, category: str) -> None:
+        item_id = self._item_id(project_key, cost_code, category)
+        with open_connection(self._db_path) as conn:
+            assert_schema(conn)
+            with transaction(conn):
+                conn.execute(
+                    "DELETE FROM forecast_project_staffing_attribution_review_items "
+                    "WHERE review_item_id = ? AND review_status != 'resolved'",
+                    (item_id,),
+                )
+
+    def resolve(
+        self, review_item_id: str, *, staffing_config_id: str, resolved_by_role: str | None = None
+    ) -> dict[str, Any] | None:
+        with open_connection(self._db_path) as conn:
+            assert_schema(conn)
+            with transaction(conn):
+                conn.execute(
+                    "UPDATE forecast_project_staffing_attribution_review_items "
+                    "SET review_status = 'resolved', resolved_staffing_config_id = ?, "
+                    "resolved_by_role = ?, updated_utc = ? WHERE review_item_id = ?",
+                    (staffing_config_id, resolved_by_role, utc_now(), review_item_id),
+                )
+        return self.get(review_item_id)
+
+
+class StaffingActualsRepository:
+    """Read access to the normalized forecast_cost_entry_staffing_actuals projection."""
+
+    def __init__(self, *, db_path: str) -> None:
+        self._db_path = db_path
+
+    def list(
+        self, project_key: str, *, category: str | None = None
+    ) -> list[dict[str, Any]]:
+        with open_connection(self._db_path) as conn:
+            assert_schema(conn)
+            sql = (
+                f"SELECT {_ACTUAL_COLS} FROM forecast_cost_entry_staffing_actuals "
+                "WHERE project_key = ?"
+            )
+            params: list[Any] = [project_key]
+            if category is not None:
+                sql += " AND category = ?"
+                params.append(category)
+            sql += " ORDER BY cost_code, category, accounting_month"
+            return _rows(conn, sql, tuple(params))
+
+    def mat_summary(self, project_key: str) -> list[dict[str, Any]]:
+        """MAT actuals summarized by cost_code (never attributed to a staffing row)."""
+        with open_connection(self._db_path) as conn:
+            assert_schema(conn)
+            rows = conn.execute(
+                "SELECT cost_code, COUNT(*) AS entry_count, "
+                "MIN(accounting_month) AS first_month, MAX(accounting_month) AS last_month "
+                "FROM forecast_cost_entry_staffing_actuals "
+                "WHERE project_key = ? AND category = 'MAT' "
+                "GROUP BY cost_code ORDER BY cost_code",
+                (project_key,),
+            ).fetchall()
+            out: list[dict[str, Any]] = []
+            for r in rows:
+                d = dict(r)
+                total = conn.execute(
+                    "SELECT amount FROM forecast_cost_entry_staffing_actuals "
+                    "WHERE project_key = ? AND category = 'MAT' AND cost_code = ?",
+                    (project_key, d["cost_code"]),
+                ).fetchall()
+                d["category"] = "MAT"
+                d["actual_amount"] = _sum_decimals(a[0] for a in total)
+                out.append(d)
+            return out
