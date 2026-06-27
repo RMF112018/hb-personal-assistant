@@ -8,10 +8,12 @@ gate so callers fail clearly when run against a pre-V76 database.
 
 from __future__ import annotations
 
+import hashlib
 import sqlite3
 import uuid
 from datetime import datetime, timezone
-from typing import Any
+from decimal import Decimal, InvalidOperation
+from typing import Any, Iterable
 
 REQUIRED_SCHEMA_VERSION = 76
 
@@ -30,6 +32,25 @@ def utc_now() -> str:
 
 def new_id() -> str:
     return uuid.uuid4().hex[:12]
+
+
+def stable_id(*parts: object) -> str:
+    """Deterministic 16-hex id from the given parts (for idempotent projection/aggregation keys)."""
+    digest = hashlib.sha256("\x1f".join(str(p) for p in parts).encode("utf-8"))
+    return digest.hexdigest()[:16]
+
+
+def sum_decimals(values: Iterable[Any]) -> str:
+    """Sum money strings as Decimal, returning a 2dp string. Non-numeric/None contribute 0."""
+    total = Decimal("0")
+    for v in values:
+        if v is None or (isinstance(v, str) and not v.strip()):
+            continue
+        try:
+            total += Decimal(str(v))
+        except (InvalidOperation, ValueError):
+            continue
+    return str(total.quantize(Decimal("0.01")))
 
 
 def assert_schema(conn: sqlite3.Connection, *, minimum: int = REQUIRED_SCHEMA_VERSION) -> None:

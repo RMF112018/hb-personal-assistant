@@ -14,7 +14,11 @@ from .connection import get_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 80
+LATEST_SCHEMA_VERSION = 81
+
+
+class StaffingMigrationError(RuntimeError):
+    """Raised when a destructive staffing migration would touch non-empty data."""
 
 
 class SQLiteMigrator:
@@ -6900,6 +6904,33 @@ class SQLiteMigrator:
 
         return V80_STATEMENTS
 
+    # v81 Project Staffing attribution reshape: the V76 attribution_rules / review_items tables
+    # were person-centric (employee_name_* NOT NULL), but real cost-entry data has no per-person
+    # identity, so attribution keys on cost_code + category. Both tables ship empty -> drop+recreate
+    # to the new shape. Destructive + count-neutral, so this is guarded to run ONCE (only when the
+    # v81 row is absent) and ABORTS if either table somehow holds rows (no silent data loss).
+    def _apply_v81_attribution_reshape(self, conn: sqlite3.Connection) -> None:
+        from hb_assistant.store.forecast_staffing_tables import (
+            V81_CREATE_STATEMENTS,
+            V81_DROP_STATEMENTS,
+            V81_RESHAPE_TABLES,
+        )
+
+        for table in V81_RESHAPE_TABLES:
+            try:
+                count = conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+            except sqlite3.OperationalError:
+                count = 0  # table absent on a partial DB; CREATE below establishes the new shape
+            if count:
+                raise StaffingMigrationError(
+                    f"refusing to reshape non-empty {table} ({count} rows); "
+                    "an explicit data migration is required"
+                )
+        for stmt in V81_DROP_STATEMENTS:
+            conn.execute(stmt)
+        for stmt in V81_CREATE_STATEMENTS:
+            conn.execute(stmt)
+
     # v44 Phase 10 Graph drive-item modified-by raw operational metadata.
     # Additive ADD COLUMN only on construction_drive_items; raw identity JSON is
     # local SQLite operational metadata and must not be emitted in committed evidence.
@@ -8187,6 +8218,17 @@ class SQLiteMigrator:
             if cur.fetchone() is None:
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (80, 'v80_schedule_diff_impact_rollups', ?)",
+                    (now,),
+                )
+
+            # v81 Project Staffing attribution reshape (cost_code + category model). DESTRUCTIVE
+            # drop+recreate of the two empty V76 attribution tables, so it runs ONCE (guarded by
+            # the v81 row) and aborts if either table holds rows. Count-neutral (same table names).
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 81")
+            if cur.fetchone() is None:
+                self._apply_v81_attribution_reshape(conn)
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (81, 'v81_staffing_attribution_cost_code_category', ?)",
                     (now,),
                 )
 
