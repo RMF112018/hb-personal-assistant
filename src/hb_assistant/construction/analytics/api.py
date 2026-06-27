@@ -262,6 +262,24 @@ class StaffingReviewResolveRequest(BaseModel):
     resolved_by_role: str | None = None
 
 
+class StaffingTemplateCreateRequest(BaseModel):
+    template_key: str
+    template_name: str
+    created_by_role: str | None = None
+
+
+class StaffingTemplateVersionCreateRequest(BaseModel):
+    cost_code: str | None = None
+    cost_code_description: str | None = None
+    default_role_title: str | None = None
+    default_employment_type: str | None = None
+    default_rate_unit: str | None = None
+    default_lab_rate: str | None = None
+    default_lbn_rate: str | None = None
+    default_mat_rate: str | None = None
+    created_by_role: str | None = None
+
+
 class RefreshRequest(BaseModel):
     note_redacted: str | None = None
 
@@ -2118,6 +2136,74 @@ def create_app(*, db_path: str | None = None) -> Any:
         require_operator_role(role)
         svc = _forecast_staffing_service()
         return _forecast_staffing_call(lambda: svc.rebuild_actuals(project_key))
+
+    # Project Staffing global config (Phase 3c): the reusable staffing-template library (operator
+    # writes) + the seeded company holiday calendars (read-only), under Forecasting Config.
+    @app.get("/api/forecast/config/staffing-templates")
+    def staffing_templates_list(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        return _forecast_staffing_call(_forecast_staffing_service().list_templates)
+
+    @app.post("/api/forecast/config/staffing-templates")
+    def staffing_template_create(
+        request: StaffingTemplateCreateRequest, role: dict[str, str] = role_dep
+    ) -> dict[str, Any]:
+        require_operator_role(role)
+        svc = _forecast_staffing_service()
+        return _forecast_staffing_call(
+            lambda: svc.create_template(
+                template_key=request.template_key,
+                template_name=request.template_name,
+                created_by_role=request.created_by_role,
+            )
+        )
+
+    @app.get("/api/forecast/config/staffing-templates/{template_id}")
+    def staffing_template_get(template_id: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        return _forecast_staffing_call(_forecast_staffing_service().get_template, template_id)
+
+    @app.delete("/api/forecast/config/staffing-templates/{template_id}")
+    def staffing_template_delete(
+        template_id: str, role: dict[str, str] = role_dep
+    ) -> dict[str, Any]:
+        require_operator_role(role)
+        svc = _forecast_staffing_service()
+        return _forecast_staffing_call(lambda: svc.deactivate_template(template_id))
+
+    @app.get("/api/forecast/config/staffing-templates/{template_id}/versions")
+    def staffing_template_versions(
+        template_id: str, role: dict[str, str] = role_dep
+    ) -> dict[str, Any]:
+        del role
+        svc = _forecast_staffing_service()
+        return _forecast_staffing_call(lambda: svc.get_template(template_id))
+
+    @app.post("/api/forecast/config/staffing-templates/{template_id}/versions")
+    def staffing_template_version_create(
+        template_id: str,
+        request: StaffingTemplateVersionCreateRequest,
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        require_operator_role(role)
+        svc = _forecast_staffing_service()
+        return _forecast_staffing_call(
+            lambda: svc.add_template_version(template_id, request.model_dump(exclude_none=True))
+        )
+
+    @app.get("/api/forecast/config/holiday-calendars")
+    def staffing_holiday_calendars_list(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        return _forecast_staffing_call(_forecast_staffing_service().list_holiday_calendars)
+
+    @app.get("/api/forecast/config/holiday-calendars/{holiday_calendar_id}")
+    def staffing_holiday_calendar_get(
+        holiday_calendar_id: str, role: dict[str, str] = role_dep
+    ) -> dict[str, Any]:
+        del role
+        return _forecast_staffing_call(
+            _forecast_staffing_service().get_holiday_calendar, holiday_calendar_id
+        )
 
     # Forecast config editing — isolated proposals (Implementation Phase E). An operator proposes
     # edits; the service seeds from a chosen live snapshot (mode=ro), applies edits in an isolated

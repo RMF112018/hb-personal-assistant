@@ -35,6 +35,7 @@ pytest_targets=(
   "tests/test_fastapi_forecast_run_readmodel.py"
   "tests/test_fastapi_forecast_runtime.py"
   "tests/test_fastapi_project_staffing.py"
+  "tests/test_fastapi_staffing_templates.py"
   "tests/test_forecast_assumptions_consume_p2.py"
   "tests/test_forecast_bootstrap.py"
   "tests/test_forecast_catalog_service.py"
