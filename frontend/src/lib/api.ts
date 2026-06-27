@@ -1157,6 +1157,41 @@ export function getForecastConfigItem(snapshotId: string, itemId: string) {
   );
 }
 
+/* Forecast config — global staffing templates (Phase 5). */
+export function getForecastStaffingTemplates() {
+  return fetchJson<{ templates: Record<string, unknown>[] }>(
+    '/api/forecast/config/staffing-templates',
+  );
+}
+export function createForecastStaffingTemplate(body: Record<string, unknown>) {
+  return fetchJson('/api/forecast/config/staffing-templates', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+export function getForecastStaffingTemplate(templateId: string) {
+  return fetchJson<{
+    template?: Record<string, unknown>
+    versions?: Record<string, unknown>[]
+    current_version?: Record<string, unknown> | null
+    ok?: boolean
+  }>(`/api/forecast/config/staffing-templates/${encodeURIComponent(templateId)}`);
+}
+export function addForecastStaffingTemplateVersion(
+  templateId: string,
+  body: Record<string, unknown>,
+) {
+  return fetchJson(
+    `/api/forecast/config/staffing-templates/${encodeURIComponent(templateId)}/versions`,
+    { method: 'POST', body: JSON.stringify(body) },
+  );
+}
+export function deleteForecastStaffingTemplate(templateId: string) {
+  return fetchJson(`/api/forecast/config/staffing-templates/${encodeURIComponent(templateId)}`, {
+    method: 'DELETE',
+  });
+}
+
 /* Forecast config editing — isolated proposals (Implementation Phase E). An operator proposes edits
  * to a chosen snapshot; the backend seeds from the live snapshot (read-only), applies edits in an
  * isolated config-edit root, runs the CFR import→snapshot→materialize→parity pipeline, and returns a
@@ -1949,6 +1984,11 @@ export const api = {
   getProjectStaffingMatSummary,
   rebuildProjectStaffingProjection,
   getForecastHolidayCalendars,
+  getForecastStaffingTemplates,
+  createForecastStaffingTemplate,
+  getForecastStaffingTemplate,
+  addForecastStaffingTemplateVersion,
+  deleteForecastStaffingTemplate,
   getToday,
   getTodayChanges,
   getTodayMeetings,
