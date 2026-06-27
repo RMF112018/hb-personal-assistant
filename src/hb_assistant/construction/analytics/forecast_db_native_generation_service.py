@@ -41,6 +41,7 @@ from hb_assistant.construction.analytics.forecast_run_output_persistence_service
 # Coded, path-free DB-native failure reasons (stored on the request row; returned to the UI).
 FAILURE_KIND_UNSUPPORTED = "db_native_generator_kind_unsupported"
 FAILURE_INSUFFICIENT_BASIS = "db_native_insufficient_basis"
+FAILURE_STAFFING_CONFIG_INVALID = "db_native_staffing_config_invalid"
 
 # Curated, path-free messages keyed by failure code (never echo exception text / data_root paths).
 _FAILURE_MESSAGES = {
@@ -59,6 +60,10 @@ _FAILURE_MESSAGES = {
         "The DB-native forecast output did not pass persistence certification and was not written."
     ),
     FAILURE_DB_PERSISTENCE: "The DB-native forecast output could not be persisted.",
+    FAILURE_STAFFING_CONFIG_INVALID: (
+        "DB-native forecast was blocked: the project staffing configuration is invalid. Fix the "
+        "flagged staffing rows and try again."
+    ),
 }
 
 _GENERATED_STATUSES = frozenset({"generated", "generated_degraded"})
@@ -162,6 +167,21 @@ def generate_db_native(request: DbNativeGenerationRequest) -> DbNativeGeneration
     if status not in _GENERATED_STATUSES:
         return _failed(request, FAILURE_INSUFFICIENT_BASIS)
 
+    # Project Staffing (Phase 6): compute the staffing contribution in hb_assistant and merge it into
+    # the result (monthly cells + matrix rows + totals/KPIs). Invalid staffing config fails closed
+    # before any write; a clean/empty config leaves the budget-code forecast unchanged.
+    staffing_output = None
+    if request.db_path:
+        from hb_assistant.construction.forecast.staffing.monthly_output import (
+            build_staffing_output,
+            merge_staffing_into_result,
+        )
+
+        staffing_output = build_staffing_output(request.db_path, request.project_key, window or {})
+        if staffing_output.get("status") == "invalid":
+            return _failed(request, FAILURE_STAFFING_CONFIG_INVALID)
+        result = merge_staffing_into_result(result, staffing_output)
+
     outcome = persist_db_native_result(
         result=result,
         project_key=request.project_key,
@@ -172,6 +192,19 @@ def generate_db_native(request: DbNativeGenerationRequest) -> DbNativeGeneration
     )
     if not outcome.db_persisted:
         return _failed(request, outcome.failure_code or FAILURE_DB_PERSISTENCE)
+
+    # Persist the resolved staffing snapshot for run reproducibility (best-effort; never blocks a
+    # successful forecast).
+    if staffing_output and staffing_output.get("status") == "ok" and request.db_path:
+        from hb_assistant.construction.forecast.staffing.snapshot import write_staffing_snapshot
+
+        write_staffing_snapshot(
+            request.db_path,
+            project_key=request.project_key,
+            request_id=request.request_id,
+            output_id=outcome.output_id,
+            staffing=staffing_output,
+        )
 
     return DbNativeGenerationResult(
         mode=GenerationMode.DB_NATIVE.value,
