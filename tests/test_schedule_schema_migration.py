@@ -54,13 +54,13 @@ def test_v62_tables_empty_and_integrity() -> None:
         conn.close()
 
 
-def test_lifecycle_contract_473() -> None:
+def test_lifecycle_contract_475() -> None:
     contract_path = (
         Path(__file__).resolve().parents[1]
         / "src/hb_assistant/resources/json/table_lifecycle_status_contract.json"
     )
     contract = json.loads(contract_path.read_text(encoding="utf-8"))
-    assert contract["table_count"] == 473
+    assert contract["table_count"] == 475
     assert contract["table_count"] == len(contract["tables"])
     for t in V62_TABLES:
         entry = contract["tables"][t]

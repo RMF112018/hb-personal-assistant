@@ -14,7 +14,7 @@ from .connection import get_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 83
+LATEST_SCHEMA_VERSION = 84
 
 
 class StaffingMigrationError(RuntimeError):
@@ -6945,6 +6945,32 @@ class SQLiteMigrator:
 
         return V83_STATEMENTS
 
+    # v84 CPM forward pass foundation: additive result tables + run-metadata columns.
+    @staticmethod
+    def _v84_statements() -> list[str]:
+        from hb_assistant.store.schedule_cpm_tables import V84_STATEMENTS
+
+        return V84_STATEMENTS
+
+    @staticmethod
+    def _reconcile_v84_schedule_cpm_run_columns(conn: sqlite3.Connection) -> None:
+        """Additively add forward-pass metadata columns to schedule_cpm_runs.
+
+        ALTER TABLE ADD COLUMN is not IF NOT EXISTS in SQLite, so guard on PRAGMA
+        table_info and add only the missing columns. Safe to re-run / self-heal.
+        """
+        from hb_assistant.store.schedule_cpm_tables import V84_RUNS_ADDITIVE_COLUMNS
+
+        try:
+            existing = {row[1] for row in conn.execute("PRAGMA table_info(schedule_cpm_runs)")}
+        except sqlite3.OperationalError:
+            return
+        if not existing:
+            return
+        for column, decl in V84_RUNS_ADDITIVE_COLUMNS.items():
+            if column not in existing:
+                conn.execute(f"ALTER TABLE schedule_cpm_runs ADD COLUMN {column} {decl}")
+
     # v44 Phase 10 Graph drive-item modified-by raw operational metadata.
     # Additive ADD COLUMN only on construction_drive_items; raw identity JSON is
     # local SQLite operational metadata and must not be emitted in committed evidence.
@@ -8266,6 +8292,19 @@ class SQLiteMigrator:
             if cur.fetchone() is None:
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (83, 'v83_schedule_cpm_graph_diagnostics_foundation', ?)",
+                    (now,),
+                )
+
+            # v84 CPM forward pass foundation: additive forward-pass result tables plus
+            # column-existence-guarded forward-pass metadata columns on schedule_cpm_runs.
+            # Forward pass only — no backward pass/float/critical path; no source-field writes.
+            for stmt in self._v84_statements():
+                conn.execute(stmt)
+            self._reconcile_v84_schedule_cpm_run_columns(conn)
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 84")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (84, 'v84_schedule_cpm_forward_pass_foundation', ?)",
                     (now,),
                 )
 

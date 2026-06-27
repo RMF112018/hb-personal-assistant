@@ -18,14 +18,20 @@ def deterministic_cpm_run_id(
     schedule_version_key: str,
     import_id: str,
     diagnostic_signature: Iterable[str],
+    kind: str = "graph",
 ) -> str:
-    """Stable run id derived from version + import + sorted diagnostic signature.
+    """Stable run id derived from version + import + sorted signature (+ run kind).
 
-    Deterministic by construction (no wall-clock / randomness) so rerunning graph
-    diagnostics on unchanged inputs yields the same ``cpm_run_id`` and stays idempotent.
+    Deterministic by construction (no wall-clock / randomness) so rerunning on unchanged
+    inputs yields the same ``cpm_run_id`` and stays idempotent. ``kind`` discriminates run
+    families (e.g. the forward pass from the graph-only run) and is folded into the hash
+    ONLY when it differs from the default ``"graph"`` — so Phase 1 graph-run ids are
+    unchanged byte-for-byte.
     """
     signature = "\n".join(sorted(diagnostic_signature))
     payload = f"{schedule_version_key}\x1f{import_id}\x1f{signature}"
+    if kind != "graph":
+        payload = f"{kind}\x1f{payload}"
     digest = hashlib.sha256(payload.encode("utf-8")).hexdigest()[:32]
     return f"cpmrun_{digest}"
 
@@ -104,6 +110,8 @@ class ScheduleCpmDiagnosticsRepository:
                 SELECT cpm_run_id, project_key, schedule_version_key, import_id,
                        node_count, edge_count, is_acyclic, diagnostic_count,
                        topological_order_json, analysis_scope, cpm_recalculation_status,
+                       calculation_type, schedule_start_anchor, schedule_start_anchor_source,
+                       computed_activity_count, blocked_activity_count,
                        created_at
                 FROM schedule_cpm_runs
                 WHERE schedule_version_key=?
@@ -120,6 +128,8 @@ class ScheduleCpmDiagnosticsRepository:
                 SELECT cpm_run_id, project_key, schedule_version_key, import_id,
                        node_count, edge_count, is_acyclic, diagnostic_count,
                        topological_order_json, analysis_scope, cpm_recalculation_status,
+                       calculation_type, schedule_start_anchor, schedule_start_anchor_source,
+                       computed_activity_count, blocked_activity_count,
                        created_at
                 FROM schedule_cpm_runs
                 WHERE cpm_run_id=?
@@ -154,3 +164,106 @@ class ScheduleCpmDiagnosticsRepository:
                     row["evidence"] = None
                 out.append(row)
             return out
+
+    # ------------------------------------------------------------------ V84 forward pass
+
+    def insert_activity_results(
+        self, rows: Iterable[dict[str, Any]], *, conn: Any | None = None
+    ) -> int:
+        return self._insert_rows("schedule_cpm_activity_results", rows, conn=conn)
+
+    def insert_relationship_results(
+        self, rows: Iterable[dict[str, Any]], *, conn: Any | None = None
+    ) -> int:
+        return self._insert_rows("schedule_cpm_relationship_results", rows, conn=conn)
+
+    def _insert_rows(
+        self, table: str, rows: Iterable[dict[str, Any]], *, conn: Any | None = None
+    ) -> int:
+        items = list(rows)
+        if not items:
+            return 0
+        cols = list(items[0].keys())
+        placeholders = ", ".join("?" for _ in cols)
+        names = ", ".join(cols)
+        sql = f"INSERT INTO {table} ({names}) VALUES ({placeholders})"
+        batch = [tuple(r[c] for c in cols) for r in items]
+        if conn is not None:
+            conn.executemany(sql, batch)
+        else:
+            with open_connection(self._db_path) as active:
+                with transaction(active):
+                    active.executemany(sql, batch)
+        return len(items)
+
+    def replace_forward_pass_run(
+        self,
+        run_row: dict[str, Any],
+        diagnostic_rows: Iterable[dict[str, Any]],
+        activity_rows: Iterable[dict[str, Any]],
+        relationship_rows: Iterable[dict[str, Any]],
+    ) -> str:
+        """Persist a forward-pass run + its diagnostics/activity/relationship results.
+
+        Single transaction; prior rows for the same cpm_run_id are cleared first so a rerun
+        replaces rather than accumulates (idempotent).
+        """
+        run_id = str(run_row["cpm_run_id"])
+        diagnostics = list(diagnostic_rows)
+        activities = list(activity_rows)
+        relationships = list(relationship_rows)
+        with open_connection(self._db_path) as active:
+            with transaction(active):
+                active.execute(
+                    "DELETE FROM schedule_cpm_relationship_results WHERE cpm_run_id=?",
+                    (run_id,),
+                )
+                active.execute(
+                    "DELETE FROM schedule_cpm_activity_results WHERE cpm_run_id=?", (run_id,)
+                )
+                active.execute(
+                    "DELETE FROM schedule_cpm_diagnostics WHERE cpm_run_id=?", (run_id,)
+                )
+                self.insert_run(run_row, conn=active)
+                if diagnostics:
+                    self.insert_diagnostics(diagnostics, conn=active)
+                if activities:
+                    self.insert_activity_results(activities, conn=active)
+                if relationships:
+                    self.insert_relationship_results(relationships, conn=active)
+        return run_id
+
+    def list_activity_results(self, cpm_run_id: str) -> list[dict[str, Any]]:
+        with self._conn() as conn:
+            cur = conn.execute(
+                """
+                SELECT cpm_run_id, schedule_version_key, project_key, activity_id,
+                       activity_name, topological_index, computed_early_start,
+                       computed_early_finish, early_start_offset_days, early_finish_offset_days,
+                       duration_value, duration_unit, duration_source, predecessor_count,
+                       successor_count, forward_pass_status, forward_pass_notes_json, created_at
+                FROM schedule_cpm_activity_results
+                WHERE cpm_run_id=?
+                ORDER BY topological_index, activity_id
+                """,
+                (cpm_run_id,),
+            )
+            return [dict(r) for r in cur.fetchall()]
+
+    def list_relationship_results(self, cpm_run_id: str) -> list[dict[str, Any]]:
+        with self._conn() as conn:
+            cur = conn.execute(
+                """
+                SELECT cpm_run_id, schedule_version_key, project_key, relationship_row_id,
+                       relationship_ref, predecessor_activity_id, successor_activity_id,
+                       relationship_type, lag_value, lag_unit, normalized_lag_days,
+                       predecessor_early_start_offset, predecessor_early_finish_offset,
+                       candidate_successor_early_start_offset, relationship_calc_status,
+                       relationship_calc_notes_json, created_at
+                FROM schedule_cpm_relationship_results
+                WHERE cpm_run_id=?
+                ORDER BY successor_activity_id, predecessor_activity_id, relationship_ref
+                """,
+                (cpm_run_id,),
+            )
+            return [dict(r) for r in cur.fetchall()]
