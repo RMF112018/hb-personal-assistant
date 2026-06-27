@@ -3249,6 +3249,9 @@ def create_app(*, db_path: str | None = None) -> Any:
         diff["comparison_type"] = comparison_type
         diff["detail_summary_counts"] = summary_counts
         diff["detail_preview"] = details[:25]
+        impact_summary = mapping_repo.summarize_diff_impact_rollups(diff_id, project_key=project_key)
+        diff["impact_summary"] = impact_summary.get("summary")
+        diff["impact_top_wbs"] = impact_summary.get("top_wbs")
         return diff
 
     @app.get("/api/schedules/projects/{project_key}/diffs/{diff_id}/summary")
@@ -3288,6 +3291,37 @@ def create_app(*, db_path: str | None = None) -> Any:
             change_domain=change_domain,
             change_type=change_type,
             severity=severity,
+            requires_attention=requires_attention,
+            wbs_code=wbs_code,
+            activity_id=activity_id,
+            limit=limit,
+            offset=offset,
+        )
+        if not out:
+            raise HTTPException(status_code=404, detail="schedule_diff_not_found")
+        return out
+
+    @app.get("/api/schedules/projects/{project_key}/diffs/{diff_id}/impact")
+    def schedule_version_diff_impact(
+        project_key: str,
+        diff_id: int,
+        rollup_type: str | None = None,
+        impact_level: str | None = None,
+        requires_attention: bool | None = None,
+        wbs_code: str | None = None,
+        activity_id: str | None = None,
+        limit: int = Query(default=100, ge=1, le=1000),
+        offset: int = Query(default=0, ge=0),
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        del role
+        from fastapi import HTTPException
+
+        out = _schedule_read_service().list_diff_impact(
+            project_key,
+            diff_id,
+            rollup_type=rollup_type,
+            impact_level=impact_level,
             requires_attention=requires_attention,
             wbs_code=wbs_code,
             activity_id=activity_id,

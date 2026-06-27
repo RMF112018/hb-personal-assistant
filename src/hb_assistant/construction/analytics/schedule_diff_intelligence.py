@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections import defaultdict
 from datetime import date, datetime
 from typing import Any
 
@@ -13,6 +14,14 @@ SEVERITY_ORDER = {
     "moderate": 3,
     "minor": 2,
     "informational": 1,
+}
+
+IMPACT_LEVEL_ORDER = {
+    "critical": 1,
+    "high": 2,
+    "medium": 3,
+    "low": 4,
+    "informational": 5,
 }
 
 
@@ -313,6 +322,277 @@ def summarize_detail_facts(rows: list[dict[str, Any]]) -> dict[str, Any]:
         if int(row.get("requires_attention") or 0):
             summary["requires_attention_count"] += 1
     return summary
+
+
+def impact_level_for_score(score: int) -> str:
+    if score >= 75:
+        return "critical"
+    if score >= 40:
+        return "high"
+    if score >= 20:
+        return "medium"
+    if score >= 5:
+        return "low"
+    return "informational"
+
+
+def score_impact_detail(row: dict[str, Any]) -> int:
+    severity = str(row.get("severity") or "informational")
+    score = {
+        "critical": 25,
+        "major": 12,
+        "moderate": 6,
+        "minor": 2,
+    }.get(severity, 0)
+    if int(row.get("requires_attention") or 0):
+        score += 10
+    domain = str(row.get("change_domain") or "")
+    change_type = str(row.get("change_type") or "")
+    if domain == "relationship" or change_type.startswith("logic_"):
+        score += 5
+    day_delta = _int_or_none(row.get("day_delta"))
+    if day_delta is not None:
+        magnitude = abs(day_delta)
+        if magnitude > 10:
+            score += 15
+        elif magnitude >= 6:
+            score += 8
+        elif magnitude >= 3:
+            score += 4
+    if domain == "activity" and change_type == "removed":
+        score += 8
+    if _is_milestone_detail(row) and day_delta is not None and day_delta > 0:
+        score += 15
+    if int(row.get("is_critical_path_related") or 0):
+        score += 15
+    return score
+
+
+def build_impact_rollups(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    if not rows:
+        return []
+    normalized = [dict(row) for row in rows]
+    rollups: list[dict[str, Any]] = []
+    rollups.append(_rollup("summary", "all", "All schedule changes", normalized))
+    rollups.extend(_grouped_rollups("wbs", normalized, _wbs_rollup_key))
+    rollups.extend(_grouped_rollups("attention", [r for r in normalized if int(r.get("requires_attention") or 0)], _attention_rollup_key))
+    rollups.extend(_grouped_rollups("severity", normalized, _severity_rollup_key))
+    rollups.extend(_grouped_rollups("change_domain", normalized, _domain_rollup_key))
+    logic_rows = [
+        r
+        for r in normalized
+        if str(r.get("change_domain") or "") == "relationship"
+        or str(r.get("change_type") or "").startswith("logic_")
+    ]
+    rollups.extend(_grouped_rollups("logic", logic_rows, _logic_rollup_key))
+    milestone_rows = [r for r in normalized if _is_milestone_detail(r)]
+    rollups.extend(_grouped_rollups("milestone", milestone_rows, _activity_rollup_key))
+    critical_rows = [r for r in normalized if int(r.get("is_critical_path_related") or 0)]
+    rollups.extend(_grouped_rollups("critical_path", critical_rows, _activity_rollup_key))
+    near_critical_rows = [r for r in normalized if _is_near_critical_float_detail(r)]
+    rollups.extend(_grouped_rollups("near_critical", near_critical_rows, _activity_rollup_key))
+    return sorted(
+        rollups,
+        key=lambda r: (
+            IMPACT_LEVEL_ORDER.get(str(r.get("impact_level") or "informational"), 99),
+            -int(r.get("impact_score") or 0),
+            str(r.get("rollup_type") or ""),
+            str(r.get("rollup_label") or ""),
+        ),
+    )
+
+
+def _grouped_rollups(
+    rollup_type: str,
+    rows: list[dict[str, Any]],
+    key_func: Any,
+) -> list[dict[str, Any]]:
+    groups: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    labels: dict[str, str] = {}
+    for row in rows:
+        key, label = key_func(row)
+        if not key:
+            continue
+        groups[key].append(row)
+        labels[key] = label
+    return [_rollup(rollup_type, key, labels[key], group) for key, group in groups.items()]
+
+
+def _rollup(
+    rollup_type: str,
+    rollup_key: str,
+    rollup_label: str,
+    rows: list[dict[str, Any]],
+) -> dict[str, Any]:
+    first = rows[0] if rows else {}
+    severities = defaultdict(int)
+    activity_ids = {
+        str(row.get("activity_id") or "")
+        for row in rows
+        if str(row.get("activity_id") or "").strip()
+    }
+    day_deltas = [_int_or_none(row.get("day_delta")) for row in rows]
+    day_deltas = [d for d in day_deltas if d is not None]
+    score = sum(score_impact_detail(row) for row in rows)
+    for row in rows:
+        severities[str(row.get("severity") or "informational")] += 1
+    domain_changes = [str(row.get("change_domain") or "") for row in rows]
+    change_types = [str(row.get("change_type") or "") for row in rows]
+    wbs_code = _first_nonempty(row.get("wbs_code") for row in rows)
+    wbs_name = _first_nonempty(row.get("wbs_name") for row in rows)
+    activity_id = _first_nonempty(row.get("activity_id") for row in rows)
+    activity_name = _first_nonempty(row.get("activity_name") for row in rows)
+    evidence = {
+        "basis": "schedule_version_diff_detail_facts",
+        "detail_count": len(rows),
+        "availability": _rollup_availability_note(rollup_type),
+        "score_model": "phase4_v1",
+    }
+    normalized_key = _normalize_rollup_key(rollup_key)
+    comparison_type = str(first.get("comparison_type") or "manual")
+    return {
+        "rollup_id": _impact_rollup_id(
+            first.get("diff_id"),
+            rollup_type,
+            normalized_key,
+            comparison_type,
+        ),
+        "diff_id": int(first.get("diff_id") or 0),
+        "project_key": first.get("project_key"),
+        "from_schedule_version_key": first.get("from_schedule_version_key"),
+        "to_schedule_version_key": first.get("to_schedule_version_key"),
+        "schedule_identity_key": first.get("schedule_identity_key"),
+        "comparison_type": comparison_type,
+        "identity_safe": int(first.get("identity_safe") or 0),
+        "rollup_type": rollup_type,
+        "rollup_key": normalized_key,
+        "rollup_label": rollup_label,
+        "wbs_code": wbs_code,
+        "wbs_name": wbs_name,
+        "activity_id": activity_id if rollup_type in {"activity", "milestone", "critical_path", "near_critical"} else None,
+        "activity_name": activity_name if rollup_type in {"activity", "milestone", "critical_path", "near_critical"} else None,
+        "milestone_activity_id": activity_id if rollup_type == "milestone" else None,
+        "milestone_name": activity_name if rollup_type == "milestone" else None,
+        "activity_count": len(activity_ids),
+        "change_count": len(rows),
+        "critical_count": int(severities["critical"]),
+        "major_count": int(severities["major"]),
+        "moderate_count": int(severities["moderate"]),
+        "minor_count": int(severities["minor"]),
+        "informational_count": int(severities["informational"]),
+        "date_drift_count": sum(1 for t in change_types if t == "date_drift"),
+        "logic_change_count": sum(1 for t in change_types if t.startswith("logic_")),
+        "relationship_change_count": sum(1 for d in domain_changes if d == "relationship"),
+        "activity_added_count": sum(1 for d, t in zip(domain_changes, change_types) if d == "activity" and t == "added"),
+        "activity_removed_count": sum(1 for d, t in zip(domain_changes, change_types) if d == "activity" and t == "removed"),
+        "requires_attention_count": sum(1 for row in rows if int(row.get("requires_attention") or 0)),
+        "max_day_delta": max(day_deltas, key=abs) if day_deltas else None,
+        "net_day_delta": sum(day_deltas) if day_deltas else None,
+        "max_later_day_delta": max((d for d in day_deltas if d > 0), default=None),
+        "max_earlier_day_delta": min((d for d in day_deltas if d < 0), default=None),
+        "impact_score": str(score),
+        "impact_level": impact_level_for_score(score),
+        "requires_attention": 1 if any(int(row.get("requires_attention") or 0) for row in rows) else 0,
+        "evidence_json": json.dumps(evidence, sort_keys=True, default=str),
+    }
+
+
+def _impact_rollup_id(diff_id: Any, rollup_type: str, rollup_key: str, comparison_type: str) -> str:
+    basis = json.dumps(
+        {
+            "diff_id": str(diff_id or ""),
+            "rollup_type": rollup_type,
+            "rollup_key": rollup_key,
+            "comparison_type": comparison_type,
+        },
+        sort_keys=True,
+    )
+    return "sir_" + hashlib.sha256(basis.encode("utf-8")).hexdigest()[:24]
+
+
+def _normalize_rollup_key(value: Any) -> str:
+    return " ".join(str(value or "unknown").strip().lower().split())
+
+
+def _wbs_rollup_key(row: dict[str, Any]) -> tuple[str | None, str]:
+    key = _first_nonempty((row.get("wbs_code"), row.get("wbs_name")))
+    if not key:
+        return None, ""
+    name = str(row.get("wbs_name") or "").strip()
+    code = str(row.get("wbs_code") or "").strip()
+    return key, " / ".join(part for part in (code, name) if part) or key
+
+
+def _attention_rollup_key(row: dict[str, Any]) -> tuple[str | None, str]:
+    severity = str(row.get("severity") or "informational")
+    domain = str(row.get("change_domain") or "unknown")
+    return f"{severity}|{domain}", f"{severity} {domain}"
+
+
+def _severity_rollup_key(row: dict[str, Any]) -> tuple[str | None, str]:
+    severity = str(row.get("severity") or "informational")
+    return severity, severity
+
+
+def _domain_rollup_key(row: dict[str, Any]) -> tuple[str | None, str]:
+    domain = str(row.get("change_domain") or "unknown")
+    return domain, domain
+
+
+def _logic_rollup_key(row: dict[str, Any]) -> tuple[str | None, str]:
+    key = _first_nonempty((row.get("wbs_code"), row.get("activity_id"), row.get("entity_key")))
+    label = _first_nonempty((row.get("wbs_name"), row.get("activity_name"), row.get("entity_label"), key))
+    return key, label or str(key)
+
+
+def _activity_rollup_key(row: dict[str, Any]) -> tuple[str | None, str]:
+    key = _first_nonempty((row.get("activity_id"), row.get("entity_key")))
+    label = _first_nonempty((row.get("activity_name"), row.get("entity_label"), key))
+    return key, label or str(key)
+
+
+def _is_milestone_detail(row: dict[str, Any]) -> bool:
+    field = str(row.get("field_name") or "").lower()
+    if field not in {"is_milestone", "activity_type"}:
+        return False
+    values = " ".join(str(row.get(k) or "").lower() for k in ("from_value", "to_value"))
+    return "milestone" in values or values.strip() in {"0 1", "false true", "no yes"}
+
+
+def _is_near_critical_float_detail(row: dict[str, Any]) -> bool:
+    if str(row.get("field_name") or "") not in {
+        "total_float",
+        "derived_total_float_days",
+        "explicit_total_float_days",
+    }:
+        return False
+    values = [_int_or_none(row.get("from_value")), _int_or_none(row.get("to_value"))]
+    return any(value is not None and value <= 10 for value in values)
+
+
+def _rollup_availability_note(rollup_type: str) -> str:
+    if rollup_type == "milestone":
+        return "generated_only_from_explicit_milestone_detail_facts"
+    if rollup_type in {"critical_path", "near_critical"}:
+        return "generated_only_from_persisted_critical_or_float_detail_facts"
+    return "available"
+
+
+def _first_nonempty(values: Any) -> str | None:
+    for value in values:
+        text = str(value or "").strip()
+        if text:
+            return text
+    return None
+
+
+def _int_or_none(value: Any) -> int | None:
+    if value is None or value == "":
+        return None
+    try:
+        return int(float(str(value)))
+    except (TypeError, ValueError):
+        return None
 
 
 def _relationship_rows(

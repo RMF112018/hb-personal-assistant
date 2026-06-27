@@ -2036,6 +2036,31 @@ def _public_identity_match(row: dict[str, Any] | None) -> dict[str, Any]:
     }
 
 
+def _public_impact_summary(summary: dict[str, Any] | None) -> dict[str, Any] | None:
+    if not summary:
+        return None
+    row = summary.get("summary")
+    if not row:
+        return None
+    top_wbs = summary.get("top_wbs") or {}
+    return {
+        "impact_level": row.get("impact_level"),
+        "impact_score": row.get("impact_score"),
+        "change_count": row.get("change_count"),
+        "requires_attention_count": row.get("requires_attention_count"),
+        "critical_count": row.get("critical_count"),
+        "major_count": row.get("major_count"),
+        "critical_or_high_count": summary.get("critical_or_high_count"),
+        "max_later_day_delta": row.get("max_later_day_delta"),
+        "max_earlier_day_delta": row.get("max_earlier_day_delta"),
+        "top_wbs_code": top_wbs.get("wbs_code"),
+        "top_wbs_name": top_wbs.get("wbs_name"),
+        "top_wbs_impact_level": top_wbs.get("impact_level"),
+        "top_wbs_impact_score": top_wbs.get("impact_score"),
+        "rollup_count": summary.get("rollup_count"),
+    }
+
+
 class ScheduleReadService:
     """Read-only schedule intelligence queries."""
 
@@ -2143,6 +2168,9 @@ class ScheduleReadService:
                 public["default_diff_requires_attention_count"] = detail_summary.get(
                     "requires_attention_count", 0
                 )
+                impact_summary = self._mapping_repo.summarize_diff_impact_rollups(diff_id)
+                if impact_summary.get("summary"):
+                    public["default_diff_impact"] = _public_impact_summary(impact_summary)
         return public
 
     def list_versions(
@@ -2284,6 +2312,73 @@ class ScheduleReadService:
             },
         }
 
+    def list_diff_impact(
+        self,
+        project_key: str,
+        diff_id: int,
+        *,
+        rollup_type: str | None = None,
+        impact_level: str | None = None,
+        requires_attention: bool | None = None,
+        wbs_code: str | None = None,
+        activity_id: str | None = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> dict[str, Any] | None:
+        self._ensure_schema()
+        summary = self.get_diff_summary(project_key, diff_id)
+        if summary is None:
+            return None
+        rows = self._mapping_repo.list_diff_impact_rollups(
+            diff_id,
+            project_key=project_key,
+            rollup_type=rollup_type,
+            impact_level=impact_level,
+            requires_attention=requires_attention,
+            wbs_code=wbs_code,
+            activity_id=activity_id,
+            limit=limit,
+            offset=offset,
+        )
+        total = self._mapping_repo.count_diff_impact_rollups(
+            diff_id,
+            project_key=project_key,
+            rollup_type=rollup_type,
+            impact_level=impact_level,
+            requires_attention=requires_attention,
+            wbs_code=wbs_code,
+            activity_id=activity_id,
+        )
+        impact_summary = self._mapping_repo.summarize_diff_impact_rollups(
+            diff_id, project_key=project_key
+        )
+        metadata = dict(summary.get("metadata") or {})
+        impact_summary_row = impact_summary.get("summary")
+        if impact_summary_row:
+            metadata.update(
+                {
+                    "schedule_identity_key": impact_summary_row.get("schedule_identity_key"),
+                    "identity_safe": bool(int(impact_summary_row.get("identity_safe") or 0)),
+                    "comparison_type": impact_summary_row.get("comparison_type"),
+                }
+            )
+        return {
+            "metadata": metadata,
+            "summary": impact_summary_row,
+            "top_wbs": impact_summary.get("top_wbs"),
+            "availability": {
+                "milestone_rollups": "explicit_milestone_detail_facts_only",
+                "critical_rollups": "persisted_critical_or_float_detail_facts_only",
+            },
+            "rollups": rows,
+            "pagination": {
+                "limit": limit,
+                "offset": offset,
+                "total_count": total,
+                "returned_count": len(rows),
+            },
+        }
+
     def list_quality(self, schedule_version_key: str) -> list[dict[str, Any]]:
         self._ensure_schema()
         return self._mapping_repo.list_quality_findings(schedule_version_key)
@@ -2416,4 +2511,11 @@ class ScheduleReadService:
             )
             if diff_facts
             else {},
+            "impact_summary": _public_impact_summary(
+                self._mapping_repo.summarize_diff_impact_rollups(
+                    int(diff_facts[0].get("diff_id") or 0)
+                )
+            )
+            if diff_facts
+            else None,
         }

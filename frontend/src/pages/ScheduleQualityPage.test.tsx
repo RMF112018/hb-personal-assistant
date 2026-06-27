@@ -130,6 +130,11 @@ function healthData(overrides: Record<string, unknown> = {}) {
       identity_confidence_score: '1.00',
       identity_requires_review: false,
       identity_safe: true,
+      impact_summary: {
+        impact_level: 'high',
+        requires_attention_count: 7,
+        top_wbs_code: 'WBS1',
+      },
     },
     baseline_projects: [
       {
@@ -225,6 +230,8 @@ describe('ScheduleQualityPage as Schedule Health', () => {
     expect(await screen.findByRole('heading', { name: 'Schedule Health' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /Schedule Health/i })).toBeInTheDocument()
     expect(await screen.findByText('Available Schedule Evidence')).toBeInTheDocument()
+    expect(screen.getByText('Impact vs prior')).toBeInTheDocument()
+    expect(screen.getByText(/Attention: 7 \| Top WBS: WBS1/i)).toBeInTheDocument()
     expect(screen.getByText('What Changed Since the Prior Schedule?')).toBeInTheDocument()
     expect(screen.getByText('Baseline Health')).toBeInTheDocument()
     expect(screen.getByText('Critical Path and Float Evidence')).toBeInTheDocument()

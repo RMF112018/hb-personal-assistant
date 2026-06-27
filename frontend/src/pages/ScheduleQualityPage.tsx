@@ -381,6 +381,10 @@ export function ScheduleQualityPage() {
     health?.comparison_basis && typeof health.comparison_basis === 'object'
       ? (health.comparison_basis as Record<string, unknown>)
       : {}
+  const impactSummary =
+    comparisonBasis.impact_summary && typeof comparisonBasis.impact_summary === 'object'
+      ? (comparisonBasis.impact_summary as Record<string, unknown>)
+      : {}
   const comparisonIdentitySafe = comparisonBasis.identity_safe === true
   const comparisonRequiresReview = comparisonBasis.identity_requires_review === true
   const topFindings = useMemo(
@@ -574,6 +578,16 @@ export function ScheduleQualityPage() {
                   : comparisonDetail
               }
               status={comparisonIdentitySafe ? 'available' : 'unavailable'}
+            />
+            <HealthCard
+              title="Impact vs prior"
+              value={impactSummary.impact_level ? labelize(String(impactSummary.impact_level)) : 'Not available'}
+              detail={
+                impactSummary.impact_level
+                  ? `Attention: ${numberText(impactSummary.requires_attention_count)} | Top WBS: ${text(impactSummary.top_wbs_code ?? impactSummary.top_wbs_name, 'not classified')}`
+                  : comparisonDetail
+              }
+              status={impactSummary.impact_level ? 'available' : 'unavailable'}
             />
             <HealthCard
               title="Baseline drift"

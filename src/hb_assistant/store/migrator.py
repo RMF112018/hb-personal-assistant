@@ -14,7 +14,7 @@ from .connection import get_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 78
+LATEST_SCHEMA_VERSION = 79
 
 
 class SQLiteMigrator:
@@ -6862,6 +6862,13 @@ class SQLiteMigrator:
 
         return V78_STATEMENTS
 
+    # v79 Schedule impact intelligence: rollups derived from V78 detail facts.
+    @staticmethod
+    def _v79_statements() -> list[str]:
+        from hb_assistant.store.schedule_diff_impact_tables import V79_STATEMENTS
+
+        return V79_STATEMENTS
+
     # v44 Phase 10 Graph drive-item modified-by raw operational metadata.
     # Additive ADD COLUMN only on construction_drive_items; raw identity JSON is
     # local SQLite operational metadata and must not be emitted in committed evidence.
@@ -8128,6 +8135,16 @@ class SQLiteMigrator:
             if cur.fetchone() is None:
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (78, 'v78_schedule_diff_detail_facts', ?)",
+                    (now,),
+                )
+
+            # v79 Schedule impact intelligence: durable rollups over detailed facts.
+            for stmt in self._v79_statements():
+                conn.execute(stmt)
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 79")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (79, 'v79_schedule_diff_impact_rollups', ?)",
                     (now,),
                 )
 

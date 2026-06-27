@@ -58,7 +58,7 @@ def _commit(
 def test_v77_manual_actions_schema_and_contract_count(tmp_path: Path) -> None:
     db = tmp_path / "schema.db"
     migrator = SQLiteMigrator(db_path=str(db))
-    assert migrator.apply() == LATEST_SCHEMA_VERSION == 78
+    assert migrator.apply() == LATEST_SCHEMA_VERSION == 79
     assert migrator.apply() == LATEST_SCHEMA_VERSION
     with sqlite3.connect(db) as conn:
         names = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
@@ -74,7 +74,7 @@ def test_v77_manual_actions_schema_and_contract_count(tmp_path: Path) -> None:
             / "src/hb_assistant/resources/json/table_lifecycle_status_contract.json"
         ).read_text()
     )
-    assert contract["table_count"] == 453
+    assert contract["table_count"] == 454
     assert contract["tables"]["schedule_identity_manual_actions"]["v"] == "V77"
     assert contract["tables"]["schedule_version_diff_detail_facts"]["v"] == "V78"
 

@@ -33,6 +33,7 @@ export function ScheduleVersionDiffPage() {
   const [domain, setDomain] = useState('')
   const [attentionOnly, setAttentionOnly] = useState(false)
   const [activitySearch, setActivitySearch] = useState('')
+  const [wbsFilter, setWbsFilter] = useState('')
   const [runDiff, setRunDiff] = useState(Boolean(searchParams.get('diff_id')))
 
   const { data, isLoading, error, refetch } = useQuery({
@@ -44,15 +45,21 @@ export function ScheduleVersionDiffPage() {
   const diff = data as Record<string, unknown> | undefined
   const activeDiffId = String(diff?.diff_id ?? diffId ?? '')
   const { data: detailData } = useQuery({
-    queryKey: ['schedules', 'diff-details', projectKey, activeDiffId, severity, domain, attentionOnly, activitySearch],
+    queryKey: ['schedules', 'diff-details', projectKey, activeDiffId, severity, domain, attentionOnly, activitySearch, wbsFilter],
     queryFn: () =>
       api.getScheduleDiffDetails(projectKey, activeDiffId, {
         severity: severity || undefined,
         changeDomain: domain || undefined,
         requiresAttention: attentionOnly ? true : undefined,
         activityId: activitySearch || undefined,
+        wbsCode: wbsFilter || undefined,
         limit: 100,
       }),
+    enabled: Boolean(projectKey && activeDiffId),
+  })
+  const { data: impactData } = useQuery({
+    queryKey: ['schedules', 'diff-impact', projectKey, activeDiffId],
+    queryFn: () => api.getScheduleDiffImpact(projectKey, activeDiffId, { limit: 100 }),
     enabled: Boolean(projectKey && activeDiffId),
   })
   const detailPayload =
@@ -70,6 +77,19 @@ export function ScheduleVersionDiffPage() {
     : Array.isArray(diff?.detail_preview)
       ? (diff.detail_preview as Record<string, unknown>[])
       : []
+  const impactPayload =
+    impactData && typeof impactData === 'object' ? (impactData as Record<string, unknown>) : {}
+  const impactSummary =
+    impactPayload.summary && typeof impactPayload.summary === 'object'
+      ? (impactPayload.summary as Record<string, unknown>)
+      : (diff?.impact_summary as Record<string, unknown> | undefined) ?? {}
+  const impactRollups = Array.isArray(impactPayload.rollups)
+    ? (impactPayload.rollups as Record<string, unknown>[])
+    : []
+  const topWbs =
+    impactPayload.top_wbs && typeof impactPayload.top_wbs === 'object'
+      ? (impactPayload.top_wbs as Record<string, unknown>)
+      : (diff?.impact_top_wbs as Record<string, unknown> | undefined) ?? {}
   let summary: Record<string, unknown> = {}
   if (diff?.summary_json) {
     try {
@@ -197,6 +217,66 @@ export function ScheduleVersionDiffPage() {
         </div>
       ) : null}
 
+      {activeDiffId && Object.keys(impactSummary).length > 0 ? (
+        <div className="forecast-panel p-4 space-y-4 text-sm mt-3">
+          <div>
+            <h2 className="text-base font-semibold">Impact summary</h2>
+            <p className="text-xs text-[var(--hb-muted)]">
+              Read-only rollups generated from persisted detailed diff facts.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+            {[
+              ['Impact', impactSummary.impact_level ?? 'informational'],
+              ['Score', impactSummary.impact_score ?? '0'],
+              ['Attention', impactSummary.requires_attention_count ?? 0],
+              ['Critical', impactSummary.critical_count ?? 0],
+              ['Max later', impactSummary.max_later_day_delta ?? '—'],
+            ].map(([label, value]) => (
+              <div key={String(label)} className="rounded border border-[var(--hb-border)] p-2">
+                <div className="text-xs text-[var(--hb-muted)]">{String(label)}</div>
+                <div className="text-lg font-semibold">{String(value)}</div>
+              </div>
+            ))}
+          </div>
+          {topWbs.rollup_label ? (
+            <p>
+              <strong>Top WBS impact:</strong> {String(topWbs.rollup_label)} ·{' '}
+              {String(topWbs.impact_level ?? 'informational')} · score{' '}
+              {String(topWbs.impact_score ?? '0')}
+            </p>
+          ) : null}
+          <ImpactRollupTable
+            title="WBS impact"
+            rows={impactRollups.filter((row) => row.rollup_type === 'wbs').slice(0, 8)}
+            onSelect={(row) => {
+              setWbsFilter(String(row.wbs_code ?? ''))
+              setActivitySearch('')
+            }}
+          />
+          <ImpactRollupTable
+            title="Attention-required rollups"
+            rows={impactRollups.filter((row) => row.rollup_type === 'attention').slice(0, 8)}
+            onSelect={(row) => {
+              setSeverity(String(row.rollup_key ?? '').split('|')[0] || '')
+              setAttentionOnly(true)
+            }}
+          />
+          <ImpactRollupTable
+            title="Milestone impact"
+            rows={impactRollups.filter((row) => row.rollup_type === 'milestone').slice(0, 8)}
+            onSelect={(row) => setActivitySearch(String(row.milestone_activity_id ?? row.activity_id ?? ''))}
+            emptyLabel="No explicit milestone impact facts"
+          />
+          <ImpactRollupTable
+            title="Critical and near-critical impact"
+            rows={impactRollups.filter((row) => row.rollup_type === 'critical_path' || row.rollup_type === 'near_critical').slice(0, 8)}
+            onSelect={(row) => setActivitySearch(String(row.activity_id ?? ''))}
+            emptyLabel="No persisted critical or near-critical impact facts"
+          />
+        </div>
+      ) : null}
+
       {activeDiffId ? (
         <div className="forecast-panel p-4 space-y-3 text-sm mt-3">
           <div className="flex flex-wrap gap-3 items-end">
@@ -226,6 +306,10 @@ export function ScheduleVersionDiffPage() {
             <label className="block">
               <span className="text-[var(--hb-muted)]">Activity</span>
               <input className="mt-1 block rounded border border-[var(--hb-border)] bg-[var(--hb-bg)] px-2 py-1.5" value={activitySearch} onChange={(e) => setActivitySearch(e.target.value)} />
+            </label>
+            <label className="block">
+              <span className="text-[var(--hb-muted)]">WBS</span>
+              <input className="mt-1 block rounded border border-[var(--hb-border)] bg-[var(--hb-bg)] px-2 py-1.5" value={wbsFilter} onChange={(e) => setWbsFilter(e.target.value)} />
             </label>
             <label className="flex items-center gap-2 pb-1">
               <input type="checkbox" checked={attentionOnly} onChange={(e) => setAttentionOnly(e.target.checked)} />
@@ -269,5 +353,64 @@ export function ScheduleVersionDiffPage() {
         </div>
       ) : null}
     </ScheduleShell>
+  )
+}
+
+function ImpactRollupTable({
+  title,
+  rows,
+  onSelect,
+  emptyLabel = 'No rollups',
+}: {
+  title: string
+  rows: Record<string, unknown>[]
+  onSelect: (row: Record<string, unknown>) => void
+  emptyLabel?: string
+}) {
+  return (
+    <div className="space-y-2">
+      <h3 className="text-sm font-semibold">{title}</h3>
+      {rows.length === 0 ? (
+        <p className="text-xs text-[var(--hb-muted)]">{emptyLabel}</p>
+      ) : (
+        <ScheduleTable
+          headers={
+            <>
+              <ScheduleTh>Impact</ScheduleTh>
+              <ScheduleTh>Area</ScheduleTh>
+              <ScheduleTh>Changes</ScheduleTh>
+              <ScheduleTh>Severity</ScheduleTh>
+              <ScheduleTh>Date drift</ScheduleTh>
+              <ScheduleTh>Logic</ScheduleTh>
+              <ScheduleTh>Attention</ScheduleTh>
+              <ScheduleTh>Max delta</ScheduleTh>
+            </>
+          }
+        >
+          {rows.map((row) => (
+            <tr
+              key={String(row.rollup_id)}
+              className="cursor-pointer hover:bg-[var(--hb-bg)]"
+              onClick={() => onSelect(row)}
+            >
+              <ScheduleTd>
+                <div className="font-semibold">{String(row.impact_level ?? 'informational')}</div>
+                <div className="text-xs text-[var(--hb-muted)]">score {String(row.impact_score ?? '0')}</div>
+              </ScheduleTd>
+              <ScheduleTd>{String(row.rollup_label ?? row.rollup_key ?? '—')}</ScheduleTd>
+              <ScheduleTd>{String(row.change_count ?? 0)}</ScheduleTd>
+              <ScheduleTd>
+                C {String(row.critical_count ?? 0)} · Mj {String(row.major_count ?? 0)} · Md{' '}
+                {String(row.moderate_count ?? 0)}
+              </ScheduleTd>
+              <ScheduleTd>{String(row.date_drift_count ?? 0)}</ScheduleTd>
+              <ScheduleTd>{String(row.logic_change_count ?? row.relationship_change_count ?? 0)}</ScheduleTd>
+              <ScheduleTd>{String(row.requires_attention_count ?? 0)}</ScheduleTd>
+              <ScheduleTd>{String(row.max_day_delta ?? '—')}</ScheduleTd>
+            </tr>
+          ))}
+        </ScheduleTable>
+      )}
+    </div>
   )
 }

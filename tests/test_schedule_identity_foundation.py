@@ -104,7 +104,7 @@ def _xml_same_source_id_name_different_content() -> bytes:
 def test_v76_v77_schedule_identity_schema_fresh_and_v75_self_heal(tmp_path: Path) -> None:
     fresh_db = tmp_path / "fresh.db"
     migrator = SQLiteMigrator(db_path=str(fresh_db))
-    assert migrator.apply() == LATEST_SCHEMA_VERSION == 78
+    assert migrator.apply() == LATEST_SCHEMA_VERSION == 79
     assert migrator.apply() == LATEST_SCHEMA_VERSION
     with sqlite3.connect(fresh_db) as conn:
         tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}

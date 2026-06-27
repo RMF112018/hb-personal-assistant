@@ -1589,6 +1589,32 @@ export function getScheduleDiffDetails(
     `/api/schedules/projects/${encodeURIComponent(projectKey)}/diffs/${encodeURIComponent(String(diffId))}/details${qs ? `?${qs}` : ''}`,
   );
 }
+export function getScheduleDiffImpact(
+  projectKey: string,
+  diffId: string | number,
+  opts?: {
+    rollupType?: string;
+    impactLevel?: string;
+    requiresAttention?: boolean;
+    wbsCode?: string;
+    activityId?: string;
+    limit?: number;
+    offset?: number;
+  },
+) {
+  const params = new URLSearchParams();
+  if (opts?.rollupType) params.set('rollup_type', opts.rollupType);
+  if (opts?.impactLevel) params.set('impact_level', opts.impactLevel);
+  if (opts?.requiresAttention != null) params.set('requires_attention', String(opts.requiresAttention));
+  if (opts?.wbsCode) params.set('wbs_code', opts.wbsCode);
+  if (opts?.activityId) params.set('activity_id', opts.activityId);
+  if (opts?.limit != null) params.set('limit', String(opts.limit));
+  if (opts?.offset != null) params.set('offset', String(opts.offset));
+  const qs = params.toString();
+  return fetchJson(
+    `/api/schedules/projects/${encodeURIComponent(projectKey)}/diffs/${encodeURIComponent(String(diffId))}/impact${qs ? `?${qs}` : ''}`,
+  );
+}
 export function getScheduleIdentities(projectKey: string, opts?: { showMerged?: boolean }) {
   const params = new URLSearchParams();
   if (opts?.showMerged) params.set('show_merged', 'true');
@@ -1940,6 +1966,7 @@ export const api = {
   getScheduleVersionDiff,
   getScheduleDiffSummary,
   getScheduleDiffDetails,
+  getScheduleDiffImpact,
   getScheduleIdentities,
   getScheduleIdentity,
   getScheduleIdentityReview,

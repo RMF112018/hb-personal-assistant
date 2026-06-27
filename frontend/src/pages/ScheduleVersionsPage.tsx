@@ -160,6 +160,10 @@ export function ScheduleVersionsPage() {
             const svk = String(v.schedule_version_key)
             const pk = String(v.project_key ?? svk.split('|')[0] ?? '')
             const actLink = `/schedules/activities?version=${encodeURIComponent(svk)}&project=${encodeURIComponent(pk)}`
+            const impact =
+              v.default_diff_impact && typeof v.default_diff_impact === 'object'
+                ? (v.default_diff_impact as Record<string, unknown>)
+                : {}
             return (
               <tr key={svk}>
                 {!projectKey ? (
@@ -184,6 +188,12 @@ export function ScheduleVersionsPage() {
                   <div className="text-xs text-[var(--hb-muted)]">
                     Prior: {v.default_prior_available ? 'available' : String(v.default_prior_unavailable_reason ?? 'not available')}
                   </div>
+                  {impact.impact_level ? (
+                    <div className="text-xs text-[var(--hb-muted)]">
+                      Impact: {String(impact.impact_level)} | Attention:{' '}
+                      {String(impact.requires_attention_count ?? 0)}
+                    </div>
+                  ) : null}
                 </ScheduleTd>
                 <ScheduleTd>
                   {String(v.quality_score ?? '—')} / {String(v.quality_grade ?? '—')}
