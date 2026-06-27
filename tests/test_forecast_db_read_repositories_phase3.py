@@ -162,7 +162,7 @@ def test_lifecycle_contract_count_and_classification() -> None:
         / "src/hb_assistant/resources/json/table_lifecycle_status_contract.json"
     )
     contract = json.loads(contract_path.read_text(encoding="utf-8"))
-    assert contract["table_count"] == 451  # live table lifecycle contract count (was 439)
+    assert contract["table_count"] == 464  # live table lifecycle contract count (was 439; 451 before V76 staffing)
     assert contract["table_count"] == len(contract["tables"])
     for t in V59_SOURCE_DOMAIN_TABLES:
         entry = contract["tables"][t]
