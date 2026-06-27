@@ -18,7 +18,7 @@
     "phase_owner",
     "blocking_for_phase"
   ],
-  "table_count": 451,
+  "table_count": 464,
   "tables": {
     "construction_data_quality_runs": {
       "table_family": "data_quality_v20v21",
@@ -4069,6 +4069,123 @@
       "blocking_for_phase": "none",
       "v": "V75",
       "notes": "Persisted detailed version-diff metrics for dashboard reads without recomputation."
+    },
+    "staffing_holiday_calendars": {
+      "table_family": "project_staffing_v76",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "project_staffing_foundation",
+      "blocking_for_phase": "none",
+      "v": "V76",
+      "notes": "Company holiday calendar headers; seeded with company_default_2026_2040 by the V76 migration."
+    },
+    "staffing_holiday_calendar_dates": {
+      "table_family": "project_staffing_v76",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "project_staffing_foundation",
+      "blocking_for_phase": "none",
+      "v": "V76",
+      "notes": "Per-year holiday dates (observed-date + half-day rules); seeded 2026-2040 by the V76 migration."
+    },
+    "forecast_project_staffing_assumptions": {
+      "table_family": "project_staffing_v76",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "project_staffing_foundation",
+      "blocking_for_phase": "none",
+      "v": "V76",
+      "notes": "Per-project staffing hours/holiday-calendar assumptions; written by the staffing API in a later phase."
+    },
+    "forecast_project_staffing_config": {
+      "table_family": "project_staffing_v76",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "project_staffing_foundation",
+      "blocking_for_phase": "none",
+      "v": "V76",
+      "notes": "Project staffing assignment rows (role/person/cost-code/LAB-LBN-MAT rates/dates); written by the staffing API in a later phase."
+    },
+    "forecast_project_staffing_absence_overrides": {
+      "table_family": "project_staffing_v76",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "project_staffing_foundation",
+      "blocking_for_phase": "none",
+      "v": "V76",
+      "notes": "Full-Time absence reductions; written by the staffing API in a later phase."
+    },
+    "forecast_staffing_templates": {
+      "table_family": "project_staffing_v76",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "project_staffing_foundation",
+      "blocking_for_phase": "none",
+      "v": "V76",
+      "notes": "Global reusable staffing templates; managed under Forecasting Config in a later phase."
+    },
+    "forecast_staffing_template_versions": {
+      "table_family": "project_staffing_v76",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "project_staffing_foundation",
+      "blocking_for_phase": "none",
+      "v": "V76",
+      "notes": "Versioned staffing template defaults (role/rates/unit/employment type); written in a later phase."
+    },
+    "forecast_staffing_cost_codes": {
+      "table_family": "project_staffing_v76",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "project_staffing_foundation",
+      "blocking_for_phase": "none",
+      "v": "V76",
+      "notes": "Forecast-only staffing cost codes (project- or template-scoped) for codes absent from the project budget."
+    },
+    "forecast_project_staffing_attribution_rules": {
+      "table_family": "project_staffing_v76",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "project_staffing_foundation",
+      "blocking_for_phase": "none",
+      "v": "V76",
+      "notes": "Persistent LAB/LBN actual-to-staffing-row attribution rules; written by the attribution service in a later phase."
+    },
+    "forecast_project_staffing_attribution_review_items": {
+      "table_family": "project_staffing_v76",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "project_staffing_foundation",
+      "blocking_for_phase": "none",
+      "v": "V76",
+      "notes": "Aggregated unmatched LAB/LBN actual review bucket (employee + cost_code + category); populated in a later phase."
+    },
+    "forecast_cost_entry_staffing_actuals": {
+      "table_family": "project_staffing_v76",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "project_staffing_foundation",
+      "blocking_for_phase": "none",
+      "v": "V76",
+      "notes": "Normalized staffing-actuals projection over forecast_cost_entries.raw_json; built by the projection service in a later phase."
+    },
+    "forecast_project_staffing_snapshots": {
+      "table_family": "project_staffing_v76",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "project_staffing_foundation",
+      "blocking_for_phase": "none",
+      "v": "V76",
+      "notes": "Per-run resolved staffing snapshot header for output reproducibility; written by DB-native generation in a later phase."
+    },
+    "forecast_project_staffing_snapshot_rows": {
+      "table_family": "project_staffing_v76",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "project_staffing_foundation",
+      "blocking_for_phase": "none",
+      "v": "V76",
+      "notes": "Per-run resolved staffing snapshot rows; written by DB-native generation in a later phase."
     }
   }
 }

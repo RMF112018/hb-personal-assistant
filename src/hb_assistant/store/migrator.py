@@ -14,7 +14,7 @@ from .connection import get_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 75
+LATEST_SCHEMA_VERSION = 76
 
 
 class SQLiteMigrator:
@@ -6840,6 +6840,37 @@ class SQLiteMigrator:
 
         return V75_STATEMENTS
 
+    # v76 Project Staffing foundation (Phase 1, schema + seed only): holiday calendar family,
+    # per-project staffing config/assumptions/absences, global templates + versions,
+    # forecast-only staffing cost codes, attribution rules/review, normalized staffing-actuals
+    # projection, and per-run staffing snapshots; plus additive staffing metadata columns on the
+    # v74 matrix-row table. The default company holiday calendar (2026-2040) is seeded. All
+    # CREATEs / column adds are idempotent (column-existence-guarded) and the holiday seed uses
+    # INSERT OR IGNORE, so the whole apply is self-heal safe; only the schema_migrations row is
+    # guarded. Repositories/services/API/UI and forecast-generation wiring land in later phases.
+    def _apply_v76_project_staffing(self, conn: sqlite3.Connection, now: str) -> None:
+        from hb_assistant.construction.analytics.staffing_holiday_calendar import (
+            ensure_default_company_holiday_calendar,
+        )
+        from hb_assistant.store.forecast_staffing_tables import (
+            V76_COLUMN_ADDITIONS,
+            V76_CREATE_STATEMENTS,
+        )
+
+        for stmt in V76_CREATE_STATEMENTS:
+            conn.execute(stmt)
+        for table, columns in V76_COLUMN_ADDITIONS:
+            try:
+                existing = {row[1] for row in conn.execute(f"PRAGMA table_info({table})")}
+            except sqlite3.OperationalError:
+                continue
+            if not existing:
+                continue
+            for name, decl in columns:
+                if name not in existing:
+                    conn.execute(f"ALTER TABLE {table} ADD COLUMN {name} {decl}")
+        ensure_default_company_holiday_calendar(conn, now=now)
+
     # v44 Phase 10 Graph drive-item modified-by raw operational metadata.
     # Additive ADD COLUMN only on construction_drive_items; raw identity JSON is
     # local SQLite operational metadata and must not be emitted in committed evidence.
@@ -8076,6 +8107,17 @@ class SQLiteMigrator:
             if cur.fetchone() is None:
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (75, 'v75_schedule_import_health_foundation', ?)",
+                    (now,),
+                )
+
+            # v76 Project Staffing foundation: staffing table family + additive matrix-row
+            # staffing metadata columns + seeded default company holiday calendar (2026-2040).
+            # CREATEs/column-adds/seed are idempotent; only the schema_migrations row is guarded.
+            self._apply_v76_project_staffing(conn, now)
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 76")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (76, 'v76_project_staffing_foundation', ?)",
                     (now,),
                 )
 

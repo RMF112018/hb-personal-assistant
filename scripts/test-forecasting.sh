@@ -135,6 +135,7 @@ pytest_targets=(
   "tests/test_migrator_v66_forecast_decision_support.py"
   "tests/test_migrator_v72_forecast_model_registry.py"
   "tests/test_migrator_v73_forecast_generation_requests.py"
+  "tests/test_migrator_v76_project_staffing.py"
   "tests/test_phase_08c_financial_completeness.py::test_currency_explicit_and_missing_and_inconsistent_and_default_policy"
   "tests/test_phase_08c_financial_completeness.py::test_wbs_cost_line_source_missing_routes_to_review"
   "tests/test_phase_08c_financial_completeness.py::test_default_currency_blocked_when_policy_condition_missing"
@@ -154,6 +155,7 @@ pytest_targets=(
   "tests/test_procore_owner_contract_normalizers.py"
   "tests/test_procore_owner_projection.py"
   "tests/test_procore_subcontractor_invoice_normalizers.py"
+  "tests/test_project_staffing_holiday_calendar.py"
 )
 
 echo "=== Fast forecasting test bundle ==="

@@ -74,7 +74,7 @@ def test_v20_v21_data_quality_tables_are_mapped_not_unmapped() -> None:
     db_path = _fresh_db()
     try:
         report = build_table_inventory_report(db_path=db_path)
-        assert report["contract_table_count"] == 451  # live table lifecycle contract count (was 439)
+        assert report["contract_table_count"] == 464  # live table lifecycle contract count (was 439; 451 before V76 staffing)
         v20_v21 = {
             "construction_data_quality_runs",
             "data_quality_gate_results",
