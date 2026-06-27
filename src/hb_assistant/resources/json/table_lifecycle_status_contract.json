@@ -18,7 +18,7 @@
     "phase_owner",
     "blocking_for_phase"
   ],
-  "table_count": 456,
+  "table_count": 471,
   "tables": {
     "construction_data_quality_runs": {
       "table_family": "data_quality_v20v21",
@@ -4070,13 +4070,130 @@
       "v": "V75",
       "notes": "Persisted detailed version-diff metrics for dashboard reads without recomputation."
     },
+    "staffing_holiday_calendars": {
+      "table_family": "project_staffing_v76",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "project_staffing_foundation",
+      "blocking_for_phase": "none",
+      "v": "V76",
+      "notes": "Company holiday calendar headers; seeded with company_default_2026_2040 by the V76 migration."
+    },
+    "staffing_holiday_calendar_dates": {
+      "table_family": "project_staffing_v76",
+      "lifecycle_status": "operational_populated",
+      "expected_population_status": "populated",
+      "phase_owner": "project_staffing_foundation",
+      "blocking_for_phase": "none",
+      "v": "V76",
+      "notes": "Per-year holiday dates (observed-date + half-day rules); seeded 2026-2040 by the V76 migration."
+    },
+    "forecast_project_staffing_assumptions": {
+      "table_family": "project_staffing_v76",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "project_staffing_foundation",
+      "blocking_for_phase": "none",
+      "v": "V76",
+      "notes": "Per-project staffing hours/holiday-calendar assumptions; written by the staffing API in a later phase."
+    },
+    "forecast_project_staffing_config": {
+      "table_family": "project_staffing_v76",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "project_staffing_foundation",
+      "blocking_for_phase": "none",
+      "v": "V76",
+      "notes": "Project staffing assignment rows (role/person/cost-code/LAB-LBN-MAT rates/dates); written by the staffing API in a later phase."
+    },
+    "forecast_project_staffing_absence_overrides": {
+      "table_family": "project_staffing_v76",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "project_staffing_foundation",
+      "blocking_for_phase": "none",
+      "v": "V76",
+      "notes": "Full-Time absence reductions; written by the staffing API in a later phase."
+    },
+    "forecast_staffing_templates": {
+      "table_family": "project_staffing_v76",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "project_staffing_foundation",
+      "blocking_for_phase": "none",
+      "v": "V76",
+      "notes": "Global reusable staffing templates; managed under Forecasting Config in a later phase."
+    },
+    "forecast_staffing_template_versions": {
+      "table_family": "project_staffing_v76",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "project_staffing_foundation",
+      "blocking_for_phase": "none",
+      "v": "V76",
+      "notes": "Versioned staffing template defaults (role/rates/unit/employment type); written in a later phase."
+    },
+    "forecast_staffing_cost_codes": {
+      "table_family": "project_staffing_v76",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "project_staffing_foundation",
+      "blocking_for_phase": "none",
+      "v": "V76",
+      "notes": "Forecast-only staffing cost codes (project- or template-scoped) for codes absent from the project budget."
+    },
+    "forecast_project_staffing_attribution_rules": {
+      "table_family": "project_staffing_v76",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "project_staffing_foundation",
+      "blocking_for_phase": "none",
+      "v": "V81",
+      "notes": "Manual LAB/LBN attribution rules keyed by project_key + cost_code + category -> staffing_config_id (V81 reshape; person model dropped)."
+    },
+    "forecast_project_staffing_attribution_review_items": {
+      "table_family": "project_staffing_v76",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "project_staffing_foundation",
+      "blocking_for_phase": "none",
+      "v": "V81",
+      "notes": "Aggregated unmatched LAB/LBN actual review bucket keyed by project_key + cost_code + category (V81 reshape; person model dropped)."
+    },
+    "forecast_cost_entry_staffing_actuals": {
+      "table_family": "project_staffing_v76",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "project_staffing_foundation",
+      "blocking_for_phase": "none",
+      "v": "V76",
+      "notes": "Normalized staffing-actuals projection over forecast_cost_entries.raw_json; built by the projection service in a later phase."
+    },
+    "forecast_project_staffing_snapshots": {
+      "table_family": "project_staffing_v76",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "project_staffing_foundation",
+      "blocking_for_phase": "none",
+      "v": "V76",
+      "notes": "Per-run resolved staffing snapshot header for output reproducibility; written by DB-native generation in a later phase."
+    },
+    "forecast_project_staffing_snapshot_rows": {
+      "table_family": "project_staffing_v76",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "project_staffing_foundation",
+      "blocking_for_phase": "none",
+      "v": "V76",
+      "notes": "Per-run resolved staffing snapshot rows; written by DB-native generation in a later phase."
+    },
     "schedule_identity_manual_actions": {
       "table_family": "schedule_identity_review_v77",
       "lifecycle_status": "operational_empty_expected",
       "expected_population_status": "empty",
       "phase_owner": "schedule_identity_review_surface",
       "blocking_for_phase": "none",
-      "v": "V77",
+      "v": "V78",
       "notes": "Append-only manual identity review actions for reassign, split, and merge decisions."
     },
     "schedule_version_diff_detail_facts": {
@@ -4085,7 +4202,7 @@
       "expected_population_status": "empty",
       "phase_owner": "schedule_diff_intelligence_foundation",
       "blocking_for_phase": "none",
-      "v": "V78",
+      "v": "V79",
       "notes": "Detailed activity, relationship, WBS, calendar, code, and UDF change facts for persisted schedule version diffs."
     },
     "schedule_version_diff_impact_rollups": {
@@ -4094,26 +4211,44 @@
       "expected_population_status": "empty",
       "phase_owner": "schedule_impact_intelligence",
       "blocking_for_phase": "none",
-      "v": "V79",
+      "v": "V80",
       "notes": "Decision-grade summary, WBS, attention, severity, domain, logic, milestone, and critical rollups derived from detailed schedule diff facts."
     },
     "schedule_package_field_lineage": {
-      "table_family": "schedule_package_assembly_v80",
+      "table_family": "schedule_package_assembly_v82",
       "lifecycle_status": "operational_empty_expected",
       "expected_population_status": "empty",
       "phase_owner": "schedule_package_unified_import",
       "blocking_for_phase": "none",
-      "v": "V80",
+      "v": "V82",
       "notes": "Field-family source lineage for unified schedule package imports, recording primary and companion contribution strategy without raw paths or payloads."
     },
     "schedule_package_equivalence_facts": {
-      "table_family": "schedule_package_assembly_v80",
+      "table_family": "schedule_package_assembly_v82",
       "lifecycle_status": "operational_empty_expected",
       "expected_population_status": "empty",
       "phase_owner": "schedule_package_unified_import",
       "blocking_for_phase": "none",
-      "v": "V80",
+      "v": "V82",
       "notes": "Content-backed equivalence diagnostics for ZIP current schedule candidates, used to fail closed when companion files are not the same schedule."
+    },
+    "schedule_identities": {
+      "table_family": "schedule_identity_v77",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "schedule_identity_foundation",
+      "blocking_for_phase": "none",
+      "v": "V77",
+      "notes": "Canonical schedule identity (one per logical schedule); populated as committed schedule versions are matched."
+    },
+    "schedule_version_identity_matches": {
+      "table_family": "schedule_identity_v77",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "schedule_identity_foundation",
+      "blocking_for_phase": "none",
+      "v": "V77",
+      "notes": "Committed-version identity match evidence linking a schedule version to its canonical identity."
     }
   }
 }

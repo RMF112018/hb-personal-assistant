@@ -14,7 +14,11 @@ from .connection import get_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 80
+LATEST_SCHEMA_VERSION = 82
+
+
+class StaffingMigrationError(RuntimeError):
+    """Raised when a destructive staffing migration would touch non-empty data."""
 
 
 class SQLiteMigrator:
@@ -6840,38 +6844,96 @@ class SQLiteMigrator:
 
         return V75_STATEMENTS
 
-    # v76 Schedule identity foundation: additive canonical schedule identity
+    # v76 Project Staffing foundation (Phase 1, schema + seed only): holiday calendar family,
+    # per-project staffing config/assumptions/absences, global templates + versions,
+    # forecast-only staffing cost codes, attribution rules/review, normalized staffing-actuals
+    # projection, and per-run staffing snapshots; plus additive staffing metadata columns on the
+    # v74 matrix-row table. The default company holiday calendar (2026-2040) is seeded. All
+    # CREATEs / column adds are idempotent (column-existence-guarded) and the holiday seed uses
+    # INSERT OR IGNORE, so the whole apply is self-heal safe; only the schema_migrations row is
+    # guarded. Repositories/services/API/UI and forecast-generation wiring land in later phases.
+    def _apply_v76_project_staffing(self, conn: sqlite3.Connection, now: str) -> None:
+        from hb_assistant.construction.analytics.staffing_holiday_calendar import (
+            ensure_default_company_holiday_calendar,
+        )
+        from hb_assistant.store.forecast_staffing_tables import (
+            V76_COLUMN_ADDITIONS,
+            V76_CREATE_STATEMENTS,
+        )
+
+        for stmt in V76_CREATE_STATEMENTS:
+            conn.execute(stmt)
+        for table, columns in V76_COLUMN_ADDITIONS:
+            try:
+                existing = {row[1] for row in conn.execute(f"PRAGMA table_info({table})")}
+            except sqlite3.OperationalError:
+                continue
+            if not existing:
+                continue
+            for name, decl in columns:
+                if name not in existing:
+                    conn.execute(f"ALTER TABLE {table} ADD COLUMN {name} {decl}")
+        ensure_default_company_holiday_calendar(conn, now=now)
+
+    # v77 Schedule identity foundation: additive canonical schedule identity
     # and committed-version identity match evidence.
-    @staticmethod
-    def _v76_statements() -> list[str]:
-        from hb_assistant.store.schedule_identity_tables import V76_STATEMENTS
-
-        return V76_STATEMENTS
-
-    # v77 Schedule identity manual review/action audit foundation.
     @staticmethod
     def _v77_statements() -> list[str]:
         from hb_assistant.store.schedule_identity_tables import V77_STATEMENTS
 
         return V77_STATEMENTS
 
-    # v78 Detailed schedule version diff facts.
+    # v78 Schedule identity manual review/action audit foundation.
     @staticmethod
     def _v78_statements() -> list[str]:
-        from hb_assistant.store.schedule_diff_detail_tables import V78_STATEMENTS
+        from hb_assistant.store.schedule_identity_tables import V78_STATEMENTS
 
         return V78_STATEMENTS
 
-    # v79 Schedule impact intelligence: rollups derived from V78 detail facts.
+    # v79 Detailed schedule version diff facts.
     @staticmethod
     def _v79_statements() -> list[str]:
-        from hb_assistant.store.schedule_diff_impact_tables import V79_STATEMENTS
+        from hb_assistant.store.schedule_diff_detail_tables import V79_STATEMENTS
 
         return V79_STATEMENTS
 
-    # v80 Unified schedule package assembly: field lineage + equivalence facts.
+    # v80 Schedule impact intelligence: rollups derived from V79 detail facts.
     @staticmethod
     def _v80_statements() -> list[str]:
+        from hb_assistant.store.schedule_diff_impact_tables import V80_STATEMENTS
+
+        return V80_STATEMENTS
+
+    # v81 Project Staffing attribution reshape: the V76 attribution_rules / review_items tables
+    # were person-centric (employee_name_* NOT NULL), but real cost-entry data has no per-person
+    # identity, so attribution keys on cost_code + category. Both tables ship empty -> drop+recreate
+    # to the new shape. Destructive + count-neutral, so this is guarded to run ONCE (only when the
+    # v81 row is absent) and ABORTS if either table somehow holds rows (no silent data loss).
+    def _apply_v81_attribution_reshape(self, conn: sqlite3.Connection) -> None:
+        from hb_assistant.store.forecast_staffing_tables import (
+            V81_CREATE_STATEMENTS,
+            V81_DROP_STATEMENTS,
+            V81_RESHAPE_TABLES,
+        )
+
+        for table in V81_RESHAPE_TABLES:
+            try:
+                count = conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+            except sqlite3.OperationalError:
+                count = 0  # table absent on a partial DB; CREATE below establishes the new shape
+            if count:
+                raise StaffingMigrationError(
+                    f"refusing to reshape non-empty {table} ({count} rows); "
+                    "an explicit data migration is required"
+                )
+        for stmt in V81_DROP_STATEMENTS:
+            conn.execute(stmt)
+        for stmt in V81_CREATE_STATEMENTS:
+            conn.execute(stmt)
+
+    # v82 Unified schedule package assembly: field lineage + equivalence facts.
+    @staticmethod
+    def _v82_statements() -> list[str]:
         from hb_assistant.store.schedule_import_health_tables import V80_STATEMENTS
 
         return V80_STATEMENTS
@@ -8115,54 +8177,77 @@ class SQLiteMigrator:
                     (now,),
                 )
 
-            # v76 Schedule identity foundation: additive identity/match tables.
-            for stmt in self._v76_statements():
-                conn.execute(stmt)
+            # v76 Project Staffing foundation: staffing table family + additive matrix-row
+            # staffing metadata columns + seeded default company holiday calendar (2026-2040).
+            # CREATEs/column-adds/seed are idempotent; only the schema_migrations row is guarded.
+            self._apply_v76_project_staffing(conn, now)
             cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 76")
             if cur.fetchone() is None:
                 conn.execute(
-                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (76, 'v76_schedule_identity_foundation', ?)",
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (76, 'v76_project_staffing_foundation', ?)",
                     (now,),
                 )
 
-            # v77 Schedule identity manual action audit table.
+            # v77 Schedule identity foundation: additive identity/match tables.
             for stmt in self._v77_statements():
                 conn.execute(stmt)
             cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 77")
             if cur.fetchone() is None:
                 conn.execute(
-                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (77, 'v77_schedule_identity_manual_actions', ?)",
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (77, 'v77_schedule_identity_foundation', ?)",
                     (now,),
                 )
 
-            # v78 Schedule diff intelligence foundation: detailed diff fact rows.
+            # v78 Schedule identity manual action audit table.
             for stmt in self._v78_statements():
                 conn.execute(stmt)
             cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 78")
             if cur.fetchone() is None:
                 conn.execute(
-                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (78, 'v78_schedule_diff_detail_facts', ?)",
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (78, 'v78_schedule_identity_manual_actions', ?)",
                     (now,),
                 )
 
-            # v79 Schedule impact intelligence: durable rollups over detailed facts.
+            # v79 Schedule diff intelligence foundation: detailed diff fact rows.
             for stmt in self._v79_statements():
                 conn.execute(stmt)
             cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 79")
             if cur.fetchone() is None:
                 conn.execute(
-                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (79, 'v79_schedule_diff_impact_rollups', ?)",
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (79, 'v79_schedule_diff_detail_facts', ?)",
                     (now,),
                 )
 
-            # v80 Unified schedule package assembly evidence.
+            # v80 Schedule impact intelligence: durable rollups over detailed facts.
             for stmt in self._v80_statements():
                 conn.execute(stmt)
-            self._reconcile_v80_schedule_package_equivalence_facts(conn)
             cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 80")
             if cur.fetchone() is None:
                 conn.execute(
-                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (80, 'v80_schedule_package_assembly_evidence', ?)",
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (80, 'v80_schedule_diff_impact_rollups', ?)",
+                    (now,),
+                )
+
+            # v81 Project Staffing attribution reshape (cost_code + category model). DESTRUCTIVE
+            # drop+recreate of the two empty V76 attribution tables, so it runs ONCE (guarded by
+            # the v81 row) and aborts if either table holds rows. Count-neutral (same table names).
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 81")
+            if cur.fetchone() is None:
+                self._apply_v81_attribution_reshape(conn)
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (81, 'v81_staffing_attribution_cost_code_category', ?)",
+                    (now,),
+                )
+
+            # v82 Unified schedule package assembly evidence. This landed after main had already
+            # assigned V80/V81, so preserve the package tables as the next additive migration.
+            for stmt in self._v82_statements():
+                conn.execute(stmt)
+            self._reconcile_v82_schedule_package_equivalence_facts(conn)
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 82")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (82, 'v82_schedule_package_assembly_evidence', ?)",
                     (now,),
                 )
 
@@ -8197,6 +8282,37 @@ class SQLiteMigrator:
 
         reconcile_schedule_import_fk_drift(conn)
         assert_schedule_import_fk_targets(conn)
+
+    @staticmethod
+    def _reconcile_v82_schedule_package_equivalence_facts(conn: sqlite3.Connection) -> None:
+        from hb_assistant.store.schedule_import_health_tables import (
+            V80_PACKAGE_EQUIVALENCE_FACT_ADDITIVE_REPAIR_COLUMNS,
+            V80_PACKAGE_EQUIVALENCE_FACT_INSERT_COLUMNS,
+        )
+
+        try:
+            existing = {
+                row[1]
+                for row in conn.execute("PRAGMA table_info(schedule_package_equivalence_facts)")
+            }
+        except sqlite3.OperationalError:
+            return
+        if not existing:
+            return
+        missing = set(V80_PACKAGE_EQUIVALENCE_FACT_INSERT_COLUMNS) - existing
+        unrepairable = missing - set(V80_PACKAGE_EQUIVALENCE_FACT_ADDITIVE_REPAIR_COLUMNS)
+        if unrepairable:
+            raise sqlite3.OperationalError(
+                "schedule_package_equivalence_facts is missing non-repairable V82 columns: "
+                + ", ".join(sorted(unrepairable))
+            )
+        for column in V80_PACKAGE_EQUIVALENCE_FACT_INSERT_COLUMNS:
+            if column in missing:
+                conn.execute(
+                    "ALTER TABLE schedule_package_equivalence_facts "
+                    f"ADD COLUMN {column} "
+                    f"{V80_PACKAGE_EQUIVALENCE_FACT_ADDITIVE_REPAIR_COLUMNS[column]}"
+                )
 
     @staticmethod
     def _reconcile_v64_schedule_quality_findings(conn: sqlite3.Connection) -> None:
@@ -8263,37 +8379,6 @@ class SQLiteMigrator:
             from hb_assistant.store.schedule_schema_verify import assert_v65_schedule_float_schema
 
             assert_v65_schedule_float_schema(conn)
-
-    @staticmethod
-    def _reconcile_v80_schedule_package_equivalence_facts(conn: sqlite3.Connection) -> None:
-        from hb_assistant.store.schedule_import_health_tables import (
-            V80_PACKAGE_EQUIVALENCE_FACT_ADDITIVE_REPAIR_COLUMNS,
-            V80_PACKAGE_EQUIVALENCE_FACT_INSERT_COLUMNS,
-        )
-
-        try:
-            existing = {
-                row[1]
-                for row in conn.execute("PRAGMA table_info(schedule_package_equivalence_facts)")
-            }
-        except sqlite3.OperationalError:
-            return
-        if not existing:
-            return
-        missing = set(V80_PACKAGE_EQUIVALENCE_FACT_INSERT_COLUMNS) - existing
-        unrepairable = missing - set(V80_PACKAGE_EQUIVALENCE_FACT_ADDITIVE_REPAIR_COLUMNS)
-        if unrepairable:
-            raise RuntimeError(
-                "schedule_package_equivalence_facts is missing non-repairable V80 columns: "
-                + ", ".join(sorted(unrepairable))
-            )
-        for column in V80_PACKAGE_EQUIVALENCE_FACT_INSERT_COLUMNS:
-            if column in missing:
-                conn.execute(
-                    "ALTER TABLE schedule_package_equivalence_facts "
-                    f"ADD COLUMN {column} "
-                    f"{V80_PACKAGE_EQUIVALENCE_FACT_ADDITIVE_REPAIR_COLUMNS[column]}"
-                )
 
     @staticmethod
     def _reconcile_v67_schedule_critical_path_columns(conn: sqlite3.Connection) -> None:

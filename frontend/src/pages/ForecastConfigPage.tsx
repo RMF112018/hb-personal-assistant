@@ -107,7 +107,10 @@ export function ForecastConfigPage() {
           title="Forecast configuration"
           subtitle="Read-only view of the configuration snapshot that drives forecasts — project settings, model controls, staffing, and crosswalks."
           actions={
-            <ForecastActionLink to="/forecasting/config/proposals">Config proposals</ForecastActionLink>
+            <div className="flex gap-2">
+              <ForecastActionLink to="/forecasting/config/proposals">Config proposals</ForecastActionLink>
+              <ForecastActionLink to="/forecasting/config/staffing-templates">Staffing templates</ForecastActionLink>
+            </div>
           }
         />
         <p className="text-sm text-[var(--hb-muted)] mt-2">

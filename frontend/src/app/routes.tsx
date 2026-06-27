@@ -14,7 +14,7 @@ import { ProjectDashboardPage } from '../pages/ProjectDashboardPage'
 import { ProjectOverviewPage } from '../pages/ProjectOverviewPage'
 import { ProjectForecastingPage } from '../pages/ProjectForecastingPage'
 import { ProjectMonthlyForecastingPage } from '../pages/ProjectMonthlyForecastingPage'
-import { ProjectStaffingPlaceholderPage } from '../pages/ProjectStaffingPlaceholderPage'
+import { ProjectStaffingPage } from '../pages/ProjectStaffingPage'
 import { ProjectExposuresPlaceholderPage } from '../pages/ProjectExposuresPlaceholderPage'
 import { ProjectMeetingsPage } from '../pages/ProjectMeetingsPage'
 import { ProjectFieldOperationsPage } from '../pages/ProjectFieldOperationsPage'
@@ -24,6 +24,7 @@ import { ForecastingPage } from '../pages/ForecastingPage'
 import { ForecastPackagePage } from '../pages/ForecastPackagePage'
 import { ForecastConfigPage } from '../pages/ForecastConfigPage'
 import { ForecastConfigEditProposalsPage } from '../pages/ForecastConfigEditProposalsPage'
+import { ForecastStaffingTemplatesPage } from '../pages/ForecastStaffingTemplatesPage'
 import { ForecastRunCenterPage } from '../pages/ForecastRunCenterPage'
 import { ForecastExternalEvalPage } from '../pages/ForecastExternalEvalPage'
 import { ForecastRuntimeSettingsPage } from '../pages/ForecastRuntimeSettingsPage'
@@ -142,7 +143,7 @@ const router = createBrowserRouter([
       },
       {
         path: 'projects/:projectKey/staffing',
-        element: <ProjectStaffingPlaceholderPage />,
+        element: <ProjectStaffingPage />,
       },
       {
         path: 'projects/:projectKey/exposures',
@@ -190,6 +191,11 @@ const router = createBrowserRouter([
         path: 'forecasting/config/proposals',
         element: <ForecastConfigEditProposalsPage />,
         handle: { title: 'Config Edit Proposals' },
+      },
+      {
+        path: 'forecasting/config/staffing-templates',
+        element: <ForecastStaffingTemplatesPage />,
+        handle: { title: 'Staffing Templates' },
       },
       // Forecast Run Center (Implementation Phase 3). Static segment before :packageId.
       {

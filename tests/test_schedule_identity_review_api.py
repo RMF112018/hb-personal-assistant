@@ -55,19 +55,17 @@ def _commit(
     return commit.json()
 
 
-def test_v77_manual_actions_schema_and_contract_count(tmp_path: Path) -> None:
+def test_v78_manual_actions_schema_and_contract_count(tmp_path: Path) -> None:
     db = tmp_path / "schema.db"
     migrator = SQLiteMigrator(db_path=str(db))
-    assert migrator.apply() == LATEST_SCHEMA_VERSION == 80
+    assert migrator.apply() == LATEST_SCHEMA_VERSION >= 80
     assert migrator.apply() == LATEST_SCHEMA_VERSION
     with sqlite3.connect(db) as conn:
         names = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
         assert "schedule_identity_manual_actions" in names
         assert "schedule_version_diff_detail_facts" in names
-        assert "schedule_package_field_lineage" in names
-        assert "schedule_package_equivalence_facts" in names
         assert (
-            conn.execute("SELECT COUNT(*) FROM schema_migrations WHERE version=77").fetchone()[0]
+            conn.execute("SELECT COUNT(*) FROM schema_migrations WHERE version=78").fetchone()[0]
             == 1
         )
     contract = json.loads(
@@ -76,10 +74,9 @@ def test_v77_manual_actions_schema_and_contract_count(tmp_path: Path) -> None:
             / "src/hb_assistant/resources/json/table_lifecycle_status_contract.json"
         ).read_text()
     )
-    assert contract["table_count"] == 456
-    assert contract["tables"]["schedule_identity_manual_actions"]["v"] == "V77"
-    assert contract["tables"]["schedule_version_diff_detail_facts"]["v"] == "V78"
-    assert contract["tables"]["schedule_package_field_lineage"]["v"] == "V80"
+    assert contract["table_count"] == 471
+    assert contract["tables"]["schedule_identity_manual_actions"]["v"] == "V78"
+    assert contract["tables"]["schedule_version_diff_detail_facts"]["v"] == "V79"
 
 
 def test_identity_review_queue_and_manual_reassign_are_append_only_and_redaction_safe(

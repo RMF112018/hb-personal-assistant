@@ -68,7 +68,7 @@ def _replace_equivalence_table_with_older_v80_shape(db: Path) -> None:
         conn.execute(f"CREATE TABLE schedule_package_equivalence_facts ({column_sql})")
         conn.execute(
             "INSERT OR IGNORE INTO schema_migrations (version, name) "
-            "VALUES (80, 'v80_schedule_package_assembly_evidence')"
+            "VALUES (82, 'v82_schedule_package_assembly_evidence')"
         )
         conn.commit()
 
@@ -316,10 +316,10 @@ def test_v75_schedule_import_health_tables_present(tmp_path: Path) -> None:
     assert "schedule_version_diff_facts" in tables
 
 
-def test_v80_schedule_package_assembly_tables_present_and_idempotent(tmp_path: Path) -> None:
+def test_v82_schedule_package_assembly_tables_present_and_idempotent(tmp_path: Path) -> None:
     db = tmp_path / "schema.db"
     migrator = SQLiteMigrator(db_path=str(db))
-    assert migrator.apply() == LATEST_SCHEMA_VERSION >= 80
+    assert migrator.apply() == LATEST_SCHEMA_VERSION >= 82
     assert migrator.apply() == LATEST_SCHEMA_VERSION
     with sqlite3.connect(db) as conn:
         tables = {
@@ -329,7 +329,7 @@ def test_v80_schedule_package_assembly_tables_present_and_idempotent(tmp_path: P
         assert "schedule_package_field_lineage" in tables
         assert "schedule_package_equivalence_facts" in tables
         assert conn.execute(
-            "SELECT COUNT(*) FROM schema_migrations WHERE version=80"
+            "SELECT COUNT(*) FROM schema_migrations WHERE version=82"
         ).fetchone()[0] == 1
 
 
@@ -347,12 +347,12 @@ def test_v80_equivalence_fact_insert_contract_matches_schema(tmp_path: Path) -> 
     assert older_missing == set(V80_PACKAGE_EQUIVALENCE_FACT_ADDITIVE_REPAIR_COLUMNS)
 
 
-def test_v80_equivalence_fact_schema_self_heals_older_applied_shape(
+def test_v82_equivalence_fact_schema_self_heals_older_applied_shape(
     tmp_path: Path,
 ) -> None:
     db = tmp_path / "schema.db"
     migrator = SQLiteMigrator(db_path=str(db))
-    assert migrator.apply() == LATEST_SCHEMA_VERSION >= 80
+    assert migrator.apply() == LATEST_SCHEMA_VERSION >= 82
     _replace_equivalence_table_with_older_v80_shape(db)
 
     assert migrator.apply() == LATEST_SCHEMA_VERSION
@@ -362,10 +362,10 @@ def test_v80_equivalence_fact_schema_self_heals_older_applied_shape(
             row[1]
             for row in conn.execute("PRAGMA table_info(schedule_package_equivalence_facts)")
         }
-        v80_count = conn.execute(
-            "SELECT COUNT(*) FROM schema_migrations WHERE version=80"
+        v82_count = conn.execute(
+            "SELECT COUNT(*) FROM schema_migrations WHERE version=82"
         ).fetchone()[0]
-    assert v80_count == 1
+    assert v82_count == 1
     assert set(V80_PACKAGE_EQUIVALENCE_FACT_INSERT_COLUMNS) <= columns
     assert {
         "primary_normalized_data_date",

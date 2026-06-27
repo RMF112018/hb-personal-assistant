@@ -271,4 +271,4 @@ def test_gates_command_carries_safe_counts() -> None:
 
 
 def test_table_inventory_unchanged() -> None:
-    assert build_table_inventory_report()["contract_table_count"] == 456  # V80 adds unified schedule package assembly evidence tables.
+    assert build_table_inventory_report()["contract_table_count"] == 471  # live table lifecycle contract count (was 439; 451 before V76 staffing)

@@ -61,7 +61,6 @@ _EMPTY_KEYS = (
     "probability",
     "changes",
     "commitment_exposure",
-    "staffing",
     "schedule_phasing",
 )
 
@@ -313,10 +312,40 @@ def build_db_native_planned(
             "method_code": tr.get("method_code"),
             "reason_codes_json": json.dumps(list(tr.get("reason_codes") or [])),
             "sort_key": tr.get("sort_key") or tr.get("budget_code_key"),
+            # v76 staffing metadata (default budget_code for non-staffing rows; populated for the
+            # staffing labor/materials rows merged in by the staffing monthly-output layer).
+            "row_type": tr.get("row_type") or "budget_code",
+            "staffing_config_id": tr.get("staffing_config_id"),
+            "role_title": tr.get("role_title"),
+            "person_name": tr.get("person_name"),
+            "employee_name_normalized": tr.get("employee_name_normalized"),
+            "source_budget_code_key": tr.get("source_budget_code_key"),
+            "attribution_status": tr.get("attribution_status"),
             "created_utc": now_utc,
             "updated_utc": now_utc,
         }
         for tr in (result.get("monthly_table_rows") or [])
+    ]
+
+    # Staffing detail rows (forecast_output_staffing): per synthetic staffing/materials code. The
+    # monthly cells + matrix rows above already carry the staffing contribution; these are the
+    # per-row staffing summary the writer registry persists.
+    staffing = [
+        {
+            "id": _row_id("fost", output_id, f"{s.get('budget_code_key')}|{s.get('role')}|{s.get('month')}"),
+            "output_id": output_id,
+            "project_key": project_key,
+            "budget_code_key": s.get("budget_code_key"),
+            "role": s.get("role"),
+            "month": s.get("month"),
+            "headcount": s.get("headcount"),
+            "cost_amount": s.get("cost_amount"),
+            "source_row_number": i,
+            "raw_json": json.dumps(s, sort_keys=True),
+            "created_utc": now_utc,
+            "updated_utc": now_utc,
+        }
+        for i, s in enumerate(result.get("staffing") or [], start=1)
     ]
 
     totals = result.get("monthly_table_totals")
@@ -346,6 +375,7 @@ def build_db_native_planned(
         "monthly": monthly,
         "monthly_table_rows": monthly_table_rows,
         "monthly_table_totals": monthly_table_totals,
+        "staffing": staffing,
     }
     for key in _EMPTY_KEYS:
         planned[key] = []
@@ -437,6 +467,7 @@ def certify_db_native_result(
 
     reasons.extend(_certify_monthly(planned))
     reasons.extend(_certify_monthly_matrix(planned))
+    reasons.extend(_certify_staffing(planned))
 
     leaks = find_redaction_leaks(planned)
     if leaks:
@@ -574,6 +605,17 @@ def _certify_monthly_matrix(planned: dict[str, list[dict[str, Any]]]) -> list[st
             reasons.append("monthly_matrix_total_month_value_mismatch")
             break
 
+    return reasons
+
+
+def _certify_staffing(planned: dict[str, list[dict[str, Any]]]) -> list[str]:
+    """Validate the staffing detail rows before write (empty staffing is a valid state)."""
+    reasons: list[str] = []
+    for row in planned.get("staffing", []):
+        if not row.get("output_id") or not row.get("budget_code_key"):
+            reasons.append("staffing_row_missing_identity")
+        if not _is_decimal(row.get("cost_amount")):
+            reasons.append("staffing_cost_not_decimal")
     return reasons
 
 

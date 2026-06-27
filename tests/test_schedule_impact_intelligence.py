@@ -25,10 +25,10 @@ from tests.test_schedule_diff_intelligence import _seed_db
 from tests.test_schedule_identity_foundation import _op
 
 
-def test_v79_schema_and_contract(tmp_path: Path) -> None:
+def test_v80_schema_and_contract(tmp_path: Path) -> None:
     db = tmp_path / "schema.db"
     migrator = SQLiteMigrator(db_path=str(db))
-    assert migrator.apply() == LATEST_SCHEMA_VERSION == 80
+    assert migrator.apply() == LATEST_SCHEMA_VERSION >= 80
     assert migrator.apply() == LATEST_SCHEMA_VERSION
     with sqlite3.connect(db) as conn:
         names = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
@@ -42,9 +42,9 @@ def test_v79_schema_and_contract(tmp_path: Path) -> None:
             / "src/hb_assistant/resources/json/table_lifecycle_status_contract.json"
         ).read_text()
     )
-    assert contract["table_count"] == 456
+    assert contract["table_count"] == 471
     assert contract["table_count"] == len(contract["tables"])
-    assert contract["tables"]["schedule_version_diff_impact_rollups"]["v"] == "V79"
+    assert contract["tables"]["schedule_version_diff_impact_rollups"]["v"] == "V80"
 
 
 def test_impact_scoring_and_rollup_ids_are_deterministic() -> None:

@@ -1,4 +1,4 @@
-"""V76 canonical schedule identity foundation tables.
+"""V77 canonical schedule identity foundation tables.
 
 Additive schedule identity tables for linking committed uploaded schedule
 versions without changing the existing schedule_version_key contract.
@@ -6,14 +6,14 @@ versions without changing the existing schedule_version_key contract.
 
 from __future__ import annotations
 
-V76_TABLES: tuple[str, ...] = (
+V77_TABLES: tuple[str, ...] = (
     "schedule_identities",
     "schedule_version_identity_matches",
 )
 
-V77_TABLES: tuple[str, ...] = ("schedule_identity_manual_actions",)
+V78_TABLES: tuple[str, ...] = ("schedule_identity_manual_actions",)
 
-V76_STATEMENTS: list[str] = [
+V77_STATEMENTS: list[str] = [
     """
     CREATE TABLE IF NOT EXISTS schedule_identities (
       schedule_identity_key TEXT PRIMARY KEY,
@@ -101,7 +101,7 @@ V76_STATEMENTS: list[str] = [
     """,
 ]
 
-V77_STATEMENTS: list[str] = [
+V78_STATEMENTS: list[str] = [
     """
     CREATE TABLE IF NOT EXISTS schedule_identity_manual_actions (
       action_id TEXT PRIMARY KEY,

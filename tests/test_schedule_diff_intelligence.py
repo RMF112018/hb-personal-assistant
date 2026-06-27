@@ -227,9 +227,9 @@ def _seed_db(tmp_path: Path) -> Path:
     return db
 
 
-def test_v78_schema_and_contract(tmp_path: Path) -> None:
+def test_v79_schema_and_contract(tmp_path: Path) -> None:
     db = tmp_path / "schema.db"
-    assert SQLiteMigrator(db_path=str(db)).apply() == LATEST_SCHEMA_VERSION == 80
+    assert SQLiteMigrator(db_path=str(db)).apply() == LATEST_SCHEMA_VERSION >= 80
     assert SQLiteMigrator(db_path=str(db)).apply() == LATEST_SCHEMA_VERSION
     with sqlite3.connect(db) as conn:
         names = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
@@ -242,8 +242,8 @@ def test_v78_schema_and_contract(tmp_path: Path) -> None:
             / "src/hb_assistant/resources/json/table_lifecycle_status_contract.json"
         ).read_text()
     )
-    assert contract["table_count"] == 456
-    assert contract["tables"]["schedule_version_diff_detail_facts"]["v"] == "V78"
+    assert contract["table_count"] == 471
+    assert contract["tables"]["schedule_version_diff_detail_facts"]["v"] == "V79"
 
 
 def test_severity_classification_thresholds() -> None:

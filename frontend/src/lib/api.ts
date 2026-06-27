@@ -1163,6 +1163,41 @@ export function getForecastConfigItem(snapshotId: string, itemId: string) {
   );
 }
 
+/* Forecast config — global staffing templates (Phase 5). */
+export function getForecastStaffingTemplates() {
+  return fetchJson<{ templates: Record<string, unknown>[] }>(
+    '/api/forecast/config/staffing-templates',
+  );
+}
+export function createForecastStaffingTemplate(body: Record<string, unknown>) {
+  return fetchJson('/api/forecast/config/staffing-templates', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+export function getForecastStaffingTemplate(templateId: string) {
+  return fetchJson<{
+    template?: Record<string, unknown>
+    versions?: Record<string, unknown>[]
+    current_version?: Record<string, unknown> | null
+    ok?: boolean
+  }>(`/api/forecast/config/staffing-templates/${encodeURIComponent(templateId)}`);
+}
+export function addForecastStaffingTemplateVersion(
+  templateId: string,
+  body: Record<string, unknown>,
+) {
+  return fetchJson(
+    `/api/forecast/config/staffing-templates/${encodeURIComponent(templateId)}/versions`,
+    { method: 'POST', body: JSON.stringify(body) },
+  );
+}
+export function deleteForecastStaffingTemplate(templateId: string) {
+  return fetchJson(`/api/forecast/config/staffing-templates/${encodeURIComponent(templateId)}`, {
+    method: 'DELETE',
+  });
+}
+
 /* Forecast config editing — isolated proposals (Implementation Phase E). An operator proposes edits
  * to a chosen snapshot; the backend seeds from the live snapshot (read-only), applies edits in an
  * isolated config-edit root, runs the CFR import→snapshot→materialize→parity pipeline, and returns a
@@ -1819,8 +1854,147 @@ export function resetForecastRuntimeDefaults() {
   });
 }
 
+/* ---- Project Staffing (Phase 4) ------------------------------------------------ */
+
+export interface StaffingConfigRow {
+  staffing_config_id: string;
+  project_key: string;
+  template_id: string | null;
+  role_title: string | null;
+  person_name: string | null;
+  employment_type: string | null;
+  cost_code: string | null;
+  cost_code_description: string | null;
+  rate_unit: string | null;
+  lab_rate: string | null;
+  lbn_rate: string | null;
+  mat_rate: string | null;
+  start_date: string | null;
+  finish_date: string | null;
+  active_status: string;
+  override_fields_json: string[];
+  validation_status: string;
+  validation_errors_json: { field: string; code: string; message: string }[];
+  updated_utc: string | null;
+}
+
+function staffingPath(projectKey: string, suffix: string): string {
+  return `/api/projects/${encodeURIComponent(projectKey)}/staffing/${suffix}`;
+}
+
+export function getProjectStaffingConfig(projectKey: string) {
+  return fetchJson<{ rows: StaffingConfigRow[] }>(staffingPath(projectKey, 'config'));
+}
+export function createProjectStaffingConfig(projectKey: string, body: Record<string, unknown>) {
+  return fetchJson(staffingPath(projectKey, 'config'), {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+export function updateProjectStaffingConfig(
+  projectKey: string,
+  configId: string,
+  patch: Record<string, unknown>,
+) {
+  return fetchJson(staffingPath(projectKey, `config/${encodeURIComponent(configId)}`), {
+    method: 'PATCH',
+    body: JSON.stringify(patch),
+  });
+}
+export function deleteProjectStaffingConfig(projectKey: string, configId: string) {
+  return fetchJson(staffingPath(projectKey, `config/${encodeURIComponent(configId)}`), {
+    method: 'DELETE',
+  });
+}
+export function getProjectStaffingAssumptions(projectKey: string) {
+  return fetchJson<{ assumptions: Record<string, unknown> }>(
+    staffingPath(projectKey, 'assumptions'),
+  );
+}
+export function updateProjectStaffingAssumptions(projectKey: string, patch: Record<string, unknown>) {
+  return fetchJson(staffingPath(projectKey, 'assumptions'), {
+    method: 'PATCH',
+    body: JSON.stringify(patch),
+  });
+}
+export function getProjectStaffingAbsences(projectKey: string) {
+  return fetchJson<{ rows: Record<string, unknown>[] }>(
+    staffingPath(projectKey, 'absence-overrides'),
+  );
+}
+export function createProjectStaffingAbsence(projectKey: string, body: Record<string, unknown>) {
+  return fetchJson(staffingPath(projectKey, 'absence-overrides'), {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+export function deleteProjectStaffingAbsence(projectKey: string, absenceId: string) {
+  return fetchJson(staffingPath(projectKey, `absence-overrides/${encodeURIComponent(absenceId)}`), {
+    method: 'DELETE',
+  });
+}
+export function getProjectStaffingReadiness(projectKey: string) {
+  return fetchJson<{
+    readiness_status: string;
+    readiness_reasons: string[];
+    active_row_count: number;
+    unmatched_review_count: number;
+  }>(staffingPath(projectKey, 'readiness'));
+}
+export function getProjectStaffingUnmatched(projectKey: string) {
+  return fetchJson<{ review_items: Record<string, unknown>[] }>(
+    staffingPath(projectKey, 'unmatched-actuals'),
+  );
+}
+export function resolveProjectStaffingReview(
+  projectKey: string,
+  reviewItemId: string,
+  body: Record<string, unknown>,
+) {
+  return fetchJson(
+    staffingPath(projectKey, `attribution-review/${encodeURIComponent(reviewItemId)}/resolve`),
+    { method: 'POST', body: JSON.stringify(body) },
+  );
+}
+export function getProjectStaffingMatSummary(projectKey: string) {
+  return fetchJson<{ materials: Record<string, unknown>[] }>(
+    staffingPath(projectKey, 'mat-summary'),
+  );
+}
+export function rebuildProjectStaffingProjection(projectKey: string) {
+  return fetchJson(staffingPath(projectKey, 'actuals/rebuild-projection'), {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+}
+export function getForecastHolidayCalendars() {
+  return fetchJson<{ calendars: Record<string, unknown>[] }>(
+    '/api/forecast/config/holiday-calendars',
+  );
+}
+
 /* Convenience aggregate for pages that prefer a single object. */
 export const api = {
+  getProjectStaffingConfig,
+  createProjectStaffingConfig,
+  updateProjectStaffingConfig,
+  deleteProjectStaffingConfig,
+  getProjectStaffingAssumptions,
+  updateProjectStaffingAssumptions,
+  getProjectStaffingAbsences,
+  createProjectStaffingAbsence,
+  deleteProjectStaffingAbsence,
+  getProjectStaffingReadiness,
+  getProjectStaffingUnmatched,
+  resolveProjectStaffingReview,
+  getProjectStaffingMatSummary,
+  rebuildProjectStaffingProjection,
+  getForecastHolidayCalendars,
+  getForecastStaffingTemplates,
+  createForecastStaffingTemplate,
+  getForecastStaffingTemplate,
+  addForecastStaffingTemplateVersion,
+  deleteForecastStaffingTemplate,
   getToday,
   getTodayChanges,
   getTodayMeetings,

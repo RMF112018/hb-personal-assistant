@@ -1,10 +1,10 @@
-"""V79 schedule version diff impact rollup table."""
+"""V80 schedule version diff impact rollup table."""
 
 from __future__ import annotations
 
-V79_TABLES: tuple[str, ...] = ("schedule_version_diff_impact_rollups",)
+V80_TABLES: tuple[str, ...] = ("schedule_version_diff_impact_rollups",)
 
-V79_STATEMENTS: list[str] = [
+V80_STATEMENTS: list[str] = [
     """
     CREATE TABLE IF NOT EXISTS schedule_version_diff_impact_rollups (
       rollup_id TEXT PRIMARY KEY,
