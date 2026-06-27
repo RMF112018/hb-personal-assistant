@@ -192,6 +192,76 @@ class RequiredAssumptionSatisfyRequest(BaseModel):
     satisfied: bool = True
 
 
+class StaffingConfigCreateRequest(BaseModel):
+    role_title: str | None = None
+    person_name: str | None = None
+    employment_type: str | None = None
+    cost_code: str | None = None
+    cost_code_description: str | None = None
+    rate_unit: str | None = None
+    lab_rate: str | None = None
+    lbn_rate: str | None = None
+    mat_rate: str | None = None
+    start_date: str | None = None
+    finish_date: str | None = None
+    template_id: str | None = None
+    override_fields: list[str] | None = None
+    created_by_role: str | None = None
+
+
+class StaffingConfigPatchRequest(BaseModel):
+    role_title: str | None = None
+    person_name: str | None = None
+    employment_type: str | None = None
+    cost_code: str | None = None
+    cost_code_description: str | None = None
+    rate_unit: str | None = None
+    lab_rate: str | None = None
+    lbn_rate: str | None = None
+    mat_rate: str | None = None
+    start_date: str | None = None
+    finish_date: str | None = None
+    template_id: str | None = None
+    override_fields: list[str] | None = None
+
+
+class StaffingAssumptionsPatchRequest(BaseModel):
+    hours_per_business_day: str | None = None
+    business_days_per_week: str | None = None
+    full_time_hours_per_week: str | None = None
+    holiday_calendar_id: str | None = None
+
+
+class StaffingAbsenceCreateRequest(BaseModel):
+    staffing_config_id: str | None = None
+    person_name: str | None = None
+    start_date: str | None = None
+    finish_date: str | None = None
+    absence_hours: str | None = None
+    notes: str | None = None
+
+
+class StaffingAbsencePatchRequest(BaseModel):
+    staffing_config_id: str | None = None
+    person_name: str | None = None
+    start_date: str | None = None
+    finish_date: str | None = None
+    absence_hours: str | None = None
+    notes: str | None = None
+
+
+class StaffingRuleCreateRequest(BaseModel):
+    cost_code: str
+    category: str
+    staffing_config_id: str
+    created_by_role: str | None = None
+
+
+class StaffingReviewResolveRequest(BaseModel):
+    staffing_config_id: str
+    resolved_by_role: str | None = None
+
+
 class RefreshRequest(BaseModel):
     note_redacted: str | None = None
 
@@ -1870,6 +1940,184 @@ def create_app(*, db_path: str | None = None) -> Any:
         return _forecast_assumptions_call(
             lambda: svc.set_required_assumption_satisfied(required_id, satisfied=request.satisfied)
         )
+
+    # Project Staffing (Phase 3): project-scoped config / assumptions / absences / readiness +
+    # attribution (rules / review / unmatched / resolve) + actuals rebuild. Reads are viewer-safe;
+    # writes are operator-gated. Validate-on-write never rejects a row (it persists with its
+    # validation_status). Responses are redaction-safe (the repos never select raw_json).
+    def _forecast_staffing_service() -> Any:
+        from hb_assistant.construction.analytics.forecast_runtime_config import resolve_db_path
+        from hb_assistant.construction.analytics.forecast_staffing_service import (
+            ForecastStaffingService,
+        )
+
+        return ForecastStaffingService(db_path=resolve_db_path(db_path))
+
+    def _forecast_staffing_call(fn: Any, *args: Any) -> dict[str, Any]:
+        from fastapi import HTTPException
+
+        from hb_assistant.construction.analytics.forecast_staffing_service import (
+            ForecastStaffingError,
+        )
+
+        try:
+            return fn(*args)
+        except ForecastStaffingError as exc:
+            raise HTTPException(status_code=503, detail="forecast_staffing_not_available") from exc
+
+    @app.get("/api/projects/{project_key}/staffing/config")
+    def staffing_config_list(project_key: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        return _forecast_staffing_call(_forecast_staffing_service().list_config, project_key)
+
+    @app.post("/api/projects/{project_key}/staffing/config")
+    def staffing_config_create(
+        project_key: str, request: StaffingConfigCreateRequest, role: dict[str, str] = role_dep
+    ) -> dict[str, Any]:
+        require_operator_role(role)
+        svc = _forecast_staffing_service()
+        return _forecast_staffing_call(
+            lambda: svc.create_config(project_key, request.model_dump(exclude_none=True))
+        )
+
+    @app.patch("/api/projects/{project_key}/staffing/config/{config_id}")
+    def staffing_config_patch(
+        project_key: str,
+        config_id: str,
+        request: StaffingConfigPatchRequest,
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        require_operator_role(role)
+        svc = _forecast_staffing_service()
+        return _forecast_staffing_call(
+            lambda: svc.patch_config(project_key, config_id, request.model_dump(exclude_none=True))
+        )
+
+    @app.delete("/api/projects/{project_key}/staffing/config/{config_id}")
+    def staffing_config_delete(
+        project_key: str, config_id: str, role: dict[str, str] = role_dep
+    ) -> dict[str, Any]:
+        require_operator_role(role)
+        svc = _forecast_staffing_service()
+        return _forecast_staffing_call(lambda: svc.deactivate_config(project_key, config_id))
+
+    @app.get("/api/projects/{project_key}/staffing/assumptions")
+    def staffing_assumptions_get(
+        project_key: str, role: dict[str, str] = role_dep
+    ) -> dict[str, Any]:
+        del role
+        return _forecast_staffing_call(_forecast_staffing_service().get_assumptions, project_key)
+
+    @app.patch("/api/projects/{project_key}/staffing/assumptions")
+    def staffing_assumptions_patch(
+        project_key: str,
+        request: StaffingAssumptionsPatchRequest,
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        require_operator_role(role)
+        svc = _forecast_staffing_service()
+        return _forecast_staffing_call(
+            lambda: svc.patch_assumptions(project_key, request.model_dump(exclude_none=True))
+        )
+
+    @app.get("/api/projects/{project_key}/staffing/absence-overrides")
+    def staffing_absences_list(project_key: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        return _forecast_staffing_call(_forecast_staffing_service().list_absences, project_key)
+
+    @app.post("/api/projects/{project_key}/staffing/absence-overrides")
+    def staffing_absence_create(
+        project_key: str, request: StaffingAbsenceCreateRequest, role: dict[str, str] = role_dep
+    ) -> dict[str, Any]:
+        require_operator_role(role)
+        svc = _forecast_staffing_service()
+        return _forecast_staffing_call(
+            lambda: svc.create_absence(project_key, request.model_dump(exclude_none=True))
+        )
+
+    @app.patch("/api/projects/{project_key}/staffing/absence-overrides/{absence_id}")
+    def staffing_absence_patch(
+        project_key: str,
+        absence_id: str,
+        request: StaffingAbsencePatchRequest,
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        require_operator_role(role)
+        svc = _forecast_staffing_service()
+        return _forecast_staffing_call(
+            lambda: svc.patch_absence(project_key, absence_id, request.model_dump(exclude_none=True))
+        )
+
+    @app.delete("/api/projects/{project_key}/staffing/absence-overrides/{absence_id}")
+    def staffing_absence_delete(
+        project_key: str, absence_id: str, role: dict[str, str] = role_dep
+    ) -> dict[str, Any]:
+        require_operator_role(role)
+        svc = _forecast_staffing_service()
+        return _forecast_staffing_call(lambda: svc.deactivate_absence(project_key, absence_id))
+
+    @app.get("/api/projects/{project_key}/staffing/readiness")
+    def staffing_readiness(project_key: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        return _forecast_staffing_call(_forecast_staffing_service().readiness, project_key)
+
+    @app.get("/api/projects/{project_key}/staffing/attribution-rules")
+    def staffing_rules_list(project_key: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        return _forecast_staffing_call(_forecast_staffing_service().list_rules, project_key)
+
+    @app.post("/api/projects/{project_key}/staffing/attribution-rules")
+    def staffing_rule_create(
+        project_key: str, request: StaffingRuleCreateRequest, role: dict[str, str] = role_dep
+    ) -> dict[str, Any]:
+        require_operator_role(role)
+        svc = _forecast_staffing_service()
+        return _forecast_staffing_call(
+            lambda: svc.create_rule(project_key, request.model_dump(exclude_none=True))
+        )
+
+    @app.delete("/api/projects/{project_key}/staffing/attribution-rules/{rule_id}")
+    def staffing_rule_delete(
+        project_key: str, rule_id: str, role: dict[str, str] = role_dep
+    ) -> dict[str, Any]:
+        require_operator_role(role)
+        svc = _forecast_staffing_service()
+        return _forecast_staffing_call(lambda: svc.deactivate_rule(project_key, rule_id))
+
+    @app.get("/api/projects/{project_key}/staffing/unmatched-actuals")
+    def staffing_unmatched_list(
+        project_key: str, role: dict[str, str] = role_dep
+    ) -> dict[str, Any]:
+        del role
+        return _forecast_staffing_call(_forecast_staffing_service().list_unmatched, project_key)
+
+    @app.post("/api/projects/{project_key}/staffing/attribution-review/{review_item_id}/resolve")
+    def staffing_review_resolve(
+        project_key: str,
+        review_item_id: str,
+        request: StaffingReviewResolveRequest,
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        require_operator_role(role)
+        svc = _forecast_staffing_service()
+        return _forecast_staffing_call(
+            lambda: svc.resolve_review_item(
+                project_key, review_item_id, request.model_dump(exclude_none=True)
+            )
+        )
+
+    @app.get("/api/projects/{project_key}/staffing/mat-summary")
+    def staffing_mat_summary(project_key: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        return _forecast_staffing_call(_forecast_staffing_service().mat_summary, project_key)
+
+    @app.post("/api/projects/{project_key}/staffing/actuals/rebuild-projection")
+    def staffing_actuals_rebuild(
+        project_key: str, role: dict[str, str] = role_dep
+    ) -> dict[str, Any]:
+        require_operator_role(role)
+        svc = _forecast_staffing_service()
+        return _forecast_staffing_call(lambda: svc.rebuild_actuals(project_key))
 
     # Forecast config editing — isolated proposals (Implementation Phase E). An operator proposes
     # edits; the service seeds from a chosen live snapshot (mode=ro), applies edits in an isolated
