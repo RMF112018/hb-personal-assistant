@@ -18,7 +18,7 @@
     "phase_owner",
     "blocking_for_phase"
   ],
-  "table_count": 451,
+  "table_count": 452,
   "tables": {
     "construction_data_quality_runs": {
       "table_family": "data_quality_v20v21",
@@ -4069,6 +4069,15 @@
       "blocking_for_phase": "none",
       "v": "V75",
       "notes": "Persisted detailed version-diff metrics for dashboard reads without recomputation."
+    },
+    "schedule_identity_manual_actions": {
+      "table_family": "schedule_identity_review_v77",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "schedule_identity_review_surface",
+      "blocking_for_phase": "none",
+      "v": "V77",
+      "notes": "Append-only manual identity review actions for reassign, split, and merge decisions."
     }
   }
 }

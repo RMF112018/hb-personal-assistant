@@ -101,14 +101,18 @@ def _xml_same_source_id_name_different_content() -> bytes:
 """
 
 
-def test_v76_schedule_identity_schema_fresh_and_v75_self_heal(tmp_path: Path) -> None:
+def test_v76_v77_schedule_identity_schema_fresh_and_v75_self_heal(tmp_path: Path) -> None:
     fresh_db = tmp_path / "fresh.db"
     migrator = SQLiteMigrator(db_path=str(fresh_db))
-    assert migrator.apply() == LATEST_SCHEMA_VERSION == 76
+    assert migrator.apply() == LATEST_SCHEMA_VERSION == 77
     assert migrator.apply() == LATEST_SCHEMA_VERSION
     with sqlite3.connect(fresh_db) as conn:
         tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-        assert {"schedule_identities", "schedule_version_identity_matches"} <= tables
+        assert {
+            "schedule_identities",
+            "schedule_version_identity_matches",
+            "schedule_identity_manual_actions",
+        } <= tables
 
     stale_db = tmp_path / "v75.db"
     SQLiteMigrator(db_path=str(stale_db)).apply()
@@ -125,7 +129,11 @@ def test_v76_schedule_identity_schema_fresh_and_v75_self_heal(tmp_path: Path) ->
         version = conn.execute("SELECT MAX(version) FROM schema_migrations").fetchone()[0]
         tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
     assert int(version) == LATEST_SCHEMA_VERSION
-    assert {"schedule_identities", "schedule_version_identity_matches"} <= tables
+    assert {
+        "schedule_identities",
+        "schedule_version_identity_matches",
+        "schedule_identity_manual_actions",
+    } <= tables
 
 
 def test_same_xer_content_different_filenames_share_identity_and_default_diff(

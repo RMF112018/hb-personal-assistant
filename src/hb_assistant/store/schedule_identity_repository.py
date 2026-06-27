@@ -338,15 +338,498 @@ class ScheduleIdentityRepository:
             ).fetchall()
             return [dict(r) for r in rows]
 
+    def list_identities(
+        self, *, project_key: str, show_merged: bool = False
+    ) -> list[dict[str, Any]]:
+        status_clause = "" if show_merged else "AND identity_status='active'"
+        with self._conn() as conn:
+            rows = conn.execute(
+                f"""
+                SELECT si.*,
+                       COUNT(m.match_id) AS version_count,
+                       SUM(CASE WHEN m.requires_review=1
+                                  OR m.match_status IN ('requires_review', 'ambiguous')
+                                THEN 1 ELSE 0 END) AS review_required_count
+                FROM schedule_identities si
+                LEFT JOIN schedule_version_identity_matches m
+                  ON m.schedule_identity_key=si.schedule_identity_key
+                WHERE si.project_key=?
+                {status_clause}
+                GROUP BY si.schedule_identity_key
+                ORDER BY si.identity_status ASC, si.updated_at DESC, si.created_at DESC
+                """,
+                (project_key,),
+            ).fetchall()
+            return [dict(r) for r in rows]
+
+    def get_identity_detail(
+        self, *, project_key: str, schedule_identity_key: str, show_merged: bool = True
+    ) -> dict[str, Any] | None:
+        with self._conn() as conn:
+            identity = conn.execute(
+                """
+                SELECT * FROM schedule_identities
+                WHERE project_key=? AND schedule_identity_key=?
+                """,
+                (project_key, schedule_identity_key),
+            ).fetchone()
+            if not identity:
+                return None
+            identity_row = dict(identity)
+            if not show_merged and identity_row.get("identity_status") == "merged":
+                return None
+            version_rows = conn.execute(
+                """
+                SELECT m.*, i.created_at AS import_created_at,
+                       i.import_status, i.source_filename_redacted AS import_filename_redacted,
+                       i.activity_count AS import_activity_count,
+                       i.relationship_count AS import_relationship_count,
+                       i.wbs_count AS import_wbs_count
+                FROM schedule_version_identity_matches m
+                LEFT JOIN schedule_file_imports i ON i.import_id=m.import_id
+                WHERE m.project_key=? AND m.schedule_identity_key=?
+                ORDER BY i.created_at DESC, m.created_at DESC
+                """,
+                (project_key, schedule_identity_key),
+            ).fetchall()
+            action_rows = conn.execute(
+                """
+                SELECT * FROM schedule_identity_manual_actions
+                WHERE project_key=?
+                  AND (source_identity_key=? OR target_identity_key=?)
+                ORDER BY created_at DESC, action_id DESC
+                """,
+                (project_key, schedule_identity_key, schedule_identity_key),
+            ).fetchall()
+            return {
+                "identity": identity_row,
+                "versions": [dict(r) for r in version_rows],
+                "manual_actions": [dict(r) for r in action_rows],
+            }
+
+    def list_review_queue(self, *, project_key: str) -> list[dict[str, Any]]:
+        with self._conn() as conn:
+            rows = conn.execute(
+                """
+                SELECT m.*, si.identity_status, si.canonical_schedule_name,
+                       i.created_at AS import_created_at,
+                       i.import_status,
+                       i.source_filename_redacted AS import_filename_redacted
+                FROM schedule_version_identity_matches m
+                JOIN schedule_identities si ON si.schedule_identity_key=m.schedule_identity_key
+                LEFT JOIN schedule_file_imports i ON i.import_id=m.import_id
+                WHERE m.project_key=?
+                  AND si.identity_status='active'
+                  AND (
+                    m.requires_review=1
+                    OR m.match_status IN ('requires_review', 'ambiguous')
+                    OR (
+                      m.no_match_reason IS NOT NULL
+                      AND m.match_type NOT IN ('manual_reassign', 'manual_split', 'manual_merge')
+                      AND m.match_status<>'resolved'
+                    )
+                  )
+                ORDER BY i.created_at DESC, m.created_at DESC
+                """,
+                (project_key,),
+            ).fetchall()
+            return [dict(r) for r in rows]
+
+    def reassign_version_identity(
+        self,
+        *,
+        project_key: str,
+        schedule_version_key: str,
+        target_identity_key: str,
+        reason: str | None = None,
+        actor: str | None = None,
+    ) -> dict[str, Any]:
+        detail_key = target_identity_key
+        with open_connection(self._db_path) as conn:
+            with transaction(conn):
+                match = self._require_match(conn, project_key, schedule_version_key)
+                target = self._require_identity(conn, project_key, target_identity_key)
+                if target.get("identity_status") != "active":
+                    self._raise("schedule_identity_not_active", "target identity is not active")
+                source_identity_key = str(match["schedule_identity_key"])
+                self._insert_manual_action(
+                    conn,
+                    project_key=project_key,
+                    action_type="reassign",
+                    schedule_version_key=schedule_version_key,
+                    source_identity_key=source_identity_key,
+                    target_identity_key=target_identity_key,
+                    reason=reason,
+                    actor=actor,
+                    evidence={"previous_match": self._action_safe_match(match)},
+                )
+                conn.execute(
+                    """
+                    UPDATE schedule_version_identity_matches
+                    SET schedule_identity_key=?,
+                        match_type='manual_reassign',
+                        match_status='resolved',
+                        match_rule='operator_manual_reassign',
+                        requires_review=0,
+                        no_match_reason=NULL,
+                        matched_existing_identity_key=?,
+                        matched_prior_schedule_version_key=NULL,
+                        winning_candidate_schedule_version_key=NULL
+                    WHERE match_id=?
+                    """,
+                    (target_identity_key, target_identity_key, match["match_id"]),
+                )
+                for identity_key in {source_identity_key, target_identity_key}:
+                    self._recalculate_identity_metadata(conn, project_key, identity_key)
+        return self.get_identity_detail(
+            project_key=project_key, schedule_identity_key=detail_key
+        ) or {"identity": target}
+
+    def split_version_identity(
+        self,
+        *,
+        project_key: str,
+        schedule_version_key: str,
+        canonical_schedule_name: str | None = None,
+        reason: str | None = None,
+        actor: str | None = None,
+    ) -> dict[str, Any]:
+        new_identity_key: str | None = None
+        with open_connection(self._db_path) as conn:
+            with transaction(conn):
+                match = self._require_match(conn, project_key, schedule_version_key)
+                source_identity_key = str(match["schedule_identity_key"])
+                new_identity_key = self._new_identity_key()
+                conn.execute(
+                    """
+                    INSERT INTO schedule_identities (
+                      schedule_identity_key, project_key, identity_status, canonical_schedule_name,
+                      normalized_source_project_id, normalized_source_project_name, source_system,
+                      source_format, representative_activity_id_set_fingerprint,
+                      representative_wbs_fingerprint, representative_relationship_graph_fingerprint,
+                      first_import_id, first_schedule_version_key, latest_import_id,
+                      latest_schedule_version_key, evidence_json
+                    ) VALUES (?, ?, 'active', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        new_identity_key,
+                        project_key,
+                        canonical_schedule_name,
+                        match.get("normalized_source_project_id"),
+                        match.get("normalized_source_project_name"),
+                        match.get("source_system"),
+                        match.get("source_format"),
+                        match.get("activity_id_set_fingerprint"),
+                        match.get("wbs_fingerprint"),
+                        match.get("relationship_graph_fingerprint"),
+                        match.get("import_id"),
+                        schedule_version_key,
+                        match.get("import_id"),
+                        schedule_version_key,
+                        json.dumps(
+                            {"manual_split_from_identity_key": source_identity_key},
+                            sort_keys=True,
+                        ),
+                    ),
+                )
+                self._insert_manual_action(
+                    conn,
+                    project_key=project_key,
+                    action_type="split",
+                    schedule_version_key=schedule_version_key,
+                    source_identity_key=source_identity_key,
+                    target_identity_key=new_identity_key,
+                    reason=reason,
+                    actor=actor,
+                    evidence={"previous_match": self._action_safe_match(match)},
+                )
+                conn.execute(
+                    """
+                    UPDATE schedule_version_identity_matches
+                    SET schedule_identity_key=?,
+                        match_type='manual_split',
+                        match_status='resolved',
+                        match_rule='operator_manual_split',
+                        requires_review=0,
+                        no_match_reason=NULL,
+                        matched_existing_identity_key=NULL,
+                        matched_prior_schedule_version_key=NULL,
+                        winning_candidate_schedule_version_key=NULL
+                    WHERE match_id=?
+                    """,
+                    (new_identity_key, match["match_id"]),
+                )
+                for identity_key in {source_identity_key, new_identity_key}:
+                    self._recalculate_identity_metadata(conn, project_key, identity_key)
+        assert new_identity_key is not None
+        return self.get_identity_detail(
+            project_key=project_key, schedule_identity_key=new_identity_key
+        ) or {"identity": {"schedule_identity_key": new_identity_key}}
+
+    def merge_identities(
+        self,
+        *,
+        project_key: str,
+        source_identity_key: str,
+        target_identity_key: str,
+        reason: str | None = None,
+        actor: str | None = None,
+    ) -> dict[str, Any]:
+        if source_identity_key == target_identity_key:
+            self._raise("schedule_identity_merge_same_identity", "source and target differ")
+        detail_key = target_identity_key
+        with open_connection(self._db_path) as conn:
+            with transaction(conn):
+                source = self._require_identity(conn, project_key, source_identity_key)
+                target = self._require_identity(conn, project_key, target_identity_key)
+                if target.get("identity_status") != "active":
+                    self._raise("schedule_identity_not_active", "target identity is not active")
+                affected = conn.execute(
+                    """
+                    SELECT * FROM schedule_version_identity_matches
+                    WHERE project_key=? AND schedule_identity_key=?
+                    ORDER BY created_at ASC, match_id ASC
+                    """,
+                    (project_key, source_identity_key),
+                ).fetchall()
+                self._insert_manual_action(
+                    conn,
+                    project_key=project_key,
+                    action_type="merge",
+                    schedule_version_key=None,
+                    source_identity_key=source_identity_key,
+                    target_identity_key=target_identity_key,
+                    reason=reason,
+                    actor=actor,
+                    evidence={
+                        "source_identity": self._action_safe_identity(source),
+                        "target_identity": self._action_safe_identity(target),
+                        "moved_version_count": len(affected),
+                    },
+                )
+                conn.execute(
+                    """
+                    UPDATE schedule_version_identity_matches
+                    SET schedule_identity_key=?,
+                        match_type='manual_merge',
+                        match_status='resolved',
+                        match_rule='operator_manual_merge',
+                        requires_review=0,
+                        no_match_reason=NULL,
+                        matched_existing_identity_key=?
+                    WHERE project_key=? AND schedule_identity_key=?
+                    """,
+                    (target_identity_key, target_identity_key, project_key, source_identity_key),
+                )
+                conn.execute(
+                    """
+                    UPDATE schedule_identities
+                    SET identity_status='merged',
+                        latest_schedule_version_key=NULL,
+                        latest_import_id=NULL,
+                        updated_at=CURRENT_TIMESTAMP
+                    WHERE project_key=? AND schedule_identity_key=?
+                    """,
+                    (project_key, source_identity_key),
+                )
+                self._recalculate_identity_metadata(conn, project_key, target_identity_key)
+        return self.get_identity_detail(
+            project_key=project_key, schedule_identity_key=detail_key
+        ) or {"identity": target}
+
+    @staticmethod
+    def _raise(code: str, message: str) -> None:
+        from hb_assistant.construction.analytics.schedule_file_parser import ScheduleImportError
+
+        raise ScheduleImportError(code, message=message)
+
+    @staticmethod
+    def _safe_json(value: Any) -> dict[str, Any]:
+        if not value:
+            return {}
+        if isinstance(value, dict):
+            return value
+        try:
+            parsed = json.loads(str(value))
+        except (TypeError, ValueError, json.JSONDecodeError):
+            return {}
+        return parsed if isinstance(parsed, dict) else {}
+
+    @staticmethod
+    def _action_safe_match(match: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "schedule_identity_key": match.get("schedule_identity_key"),
+            "schedule_version_key": match.get("schedule_version_key"),
+            "import_id": match.get("import_id"),
+            "match_type": match.get("match_type"),
+            "match_status": match.get("match_status"),
+            "match_rule": match.get("match_rule"),
+            "confidence_score": match.get("confidence_score"),
+            "requires_review": bool(int(match.get("requires_review") or 0)),
+            "no_match_reason": match.get("no_match_reason"),
+            "candidate_count": match.get("candidate_count"),
+            "source_filename_basename": match.get("source_filename_redacted"),
+        }
+
+    @staticmethod
+    def _action_safe_identity(identity: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "schedule_identity_key": identity.get("schedule_identity_key"),
+            "project_key": identity.get("project_key"),
+            "identity_status": identity.get("identity_status"),
+            "canonical_schedule_name": identity.get("canonical_schedule_name"),
+            "latest_schedule_version_key": identity.get("latest_schedule_version_key"),
+        }
+
+    def _require_match(
+        self, conn: sqlite3.Connection, project_key: str, schedule_version_key: str
+    ) -> dict[str, Any]:
+        row = conn.execute(
+            """
+            SELECT * FROM schedule_version_identity_matches
+            WHERE project_key=? AND schedule_version_key=?
+            ORDER BY created_at DESC, match_id DESC LIMIT 1
+            """,
+            (project_key, schedule_version_key),
+        ).fetchone()
+        if row is None:
+            self._raise("schedule_identity_match_not_found", "schedule identity match not found")
+        return dict(row)
+
+    def _require_identity(
+        self, conn: sqlite3.Connection, project_key: str, schedule_identity_key: str
+    ) -> dict[str, Any]:
+        row = conn.execute(
+            """
+            SELECT * FROM schedule_identities
+            WHERE project_key=? AND schedule_identity_key=?
+            """,
+            (project_key, schedule_identity_key),
+        ).fetchone()
+        if row is None:
+            self._raise("schedule_identity_not_found", "schedule identity not found")
+        return dict(row)
+
+    def _insert_manual_action(
+        self,
+        conn: sqlite3.Connection,
+        *,
+        project_key: str,
+        action_type: str,
+        schedule_version_key: str | None,
+        source_identity_key: str | None,
+        target_identity_key: str | None,
+        reason: str | None,
+        actor: str | None,
+        evidence: dict[str, Any],
+    ) -> dict[str, Any]:
+        row = {
+            "action_id": f"sima-{uuid.uuid4().hex}",
+            "project_key": project_key,
+            "action_type": action_type,
+            "schedule_version_key": schedule_version_key,
+            "source_identity_key": source_identity_key,
+            "target_identity_key": target_identity_key,
+            "reason": reason,
+            "actor": actor,
+            "evidence_json": json.dumps(evidence, sort_keys=True, default=str),
+        }
+        cols = list(row)
+        conn.execute(
+            f"INSERT INTO schedule_identity_manual_actions ({', '.join(cols)}) "
+            f"VALUES ({', '.join('?' for _ in cols)})",
+            tuple(row[c] for c in cols),
+        )
+        return row
+
+    @staticmethod
+    def _metadata_sort_key(row: dict[str, Any]) -> tuple[int, str, str]:
+        data_date = parse_schedule_version_data_date(str(row.get("schedule_version_key") or ""))
+        if data_date is not None:
+            return (1, data_date.isoformat(), str(row.get("import_created_at") or ""))
+        return (0, str(row.get("import_created_at") or row.get("created_at") or ""), "")
+
+    def _recalculate_identity_metadata(
+        self, conn: sqlite3.Connection, project_key: str, schedule_identity_key: str
+    ) -> None:
+        rows = [
+            dict(r)
+            for r in conn.execute(
+                """
+                SELECT m.*, i.created_at AS import_created_at
+                FROM schedule_version_identity_matches m
+                LEFT JOIN schedule_file_imports i ON i.import_id=m.import_id
+                WHERE m.project_key=? AND m.schedule_identity_key=?
+                ORDER BY i.created_at ASC, m.created_at ASC
+                """,
+                (project_key, schedule_identity_key),
+            ).fetchall()
+        ]
+        if not rows:
+            conn.execute(
+                """
+                UPDATE schedule_identities
+                SET first_import_id=NULL,
+                    first_schedule_version_key=NULL,
+                    latest_import_id=NULL,
+                    latest_schedule_version_key=NULL,
+                    updated_at=CURRENT_TIMESTAMP
+                WHERE project_key=? AND schedule_identity_key=?
+                """,
+                (project_key, schedule_identity_key),
+            )
+            return
+        ordered = sorted(rows, key=self._metadata_sort_key)
+        first = ordered[0]
+        latest = ordered[-1]
+        representative = latest
+        conn.execute(
+            """
+            UPDATE schedule_identities
+            SET canonical_schedule_name=COALESCE(canonical_schedule_name, ?),
+                normalized_source_project_id=?,
+                normalized_source_project_name=?,
+                source_system=?,
+                source_format=?,
+                representative_activity_id_set_fingerprint=?,
+                representative_wbs_fingerprint=?,
+                representative_relationship_graph_fingerprint=?,
+                first_import_id=?,
+                first_schedule_version_key=?,
+                latest_import_id=?,
+                latest_schedule_version_key=?,
+                updated_at=CURRENT_TIMESTAMP
+            WHERE project_key=? AND schedule_identity_key=?
+            """,
+            (
+                representative.get("normalized_source_project_name"),
+                representative.get("normalized_source_project_id"),
+                representative.get("normalized_source_project_name"),
+                representative.get("source_system"),
+                representative.get("source_format"),
+                representative.get("activity_id_set_fingerprint"),
+                representative.get("wbs_fingerprint"),
+                representative.get("relationship_graph_fingerprint"),
+                first.get("import_id"),
+                first.get("schedule_version_key"),
+                latest.get("import_id"),
+                latest.get("schedule_version_key"),
+                project_key,
+                schedule_identity_key,
+            ),
+        )
+
     def _candidate_rows(self, conn: sqlite3.Connection, project_key: str) -> list[dict[str, Any]]:
         rows = conn.execute(
             """
             SELECT m.*, i.created_at AS import_created_at
             FROM schedule_version_identity_matches m
             JOIN schedule_file_imports i ON i.import_id=m.import_id
+            JOIN schedule_identities si ON si.schedule_identity_key=m.schedule_identity_key
             WHERE m.project_key=?
               AND m.match_status='resolved'
               AND m.requires_review=0
+              AND si.identity_status='active'
               AND i.import_status='committed'
             ORDER BY i.created_at DESC, m.created_at DESC
             """,

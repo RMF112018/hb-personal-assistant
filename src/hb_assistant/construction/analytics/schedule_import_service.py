@@ -1324,6 +1324,7 @@ class ScheduleImportService:
             version_key=version_key,
             package_id=package.package_id if package else None,
         )
+        health_snapshot = ScheduleReadService(db_path=self._db_path).get_health_data(version_key) or {}
 
         _PREVIEW_CACHE.pop(import_id, None)
         from .schedule_project_catalog import ScheduleProjectCatalog
@@ -1353,6 +1354,7 @@ class ScheduleImportService:
             if identity_resolution
             else None,
             "identity_match": identity_resolution.public_match() if identity_resolution else None,
+            "comparison_basis": health_snapshot.get("comparison_basis"),
         }
 
     @staticmethod
@@ -2021,7 +2023,35 @@ class ScheduleReadService:
             completion_posture=str(completion_posture) if completion_posture else None,
             evaluated_at=str(run.get("completed_at")) if run and run.get("completed_at") else None,
         )
-        return dto.public()
+        public = dto.public()
+        identity_match = self._identity_repo.get_match_for_version(str(svk))
+        if identity_match:
+            public.update(
+                {
+                    "schedule_identity_key": identity_match.get("schedule_identity_key"),
+                    "identity_match_type": identity_match.get("match_type"),
+                    "identity_match_status": identity_match.get("match_status"),
+                    "identity_requires_review": bool(
+                        int(identity_match.get("requires_review") or 0)
+                    ),
+                    "identity_confidence_score": identity_match.get("confidence_score"),
+                }
+            )
+            capability = next(
+                (
+                    cap
+                    for cap in self._import_repo.list_capabilities(str(svk))
+                    if cap.get("capability_key") == "default_version_diff"
+                ),
+                None,
+            )
+            public["default_prior_available"] = bool(
+                capability and capability.get("capability_status") != "unavailable"
+            )
+            public["default_prior_unavailable_reason"] = (
+                capability.get("unavailable_reason") if capability else None
+            )
+        return public
 
     def list_versions(
         self,
@@ -2102,6 +2132,12 @@ class ScheduleReadService:
             if identity_match
             else None
         )
+        comparison_basis = self._comparison_basis(
+            schedule_version_key=schedule_version_key,
+            identity_match=identity_match,
+            capabilities=capabilities,
+            diff_facts=diff_facts,
+        )
         run = self._quality_repo.get_latest_run(schedule_version_key) or self._quality_repo.get_pending_run(
             schedule_version_key
         )
@@ -2122,8 +2158,84 @@ class ScheduleReadService:
             "available_version_diffs": diff_facts,
             "schedule_identity": _public_schedule_identity(schedule_identity),
             "identity_match": _public_identity_match(identity_match),
+            "comparison_basis": comparison_basis,
             "baseline_projects": baselines,
             "baseline_health_facts": baseline_facts,
             "top_health_findings": self._mapping_repo.list_quality_findings(schedule_version_key)[:25],
             "deferred_domains": {"cost_schedule_correlation": "deferred"},
+        }
+
+    def _comparison_basis(
+        self,
+        *,
+        schedule_version_key: str,
+        identity_match: dict[str, Any] | None,
+        capabilities: list[dict[str, Any]],
+        diff_facts: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        capability = next(
+            (cap for cap in capabilities if cap.get("capability_key") == "default_version_diff"),
+            None,
+        )
+        unavailable_reason = capability.get("unavailable_reason") if capability else None
+        prior_version = None
+        if diff_facts:
+            prior_version = diff_facts[0].get("from_schedule_version_key")
+        current_identity_key = identity_match.get("schedule_identity_key") if identity_match else None
+        prior_identity_key = None
+        selection_reason = "persisted_default_diff" if prior_version else None
+        if identity_match and not prior_version:
+            match_resolved = (
+                str(identity_match.get("match_status") or "") == "resolved"
+                and int(identity_match.get("requires_review") or 0) == 0
+                and current_identity_key
+            )
+            if match_resolved:
+                prior_candidates = self._identity_repo.list_prior_resolved_versions(
+                    schedule_identity_key=str(current_identity_key),
+                    current_schedule_version_key=schedule_version_key,
+                )
+                prior = ScheduleImportService._select_default_prior_identity_version(
+                    schedule_version_key, prior_candidates
+                )
+                if prior:
+                    prior_version = prior.get("schedule_version_key")
+                    selection_reason = "identity_safe_prior_eligible"
+        if prior_version:
+            prior_match = self._identity_repo.get_match_for_version(str(prior_version))
+            prior_identity_key = prior_match.get("schedule_identity_key") if prior_match else None
+        identity_requires_review = bool(
+            identity_match
+            and (
+                str(identity_match.get("match_status") or "") != "resolved"
+                or int(identity_match.get("requires_review") or 0) != 0
+            )
+        )
+        if identity_match is None:
+            reason = unavailable_reason or "no_identity_match"
+        elif identity_requires_review:
+            reason = unavailable_reason or "identity_requires_review"
+        elif not prior_version:
+            reason = unavailable_reason or "no_prior_identity_version"
+        else:
+            reason = None
+        identity_safe = bool(
+            current_identity_key
+            and prior_identity_key
+            and current_identity_key == prior_identity_key
+            and not identity_requires_review
+        )
+        return {
+            "current_schedule_identity_key": current_identity_key,
+            "default_prior_schedule_version_key": prior_version,
+            "default_prior_schedule_identity_key": prior_identity_key,
+            "default_prior_selection_reason": selection_reason if identity_safe else None,
+            "default_prior_available": bool(identity_safe),
+            "default_prior_unavailable_reason": reason,
+            "identity_match_type": identity_match.get("match_type") if identity_match else None,
+            "identity_confidence_score": identity_match.get("confidence_score")
+            if identity_match
+            else None,
+            "identity_requires_review": identity_requires_review,
+            "identity_safe": identity_safe,
         }

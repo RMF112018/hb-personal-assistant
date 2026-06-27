@@ -120,6 +120,17 @@ function healthData(overrides: Record<string, unknown> = {}) {
         from_schedule_version_key: 'twn|1069|2026-05-26 08:00',
       },
     ],
+    comparison_basis: {
+      current_schedule_identity_key: 'identity-current',
+      default_prior_schedule_version_key: 'twn|1069|2026-05-26 08:00',
+      default_prior_schedule_identity_key: 'identity-current',
+      default_prior_selection_reason: 'persisted_default_diff',
+      default_prior_available: true,
+      identity_match_type: 'exact_activity_fingerprint',
+      identity_confidence_score: '1.00',
+      identity_requires_review: false,
+      identity_safe: true,
+    },
     baseline_projects: [
       {
         baseline_project_key: 'bl-1',

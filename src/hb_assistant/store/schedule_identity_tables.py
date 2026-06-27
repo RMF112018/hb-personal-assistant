@@ -11,6 +11,8 @@ V76_TABLES: tuple[str, ...] = (
     "schedule_version_identity_matches",
 )
 
+V77_TABLES: tuple[str, ...] = ("schedule_identity_manual_actions",)
+
 V76_STATEMENTS: list[str] = [
     """
     CREATE TABLE IF NOT EXISTS schedule_identities (
@@ -96,5 +98,38 @@ V76_STATEMENTS: list[str] = [
     """
     CREATE INDEX IF NOT EXISTS idx_schedule_version_identity_matches_project
     ON schedule_version_identity_matches(project_key);
+    """,
+]
+
+V77_STATEMENTS: list[str] = [
+    """
+    CREATE TABLE IF NOT EXISTS schedule_identity_manual_actions (
+      action_id TEXT PRIMARY KEY,
+      project_key TEXT NOT NULL,
+      action_type TEXT NOT NULL,
+      schedule_version_key TEXT,
+      source_identity_key TEXT,
+      target_identity_key TEXT,
+      reason TEXT,
+      actor TEXT,
+      evidence_json TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS idx_schedule_identity_manual_actions_project
+    ON schedule_identity_manual_actions(project_key);
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS idx_schedule_identity_manual_actions_version
+    ON schedule_identity_manual_actions(schedule_version_key);
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS idx_schedule_identity_manual_actions_source
+    ON schedule_identity_manual_actions(source_identity_key);
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS idx_schedule_identity_manual_actions_target
+    ON schedule_identity_manual_actions(target_identity_key);
     """,
 ]

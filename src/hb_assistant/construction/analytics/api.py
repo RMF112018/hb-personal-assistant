@@ -90,6 +90,21 @@ class ScheduleImportCommitRequest(BaseModel):
     column_roles: dict[str, str] | None = None
 
 
+class ScheduleIdentityReassignRequest(BaseModel):
+    target_identity_key: str
+    reason: str | None = None
+
+
+class ScheduleIdentitySplitRequest(BaseModel):
+    canonical_schedule_name: str | None = None
+    reason: str | None = None
+
+
+class ScheduleIdentityMergeRequest(BaseModel):
+    target_identity_key: str
+    reason: str | None = None
+
+
 class ScheduleCostMappingRunRequest(BaseModel):
     project_key: str
     schedule_version_key: str
@@ -2682,6 +2697,11 @@ def create_app(*, db_path: str | None = None) -> Any:
 
         return ScheduleReadService(db_path=_schedule_db_path())
 
+    def _schedule_identity_repo() -> Any:
+        from hb_assistant.store.schedule_identity_repository import ScheduleIdentityRepository
+
+        return ScheduleIdentityRepository(db_path=_schedule_db_path())
+
     def _schedule_cost_mapping_service() -> Any:
         from hb_assistant.construction.analytics.schedule_cost_mapping import (
             ScheduleCostMappingService,
@@ -2709,7 +2729,15 @@ def create_app(*, db_path: str | None = None) -> Any:
             "schedule_import_persistence_failed",
             "schedule_supersede_confirmation_required",
             "schedule_supersede_state_mismatch",
+            "schedule_identity_merge_same_identity",
         }:
+            raise HTTPException(status_code=409, detail={"code": code, **payload})
+        if code in {
+            "schedule_identity_not_found",
+            "schedule_identity_match_not_found",
+        }:
+            raise HTTPException(status_code=404, detail={"code": code, **payload})
+        if code == "schedule_identity_not_active":
             raise HTTPException(status_code=409, detail={"code": code, **payload})
         if code == "schedule_package_multiple_current_candidates":
             raise HTTPException(status_code=409, detail={"code": code, **payload})
@@ -2740,6 +2768,40 @@ def create_app(*, db_path: str | None = None) -> Any:
         except ScheduleImportError as exc:
             _raise_schedule_import_error(exc)
             raise AssertionError("unreachable") from exc
+
+    def _json_object(value: Any) -> dict[str, Any]:
+        if not value:
+            return {}
+        if isinstance(value, dict):
+            return value
+        try:
+            parsed = json.loads(str(value))
+        except (TypeError, ValueError, json.JSONDecodeError):
+            return {}
+        return parsed if isinstance(parsed, dict) else {}
+
+    def _public_identity_row(row: dict[str, Any]) -> dict[str, Any]:
+        out = dict(row)
+        if "requires_review" in out:
+            out["requires_review"] = bool(int(out.get("requires_review") or 0))
+        if "review_required_count" in out:
+            out["review_required_count"] = int(out.get("review_required_count") or 0)
+        if "version_count" in out:
+            out["version_count"] = int(out.get("version_count") or 0)
+        if "evidence_json" in out:
+            out["evidence_summary"] = _json_object(out.pop("evidence_json"))
+        return out
+
+    def _public_identity_detail(payload: dict[str, Any]) -> dict[str, Any]:
+        identity = _public_identity_row(dict(payload.get("identity") or {}))
+        versions = [_public_identity_row(dict(v)) for v in payload.get("versions") or []]
+        actions = []
+        for action in payload.get("manual_actions") or []:
+            item = dict(action)
+            if "evidence_json" in item:
+                item["evidence_summary"] = _json_object(item.pop("evidence_json"))
+            actions.append(item)
+        return {"identity": identity, "versions": versions, "manual_actions": actions}
 
     @app.get("/api/schedules/projects")
     def schedule_list_projects(role: dict[str, str] = role_dep) -> dict[str, Any]:
@@ -2775,6 +2837,122 @@ def create_app(*, db_path: str | None = None) -> Any:
             sort=sort,
             order=order,
         )
+
+    @app.get("/api/schedules/projects/{project_key}/identities")
+    def schedule_list_identities(
+        project_key: str,
+        show_merged: bool = Query(default=False),
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        del role
+        require_schedule_schema_ready()
+        rows = _schedule_call(
+            _schedule_identity_repo().list_identities,
+            project_key=project_key,
+            show_merged=show_merged,
+        )
+        return {
+            "project_key": project_key,
+            "identities": [_public_identity_row(dict(r)) for r in rows],
+            "show_merged": show_merged,
+        }
+
+    @app.get("/api/schedules/projects/{project_key}/identities/{schedule_identity_key}")
+    def schedule_identity_detail(
+        project_key: str,
+        schedule_identity_key: str,
+        show_merged: bool = Query(default=True),
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        del role
+        from fastapi import HTTPException
+
+        require_schedule_schema_ready()
+        payload = _schedule_identity_repo().get_identity_detail(
+            project_key=project_key,
+            schedule_identity_key=schedule_identity_key,
+            show_merged=show_merged,
+        )
+        if not payload:
+            raise HTTPException(status_code=404, detail="schedule_identity_not_found")
+        return _public_identity_detail(dict(payload))
+
+    @app.get("/api/schedules/projects/{project_key}/identity-review")
+    def schedule_identity_review_queue(
+        project_key: str, role: dict[str, str] = role_dep
+    ) -> dict[str, Any]:
+        del role
+        require_schedule_schema_ready()
+        rows = _schedule_call(_schedule_identity_repo().list_review_queue, project_key=project_key)
+        identities = _schedule_call(
+            _schedule_identity_repo().list_identities,
+            project_key=project_key,
+            show_merged=False,
+        )
+        return {
+            "project_key": project_key,
+            "review_items": [_public_identity_row(dict(r)) for r in rows],
+            "active_identities": [_public_identity_row(dict(r)) for r in identities],
+        }
+
+    @app.post("/api/schedules/projects/{project_key}/versions/{schedule_version_key}/identity")
+    def schedule_identity_reassign(
+        project_key: str,
+        schedule_version_key: str,
+        request: ScheduleIdentityReassignRequest,
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        require_operator_role(role)
+        _enforce_version_project_scope(schedule_version_key, project_key)
+        require_schedule_schema_ready()
+        payload = _schedule_call(
+            _schedule_identity_repo().reassign_version_identity,
+            project_key=project_key,
+            schedule_version_key=schedule_version_key,
+            target_identity_key=request.target_identity_key,
+            reason=request.reason,
+            actor=role.get("role"),
+        )
+        return _public_identity_detail(dict(payload))
+
+    @app.post("/api/schedules/projects/{project_key}/versions/{schedule_version_key}/identity/split")
+    def schedule_identity_split(
+        project_key: str,
+        schedule_version_key: str,
+        request: ScheduleIdentitySplitRequest,
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        require_operator_role(role)
+        _enforce_version_project_scope(schedule_version_key, project_key)
+        require_schedule_schema_ready()
+        payload = _schedule_call(
+            _schedule_identity_repo().split_version_identity,
+            project_key=project_key,
+            schedule_version_key=schedule_version_key,
+            canonical_schedule_name=request.canonical_schedule_name,
+            reason=request.reason,
+            actor=role.get("role"),
+        )
+        return _public_identity_detail(dict(payload))
+
+    @app.post("/api/schedules/projects/{project_key}/identities/{source_identity_key}/merge")
+    def schedule_identity_merge(
+        project_key: str,
+        source_identity_key: str,
+        request: ScheduleIdentityMergeRequest,
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        require_operator_role(role)
+        require_schedule_schema_ready()
+        payload = _schedule_call(
+            _schedule_identity_repo().merge_identities,
+            project_key=project_key,
+            source_identity_key=source_identity_key,
+            target_identity_key=request.target_identity_key,
+            reason=request.reason,
+            actor=role.get("role"),
+        )
+        return _public_identity_detail(dict(payload))
 
     def _enforce_version_project_scope(
         schedule_version_key: str, project_key: str | None
@@ -2996,6 +3174,27 @@ def create_app(*, db_path: str | None = None) -> Any:
             from_relationships=from_rels,
             to_relationships=to_rels,
         )
+        from_match = _schedule_identity_repo().get_match_for_version(from_version)
+        to_match = _schedule_identity_repo().get_match_for_version(to_version)
+        from_identity = from_match.get("schedule_identity_key") if from_match else None
+        to_identity = to_match.get("schedule_identity_key") if to_match else None
+        from_review = bool(from_match and int(from_match.get("requires_review") or 0))
+        to_review = bool(to_match and int(to_match.get("requires_review") or 0))
+        if from_identity and to_identity and from_identity == to_identity and not from_review and not to_review:
+            comparison_status = "identity_safe"
+        elif from_review or to_review:
+            comparison_status = "identity_requires_review"
+        elif from_identity and to_identity and from_identity != to_identity:
+            comparison_status = "cross_identity"
+        else:
+            comparison_status = "identity_unavailable"
+        diff["identity_comparison"] = {
+            "status": comparison_status,
+            "from_schedule_identity_key": from_identity,
+            "to_schedule_identity_key": to_identity,
+            "from_requires_review": from_review,
+            "to_requires_review": to_review,
+        }
         ScheduleMappingRepository(db_path=_schedule_db_path()).insert_version_diff(diff)
         return diff
 
