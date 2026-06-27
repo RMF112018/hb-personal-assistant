@@ -120,6 +120,102 @@ class ScheduleImportRepository:
             with transaction(active):
                 _write(active)
 
+    def insert_package_assembly_evidence(
+        self,
+        *,
+        lineage_rows: list[dict[str, Any]],
+        equivalence_rows: list[dict[str, Any]],
+        conn: sqlite3.Connection | None = None,
+    ) -> None:
+        def _write(active: sqlite3.Connection) -> None:
+            self._insert_rows(
+                active,
+                "schedule_package_field_lineage",
+                lineage_rows,
+                replace=True,
+            )
+            self._insert_rows(
+                active,
+                "schedule_package_equivalence_facts",
+                equivalence_rows,
+                replace=True,
+            )
+
+        if conn is not None:
+            _write(conn)
+            return
+        with open_connection(self._db_path) as active:
+            with transaction(active):
+                _write(active)
+
+    def prepare_schedule_package_supersede(
+        self,
+        *,
+        schedule_version_key: str,
+        superseded_import_id: str,
+        conn: sqlite3.Connection | None = None,
+    ) -> None:
+        """Mark prior package audit rows superseded and clear active derived rows."""
+
+        def _write(active: sqlite3.Connection) -> None:
+            active.execute(
+                """
+                UPDATE schedule_import_packages
+                SET status='superseded'
+                WHERE selected_current_schedule_version_key=?
+                  AND import_id=?
+                  AND status='committed'
+                """,
+                (schedule_version_key, superseded_import_id),
+            )
+            baseline_keys = [
+                str(row[0])
+                for row in active.execute(
+                    """
+                    SELECT baseline_project_key
+                    FROM schedule_baseline_projects
+                    WHERE current_schedule_version_key=?
+                    """,
+                    (schedule_version_key,),
+                ).fetchall()
+            ]
+            if baseline_keys:
+                placeholders = ", ".join("?" for _ in baseline_keys)
+                for table in (
+                    "schedule_baseline_activities",
+                    "schedule_baseline_relationships",
+                    "schedule_baseline_wbs",
+                    "schedule_baseline_activity_codes",
+                    "schedule_baseline_udfs",
+                ):
+                    active.execute(
+                        f"DELETE FROM {table} WHERE baseline_project_key IN ({placeholders})",
+                        tuple(baseline_keys),
+                    )
+                active.execute(
+                    f"DELETE FROM schedule_baseline_activity_crosswalk WHERE baseline_project_key IN ({placeholders})",
+                    tuple(baseline_keys),
+                )
+                active.execute(
+                    f"DELETE FROM schedule_baseline_health_facts WHERE baseline_project_key IN ({placeholders})",
+                    tuple(baseline_keys),
+                )
+            active.execute(
+                "DELETE FROM schedule_baseline_projects WHERE current_schedule_version_key=?",
+                (schedule_version_key,),
+            )
+            active.execute(
+                "DELETE FROM schedule_source_capabilities WHERE schedule_version_key=?",
+                (schedule_version_key,),
+            )
+
+        if conn is not None:
+            _write(conn)
+            return
+        with open_connection(self._db_path) as active:
+            with transaction(active):
+                _write(active)
+
     def insert_baseline_evidence(
         self,
         *,
@@ -180,6 +276,7 @@ class ScheduleImportRepository:
                 """
                 SELECT * FROM schedule_import_packages
                 WHERE selected_current_schedule_version_key=?
+                  AND status='committed'
                 ORDER BY committed_at DESC, created_at DESC LIMIT 1
                 """,
                 (schedule_version_key,),
@@ -194,9 +291,17 @@ class ScheduleImportRepository:
                     """
                     SELECT * FROM schedule_source_capabilities
                     WHERE schedule_version_key=?
+                      AND (
+                        package_id IS NULL
+                        OR package_id IN (
+                          SELECT package_id FROM schedule_import_packages
+                          WHERE selected_current_schedule_version_key=?
+                            AND status='committed'
+                        )
+                      )
                     ORDER BY capability_key
                     """,
-                    (schedule_version_key,),
+                    (schedule_version_key, schedule_version_key),
                 ).fetchall()
             ]
 
@@ -206,8 +311,10 @@ class ScheduleImportRepository:
                 dict(r)
                 for r in conn.execute(
                     """
-                    SELECT * FROM schedule_baseline_projects
-                    WHERE current_schedule_version_key=?
+                    SELECT bp.* FROM schedule_baseline_projects bp
+                    JOIN schedule_import_packages p ON p.package_id=bp.package_id
+                    WHERE bp.current_schedule_version_key=?
+                      AND p.status='committed'
                     ORDER BY baseline_project_name, baseline_project_id
                     """,
                     (schedule_version_key,),
@@ -220,9 +327,13 @@ class ScheduleImportRepository:
                 dict(r)
                 for r in conn.execute(
                     """
-                    SELECT * FROM schedule_baseline_health_facts
-                    WHERE current_schedule_version_key=?
-                    ORDER BY baseline_project_key, metric_key
+                    SELECT hf.* FROM schedule_baseline_health_facts hf
+                    JOIN schedule_baseline_projects bp
+                      ON bp.baseline_project_key=hf.baseline_project_key
+                    JOIN schedule_import_packages p ON p.package_id=bp.package_id
+                    WHERE hf.current_schedule_version_key=?
+                      AND p.status='committed'
+                    ORDER BY hf.baseline_project_key, hf.metric_key
                     """,
                     (schedule_version_key,),
                 ).fetchall()
@@ -237,6 +348,38 @@ class ScheduleImportRepository:
                     SELECT * FROM schedule_version_diff_facts
                     WHERE to_schedule_version_key=?
                     ORDER BY diff_id DESC, metric_key
+                    """,
+                    (schedule_version_key,),
+                ).fetchall()
+            ]
+
+    def list_package_field_lineage(self, schedule_version_key: str) -> list[dict[str, Any]]:
+        with self._conn() as conn:
+            return [
+                dict(r)
+                for r in conn.execute(
+                    """
+                    SELECT l.* FROM schedule_package_field_lineage l
+                    JOIN schedule_import_packages p ON p.package_id=l.package_id
+                    WHERE l.schedule_version_key=?
+                      AND p.status='committed'
+                    ORDER BY l.field_family, l.precedence_rank, l.source_file_id
+                    """,
+                    (schedule_version_key,),
+                ).fetchall()
+            ]
+
+    def list_package_equivalence_facts(self, schedule_version_key: str) -> list[dict[str, Any]]:
+        with self._conn() as conn:
+            return [
+                dict(r)
+                for r in conn.execute(
+                    """
+                    SELECT f.* FROM schedule_package_equivalence_facts f
+                    JOIN schedule_import_packages p ON p.package_id=f.package_id
+                    WHERE f.schedule_version_key=?
+                      AND p.status='committed'
+                    ORDER BY f.candidate_source_file_id
                     """,
                     (schedule_version_key,),
                 ).fetchall()

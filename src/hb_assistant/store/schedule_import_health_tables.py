@@ -279,3 +279,71 @@ V75_STATEMENTS: list[str] = [
     """,
     "CREATE INDEX IF NOT EXISTS idx_schedule_version_diff_facts_to_version ON schedule_version_diff_facts(to_schedule_version_key);",
 ]
+
+V80_TABLES: tuple[str, ...] = (
+    "schedule_package_field_lineage",
+    "schedule_package_equivalence_facts",
+)
+
+V80_STATEMENTS: list[str] = [
+    """
+    CREATE TABLE IF NOT EXISTS schedule_package_field_lineage (
+      lineage_id TEXT PRIMARY KEY,
+      package_id TEXT NOT NULL,
+      import_id TEXT NOT NULL,
+      project_key TEXT NOT NULL,
+      schedule_version_key TEXT NOT NULL,
+      source_file_id TEXT,
+      source_filename_redacted TEXT,
+      source_format TEXT,
+      field_family TEXT NOT NULL,
+      precedence_rank INTEGER NOT NULL DEFAULT 0,
+      merge_strategy TEXT NOT NULL,
+      records_contributed INTEGER NOT NULL DEFAULT 0,
+      records_skipped INTEGER NOT NULL DEFAULT 0,
+      basis TEXT,
+      evidence_json TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_schedule_package_field_lineage_package ON schedule_package_field_lineage(package_id);",
+    "CREATE INDEX IF NOT EXISTS idx_schedule_package_field_lineage_version ON schedule_package_field_lineage(schedule_version_key);",
+    "CREATE INDEX IF NOT EXISTS idx_schedule_package_field_lineage_project ON schedule_package_field_lineage(project_key);",
+    "CREATE INDEX IF NOT EXISTS idx_schedule_package_field_lineage_family ON schedule_package_field_lineage(field_family);",
+    """
+    CREATE TABLE IF NOT EXISTS schedule_package_equivalence_facts (
+      equivalence_id TEXT PRIMARY KEY,
+      package_id TEXT NOT NULL,
+      import_id TEXT NOT NULL,
+      project_key TEXT NOT NULL,
+      schedule_version_key TEXT NOT NULL,
+      primary_source_file_id TEXT,
+      candidate_source_file_id TEXT,
+      primary_source_format TEXT,
+      candidate_source_format TEXT,
+      primary_project_id TEXT,
+      candidate_project_id TEXT,
+      primary_project_name TEXT,
+      candidate_project_name TEXT,
+      primary_data_date TEXT,
+      candidate_data_date TEXT,
+      primary_normalized_data_date TEXT,
+      candidate_normalized_data_date TEXT,
+      activity_overlap_ratio TEXT,
+      relationship_overlap_ratio TEXT,
+      data_date_match INTEGER NOT NULL DEFAULT 0,
+      planned_start_match INTEGER NOT NULL DEFAULT 0,
+      scheduled_finish_match INTEGER NOT NULL DEFAULT 0,
+      project_identity_compatible INTEGER NOT NULL DEFAULT 0,
+      equivalence_status TEXT NOT NULL,
+      is_equivalent INTEGER NOT NULL DEFAULT 0,
+      block_reason TEXT,
+      evidence_json TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_schedule_package_equivalence_package ON schedule_package_equivalence_facts(package_id);",
+    "CREATE INDEX IF NOT EXISTS idx_schedule_package_equivalence_version ON schedule_package_equivalence_facts(schedule_version_key);",
+    "CREATE INDEX IF NOT EXISTS idx_schedule_package_equivalence_project ON schedule_package_equivalence_facts(project_key);",
+    "CREATE INDEX IF NOT EXISTS idx_schedule_package_equivalence_candidate ON schedule_package_equivalence_facts(candidate_source_file_id);",
+]

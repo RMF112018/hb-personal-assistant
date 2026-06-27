@@ -460,9 +460,47 @@ describe('ScheduleImportsPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /Commit import to database/i }))
     await waitFor(() => {
       expect(
-        screen.getByText(/Preview supersede before committing/i),
+        screen.getByText(/Use the supersede flow to replace it/i),
       ).toBeInTheDocument()
     })
+  })
+
+  it('commit supersede state mismatch shows structured backend message', async () => {
+    uploadMock.mockResolvedValue({
+      import_id: 'supersede-preview',
+      activity_count: 2,
+      relationship_count: 1,
+      source_format: 'primavera_xer',
+      cost_loaded_status: 'not_cost_loaded',
+      wbs_count: 1,
+      calendar_count: 1,
+      validation_findings: [],
+      requires_column_mapping: false,
+      project_key: 'tropical',
+    })
+    commitMock.mockRejectedValue(
+      new ScheduleApiError(
+        'schedule_supersede_state_mismatch',
+        {
+          code: 'schedule_supersede_state_mismatch',
+          schedule_version_key: 'tropical|TWNU18|2026-05-26T08:00:00',
+          preview_confirm_supersede: true,
+          commit_confirm_supersede: true,
+        },
+        409,
+      ),
+    )
+    renderPage()
+    await selectTropicalProject()
+    const file = new File(['ERMHDR'], 'minimal.xer', { type: 'application/octet-stream' })
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement
+    fireEvent.change(input, { target: { files: [file] } })
+    await waitFor(() => expect(screen.getByText(/Commit import to database/i)).toBeInTheDocument())
+    fireEvent.click(screen.getByRole('button', { name: /Commit import to database/i }))
+    await waitFor(() => {
+      expect(screen.getByText(/supersede confirmation no longer matches/i)).toBeInTheDocument()
+    })
+    expect(screen.queryByText(/file format/i)).not.toBeInTheDocument()
   })
 
   it('renders zip-package manifest with selected current, baselines, and ignored files', async () => {
@@ -479,6 +517,26 @@ describe('ScheduleImportsPage', () => {
       project_key: 'tropical',
       schedule_name: 'CARETTAU27',
       package_mode: 'zip_package',
+      assembly_mode: 'unified_companion_package',
+      equivalence_report: {
+        status: 'compatible',
+        companion_count: 1,
+        equivalent_companion_count: 1,
+      },
+      field_family_lineage: [
+        {
+          field_family: 'current_activities',
+          source_format: 'primavera_xer',
+          merge_strategy: 'primary_authoritative',
+          records_contributed: 3953,
+        },
+        {
+          field_family: 'current_udfs',
+          source_format: 'primavera_pmxml',
+          merge_strategy: 'companion_additive',
+          records_contributed: 12,
+        },
+      ],
       files: [
         {
           filename: 'CARETTAU27-wBL.xer',
@@ -519,6 +577,8 @@ describe('ScheduleImportsPage', () => {
     fireEvent.change(input, { target: { files: [file] } })
     await waitFor(() => expect(screen.getByText(/ZIP package — 2 files/i)).toBeInTheDocument())
     expect(screen.getByText(/XER preferred over XML/i)).toBeInTheDocument()
+    expect(screen.getByText(/Assembly: unified_companion_package/i)).toBeInTheDocument()
+    expect(screen.getByText(/current_udfs/)).toBeInTheDocument()
     expect(screen.getByText(/CARETTAU27-wBL\.xer/)).toBeInTheDocument()
     expect(screen.getByText(/Approved Baseline/)).toBeInTheDocument()
     expect(screen.getByText(/readme\.txt/)).toBeInTheDocument()
@@ -530,6 +590,7 @@ describe('ScheduleImportsPage', () => {
         'schedule_package_multiple_current_candidates',
         {
           code: 'schedule_package_multiple_current_candidates',
+          block_reason: 'different_normalized_data_date',
           candidates: [
             {
               source_file_id: 'pf-1',
@@ -559,7 +620,7 @@ describe('ScheduleImportsPage', () => {
     fireEvent.change(input, { target: { files: [file] } })
     await waitFor(() => {
       expect(screen.getByText(/Multiple current schedules found/i)).toBeInTheDocument()
-      expect(screen.getByText(/contains more than one current schedule/i)).toBeInTheDocument()
+      expect(screen.getByText(/different data dates/i)).toBeInTheDocument()
       expect(screen.getByText(/June Schedule/)).toBeInTheDocument()
       expect(screen.getByText(/July Schedule/)).toBeInTheDocument()
     })

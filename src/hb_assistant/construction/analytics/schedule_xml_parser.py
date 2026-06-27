@@ -120,23 +120,71 @@ def _parse_activity_codes(
     return out
 
 
-def _parse_activity_udfs(el: ET.Element, *, activity_id: str) -> list[dict[str, str | None]]:
+_UDF_VALUE_FIELDS = (
+    "TextValue",
+    "StartDateValue",
+    "FinishDateValue",
+    "IntegerValue",
+    "DoubleValue",
+    "ValueObjectId",
+    "UDFValue",
+    "Value",
+    "Text",
+)
+
+
+def _global_udf_type_maps(root: ET.Element) -> dict[str, dict[str, str]]:
+    udf_types: dict[str, dict[str, str]] = {}
+    for el in root.iter():
+        if _local(el.tag) != "UDFType":
+            continue
+        fields = _field_map(el)
+        oid = fields.get("ObjectId")
+        if not oid:
+            continue
+        udf_types[oid] = {
+            "name": fields.get("Title") or fields.get("Name") or fields.get("Code") or oid,
+            "data_type": fields.get("DataType") or fields.get("Type"),
+        }
+    return udf_types
+
+
+def _udf_value(fields: dict[str, str]) -> str | None:
+    for key in _UDF_VALUE_FIELDS:
+        if fields.get(key) is not None:
+            return fields.get(key)
+    return None
+
+
+def _parse_activity_udfs(
+    el: ET.Element,
+    *,
+    activity_id: str,
+    udf_types: dict[str, dict[str, str]] | None = None,
+) -> list[dict[str, str | None]]:
     out: list[dict[str, str | None]] = []
     for child in el:
         if _local(child.tag) != "UDF":
             continue
         fields = _field_map(child)
-        udf_type = fields.get("UDFType") or fields.get("UDFTypeName") or fields.get("UDFTypeObjectId")
-        udf_value = fields.get("UDFValue") or fields.get("Value") or fields.get("Text")
+        type_oid = fields.get("TypeObjectId") or fields.get("UDFTypeObjectId")
+        type_meta = (udf_types or {}).get(type_oid or "", {})
+        udf_type = (
+            fields.get("UDFType")
+            or fields.get("UDFTypeName")
+            or type_meta.get("name")
+            or type_oid
+        )
+        udf_value = _udf_value(fields)
         if not udf_type and udf_value is None:
             continue
         out.append(
             {
                 "activity_id": activity_id,
                 "udf_type_name": udf_type,
-                "udf_data_type": fields.get("DataType"),
+                "udf_data_type": fields.get("DataType") or type_meta.get("data_type"),
                 "udf_value": udf_value,
-                "source_object_id": fields.get("ObjectId") or fields.get("UDFTypeObjectId"),
+                "source_object_id": fields.get("ObjectId") or type_oid,
             }
         )
     return out
@@ -231,6 +279,7 @@ def parse_pmxml_bytes(data: bytes | io.BufferedIOBase) -> ParsedScheduleBundle:
     bundle = ParsedScheduleBundle(schedule_id="imported-schedule", schedule_name=None)
     code_types: dict[str, str] = {}
     code_values: dict[str, dict[str, str]] = {}
+    udf_types: dict[str, dict[str, str]] = {}
     wbs_by_oid: dict[str, dict[str, str]] = {}
     object_to_activity_id: dict[str, str] = {}
     raw_relationships: list[dict[str, str]] = []
@@ -254,6 +303,18 @@ def parse_pmxml_bytes(data: bytes | io.BufferedIOBase) -> ParsedScheduleBundle:
                         "value": fields.get("CodeValue") or "",
                         "desc": fields.get("Description") or "",
                         "type_oid": fields.get("CodeTypeObjectId") or "",
+                    }
+
+            elif tag == "UDFType":
+                fields = _field_map(el)
+                oid = fields.get("ObjectId")
+                if oid:
+                    udf_types[oid] = {
+                        "name": fields.get("Title")
+                        or fields.get("Name")
+                        or fields.get("Code")
+                        or oid,
+                        "data_type": fields.get("DataType") or fields.get("Type"),
                     }
 
             elif tag == "ScheduleOptions":
@@ -341,6 +402,11 @@ def parse_pmxml_bytes(data: bytes | io.BufferedIOBase) -> ParsedScheduleBundle:
             elif tag in _ACTIVITY_TAGS:
                 fields = _field_map(el)
                 nested_codes = _parse_activity_codes(el, code_types=code_types, code_values=code_values)
+                nested_udfs = _parse_activity_udfs(
+                    el,
+                    activity_id=fields.get("Id") or fields.get("ActivityId") or fields.get("ObjectId") or "",
+                    udf_types=udf_types,
+                )
                 row = _activity_row(fields, nested_codes=nested_codes, wbs_by_oid=wbs_by_oid)
                 if row is None:
                     bundle.validation_findings.append(
@@ -368,6 +434,9 @@ def parse_pmxml_bytes(data: bytes | io.BufferedIOBase) -> ParsedScheduleBundle:
                                 "source_object_id": code.get("source_object_id"),
                             }
                         )
+                    for udf in nested_udfs:
+                        udf["activity_id"] = row["activity_id"]
+                        bundle.udf_values.append(udf)
                     row.pop("nested_codes", None)
                     row["source_row_hash"] = _row_hash(row)
                     bundle.activities.append(row)
@@ -395,14 +464,16 @@ def parse_pmxml_bytes(data: bytes | io.BufferedIOBase) -> ParsedScheduleBundle:
                 fields = _field_map(el)
                 act_oid = fields.get("ActivityObjectId")
                 act_id = object_to_activity_id.get(act_oid or "", act_oid)
+                type_oid = fields.get("TypeObjectId") or fields.get("UDFTypeObjectId") or ""
+                type_meta = udf_types.get(type_oid, {})
                 if act_id:
                     bundle.udf_values.append(
                         {
                             "activity_id": act_id,
-                            "udf_type_name": fields.get("UDFTypeObjectId"),
-                            "udf_data_type": fields.get("DataType"),
-                            "udf_value": fields.get("Text") or fields.get("Value"),
-                            "source_object_id": fields.get("ObjectId"),
+                            "udf_type_name": type_meta.get("name") or type_oid,
+                            "udf_data_type": fields.get("DataType") or type_meta.get("data_type"),
+                            "udf_value": _udf_value(fields),
+                            "source_object_id": fields.get("ObjectId") or type_oid,
                         }
                     )
                 el.clear()
@@ -476,6 +547,7 @@ def parse_pmxml_package_bytes(
         return [_entity_from_bundle(bundle, role="current", source_file_id=source_file_id)]
 
     code_types, code_values = _global_code_maps(root)
+    udf_types = _global_udf_type_maps(root)
     entities: list[ParsedScheduleEntity] = []
     for project in project_elements:
         direct_activities = [c for c in list(project) if _local(c.tag) in _ACTIVITY_TAGS]
@@ -488,6 +560,7 @@ def parse_pmxml_package_bytes(
                     source_format="primavera_pmxml",
                     code_types=code_types,
                     code_values=code_values,
+                    udf_types=udf_types,
                 )
             )
 
@@ -501,6 +574,7 @@ def parse_pmxml_package_bytes(
             source_format="primavera_pmxml",
             code_types=code_types,
             code_values=code_values,
+            udf_types=udf_types,
         )
         if current.activities:
             entities.append(current)
@@ -514,6 +588,7 @@ def parse_pmxml_package_bytes(
                 source_format="primavera_pmxml",
                 code_types=code_types,
                 code_values=code_values,
+                udf_types=udf_types,
             )
         )
     return entities
@@ -584,6 +659,7 @@ def _entity_from_root_siblings(
     source_format: str,
     code_types: dict[str, str],
     code_values: dict[str, dict[str, str]],
+    udf_types: dict[str, dict[str, str]],
 ) -> ParsedScheduleEntity:
     project_fields = next((c for c in list(root) if _local(c.tag) == "Project"), None)
     synthetic = ET.Element("Project")
@@ -602,6 +678,7 @@ def _entity_from_root_siblings(
         source_format=source_format,
         code_types=code_types,
         code_values=code_values,
+        udf_types=udf_types,
     )
 
 
@@ -613,6 +690,7 @@ def _entity_from_project_element(
     source_format: str,
     code_types: dict[str, str],
     code_values: dict[str, dict[str, str]],
+    udf_types: dict[str, dict[str, str]],
 ) -> ParsedScheduleEntity:
     fields = _field_map(project_el)
     wbs_by_oid: dict[str, dict[str, str]] = {}
@@ -684,7 +762,13 @@ def _entity_from_project_element(
                         "source_object_id": code.get("source_object_id"),
                     }
                 )
-            udf_values.extend(_parse_activity_udfs(child, activity_id=row["activity_id"]))
+            udf_values.extend(
+                _parse_activity_udfs(
+                    child,
+                    activity_id=row["activity_id"],
+                    udf_types=udf_types,
+                )
+            )
             row.pop("nested_codes", None)
             row["source_row_hash"] = _row_hash(row)
             activities.append(row)

@@ -58,6 +58,59 @@ def test_parse_pmxml_planned_dates_are_not_baseline_fields() -> None:
     assert activity.get("baseline_finish") is None
 
 
+def test_parse_pmxml_nested_activity_udfs_resolve_type_and_value_fields() -> None:
+    data = b"""<?xml version="1.0" encoding="UTF-8"?>
+<APIBusinessObjects>
+  <UDFType>
+    <ObjectId>U1</ObjectId>
+    <Title>Install Note</Title>
+    <DataType>Text</DataType>
+  </UDFType>
+  <UDFType>
+    <ObjectId>U2</ObjectId>
+    <Title>Forecast Finish</Title>
+    <DataType>FinishDate</DataType>
+  </UDFType>
+  <Project>
+    <ObjectId>PRJ-001</ObjectId>
+    <Name>Nested UDF Preservation</Name>
+    <DataDate>2026-06-01</DataDate>
+  </Project>
+  <Activity>
+    <ObjectId>A100O</ObjectId>
+    <Id>A100</Id>
+    <Name>Task With UDFs</Name>
+    <UDF><ObjectId>V1</ObjectId><TypeObjectId>U1</TypeObjectId><TextValue>Ready</TextValue></UDF>
+    <UDF><ObjectId>V2</ObjectId><TypeObjectId>U2</TypeObjectId><FinishDateValue>2026-07-15</FinishDateValue></UDF>
+  </Activity>
+</APIBusinessObjects>
+"""
+    bundle = parse_pmxml_bytes(data)
+
+    assert [
+        {
+            "activity_id": row["activity_id"],
+            "udf_type_name": row["udf_type_name"],
+            "udf_data_type": row["udf_data_type"],
+            "udf_value": row["udf_value"],
+        }
+        for row in bundle.udf_values
+    ] == [
+        {
+            "activity_id": "A100",
+            "udf_type_name": "Install Note",
+            "udf_data_type": "Text",
+            "udf_value": "Ready",
+        },
+        {
+            "activity_id": "A100",
+            "udf_type_name": "Forecast Finish",
+            "udf_data_type": "FinishDate",
+            "udf_value": "2026-07-15",
+        },
+    ]
+
+
 def test_parse_gma_real_sample() -> None:
     data = (FIXTURE_DIR / "gma_sample.xml").read_bytes()
     bundle = parse_pmxml_bytes(data)

@@ -44,6 +44,20 @@ type PackageCandidate = {
 
 type PackageWarning = { code?: string; filename?: string; message?: string }
 
+type FieldFamilyLineage = {
+  field_family?: string
+  source_format?: string
+  merge_strategy?: string
+  records_contributed?: number
+}
+
+type EquivalenceReport = {
+  status?: string
+  companion_count?: number
+  equivalent_companion_count?: number
+  incompatible_candidate_count?: number
+}
+
 function scheduleErrorMessage(err: unknown): string {
   if (err instanceof ScheduleNetworkError) {
     return 'Could not reach the schedule import service. Check that the backend is running and retry.'
@@ -75,7 +89,13 @@ function scheduleErrorMessage(err: unknown): string {
       case 'schedule_current_project_required':
         return 'This package did not contain a selectable current schedule. Include the current XER or XML schedule file.'
       case 'schedule_package_multiple_current_candidates':
-        return 'This .zip package contains more than one current schedule (different data dates). Upload a single current schedule file, or a package that pairs one schedule with its baseline.'
+        if (err.payload?.block_reason === 'different_normalized_data_date') {
+          return 'This .zip package contains more than one current schedule with different data dates. Upload one current schedule snapshot with any companion baseline files.'
+        }
+        if (err.payload?.block_reason === 'low_activity_overlap') {
+          return 'This .zip package contains current schedules with low activity-ID overlap. Upload one current schedule snapshot with any companion baseline files.'
+        }
+        return 'This .zip package contains conflicting current schedule snapshots. Upload one current schedule snapshot with any companion baseline files.'
       case 'schedule_parse_failed':
         return 'Could not parse the schedule file. Check that it is valid Primavera XER, Primavera XML/PMXML, Microsoft Project XML, or mapped CSV.'
       case 'schedule_project_required':
@@ -87,9 +107,13 @@ function scheduleErrorMessage(err: unknown): string {
       case 'schedule_project_mismatch':
         return 'Selected project no longer matches the preview. Re-upload the file for the intended project.'
       case 'schedule_import_persistence_failed':
-        return 'Schedule import could not be saved completely. No partial version was committed.'
+        return 'Schedule import could not be saved completely. No partial version was committed. Create a new preview and try again.'
       case 'duplicate_schedule_version':
-        return 'This schedule version already exists. Preview supersede before committing.'
+        return 'This schedule version already exists. Use the supersede flow to replace it.'
+      case 'schedule_supersede_confirmation_required':
+        return 'This supersede preview needs explicit confirmation. Click Submit supersede to replace the existing schedule version.'
+      case 'schedule_supersede_state_mismatch':
+        return 'The supersede confirmation no longer matches the preview. Create a new preview and try again.'
       default:
         return err.message || 'Schedule import failed.'
     }
@@ -234,6 +258,13 @@ export function ScheduleImportsPage() {
   const packageWarnings = Array.isArray(preview?.warnings)
     ? (preview.warnings as PackageWarning[])
     : []
+  const fieldFamilyLineage = Array.isArray(preview?.field_family_lineage)
+    ? (preview.field_family_lineage as FieldFamilyLineage[])
+    : []
+  const equivalenceReport =
+    preview?.equivalence_report && typeof preview.equivalence_report === 'object'
+      ? (preview.equivalence_report as EquivalenceReport)
+      : {}
   const selectedIsXer = String(preview?.source_format ?? '') === 'primavera_xer'
   const packageHasXml = packageFiles.some((f) => f.source_format === 'primavera_pmxml')
 
@@ -367,6 +398,15 @@ export function ScheduleImportsPage() {
                   {String(preview.source_format)})
                   {selectedIsXer && packageHasXml ? ' — XER preferred over XML' : ''}
                 </p>
+                {preview.assembly_mode ? (
+                  <p className="text-xs text-[var(--hb-muted)]">
+                    Assembly: {String(preview.assembly_mode)} · Equivalence:{' '}
+                    {String(equivalenceReport.status ?? 'single_source')}
+                    {equivalenceReport.companion_count !== undefined
+                      ? ` · companions ${String(equivalenceReport.equivalent_companion_count ?? 0)}/${String(equivalenceReport.companion_count)}`
+                      : ''}
+                  </p>
+                ) : null}
                 <div>
                   <p className="text-xs font-medium">Files discovered</p>
                   <ul className="list-disc pl-5 text-xs text-[var(--hb-muted)]">
@@ -386,6 +426,19 @@ export function ScheduleImportsPage() {
                         <li key={i}>
                           {c.project_name || c.project_id || 'Unnamed'} — {c.activity_count} activities (
                           {c.source_format})
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+                {fieldFamilyLineage.length > 0 ? (
+                  <div>
+                    <p className="text-xs font-medium">Field lineage</p>
+                    <ul className="list-disc pl-5 text-xs text-[var(--hb-muted)]">
+                      {fieldFamilyLineage.slice(0, 6).map((row, i) => (
+                        <li key={i}>
+                          {String(row.field_family ?? 'field')} — {String(row.source_format ?? 'source')} ·{' '}
+                          {String(row.merge_strategy ?? 'selected')} · {String(row.records_contributed ?? 0)} rows
                         </li>
                       ))}
                     </ul>
