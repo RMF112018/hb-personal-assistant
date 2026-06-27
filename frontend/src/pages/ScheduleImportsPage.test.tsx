@@ -267,6 +267,15 @@ describe('ScheduleImportsPage', () => {
       import_id: 'xer-commit',
       project_key: 'tropical',
       schedule_version_key: 'tropical|TWNU18|2026-01-01',
+      schedule_identity_key: 'schedule-ident-1',
+      identity_match: {
+        match_status: 'resolved',
+        match_type: 'exact_activity_fingerprint',
+        requires_review: false,
+      },
+      comparison_basis: {
+        identity_safe: true,
+      },
     })
     renderPage()
     await selectTropicalProject()
@@ -278,6 +287,8 @@ describe('ScheduleImportsPage', () => {
     await waitFor(() =>
       expect(commitMock).toHaveBeenCalledWith('xer-commit', 'tropical', null, false),
     )
+    expect(await screen.findByText(/Schedule identity/i)).toBeInTheDocument()
+    expect(screen.getByText(/identity-safe prior available/i)).toBeInTheDocument()
   })
 
   it('shows safe copy for persistence failure', async () => {

@@ -377,6 +377,16 @@ export function ScheduleQualityPage() {
   const baselineFacts = health?.baseline_health_facts ?? []
   const diffFacts = health?.default_version_diff ?? []
   const availableDiffs = health?.available_version_diffs ?? []
+  const comparisonBasis =
+    health?.comparison_basis && typeof health.comparison_basis === 'object'
+      ? (health.comparison_basis as Record<string, unknown>)
+      : {}
+  const impactSummary =
+    comparisonBasis.impact_summary && typeof comparisonBasis.impact_summary === 'object'
+      ? (comparisonBasis.impact_summary as Record<string, unknown>)
+      : {}
+  const comparisonIdentitySafe = comparisonBasis.identity_safe === true
+  const comparisonRequiresReview = comparisonBasis.identity_requires_review === true
   const topFindings = useMemo(
     () => health?.top_health_findings ?? qualityDetail?.top_findings ?? [],
     [health?.top_health_findings, qualityDetail?.top_findings],
@@ -417,6 +427,11 @@ export function ScheduleQualityPage() {
     cpmStatus === 'deferred'
       ? 'CPM recalculation is deferred; current evidence is source-export or proxy evidence.'
       : `Source critical path status: ${capabilityStatusLabel(capabilityStatus(capabilities, 'source_critical_path'))}`
+  const comparisonDetail = comparisonIdentitySafe
+    ? `Identity-safe prior: ${text(comparisonBasis.default_prior_schedule_version_key)}`
+    : comparisonRequiresReview
+      ? 'Default comparison is blocked until schedule identity review is resolved.'
+      : `Default comparison unavailable: ${text(comparisonBasis.default_prior_unavailable_reason, 'no prior identity version')}`
   const topActionText = useMemo(() => {
     const severe = topFindings.find((finding) => finding.severity === 'critical' || finding.severity === 'warning')
     if (severe) return text(severe.recommended_action ?? severe.finding_summary ?? severe.message)
@@ -556,13 +571,23 @@ export function ScheduleQualityPage() {
             />
             <HealthCard
               title="Finish movement vs prior"
-              value={diffFacts.length > 0 ? 'Available' : 'Not enough data'}
+              value={comparisonIdentitySafe ? 'Identity-safe' : 'Not available'}
               detail={
                 diffFacts.length > 0
                   ? `Changed activities: ${diffValue(diffFacts, 'activity_changed_count')} | Logic churn: ${diffValue(diffFacts, 'logic_churn_rate')}`
-                  : 'Default prior-version diff is not available for this schedule version.'
+                  : comparisonDetail
               }
-              status={diffFacts.length > 0 ? 'available' : 'unavailable'}
+              status={comparisonIdentitySafe ? 'available' : 'unavailable'}
+            />
+            <HealthCard
+              title="Impact vs prior"
+              value={impactSummary.impact_level ? labelize(String(impactSummary.impact_level)) : 'Not available'}
+              detail={
+                impactSummary.impact_level
+                  ? `Attention: ${numberText(impactSummary.requires_attention_count)} | Top WBS: ${text(impactSummary.top_wbs_code ?? impactSummary.top_wbs_name, 'not classified')}`
+                  : comparisonDetail
+              }
+              status={impactSummary.impact_level ? 'available' : 'unavailable'}
             />
             <HealthCard
               title="Baseline drift"
@@ -615,10 +640,28 @@ export function ScheduleQualityPage() {
 
           <section className="forecast-panel p-4">
             <h2 className="text-sm font-semibold mb-2">What Changed Since the Prior Schedule?</h2>
+            <div className="mb-3 rounded border border-[var(--hb-border)] p-3 text-sm">
+              <div className="font-medium">
+                {comparisonIdentitySafe ? 'Identity-safe comparison' : 'Default comparison unavailable'}
+              </div>
+              <div className="text-xs text-[var(--hb-muted)] mt-1">
+                Current identity: {text(comparisonBasis.current_schedule_identity_key)} · Prior identity:{' '}
+                {text(comparisonBasis.default_prior_schedule_identity_key)} · Reason:{' '}
+                {text(comparisonBasis.default_prior_selection_reason ?? comparisonBasis.default_prior_unavailable_reason)}
+              </div>
+              {comparisonIdentitySafe && comparisonBasis.detailed_diff_id ? (
+                <Link
+                  className="inline-flex text-sm underline mt-2"
+                  to={`/schedules/version-diff?project=${encodeURIComponent(String(health.project_key ?? projectKey))}&diff_id=${encodeURIComponent(String(comparisonBasis.detailed_diff_id))}`}
+                >
+                  View detailed diff
+                </Link>
+              ) : null}
+            </div>
             {diffFacts.length === 0 ? (
               <p className="text-sm text-[var(--hb-muted)]">
-                No persisted prior-version diff is available. The compare picker is limited to backend-provided diff
-                evidence in this pass.
+                No persisted prior-version diff is available. A schedule version only participates in default comparison
+                when identity review is resolved and a prior committed version shares the same schedule identity.
               </p>
             ) : (
               <ScheduleTable

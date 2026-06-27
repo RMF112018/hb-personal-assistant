@@ -8,6 +8,7 @@ import { ScheduleVersionsPage } from './ScheduleVersionsPage'
 import { ScheduleActivitiesPage } from './ScheduleActivitiesPage'
 import { ScheduleCostMappingPage } from './ScheduleCostMappingPage'
 import { ScheduleQualityPage } from './ScheduleQualityPage'
+import { ScheduleIdentityReviewPage } from './ScheduleIdentityReviewPage'
 import { ScheduleVersionDiffPage } from './ScheduleVersionDiffPage'
 import { ScheduleCostWeightingPage } from './ScheduleCostWeightingPage'
 import { ForecastSubnav } from '../components/forecast/ForecastPageChrome'
@@ -72,6 +73,11 @@ describe('Schedule routes', () => {
   it('renders Schedule Health under /schedules/health', () => {
     renderRoute('/schedules/health', <ScheduleQualityPage />)
     expect(screen.getByRole('heading', { name: /Schedule Health/i })).toBeInTheDocument()
+  })
+
+  it('renders identity review under /schedules/identity-review', () => {
+    renderRoute('/schedules/identity-review', <ScheduleIdentityReviewPage />)
+    expect(screen.getByRole('heading', { name: /Identity Review/i })).toBeInTheDocument()
   })
 
   it('renders version diff under /schedules/version-diff', () => {

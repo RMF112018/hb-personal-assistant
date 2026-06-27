@@ -24,7 +24,7 @@ def _simulate_live_fk_drift(conn: sqlite3.Connection) -> None:
 
 
 def test_v69_repair_restores_canonical_import_fk(tmp_path: Path) -> None:
-    assert LATEST_SCHEMA_VERSION == 70
+    assert LATEST_SCHEMA_VERSION >= 70
     db = tmp_path / "fk.db"
     SQLiteMigrator(db_path=str(db)).apply()
 
@@ -86,4 +86,4 @@ def test_v69_repair_restores_canonical_import_fk(tmp_path: Path) -> None:
         conn.close()
 
     migrator = SQLiteMigrator(db_path=str(db))
-    assert migrator.current_version() == 70
+    assert migrator.current_version() == LATEST_SCHEMA_VERSION

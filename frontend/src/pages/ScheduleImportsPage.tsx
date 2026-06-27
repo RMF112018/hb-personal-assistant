@@ -109,6 +109,14 @@ export function ScheduleImportsPage() {
   const [previewIsSupersede, setPreviewIsSupersede] = useState(false)
   const [committed, setCommitted] = useState<Record<string, unknown> | null>(null)
   const { data: projectsData } = useScheduleProjects()
+  const committedIdentityMatch =
+    committed?.identity_match && typeof committed.identity_match === 'object'
+      ? (committed.identity_match as Record<string, unknown>)
+      : {}
+  const committedComparisonBasis =
+    committed?.comparison_basis && typeof committed.comparison_basis === 'object'
+      ? (committed.comparison_basis as Record<string, unknown>)
+      : {}
 
   useEffect(() => {
     if (!previewProjectKey || projectKey === previewProjectKey) return
@@ -436,6 +444,27 @@ export function ScheduleImportsPage() {
               projects={projectsData?.projects}
             />
             <p>Version: {String(committed.schedule_version_key)}</p>
+            {committed.schedule_identity_key || committed.identity_match ? (
+              <div className="rounded border border-[var(--hb-border)] bg-[var(--hb-surface)] p-2 text-xs space-y-1">
+                <p className="font-medium text-sm">Schedule identity</p>
+                <p className="font-mono break-all">
+                  {String(committed.schedule_identity_key ?? committedIdentityMatch.schedule_identity_key ?? '—')}
+                </p>
+                <p>
+                  Match: {String(committedIdentityMatch.match_status ?? 'unknown')} ·{' '}
+                  {String(committedIdentityMatch.match_type ?? 'not reported')}
+                  {committedIdentityMatch.requires_review ? ' · review required' : ''}
+                </p>
+                {committed.comparison_basis ? (
+                  <p>
+                    Default comparison:{' '}
+                    {committedComparisonBasis.identity_safe
+                      ? 'identity-safe prior available'
+                      : String(committedComparisonBasis.default_prior_unavailable_reason ?? 'not available')}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
             <ScheduleActionLink
               to={`/schedules/activities?version=${encodeURIComponent(String(committed.schedule_version_key))}&project=${encodeURIComponent(String(committed.project_key ?? projectKey))}`}
             >
