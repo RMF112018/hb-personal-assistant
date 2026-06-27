@@ -40,6 +40,7 @@ from .schedule_file_parser import (
     detect_source,
     safe_basename,
 )
+from .schedule_package_assembly import assemble_schedule_package
 from .schedule_xml_parser import PARSER_NAME as XML_PARSER
 from .schedule_xml_parser import PARSER_VERSION as XML_VER
 from .schedule_xml_parser import parse_pmxml_bytes
@@ -54,14 +55,18 @@ _PREVIEW_CACHE: dict[str, dict[str, Any]] = {}
 
 def ensure_schedule_schema(db_path: str) -> None:
     from hb_assistant.store.connection import get_connection
-    from hb_assistant.store.schedule_schema_verify import verify_v65_schedule_float_schema
+    from hb_assistant.store.schedule_schema_verify import (
+        verify_v65_schedule_float_schema,
+        verify_v80_schedule_package_equivalence_schema,
+    )
 
     migrator = SQLiteMigrator(db_path=db_path)
     conn = get_connection(db_path)
     try:
         missing = verify_v65_schedule_float_schema(conn)
+        v80_missing = verify_v80_schedule_package_equivalence_schema(conn)
         version = migrator.current_version()
-        needs_apply = version < LATEST_SCHEMA_VERSION or bool(missing)
+        needs_apply = version < LATEST_SCHEMA_VERSION or bool(missing) or bool(v80_missing)
     finally:
         conn.close()
 
@@ -71,6 +76,7 @@ def ensure_schedule_schema(db_path: str) -> None:
     conn2 = get_connection(db_path)
     try:
         missing_after = verify_v65_schedule_float_schema(conn2)
+        v80_missing_after = verify_v80_schedule_package_equivalence_schema(conn2)
         version_after = migrator.current_version()
     finally:
         conn2.close()
@@ -84,7 +90,7 @@ def ensure_schedule_schema(db_path: str) -> None:
     finally:
         conn3.close()
 
-    if version_after < LATEST_SCHEMA_VERSION or missing_after or fk_issues:
+    if version_after < LATEST_SCHEMA_VERSION or missing_after or v80_missing_after or fk_issues:
         raise ScheduleImportError(
             "schedule_schema_not_ready",
             message="schedule schema is not ready",
@@ -92,6 +98,7 @@ def ensure_schedule_schema(db_path: str) -> None:
                 "schema_version": version_after,
                 "schema_expected": LATEST_SCHEMA_VERSION,
                 "schedule_v65_missing_columns": missing_after,
+                "schedule_v80_missing_columns": v80_missing_after,
                 "schedule_import_fk_drift": fk_issues,
             },
         )
@@ -207,7 +214,10 @@ class ScheduleImportService:
         entities: list[ParsedScheduleEntity] = []
         warnings: list[dict[str, Any]] = []
         for idx, (member_name, member_data) in enumerate(files):
-            source_file_id = f"pf-{idx + 1}-{hashlib.sha256(member_name.encode()).hexdigest()[:8]}"
+            source_file_id = (
+                f"pf-{package_id.removeprefix('pkg-')}-{idx + 1}-"
+                f"{hashlib.sha256(member_name.encode()).hexdigest()[:8]}"
+            )
             try:
                 source_type, source_format = detect_source(member_name, data=member_data)
             except ScheduleImportError:
@@ -312,8 +322,6 @@ class ScheduleImportService:
                 payload={"warnings": warnings},
             )
 
-        if package_mode == "zip_package":
-            self._guard_ambiguous_current(entities)
         selected = self._select_current_entity(entities)
         baselines = [e for e in entities if e.role == "baseline"]
         package = ParsedSchedulePackage(
@@ -325,6 +333,7 @@ class ScheduleImportService:
             baseline_entities=baselines,
             warnings=warnings,
         )
+        package = assemble_schedule_package(package)
         package.package_capabilities = self._compute_capabilities(package)
         package.manifest = self._manifest(package)
         return package
@@ -378,40 +387,6 @@ class ScheduleImportService:
         return out
 
     @staticmethod
-    def _guard_ambiguous_current(entities: list[ParsedScheduleEntity]) -> None:
-        """Block packages that carry multiple non-equivalent current schedules.
-
-        v1 equivalence: a ``.xer`` and ``.xml`` of the SAME schedule snapshot share a calendar
-        data date (the time-of-day and string format differ by parser, so only the ``YYYY-MM-DD``
-        prefix is compared). More than one distinct data date among current candidates means the
-        package mixes different schedule snapshots, which we refuse rather than silently
-        auto-select. Explicit operator selection for ambiguous packages is deferred to Phase 2.
-        """
-        currents = [e for e in entities if e.role == "current" and e.activities]
-        dates = {(e.data_date or "")[:10] for e in currents if (e.data_date or "")[:10]}
-        if len(dates) > 1:
-            raise ScheduleImportError(
-                "schedule_package_multiple_current_candidates",
-                message=(
-                    "zip package contains multiple non-equivalent current schedules; "
-                    "remove extra schedules or upload a single current schedule file"
-                ),
-                payload={
-                    "candidates": [
-                        {
-                            "source_file_id": e.source_file_id,
-                            "project_id": e.project_id,
-                            "project_name": e.project_name,
-                            "data_date": e.data_date,
-                            "source_format": e.source_format,
-                            "activity_count": len(e.activities),
-                        }
-                        for e in currents
-                    ]
-                },
-            )
-
-    @staticmethod
     def _select_current_entity(entities: list[ParsedScheduleEntity]) -> ParsedScheduleEntity | None:
         current = [e for e in entities if e.role == "current" and e.activities]
         if not current:
@@ -435,6 +410,16 @@ class ScheduleImportService:
         return {
             "package_id": package.package_id,
             "package_mode": package.package_mode,
+            "assembly_mode": package.assembly_mode,
+            "primary_current_source_file_id": package.primary_current_entity.source_file_id
+            if package.primary_current_entity
+            else None,
+            "companion_current_source_file_ids": [
+                e.source_file_id for e in package.companion_current_entities
+            ],
+            "field_family_lineage": package.field_family_lineage,
+            "equivalence_report": package.equivalence_report,
+            "merge_warnings": package.merge_warnings,
             "files": [
                 {
                     "package_file_id": f.source_file_id,
@@ -480,13 +465,32 @@ class ScheduleImportService:
     def _manifest(package: ParsedSchedulePackage) -> dict[str, Any]:
         selected = package.selected_current_entity
         formats = sorted({f.source_format for f in package.files if f.source_format})
+        lineage_summary = {
+            row["field_family"]: {
+                "source_format": row.get("source_format"),
+                "source_file_id": row.get("source_file_id"),
+                "merge_strategy": row.get("merge_strategy"),
+                "records_contributed": row.get("records_contributed"),
+            }
+            for row in package.field_family_lineage
+            if int(row.get("precedence_rank") or 0) == 1
+        }
         return {
             "package_id": package.package_id,
             "package_mode": package.package_mode,
+            "assembly_mode": package.assembly_mode,
             "detected_source_formats": formats,
             "selected_current_project_object_id": selected.project_object_id if selected else None,
             "selected_current_project_id": selected.project_id if selected else None,
             "selected_current_project_name": selected.project_name if selected else None,
+            "primary_current_source_file_id": package.primary_current_entity.source_file_id
+            if package.primary_current_entity
+            else None,
+            "companion_current_source_file_ids": [
+                e.source_file_id for e in package.companion_current_entities
+            ],
+            "equivalence_report": package.equivalence_report,
+            "field_family_lineage": lineage_summary,
             "field_family_source_precedence": {
                 "current_float": "primavera_xer" if "primavera_xer" in formats else "selected_current",
                 "source_critical": "primavera_xer" if "primavera_xer" in formats else "selected_current",
@@ -500,6 +504,7 @@ class ScheduleImportService:
     @staticmethod
     def _compute_capabilities(package: ParsedSchedulePackage) -> dict[str, Any]:
         selected = package.selected_current_entity
+        merged = package.merged_current_bundle
         formats = {f.source_format for f in package.files if f.parse_status == "parsed"}
         has_current = selected is not None and bool(selected.activities)
         has_rels = selected is not None and bool(selected.relationships)
@@ -511,8 +516,10 @@ class ScheduleImportService:
             "current_relationships": "available" if has_rels else "unavailable",
             "current_wbs": "available" if selected and selected.wbs_nodes else "unavailable",
             "current_calendars": "available" if selected and selected.calendars else "unavailable",
-            "activity_codes": "available" if selected and selected.code_assignments else "unavailable",
-            "udfs": "available" if selected and selected.udf_values else "unavailable",
+            "activity_codes": "available"
+            if merged and merged.code_assignments
+            else "unavailable",
+            "udfs": "available" if merged and merged.udf_values else "unavailable",
             "explicit_total_float": "available" if has_xer else "partially_available" if has_xml else "unavailable",
             "explicit_free_float": "available" if has_xer else "partially_available" if has_xml else "unavailable",
             "source_driving_path": "available" if has_xer else "requires_companion_file",
@@ -592,6 +599,27 @@ class ScheduleImportService:
             package_row,
             files=file_rows,
             capabilities=capability_rows,
+            conn=conn,
+        )
+        self._import_repo.insert_package_assembly_evidence(
+            lineage_rows=[
+                {
+                    **row,
+                    "import_id": import_id,
+                    "project_key": project_key,
+                    "schedule_version_key": version_key,
+                }
+                for row in package.field_family_lineage
+            ],
+            equivalence_rows=[
+                {
+                    **row,
+                    "import_id": import_id,
+                    "project_key": project_key,
+                    "schedule_version_key": version_key,
+                }
+                for row in package.equivalence_facts
+            ],
             conn=conn,
         )
         baseline_payload = self._baseline_payload(
@@ -997,7 +1025,7 @@ class ScheduleImportService:
                 message="schedule package did not contain a selectable current schedule",
                 payload={"warnings": package.warnings},
             )
-        bundle = package.selected_current_entity.to_bundle()
+        bundle = package.merged_current_bundle or package.selected_current_entity.to_bundle()
         selected_file = self._selected_file(package)
         source_type = selected_file.source_type
         source_format = selected_file.source_format
@@ -1255,6 +1283,11 @@ class ScheduleImportService:
                             import_id=superseded_import_id,
                             conn=conn,
                         )
+                        self._import_repo.prepare_schedule_package_supersede(
+                            schedule_version_key=version_key,
+                            superseded_import_id=superseded_import_id,
+                            conn=conn,
+                        )
                         self._import_repo.update_import(
                             superseded_import_id,
                             {
@@ -1316,7 +1349,7 @@ class ScheduleImportService:
                     )
             finally:
                 conn.close()
-        except sqlite3.IntegrityError as exc:
+        except (sqlite3.IntegrityError, sqlite3.OperationalError) as exc:
             _logger.warning(
                 "schedule import commit persistence failed import_id=%s project_key=%s version_key=%s",
                 import_id,
@@ -2393,6 +2426,8 @@ class ScheduleReadService:
         baselines = self._import_repo.list_baseline_projects(schedule_version_key)
         baseline_facts = self._import_repo.list_baseline_health_facts(schedule_version_key)
         diff_facts = self._import_repo.list_diff_facts(schedule_version_key)
+        package_lineage = self._import_repo.list_package_field_lineage(schedule_version_key)
+        package_equivalence = self._import_repo.list_package_equivalence_facts(schedule_version_key)
         identity_match = self._identity_repo.get_match_for_version(schedule_version_key)
         schedule_identity = (
             self._identity_repo.get_identity(str(identity_match["schedule_identity_key"]))
@@ -2426,6 +2461,8 @@ class ScheduleReadService:
             "schedule_identity": _public_schedule_identity(schedule_identity),
             "identity_match": _public_identity_match(identity_match),
             "comparison_basis": comparison_basis,
+            "package_lineage": package_lineage,
+            "package_equivalence": package_equivalence,
             "baseline_projects": baselines,
             "baseline_health_facts": baseline_facts,
             "top_health_findings": self._mapping_repo.list_quality_findings(schedule_version_key)[:25],

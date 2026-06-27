@@ -126,8 +126,16 @@ class ParsedSchedulePackage:
     files: list[ParsedScheduleFile] = field(default_factory=list)
     schedule_entities: list[ParsedScheduleEntity] = field(default_factory=list)
     selected_current_entity: ParsedScheduleEntity | None = None
+    primary_current_entity: ParsedScheduleEntity | None = None
+    companion_current_entities: list[ParsedScheduleEntity] = field(default_factory=list)
+    merged_current_bundle: ParsedScheduleBundle | None = None
     baseline_entities: list[ParsedScheduleEntity] = field(default_factory=list)
     package_capabilities: dict[str, Any] = field(default_factory=dict)
+    assembly_mode: str = "single_source"
+    field_family_lineage: list[dict[str, Any]] = field(default_factory=list)
+    equivalence_facts: list[dict[str, Any]] = field(default_factory=list)
+    equivalence_report: dict[str, Any] = field(default_factory=dict)
+    merge_warnings: list[dict[str, Any]] = field(default_factory=list)
     warnings: list[dict[str, Any]] = field(default_factory=list)
     manifest: dict[str, Any] = field(default_factory=dict)
 

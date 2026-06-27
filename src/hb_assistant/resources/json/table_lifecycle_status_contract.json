@@ -18,7 +18,7 @@
     "phase_owner",
     "blocking_for_phase"
   ],
-  "table_count": 469,
+  "table_count": 471,
   "tables": {
     "construction_data_quality_runs": {
       "table_family": "data_quality_v20v21",
@@ -4213,6 +4213,24 @@
       "blocking_for_phase": "none",
       "v": "V80",
       "notes": "Decision-grade summary, WBS, attention, severity, domain, logic, milestone, and critical rollups derived from detailed schedule diff facts."
+    },
+    "schedule_package_field_lineage": {
+      "table_family": "schedule_package_assembly_v82",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "schedule_package_unified_import",
+      "blocking_for_phase": "none",
+      "v": "V82",
+      "notes": "Field-family source lineage for unified schedule package imports, recording primary and companion contribution strategy without raw paths or payloads."
+    },
+    "schedule_package_equivalence_facts": {
+      "table_family": "schedule_package_assembly_v82",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "schedule_package_unified_import",
+      "blocking_for_phase": "none",
+      "v": "V82",
+      "notes": "Content-backed equivalence diagnostics for ZIP current schedule candidates, used to fail closed when companion files are not the same schedule."
     },
     "schedule_identities": {
       "table_family": "schedule_identity_v77",

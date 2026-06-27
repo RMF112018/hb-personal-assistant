@@ -45,6 +45,22 @@ def verify_v65_schedule_float_schema(conn: sqlite3.Connection) -> list[str]:
     return missing
 
 
+def verify_v80_schedule_package_equivalence_schema(conn: sqlite3.Connection) -> list[str]:
+    """Return missing V80 package-equivalence insert columns."""
+    from hb_assistant.store.schedule_import_health_tables import (
+        V80_PACKAGE_EQUIVALENCE_FACT_INSERT_COLUMNS,
+    )
+
+    columns = _table_columns(conn, "schedule_package_equivalence_facts")
+    if not columns:
+        return []
+    return [
+        f"schedule_package_equivalence_facts.{column}"
+        for column in V80_PACKAGE_EQUIVALENCE_FACT_INSERT_COLUMNS
+        if column not in columns
+    ]
+
+
 def verify_v65_metric_status_check(conn: sqlite3.Connection) -> bool:
     cur = conn.execute(
         "SELECT sql FROM sqlite_master WHERE type='table' AND name='schedule_quality_metric_results'"

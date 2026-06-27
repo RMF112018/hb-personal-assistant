@@ -14,7 +14,7 @@ from .connection import get_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 81
+LATEST_SCHEMA_VERSION = 82
 
 
 class StaffingMigrationError(RuntimeError):
@@ -6931,6 +6931,13 @@ class SQLiteMigrator:
         for stmt in V81_CREATE_STATEMENTS:
             conn.execute(stmt)
 
+    # v82 Unified schedule package assembly: field lineage + equivalence facts.
+    @staticmethod
+    def _v82_statements() -> list[str]:
+        from hb_assistant.store.schedule_import_health_tables import V80_STATEMENTS
+
+        return V80_STATEMENTS
+
     # v44 Phase 10 Graph drive-item modified-by raw operational metadata.
     # Additive ADD COLUMN only on construction_drive_items; raw identity JSON is
     # local SQLite operational metadata and must not be emitted in committed evidence.
@@ -8232,6 +8239,18 @@ class SQLiteMigrator:
                     (now,),
                 )
 
+            # v82 Unified schedule package assembly evidence. This landed after main had already
+            # assigned V80/V81, so preserve the package tables as the next additive migration.
+            for stmt in self._v82_statements():
+                conn.execute(stmt)
+            self._reconcile_v82_schedule_package_equivalence_facts(conn)
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 82")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (82, 'v82_schedule_package_assembly_evidence', ?)",
+                    (now,),
+                )
+
         # Return latest version, then release the migration connection. get_connection's
         # contract is that the caller closes it; left open, this WAL connection is only
         # checkpointed when Python GC finalizes it, which non-deterministically flushes the
@@ -8263,6 +8282,37 @@ class SQLiteMigrator:
 
         reconcile_schedule_import_fk_drift(conn)
         assert_schedule_import_fk_targets(conn)
+
+    @staticmethod
+    def _reconcile_v82_schedule_package_equivalence_facts(conn: sqlite3.Connection) -> None:
+        from hb_assistant.store.schedule_import_health_tables import (
+            V80_PACKAGE_EQUIVALENCE_FACT_ADDITIVE_REPAIR_COLUMNS,
+            V80_PACKAGE_EQUIVALENCE_FACT_INSERT_COLUMNS,
+        )
+
+        try:
+            existing = {
+                row[1]
+                for row in conn.execute("PRAGMA table_info(schedule_package_equivalence_facts)")
+            }
+        except sqlite3.OperationalError:
+            return
+        if not existing:
+            return
+        missing = set(V80_PACKAGE_EQUIVALENCE_FACT_INSERT_COLUMNS) - existing
+        unrepairable = missing - set(V80_PACKAGE_EQUIVALENCE_FACT_ADDITIVE_REPAIR_COLUMNS)
+        if unrepairable:
+            raise sqlite3.OperationalError(
+                "schedule_package_equivalence_facts is missing non-repairable V82 columns: "
+                + ", ".join(sorted(unrepairable))
+            )
+        for column in V80_PACKAGE_EQUIVALENCE_FACT_INSERT_COLUMNS:
+            if column in missing:
+                conn.execute(
+                    "ALTER TABLE schedule_package_equivalence_facts "
+                    f"ADD COLUMN {column} "
+                    f"{V80_PACKAGE_EQUIVALENCE_FACT_ADDITIVE_REPAIR_COLUMNS[column]}"
+                )
 
     @staticmethod
     def _reconcile_v64_schedule_quality_findings(conn: sqlite3.Connection) -> None:

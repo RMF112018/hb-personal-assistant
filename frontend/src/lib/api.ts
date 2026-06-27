@@ -148,11 +148,17 @@ async function fetchJson<T = any>(path: string, init?: RequestInit): Promise<T> 
   });
   if (!res.ok) {
     let detail = '';
+    let body: unknown = null;
     try {
-      const j = await res.json();
-      detail = (j && (j.detail || j.message)) ? String(j.detail || j.message) : '';
+      body = await res.json();
     } catch {
       // non-json error body; keep status only
+    }
+    const schedErr = parseScheduleApiError(res.status, body);
+    if (schedErr) throw schedErr;
+    if (body && typeof body === 'object') {
+      const rec = body as { detail?: unknown; message?: unknown };
+      detail = rec.detail || rec.message ? String(rec.detail || rec.message) : '';
     }
     const err = new Error(`${res.status} ${res.statusText}${detail ? ': ' + detail : ''}`);
     (err as any).status = res.status;

@@ -79,8 +79,11 @@ def test_twnu_import_counts_when_zip_present(
 
     import zipfile
 
-    with zipfile.ZipFile(zip_path) as zf:
-        data = zf.read(filename)
+    try:
+        with zipfile.ZipFile(zip_path) as zf:
+            data = zf.read(filename)
+    except PermissionError:
+        pytest.skip(f"schedule fixture zip not readable: {zip_path}")
 
     db = tmp_path / f"{filename}.db"
     SQLiteMigrator(db_path=str(db)).apply()
