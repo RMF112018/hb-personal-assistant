@@ -7,7 +7,7 @@ import { ProjectExposuresPlaceholderPage } from './ProjectExposuresPlaceholderPa
 import { ProjectForecastingPage } from './ProjectForecastingPage'
 import { ProjectMonthlyForecastingPage } from './ProjectMonthlyForecastingPage'
 import { ProjectOverviewPage } from './ProjectOverviewPage'
-import { ProjectStaffingPlaceholderPage } from './ProjectStaffingPlaceholderPage'
+import { ProjectStaffingPage } from './ProjectStaffingPage'
 
 const useQueryMock = vi.fn()
 
@@ -59,7 +59,7 @@ function renderProjectRoutes(path = '/projects/tropical') {
           path="/projects/:projectKey/forecasting/monthly"
           element={<ProjectMonthlyForecastingPage />}
         />
-        <Route path="/projects/:projectKey/staffing" element={<ProjectStaffingPlaceholderPage />} />
+        <Route path="/projects/:projectKey/staffing" element={<ProjectStaffingPage />} />
         <Route path="/projects/:projectKey/exposures" element={<ProjectExposuresPlaceholderPage />} />
       </Routes>
     </MemoryRouter>,
@@ -156,7 +156,7 @@ describe('Project workspace shell', () => {
     const { unmount } = render(
       <MemoryRouter initialEntries={['/projects/tropical/staffing']}>
         <Routes>
-          <Route path="/projects/:projectKey/staffing" element={<ProjectStaffingPlaceholderPage />} />
+          <Route path="/projects/:projectKey/staffing" element={<ProjectStaffingPage />} />
         </Routes>
       </MemoryRouter>,
     )
@@ -164,7 +164,7 @@ describe('Project workspace shell', () => {
     expect(screen.getByRole('heading', { name: 'Tropical Resort' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Staffing' })).toHaveAttribute('aria-current', 'page')
     expect(screen.getByRole('heading', { name: 'Staffing' })).toBeInTheDocument()
-    expect(screen.getByText('Project staffing configuration and review tools will be added here in a future phase.')).toBeInTheDocument()
+    expect(screen.getByText('Configure project staffing, review labor actuals, and check readiness for forecasting.')).toBeInTheDocument()
 
     unmount()
 

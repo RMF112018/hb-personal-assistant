@@ -14,7 +14,7 @@ import { ProjectDashboardPage } from '../pages/ProjectDashboardPage'
 import { ProjectOverviewPage } from '../pages/ProjectOverviewPage'
 import { ProjectForecastingPage } from '../pages/ProjectForecastingPage'
 import { ProjectMonthlyForecastingPage } from '../pages/ProjectMonthlyForecastingPage'
-import { ProjectStaffingPlaceholderPage } from '../pages/ProjectStaffingPlaceholderPage'
+import { ProjectStaffingPage } from '../pages/ProjectStaffingPage'
 import { ProjectExposuresPlaceholderPage } from '../pages/ProjectExposuresPlaceholderPage'
 import { ProjectMeetingsPage } from '../pages/ProjectMeetingsPage'
 import { ProjectFieldOperationsPage } from '../pages/ProjectFieldOperationsPage'
@@ -142,7 +142,7 @@ const router = createBrowserRouter([
       },
       {
         path: 'projects/:projectKey/staffing',
-        element: <ProjectStaffingPlaceholderPage />,
+        element: <ProjectStaffingPage />,
       },
       {
         path: 'projects/:projectKey/exposures',
