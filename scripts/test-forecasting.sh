@@ -156,6 +156,10 @@ pytest_targets=(
   "tests/test_procore_owner_projection.py"
   "tests/test_procore_subcontractor_invoice_normalizers.py"
   "tests/test_project_staffing_holiday_calendar.py"
+  "tests/test_project_staffing_proration.py"
+  "tests/test_project_staffing_repositories.py"
+  "tests/test_project_staffing_template_resolution.py"
+  "tests/test_project_staffing_validation.py"
 )
 
 echo "=== Fast forecasting test bundle ==="
