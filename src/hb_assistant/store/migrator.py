@@ -14,7 +14,7 @@ from .connection import get_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 75
+LATEST_SCHEMA_VERSION = 76
 
 
 class SQLiteMigrator:
@@ -6840,6 +6840,14 @@ class SQLiteMigrator:
 
         return V75_STATEMENTS
 
+    # v76 Schedule identity foundation: additive canonical schedule identity
+    # and committed-version identity match evidence.
+    @staticmethod
+    def _v76_statements() -> list[str]:
+        from hb_assistant.store.schedule_identity_tables import V76_STATEMENTS
+
+        return V76_STATEMENTS
+
     # v44 Phase 10 Graph drive-item modified-by raw operational metadata.
     # Additive ADD COLUMN only on construction_drive_items; raw identity JSON is
     # local SQLite operational metadata and must not be emitted in committed evidence.
@@ -8076,6 +8084,16 @@ class SQLiteMigrator:
             if cur.fetchone() is None:
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (75, 'v75_schedule_import_health_foundation', ?)",
+                    (now,),
+                )
+
+            # v76 Schedule identity foundation: additive identity/match tables.
+            for stmt in self._v76_statements():
+                conn.execute(stmt)
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 76")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (76, 'v76_schedule_identity_foundation', ?)",
                     (now,),
                 )
 

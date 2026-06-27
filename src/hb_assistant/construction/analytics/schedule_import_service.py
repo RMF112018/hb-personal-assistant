@@ -18,6 +18,10 @@ _logger = logging.getLogger(__name__)
 
 from hb_assistant.store.migrator import LATEST_SCHEMA_VERSION, SQLiteMigrator
 from hb_assistant.store.schedule_activity_repository import ScheduleActivityRepository
+from hb_assistant.store.schedule_identity_repository import (
+    ScheduleIdentityRepository,
+    parse_schedule_version_data_date,
+)
 from hb_assistant.store.schedule_import_repository import ScheduleImportRepository
 from hb_assistant.store.schedule_mapping_repository import ScheduleMappingRepository
 
@@ -173,6 +177,7 @@ class ScheduleImportService:
         self._db_path = db_path
         self._import_repo = ScheduleImportRepository(db_path=db_path)
         self._activity_repo = ScheduleActivityRepository(db_path=db_path)
+        self._identity_repo = ScheduleIdentityRepository(db_path=db_path)
         self._mapping_repo = ScheduleMappingRepository(db_path=db_path)
 
     def _ensure_schema(self) -> None:
@@ -802,21 +807,37 @@ class ScheduleImportService:
         package_id: str | None,
     ) -> int | None:
         try:
-            versions = self._activity_repo.list_versions(project_key)
-            prior = next(
-                (
-                    v
-                    for v in versions
-                    if v.get("schedule_version_key") and v.get("schedule_version_key") != version_key
-                ),
-                None,
+            current_match = self._identity_repo.get_match_for_version(version_key)
+            if current_match is None:
+                self._persist_diff_capability(
+                    package_id=package_id,
+                    version_key=version_key,
+                    status="unavailable",
+                    reason="no_identity_match",
+                )
+                return None
+            if (
+                str(current_match.get("match_status") or "") != "resolved"
+                or int(current_match.get("requires_review") or 0) != 0
+            ):
+                self._persist_diff_capability(
+                    package_id=package_id,
+                    version_key=version_key,
+                    status="unavailable",
+                    reason="identity_requires_review",
+                )
+                return None
+            prior_versions = self._identity_repo.list_prior_resolved_versions(
+                schedule_identity_key=str(current_match["schedule_identity_key"]),
+                current_schedule_version_key=version_key,
             )
+            prior = self._select_default_prior_identity_version(version_key, prior_versions)
             if prior is None:
                 self._persist_diff_capability(
                     package_id=package_id,
                     version_key=version_key,
                     status="unavailable",
-                    reason="no_prior_version",
+                    reason="no_prior_identity_version",
                 )
                 return None
             from_version = str(prior["schedule_version_key"])
@@ -853,6 +874,29 @@ class ScheduleImportService:
                 reason=type(exc).__name__,
             )
             return None
+
+    @staticmethod
+    def _select_default_prior_identity_version(
+        current_version_key: str, prior_versions: list[dict[str, Any]]
+    ) -> dict[str, Any] | None:
+        current_date = parse_schedule_version_data_date(current_version_key)
+        dated: list[tuple[datetime, dict[str, Any]]] = []
+        for item in prior_versions:
+            item_date = parse_schedule_version_data_date(
+                str(item.get("schedule_version_key") or "")
+            )
+            if item_date is not None and (current_date is None or item_date < current_date):
+                dated.append((item_date, item))
+        if dated:
+            dated.sort(key=lambda pair: pair[0], reverse=True)
+            return dated[0][1]
+        if not prior_versions:
+            return None
+        return sorted(
+            prior_versions,
+            key=lambda item: str(item.get("import_created_at") or item.get("created_at") or ""),
+            reverse=True,
+        )[0]
 
     def _persist_diff_capability(
         self,
@@ -1141,6 +1185,20 @@ class ScheduleImportService:
             parser_version=cached["parser_version"],
             activity_rows=activity_rows,
         )
+        identity_evidence = self._identity_repo.build_evidence(
+            project_key=project_key,
+            schedule_version_key=version_key,
+            import_id=import_id,
+            source_format=cached["source_format"],
+            source_filename=cached["filename"],
+            source_project_id=bundle.source_project_id,
+            source_project_name=bundle.source_project_name,
+            schedule_name=bundle.schedule_name,
+            activities=bundle.activities,
+            relationships=bundle.relationships,
+            wbs_nodes=bundle.wbs_nodes,
+        )
+        identity_resolution = None
 
         from hb_assistant.store.connection import get_connection, transaction
 
@@ -1209,6 +1267,10 @@ class ScheduleImportService:
                             activity_rows=activity_rows,
                             conn=conn,
                         )
+                    identity_resolution = self._identity_repo.resolve_and_persist(
+                        identity_evidence,
+                        conn=conn,
+                    )
             finally:
                 conn.close()
         except sqlite3.IntegrityError as exc:
@@ -1287,6 +1349,10 @@ class ScheduleImportService:
             if package
             else 0,
             "default_diff_id": default_diff_id,
+            "schedule_identity_key": identity_resolution.schedule_identity_key
+            if identity_resolution
+            else None,
+            "identity_match": identity_resolution.public_match() if identity_resolution else None,
         }
 
     @staticmethod
@@ -1841,12 +1907,60 @@ def _diff_fact_rows(diff_id: int, diff: dict[str, Any]) -> list[dict[str, Any]]:
     return rows
 
 
+def _safe_json_object(value: Any) -> dict[str, Any]:
+    if not value:
+        return {}
+    if isinstance(value, dict):
+        return value
+    try:
+        parsed = json.loads(str(value))
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return {}
+    return parsed if isinstance(parsed, dict) else {}
+
+
+def _public_schedule_identity(row: dict[str, Any] | None) -> dict[str, Any]:
+    if not row:
+        return {}
+    return {
+        "schedule_identity_key": row.get("schedule_identity_key"),
+        "project_key": row.get("project_key"),
+        "identity_status": row.get("identity_status"),
+        "canonical_schedule_name": row.get("canonical_schedule_name"),
+        "source_system": row.get("source_system"),
+        "source_format": row.get("source_format"),
+        "latest_schedule_version_key": row.get("latest_schedule_version_key"),
+        "evidence_summary": _safe_json_object(row.get("evidence_json")),
+    }
+
+
+def _public_identity_match(row: dict[str, Any] | None) -> dict[str, Any]:
+    if not row:
+        return {}
+    return {
+        "schedule_identity_key": row.get("schedule_identity_key"),
+        "schedule_version_key": row.get("schedule_version_key"),
+        "import_id": row.get("import_id"),
+        "match_type": row.get("match_type"),
+        "match_status": row.get("match_status"),
+        "match_rule": row.get("match_rule"),
+        "confidence_score": row.get("confidence_score"),
+        "requires_review": bool(int(row.get("requires_review") or 0)),
+        "no_match_reason": row.get("no_match_reason"),
+        "candidate_count": row.get("candidate_count"),
+        "matched_prior_schedule_version_key": row.get("matched_prior_schedule_version_key"),
+        "winning_candidate_schedule_version_key": row.get("winning_candidate_schedule_version_key"),
+        "evidence_summary": _safe_json_object(row.get("evidence_json")),
+    }
+
+
 class ScheduleReadService:
     """Read-only schedule intelligence queries."""
 
     def __init__(self, *, db_path: str) -> None:
         self._db_path = db_path
         self._activity_repo = ScheduleActivityRepository(db_path=db_path)
+        self._identity_repo = ScheduleIdentityRepository(db_path=db_path)
         self._import_repo = ScheduleImportRepository(db_path=db_path)
         self._mapping_repo = ScheduleMappingRepository(db_path=db_path)
         from hb_assistant.store.schedule_quality_repository import ScheduleQualityRepository
@@ -1982,6 +2096,12 @@ class ScheduleReadService:
         baselines = self._import_repo.list_baseline_projects(schedule_version_key)
         baseline_facts = self._import_repo.list_baseline_health_facts(schedule_version_key)
         diff_facts = self._import_repo.list_diff_facts(schedule_version_key)
+        identity_match = self._identity_repo.get_match_for_version(schedule_version_key)
+        schedule_identity = (
+            self._identity_repo.get_identity(str(identity_match["schedule_identity_key"]))
+            if identity_match
+            else None
+        )
         run = self._quality_repo.get_latest_run(schedule_version_key) or self._quality_repo.get_pending_run(
             schedule_version_key
         )
@@ -2000,6 +2120,8 @@ class ScheduleReadService:
             "default_prior_version": {},
             "default_version_diff": diff_facts[:],
             "available_version_diffs": diff_facts,
+            "schedule_identity": _public_schedule_identity(schedule_identity),
+            "identity_match": _public_identity_match(identity_match),
             "baseline_projects": baselines,
             "baseline_health_facts": baseline_facts,
             "top_health_findings": self._mapping_repo.list_quality_findings(schedule_version_key)[:25],

@@ -34,6 +34,7 @@ pytest_targets=(
   "tests/test_schedule_critical_path_quality.py::test_gma_p6_still_not_measurable_critical_path"
   "tests/test_schedule_dto_redaction.py"
   "tests/test_schedule_float_derivation.py"
+  "tests/test_schedule_identity_foundation.py"
   "tests/test_schedule_import_api.py::test_import_preview_and_commit_xer"
   "tests/test_schedule_import_api.py::test_xer_commit_persists_critical_path_fields"
   "tests/test_schedule_import_api.py::test_xer_quality_critical_path_measurable_via_api"
