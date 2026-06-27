@@ -152,13 +152,13 @@ def test_latest_schema_version_is_at_least_60():
 
 
 def test_lifecycle_contract_count_and_classification():
-    assert build_table_inventory_report(db_path=None)["contract_table_count"] == 439
+    assert build_table_inventory_report(db_path=None)["contract_table_count"] == 451
     contract_path = (
         Path(__file__).resolve().parents[1]
         / "src/hb_assistant/resources/json/table_lifecycle_status_contract.json"
     )
     contract = json.loads(contract_path.read_text(encoding="utf-8"))
-    assert contract["table_count"] == 439
+    assert contract["table_count"] == 451
     assert contract["table_count"] == len(contract["tables"])
     for t in V60_TABLES:
         entry = contract["tables"][t]
