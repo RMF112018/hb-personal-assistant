@@ -62,6 +62,7 @@ export function getRouteTitleForPath(path: string): string {
   if (path.startsWith('/schedules/activities')) return 'Schedule Activities'
   if (path.startsWith('/schedules/versions')) return 'Schedule Versions'
   if (path.startsWith('/schedules/quality')) return 'Schedule Health'
+  if (path.startsWith('/schedules/identity-review')) return 'Schedule Identity Review'
   if (path.startsWith('/schedules/health')) return 'Schedule Health'
   if (path.startsWith('/schedules/version-diff')) return 'Schedule Version Diff'
   if (path.startsWith('/schedules/cost-mapping')) return 'Schedule Cost Mapping'

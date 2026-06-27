@@ -1440,6 +1440,9 @@ export interface ScheduleHealthData {
   default_prior_version?: Record<string, unknown> | null;
   default_version_diff?: Record<string, unknown>[] | null;
   available_version_diffs?: Record<string, unknown>[] | null;
+  schedule_identity?: Record<string, unknown> | null;
+  identity_match?: Record<string, unknown> | null;
+  comparison_basis?: Record<string, unknown> | null;
   baseline_projects?: Record<string, unknown>[] | null;
   baseline_health_facts?: Record<string, unknown>[] | null;
   top_health_findings?: Record<string, unknown>[] | null;
@@ -1551,6 +1554,123 @@ export function getScheduleVersionDiff(projectKey: string, fromVersion: string, 
   const params = new URLSearchParams({ from: fromVersion, to: toVersion });
   return fetchJson(
     `/api/schedules/projects/${encodeURIComponent(projectKey)}/diff?${params.toString()}`,
+  );
+}
+export function getScheduleDiffSummary(projectKey: string, diffId: string | number) {
+  return fetchJson(
+    `/api/schedules/projects/${encodeURIComponent(projectKey)}/diffs/${encodeURIComponent(String(diffId))}/summary`,
+  );
+}
+export function getScheduleDiffDetails(
+  projectKey: string,
+  diffId: string | number,
+  opts?: {
+    changeDomain?: string;
+    changeType?: string;
+    severity?: string;
+    requiresAttention?: boolean;
+    wbsCode?: string;
+    activityId?: string;
+    limit?: number;
+    offset?: number;
+  },
+) {
+  const params = new URLSearchParams();
+  if (opts?.changeDomain) params.set('change_domain', opts.changeDomain);
+  if (opts?.changeType) params.set('change_type', opts.changeType);
+  if (opts?.severity) params.set('severity', opts.severity);
+  if (opts?.requiresAttention != null) params.set('requires_attention', String(opts.requiresAttention));
+  if (opts?.wbsCode) params.set('wbs_code', opts.wbsCode);
+  if (opts?.activityId) params.set('activity_id', opts.activityId);
+  if (opts?.limit != null) params.set('limit', String(opts.limit));
+  if (opts?.offset != null) params.set('offset', String(opts.offset));
+  const qs = params.toString();
+  return fetchJson(
+    `/api/schedules/projects/${encodeURIComponent(projectKey)}/diffs/${encodeURIComponent(String(diffId))}/details${qs ? `?${qs}` : ''}`,
+  );
+}
+export function getScheduleDiffImpact(
+  projectKey: string,
+  diffId: string | number,
+  opts?: {
+    rollupType?: string;
+    impactLevel?: string;
+    requiresAttention?: boolean;
+    wbsCode?: string;
+    activityId?: string;
+    limit?: number;
+    offset?: number;
+  },
+) {
+  const params = new URLSearchParams();
+  if (opts?.rollupType) params.set('rollup_type', opts.rollupType);
+  if (opts?.impactLevel) params.set('impact_level', opts.impactLevel);
+  if (opts?.requiresAttention != null) params.set('requires_attention', String(opts.requiresAttention));
+  if (opts?.wbsCode) params.set('wbs_code', opts.wbsCode);
+  if (opts?.activityId) params.set('activity_id', opts.activityId);
+  if (opts?.limit != null) params.set('limit', String(opts.limit));
+  if (opts?.offset != null) params.set('offset', String(opts.offset));
+  const qs = params.toString();
+  return fetchJson(
+    `/api/schedules/projects/${encodeURIComponent(projectKey)}/diffs/${encodeURIComponent(String(diffId))}/impact${qs ? `?${qs}` : ''}`,
+  );
+}
+export function getScheduleIdentities(projectKey: string, opts?: { showMerged?: boolean }) {
+  const params = new URLSearchParams();
+  if (opts?.showMerged) params.set('show_merged', 'true');
+  const qs = params.toString();
+  return fetchJson(
+    `/api/schedules/projects/${encodeURIComponent(projectKey)}/identities${qs ? `?${qs}` : ''}`,
+  );
+}
+export function getScheduleIdentity(projectKey: string, scheduleIdentityKey: string, opts?: { showMerged?: boolean }) {
+  const params = new URLSearchParams();
+  if (opts?.showMerged === false) params.set('show_merged', 'false');
+  const qs = params.toString();
+  return fetchJson(
+    `/api/schedules/projects/${encodeURIComponent(projectKey)}/identities/${encodeURIComponent(scheduleIdentityKey)}${qs ? `?${qs}` : ''}`,
+  );
+}
+export function getScheduleIdentityReview(projectKey: string) {
+  return fetchJson(`/api/schedules/projects/${encodeURIComponent(projectKey)}/identity-review`);
+}
+export function reassignScheduleIdentity(
+  projectKey: string,
+  scheduleVersionKey: string,
+  targetIdentityKey: string,
+  reason?: string,
+) {
+  return fetchJson(
+    `/api/schedules/projects/${encodeURIComponent(projectKey)}/versions/${encodeURIComponent(scheduleVersionKey)}/identity`,
+    { method: 'POST', body: JSON.stringify({ target_identity_key: targetIdentityKey, reason: reason || null }) },
+  );
+}
+export function splitScheduleIdentity(
+  projectKey: string,
+  scheduleVersionKey: string,
+  canonicalScheduleName?: string,
+  reason?: string,
+) {
+  return fetchJson(
+    `/api/schedules/projects/${encodeURIComponent(projectKey)}/versions/${encodeURIComponent(scheduleVersionKey)}/identity/split`,
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        canonical_schedule_name: canonicalScheduleName || null,
+        reason: reason || null,
+      }),
+    },
+  );
+}
+export function mergeScheduleIdentities(
+  projectKey: string,
+  sourceIdentityKey: string,
+  targetIdentityKey: string,
+  reason?: string,
+) {
+  return fetchJson(
+    `/api/schedules/projects/${encodeURIComponent(projectKey)}/identities/${encodeURIComponent(sourceIdentityKey)}/merge`,
+    { method: 'POST', body: JSON.stringify({ target_identity_key: targetIdentityKey, reason: reason || null }) },
   );
 }
 export async function uploadScheduleImportPreview(
@@ -1844,6 +1964,15 @@ export const api = {
   getScheduleQualityRun,
   getScheduleProjectQualitySummary,
   getScheduleVersionDiff,
+  getScheduleDiffSummary,
+  getScheduleDiffDetails,
+  getScheduleDiffImpact,
+  getScheduleIdentities,
+  getScheduleIdentity,
+  getScheduleIdentityReview,
+  reassignScheduleIdentity,
+  splitScheduleIdentity,
+  mergeScheduleIdentities,
   uploadScheduleImportPreview,
   commitScheduleImport,
   createScheduleCostMappingRun,

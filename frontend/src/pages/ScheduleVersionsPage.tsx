@@ -33,12 +33,23 @@ export function ScheduleVersionsPage() {
   const [projectKey, setProjectKey] = useScheduleProjectParam()
   const [sort, setSort] = useState<string>('imported_at')
   const [order, setOrder] = useState<'asc' | 'desc'>('desc')
+  const [reviewFilter, setReviewFilter] = useState<'all' | 'review' | 'resolved'>('all')
+  const [priorFilter, setPriorFilter] = useState<'all' | 'available' | 'unavailable'>('all')
   const { data: projectsData } = useScheduleProjects()
   const { data, isLoading, error } = useScheduleVersions(projectKey || undefined)
   const versions = useMemo(() => {
     const rows = Array.isArray(data) ? [...(data as Record<string, unknown>[])] : []
     const mult = order === 'asc' ? 1 : -1
-    return rows.sort((a, b) => {
+    const filtered = rows.filter((row) => {
+      const requiresReview = Boolean(row.identity_requires_review)
+      const priorAvailable = Boolean(row.default_prior_available)
+      if (reviewFilter === 'review' && !requiresReview) return false
+      if (reviewFilter === 'resolved' && requiresReview) return false
+      if (priorFilter === 'available' && !priorAvailable) return false
+      if (priorFilter === 'unavailable' && priorAvailable) return false
+      return true
+    })
+    return filtered.sort((a, b) => {
       const av = String(a[sort] ?? '')
       const bv = String(b[sort] ?? '')
       if (sort === 'quality_score') {
@@ -46,7 +57,7 @@ export function ScheduleVersionsPage() {
       }
       return av.localeCompare(bv) * mult
     })
-  }, [data, sort, order])
+  }, [data, sort, order, reviewFilter, priorFilter])
 
   function projectLabel(key: string) {
     const project = projectsData?.projects?.find((p) => p.project_key === key)
@@ -84,6 +95,30 @@ export function ScheduleVersionsPage() {
           </select>
         </label>
         <label className="block text-sm">
+          <span className="text-[var(--hb-muted)]">Identity</span>
+          <select
+            className="mt-1 block rounded border border-[var(--hb-border)] bg-[var(--hb-bg)] px-2 py-1.5 text-sm"
+            value={reviewFilter}
+            onChange={(e) => setReviewFilter(e.target.value as typeof reviewFilter)}
+          >
+            <option value="all">All</option>
+            <option value="review">Review required</option>
+            <option value="resolved">Resolved</option>
+          </select>
+        </label>
+        <label className="block text-sm">
+          <span className="text-[var(--hb-muted)]">Prior diff</span>
+          <select
+            className="mt-1 block rounded border border-[var(--hb-border)] bg-[var(--hb-bg)] px-2 py-1.5 text-sm"
+            value={priorFilter}
+            onChange={(e) => setPriorFilter(e.target.value as typeof priorFilter)}
+          >
+            <option value="all">All</option>
+            <option value="available">Available</option>
+            <option value="unavailable">Unavailable</option>
+          </select>
+        </label>
+        <label className="block text-sm">
           <span className="text-[var(--hb-muted)]">Order</span>
           <select
             className="mt-1 block rounded border border-[var(--hb-border)] bg-[var(--hb-bg)] px-2 py-1.5 text-sm"
@@ -114,6 +149,7 @@ export function ScheduleVersionsPage() {
               <ScheduleTh>Imported</ScheduleTh>
               <ScheduleTh>Activities</ScheduleTh>
               <ScheduleTh>Quality</ScheduleTh>
+              <ScheduleTh>Identity</ScheduleTh>
               <ScheduleTh>Score</ScheduleTh>
               <ScheduleTh>Cost loaded</ScheduleTh>
               <ScheduleTh />
@@ -124,6 +160,10 @@ export function ScheduleVersionsPage() {
             const svk = String(v.schedule_version_key)
             const pk = String(v.project_key ?? svk.split('|')[0] ?? '')
             const actLink = `/schedules/activities?version=${encodeURIComponent(svk)}&project=${encodeURIComponent(pk)}`
+            const impact =
+              v.default_diff_impact && typeof v.default_diff_impact === 'object'
+                ? (v.default_diff_impact as Record<string, unknown>)
+                : {}
             return (
               <tr key={svk}>
                 {!projectKey ? (
@@ -139,6 +179,23 @@ export function ScheduleVersionsPage() {
                 <ScheduleTd>{String(v.activity_count)}</ScheduleTd>
                 <ScheduleTd>{String(v.quality_status ?? 'not_evaluated')}</ScheduleTd>
                 <ScheduleTd>
+                  <div className={v.identity_requires_review ? 'text-amber-700' : 'text-emerald-700'}>
+                    {v.identity_requires_review ? 'Review required' : String(v.identity_match_status ?? 'resolved')}
+                  </div>
+                  <div className="text-xs text-[var(--hb-muted)] font-mono">
+                    {String(v.schedule_identity_key ?? '—').slice(0, 18)}
+                  </div>
+                  <div className="text-xs text-[var(--hb-muted)]">
+                    Prior: {v.default_prior_available ? 'available' : String(v.default_prior_unavailable_reason ?? 'not available')}
+                  </div>
+                  {impact.impact_level ? (
+                    <div className="text-xs text-[var(--hb-muted)]">
+                      Impact: {String(impact.impact_level)} | Attention:{' '}
+                      {String(impact.requires_attention_count ?? 0)}
+                    </div>
+                  ) : null}
+                </ScheduleTd>
+                <ScheduleTd>
                   {String(v.quality_score ?? '—')} / {String(v.quality_grade ?? '—')}
                 </ScheduleTd>
                 <ScheduleTd>{String(v.cost_loaded_status)}</ScheduleTd>
@@ -153,6 +210,14 @@ export function ScheduleVersionsPage() {
                     >
                       Quality
                     </Link>
+                    {v.default_diff_id ? (
+                      <Link
+                        className="underline"
+                        to={`/schedules/version-diff?project=${encodeURIComponent(pk)}&diff_id=${encodeURIComponent(String(v.default_diff_id))}`}
+                      >
+                        Detail diff
+                      </Link>
+                    ) : null}
                     <Link className="underline" to={`/schedules/cost-mapping?project=${encodeURIComponent(pk)}`}>
                       Map
                     </Link>

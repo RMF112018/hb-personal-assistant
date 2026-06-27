@@ -153,7 +153,7 @@ def test_v76_lifecycle_contract_count(tmp_path: Path) -> None:
         / "src/hb_assistant/resources/json/table_lifecycle_status_contract.json"
     )
     contract = json.loads(contract_path.read_text())
-    assert contract["table_count"] == 464
+    assert contract["table_count"] == 469
     assert contract["table_count"] == len(contract["tables"])
     for table in V76_TABLES:
         assert table in contract["tables"], table

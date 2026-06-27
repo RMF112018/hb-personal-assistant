@@ -14,7 +14,7 @@ from .connection import get_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 76
+LATEST_SCHEMA_VERSION = 80
 
 
 class SQLiteMigrator:
@@ -6871,6 +6871,35 @@ class SQLiteMigrator:
                     conn.execute(f"ALTER TABLE {table} ADD COLUMN {name} {decl}")
         ensure_default_company_holiday_calendar(conn, now=now)
 
+    # v77 Schedule identity foundation: additive canonical schedule identity
+    # and committed-version identity match evidence.
+    @staticmethod
+    def _v77_statements() -> list[str]:
+        from hb_assistant.store.schedule_identity_tables import V77_STATEMENTS
+
+        return V77_STATEMENTS
+
+    # v78 Schedule identity manual review/action audit foundation.
+    @staticmethod
+    def _v78_statements() -> list[str]:
+        from hb_assistant.store.schedule_identity_tables import V78_STATEMENTS
+
+        return V78_STATEMENTS
+
+    # v79 Detailed schedule version diff facts.
+    @staticmethod
+    def _v79_statements() -> list[str]:
+        from hb_assistant.store.schedule_diff_detail_tables import V79_STATEMENTS
+
+        return V79_STATEMENTS
+
+    # v80 Schedule impact intelligence: rollups derived from V79 detail facts.
+    @staticmethod
+    def _v80_statements() -> list[str]:
+        from hb_assistant.store.schedule_diff_impact_tables import V80_STATEMENTS
+
+        return V80_STATEMENTS
+
     # v44 Phase 10 Graph drive-item modified-by raw operational metadata.
     # Additive ADD COLUMN only on construction_drive_items; raw identity JSON is
     # local SQLite operational metadata and must not be emitted in committed evidence.
@@ -8118,6 +8147,46 @@ class SQLiteMigrator:
             if cur.fetchone() is None:
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (76, 'v76_project_staffing_foundation', ?)",
+                    (now,),
+                )
+
+            # v77 Schedule identity foundation: additive identity/match tables.
+            for stmt in self._v77_statements():
+                conn.execute(stmt)
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 77")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (77, 'v77_schedule_identity_foundation', ?)",
+                    (now,),
+                )
+
+            # v78 Schedule identity manual action audit table.
+            for stmt in self._v78_statements():
+                conn.execute(stmt)
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 78")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (78, 'v78_schedule_identity_manual_actions', ?)",
+                    (now,),
+                )
+
+            # v79 Schedule diff intelligence foundation: detailed diff fact rows.
+            for stmt in self._v79_statements():
+                conn.execute(stmt)
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 79")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (79, 'v79_schedule_diff_detail_facts', ?)",
+                    (now,),
+                )
+
+            # v80 Schedule impact intelligence: durable rollups over detailed facts.
+            for stmt in self._v80_statements():
+                conn.execute(stmt)
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 80")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (80, 'v80_schedule_diff_impact_rollups', ?)",
                     (now,),
                 )
 

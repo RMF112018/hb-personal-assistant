@@ -32,6 +32,7 @@ import { ScheduleVersionsPage } from '../pages/ScheduleVersionsPage'
 import { ScheduleActivitiesPage } from '../pages/ScheduleActivitiesPage'
 import { ScheduleActivitiesRedirect } from '../pages/ScheduleActivitiesRedirect'
 import { ScheduleCostMappingPage } from '../pages/ScheduleCostMappingPage'
+import { ScheduleIdentityReviewPage } from '../pages/ScheduleIdentityReviewPage'
 import { ScheduleQualityPage } from '../pages/ScheduleQualityPage'
 import { ScheduleVersionDiffPage } from '../pages/ScheduleVersionDiffPage'
 import { ScheduleCostWeightingPage } from '../pages/ScheduleCostWeightingPage'
@@ -232,6 +233,11 @@ const router = createBrowserRouter([
         path: 'schedules/quality',
         element: <ScheduleQualityPage />,
         handle: { title: 'Schedule Health' },
+      },
+      {
+        path: 'schedules/identity-review',
+        element: <ScheduleIdentityReviewPage />,
+        handle: { title: 'Schedule Identity Review' },
       },
       {
         path: 'schedules/health',

@@ -14,6 +14,7 @@ describe('navigationModel schedules module', () => {
     expect(getRouteTitleForPath('/schedules/versions')).toBe('Schedule Versions')
     expect(getRouteTitleForPath('/schedules/activities')).toBe('Schedule Activities')
     expect(getRouteTitleForPath('/schedules/quality')).toBe('Schedule Health')
+    expect(getRouteTitleForPath('/schedules/identity-review')).toBe('Schedule Identity Review')
     expect(getRouteTitleForPath('/schedules/health')).toBe('Schedule Health')
     expect(getRouteTitleForPath('/schedules/version-diff')).toBe('Schedule Version Diff')
     expect(getRouteTitleForPath('/schedules/cost-mapping')).toBe('Schedule Cost Mapping')

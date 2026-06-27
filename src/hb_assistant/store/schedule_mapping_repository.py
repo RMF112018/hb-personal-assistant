@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import sqlite3
-from typing import Any
+from typing import Any, Callable
 
-from .connection import get_connection
+from .connection import get_connection, open_connection, transaction
 
 
 class ScheduleMappingRepository:
@@ -191,3 +191,332 @@ class ScheduleMappingRepository:
                 tuple(row[c] for c in cols),
             )
             return int(cur.lastrowid or 0)
+
+    def insert_version_diff_with_details(
+        self,
+        row: dict[str, Any],
+        *,
+        detail_rows: list[dict[str, Any]] | None = None,
+        diff_fact_rows: list[dict[str, Any]] | None = None,
+    ) -> int:
+        with open_connection(self._db_path) as conn:
+            with transaction(conn):
+                table_cols = {
+                    r[1]
+                    for r in conn.execute("PRAGMA table_info(schedule_version_diffs)").fetchall()
+                }
+                cols = [c for c in row.keys() if c in table_cols]
+                cur = conn.execute(
+                    f"INSERT INTO schedule_version_diffs ({', '.join(cols)}) VALUES ({', '.join('?' for _ in cols)})",
+                    tuple(row[c] for c in cols),
+                )
+                diff_id = int(cur.lastrowid or 0)
+                if detail_rows:
+                    self.replace_diff_detail_facts(conn, diff_id=diff_id, rows=detail_rows)
+                    self.replace_diff_impact_rollups_from_details(
+                        conn, diff_id=diff_id, detail_rows=detail_rows
+                    )
+                else:
+                    self.replace_diff_impact_rollups_from_details(
+                        conn, diff_id=diff_id, detail_rows=[]
+                    )
+                if diff_fact_rows:
+                    self._insert_rows(conn, "schedule_version_diff_facts", diff_fact_rows, replace=True)
+                return diff_id
+
+    def insert_version_diff_with_detail_builders(
+        self,
+        row: dict[str, Any],
+        *,
+        detail_builder: Callable[[int], list[dict[str, Any]]] | None = None,
+        diff_fact_builder: Callable[[int], list[dict[str, Any]]] | None = None,
+    ) -> tuple[int, list[dict[str, Any]]]:
+        with open_connection(self._db_path) as conn:
+            with transaction(conn):
+                table_cols = {
+                    r[1]
+                    for r in conn.execute("PRAGMA table_info(schedule_version_diffs)").fetchall()
+                }
+                cols = [c for c in row.keys() if c in table_cols]
+                cur = conn.execute(
+                    f"INSERT INTO schedule_version_diffs ({', '.join(cols)}) VALUES ({', '.join('?' for _ in cols)})",
+                    tuple(row[c] for c in cols),
+                )
+                diff_id = int(cur.lastrowid or 0)
+                details = detail_builder(diff_id) if detail_builder else []
+                self.replace_diff_detail_facts(conn, diff_id=diff_id, rows=details)
+                self.replace_diff_impact_rollups_from_details(
+                    conn, diff_id=diff_id, detail_rows=details
+                )
+                facts = diff_fact_builder(diff_id) if diff_fact_builder else []
+                if facts:
+                    self._insert_rows(conn, "schedule_version_diff_facts", facts, replace=True)
+                return diff_id, details
+
+    @staticmethod
+    def _insert_rows(
+        conn: sqlite3.Connection,
+        table: str,
+        rows: list[dict[str, Any]],
+        *,
+        replace: bool = False,
+    ) -> int:
+        if not rows:
+            return 0
+        cols = list(rows[0].keys())
+        verb = "INSERT OR REPLACE" if replace else "INSERT"
+        conn.executemany(
+            f"{verb} INTO {table} ({', '.join(cols)}) VALUES ({', '.join('?' for _ in cols)})",
+            [tuple(row.get(c) for c in cols) for row in rows],
+        )
+        return len(rows)
+
+    def replace_diff_detail_facts(
+        self, conn: sqlite3.Connection, *, diff_id: int, rows: list[dict[str, Any]]
+    ) -> int:
+        conn.execute("DELETE FROM schedule_version_diff_detail_facts WHERE diff_id=?", (diff_id,))
+        if not rows:
+            return 0
+        return self._insert_rows(conn, "schedule_version_diff_detail_facts", rows, replace=True)
+
+    def replace_diff_impact_rollups_from_details(
+        self,
+        conn: sqlite3.Connection,
+        *,
+        diff_id: int,
+        detail_rows: list[dict[str, Any]],
+    ) -> int:
+        from hb_assistant.construction.analytics.schedule_diff_intelligence import (
+            build_impact_rollups,
+        )
+
+        conn.execute(
+            "DELETE FROM schedule_version_diff_impact_rollups WHERE diff_id=?",
+            (diff_id,),
+        )
+        rows = build_impact_rollups(detail_rows)
+        if not rows:
+            return 0
+        return self._insert_rows(conn, "schedule_version_diff_impact_rollups", rows, replace=True)
+
+    def get_version_diff(self, diff_id: int) -> dict[str, Any] | None:
+        with self._conn() as conn:
+            row = conn.execute(
+                "SELECT * FROM schedule_version_diffs WHERE id=?",
+                (diff_id,),
+            ).fetchone()
+            return dict(row) if row else None
+
+    def list_diff_detail_facts(
+        self,
+        diff_id: int,
+        *,
+        project_key: str | None = None,
+        change_domain: str | None = None,
+        change_type: str | None = None,
+        severity: str | None = None,
+        requires_attention: bool | None = None,
+        wbs_code: str | None = None,
+        activity_id: str | None = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> list[dict[str, Any]]:
+        clauses = ["diff_id=?"]
+        params: list[Any] = [diff_id]
+        if project_key:
+            clauses.append("project_key=?")
+            params.append(project_key)
+        if change_domain:
+            clauses.append("change_domain=?")
+            params.append(change_domain)
+        if change_type:
+            clauses.append("change_type=?")
+            params.append(change_type)
+        if severity:
+            clauses.append("severity=?")
+            params.append(severity)
+        if requires_attention is not None:
+            clauses.append("requires_attention=?")
+            params.append(1 if requires_attention else 0)
+        if wbs_code:
+            clauses.append("wbs_code=?")
+            params.append(wbs_code)
+        if activity_id:
+            clauses.append("(activity_id LIKE ? OR activity_name LIKE ?)")
+            params.extend((f"%{activity_id}%", f"%{activity_id}%"))
+        params.extend((limit, offset))
+        with self._conn() as conn:
+            rows = conn.execute(
+                f"""
+                SELECT * FROM schedule_version_diff_detail_facts
+                WHERE {' AND '.join(clauses)}
+                ORDER BY
+                  CASE severity
+                    WHEN 'critical' THEN 1
+                    WHEN 'major' THEN 2
+                    WHEN 'moderate' THEN 3
+                    WHEN 'minor' THEN 4
+                    ELSE 5
+                  END,
+                  change_domain,
+                  activity_id,
+                  detail_id
+                LIMIT ? OFFSET ?
+                """,
+                tuple(params),
+            ).fetchall()
+            return [dict(r) for r in rows]
+
+    def count_diff_detail_facts(self, diff_id: int, *, project_key: str | None = None) -> int:
+        clauses = ["diff_id=?"]
+        params: list[Any] = [diff_id]
+        if project_key:
+            clauses.append("project_key=?")
+            params.append(project_key)
+        with self._conn() as conn:
+            row = conn.execute(
+                f"SELECT COUNT(*) FROM schedule_version_diff_detail_facts WHERE {' AND '.join(clauses)}",
+                tuple(params),
+            ).fetchone()
+            return int(row[0] if row else 0)
+
+    def summarize_diff_detail_facts(
+        self, diff_id: int, *, project_key: str | None = None
+    ) -> dict[str, Any]:
+        rows = self.list_diff_detail_facts(
+            diff_id, project_key=project_key, limit=100000, offset=0
+        )
+        from hb_assistant.construction.analytics.schedule_diff_intelligence import (
+            summarize_detail_facts,
+        )
+
+        return summarize_detail_facts(rows)
+
+    def list_diff_impact_rollups(
+        self,
+        diff_id: int,
+        *,
+        project_key: str | None = None,
+        rollup_type: str | None = None,
+        impact_level: str | None = None,
+        requires_attention: bool | None = None,
+        wbs_code: str | None = None,
+        activity_id: str | None = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> list[dict[str, Any]]:
+        clauses = ["diff_id=?"]
+        params: list[Any] = [diff_id]
+        if project_key:
+            clauses.append("project_key=?")
+            params.append(project_key)
+        if rollup_type:
+            clauses.append("rollup_type=?")
+            params.append(rollup_type)
+        if impact_level:
+            clauses.append("impact_level=?")
+            params.append(impact_level)
+        if requires_attention is not None:
+            clauses.append("requires_attention=?")
+            params.append(1 if requires_attention else 0)
+        if wbs_code:
+            clauses.append("wbs_code=?")
+            params.append(wbs_code)
+        if activity_id:
+            clauses.append("(activity_id LIKE ? OR activity_name LIKE ? OR milestone_activity_id LIKE ? OR milestone_name LIKE ?)")
+            like = f"%{activity_id}%"
+            params.extend((like, like, like, like))
+        params.extend((limit, offset))
+        with self._conn() as conn:
+            rows = conn.execute(
+                f"""
+                SELECT * FROM schedule_version_diff_impact_rollups
+                WHERE {' AND '.join(clauses)}
+                ORDER BY
+                  CASE impact_level
+                    WHEN 'critical' THEN 1
+                    WHEN 'high' THEN 2
+                    WHEN 'medium' THEN 3
+                    WHEN 'low' THEN 4
+                    ELSE 5
+                  END,
+                  CAST(COALESCE(impact_score, '0') AS INTEGER) DESC,
+                  rollup_type,
+                  rollup_label,
+                  rollup_id
+                LIMIT ? OFFSET ?
+                """,
+                tuple(params),
+            ).fetchall()
+            return [dict(r) for r in rows]
+
+    def count_diff_impact_rollups(
+        self,
+        diff_id: int,
+        *,
+        project_key: str | None = None,
+        rollup_type: str | None = None,
+        impact_level: str | None = None,
+        requires_attention: bool | None = None,
+        wbs_code: str | None = None,
+        activity_id: str | None = None,
+    ) -> int:
+        clauses = ["diff_id=?"]
+        params: list[Any] = [diff_id]
+        if project_key:
+            clauses.append("project_key=?")
+            params.append(project_key)
+        if rollup_type:
+            clauses.append("rollup_type=?")
+            params.append(rollup_type)
+        if impact_level:
+            clauses.append("impact_level=?")
+            params.append(impact_level)
+        if requires_attention is not None:
+            clauses.append("requires_attention=?")
+            params.append(1 if requires_attention else 0)
+        if wbs_code:
+            clauses.append("wbs_code=?")
+            params.append(wbs_code)
+        if activity_id:
+            clauses.append("(activity_id LIKE ? OR activity_name LIKE ? OR milestone_activity_id LIKE ? OR milestone_name LIKE ?)")
+            like = f"%{activity_id}%"
+            params.extend((like, like, like, like))
+        with self._conn() as conn:
+            row = conn.execute(
+                f"SELECT COUNT(*) FROM schedule_version_diff_impact_rollups WHERE {' AND '.join(clauses)}",
+                tuple(params),
+            ).fetchone()
+            return int(row[0] if row else 0)
+
+    def summarize_diff_impact_rollups(
+        self, diff_id: int, *, project_key: str | None = None
+    ) -> dict[str, Any]:
+        summary_rows = self.list_diff_impact_rollups(
+            diff_id,
+            project_key=project_key,
+            rollup_type="summary",
+            limit=1,
+            offset=0,
+        )
+        top_wbs = self.list_diff_impact_rollups(
+            diff_id,
+            project_key=project_key,
+            rollup_type="wbs",
+            limit=1,
+            offset=0,
+        )
+        rollups = self.list_diff_impact_rollups(
+            diff_id, project_key=project_key, limit=100000, offset=0
+        )
+        return {
+            "summary": summary_rows[0] if summary_rows else None,
+            "top_wbs": top_wbs[0] if top_wbs else None,
+            "rollup_count": len(rollups),
+            "critical_or_high_count": sum(
+                1 for row in rollups if row.get("impact_level") in {"critical", "high"}
+            ),
+            "attention_rollup_count": sum(
+                1 for row in rollups if int(row.get("requires_attention") or 0)
+            ),
+        }
