@@ -298,3 +298,69 @@ class ForecastStaffingService:
     def rebuild_actuals(self, project_key: str) -> dict[str, Any]:
         counts = attribution.rebuild(self._db_path, project_key)
         return self._envelope(project_key, ok=True, kind="staffing_actuals_rebuilt", **counts)
+
+    # -- global Forecasting-Config: staffing templates + holiday calendars ----
+
+    def _global_envelope(self, **extra: Any) -> dict[str, Any]:
+        return {"surface": _SURFACE, **extra, "guardrails": _guardrails()}
+
+    @_fail_closed
+    def list_templates(self) -> dict[str, Any]:
+        return self._global_envelope(templates=self._templates().list(active_only=True))
+
+    @_fail_closed
+    def get_template(self, template_id: str) -> dict[str, Any]:
+        repo = self._templates()
+        template = repo.get(template_id)
+        if template is None:
+            return self._global_envelope(ok=False, kind="staffing_template_not_found")
+        return self._global_envelope(
+            template=template,
+            versions=repo.list_versions(template_id),
+            current_version=repo.get_current_version(template_id),
+        )
+
+    @_fail_closed
+    def create_template(
+        self, *, template_key: str, template_name: str, created_by_role: str | None = None
+    ) -> dict[str, Any]:
+        template = self._templates().create_template(
+            template_key=template_key, template_name=template_name, created_by_role=created_by_role
+        )
+        return self._global_envelope(ok=True, kind="staffing_template_created", template=template)
+
+    @_fail_closed
+    def add_template_version(self, template_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+        if not (payload.get("cost_code") or "").strip():
+            return self._global_envelope(
+                ok=False,
+                kind="staffing_template_version_invalid",
+                errors=[{"field": "cost_code", "code": "cost_code_missing",
+                         "message": "Template version requires a cost code."}],
+            )
+        created_by_role = payload.get("created_by_role")
+        defaults = {k: v for k, v in payload.items() if k != "created_by_role"}
+        version = self._templates().add_version(
+            template_id, created_by_role=created_by_role, **defaults
+        )
+        return self._global_envelope(
+            ok=True, kind="staffing_template_version_created", version=version
+        )
+
+    @_fail_closed
+    def deactivate_template(self, template_id: str) -> dict[str, Any]:
+        template = self._templates().deactivate(template_id)
+        ok = template is not None
+        return self._global_envelope(ok=ok, kind="staffing_template_deactivated", template=template)
+
+    @_fail_closed
+    def list_holiday_calendars(self) -> dict[str, Any]:
+        return self._global_envelope(calendars=self._holidays().list_calendars(active_only=True))
+
+    @_fail_closed
+    def get_holiday_calendar(self, calendar_id: str) -> dict[str, Any]:
+        repo = self._holidays()
+        calendar = repo.get_calendar(calendar_id)
+        if calendar is None:
+            return self._global_envelope(ok=False, kind="holiday_calendar_not_found")
+        return self._global_envelope(calendar=calendar, dates=repo.get_dates(calendar_id))
