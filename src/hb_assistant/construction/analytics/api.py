@@ -3158,6 +3158,10 @@ def create_app(*, db_path: str | None = None) -> Any:
     ) -> dict[str, Any]:
         del role
         from hb_assistant.construction.analytics.schedule_version_diff import compute_version_diff
+        from hb_assistant.construction.analytics.schedule_diff_intelligence import (
+            build_detail_facts,
+            summarize_detail_facts,
+        )
         from hb_assistant.store.schedule_mapping_repository import ScheduleMappingRepository
 
         read = _schedule_read_service()
@@ -3165,6 +3169,14 @@ def create_app(*, db_path: str | None = None) -> Any:
         to_acts = read.list_activities(to_version, for_diff=True)
         from_rels = read.list_relationships(from_version)
         to_rels = read.list_relationships(to_version)
+        from_wbs = read.list_wbs_nodes(from_version)
+        to_wbs = read.list_wbs_nodes(to_version)
+        from_calendars = read.list_calendars(from_version)
+        to_calendars = read.list_calendars(to_version)
+        from_codes = read.list_activity_codes(from_version)
+        to_codes = read.list_activity_codes(to_version)
+        from_udfs = read.list_udf_values(from_version)
+        to_udfs = read.list_udf_values(to_version)
         diff = compute_version_diff(
             project_key=project_key,
             from_version=from_version,
@@ -3188,6 +3200,11 @@ def create_app(*, db_path: str | None = None) -> Any:
             comparison_status = "cross_identity"
         else:
             comparison_status = "identity_unavailable"
+        identity_safe = comparison_status == "identity_safe"
+        comparison_type = "identity_safe_manual" if identity_safe else (
+            "cross_identity_manual" if comparison_status == "cross_identity" else "manual"
+        )
+        schedule_identity_key = from_identity if identity_safe else None
         diff["identity_comparison"] = {
             "status": comparison_status,
             "from_schedule_identity_key": from_identity,
@@ -3195,8 +3212,91 @@ def create_app(*, db_path: str | None = None) -> Any:
             "from_requires_review": from_review,
             "to_requires_review": to_review,
         }
-        ScheduleMappingRepository(db_path=_schedule_db_path()).insert_version_diff(diff)
+        details_cache: list[dict[str, Any]] = []
+
+        def _detail_builder(diff_id: int) -> list[dict[str, Any]]:
+            details_cache[:] = build_detail_facts(
+                diff_id=diff_id,
+                project_key=project_key,
+                from_version=from_version,
+                to_version=to_version,
+                schedule_identity_key=schedule_identity_key,
+                identity_safe=identity_safe,
+                comparison_type=comparison_type,
+                from_activities=from_acts,
+                to_activities=to_acts,
+                from_relationships=from_rels,
+                to_relationships=to_rels,
+                from_wbs=from_wbs,
+                to_wbs=to_wbs,
+                from_calendars=from_calendars,
+                to_calendars=to_calendars,
+                from_codes=from_codes,
+                to_codes=to_codes,
+                from_udfs=from_udfs,
+                to_udfs=to_udfs,
+            )
+            return details_cache
+
+        mapping_repo = ScheduleMappingRepository(db_path=_schedule_db_path())
+        diff_id, details = mapping_repo.insert_version_diff_with_detail_builders(
+            diff,
+            detail_builder=_detail_builder,
+        )
+        summary_counts = summarize_detail_facts(details)
+        diff["diff_id"] = diff_id
+        diff["identity_safe"] = identity_safe
+        diff["comparison_type"] = comparison_type
+        diff["detail_summary_counts"] = summary_counts
+        diff["detail_preview"] = details[:25]
         return diff
+
+    @app.get("/api/schedules/projects/{project_key}/diffs/{diff_id}/summary")
+    def schedule_version_diff_summary(
+        project_key: str,
+        diff_id: int,
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        del role
+        from fastapi import HTTPException
+
+        out = _schedule_read_service().get_diff_summary(project_key, diff_id)
+        if not out:
+            raise HTTPException(status_code=404, detail="schedule_diff_not_found")
+        return out
+
+    @app.get("/api/schedules/projects/{project_key}/diffs/{diff_id}/details")
+    def schedule_version_diff_details(
+        project_key: str,
+        diff_id: int,
+        change_domain: str | None = None,
+        change_type: str | None = None,
+        severity: str | None = None,
+        requires_attention: bool | None = None,
+        wbs_code: str | None = None,
+        activity_id: str | None = None,
+        limit: int = Query(default=100, ge=1, le=1000),
+        offset: int = Query(default=0, ge=0),
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        del role
+        from fastapi import HTTPException
+
+        out = _schedule_read_service().list_diff_details(
+            project_key,
+            diff_id,
+            change_domain=change_domain,
+            change_type=change_type,
+            severity=severity,
+            requires_attention=requires_attention,
+            wbs_code=wbs_code,
+            activity_id=activity_id,
+            limit=limit,
+            offset=offset,
+        )
+        if not out:
+            raise HTTPException(status_code=404, detail="schedule_diff_not_found")
+        return out
 
     async def _read_schedule_upload(file: Any, *, max_bytes: int) -> tuple[str, bytes]:
         from hb_assistant.construction.analytics.schedule_file_parser import ScheduleImportError

@@ -1556,6 +1556,39 @@ export function getScheduleVersionDiff(projectKey: string, fromVersion: string, 
     `/api/schedules/projects/${encodeURIComponent(projectKey)}/diff?${params.toString()}`,
   );
 }
+export function getScheduleDiffSummary(projectKey: string, diffId: string | number) {
+  return fetchJson(
+    `/api/schedules/projects/${encodeURIComponent(projectKey)}/diffs/${encodeURIComponent(String(diffId))}/summary`,
+  );
+}
+export function getScheduleDiffDetails(
+  projectKey: string,
+  diffId: string | number,
+  opts?: {
+    changeDomain?: string;
+    changeType?: string;
+    severity?: string;
+    requiresAttention?: boolean;
+    wbsCode?: string;
+    activityId?: string;
+    limit?: number;
+    offset?: number;
+  },
+) {
+  const params = new URLSearchParams();
+  if (opts?.changeDomain) params.set('change_domain', opts.changeDomain);
+  if (opts?.changeType) params.set('change_type', opts.changeType);
+  if (opts?.severity) params.set('severity', opts.severity);
+  if (opts?.requiresAttention != null) params.set('requires_attention', String(opts.requiresAttention));
+  if (opts?.wbsCode) params.set('wbs_code', opts.wbsCode);
+  if (opts?.activityId) params.set('activity_id', opts.activityId);
+  if (opts?.limit != null) params.set('limit', String(opts.limit));
+  if (opts?.offset != null) params.set('offset', String(opts.offset));
+  const qs = params.toString();
+  return fetchJson(
+    `/api/schedules/projects/${encodeURIComponent(projectKey)}/diffs/${encodeURIComponent(String(diffId))}/details${qs ? `?${qs}` : ''}`,
+  );
+}
 export function getScheduleIdentities(projectKey: string, opts?: { showMerged?: boolean }) {
   const params = new URLSearchParams();
   if (opts?.showMerged) params.set('show_merged', 'true');
@@ -1905,6 +1938,8 @@ export const api = {
   getScheduleQualityRun,
   getScheduleProjectQualitySummary,
   getScheduleVersionDiff,
+  getScheduleDiffSummary,
+  getScheduleDiffDetails,
   getScheduleIdentities,
   getScheduleIdentity,
   getScheduleIdentityReview,

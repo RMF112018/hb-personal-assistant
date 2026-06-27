@@ -200,6 +200,14 @@ export function ScheduleVersionsPage() {
                     >
                       Quality
                     </Link>
+                    {v.default_diff_id ? (
+                      <Link
+                        className="underline"
+                        to={`/schedules/version-diff?project=${encodeURIComponent(pk)}&diff_id=${encodeURIComponent(String(v.default_diff_id))}`}
+                      >
+                        Detail diff
+                      </Link>
+                    ) : null}
                     <Link className="underline" to={`/schedules/cost-mapping?project=${encodeURIComponent(pk)}`}>
                       Map
                     </Link>

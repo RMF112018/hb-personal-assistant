@@ -310,6 +310,59 @@ class ScheduleActivityRepository:
             )
             return [dict(r) for r in cur.fetchall()]
 
+    def list_wbs_nodes(self, schedule_version_key: str) -> list[dict[str, Any]]:
+        with self._conn() as conn:
+            cur = conn.execute(
+                """
+                SELECT wbs_id, parent_wbs_id, wbs_code, wbs_name, wbs_path, sequence_order
+                FROM procore_ep_schedule_wbs_nodes
+                WHERE schedule_version_key=?
+                ORDER BY wbs_id
+                """,
+                (schedule_version_key,),
+            )
+            return [dict(r) for r in cur.fetchall()]
+
+    def list_calendars(self, schedule_version_key: str) -> list[dict[str, Any]]:
+        with self._conn() as conn:
+            cur = conn.execute(
+                """
+                SELECT calendar_id, calendar_name, calendar_type, hours_per_day,
+                       days_per_week, is_default
+                FROM procore_ep_schedule_calendars
+                WHERE schedule_version_key=?
+                ORDER BY calendar_id
+                """,
+                (schedule_version_key,),
+            )
+            return [dict(r) for r in cur.fetchall()]
+
+    def list_activity_codes(self, schedule_version_key: str) -> list[dict[str, Any]]:
+        with self._conn() as conn:
+            cur = conn.execute(
+                """
+                SELECT activity_id, code_type, code_value, code_description
+                FROM procore_ep_schedule_activity_code_assignments
+                WHERE schedule_version_key=?
+                ORDER BY activity_id, code_type, code_value
+                """,
+                (schedule_version_key,),
+            )
+            return [dict(r) for r in cur.fetchall()]
+
+    def list_udf_values(self, schedule_version_key: str) -> list[dict[str, Any]]:
+        with self._conn() as conn:
+            cur = conn.execute(
+                """
+                SELECT activity_id, udf_type_name, udf_data_type, udf_value
+                FROM procore_ep_schedule_udf_values
+                WHERE schedule_version_key=?
+                ORDER BY activity_id, udf_type_name
+                """,
+                (schedule_version_key,),
+            )
+            return [dict(r) for r in cur.fetchall()]
+
     def list_projects_with_schedules(self) -> list[str]:
         with self._conn() as conn:
             cur = conn.execute(

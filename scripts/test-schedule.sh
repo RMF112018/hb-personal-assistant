@@ -33,6 +33,7 @@ pytest_targets=(
   "tests/test_schedule_critical_path_quality.py::test_xer_dcma_critical_path_not_measurable_with_source_and_proxy"
   "tests/test_schedule_critical_path_quality.py::test_gma_p6_still_not_measurable_critical_path"
   "tests/test_schedule_dto_redaction.py"
+  "tests/test_schedule_diff_intelligence.py"
   "tests/test_schedule_float_derivation.py"
   "tests/test_schedule_identity_foundation.py"
   "tests/test_schedule_identity_review_api.py"

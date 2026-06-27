@@ -635,6 +635,14 @@ export function ScheduleQualityPage() {
                 {text(comparisonBasis.default_prior_schedule_identity_key)} · Reason:{' '}
                 {text(comparisonBasis.default_prior_selection_reason ?? comparisonBasis.default_prior_unavailable_reason)}
               </div>
+              {comparisonIdentitySafe && comparisonBasis.detailed_diff_id ? (
+                <Link
+                  className="inline-flex text-sm underline mt-2"
+                  to={`/schedules/version-diff?project=${encodeURIComponent(String(health.project_key ?? projectKey))}&diff_id=${encodeURIComponent(String(comparisonBasis.detailed_diff_id))}`}
+                >
+                  View detailed diff
+                </Link>
+              ) : null}
             </div>
             {diffFacts.length === 0 ? (
               <p className="text-sm text-[var(--hb-muted)]">

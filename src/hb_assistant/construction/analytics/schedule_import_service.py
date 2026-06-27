@@ -846,7 +846,16 @@ class ScheduleImportService:
             to_acts = read.list_activities(version_key, for_diff=True)
             from_rels = read.list_relationships(from_version)
             to_rels = read.list_relationships(version_key)
+            from_wbs = read.list_wbs_nodes(from_version)
+            to_wbs = read.list_wbs_nodes(version_key)
+            from_calendars = read.list_calendars(from_version)
+            to_calendars = read.list_calendars(version_key)
+            from_codes = read.list_activity_codes(from_version)
+            to_codes = read.list_activity_codes(version_key)
+            from_udfs = read.list_udf_values(from_version)
+            to_udfs = read.list_udf_values(version_key)
             from .schedule_version_diff import compute_version_diff
+            from .schedule_diff_intelligence import build_detail_facts, summarize_detail_facts
 
             diff = compute_version_diff(
                 project_key=project_key,
@@ -857,8 +866,42 @@ class ScheduleImportService:
                 from_relationships=from_rels,
                 to_relationships=to_rels,
             )
-            diff_id = self._mapping_repo.insert_version_diff(diff)
-            self._import_repo.insert_diff_facts(_diff_fact_rows(diff_id, diff))
+            details_cache: list[dict[str, Any]] = []
+
+            def _detail_builder(diff_id: int) -> list[dict[str, Any]]:
+                details_cache[:] = build_detail_facts(
+                    diff_id=diff_id,
+                    project_key=project_key,
+                    from_version=from_version,
+                    to_version=version_key,
+                    schedule_identity_key=str(current_match["schedule_identity_key"]),
+                    identity_safe=True,
+                    comparison_type="identity_safe_default",
+                    from_activities=from_acts,
+                    to_activities=to_acts,
+                    from_relationships=from_rels,
+                    to_relationships=to_rels,
+                    from_wbs=from_wbs,
+                    to_wbs=to_wbs,
+                    from_calendars=from_calendars,
+                    to_calendars=to_calendars,
+                    from_codes=from_codes,
+                    to_codes=to_codes,
+                    from_udfs=from_udfs,
+                    to_udfs=to_udfs,
+                )
+                return details_cache
+
+            def _fact_builder(diff_id: int) -> list[dict[str, Any]]:
+                return _diff_fact_rows(diff_id, diff) + _diff_detail_summary_fact_rows(
+                    diff_id, diff, summarize_detail_facts(details_cache)
+                )
+
+            diff_id, _details = self._mapping_repo.insert_version_diff_with_detail_builders(
+                diff,
+                detail_builder=_detail_builder,
+                diff_fact_builder=_fact_builder,
+            )
             return diff_id
         except Exception as exc:  # best-effort: valid imports must not roll back
             _logger.warning(
@@ -1909,6 +1952,43 @@ def _diff_fact_rows(diff_id: int, diff: dict[str, Any]) -> list[dict[str, Any]]:
     return rows
 
 
+def _diff_detail_summary_fact_rows(
+    diff_id: int, diff: dict[str, Any], summary: dict[str, Any]
+) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    metric_keys = (
+        "total_change_count",
+        "date_drift_count",
+        "critical_severity_count",
+        "major_severity_count",
+        "moderate_severity_count",
+        "minor_severity_count",
+        "informational_count",
+        "requires_attention_count",
+    )
+    for key in metric_keys:
+        rows.append(
+            {
+                "diff_fact_id": _sha256(f"{diff_id}|detail|{key}"),
+                "diff_id": diff_id,
+                "project_key": diff["project_key"],
+                "from_schedule_version_key": diff.get("from_schedule_version_key"),
+                "to_schedule_version_key": diff["to_schedule_version_key"],
+                "metric_key": key,
+                "metric_value": _str_or_none(summary.get(key)),
+                "metric_unit": "count",
+                "status": "available",
+                "basis": "detailed_diff_facts",
+                "evidence_json": json.dumps(
+                    {"domain_counts": summary.get("domain_counts", {})},
+                    sort_keys=True,
+                    default=str,
+                ),
+            }
+        )
+    return rows
+
+
 def _safe_json_object(value: Any) -> dict[str, Any]:
     if not value:
         return {}
@@ -2051,6 +2131,18 @@ class ScheduleReadService:
             public["default_prior_unavailable_reason"] = (
                 capability.get("unavailable_reason") if capability else None
             )
+            diff_fact = next(
+                (fact for fact in self._import_repo.list_diff_facts(str(svk)) if fact.get("diff_id")),
+                None,
+            )
+            if diff_fact:
+                diff_id = int(diff_fact.get("diff_id") or 0)
+                public["default_diff_id"] = diff_id
+                detail_summary = self._mapping_repo.summarize_diff_detail_facts(diff_id)
+                public["default_diff_detail_count"] = detail_summary.get("total_change_count", 0)
+                public["default_diff_requires_attention_count"] = detail_summary.get(
+                    "requires_attention_count", 0
+                )
         return public
 
     def list_versions(
@@ -2111,6 +2203,86 @@ class ScheduleReadService:
     def list_relationships(self, schedule_version_key: str) -> list[dict[str, Any]]:
         self._ensure_schema()
         return self._activity_repo.list_relationships(schedule_version_key)
+
+    def list_wbs_nodes(self, schedule_version_key: str) -> list[dict[str, Any]]:
+        self._ensure_schema()
+        return self._activity_repo.list_wbs_nodes(schedule_version_key)
+
+    def list_calendars(self, schedule_version_key: str) -> list[dict[str, Any]]:
+        self._ensure_schema()
+        return self._activity_repo.list_calendars(schedule_version_key)
+
+    def list_activity_codes(self, schedule_version_key: str) -> list[dict[str, Any]]:
+        self._ensure_schema()
+        return self._activity_repo.list_activity_codes(schedule_version_key)
+
+    def list_udf_values(self, schedule_version_key: str) -> list[dict[str, Any]]:
+        self._ensure_schema()
+        return self._activity_repo.list_udf_values(schedule_version_key)
+
+    def get_diff_summary(self, project_key: str, diff_id: int) -> dict[str, Any] | None:
+        self._ensure_schema()
+        diff = self._mapping_repo.get_version_diff(diff_id)
+        if not diff or diff.get("project_key") != project_key:
+            return None
+        counts = self._mapping_repo.summarize_diff_detail_facts(diff_id, project_key=project_key)
+        first_detail = self._mapping_repo.list_diff_detail_facts(
+            diff_id, project_key=project_key, limit=1, offset=0
+        )
+        metadata = {
+            "diff_id": diff_id,
+            "project_key": project_key,
+            "from_schedule_version_key": diff.get("from_schedule_version_key"),
+            "to_schedule_version_key": diff.get("to_schedule_version_key"),
+            "schedule_identity_key": first_detail[0].get("schedule_identity_key")
+            if first_detail
+            else None,
+            "identity_safe": bool(first_detail and int(first_detail[0].get("identity_safe") or 0)),
+            "comparison_type": first_detail[0].get("comparison_type") if first_detail else "unknown",
+        }
+        return {"metadata": metadata, "summary_counts": counts}
+
+    def list_diff_details(
+        self,
+        project_key: str,
+        diff_id: int,
+        *,
+        change_domain: str | None = None,
+        change_type: str | None = None,
+        severity: str | None = None,
+        requires_attention: bool | None = None,
+        wbs_code: str | None = None,
+        activity_id: str | None = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> dict[str, Any] | None:
+        self._ensure_schema()
+        summary = self.get_diff_summary(project_key, diff_id)
+        if summary is None:
+            return None
+        rows = self._mapping_repo.list_diff_detail_facts(
+            diff_id,
+            project_key=project_key,
+            change_domain=change_domain,
+            change_type=change_type,
+            severity=severity,
+            requires_attention=requires_attention,
+            wbs_code=wbs_code,
+            activity_id=activity_id,
+            limit=limit,
+            offset=offset,
+        )
+        total = self._mapping_repo.count_diff_detail_facts(diff_id, project_key=project_key)
+        return {
+            **summary,
+            "detail_rows": rows,
+            "pagination": {
+                "limit": limit,
+                "offset": offset,
+                "total_count": total,
+                "returned_count": len(rows),
+            },
+        }
 
     def list_quality(self, schedule_version_key: str) -> list[dict[str, Any]]:
         self._ensure_schema()
@@ -2238,4 +2410,10 @@ class ScheduleReadService:
             else None,
             "identity_requires_review": identity_requires_review,
             "identity_safe": identity_safe,
+            "detailed_diff_id": int(diff_facts[0].get("diff_id")) if diff_facts else None,
+            "detail_summary_counts": self._mapping_repo.summarize_diff_detail_facts(
+                int(diff_facts[0].get("diff_id") or 0)
+            )
+            if diff_facts
+            else {},
         }

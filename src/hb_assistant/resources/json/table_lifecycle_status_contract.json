@@ -18,7 +18,7 @@
     "phase_owner",
     "blocking_for_phase"
   ],
-  "table_count": 452,
+  "table_count": 453,
   "tables": {
     "construction_data_quality_runs": {
       "table_family": "data_quality_v20v21",
@@ -4078,6 +4078,15 @@
       "blocking_for_phase": "none",
       "v": "V77",
       "notes": "Append-only manual identity review actions for reassign, split, and merge decisions."
+    },
+    "schedule_version_diff_detail_facts": {
+      "table_family": "schedule_diff_intelligence_v78",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "schedule_diff_intelligence_foundation",
+      "blocking_for_phase": "none",
+      "v": "V78",
+      "notes": "Detailed activity, relationship, WBS, calendar, code, and UDF change facts for persisted schedule version diffs."
     }
   }
 }
