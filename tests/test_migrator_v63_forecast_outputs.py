@@ -80,7 +80,7 @@ def test_lifecycle_contract_count_and_v63_classification() -> None:
         / "src/hb_assistant/resources/json/table_lifecycle_status_contract.json"
     )
     contract = json.loads(contract_path.read_text(encoding="utf-8"))
-    assert contract["table_count"] == 471
+    assert contract["table_count"] == 473
     assert contract["table_count"] == len(contract["tables"])
     for t in V63_TABLES:
         entry = contract["tables"][t]

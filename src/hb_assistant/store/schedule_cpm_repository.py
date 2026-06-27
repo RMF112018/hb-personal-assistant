@@ -1,0 +1,156 @@
+"""Repository for the V83 CPM graph diagnostics tables (additive read/write).
+
+Persists and reads ``schedule_cpm_runs`` and ``schedule_cpm_diagnostics``. Mirrors the
+connection/transaction conventions used by ``schedule_activity_repository``.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+from typing import Any, Iterable
+
+from .connection import get_connection, open_connection, transaction
+
+
+def deterministic_cpm_run_id(
+    *,
+    schedule_version_key: str,
+    import_id: str,
+    diagnostic_signature: Iterable[str],
+) -> str:
+    """Stable run id derived from version + import + sorted diagnostic signature.
+
+    Deterministic by construction (no wall-clock / randomness) so rerunning graph
+    diagnostics on unchanged inputs yields the same ``cpm_run_id`` and stays idempotent.
+    """
+    signature = "\n".join(sorted(diagnostic_signature))
+    payload = f"{schedule_version_key}\x1f{import_id}\x1f{signature}"
+    digest = hashlib.sha256(payload.encode("utf-8")).hexdigest()[:32]
+    return f"cpmrun_{digest}"
+
+
+class ScheduleCpmDiagnosticsRepository:
+    def __init__(self, *, db_path: str) -> None:
+        self._db_path = db_path
+
+    def _conn(self):
+        conn = get_connection(self._db_path)
+        conn.execute("PRAGMA foreign_keys=ON")
+        return conn
+
+    def insert_run(
+        self, run_row: dict[str, Any], *, conn: Any | None = None
+    ) -> str:
+        """Insert (or replace) a CPM run summary row; return its cpm_run_id."""
+        cols = list(run_row.keys())
+        placeholders = ", ".join("?" for _ in cols)
+        names = ", ".join(cols)
+        sql = (
+            f"INSERT OR REPLACE INTO schedule_cpm_runs ({names}) VALUES ({placeholders})"
+        )
+        params = tuple(run_row[c] for c in cols)
+        if conn is not None:
+            conn.execute(sql, params)
+        else:
+            with open_connection(self._db_path) as active:
+                with transaction(active):
+                    active.execute(sql, params)
+        return str(run_row["cpm_run_id"])
+
+    def insert_diagnostics(
+        self, rows: Iterable[dict[str, Any]], *, conn: Any | None = None
+    ) -> int:
+        items = list(rows)
+        if not items:
+            return 0
+        cols = list(items[0].keys())
+        placeholders = ", ".join("?" for _ in cols)
+        names = ", ".join(cols)
+        sql = f"INSERT INTO schedule_cpm_diagnostics ({names}) VALUES ({placeholders})"
+        batch = [tuple(r[c] for c in cols) for r in items]
+        if conn is not None:
+            conn.executemany(sql, batch)
+        else:
+            with open_connection(self._db_path) as active:
+                with transaction(active):
+                    active.executemany(sql, batch)
+        return len(items)
+
+    def replace_run_with_diagnostics(
+        self, run_row: dict[str, Any], diagnostic_rows: Iterable[dict[str, Any]]
+    ) -> str:
+        """Persist a run plus its diagnostics in a single transaction (idempotent rerun).
+
+        Any prior diagnostics for the same cpm_run_id are cleared first so a rerun does not
+        accumulate duplicate finding rows.
+        """
+        run_id = str(run_row["cpm_run_id"])
+        rows = list(diagnostic_rows)
+        with open_connection(self._db_path) as active:
+            with transaction(active):
+                active.execute(
+                    "DELETE FROM schedule_cpm_diagnostics WHERE cpm_run_id=?", (run_id,)
+                )
+                self.insert_run(run_row, conn=active)
+                if rows:
+                    self.insert_diagnostics(rows, conn=active)
+        return run_id
+
+    def list_runs(self, schedule_version_key: str) -> list[dict[str, Any]]:
+        with self._conn() as conn:
+            cur = conn.execute(
+                """
+                SELECT cpm_run_id, project_key, schedule_version_key, import_id,
+                       node_count, edge_count, is_acyclic, diagnostic_count,
+                       topological_order_json, analysis_scope, cpm_recalculation_status,
+                       created_at
+                FROM schedule_cpm_runs
+                WHERE schedule_version_key=?
+                ORDER BY created_at DESC, cpm_run_id
+                """,
+                (schedule_version_key,),
+            )
+            return [dict(r) for r in cur.fetchall()]
+
+    def get_run(self, cpm_run_id: str) -> dict[str, Any] | None:
+        with self._conn() as conn:
+            cur = conn.execute(
+                """
+                SELECT cpm_run_id, project_key, schedule_version_key, import_id,
+                       node_count, edge_count, is_acyclic, diagnostic_count,
+                       topological_order_json, analysis_scope, cpm_recalculation_status,
+                       created_at
+                FROM schedule_cpm_runs
+                WHERE cpm_run_id=?
+                """,
+                (cpm_run_id,),
+            )
+            row = cur.fetchone()
+            return dict(row) if row else None
+
+    def list_diagnostics(self, cpm_run_id: str) -> list[dict[str, Any]]:
+        with self._conn() as conn:
+            cur = conn.execute(
+                """
+                SELECT diagnostic_id, cpm_run_id, project_key, schedule_version_key,
+                       import_id, activity_id, relationship_ref, diagnostic_type,
+                       severity, summary, evidence_json, created_at
+                FROM schedule_cpm_diagnostics
+                WHERE cpm_run_id=?
+                ORDER BY diagnostic_type, activity_id, relationship_ref, diagnostic_id
+                """,
+                (cpm_run_id,),
+            )
+            out: list[dict[str, Any]] = []
+            for r in cur.fetchall():
+                row = dict(r)
+                if row.get("evidence_json"):
+                    try:
+                        row["evidence"] = json.loads(row["evidence_json"])
+                    except (TypeError, ValueError):
+                        row["evidence"] = None
+                else:
+                    row["evidence"] = None
+                out.append(row)
+            return out

@@ -57,7 +57,7 @@ def test_v81_contract_count_unchanged() -> None:
             / "src/hb_assistant/resources/json/table_lifecycle_status_contract.json"
         ).read_text()
     )
-    assert contract["table_count"] == len(contract["tables"]) == 471
+    assert contract["table_count"] == len(contract["tables"]) == 473
     assert contract["tables"][_RULES]["v"] == "V81"
     assert contract["tables"][_REVIEW]["v"] == "V81"
 

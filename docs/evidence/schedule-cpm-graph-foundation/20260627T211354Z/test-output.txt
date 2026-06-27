@@ -1,0 +1,19 @@
+# CPM graph diagnostics foundation — validation output
+# Generated 2026-06-27T21:14:12Z
+
+## python -m pytest tests/test_schedule_cpm_graph.py
+............                                                             [100%]
+
+## regression: import api / health / critical-path-not-measurable / migration / count
+=============================== warnings summary ===============================
+../../hb-personal-assistant/.venv/lib/python3.14/site-packages/fastapi/testclient.py:1
+  /Users/bobbyfetting/hb-personal-assistant/.venv/lib/python3.14/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+
+## ruff check (new files)
+All checks passed!
+
+## full schedule bundle result (scripts/test-schedule.sh)
+173 passed, 2 deselected, 1 warning in 145.85s — see prior run

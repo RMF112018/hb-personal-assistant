@@ -1,0 +1,31 @@
+{
+  "schedule_version_key": "tropical|1|2026-06-01 08:00",
+  "cpm_run_id": "cpmrun_01234e35fe2bec71b9976c54789233a4",
+  "node_count": 2,
+  "edge_count": 1,
+  "is_acyclic": true,
+  "analysis_scope": "graph_diagnostics_only",
+  "cpm_recalculation_status": "not_implemented",
+  "diagnostics": [
+    {
+      "diagnostic_type": "open_start",
+      "severity": "info",
+      "summary": "Activity A1000 has no predecessors (open start).",
+      "activity_id": "A1000",
+      "relationship_ref": null,
+      "evidence": {
+        "indegree": 0
+      }
+    },
+    {
+      "diagnostic_type": "open_finish",
+      "severity": "info",
+      "summary": "Activity A1010 has no successors (open finish).",
+      "activity_id": "A1010",
+      "relationship_ref": null,
+      "evidence": {
+        "outdegree": 0
+      }
+    }
+  ]
+}
