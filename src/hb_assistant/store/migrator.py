@@ -8158,6 +8158,7 @@ class SQLiteMigrator:
             # v80 Unified schedule package assembly evidence.
             for stmt in self._v80_statements():
                 conn.execute(stmt)
+            self._reconcile_v80_schedule_package_equivalence_facts(conn)
             cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 80")
             if cur.fetchone() is None:
                 conn.execute(
@@ -8262,6 +8263,37 @@ class SQLiteMigrator:
             from hb_assistant.store.schedule_schema_verify import assert_v65_schedule_float_schema
 
             assert_v65_schedule_float_schema(conn)
+
+    @staticmethod
+    def _reconcile_v80_schedule_package_equivalence_facts(conn: sqlite3.Connection) -> None:
+        from hb_assistant.store.schedule_import_health_tables import (
+            V80_PACKAGE_EQUIVALENCE_FACT_ADDITIVE_REPAIR_COLUMNS,
+            V80_PACKAGE_EQUIVALENCE_FACT_INSERT_COLUMNS,
+        )
+
+        try:
+            existing = {
+                row[1]
+                for row in conn.execute("PRAGMA table_info(schedule_package_equivalence_facts)")
+            }
+        except sqlite3.OperationalError:
+            return
+        if not existing:
+            return
+        missing = set(V80_PACKAGE_EQUIVALENCE_FACT_INSERT_COLUMNS) - existing
+        unrepairable = missing - set(V80_PACKAGE_EQUIVALENCE_FACT_ADDITIVE_REPAIR_COLUMNS)
+        if unrepairable:
+            raise RuntimeError(
+                "schedule_package_equivalence_facts is missing non-repairable V80 columns: "
+                + ", ".join(sorted(unrepairable))
+            )
+        for column in V80_PACKAGE_EQUIVALENCE_FACT_INSERT_COLUMNS:
+            if column in missing:
+                conn.execute(
+                    "ALTER TABLE schedule_package_equivalence_facts "
+                    f"ADD COLUMN {column} "
+                    f"{V80_PACKAGE_EQUIVALENCE_FACT_ADDITIVE_REPAIR_COLUMNS[column]}"
+                )
 
     @staticmethod
     def _reconcile_v67_schedule_critical_path_columns(conn: sqlite3.Connection) -> None:

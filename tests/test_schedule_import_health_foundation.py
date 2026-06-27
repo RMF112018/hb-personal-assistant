@@ -18,6 +18,11 @@ except RuntimeError as exc:  # pragma: no cover - environment guard
 from hb_assistant.construction.analytics import create_app
 from hb_assistant.construction.analytics.schedule_xml_parser import parse_pmxml_package_bytes
 from hb_assistant.store.migrator import LATEST_SCHEMA_VERSION, SQLiteMigrator
+from hb_assistant.store.schedule_import_health_tables import (
+    V80_PACKAGE_EQUIVALENCE_FACT_ADDITIVE_REPAIR_COLUMNS,
+    V80_PACKAGE_EQUIVALENCE_FACT_INSERT_COLUMNS,
+)
+from hb_assistant.store.schedule_import_repository import ScheduleImportRepository
 from tests.schedule_project_test_helpers import seed_procore_ep_project
 
 XER_FIXTURE = Path(__file__).resolve().parent / "fixtures" / "schedules" / "xer" / "minimal.xer"
@@ -25,6 +30,47 @@ XER_FIXTURE = Path(__file__).resolve().parent / "fixtures" / "schedules" / "xer"
 
 def _operator() -> dict[str, str]:
     return {"X-HB-UI-Role": "operator"}
+
+
+_OLDER_V80_EQUIVALENCE_COLUMNS: tuple[tuple[str, str], ...] = (
+    ("equivalence_id", "TEXT PRIMARY KEY"),
+    ("package_id", "TEXT NOT NULL"),
+    ("import_id", "TEXT NOT NULL"),
+    ("project_key", "TEXT NOT NULL"),
+    ("schedule_version_key", "TEXT NOT NULL"),
+    ("primary_source_file_id", "TEXT"),
+    ("candidate_source_file_id", "TEXT"),
+    ("primary_source_format", "TEXT"),
+    ("candidate_source_format", "TEXT"),
+    ("primary_project_id", "TEXT"),
+    ("candidate_project_id", "TEXT"),
+    ("primary_project_name", "TEXT"),
+    ("candidate_project_name", "TEXT"),
+    ("primary_data_date", "TEXT"),
+    ("candidate_data_date", "TEXT"),
+    ("activity_overlap_ratio", "TEXT"),
+    ("relationship_overlap_ratio", "TEXT"),
+    ("data_date_match", "INTEGER NOT NULL DEFAULT 0"),
+    ("planned_start_match", "INTEGER NOT NULL DEFAULT 0"),
+    ("scheduled_finish_match", "INTEGER NOT NULL DEFAULT 0"),
+    ("project_identity_compatible", "INTEGER NOT NULL DEFAULT 0"),
+    ("equivalence_status", "TEXT NOT NULL"),
+    ("is_equivalent", "INTEGER NOT NULL DEFAULT 0"),
+    ("evidence_json", "TEXT"),
+    ("created_at", "TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP"),
+)
+
+
+def _replace_equivalence_table_with_older_v80_shape(db: Path) -> None:
+    with sqlite3.connect(db) as conn:
+        conn.execute("DROP TABLE IF EXISTS schedule_package_equivalence_facts")
+        column_sql = ",\n      ".join(f"{name} {ddl}" for name, ddl in _OLDER_V80_EQUIVALENCE_COLUMNS)
+        conn.execute(f"CREATE TABLE schedule_package_equivalence_facts ({column_sql})")
+        conn.execute(
+            "INSERT OR IGNORE INTO schema_migrations (version, name) "
+            "VALUES (80, 'v80_schedule_package_assembly_evidence')"
+        )
+        conn.commit()
 
 
 def _baseline_xml() -> bytes:
@@ -287,6 +333,47 @@ def test_v80_schedule_package_assembly_tables_present_and_idempotent(tmp_path: P
         ).fetchone()[0] == 1
 
 
+def test_v80_equivalence_fact_insert_contract_matches_schema(tmp_path: Path) -> None:
+    db = tmp_path / "schema.db"
+    SQLiteMigrator(db_path=str(db)).apply()
+    with sqlite3.connect(db) as conn:
+        columns = {
+            row[1]
+            for row in conn.execute("PRAGMA table_info(schedule_package_equivalence_facts)")
+        }
+    assert set(V80_PACKAGE_EQUIVALENCE_FACT_INSERT_COLUMNS) <= columns
+    older_columns = {name for name, _ddl in _OLDER_V80_EQUIVALENCE_COLUMNS}
+    older_missing = set(V80_PACKAGE_EQUIVALENCE_FACT_INSERT_COLUMNS) - older_columns
+    assert older_missing == set(V80_PACKAGE_EQUIVALENCE_FACT_ADDITIVE_REPAIR_COLUMNS)
+
+
+def test_v80_equivalence_fact_schema_self_heals_older_applied_shape(
+    tmp_path: Path,
+) -> None:
+    db = tmp_path / "schema.db"
+    migrator = SQLiteMigrator(db_path=str(db))
+    assert migrator.apply() == LATEST_SCHEMA_VERSION >= 80
+    _replace_equivalence_table_with_older_v80_shape(db)
+
+    assert migrator.apply() == LATEST_SCHEMA_VERSION
+
+    with sqlite3.connect(db) as conn:
+        columns = {
+            row[1]
+            for row in conn.execute("PRAGMA table_info(schedule_package_equivalence_facts)")
+        }
+        v80_count = conn.execute(
+            "SELECT COUNT(*) FROM schema_migrations WHERE version=80"
+        ).fetchone()[0]
+    assert v80_count == 1
+    assert set(V80_PACKAGE_EQUIVALENCE_FACT_INSERT_COLUMNS) <= columns
+    assert {
+        "primary_normalized_data_date",
+        "candidate_normalized_data_date",
+        "block_reason",
+    } <= columns
+
+
 def test_pmxml_package_parser_separates_current_and_baseline() -> None:
     entities = parse_pmxml_package_bytes(_baseline_xml(), source_file_id="xml-1")
     current = [e for e in entities if e.role == "current"]
@@ -303,6 +390,7 @@ def test_pmxml_package_parser_separates_current_and_baseline() -> None:
 def test_zip_xer_xml_current_companions_import_as_unified_schedule(tmp_path: Path) -> None:
     db = tmp_path / "api.db"
     SQLiteMigrator(db_path=str(db)).apply()
+    _replace_equivalence_table_with_older_v80_shape(db)
     seed_procore_ep_project(db, project_key="tropical", display_name="Tropical Wind")
     client = TestClient(create_app(db_path=str(db)))
 
@@ -372,11 +460,55 @@ def test_zip_xer_xml_current_companions_import_as_unified_schedule(tmp_path: Pat
     }
 
 
+def test_package_evidence_operational_error_returns_structured_persistence_failure(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    db = tmp_path / "api.db"
+    SQLiteMigrator(db_path=str(db)).apply()
+    seed_procore_ep_project(db, project_key="tropical", display_name="Tropical Wind")
+    client = TestClient(create_app(db_path=str(db)))
+
+    preview = client.post(
+        "/api/schedules/import-preview",
+        headers=_operator(),
+        files={"file": ("unified-package.zip", _unified_zip_payload(), "application/zip")},
+        data={"project_key": "tropical"},
+    )
+    assert preview.status_code == 200
+
+    def _raise_operational_error(*_args: object, **_kwargs: object) -> None:
+        raise sqlite3.OperationalError("forced package evidence persistence failure")
+
+    monkeypatch.setattr(
+        ScheduleImportRepository,
+        "insert_package_assembly_evidence",
+        _raise_operational_error,
+    )
+
+    commit = client.post(
+        "/api/schedules/import-commit",
+        headers=_operator(),
+        json={
+            "import_id": preview.json()["import_id"],
+            "project_key": "tropical",
+            "confirm": True,
+        },
+    )
+
+    assert commit.status_code == 409
+    detail = commit.json()["detail"]
+    assert detail["code"] == "schedule_import_persistence_failed"
+    assert detail["project_key"] == "tropical"
+    assert detail["import_id"] == preview.json()["import_id"]
+
+
 def test_zip_xer_xml_same_project_name_with_different_content_is_rejected(
     tmp_path: Path,
 ) -> None:
     db = tmp_path / "api.db"
     SQLiteMigrator(db_path=str(db)).apply()
+    _replace_equivalence_table_with_older_v80_shape(db)
     seed_procore_ep_project(db, project_key="tropical", display_name="Tropical Wind")
     client = TestClient(create_app(db_path=str(db)))
 
@@ -405,6 +537,7 @@ def test_twn_style_xer_pmxml_zip_with_same_data_date_and_activity_set_is_unified
 ) -> None:
     db = tmp_path / "api.db"
     SQLiteMigrator(db_path=str(db)).apply()
+    _replace_equivalence_table_with_older_v80_shape(db)
     seed_procore_ep_project(db, project_key="tropical", display_name="Tropical Wind")
     client = TestClient(create_app(db_path=str(db)))
 
@@ -572,6 +705,15 @@ def test_twn_style_xer_pmxml_zip_with_same_data_date_and_activity_set_is_unified
             """,
             (svk, second_package_id, second_import_id),
         ).fetchone()[0]
+        new_equivalence = conn.execute(
+            """
+            SELECT is_equivalent, block_reason,
+                   primary_normalized_data_date, candidate_normalized_data_date
+            FROM schedule_package_equivalence_facts
+            WHERE schedule_version_key=? AND package_id=? AND import_id=?
+            """,
+            (svk, second_package_id, second_import_id),
+        ).fetchone()
         new_capability_count = conn.execute(
             """
             SELECT COUNT(*)
@@ -596,6 +738,7 @@ def test_twn_style_xer_pmxml_zip_with_same_data_date_and_activity_set_is_unified
     assert active_baseline_count == 2
     assert new_lineage_count > 0
     assert new_equivalence_count > 0
+    assert new_equivalence == (1, None, "2026-06-23", "2026-06-23")
     assert new_capability_count > 0
 
     health = client.get(f"/api/schedules/versions/{svk}/health-data", headers=_operator())

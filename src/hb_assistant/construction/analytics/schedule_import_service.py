@@ -55,14 +55,18 @@ _PREVIEW_CACHE: dict[str, dict[str, Any]] = {}
 
 def ensure_schedule_schema(db_path: str) -> None:
     from hb_assistant.store.connection import get_connection
-    from hb_assistant.store.schedule_schema_verify import verify_v65_schedule_float_schema
+    from hb_assistant.store.schedule_schema_verify import (
+        verify_v65_schedule_float_schema,
+        verify_v80_schedule_package_equivalence_schema,
+    )
 
     migrator = SQLiteMigrator(db_path=db_path)
     conn = get_connection(db_path)
     try:
         missing = verify_v65_schedule_float_schema(conn)
+        v80_missing = verify_v80_schedule_package_equivalence_schema(conn)
         version = migrator.current_version()
-        needs_apply = version < LATEST_SCHEMA_VERSION or bool(missing)
+        needs_apply = version < LATEST_SCHEMA_VERSION or bool(missing) or bool(v80_missing)
     finally:
         conn.close()
 
@@ -72,6 +76,7 @@ def ensure_schedule_schema(db_path: str) -> None:
     conn2 = get_connection(db_path)
     try:
         missing_after = verify_v65_schedule_float_schema(conn2)
+        v80_missing_after = verify_v80_schedule_package_equivalence_schema(conn2)
         version_after = migrator.current_version()
     finally:
         conn2.close()
@@ -85,7 +90,7 @@ def ensure_schedule_schema(db_path: str) -> None:
     finally:
         conn3.close()
 
-    if version_after < LATEST_SCHEMA_VERSION or missing_after or fk_issues:
+    if version_after < LATEST_SCHEMA_VERSION or missing_after or v80_missing_after or fk_issues:
         raise ScheduleImportError(
             "schedule_schema_not_ready",
             message="schedule schema is not ready",
@@ -93,6 +98,7 @@ def ensure_schedule_schema(db_path: str) -> None:
                 "schema_version": version_after,
                 "schema_expected": LATEST_SCHEMA_VERSION,
                 "schedule_v65_missing_columns": missing_after,
+                "schedule_v80_missing_columns": v80_missing_after,
                 "schedule_import_fk_drift": fk_issues,
             },
         )
@@ -1343,7 +1349,7 @@ class ScheduleImportService:
                     )
             finally:
                 conn.close()
-        except sqlite3.IntegrityError as exc:
+        except (sqlite3.IntegrityError, sqlite3.OperationalError) as exc:
             _logger.warning(
                 "schedule import commit persistence failed import_id=%s project_key=%s version_key=%s",
                 import_id,

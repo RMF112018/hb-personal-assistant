@@ -285,6 +285,42 @@ V80_TABLES: tuple[str, ...] = (
     "schedule_package_equivalence_facts",
 )
 
+V80_PACKAGE_EQUIVALENCE_FACT_INSERT_COLUMNS: tuple[str, ...] = (
+    "equivalence_id",
+    "package_id",
+    "import_id",
+    "project_key",
+    "schedule_version_key",
+    "primary_source_file_id",
+    "candidate_source_file_id",
+    "primary_source_format",
+    "candidate_source_format",
+    "primary_project_id",
+    "candidate_project_id",
+    "primary_project_name",
+    "candidate_project_name",
+    "primary_data_date",
+    "candidate_data_date",
+    "primary_normalized_data_date",
+    "candidate_normalized_data_date",
+    "activity_overlap_ratio",
+    "relationship_overlap_ratio",
+    "data_date_match",
+    "planned_start_match",
+    "scheduled_finish_match",
+    "project_identity_compatible",
+    "equivalence_status",
+    "is_equivalent",
+    "block_reason",
+    "evidence_json",
+)
+
+V80_PACKAGE_EQUIVALENCE_FACT_ADDITIVE_REPAIR_COLUMNS: dict[str, str] = {
+    "primary_normalized_data_date": "TEXT",
+    "candidate_normalized_data_date": "TEXT",
+    "block_reason": "TEXT",
+}
+
 V80_STATEMENTS: list[str] = [
     """
     CREATE TABLE IF NOT EXISTS schedule_package_field_lineage (
