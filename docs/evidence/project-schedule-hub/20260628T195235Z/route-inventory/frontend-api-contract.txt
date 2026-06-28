@@ -1,0 +1,11 @@
+frontend/src/lib/api.ts:231:export interface ProjectScheduleSummaryResponse {
+frontend/src/lib/api.ts:254:export function getProjectScheduleSummary(projectKey: string) {
+frontend/src/lib/api.ts:255:  return fetchJson<ProjectScheduleSummaryResponse>(
+frontend/src/lib/api.ts:2268:  getProjectScheduleSummary,
+frontend/src/pages/ProjectSchedulePage.tsx:12:import type { ProjectScheduleSummaryResponse } from '../lib/api'
+frontend/src/pages/ProjectSchedulePage.tsx:61:    queryFn: () => api.getProjectScheduleSummary(projectKey),
+frontend/src/pages/ProjectSchedulePage.tsx:85:  const schedule = (data || {}) as ProjectScheduleSummaryResponse
+frontend/src/pages/ProjectSchedulePage.test.tsx:10:const getProjectScheduleSummaryMock = vi.fn()
+frontend/src/pages/ProjectSchedulePage.test.tsx:19:      getProjectScheduleSummary: (...args: unknown[]) => getProjectScheduleSummaryMock(...args),
+frontend/src/pages/ProjectSchedulePage.test.tsx:144:  getProjectScheduleSummaryMock.mockResolvedValue(response)
+frontend/src/pages/ProjectSchedulePage.test.tsx:155:    getProjectScheduleSummaryMock.mockReset()

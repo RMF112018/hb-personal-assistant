@@ -1,0 +1,56 @@
+section  import_id     source_filename_redacted  import_status  validation_status       activity_count  relationship_count  schedule_version_key            created_at           source_project_name
+-------  ------------  ------------------------  -------------  ----------------------  --------------  ------------------  ------------------------------  -------------------  -------------------
+IMPORTS  d57d46b5dcdc  TWNU18.xer                superseded     superseded_by_operator  1378            3718                tropical|1069|2026-05-26 08:00  2026-06-22 16:11:46                     
+IMPORTS  26140a04d72d  TWNU18.xer                superseded     superseded_by_operator  1378            3718                tropical|1069|2026-05-26 08:00  2026-06-22 16:44:18                     
+IMPORTS  6a23ec2c13cc  TWNU18.xer                superseded     superseded_by_operator  1378            3718                tropical|1069|2026-05-26 08:00  2026-06-22 16:46:13                     
+IMPORTS  cc31c6881fc2  TWNU18.xer                superseded     superseded_by_operator  1378            3718                tropical|1069|2026-05-26 08:00  2026-06-22 17:12:05                     
+IMPORTS  c59ecc80241d  TWN.zip                   superseded     superseded_by_operator  1507            3921                tropical|1071|2026-06-23 08:00  2026-06-27 11:04:54  TWNU19             
+IMPORTS  ce548dbe1110  TWN.zip                   superseded     superseded_by_operator  1507            3921                tropical|1071|2026-06-23 08:00  2026-06-27 15:41:43  TWNU19             
+IMPORTS  330b6f5b414d  TWNU18.zip                superseded     superseded_by_operator  1378            3718                tropical|1069|2026-05-26 08:00  2026-06-28 09:34:58  TWNU18             
+IMPORTS  ef9abc389f59  TWNU19.zip                superseded     superseded_by_operator  1507            3921                tropical|1071|2026-06-23 08:00  2026-06-28 09:35:27  TWNU19             
+IMPORTS  9a20e3de7c74  TWNU18.zip                committed      ok                      1378            3718                tropical|1069|2026-05-26 08:00  2026-06-28 12:02:46  TWNU18             
+IMPORTS  beeb6dea0360  TWNU19.zip                committed      ok                      1507            3921                tropical|1071|2026-06-23 08:00  2026-06-28 12:03:10  TWNU19             
+metric             value
+-----------------  -----
+TWNU18 activities  1378 
+metric             value
+-----------------  -----
+TWNU19 activities  1507 
+metric                value
+--------------------  -----
+TWNU18 relationships  3718 
+metric                value
+--------------------  -----
+TWNU19 relationships  3921 
+metric                 remaining_count  remaining_negative_float  remaining_zero_float  remaining_source_driving_path  remaining_milestones
+---------------------  ---------------  ------------------------  --------------------  -----------------------------  --------------------
+TWNU19 remaining work  712              711                       0                     27                             31                  
+metric                               completed_in_window  started_in_window
+-----------------------------------  -------------------  -----------------
+TWNU19 recent progress exact window  80                   110              
+metric                                 common_remaining_activities  remaining_finish_moved_later  remaining_finish_moved_earlier  remaining_finish_changed  remaining_float_worsened  remaining_float_improved
+-------------------------------------  ---------------------------  ----------------------------  ------------------------------  ------------------------  ------------------------  ------------------------
+direct comparison - finish_date basis  614                          461                           76                              537                       378                       122                     
+metric                                      common_remaining_activities  remaining_finish_moved_later  remaining_finish_moved_earlier  remaining_finish_changed  remaining_float_worsened  remaining_float_improved
+------------------------------------------  ---------------------------  ----------------------------  ------------------------------  ------------------------  ------------------------  ------------------------
+direct comparison - remaining_finish basis  614                          0                             0                               0                         378                       122                     
+metric                              value
+----------------------------------  -----
+new remaining activities in TWNU19  98   
+activity_id         activity_name                     prior_finish      current_finish    prior_remaining_finish  current_remaining_finish
+------------------  --------------------------------  ----------------  ----------------  ----------------------  ------------------------
+FM-CNSTELEVS        ELEVATORS FOR CONSTRUCTION USE    2026-06-29 16:00  2026-06-30 16:00                                                  
+FM-PERMPOWER        PERM POWER                        2026-06-10 16:00  2026-07-02 16:00                                                  
+FM-P1A-AMEN- GTURN  TCO-1- AMENITIES TURNOVER         2026-08-05 16:00  2026-08-07 16:00                                                  
+FM-P1A-SITEDEV      TCO-1- SITE DEVELOPMENT COMPLETE  2026-08-05 16:00  2026-08-07 16:00                                                  
+FILTER-OUT-40       PHASE 2 INTERIOR COMPLETION       2026-08-06 16:00  2026-08-12 16:00                                                  
+FILTER-OUT-20       ENVELOPE COMPLETION               2026-07-30 16:00  2026-08-25 16:00                                                  
+metric                        value
+----------------------------  -----
+schedule_version_diffs count  17   
+metric                                    value 
+----------------------------------------  ------
+schedule_version_diff_detail_facts count  209437
+metric                                      value
+------------------------------------------  -----
+schedule_version_diff_impact_rollups count  32728

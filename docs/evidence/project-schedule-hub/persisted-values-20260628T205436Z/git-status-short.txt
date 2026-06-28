@@ -1,0 +1,12 @@
+ M frontend/src/app/routes.tsx
+ M frontend/src/components/projects/ProjectWorkspaceNav.tsx
+ M frontend/src/lib/api.ts
+ M frontend/src/navigation/navigationModel.ts
+ M frontend/src/pages/ProjectDashboardPage.test.tsx
+ M src/hb_assistant/construction/analytics/api.py
+?? docs/evidence/project-schedule-hub/
+?? frontend/src/pages/ProjectSchedulePage.test.tsx
+?? frontend/src/pages/ProjectSchedulePage.tsx
+?? src/hb_assistant/construction/analytics/project_schedule_summary_service.py
+?? tests/fixtures/project_schedule_hub/
+?? tests/test_project_schedule_hub_api.py

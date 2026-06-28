@@ -1,0 +1,1 @@
+fde2560d Merge pull request #185 from RMF112018/feat/obsidian-mcp-second-brain-foundation

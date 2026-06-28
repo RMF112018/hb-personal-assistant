@@ -1,0 +1,18 @@
+{
+  "remaining_health": {
+    "status": "at_risk",
+    "remaining_activity_count": 3,
+    "float_pressure": {
+      "negative_float_count": 1,
+      "zero_float_count": 1,
+      "near_critical_count": 1
+    }
+  },
+  "actions": {
+    "preview_limit": 5,
+    "preview": [
+      { "code": "negative_float", "title": "Review remaining negative-float work" },
+      { "code": "forecast_finish_moved_later", "title": "Review forecast finish movement" }
+    ]
+  }
+}

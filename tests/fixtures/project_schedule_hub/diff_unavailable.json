@@ -1,0 +1,12 @@
+{
+  "change_impact": {
+    "available": false,
+    "reason": "no_prior_update"
+  },
+  "readiness": {
+    "diff_unavailable": {
+      "required": true,
+      "reason": "no_prior_update"
+    }
+  }
+}

@@ -228,6 +228,34 @@ export function getProjectCostTime(projectKey: string) {
   const key = projectKey || 'all';
   return fetchJson(`/api/projects/${encodeURIComponent(key)}/cost-time`);
 }
+export interface ProjectScheduleSummaryResponse {
+  surface?: string;
+  project_key: string;
+  project_display_name?: string;
+  as_of_date?: string;
+  status?: string;
+  current_schedule?: Record<string, any>;
+  previous_update?: Record<string, any>;
+  readiness?: Record<string, any>;
+  schedule_story?: Record<string, any>;
+  command_summary?: Record<string, any>;
+  recent_progress?: Record<string, any>;
+  change_impact?: Record<string, any>;
+  remaining_health?: Record<string, any>;
+  critical_path?: Record<string, any>;
+  milestones?: Record<string, any>;
+  computed_cpm?: Record<string, any>;
+  trend_summary?: Record<string, any>;
+  actions?: { preview_limit?: number; preview?: any[]; all_items?: any[]; total_count?: number };
+  technical_links?: Record<string, string>;
+  technical_evidence?: Record<string, any>;
+  [key: string]: any;
+}
+export function getProjectScheduleSummary(projectKey: string) {
+  return fetchJson<ProjectScheduleSummaryResponse>(
+    `/api/projects/${encodeURIComponent(projectKey)}/schedule`,
+  );
+}
 
 /* My Items (Prompt 09 / UI-09). Aggregate only — no subroutes. */
 export function getMyItems() {
@@ -2237,6 +2265,7 @@ export const api = {
   getProjectMeetings,
   getProjectFieldOperations,
   getProjectCostTime,
+  getProjectScheduleSummary,
   getMyItems,
   getAdmin,
   getAdminSourceSyncHealth,

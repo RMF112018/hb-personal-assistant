@@ -1,0 +1,13 @@
+{
+  "status": "partial",
+  "current_schedule": {
+    "friendly_label": "TWNU19",
+    "data_date": "2026-06-23"
+  },
+  "previous_update": {
+    "available": false
+  },
+  "readiness": {
+    "no_prior_update": { "required": true, "reason": "no comparable prior update" }
+  }
+}

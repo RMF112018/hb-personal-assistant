@@ -10,6 +10,7 @@ export function ProjectWorkspaceNav({ projectKey }: ProjectWorkspaceNavProps) {
   const items = [
     { to: base, label: 'Overview' },
     { to: `${base}/forecasting`, label: 'Forecasting' },
+    { to: `${base}/schedule`, label: 'Schedule' },
     { to: `${base}/staffing`, label: 'Staffing' },
     { to: `${base}/exposures`, label: 'Exposures' },
   ]
