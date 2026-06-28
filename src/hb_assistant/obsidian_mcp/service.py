@@ -9,6 +9,12 @@ from pathlib import Path
 from typing import Any
 
 from .config import ObsidianMcpConfig, ObsidianMcpConfigPatch, apply_patch, load_config
+from .mutations import (
+    create_note,
+    patch_note,
+    recent_mutations,
+    write_readiness,
+)
 from .tools import (
     ObsidianMcpToolError,
     list_directory,
@@ -53,6 +59,11 @@ class ObsidianMcpService:
             "endpoint_url": config.endpoint_url,
             "token_configured": config.token_configured,
             "tools_registered": len(tool_registry()),
+            "writes_enabled": config.writes_enabled,
+            "vault_markdown_write_enabled": config.vault_markdown_write_enabled,
+            "write_policy": self.write_policy_summary(config),
+            "recent_mutations": recent_mutations(5),
+            "last_mutation": (recent_mutations(1) or [None])[-1],
             "last_health_check_at": health.get("checked_at"),
             "blocking_issues": blocking,
             "warnings": health.get("warnings", []),
@@ -66,8 +77,26 @@ class ObsidianMcpService:
             "local_first": True,
             "filesystem_mode_default": True,
             "no_source_file_writes": True,
+            "autonomous_markdown_writes_policy_gated": True,
+            "no_per_write_approval": True,
             "tokens_redacted": True,
+            "raw_note_content_redacted": True,
             "path_traversal_blocked": True,
+        }
+
+    def write_policy_summary(self, config: ObsidianMcpConfig | None = None) -> dict[str, Any]:
+        cfg = config or self.get_config()
+        return {
+            "writes_enabled": cfg.writes_enabled,
+            "vault_markdown_write_enabled": cfg.vault_markdown_write_enabled,
+            "max_write_chars": cfg.max_write_chars,
+            "write_requires_expected_sha256": cfg.write_requires_expected_sha256,
+            "backup_before_replace": cfg.backup_before_replace,
+            "create_parent_dirs_enabled": cfg.create_parent_dirs_enabled,
+            "allow_full_vault_markdown_writes": cfg.allow_full_vault_markdown_writes,
+            "protected_paths": cfg.protected_paths,
+            "blocked_hidden_paths": cfg.blocked_hidden_paths,
+            "allowed_write_file_types": cfg.allowed_write_file_types,
         }
 
     def health_check(self, *, persist: bool = True) -> dict[str, Any]:
@@ -115,8 +144,17 @@ class ObsidianMcpService:
             blocker="mcp_http_unavailable",
         )
         add("caps_configured", config.max_file_mb > 0 and config.max_result_chars > 0, "file/result caps configured", blocker="caps_invalid")
-        add("tool_registry", len(tool_registry()) == 3, "three Phase 1 tools registered", blocker="tool_registry_invalid")
+        add("tool_registry", len(tool_registry()) == 5, "five Obsidian MCP tools registered", blocker="tool_registry_invalid")
         add("http_port", self._port_available_or_self(config), "HTTP port is available or owned by backend", warning="port_unavailable")
+        readiness = write_readiness(config)
+        add("vault_writable", bool(readiness["vault_writable"]), "vault root is writable", warning="vault_not_writable")
+        add("backup_writable", bool(readiness["backup_writable"]), "backup root is writable", warning="backup_root_not_writable")
+        add(
+            "write_policy_configured",
+            config.max_write_chars > 0 and config.allowed_write_file_types == ["md"],
+            "Markdown write policy configured",
+            blocker="write_policy_invalid",
+        )
 
         payload = {
             "surface": "settings.obsidian_mcp.health",
@@ -126,6 +164,9 @@ class ObsidianMcpService:
             "blocking_issues": blocking,
             "warnings": warnings,
             "config": config.redacted(),
+            "write_policy": self.write_policy_summary(config),
+            "write_readiness": readiness,
+            "recent_mutations": recent_mutations(5),
             "guardrails": self.guardrails(),
         }
         if persist:
@@ -199,9 +240,56 @@ class ObsidianMcpService:
     def read_file(self, args: dict[str, Any]) -> dict[str, Any]:
         return read_file(self.get_config(), **args)
 
+    def create_note(self, args: dict[str, Any]) -> dict[str, Any]:
+        return create_note(self.get_config(), **args)
+
+    def patch_note(self, args: dict[str, Any]) -> dict[str, Any]:
+        return patch_note(self.get_config(), **args)
+
+    def mutations(self, limit: int = 20) -> dict[str, Any]:
+        return {
+            "surface": "settings.obsidian_mcp.mutations",
+            "mutations": recent_mutations(limit),
+            "guardrails": self.guardrails(),
+        }
+
+    def write_readiness(self) -> dict[str, Any]:
+        payload = write_readiness(self.get_config())
+        payload["guardrails"] = self.guardrails()
+        return payload
+
+    def write_smoke_test(self) -> dict[str, Any]:
+        cfg = self.get_config()
+        path = "MCP Write Smoke/hb-mcp-write-smoke.md"
+        content = "# HB MCP Write Smoke\n\nThis managed note proves autonomous Markdown writes are configured.\n"
+        result = create_note(
+            cfg,
+            path=path,
+            content=content,
+            overwrite=True,
+            expected_sha256=_current_sha_or_empty(cfg, path),
+            caller_surface="ui_test",
+        )
+        return {
+            "surface": "settings.obsidian_mcp.write_smoke",
+            "ok": True,
+            "result": {k: v for k, v in result.items() if k != "event"} | {"event": result["event"]},
+            "guardrails": self.guardrails(),
+        }
+
 
 def safe_tool_response(func: Any, args: dict[str, Any]) -> dict[str, Any]:
     try:
         return {"ok": True, "result": func(args)}
     except ObsidianMcpToolError as exc:
         return {"ok": False, "error_code": exc.code, "message": str(exc)}
+
+
+def _current_sha_or_empty(config: ObsidianMcpConfig, path: str) -> str | None:
+    from .mutations import sha256_file
+
+    try:
+        resolved = resolve_safe_path(config, path, must_exist=True)
+    except ObsidianMcpToolError:
+        return None
+    return sha256_file(resolved.path) if resolved.path.is_file() else None

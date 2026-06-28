@@ -314,6 +314,16 @@ class ObsidianMcpConfigPatchRequest(BaseModel):
     max_result_chars: int | None = None
     allowed_file_types: list[str] | None = None
     default_scope: str | None = None
+    writes_enabled: bool | None = None
+    vault_markdown_write_enabled: bool | None = None
+    max_write_chars: int | None = None
+    write_requires_expected_sha256: bool | None = None
+    backup_before_replace: bool | None = None
+    create_parent_dirs_enabled: bool | None = None
+    allow_full_vault_markdown_writes: bool | None = None
+    protected_paths: list[str] | None = None
+    blocked_hidden_paths: bool | None = None
+    allowed_write_file_types: list[str] | None = None
 
 
 class ObsidianMcpListDirectoryRequest(BaseModel):
@@ -1350,6 +1360,23 @@ def create_app(*, db_path: str | None = None) -> Any:
 
         return ObsidianMcpService().tools()
 
+    @app.get("/api/settings/obsidian-mcp/mutations")
+    def settings_obsidian_mcp_mutations(
+        limit: int = Query(default=20, ge=1, le=100),
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        del role
+        from hb_assistant.obsidian_mcp import ObsidianMcpService
+
+        return ObsidianMcpService().mutations(limit)
+
+    @app.post("/api/settings/obsidian-mcp/write-readiness")
+    def settings_obsidian_mcp_write_readiness(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        from hb_assistant.obsidian_mcp import ObsidianMcpService
+
+        return ObsidianMcpService().write_readiness()
+
     @app.post("/api/settings/obsidian-mcp/enable")
     def settings_obsidian_mcp_enable(role: dict[str, str] = role_dep) -> dict[str, Any]:
         require_operator_role(role)
@@ -1403,6 +1430,14 @@ def create_app(*, db_path: str | None = None) -> Any:
 
         svc = ObsidianMcpService()
         return safe_tool_response(svc.read_file, request.model_dump(exclude_none=True))
+
+    @app.post("/api/settings/obsidian-mcp/test/write-smoke")
+    def settings_obsidian_mcp_test_write_smoke(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        require_operator_role(role)
+        from hb_assistant.obsidian_mcp.service import ObsidianMcpService, safe_tool_response
+
+        svc = ObsidianMcpService()
+        return safe_tool_response(lambda _args: svc.write_smoke_test(), {})
 
     @app.get("/api/settings/obsidian-mcp/grok-config")
     def settings_obsidian_mcp_grok_config(role: dict[str, str] = role_dep) -> dict[str, Any]:

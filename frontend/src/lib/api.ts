@@ -346,6 +346,12 @@ export function runObsidianMcpHealthCheck() {
 export function getObsidianMcpTools() {
   return fetchJson('/api/settings/obsidian-mcp/tools');
 }
+export function getObsidianMcpMutations(limit = 20) {
+  return fetchJson(`/api/settings/obsidian-mcp/mutations?limit=${encodeURIComponent(String(limit))}`);
+}
+export function runObsidianMcpWriteReadiness() {
+  return fetchJson('/api/settings/obsidian-mcp/write-readiness', { method: 'POST' });
+}
 export function enableObsidianMcp() {
   return fetchJson('/api/settings/obsidian-mcp/enable', { method: 'POST' });
 }
@@ -363,6 +369,9 @@ export function testObsidianMcpSearch(body: any) {
 }
 export function testObsidianMcpReadFile(body: any) {
   return fetchJson('/api/settings/obsidian-mcp/test/read-file', { method: 'POST', body: JSON.stringify(body || {}) });
+}
+export function testObsidianMcpWriteSmoke() {
+  return fetchJson('/api/settings/obsidian-mcp/test/write-smoke', { method: 'POST' });
 }
 export function getObsidianMcpGrokConfig() {
   return fetchJson('/api/settings/obsidian-mcp/grok-config');
@@ -2187,12 +2196,15 @@ export const api = {
   getObsidianMcpStatus,
   runObsidianMcpHealthCheck,
   getObsidianMcpTools,
+  getObsidianMcpMutations,
+  runObsidianMcpWriteReadiness,
   enableObsidianMcp,
   disableObsidianMcp,
   restartObsidianMcp,
   testObsidianMcpListDirectory,
   testObsidianMcpSearch,
   testObsidianMcpReadFile,
+  testObsidianMcpWriteSmoke,
   getObsidianMcpGrokConfig,
   // Prompt D — onboarding + normalized auth flows (safe surfaces only)
   getOnboardingReadiness,

@@ -29,12 +29,15 @@ const patchObsidianMcpConfig = vi.fn()
 const getObsidianMcpStatus = vi.fn()
 const runObsidianMcpHealthCheck = vi.fn()
 const getObsidianMcpTools = vi.fn()
+const getObsidianMcpMutations = vi.fn()
+const runObsidianMcpWriteReadiness = vi.fn()
 const enableObsidianMcp = vi.fn()
 const disableObsidianMcp = vi.fn()
 const restartObsidianMcp = vi.fn()
 const testObsidianMcpListDirectory = vi.fn()
 const testObsidianMcpSearch = vi.fn()
 const testObsidianMcpReadFile = vi.fn()
+const testObsidianMcpWriteSmoke = vi.fn()
 const getObsidianMcpGrokConfig = vi.fn()
 
 vi.mock('../app/providers', () => ({
@@ -95,12 +98,15 @@ vi.mock('../lib/api', () => ({
   getObsidianMcpStatus: () => getObsidianMcpStatus(),
   runObsidianMcpHealthCheck: () => runObsidianMcpHealthCheck(),
   getObsidianMcpTools: () => getObsidianMcpTools(),
+  getObsidianMcpMutations: (limit: number) => getObsidianMcpMutations(limit),
+  runObsidianMcpWriteReadiness: () => runObsidianMcpWriteReadiness(),
   enableObsidianMcp: () => enableObsidianMcp(),
   disableObsidianMcp: () => disableObsidianMcp(),
   restartObsidianMcp: () => restartObsidianMcp(),
   testObsidianMcpListDirectory: (body: unknown) => testObsidianMcpListDirectory(body),
   testObsidianMcpSearch: (body: unknown) => testObsidianMcpSearch(body),
   testObsidianMcpReadFile: (body: unknown) => testObsidianMcpReadFile(body),
+  testObsidianMcpWriteSmoke: () => testObsidianMcpWriteSmoke(),
   getObsidianMcpGrokConfig: () => getObsidianMcpGrokConfig(),
 }))
 
@@ -186,6 +192,16 @@ describe('SettingsPage guided setup', () => {
         allowed_file_types: ['md', 'txt', 'pdf', 'docx'],
         default_scope: 'Projects',
         endpoint_url: 'http://127.0.0.1:3010/mcp',
+        writes_enabled: true,
+        vault_markdown_write_enabled: true,
+        max_write_chars: 120000,
+        write_requires_expected_sha256: true,
+        backup_before_replace: true,
+        create_parent_dirs_enabled: true,
+        allow_full_vault_markdown_writes: true,
+        protected_paths: ['.git', '.obsidian', '.trash', '.hb-assistant/backups'],
+        blocked_hidden_paths: true,
+        allowed_write_file_types: ['md'],
       },
     })
     patchObsidianMcpConfig.mockResolvedValue({
@@ -201,6 +217,16 @@ describe('SettingsPage guided setup', () => {
         allowed_file_types: ['md', 'txt', 'pdf', 'docx'],
         default_scope: 'Projects',
         endpoint_url: 'http://127.0.0.1:3010/mcp',
+        writes_enabled: true,
+        vault_markdown_write_enabled: true,
+        max_write_chars: 120000,
+        write_requires_expected_sha256: true,
+        backup_before_replace: true,
+        create_parent_dirs_enabled: true,
+        allow_full_vault_markdown_writes: true,
+        protected_paths: ['.git', '.obsidian', '.trash', '.hb-assistant/backups'],
+        blocked_hidden_paths: true,
+        allowed_write_file_types: ['md'],
       },
     })
     getObsidianMcpStatus.mockResolvedValue({
@@ -208,7 +234,9 @@ describe('SettingsPage guided setup', () => {
       service_state: 'stopped',
       mode: 'filesystem',
       token_configured: true,
-      tools_registered: 3,
+      tools_registered: 5,
+      writes_enabled: true,
+      vault_markdown_write_enabled: true,
       blocking_issues: [],
       warnings: [],
     })
@@ -217,13 +245,35 @@ describe('SettingsPage guided setup', () => {
       checked_at: '2026-06-28T10:00:00Z',
       blocking_issues: [],
       warnings: [],
-      checks: [{ name: 'tool_registry', status: 'pass', detail: 'three tools' }],
+      checks: [{ name: 'tool_registry', status: 'pass', detail: 'five tools' }],
+    })
+    getObsidianMcpMutations.mockResolvedValue({
+      mutations: [
+        {
+          timestamp: '2026-06-28T10:00:00Z',
+          action: 'patch_note',
+          relative_path: 'Projects/Index.md',
+          status: 'applied',
+          old_sha256: 'old',
+          new_sha256: 'new',
+          backup_path: '/safe/backup/Projects/Index.md',
+          caller_surface: 'mcp',
+        },
+      ],
+    })
+    runObsidianMcpWriteReadiness.mockResolvedValue({
+      ok: true,
+      vault_writable: true,
+      backup_writable: true,
+      blocking_issues: [],
     })
     getObsidianMcpTools.mockResolvedValue({
       tools: [
         { name: 'list_directory', description: 'List files', input_schema_summary: 'path, recursive', enabled: true, last_validation_status: 'pass' },
         { name: 'search_vault', description: 'Search files', input_schema_summary: 'query, path_scope', enabled: true, last_validation_status: 'pass' },
         { name: 'read_file', description: 'Read files', input_schema_summary: 'path, max_chars', enabled: true, last_validation_status: 'pass' },
+        { name: 'create_note', description: 'Create notes', input_schema_summary: 'path, content', enabled: true, last_validation_status: 'pass' },
+        { name: 'patch_note', description: 'Replace notes', input_schema_summary: 'path, content, expected_sha256', enabled: true, last_validation_status: 'pass' },
       ],
     })
     enableObsidianMcp.mockResolvedValue({ config: { enabled: true }, status: { service_state: 'running' }, health: { blocking_issues: [], warnings: [] } })
@@ -232,6 +282,18 @@ describe('SettingsPage guided setup', () => {
     testObsidianMcpListDirectory.mockResolvedValue({ ok: true, result: { files: [{ path: 'Projects/Scope.md' }] } })
     testObsidianMcpSearch.mockResolvedValue({ ok: true, result: { results: [{ path: 'Projects/Scope.md', snippet: 'conduit' }] } })
     testObsidianMcpReadFile.mockResolvedValue({ ok: true, result: { path: 'Projects/Scope.md', content: 'Scope text', metadata: { truncated: false } } })
+    testObsidianMcpWriteSmoke.mockResolvedValue({
+      ok: true,
+      result: {
+        ok: true,
+        result: {
+          path: 'MCP Write Smoke/hb-mcp-write-smoke.md',
+          sha256: 'new',
+          bytes: 82,
+          event: { action: 'create_note', status: 'applied', relative_path: 'MCP Write Smoke/hb-mcp-write-smoke.md' },
+        },
+      },
+    })
     getObsidianMcpGrokConfig.mockResolvedValue({
       token_value_returned: false,
       mcp_config: {
@@ -338,8 +400,17 @@ describe('SettingsPage guided setup', () => {
     expect(await screen.findByText('list_directory')).toBeInTheDocument()
     expect(screen.getByText('search_vault')).toBeInTheDocument()
     expect(screen.getByText('read_file')).toBeInTheDocument()
+    expect(screen.getByText('create_note')).toBeInTheDocument()
+    expect(screen.getAllByText('patch_note').length).toBeGreaterThan(0)
+    expect(screen.getByText('Autonomous Vault Manager')).toBeInTheDocument()
+    expect(screen.getByText(/durable authority/i)).toBeInTheDocument()
+    expect(screen.getByLabelText('Write mode')).toBeChecked()
+    expect(screen.getByLabelText('Markdown management')).toBeChecked()
+    expect(screen.getByText('Recent mutation events')).toBeInTheDocument()
+    expect(screen.getByText('Projects/Index.md')).toBeInTheDocument()
     expect(document.body.textContent).toContain('Bearer <configured-token>')
     expect(document.body.textContent).not.toContain('secret-token')
+    expect(document.body.textContent).not.toContain('raw note body')
   })
 
   it('runs Obsidian MCP health check and test actions from Settings', async () => {
@@ -360,5 +431,12 @@ describe('SettingsPage guided setup', () => {
     fireEvent.change(screen.getByLabelText('File path'), { target: { value: 'Projects/Scope.md' } })
     fireEvent.click(screen.getByRole('button', { name: /Run test file read/i }))
     await waitFor(() => expect(testObsidianMcpReadFile).toHaveBeenCalled())
+
+    fireEvent.click(screen.getByRole('button', { name: /Run write readiness/i }))
+    await waitFor(() => expect(runObsidianMcpWriteReadiness).toHaveBeenCalled())
+
+    fireEvent.click(screen.getByRole('button', { name: /Run write smoke test/i }))
+    await waitFor(() => expect(testObsidianMcpWriteSmoke).toHaveBeenCalled())
+    expect(document.body.textContent).not.toContain('managed note proves')
   })
 })

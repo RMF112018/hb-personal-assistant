@@ -41,10 +41,11 @@ def _normalize_relative(path: str | None) -> str:
 
 
 def resolve_safe_path(config: ObsidianMcpConfig, requested: str | None, *, must_exist: bool = False) -> ResolvedPath:
+    raw_requested = (requested or "").strip().replace("\\", "/")
+    if Path(raw_requested).is_absolute():
+        raise ObsidianMcpToolError("absolute_paths_not_allowed")
     rel = _normalize_relative(requested)
     candidate = Path(rel)
-    if candidate.is_absolute():
-        raise ObsidianMcpToolError("absolute_paths_not_allowed")
     if rel and any(part in {"..", ""} for part in candidate.parts):
         raise ObsidianMcpToolError("path_traversal_not_allowed")
 
@@ -361,6 +362,20 @@ def tool_registry() -> list[dict[str, Any]]:
             "name": "read_file",
             "description": "Read bounded content from Markdown, text, PDF, or DOCX files.",
             "input_schema_summary": "path, start_page, end_page, section, max_chars",
+            "enabled": True,
+            "last_validation_status": "not_run",
+        },
+        {
+            "name": "create_note",
+            "description": "Create a Markdown note inside the configured vault policy.",
+            "input_schema_summary": "path, content, overwrite, create_parent_dirs, expected_sha256",
+            "enabled": True,
+            "last_validation_status": "not_run",
+        },
+        {
+            "name": "patch_note",
+            "description": "Replace an existing Markdown note as a whole-file replacement when SHA-256 matches.",
+            "input_schema_summary": "path, content, expected_sha256",
             "enabled": True,
             "last_validation_status": "not_run",
         },

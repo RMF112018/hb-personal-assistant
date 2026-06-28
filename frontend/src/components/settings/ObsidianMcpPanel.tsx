@@ -7,14 +7,17 @@ import {
   enableObsidianMcp,
   getObsidianMcpConfig,
   getObsidianMcpGrokConfig,
+  getObsidianMcpMutations,
   getObsidianMcpStatus,
   getObsidianMcpTools,
   patchObsidianMcpConfig,
   restartObsidianMcp,
   runObsidianMcpHealthCheck,
+  runObsidianMcpWriteReadiness,
   testObsidianMcpListDirectory,
   testObsidianMcpReadFile,
   testObsidianMcpSearch,
+  testObsidianMcpWriteSmoke,
 } from '../../lib/api'
 import { SectionCard } from '../common/SectionCard'
 import { ErrorState } from '../common/ErrorState'
@@ -28,6 +31,8 @@ export function ObsidianMcpPanel() {
   const [health, setHealth] = useState<any>(null)
   const [tools, setTools] = useState<any[]>([])
   const [grok, setGrok] = useState<any>(null)
+  const [mutations, setMutations] = useState<any[]>([])
+  const [writeReadiness, setWriteReadiness] = useState<any>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<unknown>(null)
   const [message, setMessage] = useState<string | null>(null)
@@ -41,16 +46,18 @@ export function ObsidianMcpPanel() {
     setBusy('refresh')
     setError(null)
     try {
-      const [cfg, st, toolData, grokData] = await Promise.all([
+      const [cfg, st, toolData, grokData, mutationData] = await Promise.all([
         getObsidianMcpConfig(),
         getObsidianMcpStatus(),
         getObsidianMcpTools(),
         getObsidianMcpGrokConfig(),
+        getObsidianMcpMutations(10),
       ])
       setConfig((cfg as any).config || cfg)
       setStatus(st)
       setTools((toolData as any).tools || [])
       setGrok(grokData)
+      setMutations((mutationData as any).mutations || [])
     } catch (err) {
       setError(err)
     } finally {
@@ -116,6 +123,35 @@ export function ObsidianMcpPanel() {
     }
   }
 
+  async function runWriteReadiness() {
+    setBusy('write-readiness')
+    setError(null)
+    try {
+      const result = await runObsidianMcpWriteReadiness()
+      setWriteReadiness(result)
+      await refreshAll()
+    } catch (err) {
+      setError(err)
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  async function runWriteSmoke() {
+    setBusy('write-smoke')
+    setError(null)
+    setTestResult(null)
+    try {
+      const result = await testObsidianMcpWriteSmoke()
+      setTestResult({ kind: 'write-smoke', result })
+      await refreshAll()
+    } catch (err) {
+      setError(err)
+    } finally {
+      setBusy(null)
+    }
+  }
+
   async function copyGrokConfig() {
     const text = JSON.stringify((grok as any)?.mcp_config || {}, null, 2)
     try {
@@ -148,6 +184,7 @@ export function ObsidianMcpPanel() {
   const configText = useMemo(() => JSON.stringify((grok as any)?.mcp_config || {}, null, 2), [grok])
   const blockers = (health?.blocking_issues || status?.blocking_issues || []) as any[]
   const warnings = (health?.warnings || status?.warnings || []) as any[]
+  const writePolicy = config || status?.write_policy || {}
 
   return (
     <SectionCard
@@ -248,6 +285,48 @@ export function ObsidianMcpPanel() {
               )
             })}
           </div>
+
+          <div className="rounded border border-[var(--hb-border)] p-3">
+            <div className="text-sm font-medium">Autonomous Vault Manager</div>
+            <p className="mt-1 text-xs text-[var(--hb-muted)]">
+              Write mode grants durable authority to authenticated MCP clients for policy-governed Markdown note creation and replacement.
+            </p>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              <Toggle
+                label="Write mode"
+                checked={Boolean(writePolicy.writes_enabled)}
+                onChange={(checked) => saveConfig({ writes_enabled: checked })}
+                disabled={busy !== null}
+              />
+              <Toggle
+                label="Markdown management"
+                checked={Boolean(writePolicy.vault_markdown_write_enabled)}
+                onChange={(checked) => saveConfig({ vault_markdown_write_enabled: checked })}
+                disabled={busy !== null}
+              />
+              <Toggle
+                label="Create parent folders"
+                checked={writePolicy.create_parent_dirs_enabled !== false}
+                onChange={(checked) => saveConfig({ create_parent_dirs_enabled: checked })}
+                disabled={busy !== null}
+              />
+              <Toggle
+                label="Backup before replace"
+                checked={writePolicy.backup_before_replace !== false}
+                onChange={(checked) => saveConfig({ backup_before_replace: checked })}
+                disabled={busy !== null}
+              />
+            </div>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <Field
+                label="Max write chars"
+                value={String(writePolicy.max_write_chars || 120000)}
+                onChange={(value) => setConfig({ ...(config || {}), max_write_chars: Number(value) })}
+                onBlur={() => saveConfig({ max_write_chars: Number(config?.max_write_chars || 120000) })}
+              />
+              <StatusRow label="Protected paths" value={(writePolicy.protected_paths || []).join(', ') || 'Default'} />
+            </div>
+          </div>
         </div>
 
         <div className="space-y-3">
@@ -259,10 +338,22 @@ export function ObsidianMcpPanel() {
             <button className="badge" onClick={() => runLifecycle('enable')} disabled={busy !== null}>Enable MCP</button>
             <button className="badge" onClick={() => runLifecycle('disable')} disabled={busy !== null}>Disable MCP</button>
             <button className="badge" onClick={() => runLifecycle('restart')} disabled={busy !== null}>Restart MCP service</button>
+            <button className="badge" onClick={runWriteReadiness} disabled={busy !== null}>{busy === 'write-readiness' ? 'Checking...' : 'Run write readiness'}</button>
+            <button className="badge" onClick={runWriteSmoke} disabled={busy !== null}>{busy === 'write-smoke' ? 'Writing...' : 'Run write smoke test'}</button>
           </div>
 
           <IssueList title="Blocking issues" items={blockers} empty="No blocking issues reported." />
           <IssueList title="Warnings" items={warnings} empty="No warnings reported." />
+
+          <div className="rounded border border-[var(--hb-border)] p-3">
+            <div className="mb-2 text-sm font-medium">Write readiness</div>
+            <div className="grid gap-2 text-xs sm:grid-cols-2">
+              <StatusRow label="Write mode" value={writePolicy.writes_enabled ? 'Enabled' : 'Disabled'} />
+              <StatusRow label="Markdown writes" value={writePolicy.vault_markdown_write_enabled ? 'Enabled' : 'Disabled'} />
+              <StatusRow label="Vault writable" value={writeReadiness?.vault_writable === false ? 'No' : writeReadiness ? 'Yes' : 'Not checked'} />
+              <StatusRow label="Backup writable" value={writeReadiness?.backup_writable === false ? 'No' : writeReadiness ? 'Yes' : 'Not checked'} />
+            </div>
+          </div>
 
           <div className="rounded border border-[var(--hb-border)] p-3">
             <div className="mb-2 flex items-center justify-between gap-2">
@@ -306,6 +397,33 @@ export function ObsidianMcpPanel() {
         </div>
       </div>
 
+      <div className="mt-4 rounded border border-[var(--hb-border)] p-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h4 className="text-sm font-medium">Recent mutation events</h4>
+          <button className="badge" onClick={refreshAll} disabled={busy !== null}>Refresh events</button>
+        </div>
+        {mutations.length === 0 ? (
+          <div className="mt-2 text-xs text-[var(--hb-muted)]">No mutation events recorded.</div>
+        ) : (
+          <div className="mt-2 grid gap-2">
+            {mutations.map((event, index) => (
+              <div key={`${event.timestamp || 'event'}-${index}`} className="rounded border border-[var(--hb-border)] p-2 text-xs">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className={`badge ${event.status === 'applied' ? 'badge-fresh' : 'badge-stale'}`}>{event.status || 'unknown'}</span>
+                  <span className="font-medium">{event.action || 'mutation'}</span>
+                  <span className="text-[var(--hb-muted)]">{event.relative_path || 'path unavailable'}</span>
+                </div>
+                <div className="mt-1 grid gap-1 text-[10px] text-[var(--hb-muted)] sm:grid-cols-3">
+                  <span>{event.timestamp || 'no timestamp'}</span>
+                  <span>{event.error_code || 'ok'}</span>
+                  <span>{event.backup_path ? 'backup recorded' : 'no backup'}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {message && <div className="mt-3 text-xs text-green-600">{message}</div>}
       <ErrorState userMessage="Obsidian MCP settings could not be loaded." error={error} className="mt-3" />
     </SectionCard>
@@ -328,6 +446,16 @@ function Field({ label, value, onChange, onBlur }: { label: string; value: strin
       <label htmlFor={id} className="text-xs mb-1">{label}</label>
       <input id={id} className="w-full rounded border border-[var(--hb-border)] bg-[var(--hb-bg)] px-2 py-1 text-sm" value={value} onChange={(event) => onChange(event.target.value)} onBlur={onBlur} />
     </div>
+  )
+}
+
+function Toggle({ label, checked, onChange, disabled }: { label: string; checked: boolean; onChange: (checked: boolean) => void; disabled: boolean }) {
+  const id = `obsidian-toggle-${label.toLowerCase().replace(/\W+/g, '-')}`
+  return (
+    <label htmlFor={id} className="flex items-center justify-between gap-3 rounded border border-[var(--hb-border)] p-2 text-xs">
+      <span>{label}</span>
+      <input id={id} type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} disabled={disabled} />
+    </label>
   )
 }
 

@@ -94,5 +94,37 @@ def build_streamable_http_app(service: ObsidianMcpService | None = None) -> Any:
             }
         )
 
+    @mcp.tool()
+    def create_note(
+        path: str,
+        content: str,
+        overwrite: bool = False,
+        create_parent_dirs: bool = True,
+        expected_sha256: str | None = None,
+    ) -> dict[str, Any]:
+        """Create a Markdown note under the configured autonomous vault policy."""
+        return svc.create_note(
+            {
+                "path": path,
+                "content": content,
+                "overwrite": overwrite,
+                "create_parent_dirs": create_parent_dirs,
+                "expected_sha256": expected_sha256,
+                "caller_surface": "mcp",
+            }
+        )
+
+    @mcp.tool()
+    def patch_note(path: str, content: str, expected_sha256: str) -> dict[str, Any]:
+        """Replace an existing Markdown note as a whole-file replacement when SHA-256 matches."""
+        return svc.patch_note(
+            {
+                "path": path,
+                "content": content,
+                "expected_sha256": expected_sha256,
+                "caller_surface": "mcp",
+            }
+        )
+
     app = mcp.streamable_http_app()
     return BearerTokenMiddleware(app, service=svc)
