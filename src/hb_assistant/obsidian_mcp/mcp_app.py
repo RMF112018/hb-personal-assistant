@@ -21,6 +21,8 @@ _TOOL_SCOPES = {
     "create_note": "obsidian.write",
     "patch_note": "obsidian.write",
     "vault_map": "obsidian.read",
+    "vault_summarize_note": "obsidian.read",
+    "vault_summarize_folder": "obsidian.read",
     "vault_curation_plan": "obsidian.read",
     "vault_curation_apply": "obsidian.write",
 }
@@ -306,6 +308,59 @@ def build_streamable_http_app(service: ObsidianMcpService | None = None) -> Any:
                 "include_tags": include_tags,
                 "max_files": max_files,
                 "operator_mode": _operator_mode(ctx),
+            }
+        )
+
+    @mcp.tool()
+    def vault_summarize_note(
+        ctx: Context,
+        path: str,
+        max_chars: int | None = None,
+        summary_style: str = "executive",
+        include_action_items: bool = True,
+        include_decisions: bool = True,
+        include_entities: bool = True,
+    ) -> dict[str, Any]:
+        """Summarize one note (md/txt/pdf/docx) with action items, decisions, and entities."""
+        _enforce("vault_summarize_note", ctx)
+        return svc.vault_summarize_note(
+            {
+                "path": path,
+                "max_chars": max_chars,
+                "summary_style": summary_style,
+                "include_action_items": include_action_items,
+                "include_decisions": include_decisions,
+                "include_entities": include_entities,
+                "operator_mode": _operator_mode(ctx),
+            }
+        )
+
+    @mcp.tool()
+    def vault_summarize_folder(
+        ctx: Context,
+        root_path: str = "",
+        recursive: bool = True,
+        max_depth: int | None = 3,
+        max_files: int = 100,
+        summary_style: str = "project_brief",
+        include_file_summaries: bool = True,
+        include_themes: bool = True,
+        include_action_items: bool = True,
+    ) -> dict[str, Any]:
+        """Summarize a folder/subtree into themes, per-file summaries, and aggregated actions."""
+        _enforce("vault_summarize_folder", ctx)
+        return svc.vault_summarize_folder(
+            {
+                "root_path": root_path,
+                "recursive": recursive,
+                "max_depth": max_depth,
+                "max_files": max_files,
+                "summary_style": summary_style,
+                "include_file_summaries": include_file_summaries,
+                "include_themes": include_themes,
+                "include_action_items": include_action_items,
+                "operator_mode": _operator_mode(ctx),
+                "principal_kind": _principal_kind(ctx),
             }
         )
 

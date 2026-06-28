@@ -28,7 +28,7 @@ from typing import Any
 
 import yaml
 
-from . import pathsafe, plan_store
+from . import mdutil, pathsafe, plan_store
 from .config import ObsidianMcpConfig
 from .mutations import create_note, patch_note, sha256_file
 from .tools import ObsidianMcpToolError, resolve_safe_path
@@ -45,11 +45,15 @@ DEFAULT_ALLOWED_ACTIONS = sorted(MUTATING_ACTIONS)
 
 _OP_RANK = {"prepend_frontmatter": 0, "merge_frontmatter_tags": 1, "append_section": 2}
 
-_FRONTMATTER_RE = re.compile(r"^---\n(.*?)\n---\s*\n?", re.DOTALL)
-_TAG_RE = re.compile(r"(?:^|\s)#([A-Za-z0-9][\w/-]*)")
-_WIKILINK_RE = re.compile(r"\[\[([^\]\n]+)\]\]")
-_H1_RE = re.compile(r"^#\s+(.+)$", re.MULTILINE)
 _RELATED_RE = re.compile(r"^#{2,}\s+Related\b", re.MULTILINE | re.IGNORECASE)
+
+# Shared Markdown helpers live in mdutil; alias them to keep call sites terse.
+_split_frontmatter = mdutil.split_frontmatter
+_frontmatter_tags = mdutil.frontmatter_tags
+_extract_tags = mdutil.extract_tags
+_normalized = mdutil.normalized_tags
+_extract_wikilinks = mdutil.extract_wikilinks
+_title_of = mdutil.title_of
 
 _PREVIEW_CHARS = 240
 _MIN_TITLE_MATCH = 4
@@ -77,63 +81,6 @@ def _read_text(path: Path) -> str:
         return path.read_text(encoding="utf-8", errors="replace")
     except OSError:
         return ""
-
-
-def _split_frontmatter(text: str) -> tuple[dict[str, Any] | None, str]:
-    match = _FRONTMATTER_RE.match(text)
-    if not match:
-        return None, text
-    try:
-        loaded = yaml.safe_load(match.group(1))
-    except yaml.YAMLError:
-        loaded = None
-    fm = loaded if isinstance(loaded, dict) else {}
-    return fm, text[match.end():]
-
-
-def _frontmatter_tags(fm: dict[str, Any] | None) -> list[str]:
-    if not fm:
-        return []
-    raw = fm.get("tags")
-    if isinstance(raw, str):
-        raw = [t for t in re.split(r"[,\s]+", raw) if t]
-    if not isinstance(raw, list):
-        return []
-    return [str(t).strip().lstrip("#") for t in raw if str(t).strip()]
-
-
-def _extract_tags(body: str, fm: dict[str, Any] | None) -> list[str]:
-    tags = {m.group(1) for m in _TAG_RE.finditer(body)}
-    tags.update(_frontmatter_tags(fm))
-    return sorted(tags)
-
-
-def _normalize_tag(tag: str) -> str:
-    norm = re.sub(r"[\s_]+", "-", tag.strip().lstrip("#").lower())
-    norm = re.sub(r"[^a-z0-9/-]", "", norm)
-    return norm.strip("-/")
-
-
-def _normalized(tags: list[str]) -> list[str]:
-    return sorted({n for n in (_normalize_tag(t) for t in tags) if n})
-
-
-def _link_target(raw: str) -> str:
-    return raw.split("|", 1)[0].split("#", 1)[0].strip()
-
-
-def _extract_wikilinks(text: str) -> list[str]:
-    seen: list[str] = []
-    for raw in _WIKILINK_RE.findall(text):
-        target = _link_target(raw)
-        if target and target not in seen:
-            seen.append(target)
-    return seen
-
-
-def _title_of(rel: str, text: str) -> str:
-    match = _H1_RE.search(text)
-    return match.group(1).strip() if match else Path(rel).stem
 
 
 def _folder_name(folder: str) -> str:
@@ -171,7 +118,7 @@ def _related_block(links: list[str]) -> str:
 # Apply-time edit operations (pure text transforms, canonical order).
 # ---------------------------------------------------------------------------
 def _op_prepend_frontmatter(text: str, block: str) -> str:
-    if _FRONTMATTER_RE.match(text):
+    if mdutil.FRONTMATTER_RE.match(text):
         return text
     return block + text
 
