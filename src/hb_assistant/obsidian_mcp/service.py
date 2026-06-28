@@ -144,7 +144,7 @@ class ObsidianMcpService:
             blocker="mcp_http_unavailable",
         )
         add("caps_configured", config.max_file_mb > 0 and config.max_result_chars > 0, "file/result caps configured", blocker="caps_invalid")
-        add("tool_registry", len(tool_registry()) == 8, "eight Obsidian MCP tools registered", blocker="tool_registry_invalid")
+        add("tool_registry", len(tool_registry()) == 10, "ten Obsidian MCP tools registered", blocker="tool_registry_invalid")
         add("http_port", self._port_available_or_self(config), "HTTP port is available or owned by backend", warning="port_unavailable")
         readiness = write_readiness(config)
         add("vault_writable", bool(readiness["vault_writable"]), "vault root is writable", warning="vault_not_writable")
@@ -280,6 +280,16 @@ class ObsidianMcpService:
         from .curation import vault_map
 
         return vault_map(self.get_config(), **args)
+
+    def vault_summarize_note(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .summarize import summarize_note
+
+        return summarize_note(self.get_config(), **args)
+
+    def vault_summarize_folder(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .summarize import summarize_folder
+
+        return summarize_folder(self.get_config(), **args)
 
     def vault_curation_plan(self, args: dict[str, Any]) -> dict[str, Any]:
         from .curation import build_curation_plan

@@ -373,62 +373,31 @@ def search_vault(
     return {"query": q, "results": results[:max_results]}
 
 
+# (name, category, description, input_schema_summary) — order matches the MCP
+# tool registration order in mcp_app.py so the registry mirrors tools/list.
+_TOOL_REGISTRY: list[tuple[str, str, str, str]] = [
+    ("list_directory", "Base", "List files and directories inside the configured Obsidian vault.", "path, recursive, extensions, max_depth"),
+    ("search_vault", "Base", "Search Markdown, text, PDF, and DOCX content with lexical ranking.", "query, path_scope, file_types, limit, include_content_snippet"),
+    ("read_file", "Base", "Read bounded content from Markdown, text, PDF, or DOCX files.", "path, start_page, end_page, section, max_chars"),
+    ("create_note", "Base", "Create a Markdown note inside the configured vault policy.", "path, content, overwrite, create_parent_dirs, expected_sha256"),
+    ("patch_note", "Base", "Replace an existing Markdown note as a whole-file replacement when SHA-256 matches.", "path, content, expected_sha256"),
+    ("vault_map", "Vault Intelligence", "Read-only crawl returning a folder/file inventory with optional frontmatter, tags, and links.", "root_path, recursive, max_depth, file_types, include_hidden, include_frontmatter, include_links, include_tags, max_files"),
+    ("vault_summarize_note", "Vault Intelligence", "Summarize one note (md/txt/pdf/docx) with action items, decisions, and entities.", "path, max_chars, summary_style, include_action_items, include_decisions, include_entities"),
+    ("vault_summarize_folder", "Vault Intelligence", "Summarize a folder/subtree into themes, per-file summaries, and aggregated actions.", "root_path, recursive, max_depth, max_files, summary_style, include_file_summaries, include_themes, include_action_items"),
+    ("vault_curation_plan", "Curation", "Read-only second-brain analysis that returns a durable plan_id plus proposed curation actions.", "root_path, strategy, max_depth, max_files, allowed_actions, dry_run"),
+    ("vault_curation_apply", "Curation", "Apply approved actions from a server-generated curation plan_id with backups, receipts, and a max_updates cap.", "plan_id, approved_actions, require_expected_sha256, backup_before_replace, max_updates"),
+]
+
+
 def tool_registry() -> list[dict[str, Any]]:
     return [
         {
-            "name": "list_directory",
-            "description": "List files and directories inside the configured Obsidian vault.",
-            "input_schema_summary": "path, recursive, extensions, max_depth",
+            "name": name,
+            "category": category,
+            "description": description,
+            "input_schema_summary": schema,
             "enabled": True,
             "last_validation_status": "not_run",
-        },
-        {
-            "name": "search_vault",
-            "description": "Search Markdown, text, PDF, and DOCX content with lexical ranking.",
-            "input_schema_summary": "query, path_scope, file_types, limit, include_content_snippet",
-            "enabled": True,
-            "last_validation_status": "not_run",
-        },
-        {
-            "name": "read_file",
-            "description": "Read bounded content from Markdown, text, PDF, or DOCX files.",
-            "input_schema_summary": "path, start_page, end_page, section, max_chars",
-            "enabled": True,
-            "last_validation_status": "not_run",
-        },
-        {
-            "name": "create_note",
-            "description": "Create a Markdown note inside the configured vault policy.",
-            "input_schema_summary": "path, content, overwrite, create_parent_dirs, expected_sha256",
-            "enabled": True,
-            "last_validation_status": "not_run",
-        },
-        {
-            "name": "patch_note",
-            "description": "Replace an existing Markdown note as a whole-file replacement when SHA-256 matches.",
-            "input_schema_summary": "path, content, expected_sha256",
-            "enabled": True,
-            "last_validation_status": "not_run",
-        },
-        {
-            "name": "vault_map",
-            "description": "Read-only crawl returning a folder/file inventory with optional frontmatter, tags, and links.",
-            "input_schema_summary": "root_path, recursive, max_depth, file_types, include_hidden, include_frontmatter, include_links, include_tags, max_files",
-            "enabled": True,
-            "last_validation_status": "not_run",
-        },
-        {
-            "name": "vault_curation_plan",
-            "description": "Read-only second-brain analysis that returns a durable plan_id plus proposed curation actions.",
-            "input_schema_summary": "root_path, strategy, max_depth, max_files, allowed_actions, dry_run",
-            "enabled": True,
-            "last_validation_status": "not_run",
-        },
-        {
-            "name": "vault_curation_apply",
-            "description": "Apply approved actions from a server-generated curation plan_id with backups, receipts, and a max_updates cap.",
-            "input_schema_summary": "plan_id, approved_actions, require_expected_sha256, backup_before_replace, max_updates",
-            "enabled": True,
-            "last_validation_status": "not_run",
-        },
+        }
+        for name, category, description, schema in _TOOL_REGISTRY
     ]
