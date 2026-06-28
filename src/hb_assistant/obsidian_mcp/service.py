@@ -144,7 +144,7 @@ class ObsidianMcpService:
             blocker="mcp_http_unavailable",
         )
         add("caps_configured", config.max_file_mb > 0 and config.max_result_chars > 0, "file/result caps configured", blocker="caps_invalid")
-        add("tool_registry", len(tool_registry()) == 29, "twenty-nine Obsidian MCP tools registered", blocker="tool_registry_invalid")
+        add("tool_registry", len(tool_registry()) == 30, "thirty Obsidian MCP tools registered", blocker="tool_registry_invalid")
         add("http_port", self._port_available_or_self(config), "HTTP port is available or owned by backend", warning="port_unavailable")
         readiness = write_readiness(config)
         add("vault_writable", bool(readiness["vault_writable"]), "vault root is writable", warning="vault_not_writable")
@@ -325,6 +325,11 @@ class ObsidianMcpService:
         from .frontmatter import dataview_query
 
         return dataview_query(self.get_config(), **args)
+
+    def vault_semantic_search(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .search import semantic_search
+
+        return semantic_search(self.get_config(), **args)
 
     def vault_move_note_plan(self, args: dict[str, Any]) -> dict[str, Any]:
         from .fileops import move_note_plan

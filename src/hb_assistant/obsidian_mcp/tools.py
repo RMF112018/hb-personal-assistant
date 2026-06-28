@@ -403,6 +403,7 @@ _TOOL_REGISTRY: list[tuple[str, str, str, str]] = [
     ("vault_archive_note_plan", "File Operations", "Plan moving a note to the archive folder with a backlink-impact preview (read-only).", "source_path, update_links"),
     ("vault_archive_note_apply", "File Operations", "Apply an approved archive plan_id (backup, sha-gated link rewrite, receipts).", "plan_id, update_links, max_updates, allow_overwrite"),
     ("vault_delete_note_plan", "File Operations", "Refuses permanent deletion; returns an archive plan as the safe substitute.", "source_path, update_links"),
+    ("vault_semantic_search", "Search", "Semantic/hybrid search interface; falls back to lexical with a warning when no vector index is configured.", "query, path_scope, file_types, limit, mode, include_snippets"),
     ("vault_curation_plan", "Curation", "Read-only second-brain analysis that returns a durable plan_id plus proposed curation actions.", "root_path, strategy, max_depth, max_files, allowed_actions, dry_run"),
     ("vault_curation_apply", "Curation", "Apply approved actions from a server-generated curation plan_id with backups, receipts, and a max_updates cap.", "plan_id, approved_actions, require_expected_sha256, backup_before_replace, max_updates"),
 ]

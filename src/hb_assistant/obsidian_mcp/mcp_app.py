@@ -42,6 +42,7 @@ _TOOL_SCOPES = {
     "vault_archive_note_plan": "obsidian.read",
     "vault_archive_note_apply": "obsidian.write",
     "vault_delete_note_plan": "obsidian.read",
+    "vault_semantic_search": "obsidian.read",
     "vault_curation_plan": "obsidian.read",
     "vault_curation_apply": "obsidian.write",
 }
@@ -632,6 +633,30 @@ def build_streamable_http_app(service: ObsidianMcpService | None = None) -> Any:
                 "template_path": template_path,
                 "operator_mode": _operator_mode(ctx),
                 "principal_kind": _principal_kind(ctx),
+            }
+        )
+
+    @mcp.tool()
+    def vault_semantic_search(
+        ctx: Context,
+        query: str,
+        path_scope: str | None = None,
+        file_types: list[str] | None = None,
+        limit: int = 20,
+        mode: str = "hybrid",
+        include_snippets: bool = True,
+    ) -> dict[str, Any]:
+        """Semantic/hybrid search (falls back to lexical with a warning when no index exists)."""
+        _enforce("vault_semantic_search", ctx)
+        return svc.vault_semantic_search(
+            {
+                "query": query,
+                "path_scope": path_scope,
+                "file_types": file_types,
+                "limit": limit,
+                "mode": mode,
+                "include_snippets": include_snippets,
+                "operator_mode": _operator_mode(ctx),
             }
         )
 
