@@ -21,6 +21,16 @@ from hb_assistant.obsidian_mcp.tools import read_file, search_vault
 from hb_assistant.store.migrator import SQLiteMigrator
 
 
+
+def _mcp_json_payload(response):
+    """Parse MCP responses from either SSE-style or json_response=True mode."""
+    text = response.text.strip()
+    if "data: " in text:
+        data = text.split("data: ", 1)[1].strip()
+        return json.loads(data)
+    return response.json()
+
+
 FORBIDDEN = ("secret-token", "access_token", "refresh_token", "client_secret")
 
 
@@ -151,32 +161,37 @@ def test_streamable_http_mount_lists_phase1_tools(tmp_path: Path, monkeypatch: p
             headers=headers,
         )
         assert initialized.status_code == 200
-        session_id = initialized.headers["mcp-session-id"]
+        session_id = initialized.headers.get("mcp-session-id")
 
         session_headers = dict(headers)
-        session_headers["mcp-session-id"] = session_id
-        assert (
-            client.post(
-                "/mcp",
-                json={"jsonrpc": "2.0", "method": "notifications/initialized"},
-                headers=session_headers,
-            ).status_code
-            == 202
+        if session_id:
+            session_headers["mcp-session-id"] = session_id
+
+        initialized_notification = client.post(
+            "/mcp",
+            json={"jsonrpc": "2.0", "method": "notifications/initialized"},
+            headers=session_headers,
         )
+        assert initialized_notification.status_code in {200, 202}
+        assert initialized_notification.status_code != 421
+
         tools = client.post(
             "/mcp",
             json={"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}},
             headers=session_headers,
         )
         assert tools.status_code == 200
-        data = tools.text.split("data: ", 1)[1].strip()
-        payload = json.loads(data)
+        assert tools.status_code != 421
+        payload = _mcp_json_payload(tools)
         assert [tool["name"] for tool in payload["result"]["tools"]] == [
             "list_directory",
             "search_vault",
             "read_file",
             "create_note",
             "patch_note",
+            "vault_map",
+            "vault_curation_plan",
+            "vault_curation_apply",
         ]
 
         create = client.post(

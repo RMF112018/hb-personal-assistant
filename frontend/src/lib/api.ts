@@ -376,6 +376,9 @@ export function testObsidianMcpWriteSmoke() {
 export function getObsidianMcpGrokConfig() {
   return fetchJson('/api/settings/obsidian-mcp/grok-config');
 }
+export function getObsidianMcpOAuth() {
+  return fetchJson('/api/settings/obsidian-mcp/oauth');
+}
 
 /* Onboarding readiness (Prompt D) — drives first-time routing and returning-user reauth state.
  * Uses only normalized /api paths. Never triggers sync.

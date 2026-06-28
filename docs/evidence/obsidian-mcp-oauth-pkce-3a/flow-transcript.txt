@@ -1,0 +1,69 @@
+### 1. Authorization-server metadata (RFC 8414)
+{
+  "issuer": "https://seafood-gene-relief-league.trycloudflare.com",
+  "authorization_endpoint": "https://seafood-gene-relief-league.trycloudflare.com/oauth/authorize",
+  "token_endpoint": "https://seafood-gene-relief-league.trycloudflare.com/oauth/token",
+  "response_types_supported": [
+    "code"
+  ],
+  "grant_types_supported": [
+    "authorization_code"
+  ],
+  "code_challenge_methods_supported": [
+    "S256"
+  ],
+  "token_endpoint_auth_methods_supported": [
+    "none"
+  ],
+  "scopes_supported": [
+    "obsidian.read",
+    "obsidian.write"
+  ]
+}
+
+### 2. Protected-resource metadata (RFC 9728)
+{
+  "resource": "https://seafood-gene-relief-league.trycloudflare.com/mcp",
+  "authorization_servers": [
+    "https://seafood-gene-relief-league.trycloudflare.com"
+  ],
+  "scopes_supported": [
+    "obsidian.read",
+    "obsidian.write"
+  ],
+  "bearer_methods_supported": [
+    "header"
+  ]
+}
+
+### 3. Authorize validation — missing code_challenge -> 400: 400
+    Authorize consent page (valid request) -> 200, scopes+vault shown: 200
+
+### 4. Approve -> 302 redirect with code+state. code: 9JfLFz…<redacted>…4wKE state preserved: ['st-123']
+
+### 5. PKCE mismatch -> invalid_grant: {'error': 'invalid_grant', 'error_description': 'PKCE verification failed'}
+
+### 6. Token exchange (correct verifier) -> issued (token REDACTED here; raw shown once in real response):
+{
+  "access_token": "1AcAHH\u2026<redacted>\u2026Jphk",
+  "token_type": "Bearer",
+  "expires_in": 3600,
+  "scope": "obsidian.read obsidian.write"
+}
+    Code single-use — reuse ->  {'error': 'invalid_grant', 'error_description': 'authorization code already used'}
+
+### 7. Scope enforcement (write-scoped token):
+    read_file allowed: OK
+    create_note allowed: OK
+    read-only token create_note -> blocked: insufficient_scope
+
+### 8. /mcp authentication (mounted MCP app):
+    no token -> 401: 401
+    bad token -> 401: 401
+
+### 9. UI OAuth status — no raw token/code leak:
+    grok_setup.mcp_url: https://seafood-gene-relief-league.trycloudflare.com/mcp
+    token_auth_method: none (PKCE) | client_id: hb-obsidian-grok
+    raw access_token present in status payload: False
+    raw code present in status payload: False
+    recent_event kinds: ['access_token_issued', 'authorization_code_issued', 'authorization_code_redeemed']

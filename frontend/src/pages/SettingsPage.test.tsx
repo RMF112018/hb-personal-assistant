@@ -39,6 +39,7 @@ const testObsidianMcpSearch = vi.fn()
 const testObsidianMcpReadFile = vi.fn()
 const testObsidianMcpWriteSmoke = vi.fn()
 const getObsidianMcpGrokConfig = vi.fn()
+const getObsidianMcpOAuth = vi.fn()
 
 vi.mock('../app/providers', () => ({
   useTheme: () => ({ theme: 'dark', setTheme: vi.fn() }),
@@ -108,6 +109,7 @@ vi.mock('../lib/api', () => ({
   testObsidianMcpReadFile: (body: unknown) => testObsidianMcpReadFile(body),
   testObsidianMcpWriteSmoke: () => testObsidianMcpWriteSmoke(),
   getObsidianMcpGrokConfig: () => getObsidianMcpGrokConfig(),
+  getObsidianMcpOAuth: () => getObsidianMcpOAuth(),
 }))
 
 function renderSettings() {
@@ -306,6 +308,29 @@ describe('SettingsPage guided setup', () => {
         },
       },
     })
+    getObsidianMcpOAuth.mockResolvedValue({
+      oauth_enabled: true,
+      public_base_url: 'https://seafood-gene-relief-league.trycloudflare.com',
+      client_id: 'hb-obsidian-grok',
+      scopes_supported: ['obsidian.read', 'obsidian.write'],
+      token_auth_method: 'none (PKCE)',
+      endpoints: {
+        authorization_endpoint: 'https://seafood-gene-relief-league.trycloudflare.com/oauth/authorize',
+        token_endpoint: 'https://seafood-gene-relief-league.trycloudflare.com/oauth/token',
+        metadata_endpoint: 'https://seafood-gene-relief-league.trycloudflare.com/.well-known/oauth-authorization-server',
+        mcp_url: 'https://seafood-gene-relief-league.trycloudflare.com/mcp',
+      },
+      grok_setup: {
+        mcp_url: 'https://seafood-gene-relief-league.trycloudflare.com/mcp',
+        client_id: 'hb-obsidian-grok',
+        client_secret: '',
+        authorization_endpoint: 'https://seafood-gene-relief-league.trycloudflare.com/oauth/authorize',
+        token_endpoint: 'https://seafood-gene-relief-league.trycloudflare.com/oauth/token',
+        scopes: ['obsidian.read', 'obsidian.write'],
+        token_auth_method: 'none (PKCE)',
+      },
+      recent_events: [{ kind: 'access_token_issued', scope: 'obsidian.read', at: '2026-06-28T10:00:00+00:00' }],
+    })
   })
 
   it('renders guided settings sections in order', async () => {
@@ -438,5 +463,42 @@ describe('SettingsPage guided setup', () => {
     fireEvent.click(screen.getByRole('button', { name: /Run write smoke test/i }))
     await waitFor(() => expect(testObsidianMcpWriteSmoke).toHaveBeenCalled())
     expect(document.body.textContent).not.toContain('managed note proves')
+  })
+
+  it('renders the Remote Connector / OAuth section with Grok setup values and no token leak', async () => {
+    renderSettings()
+    await screen.findByText('Remote Connector / OAuth')
+
+    expect(screen.getByText('none (PKCE)')).toBeInTheDocument()
+    expect(screen.getByText('hb-obsidian-grok')).toBeInTheDocument()
+    expect(screen.getByLabelText('OAuth enabled')).toBeChecked()
+    expect(
+      screen.getByText('https://seafood-gene-relief-league.trycloudflare.com/oauth/authorize'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('https://seafood-gene-relief-league.trycloudflare.com/oauth/token'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('https://seafood-gene-relief-league.trycloudflare.com/mcp')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Copy Grok OAuth setup values/i })).toBeInTheDocument()
+    expect(screen.getByText('access_token_issued')).toBeInTheDocument()
+
+    // Event labels are safe, but no raw access-token / Bearer value is rendered.
+    const text = document.body.textContent || ''
+    expect(text).not.toContain('"access_token"')
+    expect(text).not.toMatch(/Bearer [A-Za-z0-9_-]{20,}/)
+  })
+
+  it('saves the Public MCP Base URL through the config patch', async () => {
+    renderSettings()
+    await screen.findByText('Remote Connector / OAuth')
+
+    const input = screen.getByLabelText('Public MCP Base URL')
+    fireEvent.change(input, { target: { value: 'https://new-tunnel.trycloudflare.com' } })
+    fireEvent.blur(input)
+    await waitFor(() =>
+      expect(patchObsidianMcpConfig).toHaveBeenCalledWith(
+        expect.objectContaining({ public_base_url: 'https://new-tunnel.trycloudflare.com' }),
+      ),
+    )
   })
 })

@@ -324,6 +324,8 @@ class ObsidianMcpConfigPatchRequest(BaseModel):
     protected_paths: list[str] | None = None
     blocked_hidden_paths: bool | None = None
     allowed_write_file_types: list[str] | None = None
+    oauth_enabled: bool | None = None
+    public_base_url: str | None = None
 
 
 class ObsidianMcpListDirectoryRequest(BaseModel):
@@ -553,6 +555,50 @@ def require_admin_role(role: dict[str, str]) -> dict[str, str]:
     return role
 
 
+def _oauth_error_html(error: str, description: str | None = None) -> str:
+    """Minimal, dependency-free HTML error page for the OAuth authorize surface."""
+    import html as _html
+
+    detail = _html.escape(description or error)
+    return (
+        "<!doctype html><html><head><meta charset='utf-8'>"
+        "<title>HB Obsidian MCP — authorization error</title></head>"
+        "<body style='font-family:system-ui;max-width:32rem;margin:3rem auto;padding:0 1rem'>"
+        f"<h1 style='font-size:1.1rem'>Authorization error: {_html.escape(error)}</h1>"
+        f"<p>{detail}</p></body></html>"
+    )
+
+
+def _oauth_consent_html(*, scopes: list[str], vault_root: str, write_enabled: bool, params: dict[str, str]) -> str:
+    """Simple local approval page for the fixed Grok client (no login system)."""
+    import html as _html
+
+    hidden = "".join(
+        f"<input type='hidden' name='{_html.escape(key)}' value='{_html.escape(value)}'>"
+        for key, value in params.items()
+    )
+    scope_items = "".join(f"<li><code>{_html.escape(scope)}</code></li>" for scope in scopes)
+    write_label = "enabled" if write_enabled else "disabled"
+    return (
+        "<!doctype html><html><head><meta charset='utf-8'>"
+        "<title>HB Obsidian MCP — authorize Grok</title></head>"
+        "<body style='font-family:system-ui;max-width:34rem;margin:3rem auto;padding:0 1rem'>"
+        "<h1 style='font-size:1.15rem'>Grok is requesting access to HB Obsidian MCP</h1>"
+        "<p>Approve this request to let the Grok Remote MCP connector use your local Obsidian vault.</p>"
+        "<p><strong>Requested scopes</strong></p>"
+        f"<ul>{scope_items}</ul>"
+        f"<p><strong>Vault root:</strong> <code>{_html.escape(vault_root)}</code></p>"
+        f"<p><strong>Write mode:</strong> {write_label}</p>"
+        "<form method='post' action='/oauth/authorize'>"
+        f"{hidden}"
+        "<button type='submit' name='decision' value='approve' "
+        "style='padding:.5rem 1rem;font-size:1rem;margin-right:.5rem'>Approve</button>"
+        "<button type='submit' name='decision' value='deny' "
+        "style='padding:.5rem 1rem;font-size:1rem'>Deny</button>"
+        "</form></body></html>"
+    )
+
+
 @asynccontextmanager
 async def _forecast_lifespan(app: Any) -> Any:
     """Startup bootstrap: ensure app-managed forecast storage before serving.
@@ -615,7 +661,13 @@ def create_app(*, db_path: str | None = None) -> Any:
     status. Future analytics route adapters should call ``AnalyticsService``
     directly and reuse ``role_dependency``.
     """
-    from fastapi import Body, Depends, FastAPI, Query
+    from fastapi import Body, Depends, FastAPI, Query, Request
+
+    # ``from __future__ import annotations`` makes route annotations strings that
+    # FastAPI resolves against this module's globals. ``Request`` is imported
+    # lazily here (the base install stays FastAPI-free), so publish it to the
+    # module namespace at runtime for annotation resolution.
+    globals()["Request"] = Request
 
     require_role = role_dependency()
     app = FastAPI(
@@ -1445,6 +1497,175 @@ def create_app(*, db_path: str | None = None) -> Any:
         from hb_assistant.obsidian_mcp import ObsidianMcpService
 
         return ObsidianMcpService().grok_config()
+
+    # --- Phase 3A: OAuth 2.1 / PKCE for Grok Remote MCP ---------------------
+    # UI status route (role-gated). The public OAuth protocol + discovery routes
+    # below are intentionally unauthenticated so Grok/the browser can reach them
+    # via the Cloudflare tunnel; they are declared before the MCP mount so they
+    # win over the catch-all mounted MCP app.
+    @app.get("/api/settings/obsidian-mcp/oauth")
+    def settings_obsidian_mcp_oauth(request: Request, role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        from hb_assistant.obsidian_mcp import ObsidianMcpService
+
+        return ObsidianMcpService().oauth_status(request_base=str(request.base_url).rstrip("/"))
+
+    def _oauth_base_url(request: Request) -> str:
+        from hb_assistant.obsidian_mcp import ObsidianMcpService
+
+        config = ObsidianMcpService().get_config()
+        if config.public_base_url:
+            return config.public_base_url.rstrip("/")
+        return str(request.base_url).rstrip("/")
+
+    def _oauth_enabled() -> bool:
+        from hb_assistant.obsidian_mcp import ObsidianMcpService
+
+        return bool(ObsidianMcpService().get_config().oauth_enabled)
+
+    async def _oauth_form_params(request: Request) -> dict[str, str]:
+        from urllib.parse import parse_qsl
+
+        body = await request.body()
+        content_type = request.headers.get("content-type", "")
+        if "application/json" in content_type:
+            try:
+                data = json.loads(body or b"{}")
+            except (json.JSONDecodeError, ValueError):
+                return {}
+            if not isinstance(data, dict):
+                return {}
+            return {str(k): str(v) for k, v in data.items()}
+        return dict(parse_qsl(body.decode("utf-8"), keep_blank_values=True))
+
+    @app.get("/.well-known/oauth-authorization-server")
+    def oauth_authorization_server_metadata(request: Request) -> dict[str, Any]:
+        from hb_assistant.obsidian_mcp.oauth_store import authorization_server_metadata
+
+        return authorization_server_metadata(_oauth_base_url(request))
+
+    @app.get("/.well-known/openid-configuration")
+    def oauth_openid_configuration(request: Request) -> dict[str, Any]:
+        from hb_assistant.obsidian_mcp.oauth_store import authorization_server_metadata
+
+        return authorization_server_metadata(_oauth_base_url(request))
+
+    @app.get("/.well-known/oauth-protected-resource")
+    def oauth_protected_resource_metadata(request: Request) -> dict[str, Any]:
+        from hb_assistant.obsidian_mcp.oauth_store import protected_resource_metadata
+
+        return protected_resource_metadata(_oauth_base_url(request))
+
+    @app.get("/oauth/authorize")
+    def oauth_authorize_form(
+        request: Request,
+        response_type: str = Query(default=""),
+        client_id: str = Query(default=""),
+        redirect_uri: str = Query(default=""),
+        scope: str = Query(default=""),
+        state: str = Query(default=""),
+        code_challenge: str = Query(default=""),
+        code_challenge_method: str = Query(default=""),
+    ) -> Any:
+        from fastapi.responses import HTMLResponse
+
+        from hb_assistant.obsidian_mcp import ObsidianMcpService
+        from hb_assistant.obsidian_mcp.oauth_store import OAuthError, validate_authorize_request
+
+        if not _oauth_enabled():
+            return HTMLResponse(_oauth_error_html("oauth_disabled", "OAuth is not enabled on this server."), status_code=403)
+        try:
+            scopes = validate_authorize_request(
+                response_type=response_type,
+                client_id=client_id,
+                redirect_uri=redirect_uri,
+                scope=scope,
+                code_challenge=code_challenge,
+                code_challenge_method=code_challenge_method,
+            )
+        except OAuthError as exc:
+            return HTMLResponse(_oauth_error_html(exc.error, exc.description), status_code=400)
+        config = ObsidianMcpService().get_config()
+        html = _oauth_consent_html(
+            scopes=scopes,
+            vault_root=config.vault_root,
+            write_enabled=bool(config.writes_enabled and config.vault_markdown_write_enabled),
+            params={
+                "response_type": response_type,
+                "client_id": client_id,
+                "redirect_uri": redirect_uri,
+                "scope": scope,
+                "state": state,
+                "code_challenge": code_challenge,
+                "code_challenge_method": code_challenge_method,
+            },
+        )
+        return HTMLResponse(html)
+
+    @app.post("/oauth/authorize")
+    async def oauth_authorize_submit(request: Request) -> Any:
+        from fastapi.responses import HTMLResponse, RedirectResponse
+
+        from hb_assistant.obsidian_mcp.oauth_store import (
+            OAuthError,
+            create_authorization_code,
+            redirect_with,
+            validate_authorize_request,
+        )
+
+        if not _oauth_enabled():
+            return HTMLResponse(_oauth_error_html("oauth_disabled", "OAuth is not enabled on this server."), status_code=403)
+        params = await _oauth_form_params(request)
+        redirect_uri = params.get("redirect_uri", "")
+        state = params.get("state", "")
+        try:
+            validate_authorize_request(
+                response_type=params.get("response_type", ""),
+                client_id=params.get("client_id", ""),
+                redirect_uri=redirect_uri,
+                scope=params.get("scope", ""),
+                code_challenge=params.get("code_challenge", ""),
+                code_challenge_method=params.get("code_challenge_method", ""),
+            )
+        except OAuthError as exc:
+            return HTMLResponse(_oauth_error_html(exc.error, exc.description), status_code=400)
+        if params.get("decision", "approve") != "approve":
+            return RedirectResponse(redirect_with(redirect_uri, {"error": "access_denied", "state": state}), status_code=302)
+        code = create_authorization_code(
+            client_id=params.get("client_id", ""),
+            redirect_uri=redirect_uri,
+            scope=params.get("scope", ""),
+            code_challenge=params.get("code_challenge", ""),
+            code_challenge_method=params.get("code_challenge_method", ""),
+        )
+        return RedirectResponse(redirect_with(redirect_uri, {"code": code, "state": state}), status_code=302)
+
+    @app.post("/oauth/token")
+    async def oauth_token(request: Request) -> Any:
+        from fastapi.responses import JSONResponse
+
+        from hb_assistant.obsidian_mcp.oauth_store import (
+            OAuthError,
+            consume_authorization_code,
+            issue_access_token,
+        )
+
+        if not _oauth_enabled():
+            return JSONResponse({"error": "invalid_request", "error_description": "oauth disabled"}, status_code=403)
+        params = await _oauth_form_params(request)
+        if params.get("grant_type", "") != "authorization_code":
+            return JSONResponse({"error": "unsupported_grant_type"}, status_code=400)
+        try:
+            scopes = consume_authorization_code(
+                raw_code=params.get("code", ""),
+                client_id=params.get("client_id", ""),
+                redirect_uri=params.get("redirect_uri", ""),
+                code_verifier=params.get("code_verifier", ""),
+            )
+            token = issue_access_token(scopes)
+        except OAuthError as exc:
+            return JSONResponse({"error": exc.error, "error_description": exc.description}, status_code=400)
+        return JSONResponse(token)
 
     # Prompt 20: real local JSON preferences persistence (FPR-016), mirroring daily_brief pattern.
     def _prefs_config_path() -> Path:

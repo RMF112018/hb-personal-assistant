@@ -8,6 +8,7 @@ import secrets
 from contextlib import suppress
 from pathlib import Path
 from typing import Literal
+from urllib.parse import urlsplit
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -39,6 +40,10 @@ class ObsidianMcpConfig(BaseModel):
     protected_paths: list[str] = Field(default_factory=lambda: list(DEFAULT_PROTECTED_PATHS))
     blocked_hidden_paths: bool = True
     allowed_write_file_types: list[str] = Field(default_factory=lambda: list(DEFAULT_ALLOWED_WRITE_FILE_TYPES))
+    oauth_enabled: bool = False
+    public_base_url: str | None = None
+    curation_dense_folder_threshold: int = 5
+    curation_operator_hidden_inspection: bool = False
     schema_version: int = 1
 
     model_config = {"extra": "forbid"}
@@ -51,6 +56,21 @@ class ObsidianMcpConfig(BaseModel):
             raise ValueError("host_must_be_localhost")
         return host
 
+    @field_validator("public_base_url")
+    @classmethod
+    def validate_public_base_url(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        candidate = value.strip().rstrip("/")
+        if not candidate:
+            return None
+        parsed = urlsplit(candidate)
+        if parsed.scheme == "https" and parsed.netloc:
+            return candidate
+        if parsed.scheme == "http" and parsed.hostname in {"localhost", "127.0.0.1"}:
+            return candidate
+        raise ValueError("public_base_url_must_be_https_or_localhost")
+
     @field_validator("port")
     @classmethod
     def validate_port(cls, value: int) -> int:
@@ -58,7 +78,7 @@ class ObsidianMcpConfig(BaseModel):
             raise ValueError("port_out_of_range")
         return value
 
-    @field_validator("max_file_mb", "max_result_chars", "max_write_chars")
+    @field_validator("max_file_mb", "max_result_chars", "max_write_chars", "curation_dense_folder_threshold")
     @classmethod
     def validate_positive(cls, value: int) -> int:
         if value <= 0:
@@ -136,6 +156,10 @@ class ObsidianMcpConfigPatch(BaseModel):
     protected_paths: list[str] | None = None
     blocked_hidden_paths: bool | None = None
     allowed_write_file_types: list[str] | None = None
+    oauth_enabled: bool | None = None
+    public_base_url: str | None = None
+    curation_dense_folder_threshold: int | None = None
+    curation_operator_hidden_inspection: bool | None = None
 
     model_config = {"extra": "forbid"}
 

@@ -379,4 +379,25 @@ def tool_registry() -> list[dict[str, Any]]:
             "enabled": True,
             "last_validation_status": "not_run",
         },
+        {
+            "name": "vault_map",
+            "description": "Read-only crawl returning a folder/file inventory with optional frontmatter, tags, and links.",
+            "input_schema_summary": "root_path, recursive, max_depth, file_types, include_hidden, include_frontmatter, include_links, include_tags, max_files",
+            "enabled": True,
+            "last_validation_status": "not_run",
+        },
+        {
+            "name": "vault_curation_plan",
+            "description": "Read-only second-brain analysis that returns a durable plan_id plus proposed curation actions.",
+            "input_schema_summary": "root_path, strategy, max_depth, max_files, allowed_actions, dry_run",
+            "enabled": True,
+            "last_validation_status": "not_run",
+        },
+        {
+            "name": "vault_curation_apply",
+            "description": "Apply approved actions from a server-generated curation plan_id with backups, receipts, and a max_updates cap.",
+            "input_schema_summary": "plan_id, approved_actions, require_expected_sha256, backup_before_replace, max_updates",
+            "enabled": True,
+            "last_validation_status": "not_run",
+        },
     ]
