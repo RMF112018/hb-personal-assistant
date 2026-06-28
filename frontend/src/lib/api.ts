@@ -377,6 +377,9 @@ export function getObsidianMcpTools() {
 export function getObsidianMcpMutations(limit = 20) {
   return fetchJson(`/api/settings/obsidian-mcp/mutations?limit=${encodeURIComponent(String(limit))}`);
 }
+export function getObsidianMcpReadReceipts(limit = 20) {
+  return fetchJson(`/api/settings/obsidian-mcp/read-receipts?limit=${encodeURIComponent(String(limit))}`);
+}
 export function runObsidianMcpWriteReadiness() {
   return fetchJson('/api/settings/obsidian-mcp/write-readiness', { method: 'POST' });
 }
@@ -2301,6 +2304,7 @@ export const api = {
   runObsidianMcpHealthCheck,
   getObsidianMcpTools,
   getObsidianMcpMutations,
+  getObsidianMcpReadReceipts,
   runObsidianMcpWriteReadiness,
   enableObsidianMcp,
   disableObsidianMcp,

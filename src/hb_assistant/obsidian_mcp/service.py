@@ -458,6 +458,15 @@ class ObsidianMcpService:
             "guardrails": self.guardrails(),
         }
 
+    def read_receipts(self, limit: int = 20) -> dict[str, Any]:
+        from .mutations import recent_read_receipts
+
+        return {
+            "surface": "settings.obsidian_mcp.read_receipts",
+            "read_receipts": recent_read_receipts(limit),
+            "guardrails": self.guardrails(),
+        }
+
     def write_readiness(self) -> dict[str, Any]:
         payload = write_readiness(self.get_config())
         payload["guardrails"] = self.guardrails()
