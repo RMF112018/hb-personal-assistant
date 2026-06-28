@@ -6,7 +6,7 @@
 
 from typing import Any
 
-from . import oauth_store
+from . import oauth_store, pathsafe
 from .config import ObsidianMcpConfig
 from .service import ObsidianMcpService
 from .tools import ObsidianMcpToolError
@@ -160,12 +160,24 @@ def build_streamable_http_app(service: ObsidianMcpService | None = None) -> Any:
         """True for unrestricted principals (static bearer / no-auth / stdio).
 
         OAuth principals are never operators, so they can never broaden the
-        hidden/protected-path inspection performed by curation tools.
+        hidden/protected-path inspection performed by read/curation tools.
         """
         is_http, authorization = _request_authorization(ctx)
         if not is_http:
             return True
         return resolve_granted_scopes(authorization, svc.get_config()) is None
+
+    def _principal_kind(ctx: Context) -> str:
+        """Classify the caller for receipts: oauth | static_bearer | local."""
+        is_http, authorization = _request_authorization(ctx)
+        if not is_http:
+            return pathsafe.PRINCIPAL_LOCAL
+        config = svc.get_config()
+        if config.token_configured and (authorization or "") == f"Bearer {config.bearer_token}":
+            return pathsafe.PRINCIPAL_STATIC_BEARER
+        if resolve_granted_scopes(authorization, config) is None:
+            return pathsafe.PRINCIPAL_LOCAL
+        return pathsafe.PRINCIPAL_OAUTH
 
     @mcp.tool()
     def list_directory(
@@ -182,6 +194,7 @@ def build_streamable_http_app(service: ObsidianMcpService | None = None) -> Any:
                 "recursive": recursive,
                 "extensions": extensions,
                 "max_depth": max_depth,
+                "operator_mode": _operator_mode(ctx),
             }
         )
 
@@ -202,6 +215,7 @@ def build_streamable_http_app(service: ObsidianMcpService | None = None) -> Any:
                 "file_types": file_types,
                 "limit": limit,
                 "include_content_snippet": include_content_snippet,
+                "operator_mode": _operator_mode(ctx),
             }
         )
 
@@ -222,6 +236,7 @@ def build_streamable_http_app(service: ObsidianMcpService | None = None) -> Any:
                 "end_page": end_page,
                 "section": section,
                 "max_chars": max_chars,
+                "operator_mode": _operator_mode(ctx),
             }
         )
 
@@ -244,6 +259,8 @@ def build_streamable_http_app(service: ObsidianMcpService | None = None) -> Any:
                 "create_parent_dirs": create_parent_dirs,
                 "expected_sha256": expected_sha256,
                 "caller_surface": "mcp",
+                "tool_name": "create_note",
+                "principal_kind": _principal_kind(ctx),
             }
         )
 
@@ -257,6 +274,8 @@ def build_streamable_http_app(service: ObsidianMcpService | None = None) -> Any:
                 "content": content,
                 "expected_sha256": expected_sha256,
                 "caller_surface": "mcp",
+                "tool_name": "patch_note",
+                "principal_kind": _principal_kind(ctx),
             }
         )
 
