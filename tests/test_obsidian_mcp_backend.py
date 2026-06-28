@@ -212,6 +212,9 @@ def test_streamable_http_mount_lists_phase1_tools(tmp_path: Path, monkeypatch: p
             "vault_archive_note_plan",
             "vault_archive_note_apply",
             "vault_delete_note_plan",
+            "vault_extract_action_items",
+            "vault_project_status_summary",
+            "vault_extract_project_mentions",
             "vault_curation_plan",
             "vault_curation_apply",
         ]

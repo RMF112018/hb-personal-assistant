@@ -43,6 +43,9 @@ _TOOL_SCOPES = {
     "vault_archive_note_apply": "obsidian.write",
     "vault_delete_note_plan": "obsidian.read",
     "vault_semantic_search": "obsidian.read",
+    "vault_extract_action_items": "obsidian.read",
+    "vault_project_status_summary": "obsidian.read",
+    "vault_extract_project_mentions": "obsidian.read",
     "vault_curation_plan": "obsidian.read",
     "vault_curation_apply": "obsidian.write",
 }
@@ -774,6 +777,69 @@ def build_streamable_http_app(service: ObsidianMcpService | None = None) -> Any:
                 "source_path": source_path,
                 "update_links": update_links,
                 "operator_mode": _operator_mode(ctx),
+            }
+        )
+
+    @mcp.tool()
+    def vault_extract_action_items(
+        ctx: Context,
+        path: str,
+        source_type: str = "note",
+        extract_fields: list[str] | None = None,
+        max_chars: int = 12000,
+    ) -> dict[str, Any]:
+        """Extract action items, decisions, risks, owners, and dates from a note, email, or folder."""
+        _enforce("vault_extract_action_items", ctx)
+        return svc.vault_extract_action_items(
+            {
+                "path": path,
+                "source_type": source_type,
+                "extract_fields": extract_fields,
+                "max_chars": max_chars,
+                "operator_mode": _operator_mode(ctx),
+                "principal_kind": _principal_kind(ctx),
+            }
+        )
+
+    @mcp.tool()
+    def vault_project_status_summary(
+        ctx: Context,
+        root_path: str = "",
+        lookback_days: int = 30,
+        include: list[str] | None = None,
+        max_files: int = 100,
+    ) -> dict[str, Any]:
+        """Summarize project notes/emails into a PM-facing status summary."""
+        _enforce("vault_project_status_summary", ctx)
+        return svc.vault_project_status_summary(
+            {
+                "root_path": root_path,
+                "lookback_days": lookback_days,
+                "include": include,
+                "max_files": max_files,
+                "operator_mode": _operator_mode(ctx),
+                "principal_kind": _principal_kind(ctx),
+            }
+        )
+
+    @mcp.tool()
+    def vault_extract_project_mentions(
+        ctx: Context,
+        root_path: str = "",
+        project_aliases: list[str] | None = None,
+        max_files: int = 200,
+        include_snippets: bool = False,
+    ) -> dict[str, Any]:
+        """Detect project references (HB numbers and aliases) across notes and emails."""
+        _enforce("vault_extract_project_mentions", ctx)
+        return svc.vault_extract_project_mentions(
+            {
+                "root_path": root_path,
+                "project_aliases": project_aliases,
+                "max_files": max_files,
+                "include_snippets": include_snippets,
+                "operator_mode": _operator_mode(ctx),
+                "principal_kind": _principal_kind(ctx),
             }
         )
 
