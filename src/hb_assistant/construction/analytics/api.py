@@ -1422,6 +1422,16 @@ def create_app(*, db_path: str | None = None) -> Any:
 
         return ObsidianMcpService().mutations(limit)
 
+    @app.get("/api/settings/obsidian-mcp/read-receipts")
+    def settings_obsidian_mcp_read_receipts(
+        limit: int = Query(default=20, ge=1, le=100),
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        del role
+        from hb_assistant.obsidian_mcp import ObsidianMcpService
+
+        return ObsidianMcpService().read_receipts(limit)
+
     @app.post("/api/settings/obsidian-mcp/write-readiness")
     def settings_obsidian_mcp_write_readiness(role: dict[str, str] = role_dep) -> dict[str, Any]:
         del role

@@ -9,6 +9,7 @@ import {
   getObsidianMcpGrokConfig,
   getObsidianMcpMutations,
   getObsidianMcpOAuth,
+  getObsidianMcpReadReceipts,
   getObsidianMcpStatus,
   getObsidianMcpTools,
   patchObsidianMcpConfig,
@@ -34,6 +35,7 @@ export function ObsidianMcpPanel() {
   const [grok, setGrok] = useState<any>(null)
   const [oauth, setOauth] = useState<any>(null)
   const [mutations, setMutations] = useState<any[]>([])
+  const [readReceipts, setReadReceipts] = useState<any[]>([])
   const [writeReadiness, setWriteReadiness] = useState<any>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<unknown>(null)
@@ -48,13 +50,14 @@ export function ObsidianMcpPanel() {
     setBusy('refresh')
     setError(null)
     try {
-      const [cfg, st, toolData, grokData, mutationData, oauthData] = await Promise.all([
+      const [cfg, st, toolData, grokData, mutationData, oauthData, receiptData] = await Promise.all([
         getObsidianMcpConfig(),
         getObsidianMcpStatus(),
         getObsidianMcpTools(),
         getObsidianMcpGrokConfig(),
         getObsidianMcpMutations(10),
         getObsidianMcpOAuth(),
+        getObsidianMcpReadReceipts(10),
       ])
       setConfig((cfg as any).config || cfg)
       setStatus(st)
@@ -62,6 +65,7 @@ export function ObsidianMcpPanel() {
       setGrok(grokData)
       setMutations((mutationData as any).mutations || [])
       setOauth(oauthData)
+      setReadReceipts((receiptData as any).read_receipts || [])
     } catch (err) {
       setError(err)
     } finally {
@@ -458,17 +462,28 @@ export function ObsidianMcpPanel() {
 
       <div className="mt-4 grid gap-4 xl:grid-cols-2">
         <div className="rounded border border-[var(--hb-border)] p-3">
-          <h4 className="text-sm font-medium">Tool Registry</h4>
-          <div className="mt-2 space-y-2">
-            {tools.map((tool) => (
-              <div key={tool.name} className="rounded border border-[var(--hb-border)] p-2 text-xs">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="font-medium">{tool.name}</span>
-                  <span className={`badge ${tool.enabled ? 'badge-fresh' : 'badge-stale'}`}>{tool.enabled ? 'Enabled' : 'Disabled'}</span>
+          <h4 className="text-sm font-medium">Tool Registry ({tools.length})</h4>
+          <div className="mt-2 space-y-3">
+            {groupToolsByCategory(tools).map(([category, list]) => (
+              <div key={category}>
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-[var(--hb-muted)]">
+                  {category} ({list.length})
                 </div>
-                <div className="mt-1 text-[var(--hb-muted)]">{tool.description}</div>
-                <div className="mt-1 font-mono text-[10px]">{tool.input_schema_summary}</div>
-                <div className="mt-1 text-[var(--hb-muted)]">Last validation: {tool.last_validation_status}</div>
+                <div className="mt-1 space-y-2">
+                  {list.map((tool) => (
+                    <div key={tool.name} className="rounded border border-[var(--hb-border)] p-2 text-xs">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="font-medium">{tool.name}</span>
+                        <span className="flex items-center gap-1">
+                          {isHighRiskTool(tool.name) && <span className="badge badge-stale">High-risk write</span>}
+                          <span className={`badge ${tool.enabled ? 'badge-fresh' : 'badge-stale'}`}>{tool.enabled ? 'Enabled' : 'Disabled'}</span>
+                        </span>
+                      </div>
+                      <div className="mt-1 text-[var(--hb-muted)]">{tool.description}</div>
+                      <div className="mt-1 font-mono text-[10px]">{tool.input_schema_summary}</div>
+                    </div>
+                  ))}
+                </div>
               </div>
             ))}
           </div>
@@ -512,11 +527,102 @@ export function ObsidianMcpPanel() {
         )}
       </div>
 
+      <div className="mt-4 rounded border border-[var(--hb-border)] p-3">
+        <h4 className="text-sm font-medium">Read / crawl receipts</h4>
+        {readReceipts.length === 0 ? (
+          <div className="mt-2 text-xs text-[var(--hb-muted)]">No bulk read receipts recorded.</div>
+        ) : (
+          <div className="mt-2 grid gap-2">
+            {readReceipts.map((receipt, index) => (
+              <div key={`${receipt.timestamp || 'read'}-${index}`} className="rounded border border-[var(--hb-border)] p-2 text-xs">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="badge badge-fresh">read</span>
+                  <span className="font-medium">{receipt.tool_name || 'crawl'}</span>
+                  <span className="text-[var(--hb-muted)]">{receipt.scope || 'scope unavailable'}</span>
+                </div>
+                <div className="mt-1 grid gap-1 text-[10px] text-[var(--hb-muted)] sm:grid-cols-3">
+                  <span>{receipt.timestamp || 'no timestamp'}</span>
+                  <span>{receipt.file_count != null ? `${receipt.file_count} files` : '—'}</span>
+                  <span>{receipt.principal_kind || 'principal n/a'}{receipt.truncated ? ' · truncated' : ''}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="mt-4 grid gap-4 xl:grid-cols-2">
+        <div className="rounded border border-[var(--hb-border)] p-3 text-xs">
+          <h4 className="text-sm font-medium">Read hardening &amp; search</h4>
+          <p className="mt-2 text-[var(--hb-muted)]">
+            OAuth clients cannot list, search, or read hidden/system/protected paths. Semantic search
+            falls back to lexical with a warning until a local-first vector index is configured.
+          </p>
+          <div className="mt-2">
+            <div className="text-[10px] uppercase text-[var(--hb-muted)]">Protected paths</div>
+            <div className="mt-1 flex flex-wrap gap-1">
+              {(config?.protected_paths || []).map((path: string) => (
+                <span key={path} className="badge badge-stale font-mono">{path}</span>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded border border-[var(--hb-border)] p-3 text-xs">
+          <h4 className="text-sm font-medium">Grok usage examples</h4>
+          <p className="mt-2 text-[var(--hb-muted)]">Copyable arguments for common second-brain tools.</p>
+          {GROK_EXAMPLES.map((example) => (
+            <div key={example.tool} className="mt-2">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-mono text-[11px]">{example.tool}</span>
+                <button className="badge inline-flex items-center gap-1" onClick={() => copyText(example.args)}>
+                  <Copy size={12} aria-hidden /> Copy
+                </button>
+              </div>
+              <pre className="mt-1 overflow-x-auto rounded bg-[var(--hb-bg)] p-2 font-mono text-[10px]">{example.args}</pre>
+            </div>
+          ))}
+        </div>
+      </div>
+
       {message && <div className="mt-3 text-xs text-green-600">{message}</div>}
       <ErrorState userMessage="Obsidian MCP settings could not be loaded." error={error} className="mt-3" />
     </SectionCard>
   )
 }
+
+const HIGH_RISK_TOOLS = new Set([
+  'vault_move_note_apply',
+  'vault_rename_note_apply',
+  'vault_archive_note_apply',
+  'vault_update_frontmatter',
+  'vault_curation_apply',
+  'vault_email_to_note_apply',
+])
+
+function isHighRiskTool(name: string): boolean {
+  return HIGH_RISK_TOOLS.has(name)
+}
+
+function groupToolsByCategory(tools: any[]): [string, any[]][] {
+  const groups = new Map<string, any[]>()
+  for (const tool of tools) {
+    const category = tool.category || 'Other'
+    if (!groups.has(category)) groups.set(category, [])
+    groups.get(category)!.push(tool)
+  }
+  return Array.from(groups.entries())
+}
+
+function copyText(value: string) {
+  void navigator.clipboard?.writeText(value)
+}
+
+const GROK_EXAMPLES = [
+  { tool: 'vault_map', args: JSON.stringify({ root_path: 'Work', recursive: true, max_depth: 2, max_files: 100 }, null, 2) },
+  { tool: 'vault_email_inventory', args: JSON.stringify({ root_path: 'Work/Email/inbox', max_files: 25, include_body_preview: false }, null, 2) },
+  { tool: 'vault_curation_plan', args: JSON.stringify({ root_path: 'Work/HB Personal Assistant', strategy: 'second_brain', dry_run: true }, null, 2) },
+]
 
 function StatusRow({ label, value }: { label: string; value: string }) {
   return (

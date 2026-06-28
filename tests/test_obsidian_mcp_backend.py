@@ -111,10 +111,14 @@ def test_status_health_tools_and_grok_config_are_safe(
         "/api/settings/obsidian-mcp/status",
         "/api/settings/obsidian-mcp/tools",
         "/api/settings/obsidian-mcp/grok-config",
+        "/api/settings/obsidian-mcp/read-receipts",
     ):
         res = client.get(path)
         assert res.status_code == 200
         _assert_safe(res.json())
+    tools_payload = client.get("/api/settings/obsidian-mcp/tools").json()
+    assert all("category" in tool for tool in tools_payload["tools"])
+    assert client.get("/api/settings/obsidian-mcp/read-receipts").json()["surface"] == "settings.obsidian_mcp.read_receipts"
 
     health = client.post("/api/settings/obsidian-mcp/health-check").json()
     _assert_safe(health)

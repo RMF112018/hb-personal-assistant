@@ -30,6 +30,7 @@ const getObsidianMcpStatus = vi.fn()
 const runObsidianMcpHealthCheck = vi.fn()
 const getObsidianMcpTools = vi.fn()
 const getObsidianMcpMutations = vi.fn()
+const getObsidianMcpReadReceipts = vi.fn()
 const runObsidianMcpWriteReadiness = vi.fn()
 const enableObsidianMcp = vi.fn()
 const disableObsidianMcp = vi.fn()
@@ -100,6 +101,7 @@ vi.mock('../lib/api', () => ({
   runObsidianMcpHealthCheck: () => runObsidianMcpHealthCheck(),
   getObsidianMcpTools: () => getObsidianMcpTools(),
   getObsidianMcpMutations: (limit: number) => getObsidianMcpMutations(limit),
+  getObsidianMcpReadReceipts: (limit: number) => getObsidianMcpReadReceipts(limit),
   runObsidianMcpWriteReadiness: () => runObsidianMcpWriteReadiness(),
   enableObsidianMcp: () => enableObsidianMcp(),
   disableObsidianMcp: () => disableObsidianMcp(),
@@ -271,11 +273,18 @@ describe('SettingsPage guided setup', () => {
     })
     getObsidianMcpTools.mockResolvedValue({
       tools: [
-        { name: 'list_directory', description: 'List files', input_schema_summary: 'path, recursive', enabled: true, last_validation_status: 'pass' },
-        { name: 'search_vault', description: 'Search files', input_schema_summary: 'query, path_scope', enabled: true, last_validation_status: 'pass' },
-        { name: 'read_file', description: 'Read files', input_schema_summary: 'path, max_chars', enabled: true, last_validation_status: 'pass' },
-        { name: 'create_note', description: 'Create notes', input_schema_summary: 'path, content', enabled: true, last_validation_status: 'pass' },
-        { name: 'patch_note', description: 'Replace notes', input_schema_summary: 'path, content, expected_sha256', enabled: true, last_validation_status: 'pass' },
+        { name: 'list_directory', category: 'Base', description: 'List files', input_schema_summary: 'path, recursive', enabled: true, last_validation_status: 'pass' },
+        { name: 'search_vault', category: 'Base', description: 'Search files', input_schema_summary: 'query, path_scope', enabled: true, last_validation_status: 'pass' },
+        { name: 'read_file', category: 'Base', description: 'Read files', input_schema_summary: 'path, max_chars', enabled: true, last_validation_status: 'pass' },
+        { name: 'create_note', category: 'Base', description: 'Create notes', input_schema_summary: 'path, content', enabled: true, last_validation_status: 'pass' },
+        { name: 'patch_note', category: 'Base', description: 'Replace notes', input_schema_summary: 'path, content, expected_sha256', enabled: true, last_validation_status: 'pass' },
+        { name: 'vault_summarize_note', category: 'Vault Intelligence', description: 'Summarize a note', input_schema_summary: 'path', enabled: true, last_validation_status: 'not_run' },
+        { name: 'vault_move_note_apply', category: 'File Operations', description: 'Apply a move plan', input_schema_summary: 'plan_id', enabled: true, last_validation_status: 'not_run' },
+      ],
+    })
+    getObsidianMcpReadReceipts.mockResolvedValue({
+      read_receipts: [
+        { timestamp: '2026-06-28T11:00:00Z', tool_name: 'vault_email_inventory', scope: 'Work/Email/inbox', file_count: 12, principal_kind: 'oauth', truncated: false },
       ],
     })
     enableObsidianMcp.mockResolvedValue({ config: { enabled: true }, status: { service_state: 'running' }, health: { blocking_issues: [], warnings: [] } })
@@ -433,6 +442,15 @@ describe('SettingsPage guided setup', () => {
     expect(screen.getByLabelText('Markdown management')).toBeChecked()
     expect(screen.getByText('Recent mutation events')).toBeInTheDocument()
     expect(screen.getByText('Projects/Index.md')).toBeInTheDocument()
+    // Tool registry is grouped by category, and high-risk writes are flagged.
+    expect(screen.getByText(/Vault Intelligence/)).toBeInTheDocument()
+    expect(screen.getByText(/File Operations/)).toBeInTheDocument()
+    expect(screen.getByText('High-risk write')).toBeInTheDocument()
+    // Read/crawl receipts and Grok usage examples are surfaced.
+    expect(screen.getByText('Read / crawl receipts')).toBeInTheDocument()
+    expect(screen.getAllByText('vault_email_inventory').length).toBeGreaterThan(0)
+    expect(screen.getByText('Work/Email/inbox')).toBeInTheDocument()
+    expect(screen.getByText('Grok usage examples')).toBeInTheDocument()
     expect(document.body.textContent).toContain('Bearer <configured-token>')
     expect(document.body.textContent).not.toContain('secret-token')
     expect(document.body.textContent).not.toContain('raw note body')
