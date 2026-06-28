@@ -199,6 +199,9 @@ def test_streamable_http_mount_lists_phase1_tools(tmp_path: Path, monkeypatch: p
             "vault_update_frontmatter",
             "vault_search_by_properties",
             "vault_dataview_query",
+            "vault_get_backlinks",
+            "vault_get_unlinked_mentions",
+            "vault_get_note_graph",
             "vault_curation_plan",
             "vault_curation_apply",
         ]

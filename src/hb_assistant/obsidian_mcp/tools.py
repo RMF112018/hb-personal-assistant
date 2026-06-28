@@ -391,6 +391,9 @@ _TOOL_REGISTRY: list[tuple[str, str, str, str]] = [
     ("vault_update_frontmatter", "Metadata/Graph", "Update frontmatter properties (SHA-gated, body-preserving, backup + receipt).", "path, updates, merge_tags, expected_sha256, backup_before_replace"),
     ("vault_search_by_properties", "Metadata/Graph", "Find notes by frontmatter property filters and tag any/all matching.", "root_path, filters, tags_any, tags_all, limit"),
     ("vault_dataview_query", "Metadata/Graph", "Constrained structured query over note properties (no arbitrary Dataview execution).", "root_path, where, select, limit"),
+    ("vault_get_backlinks", "Metadata/Graph", "Find notes that link to a target note (wikilinks and Markdown links).", "target_path, root_path, max_results"),
+    ("vault_get_unlinked_mentions", "Metadata/Graph", "Find notes that mention a title/entity but do not link to it.", "target_title, root_path, max_results, include_snippets"),
+    ("vault_get_note_graph", "Metadata/Graph", "Return local graph data (nodes, edges, orphans, high-degree notes) around a note or folder.", "root_path, target_path, depth, max_nodes"),
     ("vault_curation_plan", "Curation", "Read-only second-brain analysis that returns a durable plan_id plus proposed curation actions.", "root_path, strategy, max_depth, max_files, allowed_actions, dry_run"),
     ("vault_curation_apply", "Curation", "Apply approved actions from a server-generated curation plan_id with backups, receipts, and a max_updates cap.", "plan_id, approved_actions, require_expected_sha256, backup_before_replace, max_updates"),
 ]
