@@ -20,6 +20,9 @@ _TOOL_SCOPES = {
     "read_file": "obsidian.read",
     "create_note": "obsidian.write",
     "patch_note": "obsidian.write",
+    "vault_map": "obsidian.read",
+    "vault_curation_plan": "obsidian.read",
+    "vault_curation_apply": "obsidian.write",
 }
 
 _BEARER_PREFIX = "Bearer "
@@ -119,14 +122,50 @@ def build_streamable_http_app(service: ObsidianMcpService | None = None) -> Any:
         Context,
         FastMCP,
     )
+    from mcp.server.transport_security import (  # type: ignore[import-not-found]  # noqa: PLC0415
+        TransportSecuritySettings,
+    )
 
     svc = service or ObsidianMcpService()
-    mcp = FastMCP("hb-obsidian-mcp")
+    mcp = FastMCP(
+        "hb-obsidian-mcp",
+        json_response=True,
+        stateless_http=True,
+        transport_security=TransportSecuritySettings(
+            enable_dns_rebinding_protection=True,
+            allowed_hosts=[
+                "127.0.0.1",
+                "127.0.0.1:8000",
+                "127.0.0.1:3010",
+                "localhost",
+                "localhost:8000",
+                "localhost:3010",
+                "mcp.bobby-fetting.me",
+                "mcp.bobby-fetting.me:443",
+            ],
+            allowed_origins=[
+                "https://mcp.bobby-fetting.me",
+                "https://grok.com",
+                "https://x.ai",
+            ],
+        ),
+    )
 
     def _enforce(tool_name: str, ctx: Context) -> None:
         is_http, authorization = _request_authorization(ctx)
         if is_http:
             enforce_tool_scope(tool_name, authorization, svc.get_config())
+
+    def _operator_mode(ctx: Context) -> bool:
+        """True for unrestricted principals (static bearer / no-auth / stdio).
+
+        OAuth principals are never operators, so they can never broaden the
+        hidden/protected-path inspection performed by curation tools.
+        """
+        is_http, authorization = _request_authorization(ctx)
+        if not is_http:
+            return True
+        return resolve_granted_scopes(authorization, svc.get_config()) is None
 
     @mcp.tool()
     def list_directory(
@@ -218,6 +257,82 @@ def build_streamable_http_app(service: ObsidianMcpService | None = None) -> Any:
                 "content": content,
                 "expected_sha256": expected_sha256,
                 "caller_surface": "mcp",
+            }
+        )
+
+    @mcp.tool()
+    def vault_map(
+        ctx: Context,
+        root_path: str = "",
+        recursive: bool = True,
+        max_depth: int | None = 4,
+        file_types: list[str] | None = None,
+        include_hidden: bool = False,
+        include_frontmatter: bool = True,
+        include_links: bool = True,
+        include_tags: bool = True,
+        max_files: int = 500,
+    ) -> dict[str, Any]:
+        """Read-only crawl of the vault returning a folder/file inventory."""
+        _enforce("vault_map", ctx)
+        return svc.vault_map(
+            {
+                "root_path": root_path,
+                "recursive": recursive,
+                "max_depth": max_depth,
+                "file_types": file_types,
+                "include_hidden": include_hidden,
+                "include_frontmatter": include_frontmatter,
+                "include_links": include_links,
+                "include_tags": include_tags,
+                "max_files": max_files,
+                "operator_mode": _operator_mode(ctx),
+            }
+        )
+
+    @mcp.tool()
+    def vault_curation_plan(
+        ctx: Context,
+        root_path: str = "",
+        strategy: str = "second_brain",
+        max_depth: int | None = 5,
+        max_files: int = 300,
+        allowed_actions: list[str] | None = None,
+        dry_run: bool = True,
+    ) -> dict[str, Any]:
+        """Read-only second-brain analysis returning a durable plan_id and proposed actions."""
+        _enforce("vault_curation_plan", ctx)
+        return svc.vault_curation_plan(
+            {
+                "root_path": root_path,
+                "strategy": strategy,
+                "max_depth": max_depth,
+                "max_files": max_files,
+                "allowed_actions": allowed_actions,
+                "dry_run": dry_run,
+                "operator_mode": _operator_mode(ctx),
+            }
+        )
+
+    @mcp.tool()
+    def vault_curation_apply(
+        ctx: Context,
+        plan_id: str,
+        approved_actions: list[str] | None = None,
+        require_expected_sha256: bool = True,
+        backup_before_replace: bool = True,
+        max_updates: int = 25,
+    ) -> dict[str, Any]:
+        """Apply approved actions from a server-generated curation plan_id only."""
+        _enforce("vault_curation_apply", ctx)
+        return svc.vault_curation_apply(
+            {
+                "plan_id": plan_id,
+                "approved_actions": approved_actions,
+                "require_expected_sha256": require_expected_sha256,
+                "backup_before_replace": backup_before_replace,
+                "max_updates": max_updates,
+                "operator_mode": _operator_mode(ctx),
             }
         )
 

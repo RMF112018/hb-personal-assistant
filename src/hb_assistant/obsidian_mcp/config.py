@@ -42,6 +42,8 @@ class ObsidianMcpConfig(BaseModel):
     allowed_write_file_types: list[str] = Field(default_factory=lambda: list(DEFAULT_ALLOWED_WRITE_FILE_TYPES))
     oauth_enabled: bool = False
     public_base_url: str | None = None
+    curation_dense_folder_threshold: int = 5
+    curation_operator_hidden_inspection: bool = False
     schema_version: int = 1
 
     model_config = {"extra": "forbid"}
@@ -76,7 +78,7 @@ class ObsidianMcpConfig(BaseModel):
             raise ValueError("port_out_of_range")
         return value
 
-    @field_validator("max_file_mb", "max_result_chars", "max_write_chars")
+    @field_validator("max_file_mb", "max_result_chars", "max_write_chars", "curation_dense_folder_threshold")
     @classmethod
     def validate_positive(cls, value: int) -> int:
         if value <= 0:
@@ -156,6 +158,8 @@ class ObsidianMcpConfigPatch(BaseModel):
     allowed_write_file_types: list[str] | None = None
     oauth_enabled: bool | None = None
     public_base_url: str | None = None
+    curation_dense_folder_threshold: int | None = None
+    curation_operator_hidden_inspection: bool | None = None
 
     model_config = {"extra": "forbid"}
 

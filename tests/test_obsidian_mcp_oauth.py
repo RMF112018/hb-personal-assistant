@@ -218,13 +218,18 @@ def test_scope_enforcement_read_token_cannot_write(tmp_path: Path) -> None:
     token = _token(client, code=code, verifier=verifier)["body"]["access_token"]
     config = config_module.load_config()
     header = f"Bearer {token}"
-    # Read tool allowed.
+    # Read tools allowed (including the read-only curation tools).
     mcp_app.enforce_tool_scope("read_file", header, config)
     mcp_app.enforce_tool_scope("list_directory", header, config)
-    # Write tool blocked.
+    mcp_app.enforce_tool_scope("vault_map", header, config)
+    mcp_app.enforce_tool_scope("vault_curation_plan", header, config)
+    # Write tools blocked (including curation apply).
     with pytest.raises(ObsidianMcpToolError) as exc:
         mcp_app.enforce_tool_scope("create_note", header, config)
     assert exc.value.code == "insufficient_scope"
+    with pytest.raises(ObsidianMcpToolError) as exc_apply:
+        mcp_app.enforce_tool_scope("vault_curation_apply", header, config)
+    assert exc_apply.value.code == "insufficient_scope"
 
 
 def test_scope_enforcement_write_token_allows_write(tmp_path: Path) -> None:
@@ -237,6 +242,7 @@ def test_scope_enforcement_write_token_allows_write(tmp_path: Path) -> None:
     header = f"Bearer {token}"
     mcp_app.enforce_tool_scope("create_note", header, config)  # no raise
     mcp_app.enforce_tool_scope("patch_note", header, config)
+    mcp_app.enforce_tool_scope("vault_curation_apply", header, config)
 
 
 def test_static_bearer_is_unrestricted(tmp_path: Path) -> None:

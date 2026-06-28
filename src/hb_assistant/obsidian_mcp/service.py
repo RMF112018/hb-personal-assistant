@@ -144,7 +144,7 @@ class ObsidianMcpService:
             blocker="mcp_http_unavailable",
         )
         add("caps_configured", config.max_file_mb > 0 and config.max_result_chars > 0, "file/result caps configured", blocker="caps_invalid")
-        add("tool_registry", len(tool_registry()) == 5, "five Obsidian MCP tools registered", blocker="tool_registry_invalid")
+        add("tool_registry", len(tool_registry()) == 8, "eight Obsidian MCP tools registered", blocker="tool_registry_invalid")
         add("http_port", self._port_available_or_self(config), "HTTP port is available or owned by backend", warning="port_unavailable")
         readiness = write_readiness(config)
         add("vault_writable", bool(readiness["vault_writable"]), "vault root is writable", warning="vault_not_writable")
@@ -275,6 +275,31 @@ class ObsidianMcpService:
 
     def patch_note(self, args: dict[str, Any]) -> dict[str, Any]:
         return patch_note(self.get_config(), **args)
+
+    def vault_map(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .curation import vault_map
+
+        return vault_map(self.get_config(), **args)
+
+    def vault_curation_plan(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .curation import build_curation_plan
+
+        return build_curation_plan(self.get_config(), **args)
+
+    def vault_curation_apply(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .curation import apply_curation_plan
+
+        return apply_curation_plan(self.get_config(), **args)
+
+    def curation_receipt(self, plan_id: str) -> dict[str, Any]:
+        from . import plan_store
+
+        return {
+            "surface": "settings.obsidian_mcp.curation_receipt",
+            "plan_id": plan_id,
+            "receipt": plan_store.load_receipt(plan_id),
+            "guardrails": self.guardrails(),
+        }
 
     def mutations(self, limit: int = 20) -> dict[str, Any]:
         return {
