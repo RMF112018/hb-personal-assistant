@@ -26,6 +26,10 @@ _TOOL_SCOPES = {
     "vault_read_eml": "obsidian.read",
     "vault_email_inventory": "obsidian.read",
     "vault_parse_email": "obsidian.read",
+    "vault_read_frontmatter": "obsidian.read",
+    "vault_update_frontmatter": "obsidian.write",
+    "vault_search_by_properties": "obsidian.read",
+    "vault_dataview_query": "obsidian.read",
     "vault_curation_plan": "obsidian.read",
     "vault_curation_apply": "obsidian.write",
 }
@@ -438,6 +442,77 @@ def build_streamable_http_app(service: ObsidianMcpService | None = None) -> Any:
                 "max_body_chars": max_body_chars,
                 "redact_email_addresses": redact_email_addresses,
                 "redact_phone_numbers": redact_phone_numbers,
+                "operator_mode": _operator_mode(ctx),
+            }
+        )
+
+    @mcp.tool()
+    def vault_read_frontmatter(ctx: Context, path: str) -> dict[str, Any]:
+        """Read YAML frontmatter/properties plus body and file SHA-256 from a note."""
+        _enforce("vault_read_frontmatter", ctx)
+        return svc.vault_read_frontmatter({"path": path, "operator_mode": _operator_mode(ctx)})
+
+    @mcp.tool()
+    def vault_update_frontmatter(
+        ctx: Context,
+        path: str,
+        updates: dict[str, Any],
+        expected_sha256: str,
+        merge_tags: bool = True,
+        backup_before_replace: bool = True,
+    ) -> dict[str, Any]:
+        """Update frontmatter properties safely (SHA-gated, body-preserving, backup + receipt)."""
+        _enforce("vault_update_frontmatter", ctx)
+        return svc.vault_update_frontmatter(
+            {
+                "path": path,
+                "updates": updates,
+                "expected_sha256": expected_sha256,
+                "merge_tags": merge_tags,
+                "backup_before_replace": backup_before_replace,
+                "operator_mode": _operator_mode(ctx),
+                "principal_kind": _principal_kind(ctx),
+            }
+        )
+
+    @mcp.tool()
+    def vault_search_by_properties(
+        ctx: Context,
+        root_path: str = "",
+        filters: dict[str, Any] | None = None,
+        tags_any: list[str] | None = None,
+        tags_all: list[str] | None = None,
+        limit: int = 100,
+    ) -> dict[str, Any]:
+        """Find notes by frontmatter property filters and tag any/all matching."""
+        _enforce("vault_search_by_properties", ctx)
+        return svc.vault_search_by_properties(
+            {
+                "root_path": root_path,
+                "filters": filters,
+                "tags_any": tags_any,
+                "tags_all": tags_all,
+                "limit": limit,
+                "operator_mode": _operator_mode(ctx),
+            }
+        )
+
+    @mcp.tool()
+    def vault_dataview_query(
+        ctx: Context,
+        root_path: str = "",
+        where: list[dict[str, Any]] | None = None,
+        select: list[str] | None = None,
+        limit: int = 100,
+    ) -> dict[str, Any]:
+        """Constrained structured query over note properties (no arbitrary Dataview execution)."""
+        _enforce("vault_dataview_query", ctx)
+        return svc.vault_dataview_query(
+            {
+                "root_path": root_path,
+                "where": where,
+                "select": select,
+                "limit": limit,
                 "operator_mode": _operator_mode(ctx),
             }
         )

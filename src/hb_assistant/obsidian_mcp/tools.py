@@ -387,6 +387,10 @@ _TOOL_REGISTRY: list[tuple[str, str, str, str]] = [
     ("vault_read_eml", "Email", "Parse one .eml email (headers, body, attachments metadata) with detected projects/people/actions.", "path, include_body, include_attachments, max_body_chars, redact_email_addresses, redact_phone_numbers"),
     ("vault_email_inventory", "Email", "Inventory .eml files in a folder (metadata only unless a preview is requested).", "root_path, recursive, max_depth, max_files, include_subject, include_from, include_date, include_body_preview"),
     ("vault_parse_email", "Email", "Parse one .eml into construction/PM extraction categories (RFIs, submittals, schedule, cost, owner direction, field issues, actions, decisions).", "path, extract, max_body_chars, redact_email_addresses, redact_phone_numbers"),
+    ("vault_read_frontmatter", "Metadata/Graph", "Read YAML frontmatter/properties from a note plus its body and file SHA-256.", "path"),
+    ("vault_update_frontmatter", "Metadata/Graph", "Update frontmatter properties (SHA-gated, body-preserving, backup + receipt).", "path, updates, merge_tags, expected_sha256, backup_before_replace"),
+    ("vault_search_by_properties", "Metadata/Graph", "Find notes by frontmatter property filters and tag any/all matching.", "root_path, filters, tags_any, tags_all, limit"),
+    ("vault_dataview_query", "Metadata/Graph", "Constrained structured query over note properties (no arbitrary Dataview execution).", "root_path, where, select, limit"),
     ("vault_curation_plan", "Curation", "Read-only second-brain analysis that returns a durable plan_id plus proposed curation actions.", "root_path, strategy, max_depth, max_files, allowed_actions, dry_run"),
     ("vault_curation_apply", "Curation", "Apply approved actions from a server-generated curation plan_id with backups, receipts, and a max_updates cap.", "plan_id, approved_actions, require_expected_sha256, backup_before_replace, max_updates"),
 ]

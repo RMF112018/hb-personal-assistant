@@ -227,14 +227,20 @@ def test_scope_enforcement_read_token_cannot_write(tmp_path: Path) -> None:
     mcp_app.enforce_tool_scope("vault_read_eml", header, config)
     mcp_app.enforce_tool_scope("vault_email_inventory", header, config)
     mcp_app.enforce_tool_scope("vault_parse_email", header, config)
+    mcp_app.enforce_tool_scope("vault_read_frontmatter", header, config)
+    mcp_app.enforce_tool_scope("vault_search_by_properties", header, config)
+    mcp_app.enforce_tool_scope("vault_dataview_query", header, config)
     mcp_app.enforce_tool_scope("vault_curation_plan", header, config)
-    # Write tools blocked (including curation apply).
+    # Write tools blocked (including curation apply + frontmatter update).
     with pytest.raises(ObsidianMcpToolError) as exc:
         mcp_app.enforce_tool_scope("create_note", header, config)
     assert exc.value.code == "insufficient_scope"
     with pytest.raises(ObsidianMcpToolError) as exc_apply:
         mcp_app.enforce_tool_scope("vault_curation_apply", header, config)
     assert exc_apply.value.code == "insufficient_scope"
+    with pytest.raises(ObsidianMcpToolError) as exc_fm:
+        mcp_app.enforce_tool_scope("vault_update_frontmatter", header, config)
+    assert exc_fm.value.code == "insufficient_scope"
 
 
 def test_scope_enforcement_write_token_allows_write(tmp_path: Path) -> None:
@@ -248,6 +254,7 @@ def test_scope_enforcement_write_token_allows_write(tmp_path: Path) -> None:
     mcp_app.enforce_tool_scope("create_note", header, config)  # no raise
     mcp_app.enforce_tool_scope("patch_note", header, config)
     mcp_app.enforce_tool_scope("vault_curation_apply", header, config)
+    mcp_app.enforce_tool_scope("vault_update_frontmatter", header, config)
 
 
 def test_static_bearer_is_unrestricted(tmp_path: Path) -> None:
