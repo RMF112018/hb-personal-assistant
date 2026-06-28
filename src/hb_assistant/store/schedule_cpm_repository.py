@@ -360,6 +360,46 @@ class ScheduleCpmDiagnosticsRepository:
         """Most-recent criticality run (the DCMA metric integration depends on it)."""
         return self._get_latest_run(schedule_version_key, "criticality")
 
+    def float_risk_counts(
+        self, cpm_run_id: str, *, high_total_float_days: float
+    ) -> dict[str, int]:
+        """Read-only computed-total-float bucket counts for one CPM run.
+
+        A single aggregate query over schedule_cpm_activity_results (no per-activity
+        hydration). Buckets count activities by computed_total_float: negative (< 0),
+        zero (== 0), and high (>= the supplied high-total-float threshold).
+        ``classified_total_float_count`` is the number of activities with a non-NULL
+        computed_total_float; activities with a NULL value are excluded from every bucket.
+        """
+        with self._conn() as conn:
+            cur = conn.execute(
+                """
+                SELECT
+                    COALESCE(
+                        SUM(CASE WHEN computed_total_float < 0 THEN 1 ELSE 0 END), 0
+                    ) AS negative_total_float_count,
+                    COALESCE(
+                        SUM(CASE WHEN computed_total_float = 0 THEN 1 ELSE 0 END), 0
+                    ) AS zero_total_float_count,
+                    COALESCE(
+                        SUM(CASE WHEN computed_total_float >= ? THEN 1 ELSE 0 END), 0
+                    ) AS high_total_float_count,
+                    COALESCE(
+                        SUM(CASE WHEN computed_total_float IS NOT NULL THEN 1 ELSE 0 END), 0
+                    ) AS classified_total_float_count
+                FROM schedule_cpm_activity_results
+                WHERE cpm_run_id=?
+                """,
+                (high_total_float_days, cpm_run_id),
+            )
+            row = cur.fetchone()
+            return {
+                "negative_total_float_count": int(row["negative_total_float_count"]),
+                "zero_total_float_count": int(row["zero_total_float_count"]),
+                "high_total_float_count": int(row["high_total_float_count"]),
+                "classified_total_float_count": int(row["classified_total_float_count"]),
+            }
+
     def replace_criticality_run(
         self,
         run_row: dict[str, Any],

@@ -3491,6 +3491,19 @@ def create_app(*, db_path: str | None = None) -> Any:
         out = _schedule_call(_schedule_read_service().get_health_data, schedule_version_key)
         if out is None:
             raise HTTPException(status_code=404, detail="schedule_not_found")
+        # Phase 9A.1: additive, read-only Application-computed CPM health envelope. Fail-soft so a
+        # CPM-side issue can never break the source-export Schedule Health response.
+        try:
+            out["computed_cpm_health"] = _schedule_health_cpm_service().build_computed_cpm_health(
+                schedule_version_key
+            )
+        except Exception:  # pragma: no cover - defensive: keep /health-data resilient
+            out["computed_cpm_health"] = {
+                "available": False,
+                "reason": "computed_cpm_error",
+                "evidence_class": "application_computed_cpm",
+                "source_export_evidence": "separate",
+            }
         return out
 
     @app.get("/api/schedules/versions/{schedule_version_key}/activities")
@@ -3609,6 +3622,13 @@ def create_app(*, db_path: str | None = None) -> Any:
         )
 
         return ScheduleCpmReadService(db_path=_schedule_db_path())
+
+    def _schedule_health_cpm_service() -> Any:
+        from hb_assistant.construction.analytics.schedule_health_cpm_service import (
+            ScheduleHealthCpmService,
+        )
+
+        return ScheduleHealthCpmService(db_path=_schedule_db_path())
 
     @app.get("/api/schedules/versions/{schedule_version_key}/cpm/summary")
     def schedule_version_cpm_summary(
