@@ -234,3 +234,123 @@ def test_gma_p6_still_not_measurable_critical_path(tmp_path: Path) -> None:
     )
     assert metric["status"] == METRIC_STATUS_NOT_MEASURABLE_RECALC
     assert engine._evaluate_source_export_metrics(ctx) == []
+
+
+# --------------------------------------------------------------------- Phase 7 computed CPM
+
+
+def _build_ctx(db, svk):
+    from hb_assistant.construction.analytics.schedule_quality_engine import EvaluationContext
+    from hb_assistant.construction.analytics.schedule_quality_profiles import get_profile
+
+    payload = ScheduleQualityDataLoader(db_path=str(db)).load(svk)
+    return EvaluationContext(
+        project_key="tropical",
+        schedule_version_key=svk,
+        schedule_table_id=None,
+        import_id=payload["import_meta"]["import_id"],
+        evaluation_run_id="sq-test",
+        assessment_profile=get_profile(),
+        activities=payload["activities"],
+        relationships=payload["relationships"],
+        import_meta=payload["import_meta"],
+        schedule_options=payload["schedule_options"],
+        computed_cpm_critical_path=payload["computed_cpm_critical_path"],
+    )
+
+
+def _run_full_cpm_chain(db, svk):
+    from hb_assistant.construction.analytics.schedule_cpm_service import ScheduleCpmGraphService
+
+    cpm = ScheduleCpmGraphService(db_path=str(db))
+    cpm.run_forward_pass(svk)
+    cpm.run_backward_pass(svk)
+    cpm.run_float_calculation(svk)
+    cpm.run_longest_path(svk)
+    cpm.run_criticality_classification(svk)
+
+
+def test_xer_dcma_critical_path_measurable_with_computed_cpm(tmp_path: Path) -> None:
+    from hb_assistant.construction.analytics.schedule_quality_engine import (
+        METRIC_STATUS_AVAILABLE_APP_CPM,
+    )
+
+    svk = _seed_xer_quality(tmp_path)
+    db = tmp_path / "q.db"
+    _run_full_cpm_chain(db, svk)  # forward -> backward -> float -> longest path -> criticality
+    ctx = _build_ctx(db, svk)
+    engine = ScheduleQualityAssessmentEngine()
+
+    metric, _ = engine._metric_critical_path_test(
+        ctx, "dcma_critical_path_test", DCMA_METRIC_SPECS["dcma_critical_path_test"]
+    )
+    # The DCMA critical-path test is now MEASURABLE from the application-computed CPM chain.
+    assert metric["status"] == METRIC_STATUS_AVAILABLE_APP_CPM
+    assert metric["metric_family"] == "dcma"
+    assert metric.get("not_measurable_reason") is None
+    evidence = json.loads(metric["evidence_json"])
+    assert evidence["basis"] == "application_computed_cpm"
+    assert evidence["source_critical_flags_used"] is False
+    assert set(evidence["dependency_run_ids"]) == {
+        "forward", "backward", "float", "longest_path", "criticality"
+    }
+    assert all(evidence["dependency_run_ids"].values())
+
+    # Source-export evidence is still produced SEPARATELY (not replaced).
+    source_metrics = engine._evaluate_source_export_metrics(ctx)
+    assert len(source_metrics) == 1
+    assert source_metrics[0]["metric_family"] == "source_export"
+    assert source_metrics[0]["status"] == METRIC_STATUS_AVAILABLE_XER_DRIVING
+
+
+def test_xer_dcma_not_measurable_when_chain_incomplete(tmp_path: Path) -> None:
+    # Run only the forward pass (chain incomplete) -> attempted-but-blocked computed-CPM
+    # evaluation -> metric stays not measurable with computed-CPM reasons (not the generic
+    # source reason).
+    svk = _seed_xer_quality(tmp_path)
+    db = tmp_path / "q.db"
+    from hb_assistant.construction.analytics.schedule_cpm_service import ScheduleCpmGraphService
+
+    ScheduleCpmGraphService(db_path=str(db)).run_forward_pass(svk)
+    ctx = _build_ctx(db, svk)
+    engine = ScheduleQualityAssessmentEngine()
+    metric, _ = engine._metric_critical_path_test(
+        ctx, "dcma_critical_path_test", DCMA_METRIC_SPECS["dcma_critical_path_test"]
+    )
+    assert metric["status"] == METRIC_STATUS_NOT_MEASURABLE_RECALC
+    evidence = json.loads(metric["evidence_json"])
+    assert evidence["cpm_recalculation"] == "attempted_incomplete"
+    assert "missing_backward_run" in evidence["reason_codes"]
+
+
+def test_source_only_unchanged_when_no_cpm_attempted(tmp_path: Path) -> None:
+    # No CPM chain run at all -> evaluation is None -> existing source-only behavior intact.
+    svk = _seed_xer_quality(tmp_path)
+    db = tmp_path / "q.db"
+    ctx = _build_ctx(db, svk)
+    assert ctx.computed_cpm_critical_path is None
+    engine = ScheduleQualityAssessmentEngine()
+    metric, _ = engine._metric_critical_path_test(
+        ctx, "dcma_critical_path_test", DCMA_METRIC_SPECS["dcma_critical_path_test"]
+    )
+    assert metric["status"] == METRIC_STATUS_NOT_MEASURABLE_RECALC
+    assert "available separately" in str(metric.get("not_measurable_reason") or "")
+
+
+def test_readiness_reflects_computed_cpm(tmp_path: Path) -> None:
+    from hb_assistant.construction.analytics.schedule_quality_engine import (
+        METRIC_STATUS_AVAILABLE_APP_CPM,
+    )
+    from hb_assistant.construction.analytics.schedule_quality_posture import (
+        classify_critical_path_readiness,
+    )
+
+    svk = _seed_xer_quality(tmp_path)
+    db = tmp_path / "q.db"
+    _run_full_cpm_chain(db, svk)
+    ctx = _build_ctx(db, svk)
+    metrics = [{"metric_code": "dcma_critical_path_test", "status": METRIC_STATUS_AVAILABLE_APP_CPM}]
+    readiness = classify_critical_path_readiness(ctx, metrics)
+    assert readiness["available_cpm_recalculated"] is True
+    assert readiness["critical_path_requires_cpm_recalculation"] is False
+    assert readiness["source_evidence_class"] == "application_computed_cpm"

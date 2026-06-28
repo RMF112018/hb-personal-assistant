@@ -1,0 +1,9 @@
+{
+  "status": "not_measurable_requires_recalculation",
+  "not_measurable_reason": "CPM recalculation not implemented; source-export critical path data is available separately",
+  "evidence": {
+    "method": "requires_cpm_recalculation",
+    "cpm_recalculation": "not_implemented",
+    "source_format": "primavera_xer"
+  }
+}

@@ -356,6 +356,10 @@ class ScheduleCpmDiagnosticsRepository:
         """Most-recent longest-path run (the criticality classification depends on it)."""
         return self._get_latest_run(schedule_version_key, "longest_path")
 
+    def get_criticality_run(self, schedule_version_key: str) -> dict[str, Any] | None:
+        """Most-recent criticality run (the DCMA metric integration depends on it)."""
+        return self._get_latest_run(schedule_version_key, "criticality")
+
     def replace_criticality_run(
         self,
         run_row: dict[str, Any],

@@ -28,6 +28,8 @@ METRIC_STATUS_CHECK_VALUES: tuple[str, ...] = (
     "available_xer_total_float_threshold",
     "partial_xer_float_coverage",
     "missing_source_critical_data",
+    # V89: DCMA critical-path test measured from the application-computed CPM chain.
+    "available_app_cpm_recalculated",
 )
 
 METRIC_FAMILY_CHECK_VALUES: tuple[str, ...] = (

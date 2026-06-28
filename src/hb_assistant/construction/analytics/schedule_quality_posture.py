@@ -17,6 +17,8 @@ METRIC_STATUS_FAIL = "failed_threshold"
 METRIC_STATUS_DERIVED_FINISH_FLOAT = "measured_from_derived_finish_float"
 METRIC_STATUS_EXPLICIT_FLOAT = "measured_from_explicit_source_float"
 METRIC_STATUS_SOURCE_EXPORT_PROXY = "measured_from_source_export_proxy"
+# Phase 7: DCMA critical-path test measured from the application-computed CPM chain.
+METRIC_STATUS_AVAILABLE_APP_CPM = "available_app_cpm_recalculated"
 
 VALID_THRESHOLD_STATUSES = {
     METRIC_STATUS_PASS,
@@ -533,6 +535,26 @@ def resolve_scorecard_metric_status(metric: dict[str, Any]) -> dict[str, Any]:
 
 
 def classify_critical_path_readiness(ctx: Any, metrics: list[dict[str, Any]]) -> dict[str, Any]:
+    # Phase 7: the DCMA critical-path test is measurable from the application-computed CPM
+    # chain. This is the authoritative computed basis; record it ahead of source evidence.
+    computed_cpm = any(
+        m.get("metric_code") == "dcma_critical_path_test"
+        and m.get("status") == METRIC_STATUS_AVAILABLE_APP_CPM
+        for m in metrics
+    )
+    if computed_cpm:
+        return {
+            "state": "available_application_computed_cpm",
+            "source_evidence_class": "application_computed_cpm",
+            "available_cpm_recalculated": True,
+            "cpm_recalculation_performed": True,
+            "critical_path_requires_cpm_recalculation": False,
+            "caveats": [
+                "Critical path measured from the application-computed CPM chain "
+                "(forward/backward/float/longest-path/criticality); source-export criticality "
+                "is retained separately as evidence."
+            ],
+        }
     source_format = str((getattr(ctx, "import_meta", None) or {}).get("source_format") or "")
     source_export = any(m.get("metric_family") == "source_export" for m in metrics)
     derived_or_proxy = any(
