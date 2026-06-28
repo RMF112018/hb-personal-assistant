@@ -1,0 +1,22 @@
+# CPM float foundation — validation output (2026-06-28T06:58:49Z)
+
+## pytest graph + forward + backward + float
+........................................................................ [ 94%]
+....                                                                     [100%]
+
+## regression: import / health / DCMA-not-measurable / migration / count(475 unchanged)
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+
+## ruff check (new/changed files)
+All checks passed!
+
+## mypy (new src files)
+Success: no issues found in 3 source files
+
+## full schedule bundle (scripts/test-schedule.sh)
+237 passed, 2 deselected, 1 warning in 191.86s
+
+## fresh-migrate + idempotency
+LATEST=86 applied=86 reapply=86; +10 activity / +3 relationship / +3 run columns present; v86 migration row recorded; table_count unchanged (475).

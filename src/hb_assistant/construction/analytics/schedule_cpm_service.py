@@ -10,8 +10,12 @@ early finish dates over an acyclic graph, persisting them to the V84 result tabl
 
 ``run_backward_pass`` (Phase 3) reuses that graph plus the persisted forward-pass results to
 compute application-owned late start / late finish dates over the reverse topological order,
-persisting them to its own run with ``cpm_recalculation_status='backward_pass_only'``. None
-of these paths computes float or critical/longest path, reads source-export critical/float
+persisting them to its own run with ``cpm_recalculation_status='backward_pass_only'``.
+
+``run_float_calculation`` (Phase 4) derives application-owned total/free float from the
+persisted backward run's early/late offsets, persisting to its own run with
+``cpm_recalculation_status='forward_backward_float_only'``. None of these paths computes a
+critical or longest path, marks an activity critical, reads source-export critical/float
 flags for logic, or overwrites any source schedule field.
 """
 
@@ -34,6 +38,11 @@ from .schedule_cpm_backward_pass import (
     BackwardPassResult,
     compute_backward_pass,
     resolve_finish_anchor,
+)
+from .schedule_cpm_float import (
+    BLOCK_MISSING_BACKWARD_PASS,
+    FloatResult,
+    compute_float,
 )
 from .schedule_cpm_forward_pass import (
     RUN_BLOCKED,
@@ -684,6 +693,236 @@ class ScheduleCpmGraphService:
                     "candidate_predecessor_late_start": r.candidate_predecessor_late_start,
                     "candidate_predecessor_late_finish": r.candidate_predecessor_late_finish,
                     "backward_relationship_calc_status": r.backward_relationship_calc_status,
+                }
+                for r in result.relationships
+            ],
+        }
+
+    # ------------------------------------------------------------------- Phase 4 float
+
+    def run_float_calculation(self, schedule_version_key: str) -> dict[str, Any]:
+        """Compute + persist total/free float for the version (float only).
+
+        Derives float solely from the application-owned Phase 2/3 offsets persisted on the
+        backward run; never reads source float or source early/late/critical fields, and
+        never marks an activity critical. Blocks (no result rows) if the forward or backward
+        run is missing. Writes a new float run; the forward/backward runs are untouched.
+        """
+        activities = self._load_all_activities(schedule_version_key)
+        relationships = self._activities.list_relationships(schedule_version_key)
+        graph = build_graph(activities, relationships)
+        project_key, import_id = self._run_metadata(schedule_version_key)
+
+        forward_run = self._cpm.get_forward_pass_run(schedule_version_key)
+        backward_run = self._cpm.get_backward_pass_run(schedule_version_key)
+
+        if forward_run is None or forward_run.get("cpm_recalculation_status") != "forward_pass_only":
+            result = compute_float(graph, [], [])
+            if result.block_reason == BLOCK_MISSING_BACKWARD_PASS:
+                result.block_reason = BLOCK_MISSING_FORWARD_PASS
+            return self._persist_float_run(
+                schedule_version_key, project_key, import_id, graph, result, backward_run=None
+            )
+        if backward_run is None or backward_run.get("cpm_recalculation_status") != "backward_pass_only":
+            result = compute_float(graph, [], [])
+            return self._persist_float_run(
+                schedule_version_key, project_key, import_id, graph, result, backward_run=None
+            )
+
+        cpm_activities = self._cpm.list_activity_results(backward_run["cpm_run_id"])
+        cpm_relationships = self._cpm.list_relationship_results(backward_run["cpm_run_id"])
+        result = compute_float(graph, cpm_activities, cpm_relationships)
+        return self._persist_float_run(
+            schedule_version_key,
+            project_key,
+            import_id,
+            graph,
+            result,
+            backward_run=backward_run,
+            cpm_activities=cpm_activities,
+            cpm_relationships=cpm_relationships,
+        )
+
+    def _persist_float_run(
+        self,
+        schedule_version_key: str,
+        project_key: str,
+        import_id: str,
+        graph: GraphBuildResult,
+        result: FloatResult,
+        *,
+        backward_run: dict[str, Any] | None,
+        cpm_activities: list[dict[str, Any]] | None = None,
+        cpm_relationships: list[dict[str, Any]] | None = None,
+    ) -> dict[str, Any]:
+        cpm_activities = cpm_activities or []
+        cpm_relationships = cpm_relationships or []
+        run_id = deterministic_cpm_run_id(
+            schedule_version_key=schedule_version_key,
+            import_id=import_id,
+            diagnostic_signature=self._diagnostic_signature(graph),
+            kind="float",
+        )
+
+        run_row = {
+            "cpm_run_id": run_id,
+            "project_key": project_key,
+            "schedule_version_key": schedule_version_key,
+            "import_id": import_id,
+            "node_count": result.node_count,
+            "edge_count": result.edge_count,
+            "is_acyclic": 1 if graph.is_acyclic else 0,
+            "diagnostic_count": result.diagnostic_count,
+            "topological_order_json": (
+                json.dumps(graph.topological_order)
+                if graph.topological_order is not None
+                else None
+            ),
+            "analysis_scope": "float",
+            "cpm_recalculation_status": result.cpm_recalculation_status,
+            "calculation_type": result.calculation_type,
+            "schedule_start_anchor": (
+                backward_run.get("schedule_start_anchor") if backward_run else None
+            ),
+            "schedule_start_anchor_source": (
+                backward_run.get("schedule_start_anchor_source") if backward_run else None
+            ),
+            "schedule_finish_anchor": (
+                backward_run.get("schedule_finish_anchor") if backward_run else None
+            ),
+            "schedule_finish_anchor_source": (
+                backward_run.get("schedule_finish_anchor_source") if backward_run else None
+            ),
+            "source_run_id": backward_run.get("cpm_run_id") if backward_run else None,
+            "computed_activity_count": result.total_float_computed_count,
+            "blocked_activity_count": result.blocked_activity_count,
+            "total_float_computed_count": result.total_float_computed_count,
+            "free_float_computed_count": result.free_float_computed_count,
+        }
+
+        diagnostic_rows = self._build_diagnostic_rows(
+            run_id,
+            graph,
+            project_key=project_key,
+            schedule_version_key=schedule_version_key,
+            import_id=import_id,
+        )
+
+        # Activity rows carry the backward run's early+late columns (copied) plus the new
+        # float columns — the float run is self-contained; backward run rows are untouched.
+        float_by_id = {f.activity_id: f for f in result.activities}
+        activity_rows: list[dict[str, Any]] = []
+        for src in cpm_activities:
+            f = float_by_id.get(str(src.get("activity_id")))
+            if f is None:
+                continue
+            row = dict(src)
+            row.pop("created_at", None)
+            row["cpm_run_id"] = run_id
+            row["computed_total_float"] = f.computed_total_float
+            row["computed_total_float_basis"] = f.computed_total_float_basis
+            row["computed_total_float_status"] = f.computed_total_float_status
+            row["computed_total_float_notes_json"] = (
+                json.dumps(f.total_float_notes) if f.total_float_notes else None
+            )
+            row["computed_free_float"] = f.computed_free_float
+            row["computed_free_float_basis"] = f.computed_free_float_basis
+            row["computed_free_float_status"] = f.computed_free_float_status
+            row["computed_free_float_notes_json"] = (
+                json.dumps(f.free_float_notes) if f.free_float_notes else None
+            )
+            row["controlling_free_float_successor_activity_id"] = (
+                f.controlling_free_float_successor_activity_id
+            )
+            row["controlling_free_float_relationship_id"] = (
+                f.controlling_free_float_relationship_id
+            )
+            activity_rows.append(row)
+
+        brel_by_key = {
+            (
+                str(r.get("predecessor_activity_id")),
+                str(r.get("successor_activity_id")),
+                str(r.get("relationship_type") or ""),
+                str(r.get("relationship_row_id") or ""),
+            ): r
+            for r in cpm_relationships
+        }
+        relationship_rows: list[dict[str, Any]] = []
+        for fr in result.relationships:
+            key = (
+                fr.predecessor_activity_id,
+                fr.successor_activity_id,
+                str(fr.relationship_type or ""),
+                str(fr.relationship_row_id or ""),
+            )
+            row = dict(brel_by_key.get(key, {}))
+            row.pop("created_at", None)
+            row.update(
+                {
+                    "cpm_run_id": run_id,
+                    "schedule_version_key": schedule_version_key,
+                    "project_key": project_key,
+                    "predecessor_activity_id": fr.predecessor_activity_id,
+                    "successor_activity_id": fr.successor_activity_id,
+                    "relationship_type": fr.relationship_type,
+                    "relationship_row_id": fr.relationship_row_id,
+                    "relationship_ref": fr.relationship_ref,
+                    "free_float_candidate": fr.free_float_candidate,
+                    "free_float_candidate_status": fr.free_float_candidate_status,
+                    "free_float_candidate_notes_json": (
+                        json.dumps(fr.notes) if fr.notes else None
+                    ),
+                }
+            )
+            # relationship_calc_status is NOT NULL; ensure a value when no backward match.
+            row.setdefault("relationship_calc_status", "computed")
+            relationship_rows.append(row)
+
+        self._cpm.replace_float_run(
+            run_row, diagnostic_rows, activity_rows, relationship_rows
+        )
+        return self._float_summary(run_id, result, backward_run)
+
+    @staticmethod
+    def _float_summary(
+        run_id: str, result: FloatResult, backward_run: dict[str, Any] | None
+    ) -> dict[str, Any]:
+        return {
+            "cpm_run_id": run_id,
+            "run_status": result.run_status,
+            "blocked": result.run_status == RUN_BLOCKED,
+            "block_reason": result.block_reason,
+            "calculation_type": result.calculation_type,
+            "cpm_recalculation_status": result.cpm_recalculation_status,
+            "source_run_id": backward_run.get("cpm_run_id") if backward_run else None,
+            "node_count": result.node_count,
+            "edge_count": result.edge_count,
+            "diagnostic_count": result.diagnostic_count,
+            "total_float_computed_count": result.total_float_computed_count,
+            "free_float_computed_count": result.free_float_computed_count,
+            "blocked_activity_count": result.blocked_activity_count,
+            "activities": [
+                {
+                    "activity_id": a.activity_id,
+                    "topological_index": a.topological_index,
+                    "computed_total_float": a.computed_total_float,
+                    "computed_total_float_basis": a.computed_total_float_basis,
+                    "computed_total_float_status": a.computed_total_float_status,
+                    "computed_free_float": a.computed_free_float,
+                    "computed_free_float_status": a.computed_free_float_status,
+                    "controlling_free_float_successor_activity_id": (
+                        a.controlling_free_float_successor_activity_id
+                    ),
+                }
+                for a in result.activities
+            ],
+            "relationships": [
+                {
+                    "relationship_ref": r.relationship_ref,
+                    "relationship_type": r.relationship_type,
+                    "free_float_candidate": r.free_float_candidate,
+                    "free_float_candidate_status": r.free_float_candidate_status,
                 }
                 for r in result.relationships
             ],

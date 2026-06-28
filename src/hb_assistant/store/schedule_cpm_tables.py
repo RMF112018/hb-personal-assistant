@@ -197,3 +197,42 @@ V85_RUNS_COLUMNS: dict[str, str] = {
     "schedule_finish_anchor": "TEXT",
     "schedule_finish_anchor_source": "TEXT",
 }
+
+
+# ---------------------------------------------------------------------------------------
+# V86 CPM float foundation (additive COLUMNS ONLY — no new tables).
+#
+# Computed total/free float derived from the application-owned early/late offsets produced
+# by Phase 2 (forward) and Phase 3 (backward). The float run reads the persisted backward
+# run and writes its own rows; non-float runs leave the float columns NULL. No source-export
+# float/early/late/critical field is read for logic or overwritten, and nothing is marked
+# critical. table_count is unchanged (no new tables). Applied via a column-existence-guarded
+# reconcile.
+# ---------------------------------------------------------------------------------------
+
+V86_ACTIVITY_RESULTS_COLUMNS: dict[str, str] = {
+    "computed_total_float": "REAL",
+    "computed_total_float_basis": "TEXT",
+    "computed_total_float_status": "TEXT",
+    "computed_total_float_notes_json": "TEXT",
+    "computed_free_float": "REAL",
+    "computed_free_float_basis": "TEXT",
+    "computed_free_float_status": "TEXT",
+    "computed_free_float_notes_json": "TEXT",
+    "controlling_free_float_successor_activity_id": "TEXT",
+    "controlling_free_float_relationship_id": "TEXT",
+}
+
+V86_RELATIONSHIP_RESULTS_COLUMNS: dict[str, str] = {
+    "free_float_candidate": "REAL",
+    "free_float_candidate_status": "TEXT",
+    "free_float_candidate_notes_json": "TEXT",
+}
+
+# computed_activity_count/blocked_activity_count/diagnostic_count reused for total-float/
+# blocked/diagnostic counts; source_run_id records the backward run the float derives from.
+V86_RUNS_COLUMNS: dict[str, str] = {
+    "source_run_id": "TEXT",
+    "total_float_computed_count": "INTEGER",
+    "free_float_computed_count": "INTEGER",
+}

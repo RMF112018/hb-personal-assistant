@@ -14,7 +14,7 @@ from .connection import get_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 85
+LATEST_SCHEMA_VERSION = 86
 
 
 class StaffingMigrationError(RuntimeError):
@@ -6999,6 +6999,34 @@ class SQLiteMigrator:
                 if column not in existing:
                     conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {decl}")
 
+    @staticmethod
+    def _reconcile_v86_schedule_cpm_float_columns(conn: sqlite3.Connection) -> None:
+        """Additively add float columns to the shared CPM result/run tables.
+
+        Column-existence-guarded so it is safe to re-run / self-heal. No new tables;
+        table_count is unchanged.
+        """
+        from hb_assistant.store.schedule_cpm_tables import (
+            V86_ACTIVITY_RESULTS_COLUMNS,
+            V86_RELATIONSHIP_RESULTS_COLUMNS,
+            V86_RUNS_COLUMNS,
+        )
+
+        for table, columns in (
+            ("schedule_cpm_activity_results", V86_ACTIVITY_RESULTS_COLUMNS),
+            ("schedule_cpm_relationship_results", V86_RELATIONSHIP_RESULTS_COLUMNS),
+            ("schedule_cpm_runs", V86_RUNS_COLUMNS),
+        ):
+            try:
+                existing = {row[1] for row in conn.execute(f"PRAGMA table_info({table})")}
+            except sqlite3.OperationalError:
+                continue
+            if not existing:
+                continue
+            for column, decl in columns.items():
+                if column not in existing:
+                    conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {decl}")
+
     # v44 Phase 10 Graph drive-item modified-by raw operational metadata.
     # Additive ADD COLUMN only on construction_drive_items; raw identity JSON is
     # local SQLite operational metadata and must not be emitted in committed evidence.
@@ -8344,6 +8372,18 @@ class SQLiteMigrator:
             if cur.fetchone() is None:
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (85, 'v85_schedule_cpm_backward_pass_foundation', ?)",
+                    (now,),
+                )
+
+            # v86 CPM float foundation: additive float columns on the shared CPM result/run
+            # tables (no new tables; table_count unchanged). Float only — derived from the
+            # application-owned Phase 2/3 offsets; no critical/longest path; nothing marked
+            # critical; no source-field writes.
+            self._reconcile_v86_schedule_cpm_float_columns(conn)
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 86")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (86, 'v86_schedule_cpm_float_foundation', ?)",
                     (now,),
                 )
 
