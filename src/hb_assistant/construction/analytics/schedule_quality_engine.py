@@ -64,6 +64,8 @@ METRIC_STATUS_XER_DRIVING_PATH = "measured_from_xer_driving_path"
 METRIC_STATUS_MSP_CRITICAL = "measured_from_msp_critical_flag"
 METRIC_STATUS_EXPLICIT_FLOAT = "measured_from_explicit_source_float"
 METRIC_STATUS_SOURCE_EXPORT_PROXY = "measured_from_source_export_proxy"
+# Phase 7: DCMA critical-path test measured from the application-computed CPM chain.
+METRIC_STATUS_AVAILABLE_APP_CPM = "available_app_cpm_recalculated"
 
 MEASURED_STATUSES = (
     METRIC_STATUS_PASS,
@@ -75,6 +77,7 @@ MEASURED_STATUSES = (
     METRIC_STATUS_XER_DRIVING_PATH,
     METRIC_STATUS_MSP_CRITICAL,
     METRIC_STATUS_EXPLICIT_FLOAT,
+    METRIC_STATUS_AVAILABLE_APP_CPM,
 )
 
 
@@ -96,6 +99,9 @@ class EvaluationContext:
     schedule_options: dict[str, Any] | None = None
     code_assignments: list[dict[str, Any]] = field(default_factory=list)
     udf_values: list[dict[str, Any]] = field(default_factory=list)
+    # Phase 7: application-computed CPM critical-path eligibility (read-only evaluation), or
+    # None when no computed CPM chain was ever attempted (preserves source-only behavior).
+    computed_cpm_critical_path: Any | None = None
 
 
 def _parse_threshold(value: Any) -> float:
@@ -173,7 +179,22 @@ class ScheduleQualityDataLoader:
             "prior_diff": prior_diff,
             "code_assignments": code_assignments,
             "udf_values": udf_values,
+            "computed_cpm_critical_path": self._load_computed_cpm_eligibility(
+                schedule_version_key
+            ),
         }
+
+    def _load_computed_cpm_eligibility(self, schedule_version_key: str) -> Any | None:
+        """READ-ONLY: latest application-computed CPM DCMA eligibility, or None if no
+        computed CPM was ever attempted. Never recomputes or writes CPM runs (lazy import
+        to avoid an import cycle)."""
+        from hb_assistant.construction.analytics.schedule_cpm_service import (
+            ScheduleCpmGraphService,
+        )
+
+        return ScheduleCpmGraphService(db_path=self._db_path).evaluate_dcma_critical_path(
+            schedule_version_key
+        )
 
     def _load_table(self, table: str, schedule_version_key: str) -> list[dict[str, Any]]:
         from hb_assistant.store.connection import get_connection
@@ -1426,6 +1447,61 @@ class ScheduleQualityAssessmentEngine:
     def _metric_critical_path_test(
         self, ctx: EvaluationContext, code: str, spec: dict[str, Any]
     ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+        # Phase 7: when an application-computed CPM chain was attempted for this version, the
+        # DCMA critical-path test is decided by computed CPM results (never source flags).
+        # When it was never attempted (eval is None), fall through to the existing behavior.
+        cpm_eval = ctx.computed_cpm_critical_path
+        if cpm_eval is not None:
+            if cpm_eval.measurable:
+                return (
+                    self._base_metric(
+                        ctx,
+                        code=code,
+                        spec=spec,
+                        status=METRIC_STATUS_AVAILABLE_APP_CPM,
+                        value=cpm_eval.longest_path_critical_activity_count,
+                        denominator=cpm_eval.path_activity_count,
+                        evidence={
+                            "method": "application_computed_cpm",
+                            "basis": cpm_eval.basis,
+                            "cpm_recalculation": "implemented",
+                            "dependency_run_ids": cpm_eval.dependency_run_ids,
+                            "longest_path_id": cpm_eval.path_id,
+                            "path_activity_count": cpm_eval.path_activity_count,
+                            "longest_path_critical_activity_count": (
+                                cpm_eval.longest_path_critical_activity_count
+                            ),
+                            "computed_critical_activity_count": (
+                                cpm_eval.computed_critical_activity_count
+                            ),
+                            "caveats": cpm_eval.caveats,
+                            "source_critical_flags_used": False,
+                            "source_export_evidence": "separate",
+                        },
+                    ),
+                    [],
+                )
+            return (
+                self._base_metric(
+                    ctx,
+                    code=code,
+                    spec=spec,
+                    status=METRIC_STATUS_NOT_MEASURABLE_RECALC,
+                    not_measurable_reason=(
+                        "application-computed CPM chain is incomplete or inconsistent: "
+                        + ", ".join(cpm_eval.reason_codes)
+                    ),
+                    evidence={
+                        "method": "application_computed_cpm_attempted",
+                        "cpm_recalculation": "attempted_incomplete",
+                        "dependency_run_ids": cpm_eval.dependency_run_ids,
+                        "reason_codes": cpm_eval.reason_codes,
+                        "caveats": cpm_eval.caveats,
+                        "source_critical_flags_used": False,
+                    },
+                ),
+                [],
+            )
         source_fmt = self._import_source_format(ctx)
         if source_fmt in {"primavera_xer", "ms_project_xml"}:
             return (
@@ -1839,5 +1915,6 @@ def run_evaluation_for_run(
         schedule_options=data.get("schedule_options"),
         code_assignments=data.get("code_assignments") or [],
         udf_values=data.get("udf_values") or [],
+        computed_cpm_critical_path=data.get("computed_cpm_critical_path"),
     )
     return ScheduleQualityAssessmentEngine().evaluate(ctx)

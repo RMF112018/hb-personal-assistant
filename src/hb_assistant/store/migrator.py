@@ -14,7 +14,7 @@ from .connection import get_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 88
+LATEST_SCHEMA_VERSION = 89
 
 
 class StaffingMigrationError(RuntimeError):
@@ -8464,6 +8464,17 @@ class SQLiteMigrator:
                     (now,),
                 )
 
+            # v89 DCMA critical-path integration: widen the metric-results status CHECK to
+            # accept the application-computed CPM measurable status. Additive (table rebuild,
+            # same columns; no new tables; table_count unchanged).
+            self._reconcile_v89_metric_status_app_cpm(conn)
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 89")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (89, 'v89_schedule_quality_app_cpm_metric_status', ?)",
+                    (now,),
+                )
+
         # Return latest version, then release the migration connection. get_connection's
         # contract is that the caller closes it; left open, this WAL connection is only
         # checkpointed when Python GC finalizes it, which non-deterministically flushes the
@@ -8781,6 +8792,78 @@ class SQLiteMigrator:
             """
         )
         conn.execute("DROP TABLE schedule_quality_metric_results_v71")
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_sq_metrics_run ON schedule_quality_metric_results(evaluation_run_id)"
+        )
+
+    @staticmethod
+    def _reconcile_v89_metric_status_app_cpm(conn: sqlite3.Connection) -> None:
+        """Rebuild the metric-results status CHECK to accept 'available_app_cpm_recalculated'.
+
+        Additive: same columns, only the status CHECK list grows. Guarded by a DDL substring
+        check so it runs once; existing rows are preserved through the table rebuild.
+        """
+        from hb_assistant.store.schedule_float_tables import (
+            METRIC_FAMILY_CHECK_VALUES,
+            METRIC_STATUS_CHECK_VALUES,
+        )
+
+        cur = conn.execute(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name='schedule_quality_metric_results'"
+        )
+        row = cur.fetchone()
+        if not row or not row[0]:
+            return
+        ddl = str(row[0])
+        if "available_app_cpm_recalculated" in ddl:
+            return
+        families = ", ".join(f"'{f}'" for f in METRIC_FAMILY_CHECK_VALUES)
+        statuses = ", ".join(f"'{s}'" for s in METRIC_STATUS_CHECK_VALUES)
+        conn.execute(
+            "ALTER TABLE schedule_quality_metric_results RENAME TO schedule_quality_metric_results_v89"
+        )
+        conn.execute(
+            f"""
+            CREATE TABLE schedule_quality_metric_results (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              evaluation_run_id TEXT NOT NULL,
+              project_key TEXT NOT NULL,
+              schedule_version_key TEXT NOT NULL,
+              metric_code TEXT NOT NULL,
+              metric_name TEXT NOT NULL,
+              metric_family TEXT NOT NULL CHECK(metric_family IN ({families})),
+              numerator TEXT,
+              denominator TEXT,
+              value TEXT,
+              unit TEXT,
+              threshold_warning TEXT,
+              threshold_fail TEXT,
+              status TEXT NOT NULL CHECK(status IN ({statuses})),
+              not_measurable_reason TEXT,
+              evidence_json TEXT,
+              related_finding_codes_json TEXT,
+              created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (evaluation_run_id) REFERENCES schedule_quality_evaluation_runs(evaluation_run_id)
+            );
+            """
+        )
+        conn.execute(
+            """
+            INSERT INTO schedule_quality_metric_results (
+              evaluation_run_id, project_key, schedule_version_key, metric_code, metric_name,
+              metric_family, numerator, denominator, value, unit, threshold_warning,
+              threshold_fail, status, not_measurable_reason, evidence_json,
+              related_finding_codes_json, created_at
+            )
+            SELECT
+              evaluation_run_id, project_key, schedule_version_key, metric_code, metric_name,
+              metric_family, numerator, denominator, value, unit, threshold_warning,
+              threshold_fail, status, not_measurable_reason, evidence_json,
+              related_finding_codes_json, created_at
+            FROM schedule_quality_metric_results_v89
+            """
+        )
+        conn.execute("DROP TABLE schedule_quality_metric_results_v89")
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_sq_metrics_run ON schedule_quality_metric_results(evaluation_run_id)"
         )

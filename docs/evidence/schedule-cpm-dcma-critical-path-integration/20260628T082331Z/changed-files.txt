@@ -1,0 +1,12 @@
+docs/evidence/schedule-cpm-dcma-critical-path-integration/
+scripts/test-schedule.sh
+src/hb_assistant/construction/analytics/schedule_cpm_dcma_integration.py
+src/hb_assistant/construction/analytics/schedule_cpm_service.py
+src/hb_assistant/construction/analytics/schedule_quality_engine.py
+src/hb_assistant/construction/analytics/schedule_quality_posture.py
+src/hb_assistant/store/migrator.py
+src/hb_assistant/store/schedule_cpm_repository.py
+src/hb_assistant/store/schedule_float_tables.py
+tests/test_migrator_v89_schedule_quality_app_cpm.py
+tests/test_schedule_cpm_dcma_integration.py
+tests/test_schedule_critical_path_quality.py

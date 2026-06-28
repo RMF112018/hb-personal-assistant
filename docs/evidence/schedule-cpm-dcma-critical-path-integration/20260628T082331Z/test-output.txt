@@ -1,0 +1,20 @@
+# CPM DCMA integration — validation output (2026-06-28T08:27:31Z)
+
+## CPM suite + dcma integration + quality + migration
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+
+## ruff (new/changed in-scope files)
+All checks passed!
+
+## mypy
+Success: no issues found in 3 source files
+
+## full schedule bundle (scripts/test-schedule.sh)
+304 passed, 2 deselected, 1 warning in 242.99s
+
+## fresh-migrate + idempotency
+LATEST=89 applied=89 reapply=89; metric-results DDL includes available_app_cpm_recalculated; v89 row recorded; table_count unchanged (477).
+
+## NOTE pre-existing (NOT this phase): test_schedule_quality_api.py::test_twnu_quality_scorecard_when_zip_present[TWNU07/16/18.xml] fail on the Phase 6 baseline too (CPLI/TWNU-fixture); not in the schedule bundle.

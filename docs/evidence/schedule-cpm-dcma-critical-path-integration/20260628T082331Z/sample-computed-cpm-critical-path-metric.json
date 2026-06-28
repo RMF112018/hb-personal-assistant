@@ -1,0 +1,23 @@
+{
+  "status": "available_app_cpm_recalculated",
+  "metric_family": "dcma",
+  "evidence": {
+    "method": "application_computed_cpm",
+    "basis": "application_computed_cpm",
+    "cpm_recalculation": "implemented",
+    "dependency_run_ids": {
+      "forward": "cpmrun_ed0bf043dceee88c85d67e7d505c717e",
+      "backward": "cpmrun_beab691678b04d4af353613b8b522cc0",
+      "float": "cpmrun_06fd7664fe9a3872dfe0c06cca92ff73",
+      "longest_path": "cpmrun_5bb458d5553ff3e41fec3cfa9cf4c389",
+      "criticality": "cpmrun_bcbf18a16284c5651b350d032e72e992"
+    },
+    "longest_path_id": "cpmrun_5bb458d5553ff3e41fec3cfa9cf4c389_p01",
+    "path_activity_count": 2,
+    "longest_path_critical_activity_count": 2,
+    "computed_critical_activity_count": 2,
+    "caveats": [],
+    "source_critical_flags_used": false,
+    "source_export_evidence": "separate"
+  }
+}

@@ -57,12 +57,17 @@ from .schedule_cpm_criticality import (
     CriticalityResult,
     compute_criticality,
 )
+from .schedule_cpm_dcma_integration import (
+    DcmaCriticalPathEvaluation,
+    evaluate_dcma_critical_path_eligibility,
+)
 from .schedule_cpm_float import (
     BLOCK_MISSING_BACKWARD_PASS,
     FloatResult,
     compute_float,
 )
 from .schedule_cpm_forward_pass import (
+    FATAL_GRAPH_DIAGNOSTICS,
     RUN_BLOCKED,
     ForwardPassResult,
     compute_forward_pass,
@@ -1374,3 +1379,60 @@ class ScheduleCpmGraphService:
                 for a in result.activities
             ],
         }
+
+    # ------------------------------------------------------------- Phase 7 DCMA integration
+
+    def evaluate_dcma_critical_path(
+        self, schedule_version_key: str
+    ) -> DcmaCriticalPathEvaluation | None:
+        """READ-ONLY: evaluate whether the DCMA critical-path metric is measurable from the
+        application-computed CPM chain.
+
+        Returns None when NO computed CPM was ever attempted (none of the five CPM runs
+        exist) — so the quality metric keeps its existing source-only behavior untouched.
+        When any CPM run exists, returns an evaluation (measurable, or attempted-but-blocked
+        with explicit reasons). Performs NO computation and NO writes.
+        """
+        forward_run = self._cpm.get_forward_pass_run(schedule_version_key)
+        backward_run = self._cpm.get_backward_pass_run(schedule_version_key)
+        float_run = self._cpm.get_float_run(schedule_version_key)
+        longest_path_run = self._cpm.get_longest_path_run(schedule_version_key)
+        criticality_run = self._cpm.get_criticality_run(schedule_version_key)
+
+        if all(
+            r is None
+            for r in (forward_run, backward_run, float_run, longest_path_run, criticality_run)
+        ):
+            return None  # no computed CPM attempted → preserve existing source-only behavior
+
+        # Fresh graph fatal check (read-only); the longest-path/criticality run rows.
+        activities = self._load_all_activities(schedule_version_key)
+        relationships = self._activities.list_relationships(schedule_version_key)
+        graph = build_graph(activities, relationships)
+        graph_has_fatal = any(
+            d.diagnostic_type in FATAL_GRAPH_DIAGNOSTICS for d in graph.diagnostics
+        )
+
+        path_rows: list[dict[str, Any]] = []
+        path_activity_rows: list[dict[str, Any]] = []
+        if longest_path_run is not None:
+            path_rows = self._cpm.list_paths(longest_path_run["cpm_run_id"])
+            for path in path_rows:
+                path_activity_rows.extend(self._cpm.list_path_activities(path["path_id"]))
+        criticality_activity_rows: list[dict[str, Any]] = []
+        if criticality_run is not None:
+            criticality_activity_rows = self._cpm.list_activity_results(
+                criticality_run["cpm_run_id"]
+            )
+
+        return evaluate_dcma_critical_path_eligibility(
+            graph_has_fatal=graph_has_fatal,
+            forward_run=forward_run,
+            backward_run=backward_run,
+            float_run=float_run,
+            longest_path_run=longest_path_run,
+            criticality_run=criticality_run,
+            path_rows=path_rows,
+            path_activity_rows=path_activity_rows,
+            criticality_activity_rows=criticality_activity_rows,
+        )
