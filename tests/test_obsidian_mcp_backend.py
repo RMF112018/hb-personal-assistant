@@ -16,6 +16,7 @@ from fastapi.testclient import TestClient
 
 from hb_assistant.construction.analytics import create_app
 from hb_assistant.obsidian_mcp.config import load_config
+from hb_assistant.obsidian_mcp.mutations import create_note, patch_note, recent_mutations, sha256_file
 from hb_assistant.obsidian_mcp.tools import read_file, search_vault
 from hb_assistant.store.migrator import SQLiteMigrator
 
@@ -127,7 +128,12 @@ def test_streamable_http_mount_lists_phase1_tools(tmp_path: Path, monkeypatch: p
     with TestClient(create_app(db_path=db), base_url="http://127.0.0.1:3010") as client:
         client.patch(
             "/api/settings/obsidian-mcp/config",
-            json={"enabled": True, "vault_root": str(vault)},
+            json={
+                "enabled": True,
+                "vault_root": str(vault),
+                "writes_enabled": True,
+                "vault_markdown_write_enabled": True,
+            },
             headers={"X-HB-UI-Role": "operator"},
         )
         initialized = client.post(
@@ -169,7 +175,70 @@ def test_streamable_http_mount_lists_phase1_tools(tmp_path: Path, monkeypatch: p
             "list_directory",
             "search_vault",
             "read_file",
+            "create_note",
+            "patch_note",
         ]
+
+        create = client.post(
+            "/mcp",
+            json={
+                "jsonrpc": "2.0",
+                "id": 3,
+                "method": "tools/call",
+                "params": {
+                    "name": "create_note",
+                    "arguments": {"path": "Managed/Protocol.md", "content": "# Protocol\n\ncreated"},
+                },
+            },
+            headers=session_headers,
+        )
+        assert create.status_code == 200
+        assert (vault / "Managed" / "Protocol.md").exists()
+        assert "# Protocol" not in create.text
+        current_sha = sha256_file(vault / "Managed" / "Protocol.md")
+
+        patch = client.post(
+            "/mcp",
+            json={
+                "jsonrpc": "2.0",
+                "id": 4,
+                "method": "tools/call",
+                "params": {
+                    "name": "patch_note",
+                    "arguments": {
+                        "path": "Managed/Protocol.md",
+                        "content": "# Protocol\n\nreplaced",
+                        "expected_sha256": current_sha,
+                    },
+                },
+            },
+            headers=session_headers,
+        )
+        assert patch.status_code == 200
+        assert "replaced" not in patch.text
+        assert "replaced" in (vault / "Managed" / "Protocol.md").read_text(encoding="utf-8")
+
+        client.patch(
+            "/api/settings/obsidian-mcp/config",
+            json={"writes_enabled": False},
+            headers={"X-HB-UI-Role": "operator"},
+        )
+        blocked = client.post(
+            "/mcp",
+            json={
+                "jsonrpc": "2.0",
+                "id": 5,
+                "method": "tools/call",
+                "params": {
+                    "name": "create_note",
+                    "arguments": {"path": "Managed/Blocked.md", "content": "# Blocked"},
+                },
+            },
+            headers=session_headers,
+        )
+        assert blocked.status_code == 200
+        assert "writes_disabled" in blocked.text
+        assert "# Blocked" not in blocked.text
 
 
 def test_lifecycle_and_test_actions_work_from_api(
@@ -206,6 +275,122 @@ def test_lifecycle_and_test_actions_work_from_api(
     ).json()
     assert read["ok"] is True
     assert "Procurement" in read["result"]["content"]
+
+
+def test_autonomous_markdown_writes_are_policy_gated_and_audited(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    client, vault = _client(tmp_path, monkeypatch)
+    client.patch(
+        "/api/settings/obsidian-mcp/config",
+        json={"vault_root": str(vault), "writes_enabled": False, "vault_markdown_write_enabled": False},
+        headers={"X-HB-UI-Role": "operator"},
+    )
+    disabled = client.post("/api/settings/obsidian-mcp/test/write-smoke", headers={"X-HB-UI-Role": "operator"}).json()
+    assert disabled["ok"] is False
+    assert disabled["error_code"] == "writes_disabled"
+
+    client.patch(
+        "/api/settings/obsidian-mcp/config",
+        json={
+            "writes_enabled": True,
+            "vault_markdown_write_enabled": True,
+            "max_write_chars": 1000,
+            "backup_before_replace": True,
+        },
+        headers={"X-HB-UI-Role": "operator"},
+    )
+    readiness = client.post("/api/settings/obsidian-mcp/write-readiness").json()
+    assert readiness["ok"] is True
+    smoke = client.post("/api/settings/obsidian-mcp/test/write-smoke", headers={"X-HB-UI-Role": "operator"}).json()
+    assert smoke["ok"] is True
+    assert (vault / "MCP Write Smoke" / "hb-mcp-write-smoke.md").exists()
+    serialized = json.dumps(client.get("/api/settings/obsidian-mcp/mutations").json(), default=str)
+    assert "managed note proves" not in serialized
+    assert "secret-token" not in serialized
+
+
+def test_create_and_patch_note_enforce_sha_backups_and_markdown_only(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _client_obj, vault = _client(tmp_path, monkeypatch)
+    cfg = load_config().model_copy(
+        update={
+            "writes_enabled": True,
+            "vault_markdown_write_enabled": True,
+            "max_write_chars": 1000,
+            "backup_before_replace": True,
+        }
+    )
+    created = create_note(cfg, path="Anywhere/New Note.md", content="# New\n\nsafe body", caller_surface="ui_test")
+    assert created["path"] == "Anywhere/New Note.md"
+    note = vault / "Anywhere" / "New Note.md"
+    assert note.exists()
+    old_sha = sha256_file(note)
+
+    try:
+        create_note(cfg, path="Anywhere/New Note.md", content="# New", overwrite=True, caller_surface="ui_test")
+    except Exception as exc:
+        assert getattr(exc, "code", None) == "expected_sha256_required"
+    else:
+        raise AssertionError("overwrite without expected_sha256 should fail")
+
+    try:
+        patch_note(cfg, path="Anywhere/New Note.md", content="# Changed", expected_sha256="bad", caller_surface="ui_test")
+    except Exception as exc:
+        assert getattr(exc, "code", None) == "sha256_mismatch"
+    else:
+        raise AssertionError("SHA mismatch should fail")
+    assert sha256_file(note) == old_sha
+
+    patched = patch_note(
+        cfg,
+        path="Anywhere/New Note.md",
+        content="# Changed\n\nreplacement",
+        expected_sha256=old_sha,
+        caller_surface="ui_test",
+    )
+    assert patched["old_sha256"] == old_sha
+    assert patched["backup_path"]
+    assert Path(str(patched["backup_path"])).exists()
+    assert not list(note.parent.glob(".*.hb-mcp-*.tmp"))
+
+    try:
+        create_note(cfg, path="Anywhere/raw.txt", content="no", caller_surface="ui_test")
+    except Exception as exc:
+        assert getattr(exc, "code", None) == "markdown_writes_only"
+    else:
+        raise AssertionError("non-Markdown writes should fail")
+
+
+def test_write_policy_blocks_protected_hidden_traversal_and_symlinks(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _client_obj, vault = _client(tmp_path, monkeypatch)
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (vault / "linkdir").symlink_to(outside, target_is_directory=True)
+    cfg = load_config().model_copy(
+        update={"writes_enabled": True, "vault_markdown_write_enabled": True, "max_write_chars": 1000}
+    )
+    cases = {
+        "/tmp/nope.md": "absolute_paths_not_allowed",
+        "../nope.md": "path_traversal_not_allowed",
+        ".obsidian/config.md": "protected_path_blocked",
+        ".hidden/note.md": "hidden_path_blocked",
+        "linkdir/note.md": "path_outside_vault_root",
+    }
+    for path, code in cases.items():
+        try:
+            create_note(cfg, path=path, content="# blocked", caller_surface="ui_test")
+        except Exception as exc:
+            assert getattr(exc, "code", None) == code
+        else:
+            raise AssertionError(f"{path} should fail")
+
+    serialized = json.dumps(recent_mutations(20), default=str)
+    assert "# blocked" not in serialized
+    assert str(tmp_path) not in serialized
 
 
 def test_path_traversal_and_symlink_escape_are_rejected(

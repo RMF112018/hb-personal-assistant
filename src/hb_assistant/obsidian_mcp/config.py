@@ -14,6 +14,8 @@ from pydantic import BaseModel, Field, field_validator
 from hb_assistant.config.path_policy import PathPolicy
 
 DEFAULT_ALLOWED_FILE_TYPES = ["md", "txt", "pdf", "docx"]
+DEFAULT_ALLOWED_WRITE_FILE_TYPES = ["md"]
+DEFAULT_PROTECTED_PATHS = [".git", ".obsidian", ".trash", ".hb-assistant/backups"]
 
 
 class ObsidianMcpConfig(BaseModel):
@@ -27,6 +29,16 @@ class ObsidianMcpConfig(BaseModel):
     max_result_chars: int = 12000
     allowed_file_types: list[str] = Field(default_factory=lambda: list(DEFAULT_ALLOWED_FILE_TYPES))
     default_scope: str = ""
+    writes_enabled: bool = False
+    vault_markdown_write_enabled: bool = False
+    max_write_chars: int = 120000
+    write_requires_expected_sha256: bool = True
+    backup_before_replace: bool = True
+    create_parent_dirs_enabled: bool = True
+    allow_full_vault_markdown_writes: bool = True
+    protected_paths: list[str] = Field(default_factory=lambda: list(DEFAULT_PROTECTED_PATHS))
+    blocked_hidden_paths: bool = True
+    allowed_write_file_types: list[str] = Field(default_factory=lambda: list(DEFAULT_ALLOWED_WRITE_FILE_TYPES))
     schema_version: int = 1
 
     model_config = {"extra": "forbid"}
@@ -46,7 +58,7 @@ class ObsidianMcpConfig(BaseModel):
             raise ValueError("port_out_of_range")
         return value
 
-    @field_validator("max_file_mb", "max_result_chars")
+    @field_validator("max_file_mb", "max_result_chars", "max_write_chars")
     @classmethod
     def validate_positive(cls, value: int) -> int:
         if value <= 0:
@@ -64,6 +76,28 @@ class ObsidianMcpConfig(BaseModel):
             if ext not in normalized:
                 normalized.append(ext)
         return normalized or list(DEFAULT_ALLOWED_FILE_TYPES)
+
+    @field_validator("allowed_write_file_types")
+    @classmethod
+    def validate_write_file_types(cls, value: list[str]) -> list[str]:
+        normalized: list[str] = []
+        for item in value:
+            ext = item.strip().lower().lstrip(".")
+            if ext not in DEFAULT_ALLOWED_WRITE_FILE_TYPES:
+                raise ValueError(f"unsupported_write_file_type:{ext}")
+            if ext not in normalized:
+                normalized.append(ext)
+        return normalized or list(DEFAULT_ALLOWED_WRITE_FILE_TYPES)
+
+    @field_validator("protected_paths")
+    @classmethod
+    def validate_protected_paths(cls, value: list[str]) -> list[str]:
+        normalized: list[str] = []
+        for item in value:
+            path = item.strip().replace("\\", "/").strip("/")
+            if path and path not in normalized:
+                normalized.append(path)
+        return normalized
 
     @property
     def endpoint_url(self) -> str:
@@ -92,6 +126,16 @@ class ObsidianMcpConfigPatch(BaseModel):
     max_result_chars: int | None = None
     allowed_file_types: list[str] | None = None
     default_scope: str | None = None
+    writes_enabled: bool | None = None
+    vault_markdown_write_enabled: bool | None = None
+    max_write_chars: int | None = None
+    write_requires_expected_sha256: bool | None = None
+    backup_before_replace: bool | None = None
+    create_parent_dirs_enabled: bool | None = None
+    allow_full_vault_markdown_writes: bool | None = None
+    protected_paths: list[str] | None = None
+    blocked_hidden_paths: bool | None = None
+    allowed_write_file_types: list[str] | None = None
 
     model_config = {"extra": "forbid"}
 

@@ -11,7 +11,7 @@ Open **Settings** and use the **Obsidian MCP** panel to:
 - run test directory, search, and file-read actions
 - copy the Grok Remote MCP configuration
 
-The Phase 1 service is filesystem-only. Obsidian does not need to be open.
+The service is filesystem-only. Obsidian does not need to be open.
 
 ## Settings
 
@@ -32,26 +32,42 @@ Bearer tokens are write-only after save. The UI shows whether a token is configu
 
 ## Tools
 
-Phase 1 registers:
+The MCP server registers:
 
 - `list_directory`
 - `search_vault`
 - `read_file`
+- `create_note`
+- `patch_note`
 
 The Settings panel includes test controls for listing, searching, and reading against the configured vault.
+
+## Autonomous Vault Manager
+
+Write mode is controlled from the same Settings panel. When write mode and Markdown management are enabled, authenticated MCP clients can create and replace Markdown notes inside the configured vault policy without per-write approval.
+
+Phase 2 write tools are:
+
+- `create_note`
+- `patch_note`
+
+The write policy blocks absolute paths, traversal paths, protected folders, hidden folders by default, symlink paths, symlink escapes, and non-Markdown files. Existing Markdown replacements require a matching SHA-256 value and create an app-managed backup before replacement.
+
+The UI shows write readiness, protected paths, recent mutation events, backup metadata, and a write smoke test. It does not render raw note content.
 
 ## Security
 
 The backend rejects absolute paths, traversal paths, and symlink escapes outside the configured vault root. It enforces file-size and result-character caps and returns truncation metadata for bounded reads.
 
-Phase 1 does not create or patch notes and does not write to source documents.
+The service writes Markdown notes only when write mode is enabled. It does not write to PDFs, DOCX files, or other source documents.
 
 ## Deferred
 
-The following are not part of Phase 1:
+The following are not part of Phase 2:
 
-- note creation
-- note patching
+- delete note
+- rename or move note
+- section-level patching
 - subcontract analysis
 - critical findings generation
 - Obsidian REST mode
