@@ -30,6 +30,9 @@ _TOOL_SCOPES = {
     "vault_update_frontmatter": "obsidian.write",
     "vault_search_by_properties": "obsidian.read",
     "vault_dataview_query": "obsidian.read",
+    "vault_get_backlinks": "obsidian.read",
+    "vault_get_unlinked_mentions": "obsidian.read",
+    "vault_get_note_graph": "obsidian.read",
     "vault_curation_plan": "obsidian.read",
     "vault_curation_apply": "obsidian.write",
 }
@@ -513,6 +516,64 @@ def build_streamable_http_app(service: ObsidianMcpService | None = None) -> Any:
                 "where": where,
                 "select": select,
                 "limit": limit,
+                "operator_mode": _operator_mode(ctx),
+            }
+        )
+
+    @mcp.tool()
+    def vault_get_backlinks(
+        ctx: Context,
+        target_path: str,
+        root_path: str = "",
+        max_results: int = 100,
+    ) -> dict[str, Any]:
+        """Find notes that link to a target note (wikilinks and Markdown links)."""
+        _enforce("vault_get_backlinks", ctx)
+        return svc.vault_get_backlinks(
+            {
+                "target_path": target_path,
+                "root_path": root_path,
+                "max_results": max_results,
+                "operator_mode": _operator_mode(ctx),
+            }
+        )
+
+    @mcp.tool()
+    def vault_get_unlinked_mentions(
+        ctx: Context,
+        target_title: str,
+        root_path: str = "",
+        max_results: int = 100,
+        include_snippets: bool = True,
+    ) -> dict[str, Any]:
+        """Find notes that mention a title/entity but do not link to it."""
+        _enforce("vault_get_unlinked_mentions", ctx)
+        return svc.vault_get_unlinked_mentions(
+            {
+                "target_title": target_title,
+                "root_path": root_path,
+                "max_results": max_results,
+                "include_snippets": include_snippets,
+                "operator_mode": _operator_mode(ctx),
+            }
+        )
+
+    @mcp.tool()
+    def vault_get_note_graph(
+        ctx: Context,
+        root_path: str = "",
+        target_path: str | None = None,
+        depth: int = 2,
+        max_nodes: int = 100,
+    ) -> dict[str, Any]:
+        """Return local graph data (nodes, edges, orphans, high-degree notes)."""
+        _enforce("vault_get_note_graph", ctx)
+        return svc.vault_get_note_graph(
+            {
+                "root_path": root_path,
+                "target_path": target_path,
+                "depth": depth,
+                "max_nodes": max_nodes,
                 "operator_mode": _operator_mode(ctx),
             }
         )

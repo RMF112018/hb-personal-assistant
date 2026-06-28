@@ -230,6 +230,9 @@ def test_scope_enforcement_read_token_cannot_write(tmp_path: Path) -> None:
     mcp_app.enforce_tool_scope("vault_read_frontmatter", header, config)
     mcp_app.enforce_tool_scope("vault_search_by_properties", header, config)
     mcp_app.enforce_tool_scope("vault_dataview_query", header, config)
+    mcp_app.enforce_tool_scope("vault_get_backlinks", header, config)
+    mcp_app.enforce_tool_scope("vault_get_unlinked_mentions", header, config)
+    mcp_app.enforce_tool_scope("vault_get_note_graph", header, config)
     mcp_app.enforce_tool_scope("vault_curation_plan", header, config)
     # Write tools blocked (including curation apply + frontmatter update).
     with pytest.raises(ObsidianMcpToolError) as exc:
