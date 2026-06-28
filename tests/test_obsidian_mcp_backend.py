@@ -204,6 +204,7 @@ def test_streamable_http_mount_lists_phase1_tools(tmp_path: Path, monkeypatch: p
             "vault_get_note_graph",
             "vault_create_note_from_template",
             "vault_append_to_daily_note",
+            "vault_semantic_search",
             "vault_move_note_plan",
             "vault_move_note_apply",
             "vault_rename_note_plan",
@@ -211,8 +212,16 @@ def test_streamable_http_mount_lists_phase1_tools(tmp_path: Path, monkeypatch: p
             "vault_archive_note_plan",
             "vault_archive_note_apply",
             "vault_delete_note_plan",
+            "vault_extract_action_items",
+            "vault_project_status_summary",
+            "vault_extract_project_mentions",
             "vault_curation_plan",
             "vault_curation_apply",
+            "vault_create_moc_plan",
+            "vault_auto_link_plan",
+            "vault_bulk_tagging_plan",
+            "vault_email_to_note_plan",
+            "vault_email_to_note_apply",
         ]
 
         create = client.post(

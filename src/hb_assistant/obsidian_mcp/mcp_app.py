@@ -42,8 +42,17 @@ _TOOL_SCOPES = {
     "vault_archive_note_plan": "obsidian.read",
     "vault_archive_note_apply": "obsidian.write",
     "vault_delete_note_plan": "obsidian.read",
+    "vault_semantic_search": "obsidian.read",
+    "vault_extract_action_items": "obsidian.read",
+    "vault_project_status_summary": "obsidian.read",
+    "vault_extract_project_mentions": "obsidian.read",
     "vault_curation_plan": "obsidian.read",
     "vault_curation_apply": "obsidian.write",
+    "vault_create_moc_plan": "obsidian.read",
+    "vault_auto_link_plan": "obsidian.read",
+    "vault_bulk_tagging_plan": "obsidian.read",
+    "vault_email_to_note_plan": "obsidian.read",
+    "vault_email_to_note_apply": "obsidian.write",
 }
 
 _BEARER_PREFIX = "Bearer "
@@ -636,6 +645,30 @@ def build_streamable_http_app(service: ObsidianMcpService | None = None) -> Any:
         )
 
     @mcp.tool()
+    def vault_semantic_search(
+        ctx: Context,
+        query: str,
+        path_scope: str | None = None,
+        file_types: list[str] | None = None,
+        limit: int = 20,
+        mode: str = "hybrid",
+        include_snippets: bool = True,
+    ) -> dict[str, Any]:
+        """Semantic/hybrid search (falls back to lexical with a warning when no index exists)."""
+        _enforce("vault_semantic_search", ctx)
+        return svc.vault_semantic_search(
+            {
+                "query": query,
+                "path_scope": path_scope,
+                "file_types": file_types,
+                "limit": limit,
+                "mode": mode,
+                "include_snippets": include_snippets,
+                "operator_mode": _operator_mode(ctx),
+            }
+        )
+
+    @mcp.tool()
     def vault_move_note_plan(
         ctx: Context, source_path: str, target_path: str, update_links: bool = True
     ) -> dict[str, Any]:
@@ -753,6 +786,69 @@ def build_streamable_http_app(service: ObsidianMcpService | None = None) -> Any:
         )
 
     @mcp.tool()
+    def vault_extract_action_items(
+        ctx: Context,
+        path: str,
+        source_type: str = "note",
+        extract_fields: list[str] | None = None,
+        max_chars: int = 12000,
+    ) -> dict[str, Any]:
+        """Extract action items, decisions, risks, owners, and dates from a note, email, or folder."""
+        _enforce("vault_extract_action_items", ctx)
+        return svc.vault_extract_action_items(
+            {
+                "path": path,
+                "source_type": source_type,
+                "extract_fields": extract_fields,
+                "max_chars": max_chars,
+                "operator_mode": _operator_mode(ctx),
+                "principal_kind": _principal_kind(ctx),
+            }
+        )
+
+    @mcp.tool()
+    def vault_project_status_summary(
+        ctx: Context,
+        root_path: str = "",
+        lookback_days: int = 30,
+        include: list[str] | None = None,
+        max_files: int = 100,
+    ) -> dict[str, Any]:
+        """Summarize project notes/emails into a PM-facing status summary."""
+        _enforce("vault_project_status_summary", ctx)
+        return svc.vault_project_status_summary(
+            {
+                "root_path": root_path,
+                "lookback_days": lookback_days,
+                "include": include,
+                "max_files": max_files,
+                "operator_mode": _operator_mode(ctx),
+                "principal_kind": _principal_kind(ctx),
+            }
+        )
+
+    @mcp.tool()
+    def vault_extract_project_mentions(
+        ctx: Context,
+        root_path: str = "",
+        project_aliases: list[str] | None = None,
+        max_files: int = 200,
+        include_snippets: bool = False,
+    ) -> dict[str, Any]:
+        """Detect project references (HB numbers and aliases) across notes and emails."""
+        _enforce("vault_extract_project_mentions", ctx)
+        return svc.vault_extract_project_mentions(
+            {
+                "root_path": root_path,
+                "project_aliases": project_aliases,
+                "max_files": max_files,
+                "include_snippets": include_snippets,
+                "operator_mode": _operator_mode(ctx),
+                "principal_kind": _principal_kind(ctx),
+            }
+        )
+
+    @mcp.tool()
     def vault_curation_plan(
         ctx: Context,
         root_path: str = "",
@@ -796,6 +892,102 @@ def build_streamable_http_app(service: ObsidianMcpService | None = None) -> Any:
                 "max_updates": max_updates,
                 "operator_mode": _operator_mode(ctx),
             }
+        )
+
+    @mcp.tool()
+    def vault_create_moc_plan(
+        ctx: Context,
+        root_path: str = "",
+        moc_title: str | None = None,
+        target_path: str | None = None,
+        max_files: int = 100,
+        include_sections: list[str] | None = None,
+    ) -> dict[str, Any]:
+        """Plan creation of a Map of Content note (applied via vault_curation_apply)."""
+        _enforce("vault_create_moc_plan", ctx)
+        return svc.vault_create_moc_plan(
+            {
+                "root_path": root_path,
+                "moc_title": moc_title,
+                "target_path": target_path,
+                "max_files": max_files,
+                "include_sections": include_sections,
+                "operator_mode": _operator_mode(ctx),
+            }
+        )
+
+    @mcp.tool()
+    def vault_auto_link_plan(
+        ctx: Context,
+        root_path: str = "",
+        max_files: int = 200,
+        min_confidence: float = 0.75,
+        max_suggestions: int = 100,
+    ) -> dict[str, Any]:
+        """Plan suggested links between notes by title/entity overlap."""
+        _enforce("vault_auto_link_plan", ctx)
+        return svc.vault_auto_link_plan(
+            {
+                "root_path": root_path,
+                "max_files": max_files,
+                "min_confidence": min_confidence,
+                "max_suggestions": max_suggestions,
+                "operator_mode": _operator_mode(ctx),
+            }
+        )
+
+    @mcp.tool()
+    def vault_bulk_tagging_plan(
+        ctx: Context,
+        root_path: str = "",
+        tag_namespace: str | None = None,
+        max_files: int = 200,
+        max_suggestions: int = 100,
+    ) -> dict[str, Any]:
+        """Plan normalized tag suggestions for notes."""
+        _enforce("vault_bulk_tagging_plan", ctx)
+        return svc.vault_bulk_tagging_plan(
+            {
+                "root_path": root_path,
+                "tag_namespace": tag_namespace,
+                "max_files": max_files,
+                "max_suggestions": max_suggestions,
+                "operator_mode": _operator_mode(ctx),
+            }
+        )
+
+    @mcp.tool()
+    def vault_email_to_note_plan(
+        ctx: Context,
+        email_path: str,
+        target_folder: str,
+        template_path: str | None = None,
+        link_projects: bool = True,
+        extract_action_items: bool = True,
+        extract_decisions: bool = True,
+        redact: bool = False,
+    ) -> dict[str, Any]:
+        """Plan conversion of one .eml into a structured note (applied via vault_email_to_note_apply)."""
+        _enforce("vault_email_to_note_plan", ctx)
+        return svc.vault_email_to_note_plan(
+            {
+                "email_path": email_path,
+                "target_folder": target_folder,
+                "template_path": template_path,
+                "link_projects": link_projects,
+                "extract_action_items": extract_action_items,
+                "extract_decisions": extract_decisions,
+                "redact": redact,
+                "operator_mode": _operator_mode(ctx),
+            }
+        )
+
+    @mcp.tool()
+    def vault_email_to_note_apply(ctx: Context, plan_id: str, max_updates: int = 25) -> dict[str, Any]:
+        """Create the structured note from an approved email-to-note plan_id."""
+        _enforce("vault_email_to_note_apply", ctx)
+        return svc.vault_email_to_note_apply(
+            {"plan_id": plan_id, "max_updates": max_updates, "operator_mode": _operator_mode(ctx)}
         )
 
     app = mcp.streamable_http_app()
