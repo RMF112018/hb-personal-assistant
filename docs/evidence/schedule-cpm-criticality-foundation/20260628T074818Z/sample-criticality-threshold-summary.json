@@ -1,0 +1,11 @@
+{
+  "source_run_id": "cpmrun_bd7c7fd262f12dd631c0e13c5c9e22b4",
+  "critical_float_threshold_days": 0.0,
+  "near_critical_float_threshold_days": 10.0,
+  "computed_critical_activity_count": 2,
+  "computed_near_critical_activity_count": 0,
+  "computed_noncritical_activity_count": 0,
+  "unclassified_activity_count": 0,
+  "longest_path_member_count": 2,
+  "caveat_count": 2
+}

@@ -117,6 +117,10 @@ class ScheduleCpmDiagnosticsRepository:
                        path_count, longest_path_activity_count,
                        longest_path_relationship_count, longest_path_duration,
                        longest_path_end_activity_id,
+                       critical_float_threshold_days, near_critical_float_threshold_days,
+                       computed_critical_activity_count, computed_near_critical_activity_count,
+                       computed_noncritical_activity_count, unclassified_activity_count,
+                       longest_path_member_count,
                        created_at
                 FROM schedule_cpm_runs
                 WHERE schedule_version_key=?
@@ -140,6 +144,10 @@ class ScheduleCpmDiagnosticsRepository:
                        path_count, longest_path_activity_count,
                        longest_path_relationship_count, longest_path_duration,
                        longest_path_end_activity_id,
+                       critical_float_threshold_days, near_critical_float_threshold_days,
+                       computed_critical_activity_count, computed_near_critical_activity_count,
+                       computed_noncritical_activity_count, unclassified_activity_count,
+                       longest_path_member_count,
                        created_at
                 FROM schedule_cpm_runs
                 WHERE cpm_run_id=?
@@ -261,7 +269,14 @@ class ScheduleCpmDiagnosticsRepository:
                        computed_free_float, computed_free_float_basis,
                        computed_free_float_status, computed_free_float_notes_json,
                        controlling_free_float_successor_activity_id,
-                       controlling_free_float_relationship_id, created_at
+                       controlling_free_float_relationship_id,
+                       computed_critical_flag, computed_near_critical_flag,
+                       computed_criticality_class, computed_criticality_status,
+                       computed_criticality_basis, computed_criticality_notes_json,
+                       critical_float_threshold_days, near_critical_float_threshold_days,
+                       longest_path_member_flag, longest_path_sequence,
+                       longest_path_membership_basis, longest_path_membership_notes_json,
+                       created_at
                 FROM schedule_cpm_activity_results
                 WHERE cpm_run_id=?
                 ORDER BY topological_index, activity_id
@@ -310,6 +325,10 @@ class ScheduleCpmDiagnosticsRepository:
                        path_count, longest_path_activity_count,
                        longest_path_relationship_count, longest_path_duration,
                        longest_path_end_activity_id,
+                       critical_float_threshold_days, near_critical_float_threshold_days,
+                       computed_critical_activity_count, computed_near_critical_activity_count,
+                       computed_noncritical_activity_count, unclassified_activity_count,
+                       longest_path_member_count,
                        created_at
                 FROM schedule_cpm_runs
                 WHERE schedule_version_key=? AND calculation_type=?
@@ -332,6 +351,40 @@ class ScheduleCpmDiagnosticsRepository:
     def get_float_run(self, schedule_version_key: str) -> dict[str, Any] | None:
         """Most-recent float run for the version (the longest path depends on it)."""
         return self._get_latest_run(schedule_version_key, "float")
+
+    def get_longest_path_run(self, schedule_version_key: str) -> dict[str, Any] | None:
+        """Most-recent longest-path run (the criticality classification depends on it)."""
+        return self._get_latest_run(schedule_version_key, "longest_path")
+
+    def replace_criticality_run(
+        self,
+        run_row: dict[str, Any],
+        diagnostic_rows: Iterable[dict[str, Any]],
+        activity_rows: Iterable[dict[str, Any]],
+    ) -> str:
+        """Persist a criticality run + its diagnostics/activity classification rows.
+
+        Single transaction; prior rows for the same cpm_run_id are cleared first so a rerun
+        replaces rather than accumulates (idempotent). Prior CPM runs are a different
+        cpm_run_id and are never touched.
+        """
+        run_id = str(run_row["cpm_run_id"])
+        diagnostics = list(diagnostic_rows)
+        activities = list(activity_rows)
+        with open_connection(self._db_path) as active:
+            with transaction(active):
+                active.execute(
+                    "DELETE FROM schedule_cpm_activity_results WHERE cpm_run_id=?", (run_id,)
+                )
+                active.execute(
+                    "DELETE FROM schedule_cpm_diagnostics WHERE cpm_run_id=?", (run_id,)
+                )
+                self.insert_run(run_row, conn=active)
+                if diagnostics:
+                    self.insert_diagnostics(diagnostics, conn=active)
+                if activities:
+                    self.insert_activity_results(activities, conn=active)
+        return run_id
 
     def replace_float_run(
         self,

@@ -328,3 +328,43 @@ V87_RUNS_COLUMNS: dict[str, str] = {
     "longest_path_duration": "REAL",
     "longest_path_end_activity_id": "TEXT",
 }
+
+
+# ---------------------------------------------------------------------------------------
+# V88 CPM criticality foundation (additive COLUMNS ONLY — no new tables).
+#
+# Application-computed critical / near-critical classification from the Phase 4 computed
+# total float (threshold rules), with Phase 5 longest-path membership recorded as CONTEXT
+# only. A criticality run reads the persisted float + longest-path runs and writes its own
+# activity-result rows (app-owned CPM fields whitelisted + classification columns); non-
+# criticality runs leave the criticality columns NULL. This is computed criticality, NOT
+# DCMA critical-path compliance, and no source field is read for logic or overwritten.
+# table_count is unchanged. Applied via a column-existence-guarded reconcile.
+# ---------------------------------------------------------------------------------------
+
+V88_ACTIVITY_RESULTS_COLUMNS: dict[str, str] = {
+    "computed_critical_flag": "INTEGER",
+    "computed_near_critical_flag": "INTEGER",
+    "computed_criticality_class": "TEXT",
+    "computed_criticality_status": "TEXT",
+    "computed_criticality_basis": "TEXT",
+    "computed_criticality_notes_json": "TEXT",
+    "critical_float_threshold_days": "REAL",
+    "near_critical_float_threshold_days": "REAL",
+    "longest_path_member_flag": "INTEGER",
+    "longest_path_sequence": "INTEGER",
+    "longest_path_membership_basis": "TEXT",
+    "longest_path_membership_notes_json": "TEXT",
+}
+
+# diagnostic_count reused for the criticality diagnostic count; source_run_id reused for the
+# longest-path run id (its own source_run_id chains to the float run).
+V88_RUNS_COLUMNS: dict[str, str] = {
+    "critical_float_threshold_days": "REAL",
+    "near_critical_float_threshold_days": "REAL",
+    "computed_critical_activity_count": "INTEGER",
+    "computed_near_critical_activity_count": "INTEGER",
+    "computed_noncritical_activity_count": "INTEGER",
+    "unclassified_activity_count": "INTEGER",
+    "longest_path_member_count": "INTEGER",
+}
