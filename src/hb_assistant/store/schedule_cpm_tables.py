@@ -158,3 +158,42 @@ V84_STATEMENTS: list[str] = [
     "CREATE INDEX IF NOT EXISTS idx_schedule_cpm_relationship_results_version "
     "ON schedule_cpm_relationship_results(schedule_version_key)",
 ]
+
+
+# ---------------------------------------------------------------------------------------
+# V85 CPM backward pass foundation (additive COLUMNS ONLY — no new tables).
+#
+# The backward pass computes late start / late finish over the same acyclic graph and the
+# persisted Phase 2 forward-pass results, writing its own run's rows (early values copied,
+# late values computed). These additive columns extend the shared Phase 2 result/run tables;
+# forward-pass runs leave the backward columns NULL. No source-export field is mirrored or
+# overwritten. table_count is unchanged (no new tables). Applied via a column-existence-
+# guarded reconcile (ALTER TABLE ADD COLUMN is not IF NOT EXISTS in SQLite).
+# ---------------------------------------------------------------------------------------
+
+V85_ACTIVITY_RESULTS_COLUMNS: dict[str, str] = {
+    "computed_late_start": "TEXT",
+    "computed_late_finish": "TEXT",
+    "late_start_offset_days": "REAL",
+    "late_finish_offset_days": "REAL",
+    "backward_pass_status": "TEXT",
+    "backward_pass_notes_json": "TEXT",
+    "terminal_activity_flag": "INTEGER",
+    "controlling_successor_activity_id": "TEXT",
+    "controlling_successor_relationship_id": "TEXT",
+}
+
+V85_RELATIONSHIP_RESULTS_COLUMNS: dict[str, str] = {
+    "candidate_predecessor_late_start": "REAL",
+    "candidate_predecessor_late_finish": "REAL",
+    "backward_relationship_calc_status": "TEXT",
+    "backward_relationship_calc_notes_json": "TEXT",
+}
+
+# node_count/edge_count reused as activity/relationship counts;
+# computed_activity_count/blocked_activity_count/diagnostic_count reused for late-date
+# counts — only the finish anchor is new.
+V85_RUNS_COLUMNS: dict[str, str] = {
+    "schedule_finish_anchor": "TEXT",
+    "schedule_finish_anchor_source": "TEXT",
+}

@@ -14,7 +14,7 @@ from .connection import get_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 84
+LATEST_SCHEMA_VERSION = 85
 
 
 class StaffingMigrationError(RuntimeError):
@@ -6971,6 +6971,34 @@ class SQLiteMigrator:
             if column not in existing:
                 conn.execute(f"ALTER TABLE schedule_cpm_runs ADD COLUMN {column} {decl}")
 
+    @staticmethod
+    def _reconcile_v85_schedule_cpm_backward_columns(conn: sqlite3.Connection) -> None:
+        """Additively add backward-pass columns to the shared CPM result/run tables.
+
+        Column-existence-guarded (ALTER ADD COLUMN is not IF NOT EXISTS in SQLite) so this
+        is safe to re-run / self-heal. No new tables; table_count is unchanged.
+        """
+        from hb_assistant.store.schedule_cpm_tables import (
+            V85_ACTIVITY_RESULTS_COLUMNS,
+            V85_RELATIONSHIP_RESULTS_COLUMNS,
+            V85_RUNS_COLUMNS,
+        )
+
+        for table, columns in (
+            ("schedule_cpm_activity_results", V85_ACTIVITY_RESULTS_COLUMNS),
+            ("schedule_cpm_relationship_results", V85_RELATIONSHIP_RESULTS_COLUMNS),
+            ("schedule_cpm_runs", V85_RUNS_COLUMNS),
+        ):
+            try:
+                existing = {row[1] for row in conn.execute(f"PRAGMA table_info({table})")}
+            except sqlite3.OperationalError:
+                continue
+            if not existing:
+                continue
+            for column, decl in columns.items():
+                if column not in existing:
+                    conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {decl}")
+
     # v44 Phase 10 Graph drive-item modified-by raw operational metadata.
     # Additive ADD COLUMN only on construction_drive_items; raw identity JSON is
     # local SQLite operational metadata and must not be emitted in committed evidence.
@@ -8305,6 +8333,17 @@ class SQLiteMigrator:
             if cur.fetchone() is None:
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (84, 'v84_schedule_cpm_forward_pass_foundation', ?)",
+                    (now,),
+                )
+
+            # v85 CPM backward pass foundation: additive backward-pass columns on the shared
+            # CPM result/run tables (no new tables; table_count unchanged). Backward pass only
+            # — no float/longest/critical path; no source-field writes.
+            self._reconcile_v85_schedule_cpm_backward_columns(conn)
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 85")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (85, 'v85_schedule_cpm_backward_pass_foundation', ?)",
                     (now,),
                 )
 

@@ -111,6 +111,7 @@ class ScheduleCpmDiagnosticsRepository:
                        node_count, edge_count, is_acyclic, diagnostic_count,
                        topological_order_json, analysis_scope, cpm_recalculation_status,
                        calculation_type, schedule_start_anchor, schedule_start_anchor_source,
+                       schedule_finish_anchor, schedule_finish_anchor_source,
                        computed_activity_count, blocked_activity_count,
                        created_at
                 FROM schedule_cpm_runs
@@ -129,6 +130,7 @@ class ScheduleCpmDiagnosticsRepository:
                        node_count, edge_count, is_acyclic, diagnostic_count,
                        topological_order_json, analysis_scope, cpm_recalculation_status,
                        calculation_type, schedule_start_anchor, schedule_start_anchor_source,
+                       schedule_finish_anchor, schedule_finish_anchor_source,
                        computed_activity_count, blocked_activity_count,
                        created_at
                 FROM schedule_cpm_runs
@@ -241,7 +243,11 @@ class ScheduleCpmDiagnosticsRepository:
                        activity_name, topological_index, computed_early_start,
                        computed_early_finish, early_start_offset_days, early_finish_offset_days,
                        duration_value, duration_unit, duration_source, predecessor_count,
-                       successor_count, forward_pass_status, forward_pass_notes_json, created_at
+                       successor_count, forward_pass_status, forward_pass_notes_json,
+                       computed_late_start, computed_late_finish, late_start_offset_days,
+                       late_finish_offset_days, backward_pass_status, backward_pass_notes_json,
+                       terminal_activity_flag, controlling_successor_activity_id,
+                       controlling_successor_relationship_id, created_at
                 FROM schedule_cpm_activity_results
                 WHERE cpm_run_id=?
                 ORDER BY topological_index, activity_id
@@ -259,7 +265,9 @@ class ScheduleCpmDiagnosticsRepository:
                        relationship_type, lag_value, lag_unit, normalized_lag_days,
                        predecessor_early_start_offset, predecessor_early_finish_offset,
                        candidate_successor_early_start_offset, relationship_calc_status,
-                       relationship_calc_notes_json, created_at
+                       relationship_calc_notes_json, candidate_predecessor_late_start,
+                       candidate_predecessor_late_finish, backward_relationship_calc_status,
+                       backward_relationship_calc_notes_json, created_at
                 FROM schedule_cpm_relationship_results
                 WHERE cpm_run_id=?
                 ORDER BY successor_activity_id, predecessor_activity_id, relationship_ref
@@ -267,3 +275,64 @@ class ScheduleCpmDiagnosticsRepository:
                 (cpm_run_id,),
             )
             return [dict(r) for r in cur.fetchall()]
+
+    # ----------------------------------------------------------------- V85 backward pass
+
+    def get_forward_pass_run(self, schedule_version_key: str) -> dict[str, Any] | None:
+        """Most-recent forward-pass run for the version (the backward pass depends on it)."""
+        with self._conn() as conn:
+            cur = conn.execute(
+                """
+                SELECT cpm_run_id, project_key, schedule_version_key, import_id,
+                       node_count, edge_count, is_acyclic, diagnostic_count,
+                       topological_order_json, analysis_scope, cpm_recalculation_status,
+                       calculation_type, schedule_start_anchor, schedule_start_anchor_source,
+                       schedule_finish_anchor, schedule_finish_anchor_source,
+                       computed_activity_count, blocked_activity_count, created_at
+                FROM schedule_cpm_runs
+                WHERE schedule_version_key=? AND calculation_type='forward_pass'
+                ORDER BY created_at DESC, cpm_run_id
+                LIMIT 1
+                """,
+                (schedule_version_key,),
+            )
+            row = cur.fetchone()
+            return dict(row) if row else None
+
+    def replace_backward_pass_run(
+        self,
+        run_row: dict[str, Any],
+        diagnostic_rows: Iterable[dict[str, Any]],
+        activity_rows: Iterable[dict[str, Any]],
+        relationship_rows: Iterable[dict[str, Any]],
+    ) -> str:
+        """Persist a backward-pass run + its diagnostics/activity/relationship results.
+
+        Single transaction; prior rows for the same cpm_run_id are cleared first so a rerun
+        replaces rather than accumulates (idempotent). The forward-pass run's rows are a
+        different cpm_run_id and are never touched.
+        """
+        run_id = str(run_row["cpm_run_id"])
+        diagnostics = list(diagnostic_rows)
+        activities = list(activity_rows)
+        relationships = list(relationship_rows)
+        with open_connection(self._db_path) as active:
+            with transaction(active):
+                active.execute(
+                    "DELETE FROM schedule_cpm_relationship_results WHERE cpm_run_id=?",
+                    (run_id,),
+                )
+                active.execute(
+                    "DELETE FROM schedule_cpm_activity_results WHERE cpm_run_id=?", (run_id,)
+                )
+                active.execute(
+                    "DELETE FROM schedule_cpm_diagnostics WHERE cpm_run_id=?", (run_id,)
+                )
+                self.insert_run(run_row, conn=active)
+                if diagnostics:
+                    self.insert_diagnostics(diagnostics, conn=active)
+                if activities:
+                    self.insert_activity_results(activities, conn=active)
+                if relationships:
+                    self.insert_relationship_results(relationships, conn=active)
+        return run_id
