@@ -242,7 +242,7 @@ def test_v79_schema_and_contract(tmp_path: Path) -> None:
             / "src/hb_assistant/resources/json/table_lifecycle_status_contract.json"
         ).read_text()
     )
-    assert contract["table_count"] == 475
+    assert contract["table_count"] == 477
     assert contract["tables"]["schedule_version_diff_detail_facts"]["v"] == "V79"
 
 

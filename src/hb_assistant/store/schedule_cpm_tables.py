@@ -236,3 +236,95 @@ V86_RUNS_COLUMNS: dict[str, str] = {
     "total_float_computed_count": "INTEGER",
     "free_float_computed_count": "INTEGER",
 }
+
+
+# ---------------------------------------------------------------------------------------
+# V87 CPM longest path foundation (additive — TWO NEW TABLES + run columns).
+#
+# The longest path is a separate analysis artifact (path summary + ordered membership), so
+# it gets its own tables rather than columns on the compute-result tables. A longest-path
+# run reads the persisted Phase 4 float run and writes one schedule_cpm_paths row plus
+# ordered schedule_cpm_path_activities rows; it does NOT write activity/relationship result
+# rows and does NOT mutate prior runs. This is a longest-path basis, NOT a critical-path
+# declaration — nothing is marked critical and no source field is read for logic. table_count
+# increases by 2 (475 -> 477).
+# ---------------------------------------------------------------------------------------
+
+V87_TABLES: tuple[str, ...] = (
+    "schedule_cpm_paths",
+    "schedule_cpm_path_activities",
+)
+
+V87_STATEMENTS: list[str] = [
+    """
+    CREATE TABLE IF NOT EXISTS schedule_cpm_paths (
+        path_id TEXT PRIMARY KEY,
+        cpm_run_id TEXT NOT NULL,
+        schedule_version_key TEXT NOT NULL,
+        project_key TEXT NOT NULL,
+        path_type TEXT NOT NULL,
+        path_rank INTEGER NOT NULL DEFAULT 1,
+        start_activity_id TEXT,
+        end_activity_id TEXT,
+        activity_count INTEGER NOT NULL DEFAULT 0,
+        relationship_count INTEGER NOT NULL DEFAULT 0,
+        path_duration REAL,
+        path_start_offset_days REAL,
+        path_finish_offset_days REAL,
+        path_total_float REAL,
+        path_basis TEXT,
+        path_status TEXT NOT NULL,
+        path_notes_json TEXT,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (cpm_run_id) REFERENCES schedule_cpm_runs(cpm_run_id)
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_schedule_cpm_paths_run "
+    "ON schedule_cpm_paths(cpm_run_id)",
+    "CREATE INDEX IF NOT EXISTS idx_schedule_cpm_paths_version "
+    "ON schedule_cpm_paths(schedule_version_key)",
+    """
+    CREATE TABLE IF NOT EXISTS schedule_cpm_path_activities (
+        path_id TEXT NOT NULL,
+        cpm_run_id TEXT NOT NULL,
+        schedule_version_key TEXT NOT NULL,
+        project_key TEXT NOT NULL,
+        path_type TEXT NOT NULL,
+        path_rank INTEGER NOT NULL DEFAULT 1,
+        path_sequence INTEGER NOT NULL,
+        activity_id TEXT NOT NULL,
+        activity_name TEXT,
+        relationship_from_previous_id INTEGER,
+        relationship_from_previous_ref TEXT,
+        computed_early_start TEXT,
+        computed_early_finish TEXT,
+        computed_late_start TEXT,
+        computed_late_finish TEXT,
+        early_start_offset_days REAL,
+        early_finish_offset_days REAL,
+        computed_total_float REAL,
+        computed_free_float REAL,
+        duration_value REAL,
+        topological_index INTEGER,
+        selection_basis TEXT,
+        selection_notes_json TEXT,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (path_id, path_sequence),
+        FOREIGN KEY (path_id) REFERENCES schedule_cpm_paths(path_id),
+        FOREIGN KEY (cpm_run_id) REFERENCES schedule_cpm_runs(cpm_run_id)
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_schedule_cpm_path_activities_run "
+    "ON schedule_cpm_path_activities(cpm_run_id)",
+    "CREATE INDEX IF NOT EXISTS idx_schedule_cpm_path_activities_path "
+    "ON schedule_cpm_path_activities(path_id)",
+]
+
+# source_run_id (added in V86) is reused for the float run id.
+V87_RUNS_COLUMNS: dict[str, str] = {
+    "path_count": "INTEGER",
+    "longest_path_activity_count": "INTEGER",
+    "longest_path_relationship_count": "INTEGER",
+    "longest_path_duration": "REAL",
+    "longest_path_end_activity_id": "TEXT",
+}

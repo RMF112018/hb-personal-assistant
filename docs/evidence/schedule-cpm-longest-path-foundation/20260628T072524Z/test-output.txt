@@ -1,0 +1,22 @@
+# CPM longest path foundation — validation output (2026-06-28T07:29:16Z)
+
+## pytest graph + forward + backward + float + longest_path
+........................................................................ [ 74%]
+.........................                                                [100%]
+
+## regression: import / health / DCMA-not-measurable / migration / count(477)
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+
+## ruff check (new/changed files)
+All checks passed!
+
+## mypy (new src files)
+Success: no issues found in 3 source files
+
+## full schedule bundle (scripts/test-schedule.sh)
+258 passed, 2 deselected, 1 warning in 224.05s
+
+## fresh-migrate + idempotency
+LATEST=87 applied=87 reapply=87; schedule_cpm_paths + schedule_cpm_path_activities tables present; +5 run columns; v87 row recorded; table_count 475->477.

@@ -1,0 +1,32 @@
+{
+  "schedule_version_key": "tropical|1|2026-06-01 08:00",
+  "run": {
+    "cpm_run_id": "cpmrun_58daff27ccd8d4a6a43c8644b857bd72",
+    "project_key": "tropical",
+    "schedule_version_key": "tropical|1|2026-06-01 08:00",
+    "import_id": "c61861ad2937",
+    "node_count": 2,
+    "edge_count": 1,
+    "is_acyclic": 1,
+    "diagnostic_count": 2,
+    "topological_order_json": "[\"A1000\", \"A1010\"]",
+    "analysis_scope": "longest_path",
+    "cpm_recalculation_status": "longest_path_only",
+    "calculation_type": "longest_path",
+    "schedule_start_anchor": "2026-06-01T00:00:00",
+    "schedule_start_anchor_source": "data_date",
+    "schedule_finish_anchor": "2026-03-10T00:00:00",
+    "schedule_finish_anchor_source": "source_scheduled_finish",
+    "computed_activity_count": 0,
+    "blocked_activity_count": 0,
+    "source_run_id": "cpmrun_7d69bdc27d46474c69a6be42bf84e899",
+    "total_float_computed_count": null,
+    "free_float_computed_count": null,
+    "path_count": 1,
+    "longest_path_activity_count": 2,
+    "longest_path_relationship_count": 1,
+    "longest_path_duration": 15.0,
+    "longest_path_end_activity_id": "A1010",
+    "created_at": "2026-06-28 07:25:28"
+  }
+}

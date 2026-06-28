@@ -33,6 +33,7 @@ pytest_targets=(
   "tests/test_schedule_cpm_float.py"
   "tests/test_schedule_cpm_graph.py"
   "tests/test_schedule_cpm_forward_pass.py"
+  "tests/test_schedule_cpm_longest_path.py"
   "tests/test_schedule_critical_path_analytics.py"
   "tests/test_schedule_critical_path_quality.py::test_xer_dcma_critical_path_not_measurable_with_source_and_proxy"
   "tests/test_schedule_critical_path_quality.py::test_gma_p6_still_not_measurable_critical_path"

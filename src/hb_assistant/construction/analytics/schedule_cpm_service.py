@@ -14,9 +14,15 @@ persisting them to its own run with ``cpm_recalculation_status='backward_pass_on
 
 ``run_float_calculation`` (Phase 4) derives application-owned total/free float from the
 persisted backward run's early/late offsets, persisting to its own run with
-``cpm_recalculation_status='forward_backward_float_only'``. None of these paths computes a
-critical or longest path, marks an activity critical, reads source-export critical/float
-flags for logic, or overwrites any source schedule field.
+``cpm_recalculation_status='forward_backward_float_only'``.
+
+``run_longest_path`` (Phase 5) identifies the deterministic longest path from the persisted
+float run (max computed early finish, traced backward through controlling predecessors),
+persisting a path summary + ordered membership with
+``cpm_recalculation_status='longest_path_only'``. This is a longest-path basis, NOT a
+critical-path declaration: none of these paths marks an activity critical, computes a
+near-critical path, reads source-export critical/float flags for logic, overwrites any
+source schedule field, or relabels the DCMA critical-path metric.
 """
 
 from __future__ import annotations
@@ -50,6 +56,11 @@ from .schedule_cpm_forward_pass import (
     compute_forward_pass,
 )
 from .schedule_cpm_graph import GraphBuildResult, build_graph
+from .schedule_cpm_longest_path import (
+    BLOCK_MISSING_FLOAT_RUN,
+    LongestPathResult,
+    compute_longest_path,
+)
 
 _PAGE = 1000
 
@@ -925,5 +936,219 @@ class ScheduleCpmGraphService:
                     "free_float_candidate_status": r.free_float_candidate_status,
                 }
                 for r in result.relationships
+            ],
+        }
+
+    # ---------------------------------------------------------------- Phase 5 longest path
+
+    def run_longest_path(self, schedule_version_key: str) -> dict[str, Any]:
+        """Identify + persist the application-computed longest path for the version.
+
+        Longest path only — a path basis, NOT a critical-path declaration. Derived from the
+        persisted float run (max computed early finish, traced backward through controlling
+        predecessors); never marks an activity critical, reads source critical/driving-path
+        flags, or overwrites any source field. Blocks if the forward or float run is missing.
+        Writes a new longest-path run; prior CPM runs are untouched.
+        """
+        activities = self._load_all_activities(schedule_version_key)
+        relationships = self._activities.list_relationships(schedule_version_key)
+        graph = build_graph(activities, relationships)
+        project_key, import_id = self._run_metadata(schedule_version_key)
+
+        forward_run = self._cpm.get_forward_pass_run(schedule_version_key)
+        float_run = self._cpm.get_float_run(schedule_version_key)
+
+        if forward_run is None or forward_run.get("cpm_recalculation_status") != "forward_pass_only":
+            result = compute_longest_path(graph, [], [])
+            if result.block_reason == BLOCK_MISSING_FLOAT_RUN:
+                result.block_reason = BLOCK_MISSING_FORWARD_PASS
+            return self._persist_longest_path_run(
+                schedule_version_key, project_key, import_id, graph, result, float_run=None
+            )
+        if (
+            float_run is None
+            or float_run.get("cpm_recalculation_status") != "forward_backward_float_only"
+        ):
+            result = compute_longest_path(graph, [], [])
+            return self._persist_longest_path_run(
+                schedule_version_key, project_key, import_id, graph, result, float_run=None
+            )
+
+        float_activities = self._cpm.list_activity_results(float_run["cpm_run_id"])
+        float_relationships = self._cpm.list_relationship_results(float_run["cpm_run_id"])
+        result = compute_longest_path(graph, float_activities, float_relationships)
+        return self._persist_longest_path_run(
+            schedule_version_key, project_key, import_id, graph, result, float_run=float_run
+        )
+
+    def _persist_longest_path_run(
+        self,
+        schedule_version_key: str,
+        project_key: str,
+        import_id: str,
+        graph: GraphBuildResult,
+        result: LongestPathResult,
+        *,
+        float_run: dict[str, Any] | None,
+    ) -> dict[str, Any]:
+        run_id = deterministic_cpm_run_id(
+            schedule_version_key=schedule_version_key,
+            import_id=import_id,
+            diagnostic_signature=self._diagnostic_signature(graph),
+            kind="longest_path",
+        )
+        summary = result.summary
+
+        run_row = {
+            "cpm_run_id": run_id,
+            "project_key": project_key,
+            "schedule_version_key": schedule_version_key,
+            "import_id": import_id,
+            "node_count": result.node_count,
+            "edge_count": result.edge_count,
+            "is_acyclic": 1 if graph.is_acyclic else 0,
+            "diagnostic_count": result.diagnostic_count,
+            "topological_order_json": (
+                json.dumps(graph.topological_order)
+                if graph.topological_order is not None
+                else None
+            ),
+            "analysis_scope": "longest_path",
+            "cpm_recalculation_status": result.cpm_recalculation_status,
+            "calculation_type": result.calculation_type,
+            "schedule_start_anchor": (
+                float_run.get("schedule_start_anchor") if float_run else None
+            ),
+            "schedule_start_anchor_source": (
+                float_run.get("schedule_start_anchor_source") if float_run else None
+            ),
+            "schedule_finish_anchor": (
+                float_run.get("schedule_finish_anchor") if float_run else None
+            ),
+            "schedule_finish_anchor_source": (
+                float_run.get("schedule_finish_anchor_source") if float_run else None
+            ),
+            "source_run_id": float_run.get("cpm_run_id") if float_run else None,
+            "path_count": result.path_count,
+            "longest_path_activity_count": summary.activity_count if summary else 0,
+            "longest_path_relationship_count": summary.relationship_count if summary else 0,
+            "longest_path_duration": summary.path_duration if summary else None,
+            "longest_path_end_activity_id": summary.end_activity_id if summary else None,
+        }
+
+        diagnostic_rows = self._build_diagnostic_rows(
+            run_id,
+            graph,
+            project_key=project_key,
+            schedule_version_key=schedule_version_key,
+            import_id=import_id,
+        )
+
+        path_rows: list[dict[str, Any]] = []
+        path_activity_rows: list[dict[str, Any]] = []
+        if summary is not None:
+            path_id = f"{run_id}_p01"
+            path_rows.append(
+                {
+                    "path_id": path_id,
+                    "cpm_run_id": run_id,
+                    "schedule_version_key": schedule_version_key,
+                    "project_key": project_key,
+                    "path_type": result.calculation_type,
+                    "path_rank": 1,
+                    "start_activity_id": summary.start_activity_id,
+                    "end_activity_id": summary.end_activity_id,
+                    "activity_count": summary.activity_count,
+                    "relationship_count": summary.relationship_count,
+                    "path_duration": summary.path_duration,
+                    "path_start_offset_days": summary.path_start_offset_days,
+                    "path_finish_offset_days": summary.path_finish_offset_days,
+                    "path_total_float": summary.path_total_float,
+                    "path_basis": summary.path_basis,
+                    "path_status": summary.path_status,
+                    "path_notes_json": json.dumps(summary.notes) if summary.notes else None,
+                }
+            )
+            for a in result.activities:
+                path_activity_rows.append(
+                    {
+                        "path_id": path_id,
+                        "cpm_run_id": run_id,
+                        "schedule_version_key": schedule_version_key,
+                        "project_key": project_key,
+                        "path_type": result.calculation_type,
+                        "path_rank": 1,
+                        "path_sequence": a.path_sequence,
+                        "activity_id": a.activity_id,
+                        "activity_name": a.activity_name,
+                        "relationship_from_previous_id": a.relationship_from_previous_id,
+                        "relationship_from_previous_ref": a.relationship_from_previous_ref,
+                        "computed_early_start": a.computed_early_start,
+                        "computed_early_finish": a.computed_early_finish,
+                        "computed_late_start": a.computed_late_start,
+                        "computed_late_finish": a.computed_late_finish,
+                        "early_start_offset_days": a.early_start_offset_days,
+                        "early_finish_offset_days": a.early_finish_offset_days,
+                        "computed_total_float": a.computed_total_float,
+                        "computed_free_float": a.computed_free_float,
+                        "duration_value": a.duration_value,
+                        "topological_index": a.topological_index,
+                        "selection_basis": a.selection_basis,
+                        "selection_notes_json": (
+                            json.dumps(a.selection_notes) if a.selection_notes else None
+                        ),
+                    }
+                )
+
+        self._cpm.replace_longest_path_run(
+            run_row, diagnostic_rows, path_rows, path_activity_rows
+        )
+        return self._longest_path_summary(run_id, result, float_run)
+
+    @staticmethod
+    def _longest_path_summary(
+        run_id: str, result: LongestPathResult, float_run: dict[str, Any] | None
+    ) -> dict[str, Any]:
+        summary = result.summary
+        return {
+            "cpm_run_id": run_id,
+            "run_status": result.run_status,
+            "blocked": result.run_status == RUN_BLOCKED,
+            "block_reason": result.block_reason,
+            "calculation_type": result.calculation_type,
+            "cpm_recalculation_status": result.cpm_recalculation_status,
+            "source_run_id": float_run.get("cpm_run_id") if float_run else None,
+            "node_count": result.node_count,
+            "edge_count": result.edge_count,
+            "diagnostic_count": result.diagnostic_count,
+            "path_count": result.path_count,
+            "path": (
+                {
+                    "start_activity_id": summary.start_activity_id,
+                    "end_activity_id": summary.end_activity_id,
+                    "activity_count": summary.activity_count,
+                    "relationship_count": summary.relationship_count,
+                    "path_start_offset_days": summary.path_start_offset_days,
+                    "path_finish_offset_days": summary.path_finish_offset_days,
+                    "path_duration": summary.path_duration,
+                    "path_total_float": summary.path_total_float,
+                    "path_basis": summary.path_basis,
+                    "path_status": summary.path_status,
+                    "notes": summary.notes,
+                }
+                if summary
+                else None
+            ),
+            "activities": [
+                {
+                    "path_sequence": a.path_sequence,
+                    "activity_id": a.activity_id,
+                    "relationship_from_previous_ref": a.relationship_from_previous_ref,
+                    "early_start_offset_days": a.early_start_offset_days,
+                    "early_finish_offset_days": a.early_finish_offset_days,
+                    "computed_total_float": a.computed_total_float,
+                    "selection_basis": a.selection_basis,
+                }
+                for a in result.activities
             ],
         }
