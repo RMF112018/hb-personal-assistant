@@ -1,0 +1,206 @@
+{
+  "tropical|1071|2026-06-23 08:00": {
+    "available": true,
+    "evidence_class": "application_computed_cpm",
+    "source_export_evidence": "separate",
+    "run_chain": {
+      "graph_diagnostics": {
+        "available": true,
+        "status": "not_implemented",
+        "analysis_scope": "graph_diagnostics_only"
+      },
+      "forward_pass": {
+        "available": true,
+        "status": "forward_pass_only",
+        "analysis_scope": "forward_pass"
+      },
+      "backward_pass": {
+        "available": true,
+        "status": "backward_pass_only",
+        "analysis_scope": "backward_pass"
+      },
+      "float": {
+        "available": true,
+        "status": "forward_backward_float_only",
+        "analysis_scope": "float"
+      },
+      "longest_path": {
+        "available": true,
+        "status": "longest_path_only",
+        "analysis_scope": "longest_path"
+      },
+      "criticality": {
+        "available": true,
+        "status": "criticality_classification_only",
+        "analysis_scope": "criticality"
+      }
+    },
+    "counts": {
+      "computed_activity_count": 1507,
+      "computed_critical_activity_count": 1312,
+      "computed_near_critical_activity_count": 1,
+      "computed_noncritical_activity_count": 194,
+      "longest_path_member_count": 45,
+      "critical_float_threshold_days": 0.0,
+      "near_critical_float_threshold_days": 10.0,
+      "negative_total_float_count": 1308,
+      "zero_total_float_count": 4,
+      "high_total_float_count": 153,
+      "classified_total_float_count": 1507,
+      "high_total_float_threshold_days": 44.0
+    },
+    "longest_path_summary": {
+      "available": true,
+      "path_id": "cpmrun_a7128b38ab1ddc6d3a749cae6057ac64_p01",
+      "path_type": "longest_path",
+      "activity_count": 45,
+      "relationship_count": 44,
+      "path_duration": 429.0,
+      "path_total_float": -296.0,
+      "start_activity_id": "DELAY-MSTPERMIT-10",
+      "end_activity_id": "FM-FINCOMP"
+    },
+    "dcma_critical_path_metric": {
+      "available": true,
+      "measurable": true,
+      "basis": "application_computed_cpm",
+      "source_critical_flags_used": false,
+      "reason_codes": [],
+      "caveats": [
+        "computed_critical_outside_longest_path"
+      ],
+      "path_id": "cpmrun_a7128b38ab1ddc6d3a749cae6057ac64_p01",
+      "path_activity_count": 45,
+      "computed_critical_activity_count": 1312,
+      "longest_path_critical_activity_count": 45,
+      "dependency_run_ids": {
+        "forward": "cpmrun_473bef89651e3378b693abe00c0edc9a",
+        "backward": "cpmrun_28633bd2f97bb45bdd2d4e0bf76cf3cb",
+        "float": "cpmrun_8fe50672cff7dbb84a96edb5f62c393b",
+        "longest_path": "cpmrun_a7128b38ab1ddc6d3a749cae6057ac64",
+        "criticality": "cpmrun_97aa5bebc8ead974c0667e1ed2c4de25"
+      }
+    },
+    "diagnostics_summary": {
+      "available": true,
+      "total_count": 312,
+      "by_severity": {
+        "info": 312
+      },
+      "by_calculation_type": {
+        "graph_diagnostics": 52,
+        "forward_pass": 52,
+        "backward_pass": 52,
+        "float": 52,
+        "longest_path": 52,
+        "criticality": 52
+      }
+    },
+    "missing_dependency_reasons": [],
+    "links": {
+      "computed_cpm": "/schedules/cpm?version=tropical%7C1071%7C2026-06-23%2008%3A00"
+    }
+  },
+  "tropical|24836|2026-06-23 08:00": {
+    "available": true,
+    "evidence_class": "application_computed_cpm",
+    "source_export_evidence": "separate",
+    "run_chain": {
+      "graph_diagnostics": {
+        "available": true,
+        "status": "not_implemented",
+        "analysis_scope": "graph_diagnostics_only"
+      },
+      "forward_pass": {
+        "available": true,
+        "status": "forward_pass_only",
+        "analysis_scope": "forward_pass"
+      },
+      "backward_pass": {
+        "available": true,
+        "status": "backward_pass_only",
+        "analysis_scope": "backward_pass"
+      },
+      "float": {
+        "available": true,
+        "status": "forward_backward_float_only",
+        "analysis_scope": "float"
+      },
+      "longest_path": {
+        "available": true,
+        "status": "longest_path_only",
+        "analysis_scope": "longest_path"
+      },
+      "criticality": {
+        "available": true,
+        "status": "criticality_classification_only",
+        "analysis_scope": "criticality"
+      }
+    },
+    "counts": {
+      "computed_activity_count": 1507,
+      "computed_critical_activity_count": 1312,
+      "computed_near_critical_activity_count": 1,
+      "computed_noncritical_activity_count": 194,
+      "longest_path_member_count": 45,
+      "critical_float_threshold_days": 0.0,
+      "near_critical_float_threshold_days": 10.0,
+      "negative_total_float_count": 1308,
+      "zero_total_float_count": 4,
+      "high_total_float_count": 153,
+      "classified_total_float_count": 1507,
+      "high_total_float_threshold_days": 44.0
+    },
+    "longest_path_summary": {
+      "available": true,
+      "path_id": "cpmrun_0032704f6ad90646cc1d9e80a2d05e6e_p01",
+      "path_type": "longest_path",
+      "activity_count": 45,
+      "relationship_count": 44,
+      "path_duration": 429.0,
+      "path_total_float": -296.0,
+      "start_activity_id": "DELAY-MSTPERMIT-10",
+      "end_activity_id": "FM-FINCOMP"
+    },
+    "dcma_critical_path_metric": {
+      "available": true,
+      "measurable": true,
+      "basis": "application_computed_cpm",
+      "source_critical_flags_used": false,
+      "reason_codes": [],
+      "caveats": [
+        "computed_critical_outside_longest_path"
+      ],
+      "path_id": "cpmrun_0032704f6ad90646cc1d9e80a2d05e6e_p01",
+      "path_activity_count": 45,
+      "computed_critical_activity_count": 1312,
+      "longest_path_critical_activity_count": 45,
+      "dependency_run_ids": {
+        "forward": "cpmrun_9549f9ad65aab0b197ba261bb48d7747",
+        "backward": "cpmrun_51491d606b7fb19652c0ace9cfbde345",
+        "float": "cpmrun_0e54a90be02cd015dfc0a2497f4a4a95",
+        "longest_path": "cpmrun_0032704f6ad90646cc1d9e80a2d05e6e",
+        "criticality": "cpmrun_178ab34c7559396f2c9f29c6b4a0f315"
+      }
+    },
+    "diagnostics_summary": {
+      "available": true,
+      "total_count": 312,
+      "by_severity": {
+        "info": 312
+      },
+      "by_calculation_type": {
+        "graph_diagnostics": 52,
+        "forward_pass": 52,
+        "backward_pass": 52,
+        "float": 52,
+        "longest_path": 52,
+        "criticality": 52
+      }
+    },
+    "missing_dependency_reasons": [],
+    "links": {
+      "computed_cpm": "/schedules/cpm?version=tropical%7C24836%7C2026-06-23%2008%3A00"
+    }
+  }
+}

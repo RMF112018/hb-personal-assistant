@@ -1,0 +1,24 @@
+
+> frontend@0.0.0 test
+> vitest run src/pages/ScheduleQualityPage.test.tsx
+
+
+ RUN  v1.6.1 /Users/bobbyfetting/hb-personal-assistant-worktrees/schedule-health-computed-cpm-9a3/frontend
+
+stderr | src/pages/ScheduleQualityPage.test.tsx > ScheduleQualityPage as Schedule Health > renders Schedule Health from /schedules/quality using health-data
+⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+
+ ✓ src/pages/ScheduleQualityPage.test.tsx  (11 tests) 403ms
+
+ Test Files  1 passed (1)
+      Tests  11 passed (11)
+   Start at  09:47:38
+   Duration  1.71s (transform 218ms, setup 69ms, collect 343ms, tests 403ms, environment 407ms, prepare 68ms)
+
+--- full-suite tail (shows only pre-existing TodayPage/MyItemsPage reds) ---
+
+ Test Files  2 failed | 46 passed (48)
+      Tests  3 failed | 345 passed (348)
+   Start at  09:47:40
+   Duration  6.15s (transform 3.46s, setup 3.73s, collect 15.51s, tests 17.63s, environment 27.16s, prepare 4.83s)
+

@@ -208,6 +208,55 @@ function qualityDetail() {
   }
 }
 
+// Phase 9A.3: a fully populated computed_cpm_health envelope (available: true) mirroring the 9A.1
+// backend shape, used to exercise the rich Computed CPM Intelligence render.
+function computedCpmHealth(overrides: Record<string, unknown> = {}) {
+  return {
+    available: true,
+    evidence_class: 'application_computed_cpm',
+    source_export_evidence: 'separate',
+    run_chain: {
+      graph_diagnostics: { available: true, status: 'success', analysis_scope: 'full' },
+      forward_pass: { available: true, status: 'success', analysis_scope: 'full' },
+      backward_pass: { available: true, status: 'success', analysis_scope: 'full' },
+      float: { available: true, status: 'success', analysis_scope: 'full' },
+      longest_path: { available: true, status: 'success', analysis_scope: 'full' },
+      criticality: { available: true, status: 'success', analysis_scope: 'full' },
+    },
+    counts: {
+      computed_activity_count: 1507,
+      computed_critical_activity_count: 87,
+      computed_near_critical_activity_count: 142,
+      computed_noncritical_activity_count: 1278,
+      longest_path_member_count: 87,
+      critical_float_threshold_days: 0,
+      near_critical_float_threshold_days: 5,
+      high_total_float_threshold_days: 44,
+    },
+    longest_path_summary: {
+      available: true,
+      path_id: 'PATH001',
+      path_type: 'computed',
+      activity_count: 87,
+      relationship_count: 86,
+      path_duration: 845,
+      path_total_float: 0,
+      start_activity_id: 'A1000',
+      end_activity_id: 'A9999',
+    },
+    dcma_critical_path_metric: {
+      available: true,
+      measurable: true,
+      basis: 'application_computed_cpm',
+      caveats: ['computed_critical_outside_longest_path'],
+      computed_critical_activity_count: 87,
+      longest_path_critical_activity_count: 75,
+    },
+    links: { computed_cpm: `/schedules/cpm?version=${encodeURIComponent(versionKey)}` },
+    ...overrides,
+  }
+}
+
 describe('ScheduleQualityPage as Schedule Health', () => {
   beforeEach(() => {
     getScheduleHealthDataMock.mockReset()
@@ -338,5 +387,85 @@ describe('ScheduleQualityPage as Schedule Health', () => {
     expect(screen.getByText(/No application-computed CPM is available/i)).toBeInTheDocument()
     // Existing source-export health still renders.
     expect(screen.getByText('Available Schedule Evidence')).toBeInTheDocument()
+  })
+
+  it('renders the rich Computed CPM Intelligence section when computed_cpm_health is available', async () => {
+    getScheduleHealthDataMock.mockResolvedValue(
+      healthData({ computed_cpm_health: computedCpmHealth() }),
+    )
+
+    renderPage()
+
+    expect(await screen.findByText('Computed CPM Intelligence')).toBeInTheDocument()
+    // Computed counts and longest-path evidence render.
+    expect(screen.getByText('Computed activities')).toBeInTheDocument()
+    expect(screen.getByText('Computed critical')).toBeInTheDocument()
+    expect(screen.getByText('Computed near-critical')).toBeInTheDocument()
+    expect(screen.getByText('Computed noncritical')).toBeInTheDocument()
+    expect(screen.getByText('Computed longest path')).toBeInTheDocument()
+    expect(screen.getByText(/A1000 → A9999/)).toBeInTheDocument()
+    expect(screen.getByText(/Duration:\s*845 d/)).toBeInTheDocument()
+    expect(screen.getByText('DCMA critical-path metric')).toBeInTheDocument()
+    expect(screen.getByText(/Availability: Available \| Measurability: Measurable/)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'View Computed CPM' })).toHaveAttribute(
+      'href',
+      expect.stringContaining('/schedules/cpm'),
+    )
+  })
+
+  it('replaces the global "not implemented" CPM copy when computed CPM is available', async () => {
+    getScheduleHealthDataMock.mockResolvedValue(
+      healthData({ computed_cpm_health: computedCpmHealth() }),
+    )
+
+    renderPage()
+
+    expect(await screen.findByText('Computed CPM Intelligence')).toBeInTheDocument()
+    // The global "CPM recalculation: not implemented" banner is overridden.
+    expect(screen.queryByText(/CPM recalculation: not implemented/i)).not.toBeInTheDocument()
+    expect(screen.getByText(/CPM: Application-computed CPM available/i)).toBeInTheDocument()
+    // The Unavailable / Deferred Analysis line no longer marks CPM as deferred.
+    expect(screen.getByText(/CPM recalculation: Application-computed CPM available/i)).toBeInTheDocument()
+  })
+
+  it('keeps source-export critical-path evidence separate from computed CPM', async () => {
+    getScheduleHealthDataMock.mockResolvedValue(
+      healthData({ computed_cpm_health: computedCpmHealth() }),
+    )
+
+    renderPage()
+
+    // Both the computed section and the source-export section render, distinctly.
+    expect(await screen.findByText('Computed CPM Intelligence')).toBeInTheDocument()
+    expect(screen.getByText('Critical Path and Float Evidence')).toBeInTheDocument()
+    expect(screen.getAllByText('Application-computed CPM').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Source-export').length).toBeGreaterThan(0)
+  })
+
+  it('surfaces computed CPM caveats and does not suppress them', async () => {
+    getScheduleHealthDataMock.mockResolvedValue(
+      healthData({ computed_cpm_health: computedCpmHealth() }),
+    )
+
+    renderPage()
+
+    await screen.findByText('Computed CPM Intelligence')
+    // The computed_critical_outside_longest_path caveat is shown, not hidden.
+    expect(screen.getByText(/outside the longest path/i)).toBeInTheDocument()
+    expect(screen.getByTitle('computed_critical_outside_longest_path')).toBeInTheDocument()
+  })
+
+  it('keeps the legacy deferred CPM copy when computed_cpm_health is absent', async () => {
+    getScheduleHealthDataMock.mockResolvedValue(healthData())
+
+    renderPage()
+
+    await screen.findByText('Unavailable / Deferred Analysis')
+    // The shell section still renders, but reports unavailable (no rich computed render).
+    expect(screen.getByText(/No application-computed CPM is available/i)).toBeInTheDocument()
+    expect(screen.queryByText('Computed longest path')).not.toBeInTheDocument()
+    // CPM stays presented as deferred / not implemented.
+    expect(screen.getByText(/CPM recalculation: Deferred/i)).toBeInTheDocument()
+    expect(screen.getByText(/CPM recalculation: not implemented/i)).toBeInTheDocument()
   })
 })

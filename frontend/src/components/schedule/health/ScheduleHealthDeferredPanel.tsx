@@ -11,7 +11,7 @@ export function ScheduleHealthDeferredPanel({
   model: HealthModel
   health: ScheduleHealthData
 }) {
-  const { capabilities, cpmStatus, baselineAvailable, baselineReferenceOnly } = model
+  const { capabilities, cpmStatus, computedCpmAvailable, baselineAvailable, baselineReferenceOnly } = model
 
   return (
     <section className="forecast-panel p-4">
@@ -23,7 +23,7 @@ export function ScheduleHealthDeferredPanel({
         <li>Cost/schedule correlation: {capabilityStatusLabel(health.deferred_domains?.cost_schedule_correlation ?? capabilityStatus(capabilities, 'cost_schedule_correlation'))}</li>
         <li>Resource assignments: {capabilityStatusLabel(capabilityStatus(capabilities, 'resource_assignments'))}</li>
         <li>Cost loading: {capabilityStatusLabel(capabilityStatus(capabilities, 'cost_loading'))}</li>
-        <li>CPM recalculation: {capabilityStatusLabel(cpmStatus)}</li>
+        <li>CPM recalculation: {computedCpmAvailable ? 'Application-computed CPM available' : capabilityStatusLabel(cpmStatus)}</li>
         <li>Baseline metrics: {baselineAvailable ? 'Available' : baselineReferenceOnly ? 'Requires companion file' : 'Not enough data'}</li>
       </ul>
     </section>

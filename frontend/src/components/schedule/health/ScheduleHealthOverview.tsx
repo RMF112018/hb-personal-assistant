@@ -58,6 +58,7 @@ export function ScheduleHealthOverview({
     comparisonDetail,
     topActionText,
     hasHealthFoundation,
+    computedCpmAvailable,
   } = model
 
   return (
@@ -77,7 +78,7 @@ export function ScheduleHealthOverview({
           {qualityStatus}
         </div>
         <div>{formatProjectCapabilityBanner(undefined, String(health.project_key ?? projectKey), sourceFormat)}</div>
-        <div>{CPM_RECALCULATION_BANNER}</div>
+        <div>{computedCpmAvailable ? 'CPM: Application-computed CPM available' : CPM_RECALCULATION_BANNER}</div>
       </div>
 
       {!hasHealthFoundation ? (

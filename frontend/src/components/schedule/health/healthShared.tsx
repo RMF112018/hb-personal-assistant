@@ -304,6 +304,7 @@ export type HealthModel = {
   baselineReferenceOnly: boolean
   baselineAvailable: boolean
   cpmStatus: string
+  computedCpmAvailable: boolean
   packageMode: string
   sourceFormat: string
   score: string
@@ -369,13 +370,17 @@ export function buildHealthModel(
   const baselineReferenceOnly = capabilityStatus(capabilities, 'baseline_activity_rows') === 'requires_companion_file'
   const baselineAvailable = baselineProjects.length > 0 || baselineFacts.length > 0
   const cpmStatus = capabilityStatus(capabilities, 'cpm_recalculation')
+  // Phase 9A.3: when the 9A.1 computed_cpm_health envelope reports available, Schedule Health
+  // surfaces Application-computed CPM and stops presenting CPM as globally "not implemented".
+  const computedCpmAvailable = health?.computed_cpm_health?.available === true
   const packageMode = text(importPackage.package_mode ?? currentSchedule.source_type, 'single_file')
   const sourceFormat = text(currentSchedule.source_format ?? qualityDetail?.source_format)
   const score = text(scorecard.quality_score ?? qualityDetail?.quality_score)
   const grade = text(scorecard.quality_grade ?? qualityDetail?.quality_grade)
   const qualityStatus = text(health?.quality_summary?.status ?? qualityDetail?.status, 'not evaluated')
-  const criticalPathDetail =
-    cpmStatus === 'deferred'
+  const criticalPathDetail = computedCpmAvailable
+    ? 'Application-computed CPM available. Source critical-path evidence is reported separately below.'
+    : cpmStatus === 'deferred'
       ? 'CPM recalculation is deferred; current evidence is source-export or proxy evidence.'
       : `Source critical path status: ${capabilityStatusLabel(capabilityStatus(capabilities, 'source_critical_path'))}`
   const comparisonDetail = comparisonIdentitySafe
@@ -417,6 +422,7 @@ export function buildHealthModel(
     baselineReferenceOnly,
     baselineAvailable,
     cpmStatus,
+    computedCpmAvailable,
     packageMode,
     sourceFormat,
     score,
