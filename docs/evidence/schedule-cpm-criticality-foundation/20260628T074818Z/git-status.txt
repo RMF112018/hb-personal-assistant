@@ -1,0 +1,8 @@
+ M scripts/test-schedule.sh
+ M src/hb_assistant/construction/analytics/schedule_cpm_service.py
+ M src/hb_assistant/store/migrator.py
+ M src/hb_assistant/store/schedule_cpm_repository.py
+ M src/hb_assistant/store/schedule_cpm_tables.py
+?? docs/evidence/schedule-cpm-criticality-foundation/
+?? src/hb_assistant/construction/analytics/schedule_cpm_criticality.py
+?? tests/test_schedule_cpm_criticality.py

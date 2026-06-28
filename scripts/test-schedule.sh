@@ -30,6 +30,7 @@ pytest_targets=(
   "tests/test_schedule_activity_repository.py"
   "tests/test_schedule_cost_mapping_controls.py"
   "tests/test_schedule_cpm_backward_pass.py"
+  "tests/test_schedule_cpm_criticality.py"
   "tests/test_schedule_cpm_float.py"
   "tests/test_schedule_cpm_graph.py"
   "tests/test_schedule_cpm_forward_pass.py"

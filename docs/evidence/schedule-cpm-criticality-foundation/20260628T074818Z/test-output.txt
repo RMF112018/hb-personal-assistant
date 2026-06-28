@@ -1,0 +1,22 @@
+# CPM criticality foundation — validation output (2026-06-28T07:52:15Z)
+
+## pytest graph+forward+backward+float+longest_path+criticality
+........................................................................ [ 60%]
+................................................                         [100%]
+
+## regression: import / health / DCMA-not-measurable / migration / count(477 unchanged)
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+
+## ruff check (new/changed files)
+All checks passed!
+
+## mypy (new src files)
+Success: no issues found in 3 source files
+
+## full schedule bundle (scripts/test-schedule.sh)
+281 passed, 2 deselected, 1 warning in 233.80s
+
+## fresh-migrate + idempotency
+LATEST=88 applied=88 reapply=88; +12 activity / +7 run columns present; v88 row recorded; table_count unchanged (477).

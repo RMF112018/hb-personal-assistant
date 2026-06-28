@@ -19,10 +19,16 @@ persisted backward run's early/late offsets, persisting to its own run with
 ``run_longest_path`` (Phase 5) identifies the deterministic longest path from the persisted
 float run (max computed early finish, traced backward through controlling predecessors),
 persisting a path summary + ordered membership with
-``cpm_recalculation_status='longest_path_only'``. This is a longest-path basis, NOT a
-critical-path declaration: none of these paths marks an activity critical, computes a
-near-critical path, reads source-export critical/float flags for logic, overwrites any
-source schedule field, or relabels the DCMA critical-path metric.
+``cpm_recalculation_status='longest_path_only'``.
+
+``run_criticality_classification`` (Phase 6) classifies activities as computed critical /
+near-critical / noncritical from the Phase 4 total float (threshold rules), with Phase 5
+longest-path membership recorded as context only, persisting to its own run with
+``cpm_recalculation_status='criticality_classification_only'``. This is application-computed
+criticality, NOT DCMA critical-path compliance: none of these paths marks an activity
+critical via ``is_critical``, computes a near-critical path beyond this classification, reads
+source-export critical/driving-path/float flags for logic, overwrites any source schedule
+field, or relabels the DCMA critical-path metric.
 """
 
 from __future__ import annotations
@@ -44,6 +50,12 @@ from .schedule_cpm_backward_pass import (
     BackwardPassResult,
     compute_backward_pass,
     resolve_finish_anchor,
+)
+from .schedule_cpm_criticality import (
+    BLOCK_MISSING_LONGEST_PATH_RUN,
+    FLOAT_ROW_WHITELIST,
+    CriticalityResult,
+    compute_criticality,
 )
 from .schedule_cpm_float import (
     BLOCK_MISSING_BACKWARD_PASS,
@@ -1148,6 +1160,216 @@ class ScheduleCpmGraphService:
                     "early_finish_offset_days": a.early_finish_offset_days,
                     "computed_total_float": a.computed_total_float,
                     "selection_basis": a.selection_basis,
+                }
+                for a in result.activities
+            ],
+        }
+
+    # ----------------------------------------------------------------- Phase 6 criticality
+
+    def run_criticality_classification(
+        self,
+        schedule_version_key: str,
+        *,
+        critical_threshold_days: float = 0.0,
+        near_critical_threshold_days: float = 10.0,
+    ) -> dict[str, Any]:
+        """Classify + persist computed critical/near-critical activities for the version.
+
+        Criticality classification only — from the Phase 4 computed total float, with Phase 5
+        longest-path membership as CONTEXT (never overriding). Application-computed, NOT DCMA
+        compliance; never mutates is_critical or reads source critical/driving/float fields.
+        Blocks if the float or longest-path run is missing, or the thresholds are invalid.
+        Writes a new criticality run; prior CPM runs are untouched.
+        """
+        activities = self._load_all_activities(schedule_version_key)
+        relationships = self._activities.list_relationships(schedule_version_key)
+        graph = build_graph(activities, relationships)
+        project_key, import_id = self._run_metadata(schedule_version_key)
+
+        float_run = self._cpm.get_float_run(schedule_version_key)
+        lp_run = self._cpm.get_longest_path_run(schedule_version_key)
+
+        if (
+            float_run is None
+            or float_run.get("cpm_recalculation_status") != "forward_backward_float_only"
+        ):
+            # compute_criticality validates thresholds first, so an invalid-threshold block
+            # reason is preserved here over the missing-float default.
+            result = compute_criticality(
+                graph, [], [],
+                critical_threshold_days=critical_threshold_days,
+                near_critical_threshold_days=near_critical_threshold_days,
+            )
+            return self._persist_criticality_run(
+                schedule_version_key, project_key, import_id, graph, result,
+                float_run=None, float_activities=[],
+            )
+        if lp_run is None or lp_run.get("cpm_recalculation_status") != "longest_path_only":
+            result = compute_criticality(
+                graph, [], [],
+                critical_threshold_days=critical_threshold_days,
+                near_critical_threshold_days=near_critical_threshold_days,
+            )
+            if result.block_reason == BLOCK_MISSING_FLOAT_RUN:
+                result.block_reason = BLOCK_MISSING_LONGEST_PATH_RUN
+            return self._persist_criticality_run(
+                schedule_version_key, project_key, import_id, graph, result,
+                float_run=None, float_activities=[],
+            )
+
+        float_activities = self._cpm.list_activity_results(float_run["cpm_run_id"])
+        longest_path_activities: list[dict[str, Any]] = []
+        for path in self._cpm.list_paths(lp_run["cpm_run_id"]):
+            longest_path_activities.extend(self._cpm.list_path_activities(path["path_id"]))
+
+        result = compute_criticality(
+            graph, float_activities, longest_path_activities,
+            critical_threshold_days=critical_threshold_days,
+            near_critical_threshold_days=near_critical_threshold_days,
+        )
+        return self._persist_criticality_run(
+            schedule_version_key, project_key, import_id, graph, result,
+            float_run=lp_run, float_activities=float_activities,
+        )
+
+    def _persist_criticality_run(
+        self,
+        schedule_version_key: str,
+        project_key: str,
+        import_id: str,
+        graph: GraphBuildResult,
+        result: CriticalityResult,
+        *,
+        float_run: dict[str, Any] | None,
+        float_activities: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        run_id = deterministic_cpm_run_id(
+            schedule_version_key=schedule_version_key,
+            import_id=import_id,
+            diagnostic_signature=self._diagnostic_signature(graph),
+            kind="criticality",
+        )
+
+        run_row = {
+            "cpm_run_id": run_id,
+            "project_key": project_key,
+            "schedule_version_key": schedule_version_key,
+            "import_id": import_id,
+            "node_count": result.node_count,
+            "edge_count": result.edge_count,
+            "is_acyclic": 1 if graph.is_acyclic else 0,
+            "diagnostic_count": result.diagnostic_count,
+            "topological_order_json": (
+                json.dumps(graph.topological_order)
+                if graph.topological_order is not None
+                else None
+            ),
+            "analysis_scope": "criticality",
+            "cpm_recalculation_status": result.cpm_recalculation_status,
+            "calculation_type": result.calculation_type,
+            # source_run_id = the longest-path run (its own source_run_id chains to float).
+            "source_run_id": float_run.get("cpm_run_id") if float_run else None,
+            "schedule_start_anchor": (
+                float_run.get("schedule_start_anchor") if float_run else None
+            ),
+            "schedule_start_anchor_source": (
+                float_run.get("schedule_start_anchor_source") if float_run else None
+            ),
+            "schedule_finish_anchor": (
+                float_run.get("schedule_finish_anchor") if float_run else None
+            ),
+            "schedule_finish_anchor_source": (
+                float_run.get("schedule_finish_anchor_source") if float_run else None
+            ),
+            "critical_float_threshold_days": result.critical_float_threshold_days,
+            "near_critical_float_threshold_days": result.near_critical_float_threshold_days,
+            "computed_critical_activity_count": result.computed_critical_activity_count,
+            "computed_near_critical_activity_count": result.computed_near_critical_activity_count,
+            "computed_noncritical_activity_count": result.computed_noncritical_activity_count,
+            "unclassified_activity_count": result.unclassified_activity_count,
+            "longest_path_member_count": result.longest_path_member_count,
+            "computed_activity_count": len(result.activities),
+        }
+
+        diagnostic_rows = self._build_diagnostic_rows(
+            run_id,
+            graph,
+            project_key=project_key,
+            schedule_version_key=schedule_version_key,
+            import_id=import_id,
+        )
+
+        # Whitelist-copy app-owned CPM fields from the float-run row; never blind-copy.
+        float_by_id = {str(a.get("activity_id")): a for a in float_activities}
+        activity_rows: list[dict[str, Any]] = []
+        for c in result.activities:
+            src = float_by_id.get(c.activity_id, {})
+            row: dict[str, Any] = {
+                "cpm_run_id": run_id,
+                "schedule_version_key": schedule_version_key,
+                "project_key": project_key,
+            }
+            for key in FLOAT_ROW_WHITELIST:
+                if key in src:
+                    row[key] = src[key]
+            row["activity_id"] = c.activity_id  # ensure present even if src lacked it
+            row.update(
+                {
+                    "computed_critical_flag": 1 if c.computed_critical_flag else 0,
+                    "computed_near_critical_flag": 1 if c.computed_near_critical_flag else 0,
+                    "computed_criticality_class": c.computed_criticality_class,
+                    "computed_criticality_status": c.computed_criticality_status,
+                    "computed_criticality_basis": c.computed_criticality_basis,
+                    "computed_criticality_notes_json": (
+                        json.dumps(c.notes) if c.notes else None
+                    ),
+                    "critical_float_threshold_days": c.critical_float_threshold_days,
+                    "near_critical_float_threshold_days": c.near_critical_float_threshold_days,
+                    "longest_path_member_flag": 1 if c.longest_path_member_flag else 0,
+                    "longest_path_sequence": c.longest_path_sequence,
+                    "longest_path_membership_basis": c.longest_path_membership_basis,
+                    "longest_path_membership_notes_json": None,
+                    # forward_pass_status is NOT NULL on the table; default when absent.
+                    "forward_pass_status": src.get("forward_pass_status", "computed"),
+                }
+            )
+            activity_rows.append(row)
+
+        self._cpm.replace_criticality_run(run_row, diagnostic_rows, activity_rows)
+        return self._criticality_summary(run_id, result, float_run)
+
+    @staticmethod
+    def _criticality_summary(
+        run_id: str, result: CriticalityResult, float_run: dict[str, Any] | None
+    ) -> dict[str, Any]:
+        return {
+            "cpm_run_id": run_id,
+            "run_status": result.run_status,
+            "blocked": result.run_status == RUN_BLOCKED,
+            "block_reason": result.block_reason,
+            "calculation_type": result.calculation_type,
+            "cpm_recalculation_status": result.cpm_recalculation_status,
+            "source_run_id": float_run.get("cpm_run_id") if float_run else None,
+            "critical_float_threshold_days": result.critical_float_threshold_days,
+            "near_critical_float_threshold_days": result.near_critical_float_threshold_days,
+            "computed_critical_activity_count": result.computed_critical_activity_count,
+            "computed_near_critical_activity_count": result.computed_near_critical_activity_count,
+            "computed_noncritical_activity_count": result.computed_noncritical_activity_count,
+            "unclassified_activity_count": result.unclassified_activity_count,
+            "longest_path_member_count": result.longest_path_member_count,
+            "caveat_count": result.caveat_count,
+            "diagnostic_count": result.diagnostic_count,
+            "activities": [
+                {
+                    "activity_id": a.activity_id,
+                    "computed_total_float": a.computed_total_float,
+                    "computed_criticality_class": a.computed_criticality_class,
+                    "computed_critical_flag": a.computed_critical_flag,
+                    "computed_near_critical_flag": a.computed_near_critical_flag,
+                    "computed_criticality_status": a.computed_criticality_status,
+                    "longest_path_member_flag": a.longest_path_member_flag,
+                    "longest_path_sequence": a.longest_path_sequence,
                 }
                 for a in result.activities
             ],
