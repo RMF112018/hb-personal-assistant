@@ -144,7 +144,7 @@ class ObsidianMcpService:
             blocker="mcp_http_unavailable",
         )
         add("caps_configured", config.max_file_mb > 0 and config.max_result_chars > 0, "file/result caps configured", blocker="caps_invalid")
-        add("tool_registry", len(tool_registry()) == 20, "twenty Obsidian MCP tools registered", blocker="tool_registry_invalid")
+        add("tool_registry", len(tool_registry()) == 22, "twenty-two Obsidian MCP tools registered", blocker="tool_registry_invalid")
         add("http_port", self._port_available_or_self(config), "HTTP port is available or owned by backend", warning="port_unavailable")
         readiness = write_readiness(config)
         add("vault_writable", bool(readiness["vault_writable"]), "vault root is writable", warning="vault_not_writable")
@@ -325,6 +325,16 @@ class ObsidianMcpService:
         from .frontmatter import dataview_query
 
         return dataview_query(self.get_config(), **args)
+
+    def vault_create_note_from_template(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .templates import create_note_from_template
+
+        return create_note_from_template(self.get_config(), **args)
+
+    def vault_append_to_daily_note(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .templates import append_to_daily_note
+
+        return append_to_daily_note(self.get_config(), **args)
 
     def vault_get_backlinks(self, args: dict[str, Any]) -> dict[str, Any]:
         from .graph import get_backlinks
