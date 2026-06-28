@@ -8,6 +8,7 @@ import secrets
 from contextlib import suppress
 from pathlib import Path
 from typing import Literal
+from urllib.parse import urlsplit
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -39,6 +40,8 @@ class ObsidianMcpConfig(BaseModel):
     protected_paths: list[str] = Field(default_factory=lambda: list(DEFAULT_PROTECTED_PATHS))
     blocked_hidden_paths: bool = True
     allowed_write_file_types: list[str] = Field(default_factory=lambda: list(DEFAULT_ALLOWED_WRITE_FILE_TYPES))
+    oauth_enabled: bool = False
+    public_base_url: str | None = None
     schema_version: int = 1
 
     model_config = {"extra": "forbid"}
@@ -50,6 +53,21 @@ class ObsidianMcpConfig(BaseModel):
         if host not in {"127.0.0.1", "localhost"}:
             raise ValueError("host_must_be_localhost")
         return host
+
+    @field_validator("public_base_url")
+    @classmethod
+    def validate_public_base_url(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        candidate = value.strip().rstrip("/")
+        if not candidate:
+            return None
+        parsed = urlsplit(candidate)
+        if parsed.scheme == "https" and parsed.netloc:
+            return candidate
+        if parsed.scheme == "http" and parsed.hostname in {"localhost", "127.0.0.1"}:
+            return candidate
+        raise ValueError("public_base_url_must_be_https_or_localhost")
 
     @field_validator("port")
     @classmethod
@@ -136,6 +154,8 @@ class ObsidianMcpConfigPatch(BaseModel):
     protected_paths: list[str] | None = None
     blocked_hidden_paths: bool | None = None
     allowed_write_file_types: list[str] | None = None
+    oauth_enabled: bool | None = None
+    public_base_url: str | None = None
 
     model_config = {"extra": "forbid"}
 

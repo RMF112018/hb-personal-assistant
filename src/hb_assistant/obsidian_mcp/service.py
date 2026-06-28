@@ -231,6 +231,36 @@ class ObsidianMcpService:
             "guardrails": self.guardrails(),
         }
 
+    def oauth_status(self, request_base: str | None = None) -> dict[str, Any]:
+        from .oauth_store import (
+            CLIENT_ID,
+            SUPPORTED_SCOPES,
+            TOKEN_AUTH_METHOD,
+            grok_setup_values,
+            recent_events,
+        )
+
+        config = self.get_config()
+        base = (config.public_base_url or request_base or "").rstrip("/")
+        endpoints = {
+            "authorization_endpoint": f"{base}/oauth/authorize" if base else None,
+            "token_endpoint": f"{base}/oauth/token" if base else None,
+            "metadata_endpoint": f"{base}/.well-known/oauth-authorization-server" if base else None,
+            "mcp_url": f"{base}/mcp" if base else None,
+        }
+        return {
+            "surface": "settings.obsidian_mcp.oauth",
+            "oauth_enabled": config.oauth_enabled,
+            "public_base_url": config.public_base_url,
+            "client_id": CLIENT_ID,
+            "scopes_supported": list(SUPPORTED_SCOPES),
+            "token_auth_method": TOKEN_AUTH_METHOD,
+            "endpoints": endpoints,
+            "grok_setup": grok_setup_values(base) if base else None,
+            "recent_events": recent_events(20),
+            "guardrails": self.guardrails(),
+        }
+
     def list_directory(self, args: dict[str, Any]) -> dict[str, Any]:
         return list_directory(self.get_config(), **args)
 

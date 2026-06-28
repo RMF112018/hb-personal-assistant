@@ -8,6 +8,7 @@ import {
   getObsidianMcpConfig,
   getObsidianMcpGrokConfig,
   getObsidianMcpMutations,
+  getObsidianMcpOAuth,
   getObsidianMcpStatus,
   getObsidianMcpTools,
   patchObsidianMcpConfig,
@@ -31,6 +32,7 @@ export function ObsidianMcpPanel() {
   const [health, setHealth] = useState<any>(null)
   const [tools, setTools] = useState<any[]>([])
   const [grok, setGrok] = useState<any>(null)
+  const [oauth, setOauth] = useState<any>(null)
   const [mutations, setMutations] = useState<any[]>([])
   const [writeReadiness, setWriteReadiness] = useState<any>(null)
   const [busy, setBusy] = useState<string | null>(null)
@@ -46,18 +48,20 @@ export function ObsidianMcpPanel() {
     setBusy('refresh')
     setError(null)
     try {
-      const [cfg, st, toolData, grokData, mutationData] = await Promise.all([
+      const [cfg, st, toolData, grokData, mutationData, oauthData] = await Promise.all([
         getObsidianMcpConfig(),
         getObsidianMcpStatus(),
         getObsidianMcpTools(),
         getObsidianMcpGrokConfig(),
         getObsidianMcpMutations(10),
+        getObsidianMcpOAuth(),
       ])
       setConfig((cfg as any).config || cfg)
       setStatus(st)
       setTools((toolData as any).tools || [])
       setGrok(grokData)
       setMutations((mutationData as any).mutations || [])
+      setOauth(oauthData)
     } catch (err) {
       setError(err)
     } finally {
@@ -157,6 +161,29 @@ export function ObsidianMcpPanel() {
     try {
       await navigator.clipboard.writeText(text)
       setMessage('Grok MCP config copied.')
+    } catch {
+      setMessage('Copy unavailable in this browser.')
+    }
+  }
+
+  async function copyGrokOAuth() {
+    const setup = (oauth as any)?.grok_setup
+    if (!setup) {
+      setMessage('Set a Public MCP Base URL to generate Grok OAuth values.')
+      return
+    }
+    const text = [
+      `MCP server URL:\n${setup.mcp_url}`,
+      `Client ID:\n${setup.client_id}`,
+      `Client Secret:\nleave blank`,
+      `Authorization Endpoint:\n${setup.authorization_endpoint}`,
+      `Token Endpoint:\n${setup.token_endpoint}`,
+      `Scopes:\n${(setup.scopes || []).join('\n')}`,
+      `Token Auth Method:\n${setup.token_auth_method}`,
+    ].join('\n\n')
+    try {
+      await navigator.clipboard.writeText(text)
+      setMessage('Grok OAuth setup values copied.')
     } catch {
       setMessage('Copy unavailable in this browser.')
     }
@@ -365,6 +392,67 @@ export function ObsidianMcpPanel() {
             </div>
             <pre className="max-h-40 overflow-auto rounded bg-black/20 p-2 text-[11px]">{configText}</pre>
           </div>
+        </div>
+      </div>
+
+      <div className="mt-4 rounded border border-[var(--hb-border)] p-3">
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <h4 className="text-sm font-medium">Remote Connector / OAuth</h4>
+          <button className="badge inline-flex items-center gap-1" onClick={copyGrokOAuth}>
+            <Copy size={13} aria-hidden />
+            Copy Grok OAuth setup values
+          </button>
+        </div>
+        <p className="text-xs text-[var(--hb-muted)]">
+          OAuth 2.1 Authorization Code with PKCE lets the Grok Custom Connector reach the tunneled MCP endpoint. Scopes never bypass the vault write policy.
+        </p>
+        <div className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
+          <StatusRow label="OAuth" value={oauth?.oauth_enabled ? 'Enabled' : 'Disabled'} />
+          <StatusRow label="Token auth method" value={oauth?.token_auth_method || 'none (PKCE)'} />
+          <StatusRow label="Client ID" value={oauth?.client_id || 'hb-obsidian-grok'} />
+          <StatusRow label="Scopes" value={(oauth?.scopes_supported || ['obsidian.read', 'obsidian.write']).join(', ')} />
+        </div>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <Toggle
+            label="OAuth enabled"
+            checked={Boolean(oauth?.oauth_enabled ?? config?.oauth_enabled)}
+            onChange={(checked) => saveConfig({ oauth_enabled: checked })}
+            disabled={busy !== null}
+          />
+          <div>
+            <label htmlFor="obsidian-public-base-url" className="text-xs mb-1">Public MCP Base URL</label>
+            <input
+              id="obsidian-public-base-url"
+              className="w-full rounded border border-[var(--hb-border)] bg-[var(--hb-bg)] px-2 py-1 text-sm"
+              value={config?.public_base_url || ''}
+              onChange={(event) => setConfig({ ...(config || {}), public_base_url: event.target.value })}
+              onBlur={() => saveConfig({ public_base_url: config?.public_base_url || '' })}
+              placeholder="https://your-tunnel.trycloudflare.com"
+            />
+          </div>
+        </div>
+        <div className="mt-3 grid gap-2 text-xs">
+          <StatusRow label="MCP URL" value={oauth?.endpoints?.mcp_url || 'Set the Public MCP Base URL'} />
+          <StatusRow label="Authorization endpoint" value={oauth?.endpoints?.authorization_endpoint || 'Set the Public MCP Base URL'} />
+          <StatusRow label="Token endpoint" value={oauth?.endpoints?.token_endpoint || 'Set the Public MCP Base URL'} />
+        </div>
+        <div className="mt-3">
+          <div className="text-xs font-medium">Recent OAuth events</div>
+          {(oauth?.recent_events || []).length === 0 ? (
+            <div className="mt-1 text-xs text-[var(--hb-muted)]">No OAuth events recorded.</div>
+          ) : (
+            <div className="mt-2 grid gap-2">
+              {(oauth?.recent_events || []).map((event: any, index: number) => (
+                <div key={`${event.at || 'oauth-event'}-${index}`} className="rounded border border-[var(--hb-border)] p-2 text-xs">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="badge badge-muted">{event.kind || 'event'}</span>
+                    {event.scope ? <span className="text-[var(--hb-muted)]">{event.scope}</span> : null}
+                    <span className="text-[10px] text-[var(--hb-muted)]">{event.at || ''}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
