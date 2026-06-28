@@ -1,0 +1,26 @@
+{
+  "surface": "settings.obsidian_mcp.tools",
+  "tools": [
+    {
+      "name": "list_directory",
+      "description": "List files and directories inside the configured Obsidian vault.",
+      "input_schema_summary": "path, recursive, extensions, max_depth",
+      "enabled": true,
+      "last_validation_status": "pass"
+    },
+    {
+      "name": "search_vault",
+      "description": "Search Markdown, text, PDF, and DOCX content with lexical ranking.",
+      "input_schema_summary": "query, path_scope, file_types, limit, include_content_snippet",
+      "enabled": true,
+      "last_validation_status": "pass"
+    },
+    {
+      "name": "read_file",
+      "description": "Read bounded content from Markdown, text, PDF, or DOCX files.",
+      "input_schema_summary": "path, start_page, end_page, section, max_chars",
+      "enabled": true,
+      "last_validation_status": "pass"
+    }
+  ]
+}

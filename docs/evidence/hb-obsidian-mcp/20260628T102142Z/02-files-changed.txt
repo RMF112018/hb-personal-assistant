@@ -1,0 +1,15 @@
+src/hb_assistant/obsidian_mcp/__init__.py
+src/hb_assistant/obsidian_mcp/config.py
+src/hb_assistant/obsidian_mcp/tools.py
+src/hb_assistant/obsidian_mcp/service.py
+src/hb_assistant/obsidian_mcp/mcp_app.py
+src/hb_assistant/construction/analytics/api.py
+frontend/src/components/settings/ObsidianMcpPanel.tsx
+frontend/src/pages/SettingsPage.tsx
+frontend/src/pages/SettingsPage.test.tsx
+frontend/src/lib/api.ts
+tests/test_obsidian_mcp_backend.py
+tests/test_fastapi_analytics_app_shell.py
+pyproject.toml
+docs/mcp/hb-obsidian-mcp.md
+docs/evidence/hb-obsidian-mcp/20260628T102142Z/
