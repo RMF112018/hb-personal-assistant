@@ -289,4 +289,54 @@ describe('ScheduleQualityPage as Schedule Health', () => {
     expect(await screen.findByText(/Limited health data available/i)).toBeInTheDocument()
     expect(screen.getByText(/Re-import using the package-aware workflow/i)).toBeInTheDocument()
   })
+
+  it('renders the Computed CPM Intelligence shell with a link when CPM is available', async () => {
+    getScheduleHealthDataMock.mockResolvedValue(
+      healthData({
+        computed_cpm_health: {
+          available: true,
+          evidence_class: 'application_computed_cpm',
+          source_export_evidence: 'separate',
+          run_chain: {
+            graph_diagnostics: { available: true, status: 'not_implemented' },
+            forward_pass: { available: true },
+            backward_pass: { available: true },
+            float: { available: true },
+            longest_path: { available: true },
+            criticality: { available: true },
+          },
+          links: { computed_cpm: `/schedules/cpm?version=${encodeURIComponent(versionKey)}` },
+        },
+      }),
+    )
+
+    renderPage()
+
+    expect(await screen.findByText('Computed CPM Intelligence')).toBeInTheDocument()
+    // Application-computed CPM is explicitly labeled and kept distinct from source-export evidence.
+    expect(screen.getByText('Application-computed CPM')).toBeInTheDocument()
+    expect(screen.getAllByText('Source-export').length).toBeGreaterThan(0)
+    const cpmLink = screen.getByRole('link', { name: 'View Computed CPM' })
+    expect(cpmLink).toHaveAttribute('href', expect.stringContaining('/schedules/cpm'))
+  })
+
+  it('renders an empty Computed CPM shell without breaking source-export sections', async () => {
+    getScheduleHealthDataMock.mockResolvedValue(
+      healthData({
+        computed_cpm_health: {
+          available: false,
+          reason: 'no_computed_cpm',
+          evidence_class: 'application_computed_cpm',
+          source_export_evidence: 'separate',
+        },
+      }),
+    )
+
+    renderPage()
+
+    expect(await screen.findByText('Computed CPM Intelligence')).toBeInTheDocument()
+    expect(screen.getByText(/No application-computed CPM is available/i)).toBeInTheDocument()
+    // Existing source-export health still renders.
+    expect(screen.getByText('Available Schedule Evidence')).toBeInTheDocument()
+  })
 })

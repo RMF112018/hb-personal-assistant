@@ -1,0 +1,22 @@
+Phase 9A.2 — Schedule Health Cockpit Layout: validation output
+Branch: feat/schedule-health-cockpit-9a2 (stacked on 9A.1 8a62c3c8). Frontend-only.
+
+== Scope (git diff --stat) ==
+frontend/src/pages/ScheduleQualityPage.tsx: 915 -> 189 lines (thin composer)
+frontend/src/pages/ScheduleQualityPage.test.tsx: +2 tests (50 lines)
+frontend/src/components/schedule/health/: NEW (11 files: healthShared, healthCards, ScheduleHealthProvenanceBadge + 8 panels)
+No backend/api/route/schema changes.
+
+== npm run typecheck (tsc -b) ==
+clean.
+
+== vitest src/pages/ScheduleQualityPage.test.tsx ==
+6 passed (4 original assertions intact + 2 new: CPM-shell available/link, CPM-shell empty/no-break).
+
+== eslint (page + health/*) ==
+exit 0 (clean). Note: HealthCard/CapabilityList split into healthCards.tsx to satisfy react-refresh/only-export-components.
+
+== full frontend suite (npx vitest run) ==
+Test Files: 2 failed | 46 passed (48). Tests: 3 failed | 340 passed (343).
+The 3 failures are PRE-EXISTING, unrelated: src/pages/TodayPage.test.tsx (1) + src/pages/MyItemsPage.test.tsx (2).
+They import no Schedule Health files; all Schedule Health + new health/* components are green.
