@@ -1,0 +1,18 @@
+item                         count
+---------------------------  -----
+schedule_file_imports prior  6    
+item                           count
+-----------------------------  -----
+schedule_file_imports current  4    
+item              count
+----------------  -----
+activities prior  1378 
+item                count
+------------------  -----
+activities current  1507 
+item                 count
+-------------------  -----
+relationships prior  3718 
+item                   count
+---------------------  -----
+relationships current  3921 

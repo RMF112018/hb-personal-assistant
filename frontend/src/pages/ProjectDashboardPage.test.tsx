@@ -7,6 +7,7 @@ import { ProjectExposuresPlaceholderPage } from './ProjectExposuresPlaceholderPa
 import { ProjectForecastingPage } from './ProjectForecastingPage'
 import { ProjectMonthlyForecastingPage } from './ProjectMonthlyForecastingPage'
 import { ProjectOverviewPage } from './ProjectOverviewPage'
+import { ProjectSchedulePage } from './ProjectSchedulePage'
 import { ProjectStaffingPage } from './ProjectStaffingPage'
 
 const useQueryMock = vi.fn()
@@ -55,6 +56,7 @@ function renderProjectRoutes(path = '/projects/tropical') {
         <Route path="/projects/all" element={<ProjectDashboardPage />} />
         <Route path="/projects/:projectKey" element={<ProjectOverviewPage />} />
         <Route path="/projects/:projectKey/forecasting" element={<ProjectForecastingPage />} />
+        <Route path="/projects/:projectKey/schedule" element={<ProjectSchedulePage />} />
         <Route
           path="/projects/:projectKey/forecasting/monthly"
           element={<ProjectMonthlyForecastingPage />}
@@ -122,6 +124,7 @@ describe('Project workspace shell', () => {
     expect(screen.getByRole('link', { name: 'Overview' })).toHaveAttribute('href', '/projects/tropical')
     expect(screen.getByRole('link', { name: 'Overview' })).toHaveAttribute('aria-current', 'page')
     expect(screen.getByRole('link', { name: 'Forecasting' })).toHaveAttribute('href', '/projects/tropical/forecasting')
+    expect(screen.getByRole('link', { name: 'Schedule' })).toHaveAttribute('href', '/projects/tropical/schedule')
     expect(screen.getByRole('link', { name: 'Staffing' })).toHaveAttribute('href', '/projects/tropical/staffing')
     expect(screen.getByRole('link', { name: 'Exposures' })).toHaveAttribute('href', '/projects/tropical/exposures')
 

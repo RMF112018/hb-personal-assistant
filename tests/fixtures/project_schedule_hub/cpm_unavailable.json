@@ -1,0 +1,12 @@
+{
+  "computed_cpm": {
+    "available": false,
+    "summary": "Computed CPM is unavailable for this update."
+  },
+  "readiness": {
+    "cpm_unavailable": {
+      "required": true,
+      "reason": "no persisted computed CPM run"
+    }
+  }
+}

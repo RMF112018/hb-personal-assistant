@@ -1,0 +1,12 @@
+{
+  "status": "no_schedule",
+  "readiness": {
+    "no_schedule": { "required": true, "reason": "no committed schedule imports for project" }
+  },
+  "schedule_story": {
+    "headline": "No schedule update is imported for this project."
+  },
+  "technical_links": {
+    "schedule_import_url": "/schedules/imports?project=tropical"
+  }
+}

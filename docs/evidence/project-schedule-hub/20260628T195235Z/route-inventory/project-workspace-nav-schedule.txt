@@ -1,0 +1,1017 @@
+frontend/src/app/routes.tsx:22:import { ProjectSchedulePage } from '../pages/ProjectSchedulePage'
+frontend/src/app/routes.tsx:32:import { ScheduleImportsPage } from '../pages/ScheduleImportsPage'
+frontend/src/app/routes.tsx:33:import { ScheduleVersionsPage } from '../pages/ScheduleVersionsPage'
+frontend/src/app/routes.tsx:34:import { ScheduleActivitiesPage } from '../pages/ScheduleActivitiesPage'
+frontend/src/app/routes.tsx:35:import { ScheduleActivitiesRedirect } from '../pages/ScheduleActivitiesRedirect'
+frontend/src/app/routes.tsx:36:import { ScheduleCostMappingPage } from '../pages/ScheduleCostMappingPage'
+frontend/src/app/routes.tsx:37:import { ScheduleIdentityReviewPage } from '../pages/ScheduleIdentityReviewPage'
+frontend/src/app/routes.tsx:38:import { ScheduleCpmPage } from '../pages/ScheduleCpmPage'
+frontend/src/app/routes.tsx:39:import { ScheduleQualityPage } from '../pages/ScheduleQualityPage'
+frontend/src/app/routes.tsx:40:import { ScheduleVersionDiffPage } from '../pages/ScheduleVersionDiffPage'
+frontend/src/app/routes.tsx:41:import { ScheduleCostWeightingPage } from '../pages/ScheduleCostWeightingPage'
+frontend/src/app/routes.tsx:168:        element: <ProjectSchedulePage />,
+frontend/src/app/routes.tsx:224:      // Schedule Intelligence (V62) — first-class module at /schedules/*.
+frontend/src/app/routes.tsx:231:        element: <ScheduleImportsPage />,
+frontend/src/app/routes.tsx:232:        handle: { title: 'Schedule Imports' },
+frontend/src/app/routes.tsx:236:        element: <ScheduleVersionsPage />,
+frontend/src/app/routes.tsx:237:        handle: { title: 'Schedule Versions' },
+frontend/src/app/routes.tsx:241:        element: <ScheduleActivitiesPage />,
+frontend/src/app/routes.tsx:242:        handle: { title: 'Schedule Activities' },
+frontend/src/app/routes.tsx:246:        element: <ScheduleQualityPage />,
+frontend/src/app/routes.tsx:247:        handle: { title: 'Schedule Health' },
+frontend/src/app/routes.tsx:251:        element: <ScheduleCpmPage />,
+frontend/src/app/routes.tsx:256:        element: <ScheduleIdentityReviewPage />,
+frontend/src/app/routes.tsx:257:        handle: { title: 'Schedule Identity Review' },
+frontend/src/app/routes.tsx:261:        element: <ScheduleQualityPage />,
+frontend/src/app/routes.tsx:262:        handle: { title: 'Schedule Health' },
+frontend/src/app/routes.tsx:266:        element: <ScheduleVersionDiffPage />,
+frontend/src/app/routes.tsx:267:        handle: { title: 'Schedule Version Diff' },
+frontend/src/app/routes.tsx:271:        element: <ScheduleCostMappingPage />,
+frontend/src/app/routes.tsx:272:        handle: { title: 'Schedule Cost Mapping' },
+frontend/src/app/routes.tsx:276:        element: <ScheduleCostWeightingPage />,
+frontend/src/app/routes.tsx:277:        handle: { title: 'Schedule Cost Weighting' },
+frontend/src/app/routes.tsx:294:        element: <ScheduleActivitiesRedirect />,
+frontend/src/navigation/navigationModel.ts:13:  { label: 'Schedules', route: '/schedules' },
+frontend/src/navigation/navigationModel.ts:52:  if (path.includes('/schedule') && path.startsWith('/projects/')) return 'Project • Schedule'
+frontend/src/navigation/navigationModel.ts:62:  if (path.startsWith('/schedules/imports')) return 'Schedule Imports'
+frontend/src/navigation/navigationModel.ts:63:  if (path.startsWith('/schedules/activities')) return 'Schedule Activities'
+frontend/src/navigation/navigationModel.ts:64:  if (path.startsWith('/schedules/versions')) return 'Schedule Versions'
+frontend/src/navigation/navigationModel.ts:65:  if (path.startsWith('/schedules/quality')) return 'Schedule Health'
+frontend/src/navigation/navigationModel.ts:66:  if (path.startsWith('/schedules/identity-review')) return 'Schedule Identity Review'
+frontend/src/navigation/navigationModel.ts:67:  if (path.startsWith('/schedules/health')) return 'Schedule Health'
+frontend/src/navigation/navigationModel.ts:68:  if (path.startsWith('/schedules/version-diff')) return 'Schedule Version Diff'
+frontend/src/navigation/navigationModel.ts:69:  if (path.startsWith('/schedules/cost-mapping')) return 'Schedule Cost Mapping'
+frontend/src/navigation/navigationModel.ts:70:  if (path.startsWith('/schedules/cost-weighting')) return 'Schedule Cost Weighting'
+frontend/src/navigation/navigationModel.ts:71:  if (path.startsWith('/schedules')) return 'Schedule Intelligence'
+frontend/src/navigation/navigationModel.test.ts:6:  it('includes Schedules as a top-level primary nav item', () => {
+frontend/src/navigation/navigationModel.test.ts:8:    expect(labels).toContain('Schedules')
+frontend/src/navigation/navigationModel.test.ts:9:    expect(PRIMARY_NAV.find((item) => item.label === 'Schedules')?.route).toBe('/schedules')
+frontend/src/navigation/navigationModel.test.ts:13:    expect(getRouteTitleForPath('/schedules/imports')).toBe('Schedule Imports')
+frontend/src/navigation/navigationModel.test.ts:14:    expect(getRouteTitleForPath('/schedules/versions')).toBe('Schedule Versions')
+frontend/src/navigation/navigationModel.test.ts:15:    expect(getRouteTitleForPath('/schedules/activities')).toBe('Schedule Activities')
+frontend/src/navigation/navigationModel.test.ts:16:    expect(getRouteTitleForPath('/schedules/quality')).toBe('Schedule Health')
+frontend/src/navigation/navigationModel.test.ts:17:    expect(getRouteTitleForPath('/schedules/identity-review')).toBe('Schedule Identity Review')
+frontend/src/navigation/navigationModel.test.ts:18:    expect(getRouteTitleForPath('/schedules/health')).toBe('Schedule Health')
+frontend/src/navigation/navigationModel.test.ts:19:    expect(getRouteTitleForPath('/schedules/version-diff')).toBe('Schedule Version Diff')
+frontend/src/navigation/navigationModel.test.ts:20:    expect(getRouteTitleForPath('/schedules/cost-mapping')).toBe('Schedule Cost Mapping')
+frontend/src/navigation/navigationModel.test.ts:21:    expect(getRouteTitleForPath('/schedules/cost-weighting')).toBe('Schedule Cost Weighting')
+frontend/src/components/forecast/ForecastDecisionSupportPanel.tsx:204:          <h3 className="forecast-eyebrow mb-2">Schedule phasing</h3>
+frontend/src/components/forecast/forecastHealth.ts:15: * ("High"/"Medium"/"Low"/"None"; "Full context" / "Schedule-informed" / "Cost-informed" /
+frontend/src/components/forecast/ForecastDecisionSupportPanel.test.tsx:110:    expect(screen.getByText('Schedule phasing')).toBeInTheDocument()
+frontend/src/components/settings/SourceConnectionsPanel.test.tsx:53:const getSchedulerStatus = vi.fn()
+frontend/src/components/settings/SourceConnectionsPanel.test.tsx:67:  getSchedulerStatus: (...a: any[]) => getSchedulerStatus(...a),
+frontend/src/components/settings/SourceConnectionsPanel.test.tsx:87:    getSchedulerStatus.mockReturnValue(new Promise(() => {}))
+frontend/src/components/settings/SourceConnectionsPanel.test.tsx:101:    getSchedulerStatus.mockResolvedValue({ last_successful_schedule_date: '2026-06-07T10:00:00Z' })
+frontend/src/components/settings/SourceConnectionsPanel.test.tsx:119:    getSchedulerStatus.mockResolvedValue({})
+frontend/src/components/settings/SourceConnectionsPanel.test.tsx:128:    getSchedulerStatus.mockResolvedValue({})
+frontend/src/components/settings/SourceConnectionsPanel.test.tsx:137:    getSchedulerStatus.mockResolvedValue({})
+frontend/src/components/settings/SourceConnectionsPanel.test.tsx:146:    getSchedulerStatus.mockResolvedValue({})
+frontend/src/components/settings/SourceConnectionsPanel.test.tsx:155:    getSchedulerStatus.mockResolvedValue({})
+frontend/src/components/settings/SourceConnectionsPanel.test.tsx:166:    getSchedulerStatus.mockResolvedValue({})
+frontend/src/components/settings/SourceConnectionsPanel.test.tsx:181:    getSchedulerStatus.mockResolvedValue({})
+frontend/src/components/settings/SourceConnectionsPanel.test.tsx:200:    getSchedulerStatus.mockResolvedValue({})
+frontend/src/components/settings/SourceConnectionsPanel.test.tsx:215:    getSchedulerStatus.mockResolvedValue({})
+frontend/src/components/settings/SourceConnectionsPanel.tsx:8:  getSchedulerStatus,
+frontend/src/components/settings/SourceConnectionsPanel.tsx:34:    queryFn: getSchedulerStatus,
+frontend/src/components/schedule/health/ScheduleHealthEvidencePanel.tsx:1:// Source-export evidence sections (Phase 9A.2): Available Schedule Evidence (capability matrix)
+frontend/src/components/schedule/health/ScheduleHealthEvidencePanel.tsx:14:import { ScheduleHealthProvenanceBadge } from './ScheduleHealthProvenanceBadge'
+frontend/src/components/schedule/health/ScheduleHealthEvidencePanel.tsx:16:export function ScheduleHealthEvidencePanel({ model }: { model: HealthModel }) {
+frontend/src/components/schedule/health/ScheduleHealthEvidencePanel.tsx:24:          <h2 className="text-sm font-semibold">Available Schedule Evidence</h2>
+frontend/src/components/schedule/health/ScheduleHealthEvidencePanel.tsx:25:          <ScheduleHealthProvenanceBadge basis="source_export" />
+frontend/src/components/schedule/health/ScheduleHealthEvidencePanel.tsx:29:            title="Current Schedule"
+frontend/src/components/schedule/health/ScheduleHealthEvidencePanel.tsx:58:          <ScheduleHealthProvenanceBadge basis="source_export" />
+frontend/src/components/schedule/health/ScheduleHealthVersionComparisonPanel.tsx:1:// Version-comparison readiness section (Phase 9A.2): "What Changed Since the Prior Schedule?".
+frontend/src/components/schedule/health/ScheduleHealthVersionComparisonPanel.tsx:7:import { ScheduleTable, ScheduleTd, ScheduleTh } from '../SchedulePageChrome'
+frontend/src/components/schedule/health/ScheduleHealthVersionComparisonPanel.tsx:8:import type { ScheduleHealthData } from '../../../lib/api'
+frontend/src/components/schedule/health/ScheduleHealthVersionComparisonPanel.tsx:10:import { ScheduleHealthProvenanceBadge } from './ScheduleHealthProvenanceBadge'
+frontend/src/components/schedule/health/ScheduleHealthVersionComparisonPanel.tsx:12:export function ScheduleHealthVersionComparisonPanel({
+frontend/src/components/schedule/health/ScheduleHealthVersionComparisonPanel.tsx:18:  health: ScheduleHealthData
+frontend/src/components/schedule/health/ScheduleHealthVersionComparisonPanel.tsx:26:        <h2 className="text-sm font-semibold">What Changed Since the Prior Schedule?</h2>
+frontend/src/components/schedule/health/ScheduleHealthVersionComparisonPanel.tsx:27:        <ScheduleHealthProvenanceBadge basis="identity_safe_version_diff" />
+frontend/src/components/schedule/health/ScheduleHealthVersionComparisonPanel.tsx:53:        <ScheduleTable
+frontend/src/components/schedule/health/ScheduleHealthVersionComparisonPanel.tsx:56:              <ScheduleTh>Metric</ScheduleTh>
+frontend/src/components/schedule/health/ScheduleHealthVersionComparisonPanel.tsx:57:              <ScheduleTh>Value</ScheduleTh>
+frontend/src/components/schedule/health/ScheduleHealthVersionComparisonPanel.tsx:58:              <ScheduleTh>Status</ScheduleTh>
+frontend/src/components/schedule/health/ScheduleHealthVersionComparisonPanel.tsx:59:              <ScheduleTh>Basis</ScheduleTh>
+frontend/src/components/schedule/health/ScheduleHealthVersionComparisonPanel.tsx:65:              <ScheduleTd>{labelize(fact.metric_key ?? fact.fact_key)}</ScheduleTd>
+frontend/src/components/schedule/health/ScheduleHealthVersionComparisonPanel.tsx:66:              <ScheduleTd>{text(fact.metric_value ?? fact.value)}</ScheduleTd>
+frontend/src/components/schedule/health/ScheduleHealthVersionComparisonPanel.tsx:67:              <ScheduleTd className={statusClass(String(fact.status))}>{capabilityStatusLabel(fact.status)}</ScheduleTd>
+frontend/src/components/schedule/health/ScheduleHealthVersionComparisonPanel.tsx:68:              <ScheduleTd>{labelize(fact.basis)}</ScheduleTd>
+frontend/src/components/schedule/health/ScheduleHealthVersionComparisonPanel.tsx:71:        </ScheduleTable>
+frontend/src/components/schedule/health/ScheduleHealthProvenanceBadge.tsx:1:// Evidence-provenance badge for Schedule Health cockpit sections (Phase 9A.2). Labels each section
+frontend/src/components/schedule/health/ScheduleHealthProvenanceBadge.tsx:41:export function ScheduleHealthProvenanceBadge({ basis }: { basis: EvidenceBasis }) {
+frontend/src/components/schedule/health/healthCards.tsx:1:// Small card primitives for the Schedule Health cockpit (Phase 9A.2). Kept in their own file
+frontend/src/components/schedule/health/healthCards.tsx:3:// verbatim from ScheduleQualityPage.
+frontend/src/components/schedule/health/healthCards.tsx:5:import type { ScheduleSourceCapability } from '../../../lib/api'
+frontend/src/components/schedule/health/healthCards.tsx:28:export function CapabilityList({ title, capabilities }: { title: string; capabilities: ScheduleSourceCapability[] }) {
+frontend/src/components/schedule/health/ScheduleHealthBaselinePanel.tsx:4:import { ScheduleTable, ScheduleTd, ScheduleTh } from '../SchedulePageChrome'
+frontend/src/components/schedule/health/ScheduleHealthBaselinePanel.tsx:6:import { ScheduleHealthProvenanceBadge } from './ScheduleHealthProvenanceBadge'
+frontend/src/components/schedule/health/ScheduleHealthBaselinePanel.tsx:8:export function ScheduleHealthBaselinePanel({ model }: { model: HealthModel }) {
+frontend/src/components/schedule/health/ScheduleHealthBaselinePanel.tsx:15:        <ScheduleHealthProvenanceBadge basis="baseline_crosswalk" />
+frontend/src/components/schedule/health/ScheduleHealthBaselinePanel.tsx:41:                <ScheduleTable
+frontend/src/components/schedule/health/ScheduleHealthBaselinePanel.tsx:44:                      <ScheduleTh>Fact</ScheduleTh>
+frontend/src/components/schedule/health/ScheduleHealthBaselinePanel.tsx:45:                      <ScheduleTh>Value</ScheduleTh>
+frontend/src/components/schedule/health/ScheduleHealthBaselinePanel.tsx:46:                      <ScheduleTh>Status</ScheduleTh>
+frontend/src/components/schedule/health/ScheduleHealthBaselinePanel.tsx:52:                      <ScheduleTd>{labelize(fact.metric_key)}</ScheduleTd>
+frontend/src/components/schedule/health/ScheduleHealthBaselinePanel.tsx:53:                      <ScheduleTd>{text(fact.metric_value)}</ScheduleTd>
+frontend/src/components/schedule/health/ScheduleHealthBaselinePanel.tsx:54:                      <ScheduleTd className={statusClass(String(fact.status))}>
+frontend/src/components/schedule/health/ScheduleHealthBaselinePanel.tsx:56:                      </ScheduleTd>
+frontend/src/components/schedule/health/ScheduleHealthBaselinePanel.tsx:59:                </ScheduleTable>
+frontend/src/components/schedule/health/ScheduleHealthOverview.tsx:1:// Schedule Health Overview section (Phase 9A.2). Version-identity strip, limited-health banner,
+frontend/src/components/schedule/health/ScheduleHealthOverview.tsx:2:// and the executive top-cards row. Extracted verbatim from ScheduleQualityPage; behavior unchanged.
+frontend/src/components/schedule/health/ScheduleHealthOverview.tsx:6:import { ScheduleProjectContext } from '../ScheduleProjectPicker'
+frontend/src/components/schedule/health/ScheduleHealthOverview.tsx:10:  getScheduleFormatLabel,
+frontend/src/components/schedule/health/ScheduleHealthOverview.tsx:12:import type { ScheduleHealthData } from '../../../lib/api'
+frontend/src/components/schedule/health/ScheduleHealthOverview.tsx:26:export function ScheduleHealthOverview({
+frontend/src/components/schedule/health/ScheduleHealthOverview.tsx:34:  health: ScheduleHealthData
+frontend/src/components/schedule/health/ScheduleHealthOverview.tsx:37:  projects?: ComponentProps<typeof ScheduleProjectContext>['projects']
+frontend/src/components/schedule/health/ScheduleHealthOverview.tsx:40:    currentSchedule,
+frontend/src/components/schedule/health/ScheduleHealthOverview.tsx:67:        <ScheduleProjectContext projectKey={String(health.project_key ?? projectKey)} projects={projects} />
+frontend/src/components/schedule/health/ScheduleHealthOverview.tsx:69:          Version: {text(currentSchedule.display_label ?? currentSchedule.schedule_version_key ?? health.schedule_version_key)}
+frontend/src/components/schedule/health/ScheduleHealthOverview.tsx:72:          Data date: {text(currentSchedule.data_date)} | Imported: {text(currentSchedule.imported_at)} | Source:{' '}
+frontend/src/components/schedule/health/ScheduleHealthOverview.tsx:73:          {getScheduleFormatLabel(sourceFormat)} ({sourceFormat}) | Package: {packageMode}
+frontend/src/components/schedule/health/ScheduleHealthOverview.tsx:76:          Activities: {numberText(currentSchedule.activity_count)} | Relationships:{' '}
+frontend/src/components/schedule/health/ScheduleHealthOverview.tsx:77:          {numberText(currentSchedule.relationship_count)} | Baselines: {baselineProjects.length} | Quality status:{' '}
+frontend/src/components/schedule/health/ScheduleHealthOverview.tsx:93:          title="Schedule health"
+frontend/src/components/schedule/health/ScheduleHealthQualityPanel.tsx:6:import { ScheduleTable, ScheduleTd, ScheduleTh } from '../SchedulePageChrome'
+frontend/src/components/schedule/health/ScheduleHealthQualityPanel.tsx:15:import { ScheduleHealthProvenanceBadge } from './ScheduleHealthProvenanceBadge'
+frontend/src/components/schedule/health/ScheduleHealthQualityPanel.tsx:17:export function ScheduleHealthQualityPanel({ model }: { model: HealthModel }) {
+frontend/src/components/schedule/health/ScheduleHealthQualityPanel.tsx:25:          <ScheduleHealthProvenanceBadge basis="quality_metric" />
+frontend/src/components/schedule/health/ScheduleHealthQualityPanel.tsx:30:          <ScheduleTable
+frontend/src/components/schedule/health/ScheduleHealthQualityPanel.tsx:33:                <ScheduleTh>Metric</ScheduleTh>
+frontend/src/components/schedule/health/ScheduleHealthQualityPanel.tsx:34:                <ScheduleTh>Value</ScheduleTh>
+frontend/src/components/schedule/health/ScheduleHealthQualityPanel.tsx:35:                <ScheduleTh>Unit</ScheduleTh>
+frontend/src/components/schedule/health/ScheduleHealthQualityPanel.tsx:36:                <ScheduleTh>Threshold</ScheduleTh>
+frontend/src/components/schedule/health/ScheduleHealthQualityPanel.tsx:37:                <ScheduleTh>Status</ScheduleTh>
+frontend/src/components/schedule/health/ScheduleHealthQualityPanel.tsx:38:                <ScheduleTh>Not measurable</ScheduleTh>
+frontend/src/components/schedule/health/ScheduleHealthQualityPanel.tsx:46:                  <ScheduleTd>{metricDisplayName(metric)}</ScheduleTd>
+frontend/src/components/schedule/health/ScheduleHealthQualityPanel.tsx:47:                  <ScheduleTd>
+frontend/src/components/schedule/health/ScheduleHealthQualityPanel.tsx:50:                  </ScheduleTd>
+frontend/src/components/schedule/health/ScheduleHealthQualityPanel.tsx:51:                  <ScheduleTd>{text(metric.unit)}</ScheduleTd>
+frontend/src/components/schedule/health/ScheduleHealthQualityPanel.tsx:52:                  <ScheduleTd>
+frontend/src/components/schedule/health/ScheduleHealthQualityPanel.tsx:54:                  </ScheduleTd>
+frontend/src/components/schedule/health/ScheduleHealthQualityPanel.tsx:55:                  <ScheduleTd className={statusClass(String(metric.status))}>{text(metric.status)}</ScheduleTd>
+frontend/src/components/schedule/health/ScheduleHealthQualityPanel.tsx:56:                  <ScheduleTd>{text(metric.not_measurable_reason)}</ScheduleTd>
+frontend/src/components/schedule/health/ScheduleHealthQualityPanel.tsx:60:          </ScheduleTable>
+frontend/src/components/schedule/health/ScheduleHealthQualityPanel.tsx:68:            <ScheduleHealthProvenanceBadge basis="source_export" />
+frontend/src/components/schedule/health/ScheduleHealthQualityPanel.tsx:70:          <ScheduleTable
+frontend/src/components/schedule/health/ScheduleHealthQualityPanel.tsx:73:                <ScheduleTh>Check</ScheduleTh>
+frontend/src/components/schedule/health/ScheduleHealthQualityPanel.tsx:74:                <ScheduleTh>Value</ScheduleTh>
+frontend/src/components/schedule/health/ScheduleHealthQualityPanel.tsx:75:                <ScheduleTh>Unit</ScheduleTh>
+frontend/src/components/schedule/health/ScheduleHealthQualityPanel.tsx:76:                <ScheduleTh>Status</ScheduleTh>
+frontend/src/components/schedule/health/ScheduleHealthQualityPanel.tsx:84:                  <ScheduleTd>{metricDisplayName(metric)}</ScheduleTd>
+frontend/src/components/schedule/health/ScheduleHealthQualityPanel.tsx:85:                  <ScheduleTd>
+frontend/src/components/schedule/health/ScheduleHealthQualityPanel.tsx:88:                  </ScheduleTd>
+frontend/src/components/schedule/health/ScheduleHealthQualityPanel.tsx:89:                  <ScheduleTd>{text(metric.unit)}</ScheduleTd>
+frontend/src/components/schedule/health/ScheduleHealthQualityPanel.tsx:90:                  <ScheduleTd className={statusClass(String(metric.status))}>{text(metric.status)}</ScheduleTd>
+frontend/src/components/schedule/health/ScheduleHealthQualityPanel.tsx:94:          </ScheduleTable>
+frontend/src/components/schedule/health/ScheduleHealthQualityPanel.tsx:101:          <ScheduleHealthProvenanceBadge basis="quality_metric" />
+frontend/src/components/schedule/health/ScheduleHealthQualityPanel.tsx:106:          <ScheduleTable
+frontend/src/components/schedule/health/ScheduleHealthQualityPanel.tsx:109:                <ScheduleTh>Category</ScheduleTh>
+frontend/src/components/schedule/health/ScheduleHealthQualityPanel.tsx:110:                <ScheduleTh>Posture</ScheduleTh>
+frontend/src/components/schedule/health/ScheduleHealthQualityPanel.tsx:111:                <ScheduleTh>Notes</ScheduleTh>
+frontend/src/components/schedule/health/ScheduleHealthQualityPanel.tsx:117:                <ScheduleTd>{labelize(cat)}</ScheduleTd>
+frontend/src/components/schedule/health/ScheduleHealthQualityPanel.tsx:118:                <ScheduleTd className={statusClass(info.posture)}>{text(info.posture)}</ScheduleTd>
+frontend/src/components/schedule/health/ScheduleHealthQualityPanel.tsx:119:                <ScheduleTd>{text(info.reason)}</ScheduleTd>
+frontend/src/components/schedule/health/ScheduleHealthQualityPanel.tsx:122:          </ScheduleTable>
+frontend/src/components/schedule/health/ScheduleHealthActionQueue.tsx:4:import { ScheduleTable, ScheduleTd, ScheduleTh } from '../SchedulePageChrome'
+frontend/src/components/schedule/health/ScheduleHealthActionQueue.tsx:6:import { ScheduleHealthProvenanceBadge } from './ScheduleHealthProvenanceBadge'
+frontend/src/components/schedule/health/ScheduleHealthActionQueue.tsx:8:export function ScheduleHealthActionQueue({ model }: { model: HealthModel }) {
+frontend/src/components/schedule/health/ScheduleHealthActionQueue.tsx:15:        <ScheduleHealthProvenanceBadge basis="derived_read_model" />
+frontend/src/components/schedule/health/ScheduleHealthActionQueue.tsx:20:        <ScheduleTable
+frontend/src/components/schedule/health/ScheduleHealthActionQueue.tsx:23:              <ScheduleTh>Severity</ScheduleTh>
+frontend/src/components/schedule/health/ScheduleHealthActionQueue.tsx:24:              <ScheduleTh>Code</ScheduleTh>
+frontend/src/components/schedule/health/ScheduleHealthActionQueue.tsx:25:              <ScheduleTh>Category</ScheduleTh>
+frontend/src/components/schedule/health/ScheduleHealthActionQueue.tsx:26:              <ScheduleTh>Message</ScheduleTh>
+frontend/src/components/schedule/health/ScheduleHealthActionQueue.tsx:27:              <ScheduleTh>Activity</ScheduleTh>
+frontend/src/components/schedule/health/ScheduleHealthActionQueue.tsx:33:              <ScheduleTd>{text(finding.severity)}</ScheduleTd>
+frontend/src/components/schedule/health/ScheduleHealthActionQueue.tsx:34:              <ScheduleTd>{text(finding.finding_code ?? finding.code)}</ScheduleTd>
+frontend/src/components/schedule/health/ScheduleHealthActionQueue.tsx:35:              <ScheduleTd>{labelize(finding.category)}</ScheduleTd>
+frontend/src/components/schedule/health/ScheduleHealthActionQueue.tsx:36:              <ScheduleTd>{text(finding.recommended_action ?? finding.finding_summary ?? finding.message)}</ScheduleTd>
+frontend/src/components/schedule/health/ScheduleHealthActionQueue.tsx:37:              <ScheduleTd>{text(finding.activity_id ?? finding.activity_name)}</ScheduleTd>
+frontend/src/components/schedule/health/ScheduleHealthActionQueue.tsx:40:        </ScheduleTable>
+frontend/src/components/schedule/health/healthShared.tsx:1:// Shared helpers, derived-model builder, and small card primitives for the Schedule Health
+frontend/src/components/schedule/health/healthShared.tsx:2:// cockpit (Phase 9A.2). Extracted verbatim from ScheduleQualityPage so the per-section panels stay
+frontend/src/components/schedule/health/healthShared.tsx:5:import type { ScheduleHealthData, ScheduleSourceCapability } from '../../../lib/api'
+frontend/src/components/schedule/health/healthShared.tsx:250:export function scorecardFromHealth(health?: ScheduleHealthData): Record<string, unknown> {
+frontend/src/components/schedule/health/healthShared.tsx:258:export function capabilityByKey(capabilities: ScheduleSourceCapability[], key: string): ScheduleSourceCapability | undefined {
+frontend/src/components/schedule/health/healthShared.tsx:262:export function capabilityStatus(capabilities: ScheduleSourceCapability[], key: string): string {
+frontend/src/components/schedule/health/healthShared.tsx:266:export function capabilitiesForGroup(capabilities: ScheduleSourceCapability[], keys: string[]): ScheduleSourceCapability[] {
+frontend/src/components/schedule/health/healthShared.tsx:283:  currentSchedule: Record<string, unknown>
+frontend/src/components/schedule/health/healthShared.tsx:285:  capabilities: ScheduleSourceCapability[]
+frontend/src/components/schedule/health/healthShared.tsx:319:// (ScheduleQualityPage L373-441) one-to-one so behavior is unchanged.
+frontend/src/components/schedule/health/healthShared.tsx:321:  health: ScheduleHealthData | undefined,
+frontend/src/components/schedule/health/healthShared.tsx:324:  const currentSchedule = health?.current_schedule ?? {}
+frontend/src/components/schedule/health/healthShared.tsx:373:  // Phase 9A.3: when the 9A.1 computed_cpm_health envelope reports available, Schedule Health
+frontend/src/components/schedule/health/healthShared.tsx:376:  const packageMode = text(importPackage.package_mode ?? currentSchedule.source_type, 'single_file')
+frontend/src/components/schedule/health/healthShared.tsx:377:  const sourceFormat = text(currentSchedule.source_format ?? qualityDetail?.source_format)
+frontend/src/components/schedule/health/healthShared.tsx:401:    currentSchedule,
+frontend/src/components/schedule/health/ScheduleHealthDeferredPanel.tsx:3:import type { ScheduleHealthData } from '../../../lib/api'
+frontend/src/components/schedule/health/ScheduleHealthDeferredPanel.tsx:5:import { ScheduleHealthProvenanceBadge } from './ScheduleHealthProvenanceBadge'
+frontend/src/components/schedule/health/ScheduleHealthDeferredPanel.tsx:7:export function ScheduleHealthDeferredPanel({
+frontend/src/components/schedule/health/ScheduleHealthDeferredPanel.tsx:12:  health: ScheduleHealthData
+frontend/src/components/schedule/health/ScheduleHealthDeferredPanel.tsx:20:        <ScheduleHealthProvenanceBadge basis="deferred" />
+frontend/src/components/schedule/health/ScheduleHealthCpmPanel.tsx:6:// source-export critical-path/float evidence rendered elsewhere on Schedule Health. Read-only.
+frontend/src/components/schedule/health/ScheduleHealthCpmPanel.tsx:13:import { ScheduleHealthProvenanceBadge } from './ScheduleHealthProvenanceBadge'
+frontend/src/components/schedule/health/ScheduleHealthCpmPanel.tsx:35:export function ScheduleHealthCpmPanel({
+frontend/src/components/schedule/health/ScheduleHealthCpmPanel.tsx:54:        <ScheduleHealthProvenanceBadge basis="application_computed_cpm" />
+frontend/src/components/schedule/ScheduleProjectPicker.tsx:6:export type ScheduleProjectOption = {
+frontend/src/components/schedule/ScheduleProjectPicker.tsx:20:export type ScheduleProjectsResponse = {
+frontend/src/components/schedule/ScheduleProjectPicker.tsx:22:  projects?: ScheduleProjectOption[]
+frontend/src/components/schedule/ScheduleProjectPicker.tsx:25:export function useScheduleProjects() {
+frontend/src/components/schedule/ScheduleProjectPicker.tsx:28:    queryFn: () => api.getScheduleProjects() as Promise<ScheduleProjectsResponse>,
+frontend/src/components/schedule/ScheduleProjectPicker.tsx:33:export function projectPickerOptionText(project: ScheduleProjectOption): string {
+frontend/src/components/schedule/ScheduleProjectPicker.tsx:37:export function projectOptionLabel(project: ScheduleProjectOption): string {
+frontend/src/components/schedule/ScheduleProjectPicker.tsx:41:export function useScheduleProjectParam(): [string, (next: string) => void] {
+frontend/src/components/schedule/ScheduleProjectPicker.tsx:53:export function ScheduleProjectPicker({
+frontend/src/components/schedule/ScheduleProjectPicker.tsx:70:  const { data, isLoading } = useScheduleProjects()
+frontend/src/components/schedule/ScheduleProjectPicker.tsx:109:export function ScheduleProjectContext({
+frontend/src/components/schedule/ScheduleProjectPicker.tsx:114:  projects?: ScheduleProjectOption[]
+frontend/src/components/schedule/SchedulePageChrome.tsx:23:  { to: '/schedules/quality', label: 'Schedule Health', icon: AlertTriangle },
+frontend/src/components/schedule/SchedulePageChrome.tsx:32:  ForecastShell as ScheduleShell,
+frontend/src/components/schedule/SchedulePageChrome.tsx:33:  ForecastTable as ScheduleTable,
+frontend/src/components/schedule/SchedulePageChrome.tsx:34:  ForecastTh as ScheduleTh,
+frontend/src/components/schedule/SchedulePageChrome.tsx:35:  ForecastTd as ScheduleTd,
+frontend/src/components/schedule/SchedulePageChrome.tsx:36:  ForecastPanel as SchedulePanel,
+frontend/src/components/schedule/SchedulePageChrome.tsx:39:export function ScheduleBackLink({
+frontend/src/components/schedule/SchedulePageChrome.tsx:63:export function ScheduleSubnav() {
+frontend/src/components/schedule/SchedulePageChrome.tsx:66:    <nav aria-label="Schedule Intelligence sections" className="forecast-subnav">
+frontend/src/components/schedule/SchedulePageChrome.tsx:85:export function SchedulePageHeader({
+frontend/src/components/schedule/SchedulePageChrome.tsx:89:  eyebrow = 'Schedule Intelligence',
+frontend/src/components/schedule/SchedulePageChrome.tsx:112:export function ScheduleActionButton({
+frontend/src/components/schedule/SchedulePageChrome.tsx:136:export function ScheduleActionLink({
+frontend/src/components/schedule/ScheduleProjectPicker.test.tsx:7:  ScheduleProjectPicker,
+frontend/src/components/schedule/ScheduleProjectPicker.test.tsx:8:  type ScheduleProjectOption,
+frontend/src/components/schedule/ScheduleProjectPicker.test.tsx:9:} from './ScheduleProjectPicker'
+frontend/src/components/schedule/ScheduleProjectPicker.test.tsx:19:      getScheduleProjects: () => projectsMock(),
+frontend/src/components/schedule/ScheduleProjectPicker.test.tsx:24:const duplicateDisplayProjects: ScheduleProjectOption[] = [
+frontend/src/components/schedule/ScheduleProjectPicker.test.tsx:52:      <ScheduleProjectPicker
+frontend/src/components/schedule/ScheduleProjectPicker.test.tsx:91:describe('ScheduleProjectPicker', () => {
+frontend/src/components/schedule/ScheduleVersionPicker.tsx:5:export function useScheduleVersions(projectKey?: string) {
+frontend/src/components/schedule/ScheduleVersionPicker.tsx:10:        ? api.getScheduleVersions(projectKey)
+frontend/src/components/schedule/ScheduleVersionPicker.tsx:11:        : api.listScheduleVersions(),
+frontend/src/components/schedule/ScheduleVersionPicker.tsx:15:export function ScheduleVersionPicker({
+frontend/src/components/schedule/ScheduleVersionPicker.tsx:19:  label = 'Schedule version',
+frontend/src/components/schedule/ScheduleVersionPicker.tsx:26:  const { data, isLoading } = useScheduleVersions(projectKey || undefined)
+frontend/src/components/projects/ProjectWorkspaceNav.tsx:3:type ProjectWorkspaceNavProps = {
+frontend/src/components/projects/ProjectWorkspaceNav.tsx:7:export function ProjectWorkspaceNav({ projectKey }: ProjectWorkspaceNavProps) {
+frontend/src/components/projects/ProjectWorkspaceNav.tsx:13:    { to: `${base}/schedule`, label: 'Schedule' },
+frontend/src/components/projects/ProjectWorkspaceShell.tsx:11:import { ProjectWorkspaceNav } from './ProjectWorkspaceNav'
+frontend/src/components/projects/ProjectWorkspaceShell.tsx:54:        <ProjectWorkspaceNav projectKey={project.project_key} />
+frontend/src/components/projects/ProjectForecastCreationCard.tsx:11:  schedule_data_date: 'Schedule data date',
+frontend/src/components/projects/ProjectForecastCreationCard.tsx:12:  schedule_import_created_at: 'Schedule import date',
+frontend/src/components/projects/ProjectForecastCreationCard.tsx:17:// Schedule date-default warning code → plain-language copy.
+frontend/src/components/projects/ProjectForecastCreationCard.tsx:120:    (w) => DATE_DEFAULT_WARNING_TEXT[w] ?? 'Schedule date information is incomplete.',
+frontend/src/layouts/MainNavigation.tsx:10:  if (label === 'Schedules') return <CalendarRange className="h-4 w-4" />
+frontend/src/layouts/AppShell.test.tsx:38:  test('renders Schedules in primary navigation', () => {
+frontend/src/layouts/AppShell.test.tsx:40:    expect(screen.getByRole('link', { name: /Schedules/i })).toBeInTheDocument()
+frontend/src/lib/api.ts:101:export class ScheduleApiError extends Error {
+frontend/src/lib/api.ts:114:export class ScheduleNetworkError extends Error {
+frontend/src/lib/api.ts:119:    this.name = 'ScheduleNetworkError';
+frontend/src/lib/api.ts:124:function parseScheduleApiError(status: number, body: unknown): ScheduleApiError | null {
+frontend/src/lib/api.ts:130:    return new ScheduleApiError(code, rec, status, code);
+frontend/src/lib/api.ts:133:    return new ScheduleApiError(detail, { code: detail }, status, detail);
+frontend/src/lib/api.ts:157:    const schedErr = parseScheduleApiError(res.status, body);
+frontend/src/lib/api.ts:231:export interface ProjectScheduleSummaryResponse {
+frontend/src/lib/api.ts:254:export function getProjectScheduleSummary(projectKey: string) {
+frontend/src/lib/api.ts:255:  return fetchJson<ProjectScheduleSummaryResponse>(
+frontend/src/lib/api.ts:649:export interface SchedulerStatus {
+frontend/src/lib/api.ts:770:/* Scheduler status for the daily source-refresh job (P04). */
+frontend/src/lib/api.ts:771:export function getSchedulerStatus() {
+frontend/src/lib/api.ts:772:  return fetchJson<SchedulerStatus>('/api/scheduler/daily-source-refresh/status');
+frontend/src/lib/api.ts:879:export interface ForecastDbSchedulePhasing {
+frontend/src/lib/api.ts:919:  schedule_phasing: ForecastDbSchedulePhasing[];
+frontend/src/lib/api.ts:1106:/* Schedule-derived forecast date defaults (Phase P-D). Read-only, redaction-safe, advisory. */
+frontend/src/lib/api.ts:1527:/* Schedule Intelligence (V62) — import, versions, activities, cost mapping. */
+frontend/src/lib/api.ts:1528:export type ScheduleCapabilityStatus =
+frontend/src/lib/api.ts:1539:export interface ScheduleSourceCapability {
+frontend/src/lib/api.ts:1542:  capability_status?: ScheduleCapabilityStatus;
+frontend/src/lib/api.ts:1622:export interface ScheduleHealthData {
+frontend/src/lib/api.ts:1627:  capabilities?: ScheduleSourceCapability[] | null;
+frontend/src/lib/api.ts:1643:export function getScheduleProjects() {
+frontend/src/lib/api.ts:1646:export function listScheduleVersions(opts?: {
+frontend/src/lib/api.ts:1658:export function getScheduleVersions(
+frontend/src/lib/api.ts:1671:export function listScheduleQualityEvaluations(opts?: {
+frontend/src/lib/api.ts:1685:export function getScheduleVersionSummary(scheduleVersionKey: string) {
+frontend/src/lib/api.ts:1688:export function getScheduleHealthData(scheduleVersionKey: string, projectKey?: string) {
+frontend/src/lib/api.ts:1692:  return fetchJson<ScheduleHealthData>(
+frontend/src/lib/api.ts:1696:export function getScheduleActivities(
+frontend/src/lib/api.ts:1709:export function getScheduleQuality(scheduleVersionKey: string) {
+frontend/src/lib/api.ts:1712:export function getScheduleQualityFindings(
+frontend/src/lib/api.ts:1725:export function getScheduleQualityMetrics(scheduleVersionKey: string) {
+frontend/src/lib/api.ts:1732:export interface ScheduleCpmRunEntry {
+frontend/src/lib/api.ts:1744:export interface ScheduleCpmDcmaEvidence {
+frontend/src/lib/api.ts:1758:export interface ScheduleCpmSummary {
+frontend/src/lib/api.ts:1761:  runs: Record<string, ScheduleCpmRunEntry>;
+frontend/src/lib/api.ts:1762:  dcma_critical_path: ScheduleCpmDcmaEvidence;
+frontend/src/lib/api.ts:1768:export interface ScheduleCpmActivity {
+frontend/src/lib/api.ts:1785:export interface ScheduleCpmActivitiesResponse {
+frontend/src/lib/api.ts:1789:  activities: ScheduleCpmActivity[];
+frontend/src/lib/api.ts:1797:export interface ScheduleCpmLongestPath {
+frontend/src/lib/api.ts:1802:  activities: ScheduleCpmActivity[];
+frontend/src/lib/api.ts:1805:export interface ScheduleCpmDiagnostics {
+frontend/src/lib/api.ts:1812:export function getScheduleCpmSummary(scheduleVersionKey: string) {
+frontend/src/lib/api.ts:1813:  return fetchJson<ScheduleCpmSummary>(
+frontend/src/lib/api.ts:1817:export function getScheduleCpmActivities(
+frontend/src/lib/api.ts:1825:  return fetchJson<ScheduleCpmActivitiesResponse>(
+frontend/src/lib/api.ts:1829:export function getScheduleCpmLongestPath(scheduleVersionKey: string) {
+frontend/src/lib/api.ts:1830:  return fetchJson<ScheduleCpmLongestPath>(
+frontend/src/lib/api.ts:1834:export function getScheduleCpmDiagnostics(scheduleVersionKey: string) {
+frontend/src/lib/api.ts:1835:  return fetchJson<ScheduleCpmDiagnostics>(
+frontend/src/lib/api.ts:1839:export function rerunScheduleQuality(scheduleVersionKey: string, profile?: string) {
+frontend/src/lib/api.ts:1846:export function getScheduleQualityRun(evaluationRunId: string) {
+frontend/src/lib/api.ts:1849:export function getScheduleProjectQualitySummary(projectKey: string) {
+frontend/src/lib/api.ts:1852:export function getScheduleVersionDiff(projectKey: string, fromVersion: string, toVersion: string) {
+frontend/src/lib/api.ts:1858:export function getScheduleDiffSummary(projectKey: string, diffId: string | number) {
+frontend/src/lib/api.ts:1863:export function getScheduleDiffDetails(
+frontend/src/lib/api.ts:1891:export function getScheduleDiffImpact(
+frontend/src/lib/api.ts:1917:export function getScheduleIdentities(projectKey: string, opts?: { showMerged?: boolean }) {
+frontend/src/lib/api.ts:1925:export function getScheduleIdentity(projectKey: string, scheduleIdentityKey: string, opts?: { showMerged?: boolean }) {
+frontend/src/lib/api.ts:1933:export function getScheduleIdentityReview(projectKey: string) {
+frontend/src/lib/api.ts:1936:export function reassignScheduleIdentity(
+frontend/src/lib/api.ts:1947:export function splitScheduleIdentity(
+frontend/src/lib/api.ts:1950:  canonicalScheduleName?: string,
+frontend/src/lib/api.ts:1958:        canonical_schedule_name: canonicalScheduleName || null,
+frontend/src/lib/api.ts:1964:export function mergeScheduleIdentities(
+frontend/src/lib/api.ts:1975:export async function uploadScheduleImportPreview(
+frontend/src/lib/api.ts:1999:    throw new ScheduleNetworkError('schedule_upload_network_error', err);
+frontend/src/lib/api.ts:2008:    const schedErr = parseScheduleApiError(res.status, body);
+frontend/src/lib/api.ts:2020:export function commitScheduleImport(
+frontend/src/lib/api.ts:2037:export function createScheduleCostMappingRun(
+frontend/src/lib/api.ts:2051:export function getScheduleCostMappingRun(mappingRunId: string) {
+frontend/src/lib/api.ts:2054:export function getScheduleCostWeighting(projectKey: string) {
+frontend/src/lib/api.ts:2057:export function getScheduleCostMappingCandidates(mappingRunId: string) {
+frontend/src/lib/api.ts:2060:export function reviewScheduleCostMappingCandidate(
+frontend/src/lib/api.ts:2069:export function approveScheduleCostMappingRun(mappingRunId: string) {
+frontend/src/lib/api.ts:2075:export function getScheduleCostMappingDistributions(mappingRunId: string) {
+frontend/src/lib/api.ts:2268:  getProjectScheduleSummary,
+frontend/src/lib/api.ts:2348:  getSchedulerStatus,
+frontend/src/lib/api.ts:2406:  // Schedule Intelligence (V62).
+frontend/src/lib/api.ts:2407:  getScheduleProjects,
+frontend/src/lib/api.ts:2408:  listScheduleVersions,
+frontend/src/lib/api.ts:2409:  listScheduleQualityEvaluations,
+frontend/src/lib/api.ts:2410:  getScheduleVersions,
+frontend/src/lib/api.ts:2411:  getScheduleVersionSummary,
+frontend/src/lib/api.ts:2412:  getScheduleHealthData,
+frontend/src/lib/api.ts:2413:  getScheduleActivities,
+frontend/src/lib/api.ts:2414:  getScheduleQuality,
+frontend/src/lib/api.ts:2415:  getScheduleQualityFindings,
+frontend/src/lib/api.ts:2416:  getScheduleQualityMetrics,
+frontend/src/lib/api.ts:2417:  getScheduleCpmSummary,
+frontend/src/lib/api.ts:2418:  getScheduleCpmActivities,
+frontend/src/lib/api.ts:2419:  getScheduleCpmLongestPath,
+frontend/src/lib/api.ts:2420:  getScheduleCpmDiagnostics,
+frontend/src/lib/api.ts:2421:  rerunScheduleQuality,
+frontend/src/lib/api.ts:2422:  getScheduleQualityRun,
+frontend/src/lib/api.ts:2423:  getScheduleProjectQualitySummary,
+frontend/src/lib/api.ts:2424:  getScheduleVersionDiff,
+frontend/src/lib/api.ts:2425:  getScheduleDiffSummary,
+frontend/src/lib/api.ts:2426:  getScheduleDiffDetails,
+frontend/src/lib/api.ts:2427:  getScheduleDiffImpact,
+frontend/src/lib/api.ts:2428:  getScheduleIdentities,
+frontend/src/lib/api.ts:2429:  getScheduleIdentity,
+frontend/src/lib/api.ts:2430:  getScheduleIdentityReview,
+frontend/src/lib/api.ts:2431:  reassignScheduleIdentity,
+frontend/src/lib/api.ts:2432:  splitScheduleIdentity,
+frontend/src/lib/api.ts:2433:  mergeScheduleIdentities,
+frontend/src/lib/api.ts:2434:  uploadScheduleImportPreview,
+frontend/src/lib/api.ts:2435:  commitScheduleImport,
+frontend/src/lib/api.ts:2436:  createScheduleCostMappingRun,
+frontend/src/lib/api.ts:2437:  getScheduleCostMappingRun,
+frontend/src/lib/api.ts:2438:  getScheduleCostMappingCandidates,
+frontend/src/lib/api.ts:2439:  reviewScheduleCostMappingCandidate,
+frontend/src/lib/api.ts:2440:  approveScheduleCostMappingRun,
+frontend/src/lib/api.ts:2441:  getScheduleCostMappingDistributions,
+frontend/src/lib/api.ts:2442:  getScheduleCostWeighting,
+frontend/src/lib/scheduleCapabilityCopy.ts:1:export type ScheduleSourceFormat =
+frontend/src/lib/scheduleCapabilityCopy.ts:9:export function getScheduleFormatLabel(format: ScheduleSourceFormat | undefined): string {
+frontend/src/lib/scheduleCapabilityCopy.ts:26:export function getScheduleCapabilityBanner(format: ScheduleSourceFormat | undefined): string {
+frontend/src/lib/scheduleCapabilityCopy.ts:35:      return 'Schedule source capability varies by export format'
+frontend/src/lib/scheduleCapabilityCopy.ts:44:  format: ScheduleSourceFormat | undefined,
+frontend/src/lib/scheduleCapabilityCopy.ts:47:  return `For ${project}: ${getScheduleCapabilityBanner(format)}`
+frontend/src/lib/sourcesApi.test.ts:8:  getScheduleHealthData,
+frontend/src/lib/sourcesApi.test.ts:9:  getSchedulerStatus,
+frontend/src/lib/sourcesApi.test.ts:90:    const result = await getSchedulerStatus()
+frontend/src/lib/sourcesApi.test.ts:160:    await getScheduleHealthData('twn|1071|2026-06-23 08:00', 'twn/project')
+frontend/src/lib/sourcesApi.test.ts:198:      await getSchedulerStatus()
+frontend/src/pages/ScheduleQualityPage.test.tsx:6:import { ScheduleQualityPage } from './ScheduleQualityPage'
+frontend/src/pages/ScheduleQualityPage.test.tsx:8:const getScheduleHealthDataMock = vi.fn()
+frontend/src/pages/ScheduleQualityPage.test.tsx:9:const getScheduleQualityMock = vi.fn()
+frontend/src/pages/ScheduleQualityPage.test.tsx:10:const getScheduleProjectsMock = vi.fn()
+frontend/src/pages/ScheduleQualityPage.test.tsx:11:const getScheduleVersionsMock = vi.fn()
+frontend/src/pages/ScheduleQualityPage.test.tsx:12:const rerunScheduleQualityMock = vi.fn()
+frontend/src/pages/ScheduleQualityPage.test.tsx:20:      getScheduleHealthData: (...args: unknown[]) => getScheduleHealthDataMock(...args),
+frontend/src/pages/ScheduleQualityPage.test.tsx:21:      getScheduleQuality: (...args: unknown[]) => getScheduleQualityMock(...args),
+frontend/src/pages/ScheduleQualityPage.test.tsx:22:      getScheduleProjects: (...args: unknown[]) => getScheduleProjectsMock(...args),
+frontend/src/pages/ScheduleQualityPage.test.tsx:23:      getScheduleVersions: (...args: unknown[]) => getScheduleVersionsMock(...args),
+frontend/src/pages/ScheduleQualityPage.test.tsx:24:      rerunScheduleQuality: (...args: unknown[]) => rerunScheduleQualityMock(...args),
+frontend/src/pages/ScheduleQualityPage.test.tsx:36:      { path: '/schedules/quality', element: <ScheduleQualityPage /> },
+frontend/src/pages/ScheduleQualityPage.test.tsx:37:      { path: '/schedules/health', element: <ScheduleQualityPage /> },
+frontend/src/pages/ScheduleQualityPage.test.tsx:260:describe('ScheduleQualityPage as Schedule Health', () => {
+frontend/src/pages/ScheduleQualityPage.test.tsx:262:    getScheduleHealthDataMock.mockReset()
+frontend/src/pages/ScheduleQualityPage.test.tsx:263:    getScheduleQualityMock.mockReset()
+frontend/src/pages/ScheduleQualityPage.test.tsx:264:    getScheduleProjectsMock.mockReset()
+frontend/src/pages/ScheduleQualityPage.test.tsx:265:    getScheduleVersionsMock.mockReset()
+frontend/src/pages/ScheduleQualityPage.test.tsx:266:    rerunScheduleQualityMock.mockReset()
+frontend/src/pages/ScheduleQualityPage.test.tsx:267:    getScheduleProjectsMock.mockResolvedValue({ projects: [{ project_key: 'twn', display_name: 'TWN' }] })
+frontend/src/pages/ScheduleQualityPage.test.tsx:268:    getScheduleVersionsMock.mockResolvedValue([
+frontend/src/pages/ScheduleQualityPage.test.tsx:271:    getScheduleQualityMock.mockResolvedValue(qualityDetail())
+frontend/src/pages/ScheduleQualityPage.test.tsx:274:  it('renders Schedule Health from /schedules/quality using health-data', async () => {
+frontend/src/pages/ScheduleQualityPage.test.tsx:275:    getScheduleHealthDataMock.mockResolvedValue(healthData())
+frontend/src/pages/ScheduleQualityPage.test.tsx:279:    expect(await screen.findByRole('heading', { name: 'Schedule Health' })).toBeInTheDocument()
+frontend/src/pages/ScheduleQualityPage.test.tsx:280:    expect(screen.getByRole('link', { name: /Schedule Health/i })).toBeInTheDocument()
+frontend/src/pages/ScheduleQualityPage.test.tsx:281:    expect(await screen.findByText('Available Schedule Evidence')).toBeInTheDocument()
+frontend/src/pages/ScheduleQualityPage.test.tsx:284:    expect(screen.getByText('What Changed Since the Prior Schedule?')).toBeInTheDocument()
+frontend/src/pages/ScheduleQualityPage.test.tsx:290:    expect(getScheduleHealthDataMock).toHaveBeenCalledWith(versionKey, 'twn')
+frontend/src/pages/ScheduleQualityPage.test.tsx:293:  it('renders the /schedules/health alias as the same Schedule Health page', async () => {
+frontend/src/pages/ScheduleQualityPage.test.tsx:294:    getScheduleHealthDataMock.mockResolvedValue(healthData())
+frontend/src/pages/ScheduleQualityPage.test.tsx:298:    expect(await screen.findByRole('heading', { name: 'Schedule Health' })).toBeInTheDocument()
+frontend/src/pages/ScheduleQualityPage.test.tsx:299:    expect(await screen.findByText('Available Schedule Evidence')).toBeInTheDocument()
+frontend/src/pages/ScheduleQualityPage.test.tsx:303:    getScheduleHealthDataMock.mockResolvedValue(
+frontend/src/pages/ScheduleQualityPage.test.tsx:325:    getScheduleHealthDataMock.mockResolvedValue(
+frontend/src/pages/ScheduleQualityPage.test.tsx:343:    getScheduleHealthDataMock.mockResolvedValue(
+frontend/src/pages/ScheduleQualityPage.test.tsx:373:    getScheduleHealthDataMock.mockResolvedValue(
+frontend/src/pages/ScheduleQualityPage.test.tsx:389:    expect(screen.getByText('Available Schedule Evidence')).toBeInTheDocument()
+frontend/src/pages/ScheduleQualityPage.test.tsx:393:    getScheduleHealthDataMock.mockResolvedValue(
+frontend/src/pages/ScheduleQualityPage.test.tsx:417:    getScheduleHealthDataMock.mockResolvedValue(
+frontend/src/pages/ScheduleQualityPage.test.tsx:432:    getScheduleHealthDataMock.mockResolvedValue(
+frontend/src/pages/ScheduleQualityPage.test.tsx:446:    getScheduleHealthDataMock.mockResolvedValue(
+frontend/src/pages/ScheduleQualityPage.test.tsx:459:    getScheduleHealthDataMock.mockResolvedValue(healthData())
+frontend/src/pages/ScheduleActivitiesPage.tsx:6:  ScheduleBackLink,
+frontend/src/pages/ScheduleActivitiesPage.tsx:7:  SchedulePageHeader,
+frontend/src/pages/ScheduleActivitiesPage.tsx:8:  ScheduleShell,
+frontend/src/pages/ScheduleActivitiesPage.tsx:9:  ScheduleSubnav,
+frontend/src/pages/ScheduleActivitiesPage.tsx:10:  ScheduleTable,
+frontend/src/pages/ScheduleActivitiesPage.tsx:11:  ScheduleTd,
+frontend/src/pages/ScheduleActivitiesPage.tsx:12:  ScheduleTh,
+frontend/src/pages/ScheduleActivitiesPage.tsx:13:} from '../components/schedule/SchedulePageChrome'
+frontend/src/pages/ScheduleActivitiesPage.tsx:14:import { useScheduleProjectParam } from '../components/schedule/ScheduleProjectPicker'
+frontend/src/pages/ScheduleActivitiesPage.tsx:15:import { ScheduleVersionPicker } from '../components/schedule/ScheduleVersionPicker'
+frontend/src/pages/ScheduleActivitiesPage.tsx:21:export function ScheduleActivitiesPage() {
+frontend/src/pages/ScheduleActivitiesPage.tsx:23:  const [projectKey, setProjectKey] = useScheduleProjectParam()
+frontend/src/pages/ScheduleActivitiesPage.tsx:37:    queryFn: () => api.getScheduleActivities(versionKey, { limit: PAGE_SIZE, offset }),
+frontend/src/pages/ScheduleActivitiesPage.tsx:62:    <ScheduleShell>
+frontend/src/pages/ScheduleActivitiesPage.tsx:63:      <ScheduleBackLink />
+frontend/src/pages/ScheduleActivitiesPage.tsx:64:      <ScheduleSubnav />
+frontend/src/pages/ScheduleActivitiesPage.tsx:65:      <SchedulePageHeader
+frontend/src/pages/ScheduleActivitiesPage.tsx:66:        title="Schedule activities"
+frontend/src/pages/ScheduleActivitiesPage.tsx:71:        <ScheduleVersionPicker
+frontend/src/pages/ScheduleActivitiesPage.tsx:95:          <ScheduleTable
+frontend/src/pages/ScheduleActivitiesPage.tsx:98:                <ScheduleTh>ID</ScheduleTh>
+frontend/src/pages/ScheduleActivitiesPage.tsx:99:                <ScheduleTh>Name</ScheduleTh>
+frontend/src/pages/ScheduleActivitiesPage.tsx:100:                <ScheduleTh>WBS</ScheduleTh>
+frontend/src/pages/ScheduleActivitiesPage.tsx:101:                <ScheduleTh>Start</ScheduleTh>
+frontend/src/pages/ScheduleActivitiesPage.tsx:102:                <ScheduleTh>Finish</ScheduleTh>
+frontend/src/pages/ScheduleActivitiesPage.tsx:103:                <ScheduleTh>Cost code</ScheduleTh>
+frontend/src/pages/ScheduleActivitiesPage.tsx:109:                <ScheduleTd>{String(a.activity_id)}</ScheduleTd>
+frontend/src/pages/ScheduleActivitiesPage.tsx:110:                <ScheduleTd>{String(a.activity_name ?? '')}</ScheduleTd>
+frontend/src/pages/ScheduleActivitiesPage.tsx:111:                <ScheduleTd>{String(a.wbs_code ?? '')}</ScheduleTd>
+frontend/src/pages/ScheduleActivitiesPage.tsx:112:                <ScheduleTd>{String(a.start_date ?? '')}</ScheduleTd>
+frontend/src/pages/ScheduleActivitiesPage.tsx:113:                <ScheduleTd>{String(a.finish_date ?? '')}</ScheduleTd>
+frontend/src/pages/ScheduleActivitiesPage.tsx:114:                <ScheduleTd>{String(a.cost_code ?? '')}</ScheduleTd>
+frontend/src/pages/ScheduleActivitiesPage.tsx:117:          </ScheduleTable>
+frontend/src/pages/ScheduleActivitiesPage.tsx:138:    </ScheduleShell>
+frontend/src/pages/ScheduleCostMappingPage.tsx:5:  ScheduleActionButton,
+frontend/src/pages/ScheduleCostMappingPage.tsx:6:  ScheduleBackLink,
+frontend/src/pages/ScheduleCostMappingPage.tsx:7:  SchedulePageHeader,
+frontend/src/pages/ScheduleCostMappingPage.tsx:8:  ScheduleShell,
+frontend/src/pages/ScheduleCostMappingPage.tsx:9:  ScheduleSubnav,
+frontend/src/pages/ScheduleCostMappingPage.tsx:10:  ScheduleTable,
+frontend/src/pages/ScheduleCostMappingPage.tsx:11:  ScheduleTd,
+frontend/src/pages/ScheduleCostMappingPage.tsx:12:  ScheduleTh,
+frontend/src/pages/ScheduleCostMappingPage.tsx:13:} from '../components/schedule/SchedulePageChrome'
+frontend/src/pages/ScheduleCostMappingPage.tsx:15:  ScheduleProjectPicker,
+frontend/src/pages/ScheduleCostMappingPage.tsx:16:  useScheduleProjectParam,
+frontend/src/pages/ScheduleCostMappingPage.tsx:17:} from '../components/schedule/ScheduleProjectPicker'
+frontend/src/pages/ScheduleCostMappingPage.tsx:18:import { ScheduleVersionPicker } from '../components/schedule/ScheduleVersionPicker'
+frontend/src/pages/ScheduleCostMappingPage.tsx:28:export function ScheduleCostMappingPage() {
+frontend/src/pages/ScheduleCostMappingPage.tsx:29:  const [projectKey, setProjectKey] = useScheduleProjectParam()
+frontend/src/pages/ScheduleCostMappingPage.tsx:41:    queryFn: () => api.getScheduleCostWeighting(projectKey),
+frontend/src/pages/ScheduleCostMappingPage.tsx:46:    queryFn: () => api.getScheduleCostMappingCandidates(mappingRunId),
+frontend/src/pages/ScheduleCostMappingPage.tsx:65:      const resp = await api.createScheduleCostMappingRun(projectKey, versionKey, objective)
+frontend/src/pages/ScheduleCostMappingPage.tsx:75:      await api.reviewScheduleCostMappingCandidate(candidateId, { operator_status: status })
+frontend/src/pages/ScheduleCostMappingPage.tsx:87:      const resp = await api.approveScheduleCostMappingRun(mappingRunId)
+frontend/src/pages/ScheduleCostMappingPage.tsx:90:      const weightAfter = await api.getScheduleCostWeighting(projectKey)
+frontend/src/pages/ScheduleCostMappingPage.tsx:103:    <ScheduleShell>
+frontend/src/pages/ScheduleCostMappingPage.tsx:104:      <ScheduleBackLink />
+frontend/src/pages/ScheduleCostMappingPage.tsx:105:      <ScheduleSubnav />
+frontend/src/pages/ScheduleCostMappingPage.tsx:106:      <SchedulePageHeader
+frontend/src/pages/ScheduleCostMappingPage.tsx:112:        <ScheduleProjectPicker value={projectKey} onChange={setProjectKey} className="max-w-md" />
+frontend/src/pages/ScheduleCostMappingPage.tsx:113:        <ScheduleVersionPicker projectKey={projectKey} value={versionKey} onChange={setVersionKey} />
+frontend/src/pages/ScheduleCostMappingPage.tsx:130:        <ScheduleActionButton onClick={() => void startRun()} disabled={busy || !versionKey}>
+frontend/src/pages/ScheduleCostMappingPage.tsx:132:        </ScheduleActionButton>
+frontend/src/pages/ScheduleCostMappingPage.tsx:143:            <ScheduleTable
+frontend/src/pages/ScheduleCostMappingPage.tsx:146:                  <ScheduleTh>Activity</ScheduleTh>
+frontend/src/pages/ScheduleCostMappingPage.tsx:147:                  <ScheduleTh>Cost code</ScheduleTh>
+frontend/src/pages/ScheduleCostMappingPage.tsx:148:                  <ScheduleTh>Status</ScheduleTh>
+frontend/src/pages/ScheduleCostMappingPage.tsx:149:                  <ScheduleTh />
+frontend/src/pages/ScheduleCostMappingPage.tsx:155:                  <ScheduleTd>{String(c.activity_id)}</ScheduleTd>
+frontend/src/pages/ScheduleCostMappingPage.tsx:156:                  <ScheduleTd>{String(c.candidate_cost_code ?? '')}</ScheduleTd>
+frontend/src/pages/ScheduleCostMappingPage.tsx:157:                  <ScheduleTd>{String(c.operator_status ?? 'pending')}</ScheduleTd>
+frontend/src/pages/ScheduleCostMappingPage.tsx:158:                  <ScheduleTd>
+frontend/src/pages/ScheduleCostMappingPage.tsx:177:                  </ScheduleTd>
+frontend/src/pages/ScheduleCostMappingPage.tsx:180:            </ScheduleTable>
+frontend/src/pages/ScheduleCostMappingPage.tsx:181:            <ScheduleActionButton onClick={() => void approveRun()} disabled={busy || !mappingRunId}>
+frontend/src/pages/ScheduleCostMappingPage.tsx:183:            </ScheduleActionButton>
+frontend/src/pages/ScheduleCostMappingPage.tsx:192:    </ScheduleShell>
+frontend/src/pages/ProjectOverviewPage.tsx:11:    title: 'Schedule status',
+frontend/src/pages/ScheduleVersionsPage.test.tsx:6:import { ScheduleVersionsPage } from './ScheduleVersionsPage'
+frontend/src/pages/ScheduleVersionsPage.test.tsx:17:      getScheduleProjects: (...args: unknown[]) => projectsMock(...args),
+frontend/src/pages/ScheduleVersionsPage.test.tsx:18:      getScheduleVersions: (...args: unknown[]) => versionsMock(...args),
+frontend/src/pages/ScheduleVersionsPage.test.tsx:19:      listScheduleVersions: (...args: unknown[]) => versionsMock(...args),
+frontend/src/pages/ScheduleVersionsPage.test.tsx:27:    [{ path: '/schedules/versions', element: <ScheduleVersionsPage /> }],
+frontend/src/pages/ScheduleVersionsPage.test.tsx:37:describe('ScheduleVersionsPage', () => {
+frontend/src/pages/ProjectSchedulePage.tsx:12:import type { ProjectScheduleSummaryResponse } from '../lib/api'
+frontend/src/pages/ProjectSchedulePage.tsx:56:export function ProjectSchedulePage() {
+frontend/src/pages/ProjectSchedulePage.tsx:61:    queryFn: () => api.getProjectScheduleSummary(projectKey),
+frontend/src/pages/ProjectSchedulePage.tsx:85:  const schedule = (data || {}) as ProjectScheduleSummaryResponse
+frontend/src/pages/ProjectSchedulePage.tsx:110:            <h3 className="section-title mb-0">Schedule</h3>
+frontend/src/pages/ProjectSchedulePage.tsx:120:                Import Schedule
+frontend/src/pages/ProjectSchedulePage.tsx:134:            <h3 className="section-title mb-0">Schedule</h3>
+frontend/src/pages/ProjectSchedulePage.tsx:146:              <div className="text-xs uppercase tracking-wide text-[var(--hb-muted)]">Schedule Story</div>
+frontend/src/pages/ScheduleQualityPage.tsx:6:  ScheduleBackLink,
+frontend/src/pages/ScheduleQualityPage.tsx:7:  SchedulePageHeader,
+frontend/src/pages/ScheduleQualityPage.tsx:8:  ScheduleShell,
+frontend/src/pages/ScheduleQualityPage.tsx:9:  ScheduleSubnav,
+frontend/src/pages/ScheduleQualityPage.tsx:10:} from '../components/schedule/SchedulePageChrome'
+frontend/src/pages/ScheduleQualityPage.tsx:12:  ScheduleProjectPicker,
+frontend/src/pages/ScheduleQualityPage.tsx:13:  useScheduleProjectParam,
+frontend/src/pages/ScheduleQualityPage.tsx:14:  useScheduleProjects,
+frontend/src/pages/ScheduleQualityPage.tsx:15:} from '../components/schedule/ScheduleProjectPicker'
+frontend/src/pages/ScheduleQualityPage.tsx:16:import { ScheduleVersionPicker } from '../components/schedule/ScheduleVersionPicker'
+frontend/src/pages/ScheduleQualityPage.tsx:18:import { ScheduleHealthActionQueue } from '../components/schedule/health/ScheduleHealthActionQueue'
+frontend/src/pages/ScheduleQualityPage.tsx:19:import { ScheduleHealthBaselinePanel } from '../components/schedule/health/ScheduleHealthBaselinePanel'
+frontend/src/pages/ScheduleQualityPage.tsx:20:import { ScheduleHealthCpmPanel } from '../components/schedule/health/ScheduleHealthCpmPanel'
+frontend/src/pages/ScheduleQualityPage.tsx:21:import { ScheduleHealthDeferredPanel } from '../components/schedule/health/ScheduleHealthDeferredPanel'
+frontend/src/pages/ScheduleQualityPage.tsx:22:import { ScheduleHealthEvidencePanel } from '../components/schedule/health/ScheduleHealthEvidencePanel'
+frontend/src/pages/ScheduleQualityPage.tsx:23:import { ScheduleHealthOverview } from '../components/schedule/health/ScheduleHealthOverview'
+frontend/src/pages/ScheduleQualityPage.tsx:24:import { ScheduleHealthQualityPanel } from '../components/schedule/health/ScheduleHealthQualityPanel'
+frontend/src/pages/ScheduleQualityPage.tsx:25:import { ScheduleHealthVersionComparisonPanel } from '../components/schedule/health/ScheduleHealthVersionComparisonPanel'
+frontend/src/pages/ScheduleQualityPage.tsx:29:export function ScheduleQualityPage() {
+frontend/src/pages/ScheduleQualityPage.tsx:31:  const [projectKey, setProjectKey] = useScheduleProjectParam()
+frontend/src/pages/ScheduleQualityPage.tsx:36:  const { data: projectsData } = useScheduleProjects()
+frontend/src/pages/ScheduleQualityPage.tsx:40:    queryFn: () => api.getScheduleHealthData(versionKey, projectKey || undefined),
+frontend/src/pages/ScheduleQualityPage.tsx:46:    queryFn: () => api.getScheduleQuality(versionKey) as Promise<QualitySummary>,
+frontend/src/pages/ScheduleQualityPage.tsx:51:    mutationFn: () => api.rerunScheduleQuality(versionKey),
+frontend/src/pages/ScheduleQualityPage.tsx:97:    <ScheduleShell>
+frontend/src/pages/ScheduleQualityPage.tsx:98:      <ScheduleBackLink />
+frontend/src/pages/ScheduleQualityPage.tsx:99:      <ScheduleSubnav />
+frontend/src/pages/ScheduleQualityPage.tsx:100:      <SchedulePageHeader
+frontend/src/pages/ScheduleQualityPage.tsx:101:        title="Schedule Health"
+frontend/src/pages/ScheduleQualityPage.tsx:106:        <ScheduleProjectPicker value={projectKey} onChange={onProjectChange} className="min-w-[16rem]" />
+frontend/src/pages/ScheduleQualityPage.tsx:107:        <ScheduleVersionPicker projectKey={projectKey} value={versionKey} onChange={onVersionChange} />
+frontend/src/pages/ScheduleQualityPage.tsx:158:          <ScheduleHealthOverview
+frontend/src/pages/ScheduleQualityPage.tsx:166:          <ScheduleHealthCpmPanel data={health.computed_cpm_health} versionKey={versionKey} />
+frontend/src/pages/ScheduleQualityPage.tsx:168:          <ScheduleHealthEvidencePanel model={model} />
+frontend/src/pages/ScheduleQualityPage.tsx:170:          <ScheduleHealthQualityPanel model={model} />
+frontend/src/pages/ScheduleQualityPage.tsx:172:          <ScheduleHealthBaselinePanel model={model} />
+frontend/src/pages/ScheduleQualityPage.tsx:174:          <ScheduleHealthVersionComparisonPanel model={model} health={health} projectKey={projectKey} />
+frontend/src/pages/ScheduleQualityPage.tsx:176:          <ScheduleHealthActionQueue model={model} />
+frontend/src/pages/ScheduleQualityPage.tsx:178:          <ScheduleHealthDeferredPanel model={model} health={health} />
+frontend/src/pages/ScheduleQualityPage.tsx:187:    </ScheduleShell>
+frontend/src/pages/ScheduleVersionDiffPage.tsx:6:  ScheduleActionButton,
+frontend/src/pages/ScheduleVersionDiffPage.tsx:7:  ScheduleBackLink,
+frontend/src/pages/ScheduleVersionDiffPage.tsx:8:  SchedulePageHeader,
+frontend/src/pages/ScheduleVersionDiffPage.tsx:9:  ScheduleShell,
+frontend/src/pages/ScheduleVersionDiffPage.tsx:10:  ScheduleSubnav,
+frontend/src/pages/ScheduleVersionDiffPage.tsx:11:  ScheduleTable,
+frontend/src/pages/ScheduleVersionDiffPage.tsx:12:  ScheduleTd,
+frontend/src/pages/ScheduleVersionDiffPage.tsx:13:  ScheduleTh,
+frontend/src/pages/ScheduleVersionDiffPage.tsx:14:} from '../components/schedule/SchedulePageChrome'
+frontend/src/pages/ScheduleVersionDiffPage.tsx:16:  ScheduleProjectPicker,
+frontend/src/pages/ScheduleVersionDiffPage.tsx:17:  useScheduleProjectParam,
+frontend/src/pages/ScheduleVersionDiffPage.tsx:18:} from '../components/schedule/ScheduleProjectPicker'
+frontend/src/pages/ScheduleVersionDiffPage.tsx:19:import { useScheduleVersions } from '../components/schedule/ScheduleVersionPicker'
+frontend/src/pages/ScheduleVersionDiffPage.tsx:23:export function ScheduleVersionDiffPage() {
+frontend/src/pages/ScheduleVersionDiffPage.tsx:25:  const [projectKey, setProjectKey] = useScheduleProjectParam()
+frontend/src/pages/ScheduleVersionDiffPage.tsx:26:  const { data: versionsData } = useScheduleVersions(projectKey || undefined)
+frontend/src/pages/ScheduleVersionDiffPage.tsx:41:    queryFn: () => api.getScheduleVersionDiff(projectKey, fromVersion, toVersion),
+frontend/src/pages/ScheduleVersionDiffPage.tsx:50:      api.getScheduleDiffDetails(projectKey, activeDiffId, {
+frontend/src/pages/ScheduleVersionDiffPage.tsx:62:    queryFn: () => api.getScheduleDiffImpact(projectKey, activeDiffId, { limit: 100 }),
+frontend/src/pages/ScheduleVersionDiffPage.tsx:103:    <ScheduleShell>
+frontend/src/pages/ScheduleVersionDiffPage.tsx:104:      <ScheduleBackLink />
+frontend/src/pages/ScheduleVersionDiffPage.tsx:105:      <ScheduleSubnav />
+frontend/src/pages/ScheduleVersionDiffPage.tsx:106:      <SchedulePageHeader
+frontend/src/pages/ScheduleVersionDiffPage.tsx:112:        <ScheduleProjectPicker value={projectKey} onChange={setProjectKey} />
+frontend/src/pages/ScheduleVersionDiffPage.tsx:151:        <ScheduleActionButton
+frontend/src/pages/ScheduleVersionDiffPage.tsx:165:        </ScheduleActionButton>
+frontend/src/pages/ScheduleVersionDiffPage.tsx:319:          <ScheduleTable
+frontend/src/pages/ScheduleVersionDiffPage.tsx:322:                <ScheduleTh>Severity</ScheduleTh>
+frontend/src/pages/ScheduleVersionDiffPage.tsx:323:                <ScheduleTh>Domain</ScheduleTh>
+frontend/src/pages/ScheduleVersionDiffPage.tsx:324:                <ScheduleTh>Change</ScheduleTh>
+frontend/src/pages/ScheduleVersionDiffPage.tsx:325:                <ScheduleTh>Activity</ScheduleTh>
+frontend/src/pages/ScheduleVersionDiffPage.tsx:326:                <ScheduleTh>WBS</ScheduleTh>
+frontend/src/pages/ScheduleVersionDiffPage.tsx:327:                <ScheduleTh>Field</ScheduleTh>
+frontend/src/pages/ScheduleVersionDiffPage.tsx:328:                <ScheduleTh>From</ScheduleTh>
+frontend/src/pages/ScheduleVersionDiffPage.tsx:329:                <ScheduleTh>To</ScheduleTh>
+frontend/src/pages/ScheduleVersionDiffPage.tsx:330:                <ScheduleTh>Delta</ScheduleTh>
+frontend/src/pages/ScheduleVersionDiffPage.tsx:331:                <ScheduleTh>Attention</ScheduleTh>
+frontend/src/pages/ScheduleVersionDiffPage.tsx:337:                <ScheduleTd>{String(row.severity ?? 'informational')}</ScheduleTd>
+frontend/src/pages/ScheduleVersionDiffPage.tsx:338:                <ScheduleTd>{String(row.change_domain ?? '—')}</ScheduleTd>
+frontend/src/pages/ScheduleVersionDiffPage.tsx:339:                <ScheduleTd>{String(row.change_type ?? '—')}</ScheduleTd>
+frontend/src/pages/ScheduleVersionDiffPage.tsx:340:                <ScheduleTd>
+frontend/src/pages/ScheduleVersionDiffPage.tsx:343:                </ScheduleTd>
+frontend/src/pages/ScheduleVersionDiffPage.tsx:344:                <ScheduleTd>{String(row.wbs_code ?? row.wbs_name ?? '—')}</ScheduleTd>
+frontend/src/pages/ScheduleVersionDiffPage.tsx:345:                <ScheduleTd>{String(row.field_name ?? '—')}</ScheduleTd>
+frontend/src/pages/ScheduleVersionDiffPage.tsx:346:                <ScheduleTd>{String(row.from_value ?? '—')}</ScheduleTd>
+frontend/src/pages/ScheduleVersionDiffPage.tsx:347:                <ScheduleTd>{String(row.to_value ?? '—')}</ScheduleTd>
+frontend/src/pages/ScheduleVersionDiffPage.tsx:348:                <ScheduleTd>{String(row.day_delta ?? row.numeric_delta ?? '—')}</ScheduleTd>
+frontend/src/pages/ScheduleVersionDiffPage.tsx:349:                <ScheduleTd>{row.requires_attention ? 'Yes' : 'No'}</ScheduleTd>
+frontend/src/pages/ScheduleVersionDiffPage.tsx:352:          </ScheduleTable>
+frontend/src/pages/ScheduleVersionDiffPage.tsx:355:    </ScheduleShell>
+frontend/src/pages/ScheduleVersionDiffPage.tsx:376:        <ScheduleTable
+frontend/src/pages/ScheduleVersionDiffPage.tsx:379:              <ScheduleTh>Impact</ScheduleTh>
+frontend/src/pages/ScheduleVersionDiffPage.tsx:380:              <ScheduleTh>Area</ScheduleTh>
+frontend/src/pages/ScheduleVersionDiffPage.tsx:381:              <ScheduleTh>Changes</ScheduleTh>
+frontend/src/pages/ScheduleVersionDiffPage.tsx:382:              <ScheduleTh>Severity</ScheduleTh>
+frontend/src/pages/ScheduleVersionDiffPage.tsx:383:              <ScheduleTh>Date drift</ScheduleTh>
+frontend/src/pages/ScheduleVersionDiffPage.tsx:384:              <ScheduleTh>Logic</ScheduleTh>
+frontend/src/pages/ScheduleVersionDiffPage.tsx:385:              <ScheduleTh>Attention</ScheduleTh>
+frontend/src/pages/ScheduleVersionDiffPage.tsx:386:              <ScheduleTh>Max delta</ScheduleTh>
+frontend/src/pages/ScheduleVersionDiffPage.tsx:396:              <ScheduleTd>
+frontend/src/pages/ScheduleVersionDiffPage.tsx:399:              </ScheduleTd>
+frontend/src/pages/ScheduleVersionDiffPage.tsx:400:              <ScheduleTd>{String(row.rollup_label ?? row.rollup_key ?? '—')}</ScheduleTd>
+frontend/src/pages/ScheduleVersionDiffPage.tsx:401:              <ScheduleTd>{String(row.change_count ?? 0)}</ScheduleTd>
+frontend/src/pages/ScheduleVersionDiffPage.tsx:402:              <ScheduleTd>
+frontend/src/pages/ScheduleVersionDiffPage.tsx:405:              </ScheduleTd>
+frontend/src/pages/ScheduleVersionDiffPage.tsx:406:              <ScheduleTd>{String(row.date_drift_count ?? 0)}</ScheduleTd>
+frontend/src/pages/ScheduleVersionDiffPage.tsx:407:              <ScheduleTd>{String(row.logic_change_count ?? row.relationship_change_count ?? 0)}</ScheduleTd>
+frontend/src/pages/ScheduleVersionDiffPage.tsx:408:              <ScheduleTd>{String(row.requires_attention_count ?? 0)}</ScheduleTd>
+frontend/src/pages/ScheduleVersionDiffPage.tsx:409:              <ScheduleTd>{String(row.max_day_delta ?? '—')}</ScheduleTd>
+frontend/src/pages/ScheduleVersionDiffPage.tsx:412:        </ScheduleTable>
+frontend/src/pages/ScheduleVersionsPage.tsx:5:  ScheduleBackLink,
+frontend/src/pages/ScheduleVersionsPage.tsx:6:  SchedulePageHeader,
+frontend/src/pages/ScheduleVersionsPage.tsx:7:  ScheduleShell,
+frontend/src/pages/ScheduleVersionsPage.tsx:8:  ScheduleSubnav,
+frontend/src/pages/ScheduleVersionsPage.tsx:9:  ScheduleTable,
+frontend/src/pages/ScheduleVersionsPage.tsx:10:  ScheduleTd,
+frontend/src/pages/ScheduleVersionsPage.tsx:11:  ScheduleTh,
+frontend/src/pages/ScheduleVersionsPage.tsx:12:} from '../components/schedule/SchedulePageChrome'
+frontend/src/pages/ScheduleVersionsPage.tsx:14:  ScheduleProjectPicker,
+frontend/src/pages/ScheduleVersionsPage.tsx:15:  useScheduleProjectParam,
+frontend/src/pages/ScheduleVersionsPage.tsx:16:  useScheduleProjects,
+frontend/src/pages/ScheduleVersionsPage.tsx:17:} from '../components/schedule/ScheduleProjectPicker'
+frontend/src/pages/ScheduleVersionsPage.tsx:18:import { useScheduleVersions } from '../components/schedule/ScheduleVersionPicker'
+frontend/src/pages/ScheduleVersionsPage.tsx:32:export function ScheduleVersionsPage() {
+frontend/src/pages/ScheduleVersionsPage.tsx:33:  const [projectKey, setProjectKey] = useScheduleProjectParam()
+frontend/src/pages/ScheduleVersionsPage.tsx:38:  const { data: projectsData } = useScheduleProjects()
+frontend/src/pages/ScheduleVersionsPage.tsx:39:  const { data, isLoading, error } = useScheduleVersions(projectKey || undefined)
+frontend/src/pages/ScheduleVersionsPage.tsx:68:    <ScheduleShell>
+frontend/src/pages/ScheduleVersionsPage.tsx:69:      <ScheduleBackLink to="/schedules/imports" label="Schedule Intelligence" />
+frontend/src/pages/ScheduleVersionsPage.tsx:70:      <ScheduleSubnav />
+frontend/src/pages/ScheduleVersionsPage.tsx:71:      <SchedulePageHeader
+frontend/src/pages/ScheduleVersionsPage.tsx:72:        title="Schedule versions"
+frontend/src/pages/ScheduleVersionsPage.tsx:77:        <ScheduleProjectPicker
+frontend/src/pages/ScheduleVersionsPage.tsx:142:        <ScheduleTable
+frontend/src/pages/ScheduleVersionsPage.tsx:145:              {!projectKey ? <ScheduleTh>Project</ScheduleTh> : null}
+frontend/src/pages/ScheduleVersionsPage.tsx:146:              <ScheduleTh>Version</ScheduleTh>
+frontend/src/pages/ScheduleVersionsPage.tsx:147:              <ScheduleTh>Data date</ScheduleTh>
+frontend/src/pages/ScheduleVersionsPage.tsx:148:              <ScheduleTh>Source</ScheduleTh>
+frontend/src/pages/ScheduleVersionsPage.tsx:149:              <ScheduleTh>Imported</ScheduleTh>
+frontend/src/pages/ScheduleVersionsPage.tsx:150:              <ScheduleTh>Activities</ScheduleTh>
+frontend/src/pages/ScheduleVersionsPage.tsx:151:              <ScheduleTh>Quality</ScheduleTh>
+frontend/src/pages/ScheduleVersionsPage.tsx:152:              <ScheduleTh>Identity</ScheduleTh>
+frontend/src/pages/ScheduleVersionsPage.tsx:153:              <ScheduleTh>Score</ScheduleTh>
+frontend/src/pages/ScheduleVersionsPage.tsx:154:              <ScheduleTh>Cost loaded</ScheduleTh>
+frontend/src/pages/ScheduleVersionsPage.tsx:155:              <ScheduleTh />
+frontend/src/pages/ScheduleVersionsPage.tsx:170:                  <ScheduleTd>
+frontend/src/pages/ScheduleVersionsPage.tsx:173:                  </ScheduleTd>
+frontend/src/pages/ScheduleVersionsPage.tsx:175:                <ScheduleTd>{String(v.display_label)}</ScheduleTd>
+frontend/src/pages/ScheduleVersionsPage.tsx:176:                <ScheduleTd>{String(v.data_date ?? '—')}</ScheduleTd>
+frontend/src/pages/ScheduleVersionsPage.tsx:177:                <ScheduleTd>{String(v.source_format)}</ScheduleTd>
+frontend/src/pages/ScheduleVersionsPage.tsx:178:                <ScheduleTd>{String(v.imported_at ?? '—')}</ScheduleTd>
+frontend/src/pages/ScheduleVersionsPage.tsx:179:                <ScheduleTd>{String(v.activity_count)}</ScheduleTd>
+frontend/src/pages/ScheduleVersionsPage.tsx:180:                <ScheduleTd>{String(v.quality_status ?? 'not_evaluated')}</ScheduleTd>
+frontend/src/pages/ScheduleVersionsPage.tsx:181:                <ScheduleTd>
+frontend/src/pages/ScheduleVersionsPage.tsx:197:                </ScheduleTd>
+frontend/src/pages/ScheduleVersionsPage.tsx:198:                <ScheduleTd>
+frontend/src/pages/ScheduleVersionsPage.tsx:200:                </ScheduleTd>
+frontend/src/pages/ScheduleVersionsPage.tsx:201:                <ScheduleTd>{String(v.cost_loaded_status)}</ScheduleTd>
+frontend/src/pages/ScheduleVersionsPage.tsx:202:                <ScheduleTd>
+frontend/src/pages/ScheduleVersionsPage.tsx:225:                </ScheduleTd>
+frontend/src/pages/ScheduleVersionsPage.tsx:229:        </ScheduleTable>
+frontend/src/pages/ScheduleVersionsPage.tsx:231:    </ScheduleShell>
+frontend/src/pages/ProjectSchedulePage.test.tsx:7:import { ProjectSchedulePage } from './ProjectSchedulePage'
+frontend/src/pages/ProjectSchedulePage.test.tsx:10:const getProjectScheduleSummaryMock = vi.fn()
+frontend/src/pages/ProjectSchedulePage.test.tsx:19:      getProjectScheduleSummary: (...args: unknown[]) => getProjectScheduleSummaryMock(...args),
+frontend/src/pages/ProjectSchedulePage.test.tsx:139:      { path: '/projects/:projectKey/schedule', element: <ProjectSchedulePage /> },
+frontend/src/pages/ProjectSchedulePage.test.tsx:144:  getProjectScheduleSummaryMock.mockResolvedValue(response)
+frontend/src/pages/ProjectSchedulePage.test.tsx:152:describe('ProjectSchedulePage', () => {
+frontend/src/pages/ProjectSchedulePage.test.tsx:155:    getProjectScheduleSummaryMock.mockReset()
+frontend/src/pages/ProjectSchedulePage.test.tsx:161:    expect(await screen.findByRole('heading', { name: 'Schedule' })).toBeInTheDocument()
+frontend/src/pages/ProjectSchedulePage.test.tsx:162:    expect(screen.getByRole('link', { name: 'Schedule' })).toHaveAttribute('aria-current', 'page')
+frontend/src/pages/ProjectSchedulePage.test.tsx:194:    expect(screen.getByRole('link', { name: 'Import Schedule' })).toHaveAttribute(
+frontend/src/pages/ScheduleRoutes.test.tsx:6:import { ScheduleImportsPage } from './ScheduleImportsPage'
+frontend/src/pages/ScheduleRoutes.test.tsx:7:import { ScheduleVersionsPage } from './ScheduleVersionsPage'
+frontend/src/pages/ScheduleRoutes.test.tsx:8:import { ScheduleActivitiesPage } from './ScheduleActivitiesPage'
+frontend/src/pages/ScheduleRoutes.test.tsx:9:import { ScheduleCostMappingPage } from './ScheduleCostMappingPage'
+frontend/src/pages/ScheduleRoutes.test.tsx:10:import { ScheduleQualityPage } from './ScheduleQualityPage'
+frontend/src/pages/ScheduleRoutes.test.tsx:11:import { ScheduleIdentityReviewPage } from './ScheduleIdentityReviewPage'
+frontend/src/pages/ScheduleRoutes.test.tsx:12:import { ScheduleVersionDiffPage } from './ScheduleVersionDiffPage'
+frontend/src/pages/ScheduleRoutes.test.tsx:13:import { ScheduleCostWeightingPage } from './ScheduleCostWeightingPage'
+frontend/src/pages/ScheduleRoutes.test.tsx:36:describe('Schedule routes', () => {
+frontend/src/pages/ScheduleRoutes.test.tsx:47:    renderRoute('/schedules/imports', <ScheduleImportsPage />)
+frontend/src/pages/ScheduleRoutes.test.tsx:48:    expect(screen.getByRole('heading', { name: /Schedule imports/i })).toBeInTheDocument()
+frontend/src/pages/ScheduleRoutes.test.tsx:49:    expect(screen.getByRole('navigation', { name: /Schedule Intelligence sections/i })).toBeInTheDocument()
+frontend/src/pages/ScheduleRoutes.test.tsx:54:    renderRoute('/schedules/versions', <ScheduleVersionsPage />)
+frontend/src/pages/ScheduleRoutes.test.tsx:55:    expect(screen.getByRole('heading', { name: /Schedule versions/i })).toBeInTheDocument()
+frontend/src/pages/ScheduleRoutes.test.tsx:59:    renderRoute('/schedules/activities', <ScheduleActivitiesPage />)
+frontend/src/pages/ScheduleRoutes.test.tsx:60:    expect(screen.getByRole('heading', { name: /Schedule activities/i })).toBeInTheDocument()
+frontend/src/pages/ScheduleRoutes.test.tsx:64:    renderRoute('/schedules/cost-mapping', <ScheduleCostMappingPage />)
+frontend/src/pages/ScheduleRoutes.test.tsx:68:  it('renders Schedule Health under /schedules/quality', () => {
+frontend/src/pages/ScheduleRoutes.test.tsx:69:    renderRoute('/schedules/quality', <ScheduleQualityPage />)
+frontend/src/pages/ScheduleRoutes.test.tsx:70:    expect(screen.getByRole('heading', { name: /Schedule Health/i })).toBeInTheDocument()
+frontend/src/pages/ScheduleRoutes.test.tsx:73:  it('renders Schedule Health under /schedules/health', () => {
+frontend/src/pages/ScheduleRoutes.test.tsx:74:    renderRoute('/schedules/health', <ScheduleQualityPage />)
+frontend/src/pages/ScheduleRoutes.test.tsx:75:    expect(screen.getByRole('heading', { name: /Schedule Health/i })).toBeInTheDocument()
+frontend/src/pages/ScheduleRoutes.test.tsx:79:    renderRoute('/schedules/identity-review', <ScheduleIdentityReviewPage />)
+frontend/src/pages/ScheduleRoutes.test.tsx:84:    renderRoute('/schedules/version-diff', <ScheduleVersionDiffPage />)
+frontend/src/pages/ScheduleRoutes.test.tsx:89:    renderRoute('/schedules/cost-weighting', <ScheduleCostWeightingPage />)
+frontend/src/pages/ScheduleRoutes.test.tsx:100:        { path: '/schedules/imports', element: <ScheduleImportsPage /> },
+frontend/src/pages/ScheduleRoutes.test.tsx:110:    expect(screen.getByRole('heading', { name: /Schedule imports/i })).toBeInTheDocument()
+frontend/src/pages/ScheduleRoutes.test.tsx:113:  it('forecasting subnav does not include Schedules', () => {
+frontend/src/pages/ScheduleRoutes.test.tsx:119:    expect(screen.queryByRole('link', { name: /Schedules/i })).not.toBeInTheDocument()
+frontend/src/pages/ScheduleCpmPage.test.tsx:6:import { ScheduleCpmPage } from './ScheduleCpmPage'
+frontend/src/pages/ScheduleCpmPage.test.tsx:8:const getScheduleCpmSummaryMock = vi.fn()
+frontend/src/pages/ScheduleCpmPage.test.tsx:9:const getScheduleCpmActivitiesMock = vi.fn()
+frontend/src/pages/ScheduleCpmPage.test.tsx:10:const getScheduleCpmLongestPathMock = vi.fn()
+frontend/src/pages/ScheduleCpmPage.test.tsx:11:const getScheduleProjectsMock = vi.fn()
+frontend/src/pages/ScheduleCpmPage.test.tsx:12:const getScheduleVersionsMock = vi.fn()
+frontend/src/pages/ScheduleCpmPage.test.tsx:20:      getScheduleCpmSummary: (...a: unknown[]) => getScheduleCpmSummaryMock(...a),
+frontend/src/pages/ScheduleCpmPage.test.tsx:21:      getScheduleCpmActivities: (...a: unknown[]) => getScheduleCpmActivitiesMock(...a),
+frontend/src/pages/ScheduleCpmPage.test.tsx:22:      getScheduleCpmLongestPath: (...a: unknown[]) => getScheduleCpmLongestPathMock(...a),
+frontend/src/pages/ScheduleCpmPage.test.tsx:23:      getScheduleProjects: (...a: unknown[]) => getScheduleProjectsMock(...a),
+frontend/src/pages/ScheduleCpmPage.test.tsx:24:      getScheduleVersions: (...a: unknown[]) => getScheduleVersionsMock(...a),
+frontend/src/pages/ScheduleCpmPage.test.tsx:34:  const router = createMemoryRouter([{ path: '/schedules/cpm', element: <ScheduleCpmPage /> }], {
+frontend/src/pages/ScheduleCpmPage.test.tsx:72:  getScheduleProjectsMock.mockResolvedValue({ projects: [] })
+frontend/src/pages/ScheduleCpmPage.test.tsx:73:  getScheduleVersionsMock.mockResolvedValue([])
+frontend/src/pages/ScheduleCpmPage.test.tsx:74:  getScheduleCpmActivitiesMock.mockResolvedValue({
+frontend/src/pages/ScheduleCpmPage.test.tsx:87:  getScheduleCpmLongestPathMock.mockResolvedValue({
+frontend/src/pages/ScheduleCpmPage.test.tsx:98:describe('ScheduleCpmPage', () => {
+frontend/src/pages/ScheduleCpmPage.test.tsx:100:    getScheduleCpmSummaryMock.mockResolvedValue({
+frontend/src/pages/ScheduleCpmPage.test.tsx:109:    getScheduleCpmSummaryMock.mockResolvedValue(fullSummary())
+frontend/src/pages/ScheduleCpmPage.test.tsx:118:    getScheduleCpmSummaryMock.mockResolvedValue(fullSummary())
+frontend/src/pages/ScheduleCpmPage.test.tsx:126:    getScheduleCpmSummaryMock.mockResolvedValue(fullSummary())
+frontend/src/pages/ScheduleCpmPage.test.tsx:133:    getScheduleCpmSummaryMock.mockResolvedValue(fullSummary())
+frontend/src/pages/ScheduleCpmPage.test.tsx:141:    getScheduleCpmSummaryMock.mockResolvedValue(
+frontend/src/pages/ScheduleCpmPage.test.tsx:149:    getScheduleCpmSummaryMock.mockRejectedValue(new Error('boom'))
+frontend/src/pages/ScheduleImportsPage.tsx:4:  ScheduleActionButton,
+frontend/src/pages/ScheduleImportsPage.tsx:5:  ScheduleActionLink,
+frontend/src/pages/ScheduleImportsPage.tsx:6:  ScheduleBackLink,
+frontend/src/pages/ScheduleImportsPage.tsx:7:  SchedulePageHeader,
+frontend/src/pages/ScheduleImportsPage.tsx:8:  ScheduleShell,
+frontend/src/pages/ScheduleImportsPage.tsx:9:  ScheduleSubnav,
+frontend/src/pages/ScheduleImportsPage.tsx:10:} from '../components/schedule/SchedulePageChrome'
+frontend/src/pages/ScheduleImportsPage.tsx:12:  ScheduleProjectContext,
+frontend/src/pages/ScheduleImportsPage.tsx:13:  ScheduleProjectPicker,
+frontend/src/pages/ScheduleImportsPage.tsx:14:  useScheduleProjects,
+frontend/src/pages/ScheduleImportsPage.tsx:15:} from '../components/schedule/ScheduleProjectPicker'
+frontend/src/pages/ScheduleImportsPage.tsx:16:import { api, ScheduleApiError, ScheduleNetworkError } from '../lib/api'
+frontend/src/pages/ScheduleImportsPage.tsx:62:  if (err instanceof ScheduleNetworkError) {
+frontend/src/pages/ScheduleImportsPage.tsx:65:  if (err instanceof ScheduleApiError) {
+frontend/src/pages/ScheduleImportsPage.tsx:70:        return 'Schedule schema is not current. Apply pending database migrations from Data Health admin controls.'
+frontend/src/pages/ScheduleImportsPage.tsx:72:        return 'Schedule import upload is unavailable. Reinstall analytics-ui dependencies (python-multipart) and restart the backend.'
+frontend/src/pages/ScheduleImportsPage.tsx:106:        return err.message || 'Schedule import request was invalid.'
+frontend/src/pages/ScheduleImportsPage.tsx:110:        return 'Schedule import could not be saved completely. No partial version was committed. Create a new preview and try again.'
+frontend/src/pages/ScheduleImportsPage.tsx:118:        return err.message || 'Schedule import failed.'
+frontend/src/pages/ScheduleImportsPage.tsx:121:  return 'Schedule import failed. Check the file format and try again.'
+frontend/src/pages/ScheduleImportsPage.tsx:124:export function ScheduleImportsPage() {
+frontend/src/pages/ScheduleImportsPage.tsx:135:  const { data: projectsData } = useScheduleProjects()
+frontend/src/pages/ScheduleImportsPage.tsx:176:      const resp = await api.uploadScheduleImportPreview(
+frontend/src/pages/ScheduleImportsPage.tsx:190:      if (err instanceof ScheduleApiError && err.code === 'duplicate_schedule_version') {
+frontend/src/pages/ScheduleImportsPage.tsx:199:        err instanceof ScheduleApiError &&
+frontend/src/pages/ScheduleImportsPage.tsx:222:      const resp = await api.commitScheduleImport(
+frontend/src/pages/ScheduleImportsPage.tsx:231:      if (err instanceof ScheduleApiError && err.code === 'duplicate_schedule_version') {
+frontend/src/pages/ScheduleImportsPage.tsx:272:    <ScheduleShell>
+frontend/src/pages/ScheduleImportsPage.tsx:273:      <ScheduleBackLink to="/schedules/versions" label="Schedule versions" />
+frontend/src/pages/ScheduleImportsPage.tsx:274:      <ScheduleSubnav />
+frontend/src/pages/ScheduleImportsPage.tsx:275:      <SchedulePageHeader
+frontend/src/pages/ScheduleImportsPage.tsx:276:        title="Schedule imports"
+frontend/src/pages/ScheduleImportsPage.tsx:278:        actions={<ScheduleActionLink to="/schedules/versions">View versions</ScheduleActionLink>}
+frontend/src/pages/ScheduleImportsPage.tsx:282:        <ScheduleProjectPicker
+frontend/src/pages/ScheduleImportsPage.tsx:289:          <ScheduleProjectContext
+frontend/src/pages/ScheduleImportsPage.tsx:340:            <ScheduleProjectContext
+frontend/src/pages/ScheduleImportsPage.tsx:349:              <ScheduleActionLink to={duplicate.view_path}>View existing activities</ScheduleActionLink>
+frontend/src/pages/ScheduleImportsPage.tsx:350:              <ScheduleActionButton
+frontend/src/pages/ScheduleImportsPage.tsx:359:              </ScheduleActionButton>
+frontend/src/pages/ScheduleImportsPage.tsx:366:            <ScheduleProjectContext
+frontend/src/pages/ScheduleImportsPage.tsx:479:            <ScheduleActionButton
+frontend/src/pages/ScheduleImportsPage.tsx:488:            </ScheduleActionButton>
+frontend/src/pages/ScheduleImportsPage.tsx:495:            <ScheduleProjectContext
+frontend/src/pages/ScheduleImportsPage.tsx:502:                <p className="font-medium text-sm">Schedule identity</p>
+frontend/src/pages/ScheduleImportsPage.tsx:521:            <ScheduleActionLink
+frontend/src/pages/ScheduleImportsPage.tsx:525:            </ScheduleActionLink>
+frontend/src/pages/ScheduleImportsPage.tsx:529:    </ScheduleShell>
+frontend/src/pages/SettingsPage.test.tsx:23:const getSchedulerStatus = vi.fn()
+frontend/src/pages/SettingsPage.test.tsx:93:  getSchedulerStatus: () => getSchedulerStatus(),
+frontend/src/pages/SettingsPage.test.tsx:175:    getSchedulerStatus.mockResolvedValue({
+frontend/src/pages/ScheduleCpmPage.tsx:6:  ScheduleBackLink,
+frontend/src/pages/ScheduleCpmPage.tsx:7:  SchedulePageHeader,
+frontend/src/pages/ScheduleCpmPage.tsx:8:  SchedulePanel,
+frontend/src/pages/ScheduleCpmPage.tsx:9:  ScheduleShell,
+frontend/src/pages/ScheduleCpmPage.tsx:10:  ScheduleSubnav,
+frontend/src/pages/ScheduleCpmPage.tsx:11:  ScheduleTable,
+frontend/src/pages/ScheduleCpmPage.tsx:12:  ScheduleTd,
+frontend/src/pages/ScheduleCpmPage.tsx:13:  ScheduleTh,
+frontend/src/pages/ScheduleCpmPage.tsx:14:} from '../components/schedule/SchedulePageChrome'
+frontend/src/pages/ScheduleCpmPage.tsx:16:  ScheduleProjectPicker,
+frontend/src/pages/ScheduleCpmPage.tsx:17:  useScheduleProjectParam,
+frontend/src/pages/ScheduleCpmPage.tsx:18:} from '../components/schedule/ScheduleProjectPicker'
+frontend/src/pages/ScheduleCpmPage.tsx:19:import { ScheduleVersionPicker } from '../components/schedule/ScheduleVersionPicker'
+frontend/src/pages/ScheduleCpmPage.tsx:23:  type ScheduleCpmActivity,
+frontend/src/pages/ScheduleCpmPage.tsx:24:  type ScheduleCpmDcmaEvidence,
+frontend/src/pages/ScheduleCpmPage.tsx:25:  type ScheduleCpmRunEntry,
+frontend/src/pages/ScheduleCpmPage.tsx:26:  type ScheduleCpmSummary,
+frontend/src/pages/ScheduleCpmPage.tsx:50:function RunChainCard({ summary }: { summary: ScheduleCpmSummary }) {
+frontend/src/pages/ScheduleCpmPage.tsx:52:    <SchedulePanel title="CPM run chain">
+frontend/src/pages/ScheduleCpmPage.tsx:54:        Application-computed CPM; source-export evidence is shown separately on Schedule Health.
+frontend/src/pages/ScheduleCpmPage.tsx:58:          const run: ScheduleCpmRunEntry | undefined = summary.runs?.[key]
+frontend/src/pages/ScheduleCpmPage.tsx:76:    </SchedulePanel>
+frontend/src/pages/ScheduleCpmPage.tsx:80:function DcmaEvidenceCard({ dcma }: { dcma: ScheduleCpmDcmaEvidence }) {
+frontend/src/pages/ScheduleCpmPage.tsx:87:    <SchedulePanel title="DCMA critical-path metric">
+frontend/src/pages/ScheduleCpmPage.tsx:111:    </SchedulePanel>
+frontend/src/pages/ScheduleCpmPage.tsx:118:    queryFn: () => api.getScheduleCpmLongestPath(versionKey),
+frontend/src/pages/ScheduleCpmPage.tsx:124:      <SchedulePanel title="Longest path">
+frontend/src/pages/ScheduleCpmPage.tsx:126:      </SchedulePanel>
+frontend/src/pages/ScheduleCpmPage.tsx:131:    <SchedulePanel title="Longest path">
+frontend/src/pages/ScheduleCpmPage.tsx:137:      <ScheduleTable
+frontend/src/pages/ScheduleCpmPage.tsx:140:            <ScheduleTh>Seq</ScheduleTh>
+frontend/src/pages/ScheduleCpmPage.tsx:141:            <ScheduleTh>Activity</ScheduleTh>
+frontend/src/pages/ScheduleCpmPage.tsx:142:            <ScheduleTh>Name</ScheduleTh>
+frontend/src/pages/ScheduleCpmPage.tsx:143:            <ScheduleTh>Early start</ScheduleTh>
+frontend/src/pages/ScheduleCpmPage.tsx:144:            <ScheduleTh>Early finish</ScheduleTh>
+frontend/src/pages/ScheduleCpmPage.tsx:145:            <ScheduleTh>Total float</ScheduleTh>
+frontend/src/pages/ScheduleCpmPage.tsx:146:            <ScheduleTh>Criticality</ScheduleTh>
+frontend/src/pages/ScheduleCpmPage.tsx:150:        {data.activities.map((a: ScheduleCpmActivity, i: number) => (
+frontend/src/pages/ScheduleCpmPage.tsx:152:            <ScheduleTd>{num(a.longest_path_sequence)}</ScheduleTd>
+frontend/src/pages/ScheduleCpmPage.tsx:153:            <ScheduleTd>{num(a.activity_id)}</ScheduleTd>
+frontend/src/pages/ScheduleCpmPage.tsx:154:            <ScheduleTd>{num(a.activity_name)}</ScheduleTd>
+frontend/src/pages/ScheduleCpmPage.tsx:155:            <ScheduleTd>{num(a.computed_early_start)}</ScheduleTd>
+frontend/src/pages/ScheduleCpmPage.tsx:156:            <ScheduleTd>{num(a.computed_early_finish)}</ScheduleTd>
+frontend/src/pages/ScheduleCpmPage.tsx:157:            <ScheduleTd>{num(a.computed_total_float)}</ScheduleTd>
+frontend/src/pages/ScheduleCpmPage.tsx:158:            <ScheduleTd>{num(a.computed_criticality_class)}</ScheduleTd>
+frontend/src/pages/ScheduleCpmPage.tsx:161:      </ScheduleTable>
+frontend/src/pages/ScheduleCpmPage.tsx:162:    </SchedulePanel>
+frontend/src/pages/ScheduleCpmPage.tsx:169:    queryFn: () => api.getScheduleCpmActivities(versionKey, { limit: 1000 }),
+frontend/src/pages/ScheduleCpmPage.tsx:175:      <SchedulePanel title="Computed activities">
+frontend/src/pages/ScheduleCpmPage.tsx:177:      </SchedulePanel>
+frontend/src/pages/ScheduleCpmPage.tsx:181:    <SchedulePanel title="Computed activities">
+frontend/src/pages/ScheduleCpmPage.tsx:185:      <ScheduleTable
+frontend/src/pages/ScheduleCpmPage.tsx:188:            <ScheduleTh>Activity</ScheduleTh>
+frontend/src/pages/ScheduleCpmPage.tsx:189:            <ScheduleTh>Name</ScheduleTh>
+frontend/src/pages/ScheduleCpmPage.tsx:190:            <ScheduleTh>ES</ScheduleTh>
+frontend/src/pages/ScheduleCpmPage.tsx:191:            <ScheduleTh>EF</ScheduleTh>
+frontend/src/pages/ScheduleCpmPage.tsx:192:            <ScheduleTh>LS</ScheduleTh>
+frontend/src/pages/ScheduleCpmPage.tsx:193:            <ScheduleTh>LF</ScheduleTh>
+frontend/src/pages/ScheduleCpmPage.tsx:194:            <ScheduleTh>Total float</ScheduleTh>
+frontend/src/pages/ScheduleCpmPage.tsx:195:            <ScheduleTh>Free float</ScheduleTh>
+frontend/src/pages/ScheduleCpmPage.tsx:196:            <ScheduleTh>Criticality</ScheduleTh>
+frontend/src/pages/ScheduleCpmPage.tsx:197:            <ScheduleTh>Longest path</ScheduleTh>
+frontend/src/pages/ScheduleCpmPage.tsx:201:        {data.activities.map((a: ScheduleCpmActivity, i: number) => (
+frontend/src/pages/ScheduleCpmPage.tsx:203:            <ScheduleTd>{num(a.activity_id)}</ScheduleTd>
+frontend/src/pages/ScheduleCpmPage.tsx:204:            <ScheduleTd>{num(a.activity_name)}</ScheduleTd>
+frontend/src/pages/ScheduleCpmPage.tsx:205:            <ScheduleTd>{num(a.computed_early_start)}</ScheduleTd>
+frontend/src/pages/ScheduleCpmPage.tsx:206:            <ScheduleTd>{num(a.computed_early_finish)}</ScheduleTd>
+frontend/src/pages/ScheduleCpmPage.tsx:207:            <ScheduleTd>{num(a.computed_late_start)}</ScheduleTd>
+frontend/src/pages/ScheduleCpmPage.tsx:208:            <ScheduleTd>{num(a.computed_late_finish)}</ScheduleTd>
+frontend/src/pages/ScheduleCpmPage.tsx:209:            <ScheduleTd>{num(a.computed_total_float)}</ScheduleTd>
+frontend/src/pages/ScheduleCpmPage.tsx:210:            <ScheduleTd>{num(a.computed_free_float)}</ScheduleTd>
+frontend/src/pages/ScheduleCpmPage.tsx:211:            <ScheduleTd>{num(a.computed_criticality_class)}</ScheduleTd>
+frontend/src/pages/ScheduleCpmPage.tsx:212:            <ScheduleTd>{a.longest_path_member_flag ? 'Yes' : '—'}</ScheduleTd>
+frontend/src/pages/ScheduleCpmPage.tsx:215:      </ScheduleTable>
+frontend/src/pages/ScheduleCpmPage.tsx:216:    </SchedulePanel>
+frontend/src/pages/ScheduleCpmPage.tsx:220:export function ScheduleCpmPage() {
+frontend/src/pages/ScheduleCpmPage.tsx:222:  const [projectKey, setProjectKey] = useScheduleProjectParam()
+frontend/src/pages/ScheduleCpmPage.tsx:227:    queryFn: () => api.getScheduleCpmSummary(versionKey),
+frontend/src/pages/ScheduleCpmPage.tsx:255:    <ScheduleShell>
+frontend/src/pages/ScheduleCpmPage.tsx:256:      <ScheduleBackLink />
+frontend/src/pages/ScheduleCpmPage.tsx:257:      <ScheduleSubnav />
+frontend/src/pages/ScheduleCpmPage.tsx:258:      <SchedulePageHeader
+frontend/src/pages/ScheduleCpmPage.tsx:264:        <ScheduleProjectPicker value={projectKey} onChange={onProjectChange} className="min-w-[16rem]" />
+frontend/src/pages/ScheduleCpmPage.tsx:265:        <ScheduleVersionPicker projectKey={projectKey} value={versionKey} onChange={onVersionChange} />
+frontend/src/pages/ScheduleCpmPage.tsx:277:          hint="Not measurable until CPM calculation chain is available. Source-export evidence remains on Schedule Health."
+frontend/src/pages/ScheduleCpmPage.tsx:288:            Source-export evidence is shown separately on the Schedule Health page and is not
+frontend/src/pages/ScheduleCpmPage.tsx:293:    </ScheduleShell>
+frontend/src/pages/ScheduleActivitiesRedirect.tsx:3:export function ScheduleActivitiesRedirect() {
+frontend/src/pages/ProjectDashboardPage.test.tsx:10:import { ProjectSchedulePage } from './ProjectSchedulePage'
+frontend/src/pages/ProjectDashboardPage.test.tsx:59:        <Route path="/projects/:projectKey/schedule" element={<ProjectSchedulePage />} />
+frontend/src/pages/ProjectDashboardPage.test.tsx:127:    expect(screen.getByRole('link', { name: 'Schedule' })).toHaveAttribute('href', '/projects/tropical/schedule')
+frontend/src/pages/ProjectDashboardPage.test.tsx:133:    expect(screen.getByText('Schedule status')).toBeInTheDocument()
+frontend/src/pages/ScheduleIdentityReviewPage.test.tsx:6:import { ScheduleIdentityReviewPage } from './ScheduleIdentityReviewPage'
+frontend/src/pages/ScheduleIdentityReviewPage.test.tsx:15:    getScheduleProjects: vi.fn().mockResolvedValue({
+frontend/src/pages/ScheduleIdentityReviewPage.test.tsx:18:    getScheduleIdentityReview: (...args: unknown[]) => reviewMock(...args),
+frontend/src/pages/ScheduleIdentityReviewPage.test.tsx:19:    reassignScheduleIdentity: (...args: unknown[]) => reassignMock(...args),
+frontend/src/pages/ScheduleIdentityReviewPage.test.tsx:20:    splitScheduleIdentity: vi.fn(),
+frontend/src/pages/ScheduleIdentityReviewPage.test.tsx:21:    mergeScheduleIdentities: vi.fn(),
+frontend/src/pages/ScheduleIdentityReviewPage.test.tsx:28:    [{ path: '/schedules/identity-review', element: <ScheduleIdentityReviewPage /> }],
+frontend/src/pages/ScheduleIdentityReviewPage.test.tsx:38:describe('ScheduleIdentityReviewPage', () => {
+frontend/src/pages/ForecastRunCenterPage.tsx:86:  schedule_data_date: 'Schedule data date',
+frontend/src/pages/ForecastRunCenterPage.tsx:87:  schedule_import_created_at: 'Schedule import date',
+frontend/src/pages/ForecastRunCenterPage.tsx:316:    (w) => DATE_DEFAULT_WARNING_TEXT[w] ?? 'Schedule date information is incomplete.',
+frontend/src/pages/ScheduleVersionDiffPage.test.tsx:6:import { ScheduleVersionDiffPage } from './ScheduleVersionDiffPage'
+frontend/src/pages/ScheduleVersionDiffPage.test.tsx:19:      getScheduleProjects: (...args: unknown[]) => projectsMock(...args),
+frontend/src/pages/ScheduleVersionDiffPage.test.tsx:20:      getScheduleVersions: (...args: unknown[]) => versionsMock(...args),
+frontend/src/pages/ScheduleVersionDiffPage.test.tsx:21:      getScheduleDiffDetails: (...args: unknown[]) => detailsMock(...args),
+frontend/src/pages/ScheduleVersionDiffPage.test.tsx:22:      getScheduleDiffImpact: (...args: unknown[]) => impactMock(...args),
+frontend/src/pages/ScheduleVersionDiffPage.test.tsx:30:    [{ path: '/schedules/version-diff', element: <ScheduleVersionDiffPage /> }],
+frontend/src/pages/ScheduleVersionDiffPage.test.tsx:40:describe('ScheduleVersionDiffPage', () => {
+frontend/src/pages/ScheduleCostWeightingPage.tsx:2:  ScheduleBackLink,
+frontend/src/pages/ScheduleCostWeightingPage.tsx:3:  SchedulePageHeader,
+frontend/src/pages/ScheduleCostWeightingPage.tsx:4:  ScheduleShell,
+frontend/src/pages/ScheduleCostWeightingPage.tsx:5:  ScheduleSubnav,
+frontend/src/pages/ScheduleCostWeightingPage.tsx:6:  ScheduleTable,
+frontend/src/pages/ScheduleCostWeightingPage.tsx:7:  ScheduleTd,
+frontend/src/pages/ScheduleCostWeightingPage.tsx:8:  ScheduleTh,
+frontend/src/pages/ScheduleCostWeightingPage.tsx:9:} from '../components/schedule/SchedulePageChrome'
+frontend/src/pages/ScheduleCostWeightingPage.tsx:11:  ScheduleProjectPicker,
+frontend/src/pages/ScheduleCostWeightingPage.tsx:12:  useScheduleProjectParam,
+frontend/src/pages/ScheduleCostWeightingPage.tsx:13:} from '../components/schedule/ScheduleProjectPicker'
+frontend/src/pages/ScheduleCostWeightingPage.tsx:18:export function ScheduleCostWeightingPage() {
+frontend/src/pages/ScheduleCostWeightingPage.tsx:19:  const [projectKey, setProjectKey] = useScheduleProjectParam()
+frontend/src/pages/ScheduleCostWeightingPage.tsx:22:    queryFn: () => api.getScheduleCostWeighting(projectKey),
+frontend/src/pages/ScheduleCostWeightingPage.tsx:30:    <ScheduleShell>
+frontend/src/pages/ScheduleCostWeightingPage.tsx:31:      <ScheduleBackLink />
+frontend/src/pages/ScheduleCostWeightingPage.tsx:32:      <ScheduleSubnav />
+frontend/src/pages/ScheduleCostWeightingPage.tsx:33:      <SchedulePageHeader
+frontend/src/pages/ScheduleCostWeightingPage.tsx:39:        <ScheduleProjectPicker value={projectKey} onChange={setProjectKey} />
+frontend/src/pages/ScheduleCostWeightingPage.tsx:56:        <ScheduleTable
+frontend/src/pages/ScheduleCostWeightingPage.tsx:59:              <ScheduleTh>Activity</ScheduleTh>
+frontend/src/pages/ScheduleCostWeightingPage.tsx:60:              <ScheduleTh>Cost code</ScheduleTh>
+frontend/src/pages/ScheduleCostWeightingPage.tsx:61:              <ScheduleTh>Weight</ScheduleTh>
+frontend/src/pages/ScheduleCostWeightingPage.tsx:62:              <ScheduleTh>Approved</ScheduleTh>
+frontend/src/pages/ScheduleCostWeightingPage.tsx:68:              <ScheduleTd>{String(r.activity_id ?? '')}</ScheduleTd>
+frontend/src/pages/ScheduleCostWeightingPage.tsx:69:              <ScheduleTd>{String(r.cost_code ?? r.candidate_cost_code ?? '')}</ScheduleTd>
+frontend/src/pages/ScheduleCostWeightingPage.tsx:70:              <ScheduleTd>{String(r.weight_value ?? r.allocation_percent ?? '')}</ScheduleTd>
+frontend/src/pages/ScheduleCostWeightingPage.tsx:71:              <ScheduleTd>{String(r.operator_approved ?? r.approved ?? '')}</ScheduleTd>
+frontend/src/pages/ScheduleCostWeightingPage.tsx:74:        </ScheduleTable>
+frontend/src/pages/ScheduleCostWeightingPage.tsx:76:    </ScheduleShell>
+frontend/src/pages/ScheduleImportsPage.test.tsx:6:import { ScheduleImportsPage } from './ScheduleImportsPage'
+frontend/src/pages/ScheduleImportsPage.test.tsx:7:import { ScheduleApiError, ScheduleNetworkError } from '../lib/api'
+frontend/src/pages/ScheduleImportsPage.test.tsx:19:      getScheduleProjects: () => projectsMock(),
+frontend/src/pages/ScheduleImportsPage.test.tsx:20:      uploadScheduleImportPreview: (...args: unknown[]) => uploadMock(...args),
+frontend/src/pages/ScheduleImportsPage.test.tsx:21:      commitScheduleImport: (...args: unknown[]) => commitMock(...args),
+frontend/src/pages/ScheduleImportsPage.test.tsx:37:    [{ path: '/schedules/imports', element: <ScheduleImportsPage /> }],
+frontend/src/pages/ScheduleImportsPage.test.tsx:47:describe('ScheduleImportsPage', () => {
+frontend/src/pages/ScheduleImportsPage.test.tsx:117:      new ScheduleApiError('unsupported_schedule_format', { code: 'unsupported_schedule_format' }, 400),
+frontend/src/pages/ScheduleImportsPage.test.tsx:177:      new ScheduleApiError(
+frontend/src/pages/ScheduleImportsPage.test.tsx:204:      new ScheduleApiError('schedule_schema_not_ready', { code: 'schedule_schema_not_ready' }, 503),
+frontend/src/pages/ScheduleImportsPage.test.tsx:217:    uploadMock.mockRejectedValue(new ScheduleNetworkError())
+frontend/src/pages/ScheduleImportsPage.test.tsx:290:    expect(await screen.findByText(/Schedule identity/i)).toBeInTheDocument()
+frontend/src/pages/ScheduleImportsPage.test.tsx:308:      new ScheduleApiError(
+frontend/src/pages/ScheduleImportsPage.test.tsx:335:        new ScheduleApiError(
+frontend/src/pages/ScheduleImportsPage.test.tsx:377:        new ScheduleApiError(
+frontend/src/pages/ScheduleImportsPage.test.tsx:442:      new ScheduleApiError(
+frontend/src/pages/ScheduleImportsPage.test.tsx:482:      new ScheduleApiError(
+frontend/src/pages/ScheduleImportsPage.test.tsx:589:      new ScheduleApiError(
+frontend/src/pages/ScheduleImportsPage.test.tsx:598:              project_name: 'June Schedule',
+frontend/src/pages/ScheduleImportsPage.test.tsx:606:              project_name: 'July Schedule',
+frontend/src/pages/ScheduleImportsPage.test.tsx:624:      expect(screen.getByText(/June Schedule/)).toBeInTheDocument()
+frontend/src/pages/ScheduleImportsPage.test.tsx:625:      expect(screen.getByText(/July Schedule/)).toBeInTheDocument()
+frontend/src/pages/ScheduleImportsPage.test.tsx:631:      new ScheduleApiError('schedule_zip_too_large', { code: 'schedule_zip_too_large' }, 400),
+frontend/src/pages/ScheduleIdentityReviewPage.tsx:6:  ScheduleActionButton,
+frontend/src/pages/ScheduleIdentityReviewPage.tsx:7:  ScheduleBackLink,
+frontend/src/pages/ScheduleIdentityReviewPage.tsx:8:  SchedulePageHeader,
+frontend/src/pages/ScheduleIdentityReviewPage.tsx:9:  ScheduleShell,
+frontend/src/pages/ScheduleIdentityReviewPage.tsx:10:  ScheduleSubnav,
+frontend/src/pages/ScheduleIdentityReviewPage.tsx:11:  ScheduleTable,
+frontend/src/pages/ScheduleIdentityReviewPage.tsx:12:  ScheduleTd,
+frontend/src/pages/ScheduleIdentityReviewPage.tsx:13:  ScheduleTh,
+frontend/src/pages/ScheduleIdentityReviewPage.tsx:14:} from '../components/schedule/SchedulePageChrome'
+frontend/src/pages/ScheduleIdentityReviewPage.tsx:16:  ScheduleProjectPicker,
+frontend/src/pages/ScheduleIdentityReviewPage.tsx:17:  useScheduleProjectParam,
+frontend/src/pages/ScheduleIdentityReviewPage.tsx:18:} from '../components/schedule/ScheduleProjectPicker'
+frontend/src/pages/ScheduleIdentityReviewPage.tsx:31:export function ScheduleIdentityReviewPage() {
+frontend/src/pages/ScheduleIdentityReviewPage.tsx:32:  const [projectKey, setProjectKey] = useScheduleProjectParam()
+frontend/src/pages/ScheduleIdentityReviewPage.tsx:38:    queryFn: () => api.getScheduleIdentityReview(projectKey),
+frontend/src/pages/ScheduleIdentityReviewPage.tsx:59:      api.reassignScheduleIdentity(projectKey, versionKey, targetIdentityKey, 'operator identity review'),
+frontend/src/pages/ScheduleIdentityReviewPage.tsx:64:      api.splitScheduleIdentity(projectKey, versionKey, undefined, 'operator identity split'),
+frontend/src/pages/ScheduleIdentityReviewPage.tsx:69:      api.mergeScheduleIdentities(projectKey, sourceIdentityKey, targetIdentityKey, 'operator identity merge'),
+frontend/src/pages/ScheduleIdentityReviewPage.tsx:74:    <ScheduleShell>
+frontend/src/pages/ScheduleIdentityReviewPage.tsx:75:      <ScheduleBackLink />
+frontend/src/pages/ScheduleIdentityReviewPage.tsx:76:      <ScheduleSubnav />
+frontend/src/pages/ScheduleIdentityReviewPage.tsx:77:      <SchedulePageHeader
+frontend/src/pages/ScheduleIdentityReviewPage.tsx:83:        <ScheduleProjectPicker value={projectKey} onChange={setProjectKey} className="min-w-[16rem]" />
+frontend/src/pages/ScheduleIdentityReviewPage.tsx:94:        <ScheduleTable
+frontend/src/pages/ScheduleIdentityReviewPage.tsx:97:              <ScheduleTh>Version</ScheduleTh>
+frontend/src/pages/ScheduleIdentityReviewPage.tsx:98:              <ScheduleTh>Evidence</ScheduleTh>
+frontend/src/pages/ScheduleIdentityReviewPage.tsx:99:              <ScheduleTh>Status</ScheduleTh>
+frontend/src/pages/ScheduleIdentityReviewPage.tsx:100:              <ScheduleTh>Assign / Merge</ScheduleTh>
+frontend/src/pages/ScheduleIdentityReviewPage.tsx:101:              <ScheduleTh />
+frontend/src/pages/ScheduleIdentityReviewPage.tsx:112:                <ScheduleTd>
+frontend/src/pages/ScheduleIdentityReviewPage.tsx:115:                </ScheduleTd>
+frontend/src/pages/ScheduleIdentityReviewPage.tsx:116:                <ScheduleTd>
+frontend/src/pages/ScheduleIdentityReviewPage.tsx:121:                </ScheduleTd>
+frontend/src/pages/ScheduleIdentityReviewPage.tsx:122:                <ScheduleTd>
+frontend/src/pages/ScheduleIdentityReviewPage.tsx:125:                </ScheduleTd>
+frontend/src/pages/ScheduleIdentityReviewPage.tsx:126:                <ScheduleTd>
+frontend/src/pages/ScheduleIdentityReviewPage.tsx:144:                </ScheduleTd>
+frontend/src/pages/ScheduleIdentityReviewPage.tsx:145:                <ScheduleTd>
+frontend/src/pages/ScheduleIdentityReviewPage.tsx:147:                    <ScheduleActionButton
+frontend/src/pages/ScheduleIdentityReviewPage.tsx:153:                    </ScheduleActionButton>
+frontend/src/pages/ScheduleIdentityReviewPage.tsx:154:                    <ScheduleActionButton
+frontend/src/pages/ScheduleIdentityReviewPage.tsx:160:                    </ScheduleActionButton>
+frontend/src/pages/ScheduleIdentityReviewPage.tsx:161:                    <ScheduleActionButton
+frontend/src/pages/ScheduleIdentityReviewPage.tsx:167:                    </ScheduleActionButton>
+frontend/src/pages/ScheduleIdentityReviewPage.tsx:169:                </ScheduleTd>
+frontend/src/pages/ScheduleIdentityReviewPage.tsx:173:        </ScheduleTable>
+frontend/src/pages/ScheduleIdentityReviewPage.tsx:175:    </ScheduleShell>

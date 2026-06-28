@@ -1,0 +1,17 @@
+{
+  "status": "partial",
+  "readiness": {
+    "identity_review_required": {
+      "required": true,
+      "reason": "schedule identity match requires review"
+    }
+  },
+  "actions": {
+    "preview": [
+      {
+        "code": "identity_review",
+        "title": "Resolve schedule series match"
+      }
+    ]
+  }
+}

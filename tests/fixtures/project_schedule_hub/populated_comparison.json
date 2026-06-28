@@ -1,0 +1,21 @@
+{
+  "status": "partial",
+  "current_schedule": {
+    "friendly_label": "TWNU19",
+    "data_date": "2026-07-01"
+  },
+  "previous_update": {
+    "available": true,
+    "friendly_label": "TWNU18",
+    "data_date": "2026-06-01",
+    "comparison_basis": "same_schedule_identity"
+  },
+  "change_impact": {
+    "available": true,
+    "direct_remaining_changes": {
+      "summary": {
+        "finish_moved_later_count": 2
+      }
+    }
+  }
+}

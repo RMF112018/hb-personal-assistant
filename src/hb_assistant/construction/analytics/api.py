@@ -1093,6 +1093,15 @@ def create_app(*, db_path: str | None = None) -> Any:
 
         return AnalyticsService(db_path=db_path).build_project_cost_time(project_key)
 
+    @app.get("/api/projects/{project_key}/schedule")
+    def project_schedule(project_key: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        from hb_assistant.construction.analytics.project_schedule_summary_service import (
+            ProjectScheduleSummaryService,
+        )
+
+        return ProjectScheduleSummaryService(db_path=_schedule_db_path()).build_summary(project_key)
+
     @app.get("/api/my-items")
     def my_items(role: dict[str, str] = role_dep) -> dict[str, Any]:
         del role
