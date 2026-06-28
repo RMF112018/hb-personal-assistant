@@ -35,6 +35,13 @@ _TOOL_SCOPES = {
     "vault_get_note_graph": "obsidian.read",
     "vault_create_note_from_template": "obsidian.write",
     "vault_append_to_daily_note": "obsidian.write",
+    "vault_move_note_plan": "obsidian.read",
+    "vault_move_note_apply": "obsidian.write",
+    "vault_rename_note_plan": "obsidian.read",
+    "vault_rename_note_apply": "obsidian.write",
+    "vault_archive_note_plan": "obsidian.read",
+    "vault_archive_note_apply": "obsidian.write",
+    "vault_delete_note_plan": "obsidian.read",
     "vault_curation_plan": "obsidian.read",
     "vault_curation_apply": "obsidian.write",
 }
@@ -625,6 +632,123 @@ def build_streamable_http_app(service: ObsidianMcpService | None = None) -> Any:
                 "template_path": template_path,
                 "operator_mode": _operator_mode(ctx),
                 "principal_kind": _principal_kind(ctx),
+            }
+        )
+
+    @mcp.tool()
+    def vault_move_note_plan(
+        ctx: Context, source_path: str, target_path: str, update_links: bool = True
+    ) -> dict[str, Any]:
+        """Plan a note move with a backlink-impact preview (read-only)."""
+        _enforce("vault_move_note_plan", ctx)
+        return svc.vault_move_note_plan(
+            {
+                "source_path": source_path,
+                "target_path": target_path,
+                "update_links": update_links,
+                "operator_mode": _operator_mode(ctx),
+            }
+        )
+
+    @mcp.tool()
+    def vault_move_note_apply(
+        ctx: Context,
+        plan_id: str,
+        update_links: bool = True,
+        max_updates: int = 25,
+        allow_overwrite: bool = False,
+    ) -> dict[str, Any]:
+        """Apply an approved move plan_id (backup, sha-gated link rewrite, receipts)."""
+        _enforce("vault_move_note_apply", ctx)
+        return svc.vault_move_note_apply(
+            {
+                "plan_id": plan_id,
+                "update_links": update_links,
+                "max_updates": max_updates,
+                "allow_overwrite": allow_overwrite,
+                "operator_mode": _operator_mode(ctx),
+                "principal_kind": _principal_kind(ctx),
+            }
+        )
+
+    @mcp.tool()
+    def vault_rename_note_plan(
+        ctx: Context, source_path: str, new_name: str, update_links: bool = True
+    ) -> dict[str, Any]:
+        """Plan a note rename with a backlink-impact preview (read-only)."""
+        _enforce("vault_rename_note_plan", ctx)
+        return svc.vault_rename_note_plan(
+            {
+                "source_path": source_path,
+                "new_name": new_name,
+                "update_links": update_links,
+                "operator_mode": _operator_mode(ctx),
+            }
+        )
+
+    @mcp.tool()
+    def vault_rename_note_apply(
+        ctx: Context,
+        plan_id: str,
+        update_links: bool = True,
+        max_updates: int = 25,
+        allow_overwrite: bool = False,
+    ) -> dict[str, Any]:
+        """Apply an approved rename plan_id (backup, sha-gated link rewrite, receipts)."""
+        _enforce("vault_rename_note_apply", ctx)
+        return svc.vault_rename_note_apply(
+            {
+                "plan_id": plan_id,
+                "update_links": update_links,
+                "max_updates": max_updates,
+                "allow_overwrite": allow_overwrite,
+                "operator_mode": _operator_mode(ctx),
+                "principal_kind": _principal_kind(ctx),
+            }
+        )
+
+    @mcp.tool()
+    def vault_archive_note_plan(ctx: Context, source_path: str, update_links: bool = True) -> dict[str, Any]:
+        """Plan moving a note to the archive folder with a backlink-impact preview (read-only)."""
+        _enforce("vault_archive_note_plan", ctx)
+        return svc.vault_archive_note_plan(
+            {
+                "source_path": source_path,
+                "update_links": update_links,
+                "operator_mode": _operator_mode(ctx),
+            }
+        )
+
+    @mcp.tool()
+    def vault_archive_note_apply(
+        ctx: Context,
+        plan_id: str,
+        update_links: bool = True,
+        max_updates: int = 25,
+        allow_overwrite: bool = False,
+    ) -> dict[str, Any]:
+        """Apply an approved archive plan_id (backup, sha-gated link rewrite, receipts)."""
+        _enforce("vault_archive_note_apply", ctx)
+        return svc.vault_archive_note_apply(
+            {
+                "plan_id": plan_id,
+                "update_links": update_links,
+                "max_updates": max_updates,
+                "allow_overwrite": allow_overwrite,
+                "operator_mode": _operator_mode(ctx),
+                "principal_kind": _principal_kind(ctx),
+            }
+        )
+
+    @mcp.tool()
+    def vault_delete_note_plan(ctx: Context, source_path: str, update_links: bool = True) -> dict[str, Any]:
+        """Refuses permanent deletion; returns an archive plan as the safe substitute."""
+        _enforce("vault_delete_note_plan", ctx)
+        return svc.vault_delete_note_plan(
+            {
+                "source_path": source_path,
+                "update_links": update_links,
+                "operator_mode": _operator_mode(ctx),
             }
         )
 
