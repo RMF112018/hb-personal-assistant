@@ -7,6 +7,7 @@ import { SourceConnectionsPanel } from '../components/settings/SourceConnections
 import { DailyBriefSettingsPanel } from '../components/settings/DailyBriefSettingsPanel'
 import { DataHealthPanel } from '../components/settings/DataHealthPanel'
 import { KeywordManagementPanel } from '../components/settings/KeywordManagementPanel'
+import { ObsidianMcpPanel } from '../components/settings/ObsidianMcpPanel'
 import { ProjectConnectionsPanel } from '../components/settings/ProjectConnectionsPanel'
 import { DashboardGrid } from '../components/layout/DashboardGrid'
 import { PrimaryPageLayout } from '../components/layout/PrimaryPageLayout'
@@ -41,6 +42,7 @@ export function SettingsPage() {
         <SourceConnectionsPanel />
         <ProjectConnectionsPanel />
         <DailyBriefSettingsPanel />
+        <ObsidianMcpPanel />
 
         <SectionCard title="Preferences" description="Choose how the app appears on this device.">
           <div className="flex flex-wrap gap-2">

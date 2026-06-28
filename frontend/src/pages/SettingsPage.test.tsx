@@ -24,6 +24,18 @@ const getSchedulerStatus = vi.fn()
 const refreshSourcesDryRun = vi.fn()
 const refreshSourcesLocal = vi.fn()
 const refreshSourcesLive = vi.fn()
+const getObsidianMcpConfig = vi.fn()
+const patchObsidianMcpConfig = vi.fn()
+const getObsidianMcpStatus = vi.fn()
+const runObsidianMcpHealthCheck = vi.fn()
+const getObsidianMcpTools = vi.fn()
+const enableObsidianMcp = vi.fn()
+const disableObsidianMcp = vi.fn()
+const restartObsidianMcp = vi.fn()
+const testObsidianMcpListDirectory = vi.fn()
+const testObsidianMcpSearch = vi.fn()
+const testObsidianMcpReadFile = vi.fn()
+const getObsidianMcpGrokConfig = vi.fn()
 
 vi.mock('../app/providers', () => ({
   useTheme: () => ({ theme: 'dark', setTheme: vi.fn() }),
@@ -78,6 +90,18 @@ vi.mock('../lib/api', () => ({
   refreshSourcesDryRun: () => refreshSourcesDryRun(),
   refreshSourcesLocal: () => refreshSourcesLocal(),
   refreshSourcesLive: (confirm: boolean) => refreshSourcesLive(confirm),
+  getObsidianMcpConfig: () => getObsidianMcpConfig(),
+  patchObsidianMcpConfig: (patch: unknown) => patchObsidianMcpConfig(patch),
+  getObsidianMcpStatus: () => getObsidianMcpStatus(),
+  runObsidianMcpHealthCheck: () => runObsidianMcpHealthCheck(),
+  getObsidianMcpTools: () => getObsidianMcpTools(),
+  enableObsidianMcp: () => enableObsidianMcp(),
+  disableObsidianMcp: () => disableObsidianMcp(),
+  restartObsidianMcp: () => restartObsidianMcp(),
+  testObsidianMcpListDirectory: (body: unknown) => testObsidianMcpListDirectory(body),
+  testObsidianMcpSearch: (body: unknown) => testObsidianMcpSearch(body),
+  testObsidianMcpReadFile: (body: unknown) => testObsidianMcpReadFile(body),
+  getObsidianMcpGrokConfig: () => getObsidianMcpGrokConfig(),
 }))
 
 function renderSettings() {
@@ -149,6 +173,77 @@ describe('SettingsPage guided setup', () => {
     refreshSourcesDryRun.mockResolvedValue({ status: 'ok', live_read_performed: false })
     refreshSourcesLocal.mockResolvedValue({ status: 'ok', live_read_performed: false })
     refreshSourcesLive.mockResolvedValue({ status: 'blocked', live_read_performed: false })
+    getObsidianMcpConfig.mockResolvedValue({
+      config: {
+        enabled: false,
+        mode: 'filesystem',
+        vault_root: '/Users/bobbyfetting/Documents/Obsidian Vault',
+        host: '127.0.0.1',
+        port: 3010,
+        token_configured: true,
+        max_file_mb: 100,
+        max_result_chars: 12000,
+        allowed_file_types: ['md', 'txt', 'pdf', 'docx'],
+        default_scope: 'Projects',
+        endpoint_url: 'http://127.0.0.1:3010/mcp',
+      },
+    })
+    patchObsidianMcpConfig.mockResolvedValue({
+      config: {
+        enabled: true,
+        mode: 'filesystem',
+        vault_root: '/Users/bobbyfetting/Documents/Obsidian Vault',
+        host: '127.0.0.1',
+        port: 3010,
+        token_configured: true,
+        max_file_mb: 100,
+        max_result_chars: 12000,
+        allowed_file_types: ['md', 'txt', 'pdf', 'docx'],
+        default_scope: 'Projects',
+        endpoint_url: 'http://127.0.0.1:3010/mcp',
+      },
+    })
+    getObsidianMcpStatus.mockResolvedValue({
+      enabled: false,
+      service_state: 'stopped',
+      mode: 'filesystem',
+      token_configured: true,
+      tools_registered: 3,
+      blocking_issues: [],
+      warnings: [],
+    })
+    runObsidianMcpHealthCheck.mockResolvedValue({
+      ok: true,
+      checked_at: '2026-06-28T10:00:00Z',
+      blocking_issues: [],
+      warnings: [],
+      checks: [{ name: 'tool_registry', status: 'pass', detail: 'three tools' }],
+    })
+    getObsidianMcpTools.mockResolvedValue({
+      tools: [
+        { name: 'list_directory', description: 'List files', input_schema_summary: 'path, recursive', enabled: true, last_validation_status: 'pass' },
+        { name: 'search_vault', description: 'Search files', input_schema_summary: 'query, path_scope', enabled: true, last_validation_status: 'pass' },
+        { name: 'read_file', description: 'Read files', input_schema_summary: 'path, max_chars', enabled: true, last_validation_status: 'pass' },
+      ],
+    })
+    enableObsidianMcp.mockResolvedValue({ config: { enabled: true }, status: { service_state: 'running' }, health: { blocking_issues: [], warnings: [] } })
+    disableObsidianMcp.mockResolvedValue({ config: { enabled: false }, status: { service_state: 'stopped' }, health: { blocking_issues: [], warnings: [] } })
+    restartObsidianMcp.mockResolvedValue({ config: { enabled: true }, status: { service_state: 'running' }, health: { blocking_issues: [], warnings: [] } })
+    testObsidianMcpListDirectory.mockResolvedValue({ ok: true, result: { files: [{ path: 'Projects/Scope.md' }] } })
+    testObsidianMcpSearch.mockResolvedValue({ ok: true, result: { results: [{ path: 'Projects/Scope.md', snippet: 'conduit' }] } })
+    testObsidianMcpReadFile.mockResolvedValue({ ok: true, result: { path: 'Projects/Scope.md', content: 'Scope text', metadata: { truncated: false } } })
+    getObsidianMcpGrokConfig.mockResolvedValue({
+      token_value_returned: false,
+      mcp_config: {
+        mcpServers: {
+          'hb-obsidian-hybrid': {
+            type: 'streamable-http',
+            url: 'http://127.0.0.1:3010/mcp',
+            headers: { Authorization: 'Bearer <configured-token>' },
+          },
+        },
+      },
+    })
   })
 
   it('renders guided settings sections in order', async () => {
@@ -162,6 +257,7 @@ describe('SettingsPage guided setup', () => {
       'Account Connections',
       'Project Connections',
       'Daily Brief',
+      'Obsidian MCP',
       'Preferences',
       'Project Keywords',
       'Data Health',
@@ -169,7 +265,8 @@ describe('SettingsPage guided setup', () => {
     ]))
     expect(headings.indexOf('Account Connections')).toBeLessThan(headings.indexOf('Project Connections'))
     expect(headings.indexOf('Project Connections')).toBeLessThan(headings.indexOf('Daily Brief'))
-    expect(headings.indexOf('Daily Brief')).toBeLessThan(headings.indexOf('Preferences'))
+    expect(headings.indexOf('Daily Brief')).toBeLessThan(headings.indexOf('Obsidian MCP'))
+    expect(headings.indexOf('Obsidian MCP')).toBeLessThan(headings.indexOf('Preferences'))
     expect(headings.indexOf('Preferences')).toBeLessThan(headings.indexOf('Project Keywords'))
     expect(headings.indexOf('Project Keywords')).toBeLessThan(headings.indexOf('Data Health'))
   })
@@ -191,6 +288,9 @@ describe('SettingsPage guided setup', () => {
       'raw JSON',
       'project_matching_only',
       'local dev role',
+      'hb-assistant obsidian-mcp',
+      'Terminal',
+      'secret-token',
     ]) {
       expect(text).not.toContain(forbidden)
     }
@@ -225,5 +325,40 @@ describe('SettingsPage guided setup', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Explain match' }))
     expect(await screen.findByText('Matches project naming.')).toBeInTheDocument()
     expect(document.body.textContent).not.toContain('[object Object]')
+  })
+
+  it('renders Obsidian MCP controls and tool registry without token values', async () => {
+    renderSettings()
+    await screen.findByText('Obsidian MCP')
+
+    expect(screen.getByRole('button', { name: /Run Health Check/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Enable MCP/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Restart MCP service/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Copy Grok MCP config/i })).toBeInTheDocument()
+    expect(await screen.findByText('list_directory')).toBeInTheDocument()
+    expect(screen.getByText('search_vault')).toBeInTheDocument()
+    expect(screen.getByText('read_file')).toBeInTheDocument()
+    expect(document.body.textContent).toContain('Bearer <configured-token>')
+    expect(document.body.textContent).not.toContain('secret-token')
+  })
+
+  it('runs Obsidian MCP health check and test actions from Settings', async () => {
+    renderSettings()
+    await screen.findByText('Obsidian MCP')
+
+    fireEvent.click(screen.getByRole('button', { name: /Run Health Check/i }))
+    await waitFor(() => expect(runObsidianMcpHealthCheck).toHaveBeenCalled())
+
+    fireEvent.change(screen.getByLabelText('Search query'), { target: { value: 'conduit' } })
+    fireEvent.click(screen.getByRole('button', { name: /Run test search/i }))
+    await waitFor(() => expect(testObsidianMcpSearch).toHaveBeenCalledWith(expect.objectContaining({ query: 'conduit' })))
+
+    fireEvent.change(screen.getByLabelText('Directory path'), { target: { value: 'Projects' } })
+    fireEvent.click(screen.getByRole('button', { name: /Run test directory listing/i }))
+    await waitFor(() => expect(testObsidianMcpListDirectory).toHaveBeenCalled())
+
+    fireEvent.change(screen.getByLabelText('File path'), { target: { value: 'Projects/Scope.md' } })
+    fireEvent.click(screen.getByRole('button', { name: /Run test file read/i }))
+    await waitFor(() => expect(testObsidianMcpReadFile).toHaveBeenCalled())
   })
 })

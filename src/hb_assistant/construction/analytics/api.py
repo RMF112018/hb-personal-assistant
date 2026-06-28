@@ -7,13 +7,15 @@ dependency factory so the base package remains FastAPI-free.
 from __future__ import annotations
 
 import json
-from contextlib import asynccontextmanager
+import logging
+from contextlib import AsyncExitStack, asynccontextmanager
 from enum import Enum
 from pathlib import Path
-import logging
-from typing import Annotated, Any
+from typing import Any
 
 from pydantic import BaseModel
+from hb_assistant.config.path_policy import PathPolicy  # Prompt 20 prefs + daily_brief config path
+from hb_assistant.store.migrator import LATEST_SCHEMA_VERSION, SQLiteMigrator
 
 try:
     from fastapi import File as FastAPIFile
@@ -29,9 +31,6 @@ except ImportError:  # pragma: no cover - analytics-ui optional
     StarletteUploadFile = Any  # type: ignore[misc,assignment]
 
 _logger = logging.getLogger(__name__)
-
-from hb_assistant.config.path_policy import PathPolicy  # Prompt 20 prefs + daily_brief config path
-from hb_assistant.store.migrator import LATEST_SCHEMA_VERSION, SQLiteMigrator
 
 ALLOWED_UI_ROLES = frozenset({"viewer", "operator", "admin"})
 
@@ -303,6 +302,43 @@ class DailyBriefValidateFolderRequest(BaseModel):
     folder: str | None = None
 
 
+class ObsidianMcpConfigPatchRequest(BaseModel):
+    enabled: bool | None = None
+    vault_root: str | None = None
+    host: str | None = None
+    port: int | None = None
+    bearer_token: str | None = None
+    rotate_token: bool | None = None
+    clear_token: bool | None = None
+    max_file_mb: int | None = None
+    max_result_chars: int | None = None
+    allowed_file_types: list[str] | None = None
+    default_scope: str | None = None
+
+
+class ObsidianMcpListDirectoryRequest(BaseModel):
+    path: str = ""
+    recursive: bool = False
+    extensions: list[str] | None = None
+    max_depth: int | None = None
+
+
+class ObsidianMcpSearchRequest(BaseModel):
+    query: str
+    path_scope: str | None = None
+    file_types: list[str] | None = None
+    limit: int | None = None
+    include_content_snippet: bool = True
+
+
+class ObsidianMcpReadFileRequest(BaseModel):
+    path: str
+    start_page: int | None = None
+    end_page: int | None = None
+    section: str | None = None
+    max_chars: int | None = None
+
+
 # Prompt 14B — Settings / Connection Management UX (role-aware, plain-language, no secrets/tokens)
 class SettingsPreferencesPatch(BaseModel):
     theme: str | None = None  # "dark" | "light" | "system"
@@ -544,14 +580,22 @@ async def _forecast_lifespan(app: Any) -> Any:
     except Exception:
         poll_task = None
 
-    yield
+    mcp_wrapper = getattr(app.state, "mcp_streamable_http_app", None)
+    mcp_app = getattr(mcp_wrapper, "app", mcp_wrapper)
+    mcp_lifespan = getattr(getattr(mcp_app, "router", None), "lifespan_context", None)
 
-    if poll_task is not None:
-        poll_task.cancel()
+    async with AsyncExitStack() as stack:
+        if callable(mcp_lifespan):
+            await stack.enter_async_context(mcp_lifespan(mcp_app))
         try:
-            await poll_task
-        except asyncio.CancelledError:
-            pass
+            yield
+        finally:
+            if poll_task is not None:
+                poll_task.cancel()
+                try:
+                    await poll_task
+                except asyncio.CancelledError:
+                    pass
 
 
 def create_app(*, db_path: str | None = None) -> Any:
@@ -579,6 +623,17 @@ def create_app(*, db_path: str | None = None) -> Any:
     app.state.db_path = db_path
     role_dep = Depends(require_role)
     optional_json_body = Body(default=None)  # bound to a var so call isn't in an arg default (B008)
+    app.state.mcp_streamable_http_app = None
+
+    mcp_streamable_http_app: Any | None = None
+    try:
+        from hb_assistant.obsidian_mcp.mcp_app import build_streamable_http_app
+
+        mcp_streamable_http_app = build_streamable_http_app()
+        app.state.mcp_streamable_http_app = mcp_streamable_http_app
+    except Exception:
+        # Optional SDK or adapter unavailable: the UI health check reports the precise blocker.
+        pass
 
     @app.get("/health")
     def health(role: dict[str, str] = role_dep) -> dict[str, Any]:
@@ -1250,6 +1305,111 @@ def create_app(*, db_path: str | None = None) -> Any:
         from hb_assistant.construction.analytics.daily_brief import DailyBriefService
 
         return DailyBriefService().get_status()
+
+    @app.get("/api/settings/obsidian-mcp/config")
+    def settings_obsidian_mcp_config(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        from hb_assistant.obsidian_mcp import ObsidianMcpService
+
+        return {
+            "surface": "settings.obsidian_mcp.config",
+            "config": ObsidianMcpService().get_config().redacted(),
+            "guardrails": ObsidianMcpService().guardrails(),
+        }
+
+    @app.patch("/api/settings/obsidian-mcp/config")
+    def settings_obsidian_mcp_update_config(
+        request: ObsidianMcpConfigPatchRequest,
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        require_operator_role(role)
+        from hb_assistant.obsidian_mcp import ObsidianMcpConfigPatch, ObsidianMcpService
+
+        return ObsidianMcpService().update_config(
+            ObsidianMcpConfigPatch.model_validate(request.model_dump(exclude_none=True))
+        )
+
+    @app.get("/api/settings/obsidian-mcp/status")
+    def settings_obsidian_mcp_status(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        from hb_assistant.obsidian_mcp import ObsidianMcpService
+
+        return ObsidianMcpService().status()
+
+    @app.post("/api/settings/obsidian-mcp/health-check")
+    def settings_obsidian_mcp_health_check(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        from hb_assistant.obsidian_mcp import ObsidianMcpService
+
+        return ObsidianMcpService().health_check()
+
+    @app.get("/api/settings/obsidian-mcp/tools")
+    def settings_obsidian_mcp_tools(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        from hb_assistant.obsidian_mcp import ObsidianMcpService
+
+        return ObsidianMcpService().tools()
+
+    @app.post("/api/settings/obsidian-mcp/enable")
+    def settings_obsidian_mcp_enable(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        require_operator_role(role)
+        from hb_assistant.obsidian_mcp import ObsidianMcpService
+
+        return ObsidianMcpService().lifecycle("enable")
+
+    @app.post("/api/settings/obsidian-mcp/disable")
+    def settings_obsidian_mcp_disable(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        require_operator_role(role)
+        from hb_assistant.obsidian_mcp import ObsidianMcpService
+
+        return ObsidianMcpService().lifecycle("disable")
+
+    @app.post("/api/settings/obsidian-mcp/restart")
+    def settings_obsidian_mcp_restart(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        require_operator_role(role)
+        from hb_assistant.obsidian_mcp import ObsidianMcpService
+
+        return ObsidianMcpService().lifecycle("restart")
+
+    @app.post("/api/settings/obsidian-mcp/test/list-directory")
+    def settings_obsidian_mcp_test_list_directory(
+        request: ObsidianMcpListDirectoryRequest,
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        require_operator_role(role)
+        from hb_assistant.obsidian_mcp.service import ObsidianMcpService, safe_tool_response
+
+        svc = ObsidianMcpService()
+        return safe_tool_response(svc.list_directory, request.model_dump(exclude_none=True))
+
+    @app.post("/api/settings/obsidian-mcp/test/search")
+    def settings_obsidian_mcp_test_search(
+        request: ObsidianMcpSearchRequest,
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        require_operator_role(role)
+        from hb_assistant.obsidian_mcp.service import ObsidianMcpService, safe_tool_response
+
+        svc = ObsidianMcpService()
+        return safe_tool_response(svc.search_vault, request.model_dump(exclude_none=True))
+
+    @app.post("/api/settings/obsidian-mcp/test/read-file")
+    def settings_obsidian_mcp_test_read_file(
+        request: ObsidianMcpReadFileRequest,
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        require_operator_role(role)
+        from hb_assistant.obsidian_mcp.service import ObsidianMcpService, safe_tool_response
+
+        svc = ObsidianMcpService()
+        return safe_tool_response(svc.read_file, request.model_dump(exclude_none=True))
+
+    @app.get("/api/settings/obsidian-mcp/grok-config")
+    def settings_obsidian_mcp_grok_config(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        from hb_assistant.obsidian_mcp import ObsidianMcpService
+
+        return ObsidianMcpService().grok_config()
 
     # Prompt 20: real local JSON preferences persistence (FPR-016), mirroring daily_brief pattern.
     def _prefs_config_path() -> Path:
@@ -3879,5 +4039,8 @@ def create_app(*, db_path: str | None = None) -> Any:
         del role
         items = _schedule_call(_schedule_cost_mapping_service().list_weighting, project_key)
         return {"project_key": project_key, "weighting_results": items}
+
+    if mcp_streamable_http_app is not None:
+        app.mount("/", mcp_streamable_http_app)
 
     return app

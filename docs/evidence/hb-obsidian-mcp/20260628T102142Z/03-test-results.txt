@@ -1,0 +1,36 @@
+.venv/bin/pytest tests/test_obsidian_mcp_backend.py -q
+8 passed
+
+.venv/bin/pytest tests/test_fastapi_analytics_app_shell.py -q
+7 passed
+
+Runtime /mcp initialize and tools/list smoke
+passed
+- official SDK app mounted and /mcp endpoint responds
+- initialize_status: 200
+- initialized_status: 202
+- tools_list_status: 200
+- health_ok: true
+- blocking_issue_codes: []
+- mcp_sdk: pass
+- streamable_http_app: pass
+- service_state: running
+- registered tools: list_directory, search_vault, read_file
+- token_value_leaked: false
+
+npm run test -- SettingsPage
+2 test files passed
+11 tests passed
+
+npm run typecheck
+passed
+
+npx eslint src/components/settings/ObsidianMcpPanel.tsx src/pages/SettingsPage.tsx src/pages/SettingsPage.test.tsx src/lib/api.ts
+passed
+
+.venv/bin/ruff check src/hb_assistant/obsidian_mcp tests/test_obsidian_mcp_backend.py tests/test_fastapi_analytics_app_shell.py
+passed
+
+Known unrelated validation debt:
+- full frontend lint reports existing schedule component issues outside this change
+- full API ruff reports existing route-file debt outside the new obsidian_mcp package

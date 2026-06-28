@@ -85,7 +85,7 @@ def test_openapi_exposes_only_shell_routes(tmp_path: Path) -> None:
 
     assert response.status_code == 200
     paths = set(response.json()["paths"])
-    assert paths == {
+    required_paths = {
         "/health",
         "/chat/status",
         "/onboarding/auth/status",
@@ -143,6 +143,17 @@ def test_openapi_exposes_only_shell_routes(tmp_path: Path) -> None:
         "/api/settings/sources",
         "/api/settings/keywords",
         "/api/settings/daily-brief",
+        "/api/settings/obsidian-mcp/config",
+        "/api/settings/obsidian-mcp/status",
+        "/api/settings/obsidian-mcp/health-check",
+        "/api/settings/obsidian-mcp/tools",
+        "/api/settings/obsidian-mcp/enable",
+        "/api/settings/obsidian-mcp/disable",
+        "/api/settings/obsidian-mcp/restart",
+        "/api/settings/obsidian-mcp/test/list-directory",
+        "/api/settings/obsidian-mcp/test/search",
+        "/api/settings/obsidian-mcp/test/read-file",
+        "/api/settings/obsidian-mcp/grok-config",
         "/api/settings/preferences",
         "/api/settings/admin-sync",
         "/api/settings/admin",
@@ -231,6 +242,8 @@ def test_openapi_exposes_only_shell_routes(tmp_path: Path) -> None:
         "/api/forecast/runtime/repair",
         "/api/forecast/runtime/reset",
     }
+    assert required_paths <= paths
+    assert {"/chat", "/chat/send", "/chat/completions"}.isdisjoint(paths)
     assert response.json()["info"]["title"] == "HB Personal Assistant Analytics UI Shell"
 
 

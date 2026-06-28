@@ -64,7 +64,7 @@ second-brain = [
 # resources / prompts to a local client (e.g. Claude Desktop); without it, serving stays
 # fail-closed.
 mcp = [
-  "mcp>=1.0",
+  "mcp>=1.0,<2",
 ]
 # Phase 09 retrieval — opt-in LlamaIndex semantic-retrieval layer. Lazy-imported inside the
 # Phase 09 retrieval code paths only; the base install, migrations, full test suite, the

@@ -331,6 +331,43 @@ export function patchSettingsAdmin(patch: any) {
   return fetchJson('/api/settings/admin', { method: 'PATCH', body: JSON.stringify(patch) });
 }
 
+export function getObsidianMcpConfig() {
+  return fetchJson('/api/settings/obsidian-mcp/config');
+}
+export function patchObsidianMcpConfig(patch: any) {
+  return fetchJson('/api/settings/obsidian-mcp/config', { method: 'PATCH', body: JSON.stringify(patch) });
+}
+export function getObsidianMcpStatus() {
+  return fetchJson('/api/settings/obsidian-mcp/status');
+}
+export function runObsidianMcpHealthCheck() {
+  return fetchJson('/api/settings/obsidian-mcp/health-check', { method: 'POST' });
+}
+export function getObsidianMcpTools() {
+  return fetchJson('/api/settings/obsidian-mcp/tools');
+}
+export function enableObsidianMcp() {
+  return fetchJson('/api/settings/obsidian-mcp/enable', { method: 'POST' });
+}
+export function disableObsidianMcp() {
+  return fetchJson('/api/settings/obsidian-mcp/disable', { method: 'POST' });
+}
+export function restartObsidianMcp() {
+  return fetchJson('/api/settings/obsidian-mcp/restart', { method: 'POST' });
+}
+export function testObsidianMcpListDirectory(body: any) {
+  return fetchJson('/api/settings/obsidian-mcp/test/list-directory', { method: 'POST', body: JSON.stringify(body || {}) });
+}
+export function testObsidianMcpSearch(body: any) {
+  return fetchJson('/api/settings/obsidian-mcp/test/search', { method: 'POST', body: JSON.stringify(body || {}) });
+}
+export function testObsidianMcpReadFile(body: any) {
+  return fetchJson('/api/settings/obsidian-mcp/test/read-file', { method: 'POST', body: JSON.stringify(body || {}) });
+}
+export function getObsidianMcpGrokConfig() {
+  return fetchJson('/api/settings/obsidian-mcp/grok-config');
+}
+
 /* Onboarding readiness (Prompt D) — drives first-time routing and returning-user reauth state.
  * Uses only normalized /api paths. Never triggers sync.
  */
@@ -2145,6 +2182,18 @@ export const api = {
   getSettingsAdminSync,
   patchSettingsPreferences,
   patchSettingsAdmin,
+  getObsidianMcpConfig,
+  patchObsidianMcpConfig,
+  getObsidianMcpStatus,
+  runObsidianMcpHealthCheck,
+  getObsidianMcpTools,
+  enableObsidianMcp,
+  disableObsidianMcp,
+  restartObsidianMcp,
+  testObsidianMcpListDirectory,
+  testObsidianMcpSearch,
+  testObsidianMcpReadFile,
+  getObsidianMcpGrokConfig,
   // Prompt D — onboarding + normalized auth flows (safe surfaces only)
   getOnboardingReadiness,
   startGraphDeviceAuth,
