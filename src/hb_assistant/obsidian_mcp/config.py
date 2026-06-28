@@ -47,6 +47,7 @@ class ObsidianMcpConfig(BaseModel):
     summarization_backend: Literal["auto", "deterministic", "llm"] = "auto"
     summarization_provider: Literal["ollama", "anthropic"] = "ollama"
     summarization_model: str = "llama3.1"
+    daily_notes_folder: str = "Daily Notes"
     schema_version: int = 1
 
     model_config = {"extra": "forbid"}
@@ -166,6 +167,7 @@ class ObsidianMcpConfigPatch(BaseModel):
     summarization_backend: Literal["auto", "deterministic", "llm"] | None = None
     summarization_provider: Literal["ollama", "anthropic"] | None = None
     summarization_model: str | None = None
+    daily_notes_folder: str | None = None
 
     model_config = {"extra": "forbid"}
 

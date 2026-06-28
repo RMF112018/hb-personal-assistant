@@ -202,6 +202,8 @@ def test_streamable_http_mount_lists_phase1_tools(tmp_path: Path, monkeypatch: p
             "vault_get_backlinks",
             "vault_get_unlinked_mentions",
             "vault_get_note_graph",
+            "vault_create_note_from_template",
+            "vault_append_to_daily_note",
             "vault_curation_plan",
             "vault_curation_apply",
         ]

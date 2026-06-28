@@ -33,6 +33,8 @@ _TOOL_SCOPES = {
     "vault_get_backlinks": "obsidian.read",
     "vault_get_unlinked_mentions": "obsidian.read",
     "vault_get_note_graph": "obsidian.read",
+    "vault_create_note_from_template": "obsidian.write",
+    "vault_append_to_daily_note": "obsidian.write",
     "vault_curation_plan": "obsidian.read",
     "vault_curation_apply": "obsidian.write",
 }
@@ -575,6 +577,54 @@ def build_streamable_http_app(service: ObsidianMcpService | None = None) -> Any:
                 "depth": depth,
                 "max_nodes": max_nodes,
                 "operator_mode": _operator_mode(ctx),
+            }
+        )
+
+    @mcp.tool()
+    def vault_create_note_from_template(
+        ctx: Context,
+        template_path: str,
+        target_path: str,
+        variables: dict[str, Any] | None = None,
+        frontmatter: dict[str, Any] | None = None,
+        overwrite: bool = False,
+        create_parent_dirs: bool = True,
+    ) -> dict[str, Any]:
+        """Create a note from a vault template with variable substitution and frontmatter."""
+        _enforce("vault_create_note_from_template", ctx)
+        return svc.vault_create_note_from_template(
+            {
+                "template_path": template_path,
+                "target_path": target_path,
+                "variables": variables,
+                "frontmatter": frontmatter,
+                "overwrite": overwrite,
+                "create_parent_dirs": create_parent_dirs,
+                "operator_mode": _operator_mode(ctx),
+                "principal_kind": _principal_kind(ctx),
+            }
+        )
+
+    @mcp.tool()
+    def vault_append_to_daily_note(
+        ctx: Context,
+        content: str,
+        date: str = "today",
+        section: str | None = None,
+        create_if_missing: bool = True,
+        template_path: str | None = None,
+    ) -> dict[str, Any]:
+        """Append structured content to a daily note (section-aware, create-if-missing)."""
+        _enforce("vault_append_to_daily_note", ctx)
+        return svc.vault_append_to_daily_note(
+            {
+                "content": content,
+                "date": date,
+                "section": section,
+                "create_if_missing": create_if_missing,
+                "template_path": template_path,
+                "operator_mode": _operator_mode(ctx),
+                "principal_kind": _principal_kind(ctx),
             }
         )
 
