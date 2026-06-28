@@ -14,7 +14,7 @@ from .connection import get_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 86
+LATEST_SCHEMA_VERSION = 87
 
 
 class StaffingMigrationError(RuntimeError):
@@ -7027,6 +7027,31 @@ class SQLiteMigrator:
                 if column not in existing:
                     conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {decl}")
 
+    # v87 CPM longest path foundation: TWO new path tables + run-summary columns.
+    @staticmethod
+    def _v87_statements() -> list[str]:
+        from hb_assistant.store.schedule_cpm_tables import V87_STATEMENTS
+
+        return V87_STATEMENTS
+
+    @staticmethod
+    def _reconcile_v87_schedule_cpm_path_run_columns(conn: sqlite3.Connection) -> None:
+        """Additively add longest-path summary columns to schedule_cpm_runs.
+
+        Column-existence-guarded so it is safe to re-run / self-heal.
+        """
+        from hb_assistant.store.schedule_cpm_tables import V87_RUNS_COLUMNS
+
+        try:
+            existing = {row[1] for row in conn.execute("PRAGMA table_info(schedule_cpm_runs)")}
+        except sqlite3.OperationalError:
+            return
+        if not existing:
+            return
+        for column, decl in V87_RUNS_COLUMNS.items():
+            if column not in existing:
+                conn.execute(f"ALTER TABLE schedule_cpm_runs ADD COLUMN {column} {decl}")
+
     # v44 Phase 10 Graph drive-item modified-by raw operational metadata.
     # Additive ADD COLUMN only on construction_drive_items; raw identity JSON is
     # local SQLite operational metadata and must not be emitted in committed evidence.
@@ -8384,6 +8409,20 @@ class SQLiteMigrator:
             if cur.fetchone() is None:
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (86, 'v86_schedule_cpm_float_foundation', ?)",
+                    (now,),
+                )
+
+            # v87 CPM longest path foundation: two additive path tables + longest-path
+            # summary columns on schedule_cpm_runs (table_count +2). Longest path only — a
+            # path BASIS, not a critical-path declaration; nothing marked critical; no
+            # source-field writes.
+            for stmt in self._v87_statements():
+                conn.execute(stmt)
+            self._reconcile_v87_schedule_cpm_path_run_columns(conn)
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 87")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (87, 'v87_schedule_cpm_longest_path_foundation', ?)",
                     (now,),
                 )
 

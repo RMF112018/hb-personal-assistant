@@ -114,6 +114,9 @@ class ScheduleCpmDiagnosticsRepository:
                        schedule_finish_anchor, schedule_finish_anchor_source,
                        computed_activity_count, blocked_activity_count,
                        source_run_id, total_float_computed_count, free_float_computed_count,
+                       path_count, longest_path_activity_count,
+                       longest_path_relationship_count, longest_path_duration,
+                       longest_path_end_activity_id,
                        created_at
                 FROM schedule_cpm_runs
                 WHERE schedule_version_key=?
@@ -134,6 +137,9 @@ class ScheduleCpmDiagnosticsRepository:
                        schedule_finish_anchor, schedule_finish_anchor_source,
                        computed_activity_count, blocked_activity_count,
                        source_run_id, total_float_computed_count, free_float_computed_count,
+                       path_count, longest_path_activity_count,
+                       longest_path_relationship_count, longest_path_duration,
+                       longest_path_end_activity_id,
                        created_at
                 FROM schedule_cpm_runs
                 WHERE cpm_run_id=?
@@ -301,6 +307,9 @@ class ScheduleCpmDiagnosticsRepository:
                        schedule_finish_anchor, schedule_finish_anchor_source,
                        computed_activity_count, blocked_activity_count,
                        source_run_id, total_float_computed_count, free_float_computed_count,
+                       path_count, longest_path_activity_count,
+                       longest_path_relationship_count, longest_path_duration,
+                       longest_path_end_activity_id,
                        created_at
                 FROM schedule_cpm_runs
                 WHERE schedule_version_key=? AND calculation_type=?
@@ -319,6 +328,10 @@ class ScheduleCpmDiagnosticsRepository:
     def get_backward_pass_run(self, schedule_version_key: str) -> dict[str, Any] | None:
         """Most-recent backward-pass run for the version (the float pass depends on it)."""
         return self._get_latest_run(schedule_version_key, "backward_pass")
+
+    def get_float_run(self, schedule_version_key: str) -> dict[str, Any] | None:
+        """Most-recent float run for the version (the longest path depends on it)."""
+        return self._get_latest_run(schedule_version_key, "float")
 
     def replace_float_run(
         self,
@@ -357,6 +370,89 @@ class ScheduleCpmDiagnosticsRepository:
                 if relationships:
                     self.insert_relationship_results(relationships, conn=active)
         return run_id
+
+    # ----------------------------------------------------------------- V87 longest path
+
+    def insert_paths(self, rows: Iterable[dict[str, Any]], *, conn: Any | None = None) -> int:
+        return self._insert_rows("schedule_cpm_paths", rows, conn=conn)
+
+    def insert_path_activities(
+        self, rows: Iterable[dict[str, Any]], *, conn: Any | None = None
+    ) -> int:
+        return self._insert_rows("schedule_cpm_path_activities", rows, conn=conn)
+
+    def replace_longest_path_run(
+        self,
+        run_row: dict[str, Any],
+        diagnostic_rows: Iterable[dict[str, Any]],
+        path_rows: Iterable[dict[str, Any]],
+        path_activity_rows: Iterable[dict[str, Any]],
+    ) -> str:
+        """Persist a longest-path run + its diagnostics/path/path-activity rows.
+
+        Single transaction; prior rows for the same cpm_run_id are cleared first so a rerun
+        replaces rather than accumulates (idempotent). Prior CPM runs are a different
+        cpm_run_id and are never touched.
+        """
+        run_id = str(run_row["cpm_run_id"])
+        diagnostics = list(diagnostic_rows)
+        paths = list(path_rows)
+        path_activities = list(path_activity_rows)
+        with open_connection(self._db_path) as active:
+            with transaction(active):
+                active.execute(
+                    "DELETE FROM schedule_cpm_path_activities WHERE cpm_run_id=?", (run_id,)
+                )
+                active.execute(
+                    "DELETE FROM schedule_cpm_paths WHERE cpm_run_id=?", (run_id,)
+                )
+                active.execute(
+                    "DELETE FROM schedule_cpm_diagnostics WHERE cpm_run_id=?", (run_id,)
+                )
+                self.insert_run(run_row, conn=active)
+                if diagnostics:
+                    self.insert_diagnostics(diagnostics, conn=active)
+                if paths:
+                    self.insert_paths(paths, conn=active)
+                if path_activities:
+                    self.insert_path_activities(path_activities, conn=active)
+        return run_id
+
+    def list_paths(self, cpm_run_id: str) -> list[dict[str, Any]]:
+        with self._conn() as conn:
+            cur = conn.execute(
+                """
+                SELECT path_id, cpm_run_id, schedule_version_key, project_key, path_type,
+                       path_rank, start_activity_id, end_activity_id, activity_count,
+                       relationship_count, path_duration, path_start_offset_days,
+                       path_finish_offset_days, path_total_float, path_basis, path_status,
+                       path_notes_json, created_at
+                FROM schedule_cpm_paths
+                WHERE cpm_run_id=?
+                ORDER BY path_rank, path_id
+                """,
+                (cpm_run_id,),
+            )
+            return [dict(r) for r in cur.fetchall()]
+
+    def list_path_activities(self, path_id: str) -> list[dict[str, Any]]:
+        with self._conn() as conn:
+            cur = conn.execute(
+                """
+                SELECT path_id, cpm_run_id, schedule_version_key, project_key, path_type,
+                       path_rank, path_sequence, activity_id, activity_name,
+                       relationship_from_previous_id, relationship_from_previous_ref,
+                       computed_early_start, computed_early_finish, computed_late_start,
+                       computed_late_finish, early_start_offset_days, early_finish_offset_days,
+                       computed_total_float, computed_free_float, duration_value,
+                       topological_index, selection_basis, selection_notes_json, created_at
+                FROM schedule_cpm_path_activities
+                WHERE path_id=?
+                ORDER BY path_sequence
+                """,
+                (path_id,),
+            )
+            return [dict(r) for r in cur.fetchall()]
 
     def replace_backward_pass_run(
         self,

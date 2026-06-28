@@ -18,7 +18,7 @@
     "phase_owner",
     "blocking_for_phase"
   ],
-  "table_count": 475,
+  "table_count": 477,
   "tables": {
     "construction_data_quality_runs": {
       "table_family": "data_quality_v20v21",
@@ -4267,6 +4267,24 @@
       "blocking_for_phase": "none",
       "v": "V84",
       "notes": "Per-run per-relationship forward-pass detail: normalized lag, predecessor offsets, candidate successor early start, and relationship_calc_status. Evidence of how each relationship constrained the successor; no critical-path designation."
+    },
+    "schedule_cpm_paths": {
+      "table_family": "schedule_cpm_v87",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "schedule_cpm_longest_path_foundation",
+      "blocking_for_phase": "none",
+      "v": "V87",
+      "notes": "One row per persisted CPM path (longest path for this phase): start/end activity, counts, span/offsets, path_total_float (nullable, NOT a criticality signal), basis and status. A longest-path basis, not a critical-path declaration."
+    },
+    "schedule_cpm_path_activities": {
+      "table_family": "schedule_cpm_v87",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "schedule_cpm_longest_path_foundation",
+      "blocking_for_phase": "none",
+      "v": "V87",
+      "notes": "Ordered activity membership of a persisted CPM path: path_sequence, controlling relationship from previous, computed early/late offsets, total/free float, duration, selection basis. No activity is marked critical."
     },
     "schedule_identities": {
       "table_family": "schedule_identity_v77",

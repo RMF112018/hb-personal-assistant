@@ -1,0 +1,22 @@
+[
+  {
+    "path_id": "cpmrun_58daff27ccd8d4a6a43c8644b857bd72_p01",
+    "cpm_run_id": "cpmrun_58daff27ccd8d4a6a43c8644b857bd72",
+    "schedule_version_key": "tropical|1|2026-06-01 08:00",
+    "project_key": "tropical",
+    "path_type": "longest_path",
+    "path_rank": 1,
+    "start_activity_id": "A1000",
+    "end_activity_id": "A1010",
+    "activity_count": 2,
+    "relationship_count": 1,
+    "path_duration": 15.0,
+    "path_start_offset_days": 0.0,
+    "path_finish_offset_days": 15.0,
+    "path_total_float": -98.0,
+    "path_basis": "max_forward_early_finish_backtrace",
+    "path_status": "computed",
+    "path_notes_json": null,
+    "created_at": "2026-06-28 07:25:28"
+  }
+]
