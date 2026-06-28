@@ -396,6 +396,13 @@ _TOOL_REGISTRY: list[tuple[str, str, str, str]] = [
     ("vault_get_note_graph", "Metadata/Graph", "Return local graph data (nodes, edges, orphans, high-degree notes) around a note or folder.", "root_path, target_path, depth, max_nodes"),
     ("vault_create_note_from_template", "Template/Daily", "Create a note from a vault template with variable substitution and frontmatter (no code execution).", "template_path, target_path, variables, frontmatter, overwrite, create_parent_dirs"),
     ("vault_append_to_daily_note", "Template/Daily", "Append structured content to a daily note (section-aware, create-if-missing, backup + receipt).", "date, section, content, create_if_missing, template_path"),
+    ("vault_move_note_plan", "File Operations", "Plan a note move with a backlink-impact preview (read-only).", "source_path, target_path, update_links"),
+    ("vault_move_note_apply", "File Operations", "Apply an approved move plan_id (backup, sha-gated link rewrite, receipts, max_updates).", "plan_id, update_links, max_updates, allow_overwrite"),
+    ("vault_rename_note_plan", "File Operations", "Plan a note rename with a backlink-impact preview (read-only).", "source_path, new_name, update_links"),
+    ("vault_rename_note_apply", "File Operations", "Apply an approved rename plan_id (backup, sha-gated link rewrite, receipts).", "plan_id, update_links, max_updates, allow_overwrite"),
+    ("vault_archive_note_plan", "File Operations", "Plan moving a note to the archive folder with a backlink-impact preview (read-only).", "source_path, update_links"),
+    ("vault_archive_note_apply", "File Operations", "Apply an approved archive plan_id (backup, sha-gated link rewrite, receipts).", "plan_id, update_links, max_updates, allow_overwrite"),
+    ("vault_delete_note_plan", "File Operations", "Refuses permanent deletion; returns an archive plan as the safe substitute.", "source_path, update_links"),
     ("vault_curation_plan", "Curation", "Read-only second-brain analysis that returns a durable plan_id plus proposed curation actions.", "root_path, strategy, max_depth, max_files, allowed_actions, dry_run"),
     ("vault_curation_apply", "Curation", "Apply approved actions from a server-generated curation plan_id with backups, receipts, and a max_updates cap.", "plan_id, approved_actions, require_expected_sha256, backup_before_replace, max_updates"),
 ]
