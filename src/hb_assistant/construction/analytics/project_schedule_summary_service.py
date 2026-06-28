@@ -640,6 +640,96 @@ class ProjectScheduleSummaryService:
             "started_items": [_activity_item(dict(a)) for a in started_rows],
         }
 
+    def _direct_remaining_comparison(
+        self,
+        current_key: str,
+        previous_key: str,
+    ) -> dict[str, Any]:
+        with open_connection(self._db_path) as conn:
+            current_rows = [
+                dict(row)
+                for row in conn.execute(
+                    f"""
+                    SELECT {_ACTIVITY_COLUMNS}
+                    FROM procore_ep_schedule_activities
+                    WHERE schedule_version_key=?
+                      AND (actual_finish IS NULL OR TRIM(actual_finish)='')
+                    """,
+                    (current_key,),
+                ).fetchall()
+            ]
+        previous_by_id = self._activity_rows_by_ids(
+            previous_key,
+            {str(row.get("activity_id")) for row in current_rows if row.get("activity_id")},
+        )
+
+        new_remaining = 0
+        finish_later = 0
+        finish_earlier = 0
+        finish_changed = 0
+        start_later = 0
+        worsened_float = 0
+        improved_float = 0
+        moved_milestones = 0
+        finish_changed_items: list[dict[str, Any]] = []
+
+        for current in current_rows:
+            aid = str(current.get("activity_id") or "")
+            if not aid:
+                continue
+            previous = previous_by_id.get(aid)
+            if previous is None:
+                new_remaining += 1
+                continue
+
+            movement = _comparison_activity_movement(current, previous)
+            finish_delta = movement.get("finish_delta_days")
+            start_delta = movement.get("start_delta_days")
+            float_delta = movement.get("float_delta_days")
+
+            if finish_delta is not None and finish_delta != 0:
+                finish_changed += 1
+                finish_changed_items.append({"activity": _activity_item(current), **movement})
+                if finish_delta > 0:
+                    finish_later += 1
+                    if _is_milestone(current):
+                        moved_milestones += 1
+                else:
+                    finish_earlier += 1
+            if start_delta is not None and start_delta > 0:
+                start_later += 1
+            if float_delta is not None and float_delta < 0:
+                worsened_float += 1
+            elif float_delta is not None and float_delta > 0:
+                improved_float += 1
+
+        finish_changed_items.sort(
+            key=lambda item: abs(item.get("finish_delta_days") or 0),
+            reverse=True,
+        )
+        top_wbs = Counter(
+            (item["activity"].get("wbs_code") or "Unassigned") for item in finish_changed_items
+        ).most_common(5)
+        common_remaining = len(current_rows) - new_remaining
+
+        return {
+            "summary": {
+                "common_remaining_activities": common_remaining,
+                "new_remaining_activities": new_remaining,
+                "finish_moved_later_count": finish_later,
+                "finish_moved_earlier_count": finish_earlier,
+                "finish_changed_count": finish_changed,
+                "start_moved_later_count": start_later,
+                "worsened_float_count": worsened_float,
+                "improved_float_count": improved_float,
+                "moved_remaining_milestones_count": moved_milestones,
+                "changed_count": finish_changed,
+            },
+            "top_impacted_wbs": [{"wbs_code": code, "count": count} for code, count in top_wbs],
+            "top_impacted_activities": finish_changed_items[:_TOP_IMPACTED_CAP],
+            "items": finish_changed_items[:_DIRECT_REMAINING_CHANGE_CAP],
+        }
+
     def _change_impact(
         self,
         *,
@@ -656,6 +746,7 @@ class ProjectScheduleSummaryService:
                 "direct_remaining_changes": {"items": [], "summary": {}},
                 "upstream_remaining_impact": {"items": [], "summary": {}},
             }
+        direct_comparison = self._direct_remaining_comparison(current_key, previous_key)
         diff_id = current.get("default_diff_id")
         detail_rows = (
             self._mapping.list_diff_detail_facts(
@@ -670,39 +761,25 @@ class ProjectScheduleSummaryService:
         changed_ids = {str(r.get("activity_id")) for r in detail_rows if r.get("activity_id")}
         current_by_id = self._activity_rows_by_ids(current_key, changed_ids)
         previous_by_id = self._activity_rows_by_ids(previous_key, changed_ids)
-        direct: list[dict[str, Any]] = []
         upstream_candidates: list[tuple[str, dict[str, Any], dict[str, Any]]] = []
         for aid in sorted(changed_ids):
             current_activity = current_by_id.get(aid)
             previous_activity = previous_by_id.get(aid, {})
             if not current_activity:
                 continue
-            movement = _activity_movement(current_activity, previous_activity)
-            if not _nonempty(current_activity.get("actual_finish")):
-                direct.append({"activity": _activity_item(current_activity), **movement})
-            elif _nonempty(current_activity.get("actual_start")) or _nonempty(current_activity.get("actual_finish")):
+            movement = _comparison_activity_movement(current_activity, previous_activity)
+            if _nonempty(current_activity.get("actual_start")) or _nonempty(current_activity.get("actual_finish")):
                 upstream_candidates.append((aid, current_activity, movement))
         upstream = self._upstream_remaining_impact(
             current_key=current_key,
             candidates=upstream_candidates[: _UPSTREAM_REMAINING_IMPACT_CAP * 2],
         )
-        top_wbs = Counter((a["activity"].get("wbs_code") or "Unassigned") for a in direct).most_common(5)
-        finish_later = sum(1 for a in direct if (a.get("finish_delta_days") or 0) > 0)
-        start_later = sum(1 for a in direct if (a.get("start_delta_days") or 0) > 0)
-        worsened_float = sum(1 for a in direct if (a.get("float_delta_days") or 0) < 0)
         return {
             "available": True,
             "diff_id": diff_id,
+            "comparison_basis": "resolved_finish_date",
             "direct_remaining_changes": {
-                "summary": {
-                    "finish_moved_later_count": finish_later,
-                    "start_moved_later_count": start_later,
-                    "worsened_float_count": worsened_float,
-                    "changed_count": len(direct),
-                },
-                "top_impacted_wbs": [{"wbs_code": k, "count": v} for k, v in top_wbs],
-                "top_impacted_activities": direct[:_TOP_IMPACTED_CAP],
-                "items": direct[:_DIRECT_REMAINING_CHANGE_CAP],
+                **direct_comparison,
                 "default_limit": _DIRECT_REMAINING_CHANGE_CAP,
             },
             "upstream_remaining_impact": {
@@ -989,11 +1066,11 @@ class ProjectScheduleSummaryService:
         items = []
         for a in rows:
             prev = previous_by_id.get(str(a.get("activity_id")), {})
-            movement = _date_delta_days(_parse_date(_forecast_finish_field(prev)), _parse_date(_forecast_finish_field(a)))
+            movement = _date_delta_days(_parse_date(_comparison_finish_field(prev)), _parse_date(_comparison_finish_field(a)))
             if movement and movement > 0:
                 moved_later += 1
             item = _activity_item(a)
-            item["forecast_date"] = _forecast_finish_field(a)
+            item["forecast_date"] = _comparison_finish_field(a)
             item["movement_days"] = movement
             item["inferred"] = not _truthy(a.get("is_milestone"))
             items.append(item)
@@ -1010,19 +1087,19 @@ class ProjectScheduleSummaryService:
     ) -> dict[str, Any]:
         with open_connection(self._db_path) as conn:
             current_finish = _parse_date(conn.execute(
-                """
-                SELECT MAX(COALESCE(remaining_finish, remaining_early_finish, finish_date))
-                FROM procore_ep_schedule_activities
-                WHERE schedule_version_key=?
-                  AND (actual_finish IS NULL OR TRIM(actual_finish)='')
+                f"""
+                SELECT MAX({_comparison_finish_sql("a")})
+                FROM procore_ep_schedule_activities a
+                WHERE a.schedule_version_key=?
+                  AND (a.actual_finish IS NULL OR TRIM(a.actual_finish)='')
                 """,
                 (current_key,),
             ).fetchone()[0])
             previous_finish = None
             if previous_key:
                 previous_finish = _parse_date(conn.execute(
-                    """
-                    SELECT MAX(COALESCE(p.remaining_finish, p.remaining_early_finish, p.finish_date))
+                    f"""
+                    SELECT MAX({_comparison_finish_sql("p")})
                     FROM procore_ep_schedule_activities c
                     JOIN procore_ep_schedule_activities p
                       ON p.activity_id=c.activity_id
@@ -1074,7 +1151,7 @@ class ProjectScheduleSummaryService:
             add(75, "forecast_finish_moved_later", "Review forecast finish movement", f"Forecast finish moved {movement} days later versus comparable remaining work.", "current-vs-previous forecast finish comparison", "Confirm which activities are driving the finish movement.")
         direct = readiness_inputs["change_impact"].get("direct_remaining_changes", {}).get("summary", {})
         if direct.get("finish_moved_later_count"):
-            add(70, "remaining_work_moved_later", "Review remaining activities that moved later", f"{direct['finish_moved_later_count']} remaining activities moved later.", "persisted version-diff detail and current remaining activities", "Review the top changed remaining activities and affected WBS areas.")
+            add(70, "remaining_work_moved_later", "Review remaining activities that moved later", f"{direct['finish_moved_later_count']} remaining activities moved later.", "direct persisted activity comparison", "Review the top changed remaining activities and affected WBS areas.")
         upstream = readiness_inputs["change_impact"].get("upstream_remaining_impact", {}).get("summary", {})
         if upstream.get("changed_upstream_count"):
             add(60, "upstream_sequence_review", "Review upstream changes tied to remaining successors", "Completed or in-progress changed activities appear associated with remaining successor work.", "persisted relationships and changed activity facts", "Review sequence and logic before the next update.")
@@ -1170,6 +1247,9 @@ class ProjectScheduleSummaryService:
             "negative_float_remaining_count": remaining_health["float_pressure"]["negative_float_count"],
             "zero_float_remaining_count": remaining_health["float_pressure"]["zero_float_count"],
             "remaining_finish_moved_later_count": change_impact.get("direct_remaining_changes", {}).get("summary", {}).get("finish_moved_later_count", 0),
+            "remaining_finish_moved_earlier_count": change_impact.get("direct_remaining_changes", {}).get("summary", {}).get("finish_moved_earlier_count", 0),
+            "remaining_finish_changed_count": change_impact.get("direct_remaining_changes", {}).get("summary", {}).get("finish_changed_count", 0),
+            "new_remaining_activities": change_impact.get("direct_remaining_changes", {}).get("summary", {}).get("new_remaining_activities", 0),
             "health_status": remaining_health["status"],
             "health_summary": remaining_health["drivers"][0] if remaining_health["drivers"] else None,
         }
@@ -1201,8 +1281,20 @@ class ProjectScheduleSummaryService:
             headline = "Forecast finish is unchanged from the previous update."
         primary_driver = "No comparable prior update is available."
         if change_impact.get("available"):
-            count = change_impact["direct_remaining_changes"]["summary"].get("finish_moved_later_count", 0)
-            primary_driver = f"{count} remaining activities moved later in the persisted update comparison."
+            summary = change_impact["direct_remaining_changes"]["summary"]
+            later = int(summary.get("finish_moved_later_count") or 0)
+            earlier = int(summary.get("finish_moved_earlier_count") or 0)
+            if later and earlier:
+                primary_driver = (
+                    f"{later} remaining activities moved later and {earlier} moved earlier "
+                    "in the persisted update comparison."
+                )
+            elif later:
+                primary_driver = f"{later} remaining activities moved later in the persisted update comparison."
+            elif earlier:
+                primary_driver = f"{earlier} remaining activities moved earlier in the persisted update comparison."
+            else:
+                primary_driver = "No remaining finish movement detected in the persisted update comparison."
         recent_summary = f"{recent['completed_count']} activities completed and {recent['started_count']} activities started in the review window."
         remaining_summary = f"{remaining_health['remaining_activity_count']} activities remain open; health is {remaining_health['status'].replace('_', ' ')}."
         cp_summary = (
@@ -1432,6 +1524,36 @@ def _float_days(activity: dict[str, Any]) -> float | None:
     return None
 
 
+def _comparison_finish_sql(alias: str) -> str:
+    return (
+        f"COALESCE(NULLIF(TRIM({alias}.remaining_finish), ''), "
+        f"NULLIF(TRIM({alias}.finish_date), ''), "
+        f"NULLIF(TRIM({alias}.remaining_early_finish), ''))"
+    )
+
+
+def _comparison_start_sql(alias: str) -> str:
+    return (
+        f"COALESCE(NULLIF(TRIM({alias}.remaining_start), ''), "
+        f"NULLIF(TRIM({alias}.start_date), ''), "
+        f"NULLIF(TRIM({alias}.remaining_early_start), ''))"
+    )
+
+
+def _comparison_finish_field(activity: dict[str, Any]) -> Any:
+    for key in ("remaining_finish", "finish_date", "remaining_early_finish"):
+        if _nonempty(activity.get(key)):
+            return activity.get(key)
+    return None
+
+
+def _comparison_start_field(activity: dict[str, Any]) -> Any:
+    for key in ("remaining_start", "start_date", "remaining_early_start"):
+        if _nonempty(activity.get(key)):
+            return activity.get(key)
+    return None
+
+
 def _forecast_finish_field(activity: dict[str, Any]) -> Any:
     for key in ("remaining_finish", "remaining_early_finish", "finish_date", "planned_finish", "target_finish", "baseline_finish"):
         if _nonempty(activity.get(key)):
@@ -1446,16 +1568,26 @@ def _forecast_start_field(activity: dict[str, Any]) -> Any:
     return None
 
 
-def _activity_movement(current: dict[str, Any], previous: dict[str, Any]) -> dict[str, Any]:
+def _comparison_activity_movement(current: dict[str, Any], previous: dict[str, Any]) -> dict[str, Any]:
     return {
-        "start_delta_days": _date_delta_days(_parse_date(_forecast_start_field(previous)), _parse_date(_forecast_start_field(current))),
-        "finish_delta_days": _date_delta_days(_parse_date(_forecast_finish_field(previous)), _parse_date(_forecast_finish_field(current))),
+        "start_delta_days": _date_delta_days(
+            _parse_date(_comparison_start_field(previous)),
+            _parse_date(_comparison_start_field(current)),
+        ),
+        "finish_delta_days": _date_delta_days(
+            _parse_date(_comparison_finish_field(previous)),
+            _parse_date(_comparison_finish_field(current)),
+        ),
         "float_delta_days": (
             None
             if _float_days(previous) is None or _float_days(current) is None
             else _float_days(current) - _float_days(previous)
         ),
     }
+
+
+def _activity_movement(current: dict[str, Any], previous: dict[str, Any]) -> dict[str, Any]:
+    return _comparison_activity_movement(current, previous)
 
 
 def _activity_item(activity: dict[str, Any]) -> dict[str, Any]:

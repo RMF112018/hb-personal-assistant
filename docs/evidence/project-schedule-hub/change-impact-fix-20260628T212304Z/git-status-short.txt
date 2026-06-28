@@ -1,0 +1,6 @@
+ M frontend/src/pages/ProjectSchedulePage.test.tsx
+ M frontend/src/pages/ProjectSchedulePage.tsx
+ M src/hb_assistant/construction/analytics/project_schedule_summary_service.py
+ M tests/fixtures/project_schedule_hub/populated_comparison.json
+ M tests/test_project_schedule_hub_api.py
+?? docs/evidence/project-schedule-hub/change-impact-fix-20260628T212304Z/

@@ -186,8 +186,12 @@ export function ProjectSchedulePage() {
             <h4 className="text-sm font-semibold">What Changed</h4>
             <div className="mt-3 grid grid-cols-2 gap-2">
               <MetricTile label="Remaining Later" value={direct.summary?.finish_moved_later_count} />
+              <MetricTile label="Remaining Earlier" value={direct.summary?.finish_moved_earlier_count} />
+              <MetricTile label="Finish Changed" value={direct.summary?.finish_changed_count ?? direct.summary?.changed_count} />
+              <MetricTile label="New Remaining" value={direct.summary?.new_remaining_activities} />
               <MetricTile label="Worsened Float" value={direct.summary?.worsened_float_count} />
-              <MetricTile label="Changed Remaining" value={direct.summary?.changed_count} />
+              <MetricTile label="Improved Float" value={direct.summary?.improved_float_count} />
+              <MetricTile label="Milestones Later" value={direct.summary?.moved_remaining_milestones_count} />
               <MetricTile label="Upstream Cues" value={upstream.summary?.changed_upstream_count} />
             </div>
             <p className="mt-3 text-xs text-[var(--hb-muted)]">

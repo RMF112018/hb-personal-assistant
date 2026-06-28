@@ -18,6 +18,8 @@ pytest.importorskip("fastapi")
 from hb_assistant.construction.analytics import create_app
 from hb_assistant.construction.analytics.project_schedule_summary_service import (
     ProjectScheduleSummaryService,
+    _comparison_activity_movement,
+    _comparison_finish_field,
 )
 from hb_assistant.store.migrator import SQLiteMigrator
 from tests.schedule_project_test_helpers import seed_procore_ep_project
@@ -581,6 +583,248 @@ def test_project_schedule_one_update_no_prior_and_cpm_unavailable(tmp_path: Path
     assert body["readiness"]["diff_unavailable"]["required"] is True
     assert body["recent_progress"]["window_basis"] == "last_14_calendar_days"
     assert body["command_summary"]["remaining_activity_count"] == 2
+
+
+def _seed_xer_change_impact_comparison(db: Path) -> None:
+    with sqlite3.connect(db) as conn:
+        for import_id, version_key, filename, created_at in (
+            ("imp-prior-xer", "tropical|S1|2026-06-01", "TWNU18.xer", "2026-06-01T10:00:00Z"),
+            ("imp-current-xer", "tropical|S1|2026-07-01", "TWNU19.xer", "2026-07-01T10:00:00Z"),
+        ):
+            conn.execute(
+                """
+                INSERT INTO schedule_file_imports (
+                  import_id, project_key, source_type, source_format, import_status,
+                  activity_count, relationship_count, cost_loaded_status,
+                  schedule_version_key, source_filename_redacted, created_at
+                ) VALUES (?, 'tropical', 'xer', 'primavera_xer', 'committed',
+                  6, 0, 'not_cost_loaded', ?, ?, ?)
+                """,
+                (import_id, version_key, filename, created_at),
+            )
+        activities = [
+            (
+                "tropical|S1|2026-06-01",
+                "imp-prior-xer",
+                "FILTER-OUT-20",
+                "ENVELOPE COMPLETION",
+                "2026-07-01",
+                "2026-07-30 16:00",
+                None,
+                None,
+                None,
+                "2026-07-30 16:00",
+                "WBS-A",
+                "-360",
+                0,
+            ),
+            (
+                "tropical|S1|2026-07-01",
+                "imp-current-xer",
+                "FILTER-OUT-20",
+                "ENVELOPE COMPLETION",
+                "2026-08-01",
+                "2026-08-25 16:00",
+                None,
+                None,
+                None,
+                "2026-07-30 16:00",
+                "WBS-A",
+                "-408",
+                0,
+            ),
+            (
+                "tropical|S1|2026-06-01",
+                "imp-prior-xer",
+                "U13-P3-FIN-100",
+                "OWNER ACCEPTANCE",
+                "2026-09-10",
+                "2026-09-17 16:00",
+                None,
+                None,
+                None,
+                "2026-09-17 16:00",
+                "WBS-B",
+                "-360",
+                0,
+            ),
+            (
+                "tropical|S1|2026-07-01",
+                "imp-current-xer",
+                "U13-P3-FIN-100",
+                "OWNER ACCEPTANCE",
+                "2026-09-18",
+                "2026-09-25 16:00",
+                None,
+                None,
+                None,
+                "2026-09-17 16:00",
+                "WBS-B",
+                "-408",
+                0,
+            ),
+            (
+                "tropical|S1|2026-06-01",
+                "imp-prior-xer",
+                "U13-2NDFLELECRM-40",
+                "FLOAT WORSENED ONLY",
+                "2026-07-01",
+                "2026-07-09 16:00",
+                None,
+                None,
+                None,
+                "2026-07-09 16:00",
+                "WBS-C",
+                "-1000",
+                0,
+            ),
+            (
+                "tropical|S1|2026-07-01",
+                "imp-current-xer",
+                "U13-2NDFLELECRM-40",
+                "FLOAT WORSENED ONLY",
+                "2026-06-20",
+                "2026-06-26 16:00",
+                None,
+                None,
+                None,
+                "2026-07-09 16:00",
+                "WBS-C",
+                "-1072",
+                0,
+            ),
+            (
+                "tropical|S1|2026-06-01",
+                "imp-prior-xer",
+                "MS-SUB",
+                "Substantial completion milestone",
+                "2026-08-01",
+                "2026-08-05 16:00",
+                None,
+                None,
+                None,
+                "2026-08-05 16:00",
+                "WBS-M",
+                "0",
+                1,
+            ),
+            (
+                "tropical|S1|2026-07-01",
+                "imp-current-xer",
+                "MS-SUB",
+                "Substantial completion milestone",
+                "2026-08-06",
+                "2026-08-12 16:00",
+                None,
+                None,
+                None,
+                "2026-08-05 16:00",
+                "WBS-M",
+                "0",
+                1,
+            ),
+            (
+                "tropical|S1|2026-07-01",
+                "imp-current-xer",
+                "NEW-REM-1",
+                "New remaining scope",
+                "2026-09-01",
+                "2026-09-30 16:00",
+                None,
+                None,
+                None,
+                "2026-09-30 16:00",
+                "WBS-N",
+                "-10",
+                0,
+            ),
+        ]
+        for row in activities:
+            conn.execute(
+                """
+                INSERT INTO procore_ep_schedule_activities (
+                  project_key, schedule_id, schedule_version_key, import_id,
+                  source_type, source_format, activity_id, activity_name,
+                  start_date, finish_date, actual_start, actual_finish,
+                  remaining_finish, remaining_early_finish,
+                  wbs_code, total_float, is_milestone
+                ) VALUES (
+                  'tropical', 'S1', ?, ?, 'xer', 'primavera_xer',
+                  ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+                )
+                """,
+                row,
+            )
+        conn.execute(
+            """
+            INSERT OR IGNORE INTO schedule_identities (
+              schedule_identity_key, project_key, identity_status, latest_import_id,
+              latest_schedule_version_key
+            ) VALUES ('identity-main', 'tropical', 'active', 'imp-current-xer', 'tropical|S1|2026-07-01')
+            """
+        )
+        for import_id, version_key in (
+            ("imp-prior-xer", "tropical|S1|2026-06-01"),
+            ("imp-current-xer", "tropical|S1|2026-07-01"),
+        ):
+            conn.execute(
+                """
+                INSERT INTO schedule_version_identity_matches (
+                  match_id, schedule_identity_key, schedule_version_key, import_id, project_key,
+                  source_format, activity_count, relationship_count, wbs_count,
+                  match_type, match_status, match_rule, confidence_score, requires_review
+                ) VALUES (?, 'identity-main', ?, ?, 'tropical', 'primavera_xer',
+                  6, 0, 0, 'seed', 'resolved', 'seed', '1.00', 0)
+                """,
+                (f"match-{import_id}", version_key, import_id),
+            )
+        conn.commit()
+
+
+def test_comparison_finish_field_prefers_remaining_finish_then_finish_date() -> None:
+    assert _comparison_finish_field({"remaining_finish": "2026-08-01", "finish_date": "2026-09-01"}) == "2026-08-01"
+    assert _comparison_finish_field({"finish_date": "2026-08-25 16:00", "remaining_early_finish": "2026-07-30 16:00"}) == "2026-08-25 16:00"
+    assert _comparison_finish_field({"remaining_early_finish": "2026-07-30 16:00"}) == "2026-07-30 16:00"
+
+
+def test_comparison_activity_movement_uses_finish_date_when_remaining_finish_blank() -> None:
+    previous = {
+        "finish_date": "2026-07-30 16:00",
+        "remaining_finish": None,
+        "remaining_early_finish": "2026-07-30 16:00",
+        "total_float": "-360",
+    }
+    current = {
+        "finish_date": "2026-08-25 16:00",
+        "remaining_finish": None,
+        "remaining_early_finish": "2026-07-30 16:00",
+        "total_float": "-408",
+    }
+    movement = _comparison_activity_movement(current, previous)
+    assert movement["finish_delta_days"] == 26
+    assert movement["float_delta_days"] == -48.0
+
+
+def test_change_impact_uses_finish_date_when_remaining_finish_blank(tmp_path: Path) -> None:
+    db = _fresh_db(tmp_path)
+    _seed_xer_change_impact_comparison(db)
+
+    body = ProjectScheduleSummaryService(db_path=str(db)).build_summary(
+        "tropical", as_of=date(2026, 7, 3)
+    )
+
+    summary = body["change_impact"]["direct_remaining_changes"]["summary"]
+    assert body["change_impact"]["comparison_basis"] == "resolved_finish_date"
+    assert summary["finish_moved_later_count"] >= 2
+    assert summary["finish_changed_count"] >= 3
+    assert summary["finish_moved_earlier_count"] >= 1
+    assert summary["new_remaining_activities"] == 1
+    assert summary["worsened_float_count"] >= 1
+    assert summary["improved_float_count"] == 0
+    assert summary["moved_remaining_milestones_count"] == 1
+    assert summary["common_remaining_activities"] == 4
+    assert "moved later" in body["schedule_story"]["primary_change_driver"].lower()
+    assert summary["finish_moved_later_count"] > 0
 
 
 def test_project_schedule_populated_comparison_actions_and_no_mutation(tmp_path: Path) -> None:
