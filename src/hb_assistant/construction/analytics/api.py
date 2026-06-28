@@ -3441,6 +3441,68 @@ def create_app(*, db_path: str | None = None) -> Any:
             "metrics": summary.get("metrics", []),
         }
 
+    # ------------------------------------------------------------ Phase 8 computed CPM (read-only)
+
+    def _schedule_cpm_read_service() -> Any:
+        from hb_assistant.construction.analytics.schedule_cpm_read_service import (
+            ScheduleCpmReadService,
+        )
+
+        return ScheduleCpmReadService(db_path=_schedule_db_path())
+
+    @app.get("/api/schedules/versions/{schedule_version_key}/cpm/summary")
+    def schedule_version_cpm_summary(
+        schedule_version_key: str,
+        project_key: str | None = None,
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        del role
+        _enforce_version_project_scope(schedule_version_key, project_key)
+        return _schedule_call(
+            _schedule_cpm_read_service().cpm_summary, schedule_version_key
+        )
+
+    @app.get("/api/schedules/versions/{schedule_version_key}/cpm/activities")
+    def schedule_version_cpm_activities(
+        schedule_version_key: str,
+        limit: int | None = Query(default=None, ge=1, le=10000),
+        offset: int = Query(default=0, ge=0),
+        project_key: str | None = None,
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        del role
+        _enforce_version_project_scope(schedule_version_key, project_key)
+        return _schedule_call(
+            _schedule_cpm_read_service().cpm_activities,
+            schedule_version_key,
+            limit=limit,
+            offset=offset,
+        )
+
+    @app.get("/api/schedules/versions/{schedule_version_key}/cpm/longest-path")
+    def schedule_version_cpm_longest_path(
+        schedule_version_key: str,
+        project_key: str | None = None,
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        del role
+        _enforce_version_project_scope(schedule_version_key, project_key)
+        return _schedule_call(
+            _schedule_cpm_read_service().cpm_longest_path, schedule_version_key
+        )
+
+    @app.get("/api/schedules/versions/{schedule_version_key}/cpm/diagnostics")
+    def schedule_version_cpm_diagnostics(
+        schedule_version_key: str,
+        project_key: str | None = None,
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        del role
+        _enforce_version_project_scope(schedule_version_key, project_key)
+        return _schedule_call(
+            _schedule_cpm_read_service().cpm_diagnostics, schedule_version_key
+        )
+
     @app.post("/api/schedules/versions/{schedule_version_key}/quality/rerun")
     def schedule_version_quality_rerun(
         schedule_version_key: str,

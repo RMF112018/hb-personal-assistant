@@ -8,6 +8,7 @@ import {
   Layers,
   Scale,
   Upload,
+  Workflow,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { ReactNode } from 'react'
@@ -20,6 +21,7 @@ const NAV: { to: string; label: string; icon: LucideIcon }[] = [
   { to: '/schedules/versions', label: 'Versions', icon: Layers },
   { to: '/schedules/activities', label: 'Activities', icon: Activity },
   { to: '/schedules/quality', label: 'Schedule Health', icon: AlertTriangle },
+  { to: '/schedules/cpm', label: 'Computed CPM', icon: Workflow },
   { to: '/schedules/identity-review', label: 'Identity Review', icon: ClipboardCheck },
   { to: '/schedules/version-diff', label: 'Version Diff', icon: GitCompare },
   { to: '/schedules/cost-mapping', label: 'Cost Mapping', icon: Link2 },

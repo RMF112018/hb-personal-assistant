@@ -1,0 +1,10 @@
+docs/evidence/schedule-cpm-api-frontend-foundation/
+frontend/src/app/routes.tsx
+frontend/src/components/schedule/SchedulePageChrome.tsx
+frontend/src/lib/api.ts
+frontend/src/pages/ScheduleCpmPage.test.tsx
+frontend/src/pages/ScheduleCpmPage.tsx
+scripts/test-schedule.sh
+src/hb_assistant/construction/analytics/api.py
+src/hb_assistant/construction/analytics/schedule_cpm_read_service.py
+tests/test_schedule_cpm_api.py

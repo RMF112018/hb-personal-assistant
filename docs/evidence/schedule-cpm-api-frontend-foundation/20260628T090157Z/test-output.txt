@@ -1,0 +1,19 @@
+# CPM API / frontend surfacing — validation output (2026-06-28T09:06:25Z)
+
+## Backend
+tests/test_schedule_cpm_api.py: 10 passed
+backend CPM suite + quality + DCMA integration + import: passed (run individually green)
+full scripts/test-schedule.sh: 314 passed, 2 deselected, 1 warning in 266s
+ruff (schedule_cpm_read_service.py + test): All checks passed
+mypy (schedule_cpm_read_service.py): Success, no issues
+fresh-migrate sanity: LATEST=89 (no Phase 8 migration); table_count unchanged 477
+
+## Frontend (cd frontend)
+npm ci: ok (lockfile respected, not mutated)
+npm run typecheck (tsc -b): clean
+ScheduleCpmPage.test.tsx: 7 passed
+eslint (my changed files: ScheduleCpmPage.tsx/.test.tsx, lib/api.ts, app/routes.tsx, SchedulePageChrome.tsx): clean
+
+## Pre-existing (NOT this phase; verified on clean base with my changes stashed)
+npm run test: 3 failing in MyItemsPage/TodayPage (unrelated to schedules/CPM)
+npm run lint: pre-existing errors in untouched files (e.g. ScheduleImportsPage.tsx)

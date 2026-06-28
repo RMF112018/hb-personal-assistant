@@ -30,6 +30,7 @@ pytest_targets=(
   "tests/test_procore_schedule_projection.py"
   "tests/test_schedule_activity_repository.py"
   "tests/test_schedule_cost_mapping_controls.py"
+  "tests/test_schedule_cpm_api.py"
   "tests/test_schedule_cpm_backward_pass.py"
   "tests/test_schedule_cpm_criticality.py"
   "tests/test_schedule_cpm_dcma_integration.py"

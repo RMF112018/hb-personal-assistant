@@ -1,0 +1,115 @@
+{
+  "schedule_version_key": "tropical|1|2026-06-01 08:00",
+  "available": true,
+  "diagnostics": [
+    {
+      "cpm_run_id": "cpmrun_a727d96322dd580f4068fdad29b42ab9",
+      "calculation_type": "graph_diagnostics",
+      "severity": "info",
+      "diagnostic_type": "open_finish",
+      "summary": "Activity A1010 has no successors (open finish).",
+      "activity_id": "A1010",
+      "relationship_ref": null
+    },
+    {
+      "cpm_run_id": "cpmrun_a727d96322dd580f4068fdad29b42ab9",
+      "calculation_type": "graph_diagnostics",
+      "severity": "info",
+      "diagnostic_type": "open_start",
+      "summary": "Activity A1000 has no predecessors (open start).",
+      "activity_id": "A1000",
+      "relationship_ref": null
+    },
+    {
+      "cpm_run_id": "cpmrun_bd79976f2ae99b313290ca11a3f7864b",
+      "calculation_type": "forward_pass",
+      "severity": "info",
+      "diagnostic_type": "open_finish",
+      "summary": "Activity A1010 has no successors (open finish).",
+      "activity_id": "A1010",
+      "relationship_ref": null
+    },
+    {
+      "cpm_run_id": "cpmrun_bd79976f2ae99b313290ca11a3f7864b",
+      "calculation_type": "forward_pass",
+      "severity": "info",
+      "diagnostic_type": "open_start",
+      "summary": "Activity A1000 has no predecessors (open start).",
+      "activity_id": "A1000",
+      "relationship_ref": null
+    },
+    {
+      "cpm_run_id": "cpmrun_b33233772fabd72857efc35a8ffafa9a",
+      "calculation_type": "backward_pass",
+      "severity": "info",
+      "diagnostic_type": "open_finish",
+      "summary": "Activity A1010 has no successors (open finish).",
+      "activity_id": "A1010",
+      "relationship_ref": null
+    },
+    {
+      "cpm_run_id": "cpmrun_b33233772fabd72857efc35a8ffafa9a",
+      "calculation_type": "backward_pass",
+      "severity": "info",
+      "diagnostic_type": "open_start",
+      "summary": "Activity A1000 has no predecessors (open start).",
+      "activity_id": "A1000",
+      "relationship_ref": null
+    },
+    {
+      "cpm_run_id": "cpmrun_c7cfe3ef0fcc3f9974b75cfcfa853ce1",
+      "calculation_type": "float",
+      "severity": "info",
+      "diagnostic_type": "open_finish",
+      "summary": "Activity A1010 has no successors (open finish).",
+      "activity_id": "A1010",
+      "relationship_ref": null
+    },
+    {
+      "cpm_run_id": "cpmrun_c7cfe3ef0fcc3f9974b75cfcfa853ce1",
+      "calculation_type": "float",
+      "severity": "info",
+      "diagnostic_type": "open_start",
+      "summary": "Activity A1000 has no predecessors (open start).",
+      "activity_id": "A1000",
+      "relationship_ref": null
+    },
+    {
+      "cpm_run_id": "cpmrun_2f45c784efd57f51e3d70aa9f2ac75f3",
+      "calculation_type": "longest_path",
+      "severity": "info",
+      "diagnostic_type": "open_finish",
+      "summary": "Activity A1010 has no successors (open finish).",
+      "activity_id": "A1010",
+      "relationship_ref": null
+    },
+    {
+      "cpm_run_id": "cpmrun_2f45c784efd57f51e3d70aa9f2ac75f3",
+      "calculation_type": "longest_path",
+      "severity": "info",
+      "diagnostic_type": "open_start",
+      "summary": "Activity A1000 has no predecessors (open start).",
+      "activity_id": "A1000",
+      "relationship_ref": null
+    },
+    {
+      "cpm_run_id": "cpmrun_b78a7989143ede40f36b8054d45c6144",
+      "calculation_type": "criticality",
+      "severity": "info",
+      "diagnostic_type": "open_finish",
+      "summary": "Activity A1010 has no successors (open finish).",
+      "activity_id": "A1010",
+      "relationship_ref": null
+    },
+    {
+      "cpm_run_id": "cpmrun_b78a7989143ede40f36b8054d45c6144",
+      "calculation_type": "criticality",
+      "severity": "info",
+      "diagnostic_type": "open_start",
+      "summary": "Activity A1000 has no predecessors (open start).",
+      "activity_id": "A1000",
+      "relationship_ref": null
+    }
+  ],
+  "total_count": 12
+}
