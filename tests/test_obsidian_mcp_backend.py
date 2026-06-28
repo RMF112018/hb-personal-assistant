@@ -217,6 +217,11 @@ def test_streamable_http_mount_lists_phase1_tools(tmp_path: Path, monkeypatch: p
             "vault_extract_project_mentions",
             "vault_curation_plan",
             "vault_curation_apply",
+            "vault_create_moc_plan",
+            "vault_auto_link_plan",
+            "vault_bulk_tagging_plan",
+            "vault_email_to_note_plan",
+            "vault_email_to_note_apply",
         ]
 
         create = client.post(

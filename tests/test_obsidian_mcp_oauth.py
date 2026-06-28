@@ -240,6 +240,10 @@ def test_scope_enforcement_read_token_cannot_write(tmp_path: Path) -> None:
     mcp_app.enforce_tool_scope("vault_extract_action_items", header, config)
     mcp_app.enforce_tool_scope("vault_project_status_summary", header, config)
     mcp_app.enforce_tool_scope("vault_extract_project_mentions", header, config)
+    mcp_app.enforce_tool_scope("vault_create_moc_plan", header, config)
+    mcp_app.enforce_tool_scope("vault_auto_link_plan", header, config)
+    mcp_app.enforce_tool_scope("vault_bulk_tagging_plan", header, config)
+    mcp_app.enforce_tool_scope("vault_email_to_note_plan", header, config)
     mcp_app.enforce_tool_scope("vault_curation_plan", header, config)
     # Write tools blocked (including curation apply + frontmatter update + template writes).
     with pytest.raises(ObsidianMcpToolError) as exc:
@@ -278,6 +282,7 @@ def test_scope_enforcement_write_token_allows_write(tmp_path: Path) -> None:
     mcp_app.enforce_tool_scope("vault_append_to_daily_note", header, config)
     mcp_app.enforce_tool_scope("vault_move_note_apply", header, config)
     mcp_app.enforce_tool_scope("vault_archive_note_apply", header, config)
+    mcp_app.enforce_tool_scope("vault_email_to_note_apply", header, config)
 
 
 def test_static_bearer_is_unrestricted(tmp_path: Path) -> None:

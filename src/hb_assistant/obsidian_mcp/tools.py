@@ -409,6 +409,11 @@ _TOOL_REGISTRY: list[tuple[str, str, str, str]] = [
     ("vault_extract_project_mentions", "Construction/PM", "Detect project references (HB numbers and aliases) across notes and emails.", "root_path, project_aliases, max_files, include_snippets"),
     ("vault_curation_plan", "Curation", "Read-only second-brain analysis that returns a durable plan_id plus proposed curation actions.", "root_path, strategy, max_depth, max_files, allowed_actions, dry_run"),
     ("vault_curation_apply", "Curation", "Apply approved actions from a server-generated curation plan_id with backups, receipts, and a max_updates cap.", "plan_id, approved_actions, require_expected_sha256, backup_before_replace, max_updates"),
+    ("vault_create_moc_plan", "Curation", "Plan creation of a Map of Content note for a folder (applied via vault_curation_apply).", "root_path, moc_title, target_path, max_files, include_sections"),
+    ("vault_auto_link_plan", "Curation", "Plan suggested links between notes by title/entity overlap (applied via vault_curation_apply).", "root_path, max_files, min_confidence, max_suggestions"),
+    ("vault_bulk_tagging_plan", "Curation", "Plan normalized tag suggestions for notes (applied via vault_curation_apply).", "root_path, tag_namespace, max_files, max_suggestions"),
+    ("vault_email_to_note_plan", "Curation", "Plan conversion of one .eml into a structured note (summary, actions, decisions, project links).", "email_path, target_folder, template_path, link_projects, extract_action_items, extract_decisions, redact"),
+    ("vault_email_to_note_apply", "Curation", "Create the structured note from an approved email-to-note plan_id (backup + receipt).", "plan_id, max_updates"),
 ]
 
 

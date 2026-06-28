@@ -48,6 +48,11 @@ _TOOL_SCOPES = {
     "vault_extract_project_mentions": "obsidian.read",
     "vault_curation_plan": "obsidian.read",
     "vault_curation_apply": "obsidian.write",
+    "vault_create_moc_plan": "obsidian.read",
+    "vault_auto_link_plan": "obsidian.read",
+    "vault_bulk_tagging_plan": "obsidian.read",
+    "vault_email_to_note_plan": "obsidian.read",
+    "vault_email_to_note_apply": "obsidian.write",
 }
 
 _BEARER_PREFIX = "Bearer "
@@ -887,6 +892,102 @@ def build_streamable_http_app(service: ObsidianMcpService | None = None) -> Any:
                 "max_updates": max_updates,
                 "operator_mode": _operator_mode(ctx),
             }
+        )
+
+    @mcp.tool()
+    def vault_create_moc_plan(
+        ctx: Context,
+        root_path: str = "",
+        moc_title: str | None = None,
+        target_path: str | None = None,
+        max_files: int = 100,
+        include_sections: list[str] | None = None,
+    ) -> dict[str, Any]:
+        """Plan creation of a Map of Content note (applied via vault_curation_apply)."""
+        _enforce("vault_create_moc_plan", ctx)
+        return svc.vault_create_moc_plan(
+            {
+                "root_path": root_path,
+                "moc_title": moc_title,
+                "target_path": target_path,
+                "max_files": max_files,
+                "include_sections": include_sections,
+                "operator_mode": _operator_mode(ctx),
+            }
+        )
+
+    @mcp.tool()
+    def vault_auto_link_plan(
+        ctx: Context,
+        root_path: str = "",
+        max_files: int = 200,
+        min_confidence: float = 0.75,
+        max_suggestions: int = 100,
+    ) -> dict[str, Any]:
+        """Plan suggested links between notes by title/entity overlap."""
+        _enforce("vault_auto_link_plan", ctx)
+        return svc.vault_auto_link_plan(
+            {
+                "root_path": root_path,
+                "max_files": max_files,
+                "min_confidence": min_confidence,
+                "max_suggestions": max_suggestions,
+                "operator_mode": _operator_mode(ctx),
+            }
+        )
+
+    @mcp.tool()
+    def vault_bulk_tagging_plan(
+        ctx: Context,
+        root_path: str = "",
+        tag_namespace: str | None = None,
+        max_files: int = 200,
+        max_suggestions: int = 100,
+    ) -> dict[str, Any]:
+        """Plan normalized tag suggestions for notes."""
+        _enforce("vault_bulk_tagging_plan", ctx)
+        return svc.vault_bulk_tagging_plan(
+            {
+                "root_path": root_path,
+                "tag_namespace": tag_namespace,
+                "max_files": max_files,
+                "max_suggestions": max_suggestions,
+                "operator_mode": _operator_mode(ctx),
+            }
+        )
+
+    @mcp.tool()
+    def vault_email_to_note_plan(
+        ctx: Context,
+        email_path: str,
+        target_folder: str,
+        template_path: str | None = None,
+        link_projects: bool = True,
+        extract_action_items: bool = True,
+        extract_decisions: bool = True,
+        redact: bool = False,
+    ) -> dict[str, Any]:
+        """Plan conversion of one .eml into a structured note (applied via vault_email_to_note_apply)."""
+        _enforce("vault_email_to_note_plan", ctx)
+        return svc.vault_email_to_note_plan(
+            {
+                "email_path": email_path,
+                "target_folder": target_folder,
+                "template_path": template_path,
+                "link_projects": link_projects,
+                "extract_action_items": extract_action_items,
+                "extract_decisions": extract_decisions,
+                "redact": redact,
+                "operator_mode": _operator_mode(ctx),
+            }
+        )
+
+    @mcp.tool()
+    def vault_email_to_note_apply(ctx: Context, plan_id: str, max_updates: int = 25) -> dict[str, Any]:
+        """Create the structured note from an approved email-to-note plan_id."""
+        _enforce("vault_email_to_note_apply", ctx)
+        return svc.vault_email_to_note_apply(
+            {"plan_id": plan_id, "max_updates": max_updates, "operator_mode": _operator_mode(ctx)}
         )
 
     app = mcp.streamable_http_app()

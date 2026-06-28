@@ -144,7 +144,7 @@ class ObsidianMcpService:
             blocker="mcp_http_unavailable",
         )
         add("caps_configured", config.max_file_mb > 0 and config.max_result_chars > 0, "file/result caps configured", blocker="caps_invalid")
-        add("tool_registry", len(tool_registry()) == 33, "thirty-three Obsidian MCP tools registered", blocker="tool_registry_invalid")
+        add("tool_registry", len(tool_registry()) == 38, "thirty-eight Obsidian MCP tools registered", blocker="tool_registry_invalid")
         add("http_port", self._port_available_or_self(config), "HTTP port is available or owned by backend", warning="port_unavailable")
         readiness = write_readiness(config)
         add("vault_writable", bool(readiness["vault_writable"]), "vault root is writable", warning="vault_not_writable")
@@ -405,6 +405,31 @@ class ObsidianMcpService:
         from .graph import get_note_graph
 
         return get_note_graph(self.get_config(), **args)
+
+    def vault_create_moc_plan(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .curation import build_moc_plan
+
+        return build_moc_plan(self.get_config(), **args)
+
+    def vault_auto_link_plan(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .curation import build_auto_link_plan
+
+        return build_auto_link_plan(self.get_config(), **args)
+
+    def vault_bulk_tagging_plan(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .curation import build_bulk_tagging_plan
+
+        return build_bulk_tagging_plan(self.get_config(), **args)
+
+    def vault_email_to_note_plan(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .curation import build_email_to_note_plan
+
+        return build_email_to_note_plan(self.get_config(), **args)
+
+    def vault_email_to_note_apply(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .curation import apply_email_to_note_plan
+
+        return apply_email_to_note_plan(self.get_config(), **args)
 
     def vault_curation_plan(self, args: dict[str, Any]) -> dict[str, Any]:
         from .curation import build_curation_plan
