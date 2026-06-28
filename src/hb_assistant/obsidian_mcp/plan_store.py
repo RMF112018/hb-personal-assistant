@@ -20,9 +20,10 @@ from typing import Any
 
 from hb_assistant.config.path_policy import PathPolicy
 
-# ``curation_<utc-compact-stamp>_<hex>`` — also the on-disk filename stem, so the
-# shape is validated before any path join to keep raw input out of the path.
-_PLAN_ID_RE = re.compile(r"^curation_[0-9TZ]+_[0-9a-f]{12}$")
+# ``<prefix>_<utc-compact-stamp>_<hex>`` — also the on-disk filename stem, so the
+# shape is validated before any path join to keep raw input out of the path. The
+# prefix is a lowercase word naming the plan family (e.g. ``curation``, ``fileop``).
+_PLAN_ID_RE = re.compile(r"^[a-z]+_[0-9TZ]+_[0-9a-f]{12}$")
 
 
 def plan_dir() -> Path:
@@ -31,9 +32,9 @@ def plan_dir() -> Path:
     return root
 
 
-def new_plan_id() -> str:
+def new_plan_id(prefix: str = "curation") -> str:
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    return f"curation_{stamp}_{secrets.token_hex(6)}"
+    return f"{prefix}_{stamp}_{secrets.token_hex(6)}"
 
 
 def is_valid_plan_id(plan_id: str) -> bool:
