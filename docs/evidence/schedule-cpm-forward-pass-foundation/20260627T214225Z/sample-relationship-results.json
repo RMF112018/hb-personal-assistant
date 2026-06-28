@@ -1,0 +1,21 @@
+[
+  {
+    "cpm_run_id": "cpmrun_c4b3a0328529d671903d94e84984c93c",
+    "schedule_version_key": "tropical|1|2026-06-01 08:00",
+    "project_key": "tropical",
+    "relationship_row_id": 1,
+    "relationship_ref": "A1000->A1010 (FS)",
+    "predecessor_activity_id": "A1000",
+    "successor_activity_id": "A1010",
+    "relationship_type": "FS",
+    "lag_value": "0",
+    "lag_unit": "hour",
+    "normalized_lag_days": 0.0,
+    "predecessor_early_start_offset": 0.0,
+    "predecessor_early_finish_offset": 5.0,
+    "candidate_successor_early_start_offset": 5.0,
+    "relationship_calc_status": "computed",
+    "relationship_calc_notes_json": null,
+    "created_at": "2026-06-27 21:42:27"
+  }
+]

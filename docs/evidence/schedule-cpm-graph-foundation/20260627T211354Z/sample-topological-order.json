@@ -1,0 +1,8 @@
+{
+  "schedule_version_key": "tropical|1|2026-06-01 08:00",
+  "is_acyclic": true,
+  "topological_order": [
+    "A1000",
+    "A1010"
+  ]
+}

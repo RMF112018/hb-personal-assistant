@@ -18,7 +18,7 @@
     "phase_owner",
     "blocking_for_phase"
   ],
-  "table_count": 471,
+  "table_count": 475,
   "tables": {
     "construction_data_quality_runs": {
       "table_family": "data_quality_v20v21",
@@ -4231,6 +4231,42 @@
       "blocking_for_phase": "none",
       "v": "V82",
       "notes": "Content-backed equivalence diagnostics for ZIP current schedule candidates, used to fail closed when companion files are not the same schedule."
+    },
+    "schedule_cpm_runs": {
+      "table_family": "schedule_cpm_v83",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "schedule_cpm_graph_foundation",
+      "blocking_for_phase": "none",
+      "v": "V83",
+      "notes": "One summary row per CPM graph-diagnostics run (node/edge counts, acyclic flag, deterministic topological order). Graph diagnostics only; cpm_recalculation_status is always 'not_implemented' in this phase — no CPM dates, float, or critical path are computed."
+    },
+    "schedule_cpm_diagnostics": {
+      "table_family": "schedule_cpm_v83",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "schedule_cpm_graph_foundation",
+      "blocking_for_phase": "none",
+      "v": "V83",
+      "notes": "Structural CPM graph findings (missing/self/duplicate/unsupported relationships, open start/finish, cycle). Source-export critical/float flags are not read for logic and not relabeled as computed CPM."
+    },
+    "schedule_cpm_activity_results": {
+      "table_family": "schedule_cpm_v84",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "schedule_cpm_forward_pass_foundation",
+      "blocking_for_phase": "none",
+      "v": "V84",
+      "notes": "Per-run per-activity forward-pass results: application-computed early start/finish as day-offsets-from-anchor plus derived ISO dates and duration provenance. Forward pass only (no backward pass/float/critical path); never mirrors or overwrites source-export schedule fields."
+    },
+    "schedule_cpm_relationship_results": {
+      "table_family": "schedule_cpm_v84",
+      "lifecycle_status": "operational_empty_expected",
+      "expected_population_status": "empty",
+      "phase_owner": "schedule_cpm_forward_pass_foundation",
+      "blocking_for_phase": "none",
+      "v": "V84",
+      "notes": "Per-run per-relationship forward-pass detail: normalized lag, predecessor offsets, candidate successor early start, and relationship_calc_status. Evidence of how each relationship constrained the successor; no critical-path designation."
     },
     "schedule_identities": {
       "table_family": "schedule_identity_v77",

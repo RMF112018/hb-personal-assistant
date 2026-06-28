@@ -1,0 +1,8 @@
+docs/evidence/schedule-cpm-backward-pass-foundation/
+scripts/test-schedule.sh
+src/hb_assistant/construction/analytics/schedule_cpm_backward_pass.py
+src/hb_assistant/construction/analytics/schedule_cpm_service.py
+src/hb_assistant/store/migrator.py
+src/hb_assistant/store/schedule_cpm_repository.py
+src/hb_assistant/store/schedule_cpm_tables.py
+tests/test_schedule_cpm_backward_pass.py

@@ -1,0 +1,21 @@
+# CPM backward pass foundation — validation output (2026-06-27T23:15:31Z)
+
+## pytest graph + forward + backward
+....................................................                     [100%]
+
+## regression: import / health / DCMA-not-measurable / migration / count(475 unchanged)
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+
+## ruff check (new/changed files)
+All checks passed!
+
+## mypy (new src files)
+Success: no issues found in 3 source files
+
+## full schedule bundle (scripts/test-schedule.sh)
+213 passed, 2 deselected, 1 warning in 170.29s
+
+## fresh-migrate + idempotency
+LATEST=85 applied=85 reapply=85; +9 activity / +4 relationship / +2 run columns present; v85 migration row recorded; table_count unchanged (475).

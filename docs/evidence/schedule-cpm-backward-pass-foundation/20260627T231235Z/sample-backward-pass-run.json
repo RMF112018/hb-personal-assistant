@@ -1,0 +1,24 @@
+{
+  "schedule_version_key": "tropical|1|2026-06-01 08:00",
+  "run": {
+    "cpm_run_id": "cpmrun_bad2eadd1e46c9d95b01c9145c90435e",
+    "project_key": "tropical",
+    "schedule_version_key": "tropical|1|2026-06-01 08:00",
+    "import_id": "c26333730350",
+    "node_count": 2,
+    "edge_count": 1,
+    "is_acyclic": 1,
+    "diagnostic_count": 2,
+    "topological_order_json": "[\"A1000\", \"A1010\"]",
+    "analysis_scope": "backward_pass",
+    "cpm_recalculation_status": "backward_pass_only",
+    "calculation_type": "backward_pass",
+    "schedule_start_anchor": "2026-06-01T00:00:00",
+    "schedule_start_anchor_source": "data_date",
+    "schedule_finish_anchor": "2026-03-10T00:00:00",
+    "schedule_finish_anchor_source": "source_scheduled_finish",
+    "computed_activity_count": 2,
+    "blocked_activity_count": 0,
+    "created_at": "2026-06-27 23:12:39"
+  }
+}
