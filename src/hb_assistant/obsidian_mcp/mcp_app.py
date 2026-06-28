@@ -21,6 +21,20 @@ _TOOL_SCOPES = {
     "create_note": "obsidian.write",
     "patch_note": "obsidian.write",
     "vault_map": "obsidian.read",
+    "vault_summarize_note": "obsidian.read",
+    "vault_summarize_folder": "obsidian.read",
+    "vault_read_eml": "obsidian.read",
+    "vault_email_inventory": "obsidian.read",
+    "vault_parse_email": "obsidian.read",
+    "vault_read_frontmatter": "obsidian.read",
+    "vault_update_frontmatter": "obsidian.write",
+    "vault_search_by_properties": "obsidian.read",
+    "vault_dataview_query": "obsidian.read",
+    "vault_get_backlinks": "obsidian.read",
+    "vault_get_unlinked_mentions": "obsidian.read",
+    "vault_get_note_graph": "obsidian.read",
+    "vault_create_note_from_template": "obsidian.write",
+    "vault_append_to_daily_note": "obsidian.write",
     "vault_curation_plan": "obsidian.read",
     "vault_curation_apply": "obsidian.write",
 }
@@ -306,6 +320,311 @@ def build_streamable_http_app(service: ObsidianMcpService | None = None) -> Any:
                 "include_tags": include_tags,
                 "max_files": max_files,
                 "operator_mode": _operator_mode(ctx),
+            }
+        )
+
+    @mcp.tool()
+    def vault_summarize_note(
+        ctx: Context,
+        path: str,
+        max_chars: int | None = None,
+        summary_style: str = "executive",
+        include_action_items: bool = True,
+        include_decisions: bool = True,
+        include_entities: bool = True,
+    ) -> dict[str, Any]:
+        """Summarize one note (md/txt/pdf/docx) with action items, decisions, and entities."""
+        _enforce("vault_summarize_note", ctx)
+        return svc.vault_summarize_note(
+            {
+                "path": path,
+                "max_chars": max_chars,
+                "summary_style": summary_style,
+                "include_action_items": include_action_items,
+                "include_decisions": include_decisions,
+                "include_entities": include_entities,
+                "operator_mode": _operator_mode(ctx),
+            }
+        )
+
+    @mcp.tool()
+    def vault_summarize_folder(
+        ctx: Context,
+        root_path: str = "",
+        recursive: bool = True,
+        max_depth: int | None = 3,
+        max_files: int = 100,
+        summary_style: str = "project_brief",
+        include_file_summaries: bool = True,
+        include_themes: bool = True,
+        include_action_items: bool = True,
+    ) -> dict[str, Any]:
+        """Summarize a folder/subtree into themes, per-file summaries, and aggregated actions."""
+        _enforce("vault_summarize_folder", ctx)
+        return svc.vault_summarize_folder(
+            {
+                "root_path": root_path,
+                "recursive": recursive,
+                "max_depth": max_depth,
+                "max_files": max_files,
+                "summary_style": summary_style,
+                "include_file_summaries": include_file_summaries,
+                "include_themes": include_themes,
+                "include_action_items": include_action_items,
+                "operator_mode": _operator_mode(ctx),
+                "principal_kind": _principal_kind(ctx),
+            }
+        )
+
+    @mcp.tool()
+    def vault_read_eml(
+        ctx: Context,
+        path: str,
+        include_body: bool = True,
+        include_attachments: bool = False,
+        max_body_chars: int = 12000,
+        redact_email_addresses: bool = False,
+        redact_phone_numbers: bool = False,
+    ) -> dict[str, Any]:
+        """Parse one .eml email: headers, body, attachment metadata, detected entities."""
+        _enforce("vault_read_eml", ctx)
+        return svc.vault_read_eml(
+            {
+                "path": path,
+                "include_body": include_body,
+                "include_attachments": include_attachments,
+                "max_body_chars": max_body_chars,
+                "redact_email_addresses": redact_email_addresses,
+                "redact_phone_numbers": redact_phone_numbers,
+                "operator_mode": _operator_mode(ctx),
+            }
+        )
+
+    @mcp.tool()
+    def vault_email_inventory(
+        ctx: Context,
+        root_path: str = "",
+        recursive: bool = True,
+        max_depth: int | None = 3,
+        max_files: int = 500,
+        include_subject: bool = True,
+        include_from: bool = True,
+        include_date: bool = True,
+        include_body_preview: bool = False,
+    ) -> dict[str, Any]:
+        """Inventory .eml files in a folder without reading full bodies by default."""
+        _enforce("vault_email_inventory", ctx)
+        return svc.vault_email_inventory(
+            {
+                "root_path": root_path,
+                "recursive": recursive,
+                "max_depth": max_depth,
+                "max_files": max_files,
+                "include_subject": include_subject,
+                "include_from": include_from,
+                "include_date": include_date,
+                "include_body_preview": include_body_preview,
+                "operator_mode": _operator_mode(ctx),
+                "principal_kind": _principal_kind(ctx),
+            }
+        )
+
+    @mcp.tool()
+    def vault_parse_email(
+        ctx: Context,
+        path: str,
+        extract: list[str] | None = None,
+        max_body_chars: int = 12000,
+        redact_email_addresses: bool = False,
+        redact_phone_numbers: bool = False,
+    ) -> dict[str, Any]:
+        """Parse one .eml into construction/PM extraction categories."""
+        _enforce("vault_parse_email", ctx)
+        return svc.vault_parse_email(
+            {
+                "path": path,
+                "extract": extract,
+                "max_body_chars": max_body_chars,
+                "redact_email_addresses": redact_email_addresses,
+                "redact_phone_numbers": redact_phone_numbers,
+                "operator_mode": _operator_mode(ctx),
+            }
+        )
+
+    @mcp.tool()
+    def vault_read_frontmatter(ctx: Context, path: str) -> dict[str, Any]:
+        """Read YAML frontmatter/properties plus body and file SHA-256 from a note."""
+        _enforce("vault_read_frontmatter", ctx)
+        return svc.vault_read_frontmatter({"path": path, "operator_mode": _operator_mode(ctx)})
+
+    @mcp.tool()
+    def vault_update_frontmatter(
+        ctx: Context,
+        path: str,
+        updates: dict[str, Any],
+        expected_sha256: str,
+        merge_tags: bool = True,
+        backup_before_replace: bool = True,
+    ) -> dict[str, Any]:
+        """Update frontmatter properties safely (SHA-gated, body-preserving, backup + receipt)."""
+        _enforce("vault_update_frontmatter", ctx)
+        return svc.vault_update_frontmatter(
+            {
+                "path": path,
+                "updates": updates,
+                "expected_sha256": expected_sha256,
+                "merge_tags": merge_tags,
+                "backup_before_replace": backup_before_replace,
+                "operator_mode": _operator_mode(ctx),
+                "principal_kind": _principal_kind(ctx),
+            }
+        )
+
+    @mcp.tool()
+    def vault_search_by_properties(
+        ctx: Context,
+        root_path: str = "",
+        filters: dict[str, Any] | None = None,
+        tags_any: list[str] | None = None,
+        tags_all: list[str] | None = None,
+        limit: int = 100,
+    ) -> dict[str, Any]:
+        """Find notes by frontmatter property filters and tag any/all matching."""
+        _enforce("vault_search_by_properties", ctx)
+        return svc.vault_search_by_properties(
+            {
+                "root_path": root_path,
+                "filters": filters,
+                "tags_any": tags_any,
+                "tags_all": tags_all,
+                "limit": limit,
+                "operator_mode": _operator_mode(ctx),
+            }
+        )
+
+    @mcp.tool()
+    def vault_dataview_query(
+        ctx: Context,
+        root_path: str = "",
+        where: list[dict[str, Any]] | None = None,
+        select: list[str] | None = None,
+        limit: int = 100,
+    ) -> dict[str, Any]:
+        """Constrained structured query over note properties (no arbitrary Dataview execution)."""
+        _enforce("vault_dataview_query", ctx)
+        return svc.vault_dataview_query(
+            {
+                "root_path": root_path,
+                "where": where,
+                "select": select,
+                "limit": limit,
+                "operator_mode": _operator_mode(ctx),
+            }
+        )
+
+    @mcp.tool()
+    def vault_get_backlinks(
+        ctx: Context,
+        target_path: str,
+        root_path: str = "",
+        max_results: int = 100,
+    ) -> dict[str, Any]:
+        """Find notes that link to a target note (wikilinks and Markdown links)."""
+        _enforce("vault_get_backlinks", ctx)
+        return svc.vault_get_backlinks(
+            {
+                "target_path": target_path,
+                "root_path": root_path,
+                "max_results": max_results,
+                "operator_mode": _operator_mode(ctx),
+            }
+        )
+
+    @mcp.tool()
+    def vault_get_unlinked_mentions(
+        ctx: Context,
+        target_title: str,
+        root_path: str = "",
+        max_results: int = 100,
+        include_snippets: bool = True,
+    ) -> dict[str, Any]:
+        """Find notes that mention a title/entity but do not link to it."""
+        _enforce("vault_get_unlinked_mentions", ctx)
+        return svc.vault_get_unlinked_mentions(
+            {
+                "target_title": target_title,
+                "root_path": root_path,
+                "max_results": max_results,
+                "include_snippets": include_snippets,
+                "operator_mode": _operator_mode(ctx),
+            }
+        )
+
+    @mcp.tool()
+    def vault_get_note_graph(
+        ctx: Context,
+        root_path: str = "",
+        target_path: str | None = None,
+        depth: int = 2,
+        max_nodes: int = 100,
+    ) -> dict[str, Any]:
+        """Return local graph data (nodes, edges, orphans, high-degree notes)."""
+        _enforce("vault_get_note_graph", ctx)
+        return svc.vault_get_note_graph(
+            {
+                "root_path": root_path,
+                "target_path": target_path,
+                "depth": depth,
+                "max_nodes": max_nodes,
+                "operator_mode": _operator_mode(ctx),
+            }
+        )
+
+    @mcp.tool()
+    def vault_create_note_from_template(
+        ctx: Context,
+        template_path: str,
+        target_path: str,
+        variables: dict[str, Any] | None = None,
+        frontmatter: dict[str, Any] | None = None,
+        overwrite: bool = False,
+        create_parent_dirs: bool = True,
+    ) -> dict[str, Any]:
+        """Create a note from a vault template with variable substitution and frontmatter."""
+        _enforce("vault_create_note_from_template", ctx)
+        return svc.vault_create_note_from_template(
+            {
+                "template_path": template_path,
+                "target_path": target_path,
+                "variables": variables,
+                "frontmatter": frontmatter,
+                "overwrite": overwrite,
+                "create_parent_dirs": create_parent_dirs,
+                "operator_mode": _operator_mode(ctx),
+                "principal_kind": _principal_kind(ctx),
+            }
+        )
+
+    @mcp.tool()
+    def vault_append_to_daily_note(
+        ctx: Context,
+        content: str,
+        date: str = "today",
+        section: str | None = None,
+        create_if_missing: bool = True,
+        template_path: str | None = None,
+    ) -> dict[str, Any]:
+        """Append structured content to a daily note (section-aware, create-if-missing)."""
+        _enforce("vault_append_to_daily_note", ctx)
+        return svc.vault_append_to_daily_note(
+            {
+                "content": content,
+                "date": date,
+                "section": section,
+                "create_if_missing": create_if_missing,
+                "template_path": template_path,
+                "operator_mode": _operator_mode(ctx),
+                "principal_kind": _principal_kind(ctx),
             }
         )
 
