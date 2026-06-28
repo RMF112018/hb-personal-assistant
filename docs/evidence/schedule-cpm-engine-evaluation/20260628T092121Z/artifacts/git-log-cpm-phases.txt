@@ -1,0 +1,13 @@
+f2916c21 (HEAD -> docs/schedule-cpm-engine-evaluation-20260628T092114Z, origin/main, origin/HEAD, main, docs/schedule-cpm-engine-evaluation-20260628T091649Z) Merge pull request #177 from RMF112018/feat/schedule-cpm-api-frontend-foundation
+0fa83273 Merge pull request #176 from RMF112018/feat/schedule-cpm-dcma-critical-path-integration
+2948b7a8 (origin/feat/schedule-cpm-api-frontend-foundation, feat/schedule-cpm-api-frontend-foundation) feat(schedule): surface computed CPM analysis
+a7930b2d (origin/feat/schedule-cpm-dcma-critical-path-integration, feat/schedule-cpm-dcma-critical-path-integration) feat(schedule): integrate computed CPM critical path metric
+127f3087 Merge pull request #175 from RMF112018/feat/schedule-cpm-criticality-foundation
+39fed676 (origin/feat/schedule-cpm-criticality-foundation, feat/schedule-cpm-criticality-foundation) feat(schedule): add CPM criticality foundation
+1d75011a Merge pull request #174 from RMF112018/feat/schedule-cpm-longest-path-foundation
+45e3a64e Merge pull request #173 from RMF112018/feat/schedule-cpm-float-foundation
+a0b491b0 (origin/feat/schedule-cpm-longest-path-foundation, feat/schedule-cpm-longest-path-foundation) feat(schedule): add CPM longest path foundation
+4e2706e4 (origin/feat/schedule-cpm-float-foundation, feat/schedule-cpm-float-foundation) feat(schedule): add CPM float foundation
+a056cf7d (origin/feat/schedule-cpm-backward-pass-foundation, feat/schedule-cpm-backward-pass-foundation) feat(schedule): add CPM backward pass foundation
+404c6b84 (origin/feat/schedule-cpm-forward-pass-foundation, feat/schedule-cpm-forward-pass-foundation) feat(schedule): add CPM forward pass foundation
+0d927c9e (feat/schedule-cpm-graph-foundation) feat(schedule): add CPM graph diagnostics foundation

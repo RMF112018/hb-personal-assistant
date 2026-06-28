@@ -1,0 +1,14 @@
+DB path: /tmp/hb-schedule-cpm-evaluation.sqlite
+Migrator module: /Users/bobbyfetting/hb-personal-assistant/src/hb_assistant/store/migrator.py
+LATEST_SCHEMA_VERSION: 89
+Schema version before: 82
+SQLiteMigrator.apply() returned: 89
+Schema version after: 89
+
+schedule_cpm tables:
+- schedule_cpm_activity_results
+- schedule_cpm_diagnostics
+- schedule_cpm_path_activities
+- schedule_cpm_paths
+- schedule_cpm_relationship_results
+- schedule_cpm_runs

@@ -1,0 +1,16 @@
+Finding: create_app() without db_path does not bind app.state.db_path to HB_ASSISTANT_DB_PATH.
+
+Observed:
+- Shell HB_ASSISTANT_DB_PATH: /tmp/hb-schedule-cpm-evaluation.sqlite
+- create_app() app.state.db_path: None
+- create_app(db_path=env) app.state.db_path: /tmp/hb-schedule-cpm-evaluation.sqlite
+
+Impact:
+- Uvicorn factory launch without explicit db_path returned CPM summary available:false.
+- Explicit create_app(db_path=/tmp/hb-schedule-cpm-evaluation.sqlite) returned CPM summary available:true.
+- Imported schedule and CPM persisted runs are valid.
+- UI empty state was caused by backend DB binding, not missing computation.
+
+Evidence files:
+- artifacts/debug-api-cpm-summary-current-ui-version.json
+- artifacts/debug-api-cpm-summary-after-backend-restart.json

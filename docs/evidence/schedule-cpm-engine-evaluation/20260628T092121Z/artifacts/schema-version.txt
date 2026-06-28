@@ -1,0 +1,44 @@
+# LATEST_SCHEMA_VERSION
+17:LATEST_SCHEMA_VERSION = 89
+
+# table_count references
+tests/test_phase_10_schema.py:162:        assert report["phase_10_table_count"] == 21
+tests/test_migrator_v76_project_staffing.py:156:    assert contract["table_count"] == 477
+tests/test_migrator_v76_project_staffing.py:157:    assert contract["table_count"] == len(contract["tables"])
+tests/test_phase_08b_schema_v30.py:118:        assert report["contract_table_count"] == 477  # live table lifecycle contract count (was 439; 451 before V76 staffing)
+tests/test_phase_08b_schema_v34.py:158:        assert report["contract_table_count"] == 477  # live table lifecycle contract count (was 439; 451 before V76 staffing)
+tests/test_project_staffing_attribution_migration.py:60:    assert contract["table_count"] == len(contract["tables"]) == 477
+tests/test_phase_09_schema_status.py:94:            "phase_09_table_count": 22,
+tests/test_phase_09_schema_status.py:115:            "phase_09_table_count": 22,
+tests/test_migrator_v63_forecast_outputs.py:4:run-output tables present and empty; the lifecycle contract table_count and classification
+tests/test_migrator_v63_forecast_outputs.py:83:    assert contract["table_count"] == 477
+tests/test_migrator_v63_forecast_outputs.py:84:    assert contract["table_count"] == len(contract["tables"])
+tests/test_phase_08d_schema_v37.py:172:        assert report["contract_table_count"] == 477  # live table lifecycle contract count (was 439; 451 before V76 staffing)
+tests/test_pdf_parser_pdfplumber.py:29:    assert res["table_count"] >= 1
+tests/test_pdf_parser_pdfplumber.py:51:    assert a["table_count"] == b["table_count"]
+tests/test_pdf_parser_pdfplumber.py:64:    assert "table_count" not in res
+tests/test_pdf_parser_pdfplumber.py:77:    assert primary.get("table_count", 0) >= 1
+tests/test_migrator_v72_forecast_model_registry.py:95:    assert contract["table_count"] == len(contract["tables"])
+tests/test_phase_08b_schema_v31.py:157:        assert report["contract_table_count"] == 477  # live table lifecycle contract count (was 439; 451 before V76 staffing)
+tests/test_phase_09_schema_v38.py:145:        assert report["contract_table_count"] == 477  # live table lifecycle contract count (was 439; 451 before V76 staffing)
+tests/test_schedule_diff_intelligence.py:245:    assert contract["table_count"] == 477
+tests/test_migrator_v73_forecast_generation_requests.py:101:    assert contract["table_count"] == len(contract["tables"])
+tests/test_schedule_schema_migration.py:63:    assert contract["table_count"] == 477
+tests/test_schedule_schema_migration.py:64:    assert contract["table_count"] == len(contract["tables"])
+tests/test_migrator_v61_external_forecasts.py:5:the lifecycle contract table_count and classification track the schema (391 -> 399). Additive
+tests/test_migrator_v61_external_forecasts.py:104:    assert contract["table_count"] == 477
+tests/test_migrator_v61_external_forecasts.py:105:    assert contract["table_count"] == len(contract["tables"])
+tests/test_sources_refresh.py:150:            "missing_table_count": 0,
+tests/test_sources_refresh.py:465:    assert budget_detail["structured_table_counts"] == {
+tests/test_sources_refresh.py:554:            "missing_table_count": 0,
+tests/test_sources_refresh.py:640:    assert set(budget_detail["structured_table_counts"]) == {
+tests/test_forecast_config_registry_phase16.py:155:    assert build_table_inventory_report(db_path=None)["contract_table_count"] == 477
+tests/test_forecast_config_registry_phase16.py:161:    assert contract["table_count"] == 477
+tests/test_forecast_config_registry_phase16.py:162:    assert contract["table_count"] == len(contract["tables"])
+tests/test_forecast_db_certified_final_output_phase15.py:713:    assert out["live_db_verification"]["table_counts"] == {
+tests/test_schedule_identity_review_api.py:77:    assert contract["table_count"] == 477
+tests/test_forecast_db_read_repositories_phase3.py:165:    assert contract["table_count"] == 477  # live table lifecycle contract count (was 439; 451 before V76 staffing)
+tests/test_forecast_db_read_repositories_phase3.py:166:    assert contract["table_count"] == len(contract["tables"])
+tests/test_data_quality_table_inventory.py:38:        assert report["live_table_count"] > 0
+tests/test_data_quality_table_inventory.py:77:        assert report["contract_table_count"] == 477  # live table lifecycle contract count (was 439; 451 before V76 staffing)
+tests/test_migrator_v66_forecast_decision_support.py:83:    assert contract["table_count"] == len(contract["tables"])

@@ -1,0 +1,8 @@
+calculation_type   cpm_recalculation_status         schedule_version_key            source_run_id                            node_count  edge_count  diagnostic_count  computed_activity_count  created_at         
+-----------------  -------------------------------  ------------------------------  ---------------------------------------  ----------  ----------  ----------------  -----------------------  -------------------
+float              forward_backward_float_only      tropical|1071|2026-06-23 08:00  cpmrun_e7e97b3eeb44c400f18cb89af6766de9  1507        3921        52                1507                     2026-06-28 09:55:17
+longest_path       longest_path_only                tropical|1071|2026-06-23 08:00  cpmrun_d32e29265538e09d6d066589ea10a7cf  1507        3921        52                0                        2026-06-28 09:55:17
+criticality        criticality_classification_only  tropical|1071|2026-06-23 08:00  cpmrun_17f1ffb7fe59a4e341a046262ea2dee9  1507        3921        52                1507                     2026-06-28 09:55:17
+graph_diagnostics  not_implemented                  tropical|1071|2026-06-23 08:00                                           1507        3921        52                0                        2026-06-28 09:55:16
+forward_pass       forward_pass_only                tropical|1071|2026-06-23 08:00                                           1507        3921        52                1507                     2026-06-28 09:55:16
+backward_pass      backward_pass_only               tropical|1071|2026-06-23 08:00                                           1507        3921        52                1507                     2026-06-28 09:55:16

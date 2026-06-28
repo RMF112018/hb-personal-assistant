@@ -1,0 +1,494 @@
+# CPM table DDL source: src/hb_assistant/store/schedule_cpm_tables.py
+"""V83 CPM graph diagnostics foundation tables (additive).
+
+Two additive tables persist the structural graph diagnostics produced by
+``schedule_cpm_graph.build_graph`` for one schedule version:
+
+- ``schedule_cpm_runs`` — one summary row per graph-diagnostics run (node/edge counts,
+  acyclic flag, deterministic topological order, and explicit ``cpm_recalculation_status``
+  so the persisted record states CPM recalculation is not implemented in this phase).
+- ``schedule_cpm_diagnostics`` — one row per structural finding (missing/self/duplicate/
+  unsupported edges, open ends, cycle).
+
+These tables hold NO computed CPM dates, float, or critical/longest-path designations.
+All statements are ``CREATE TABLE IF NOT EXISTS`` / ``CREATE INDEX IF NOT EXISTS`` and are
+therefore idempotent.
+"""
+
+from __future__ import annotations
+
+V83_TABLES: tuple[str, ...] = (
+    "schedule_cpm_runs",
+    "schedule_cpm_diagnostics",
+)
+
+V83_STATEMENTS: list[str] = [
+    """
+    CREATE TABLE IF NOT EXISTS schedule_cpm_runs (
+        cpm_run_id TEXT PRIMARY KEY,
+        project_key TEXT NOT NULL,
+        schedule_version_key TEXT NOT NULL,
+        import_id TEXT NOT NULL,
+        node_count INTEGER NOT NULL DEFAULT 0,
+        edge_count INTEGER NOT NULL DEFAULT 0,
+        is_acyclic INTEGER NOT NULL DEFAULT 1,
+        diagnostic_count INTEGER NOT NULL DEFAULT 0,
+        topological_order_json TEXT,
+        analysis_scope TEXT NOT NULL DEFAULT 'graph_diagnostics_only',
+        cpm_recalculation_status TEXT NOT NULL DEFAULT 'not_implemented',
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_schedule_cpm_runs_version "
+    "ON schedule_cpm_runs(schedule_version_key)",
+    "CREATE INDEX IF NOT EXISTS idx_schedule_cpm_runs_project "
+    "ON schedule_cpm_runs(project_key)",
+    """
+    CREATE TABLE IF NOT EXISTS schedule_cpm_diagnostics (
+        diagnostic_id TEXT PRIMARY KEY,
+        cpm_run_id TEXT NOT NULL,
+        project_key TEXT NOT NULL,
+        schedule_version_key TEXT NOT NULL,
+        import_id TEXT NOT NULL,
+        activity_id TEXT,
+        relationship_ref TEXT,
+        diagnostic_type TEXT NOT NULL,
+        severity TEXT NOT NULL,
+        summary TEXT NOT NULL,
+        evidence_json TEXT,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (cpm_run_id) REFERENCES schedule_cpm_runs(cpm_run_id)
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_schedule_cpm_diagnostics_run "
+    "ON schedule_cpm_diagnostics(cpm_run_id)",
+    "CREATE INDEX IF NOT EXISTS idx_schedule_cpm_diagnostics_version "
+    "ON schedule_cpm_diagnostics(schedule_version_key)",
+    "CREATE INDEX IF NOT EXISTS idx_schedule_cpm_diagnostics_activity "
+    "ON schedule_cpm_diagnostics(activity_id)",
+]
+
+
+# ---------------------------------------------------------------------------------------
+# V84 CPM forward pass foundation (additive).
+#
+# Two additive result tables persist the deterministic forward-pass output produced by
+# ``schedule_cpm_forward_pass.compute_forward_pass`` for one schedule version:
+#
+# - ``schedule_cpm_activity_results`` — one row per (run, activity): computed early start /
+#   early finish as both day-offsets-from-anchor (authoritative) and derived ISO datetimes,
+#   plus duration provenance and a forward_pass_status.
+# - ``schedule_cpm_relationship_results`` — one row per (run, relationship): how the
+#   relationship constrained the successor early start (normalized lag, predecessor offsets,
+#   candidate successor ES, relationship_calc_status).
+#
+# These tables hold NO backward-pass values, float, or critical/longest-path designations,
+# and NEVER mirror or overwrite source-export schedule fields. ``schedule_cpm_runs`` is
+# extended additively (see V84_RUNS_ADDITIVE_COLUMNS) with forward-pass run metadata.
+# ---------------------------------------------------------------------------------------
+
+V84_TABLES: tuple[str, ...] = (
+    "schedule_cpm_activity_results",
+    "schedule_cpm_relationship_results",
+)
+
+# Column name -> column type/constraint, added to the existing schedule_cpm_runs table via a
+# column-existence-guarded reconcile (ALTER TABLE ADD COLUMN is not IF NOT EXISTS in SQLite).
+# node_count / edge_count already exist and double as activity/relationship counts.
+V84_RUNS_ADDITIVE_COLUMNS: dict[str, str] = {
+    "calculation_type": "TEXT NOT NULL DEFAULT 'graph_diagnostics'",
+    "schedule_start_anchor": "TEXT",
+    "schedule_start_anchor_source": "TEXT",
+    "computed_activity_count": "INTEGER NOT NULL DEFAULT 0",
+    "blocked_activity_count": "INTEGER NOT NULL DEFAULT 0",
+}
+
+V84_STATEMENTS: list[str] = [
+    """
+    CREATE TABLE IF NOT EXISTS schedule_cpm_activity_results (
+        cpm_run_id TEXT NOT NULL,
+        schedule_version_key TEXT NOT NULL,
+        project_key TEXT NOT NULL,
+        activity_id TEXT NOT NULL,
+        activity_name TEXT,
+        topological_index INTEGER,
+        computed_early_start TEXT,
+        computed_early_finish TEXT,
+        early_start_offset_days REAL,
+        early_finish_offset_days REAL,
+        duration_value REAL,
+        duration_unit TEXT,
+        duration_source TEXT,
+        predecessor_count INTEGER NOT NULL DEFAULT 0,
+        successor_count INTEGER NOT NULL DEFAULT 0,
+        forward_pass_status TEXT NOT NULL,
+        forward_pass_notes_json TEXT,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (cpm_run_id, activity_id),
+        FOREIGN KEY (cpm_run_id) REFERENCES schedule_cpm_runs(cpm_run_id)
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_schedule_cpm_activity_results_version "
+    "ON schedule_cpm_activity_results(schedule_version_key)",
+    "CREATE INDEX IF NOT EXISTS idx_schedule_cpm_activity_results_run "
+    "ON schedule_cpm_activity_results(cpm_run_id)",
+    """
+    CREATE TABLE IF NOT EXISTS schedule_cpm_relationship_results (
+        cpm_run_id TEXT NOT NULL,
+        schedule_version_key TEXT NOT NULL,
+        project_key TEXT NOT NULL,
+        relationship_row_id INTEGER,
+        relationship_ref TEXT,
+        predecessor_activity_id TEXT NOT NULL,
+        successor_activity_id TEXT NOT NULL,
+        relationship_type TEXT,
+        lag_value TEXT,
+        lag_unit TEXT,
+        normalized_lag_days REAL,
+        predecessor_early_start_offset REAL,
+        predecessor_early_finish_offset REAL,
+        candidate_successor_early_start_offset REAL,
+        relationship_calc_status TEXT NOT NULL,
+        relationship_calc_notes_json TEXT,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (cpm_run_id) REFERENCES schedule_cpm_runs(cpm_run_id)
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_schedule_cpm_relationship_results_run "
+    "ON schedule_cpm_relationship_results(cpm_run_id)",
+    "CREATE INDEX IF NOT EXISTS idx_schedule_cpm_relationship_results_version "
+    "ON schedule_cpm_relationship_results(schedule_version_key)",
+]
+
+
+# ---------------------------------------------------------------------------------------
+# V85 CPM backward pass foundation (additive COLUMNS ONLY — no new tables).
+#
+# The backward pass computes late start / late finish over the same acyclic graph and the
+# persisted Phase 2 forward-pass results, writing its own run's rows (early values copied,
+# late values computed). These additive columns extend the shared Phase 2 result/run tables;
+# forward-pass runs leave the backward columns NULL. No source-export field is mirrored or
+# overwritten. table_count is unchanged (no new tables). Applied via a column-existence-
+# guarded reconcile (ALTER TABLE ADD COLUMN is not IF NOT EXISTS in SQLite).
+# ---------------------------------------------------------------------------------------
+
+V85_ACTIVITY_RESULTS_COLUMNS: dict[str, str] = {
+    "computed_late_start": "TEXT",
+    "computed_late_finish": "TEXT",
+    "late_start_offset_days": "REAL",
+    "late_finish_offset_days": "REAL",
+    "backward_pass_status": "TEXT",
+    "backward_pass_notes_json": "TEXT",
+    "terminal_activity_flag": "INTEGER",
+    "controlling_successor_activity_id": "TEXT",
+    "controlling_successor_relationship_id": "TEXT",
+}
+
+V85_RELATIONSHIP_RESULTS_COLUMNS: dict[str, str] = {
+    "candidate_predecessor_late_start": "REAL",
+    "candidate_predecessor_late_finish": "REAL",
+    "backward_relationship_calc_status": "TEXT",
+    "backward_relationship_calc_notes_json": "TEXT",
+}
+
+# node_count/edge_count reused as activity/relationship counts;
+# computed_activity_count/blocked_activity_count/diagnostic_count reused for late-date
+# counts — only the finish anchor is new.
+V85_RUNS_COLUMNS: dict[str, str] = {
+    "schedule_finish_anchor": "TEXT",
+    "schedule_finish_anchor_source": "TEXT",
+}
+
+
+# ---------------------------------------------------------------------------------------
+# V86 CPM float foundation (additive COLUMNS ONLY — no new tables).
+#
+# Computed total/free float derived from the application-owned early/late offsets produced
+# by Phase 2 (forward) and Phase 3 (backward). The float run reads the persisted backward
+# run and writes its own rows; non-float runs leave the float columns NULL. No source-export
+# float/early/late/critical field is read for logic or overwritten, and nothing is marked
+# critical. table_count is unchanged (no new tables). Applied via a column-existence-guarded
+# reconcile.
+# ---------------------------------------------------------------------------------------
+
+V86_ACTIVITY_RESULTS_COLUMNS: dict[str, str] = {
+    "computed_total_float": "REAL",
+    "computed_total_float_basis": "TEXT",
+    "computed_total_float_status": "TEXT",
+    "computed_total_float_notes_json": "TEXT",
+    "computed_free_float": "REAL",
+    "computed_free_float_basis": "TEXT",
+    "computed_free_float_status": "TEXT",
+    "computed_free_float_notes_json": "TEXT",
+    "controlling_free_float_successor_activity_id": "TEXT",
+    "controlling_free_float_relationship_id": "TEXT",
+}
+
+V86_RELATIONSHIP_RESULTS_COLUMNS: dict[str, str] = {
+    "free_float_candidate": "REAL",
+    "free_float_candidate_status": "TEXT",
+    "free_float_candidate_notes_json": "TEXT",
+}
+
+# computed_activity_count/blocked_activity_count/diagnostic_count reused for total-float/
+# blocked/diagnostic counts; source_run_id records the backward run the float derives from.
+V86_RUNS_COLUMNS: dict[str, str] = {
+    "source_run_id": "TEXT",
+    "total_float_computed_count": "INTEGER",
+    "free_float_computed_count": "INTEGER",
+}
+
+
+# ---------------------------------------------------------------------------------------
+# V87 CPM longest path foundation (additive — TWO NEW TABLES + run columns).
+#
+# The longest path is a separate analysis artifact (path summary + ordered membership), so
+# it gets its own tables rather than columns on the compute-result tables. A longest-path
+# run reads the persisted Phase 4 float run and writes one schedule_cpm_paths row plus
+# ordered schedule_cpm_path_activities rows; it does NOT write activity/relationship result
+# rows and does NOT mutate prior runs. This is a longest-path basis, NOT a critical-path
+# declaration — nothing is marked critical and no source field is read for logic. table_count
+# increases by 2 (475 -> 477).
+# ---------------------------------------------------------------------------------------
+
+V87_TABLES: tuple[str, ...] = (
+    "schedule_cpm_paths",
+    "schedule_cpm_path_activities",
+)
+
+V87_STATEMENTS: list[str] = [
+    """
+    CREATE TABLE IF NOT EXISTS schedule_cpm_paths (
+        path_id TEXT PRIMARY KEY,
+        cpm_run_id TEXT NOT NULL,
+        schedule_version_key TEXT NOT NULL,
+        project_key TEXT NOT NULL,
+        path_type TEXT NOT NULL,
+        path_rank INTEGER NOT NULL DEFAULT 1,
+        start_activity_id TEXT,
+        end_activity_id TEXT,
+        activity_count INTEGER NOT NULL DEFAULT 0,
+        relationship_count INTEGER NOT NULL DEFAULT 0,
+        path_duration REAL,
+        path_start_offset_days REAL,
+        path_finish_offset_days REAL,
+        path_total_float REAL,
+        path_basis TEXT,
+        path_status TEXT NOT NULL,
+        path_notes_json TEXT,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (cpm_run_id) REFERENCES schedule_cpm_runs(cpm_run_id)
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_schedule_cpm_paths_run "
+    "ON schedule_cpm_paths(cpm_run_id)",
+    "CREATE INDEX IF NOT EXISTS idx_schedule_cpm_paths_version "
+    "ON schedule_cpm_paths(schedule_version_key)",
+    """
+    CREATE TABLE IF NOT EXISTS schedule_cpm_path_activities (
+        path_id TEXT NOT NULL,
+        cpm_run_id TEXT NOT NULL,
+        schedule_version_key TEXT NOT NULL,
+        project_key TEXT NOT NULL,
+        path_type TEXT NOT NULL,
+        path_rank INTEGER NOT NULL DEFAULT 1,
+        path_sequence INTEGER NOT NULL,
+        activity_id TEXT NOT NULL,
+        activity_name TEXT,
+        relationship_from_previous_id INTEGER,
+        relationship_from_previous_ref TEXT,
+        computed_early_start TEXT,
+        computed_early_finish TEXT,
+        computed_late_start TEXT,
+        computed_late_finish TEXT,
+        early_start_offset_days REAL,
+        early_finish_offset_days REAL,
+        computed_total_float REAL,
+        computed_free_float REAL,
+        duration_value REAL,
+        topological_index INTEGER,
+        selection_basis TEXT,
+        selection_notes_json TEXT,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (path_id, path_sequence),
+        FOREIGN KEY (path_id) REFERENCES schedule_cpm_paths(path_id),
+        FOREIGN KEY (cpm_run_id) REFERENCES schedule_cpm_runs(cpm_run_id)
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_schedule_cpm_path_activities_run "
+    "ON schedule_cpm_path_activities(cpm_run_id)",
+    "CREATE INDEX IF NOT EXISTS idx_schedule_cpm_path_activities_path "
+    "ON schedule_cpm_path_activities(path_id)",
+]
+
+# source_run_id (added in V86) is reused for the float run id.
+V87_RUNS_COLUMNS: dict[str, str] = {
+    "path_count": "INTEGER",
+    "longest_path_activity_count": "INTEGER",
+    "longest_path_relationship_count": "INTEGER",
+    "longest_path_duration": "REAL",
+    "longest_path_end_activity_id": "TEXT",
+}
+
+
+# ---------------------------------------------------------------------------------------
+# V88 CPM criticality foundation (additive COLUMNS ONLY — no new tables).
+#
+# Application-computed critical / near-critical classification from the Phase 4 computed
+# total float (threshold rules), with Phase 5 longest-path membership recorded as CONTEXT
+# only. A criticality run reads the persisted float + longest-path runs and writes its own
+# activity-result rows (app-owned CPM fields whitelisted + classification columns); non-
+# criticality runs leave the criticality columns NULL. This is computed criticality, NOT
+# DCMA critical-path compliance, and no source field is read for logic or overwritten.
+# table_count is unchanged. Applied via a column-existence-guarded reconcile.
+# ---------------------------------------------------------------------------------------
+
+V88_ACTIVITY_RESULTS_COLUMNS: dict[str, str] = {
+    "computed_critical_flag": "INTEGER",
+    "computed_near_critical_flag": "INTEGER",
+    "computed_criticality_class": "TEXT",
+    "computed_criticality_status": "TEXT",
+    "computed_criticality_basis": "TEXT",
+    "computed_criticality_notes_json": "TEXT",
+    "critical_float_threshold_days": "REAL",
+    "near_critical_float_threshold_days": "REAL",
+    "longest_path_member_flag": "INTEGER",
+    "longest_path_sequence": "INTEGER",
+    "longest_path_membership_basis": "TEXT",
+    "longest_path_membership_notes_json": "TEXT",
+}
+
+# diagnostic_count reused for the criticality diagnostic count; source_run_id reused for the
+# longest-path run id (its own source_run_id chains to the float run).
+V88_RUNS_COLUMNS: dict[str, str] = {
+    "critical_float_threshold_days": "REAL",
+    "near_critical_float_threshold_days": "REAL",
+    "computed_critical_activity_count": "INTEGER",
+    "computed_near_critical_activity_count": "INTEGER",
+    "computed_noncritical_activity_count": "INTEGER",
+    "unclassified_activity_count": "INTEGER",
+    "longest_path_member_count": "INTEGER",
+}
+
+# CPM repository source references
+3:Persists and reads ``schedule_cpm_runs`` and ``schedule_cpm_diagnostics``. Mirrors the
+16:def deterministic_cpm_run_id(
+40:    def __init__(self, *, db_path: str) -> None:
+43:    def _conn(self):
+48:    def insert_run(
+56:            f"INSERT OR REPLACE INTO schedule_cpm_runs ({names}) VALUES ({placeholders})"
+67:    def insert_diagnostics(
+76:        sql = f"INSERT INTO schedule_cpm_diagnostics ({names}) VALUES ({placeholders})"
+86:    def replace_run_with_diagnostics(
+99:                    "DELETE FROM schedule_cpm_diagnostics WHERE cpm_run_id=?", (run_id,)
+106:    def list_runs(self, schedule_version_key: str) -> list[dict[str, Any]]:
+125:                FROM schedule_cpm_runs
+133:    def get_run(self, cpm_run_id: str) -> dict[str, Any] | None:
+152:                FROM schedule_cpm_runs
+160:    def list_diagnostics(self, cpm_run_id: str) -> list[dict[str, Any]]:
+167:                FROM schedule_cpm_diagnostics
+188:    def insert_activity_results(
+191:        return self._insert_rows("schedule_cpm_activity_results", rows, conn=conn)
+193:    def insert_relationship_results(
+196:        return self._insert_rows("schedule_cpm_relationship_results", rows, conn=conn)
+198:    def _insert_rows(
+217:    def replace_forward_pass_run(
+236:                    "DELETE FROM schedule_cpm_relationship_results WHERE cpm_run_id=?",
+240:                    "DELETE FROM schedule_cpm_activity_results WHERE cpm_run_id=?", (run_id,)
+243:                    "DELETE FROM schedule_cpm_diagnostics WHERE cpm_run_id=?", (run_id,)
+254:    def list_activity_results(self, cpm_run_id: str) -> list[dict[str, Any]]:
+280:                FROM schedule_cpm_activity_results
+288:    def list_relationship_results(self, cpm_run_id: str) -> list[dict[str, Any]]:
+301:                FROM schedule_cpm_relationship_results
+311:    def _get_latest_run(
+333:                FROM schedule_cpm_runs
+343:    def get_forward_pass_run(self, schedule_version_key: str) -> dict[str, Any] | None:
+347:    def get_backward_pass_run(self, schedule_version_key: str) -> dict[str, Any] | None:
+351:    def get_float_run(self, schedule_version_key: str) -> dict[str, Any] | None:
+355:    def get_longest_path_run(self, schedule_version_key: str) -> dict[str, Any] | None:
+359:    def get_criticality_run(self, schedule_version_key: str) -> dict[str, Any] | None:
+363:    def replace_criticality_run(
+381:                    "DELETE FROM schedule_cpm_activity_results WHERE cpm_run_id=?", (run_id,)
+384:                    "DELETE FROM schedule_cpm_diagnostics WHERE cpm_run_id=?", (run_id,)
+393:    def replace_float_run(
+413:                    "DELETE FROM schedule_cpm_relationship_results WHERE cpm_run_id=?",
+417:                    "DELETE FROM schedule_cpm_activity_results WHERE cpm_run_id=?", (run_id,)
+420:                    "DELETE FROM schedule_cpm_diagnostics WHERE cpm_run_id=?", (run_id,)
+433:    def insert_paths(self, rows: Iterable[dict[str, Any]], *, conn: Any | None = None) -> int:
+434:        return self._insert_rows("schedule_cpm_paths", rows, conn=conn)
+436:    def insert_path_activities(
+439:        return self._insert_rows("schedule_cpm_path_activities", rows, conn=conn)
+441:    def replace_longest_path_run(
+461:                    "DELETE FROM schedule_cpm_path_activities WHERE cpm_run_id=?", (run_id,)
+464:                    "DELETE FROM schedule_cpm_paths WHERE cpm_run_id=?", (run_id,)
+467:                    "DELETE FROM schedule_cpm_diagnostics WHERE cpm_run_id=?", (run_id,)
+478:    def list_paths(self, cpm_run_id: str) -> list[dict[str, Any]]:
+487:                FROM schedule_cpm_paths
+495:    def list_path_activities(self, path_id: str) -> list[dict[str, Any]]:
+506:                FROM schedule_cpm_path_activities
+514:    def replace_backward_pass_run(
+534:                    "DELETE FROM schedule_cpm_relationship_results WHERE cpm_run_id=?",
+538:                    "DELETE FROM schedule_cpm_activity_results WHERE cpm_run_id=?", (run_id,)
+541:                    "DELETE FROM schedule_cpm_diagnostics WHERE cpm_run_id=?", (run_id,)
+
+# Quality metric status values + DCMA references
+src/hb_assistant/store/schedule_float_tables.py:12:METRIC_STATUS_CHECK_VALUES: tuple[str, ...] = (
+src/hb_assistant/store/schedule_float_tables.py:32:    "available_app_cpm_recalculated",
+src/hb_assistant/store/schedule_quality_repository.py:168:                f"INSERT INTO schedule_quality_metric_results ({', '.join(cols)}) "
+src/hb_assistant/store/schedule_quality_repository.py:261:                SELECT * FROM schedule_quality_metric_results
+src/hb_assistant/store/schedule_quality_tables.py:7:    "schedule_quality_metric_results",
+src/hb_assistant/store/schedule_quality_tables.py:45:    CREATE TABLE IF NOT EXISTS schedule_quality_metric_results (
+src/hb_assistant/store/schedule_quality_tables.py:70:    "CREATE INDEX IF NOT EXISTS idx_sq_metrics_run ON schedule_quality_metric_results(evaluation_run_id);",
+src/hb_assistant/store/migrator.py:8669:            METRIC_STATUS_CHECK_VALUES,
+src/hb_assistant/store/migrator.py:8673:            "SELECT sql FROM sqlite_master WHERE type='table' AND name='schedule_quality_metric_results'"
+src/hb_assistant/store/migrator.py:8682:        statuses = ", ".join(f"'{s}'" for s in METRIC_STATUS_CHECK_VALUES)
+src/hb_assistant/store/migrator.py:8684:            "ALTER TABLE schedule_quality_metric_results RENAME TO schedule_quality_metric_results_v70"
+src/hb_assistant/store/migrator.py:8688:            CREATE TABLE schedule_quality_metric_results (
+src/hb_assistant/store/migrator.py:8713:            INSERT INTO schedule_quality_metric_results (
+src/hb_assistant/store/migrator.py:8724:            FROM schedule_quality_metric_results_v70
+src/hb_assistant/store/migrator.py:8727:        conn.execute("DROP TABLE schedule_quality_metric_results_v70")
+src/hb_assistant/store/migrator.py:8729:            "CREATE INDEX IF NOT EXISTS idx_sq_metrics_run ON schedule_quality_metric_results(evaluation_run_id)"
+src/hb_assistant/store/migrator.py:8736:            METRIC_STATUS_CHECK_VALUES,
+src/hb_assistant/store/migrator.py:8740:            "SELECT sql FROM sqlite_master WHERE type='table' AND name='schedule_quality_metric_results'"
+src/hb_assistant/store/migrator.py:8749:        statuses = ", ".join(f"'{s}'" for s in METRIC_STATUS_CHECK_VALUES)
+src/hb_assistant/store/migrator.py:8751:            "ALTER TABLE schedule_quality_metric_results RENAME TO schedule_quality_metric_results_v71"
+src/hb_assistant/store/migrator.py:8755:            CREATE TABLE schedule_quality_metric_results (
+src/hb_assistant/store/migrator.py:8780:            INSERT INTO schedule_quality_metric_results (
+src/hb_assistant/store/migrator.py:8791:            FROM schedule_quality_metric_results_v71
+src/hb_assistant/store/migrator.py:8794:        conn.execute("DROP TABLE schedule_quality_metric_results_v71")
+src/hb_assistant/store/migrator.py:8796:            "CREATE INDEX IF NOT EXISTS idx_sq_metrics_run ON schedule_quality_metric_results(evaluation_run_id)"
+src/hb_assistant/store/migrator.py:8801:        """Rebuild the metric-results status CHECK to accept 'available_app_cpm_recalculated'.
+src/hb_assistant/store/migrator.py:8808:            METRIC_STATUS_CHECK_VALUES,
+src/hb_assistant/store/migrator.py:8812:            "SELECT sql FROM sqlite_master WHERE type='table' AND name='schedule_quality_metric_results'"
+src/hb_assistant/store/migrator.py:8818:        if "available_app_cpm_recalculated" in ddl:
+src/hb_assistant/store/migrator.py:8821:        statuses = ", ".join(f"'{s}'" for s in METRIC_STATUS_CHECK_VALUES)
+src/hb_assistant/store/migrator.py:8823:            "ALTER TABLE schedule_quality_metric_results RENAME TO schedule_quality_metric_results_v89"
+src/hb_assistant/store/migrator.py:8827:            CREATE TABLE schedule_quality_metric_results (
+src/hb_assistant/store/migrator.py:8852:            INSERT INTO schedule_quality_metric_results (
+src/hb_assistant/store/migrator.py:8863:            FROM schedule_quality_metric_results_v89
+src/hb_assistant/store/migrator.py:8866:        conn.execute("DROP TABLE schedule_quality_metric_results_v89")
+src/hb_assistant/store/migrator.py:8868:            "CREATE INDEX IF NOT EXISTS idx_sq_metrics_run ON schedule_quality_metric_results(evaluation_run_id)"
+src/hb_assistant/store/migrator.py:8873:        from hb_assistant.store.schedule_float_tables import METRIC_STATUS_CHECK_VALUES
+src/hb_assistant/store/migrator.py:8876:            "SELECT sql FROM sqlite_master WHERE type='table' AND name='schedule_quality_metric_results'"
+src/hb_assistant/store/migrator.py:8883:        statuses = ", ".join(f"'{s}'" for s in METRIC_STATUS_CHECK_VALUES)
+src/hb_assistant/store/migrator.py:8884:        conn.execute("ALTER TABLE schedule_quality_metric_results RENAME TO schedule_quality_metric_results_v66")
+src/hb_assistant/store/migrator.py:8887:            CREATE TABLE schedule_quality_metric_results (
+src/hb_assistant/store/migrator.py:8912:            INSERT INTO schedule_quality_metric_results (
+src/hb_assistant/store/migrator.py:8923:            FROM schedule_quality_metric_results_v66
+src/hb_assistant/store/migrator.py:8926:        conn.execute("DROP TABLE schedule_quality_metric_results_v66")
+src/hb_assistant/store/migrator.py:8996:        from hb_assistant.store.schedule_float_tables import METRIC_STATUS_CHECK_VALUES
+src/hb_assistant/store/migrator.py:8999:            "SELECT sql FROM sqlite_master WHERE type='table' AND name='schedule_quality_metric_results'"
+src/hb_assistant/store/migrator.py:9006:        statuses = ", ".join(f"'{s}'" for s in METRIC_STATUS_CHECK_VALUES)
+src/hb_assistant/store/migrator.py:9007:        conn.execute("ALTER TABLE schedule_quality_metric_results RENAME TO schedule_quality_metric_results_v64")
+src/hb_assistant/store/migrator.py:9010:            CREATE TABLE schedule_quality_metric_results (
+src/hb_assistant/store/migrator.py:9035:            INSERT INTO schedule_quality_metric_results (
+src/hb_assistant/store/migrator.py:9044:            FROM schedule_quality_metric_results_v64
+src/hb_assistant/store/migrator.py:9047:        conn.execute("DROP TABLE schedule_quality_metric_results_v64")
+src/hb_assistant/store/migrator.py:9049:            "CREATE INDEX IF NOT EXISTS idx_sq_metrics_run ON schedule_quality_metric_results(evaluation_run_id)"
+src/hb_assistant/store/schedule_schema_verify.py:8:    METRIC_STATUS_CHECK_VALUES,
+src/hb_assistant/store/schedule_schema_verify.py:66:        "SELECT sql FROM sqlite_master WHERE type='table' AND name='schedule_quality_metric_results'"
+src/hb_assistant/store/schedule_schema_verify.py:93:            "schedule_quality_metric_results CHECK missing V65 derived-float statuses"
+src/hb_assistant/construction/analytics/schedule_quality_posture.py:21:METRIC_STATUS_AVAILABLE_APP_CPM = "available_app_cpm_recalculated"
+src/hb_assistant/construction/analytics/schedule_cpm_dcma_integration.py:58:class DcmaCriticalPathEvaluation:
+src/hb_assistant/construction/analytics/schedule_cpm_dcma_integration.py:96:) -> DcmaCriticalPathEvaluation:
+src/hb_assistant/construction/analytics/schedule_cpm_dcma_integration.py:247:    return DcmaCriticalPathEvaluation(

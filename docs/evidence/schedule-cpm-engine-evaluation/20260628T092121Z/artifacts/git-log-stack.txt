@@ -1,0 +1,135 @@
+*   f2916c21 (HEAD -> docs/schedule-cpm-engine-evaluation-20260628T092114Z, origin/main, origin/HEAD, main, docs/schedule-cpm-engine-evaluation-20260628T091649Z) Merge pull request #177 from RMF112018/feat/schedule-cpm-api-frontend-foundation
+|\  
+| * 2948b7a8 (origin/feat/schedule-cpm-api-frontend-foundation, feat/schedule-cpm-api-frontend-foundation) feat(schedule): surface computed CPM analysis
+* | 0fa83273 Merge pull request #176 from RMF112018/feat/schedule-cpm-dcma-critical-path-integration
+|\| 
+| * a7930b2d (origin/feat/schedule-cpm-dcma-critical-path-integration, feat/schedule-cpm-dcma-critical-path-integration) feat(schedule): integrate computed CPM critical path metric
+* | 127f3087 Merge pull request #175 from RMF112018/feat/schedule-cpm-criticality-foundation
+|\| 
+| * 39fed676 (origin/feat/schedule-cpm-criticality-foundation, feat/schedule-cpm-criticality-foundation) feat(schedule): add CPM criticality foundation
+* | 1d75011a Merge pull request #174 from RMF112018/feat/schedule-cpm-longest-path-foundation
+|\| 
+| * a0b491b0 (origin/feat/schedule-cpm-longest-path-foundation, feat/schedule-cpm-longest-path-foundation) feat(schedule): add CPM longest path foundation
+* | 45e3a64e Merge pull request #173 from RMF112018/feat/schedule-cpm-float-foundation
+|\| 
+| * 4e2706e4 (origin/feat/schedule-cpm-float-foundation, feat/schedule-cpm-float-foundation) feat(schedule): add CPM float foundation
+* | 198ac7c3 Merge pull request #172 from RMF112018/feat/schedule-cpm-backward-pass-foundation
+|\| 
+| * a056cf7d (origin/feat/schedule-cpm-backward-pass-foundation, feat/schedule-cpm-backward-pass-foundation) feat(schedule): add CPM backward pass foundation
+| * 404c6b84 (origin/feat/schedule-cpm-forward-pass-foundation, feat/schedule-cpm-forward-pass-foundation) feat(schedule): add CPM forward pass foundation
+| * 0d927c9e (feat/schedule-cpm-graph-foundation) feat(schedule): add CPM graph diagnostics foundation
+|/  
+*   d19e6134 Merge pull request #161 from RMF112018/feature/project-staffing-foundation
+|\  
+| *   16e7615c (origin/feature/project-staffing-foundation) Merge remote-tracking branch 'origin/main' into feature/project-staffing-foundation
+| |\  
+| |/  
+|/|   
+* | 87893505 (feature/project-staffing-closeout-7) feat(forecast): staffing flows into DB-native forecast output (Phase 6) (#171)
+* | fa48516c feat(forecast): Staffing Templates admin UI under Forecasting Config (Phase 5) (#170)
+* | 4f6a07fe feat(projects): Project Staffing UI — editable config, assumptions, absences, attribution, readiness (Phase 4) (#169)
+* | 1b2d14f4 feat(forecast): Project Staffing config API — staffing templates + holiday calendars (Phase 3c) (#168)
+* | 6e50ff34 feat(forecast): Project Staffing API — project-scoped config/assumptions/absences/readiness + attribution (Phase 3) (#167)
+* | fbbc0760 feat(forecast): Project Staffing actuals projection + cost_code+category attribution (Phase 2b) (#166)
+* | 67158de8 feat(schedule): identity, diff & impact intelligence (V77-V80) (#165)
+* | 57538080 feat(forecast): add Project Staffing backend services foundation (Phase 2a) (#164)
+* | ebd1dadd feat(forecast): add Project Staffing schema foundation (V76) (#163)
+| * d6f877fd fix(schedule): self-heal V80 equivalence schema
+| * 29b13fc2 fix(schedule): support unified package supersede
+| * e54ed10c feat(schedule): add impact intelligence rollups
+| *   a25cf546 merge main into schedule identity diff branch
+| |\  
+| |/  
+|/|   
+* | aefad7d9 test: refresh stale table-lifecycle count assertions 439 -> 451 (#162)
+| * ecf38ca8 feat(schedule): add detailed diff intelligence
+| * f46f5346 feat(schedule): add identity review surface
+| * 89e5af09 feat(schedule): add schedule identity foundation
+|/  
+* 8d2c2f46 feat(projects): add read-only forecast dashboard visualizations (#160)
+* 5e8ffb65 feat(projects): add project-scoped forecast history / output selector (#159)
+* 0b243aff feat(projects): add project-scoped forecast creation foundation (#158)
+* a82eed8a feat(projects): add project-scoped Monthly Forecasting foundation (#157)
+* fac923ba feat(projects): project-scoped Forecasting tab foundation (#156)
+* 2401949b feat(forecast): add CSV/Excel export to the Monthly Forecast panel (#155)
+* 9765a0f0 feat(schedule): expose ZIP package upload in import UI (#154)
+* 9e6661f5 feat(schedule): compose schedule health UI (#153)
+* 0a9dcf9f feat(forecast): hide Decision Support panel from the Run Center (#152)
+* 185de7ff feat(schedule): add import health foundation (#151)
+* fe5badf2 feat(forecast): Run Center UX refactor — Create Forecast modal, history modal, in-context health, monthly full-screen (#150)
+* 50b00cab feat(forecast): operator month-window monthly matrix (v74) + grouped views (#149)
+* 94a6b430 fix(forecast): resolve DB-native revised_budget from nested amounts (false $0 budget) (#148)
+* 3e80abed fix(forecast): consolidate DB-native Forecast Summary + readiness confidence/maturity (#147)
+* e04df24b fix(forecasting): write DB-native comprehensive monthly output (#146)
+* c8029e3b Fix production launcher: serve a static + reverse-proxy so /api reaches the backend (#145)
+* c0ce0ba8 Phase G: point Forecast Run Center primary Generate at DB-native (#144)
+* 7425d25c Phase F: DB-native forecast output persistence + writeback (#143)
+* bcf03e59 feat(forecast): DB-native BudgetDetails cost-basis inputs (Phase E2) (#142)
+* 260b741e feat(forecast): package-free DB-native generation engine (Phase E) (#141)
+* e43ddbe6 feat(forecast): package-free DB-native context builder (Phase D) (#140)
+* c4f346b0 feat(forecast): DB-native source-domain snapshot read model (Phase C) (#139)
+* c0eec96a feat(forecast): DB-native generation contract & routing boundary (Phase B) (#138)
+* 9dc2c66d fix(forecast): surface db-config generation failures honestly in Run Center (#137)
+* f83b11da fix(forecasting): fail closed on DB-native generation boundary (#136)
+* 96453882 feat(forecasting): first-run/sparse-data readiness maturity model (#135)
+* 3142ad97 fix(forecasting): report generation failures honestly (#134)
+* 3a7b3ae5 feat(forecast): add Results Summary + Forecast Health above the detail tables (UI-C) (#133)
+* c9821fbf feat(forecast): make DB-backed generation the primary Run Center action (UI-B) (#132)
+* d29d34be feat(forecast): add Run Center context header, require explicit project selection (UI-A) (#131)
+* 493367cc feat(forecast): gated run-output DB persistence on generate (Phase P-E) (#130)
+* e4628f1f feat(forecast): schedule-derived forecast date defaults (Phase P-D) (#129)
+* 022607e4 feat(forecast): generation request contract + durable persistence (Phase P-C) (#128)
+* ecc1d31e feat(forecast): generation-ready project read model + project-aware Run Center (Phase P-B) (#127)
+* d6bf84eb feat(forecast): reshape generation readiness to coded contract (Phase P-A) (#126)
+* 1339e7ec feat(forecast): expose DB-config generation readiness; stop hidden 503 (#125)
+* ab895cc0 test(forecast): P7 external-eval completion — XLSX + second-project coverage + reconcile (#124)
+* 2cce1394 feat(forecast): P9b durable gated live-write backup relocation (CFR Phase 14) (#123)
+* bd45a8b7 fix(schedule): harden quality posture semantics (#122)
+* f039cceb Forecast remediation P9: UI/API readiness + operator workflow (Gaps 1/5/6/7/9 surface) (#121)
+* dae6f1c1 fix(schedule): evaluate baseline-dependent quality metrics
+* 52c6f577 Forecast remediation P8: explainability / audit trail (Gap 9) (#119)
+* 693f2bf7 Add Claude Code GitHub Workflow (#118)
+* b7bee688 Forecast remediation P5: maturity / data-availability / confidence completion (#117)
+* c5452acf fix(schedule): expose MSP critical slack source evidence (#116)
+* 01e3c472 Forecast remediation P6: model-registry / versioning / weighting / calibration governance (#115)
+*   45dc5e7f fix(schedule): normalize lag units before quality evaluation
+|\  
+| * 21f7cd55 (origin/codex/schedule-lag-normalization-20260624) fix(schedule): normalize lag units before quality evaluation
+|/  
+* e5e3aa8e Forecast remediation P10 PR2: correctness VALUE tests + migrator leak fix (#113)
+*   8703f7ce Add fast forecasting and schedule test bundles
+|\  
+| * a84554b7 (origin/codex/fast-test-bundles-20260624, codex/fast-test-bundles-20260624) Add fast forecasting and schedule test bundles
+|/  
+*   548d55d2 Merge pull request #111 from RMF112018/feature/forecast-residual-green-p10c
+|\  
+| * e862f4a5 test(forecast): P10c — green the forecast suite (35→0; P10 overall 88→0)
+|/  
+*   42d3ce0a Merge pull request #110 from RMF112018/feature/forecast-test-hardening-p10
+|\  
+| * 0a9ccce1 test(forecast): P10 PR1 — suite hardening (88→35 failing, 53 fixed, 0 regressions)
+|/  
+*   c49ca031 Merge pull request #109 from RMF112018/feature/forecast-db-native-inputs-p3
+|\  
+| * 3a439ac8 feat(forecast): P3 — DB-native model input accessors
+|/  
+*   398c6140 Merge pull request #108 from RMF112018/feature/forecast-assumption-overrides-p2b
+|\  
+| * e710029e feat(forecast): P2b — operator-assumption dollar value-overrides
+|/  
+*   d633d5e8 Merge pull request #107 from RMF112018/feature/forecast-assumptions-consume-p2
+|\  
+| * bcad7bec feat(forecast): P2 — consume operator assumptions (confidence + required gate)
+|/  
+*   d9523fa7 Merge pull request #106 from RMF112018/feature/forecast-generators-detropicalize-p4b
+|\  
+| * 55b992ae feat(forecast): P4b — config-drive the generators (detropicalize) + tropical byte-parity
+|/  
+*   d131a28d Merge pull request #105 from RMF112018/feature/forecast-multi-project-eligibility-p4
+|\  
+| * 01beb959 feat(forecast): P4 — multi-project generalization (tractable slice)
+|/  
+*   1052f563 Merge pull request #104 from RMF112018/feature/forecast-output-header-totals-p1
+|\  
+| * 1672ce03 feat(forecast): P1 — aggregate output header totals + prior-run deltas
+|/  
