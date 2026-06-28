@@ -1,0 +1,21 @@
+Phase 9A.1 — Schedule Health Computed-CPM Aggregation: validation output
+Worktree base: origin/main @ 37767f36 (schema v89). Branch: feat/schedule-health-cpm-intelligence-9a1
+Test-DB isolation: HB_ASSISTANT_DB_PATH unset (fixture DBs only). Evidence DB used only for sample capture.
+
+== New test file: tests/test_schedule_health_cpm_aggregation.py ==
+6 passed (full-chain, caveats-passthrough, no-runs, partial-chain, read-only, scope-404).
+
+== Adjacent backend tests (no regression) ==
+tests/test_schedule_cpm_api.py + test_schedule_critical_path_quality.py + test_schedule_import_health_foundation.py: all passed (2 expected skips).
+
+== ruff check (owned files) ==
+schedule_health_cpm_service.py, schedule_cpm_repository.py, tests/test_schedule_health_cpm_aggregation.py: All checks passed!
+api.py: 37 errors on BOTH origin/main and this branch (identical) — all pre-existing (FastAPI B008/import-org); 0 added.
+
+== Frontend ==
+npm run typecheck (tsc -b): clean.
+npx eslint src/lib/api.ts: exit 0 (clean).
+
+== Full schedule bundle: bash scripts/test-schedule.sh ==
+320 passed, 2 deselected, 1 warning in 299.86s (0:04:59)
+(was 314 passed before this PR; +6 = the new aggregation tests, now in the allowlist)

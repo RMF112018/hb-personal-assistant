@@ -1517,6 +1517,77 @@ export interface ScheduleSourceCapability {
   [key: string]: unknown;
 }
 
+// Phase 9A.1: additive, read-only Application-computed CPM evidence carried on /health-data.
+// Every field is application_computed_cpm (never source-export). null = not computed / unavailable.
+export interface ComputedCpmHealthRunStatus {
+  available: boolean;
+  status?: string | null;
+  analysis_scope?: string | null;
+}
+
+export interface ComputedCpmHealthCounts {
+  computed_activity_count?: number | null;
+  computed_critical_activity_count?: number | null;
+  computed_near_critical_activity_count?: number | null;
+  computed_noncritical_activity_count?: number | null;
+  longest_path_member_count?: number | null;
+  critical_float_threshold_days?: number | null;
+  near_critical_float_threshold_days?: number | null;
+  negative_total_float_count?: number | null;
+  zero_total_float_count?: number | null;
+  high_total_float_count?: number | null;
+  classified_total_float_count?: number | null;
+  high_total_float_threshold_days?: number | null;
+}
+
+export interface ComputedCpmHealthLongestPath {
+  available: boolean;
+  reason?: string | null;
+  path_id?: string | null;
+  path_type?: string | null;
+  activity_count?: number | null;
+  relationship_count?: number | null;
+  path_duration?: number | null;
+  path_total_float?: number | null;
+  start_activity_id?: string | null;
+  end_activity_id?: string | null;
+}
+
+export interface ComputedCpmHealthDcmaMetric {
+  available: boolean;
+  measurable?: boolean;
+  basis?: string | null;
+  source_critical_flags_used?: boolean;
+  reason_codes?: string[];
+  caveats?: string[];
+  path_id?: string | null;
+  path_activity_count?: number | null;
+  computed_critical_activity_count?: number | null;
+  longest_path_critical_activity_count?: number | null;
+  dependency_run_ids?: unknown;
+}
+
+export interface ComputedCpmHealthDiagnostics {
+  available: boolean;
+  total_count?: number | null;
+  by_severity?: Record<string, number>;
+  by_calculation_type?: Record<string, number>;
+}
+
+export interface ComputedCpmHealth {
+  available: boolean;
+  reason?: string | null;
+  evidence_class: 'application_computed_cpm';
+  source_export_evidence: 'separate';
+  run_chain?: Record<string, ComputedCpmHealthRunStatus>;
+  counts?: ComputedCpmHealthCounts;
+  longest_path_summary?: ComputedCpmHealthLongestPath;
+  dcma_critical_path_metric?: ComputedCpmHealthDcmaMetric;
+  diagnostics_summary?: ComputedCpmHealthDiagnostics;
+  missing_dependency_reasons?: string[];
+  links?: { computed_cpm?: string };
+}
+
 export interface ScheduleHealthData {
   schedule_version_key?: string;
   project_key?: string | null;
@@ -1534,6 +1605,7 @@ export interface ScheduleHealthData {
   baseline_health_facts?: Record<string, unknown>[] | null;
   top_health_findings?: Record<string, unknown>[] | null;
   deferred_domains?: Record<string, unknown> | null;
+  computed_cpm_health?: ComputedCpmHealth | null;
   [key: string]: unknown;
 }
 
