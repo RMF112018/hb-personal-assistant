@@ -13,6 +13,7 @@ from typing import Any
 
 from hb_assistant.config.path_policy import PathPolicy
 
+from . import pathsafe
 from .config import ObsidianMcpConfig
 from .tools import ObsidianMcpToolError, ResolvedPath, resolve_safe_path
 
@@ -29,6 +30,10 @@ def _support_dir() -> Path:
 
 def audit_path() -> Path:
     return _support_dir() / "mutations.jsonl"
+
+
+def traversals_path() -> Path:
+    return _support_dir() / "traversals.jsonl"
 
 
 def backup_root() -> Path:
@@ -61,6 +66,9 @@ def _event(
     old_bytes: int | None = None,
     new_bytes: int | None = None,
     backup_path: str | None = None,
+    tool_name: str | None = None,
+    principal_kind: str | None = None,
+    plan_id: str | None = None,
 ) -> dict[str, Any]:
     return {
         "timestamp": _now(),
@@ -74,6 +82,9 @@ def _event(
         "new_bytes": new_bytes,
         "backup_path": backup_path,
         "caller_surface": caller_surface,
+        "tool_name": tool_name,
+        "principal_kind": principal_kind,
+        "plan_id": plan_id,
     }
 
 
@@ -88,7 +99,42 @@ def record_mutation(event: dict[str, Any]) -> dict[str, Any]:
 
 
 def recent_mutations(limit: int = 20) -> list[dict[str, Any]]:
-    path = audit_path()
+    return _tail_jsonl(audit_path(), limit)
+
+
+def record_read_receipt(
+    *,
+    tool_name: str,
+    scope: str,
+    principal_kind: str | None = None,
+    file_count: int | None = None,
+    truncated: bool | None = None,
+    detail: str | None = None,
+) -> dict[str, Any]:
+    """Append a redacted bulk-read/crawl receipt (counts/scope only, no bodies)."""
+    event = {
+        "timestamp": _now(),
+        "tool_name": tool_name,
+        "scope": scope,
+        "principal_kind": principal_kind,
+        "file_count": file_count,
+        "truncated": truncated,
+        "detail": detail,
+    }
+    safe = {k: v for k, v in event.items() if v is not None}
+    path = traversals_path()
+    with path.open("a", encoding="utf-8") as fh:
+        fh.write(json.dumps(safe, sort_keys=True) + "\n")
+    with suppress(OSError):
+        path.chmod(0o600)
+    return safe
+
+
+def recent_read_receipts(limit: int = 20) -> list[dict[str, Any]]:
+    return _tail_jsonl(traversals_path(), limit)
+
+
+def _tail_jsonl(path: Path, limit: int) -> list[dict[str, Any]]:
     if not path.exists():
         return []
     lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
@@ -118,12 +164,11 @@ def _validate_content(config: ObsidianMcpConfig, content: str) -> int:
 
 def _is_protected(config: ObsidianMcpConfig, rel: str) -> bool:
     low = rel.lower().strip("/")
-    parts = low.split("/") if low else []
     for protected in config.protected_paths:
         target = protected.lower().strip("/")
         if low == target or low.startswith(f"{target}/"):
             return True
-    return any(part in {".git", ".obsidian", ".trash"} for part in parts)
+    return pathsafe.has_protected_segment(low)
 
 
 def _has_blocked_hidden(config: ObsidianMcpConfig, rel: str) -> bool:
@@ -201,7 +246,16 @@ def _atomic_write(path: Path, content: str) -> None:
                 Path(tmp_name).unlink()
 
 
-def _safe_failure(action: str, path: str, caller_surface: str, exc: ObsidianMcpToolError) -> dict[str, Any]:
+def _safe_failure(
+    action: str,
+    path: str,
+    caller_surface: str,
+    exc: ObsidianMcpToolError,
+    *,
+    tool_name: str | None = None,
+    principal_kind: str | None = None,
+    plan_id: str | None = None,
+) -> dict[str, Any]:
     cleaned = path.strip().replace("\\", "/")
     rel = "__invalid_path__" if Path(cleaned).is_absolute() or ".." in Path(cleaned).parts else cleaned.strip("/")
     rel = rel or "__invalid_path__"
@@ -212,6 +266,9 @@ def _safe_failure(action: str, path: str, caller_surface: str, exc: ObsidianMcpT
             status="rejected",
             caller_surface=caller_surface,
             error_code=exc.code,
+            tool_name=tool_name,
+            principal_kind=principal_kind,
+            plan_id=plan_id,
         )
     )
     return {"ok": False, "error_code": exc.code, "event": event}
@@ -226,6 +283,9 @@ def create_note(
     create_parent_dirs: bool = True,
     expected_sha256: str | None = None,
     caller_surface: str = "mcp",
+    tool_name: str | None = None,
+    principal_kind: str | None = None,
+    plan_id: str | None = None,
 ) -> dict[str, Any]:
     try:
         _write_policy_enabled(config)
@@ -266,6 +326,9 @@ def create_note(
                 old_bytes=old_bytes,
                 new_bytes=new_bytes,
                 backup_path=backup_path,
+                tool_name=tool_name,
+                principal_kind=principal_kind,
+                plan_id=plan_id,
             )
         )
         return {
@@ -278,7 +341,15 @@ def create_note(
             "event": event,
         }
     except ObsidianMcpToolError as exc:
-        failure = _safe_failure("create_note", path, caller_surface, exc)
+        failure = _safe_failure(
+            "create_note",
+            path,
+            caller_surface,
+            exc,
+            tool_name=tool_name,
+            principal_kind=principal_kind,
+            plan_id=plan_id,
+        )
         raise ObsidianMcpToolError(failure["error_code"]) from exc
 
 
@@ -289,6 +360,9 @@ def patch_note(
     content: str,
     expected_sha256: str,
     caller_surface: str = "mcp",
+    tool_name: str | None = None,
+    principal_kind: str | None = None,
+    plan_id: str | None = None,
 ) -> dict[str, Any]:
     try:
         _write_policy_enabled(config)
@@ -316,6 +390,9 @@ def patch_note(
                 old_bytes=old_bytes,
                 new_bytes=new_bytes,
                 backup_path=backup_path,
+                tool_name=tool_name,
+                principal_kind=principal_kind,
+                plan_id=plan_id,
             )
         )
         return {
@@ -327,7 +404,15 @@ def patch_note(
             "event": event,
         }
     except ObsidianMcpToolError as exc:
-        _safe_failure("patch_note", path, caller_surface, exc)
+        _safe_failure(
+            "patch_note",
+            path,
+            caller_surface,
+            exc,
+            tool_name=tool_name,
+            principal_kind=principal_kind,
+            plan_id=plan_id,
+        )
         raise
 
 

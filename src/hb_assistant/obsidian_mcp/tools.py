@@ -12,6 +12,7 @@ from typing import Any
 from hb_assistant.files.parsers.docx import DOCXParser
 from hb_assistant.files.parsers.pdf import PDFParser
 
+from . import pathsafe
 from .config import ObsidianMcpConfig
 
 
@@ -61,6 +62,15 @@ def resolve_safe_path(config: ObsidianMcpConfig, requested: str | None, *, must_
     return ResolvedPath(root=root, path=target, relative=relative)
 
 
+def _hidden_inspection_allowed(config: ObsidianMcpConfig, operator_mode: bool) -> bool:
+    """Hidden/dot paths are inspectable only by a local operator with the opt-in.
+
+    OAuth clients always pass ``operator_mode=False`` so they can never see them.
+    The hard protected set stays blocked regardless (enforced in ``pathsafe``).
+    """
+    return bool(operator_mode and config.curation_operator_hidden_inspection)
+
+
 def _extension(path: Path) -> str | None:
     suffix = path.suffix.lower().lstrip(".")
     return suffix or None
@@ -86,11 +96,15 @@ def list_directory(
     recursive: bool = False,
     extensions: list[str] | None = None,
     max_depth: int | None = None,
+    operator_mode: bool = False,
 ) -> dict[str, Any]:
     resolved = resolve_safe_path(config, path, must_exist=True)
     if not resolved.path.is_dir():
         raise ObsidianMcpToolError("path_is_not_directory")
+    if pathsafe.path_blocked(resolved.relative, include_hidden=_hidden_inspection_allowed(config, operator_mode)):
+        raise ObsidianMcpToolError("protected_path_blocked")
 
+    include_hidden = _hidden_inspection_allowed(config, operator_mode)
     allowed_exts = _allowed_extensions(config, extensions)
     files: list[dict[str, Any]] = []
     base_depth = len(resolved.path.relative_to(resolved.root).parts) if resolved.path != resolved.root else 0
@@ -103,6 +117,8 @@ def list_directory(
             except ValueError:
                 continue
         rel_path = item.resolve().relative_to(resolved.root).as_posix()
+        if pathsafe.path_blocked(rel_path, include_hidden=include_hidden):
+            continue
         depth = len(item.resolve().relative_to(resolved.root).parts) - base_depth
         if max_depth is not None and depth > max_depth:
             continue
@@ -201,8 +217,11 @@ def read_file(
     end_page: int | None = None,
     section: str | None = None,
     max_chars: int | None = None,
+    operator_mode: bool = False,
 ) -> dict[str, Any]:
     resolved = resolve_safe_path(config, path, must_exist=True)
+    if pathsafe.path_blocked(resolved.relative, include_hidden=_hidden_inspection_allowed(config, operator_mode)):
+        raise ObsidianMcpToolError("protected_path_blocked")
     if not resolved.path.is_file():
         raise ObsidianMcpToolError("path_is_not_file")
     ext = _extension(resolved.path) or ""
@@ -248,16 +267,27 @@ def read_file(
     return {"path": resolved.relative, "file_type": ext, "content": content, "metadata": metadata}
 
 
-def _iter_search_files(config: ObsidianMcpConfig, scope: str | None, file_types: list[str] | None) -> list[Path]:
+def _iter_search_files(
+    config: ObsidianMcpConfig,
+    scope: str | None,
+    file_types: list[str] | None,
+    *,
+    operator_mode: bool = False,
+) -> list[Path]:
     resolved = resolve_safe_path(config, scope or "", must_exist=True)
+    include_hidden = _hidden_inspection_allowed(config, operator_mode)
+    if pathsafe.path_blocked(resolved.relative, include_hidden=include_hidden):
+        raise ObsidianMcpToolError("protected_path_blocked")
     allowed = _allowed_extensions(config, file_types)
     root = resolved.path
     candidates = [root] if root.is_file() else [p for p in root.rglob("*") if p.is_file()]
     out: list[Path] = []
     for path in candidates:
         try:
-            path.resolve().relative_to(resolved.root)
+            rel = path.resolve().relative_to(resolved.root).as_posix()
         except ValueError:
+            continue
+        if pathsafe.path_blocked(rel, include_hidden=include_hidden):
             continue
         ext = _extension(path) or ""
         if ext in allowed:
@@ -298,6 +328,7 @@ def search_vault(
     file_types: list[str] | None = None,
     limit: int | None = None,
     include_content_snippet: bool = True,
+    operator_mode: bool = False,
 ) -> dict[str, Any]:
     q = query.strip()
     if not q:
@@ -307,14 +338,14 @@ def search_vault(
     results: list[dict[str, Any]] = []
     total_chars = 0
 
-    for candidate in _iter_search_files(config, path_scope, file_types):
+    for candidate in _iter_search_files(config, path_scope, file_types, operator_mode=operator_mode):
         ok_size, size = _check_size(config, candidate)
         if not ok_size:
             continue
         rel = candidate.resolve().relative_to(root).as_posix()
         ext = _extension(candidate) or ""
         try:
-            read = read_file(config, path=rel, max_chars=config.max_result_chars)
+            read = read_file(config, path=rel, max_chars=config.max_result_chars, operator_mode=operator_mode)
         except ObsidianMcpToolError:
             continue
         content = str(read.get("content") or "")

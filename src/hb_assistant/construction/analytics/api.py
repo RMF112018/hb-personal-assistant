@@ -1459,7 +1459,9 @@ def create_app(*, db_path: str | None = None) -> Any:
         from hb_assistant.obsidian_mcp.service import ObsidianMcpService, safe_tool_response
 
         svc = ObsidianMcpService()
-        return safe_tool_response(svc.list_directory, request.model_dump(exclude_none=True))
+        return safe_tool_response(
+            svc.list_directory, {**request.model_dump(exclude_none=True), "operator_mode": True}
+        )
 
     @app.post("/api/settings/obsidian-mcp/test/search")
     def settings_obsidian_mcp_test_search(
@@ -1470,7 +1472,9 @@ def create_app(*, db_path: str | None = None) -> Any:
         from hb_assistant.obsidian_mcp.service import ObsidianMcpService, safe_tool_response
 
         svc = ObsidianMcpService()
-        return safe_tool_response(svc.search_vault, request.model_dump(exclude_none=True))
+        return safe_tool_response(
+            svc.search_vault, {**request.model_dump(exclude_none=True), "operator_mode": True}
+        )
 
     @app.post("/api/settings/obsidian-mcp/test/read-file")
     def settings_obsidian_mcp_test_read_file(
@@ -1481,7 +1485,9 @@ def create_app(*, db_path: str | None = None) -> Any:
         from hb_assistant.obsidian_mcp.service import ObsidianMcpService, safe_tool_response
 
         svc = ObsidianMcpService()
-        return safe_tool_response(svc.read_file, request.model_dump(exclude_none=True))
+        return safe_tool_response(
+            svc.read_file, {**request.model_dump(exclude_none=True), "operator_mode": True}
+        )
 
     @app.post("/api/settings/obsidian-mcp/test/write-smoke")
     def settings_obsidian_mcp_test_write_smoke(role: dict[str, str] = role_dep) -> dict[str, Any]:

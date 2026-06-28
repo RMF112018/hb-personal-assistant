@@ -28,15 +28,10 @@ from typing import Any
 
 import yaml
 
-from . import plan_store
+from . import pathsafe, plan_store
 from .config import ObsidianMcpConfig
 from .mutations import create_note, patch_note, sha256_file
 from .tools import ObsidianMcpToolError, resolve_safe_path
-
-# Always-blocked top-level vault segments. Every member is also dot-prefixed, so
-# the generic hidden-segment rule covers them too — they are listed explicitly so
-# they stay blocked even when hidden inspection is otherwise honored.
-CURATION_PROTECTED_SEGMENTS = {".git", ".obsidian", ".trash", ".venv", ".smart-env", ".hb-assistant"}
 
 MUTATING_ACTIONS = {
     "add_frontmatter",
@@ -72,28 +67,6 @@ def _utc(ts: float) -> str:
 def _preview(text: str) -> str:
     flat = " ".join(text.split())
     return flat[:_PREVIEW_CHARS]
-
-
-# ---------------------------------------------------------------------------
-# Path safety (always-on; never overridable by OAuth clients).
-# ---------------------------------------------------------------------------
-def _path_blocked(rel: str, *, include_hidden: bool) -> bool:
-    for part in (p for p in rel.split("/") if p):
-        if part in CURATION_PROTECTED_SEGMENTS:
-            return True
-        if part.startswith(".") and not include_hidden:
-            return True
-    return False
-
-
-def _symlink_escapes(item: Path, root: Path) -> bool:
-    if not item.is_symlink():
-        return False
-    try:
-        item.resolve().relative_to(root)
-    except ValueError:
-        return True
-    return False
 
 
 # ---------------------------------------------------------------------------
@@ -272,10 +245,10 @@ def vault_map(
     truncated = False
 
     for item in sorted(_scoped_iter(resolved, recursive=recursive), key=lambda p: p.as_posix().lower()):
-        if _symlink_escapes(item, resolved.root):
+        if pathsafe.symlink_escapes(item, resolved.root):
             continue
         rel = item.resolve().relative_to(resolved.root).as_posix()
-        if _path_blocked(rel, include_hidden=effective_hidden):
+        if pathsafe.path_blocked(rel, include_hidden=effective_hidden):
             continue
         depth = len(item.resolve().relative_to(resolved.root).parts) - base_depth
         if max_depth is not None and depth > max_depth:
@@ -336,10 +309,10 @@ def _scan_notes(
     folders: dict[str, dict[str, Any]] = {}
 
     for item in sorted(resolved.path.rglob("*"), key=lambda p: p.as_posix().lower()):
-        if _symlink_escapes(item, resolved.root):
+        if pathsafe.symlink_escapes(item, resolved.root):
             continue
         rel = item.resolve().relative_to(resolved.root).as_posix()
-        if _path_blocked(rel, include_hidden=False):
+        if pathsafe.path_blocked(rel, include_hidden=False):
             continue
         depth = len(item.resolve().relative_to(resolved.root).parts) - base_depth
         if max_depth is not None and depth > max_depth:
