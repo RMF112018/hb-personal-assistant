@@ -1,0 +1,119 @@
+Schedule CPM Engine Evaluation - Evidence Package Inventory
+Package: docs/evidence/schedule-cpm-engine-evaluation/20260628T092121Z
+
+================ TOP-LEVEL MARKDOWN FILES ================
+  00-executive-summary.md                         4155 bytes  [non-empty]
+  01-branch-and-stack.md                          3762 bytes  [non-empty]
+  02-repo-truth-inventory.md                      4993 bytes  [non-empty]
+  03-schema-and-migrations.md                     3446 bytes  [non-empty]
+  04-cpm-computation-chain.md                     3603 bytes  [non-empty]
+  05-source-vs-computed-field-map.md              2680 bytes  [non-empty]
+  06-dcma-critical-path-integration.md            3758 bytes  [non-empty]
+  07-api-contract-evidence.md                     3518 bytes  [non-empty]
+  08-frontend-surfacing-evidence.md               2560 bytes  [non-empty]
+  09-test-and-validation-summary.md               2940 bytes  [non-empty]
+  10-sample-data-walkthrough.md                   2635 bytes  [non-empty]
+  11-known-limitations-and-risks.md               3273 bytes  [non-empty]
+  12-phase-9-readiness-assessment.md              2787 bytes  [non-empty]
+  manual-ui-import-log.md                          627 bytes  [non-empty]
+  ui-cpm-review-notes.md                          2245 bytes  [non-empty]
+
+================ REQUIRED TOP-LEVEL MARKDOWN ================
+  PRESENT/non-empty  00-executive-summary.md
+  PRESENT/non-empty  01-branch-and-stack.md
+  PRESENT/non-empty  02-repo-truth-inventory.md
+  PRESENT/non-empty  03-schema-and-migrations.md
+  PRESENT/non-empty  04-cpm-computation-chain.md
+  PRESENT/non-empty  05-source-vs-computed-field-map.md
+  PRESENT/non-empty  06-dcma-critical-path-integration.md
+  PRESENT/non-empty  07-api-contract-evidence.md
+  PRESENT/non-empty  08-frontend-surfacing-evidence.md
+  PRESENT/non-empty  09-test-and-validation-summary.md
+  PRESENT/non-empty  10-sample-data-walkthrough.md
+  PRESENT/non-empty  11-known-limitations-and-risks.md
+  PRESENT/non-empty  12-phase-9-readiness-assessment.md
+  PRESENT/non-empty  manual-ui-import-log.md
+  PRESENT/non-empty  ui-cpm-review-notes.md
+  -> required-markdown all present/non-empty: YES
+
+================ ARTIFACT FILES ================
+  api-cpm-activities-sample.json                           582057 bytes  [non-empty]
+  api-cpm-diagnostics-sample.json                          103248 bytes  [non-empty]
+  api-cpm-longest-path-sample.json                          49677 bytes  [non-empty]
+  api-cpm-summary-sample.json                                4157 bytes  [non-empty]
+  apply-evidence-db-migrations-output.txt                     444 bytes  [non-empty]
+  apply-evidence-db-migrations-terminal.txt                   444 bytes  [non-empty]
+  apply-evidence-db-migrations.py                            1163 bytes  [non-empty]
+  backend-test-output.txt                                    4643 bytes  [non-empty]
+  capture-cpm-api-samples-output.txt                          980 bytes  [non-empty]
+  capture-cpm-api-samples.py                                 1424 bytes  [non-empty]
+  capture-dcma-sample-output.txt                             1578 bytes  [non-empty]
+  capture-dcma-sample-structured.py                          1307 bytes  [non-empty]
+  capture-dcma-sample.py                                      587 bytes  [non-empty]
+  changed-files-since-phase1.txt                              557 bytes  [non-empty]
+  cpm-activity-samples.json                                 94663 bytes  [non-empty]
+  cpm-chain-run-output.json                               6892975 bytes  [non-empty]
+  cpm-chain-run-output.txt                                6892976 bytes  [non-empty]
+  cpm-criticality-sample.json                               20604 bytes  [non-empty]
+  cpm-longest-path-sample.json                                665 bytes  [non-empty]
+  cpm-run-samples.json                                     184240 bytes  [non-empty]
+  cpm-run-verification.txt                                   1696 bytes  [non-empty]
+  cpm-table-ddl.txt                                         27498 bytes  [non-empty]
+  dcma-computed-cpm-sample.json                              1577 bytes  [non-empty]
+  debug-api-cpm-summary-after-backend-restart.json            882 bytes  [non-empty]
+  debug-api-cpm-summary-current-ui-version.json               882 bytes  [non-empty]
+  debug-api-cpm-summary-explicit-db-runner.json              4780 bytes  [non-empty]
+  debug-create-app-db-path.txt                                768 bytes  [non-empty]
+  evidence-package-inventory.txt                             4518 bytes  [non-empty]
+  frontend-test-output.txt                                   1045 bytes  [non-empty]
+  git-log-cpm-phases.txt                                     1757 bytes  [non-empty]
+  git-log-stack.txt                                          9810 bytes  [non-empty]
+  git-status.txt                                              513 bytes  [non-empty]
+  import-package-evidence.txt                                1656 bytes  [non-empty]
+  import-package-manifest.json                               3967 bytes  [non-empty]
+  run-cpm-chain-for-imports.py                               1948 bytes  [non-empty]
+  run-evidence-api.py                                         318 bytes  [non-empty]
+  schema-version.txt                                         4551 bytes  [non-empty]
+  table-count.txt                                              83 bytes  [non-empty]
+  (api-samples/ subdirectory:)
+    api-samples/tropical-1071-2026-06-23-0800-activities.json     582057 bytes
+    api-samples/tropical-1071-2026-06-23-0800-diagnostics.json     103248 bytes
+    api-samples/tropical-1071-2026-06-23-0800-longest-path.json      49677 bytes
+    api-samples/tropical-1071-2026-06-23-0800-summary.json       4157 bytes
+
+================ REQUIRED ARTIFACTS ================
+  PRESENT/non-empty  evidence-package-inventory.txt
+  PRESENT/non-empty  backend-test-output.txt
+  PRESENT/non-empty  frontend-test-output.txt
+  PRESENT/non-empty  git-status.txt
+  PRESENT/non-empty  git-log-stack.txt
+  PRESENT/non-empty  git-log-cpm-phases.txt
+  PRESENT/non-empty  changed-files-since-phase1.txt
+  PRESENT/non-empty  schema-version.txt
+  PRESENT/non-empty  table-count.txt
+  PRESENT/non-empty  cpm-table-ddl.txt
+  PRESENT/non-empty  api-cpm-summary-sample.json
+  PRESENT/non-empty  api-cpm-activities-sample.json
+  PRESENT/non-empty  api-cpm-longest-path-sample.json
+  PRESENT/non-empty  api-cpm-diagnostics-sample.json
+  PRESENT/non-empty  dcma-computed-cpm-sample.json
+  PRESENT/non-empty  cpm-run-verification.txt
+  PRESENT/non-empty  cpm-chain-run-output.json
+  -> required-artifacts all present/non-empty: YES
+
+================ EMPTY (size 0) FILES ================
+  NONE
+
+================ FILES OVER 10 MB ================
+  NONE (no file exceeds 10 MB)
+
+================ LARGE (under 10MB) TEXT/JSON NOTE ================
+  Two CPM chain-run captures are the largest artifacts, both UNDER the 10 MB limit:
+    artifacts/cpm-chain-run-output.json  ~6.9 MB  (full chain run output, JSON; referenced by doc 04)
+    artifacts/cpm-chain-run-output.txt   ~6.9 MB  (same chain run, text capture)
+  These are CPM evidence captures (not binaries/DBs/screenshots/videos). Retained as-is;
+  the 10 MB gate is satisfied. The compact, human-facing CPM evidence lives in
+  cpm-run-verification.txt, cpm-run-samples.json, cpm-longest-path-sample.json, and the
+  api-cpm-*-sample.json files.
+
+Total package size:  16M

@@ -1,0 +1,35 @@
+# git-status-end.txt — captured at end of evidence-completion run
+# NOTE: a CONCURRENT obsidian_mcp session staged its work into the index DURING this run.
+# The Schedule-CPM evidence (docs/evidence/schedule-cpm-engine-evaluation/) is UNTRACKED (??);
+# this run staged NOTHING. See 01-branch-and-stack.md commit-scope note.
+
+ M docs/evidence/construction-intelligence-phase-08b-automation-hardening/phase-08b-final-no-writeback-proof.md
+A  docs/evidence/hb-obsidian-mcp/20260628T102142Z/00-summary.md
+A  docs/evidence/hb-obsidian-mcp/20260628T102142Z/01-repo-truth-audit.md
+A  docs/evidence/hb-obsidian-mcp/20260628T102142Z/02-files-changed.txt
+A  docs/evidence/hb-obsidian-mcp/20260628T102142Z/03-test-results.txt
+A  docs/evidence/hb-obsidian-mcp/20260628T102142Z/04-backend-api-routes.md
+A  docs/evidence/hb-obsidian-mcp/20260628T102142Z/05-ui-rendered-state.md
+A  docs/evidence/hb-obsidian-mcp/20260628T102142Z/06-sample-health-check.md
+A  docs/evidence/hb-obsidian-mcp/20260628T102142Z/07-tool-registry-sample.json
+A  docs/evidence/hb-obsidian-mcp/20260628T102142Z/08-grok-config-sample.json
+A  docs/evidence/hb-obsidian-mcp/20260628T102142Z/09-security-validation.md
+A  docs/evidence/hb-obsidian-mcp/20260628T102142Z/10-known-limitations.md
+A  docs/mcp/hb-obsidian-mcp.md
+A  frontend/src/components/settings/ObsidianMcpPanel.tsx
+M  frontend/src/lib/api.ts
+M  frontend/src/pages/SettingsPage.test.tsx
+M  frontend/src/pages/SettingsPage.tsx
+M  pyproject.toml
+MM src/hb_assistant/construction/analytics/api.py
+A  src/hb_assistant/obsidian_mcp/__init__.py
+A  src/hb_assistant/obsidian_mcp/config.py
+A  src/hb_assistant/obsidian_mcp/mcp_app.py
+A  src/hb_assistant/obsidian_mcp/service.py
+A  src/hb_assistant/obsidian_mcp/tools.py
+M  tests/test_fastapi_analytics_app_shell.py
+A  tests/test_obsidian_mcp_backend.py
+?? docs/evidence/schedule-cpm-engine-evaluation/
+
+# --- staged file count (index, NOT this run's work) ---
+      25

@@ -1,0 +1,120 @@
+{
+  "schedule_version_key": "tropical|1071|2026-06-23 08:00",
+  "available": true,
+  "runs": {
+    "graph_diagnostics": {
+      "available": true,
+      "cpm_run_id": "cpmrun_97791f323c76a1b02a23f7f638a0779b",
+      "calculation_type": "graph_diagnostics",
+      "cpm_recalculation_status": "not_implemented",
+      "analysis_scope": "graph_diagnostics_only",
+      "source_run_id": null,
+      "created_at": "2026-06-28 09:55:16",
+      "node_count": 1507,
+      "edge_count": 3921,
+      "diagnostic_count": 52,
+      "computed_activity_count": 0,
+      "blocked_activity_count": 0,
+      "is_acyclic": 1
+    },
+    "forward_pass": {
+      "available": true,
+      "cpm_run_id": "cpmrun_e30f127db1e1d89c67263e64e753475c",
+      "calculation_type": "forward_pass",
+      "cpm_recalculation_status": "forward_pass_only",
+      "analysis_scope": "forward_pass",
+      "source_run_id": null,
+      "created_at": "2026-06-28 09:55:16",
+      "node_count": 1507,
+      "edge_count": 3921,
+      "diagnostic_count": 52,
+      "computed_activity_count": 1507,
+      "blocked_activity_count": 0,
+      "is_acyclic": 1
+    },
+    "backward_pass": {
+      "available": true,
+      "cpm_run_id": "cpmrun_e7e97b3eeb44c400f18cb89af6766de9",
+      "calculation_type": "backward_pass",
+      "cpm_recalculation_status": "backward_pass_only",
+      "analysis_scope": "backward_pass",
+      "source_run_id": null,
+      "created_at": "2026-06-28 09:55:16",
+      "node_count": 1507,
+      "edge_count": 3921,
+      "diagnostic_count": 52,
+      "computed_activity_count": 1507,
+      "blocked_activity_count": 0,
+      "is_acyclic": 1
+    },
+    "float": {
+      "available": true,
+      "cpm_run_id": "cpmrun_d32e29265538e09d6d066589ea10a7cf",
+      "calculation_type": "float",
+      "cpm_recalculation_status": "forward_backward_float_only",
+      "analysis_scope": "float",
+      "source_run_id": "cpmrun_e7e97b3eeb44c400f18cb89af6766de9",
+      "created_at": "2026-06-28 09:55:17",
+      "node_count": 1507,
+      "edge_count": 3921,
+      "diagnostic_count": 52,
+      "computed_activity_count": 1507,
+      "blocked_activity_count": 0,
+      "is_acyclic": 1
+    },
+    "longest_path": {
+      "available": true,
+      "cpm_run_id": "cpmrun_17f1ffb7fe59a4e341a046262ea2dee9",
+      "calculation_type": "longest_path",
+      "cpm_recalculation_status": "longest_path_only",
+      "analysis_scope": "longest_path",
+      "source_run_id": "cpmrun_d32e29265538e09d6d066589ea10a7cf",
+      "created_at": "2026-06-28 09:55:17",
+      "node_count": 1507,
+      "edge_count": 3921,
+      "diagnostic_count": 52,
+      "computed_activity_count": 0,
+      "blocked_activity_count": 0,
+      "is_acyclic": 1
+    },
+    "criticality": {
+      "available": true,
+      "cpm_run_id": "cpmrun_7c4d330eba04db4a18756bde0c0dd9fc",
+      "calculation_type": "criticality",
+      "cpm_recalculation_status": "criticality_classification_only",
+      "analysis_scope": "criticality",
+      "source_run_id": "cpmrun_17f1ffb7fe59a4e341a046262ea2dee9",
+      "created_at": "2026-06-28 09:55:17",
+      "node_count": 1507,
+      "edge_count": 3921,
+      "diagnostic_count": 52,
+      "computed_activity_count": 1507,
+      "blocked_activity_count": 0,
+      "is_acyclic": 1
+    }
+  },
+  "dcma_critical_path": {
+    "available": true,
+    "measurable": true,
+    "basis": "application_computed_cpm",
+    "dependency_run_ids": {
+      "forward": "cpmrun_e30f127db1e1d89c67263e64e753475c",
+      "backward": "cpmrun_e7e97b3eeb44c400f18cb89af6766de9",
+      "float": "cpmrun_d32e29265538e09d6d066589ea10a7cf",
+      "longest_path": "cpmrun_17f1ffb7fe59a4e341a046262ea2dee9",
+      "criticality": "cpmrun_7c4d330eba04db4a18756bde0c0dd9fc"
+    },
+    "path_id": "cpmrun_17f1ffb7fe59a4e341a046262ea2dee9_p01",
+    "path_activity_count": 45,
+    "computed_critical_activity_count": 1312,
+    "longest_path_critical_activity_count": 45,
+    "reason_codes": [],
+    "caveats": [
+      "computed_critical_outside_longest_path"
+    ],
+    "source_critical_flags_used": false
+  },
+  "missing_dependency_reasons": [],
+  "evidence_class": "application_computed_cpm",
+  "source_export_evidence": "separate"
+}

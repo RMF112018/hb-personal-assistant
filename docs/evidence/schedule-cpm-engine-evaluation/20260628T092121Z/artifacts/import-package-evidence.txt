@@ -1,0 +1,8 @@
+package_id        project_key  import_id     package_mode  selected_current_schedule_version_key  selected_current_project_id  selected_current_project_name  status      created_at           committed_at                    
+----------------  -----------  ------------  ------------  -------------------------------------  ---------------------------  -----------------------------  ----------  -------------------  --------------------------------
+pkg-956db10a248d  tropical     ce548dbe1110  zip_package   tropical|1071|2026-06-23 08:00         1071                         TWNU19                         committed   2026-06-27 15:41:43  2026-06-27T15:41:43.684546+00:00
+pkg-dfdfc733f747  tropical     c59ecc80241d  zip_package   tropical|1071|2026-06-23 08:00         1071                         TWNU19                         superseded  2026-06-27 11:04:55  2026-06-27T11:04:54.848041+00:00
+import_id     project_key  source_filename_redacted  source_format  import_status  validation_status       activity_count  relationship_count  wbs_count  calendar_count  created_at         
+------------  -----------  ------------------------  -------------  -------------  ----------------------  --------------  ------------------  ---------  --------------  -------------------
+ce548dbe1110  tropical     TWN.zip                   primavera_xer  committed      ok                      1507            3921                215        3               2026-06-27 15:41:43
+c59ecc80241d  tropical     TWN.zip                   primavera_xer  superseded     superseded_by_operator  1507            3921                215        3               2026-06-27 11:04:54

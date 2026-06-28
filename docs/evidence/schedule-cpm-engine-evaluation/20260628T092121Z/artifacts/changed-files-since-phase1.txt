@@ -1,0 +1,12 @@
+# changed-files-since-phase1 (git diff --name-only origin/main...HEAD)
+#
+# This list is intentionally EMPTY.
+#
+# HEAD (f2916c21) == origin/main: Schedule CPM Phases 1-8 are all MERGED to main,
+# so the three-dot diff origin/main...HEAD contains no files.
+#
+# The authoritative record of the CPM phase file additions is the phase commit
+# history in git-log-cpm-phases.txt (PRs #173-#177 and the Phase 1-3 foundation
+# commits) and the file inventory in 02-repo-truth-inventory.md.
+#
+# (Generated as part of evidence completion; see 01-branch-and-stack.md.)

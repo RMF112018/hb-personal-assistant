@@ -1,0 +1,5 @@
+table_count
+-----------
+476        
+--- schedule_version row in evidence DB ---
+89

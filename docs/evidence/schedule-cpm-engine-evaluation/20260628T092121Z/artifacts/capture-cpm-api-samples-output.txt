@@ -1,0 +1,8 @@
+Wrote docs/evidence/schedule-cpm-engine-evaluation/20260628T092121Z/artifacts/api-samples/tropical-1071-2026-06-23-0800-summary.json
+Wrote docs/evidence/schedule-cpm-engine-evaluation/20260628T092121Z/artifacts/api-cpm-summary-sample.json
+Wrote docs/evidence/schedule-cpm-engine-evaluation/20260628T092121Z/artifacts/api-samples/tropical-1071-2026-06-23-0800-activities.json
+Wrote docs/evidence/schedule-cpm-engine-evaluation/20260628T092121Z/artifacts/api-cpm-activities-sample.json
+Wrote docs/evidence/schedule-cpm-engine-evaluation/20260628T092121Z/artifacts/api-samples/tropical-1071-2026-06-23-0800-longest-path.json
+Wrote docs/evidence/schedule-cpm-engine-evaluation/20260628T092121Z/artifacts/api-cpm-longest-path-sample.json
+Wrote docs/evidence/schedule-cpm-engine-evaluation/20260628T092121Z/artifacts/api-samples/tropical-1071-2026-06-23-0800-diagnostics.json
+Wrote docs/evidence/schedule-cpm-engine-evaluation/20260628T092121Z/artifacts/api-cpm-diagnostics-sample.json
