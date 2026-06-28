@@ -1578,6 +1578,115 @@ export function getScheduleQualityMetrics(scheduleVersionKey: string) {
     `/api/schedules/versions/${encodeURIComponent(scheduleVersionKey)}/quality/metrics`,
   );
 }
+
+// --- Phase 8: read-only computed CPM surfacing ---------------------------------------
+export interface ScheduleCpmRunEntry {
+  available: boolean;
+  cpm_run_id?: string;
+  calculation_type?: string;
+  cpm_recalculation_status?: string;
+  analysis_scope?: string;
+  source_run_id?: string | null;
+  created_at?: string;
+  diagnostic_count?: number;
+  computed_activity_count?: number;
+  [key: string]: unknown;
+}
+export interface ScheduleCpmDcmaEvidence {
+  available: boolean;
+  measurable?: boolean;
+  basis?: string | null;
+  dependency_run_ids?: Record<string, string | null>;
+  path_id?: string | null;
+  path_activity_count?: number;
+  computed_critical_activity_count?: number;
+  longest_path_critical_activity_count?: number;
+  reason_codes?: string[];
+  caveats?: string[];
+  source_critical_flags_used?: boolean;
+  [key: string]: unknown;
+}
+export interface ScheduleCpmSummary {
+  schedule_version_key: string;
+  available: boolean;
+  runs: Record<string, ScheduleCpmRunEntry>;
+  dcma_critical_path: ScheduleCpmDcmaEvidence;
+  missing_dependency_reasons: string[];
+  evidence_class?: string;
+  source_export_evidence?: string;
+  [key: string]: unknown;
+}
+export interface ScheduleCpmActivity {
+  activity_id?: string;
+  activity_name?: string | null;
+  topological_index?: number | null;
+  computed_early_start?: string | null;
+  computed_early_finish?: string | null;
+  computed_late_start?: string | null;
+  computed_late_finish?: string | null;
+  computed_total_float?: number | null;
+  computed_free_float?: number | null;
+  computed_criticality_class?: string | null;
+  computed_critical_flag?: number | null;
+  computed_near_critical_flag?: number | null;
+  longest_path_member_flag?: number | null;
+  longest_path_sequence?: number | null;
+  [key: string]: unknown;
+}
+export interface ScheduleCpmActivitiesResponse {
+  schedule_version_key: string;
+  available: boolean;
+  source_run?: { cpm_run_id?: string; calculation_type?: string } | null;
+  activities: ScheduleCpmActivity[];
+  total_count: number;
+  limit: number;
+  offset: number;
+  truncated: boolean;
+  reason?: string;
+  [key: string]: unknown;
+}
+export interface ScheduleCpmLongestPath {
+  schedule_version_key: string;
+  available: boolean;
+  reason?: string;
+  path?: Record<string, unknown> | null;
+  activities: ScheduleCpmActivity[];
+  [key: string]: unknown;
+}
+export interface ScheduleCpmDiagnostics {
+  schedule_version_key: string;
+  available: boolean;
+  diagnostics: Array<Record<string, unknown>>;
+  total_count: number;
+  [key: string]: unknown;
+}
+export function getScheduleCpmSummary(scheduleVersionKey: string) {
+  return fetchJson<ScheduleCpmSummary>(
+    `/api/schedules/versions/${encodeURIComponent(scheduleVersionKey)}/cpm/summary`,
+  );
+}
+export function getScheduleCpmActivities(
+  scheduleVersionKey: string,
+  opts?: { limit?: number; offset?: number },
+) {
+  const params = new URLSearchParams();
+  if (opts?.limit != null) params.set('limit', String(opts.limit));
+  if (opts?.offset != null) params.set('offset', String(opts.offset));
+  const qs = params.toString();
+  return fetchJson<ScheduleCpmActivitiesResponse>(
+    `/api/schedules/versions/${encodeURIComponent(scheduleVersionKey)}/cpm/activities${qs ? `?${qs}` : ''}`,
+  );
+}
+export function getScheduleCpmLongestPath(scheduleVersionKey: string) {
+  return fetchJson<ScheduleCpmLongestPath>(
+    `/api/schedules/versions/${encodeURIComponent(scheduleVersionKey)}/cpm/longest-path`,
+  );
+}
+export function getScheduleCpmDiagnostics(scheduleVersionKey: string) {
+  return fetchJson<ScheduleCpmDiagnostics>(
+    `/api/schedules/versions/${encodeURIComponent(scheduleVersionKey)}/cpm/diagnostics`,
+  );
+}
 export function rerunScheduleQuality(scheduleVersionKey: string, profile?: string) {
   const qs = profile ? `?profile=${encodeURIComponent(profile)}` : '';
   return fetchJson(
@@ -2140,6 +2249,10 @@ export const api = {
   getScheduleQuality,
   getScheduleQualityFindings,
   getScheduleQualityMetrics,
+  getScheduleCpmSummary,
+  getScheduleCpmActivities,
+  getScheduleCpmLongestPath,
+  getScheduleCpmDiagnostics,
   rerunScheduleQuality,
   getScheduleQualityRun,
   getScheduleProjectQualitySummary,
