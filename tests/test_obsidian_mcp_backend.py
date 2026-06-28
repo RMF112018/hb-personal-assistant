@@ -192,6 +192,9 @@ def test_streamable_http_mount_lists_phase1_tools(tmp_path: Path, monkeypatch: p
             "vault_map",
             "vault_summarize_note",
             "vault_summarize_folder",
+            "vault_read_eml",
+            "vault_email_inventory",
+            "vault_parse_email",
             "vault_curation_plan",
             "vault_curation_apply",
         ]

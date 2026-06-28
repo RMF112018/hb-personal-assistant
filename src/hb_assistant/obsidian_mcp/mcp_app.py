@@ -23,6 +23,9 @@ _TOOL_SCOPES = {
     "vault_map": "obsidian.read",
     "vault_summarize_note": "obsidian.read",
     "vault_summarize_folder": "obsidian.read",
+    "vault_read_eml": "obsidian.read",
+    "vault_email_inventory": "obsidian.read",
+    "vault_parse_email": "obsidian.read",
     "vault_curation_plan": "obsidian.read",
     "vault_curation_apply": "obsidian.write",
 }
@@ -361,6 +364,81 @@ def build_streamable_http_app(service: ObsidianMcpService | None = None) -> Any:
                 "include_action_items": include_action_items,
                 "operator_mode": _operator_mode(ctx),
                 "principal_kind": _principal_kind(ctx),
+            }
+        )
+
+    @mcp.tool()
+    def vault_read_eml(
+        ctx: Context,
+        path: str,
+        include_body: bool = True,
+        include_attachments: bool = False,
+        max_body_chars: int = 12000,
+        redact_email_addresses: bool = False,
+        redact_phone_numbers: bool = False,
+    ) -> dict[str, Any]:
+        """Parse one .eml email: headers, body, attachment metadata, detected entities."""
+        _enforce("vault_read_eml", ctx)
+        return svc.vault_read_eml(
+            {
+                "path": path,
+                "include_body": include_body,
+                "include_attachments": include_attachments,
+                "max_body_chars": max_body_chars,
+                "redact_email_addresses": redact_email_addresses,
+                "redact_phone_numbers": redact_phone_numbers,
+                "operator_mode": _operator_mode(ctx),
+            }
+        )
+
+    @mcp.tool()
+    def vault_email_inventory(
+        ctx: Context,
+        root_path: str = "",
+        recursive: bool = True,
+        max_depth: int | None = 3,
+        max_files: int = 500,
+        include_subject: bool = True,
+        include_from: bool = True,
+        include_date: bool = True,
+        include_body_preview: bool = False,
+    ) -> dict[str, Any]:
+        """Inventory .eml files in a folder without reading full bodies by default."""
+        _enforce("vault_email_inventory", ctx)
+        return svc.vault_email_inventory(
+            {
+                "root_path": root_path,
+                "recursive": recursive,
+                "max_depth": max_depth,
+                "max_files": max_files,
+                "include_subject": include_subject,
+                "include_from": include_from,
+                "include_date": include_date,
+                "include_body_preview": include_body_preview,
+                "operator_mode": _operator_mode(ctx),
+                "principal_kind": _principal_kind(ctx),
+            }
+        )
+
+    @mcp.tool()
+    def vault_parse_email(
+        ctx: Context,
+        path: str,
+        extract: list[str] | None = None,
+        max_body_chars: int = 12000,
+        redact_email_addresses: bool = False,
+        redact_phone_numbers: bool = False,
+    ) -> dict[str, Any]:
+        """Parse one .eml into construction/PM extraction categories."""
+        _enforce("vault_parse_email", ctx)
+        return svc.vault_parse_email(
+            {
+                "path": path,
+                "extract": extract,
+                "max_body_chars": max_body_chars,
+                "redact_email_addresses": redact_email_addresses,
+                "redact_phone_numbers": redact_phone_numbers,
+                "operator_mode": _operator_mode(ctx),
             }
         )
 
