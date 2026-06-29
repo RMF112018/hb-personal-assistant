@@ -42,6 +42,66 @@ import { TechnicalDetails } from '../common/TechnicalDetails'
 
 const FILE_TYPES = ['md', 'txt', 'pdf', 'docx']
 
+type ExternalRoot = {
+  source_root_key: string
+  path: string
+  enabled: boolean
+  sensitive: boolean
+  source_kind: 'external_file'
+}
+
+// Root keys must be stable and machine-safe: lowercase letters, digits, hyphen, underscore.
+const ROOT_KEY_PATTERN = /^[a-z0-9_-]+$/
+
+function normalizeRoots(raw: any): ExternalRoot[] {
+  if (!Array.isArray(raw)) return []
+  return raw.map((r) => ({
+    source_root_key: String(r?.source_root_key ?? ''),
+    path: String(r?.path ?? ''),
+    enabled: r?.enabled !== false,
+    sensitive: !!r?.sensitive,
+    source_kind: 'external_file' as const,
+  }))
+}
+
+function normalizeExternalPath(path: string): string {
+  const trimmed = path.trim()
+  return trimmed.length > 1 ? trimmed.replace(/\/+$/, '') : trimmed
+}
+
+// Validate a single root's key + path. External source paths must be absolute; the backend
+// expands a leading "~" to an absolute path, so both "/" and "~" prefixes are accepted here.
+function validateRoot(root: { source_root_key: string; path: string }): string | null {
+  const key = root.source_root_key.trim()
+  const path = root.path.trim()
+  if (!key) return 'Root key is required.'
+  if (!ROOT_KEY_PATTERN.test(key)) {
+    return `Root key "${key}" must use only lowercase letters, numbers, hyphen, or underscore (no spaces).`
+  }
+  if (!path) return 'Path is required.'
+  if (!(path.startsWith('/') || path.startsWith('~'))) {
+    return `Path "${path}" must be absolute (start with / or ~).`
+  }
+  return null
+}
+
+// Validate the full draft: per-row rules plus no duplicate keys / paths.
+function validateRoots(roots: ExternalRoot[]): string | null {
+  const seenKeys = new Set<string>()
+  const seenPaths = new Set<string>()
+  for (const root of roots) {
+    const single = validateRoot(root)
+    if (single) return single
+    const key = root.source_root_key.trim()
+    if (seenKeys.has(key)) return `Duplicate root key "${key}".`
+    seenKeys.add(key)
+    const path = normalizeExternalPath(root.path)
+    if (seenPaths.has(path)) return `Duplicate path "${path}".`
+    seenPaths.add(path)
+  }
+  return null
+}
+
 export function ObsidianMcpPanel() {
   const [config, setConfig] = useState<any>(null)
   const [status, setStatus] = useState<any>(null)
@@ -67,6 +127,20 @@ export function ObsidianMcpPanel() {
   const [watchStatus, setWatchStatus] = useState<any>(null)
   const [modelTest, setModelTest] = useState<any>(null)
   const [sourceIdInput, setSourceIdInput] = useState('')
+  // External source roots editor (draft + Save roots). Draft is the config source of truth;
+  // the watcher "Configured roots" list below reflects what the running watcher currently sees.
+  const [draftRoots, setDraftRoots] = useState<ExternalRoot[]>([])
+  const [rootsDirty, setRootsDirty] = useState(false)
+  const [rootError, setRootError] = useState<string | null>(null)
+  const [confirmRemoveIndex, setConfirmRemoveIndex] = useState<number | null>(null)
+  const [newKey, setNewKey] = useState('')
+  const [newPath, setNewPath] = useState('')
+  const [newEnabled, setNewEnabled] = useState(true)
+  const [newSensitive, setNewSensitive] = useState(false)
+  const [rootsSavedWhileWatching, setRootsSavedWhileWatching] = useState(false)
+  const [scanMaxFilesInput, setScanMaxFilesInput] = useState('')
+  const [pollIntervalInput, setPollIntervalInput] = useState('')
+  const [debounceInput, setDebounceInput] = useState('')
 
   async function refreshAll() {
     setBusy('refresh')
@@ -109,7 +183,19 @@ export function ObsidianMcpPanel() {
     refreshAll()
   }, [])
 
-  async function saveConfig(patch: Record<string, unknown>) {
+  // Sync source-intelligence form state from the loaded config. The roots draft is only
+  // re-seeded when there are no unsaved edits, so in-progress edits are never clobbered by a refresh.
+  useEffect(() => {
+    if (!config) return
+    /* eslint-disable react-hooks/set-state-in-effect */
+    if (!rootsDirty) setDraftRoots(normalizeRoots(config.external_sources))
+    setScanMaxFilesInput(config.external_source_scan_max_files != null ? String(config.external_source_scan_max_files) : '')
+    setPollIntervalInput(config.watch_poll_interval_seconds != null ? String(config.watch_poll_interval_seconds) : '')
+    setDebounceInput(config.watch_debounce_seconds != null ? String(config.watch_debounce_seconds) : '')
+    /* eslint-enable react-hooks/set-state-in-effect */
+  }, [config, rootsDirty])
+
+  async function saveConfig(patch: Record<string, unknown>): Promise<boolean> {
     setBusy('save')
     setError(null)
     setMessage(null)
@@ -118,8 +204,10 @@ export function ObsidianMcpPanel() {
       setConfig((payload as any).config)
       setMessage('Obsidian MCP settings saved.')
       await refreshAll()
+      return true
     } catch (err) {
       setError(err)
+      return false
     } finally {
       setBusy(null)
     }
@@ -132,7 +220,11 @@ export function ObsidianMcpPanel() {
     try {
       const result = await fn()
       if (key === 'model-test') setModelTest(result)
-      if (key.startsWith('watch-')) setWatchStatus(result)
+      if (key.startsWith('watch-')) {
+        setWatchStatus(result)
+        // Any watcher lifecycle action resolves the "roots changed, restart to apply" notice.
+        setRootsSavedWhileWatching(false)
+      }
       setMessage(okMessage)
       // Refresh the source-index + watcher snapshots after any mutating action.
       const [idx, watch] = await Promise.all([
@@ -145,6 +237,89 @@ export function ObsidianMcpPanel() {
       setError(err)
     } finally {
       setBusy(null)
+    }
+  }
+
+  function updateDraftRoot(index: number, patch: Partial<ExternalRoot>) {
+    setDraftRoots(draftRoots.map((r, i) => (i === index ? { ...r, ...patch } : r)))
+    setRootsDirty(true)
+    setRootError(null)
+  }
+
+  function addDraftRoot() {
+    const candidate = { source_root_key: newKey.trim(), path: newPath.trim() }
+    const single = validateRoot(candidate)
+    if (single) {
+      setRootError(single)
+      return
+    }
+    if (draftRoots.some((r) => r.source_root_key.trim() === candidate.source_root_key)) {
+      setRootError(`Duplicate root key "${candidate.source_root_key}".`)
+      return
+    }
+    const candPath = normalizeExternalPath(candidate.path)
+    if (draftRoots.some((r) => normalizeExternalPath(r.path) === candPath)) {
+      setRootError(`Duplicate path "${candPath}".`)
+      return
+    }
+    setRootError(null)
+    setDraftRoots([
+      ...draftRoots,
+      { ...candidate, enabled: newEnabled, sensitive: newSensitive, source_kind: 'external_file' },
+    ])
+    setRootsDirty(true)
+    setNewKey('')
+    setNewPath('')
+    setNewEnabled(true)
+    setNewSensitive(false)
+  }
+
+  function requestRemove(index: number) {
+    setConfirmRemoveIndex(index)
+  }
+
+  function cancelRemove() {
+    setConfirmRemoveIndex(null)
+  }
+
+  function confirmRemove(index: number) {
+    setDraftRoots(draftRoots.filter((_, i) => i !== index))
+    setRootsDirty(true)
+    setConfirmRemoveIndex(null)
+    setRootError(null)
+  }
+
+  function commitNumericField(field: string, raw: string, kind: 'int' | 'float') {
+    const trimmed = raw.trim()
+    if (trimmed === '') return
+    const num = kind === 'int' ? Number.parseInt(trimmed, 10) : Number.parseFloat(trimmed)
+    if (!Number.isFinite(num) || num <= 0) {
+      setRootError(`Enter a positive number for ${field}.`)
+      return
+    }
+    setRootError(null)
+    void saveConfig({ [field]: num })
+  }
+
+  async function handleSaveRoots() {
+    const err = validateRoots(draftRoots)
+    if (err) {
+      setRootError(err)
+      return
+    }
+    setRootError(null)
+    const payload = draftRoots.map((r) => ({
+      source_root_key: r.source_root_key.trim(),
+      path: r.path.trim(),
+      enabled: r.enabled,
+      sensitive: r.sensitive,
+      source_kind: 'external_file' as const,
+    }))
+    const watching = !!watchStatus?.running
+    const ok = await saveConfig({ external_sources: payload })
+    if (ok) {
+      setRootsDirty(false)
+      if (watching) setRootsSavedWhileWatching(true)
     }
   }
 
@@ -838,6 +1013,89 @@ export function ObsidianMcpPanel() {
             <StatusRow label="Summaries (stale)" value={`${sourceIndex?.summarized_count ?? 0} (${sourceIndex?.stale_summary_count ?? 0})`} />
             <StatusRow label="Last indexed" value={sourceIndex?.last_indexed_at || 'Never'} />
             <StatusRow label="FTS available" value={sourceIndex?.fts_available ? 'Yes' : 'No'} />
+          </div>
+
+          <div className="mt-3 rounded border border-[var(--hb-border)] p-2">
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <span className="text-sm font-medium">External source roots</span>
+              <button className="badge inline-flex items-center gap-1" onClick={handleSaveRoots} disabled={busy !== null || !rootsDirty}>
+                {busy === 'save' ? 'Saving...' : 'Save roots'}{rootsDirty ? ' *' : ''}
+              </button>
+            </div>
+
+            <div className="grid gap-2 sm:grid-cols-2">
+              <Toggle label="External source indexing enabled" checked={!!config?.external_source_index_enabled} onChange={(v) => saveConfig({ external_source_index_enabled: v })} disabled={busy !== null} />
+              <Toggle label="External source watcher enabled" checked={!!config?.external_source_watch_enabled} onChange={(v) => saveConfig({ external_source_watch_enabled: v })} disabled={busy !== null} />
+            </div>
+            <div className="mt-2 grid gap-2 sm:grid-cols-3">
+              <Field label="Scan max files" value={scanMaxFilesInput} onChange={setScanMaxFilesInput} onBlur={() => commitNumericField('external_source_scan_max_files', scanMaxFilesInput, 'int')} />
+              <Field label="Watch poll interval (s)" value={pollIntervalInput} onChange={setPollIntervalInput} onBlur={() => commitNumericField('watch_poll_interval_seconds', pollIntervalInput, 'int')} />
+              <Field label="Watch debounce (s)" value={debounceInput} onChange={setDebounceInput} onBlur={() => commitNumericField('watch_debounce_seconds', debounceInput, 'float')} />
+            </div>
+
+            {rootError && (
+              <div className="mt-2 rounded border border-amber-400 bg-amber-50 p-2 text-amber-700" role="alert">{rootError}</div>
+            )}
+
+            <div className="mt-2 space-y-2">
+              {draftRoots.length === 0 ? (
+                <div className="text-[var(--hb-muted)]">No external source roots configured.</div>
+              ) : (
+                draftRoots.map((root, idx) => (
+                  <div key={idx} className="rounded border border-[var(--hb-border)] p-2">
+                    <div className="grid gap-2 sm:grid-cols-[1fr_2fr_auto]">
+                      <input className="w-full rounded border border-[var(--hb-border)] bg-[var(--hb-bg)] px-2 py-1 text-sm" value={root.source_root_key} onChange={(e) => updateDraftRoot(idx, { source_root_key: e.target.value })} placeholder="root key" aria-label={`root key ${idx}`} />
+                      <input className="w-full rounded border border-[var(--hb-border)] bg-[var(--hb-bg)] px-2 py-1 text-sm" value={root.path} onChange={(e) => updateDraftRoot(idx, { path: e.target.value })} placeholder="/absolute/path" aria-label={`root path ${idx}`} />
+                      <span className="badge badge-muted self-center" title="Source kind is fixed for external roots">external_file</span>
+                    </div>
+                    <div className="mt-2 flex flex-wrap items-center gap-3">
+                      <label className="flex items-center gap-1 text-xs">
+                        <input type="checkbox" checked={root.enabled} onChange={(e) => updateDraftRoot(idx, { enabled: e.target.checked })} aria-label={`root enabled ${idx}`} />
+                        enabled
+                      </label>
+                      <label className="flex items-center gap-1 text-xs">
+                        <input type="checkbox" checked={root.sensitive} onChange={(e) => updateDraftRoot(idx, { sensitive: e.target.checked })} aria-label={`root sensitive ${idx}`} />
+                        sensitive
+                      </label>
+                      {confirmRemoveIndex === idx ? (
+                        <>
+                          <button className="badge badge-stale" onClick={() => confirmRemove(idx)} disabled={busy !== null}>Confirm remove</button>
+                          <button className="badge" onClick={cancelRemove} disabled={busy !== null}>Cancel</button>
+                        </>
+                      ) : (
+                        <button className="badge" onClick={() => requestRemove(idx)} disabled={busy !== null}>Remove</button>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="mt-3 rounded border border-dashed border-[var(--hb-border)] p-2">
+              <div className="text-[10px] uppercase text-[var(--hb-muted)]">Add external root</div>
+              <div className="mt-1 grid gap-2 sm:grid-cols-[1fr_2fr_auto]">
+                <input className="w-full rounded border border-[var(--hb-border)] bg-[var(--hb-bg)] px-2 py-1 text-sm" value={newKey} onChange={(e) => setNewKey(e.target.value)} placeholder="root key" aria-label="new root key" />
+                <input className="w-full rounded border border-[var(--hb-border)] bg-[var(--hb-bg)] px-2 py-1 text-sm" value={newPath} onChange={(e) => setNewPath(e.target.value)} placeholder="/absolute/path" aria-label="new root path" />
+                <button className="badge" onClick={addDraftRoot} disabled={busy !== null}>Add</button>
+              </div>
+              <div className="mt-2 flex flex-wrap items-center gap-3">
+                <label className="flex items-center gap-1 text-xs">
+                  <input type="checkbox" checked={newEnabled} onChange={(e) => setNewEnabled(e.target.checked)} aria-label="new root enabled" />
+                  enabled
+                </label>
+                <label className="flex items-center gap-1 text-xs">
+                  <input type="checkbox" checked={newSensitive} onChange={(e) => setNewSensitive(e.target.checked)} aria-label="new root sensitive" />
+                  sensitive
+                </label>
+                <span className="badge badge-muted">external_file</span>
+              </div>
+            </div>
+
+            {rootsSavedWhileWatching && watchStatus?.running && (
+              <div className="mt-2 rounded border border-amber-400 bg-amber-50 p-2 text-amber-700" role="alert">
+                Roots saved. The watcher is running with the previous roots — click <span className="font-medium">Restart</span> (below) to apply the saved roots.
+              </div>
+            )}
           </div>
 
           <div className="mt-3 rounded border border-[var(--hb-border)] p-2">

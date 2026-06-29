@@ -1,0 +1,29 @@
+### Frontend: external roots editor handlers + validation (ObsidianMcpPanel.tsx)
+54:const ROOT_KEY_PATTERN = /^[a-z0-9_-]+$/
+78:  if (!ROOT_KEY_PATTERN.test(key)) {
+89:function validateRoots(roots: ExternalRoot[]): string | null {
+130:  // External source roots editor (draft + Save roots). Draft is the config source of truth;
+135:  const [confirmRemoveIndex, setConfirmRemoveIndex] = useState<number | null>(null)
+140:  const [rootsSavedWhileWatching, setRootsSavedWhileWatching] = useState(false)
+249:  function addDraftRoot() {
+285:  function confirmRemove(index: number) {
+304:  async function handleSaveRoots() {
+305:    const err = validateRoots(draftRoots)
+1020:              <span className="text-sm font-medium">External source roots</span>
+1021:              <button className="badge inline-flex items-center gap-1" onClick={handleSaveRoots} disabled={busy !== null || !rootsDirty}>
+1027:              <Toggle label="External source indexing enabled" checked={!!config?.external_source_index_enabled} onChange={(v) => saveConfig({ external_source_index_enabled: v })} disabled={busy !== null} />
+1060:                      {confirmRemoveIndex === idx ? (
+1062:                          <button className="badge badge-stale" onClick={() => confirmRemove(idx)} disabled={busy !== null}>Confirm remove</button>
+1079:                <button className="badge" onClick={addDraftRoot} disabled={busy !== null}>Add</button>
+1094:            {rootsSavedWhileWatching && watchStatus?.running && (
+
+### Backend: 422 guard in PATCH config handler (api.py)
+1775:        except ValidationError as exc:
+1779:            raise HTTPException(status_code=422, detail="invalid_obsidian_mcp_config") from exc
+
+### Backend config model already supports external_sources (config.py)
+22:class ExternalSourceRoot(BaseModel):
+38:            raise ValueError("external_source_path_must_be_absolute")
+85:    external_sources: list[ExternalSourceRoot] = Field(default_factory=list)
+273:    external_sources: list[ExternalSourceRoot] | None = None
+370:    # Merge as plain data then validate, so nested models (e.g. external_sources) are coerced

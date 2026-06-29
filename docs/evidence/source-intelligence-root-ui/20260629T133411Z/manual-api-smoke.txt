@@ -1,0 +1,42 @@
+Manual API smoke — A1.7 Source Intelligence External Root Management UI
+Backend: uvicorn hb_assistant.construction.analytics.api:create_app --factory --port 8000
+DB: ~/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite
+Live obsidian_mcp_config.json was backed up before the PATCH and restored afterward
+(post-restore sha256 == pre-test sha256 bed417d9028d5399287116b54dedad603a9fd5d002fbfc4bd5439eb50d9ecc00).
+
+== GET /api/settings/obsidian-mcp/source-watch/status (operator) ==
+running: false, mode: stopped, watch_enabled: false
+queue_health: queued 0 / processing 0 / error 0 / done 12
+roots: [{ key: manual-test, path: /tmp/hb-source-summary-test-root, enabled: true, sensitive: false }]
+
+== GET /api/settings/obsidian-mcp/source-index/status (operator) ==
+sources_total: 5002, queued 0 / processing 0 / error 0, config_warnings: [], fts_available: true
+
+== PATCH /api/settings/obsidian-mcp/config (operator) — add a second root ==
+Request external_sources: [manual-test (existing), a17-smoke @ /tmp/hb-a17-smoke-root sensitive:true]
+Response config:
+  token_configured: True
+  bearer_token leaked: False
+  external_sources: [manual-test, a17-smoke]   (both persisted, source_kind=external_file)
+=> Partial update persisted external_sources AND preserved the bearer token. No token leak.
+
+== PATCH /api/settings/obsidian-mcp/config (operator) — relative path (negative) ==
+Request external_sources: [{ source_root_key: bad, path: relative/path }]
+HTTP 422
+Body: {"detail":"invalid_obsidian_mcp_config"}
+=> Non-absolute path rejected with a clean 422 (no 500, no raw input echoed). NEW guard added
+   in this patch (api.py: ValidationError -> HTTPException(422)).
+
+== GET source-watch/status after PATCH ==
+roots: ['manual-test']   (still the watcher's pre-restart snapshot — config has 2 roots)
+=> Confirms the watcher reads roots at start; saved roots require a watcher restart to take
+   effect. This is exactly why the UI shows a "restart to apply" prompt rather than silently
+   restarting.
+
+== POST /api/settings/obsidian-mcp/source-watch/test-event (operator) ==
+{ enqueued: true, source_root_key: manual-test, processed: 1,
+  queue: { queued 0 / processing 0 / error 0 / done 13 } }
+=> Test event drained; queue remained clean.
+
+Result: roots persistence, token preservation, no-leak, clean 422 rejection, watcher status,
+and test-event all verified. Live config restored byte-identical afterward.
