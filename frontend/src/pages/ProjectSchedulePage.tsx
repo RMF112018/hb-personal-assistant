@@ -1,12 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 
 import { EmptyState } from '../components/common/EmptyState'
 import { ErrorState } from '../components/common/ErrorState'
 import { LoadingState } from '../components/common/LoadingState'
 import { TechnicalDetails } from '../components/common/TechnicalDetails'
+import { ProjectScheduleDashboardVisualizations } from '../components/projects/ProjectScheduleDashboardVisualizations'
 import { ProjectWorkspaceShell } from '../components/projects/ProjectWorkspaceShell'
 import { api } from '../lib/api'
 import type { ProjectScheduleSummaryResponse } from '../lib/api'
@@ -179,13 +180,18 @@ function DrilldownPanel({
 
 function DriverEvidenceSection({
   projectKey,
-  driverAnalysis,
+  driverHub,
   asOfDate,
 }: {
   projectKey: string
-  driverAnalysis: Record<string, any>
+  driverHub: Record<string, any>
   asOfDate?: string
 }) {
+  const [comparisonBasis, setComparisonBasis] = useState<'prior_update' | 'baseline'>('prior_update')
+  const driverAnalysis =
+    comparisonBasis === 'baseline'
+      ? driverHub.baseline || { available: false }
+      : driverHub.prior_update || driverHub
   const [activeTab, setActiveTab] = useState<(typeof DRIVER_TABS)[number]['id']>('drivers')
   const topDrivers = Array.isArray(driverAnalysis.top_drivers) ? driverAnalysis.top_drivers : []
   const [selectedDriverId, setSelectedDriverId] = useState<string>(String(topDrivers[0]?.activity_id || ''))
@@ -216,8 +222,26 @@ function DriverEvidenceSection({
     )
   }
 
+  const baselineAvailable = Boolean(driverHub.baseline?.available)
+
   return (
     <div className="space-y-3">
+      {baselineAvailable && (
+        <div className="flex flex-wrap gap-2">
+          <button
+            className={`badge ${comparisonBasis === 'prior_update' ? 'ring-1 ring-[var(--hb-border)]' : ''}`}
+            onClick={() => setComparisonBasis('prior_update')}
+          >
+            Since previous update
+          </button>
+          <button
+            className={`badge ${comparisonBasis === 'baseline' ? 'ring-1 ring-[var(--hb-border)]' : ''}`}
+            onClick={() => setComparisonBasis('baseline')}
+          >
+            Since selected baseline
+          </button>
+        </div>
+      )}
       <div className="flex flex-wrap gap-2">
         {DRIVER_TABS.map((tab) => (
           <button
@@ -364,6 +388,10 @@ function DriverEvidenceSection({
 
 export function ProjectSchedulePage() {
   const { projectKey = '' } = useParams()
+  const [searchParams] = useSearchParams()
+  const focusDriver = searchParams.get('driver')
+  const focusReview = searchParams.get('review')
+  const focusBasis = searchParams.get('basis') === 'baseline' ? 'baseline' : 'prior_update'
   const [showAllActions, setShowAllActions] = useState(false)
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['project', 'schedule', projectKey],
@@ -412,7 +440,6 @@ export function ProjectSchedulePage() {
   const reviewDrilldowns = schedule.review_drilldowns || {}
   const driverHub = schedule.change_driver_analysis || {}
   const driverAnalysis = driverHub.prior_update || driverHub
-  const baselineDriverAnalysis = driverHub.baseline || {}
   const driverSummary = driverAnalysis.summary || {}
   const reviewWorkbench = schedule.review_workbench || {}
   const sourceFloat = schedule.source_float_summary || {}
@@ -496,6 +523,30 @@ export function ProjectSchedulePage() {
           <ReadinessList readiness={readiness} />
         </div>
 
+        {(focusDriver || focusReview) && (
+          <div className="card text-sm">
+            <div className="font-medium">Focused review link</div>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {focusDriver && (
+                <Link
+                  className="badge"
+                  to={`/projects/${projectKey}/schedule/drivers/${encodeURIComponent(focusDriver)}?basis=${focusBasis}${schedule.as_of_date ? `&as_of=${encodeURIComponent(String(schedule.as_of_date))}` : ''}`}
+                >
+                  Open driver {focusDriver}
+                </Link>
+              )}
+              {focusReview && (
+                <Link
+                  className="badge"
+                  to={`/projects/${projectKey}/schedule/workbench?review=${encodeURIComponent(focusReview)}${schedule.as_of_date ? `&as_of=${encodeURIComponent(String(schedule.as_of_date))}` : ''}`}
+                >
+                  Open review item
+                </Link>
+              )}
+            </div>
+          </div>
+        )}
+
         <TrustBanner scheduleTrust={scheduleTrust} identityReview={identityReview} />
 
         <div className={`card ${toneFor(health.status)}`}>
@@ -538,6 +589,10 @@ export function ProjectSchedulePage() {
               <MetricTile label="Float Pressure" value={num(command.negative_float_remaining_count)} helper="source-export negative float" />
             </div>
           </div>
+        </div>
+
+        <div className="card">
+          <ProjectScheduleDashboardVisualizations schedule={schedule} />
         </div>
 
         {reviewWorkbench.available && (
@@ -588,18 +643,10 @@ export function ProjectSchedulePage() {
             <div className="mt-4">
               <DriverEvidenceSection
                 projectKey={projectKey}
-                driverAnalysis={driverAnalysis}
+                driverHub={driverHub}
                 asOfDate={schedule.as_of_date}
               />
             </div>
-            {baselineDriverAnalysis.available && (
-              <p className="mt-3 text-xs text-[var(--hb-muted)]">
-                Baseline comparison drivers: {num(baselineDriverAnalysis.summary?.candidate_driver_count)} candidates
-                {baselineDriverAnalysis.summary?.top_wbs_area
-                  ? ` · top WBS ${text(baselineDriverAnalysis.summary.top_wbs_area)}`
-                  : ''}
-              </p>
-            )}
           </div>
         )}
 

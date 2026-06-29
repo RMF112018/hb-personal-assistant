@@ -10,7 +10,7 @@ const syncProjectScheduleReviewItemsMock = vi.fn()
 const getProjectScheduleReviewItemsMock = vi.fn()
 const patchProjectScheduleReviewItemMock = vi.fn()
 const getProjectsMock = vi.fn()
-const getLocalUiRoleMock = vi.fn(() => 'operator' as const)
+const getLocalUiRoleMock = vi.fn(() => 'operator' as 'operator' | 'viewer' | 'admin')
 
 vi.mock('../lib/api', async () => {
   const actual = await vi.importActual<typeof import('../lib/api')>('../lib/api')
@@ -84,7 +84,10 @@ describe('ProjectScheduleWorkbenchPage', () => {
     await waitFor(() => {
       expect(syncProjectScheduleReviewItemsMock).toHaveBeenCalledWith('tropical', { asOf: '2026-07-03' })
     })
-    expect(getProjectScheduleReviewItemsMock).toHaveBeenCalledWith('tropical', { asOf: '2026-07-03' })
+    expect(getProjectScheduleReviewItemsMock).toHaveBeenCalledWith('tropical', {
+      asOf: '2026-07-03',
+      comparisonBasis: 'prior_update',
+    })
     expect(await screen.findByText('Review driver: Concrete pour')).toBeInTheDocument()
   })
 
@@ -93,7 +96,10 @@ describe('ProjectScheduleWorkbenchPage', () => {
     renderPage()
 
     await waitFor(() => {
-      expect(getProjectScheduleReviewItemsMock).toHaveBeenCalledWith('tropical', { asOf: '2026-07-03' })
+      expect(getProjectScheduleReviewItemsMock).toHaveBeenCalledWith('tropical', {
+      asOf: '2026-07-03',
+      comparisonBasis: 'prior_update',
+    })
     })
     expect(syncProjectScheduleReviewItemsMock).not.toHaveBeenCalled()
     expect(await screen.findByText(/Preview only/)).toBeInTheDocument()

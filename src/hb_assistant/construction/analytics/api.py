@@ -1208,6 +1208,7 @@ def create_app(*, db_path: str | None = None) -> Any:
         limit: int = 100,
         offset: int = 0,
         as_of: str | None = None,
+        comparison_basis: str = "prior_update",
         role: dict[str, str] = role_dep,
     ) -> dict[str, Any]:
         del role
@@ -1223,12 +1224,14 @@ def create_app(*, db_path: str | None = None) -> Any:
                 as_of_date = date_type.fromisoformat(as_of)
             except ValueError as exc:
                 raise HTTPException(status_code=400, detail="invalid_as_of_date") from exc
+        basis = comparison_basis if comparison_basis in {"prior_update", "baseline"} else "prior_update"
         return ProjectScheduleSummaryService(db_path=_schedule_db_path()).build_review_items(
             project_key,
             review_status=review_status,
             limit=limit,
             offset=offset,
             as_of=as_of_date,
+            comparison_basis=basis,
         )
 
     @app.post("/api/projects/{project_key}/schedule/review-items")
@@ -1288,6 +1291,9 @@ def create_app(*, db_path: str | None = None) -> Any:
         project_key: str,
         format: str = "markdown",
         as_of: str | None = None,
+        variant: str = "standard",
+        scope: str = "full",
+        include_persisted_review: bool = False,
         role: dict[str, str] = role_dep,
     ):
         del role
@@ -1306,15 +1312,22 @@ def create_app(*, db_path: str | None = None) -> Any:
             except ValueError as exc:
                 raise HTTPException(status_code=400, detail="invalid_as_of_date") from exc
         try:
+            export_variant = variant if variant in {"standard", "executive"} else "standard"
+            export_scope = scope if scope in {"full", "review_items"} else "full"
             payload = ProjectScheduleSummaryService(db_path=_schedule_db_path()).build_export(
                 project_key,
                 export_format=format,
                 as_of=as_of_date,
+                variant=export_variant,
+                scope=export_scope,
+                include_persisted_review=include_persisted_review,
             )
         except ValueError as exc:
             if str(exc) == "unsupported_export_format":
                 raise HTTPException(status_code=400, detail="unsupported_export_format") from exc
             raise
+        if not payload.get("available"):
+            raise HTTPException(status_code=422, detail=payload.get("reason") or "export_unavailable")
         headers = {"Content-Disposition": f'attachment; filename="{payload["filename"]}"'}
         return Response(content=payload["body"], media_type=payload["content_type"], headers=headers)
 

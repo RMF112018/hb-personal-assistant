@@ -329,13 +329,20 @@ export function syncProjectScheduleReviewItems(
 }
 export function getProjectScheduleReviewItems(
   projectKey: string,
-  opts?: { reviewStatus?: string; limit?: number; offset?: number; asOf?: string },
+  opts?: {
+    reviewStatus?: string;
+    limit?: number;
+    offset?: number;
+    asOf?: string;
+    comparisonBasis?: 'prior_update' | 'baseline';
+  },
 ) {
   const params = new URLSearchParams();
   if (opts?.reviewStatus) params.set('review_status', opts.reviewStatus);
   if (opts?.limit != null) params.set('limit', String(opts.limit));
   if (opts?.offset != null) params.set('offset', String(opts.offset));
   if (opts?.asOf) params.set('as_of', opts.asOf);
+  if (opts?.comparisonBasis) params.set('comparison_basis', opts.comparisonBasis);
   const qs = params.toString();
   return fetchJson(
     `/api/projects/${encodeURIComponent(projectKey)}/schedule/review-items${qs ? `?${qs}` : ''}`,
@@ -357,12 +364,20 @@ export function patchProjectScheduleReviewItem(
 export async function downloadProjectScheduleExport(
   projectKey: string,
   format: 'markdown' | 'html' = 'markdown',
-  opts?: { asOf?: string },
+  opts?: {
+    asOf?: string;
+    variant?: 'standard' | 'executive';
+    scope?: 'full' | 'review_items';
+    includePersistedReview?: boolean;
+  },
 ) {
   const { downloadBlob } = await import('../components/forecast/forecastMonthlyExportWriters');
   const role = getLocalUiRole();
   const params = new URLSearchParams({ format });
   if (opts?.asOf) params.set('as_of', opts.asOf);
+  if (opts?.variant) params.set('variant', opts.variant);
+  if (opts?.scope) params.set('scope', opts.scope);
+  if (opts?.includePersistedReview) params.set('include_persisted_review', 'true');
   const response = await fetch(
     `${API_BASE}/api/projects/${encodeURIComponent(projectKey)}/schedule/export?${params.toString()}`,
     { headers: { 'X-HB-UI-Role': role } },

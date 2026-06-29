@@ -94,3 +94,32 @@ V91_STATEMENTS: list[str] = [
     ON project_schedule_review_items(project_key, stable_item_key);
     """,
 ]
+
+V92_TABLES: tuple[str, ...] = ("project_schedule_review_item_events",)
+
+V92_STATEMENTS: list[str] = [
+    """
+    CREATE TABLE IF NOT EXISTS project_schedule_review_item_events (
+      event_id TEXT PRIMARY KEY,
+      review_item_id TEXT NOT NULL,
+      project_key TEXT NOT NULL,
+      schedule_version_key TEXT NOT NULL,
+      event_type TEXT NOT NULL
+        CHECK(event_type IN ('created', 'synced', 'status_changed', 'notes_changed', 'carried_forward')),
+      prior_status TEXT,
+      new_status TEXT,
+      prior_notes TEXT,
+      new_notes TEXT,
+      operator_id TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS idx_project_schedule_review_item_events_item
+    ON project_schedule_review_item_events(review_item_id, created_at);
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS idx_project_schedule_review_item_events_project
+    ON project_schedule_review_item_events(project_key, schedule_version_key);
+    """,
+]

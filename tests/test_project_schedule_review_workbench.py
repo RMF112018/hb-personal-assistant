@@ -18,7 +18,14 @@ from hb_assistant.construction.analytics.project_schedule_memo_service import Pr
 from hb_assistant.construction.analytics.project_schedule_review_service import ProjectScheduleReviewService
 from hb_assistant.construction.analytics.project_schedule_summary_service import ProjectScheduleSummaryService
 from hb_assistant.store.migrator import SQLiteMigrator
-from hb_assistant.store.project_schedule_hub_repository import REVIEW_WATCHING, ProjectScheduleHubRepository
+from hb_assistant.store.project_schedule_hub_repository import (
+    EVENT_CARRIED_FORWARD,
+    EVENT_CREATED,
+    EVENT_STATUS_CHANGED,
+    EVENT_SYNCED,
+    REVIEW_WATCHING,
+    ProjectScheduleHubRepository,
+)
 from tests.schedule_project_test_helpers import seed_procore_ep_project
 
 
@@ -163,6 +170,59 @@ def test_review_workbench_syncs_and_carries_forward_status(tmp_path: Path) -> No
     assert carried["review_status"] == REVIEW_WATCHING
     assert carried["pm_notes"] == "watching driver"
     assert repo.get_review_item(review_item_id=str(carried["review_item_id"])) is not None
+
+
+def test_review_item_audit_events_and_lineage(tmp_path: Path) -> None:
+    db = _fresh_db(tmp_path)
+    _seed_driver_chain(db)
+    review = ProjectScheduleReviewService(db_path=str(db))
+    repo = ProjectScheduleHubRepository(db_path=str(db))
+    analysis = ProjectScheduleDriverAnalysisService(db_path=str(db)).build_analysis(
+        project_key="tropical",
+        current_key="tropical|S1|2026-07-01",
+        previous_key="tropical|S1|2026-06-01",
+        diff_id=None,
+        milestones={"items": []},
+    )
+    first = review.sync_and_list(
+        project_key="tropical",
+        schedule_version_key="tropical|S1|2026-07-01",
+        driver_analysis=analysis,
+        milestones={"items": []},
+        remaining_health={"float_pressure": {"negative_float_count": 0, "preview": []}},
+        cpm_summary={"critical_path": {"items": []}},
+        change_impact={"direct_remaining_changes": {"items": []}},
+        remaining_activities=[],
+    )
+    driver_item = next(i for i in first["items"] if i["stable_item_key"] == "driver:DRV-A")
+    events = repo.list_review_item_events(review_item_id=str(driver_item["review_item_id"]))
+    assert any(event["event_type"] == EVENT_CREATED for event in events)
+    assert driver_item["lineage"] == "existing"
+    assert driver_item["new_since_last_review"] is True
+
+    review.update_item(
+        review_item_id=str(driver_item["review_item_id"]),
+        review_status=REVIEW_WATCHING,
+        reviewed_by_operator="operator",
+    )
+    events = repo.list_review_item_events(review_item_id=str(driver_item["review_item_id"]))
+    assert any(event["event_type"] == EVENT_STATUS_CHANGED for event in events)
+
+    second = review.sync_and_list(
+        project_key="tropical",
+        schedule_version_key="tropical|S1|2026-07-01",
+        driver_analysis=analysis,
+        milestones={"items": []},
+        remaining_health={"float_pressure": {"negative_float_count": 0, "preview": []}},
+        cpm_summary={"critical_path": {"items": []}},
+        change_impact={"direct_remaining_changes": {"items": []}},
+        remaining_activities=[],
+    )
+    carried = next(i for i in second["items"] if i["stable_item_key"] == "driver:DRV-A")
+    assert carried["review_status"] == REVIEW_WATCHING
+    events = repo.list_review_item_events(review_item_id=str(carried["review_item_id"]))
+    assert any(event["event_type"] == EVENT_SYNCED for event in events)
+    assert EVENT_CARRIED_FORWARD not in {event["event_type"] for event in events}
 
 
 def test_driver_detail_returns_side_by_side_path(tmp_path: Path) -> None:

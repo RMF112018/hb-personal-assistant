@@ -5,6 +5,8 @@ from __future__ import annotations
 from typing import Any
 
 from hb_assistant.store.project_schedule_hub_repository import (
+    EVENT_CARRIED_FORWARD,
+    EVENT_CREATED,
     REVIEW_DISMISSED,
     REVIEW_OPEN,
     REVIEW_REVIEWED,
@@ -72,21 +74,21 @@ class ProjectScheduleReviewService:
         cpm_summary: dict[str, Any] | None = None,
         change_impact: dict[str, Any] | None = None,
         remaining_activities: list[dict[str, Any]] | None = None,
+        comparison_basis: str = "prior_update",
     ) -> dict[str, Any]:
         """Read-only workbench preview — merges live candidates with persisted disposition."""
-        candidates = self._collect_candidates(
+        return self._build_workbench(
+            project_key=project_key,
+            schedule_version_key=schedule_version_key,
             driver_analysis=driver_analysis,
             milestones=milestones,
             remaining_health=remaining_health,
             cpm_summary=cpm_summary,
             change_impact=change_impact,
             remaining_activities=remaining_activities,
+            comparison_basis=comparison_basis,
+            synced=False,
         )
-        items = [
-            self._public_item(self._merge_candidate(project_key=project_key, schedule_version_key=schedule_version_key, candidate=candidate))
-            for candidate in candidates
-        ]
-        return self._workbench_envelope(project_key=project_key, items=items, synced=False)
 
     def sync_and_list(
         self,
@@ -110,16 +112,84 @@ class ProjectScheduleReviewService:
             change_impact=change_impact,
             remaining_activities=remaining_activities,
         )
-        items = [
-            self._public_item(row)
-            for row in self._repo.list_review_items(
-                project_key=project_key,
-                schedule_version_key=schedule_version_key,
-                limit=_QUEUE_LIMIT,
-            )
-        ]
-        envelope = self._workbench_envelope(project_key=project_key, items=items, synced=True)
+        envelope = self._build_workbench(
+            project_key=project_key,
+            schedule_version_key=schedule_version_key,
+            driver_analysis=driver_analysis,
+            milestones=milestones,
+            remaining_health=remaining_health,
+            cpm_summary=cpm_summary,
+            change_impact=change_impact,
+            remaining_activities=remaining_activities,
+            comparison_basis="prior_update",
+            synced=True,
+            use_persisted=True,
+        )
         envelope["sync"] = sync
+        return envelope
+
+    def _build_workbench(
+        self,
+        *,
+        project_key: str,
+        schedule_version_key: str,
+        driver_analysis: dict[str, Any] | None,
+        milestones: dict[str, Any] | None,
+        remaining_health: dict[str, Any] | None,
+        cpm_summary: dict[str, Any] | None,
+        change_impact: dict[str, Any] | None,
+        remaining_activities: list[dict[str, Any]] | None,
+        comparison_basis: str,
+        synced: bool,
+        use_persisted: bool = False,
+    ) -> dict[str, Any]:
+        bases: dict[str, Any] = {}
+        for basis_key, basis_driver in (
+            ("prior_update", (driver_analysis or {}).get("prior_update") or driver_analysis),
+            ("baseline", (driver_analysis or {}).get("baseline") or {}),
+        ):
+            if basis_key == "baseline" and not basis_driver.get("available"):
+                bases[basis_key] = {"available": False, "reason": basis_driver.get("reason", "baseline_unavailable")}
+                continue
+            candidates = self._collect_candidates(
+                driver_analysis=driver_analysis,
+                milestones=milestones,
+                remaining_health=remaining_health,
+                cpm_summary=cpm_summary,
+                change_impact=change_impact,
+                remaining_activities=remaining_activities,
+                comparison_basis=basis_key,
+            )
+            if use_persisted and basis_key == "prior_update":
+                items = [
+                    self._public_item(self._enrich_persisted_item(row))
+                    for row in self._repo.list_review_items(
+                        project_key=project_key,
+                        schedule_version_key=schedule_version_key,
+                        limit=_QUEUE_LIMIT,
+                    )
+                ]
+            else:
+                items = [
+                    self._public_item(
+                        self._merge_candidate(
+                            project_key=project_key,
+                            schedule_version_key=schedule_version_key,
+                            candidate=candidate,
+                        )
+                    )
+                    for candidate in candidates
+                ]
+            bases[basis_key] = self._workbench_envelope(
+                project_key=project_key,
+                items=items,
+                synced=synced and basis_key == "prior_update",
+                comparison_basis=basis_key,
+            )
+        active = bases.get(comparison_basis) or bases.get("prior_update") or {"available": False}
+        envelope = dict(active)
+        envelope["bases"] = bases
+        envelope["comparison_basis"] = comparison_basis
         return envelope
 
     def list_items(
@@ -132,7 +202,7 @@ class ProjectScheduleReviewService:
         offset: int = 0,
     ) -> dict[str, Any]:
         items = [
-            self._public_item(row)
+            self._public_item(self._enrich_persisted_item(row))
             for row in self._repo.list_review_items(
                 project_key=project_key,
                 schedule_version_key=schedule_version_key,
@@ -176,6 +246,7 @@ class ProjectScheduleReviewService:
         cpm_summary: dict[str, Any] | None,
         change_impact: dict[str, Any] | None,
         remaining_activities: list[dict[str, Any]] | None,
+        comparison_basis: str = "prior_update",
     ) -> list[dict[str, Any]]:
         seen: set[str] = set()
         out: list[dict[str, Any]] = []
@@ -203,9 +274,12 @@ class ProjectScheduleReviewService:
                 }
             )
 
-        prior = (driver_analysis or {}).get("prior_update") or driver_analysis or {}
-        if prior.get("available"):
-            for driver in prior.get("top_drivers") or []:
+        basis = comparison_basis if comparison_basis in {"prior_update", "baseline"} else "prior_update"
+        driver_source = (driver_analysis or {}).get(basis) or (
+            driver_analysis if basis == "prior_update" else {}
+        )
+        if driver_source.get("available"):
+            for driver in driver_source.get("top_drivers") or []:
                 aid = str(driver.get("activity_id") or "")
                 if not aid:
                     continue
@@ -219,6 +293,7 @@ class ProjectScheduleReviewService:
                         "driver_score": driver.get("driver_score"),
                         "downstream_moved_later_count": driver.get("downstream_moved_later_count"),
                         "wbs_code": driver.get("wbs_code"),
+                        "comparison_basis": basis,
                     },
                 )
 
@@ -306,9 +381,11 @@ class ProjectScheduleReviewService:
             stable_item_key=stable_item_key,
         )
         if persisted and str(persisted.get("schedule_version_key")) == schedule_version_key:
-            return persisted
+            merged = dict(persisted)
+            merged.update(self._lineage_flags(prior=persisted, schedule_version_key=schedule_version_key, existing=True))
+            return merged
         if persisted:
-            return {
+            merged = {
                 "review_item_id": None,
                 "project_key": project_key,
                 "schedule_version_key": schedule_version_key,
@@ -323,7 +400,9 @@ class ProjectScheduleReviewService:
                 "reviewed_by_operator": persisted.get("reviewed_by_operator"),
                 "reviewed_at": persisted.get("reviewed_at"),
             }
-        return {
+            merged.update(self._lineage_flags(prior=persisted, schedule_version_key=schedule_version_key, existing=False))
+            return merged
+        merged = {
             "review_item_id": None,
             "project_key": project_key,
             "schedule_version_key": schedule_version_key,
@@ -338,6 +417,52 @@ class ProjectScheduleReviewService:
             "reviewed_by_operator": None,
             "reviewed_at": None,
         }
+        merged.update(self._lineage_flags(prior=None, schedule_version_key=schedule_version_key, existing=False))
+        return merged
+
+    def _enrich_persisted_item(self, row: dict[str, Any]) -> dict[str, Any]:
+        enriched = dict(row)
+        events = self._repo.list_review_item_events(
+            review_item_id=str(row["review_item_id"]),
+            limit=10,
+        )
+        event_types = {str(event.get("event_type")) for event in events}
+        carried = EVENT_CARRIED_FORWARD in event_types
+        enriched["lineage"] = "carried_forward" if carried else "existing"
+        enriched["new_since_last_review"] = EVENT_CREATED in event_types and not carried
+        enriched["still_open_from_prior"] = carried and str(row.get("review_status")) in {
+            REVIEW_OPEN,
+            REVIEW_WATCHING,
+        }
+        return enriched
+
+    @staticmethod
+    def _lineage_flags(
+        *,
+        prior: dict[str, Any] | None,
+        schedule_version_key: str,
+        existing: bool,
+    ) -> dict[str, Any]:
+        if existing:
+            return {
+                "lineage": "existing",
+                "new_since_last_review": False,
+                "still_open_from_prior": False,
+            }
+        if not prior:
+            return {
+                "lineage": "new",
+                "new_since_last_review": True,
+                "still_open_from_prior": False,
+            }
+        carried = str(prior.get("schedule_version_key")) != schedule_version_key
+        status = str(prior.get("review_status") or REVIEW_OPEN)
+        still_open = status in {REVIEW_OPEN, REVIEW_WATCHING}
+        return {
+            "lineage": "carried_forward" if carried else "existing",
+            "new_since_last_review": False,
+            "still_open_from_prior": carried and still_open,
+        }
 
     @staticmethod
     def _public_item(row: dict[str, Any]) -> dict[str, Any]:
@@ -348,7 +473,13 @@ class ProjectScheduleReviewService:
         }
 
     @staticmethod
-    def _workbench_envelope(*, project_key: str, items: list[dict[str, Any]], synced: bool) -> dict[str, Any]:
+    def _workbench_envelope(
+        *,
+        project_key: str,
+        items: list[dict[str, Any]],
+        synced: bool,
+        comparison_basis: str = "prior_update",
+    ) -> dict[str, Any]:
         open_items = [i for i in items if i.get("review_status") == REVIEW_OPEN]
         watching_items = [i for i in items if i.get("review_status") == REVIEW_WATCHING]
         reviewed_items = [i for i in items if i.get("review_status") == REVIEW_REVIEWED]
@@ -359,6 +490,7 @@ class ProjectScheduleReviewService:
         )
         return {
             "available": True,
+            "comparison_basis": comparison_basis,
             "persisted": synced,
             "summary": {
                 "total_count": len(items),

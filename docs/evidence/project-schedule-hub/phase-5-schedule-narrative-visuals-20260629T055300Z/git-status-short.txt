@@ -1,0 +1,20 @@
+ M frontend/src/lib/api.ts
+ M frontend/src/pages/ProjectSchedulePage.tsx
+ M frontend/src/pages/ProjectScheduleWorkbenchPage.test.tsx
+ M frontend/src/pages/ProjectScheduleWorkbenchPage.tsx
+ M frontend/src/pages/ScheduleIdentityReviewPage.tsx
+ M src/hb_assistant/construction/analytics/api.py
+ M src/hb_assistant/construction/analytics/project_schedule_memo_service.py
+ M src/hb_assistant/construction/analytics/project_schedule_review_service.py
+ M src/hb_assistant/construction/analytics/project_schedule_summary_service.py
+ M src/hb_assistant/construction/analytics/schedule_import_service.py
+ M src/hb_assistant/store/migrator.py
+ M src/hb_assistant/store/project_schedule_hub_repository.py
+ M src/hb_assistant/store/project_schedule_hub_tables.py
+ M tests/test_project_schedule_review_workbench.py
+?? docs/evidence/project-schedule-hub/phase-5-schedule-narrative-visuals-20260629T055300Z/
+?? frontend/docs/evidence/project-schedule-hub/
+?? frontend/src/components/projects/ProjectScheduleDashboardVisualizations.tsx
+?? frontend/src/components/projects/projectScheduleDashboardData.ts
+?? src/hb_assistant/construction/analytics/project_schedule_narrative_qa.py
+?? tests/test_project_schedule_narrative_qa.py

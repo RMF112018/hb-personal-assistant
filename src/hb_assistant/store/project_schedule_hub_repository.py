@@ -20,6 +20,12 @@ REVIEW_DISMISSED = "dismissed"
 REVIEW_WATCHING = "watching"
 REVIEW_STATUSES = frozenset({REVIEW_OPEN, REVIEW_REVIEWED, REVIEW_DISMISSED, REVIEW_WATCHING})
 
+EVENT_CREATED = "created"
+EVENT_SYNCED = "synced"
+EVENT_STATUS_CHANGED = "status_changed"
+EVENT_NOTES_CHANGED = "notes_changed"
+EVENT_CARRIED_FORWARD = "carried_forward"
+
 
 class ProjectScheduleHubRepository:
     def __init__(self, *, db_path: str) -> None:
@@ -244,6 +250,70 @@ class ProjectScheduleHubRepository:
             ).fetchone()
             return self._review_item_row(dict(row)) if row else None
 
+    def append_review_item_event(
+        self,
+        *,
+        review_item_id: str,
+        project_key: str,
+        schedule_version_key: str,
+        event_type: str,
+        prior_status: str | None = None,
+        new_status: str | None = None,
+        prior_notes: str | None = None,
+        new_notes: str | None = None,
+        operator_id: str | None = None,
+    ) -> dict[str, Any]:
+        now = datetime.now(timezone.utc).isoformat()
+        event_id = f"psre-{uuid.uuid4().hex}"
+        with self._conn() as conn:
+            conn.execute(
+                """
+                INSERT INTO project_schedule_review_item_events (
+                  event_id, review_item_id, project_key, schedule_version_key,
+                  event_type, prior_status, new_status, prior_notes, new_notes,
+                  operator_id, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    event_id,
+                    review_item_id,
+                    project_key,
+                    schedule_version_key,
+                    event_type,
+                    prior_status,
+                    new_status,
+                    prior_notes,
+                    new_notes,
+                    operator_id,
+                    now,
+                ),
+            )
+            conn.commit()
+        return {
+            "event_id": event_id,
+            "review_item_id": review_item_id,
+            "event_type": event_type,
+            "created_at": now,
+        }
+
+    def list_review_item_events(
+        self,
+        *,
+        review_item_id: str,
+        limit: int = 50,
+    ) -> list[dict[str, Any]]:
+        with self._conn() as conn:
+            rows = conn.execute(
+                """
+                SELECT * FROM project_schedule_review_item_events
+                WHERE review_item_id=?
+                ORDER BY created_at DESC
+                LIMIT ?
+                """,
+                (review_item_id, max(1, min(limit, 200))),
+            ).fetchall()
+        return [dict(row) for row in rows]
+
     def upsert_review_item(
         self,
         *,
@@ -286,15 +356,33 @@ class ProjectScheduleHubRepository:
                     ),
                 )
                 review_item_id = str(existing["review_item_id"])
+                conn.execute(
+                    """
+                    INSERT INTO project_schedule_review_item_events (
+                      event_id, review_item_id, project_key, schedule_version_key,
+                      event_type, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        f"psre-{uuid.uuid4().hex}",
+                        review_item_id,
+                        project_key,
+                        schedule_version_key,
+                        EVENT_SYNCED,
+                        now,
+                    ),
+                )
             else:
                 review_status = REVIEW_OPEN
                 pm_notes = None
                 reviewed_by_operator = None
                 reviewed_at = None
+                carried_forward = False
                 if inherit_status_from_project:
                     prior = conn.execute(
                         """
-                        SELECT review_status, pm_notes, reviewed_by_operator, reviewed_at
+                        SELECT review_status, pm_notes, reviewed_by_operator, reviewed_at,
+                               schedule_version_key
                         FROM project_schedule_review_items
                         WHERE project_key=? AND stable_item_key=?
                         ORDER BY updated_at DESC
@@ -307,6 +395,7 @@ class ProjectScheduleHubRepository:
                         pm_notes = prior["pm_notes"]
                         reviewed_by_operator = prior["reviewed_by_operator"]
                         reviewed_at = prior["reviewed_at"]
+                        carried_forward = str(prior["schedule_version_key"]) != schedule_version_key
                 review_item_id = f"psri-{uuid.uuid4().hex}"
                 conn.execute(
                     """
@@ -334,6 +423,45 @@ class ProjectScheduleHubRepository:
                         now,
                     ),
                 )
+                conn.execute(
+                    """
+                    INSERT INTO project_schedule_review_item_events (
+                      event_id, review_item_id, project_key, schedule_version_key,
+                      event_type, new_status, new_notes, operator_id, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        f"psre-{uuid.uuid4().hex}",
+                        review_item_id,
+                        project_key,
+                        schedule_version_key,
+                        EVENT_CREATED,
+                        review_status,
+                        pm_notes,
+                        reviewed_by_operator,
+                        now,
+                    ),
+                )
+                if carried_forward:
+                    conn.execute(
+                        """
+                        INSERT INTO project_schedule_review_item_events (
+                          event_id, review_item_id, project_key, schedule_version_key,
+                          event_type, new_status, new_notes, operator_id, created_at
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """,
+                        (
+                            f"psre-{uuid.uuid4().hex}",
+                            review_item_id,
+                            project_key,
+                            schedule_version_key,
+                            EVENT_CARRIED_FORWARD,
+                            review_status,
+                            pm_notes,
+                            reviewed_by_operator,
+                            now,
+                        ),
+                    )
             conn.commit()
         return self.get_review_item(review_item_id=review_item_id) or {}
 
@@ -350,11 +478,13 @@ class ProjectScheduleHubRepository:
         now = datetime.now(timezone.utc).isoformat()
         with open_connection(self._db_path) as conn:
             row = conn.execute(
-                "SELECT review_item_id FROM project_schedule_review_items WHERE review_item_id=?",
+                "SELECT * FROM project_schedule_review_items WHERE review_item_id=?",
                 (review_item_id,),
             ).fetchone()
             if not row:
                 return None
+            prior_status = str(row["review_status"])
+            prior_notes = row["pm_notes"]
             conn.execute(
                 """
                 UPDATE project_schedule_review_items
@@ -375,6 +505,51 @@ class ProjectScheduleHubRepository:
                     review_item_id,
                 ),
             )
+            updated = conn.execute(
+                "SELECT * FROM project_schedule_review_items WHERE review_item_id=?",
+                (review_item_id,),
+            ).fetchone()
+            now_event = datetime.now(timezone.utc).isoformat()
+            if review_status is not None and str(updated["review_status"]) != prior_status:
+                conn.execute(
+                    """
+                    INSERT INTO project_schedule_review_item_events (
+                      event_id, review_item_id, project_key, schedule_version_key,
+                      event_type, prior_status, new_status, operator_id, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        f"psre-{uuid.uuid4().hex}",
+                        review_item_id,
+                        str(updated["project_key"]),
+                        str(updated["schedule_version_key"]),
+                        EVENT_STATUS_CHANGED,
+                        prior_status,
+                        str(updated["review_status"]),
+                        reviewed_by_operator,
+                        now_event,
+                    ),
+                )
+            if pm_notes is not None and str(updated["pm_notes"] or "") != str(prior_notes or ""):
+                conn.execute(
+                    """
+                    INSERT INTO project_schedule_review_item_events (
+                      event_id, review_item_id, project_key, schedule_version_key,
+                      event_type, prior_notes, new_notes, operator_id, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        f"psre-{uuid.uuid4().hex}",
+                        review_item_id,
+                        str(updated["project_key"]),
+                        str(updated["schedule_version_key"]),
+                        EVENT_NOTES_CHANGED,
+                        prior_notes,
+                        updated["pm_notes"],
+                        reviewed_by_operator,
+                        now_event,
+                    ),
+                )
             conn.commit()
         return self.get_review_item(review_item_id=review_item_id)
 

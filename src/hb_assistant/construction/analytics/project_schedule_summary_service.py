@@ -32,6 +32,7 @@ from .project_schedule_comparison import (
 from .project_schedule_drilldown_service import ProjectScheduleDrilldownService
 from .project_schedule_driver_analysis_service import ProjectScheduleDriverAnalysisService
 from .project_schedule_memo_service import ProjectScheduleMemoService
+from .project_schedule_narrative_qa import validate_summary as validate_schedule_narrative
 from .project_schedule_review_service import ProjectScheduleReviewService
 from .schedule_trust_service import ScheduleTrustService
 from .schedule_import_service import ensure_schedule_schema
@@ -330,7 +331,7 @@ class ProjectScheduleSummaryService:
             readiness=readiness,
         )
 
-        return {
+        hub_payload = {
             "surface": "project_schedule_hub",
             "project_key": project_key,
             "project_display_name": project_name,
@@ -400,6 +401,8 @@ class ProjectScheduleSummaryService:
                 "source_export_evidence": "separate",
             },
         }
+        hub_payload["narrative_qa"] = validate_schedule_narrative(hub_payload)
+        return hub_payload
 
     # ------------------------------------------------------------------ resolvers
 
@@ -936,11 +939,13 @@ class ProjectScheduleSummaryService:
         limit: int = 100,
         offset: int = 0,
         as_of: date | None = None,
+        comparison_basis: str = "prior_update",
     ) -> dict[str, Any]:
         context = self._review_workbench_context(project_key, as_of=as_of)
         if not context:
             return {"available": False, "reason": "no_schedule"}
-        workbench = self._review.build_preview(**context)
+        basis = comparison_basis if comparison_basis in {"prior_update", "baseline"} else "prior_update"
+        workbench = self._review.build_preview(**context, comparison_basis=basis)
         items = workbench.get("items") or []
         if review_status:
             items = [item for item in items if item.get("review_status") == review_status]
@@ -1060,9 +1065,26 @@ class ProjectScheduleSummaryService:
         *,
         export_format: str = "markdown",
         as_of: date | None = None,
+        variant: str = "standard",
+        scope: str = "full",
+        include_persisted_review: bool = False,
     ) -> dict[str, Any]:
         summary = self.build_summary(project_key, as_of=as_of)
-        return self._memo.build_export(summary, export_format=export_format)
+        if include_persisted_review or variant == "executive" or scope == "review_items":
+            context = self._review_workbench_context(project_key, as_of=as_of)
+            if context:
+                listed = self._review.list_items(
+                    project_key=project_key,
+                    schedule_version_key=context["schedule_version_key"],
+                    limit=100,
+                )
+                summary["persisted_review_items"] = listed.get("items") or []
+        return self._memo.build_export(
+            summary,
+            export_format=export_format,
+            variant=variant,
+            scope=scope,
+        )
 
     def build_driver_drilldown(
         self,
@@ -1673,6 +1695,18 @@ class ProjectScheduleSummaryService:
                         (version_key,),
                     ).fetchone()[0]
                 )
+                critical_remaining = int(
+                    conn.execute(
+                        """
+                        SELECT COUNT(*) FROM procore_ep_schedule_activities
+                        WHERE schedule_version_key=?
+                          AND (actual_finish IS NULL OR TRIM(actual_finish)='')
+                          AND CAST(COALESCE(NULLIF(is_critical, ''), '0') AS INTEGER) = 1
+                        """,
+                        (version_key,),
+                    ).fetchone()[0]
+                    or 0
+                )
             moved_later = 0
             if prior_key:
                 moved_later = int(
@@ -1692,6 +1726,17 @@ class ProjectScheduleSummaryService:
                 if prior_date and current_date
                 else None
             )
+            milestone_moved_later = 0
+            if prior_key:
+                try:
+                    comparison = self._comparison.compare_versions(left_key=version_key, right_key=prior_key)
+                    milestone_moved_later = int(
+                        comparison.get("milestones", {}).get("summary", {}).get("moved_later_count")
+                        or comparison.get("summary", {}).get("moved_remaining_milestones_count")
+                        or 0
+                    )
+                except Exception:
+                    milestone_moved_later = 0
             points.append(
                 {
                     "friendly_label": self._friendly_label(version),
@@ -1699,6 +1744,8 @@ class ProjectScheduleSummaryService:
                     "forecast_finish": _date_str(forecast_finish),
                     "remaining_activity_count": remaining_count,
                     "negative_float_remaining_count": negative_float,
+                    "critical_remaining_count": critical_remaining,
+                    "milestone_moved_later_count": milestone_moved_later,
                     "finish_moved_later_count": moved_later,
                     "data_date_gap_days": gap_days,
                 }

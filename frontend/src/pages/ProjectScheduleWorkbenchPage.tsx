@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 
@@ -19,17 +20,23 @@ export function ProjectScheduleWorkbenchPage() {
   const { projectKey = '' } = useParams()
   const [searchParams] = useSearchParams()
   const asOfDate = searchParams.get('as_of') || undefined
+  const focusReview = searchParams.get('review') || undefined
+  const focusRef = useRef<HTMLDivElement | null>(null)
   const queryClient = useQueryClient()
   const role = getLocalUiRole()
   const canSync = role === 'operator' || role === 'admin'
+  const [comparisonBasis, setComparisonBasis] = useState<'prior_update' | 'baseline'>('prior_update')
 
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['project', 'schedule', 'review-items', projectKey, asOfDate, canSync],
+    queryKey: ['project', 'schedule', 'review-items', projectKey, asOfDate, canSync, comparisonBasis],
     queryFn: async () => {
-      if (canSync) {
+      if (canSync && comparisonBasis === 'prior_update') {
         await api.syncProjectScheduleReviewItems(projectKey, { asOf: asOfDate })
       }
-      return api.getProjectScheduleReviewItems(projectKey, { asOf: asOfDate })
+      return api.getProjectScheduleReviewItems(projectKey, {
+        asOf: asOfDate,
+        comparisonBasis,
+      })
     },
     enabled: Boolean(projectKey),
   })
@@ -55,6 +62,23 @@ export function ProjectScheduleWorkbenchPage() {
     ? `/projects/${projectKey}/schedule?as_of=${encodeURIComponent(asOfDate)}`
     : `/projects/${projectKey}/schedule`
 
+  const envelope = (data || {}) as Record<string, any>
+  const workbench = (envelope.workbench || {}) as Record<string, any>
+  const bases = (workbench.bases || {}) as Record<string, any>
+  const baselineAvailable = Boolean(bases.baseline?.available)
+  const items = Array.isArray(envelope.items) ? envelope.items : []
+
+  useEffect(() => {
+    if (!focusReview || !items.length) return
+    const target = items.find(
+      (item: any) =>
+        String(item.stable_item_key) === focusReview || String(item.review_item_id) === focusReview,
+    )
+    if (target && focusRef.current) {
+      focusRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
+  }, [focusReview, items])
+
   if (isLoading) {
     return (
       <ProjectWorkspaceShell>
@@ -74,9 +98,6 @@ export function ProjectScheduleWorkbenchPage() {
       </ProjectWorkspaceShell>
     )
   }
-
-  const envelope = (data || {}) as Record<string, any>
-  const items = Array.isArray(envelope.items) ? envelope.items : []
 
   return (
     <ProjectWorkspaceShell>
@@ -119,6 +140,23 @@ export function ProjectScheduleWorkbenchPage() {
           </div>
         </div>
 
+        {baselineAvailable && (
+          <div className="flex flex-wrap gap-2">
+            <button
+              className={`badge ${comparisonBasis === 'prior_update' ? 'ring-1 ring-[var(--hb-border)]' : ''}`}
+              onClick={() => setComparisonBasis('prior_update')}
+            >
+              Since previous update
+            </button>
+            <button
+              className={`badge ${comparisonBasis === 'baseline' ? 'ring-1 ring-[var(--hb-border)]' : ''}`}
+              onClick={() => setComparisonBasis('baseline')}
+            >
+              Since selected baseline
+            </button>
+          </div>
+        )}
+
         {!items.length ? (
           <EmptyState
             title="No review items yet"
@@ -131,7 +169,16 @@ export function ProjectScheduleWorkbenchPage() {
         ) : (
           <div className="space-y-3">
             {items.map((item: any) => (
-              <article key={item.review_item_id} className="card">
+              <article
+                key={item.review_item_id}
+                ref={
+                  focusReview &&
+                  (String(item.stable_item_key) === focusReview || String(item.review_item_id) === focusReview)
+                    ? focusRef
+                    : undefined
+                }
+                className={`card ${focusReview && String(item.stable_item_key) === focusReview ? 'ring-1 ring-[var(--hb-border)]' : ''}`}
+              >
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
@@ -148,7 +195,7 @@ export function ProjectScheduleWorkbenchPage() {
                     {item.source_activity_id && (
                       <Link
                         className="badge"
-                        to={`/projects/${projectKey}/schedule/drivers/${encodeURIComponent(item.source_activity_id)}${asOfDate ? `?as_of=${encodeURIComponent(asOfDate)}` : ''}`}
+                        to={`/projects/${projectKey}/schedule/drivers/${encodeURIComponent(item.source_activity_id)}?basis=${comparisonBasis}${asOfDate ? `&as_of=${encodeURIComponent(asOfDate)}` : ''}`}
                       >
                         Open Driver Detail
                       </Link>
