@@ -49,7 +49,8 @@ class ObsidianMcpConfig(BaseModel):
     summarization_model: str = "llama3.1"
     daily_notes_folder: str = "Daily Notes"
     archive_folder: str = "Archive"
-    schema_version: int = 1
+    tool_timeout_seconds: int = 30
+    schema_version: int = 2
 
     model_config = {"extra": "forbid"}
 
@@ -83,7 +84,13 @@ class ObsidianMcpConfig(BaseModel):
             raise ValueError("port_out_of_range")
         return value
 
-    @field_validator("max_file_mb", "max_result_chars", "max_write_chars", "curation_dense_folder_threshold")
+    @field_validator(
+        "max_file_mb",
+        "max_result_chars",
+        "max_write_chars",
+        "curation_dense_folder_threshold",
+        "tool_timeout_seconds",
+    )
     @classmethod
     def validate_positive(cls, value: int) -> int:
         if value <= 0:
@@ -170,6 +177,7 @@ class ObsidianMcpConfigPatch(BaseModel):
     summarization_model: str | None = None
     daily_notes_folder: str | None = None
     archive_folder: str | None = None
+    tool_timeout_seconds: int | None = None
 
     model_config = {"extra": "forbid"}
 

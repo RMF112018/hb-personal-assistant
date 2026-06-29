@@ -1,0 +1,35 @@
+# Live runtime process audit (2026-06-29, port 8000)
+
+PID command: /opt/homebrew/Cellar/python@3.14/3.14.5/.../Python -m uvicorn
+             hb_assistant.construction.analytics.api:create_app --factory --host 127.0.0.1
+             --port 8000 --log-level info
+CWD:         /Users/bobbyfetting/hb-personal-assistant
+VIRTUAL_ENV: /Users/bobbyfetting/hb-personal-assistant/.venv   (its base IS homebrew python 3.14.5)
+PYTHONPATH:  .../src:.../subrepos/construction-financial-review/src  (duplicated, harmless)
+=> interpreter/venv/CWD all correct (H1 contamination disproven as cause).
+
+Branch of that checkout at audit time: codex/project-schedule-hub-performance
+  - obsidian_mcp here = PR1 only (last obsidian commit ddc6013c); origin/main (38 tools) NOT an ancestor.
+  - mcp_app.py is -635 lines vs main; 11 second-brain modules absent. => STALE CODE running.
+
+# Production log evidence (/tmp/hb-personal-assistant-backend.log, 2026-06-28)
+Pattern for a working call:  POST /mcp 202 -> "Processing request of type CallToolRequest" -> POST /mcp 200 OK
+Final (hung) call 11:35:51:  POST /mcp 202 -> "Processing request of type CallToolRequest" -> (no response)
+=> handler dispatched (past auth/parse), then NO response = server-side hang after dispatch.
+
+# FastMCP transport (mcp_app.py build_streamable_http_app, origin/main)
+FastMCP(json_response=True, stateless_http=True, transport_security=...)
+allowed_hosts include 127.0.0.1 / localhost / mcp.bobby-fetting.me ; allowed_origins include
+https://mcp.bobby-fetting.me / https://grok.com / https://x.ai
+OAuth routes (.well-known/*, /oauth/authorize, /oauth/token) declared before app.mount("/", mcp_app).
+
+# SDK sync-tool dispatch (mcp 1.27-1.28 func_metadata.py)
+fn_is_async? await fn(...) : return fn(...)   <-- sync tools run ON the event loop, NO anyio.to_thread.
+All 38 origin/main tools are plain `def` with no per-tool timeout.
+
+# Local MCP protocol results (TestClient, fixed code)
+initialize / notifications/initialized / tools/list (38 tools) / tools/call for all 38: OK, strict JSON.
+Stalled search_vault (sleep 3s) with tool_timeout_seconds=1 -> structured tool_timeout at 1.01s;
+concurrent list_directory still returns 200 (server not wedged).
+Read-only OAuth token -> create_note -> insufficient_scope, service method never invoked
+(enforcement runs before offload).

@@ -326,6 +326,7 @@ class ObsidianMcpConfigPatchRequest(BaseModel):
     allowed_write_file_types: list[str] | None = None
     oauth_enabled: bool | None = None
     public_base_url: str | None = None
+    tool_timeout_seconds: int | None = None
 
 
 class ObsidianMcpListDirectoryRequest(BaseModel):

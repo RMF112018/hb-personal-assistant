@@ -1,0 +1,20 @@
+# Live-server validation (127.0.0.1:8000, restarted from fix worktree, real vault)
+
+Server: uvicorn from hb-personal-assistant-worktrees/obsidian-mcp-timeout-fix (38 tools + fix), --log-level debug.
+Health 200; unauthenticated POST /mcp -> 401; tool registry = 38.
+Real config: oauth_enabled=True, tool_timeout_seconds=30, writes_enabled=True.
+
+Authenticated /mcp dry-run (minted obsidian.read+write token), real vault:
+  initialize           -> 200
+  tools/list           -> 200, count=38
+  search_vault         -> 200, 0.01s, isError=False (empty results OK)
+  create_note          -> 200, 0.01s, isError=False, created=true (note written to vault)
+  patch_note (SHA)     -> 200, 0.01s, isError=False (note replaced)
+
+Live backend.log per call:
+  ... CallToolRequest -> obsidian_mcp.tool_start -> obsidian_mcp.tool_end -> POST /mcp 200 OK
+Tracebacks / 421 / 500 in log: 0
+
+Contrast with the 2026-06-28 incident log (stale code): CallToolRequest -> (no response).
+The previously-failing tools now complete with start/end diagnostics and a 200 response.
+NOTE: this is the operator dry-run; the Grok-client smoke (Test 1-3) remains for Bobby to run.
