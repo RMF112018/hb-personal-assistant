@@ -1,0 +1,12 @@
+# git state (worktree obsidian-mcp-timeout-fix)
+
+branch: fix/obsidian-mcp-tool-timeout-guard
+HEAD: 97252eae695ea85172cbea1b3800d7a7b2178f36
+base origin/main: 5921d5b9fafd7e5742f2e40a5d67c7bfe93b04af
+
+## changed files
+ M src/hb_assistant/construction/analytics/api.py
+ M src/hb_assistant/obsidian_mcp/config.py
+ M src/hb_assistant/obsidian_mcp/mcp_app.py
+?? docs/evidence/obsidian-mcp-timeout-audit/
+?? tests/test_obsidian_mcp_timeout.py

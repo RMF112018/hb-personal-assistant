@@ -58,6 +58,13 @@ _TOOL_SCOPES = {
     "vault_bulk_tagging_plan": "obsidian.read",
     "vault_email_to_note_plan": "obsidian.read",
     "vault_email_to_note_apply": "obsidian.write",
+    "search_sources": "obsidian.read",
+    "search_knowledge": "obsidian.read",
+    "source_index_status": "obsidian.read",
+    "rebuild_source_index": "obsidian.write",
+    "generate_source_card": "obsidian.write",
+    "refresh_stale_source_notes": "obsidian.write",
+    "summarize_source": "obsidian.write",
 }
 
 _BEARER_PREFIX = "Bearer "
@@ -82,7 +89,8 @@ _SAFE_LOG_KEYS = frozenset(
         "overwrite", "create_parent_dirs", "merge_tags", "backup_before_replace",
         "update_links", "allow_overwrite", "require_expected_sha256", "mode",
         "summary_style", "strategy", "source_type", "date", "section",
-        "min_confidence", "operator_mode", "principal_kind",
+        "min_confidence", "operator_mode", "principal_kind", "project_key",
+        "source_id",
     }
 )
 _LEN_ONLY_LOG_KEYS = frozenset({"content", "updates"})
@@ -233,10 +241,14 @@ def _request_authorization(ctx: Any) -> tuple[bool, str | None]:
         return (True, None)
 
 
-def build_streamable_http_app(service: ObsidianMcpService | None = None) -> Any:
+def build_streamable_http_app(
+    service: ObsidianMcpService | None = None, *, db_path: str | None = None
+) -> Any:
     """Build the official MCP SDK Streamable HTTP ASGI app.
 
     The SDK is optional and imported only when the FastAPI backend is created with it installed.
+    ``db_path`` is threaded into the service so source-intelligence tools hit the same SQLite as
+    the app (tests pass a temp DB; production resolves PathPolicy().get_db_path()).
     """
     from mcp.server.fastmcp import (  # type: ignore[import-not-found]  # noqa: PLC0415
         Context,
@@ -247,7 +259,7 @@ def build_streamable_http_app(service: ObsidianMcpService | None = None) -> Any:
     )
     from mcp.types import ToolAnnotations  # type: ignore[import-not-found]  # noqa: PLC0415
 
-    svc = service or ObsidianMcpService()
+    svc = service or ObsidianMcpService(db_path=db_path)
     mcp = FastMCP(
         "hb-obsidian-mcp",
         json_response=True,
@@ -1138,6 +1150,90 @@ def build_streamable_http_app(service: ObsidianMcpService | None = None) -> Any:
         _enforce("vault_email_to_note_apply", ctx)
         args = {"plan_id": plan_id, "max_updates": max_updates, "operator_mode": _operator_mode(ctx)}
         return await _run_tool("vault_email_to_note_apply", ctx, lambda: svc.vault_email_to_note_apply(args), args)
+
+    @mcp.tool()
+    async def search_sources(
+        ctx: Context, query: str, project_key: str | None = None, limit: int | None = None
+    ) -> dict[str, Any]:
+        """Search the durable external-source intelligence index (FTS over metadata + extracted
+        text). Never live-scans directories; returns index-status when the index is unavailable."""
+        _enforce("search_sources", ctx)
+        args = {"query": query, "project_key": project_key, "limit": limit,
+                "operator_mode": _operator_mode(ctx)}
+        return await _run_tool("search_sources", ctx, lambda: svc.search_sources(args), args)
+
+    @mcp.tool()
+    async def search_knowledge(
+        ctx: Context, query: str, path_scope: str | None = None, limit: int | None = None
+    ) -> dict[str, Any]:
+        """Search across both Obsidian notes and external source intelligence (mixed result
+        types) via the index. Never live-scans the vault."""
+        _enforce("search_knowledge", ctx)
+        args = {"query": query, "path_scope": path_scope, "limit": limit,
+                "operator_mode": _operator_mode(ctx)}
+        return await _run_tool("search_knowledge", ctx, lambda: svc.search_knowledge(args), args)
+
+    @mcp.tool()
+    async def source_index_status(ctx: Context) -> dict[str, Any]:
+        """Report source-intelligence index + watcher status (counts, queue, freshness)."""
+        _enforce("source_index_status", ctx)
+        args: dict[str, Any] = {"operator_mode": _operator_mode(ctx)}
+        return await _run_tool("source_index_status", ctx, lambda: svc.source_index_status({}), args)
+
+    @mcp.tool()
+    async def rebuild_source_index(ctx: Context) -> dict[str, Any]:
+        """Operator action: enqueue a bounded rebuild of configured source roots + the vault note
+        index. Never scans inside the request; the watcher/worker drains the queue."""
+        _enforce("rebuild_source_index", ctx)
+        args: dict[str, Any] = {"operator_mode": _operator_mode(ctx)}
+        return await _run_tool("rebuild_source_index", ctx, lambda: svc.rebuild_source_index({}), args)
+
+    @mcp.tool()
+    async def generate_source_card(ctx: Context, source_id: str, overwrite: bool = False) -> dict[str, Any]:
+        """Generate a deterministic curated source card (Markdown note) for one indexed source_id.
+        Describes + links the source; no model summary, no raw file/email-body dump. Write-scoped."""
+        _enforce("generate_source_card", ctx)
+        args = {"source_id": source_id, "overwrite": overwrite,
+                "principal_kind": _principal_kind(ctx), "operator_mode": _operator_mode(ctx)}
+        return await _run_tool(
+            "generate_source_card", ctx,
+            lambda: svc.generate_source_card(
+                {"source_id": source_id, "overwrite": overwrite, "principal_kind": args["principal_kind"]}
+            ),
+            args,
+        )
+
+    @mcp.tool()
+    async def refresh_stale_source_notes(ctx: Context, max_updates: int = 25) -> dict[str, Any]:
+        """Refresh source cards whose underlying source changed (status=stale), up to max_updates.
+        SHA-gated whole-file replacement via the write guardrails. Write-scoped."""
+        _enforce("refresh_stale_source_notes", ctx)
+        args = {"max_updates": max_updates, "principal_kind": _principal_kind(ctx),
+                "operator_mode": _operator_mode(ctx)}
+        return await _run_tool(
+            "refresh_stale_source_notes", ctx,
+            lambda: svc.refresh_stale_source_notes(
+                {"max_updates": max_updates, "principal_kind": args["principal_kind"]}
+            ),
+            args,
+        )
+
+    @mcp.tool()
+    async def summarize_source(ctx: Context, source_id: str) -> dict[str, Any]:
+        """Model-assisted (Ollama) ADVISORY enrichment of a source card: generates the
+        deterministic base if missing, then adds a bounded, clearly-labelled advisory summary
+        section in place. Falls back to summarized:false when the model is unavailable; never
+        runs in the search path. Write-scoped."""
+        _enforce("summarize_source", ctx)
+        args = {"source_id": source_id, "principal_kind": _principal_kind(ctx),
+                "operator_mode": _operator_mode(ctx)}
+        return await _run_tool(
+            "summarize_source", ctx,
+            lambda: svc.summarize_source(
+                {"source_id": source_id, "principal_kind": args["principal_kind"]}
+            ),
+            args,
+        )
 
     app = mcp.streamable_http_app()
     return BearerTokenMiddleware(app, service=svc)

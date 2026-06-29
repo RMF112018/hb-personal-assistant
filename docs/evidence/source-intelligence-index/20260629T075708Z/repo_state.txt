@@ -1,0 +1,25 @@
+# repo state
+branch: feat/obsidian-mcp-source-intelligence
+base origin/main: b122b536 (incl. merged timeout fix PR#198)
+
+## changed/new files
+ M pyproject.toml
+ M src/hb_assistant/construction/analytics/api.py
+ M src/hb_assistant/obsidian_mcp/config.py
+ M src/hb_assistant/obsidian_mcp/mcp_app.py
+ M src/hb_assistant/obsidian_mcp/service.py
+ M src/hb_assistant/obsidian_mcp/tools.py
+ M src/hb_assistant/store/migrator.py
+ M tests/test_obsidian_mcp_backend.py
+ M tests/test_obsidian_mcp_timeout.py
+?? docs/evidence/source-intelligence-index/
+?? src/hb_assistant/obsidian_mcp/source_index_repository.py
+?? src/hb_assistant/obsidian_mcp/source_indexer.py
+?? src/hb_assistant/obsidian_mcp/source_search.py
+?? src/hb_assistant/obsidian_mcp/source_watch.py
+?? src/hb_assistant/store/source_intelligence_tables.py
+?? tests/test_migrator_v93_source_intelligence.py
+?? tests/test_obsidian_source_index.py
+?? tests/test_obsidian_source_watch.py
+?? tests/test_source_index_repository.py
+changed file count: 19

@@ -414,6 +414,13 @@ _TOOL_REGISTRY: list[tuple[str, str, str, str]] = [
     ("vault_bulk_tagging_plan", "Curation", "Plan normalized tag suggestions for notes (applied via vault_curation_apply).", "root_path, tag_namespace, max_files, max_suggestions"),
     ("vault_email_to_note_plan", "Curation", "Plan conversion of one .eml into a structured note (summary, actions, decisions, project links).", "email_path, target_folder, template_path, link_projects, extract_action_items, extract_decisions, redact"),
     ("vault_email_to_note_apply", "Curation", "Create the structured note from an approved email-to-note plan_id (backup + receipt).", "plan_id, max_updates"),
+    ("search_sources", "Source Intelligence", "Search the durable external-source intelligence index (metadata + extracted text via FTS); never live-scans directories.", "query, project_key, limit"),
+    ("search_knowledge", "Source Intelligence", "Search across both Obsidian notes and external source intelligence (mixed result types) via the index.", "query, path_scope, limit"),
+    ("source_index_status", "Source Intelligence", "Report source-intelligence index + watcher status (counts, queue, freshness); read-only.", "(none)"),
+    ("rebuild_source_index", "Source Intelligence", "Operator action: enqueue a bounded rebuild of the configured source roots and the vault note index (never scans in-request).", "(none)"),
+    ("generate_source_card", "Source Intelligence", "Generate a deterministic curated source card (Markdown) for one indexed source_id with source-traceability frontmatter (no model summary, no raw file/email-body dump).", "source_id, overwrite"),
+    ("refresh_stale_source_notes", "Source Intelligence", "Refresh source cards whose underlying source changed (status=stale) up to max_updates, via SHA-gated whole-file replacement.", "max_updates"),
+    ("summarize_source", "Source Intelligence", "Model-assisted (Ollama) advisory enrichment of a source card: generates the deterministic base if missing, then adds a bounded clearly-labelled advisory summary section. Falls back to summarized:false when the model is unavailable; never runs in the search path.", "source_id"),
 ]
 
 
