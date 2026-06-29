@@ -19,13 +19,55 @@ from .config import ObsidianMcpConfig
 
 _SUMMARY_KEYS = ("summary", "key_points", "action_items", "decisions", "entities", "suggested_tags", "suggested_links")
 
-_SYSTEM_PROMPT = (
-    "You summarize a single Obsidian note or email for a construction project executive. "
+_JSON_CONTRACT = (
     "Return ONLY a JSON object with keys: summary (string), key_points (string array), "
     "action_items (string array), decisions (string array), entities (string array), "
     "suggested_tags (string array), suggested_links (string array). Be concise and factual; "
     "do not invent facts not present in the text."
 )
+
+_SYSTEM_PROMPT = (
+    "You summarize a single Obsidian note or email for a construction project executive. "
+    + _JSON_CONTRACT
+)
+
+# File-type-tuned advisory system prompts. The JSON output contract is identical across types;
+# only the framing differs so the advisory emphasizes what matters for each format. Used only on
+# the source-card summarization path (note/email summarize keeps the default prompt).
+_FILE_TYPE_PROMPTS = {
+    "pdf": (
+        "You summarize an extracted PDF document (drawings, specs, RFIs, or reports) for a "
+        "construction project executive. Note any sheet/section references and obligations. "
+        + _JSON_CONTRACT
+    ),
+    "docx": (
+        "You summarize an extracted Word document (letters, scopes, contracts, minutes) for a "
+        "construction project executive. Capture decisions, commitments, and dates. "
+        + _JSON_CONTRACT
+    ),
+    "xlsx": (
+        "You summarize an extracted spreadsheet (schedules, budgets, logs, trackers) for a "
+        "construction project executive. Note what the columns/totals track and any flagged rows. "
+        + _JSON_CONTRACT
+    ),
+    "csv": (
+        "You summarize tabular CSV data for a construction project executive. Note what each "
+        "column represents and any notable values. " + _JSON_CONTRACT
+    ),
+    "md": (
+        "You summarize a Markdown note for a construction project executive. " + _JSON_CONTRACT
+    ),
+    "txt": (
+        "You summarize a plain-text file for a construction project executive. " + _JSON_CONTRACT
+    ),
+}
+
+
+def _prompt_for(file_ext: str | None) -> str:
+    """Pick a file-type-tuned advisory system prompt, falling back to the default."""
+    if not file_ext:
+        return _SYSTEM_PROMPT
+    return _FILE_TYPE_PROMPTS.get(file_ext.lower(), _SYSTEM_PROMPT)
 
 
 class GenerationBackend(Protocol):
@@ -71,13 +113,15 @@ def summarize(
     text: str,
     deterministic: dict[str, Any],
     backend: GenerationBackend | None = None,
+    file_ext: str | None = None,
 ) -> tuple[dict[str, Any], str, str]:
     """Return (result, mode, reason).
 
     ``mode`` is ``"llm"`` or ``"deterministic_fallback"``. ``reason`` is ``"ok"`` on the
     model path, ``"disabled"`` when summarization is configured off, or a specific failure
     category (``timeout``, ``invalid_json``, ``empty_response``, ``ollama_unavailable``)
-    when the model path falls back.
+    when the model path falls back. ``file_ext`` selects a file-type-tuned advisory prompt
+    (defaults to the generic note/email prompt).
     """
     if config.summarization_backend == "deterministic":
         return dict(deterministic), "deterministic_fallback", "disabled"
@@ -85,7 +129,7 @@ def summarize(
     if chosen is None:
         return dict(deterministic), "deterministic_fallback", "ollama_unavailable"
     try:
-        raw = chosen.generate_json(system=_SYSTEM_PROMPT, prompt=text)
+        raw = chosen.generate_json(system=_prompt_for(file_ext), prompt=text)
     except Exception as exc:  # noqa: BLE001 - any backend failure falls back deterministically
         return dict(deterministic), "deterministic_fallback", _network_reason(exc)
     if not (raw or "").strip():
