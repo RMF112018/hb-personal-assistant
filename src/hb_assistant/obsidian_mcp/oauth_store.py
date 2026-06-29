@@ -14,6 +14,7 @@ import base64
 import hashlib
 import ipaddress
 import json
+import logging
 import os
 import secrets
 from contextlib import suppress
@@ -31,6 +32,18 @@ CODE_TTL_SECONDS = 600
 TOKEN_TTL_SECONDS = 3600
 _MAX_EVENTS = 50
 DCR_CLIENT_PREFIX = "chatgpt_"
+_SUPPORTED_DCR_GRANTS = {"authorization_code", "refresh_token"}
+_REJECTED_DCR_GRANTS = {
+    "client_credentials",
+    "password",
+    "implicit",
+    "jwt-bearer",
+    "urn:ietf:params:oauth:grant-type:jwt-bearer",
+    "device_code",
+    "urn:ietf:params:oauth:grant-type:device_code",
+}
+_SUPPORTED_DCR_RESPONSE_TYPES = {"code"}
+_logger = logging.getLogger("hb_assistant.obsidian_mcp.oauth")
 
 
 class OAuthError(Exception):
@@ -227,8 +240,70 @@ def _validate_redirect_uri_for_client(client: OAuthClient, redirect_uri: str) ->
     raise OAuthError("invalid_request", "redirect_uri is not registered for this client")
 
 
+def _metadata_list(value: object, *, default: list[str]) -> list[str]:
+    if value is None:
+        return list(default)
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, list):
+        return [str(item) for item in value]
+    raise OAuthError("invalid_client_metadata", "metadata value must be a string or list")
+
+
+def _normalize_grant_types(value: object) -> list[str]:
+    requested = _metadata_list(value, default=["authorization_code"])
+    if not requested:
+        requested = ["authorization_code"]
+    unknown = [item for item in requested if item not in _SUPPORTED_DCR_GRANTS]
+    rejected = [item for item in requested if item in _REJECTED_DCR_GRANTS]
+    if rejected or unknown or "authorization_code" not in requested:
+        raise OAuthError("invalid_client_metadata", "grant_types must include authorization_code and no unsupported grants")
+    return ["authorization_code"]
+
+
+def _normalize_response_types(value: object) -> list[str]:
+    requested = _metadata_list(value, default=["code"])
+    if not requested:
+        requested = ["code"]
+    unsupported = [item for item in requested if item not in _SUPPORTED_DCR_RESPONSE_TYPES]
+    if unsupported or "code" not in requested:
+        raise OAuthError("invalid_client_metadata", "response_types must include code and no unsupported response types")
+    return ["code"]
+
+
+def registration_diagnostics(
+    metadata: dict,
+    *,
+    grant_types: list[str] | None = None,
+    response_types: list[str] | None = None,
+    error: str | None = None,
+) -> dict:
+    def _safe_list(key: str, default: list[str]) -> list[str]:
+        try:
+            return _metadata_list(metadata.get(key), default=default)
+        except OAuthError:
+            return ["<invalid_type>"]
+
+    payload = {
+        "metadata_keys": sorted(str(key) for key in metadata.keys()),
+        "grant_types": grant_types or _safe_list("grant_types", ["authorization_code"]),
+        "response_types": response_types or _safe_list("response_types", ["code"]),
+        "token_endpoint_auth_method": str(metadata.get("token_endpoint_auth_method", "none")),
+    }
+    if error:
+        payload["error"] = error
+    return payload
+
+
+def _record_registration_rejection(metadata: dict, *, error: str) -> None:
+    diagnostics = registration_diagnostics(metadata, error=error)
+    _logger.warning("obsidian_mcp.oauth_register_rejected", extra={"obsidian_mcp_oauth": diagnostics})
+    record_event("client_registration_rejected", registration_metadata=diagnostics)
+
+
 def register_client(metadata: dict) -> dict:
     if metadata.get("client_secret") or metadata.get("client_secret_expires_at"):
+        _record_registration_rejection(metadata, error="client_secret_present")
         raise OAuthError("invalid_client_metadata", "client secrets are not accepted for public clients")
     redirect_uris = metadata.get("redirect_uris")
     if not isinstance(redirect_uris, list) or not redirect_uris:
@@ -239,13 +314,14 @@ def register_client(metadata: dict) -> dict:
         _validate_https_redirect_uri(uri)
         if uri not in normalized_redirects:
             normalized_redirects.append(uri)
-    grant_types = metadata.get("grant_types", ["authorization_code"])
-    response_types = metadata.get("response_types", ["code"])
-    if grant_types != ["authorization_code"]:
-        raise OAuthError("invalid_client_metadata", "grant_types must be ['authorization_code']")
-    if response_types != ["code"]:
-        raise OAuthError("invalid_client_metadata", "response_types must be ['code']")
+    try:
+        grant_types = _normalize_grant_types(metadata.get("grant_types"))
+        response_types = _normalize_response_types(metadata.get("response_types"))
+    except OAuthError as exc:
+        _record_registration_rejection(metadata, error=exc.description or exc.error)
+        raise
     if metadata.get("token_endpoint_auth_method", "none") != "none":
+        _record_registration_rejection(metadata, error="unsupported_token_endpoint_auth_method")
         raise OAuthError("invalid_client_metadata", "token_endpoint_auth_method must be none")
     scopes = normalize_scopes(str(metadata.get("scope") or "obsidian.read"))
     issued_at = int(_now())
@@ -255,6 +331,8 @@ def register_client(metadata: dict) -> dict:
         client_name=str(metadata.get("client_name") or "ChatGPT"),
         redirect_uris=tuple(normalized_redirects),
         scopes=tuple(scopes),
+        grant_types=tuple(grant_types),
+        response_types=tuple(response_types),
         issued_at=issued_at,
         source="dynamic",
     )
@@ -266,7 +344,12 @@ def register_client(metadata: dict) -> dict:
     records[client_id] = client.public_dict() | {"source": "dynamic"}
     data["clients"] = records
     _write(path, data)
-    record_event("client_registered", scope=" ".join(scopes), client_id=client_id)
+    record_event(
+        "client_registered",
+        scope=" ".join(scopes),
+        client_id=client_id,
+        registration_metadata=registration_diagnostics(metadata, grant_types=grant_types, response_types=response_types),
+    )
     return client.public_dict()
 
 
@@ -455,7 +538,13 @@ def _prune(data: dict, now: float) -> None:
 # ---------------------------------------------------------------------------
 # Redacted audit events (never contain code/token values).
 # ---------------------------------------------------------------------------
-def record_event(kind: str, *, scope: str | None = None, client_id: str | None = None) -> None:
+def record_event(
+    kind: str,
+    *,
+    scope: str | None = None,
+    client_id: str | None = None,
+    registration_metadata: dict | None = None,
+) -> None:
     path = _events_path()
     data = _read(path)
     events = data.get("events")
@@ -466,6 +555,8 @@ def record_event(kind: str, *, scope: str | None = None, client_id: str | None =
         entry["scope"] = scope
     if client_id is not None:
         entry["client_id"] = client_id
+    if registration_metadata is not None:
+        entry["registration_metadata"] = registration_metadata
     events.append(entry)
     data["events"] = events[-_MAX_EVENTS:]
     _write(path, data)

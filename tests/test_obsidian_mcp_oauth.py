@@ -126,6 +126,37 @@ def test_oauth_register_accepts_valid_chatgpt_public_client(tmp_path: Path) -> N
     assert body["redirect_uris"] == ["https://chatgpt.com/connector/oauth/callback-id"]
     assert body["scope"] == "obsidian.read"
     assert body["token_endpoint_auth_method"] == "none"
+    assert body["grant_types"] == ["authorization_code"]
+    assert body["response_types"] == ["code"]
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {},
+        {"grant_types": "authorization_code"},
+        {"grant_types": ["authorization_code", "refresh_token"]},
+        {"response_types": "code"},
+        {"response_types": ["code", "code"]},
+    ],
+)
+def test_oauth_register_accepts_and_normalizes_chatgpt_dcr_variants(tmp_path: Path, payload: dict) -> None:
+    _enable_oauth()
+    response = _client(tmp_path).post(
+        "/oauth/register",
+        json={
+            "redirect_uris": ["https://chatgpt.com/connector/oauth/normalized"],
+            "token_endpoint_auth_method": "none",
+            "scope": "obsidian.read",
+            "client_name": "ChatGPT",
+            **payload,
+        },
+    )
+    assert response.status_code == 201, response.text
+    body = response.json()
+    assert body["client_id"].startswith("chatgpt_")
+    assert body["grant_types"] == ["authorization_code"]
+    assert body["response_types"] == ["code"]
 
 
 @pytest.mark.parametrize(
@@ -152,6 +183,30 @@ def test_oauth_register_rejects_invalid_public_client_metadata(tmp_path: Path, p
     response = _client(tmp_path).post("/oauth/register", json={**base_payload, **payload})
     assert response.status_code == 400
     assert response.json()["error"] == error
+
+
+def test_oauth_register_rejection_event_has_redacted_diagnostics(tmp_path: Path) -> None:
+    _enable_oauth()
+    response = _client(tmp_path).post(
+        "/oauth/register",
+        json={
+            "redirect_uris": ["https://chatgpt.com/connector/oauth/rejected"],
+            "grant_types": ["client_credentials"],
+            "response_types": ["code"],
+            "token_endpoint_auth_method": "none",
+            "client_secret": "must-not-leak",
+            "scope": "obsidian.read",
+        },
+    )
+    assert response.status_code == 400
+    events = oauth_store.recent_events(1)
+    assert events[0]["kind"] == "client_registration_rejected"
+    metadata = events[0]["registration_metadata"]
+    assert "client_secret" in metadata["metadata_keys"]
+    assert metadata["grant_types"] == ["client_credentials"]
+    assert metadata["response_types"] == ["code"]
+    assert metadata["token_endpoint_auth_method"] == "none"
+    assert "must-not-leak" not in str(events[0])
 
 
 def test_registered_client_authorize_redirect_exact_match_required(tmp_path: Path) -> None:
@@ -243,6 +298,7 @@ def test_dynamic_client_can_complete_resource_bound_pkce_flow(tmp_path: Path) ->
         },
     )
     assert token.status_code == 200, token.text
+    assert "refresh_token" not in token.json()
     info = oauth_store.validate_access_token(token.json()["access_token"], resource=f"{BASE_URL}/mcp")
     assert info is not None
     assert info.client_id == registered["client_id"]
