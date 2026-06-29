@@ -304,6 +304,28 @@ describe('ObsidianMcpPanel — source intelligence generation policy', () => {
     expect(lastPatch()).toEqual(expect.objectContaining({ source_card_auto_max_per_drain: 25 }))
   })
 
+  it('displays the excluded-path-parts control seeded from config', async () => {
+    renderPanelWith({ config: { source_index_excluded_path_parts: ['node_modules', '.venv', 'dist'] } })
+    await screen.findByText('Source Intelligence')
+    await waitFor(() =>
+      expect((screen.getByLabelText('Excluded path parts') as HTMLInputElement).value).toBe('node_modules, .venv, dist'),
+    )
+    expect(document.body.textContent).toContain('Broad roots can create')
+  })
+
+  it('submits edited excluded path parts as an array on blur', async () => {
+    renderPanelWith({ config: { source_index_excluded_path_parts: ['node_modules'] } })
+    await screen.findByText('Source Intelligence')
+    const input = await screen.findByLabelText('Excluded path parts')
+    await waitFor(() => expect((input as HTMLInputElement).value).toBe('node_modules'))
+    fireEvent.change(input, { target: { value: 'node_modules, .venv , dist' } })
+    fireEvent.blur(input)
+    await waitFor(() => expect(patchObsidianMcpConfig).toHaveBeenCalled())
+    expect(lastPatch()).toEqual(
+      expect.objectContaining({ source_index_excluded_path_parts: ['node_modules', '.venv', 'dist'] }),
+    )
+  })
+
   it('shows generated-card and last-generation counts when the backend returns them', async () => {
     renderPanelWith({
       sourceIndex: {

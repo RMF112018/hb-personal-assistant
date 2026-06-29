@@ -24,6 +24,8 @@ _MAX_SCAN_LINES = 400
 DRAWING_DOCUMENT_TYPES = frozenset(
     {"architectural_drawing", "structural_drawing", "mep_drawing", "civil_drawing"}
 )
+# Procurement / preconstruction document types (NOT drawings — is_drawing stays drawings-only).
+BID_DOCUMENT_TYPES = frozenset({"bid_package", "scope_of_work", "procurement_document"})
 
 # Sheet-number discipline prefixes (longest first so 'FP'/'FA' beat 'F').
 _DISCIPLINE_BY_PREFIX: tuple[tuple[str, str, str], ...] = (
@@ -80,6 +82,22 @@ _COORD_KEYWORDS: tuple[tuple[str, str], ...] = (
 
 _SUBMITTAL_KEYWORDS = ("submittal", "shop drawing", "product data", "sample", "mock-up", "mockup")
 
+# Bid-package signals + extraction.
+_BID_NUM_RE = re.compile(r"bid package\s+(\d{2}-\d{2})\b", re.IGNORECASE)
+_BID_NUM_TITLE_RE = re.compile(r"bid package\s+(\d{2}-\d{2})\s+(.+)", re.IGNORECASE)
+_BID_BOILERPLATE = "provide all necessary labor"
+# Trade keyword -> normalized scope label (storefront/curtain wall/glazing/doors/etc.).
+_TRADE_KEYWORDS: tuple[tuple[str, str], ...] = (
+    ("storefront", "storefront"),
+    ("curtain wall", "curtain wall"),
+    ("glazing", "glazing"),
+    ("window", "windows"),
+    ("door", "doors"),
+    ("hardware", "hardware"),
+    ("break metal", "break metal"),
+    ("cladding", "cladding"),
+)
+
 
 def _clip(value: str) -> str:
     return value.strip()[:_MAX_ITEM_CHARS]
@@ -121,10 +139,21 @@ class SourceAnalysis:
     submittal_requirements: list[str] = field(default_factory=list)
     coordination_flags: list[str] = field(default_factory=list)
     pm_followup_categories: list[str] = field(default_factory=list)
+    # Bid-package / procurement fields (populated only for document_type == "bid_package").
+    bid_package_number: str | None = None
+    bid_package_title: str | None = None
+    inclusions: list[str] = field(default_factory=list)
+    exclusions: list[str] = field(default_factory=list)
+    procurement_signals: list[str] = field(default_factory=list)
+    trade_scope: list[str] = field(default_factory=list)
 
     @property
     def is_drawing(self) -> bool:
         return self.document_type in DRAWING_DOCUMENT_TYPES
+
+    @property
+    def is_bid_package(self) -> bool:
+        return self.document_type == "bid_package"
 
     def to_frontmatter_dict(self) -> dict[str, str]:
         """Scalar fields suitable for card frontmatter; omits None/empty values."""
@@ -132,7 +161,8 @@ class SourceAnalysis:
         if self.discipline and self.discipline != "unknown":
             out["discipline"] = self.discipline
         for key in ("sheet_number", "sheet_title", "issue_status",
-                    "revision_number", "revision_date", "revision_description"):
+                    "revision_number", "revision_date", "revision_description",
+                    "bid_package_number", "bid_package_title"):
             value = getattr(self, key)
             if value:
                 out[key] = str(value)
@@ -172,12 +202,29 @@ def _sheet_title_from_filename(rel_path: str, sheet_number: str | None) -> str |
     return title.upper() or None if title else None
 
 
+def _bid_package_signal(rel_path: str, text: str) -> bool:
+    """Strong bid-package detection from path/filename/text (priority over RFI)."""
+    path_low = rel_path.replace("\\", "/").lower()
+    blob = f"{Path(rel_path).name.lower()}\n{text[:3000].lower()}"
+    if "bid packages" in path_low or "bid package" in blob:
+        return True
+    if _BID_NUM_RE.search(blob):
+        return True
+    if "inclusions:" in blob and "exclusions:" in blob:
+        return True
+    return _BID_BOILERPLATE in blob
+
+
 def _doc_type_from_text(rel_path: str, text: str, fallback: str) -> str:
     name = Path(rel_path).name.lower()
     blob = f"{name}\n{text[:2000].lower()}"
-    if re.search(r"\brfi\b|request for information", blob):
+    # Bid packages BEFORE rfi: a bid doc that merely mentions RFIs must not become an RFI.
+    if _bid_package_signal(rel_path, text):
+        return "bid_package"
+    # Stricter RFI: require an explicit RFI marker, not a bare "rfi" substring.
+    if re.search(r"request for information|\brfi\s*#|\brfi\s+no\.?|\brfi log\b", blob):
         return "rfi"
-    if "submittal" in blob or "shop drawing" in blob and "specification" not in blob:
+    if "submittal" in blob or ("shop drawing" in blob and "specification" not in blob):
         return "submittal"
     if "meeting minutes" in blob or re.search(r"\bminutes\b", name):
         return "meeting_minutes"
@@ -188,6 +235,70 @@ def _doc_type_from_text(rel_path: str, text: str, fallback: str) -> str:
     if re.search(r"budget|cost|invoice|change order|pay application", blob):
         return "cost_document"
     return fallback
+
+
+def _bid_package_number_title(rel_path: str, text: str) -> tuple[str | None, str | None]:
+    """Extract (number, title) from `Bid Package 08-03 Glass Windows and Doors` (filename, then text)."""
+    for source in (Path(rel_path).stem, text[:1000]):
+        m = _BID_NUM_TITLE_RE.search(source)
+        if m:
+            number = m.group(1)
+            title = re.split(r"(?i)\b(inclusions|exclusions|provide all)\b", m.group(2))[0]
+            title = re.sub(r"(?i)\.(docx|pdf|doc|txt)$", "", title.strip())
+            title = re.sub(r"\s+", " ", title).strip(" -")
+            return number, (_clip(title) or None)
+        m2 = _BID_NUM_RE.search(source)
+        if m2:
+            return m2.group(1), None
+    return None, None
+
+
+def _extract_section_lines(text: str, heading: str) -> list[str]:
+    """Bounded non-empty lines after a `Heading:` line, until a blank line or the next heading."""
+    out: list[str] = []
+    capturing = False
+    for raw in text.splitlines():
+        line = raw.strip()
+        low = line.lower()
+        if not capturing:
+            if low.startswith(heading.lower() + ":") or low == heading.lower():
+                capturing = True
+                after = line.split(":", 1)[1].strip() if ":" in line else ""
+                if after:
+                    out.append(after)
+            continue
+        if not line:
+            if out:
+                break
+            continue
+        # Stop at the next short `Word:` heading (e.g. an Exclusions: that follows Inclusions:).
+        if low.endswith(":") and len(line) < 40:
+            break
+        out.append(re.sub(r"^[-*•\s]+", "", line).strip())
+        if len(out) >= _MAX_ITEMS:
+            break
+    return _dedup(out)
+
+
+def _trade_scope(text: str) -> list[str]:
+    low = text.lower()
+    return _dedup([label for kw, label in _TRADE_KEYWORDS if kw in low])
+
+
+def _procurement_signals(rel_path: str) -> list[str]:
+    low = rel_path.replace("\\", "/").lower()
+    out: list[str] = []
+    if "preconstruction" in low:
+        out.append("preconstruction")
+    if "estimating" in low:
+        out.append("estimating")
+    if "bid package" in low or "bid packages" in low:
+        out.append("bid package")
+    if "/commercial/" in low:
+        out.append("commercial trade package")
+    if "procurement" in low:
+        out.append("procurement")
+    return _dedup(out)
 
 
 def _project_name(lines: list[str], sheet_title: str | None) -> str | None:
@@ -334,7 +445,9 @@ def from_detail(detail: dict[str, Any]) -> SourceAnalysis:
         # shop drawings don't flip an architectural drawing to "submittal".
         document_type = doctype_guess
         name_upper = Path(rel_path).name.upper()
-        if "SPECIFICATION" in name_upper or re.search(r"\bSPEC\b", name_upper):
+        if "BID PACKAGE" in name_upper:
+            document_type = "bid_package"
+        elif "SPECIFICATION" in name_upper or re.search(r"\bSPEC\b", name_upper):
             document_type = "specification"
         elif "RFI" in name_upper:
             document_type = "rfi"
@@ -346,6 +459,18 @@ def from_detail(detail: dict[str, Any]) -> SourceAnalysis:
     coordination = _coordination_flags(text)
     submittals = _submittals(text)
     refs = _referenced_sheets(text, sheet_number)
+
+    bid_number = bid_title = None
+    inclusions: list[str] = []
+    exclusions: list[str] = []
+    procurement: list[str] = []
+    trade: list[str] = []
+    if document_type == "bid_package":
+        bid_number, bid_title = _bid_package_number_title(rel_path, text)
+        inclusions = _extract_section_lines(text, "inclusions")
+        exclusions = _extract_section_lines(text, "exclusions")
+        procurement = _procurement_signals(rel_path)
+        trade = _trade_scope(text)
 
     return SourceAnalysis(
         document_type=document_type,
@@ -365,4 +490,10 @@ def from_detail(detail: dict[str, Any]) -> SourceAnalysis:
         submittal_requirements=submittals,
         coordination_flags=coordination,
         pm_followup_categories=_pm_followups(coordination, submittals, refs),
+        bid_package_number=bid_number,
+        bid_package_title=bid_title,
+        inclusions=inclusions,
+        exclusions=exclusions,
+        procurement_signals=procurement,
+        trade_scope=trade,
     )

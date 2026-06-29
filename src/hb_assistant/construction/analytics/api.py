@@ -353,6 +353,7 @@ class ObsidianMcpConfigPatchRequest(BaseModel):
     source_summary_auto_generate_kinds: list[str] | None = None
     source_summary_auto_max_per_drain: int | None = None
     source_card_auto_max_per_drain: int | None = None
+    source_index_excluded_path_parts: list[str] | None = None
 
 
 class ObsidianMcpGenerateSourceCardRequest(BaseModel):
@@ -1889,11 +1890,19 @@ def create_app(*, db_path: str | None = None) -> Any:
         request: ObsidianMcpGenerateSourceCardRequest, role: dict[str, str] = role_dep
     ) -> dict[str, Any]:
         require_operator_role(role)
-        from hb_assistant.obsidian_mcp import ObsidianMcpService
+        from fastapi import HTTPException
 
-        return ObsidianMcpService(db_path=db_path).generate_source_card(
-            {"source_id": request.source_id, "overwrite": request.overwrite, "principal_kind": "local"}
-        )
+        from hb_assistant.obsidian_mcp import ObsidianMcpService
+        from hb_assistant.obsidian_mcp.tools import ObsidianMcpToolError
+
+        try:
+            return ObsidianMcpService(db_path=db_path).generate_source_card(
+                {"source_id": request.source_id, "overwrite": request.overwrite, "principal_kind": "local"}
+            )
+        except ObsidianMcpToolError as exc:
+            # Surface tool guards (e.g. source_excluded_path / source_deleted) as a clean 422 with a
+            # stable code, instead of an opaque 500. No vault note is written on these guards.
+            raise HTTPException(status_code=422, detail=exc.code) from exc
 
     @app.post("/api/settings/obsidian-mcp/source-notes/refresh-stale")
     def settings_obsidian_mcp_source_notes_refresh(
@@ -1911,11 +1920,17 @@ def create_app(*, db_path: str | None = None) -> Any:
         request: ObsidianMcpSummarizeSourceRequest, role: dict[str, str] = role_dep
     ) -> dict[str, Any]:
         require_operator_role(role)
-        from hb_assistant.obsidian_mcp import ObsidianMcpService
+        from fastapi import HTTPException
 
-        return ObsidianMcpService(db_path=db_path).summarize_source(
-            {"source_id": request.source_id, "principal_kind": "local"}
-        )
+        from hb_assistant.obsidian_mcp import ObsidianMcpService
+        from hb_assistant.obsidian_mcp.tools import ObsidianMcpToolError
+
+        try:
+            return ObsidianMcpService(db_path=db_path).summarize_source(
+                {"source_id": request.source_id, "principal_kind": "local"}
+            )
+        except ObsidianMcpToolError as exc:
+            raise HTTPException(status_code=422, detail=exc.code) from exc
 
     @app.post("/api/settings/obsidian-mcp/model/test")
     def settings_obsidian_mcp_model_test(role: dict[str, str] = role_dep) -> dict[str, Any]:

@@ -162,6 +162,48 @@ def test_config_update_persists_source_card_auto_max_per_drain(
     assert reread["config"]["source_card_auto_max_per_drain"] == 25
 
 
+def test_config_update_persists_excluded_path_parts_and_status_exposes_policy(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """PATCH of the exclusion list persists (normalized) and the status surfaces the policy."""
+    client, vault = _client(tmp_path, monkeypatch)
+    res = client.patch(
+        "/api/settings/obsidian-mcp/config",
+        json={"enabled": True, "vault_root": str(vault),
+              "source_index_excluded_path_parts": ["node_modules", ".venv", "Dist"]},
+        headers={"X-HB-UI-Role": "operator"},
+    )
+    assert res.status_code == 200
+    body = res.json()
+    _assert_safe(body)
+    # Normalized to lowercase, deduped.
+    assert body["config"]["source_index_excluded_path_parts"] == ["node_modules", ".venv", "dist"]
+    assert load_config().source_index_excluded_path_parts == ["node_modules", ".venv", "dist"]
+
+    reread = client.get("/api/settings/obsidian-mcp/config").json()
+    assert reread["config"]["source_index_excluded_path_parts"] == ["node_modules", ".venv", "dist"]
+
+    status = client.get(
+        "/api/settings/obsidian-mcp/source-index/status", headers={"X-HB-UI-Role": "operator"}
+    ).json()
+    assert status["exclusion_policy"]["excluded_path_parts"] == ["node_modules", ".venv", "dist"]
+
+
+def test_source_card_generate_tool_error_returns_clean_422(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """ObsidianMcpToolError guards (e.g. excluded path / unknown source) surface as a clean 422,
+    not an opaque 500."""
+    client, _vault = _client(tmp_path, monkeypatch)
+    res = client.post(
+        "/api/settings/obsidian-mcp/source-card/generate",
+        json={"source_id": "deadbeef" * 4, "overwrite": True},
+        headers={"X-HB-UI-Role": "operator"},
+    )
+    assert res.status_code == 422
+    assert res.json()["detail"] == "source_not_found"
+
+
 def test_config_update_rejects_relative_external_source_path(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

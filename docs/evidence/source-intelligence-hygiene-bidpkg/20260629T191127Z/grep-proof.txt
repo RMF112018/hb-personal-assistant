@@ -1,0 +1,48 @@
+### Defect 1 — exclusion config + helper + apply sites
+22:DEFAULT_EXCLUDED_PATH_PARTS = [
+117:    source_index_excluded_path_parts: list[str] = Field(
+118:        default_factory=lambda: list(DEFAULT_EXCLUDED_PATH_PARTS)
+203:    @field_validator("source_index_excluded_path_parts")
+205:    def validate_excluded_path_parts(cls, value: list[str]) -> list[str]:
+211:        return normalized or list(DEFAULT_EXCLUDED_PATH_PARTS)
+317:    source_index_excluded_path_parts: list[str] | None = None
+39:def is_excluded_source_path(rel_path: str, config: ObsidianMcpConfig) -> bool:
+43:    against ``config.source_index_excluded_path_parts`` (so ``node_modules/x`` and ``a/node_modules/x``
+47:    excluded = getattr(config, "source_index_excluded_path_parts", None)
+231:        if (should_ignore(rel_path, abs_path.name) or is_excluded_source_path(rel_path, config)
+298:        if should_ignore(rel_path, abs_path.name) or is_excluded_source_path(rel_path, config):
+441:            elif event["rel_path"] and is_excluded_source_path(event["rel_path"], config):
+443:                repo.complete_event(event["event_id"], "skipped", error_code="excluded_path")
+26:from .source_indexer import is_excluded_source_path
+583:    if detail.get("rel_path") and is_excluded_source_path(str(detail["rel_path"]), config):
+584:        raise ObsidianMcpToolError("source_excluded_path")  # low-value dependency/build tree
+653:    if detail.get("rel_path") and is_excluded_source_path(str(detail["rel_path"]), config):
+655:        return {"summarized": False, "reason": "excluded_path",
+80:    status["exclusion_policy"] = {
+frontend/src/lib/api.ts:508:  source_index_excluded_path_parts?: string[];
+src/hb_assistant/construction/analytics/api.py:356:    source_index_excluded_path_parts: list[str] | None = None
+frontend/src/components/settings/ObsidianMcpPanel.tsx:198:    setExcludedPartsInput(Array.isArray(config.source_index_excluded_path_parts) ? config.source_index_excluded_path_parts.join(', ') : '')
+frontend/src/components/settings/ObsidianMcpPanel.tsx:310:    void saveConfig({ source_index_excluded_path_parts: parts })
+
+### Defect 2 — bid_package analyzer + template + typed summary
+28:BID_DOCUMENT_TYPES = frozenset({"bid_package", "scope_of_work", "procurement_document"})
+142:    # Bid-package / procurement fields (populated only for document_type == "bid_package").
+143:    bid_package_number: str | None = None
+144:    bid_package_title: str | None = None
+155:    def is_bid_package(self) -> bool:
+156:        return self.document_type == "bid_package"
+165:                    "bid_package_number", "bid_package_title"):
+205:def _bid_package_signal(rel_path: str, text: str) -> bool:
+222:    if _bid_package_signal(rel_path, text):
+223:        return "bid_package"
+35:BID_PACKAGE_PROMPT_VERSION = "source-card-bid-package-v1"
+233:def _render_bid_package_sections(detail: dict[str, Any], analysis: SourceAnalysis) -> list[str]:
+363:def _build_bid_package_prompt(detail: dict[str, Any], analysis: SourceAnalysis, text: str) -> str:
+388:def _render_bid_package_advisory(advisory: dict[str, Any]) -> list[str]:
+529:        elif analysis.is_bid_package:
+682:    elif analysis.is_bid_package:
+686:        prompt_version = BID_PACKAGE_PROMPT_VERSION
+714:    elif analysis.is_bid_package:
+160:_BID_PACKAGE_SYSTEM_PROMPT = (
+193:def summarize_bid_package(
+207:        raw = chosen.generate_json(system=_BID_PACKAGE_SYSTEM_PROMPT, prompt=prompt_text)

@@ -505,6 +505,7 @@ export interface ObsidianMcpConfigPatch {
   source_note_auto_refresh_enabled?: boolean;
   source_summary_auto_max_per_drain?: number;
   source_card_auto_max_per_drain?: number;
+  source_index_excluded_path_parts?: string[];
   [key: string]: unknown;
 }
 

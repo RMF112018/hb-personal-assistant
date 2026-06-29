@@ -1,0 +1,28 @@
+## branch
+fix/source-intelligence-hygiene-bidpkg-20260629T184227Z
+
+## base commit (origin/main)
+9fb725dc fix(obsidian-mcp): wire source_card_auto_max_per_drain through API + settings UI (#217)
+
+## staged changes (final)
+ .../20260629T191127Z/README.md                     |  70 ++++++++++
+ .../20260629T191127Z/git-state.txt                 |   5 +
+ .../20260629T191127Z/grep-proof.txt                |  48 +++++++
+ .../20260629T191127Z/manual-validation.txt         |  22 +++
+ .../20260629T191127Z/sample-bid-package-card.md    | 100 ++++++++++++++
+ .../20260629T191127Z/test-backend.txt              |   4 +
+ .../20260629T191127Z/test-frontend.txt             |   4 +
+ .../components/settings/ObsidianMcpPanel.test.tsx  |  22 +++
+ .../src/components/settings/ObsidianMcpPanel.tsx   |  15 +++
+ frontend/src/lib/api.ts                            |   1 +
+ src/hb_assistant/construction/analytics/api.py     |  27 +++-
+ src/hb_assistant/obsidian_mcp/config.py            |  21 +++
+ src/hb_assistant/obsidian_mcp/llm.py               |  68 ++++++++++
+ src/hb_assistant/obsidian_mcp/source_analyzers.py  | 139 ++++++++++++++++++-
+ src/hb_assistant/obsidian_mcp/source_indexer.py    |  24 +++-
+ src/hb_assistant/obsidian_mcp/source_notes.py      | 113 +++++++++++++++-
+ src/hb_assistant/obsidian_mcp/source_search.py     |   3 +
+ tests/test_obsidian_mcp_backend.py                 |  42 ++++++
+ tests/test_obsidian_source_bid_package_analyzer.py | 149 +++++++++++++++++++++
+ tests/test_obsidian_source_exclusions.py           | 135 +++++++++++++++++++
+ 20 files changed, 996 insertions(+), 16 deletions(-)

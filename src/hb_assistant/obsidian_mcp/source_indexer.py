@@ -36,6 +36,22 @@ def should_ignore(rel_path: str, name: str) -> bool:
     return lower in _TEMP_NAMES or lower.startswith("~$") or lower.endswith(_TEMP_SUFFIXES)
 
 
+def is_excluded_source_path(rel_path: str, config: ObsidianMcpConfig) -> bool:
+    """True if a source path lies in a low-value dependency/build/cache tree.
+
+    Pure + segment-based: normalizes separators, lowercases, and matches whole path SEGMENTS
+    against ``config.source_index_excluded_path_parts`` (so ``node_modules/x`` and ``a/node_modules/x``
+    both hit, while a file merely *named* ``build.txt`` does NOT). Applied before indexing AND before
+    any card/summary generation so broad roots don't produce low-value cards.
+    """
+    excluded = getattr(config, "source_index_excluded_path_parts", None)
+    if not excluded:
+        return False
+    excluded_set = {str(p).strip().lower() for p in excluded if str(p).strip()}
+    segments = [seg for seg in str(rel_path).replace("\\", "/").lower().split("/") if seg]
+    return any(seg in excluded_set for seg in segments)
+
+
 def match_path_to_project(rel_path: str) -> tuple[str | None, str | None, str]:
     """Deterministic HB project-number extraction from a path. Returns (key, number, confidence).
 
@@ -212,7 +228,8 @@ def scan_vault_notes(repo: SourceIndexRepository, config: ObsidianMcpConfig) -> 
         if not abs_path.is_file():
             continue
         rel_path = str(abs_path.relative_to(vault_root))
-        if should_ignore(rel_path, abs_path.name) or pathsafe.symlink_escapes(abs_path, vault_root):
+        if (should_ignore(rel_path, abs_path.name) or is_excluded_source_path(rel_path, config)
+                or pathsafe.symlink_escapes(abs_path, vault_root)):
             continue
         report.scanned += 1
         if report.scanned > max_files:
@@ -278,7 +295,7 @@ def scan_source_root(root: ExternalSourceRoot, repo: SourceIndexRepository,
             rel_path = str(abs_path.relative_to(root_path))
         except ValueError:
             continue
-        if should_ignore(rel_path, abs_path.name):
+        if should_ignore(rel_path, abs_path.name) or is_excluded_source_path(rel_path, config):
             continue
         if pathsafe.symlink_escapes(abs_path, root_path):
             continue
@@ -421,6 +438,9 @@ def drain_queue(repo: SourceIndexRepository, config: ObsidianMcpConfig, *, batch
                 if event["rel_path"]:
                     repo.mark_deleted("external_file", event["rel_path"])
                 repo.complete_event(event["event_id"], "done")
+            elif event["rel_path"] and is_excluded_source_path(event["rel_path"], config):
+                # Excluded dependency/build path: skip cleanly (not an error, not indexed, no card).
+                repo.complete_event(event["event_id"], "skipped", error_code="excluded_path")
             else:  # created / modified / reindex_requested
                 root = roots.get(event["source_root_key"])
                 if root and event["rel_path"]:
