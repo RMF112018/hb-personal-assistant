@@ -555,6 +555,44 @@ export function runObsidianMcpChatGPTReadiness() {
   return fetchJson('/api/settings/obsidian-mcp/chatgpt/readiness-check', { method: 'POST' });
 }
 
+/* Source Intelligence (PR A1): external-source index, watcher lifecycle, and model panel. */
+export function getObsidianMcpSourceIndexStatus() {
+  return fetchJson('/api/settings/obsidian-mcp/source-index/status');
+}
+export function rebuildObsidianMcpSourceIndex() {
+  return fetchJson('/api/settings/obsidian-mcp/source-index/rebuild', { method: 'POST' });
+}
+export function generateObsidianMcpSourceCard(body: any) {
+  return fetchJson('/api/settings/obsidian-mcp/source-card/generate', { method: 'POST', body: JSON.stringify(body || {}) });
+}
+export function summarizeObsidianMcpSource(body: any) {
+  return fetchJson('/api/settings/obsidian-mcp/source-card/summarize', { method: 'POST', body: JSON.stringify(body || {}) });
+}
+export function refreshObsidianMcpStaleSourceNotes(body: any) {
+  return fetchJson('/api/settings/obsidian-mcp/source-notes/refresh-stale', { method: 'POST', body: JSON.stringify(body || {}) });
+}
+export function testObsidianMcpModel() {
+  return fetchJson('/api/settings/obsidian-mcp/model/test', { method: 'POST' });
+}
+export function getObsidianMcpSourceWatchStatus() {
+  return fetchJson('/api/settings/obsidian-mcp/source-watch/status');
+}
+export function startObsidianMcpSourceWatch() {
+  return fetchJson('/api/settings/obsidian-mcp/source-watch/start', { method: 'POST' });
+}
+export function stopObsidianMcpSourceWatch() {
+  return fetchJson('/api/settings/obsidian-mcp/source-watch/stop', { method: 'POST' });
+}
+export function restartObsidianMcpSourceWatch() {
+  return fetchJson('/api/settings/obsidian-mcp/source-watch/restart', { method: 'POST' });
+}
+export function testObsidianMcpSourceWatchEvent() {
+  return fetchJson('/api/settings/obsidian-mcp/source-watch/test-event', { method: 'POST' });
+}
+export function recoverObsidianMcpSourceWatchStuck() {
+  return fetchJson('/api/settings/obsidian-mcp/source-watch/recover-stuck', { method: 'POST' });
+}
+
 /* Onboarding readiness (Prompt D) — drives first-time routing and returning-user reauth state.
  * Uses only normalized /api paths. Never triggers sync.
  */

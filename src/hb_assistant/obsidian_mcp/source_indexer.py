@@ -309,9 +309,62 @@ def scan_source_root(root: ExternalSourceRoot, repo: SourceIndexRepository,
     return report
 
 
+def _auto_generate(
+    repo: SourceIndexRepository,
+    config: ObsidianMcpConfig,
+    source_id: str,
+    root: ExternalSourceRoot,
+    *,
+    summaries_remaining: int,
+) -> int:
+    """Policy-driven card/summary generation after a successful index.
+
+    Returns the number of advisory summaries produced (0 or 1) so the caller can enforce a
+    per-drain cap. NEVER raises — an auto-gen failure must not fail the index event (indexing
+    already succeeded). Sensitive roots get a card (preview withheld by the renderer) but never
+    an advisory summary. Vault writes go through the existing write-policy in ``source_notes``.
+    """
+    from . import source_notes  # lazy import to avoid a module cycle
+
+    detail = repo.get_source_detail(source_id)
+    if detail is None or detail.get("deleted") or detail["source_kind"] == "obsidian_note":
+        return 0
+    kind = detail["source_kind"]
+
+    want_card = (
+        getattr(config, "source_card_auto_generate_enabled", False)
+        and kind in getattr(config, "source_card_auto_generate_kinds", [])
+        and getattr(config, "source_card_generation_enabled", True)
+    )
+    want_refresh = getattr(config, "source_note_auto_refresh_enabled", True)
+    if want_card or (want_refresh and repo.has_generated_note(source_id)):
+        with suppress(Exception):
+            source_notes.generate_source_card(
+                repo, config, source_id=source_id, overwrite=True, principal_kind="local"
+            )
+
+    want_summary = (
+        summaries_remaining > 0
+        and getattr(config, "source_summary_auto_generate_enabled", False)
+        and getattr(config, "source_summary_enabled", True)
+        and kind in getattr(config, "source_summary_auto_generate_kinds", [])
+        and not getattr(root, "sensitive", False)
+    )
+    if want_summary:
+        try:
+            out = source_notes.summarize_source(repo, config, source_id=source_id, principal_kind="local")
+        except Exception:  # noqa: BLE001 - advisory summary is best-effort
+            return 0
+        if out.get("summarized"):
+            return 1
+    return 0
+
+
 def drain_queue(repo: SourceIndexRepository, config: ObsidianMcpConfig, *, batch: int = 50) -> int:
     """Process queued events (called by the watcher worker / rebuild path). Returns processed count."""
     roots = {r.source_root_key: r for r in config.external_sources}
+    summary_cap = int(getattr(config, "source_summary_auto_max_per_drain", 5))
+    summaries_done = 0
     processed = 0
     for event in repo.claim_queued(batch):
         try:
@@ -330,11 +383,18 @@ def drain_queue(repo: SourceIndexRepository, config: ObsidianMcpConfig, *, batch
             else:  # created / modified / reindex_requested
                 root = roots.get(event["source_root_key"])
                 if root and event["rel_path"]:
-                    index_source_file(Path(root.path) / event["rel_path"], root, repo, config)
+                    source_id = index_source_file(Path(root.path) / event["rel_path"], root, repo, config)
+                    if source_id is not None:
+                        summaries_done += _auto_generate(
+                            repo, config, source_id, root,
+                            summaries_remaining=summary_cap - summaries_done,
+                        )
                 repo.complete_event(event["event_id"], "done")
             processed += 1
         except Exception as exc:
             repo.complete_event(event["event_id"], "error", error_code=type(exc).__name__)
+    with suppress(Exception):
+        repo.record_drain()
     return processed
 
 

@@ -59,6 +59,8 @@ class OllamaChatClient:
         }
         try:
             r = requests.post(url, json=payload, timeout=self._timeout)
+        except requests.Timeout:
+            raise OllamaUnavailable("ollama_timeout") from None
         except requests.RequestException:
             raise OllamaUnavailable("ollama_request_failed") from None
         if r.status_code != 200:
@@ -71,3 +73,31 @@ class OllamaChatClient:
         if not isinstance(response, str):
             raise OllamaUnavailable("ollama_missing_response_field")
         return response
+
+
+def list_ollama_models(*, base_url: str | None = None, timeout: float = 5.0) -> list[str]:
+    """Return the sorted names of locally installed Ollama models via ``GET /api/tags``.
+
+    Raises :class:`OllamaUnavailable` (sanitized message, no URL/body echo) when the
+    daemon cannot be reached or returns an unexpected envelope.
+    """
+    url = (base_url or OllamaChatClient.DEFAULT_BASE_URL).rstrip("/") + "/api/tags"
+    try:
+        r = requests.get(url, timeout=timeout)
+    except requests.Timeout:
+        raise OllamaUnavailable("ollama_timeout") from None
+    except requests.RequestException:
+        raise OllamaUnavailable("ollama_request_failed") from None
+    if r.status_code != 200:
+        raise OllamaUnavailable(f"ollama_status_{r.status_code}")
+    try:
+        body = r.json()
+    except ValueError:
+        raise OllamaUnavailable("ollama_invalid_envelope") from None
+    models = body.get("models")
+    if not isinstance(models, list):
+        raise OllamaUnavailable("ollama_missing_models_field")
+    names = sorted(
+        str(m["name"]) for m in models if isinstance(m, dict) and isinstance(m.get("name"), str)
+    )
+    return names

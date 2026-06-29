@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from .config import ObsidianMcpConfig
+from .config import ObsidianMcpConfig, load_config
 from .source_index_repository import SourceIndexRepository
 from .source_indexer import (
     _VAULT_ROOT_KEY,
@@ -49,6 +49,7 @@ class SourceWatcher:
         self._mode = "stopped"
         self._last_event_at: str | None = None
         self._last_error_code: str | None = None
+        self._last_test_event_at: str | None = None
 
     # ----- lifecycle -------------------------------------------------------------------------
     def start(self) -> None:
@@ -80,6 +81,37 @@ class SourceWatcher:
             self._thread.join(timeout=3)
             self._thread = None
         self._mode = "stopped"
+
+    def restart(self) -> dict[str, Any]:
+        """Stop, reload config from disk (so config edits take effect), and start again."""
+        self.stop()
+        self._config = load_config()
+        self.start()
+        return self.status()
+
+    def recover_stuck(self, ttl_seconds: int = 900) -> dict[str, Any]:
+        """Re-queue events stuck in 'processing' past the TTL (operator manual recovery)."""
+        requeued = self._repo.requeue_stuck(ttl_seconds)
+        return {"requeued": int(requeued), "ttl_seconds": int(ttl_seconds)}
+
+    def test_event(self) -> dict[str, Any]:
+        """Enqueue a bounded rebuild event and drain it synchronously to prove the pipe works.
+
+        Targets the first enabled external root, else the vault root. Never writes to external
+        source files (a scan only reads them and writes index rows). Safe alongside a running
+        worker — claim_queued atomically claims, so no double-processing.
+        """
+        roots = _enabled_roots(self._config)
+        target = roots[0].source_root_key if roots else _VAULT_ROOT_KEY
+        self._repo.enqueue_event(event_type="rebuild", source_root_key=target)
+        self._last_test_event_at = _now()
+        processed = drain_queue(self._repo, self._config)
+        return {
+            "enqueued": True,
+            "source_root_key": target,
+            "processed": int(processed),
+            "queue": self._repo.queue_health(),
+        }
 
     # ----- watchdog path ---------------------------------------------------------------------
     def _start_watchdog(self) -> None:
@@ -155,17 +187,21 @@ class SourceWatcher:
     # ----- status ----------------------------------------------------------------------------
     def status(self) -> dict[str, Any]:
         running = self._thread is not None and self._thread.is_alive()
+        health: dict[str, Any] = {}
         try:
-            queued = self._repo.index_status()["queued_count"]
+            health = self._repo.queue_health()
         except Exception:
-            queued = None
+            health = {}
         return {
             "running": running,
             "mode": self._mode,
             "watch_enabled": bool(getattr(self._config, "external_source_watch_enabled", False)),
-            "queued_count": queued,
+            "queued_count": health.get("queued_count"),
+            "queue_health": health,
             "last_event_at": self._last_event_at,
+            "last_test_event_at": self._last_test_event_at,
             "last_error_code": self._last_error_code,
-            "roots": [{"key": r.source_root_key, "path": r.path, "enabled": r.enabled}
+            "roots": [{"key": r.source_root_key, "path": r.path, "enabled": r.enabled,
+                       "sensitive": bool(getattr(r, "sensitive", False))}
                       for r in getattr(self._config, "external_sources", []) or []],
         }

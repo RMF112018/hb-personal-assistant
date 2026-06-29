@@ -51,6 +51,20 @@ class SourceIndexRepository:
             return row[0] == "1"
         return fts5_available(conn)
 
+    def _set_state(self, c: sqlite3.Connection, key: str, value: str) -> None:
+        """Upsert a singleton k/v row in the existing transaction (no schema change)."""
+        c.execute(
+            "INSERT INTO source_intelligence_state (state_key, state_value, updated_at) "
+            "VALUES (?, ?, ?) "
+            "ON CONFLICT(state_key) DO UPDATE SET state_value=excluded.state_value, updated_at=excluded.updated_at",
+            (key, value, _now()),
+        )
+
+    def record_drain(self, *, conn: sqlite3.Connection | None = None) -> None:
+        """Stamp the last successful queue-drain time (operator queue-health signal)."""
+        with borrow_connection(conn, self.db_path) as c, transaction(c):
+            self._set_state(c, "last_drain_at", _now())
+
     # ----- source roots ----------------------------------------------------------------------
     def register_source_roots(self, roots: Iterable[dict[str, Any]], *, conn: sqlite3.Connection | None = None) -> None:
         """Record configured roots in _state and deactivate sources of removed roots."""
@@ -287,6 +301,18 @@ class SourceIndexRepository:
                 " updated_at=excluded.updated_at",
                 (uuid.uuid4().hex, source_id, note_rel_path, status, generated_at, _now()),
             )
+            if status == "generated":
+                self._set_state(c, "last_note_at", _now())
+
+    def has_generated_note(self, source_id: str, *, conn: sqlite3.Connection | None = None) -> bool:
+        """True if a card was ever generated for this source (status generated or stale)."""
+        with borrow_connection(conn, self.db_path) as c:
+            row = c.execute(
+                "SELECT 1 FROM source_intelligence_generated_notes "
+                "WHERE source_id=? AND generation_status IN ('generated','stale') LIMIT 1",
+                (source_id,),
+            ).fetchone()
+        return row is not None
 
     def list_stale_generated_notes(self, limit: int = 25, *, conn: sqlite3.Connection | None = None) -> list[dict[str, Any]]:
         with borrow_connection(conn, self.db_path) as c:
@@ -314,6 +340,7 @@ class SourceIndexRepository:
                  receipt["prompt_version"], receipt.get("prompt_sha256"),
                  receipt.get("summary_sha256"), receipt.get("source_sha256"), _now()),
             )
+            self._set_state(c, "last_summary_at", _now())
 
     def delete_summary(self, source_id: str, *, conn: sqlite3.Connection | None = None) -> None:
         with borrow_connection(conn, self.db_path) as c, transaction(c):
@@ -505,4 +532,44 @@ class SourceIndexRepository:
             "stale_summary_count": int(stale_summaries),
             "last_indexed_at": last_indexed,
             "configured_roots": roots,
+        }
+
+    def queue_health(self, *, conn: sqlite3.Connection | None = None) -> dict[str, Any]:
+        """Operator queue-health signals: stuck-event age + recent-activity timestamps.
+
+        Reads only existing tables (events + the source_intelligence_state k/v rows stamped by
+        drain/note/summary); no schema change. ``oldest_processing_age_seconds`` is None when
+        nothing is in-flight.
+        """
+        with borrow_connection(conn, self.db_path) as c:
+            counts = {
+                status: c.execute(
+                    "SELECT COUNT(*) FROM source_intelligence_events WHERE status=?", (status,)
+                ).fetchone()[0]
+                for status in ("queued", "processing", "error", "done")
+            }
+            oldest_age = c.execute(
+                "SELECT (julianday('now') - julianday(MIN(updated_at))) * 86400 "
+                "FROM source_intelligence_events WHERE status='processing'"
+            ).fetchone()[0]
+            last_event_at = c.execute(
+                "SELECT MAX(created_at) FROM source_intelligence_events"
+            ).fetchone()[0]
+            state = {
+                row[0]: row[1]
+                for row in c.execute(
+                    "SELECT state_key, state_value FROM source_intelligence_state "
+                    "WHERE state_key IN ('last_drain_at','last_note_at','last_summary_at')"
+                ).fetchall()
+            }
+        return {
+            "queued_count": counts["queued"],
+            "processing_count": counts["processing"],
+            "error_count": counts["error"],
+            "done_count": counts["done"],
+            "oldest_processing_age_seconds": (round(float(oldest_age), 1) if oldest_age is not None else None),
+            "last_event_at": last_event_at,
+            "last_drain_at": state.get("last_drain_at"),
+            "last_note_at": state.get("last_note_at"),
+            "last_summary_at": state.get("last_summary_at"),
         }

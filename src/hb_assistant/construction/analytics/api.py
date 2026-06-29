@@ -6,6 +6,7 @@ dependency factory so the base package remains FastAPI-free.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from contextlib import AsyncExitStack, asynccontextmanager, suppress
@@ -339,6 +340,18 @@ class ObsidianMcpConfigPatchRequest(BaseModel):
     source_notes_folder: str | None = None
     source_card_generation_enabled: bool | None = None
     source_card_excerpt_chars: int | None = None
+    summarization_backend: str | None = None
+    summarization_provider: str | None = None
+    summarization_model: str | None = None
+    source_summary_enabled: bool | None = None
+    source_summary_max_input_chars: int | None = None
+    source_summary_ollama_timeout_seconds: int | None = None
+    source_card_auto_generate_enabled: bool | None = None
+    source_summary_auto_generate_enabled: bool | None = None
+    source_note_auto_refresh_enabled: bool | None = None
+    source_card_auto_generate_kinds: list[str] | None = None
+    source_summary_auto_generate_kinds: list[str] | None = None
+    source_summary_auto_max_per_drain: int | None = None
 
 
 class ObsidianMcpGenerateSourceCardRequest(BaseModel):
@@ -1751,10 +1764,19 @@ def create_app(*, db_path: str | None = None) -> Any:
     ) -> dict[str, Any]:
         require_operator_role(role)
         from hb_assistant.obsidian_mcp import ObsidianMcpConfigPatch, ObsidianMcpService
+        from hb_assistant.obsidian_mcp.llm import validate_summary_model
 
-        return ObsidianMcpService().update_config(
+        service = ObsidianMcpService()
+        result = service.update_config(
             ObsidianMcpConfigPatch.model_validate(request.model_dump(exclude_none=True))
         )
+        # Advisory (never blocking): if the operator set a summary model, validate it against the
+        # installed Ollama tags so the UI can flag a missing/tag-resolved model. Ollama may be down
+        # at save time, so this never rejects the save.
+        if request.summarization_model is not None:
+            with suppress(Exception):
+                result["model_validation"] = validate_summary_model(service.get_config())
+        return result
 
     @app.get("/api/settings/obsidian-mcp/status")
     def settings_obsidian_mcp_status(role: dict[str, str] = role_dep) -> dict[str, Any]:
@@ -1791,6 +1813,62 @@ def create_app(*, db_path: str | None = None) -> Any:
 
         return ObsidianMcpService(db_path=db_path).rebuild_source_index({})
 
+    def _resolve_source_watcher() -> Any:
+        """Return the lifespan watcher, lazily constructing one if watch was disabled at boot."""
+        watcher = getattr(app.state, "source_watcher", None)
+        if watcher is not None:
+            return watcher
+        from hb_assistant.config.path_policy import PathPolicy
+        from hb_assistant.obsidian_mcp.config import load_config as _load_obsidian_config
+        from hb_assistant.obsidian_mcp.source_watch import SourceWatcher
+
+        _watch_db = str(db_path) if db_path else str(PathPolicy().get_db_path())
+        watcher = SourceWatcher(_watch_db, _load_obsidian_config())
+        app.state.source_watcher = watcher
+        return watcher
+
+    @app.get("/api/settings/obsidian-mcp/source-watch/status")
+    def settings_obsidian_mcp_source_watch_status(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        watcher = getattr(app.state, "source_watcher", None)
+        if watcher is None:
+            return {"running": False, "mode": "stopped", "watch_enabled": False}
+        return watcher.status()
+
+    @app.post("/api/settings/obsidian-mcp/source-watch/start")
+    async def settings_obsidian_mcp_source_watch_start(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        require_operator_role(role)
+        watcher = _resolve_source_watcher()
+        await asyncio.to_thread(watcher.start)
+        return watcher.status()
+
+    @app.post("/api/settings/obsidian-mcp/source-watch/stop")
+    async def settings_obsidian_mcp_source_watch_stop(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        require_operator_role(role)
+        watcher = getattr(app.state, "source_watcher", None)
+        if watcher is None:
+            return {"running": False, "mode": "stopped"}
+        await asyncio.to_thread(watcher.stop)
+        return watcher.status()
+
+    @app.post("/api/settings/obsidian-mcp/source-watch/restart")
+    async def settings_obsidian_mcp_source_watch_restart(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        require_operator_role(role)
+        watcher = _resolve_source_watcher()
+        return await asyncio.to_thread(watcher.restart)
+
+    @app.post("/api/settings/obsidian-mcp/source-watch/test-event")
+    async def settings_obsidian_mcp_source_watch_test_event(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        require_operator_role(role)
+        watcher = _resolve_source_watcher()
+        return await asyncio.to_thread(watcher.test_event)
+
+    @app.post("/api/settings/obsidian-mcp/source-watch/recover-stuck")
+    async def settings_obsidian_mcp_source_watch_recover_stuck(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        require_operator_role(role)
+        watcher = _resolve_source_watcher()
+        return await asyncio.to_thread(watcher.recover_stuck)
+
     @app.post("/api/settings/obsidian-mcp/source-card/generate")
     def settings_obsidian_mcp_source_card_generate(
         request: ObsidianMcpGenerateSourceCardRequest, role: dict[str, str] = role_dep
@@ -1823,6 +1901,14 @@ def create_app(*, db_path: str | None = None) -> Any:
         return ObsidianMcpService(db_path=db_path).summarize_source(
             {"source_id": request.source_id, "principal_kind": "local"}
         )
+
+    @app.post("/api/settings/obsidian-mcp/model/test")
+    def settings_obsidian_mcp_model_test(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        require_operator_role(role)
+        from hb_assistant.obsidian_mcp import ObsidianMcpService
+        from hb_assistant.obsidian_mcp.llm import validate_summary_model
+
+        return validate_summary_model(ObsidianMcpService().get_config())
 
     @app.get("/api/settings/obsidian-mcp/tools")
     def settings_obsidian_mcp_tools(role: dict[str, str] = role_dep) -> dict[str, Any]:

@@ -24,7 +24,8 @@ from .source_index_repository import SourceIndexRepository
 from .tools import ObsidianMcpToolError
 
 # Bump when the advisory prompt/template changes so receipts record which version produced a card.
-SUMMARY_PROMPT_VERSION = "source-card-v1"
+# v2: file-type-specific advisory prompts + deterministic per-type analyzer block.
+SUMMARY_PROMPT_VERSION = "source-card-v2"
 _ADVISORY_LIST_KEYS = ("key_points", "action_items", "decisions", "entities")
 _ADVISORY_MAX_ITEMS = 10
 _ADVISORY_ITEM_CHARS = 200
@@ -110,6 +111,80 @@ def _render_advisory(advisory: dict[str, Any]) -> list[str]:
     return parts
 
 
+_FILE_TYPE_LABELS = {
+    "md": "Markdown note", "markdown": "Markdown note", "txt": "Plain-text file",
+    "pdf": "PDF document", "docx": "Word document", "xlsx": "Excel workbook",
+    "csv": "CSV table", "pptx": "PowerPoint deck",
+}
+
+
+def _heading_outline(text: str, *, limit: int = 8) -> list[str]:
+    """First few Markdown headings from indexed text, as an indented outline (bounded)."""
+    out: list[str] = []
+    for line in text.splitlines():
+        stripped = line.lstrip()
+        if stripped.startswith("#"):
+            level = len(stripped) - len(stripped.lstrip("#"))
+            title = stripped[level:].strip()
+            if title:
+                out.append(f"  {'  ' * (level - 1)}- {title[:120]}")
+        if len(out) >= limit:
+            break
+    return out
+
+
+def _analyzer_block(detail: dict[str, Any]) -> list[str]:
+    """Deterministic, file-type-specific evidence derived from existing index metadata.
+
+    Uses only ``source_intelligence_metadata`` fields (file_ext, page/paragraph/sheet counts,
+    extraction_status) plus, for non-sensitive markdown, a bounded heading outline from the
+    indexed excerpt. Never dumps the file; sensitive sources have no excerpt so no outline.
+    """
+    ext = (detail.get("file_ext") or "").lower()
+    label = _FILE_TYPE_LABELS.get(ext, f"{ext.upper()} file" if ext else "Unknown file type")
+    status = detail.get("extraction_status")
+    has_text = bool(detail.get("text_excerpt"))
+    lines = [f"## File Analysis — {label}"]
+
+    if ext in {"md", "markdown"}:
+        if has_text:
+            outline = _heading_outline(str(detail["text_excerpt"]))
+            if outline:
+                lines.append("- Heading outline:")
+                lines += outline
+            else:
+                lines.append("- No Markdown headings detected in the indexed excerpt.")
+        if detail.get("paragraph_count") is not None:
+            lines.append(f"- Paragraphs: {detail['paragraph_count']}")
+    elif ext == "txt":
+        lines.append("- Plain text (no structure extracted).")
+        if detail.get("paragraph_count") is not None:
+            lines.append(f"- Paragraphs: {detail['paragraph_count']}")
+    elif ext == "pdf":
+        if detail.get("page_count") is not None:
+            lines.append(f"- Pages: {detail['page_count']}")
+        if status == "ok" and has_text:
+            lines.append("- Contains extractable text (text-based PDF).")
+        elif status in {"failed", "unsupported"} or not has_text:
+            lines.append("- No extractable text — likely a scanned/image-only PDF.")
+    elif ext == "docx":
+        if detail.get("paragraph_count") is not None:
+            lines.append(f"- Paragraphs: {detail['paragraph_count']}")
+        lines.append("- Word document (styles/tables not separately indexed).")
+    elif ext == "xlsx":
+        if detail.get("sheet_count") is not None:
+            lines.append(f"- Sheets: {detail['sheet_count']}")
+        lines.append("- Spreadsheet workbook (cell-level data not indexed).")
+    elif ext == "csv":
+        lines.append("- Tabular CSV (column/row structure not separately indexed).")
+    else:
+        lines.append("- Binary or unsupported file type — indexed as metadata/link only.")
+        if status:
+            lines.append(f"- Extraction status: {status}")
+    lines.append("")
+    return lines
+
+
 def _render_card(config: ObsidianMcpConfig, detail: dict[str, Any], generated_at: str,
                  advisory: dict[str, Any] | None = None) -> str:
     cap = int(getattr(config, "source_card_excerpt_chars", 600))
@@ -132,6 +207,10 @@ def _render_card(config: ObsidianMcpConfig, detail: dict[str, Any], generated_at
     if detail.get("project_number"):
         parts.append(f"- Project number: {detail['project_number']}")
     parts.append("")
+
+    # File-type-specific deterministic evidence (file sources only).
+    if detail.get("rel_path"):
+        parts += _analyzer_block(detail)
 
     # Bounded preview — only for non-sensitive file sources that have indexed text.
     if detail.get("rel_path"):
@@ -258,10 +337,15 @@ def summarize_source(repo: SourceIndexRepository, config: ObsidianMcpConfig, *, 
     text = text[:cap]
     rel = str(detail.get("rel_path"))
     deterministic = extract.analyze(rel, text, max_chars=cap)
-    result, mode = llm.summarize(config, text=text, deterministic=deterministic, backend=backend)
+    result, mode, reason = llm.summarize(
+        config, text=text, deterministic=deterministic, backend=backend,
+        file_ext=detail.get("file_ext"),
+    )
     if mode != "llm":
         # Ollama unavailable / fallback: the deterministic base card stands; no advisory written.
-        return {"summarized": False, "reason": "model_unavailable", "mode": mode,
+        # ``reason`` is a specific category (timeout / invalid_json / empty_response /
+        # ollama_unavailable / disabled) so the operator can tell why summarization fell back.
+        return {"summarized": False, "reason": reason, "mode": mode,
                 "source_id": source_id, "note_path": card_rel}
 
     generated_at = _now()

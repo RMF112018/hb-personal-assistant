@@ -12,19 +12,62 @@ No prompt or model response is ever persisted. The backend is injectable (any ob
 from __future__ import annotations
 
 import json
+from time import perf_counter as _perf_counter
 from typing import Any, Protocol
 
 from .config import ObsidianMcpConfig
 
 _SUMMARY_KEYS = ("summary", "key_points", "action_items", "decisions", "entities", "suggested_tags", "suggested_links")
 
-_SYSTEM_PROMPT = (
-    "You summarize a single Obsidian note or email for a construction project executive. "
+_JSON_CONTRACT = (
     "Return ONLY a JSON object with keys: summary (string), key_points (string array), "
     "action_items (string array), decisions (string array), entities (string array), "
     "suggested_tags (string array), suggested_links (string array). Be concise and factual; "
     "do not invent facts not present in the text."
 )
+
+_SYSTEM_PROMPT = (
+    "You summarize a single Obsidian note or email for a construction project executive. "
+    + _JSON_CONTRACT
+)
+
+# File-type-tuned advisory system prompts. The JSON output contract is identical across types;
+# only the framing differs so the advisory emphasizes what matters for each format. Used only on
+# the source-card summarization path (note/email summarize keeps the default prompt).
+_FILE_TYPE_PROMPTS = {
+    "pdf": (
+        "You summarize an extracted PDF document (drawings, specs, RFIs, or reports) for a "
+        "construction project executive. Note any sheet/section references and obligations. "
+        + _JSON_CONTRACT
+    ),
+    "docx": (
+        "You summarize an extracted Word document (letters, scopes, contracts, minutes) for a "
+        "construction project executive. Capture decisions, commitments, and dates. "
+        + _JSON_CONTRACT
+    ),
+    "xlsx": (
+        "You summarize an extracted spreadsheet (schedules, budgets, logs, trackers) for a "
+        "construction project executive. Note what the columns/totals track and any flagged rows. "
+        + _JSON_CONTRACT
+    ),
+    "csv": (
+        "You summarize tabular CSV data for a construction project executive. Note what each "
+        "column represents and any notable values. " + _JSON_CONTRACT
+    ),
+    "md": (
+        "You summarize a Markdown note for a construction project executive. " + _JSON_CONTRACT
+    ),
+    "txt": (
+        "You summarize a plain-text file for a construction project executive. " + _JSON_CONTRACT
+    ),
+}
+
+
+def _prompt_for(file_ext: str | None) -> str:
+    """Pick a file-type-tuned advisory system prompt, falling back to the default."""
+    if not file_ext:
+        return _SYSTEM_PROMPT
+    return _FILE_TYPE_PROMPTS.get(file_ext.lower(), _SYSTEM_PROMPT)
 
 
 class GenerationBackend(Protocol):
@@ -38,12 +81,30 @@ def _resolve_backend(config: ObsidianMcpConfig) -> GenerationBackend | None:
         if provider == "ollama":
             from hb_assistant.construction.classification.client import OllamaChatClient
 
-            return OllamaChatClient(model=config.summarization_model)
+            return OllamaChatClient(
+                model=config.summarization_model,
+                timeout=float(config.source_summary_ollama_timeout_seconds),
+            )
         if provider == "anthropic":
             return _AnthropicBackend(model=config.summarization_model)
     except Exception:  # noqa: BLE001 - optional dependency / construction import absent
         return None
     return None
+
+
+def _network_reason(exc: BaseException) -> str:
+    """Map a backend (network) failure to a stable category code.
+
+    The codes come from ``OllamaUnavailable`` messages (sanitized — no URL/body). Anything
+    unrecognized degrades to ``ollama_unavailable``. These are category codes only; no
+    prompt or model response is ever persisted.
+    """
+    message = str(exc)
+    if message == "ollama_timeout":
+        return "timeout"
+    if message == "ollama_missing_response_field":
+        return "empty_response"
+    return "ollama_unavailable"
 
 
 def summarize(
@@ -52,22 +113,84 @@ def summarize(
     text: str,
     deterministic: dict[str, Any],
     backend: GenerationBackend | None = None,
-) -> tuple[dict[str, Any], str]:
-    """Return (result, mode). ``mode`` is ``"llm"`` or ``"deterministic_fallback"``."""
+    file_ext: str | None = None,
+) -> tuple[dict[str, Any], str, str]:
+    """Return (result, mode, reason).
+
+    ``mode`` is ``"llm"`` or ``"deterministic_fallback"``. ``reason`` is ``"ok"`` on the
+    model path, ``"disabled"`` when summarization is configured off, or a specific failure
+    category (``timeout``, ``invalid_json``, ``empty_response``, ``ollama_unavailable``)
+    when the model path falls back. ``file_ext`` selects a file-type-tuned advisory prompt
+    (defaults to the generic note/email prompt).
+    """
     if config.summarization_backend == "deterministic":
-        return dict(deterministic), "deterministic_fallback"
+        return dict(deterministic), "deterministic_fallback", "disabled"
     chosen = backend or _resolve_backend(config)
     if chosen is None:
-        return dict(deterministic), "deterministic_fallback"
+        return dict(deterministic), "deterministic_fallback", "ollama_unavailable"
     try:
-        raw = chosen.generate_json(system=_SYSTEM_PROMPT, prompt=text)
+        raw = chosen.generate_json(system=_prompt_for(file_ext), prompt=text)
+    except Exception as exc:  # noqa: BLE001 - any backend failure falls back deterministically
+        return dict(deterministic), "deterministic_fallback", _network_reason(exc)
+    if not (raw or "").strip():
+        return dict(deterministic), "deterministic_fallback", "empty_response"
+    try:
         data = json.loads(raw)
         if not isinstance(data, dict):
             raise ValueError("non_object_response")
-    except (RuntimeError, ValueError, TypeError, KeyError):
-        # RuntimeError covers OllamaUnavailable; ValueError covers JSON decode errors.
-        return dict(deterministic), "deterministic_fallback"
-    return _merge(data, deterministic), "llm"
+    except (ValueError, TypeError, KeyError):
+        return dict(deterministic), "deterministic_fallback", "invalid_json"
+    return _merge(data, deterministic), "llm", "ok"
+
+
+def validate_summary_model(config: ObsidianMcpConfig) -> dict[str, Any]:
+    """Validate ``config.summarization_model`` against the locally installed Ollama tags.
+
+    Returns a structured report (never raises): ``available`` (daemon reachable), ``models``
+    (installed tags), ``requested``, ``resolved`` (the tag that would actually run), ``match``
+    (``exact`` | ``tag_resolved`` | ``missing`` | ``unknown``), and ``latency_ms``. A bare name
+    (``llama3.1``) resolves to the first installed ``name:tag`` (``llama3.1:8b``) and is reported
+    as ``tag_resolved`` — we never silently rewrite the persisted config.
+    """
+    requested = config.summarization_model
+    report: dict[str, Any] = {
+        "provider": config.summarization_provider,
+        "requested": requested,
+        "available": False,
+        "models": [],
+        "resolved": None,
+        "match": "unknown",
+        "latency_ms": None,
+    }
+    if config.summarization_provider != "ollama":
+        # Non-ollama providers are not introspectable here; report as unknown.
+        return report
+    try:
+        from hb_assistant.construction.classification.client import list_ollama_models
+    except Exception:  # noqa: BLE001 - construction import absent
+        report["match"] = "ollama_unavailable"
+        return report
+    start = _perf_counter()
+    try:
+        models = list_ollama_models()
+    except Exception as exc:  # noqa: BLE001 - daemon down / bad envelope
+        report["match"] = "ollama_unavailable"
+        report["reason"] = str(exc)
+        return report
+    report["available"] = True
+    report["models"] = models
+    report["latency_ms"] = int((_perf_counter() - start) * 1000)
+    if requested in models:
+        report["resolved"] = requested
+        report["match"] = "exact"
+    else:
+        resolved = next((m for m in models if m.split(":", 1)[0] == requested), None)
+        if resolved is not None:
+            report["resolved"] = resolved
+            report["match"] = "tag_resolved"
+        else:
+            report["match"] = "missing"
+    return report
 
 
 def _merge(data: dict[str, Any], deterministic: dict[str, Any]) -> dict[str, Any]:
