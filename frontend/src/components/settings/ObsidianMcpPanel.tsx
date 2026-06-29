@@ -23,6 +23,18 @@ import {
   testObsidianMcpReadFile,
   testObsidianMcpSearch,
   testObsidianMcpWriteSmoke,
+  getObsidianMcpSourceIndexStatus,
+  rebuildObsidianMcpSourceIndex,
+  generateObsidianMcpSourceCard,
+  summarizeObsidianMcpSource,
+  refreshObsidianMcpStaleSourceNotes,
+  testObsidianMcpModel,
+  getObsidianMcpSourceWatchStatus,
+  startObsidianMcpSourceWatch,
+  stopObsidianMcpSourceWatch,
+  restartObsidianMcpSourceWatch,
+  testObsidianMcpSourceWatchEvent,
+  recoverObsidianMcpSourceWatchStuck,
 } from '../../lib/api'
 import { SectionCard } from '../common/SectionCard'
 import { ErrorState } from '../common/ErrorState'
@@ -51,12 +63,16 @@ export function ObsidianMcpPanel() {
   const [listPath, setListPath] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [readPath, setReadPath] = useState('')
+  const [sourceIndex, setSourceIndex] = useState<any>(null)
+  const [watchStatus, setWatchStatus] = useState<any>(null)
+  const [modelTest, setModelTest] = useState<any>(null)
+  const [sourceIdInput, setSourceIdInput] = useState('')
 
   async function refreshAll() {
     setBusy('refresh')
     setError(null)
     try {
-      const [cfg, st, toolData, grokData, mutationData, oauthData, receiptData, chatgptData, llmChatData] =
+      const [cfg, st, toolData, grokData, mutationData, oauthData, receiptData, chatgptData, llmChatData, sourceIdx, watchSt] =
         await Promise.all([
         getObsidianMcpConfig(),
         getObsidianMcpStatus(),
@@ -67,6 +83,8 @@ export function ObsidianMcpPanel() {
         getObsidianMcpReadReceipts(10),
         getObsidianMcpChatGPT(),
         getObsidianMcpLlmChatStatus(),
+        getObsidianMcpSourceIndexStatus(),
+        getObsidianMcpSourceWatchStatus(),
       ])
       setConfig((cfg as any).config || cfg)
       setStatus(st)
@@ -77,6 +95,8 @@ export function ObsidianMcpPanel() {
       setReadReceipts((receiptData as any).read_receipts || [])
       setChatgpt(chatgptData)
       setLlmChat(llmChatData)
+      setSourceIndex(sourceIdx)
+      setWatchStatus(watchSt)
     } catch (err) {
       setError(err)
     } finally {
@@ -98,6 +118,29 @@ export function ObsidianMcpPanel() {
       setConfig((payload as any).config)
       setMessage('Obsidian MCP settings saved.')
       await refreshAll()
+    } catch (err) {
+      setError(err)
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  async function runSourceAction(key: string, fn: () => Promise<unknown>, okMessage: string) {
+    setBusy(key)
+    setError(null)
+    setMessage(null)
+    try {
+      const result = await fn()
+      if (key === 'model-test') setModelTest(result)
+      if (key.startsWith('watch-')) setWatchStatus(result)
+      setMessage(okMessage)
+      // Refresh the source-index + watcher snapshots after any mutating action.
+      const [idx, watch] = await Promise.all([
+        getObsidianMcpSourceIndexStatus(),
+        getObsidianMcpSourceWatchStatus(),
+      ])
+      setSourceIndex(idx)
+      if (!key.startsWith('watch-')) setWatchStatus(watch)
     } catch (err) {
       setError(err)
     } finally {
@@ -771,6 +814,106 @@ export function ObsidianMcpPanel() {
           ))}
         </div>
       </div>
+
+        <div className="rounded border border-[var(--hb-border)] p-3 text-xs">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <h4 className="text-sm font-medium">Source Intelligence</h4>
+            <button className="badge inline-flex items-center gap-1" onClick={() => runSourceAction('rebuild', rebuildObsidianMcpSourceIndex, 'Source index rebuild queued.')} disabled={busy !== null}>
+              <RefreshCw size={12} aria-hidden /> {busy === 'rebuild' ? 'Queuing...' : 'Rebuild index'}
+            </button>
+          </div>
+
+          {(sourceIndex?.config_warnings || []).length > 0 && (
+            <div className="mb-2 rounded border border-amber-400 bg-amber-50 p-2 text-amber-700">
+              {(sourceIndex.config_warnings as string[]).map((w) => (
+                <div key={w} className="font-mono text-[10px]">{w}</div>
+              ))}
+            </div>
+          )}
+
+          <div className="grid gap-2 sm:grid-cols-3">
+            <StatusRow label="Indexed sources" value={String(sourceIndex?.sources_total ?? '—')} />
+            <StatusRow label="Queued / processing / error" value={`${sourceIndex?.queued_count ?? 0} / ${sourceIndex?.processing_count ?? 0} / ${sourceIndex?.error_count ?? 0}`} />
+            <StatusRow label="Stale notes" value={String(sourceIndex?.stale_note_count ?? 0)} />
+            <StatusRow label="Summaries (stale)" value={`${sourceIndex?.summarized_count ?? 0} (${sourceIndex?.stale_summary_count ?? 0})`} />
+            <StatusRow label="Last indexed" value={sourceIndex?.last_indexed_at || 'Never'} />
+            <StatusRow label="FTS available" value={sourceIndex?.fts_available ? 'Yes' : 'No'} />
+          </div>
+
+          <div className="mt-3 rounded border border-[var(--hb-border)] p-2">
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              <span className="text-sm font-medium">Watcher</span>
+              <span className={`badge ${watchStatus?.running ? 'badge-fresh' : 'badge-muted'}`}>{watchStatus?.running ? `running (${watchStatus?.mode})` : 'stopped'}</span>
+              <button className="badge" onClick={() => runSourceAction('watch-start', startObsidianMcpSourceWatch, 'Watcher started.')} disabled={busy !== null}>Start</button>
+              <button className="badge" onClick={() => runSourceAction('watch-stop', stopObsidianMcpSourceWatch, 'Watcher stopped.')} disabled={busy !== null}>Stop</button>
+              <button className="badge" onClick={() => runSourceAction('watch-restart', restartObsidianMcpSourceWatch, 'Watcher restarted.')} disabled={busy !== null}>Restart</button>
+              <button className="badge" onClick={() => runSourceAction('watch-test', testObsidianMcpSourceWatchEvent, 'Test event drained.')} disabled={busy !== null}>Test event</button>
+              <button className="badge" onClick={() => runSourceAction('watch-recover', recoverObsidianMcpSourceWatchStuck, 'Stuck events recovered.')} disabled={busy !== null}>Recover stuck</button>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-3">
+              <StatusRow label="Oldest processing (s)" value={String(watchStatus?.queue_health?.oldest_processing_age_seconds ?? '—')} />
+              <StatusRow label="Last drain" value={watchStatus?.queue_health?.last_drain_at || 'Never'} />
+              <StatusRow label="Last note / summary" value={`${watchStatus?.queue_health?.last_note_at ? 'Y' : '—'} / ${watchStatus?.queue_health?.last_summary_at ? 'Y' : '—'}`} />
+            </div>
+            <div className="mt-2">
+              <div className="text-[10px] uppercase text-[var(--hb-muted)]">Configured roots</div>
+              {(watchStatus?.roots || sourceIndex?.watcher?.roots || []).length === 0 ? (
+                <div className="mt-1 text-[var(--hb-muted)]">No external source roots configured.</div>
+              ) : (
+                <ul className="mt-1 space-y-1">
+                  {(watchStatus?.roots || []).map((root: any) => (
+                    <li key={root.key} className="flex items-center gap-2">
+                      <span className={`badge ${root.enabled ? 'badge-fresh' : 'badge-muted'}`}>{root.enabled ? 'on' : 'off'}</span>
+                      {root.sensitive && <span className="badge badge-stale">sensitive</span>}
+                      <span className="font-mono text-[10px]">{root.key}</span>
+                      <span className="truncate text-[var(--hb-muted)]">{root.path}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+
+          <div className="mt-3 rounded border border-[var(--hb-border)] p-2">
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              <span className="text-sm font-medium">Summary model</span>
+              <button className="badge" onClick={() => runSourceAction('model-test', testObsidianMcpModel, 'Model test complete.')} disabled={busy !== null}>{busy === 'model-test' ? 'Testing...' : 'Test model'}</button>
+            </div>
+            {modelTest ? (
+              <div className="grid gap-2 sm:grid-cols-3">
+                <StatusRow label="Requested" value={modelTest.requested || '—'} />
+                <StatusRow label="Resolved" value={modelTest.resolved || '—'} />
+                <StatusRow label="Match" value={modelTest.match || '—'} />
+                <StatusRow label="Available" value={modelTest.available ? 'Yes' : 'No'} />
+                <StatusRow label="Latency (ms)" value={String(modelTest.latency_ms ?? '—')} />
+                <StatusRow label="Installed" value={String((modelTest.models || []).length)} />
+              </div>
+            ) : (
+              <div className="text-[var(--hb-muted)]">Run a model test to validate the configured summary model against installed Ollama tags.</div>
+            )}
+            {modelTest?.match === 'missing' && (
+              <div className="mt-2 rounded border border-amber-400 bg-amber-50 p-2 text-amber-700">Configured model not installed. Pick one of: {(modelTest.models || []).join(', ') || '(none)'}.</div>
+            )}
+            {modelTest?.match === 'tag_resolved' && (
+              <div className="mt-2 text-[var(--hb-muted)]">Bare tag resolves to <span className="font-mono">{modelTest.resolved}</span>. Consider pinning it in config.</div>
+            )}
+          </div>
+
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            <Toggle label="Auto-generate cards on index" checked={!!config?.source_card_auto_generate_enabled} onChange={(v) => saveConfig({ source_card_auto_generate_enabled: v })} disabled={busy !== null} />
+            <Toggle label="Auto-summarize on index" checked={!!config?.source_summary_auto_generate_enabled} onChange={(v) => saveConfig({ source_summary_auto_generate_enabled: v })} disabled={busy !== null} />
+            <Toggle label="Auto-refresh existing cards" checked={config?.source_note_auto_refresh_enabled !== false} onChange={(v) => saveConfig({ source_note_auto_refresh_enabled: v })} disabled={busy !== null} />
+          </div>
+
+          <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_auto_auto]">
+            <input className="w-full rounded border border-[var(--hb-border)] bg-[var(--hb-bg)] px-2 py-1 text-sm" value={sourceIdInput} onChange={(e) => setSourceIdInput(e.target.value)} placeholder="source_id" aria-label="source id" />
+            <button className="badge" onClick={() => runSourceAction('gen-card', () => generateObsidianMcpSourceCard({ source_id: sourceIdInput, overwrite: true }), 'Source card generated.')} disabled={busy !== null || !sourceIdInput.trim()}>Generate card</button>
+            <button className="badge" onClick={() => runSourceAction('summarize', () => summarizeObsidianMcpSource({ source_id: sourceIdInput }), 'Summarize requested.')} disabled={busy !== null || !sourceIdInput.trim()}>Summarize</button>
+          </div>
+          <div className="mt-2">
+            <button className="badge" onClick={() => runSourceAction('refresh-stale', () => refreshObsidianMcpStaleSourceNotes({ max_updates: 25 }), 'Stale source notes refreshed.')} disabled={busy !== null}>Refresh stale notes</button>
+          </div>
+        </div>
 
       {message && <div className="mt-3 text-xs text-green-600">{message}</div>}
       <ErrorState userMessage="Obsidian MCP settings could not be loaded." error={error} className="mt-3" />
