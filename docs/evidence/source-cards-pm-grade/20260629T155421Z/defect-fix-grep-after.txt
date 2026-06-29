@@ -1,0 +1,12 @@
+src/hb_assistant/obsidian_mcp/config.py:109:    source_card_auto_max_per_drain: int = 200
+src/hb_assistant/obsidian_mcp/config.py:161:        "source_card_auto_max_per_drain",
+src/hb_assistant/obsidian_mcp/config.py:296:    source_card_auto_max_per_drain: int | None = None
+src/hb_assistant/obsidian_mcp/source_indexer.py:377:    ``source_summary_auto_max_per_drain`` and deterministic cards by ``source_card_auto_max_per_drain``
+src/hb_assistant/obsidian_mcp/source_indexer.py:384:    card_cap = int(getattr(config, "source_card_auto_max_per_drain", 200))
+src/hb_assistant/construction/analytics/api.py:355:    source_card_auto_max_per_drain: int | None = None
+frontend/src/lib/api.ts:507:  source_card_auto_max_per_drain?: number;
+frontend/src/components/settings/ObsidianMcpPanel.test.tsx:289:    renderPanelWith({ config: { source_card_auto_max_per_drain: 25 } })
+frontend/src/components/settings/ObsidianMcpPanel.test.tsx:297:    renderPanelWith({ config: { source_card_auto_max_per_drain: 200 } })
+frontend/src/components/settings/ObsidianMcpPanel.test.tsx:304:    expect(lastPatch()).toEqual(expect.objectContaining({ source_card_auto_max_per_drain: 25 }))
+frontend/src/components/settings/ObsidianMcpPanel.tsx:196:    setCardMaxPerDrainInput(config.source_card_auto_max_per_drain != null ? String(config.source_card_auto_max_per_drain) : '')
+frontend/src/components/settings/ObsidianMcpPanel.tsx:1182:            <Field label="Card auto max per drain" value={cardMaxPerDrainInput} onChange={setCardMaxPerDrainInput} onBlur={() => commitNumericField('source_card_auto_max_per_drain', cardMaxPerDrainInput, 'int')} />

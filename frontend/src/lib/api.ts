@@ -494,10 +494,24 @@ export function patchSettingsAdmin(patch: any) {
   return fetchJson('/api/settings/admin', { method: 'PATCH', body: JSON.stringify(patch) });
 }
 
+/**
+ * Known Obsidian MCP config fields used by the settings UI. Index signature keeps it
+ * compatible with the existing `saveConfig(patch: Record<string, unknown>)` callers while
+ * documenting the typed source-intelligence generation controls.
+ */
+export interface ObsidianMcpConfigPatch {
+  source_card_auto_generate_enabled?: boolean;
+  source_summary_auto_generate_enabled?: boolean;
+  source_note_auto_refresh_enabled?: boolean;
+  source_summary_auto_max_per_drain?: number;
+  source_card_auto_max_per_drain?: number;
+  [key: string]: unknown;
+}
+
 export function getObsidianMcpConfig() {
   return fetchJson('/api/settings/obsidian-mcp/config');
 }
-export function patchObsidianMcpConfig(patch: any) {
+export function patchObsidianMcpConfig(patch: ObsidianMcpConfigPatch) {
   return fetchJson('/api/settings/obsidian-mcp/config', { method: 'PATCH', body: JSON.stringify(patch) });
 }
 export function getObsidianMcpStatus() {

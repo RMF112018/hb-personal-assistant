@@ -141,6 +141,27 @@ def test_config_update_persists_external_sources_and_preserves_token(
     assert [r.source_root_key for r in persisted.external_sources] == ["manual-test"]
 
 
+def test_config_update_persists_source_card_auto_max_per_drain(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """PATCH of the deterministic-card per-drain cap persists and is returned in the config."""
+    client, vault = _client(tmp_path, monkeypatch)
+    res = client.patch(
+        "/api/settings/obsidian-mcp/config",
+        json={"enabled": True, "vault_root": str(vault), "source_card_auto_max_per_drain": 25},
+        headers={"X-HB-UI-Role": "operator"},
+    )
+    assert res.status_code == 200
+    body = res.json()
+    _assert_safe(body)
+    assert body["config"]["source_card_auto_max_per_drain"] == 25
+    assert load_config().source_card_auto_max_per_drain == 25
+
+    # GET reflects the persisted value too.
+    reread = client.get("/api/settings/obsidian-mcp/config").json()
+    assert reread["config"]["source_card_auto_max_per_drain"] == 25
+
+
 def test_config_update_rejects_relative_external_source_path(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
