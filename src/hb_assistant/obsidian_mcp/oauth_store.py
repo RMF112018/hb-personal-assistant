@@ -199,8 +199,23 @@ def get_client(client_id: str) -> OAuthClient | None:
 # ---------------------------------------------------------------------------
 # Request validation (shared by the authorize render + submit paths).
 # ---------------------------------------------------------------------------
-def normalize_scopes(scope: str | None) -> list[str]:
-    requested = (scope or "").split()
+def _scope_items(scope: object, *, default: str | None = None) -> list[str]:
+    if scope is None or scope == "":
+        scope = default
+    if scope is None:
+        return []
+    if isinstance(scope, str):
+        return scope.split()
+    if isinstance(scope, list):
+        requested: list[str] = []
+        for item in scope:
+            requested.extend(str(item).split())
+        return requested
+    raise OAuthError("invalid_scope", "scope must be a string or list")
+
+
+def normalize_scopes(scope: object, *, default: str | None = None) -> list[str]:
+    requested = _scope_items(scope, default=default)
     if not requested:
         raise OAuthError("invalid_scope", "no scope requested")
     normalized: list[str] = []
@@ -276,6 +291,7 @@ def registration_diagnostics(
     *,
     grant_types: list[str] | None = None,
     response_types: list[str] | None = None,
+    scopes: list[str] | None = None,
     error: str | None = None,
 ) -> dict:
     def _safe_list(key: str, default: list[str]) -> list[str]:
@@ -284,10 +300,17 @@ def registration_diagnostics(
         except OAuthError:
             return ["<invalid_type>"]
 
+    try:
+        requested_scope = _scope_items(metadata.get("scope"), default="obsidian.read") or ["obsidian.read"]
+    except OAuthError:
+        requested_scope = ["<invalid_type>"]
+
     payload = {
-        "metadata_keys": sorted(str(key) for key in metadata.keys()),
+        "metadata_keys": sorted(str(key) for key in metadata),
         "grant_types": grant_types or _safe_list("grant_types", ["authorization_code"]),
         "response_types": response_types or _safe_list("response_types", ["code"]),
+        "requested_scope": requested_scope,
+        "normalized_scope": scopes,
         "token_endpoint_auth_method": str(metadata.get("token_endpoint_auth_method", "none")),
     }
     if error:
@@ -301,7 +324,7 @@ def _record_registration_rejection(metadata: dict, *, error: str) -> None:
     record_event("client_registration_rejected", registration_metadata=diagnostics)
 
 
-def register_client(metadata: dict) -> dict:
+def register_client(metadata: dict, *, default_scope: str = "obsidian.read") -> dict:
     if metadata.get("client_secret") or metadata.get("client_secret_expires_at"):
         _record_registration_rejection(metadata, error="client_secret_present")
         raise OAuthError("invalid_client_metadata", "client secrets are not accepted for public clients")
@@ -323,7 +346,11 @@ def register_client(metadata: dict) -> dict:
     if metadata.get("token_endpoint_auth_method", "none") != "none":
         _record_registration_rejection(metadata, error="unsupported_token_endpoint_auth_method")
         raise OAuthError("invalid_client_metadata", "token_endpoint_auth_method must be none")
-    scopes = normalize_scopes(str(metadata.get("scope") or "obsidian.read"))
+    try:
+        scopes = normalize_scopes(metadata.get("scope"), default=default_scope)
+    except OAuthError as exc:
+        _record_registration_rejection(metadata, error=exc.description or exc.error)
+        raise
     issued_at = int(_now())
     client_id = f"{DCR_CLIENT_PREFIX}{secrets.token_urlsafe(18)}"
     client = OAuthClient(
@@ -348,7 +375,12 @@ def register_client(metadata: dict) -> dict:
         "client_registered",
         scope=" ".join(scopes),
         client_id=client_id,
-        registration_metadata=registration_diagnostics(metadata, grant_types=grant_types, response_types=response_types),
+        registration_metadata=registration_diagnostics(
+            metadata,
+            grant_types=grant_types,
+            response_types=response_types,
+            scopes=scopes,
+        ),
     )
     return client.public_dict()
 
@@ -627,8 +659,9 @@ def grok_setup_values(base_url: str) -> dict:
     }
 
 
-def chatgpt_setup_values(base_url: str) -> dict:
+def chatgpt_setup_values(base_url: str, *, initial_scopes: list[str] | tuple[str, ...] | None = None) -> dict:
     base = base_url.rstrip("/")
+    scopes = list(initial_scopes or ["obsidian.read"])
     return {
         "connector_url": mcp_resource(base),
         "mcp_url": mcp_resource(base),
@@ -640,7 +673,7 @@ def chatgpt_setup_values(base_url: str) -> dict:
         "registration_endpoint": f"{base}/oauth/register",
         "registration_mode": "dynamic_client_registration",
         "client_id_metadata_document_supported": False,
-        "initial_scope": "obsidian.read",
+        "initial_scope": " ".join(scopes),
     }
 
 

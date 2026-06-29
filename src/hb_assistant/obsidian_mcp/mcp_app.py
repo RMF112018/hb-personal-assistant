@@ -118,6 +118,18 @@ def _safe_descriptors(args: dict[str, Any]) -> dict[str, Any]:
     return safe
 
 
+def _tool_start_message(tool: str) -> str:
+    return f"obsidian_mcp.tool_start tool={tool}"
+
+
+def _tool_end_message(tool: str, elapsed_ms: float) -> str:
+    return f"obsidian_mcp.tool_end tool={tool} elapsed_ms={elapsed_ms}"
+
+
+def _tool_error_message(tool: str, error_code: str, elapsed_ms: float) -> str:
+    return f"obsidian_mcp.tool_error tool={tool} error_code={error_code} elapsed_ms={elapsed_ms}"
+
+
 def _auth_required(config: ObsidianMcpConfig) -> bool:
     return bool(config.token_configured or getattr(config, "oauth_enabled", False))
 
@@ -320,7 +332,7 @@ def build_streamable_http_app(service: ObsidianMcpService | None = None) -> Any:
             **_safe_descriptors(args),
         }
         _logger.info(
-            "obsidian_mcp.tool_start",
+            _tool_start_message(tool),
             extra={"obsidian_mcp": {"tool": tool, "status": "start", **diag}},
         )
         started = time.monotonic()
@@ -333,7 +345,7 @@ def build_streamable_http_app(service: ObsidianMcpService | None = None) -> Any:
         except TimeoutError:
             elapsed_ms = round((time.monotonic() - started) * 1000, 1)
             _logger.warning(
-                "obsidian_mcp.tool_error",
+                _tool_error_message(tool, "tool_timeout", elapsed_ms),
                 extra={
                     "obsidian_mcp": {
                         "tool": tool,
@@ -348,7 +360,7 @@ def build_streamable_http_app(service: ObsidianMcpService | None = None) -> Any:
         except ObsidianMcpToolError as exc:
             elapsed_ms = round((time.monotonic() - started) * 1000, 1)
             _logger.warning(
-                "obsidian_mcp.tool_error",
+                _tool_error_message(tool, exc.code, elapsed_ms),
                 extra={
                     "obsidian_mcp": {
                         "tool": tool,
@@ -363,7 +375,7 @@ def build_streamable_http_app(service: ObsidianMcpService | None = None) -> Any:
         except Exception as exc:
             elapsed_ms = round((time.monotonic() - started) * 1000, 1)
             _logger.warning(
-                "obsidian_mcp.tool_error",
+                _tool_error_message(tool, "internal_error", elapsed_ms),
                 extra={
                     "obsidian_mcp": {
                         "tool": tool,
@@ -377,7 +389,7 @@ def build_streamable_http_app(service: ObsidianMcpService | None = None) -> Any:
             raise ObsidianMcpToolError("internal_error") from exc
         elapsed_ms = round((time.monotonic() - started) * 1000, 1)
         _logger.info(
-            "obsidian_mcp.tool_end",
+            _tool_end_message(tool, elapsed_ms),
             extra={"obsidian_mcp": {"tool": tool, "status": "ok", "elapsed_ms": elapsed_ms, **diag}},
         )
         return result

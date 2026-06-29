@@ -20,7 +20,7 @@ from fastapi.testclient import TestClient
 from hb_assistant.construction.analytics import api as api_module
 from hb_assistant.construction.analytics.api import create_app
 from hb_assistant.obsidian_mcp import config as config_module
-from hb_assistant.obsidian_mcp import mcp_app, oauth_store
+from hb_assistant.obsidian_mcp import mcp_app, mutations, oauth_store
 from hb_assistant.obsidian_mcp.config import ObsidianMcpConfigPatch, apply_patch
 from hb_assistant.obsidian_mcp.tools import ObsidianMcpToolError
 
@@ -82,6 +82,58 @@ def _token(client: TestClient, *, code: str, verifier: str) -> dict:
     return {"status": response.status_code, "body": response.json()}
 
 
+def _register_chatgpt_client(client: TestClient, *, scope: object = "obsidian.read") -> dict:
+    payload = {
+        "redirect_uris": ["https://chatgpt.com/connector/oauth/test-callback"],
+        "grant_types": ["authorization_code"],
+        "response_types": ["code"],
+        "token_endpoint_auth_method": "none",
+        "client_name": "ChatGPT",
+    }
+    if scope is not None:
+        payload["scope"] = scope
+    response = client.post("/oauth/register", json=payload)
+    assert response.status_code == 201, response.text
+    return response.json()
+
+
+def _authorize_dynamic(client: TestClient, *, client_id: str, redirect_uri: str, scope: str, challenge: str) -> str:
+    response = client.post(
+        "/oauth/authorize",
+        data={
+            "response_type": "code",
+            "client_id": client_id,
+            "redirect_uri": redirect_uri,
+            "scope": scope,
+            "state": "xyz-state",
+            "code_challenge": challenge,
+            "code_challenge_method": "S256",
+            "decision": "approve",
+            "resource": f"{BASE_URL}/mcp",
+        },
+        follow_redirects=False,
+    )
+    assert response.status_code == 302, response.text
+    query = parse_qs(urlsplit(response.headers["location"]).query)
+    assert query["state"] == ["xyz-state"]
+    return query["code"][0]
+
+
+def _token_dynamic(client: TestClient, *, client_id: str, redirect_uri: str, code: str, verifier: str) -> dict:
+    response = client.post(
+        "/oauth/token",
+        data={
+            "grant_type": "authorization_code",
+            "code": code,
+            "redirect_uri": redirect_uri,
+            "client_id": client_id,
+            "code_verifier": verifier,
+            "resource": f"{BASE_URL}/mcp",
+        },
+    )
+    return {"status": response.status_code, "body": response.json()}
+
+
 def test_authorization_server_metadata(tmp_path: Path) -> None:
     _enable_oauth()
     body = _client(tmp_path).get("/.well-known/oauth-authorization-server").json()
@@ -128,6 +180,24 @@ def test_oauth_register_accepts_valid_chatgpt_public_client(tmp_path: Path) -> N
     assert body["token_endpoint_auth_method"] == "none"
     assert body["grant_types"] == ["authorization_code"]
     assert body["response_types"] == ["code"]
+
+
+def test_oauth_register_accepts_write_scope_and_list_scope(tmp_path: Path) -> None:
+    _enable_oauth()
+    client = _client(tmp_path)
+    body = _register_chatgpt_client(client, scope=["obsidian.read", "obsidian.write"])
+    assert body["scope"] == "obsidian.read obsidian.write"
+    events = oauth_store.recent_events(1)
+    metadata = events[0]["registration_metadata"]
+    assert metadata["requested_scope"] == ["obsidian.read", "obsidian.write"]
+    assert metadata["normalized_scope"] == ["obsidian.read", "obsidian.write"]
+
+
+def test_oauth_register_missing_scope_defaults_to_read_only(tmp_path: Path) -> None:
+    _enable_oauth()
+    client = _client(tmp_path)
+    body = _register_chatgpt_client(client, scope=None)
+    assert body["scope"] == "obsidian.read"
 
 
 @pytest.mark.parametrize(
@@ -205,8 +275,78 @@ def test_oauth_register_rejection_event_has_redacted_diagnostics(tmp_path: Path)
     assert "client_secret" in metadata["metadata_keys"]
     assert metadata["grant_types"] == ["client_credentials"]
     assert metadata["response_types"] == ["code"]
+    assert metadata["requested_scope"] == ["obsidian.read"]
     assert metadata["token_endpoint_auth_method"] == "none"
     assert "must-not-leak" not in str(events[0])
+
+
+def test_registered_read_only_client_cannot_authorize_write_scope(tmp_path: Path) -> None:
+    _enable_oauth()
+    client = _client(tmp_path)
+    registered = _register_chatgpt_client(client, scope="obsidian.read")
+    _, challenge = _pkce()
+    response = client.post(
+        "/oauth/authorize",
+        data={
+            "response_type": "code",
+            "client_id": registered["client_id"],
+            "redirect_uri": registered["redirect_uris"][0],
+            "scope": "obsidian.read obsidian.write",
+            "state": "s",
+            "code_challenge": challenge,
+            "code_challenge_method": "S256",
+            "decision": "approve",
+            "resource": f"{BASE_URL}/mcp",
+        },
+        follow_redirects=False,
+    )
+    assert response.status_code == 400
+    assert "scope not registered for client" in response.text
+
+
+def test_registered_write_client_code_and_token_preserve_exact_scopes(tmp_path: Path) -> None:
+    _enable_oauth()
+    client = _client(tmp_path)
+    registered = _register_chatgpt_client(client, scope="obsidian.read obsidian.write")
+    verifier, challenge = _pkce()
+    code = _authorize_dynamic(
+        client,
+        client_id=registered["client_id"],
+        redirect_uri=registered["redirect_uris"][0],
+        scope="obsidian.read obsidian.write",
+        challenge=challenge,
+    )
+    result = _token_dynamic(client, client_id=registered["client_id"], redirect_uri=registered["redirect_uris"][0], code=code, verifier=verifier)
+    assert result["status"] == 200
+    assert result["body"]["scope"] == "obsidian.read obsidian.write"
+    assert "refresh_token" not in result["body"]
+    info = oauth_store.validate_access_token(result["body"]["access_token"], resource=f"{BASE_URL}/mcp")
+    assert info is not None
+    assert info.client_id == registered["client_id"]
+    assert info.scopes == ("obsidian.read", "obsidian.write")
+
+
+def test_existing_read_only_client_not_upgraded_by_write_enabled_setup(tmp_path: Path) -> None:
+    _enable_oauth()
+    client = _client(tmp_path)
+    registered = _register_chatgpt_client(client, scope="obsidian.read")
+    apply_patch(ObsidianMcpConfigPatch(chatgpt_readonly_mode=False))
+    _, challenge = _pkce()
+    response = client.get(
+        "/oauth/authorize",
+        params={
+            "response_type": "code",
+            "client_id": registered["client_id"],
+            "redirect_uri": registered["redirect_uris"][0],
+            "scope": "obsidian.read obsidian.write",
+            "state": "s",
+            "code_challenge": challenge,
+            "code_challenge_method": "S256",
+            "resource": f"{BASE_URL}/mcp",
+        },
+    )
+    assert response.status_code == 400
+    assert "scope not registered for client" in response.text
 
 
 def test_registered_client_authorize_redirect_exact_match_required(tmp_path: Path) -> None:
@@ -514,6 +654,76 @@ def test_scope_enforcement_write_token_allows_write(tmp_path: Path) -> None:
     mcp_app.enforce_tool_scope("vault_email_to_note_apply", header, config)
 
 
+def test_write_enabled_oauth_token_still_obeys_write_policy_and_records_receipt(tmp_path: Path) -> None:
+    _enable_oauth()
+    client = _client(tmp_path)
+    verifier, challenge = _pkce()
+    code = _authorize(client, scope="obsidian.read obsidian.write", challenge=challenge)
+    token = _token(client, code=code, verifier=verifier)["body"]["access_token"]
+    config, _ = apply_patch(
+        ObsidianMcpConfigPatch(
+            writes_enabled=True,
+            vault_markdown_write_enabled=True,
+            write_requires_expected_sha256=True,
+        )
+    )
+    header = f"Bearer {token}"
+    mcp_app.enforce_tool_scope("create_note", header, config)
+    assert mcp_app.resolve_granted_scopes(header, config) == ("obsidian.read", "obsidian.write")
+    result = mutations.create_note(
+        config,
+        path="AI Outputs/MCP Write Tests/chatgpt-write-test.md",
+        content="scratch write test\n",
+        caller_surface="mcp",
+        tool_name="create_note",
+        principal_kind="oauth",
+    )
+    assert result["path"] == "AI Outputs/MCP Write Tests/chatgpt-write-test.md"
+    events = mutations.recent_mutations(1)
+    assert events[0]["relative_path"] == "AI Outputs/MCP Write Tests/chatgpt-write-test.md"
+    assert events[0]["status"] == "applied"
+    assert events[0]["principal_kind"] == "oauth"
+
+
+def test_read_only_oauth_token_blocks_scratch_write_before_mutation(tmp_path: Path) -> None:
+    _enable_oauth()
+    client = _client(tmp_path)
+    verifier, challenge = _pkce()
+    code = _authorize(client, scope="obsidian.read", challenge=challenge)
+    token = _token(client, code=code, verifier=verifier)["body"]["access_token"]
+    config, _ = apply_patch(
+        ObsidianMcpConfigPatch(
+            writes_enabled=True,
+            vault_markdown_write_enabled=True,
+        )
+    )
+    with pytest.raises(ObsidianMcpToolError) as exc:
+        mcp_app.enforce_tool_scope("create_note", f"Bearer {token}", config)
+    assert exc.value.code == "insufficient_scope"
+    assert mutations.recent_mutations(1) == []
+
+
+def test_write_enabled_oauth_scope_does_not_bypass_write_policy(tmp_path: Path) -> None:
+    _enable_oauth()
+    token = oauth_store.issue_access_token(
+        scopes=["obsidian.read", "obsidian.write"],
+        client_id=oauth_store.CLIENT_ID,
+        resource=f"{BASE_URL}/mcp",
+    )["access_token"]
+    config = config_module.load_config()
+    mcp_app.enforce_tool_scope("create_note", f"Bearer {token}", config)
+    with pytest.raises(ObsidianMcpToolError) as exc:
+        mutations.create_note(
+            config,
+            path="AI Outputs/MCP Write Tests/chatgpt-write-test.md",
+            content="scratch write test\n",
+            caller_surface="mcp",
+            tool_name="create_note",
+            principal_kind="oauth",
+        )
+    assert exc.value.code == "writes_disabled"
+
+
 def test_static_bearer_is_unrestricted(tmp_path: Path) -> None:
     apply_patch(ObsidianMcpConfigPatch(bearer_token="static-local-token", oauth_enabled=True))
     config = config_module.load_config()
@@ -521,6 +731,18 @@ def test_static_bearer_is_unrestricted(tmp_path: Path) -> None:
     assert mcp_app.is_authorized(header, config) is True
     assert mcp_app.resolve_granted_scopes(header, config) is None
     mcp_app.enforce_tool_scope("create_note", header, config)  # static token = full access
+
+
+def test_oauth_caller_is_not_unrestricted_operator_principal(tmp_path: Path) -> None:
+    _enable_oauth()
+    token = oauth_store.issue_access_token(
+        scopes=["obsidian.read", "obsidian.write"],
+        client_id=oauth_store.CLIENT_ID,
+        resource=f"{BASE_URL}/mcp",
+    )["access_token"]
+    config = config_module.load_config()
+    assert mcp_app.resolve_granted_scopes(f"Bearer {token}", config) == ("obsidian.read", "obsidian.write")
+    assert mcp_app.resolve_granted_scopes(f"Bearer {token}", config) is not None
 
 
 def test_no_auth_configured_is_unrestricted(tmp_path: Path) -> None:
@@ -618,6 +840,37 @@ def test_ui_oauth_status_has_no_token_leak(tmp_path: Path) -> None:
     assert code not in text
     for marker in _FORBIDDEN_MARKERS:
         assert marker not in text, marker
+
+
+def test_chatgpt_status_uses_write_enabled_setup_scope_without_upgrading_clients(tmp_path: Path) -> None:
+    _enable_oauth()
+    apply_patch(ObsidianMcpConfigPatch(chatgpt_readonly_mode=False))
+    response = _client(tmp_path).get("/api/settings/obsidian-mcp/chatgpt")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["readonly_mode"] is False
+    assert body["initial_scopes"] == ["obsidian.read", "obsidian.write"]
+    assert body["setup"]["initial_scope"] == "obsidian.read obsidian.write"
+
+
+def test_tool_error_message_includes_tool_and_error_code_without_raw_payload() -> None:
+    message = mcp_app._tool_error_message("vault_semantic_search", "tool_timeout", 30001.2)
+    assert message == "obsidian_mcp.tool_error tool=vault_semantic_search error_code=tool_timeout elapsed_ms=30001.2"
+    safe = mcp_app._safe_descriptors(
+        {
+            "query": "private search text",
+            "content": "raw note body",
+            "authorization": "Bearer should-not-log",
+            "path": "AI Outputs/MCP Write Tests/chatgpt-write-test.md",
+        }
+    )
+    assert safe == {
+        "content_chars": 13,
+        "path": "AI Outputs/MCP Write Tests/chatgpt-write-test.md",
+    }
+    assert "private search text" not in str(safe)
+    assert "Bearer should-not-log" not in str(safe)
+    assert "raw note body" not in str(safe)
 
 
 def test_deny_redirects_with_access_denied(tmp_path: Path) -> None:

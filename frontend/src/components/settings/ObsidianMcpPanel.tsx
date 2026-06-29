@@ -261,6 +261,9 @@ export function ObsidianMcpPanel() {
   const blockers = (health?.blocking_issues || status?.blocking_issues || []) as any[]
   const warnings = (health?.warnings || status?.warnings || []) as any[]
   const writePolicy = config || status?.write_policy || {}
+  const chatgptInitialScopes = (chatgpt?.initial_scopes || config?.chatgpt_initial_scopes || ['obsidian.read']) as string[]
+  const chatgptInitialScopeText = chatgpt?.setup?.initial_scope || chatgptInitialScopes.join(' ')
+  const chatgptWriteEnabled = chatgptInitialScopes.includes('obsidian.write') || chatgptInitialScopeText.includes('obsidian.write')
 
   return (
     <SectionCard
@@ -521,11 +524,31 @@ export function ObsidianMcpPanel() {
         </div>
         <div className="grid gap-2 text-xs sm:grid-cols-2">
           <StatusRow label="ChatGPT" value={chatgpt?.enabled ? 'Enabled' : 'Disabled'} />
-          <StatusRow label="Read-only mode" value={chatgpt?.readonly_mode ? 'Enabled' : 'Disabled'} />
+          <StatusRow label="Profile" value={chatgptWriteEnabled ? 'Write-enabled OAuth' : 'Read-only OAuth'} />
           <StatusRow label="DCR" value={chatgpt?.dynamic_client_registration_enabled ? 'Enabled' : 'Disabled'} />
           <StatusRow label="CIMD" value={chatgpt?.client_id_metadata_document_supported ? 'Advertised' : 'Disabled'} />
-          <StatusRow label="Initial scopes" value={(chatgpt?.initial_scopes || ['obsidian.read']).join(', ')} />
+          <StatusRow label="Initial scopes" value={chatgptInitialScopeText} />
           <StatusRow label="Readiness" value={chatgptReadiness ? (chatgptReadiness.ok ? 'Passing' : 'Needs attention') : 'Not checked'} />
+        </div>
+        <div className="mt-3 grid gap-2 text-xs">
+          <Toggle
+            label="ChatGPT write-enabled OAuth"
+            checked={chatgptWriteEnabled}
+            onChange={(checked) =>
+              saveConfig({
+                chatgpt_readonly_mode: !checked,
+                chatgpt_initial_scopes: checked ? ['obsidian.read', 'obsidian.write'] : ['obsidian.read'],
+              })
+            }
+            disabled={busy !== null}
+          />
+          {chatgptWriteEnabled ? (
+            <div className="rounded border border-amber-400/60 bg-amber-500/10 p-2 text-amber-100">
+              Write-enabled ChatGPT OAuth tokens can invoke write-capable MCP tools, but writes remain constrained by the configured vault write policy and protected-path rules. Recreate or reconnect the ChatGPT connector with Advanced OAuth scope: obsidian.read obsidian.write.
+            </div>
+          ) : (
+            <div className="text-[var(--hb-muted)]">Read-only profile uses Advanced OAuth scope: obsidian.read.</div>
+          )}
         </div>
         <div className="mt-3 grid gap-2 text-xs">
           <StatusRow label="Connector URL" value={chatgpt?.setup?.connector_url || oauth?.chatgpt_setup?.connector_url || 'Set the Public MCP Base URL'} />

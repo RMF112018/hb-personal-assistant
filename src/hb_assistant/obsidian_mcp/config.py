@@ -243,6 +243,13 @@ def apply_patch(patch: ObsidianMcpConfigPatch) -> tuple[ObsidianMcpConfig, str |
     if "vault_root" in updates and updates["vault_root"] is not None:
         updates["vault_root"] = str(Path(str(updates["vault_root"])).expanduser())
 
+    if "chatgpt_readonly_mode" in updates and "chatgpt_initial_scopes" not in updates:
+        updates["chatgpt_initial_scopes"] = (
+            ["obsidian.read"] if updates["chatgpt_readonly_mode"] else ["obsidian.read", "obsidian.write"]
+        )
+    elif "chatgpt_initial_scopes" in updates and "chatgpt_readonly_mode" not in updates:
+        updates["chatgpt_readonly_mode"] = "obsidian.write" not in updates["chatgpt_initial_scopes"]
+
     next_config = current.model_copy(update=updates)
     next_config = ObsidianMcpConfig.model_validate(next_config.model_dump())
     save_config(next_config)

@@ -261,7 +261,7 @@ class ObsidianMcpService:
             "token_auth_method": TOKEN_AUTH_METHOD,
             "endpoints": endpoints,
             "grok_setup": grok_setup_values(base) if base else None,
-            "chatgpt_setup": chatgpt_setup_values(base) if base else None,
+            "chatgpt_setup": chatgpt_setup_values(base, initial_scopes=config.chatgpt_initial_scopes) if base else None,
             "chatgpt": self.chatgpt_status(base),
             "recent_events": recent_events(20),
             "guardrails": self.guardrails(),
@@ -281,7 +281,7 @@ class ObsidianMcpService:
             "client_id_metadata_document_supported": False,
             "initial_scopes": config.chatgpt_initial_scopes,
             "supported_scopes": list(SUPPORTED_SCOPES),
-            "setup": chatgpt_setup_values(resolved_base) if resolved_base else None,
+            "setup": chatgpt_setup_values(resolved_base, initial_scopes=config.chatgpt_initial_scopes) if resolved_base else None,
             "recent_events": recent_events(20),
             "guardrails": self.guardrails(),
         }
@@ -326,24 +326,34 @@ class ObsidianMcpService:
 
         if config.dynamic_client_registration_enabled:
             try:
+                initial_scope = " ".join(config.chatgpt_initial_scopes)
                 sample = register_client(
                     {
                         "redirect_uris": ["https://chatgpt.com/connector/oauth/readiness-check"],
                         "grant_types": ["authorization_code"],
                         "response_types": ["code"],
                         "token_endpoint_auth_method": "none",
-                        "scope": "obsidian.read",
+                        "scope": initial_scope,
                         "client_name": "ChatGPT Readiness Check",
                     }
                 )
-                add("oauth_register_post", str(sample.get("client_id", "")).startswith("chatgpt_"), "POST /oauth/register accepted synthetic public client")
+                add(
+                    "oauth_register_post",
+                    str(sample.get("client_id", "")).startswith("chatgpt_") and sample.get("scope") == initial_scope,
+                    f"POST /oauth/register accepted synthetic public client with scope {sample.get('scope')}",
+                )
             except Exception as exc:
                 add("oauth_register_post", False, f"{type(exc).__name__}: {exc}")
         else:
             add("oauth_register_post", False, "dynamic_client_registration_disabled")
 
-        read_only = config.chatgpt_readonly_mode and config.chatgpt_initial_scopes == ["obsidian.read"]
-        add("chatgpt_readonly_scope", read_only, "initial ChatGPT scope is obsidian.read" if read_only else "ChatGPT initial scope is not read-only")
+        initial_scope = " ".join(config.chatgpt_initial_scopes)
+        expected_scope = "obsidian.read" if config.chatgpt_readonly_mode else "obsidian.read obsidian.write"
+        add(
+            "chatgpt_setup_scope",
+            initial_scope == expected_scope,
+            f"initial ChatGPT setup scope is {initial_scope}",
+        )
         return {
             "surface": "settings.obsidian_mcp.chatgpt_readiness",
             "checked_at": _now(),
