@@ -1,0 +1,7 @@
+..............................                                           [100%]
+=============================== warnings summary ===============================
+tests/test_project_schedule_review_workbench.py::test_review_items_api_and_export
+  /Users/bobbyfetting/hb-personal-assistant/.venv/lib/python3.14/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html

@@ -1102,6 +1102,290 @@ def create_app(*, db_path: str | None = None) -> Any:
 
         return ProjectScheduleSummaryService(db_path=_schedule_db_path()).build_summary(project_key)
 
+    @app.get("/api/projects/{project_key}/schedule/drilldowns")
+    def project_schedule_drilldowns(
+        project_key: str,
+        type: str,
+        limit: int = 100,
+        offset: int = 0,
+        as_of: str | None = None,
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        del role
+        from datetime import date as date_type
+
+        from hb_assistant.construction.analytics.project_schedule_summary_service import (
+            ProjectScheduleSummaryService,
+        )
+
+        as_of_date: date_type | None = None
+        if as_of:
+            try:
+                as_of_date = date_type.fromisoformat(as_of)
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail="invalid_as_of_date") from exc
+
+        return ProjectScheduleSummaryService(db_path=_schedule_db_path()).build_drilldown(
+            project_key,
+            drilldown_type=type,
+            limit=limit,
+            offset=offset,
+            as_of=as_of_date,
+        )
+
+    @app.get("/api/projects/{project_key}/schedule/drivers")
+    def project_schedule_drivers(
+        project_key: str,
+        type: str,
+        limit: int = 100,
+        offset: int = 0,
+        driver_activity_id: str | None = None,
+        as_of: str | None = None,
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        del role
+        from datetime import date as date_type
+
+        from hb_assistant.construction.analytics.project_schedule_summary_service import (
+            ProjectScheduleSummaryService,
+        )
+
+        as_of_date: date_type | None = None
+        if as_of:
+            try:
+                as_of_date = date_type.fromisoformat(as_of)
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail="invalid_as_of_date") from exc
+        try:
+            return ProjectScheduleSummaryService(db_path=_schedule_db_path()).build_driver_drilldown(
+                project_key,
+                drilldown_type=type,
+                limit=limit,
+                offset=offset,
+                driver_activity_id=driver_activity_id,
+                as_of=as_of_date,
+            )
+        except ValueError as exc:
+            if str(exc) == "driver_activity_id_required":
+                raise HTTPException(status_code=400, detail="driver_activity_id_required") from exc
+            if str(exc) == "unsupported_driver_drilldown_type":
+                raise HTTPException(status_code=400, detail="unsupported_driver_drilldown_type") from exc
+            raise
+
+    @app.get("/api/projects/{project_key}/schedule/drivers/{activity_id}/detail")
+    def project_schedule_driver_detail(
+        project_key: str,
+        activity_id: str,
+        comparison_basis: str = "prior_update",
+        as_of: str | None = None,
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        del role
+        from datetime import date as date_type
+
+        from hb_assistant.construction.analytics.project_schedule_summary_service import (
+            ProjectScheduleSummaryService,
+        )
+
+        as_of_date: date_type | None = None
+        if as_of:
+            try:
+                as_of_date = date_type.fromisoformat(as_of)
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail="invalid_as_of_date") from exc
+        basis = comparison_basis if comparison_basis in {"prior_update", "baseline"} else "prior_update"
+        return ProjectScheduleSummaryService(db_path=_schedule_db_path()).build_driver_detail(
+            project_key,
+            activity_id,
+            comparison_basis=basis,
+            as_of=as_of_date,
+        )
+
+    @app.get("/api/projects/{project_key}/schedule/review-items")
+    def project_schedule_review_items_get(
+        project_key: str,
+        review_status: str | None = None,
+        limit: int = 100,
+        offset: int = 0,
+        as_of: str | None = None,
+        comparison_basis: str = "prior_update",
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        del role
+        from datetime import date as date_type
+
+        from hb_assistant.construction.analytics.project_schedule_summary_service import (
+            ProjectScheduleSummaryService,
+        )
+
+        as_of_date: date_type | None = None
+        if as_of:
+            try:
+                as_of_date = date_type.fromisoformat(as_of)
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail="invalid_as_of_date") from exc
+        basis = comparison_basis if comparison_basis in {"prior_update", "baseline"} else "prior_update"
+        return ProjectScheduleSummaryService(db_path=_schedule_db_path()).build_review_items(
+            project_key,
+            review_status=review_status,
+            limit=limit,
+            offset=offset,
+            as_of=as_of_date,
+            comparison_basis=basis,
+        )
+
+    @app.post("/api/projects/{project_key}/schedule/review-items")
+    def project_schedule_review_items_sync(
+        project_key: str,
+        as_of: str | None = None,
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        require_operator_role(role)
+        from datetime import date as date_type
+
+        from hb_assistant.construction.analytics.project_schedule_summary_service import (
+            ProjectScheduleSummaryService,
+        )
+
+        as_of_date: date_type | None = None
+        if as_of:
+            try:
+                as_of_date = date_type.fromisoformat(as_of)
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail="invalid_as_of_date") from exc
+        workbench = ProjectScheduleSummaryService(db_path=_schedule_db_path()).sync_review_workbench(
+            project_key,
+            as_of=as_of_date,
+        )
+        return {"available": workbench.get("available", True), "workbench": workbench}
+
+    @app.patch("/api/projects/{project_key}/schedule/review-items/{review_item_id}")
+    def project_schedule_review_item_patch(
+        project_key: str,
+        review_item_id: str,
+        request: dict[str, Any],
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        del project_key
+        require_operator_role(role)
+        from hb_assistant.construction.analytics.project_schedule_review_service import (
+            ProjectScheduleReviewService,
+        )
+
+        try:
+            return ProjectScheduleReviewService(db_path=_schedule_db_path()).update_item(
+                review_item_id=review_item_id,
+                review_status=request.get("review_status"),
+                pm_notes=request.get("pm_notes"),
+                reviewed_by_operator=role.get("role"),
+            )
+        except ValueError as exc:
+            if str(exc) == "review_item_not_found":
+                raise HTTPException(status_code=404, detail="review_item_not_found") from exc
+            if str(exc) == "invalid_review_status":
+                raise HTTPException(status_code=400, detail="invalid_review_status") from exc
+            raise
+
+    @app.get("/api/projects/{project_key}/schedule/export")
+    def project_schedule_export(
+        project_key: str,
+        format: str = "markdown",
+        as_of: str | None = None,
+        variant: str = "standard",
+        scope: str = "full",
+        include_persisted_review: bool = False,
+        role: dict[str, str] = role_dep,
+    ):
+        del role
+        from datetime import date as date_type
+
+        from fastapi import HTTPException, Response
+
+        from hb_assistant.construction.analytics.project_schedule_summary_service import (
+            ProjectScheduleSummaryService,
+        )
+
+        as_of_date: date_type | None = None
+        if as_of:
+            try:
+                as_of_date = date_type.fromisoformat(as_of)
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail="invalid_as_of_date") from exc
+        try:
+            export_variant = variant if variant in {"standard", "executive"} else "standard"
+            export_scope = scope if scope in {"full", "review_items"} else "full"
+            payload = ProjectScheduleSummaryService(db_path=_schedule_db_path()).build_export(
+                project_key,
+                export_format=format,
+                as_of=as_of_date,
+                variant=export_variant,
+                scope=export_scope,
+                include_persisted_review=include_persisted_review,
+            )
+        except ValueError as exc:
+            if str(exc) == "unsupported_export_format":
+                raise HTTPException(status_code=400, detail="unsupported_export_format") from exc
+            raise
+        if not payload.get("available"):
+            raise HTTPException(status_code=422, detail=payload.get("reason") or "export_unavailable")
+        headers = {"Content-Disposition": f'attachment; filename="{payload["filename"]}"'}
+        return Response(content=payload["body"], media_type=payload["content_type"], headers=headers)
+
+    @app.get("/api/projects/{project_key}/schedule/baseline")
+    def project_schedule_baseline_get(project_key: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        from hb_assistant.store.project_schedule_hub_repository import ProjectScheduleHubRepository
+        from hb_assistant.construction.analytics.project_schedule_summary_service import (
+            ProjectScheduleSummaryService,
+        )
+
+        service = ProjectScheduleSummaryService(db_path=_schedule_db_path())
+        summary = service.build_summary(project_key)
+        current = summary.get("current_schedule") or {}
+        if not current.get("available"):
+            return {"available": False, "reason": "no_schedule"}
+        current_key = summary.get("technical_evidence", {}).get("schedule_version_key")
+        if not current_key:
+            return {"available": False, "reason": "no_current_schedule"}
+        selection = ProjectScheduleHubRepository(db_path=_schedule_db_path()).get_active_baseline_selection(
+            project_key=project_key,
+            current_schedule_version_key=str(current_key),
+        )
+        return {
+            "available": True,
+            "selection": selection,
+            "baseline_summary": summary.get("baseline_summary"),
+        }
+
+    @app.put("/api/projects/{project_key}/schedule/baseline")
+    def project_schedule_baseline_put(
+        project_key: str,
+        request: dict[str, Any],
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        require_operator_role(role)
+        from hb_assistant.store.project_schedule_hub_repository import ProjectScheduleHubRepository
+        from hb_assistant.construction.analytics.project_schedule_summary_service import (
+            ProjectScheduleSummaryService,
+        )
+
+        current_key = str(request.get("current_schedule_version_key") or "")
+        baseline_key = str(request.get("selected_baseline_schedule_version_key") or "")
+        if not current_key or not baseline_key:
+            raise HTTPException(status_code=400, detail="baseline_selection_required")
+        if current_key == baseline_key:
+            raise HTTPException(status_code=400, detail="baseline_must_differ_from_current")
+        repo = ProjectScheduleHubRepository(db_path=_schedule_db_path())
+        selection = repo.set_baseline_selection(
+            project_key=project_key,
+            current_schedule_version_key=current_key,
+            selected_baseline_schedule_version_key=baseline_key,
+            selected_by_operator=role.get("role"),
+            selection_note=str(request.get("selection_note") or "") or None,
+        )
+        summary = ProjectScheduleSummaryService(db_path=_schedule_db_path()).build_summary(project_key)
+        return {"selection": selection, "baseline_summary": summary.get("baseline_summary")}
+
     @app.get("/api/my-items")
     def my_items(role: dict[str, str] = role_dep) -> dict[str, Any]:
         del role
@@ -3664,11 +3948,39 @@ def create_app(*, db_path: str | None = None) -> Any:
             project_key=project_key,
             show_merged=False,
         )
+        from hb_assistant.construction.analytics.schedule_trust_service import ScheduleTrustService
+
+        trust = ScheduleTrustService(db_path=_schedule_db_path())
         return {
             "project_key": project_key,
-            "review_items": [_public_identity_row(dict(r)) for r in rows],
+            "review_items": [
+                trust.enrich_review_item(project_key=project_key, item=_public_identity_row(dict(r)))
+                for r in rows
+            ],
             "active_identities": [_public_identity_row(dict(r)) for r in identities],
+            "series_memberships": trust.list_series_memberships(project_key=project_key),
         }
+
+    @app.post("/api/schedules/projects/{project_key}/versions/{schedule_version_key}/series-membership")
+    def schedule_series_membership(
+        project_key: str,
+        schedule_version_key: str,
+        request: dict[str, Any],
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        require_operator_role(role)
+        _enforce_version_project_scope(schedule_version_key, project_key)
+        require_schedule_schema_ready()
+        from hb_assistant.construction.analytics.schedule_trust_service import ScheduleTrustService
+
+        membership = ScheduleTrustService(db_path=_schedule_db_path()).set_series_membership(
+            project_key=project_key,
+            schedule_version_key=schedule_version_key,
+            membership_status=str(request.get("membership_status") or ""),
+            reason=str(request.get("reason") or "") or None,
+            operator=role.get("role"),
+        )
+        return {"membership": membership}
 
     @app.post("/api/schedules/projects/{project_key}/versions/{schedule_version_key}/identity")
     def schedule_identity_reassign(

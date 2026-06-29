@@ -12,9 +12,18 @@
   },
   "change_impact": {
     "available": true,
+    "comparison_basis": "resolved_finish_date",
     "direct_remaining_changes": {
       "summary": {
-        "finish_moved_later_count": 2
+        "common_remaining_activities": 2,
+        "new_remaining_activities": 1,
+        "finish_moved_later_count": 2,
+        "finish_moved_earlier_count": 0,
+        "finish_changed_count": 2,
+        "worsened_float_count": 1,
+        "improved_float_count": 0,
+        "moved_remaining_milestones_count": 1,
+        "changed_count": 2
       }
     }
   }

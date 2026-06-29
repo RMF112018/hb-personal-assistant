@@ -20,6 +20,8 @@ import { ProjectMeetingsPage } from '../pages/ProjectMeetingsPage'
 import { ProjectFieldOperationsPage } from '../pages/ProjectFieldOperationsPage'
 import { ProjectCostTimePage } from '../pages/ProjectCostTimePage'
 import { ProjectSchedulePage } from '../pages/ProjectSchedulePage'
+import { ProjectScheduleWorkbenchPage } from '../pages/ProjectScheduleWorkbenchPage'
+import { ProjectScheduleDriverDetailPage } from '../pages/ProjectScheduleDriverDetailPage'
 import { MyItemsPage } from '../pages/MyItemsPage'
 import { ForecastingPage } from '../pages/ForecastingPage'
 import { ForecastPackagePage } from '../pages/ForecastPackagePage'
@@ -166,6 +168,14 @@ const router = createBrowserRouter([
       {
         path: 'projects/:projectKey/schedule',
         element: <ProjectSchedulePage />,
+      },
+      {
+        path: 'projects/:projectKey/schedule/workbench',
+        element: <ProjectScheduleWorkbenchPage />,
+      },
+      {
+        path: 'projects/:projectKey/schedule/drivers/:activityId',
+        element: <ProjectScheduleDriverDetailPage />,
       },
       // Canonical My Dashboard route (renders the former My Items work-queue page content).
       // Legacy /my-items kept below for alias compatibility; title resolver maps both to 'My Dashboard'.

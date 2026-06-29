@@ -1,0 +1,19 @@
+ M frontend/src/lib/api.ts
+ M frontend/src/pages/ProjectSchedulePage.test.tsx
+ M frontend/src/pages/ProjectSchedulePage.tsx
+ M frontend/src/pages/ScheduleIdentityReviewPage.tsx
+ M src/hb_assistant/construction/analytics/api.py
+ M src/hb_assistant/construction/analytics/project_schedule_summary_service.py
+ M src/hb_assistant/construction/analytics/schedule_import_service.py
+ M src/hb_assistant/store/migrator.py
+ M tests/fixtures/project_schedule_hub/populated_comparison.json
+ M tests/test_project_schedule_hub_api.py
+?? docs/evidence/project-schedule-hub/phase-2-schedule-trust-baseline-drilldowns-20260628T214957Z/
+?? src/hb_assistant/construction/analytics/project_schedule_comparison.py
+?? src/hb_assistant/construction/analytics/project_schedule_drilldown_service.py
+?? src/hb_assistant/construction/analytics/schedule_trust_service.py
+?? src/hb_assistant/store/project_schedule_hub_repository.py
+?? src/hb_assistant/store/project_schedule_hub_tables.py
+?? tests/test_project_schedule_baseline_selection.py
+?? tests/test_project_schedule_hub_drilldowns.py
+?? tests/test_schedule_trust_resolver.py
