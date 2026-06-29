@@ -1,0 +1,15 @@
+# Tests run (worktree obsidian-mcp-timeout-fix; PYTHONPATH=src:subrepos/CFR/src; venv python 3.14.5)
+
+pytest tests/test_obsidian_mcp_timeout.py            -> 42 passed
+pytest tests -k "obsidian_mcp"                       -> 154 passed
+ruff check mcp_app.py config.py test_obsidian_mcp_timeout.py -> All checks passed
+mypy src/.../obsidian_mcp/mcp_app.py config.py       -> Success: no issues found
+
+Pre/post runtime contrast (real /mcp tools/call, search_vault sleeping 3s):
+  [PRE-FIX]  origin/main      elapsed=3.01s isError=False tool_timeout=False   (unbounded)
+  [POST-FIX] fix branch t/o=1 elapsed=1.01s isError=True  tool_timeout=True    (bounded)
+
+Notes:
+- api.py carries 37 pre-existing ruff findings on origin/main, unrelated to the one-line field addition.
+- The unfiltered `-k "mcp"` selection also pulls integration/live/manual tests for a different
+  (construction second-brain) MCP server; the marker-excluded run is the relevant cross-check.

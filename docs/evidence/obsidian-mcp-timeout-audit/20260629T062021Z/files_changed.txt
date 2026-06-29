@@ -1,0 +1,5 @@
+ src/hb_assistant/construction/analytics/api.py | 315 +--------
+ src/hb_assistant/obsidian_mcp/config.py        |  12 +-
+ src/hb_assistant/obsidian_mcp/mcp_app.py       | 922 ++++++++++++++-----------
+ 3 files changed, 526 insertions(+), 723 deletions(-)
+tests/test_obsidian_mcp_timeout.py | new (untracked)
