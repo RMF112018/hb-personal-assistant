@@ -414,6 +414,10 @@ _TOOL_REGISTRY: list[tuple[str, str, str, str]] = [
     ("vault_bulk_tagging_plan", "Curation", "Plan normalized tag suggestions for notes (applied via vault_curation_apply).", "root_path, tag_namespace, max_files, max_suggestions"),
     ("vault_email_to_note_plan", "Curation", "Plan conversion of one .eml into a structured note (summary, actions, decisions, project links).", "email_path, target_folder, template_path, link_projects, extract_action_items, extract_decisions, redact"),
     ("vault_email_to_note_apply", "Curation", "Create the structured note from an approved email-to-note plan_id (backup + receipt).", "plan_id, max_updates"),
+    ("search_sources", "Source Intelligence", "Search the durable external-source intelligence index (metadata + extracted text via FTS); never live-scans directories.", "query, project_key, limit"),
+    ("search_knowledge", "Source Intelligence", "Search across both Obsidian notes and external source intelligence (mixed result types) via the index.", "query, path_scope, limit"),
+    ("source_index_status", "Source Intelligence", "Report source-intelligence index + watcher status (counts, queue, freshness); read-only.", "(none)"),
+    ("rebuild_source_index", "Source Intelligence", "Operator action: enqueue a bounded rebuild of the configured source roots and the vault note index (never scans in-request).", "(none)"),
 ]
 
 
