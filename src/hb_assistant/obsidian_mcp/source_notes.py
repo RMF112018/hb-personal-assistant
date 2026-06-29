@@ -23,6 +23,7 @@ from .config import ObsidianMcpConfig
 from .mutations import create_note, resolve_markdown_write_path, sha256_file
 from .source_analyzers import SourceAnalysis
 from .source_index_repository import SourceIndexRepository
+from .source_indexer import is_excluded_source_path
 from .tools import ObsidianMcpToolError
 
 # Bump when the advisory prompt/template changes so receipts record which version produced a card.
@@ -30,6 +31,8 @@ from .tools import ObsidianMcpToolError
 SUMMARY_PROMPT_VERSION = "source-card-v2"
 # Construction drawings use a typed PM-summary prompt + schema (separate version for auditability).
 DRAWING_PROMPT_VERSION = "source-card-drawing-v1"
+# Bid packages / scopes of work use their own typed PM-summary prompt + schema.
+BID_PACKAGE_PROMPT_VERSION = "source-card-bid-package-v1"
 _ADVISORY_LIST_KEYS = ("key_points", "action_items", "decisions", "entities")
 _ADVISORY_MAX_ITEMS = 10
 _ADVISORY_ITEM_CHARS = 200
@@ -227,6 +230,32 @@ def _render_fallback_sections(detail: dict[str, Any], analysis: SourceAnalysis) 
     return parts
 
 
+def _render_bid_package_sections(detail: dict[str, Any], analysis: SourceAnalysis) -> list[str]:
+    """Deterministic PM-grade sections for a bid package / scope-of-work document."""
+    identity = [f"Document type: {analysis.document_type}"]
+    if detail.get("project_number"):
+        identity.append(f"Project number: {detail['project_number']}")
+    if analysis.bid_package_number:
+        identity.append(f"Package number: {analysis.bid_package_number}")
+    if analysis.bid_package_title:
+        identity.append(f"Scope / package title: {analysis.bid_package_title}")
+    if analysis.issue_status:
+        identity.append(f"Issue status: {analysis.issue_status}")
+    if detail.get("file_ext"):
+        identity.append(f"Source file type: {detail['file_ext']}")
+    parts = _section("Bid Package Identity", identity)
+
+    # Scope Summary: prefer extracted inclusions, else the trade scope.
+    parts += _section("Scope Summary", list(analysis.inclusions) or list(analysis.trade_scope))
+    parts += _section("Inclusions", analysis.inclusions)
+    parts += _section("Exclusions", analysis.exclusions)
+    parts += _section("Procurement / Estimating Signals", analysis.procurement_signals)
+    parts += _section(
+        "PM Coordination Flags", list(analysis.trade_scope) + list(analysis.coordination_flags)
+    )
+    return parts
+
+
 def _sheet_in_name(name: str, sheet: str) -> bool:
     """True if a filename mentions the sheet number as a standalone token (e.g. 'A-611')."""
     return re.search(r"(?<![A-Z0-9])" + re.escape(sheet) + r"(?![0-9])", name.upper()) is not None
@@ -331,6 +360,60 @@ def _build_drawing_prompt(detail: dict[str, Any], analysis: SourceAnalysis, text
     return "\n".join(facts)
 
 
+def _build_bid_package_prompt(detail: dict[str, Any], analysis: SourceAnalysis, text: str) -> str:
+    """Compose the bid-package model input: deterministic facts FIRST, then the bounded excerpt."""
+    facts: list[str] = ["DETERMINISTIC FACTS (extracted — treat as authoritative, do not contradict):"]
+    scalar = [
+        ("Document type", analysis.document_type),
+        ("Project number", detail.get("project_number")),
+        ("Package number", analysis.bid_package_number),
+        ("Scope / package title", analysis.bid_package_title),
+        ("Issue status", analysis.issue_status),
+    ]
+    for label, value in scalar:
+        if value:
+            facts.append(f"- {label}: {value}")
+    for label, items in (
+        ("Inclusions", analysis.inclusions),
+        ("Exclusions", analysis.exclusions),
+        ("Trade scope", analysis.trade_scope),
+        ("Procurement signals", analysis.procurement_signals),
+    ):
+        if items:
+            facts.append(f"- {label}: {', '.join(items)}")
+    facts += ["", "BOUNDED TEXT EXCERPT (may be noisy extraction):", text]
+    return "\n".join(facts)
+
+
+def _render_bid_package_advisory(advisory: dict[str, Any]) -> list[str]:
+    """PM-facing advisory sections for the typed bid-package schema."""
+    parts = ["## AI PM Summary (advisory — model-generated, not authoritative)",
+             str(advisory.get("plain_english_summary") or "").strip()
+             or "_(model returned no summary text)_", ""]
+    parts += _section("Scope Covered", advisory.get("scope_covered") or [])
+    parts += _section("Included Work", advisory.get("included_work") or [])
+    parts += _section("Excluded / Unclear Work", advisory.get("excluded_or_unclear_work") or [])
+    parts += _section("Procurement Risks", advisory.get("procurement_risks") or [])
+    parts += _section("Coordination Items", advisory.get("coordination_items") or [])
+    parts += _section("Bid Clarifications Needed", advisory.get("bid_clarifications_needed") or [])
+    parts += _section("PM Follow-ups", advisory.get("pm_followups") or [])
+    verify = list(advisory.get("verify_against_source") or [])
+    conf = advisory.get("confidence") or {}
+    if conf:
+        verify = verify + [
+            f"Confidence — package identity: {conf.get('package_identity', 'low')}, "
+            f"scope: {conf.get('scope_summary', 'low')}, follow-ups: {conf.get('followups', 'low')}."
+        ]
+    parts += _section("Verification Notes", verify)
+    parts += [
+        f"_Model: {advisory.get('model_provider')}/{advisory.get('model_name')} · prompt "
+        f"{advisory.get('prompt_version')} · generated {advisory.get('generated_at')}. "
+        "Advisory only — verify against the source._",
+        "",
+    ]
+    return parts
+
+
 _FILE_TYPE_LABELS = {
     "md": "Markdown note", "markdown": "Markdown note", "txt": "Plain-text file",
     "pdf": "PDF document", "docx": "Word document", "xlsx": "Excel workbook",
@@ -414,8 +497,13 @@ def _render_card(config: ObsidianMcpConfig, detail: dict[str, Any], generated_at
     analysis = source_analyzers.from_detail(detail) if detail.get("rel_path") else None
     parts = [_frontmatter(detail, generated_at, advisory, analysis), "", f"# Source Card: {display}", ""]
     if advisory:
-        parts += (_render_drawing_advisory(advisory) if advisory.get("kind") == "drawing"
-                  else _render_advisory(advisory))
+        kind = advisory.get("kind")
+        if kind == "drawing":
+            parts += _render_drawing_advisory(advisory)
+        elif kind == "bid_package":
+            parts += _render_bid_package_advisory(advisory)
+        else:
+            parts += _render_advisory(advisory)
 
     parts += ["## Overview (deterministic — no model summary)",
               f"- Source kind: {detail['source_kind']}"]
@@ -432,12 +520,14 @@ def _render_card(config: ObsidianMcpConfig, detail: dict[str, Any], generated_at
         parts.append(f"- Project number: {detail['project_number']}")
     parts.append("")
 
-    # PM-grade deterministic sections: drawing-specific or general-document fallback.
+    # PM-grade deterministic sections: drawing-specific, bid-package, or general-document fallback.
     if analysis is not None:
         if analysis.is_drawing:
             parts += _render_drawing_sections(analysis)
             if repo is not None:
                 parts += _render_related_sources(repo, detail["source_id"], analysis)
+        elif analysis.is_bid_package:
+            parts += _render_bid_package_sections(detail, analysis)
         else:
             parts += _render_fallback_sections(detail, analysis)
 
@@ -490,6 +580,8 @@ def generate_source_card(repo: SourceIndexRepository, config: ObsidianMcpConfig,
         raise ObsidianMcpToolError("source_card_not_applicable")  # it is already a vault note
     if detail.get("deleted"):
         raise ObsidianMcpToolError("source_deleted")
+    if detail.get("rel_path") and is_excluded_source_path(str(detail["rel_path"]), config):
+        raise ObsidianMcpToolError("source_excluded_path")  # low-value dependency/build tree
 
     generated_at = _now()
     card_rel = _card_rel_path(config, detail)
@@ -557,8 +649,13 @@ def summarize_source(repo: SourceIndexRepository, config: ObsidianMcpConfig, *, 
     if detail.get("deleted"):
         raise ObsidianMcpToolError("source_deleted")
 
-    # One-call contract: ensure the deterministic base card exists first (generate if missing).
     card_rel = _card_rel_path(config, detail)
+    if detail.get("rel_path") and is_excluded_source_path(str(detail["rel_path"]), config):
+        # Excluded dependency/build tree: no card, and never call the model.
+        return {"summarized": False, "reason": "excluded_path",
+                "source_id": source_id, "note_path": card_rel}
+
+    # One-call contract: ensure the deterministic base card exists first (generate if missing).
     resolved = resolve_markdown_write_path(config, card_rel, must_exist=False, parent_must_exist=False)
     if not resolved.path.exists():
         generate_source_card(repo, config, source_id=source_id, overwrite=False,
@@ -581,6 +678,12 @@ def summarize_source(repo: SourceIndexRepository, config: ObsidianMcpConfig, *, 
         prompt_input = _build_drawing_prompt(detail, analysis, text)
         data, mode, reason = llm.summarize_drawing(config, prompt_text=prompt_input, backend=backend)
         prompt_version = DRAWING_PROMPT_VERSION
+        summary_text_for_sha = "" if data is None else str(data.get("plain_english_summary") or "")
+    elif analysis.is_bid_package:
+        # Typed bid-package PM-summary path (own schema + prompt version for auditability).
+        prompt_input = _build_bid_package_prompt(detail, analysis, text)
+        data, mode, reason = llm.summarize_bid_package(config, prompt_text=prompt_input, backend=backend)
+        prompt_version = BID_PACKAGE_PROMPT_VERSION
         summary_text_for_sha = "" if data is None else str(data.get("plain_english_summary") or "")
     else:
         deterministic = extract.analyze(rel, text, max_chars=cap)
@@ -608,6 +711,8 @@ def summarize_source(repo: SourceIndexRepository, config: ObsidianMcpConfig, *, 
     }
     if analysis.is_drawing:
         advisory = {"kind": "drawing", **dict(data or {}), **model_meta}
+    elif analysis.is_bid_package:
+        advisory = {"kind": "bid_package", **dict(data or {}), **model_meta}
     else:
         advisory = {
             "summary": (data or {}).get("summary", ""),

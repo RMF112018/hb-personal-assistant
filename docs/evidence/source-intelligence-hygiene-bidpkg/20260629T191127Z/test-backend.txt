@@ -1,0 +1,4 @@
+Backend (A1.9 focused) test summary
+  test_obsidian_source_exclusions.py + test_obsidian_source_bid_package_analyzer.py + test_obsidian_mcp_backend.py => 27 passed
+  Full -k 'obsidian or source_index' regression => 499 passed, 0 failed (~6m42s)
+  py_compile of all of src/: OK; ruff check changed modules: All checks passed

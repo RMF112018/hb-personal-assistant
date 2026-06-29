@@ -150,6 +150,74 @@ def summarize_drawing(
     return _normalize_drawing(data), "llm", "ok"
 
 
+# --- Typed bid-package / scope-of-work advisory (PM-grade) -------------------------------------
+_BID_PACKAGE_LIST_KEYS = (
+    "scope_covered", "included_work", "excluded_or_unclear_work", "procurement_risks",
+    "coordination_items", "bid_clarifications_needed", "pm_followups", "verify_against_source",
+)
+_BID_PACKAGE_CONFIDENCE_KEYS = ("package_identity", "scope_summary", "followups")
+
+_BID_PACKAGE_SYSTEM_PROMPT = (
+    "You assist a construction Project Manager reviewing a trade BID PACKAGE / scope-of-work. You are "
+    "given DETERMINISTIC FACTS already extracted (project, package number, scope title, issue status, "
+    "inclusions, exclusions, trade scope), followed by a bounded text excerpt. Produce a PM-facing "
+    "interpretation. Do NOT invent package numbers, trades, inclusions, or exclusions not present in "
+    "the facts/excerpt; if a field is unsupported, use \"unknown\" or an empty array. Use construction "
+    "PM language focused on scope coverage, procurement risk, coordination, and bid clarifications. "
+    "Output is advisory and NOT authoritative.\n"
+    "Return ONLY a JSON object with keys: plain_english_summary (string), scope_covered (string "
+    "array), included_work (string array), excluded_or_unclear_work (string array), procurement_risks "
+    "(string array), coordination_items (string array), bid_clarifications_needed (string array), "
+    "pm_followups (string array), confidence (object with keys package_identity, scope_summary, "
+    "followups each one of high|medium|low), verify_against_source (string array)."
+)
+
+
+def _normalize_bid_package(data: dict[str, Any]) -> dict[str, Any]:
+    """Coerce model output into the strict bid-package schema (bounded, typed)."""
+    out: dict[str, Any] = {"plain_english_summary": str(data.get("plain_english_summary") or "").strip()}
+    for key in _BID_PACKAGE_LIST_KEYS:
+        value = data.get(key)
+        out[key] = (
+            [str(v).strip() for v in value if str(v).strip()][:_DRAWING_LIST_CAP]
+            if isinstance(value, list) else []
+        )
+    conf = data.get("confidence") if isinstance(data.get("confidence"), dict) else {}
+    out["confidence"] = {
+        k: (str(conf.get(k)).lower() if str(conf.get(k)).lower() in ("high", "medium", "low") else "low")
+        for k in _BID_PACKAGE_CONFIDENCE_KEYS
+    }
+    return out
+
+
+def summarize_bid_package(
+    config: ObsidianMcpConfig,
+    *,
+    prompt_text: str,
+    backend: GenerationBackend | None = None,
+) -> tuple[dict[str, Any] | None, str, str]:
+    """Typed PM advisory for bid packages. Returns (data|None, mode, reason); mirrors
+    :func:`summarize_drawing` (graceful deterministic fallback, no raised exceptions)."""
+    if config.summarization_backend == "deterministic":
+        return None, "deterministic_fallback", "disabled"
+    chosen = backend or _resolve_backend(config)
+    if chosen is None:
+        return None, "deterministic_fallback", "ollama_unavailable"
+    try:
+        raw = chosen.generate_json(system=_BID_PACKAGE_SYSTEM_PROMPT, prompt=prompt_text)
+    except Exception as exc:  # noqa: BLE001 - any backend failure falls back deterministically
+        return None, "deterministic_fallback", _network_reason(exc)
+    if not (raw or "").strip():
+        return None, "deterministic_fallback", "empty_response"
+    try:
+        data = json.loads(raw)
+        if not isinstance(data, dict):
+            raise ValueError("non_object_response")
+    except (ValueError, TypeError, KeyError):
+        return None, "deterministic_fallback", "invalid_json"
+    return _normalize_bid_package(data), "llm", "ok"
+
+
 class GenerationBackend(Protocol):
     def generate_json(self, *, system: str, prompt: str) -> str: ...
 

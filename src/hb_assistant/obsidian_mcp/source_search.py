@@ -77,6 +77,9 @@ def source_index_status(repo: SourceIndexRepository, config: ObsidianMcpConfig,
     status["index_enabled"] = bool(getattr(config, "external_source_index_enabled", True))
     status["watch_enabled"] = bool(getattr(config, "external_source_watch_enabled", False))
     status["configured_source_count"] = len(getattr(config, "external_sources", []) or [])
+    status["exclusion_policy"] = {
+        "excluded_path_parts": list(getattr(config, "source_index_excluded_path_parts", []) or [])
+    }
     status["search_backend"] = "source_index"
     if watcher is not None:
         status["watcher"] = watcher

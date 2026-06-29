@@ -142,6 +142,7 @@ export function ObsidianMcpPanel() {
   const [pollIntervalInput, setPollIntervalInput] = useState('')
   const [debounceInput, setDebounceInput] = useState('')
   const [cardMaxPerDrainInput, setCardMaxPerDrainInput] = useState('')
+  const [excludedPartsInput, setExcludedPartsInput] = useState('')
 
   async function refreshAll() {
     setBusy('refresh')
@@ -194,6 +195,7 @@ export function ObsidianMcpPanel() {
     setPollIntervalInput(config.watch_poll_interval_seconds != null ? String(config.watch_poll_interval_seconds) : '')
     setDebounceInput(config.watch_debounce_seconds != null ? String(config.watch_debounce_seconds) : '')
     setCardMaxPerDrainInput(config.source_card_auto_max_per_drain != null ? String(config.source_card_auto_max_per_drain) : '')
+    setExcludedPartsInput(Array.isArray(config.source_index_excluded_path_parts) ? config.source_index_excluded_path_parts.join(', ') : '')
     /* eslint-enable react-hooks/set-state-in-effect */
   }, [config, rootsDirty])
 
@@ -301,6 +303,11 @@ export function ObsidianMcpPanel() {
     }
     setRootError(null)
     void saveConfig({ [field]: num })
+  }
+
+  function commitExcludedParts() {
+    const parts = excludedPartsInput.split(',').map((p) => p.trim()).filter((p) => p.length > 0)
+    void saveConfig({ source_index_excluded_path_parts: parts })
   }
 
   async function handleSaveRoots() {
@@ -1180,6 +1187,14 @@ export function ObsidianMcpPanel() {
 
           <div className="mt-2 grid gap-2 sm:grid-cols-2">
             <Field label="Card auto max per drain" value={cardMaxPerDrainInput} onChange={setCardMaxPerDrainInput} onBlur={() => commitNumericField('source_card_auto_max_per_drain', cardMaxPerDrainInput, 'int')} />
+          </div>
+
+          <div className="mt-3">
+            <Field label="Excluded path parts" value={excludedPartsInput} onChange={setExcludedPartsInput} onBlur={commitExcludedParts} />
+            <div className="mt-1 rounded border border-amber-400 bg-amber-50 p-2 text-[10px] text-amber-700" role="note">
+              Comma-separated path segments (e.g. <span className="font-mono">node_modules, .venv, dist, build</span>). Broad roots can create
+              low-value cards unless excluded paths are set; excluded paths are skipped during indexing and card generation.
+            </div>
           </div>
 
           <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_auto_auto]">

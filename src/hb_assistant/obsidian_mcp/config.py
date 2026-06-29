@@ -17,6 +17,13 @@ from hb_assistant.config.path_policy import PathPolicy
 DEFAULT_ALLOWED_FILE_TYPES = ["md", "txt", "pdf", "docx"]
 DEFAULT_ALLOWED_WRITE_FILE_TYPES = ["md"]
 DEFAULT_PROTECTED_PATHS = [".git", ".obsidian", ".trash", ".hb-assistant/backups"]
+# Path SEGMENTS that mark low-value dependency/build/cache trees. Any source whose relative path
+# contains one of these as a path segment is never indexed or carded (hygiene for broad roots).
+DEFAULT_EXCLUDED_PATH_PARTS = [
+    "node_modules", ".venv", "venv", "dist", "build", ".next", ".git",
+    "__pycache__", ".pytest_cache", "coverage", "site-packages", ".ds_store",
+    ".cache", ".mypy_cache", ".ruff_cache",
+]
 
 
 class ExternalSourceRoot(BaseModel):
@@ -107,6 +114,9 @@ class ObsidianMcpConfig(BaseModel):
     source_summary_auto_generate_kinds: list[str] = Field(default_factory=lambda: ["external_file"])
     source_summary_auto_max_per_drain: int = 5
     source_card_auto_max_per_drain: int = 200
+    source_index_excluded_path_parts: list[str] = Field(
+        default_factory=lambda: list(DEFAULT_EXCLUDED_PATH_PARTS)
+    )
     schema_version: int = 7
 
     model_config = {"extra": "forbid"}
@@ -189,6 +199,16 @@ class ObsidianMcpConfig(BaseModel):
             if ext not in normalized:
                 normalized.append(ext)
         return normalized or list(DEFAULT_ALLOWED_WRITE_FILE_TYPES)
+
+    @field_validator("source_index_excluded_path_parts")
+    @classmethod
+    def validate_excluded_path_parts(cls, value: list[str]) -> list[str]:
+        normalized: list[str] = []
+        for item in value:
+            part = item.strip().replace("\\", "/").strip("/").lower()
+            if part and part not in normalized:
+                normalized.append(part)
+        return normalized or list(DEFAULT_EXCLUDED_PATH_PARTS)
 
     @field_validator("chatgpt_initial_scopes")
     @classmethod
@@ -294,6 +314,7 @@ class ObsidianMcpConfigPatch(BaseModel):
     source_summary_auto_generate_kinds: list[str] | None = None
     source_summary_auto_max_per_drain: int | None = None
     source_card_auto_max_per_drain: int | None = None
+    source_index_excluded_path_parts: list[str] | None = None
 
     model_config = {"extra": "forbid"}
 

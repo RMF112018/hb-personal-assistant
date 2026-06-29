@@ -1,0 +1,22 @@
+A1.9 manual validation (live backend, watcher OFF, live config backed up + restored)
+
+PATCH safe config (watcher off, cards on, summaries off, cap 25, qwen2.5:14b):
+  -> watch_enabled: False; source_card_auto_max_per_drain: 25;
+     source_index_excluded_path_parts defaulted to 15 segments.
+
+POST source-card/generate  source_id=158ac555c86100118cc1e2f19bbe50ac (bid package)
+  -> 200 generated; note_path = Source Notes/25-244-01 WLP .../Section 275 Bid Package 08-03 Glass Windows and Doors.docx.md
+  -> card frontmatter: document_type: "bid_package", bid_package_number: "08-03",
+     bid_package_title: "Glass Windows and Doors"
+  -> sections: ## Bid Package Identity / ## Scope Summary / ## Inclusions /
+     ## Procurement / Estimating Signals / ## PM Coordination Flags / ## Source Reference
+  (was previously misclassified document_type: "rfi" — now fixed)
+
+POST source-card/generate  source_id=47e7f4b5c7ef5c4859da8288c99a38d1 (node_modules .d.ts)
+  -> HTTP 422 {"detail":"source_excluded_path"}  (clean error; NO vault note written)
+
+GET source-index/status
+  -> watch_enabled: false, watcher.running: false, processing_count: 0,
+     exclusion_policy.excluded_path_parts: 15 segments present
+
+Backlog NOT drained; watcher NOT enabled. Live obsidian_mcp_config.json restored byte-identical.
