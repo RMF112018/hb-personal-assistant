@@ -1,0 +1,23 @@
+=== frontend: typecheck + ObsidianMcpPanel ===
+
+> frontend@0.0.0 typecheck
+> tsc -b
+
+
+> frontend@0.0.0 test
+> vitest run ObsidianMcpPanel
+
+
+ RUN  v1.6.1 /Users/bobbyfetting/hb-personal-assistant-worktrees/source-cards-pm-grade-20260629T151455Z/frontend
+
+stderr | src/components/settings/ObsidianMcpPanel.test.tsx > ObsidianMcpPanel — external source roots > renders the external source roots editor with an add-root form
+⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
+
+ ✓ src/components/settings/ObsidianMcpPanel.test.tsx  (14 tests) 1202ms
+
+ Test Files  1 passed (1)
+      Tests  14 passed (14)
+   Start at  12:09:28
+   Duration  2.00s (transform 75ms, setup 48ms, collect 158ms, tests 1.20s, environment 278ms, prepare 47ms)
+

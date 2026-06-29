@@ -17,6 +17,7 @@ import json
 import sqlite3
 import uuid
 from collections.abc import Iterable
+from contextlib import suppress
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -64,6 +65,23 @@ class SourceIndexRepository:
         """Stamp the last successful queue-drain time (operator queue-health signal)."""
         with borrow_connection(conn, self.db_path) as c, transaction(c):
             self._set_state(c, "last_drain_at", _now())
+
+    def record_generation_result(self, *, cards: int, summaries: int,
+                                 conn: sqlite3.Connection | None = None) -> None:
+        """Record the last auto-generation drain result (operator telemetry; no schema change)."""
+        with borrow_connection(conn, self.db_path) as c, transaction(c):
+            self._set_state(c, "last_generation_at", _now())
+            self._set_state(c, "last_generation_cards", str(int(cards)))
+            self._set_state(c, "last_generation_summaries", str(int(summaries)))
+
+    def generated_note_counts(self, *, conn: sqlite3.Connection | None = None) -> dict[str, int]:
+        """Counts of generated source cards by status (operator telemetry)."""
+        with borrow_connection(conn, self.db_path) as c:
+            generated = c.execute(
+                "SELECT COUNT(*) FROM source_intelligence_generated_notes "
+                "WHERE generation_status='generated'"
+            ).fetchone()[0]
+        return {"generated_card_count": int(generated)}
 
     # ----- source roots ----------------------------------------------------------------------
     def register_source_roots(self, roots: Iterable[dict[str, Any]], *, conn: sqlite3.Connection | None = None) -> None:
@@ -116,6 +134,62 @@ class SourceIndexRepository:
                     (source_root_key,),
                 ).fetchall()
             }
+
+    def list_root_file_sources(self, source_root_key: str, *,
+                               conn: sqlite3.Connection | None = None) -> list[dict[str, Any]]:
+        """Active external_file sources under a root: (source_id, rel_path, project_number).
+
+        Used by conservative, same-root referenced-sheet matching (never global cross-root).
+        """
+        with borrow_connection(conn, self.db_path) as c:
+            rows = c.execute(
+                "SELECT source_id, rel_path, project_number FROM source_intelligence_sources "
+                "WHERE source_kind='external_file' AND source_root_key=? AND rel_path IS NOT NULL "
+                "AND deleted=0",
+                (source_root_key,),
+            ).fetchall()
+        return [{"source_id": r[0], "rel_path": r[1], "project_number": r[2]} for r in rows]
+
+    def list_relationships(self, source_id: str, *,
+                           conn: sqlite3.Connection | None = None) -> list[dict[str, Any]]:
+        """Outgoing relationships for a source, with the target rel_path resolved for 'source' kinds."""
+        with borrow_connection(conn, self.db_path) as c:
+            rows = c.execute(
+                "SELECT r.dst_kind, r.dst_ref, r.relation, r.confidence, r.evidence_json, s.rel_path "
+                "FROM source_intelligence_relationships r "
+                "LEFT JOIN source_intelligence_sources s "
+                "  ON r.dst_kind='source' AND s.source_id = r.dst_ref "
+                "WHERE r.src_source_id=? ORDER BY r.created_at",
+                (source_id,),
+            ).fetchall()
+        out: list[dict[str, Any]] = []
+        for dst_kind, dst_ref, relation, confidence, evidence_json, dst_rel_path in rows:
+            evidence = None
+            if evidence_json:
+                with suppress(ValueError, TypeError):
+                    evidence = json.loads(evidence_json)
+            out.append({"dst_kind": dst_kind, "dst_ref": dst_ref, "relation": relation,
+                        "confidence": confidence, "evidence": evidence, "dst_rel_path": dst_rel_path})
+        return out
+
+    def record_relationships(self, source_id: str, relationships: list[dict[str, Any]], *,
+                             conn: sqlite3.Connection | None = None) -> None:
+        """Upsert outgoing relationship rows for a source (UNIQUE guard dedupes). Additive."""
+        if not relationships:
+            return
+        now = _now()
+        with borrow_connection(conn, self.db_path) as c, transaction(c):
+            for rel in relationships:
+                c.execute(
+                    "INSERT INTO source_intelligence_relationships "
+                    "(relationship_id, src_source_id, dst_kind, dst_ref, relation, confidence, "
+                    " evidence_json, created_at) VALUES (?,?,?,?,?,?,?,?) "
+                    "ON CONFLICT(src_source_id, dst_kind, dst_ref, relation) DO UPDATE SET "
+                    " confidence=excluded.confidence, evidence_json=excluded.evidence_json",
+                    (uuid.uuid4().hex, source_id, rel["dst_kind"], rel["dst_ref"], rel["relation"],
+                     rel.get("confidence"),
+                     json.dumps(rel.get("evidence")) if rel.get("evidence") else None, now),
+                )
 
     # ----- writes ----------------------------------------------------------------------------
     def upsert_source_file(self, record: dict[str, Any], *, conn: sqlite3.Connection | None = None) -> str:
@@ -519,6 +593,18 @@ class SourceIndexRepository:
                 "JOIN source_intelligence_metadata m ON m.source_id = s.source_id "
                 "WHERE s.source_sha256 IS NOT m.content_sha256"
             ).fetchone()[0]
+            generated_cards = c.execute(
+                "SELECT COUNT(*) FROM source_intelligence_generated_notes "
+                "WHERE generation_status='generated'"
+            ).fetchone()[0]
+            gen_state = {
+                row[0]: row[1]
+                for row in c.execute(
+                    "SELECT state_key, state_value FROM source_intelligence_state "
+                    "WHERE state_key IN "
+                    "('last_generation_at','last_generation_cards','last_generation_summaries')"
+                ).fetchall()
+            }
         roots = json.loads(roots_row[0]) if roots_row and roots_row[0] else []
         return {
             "fts_available": fts,
@@ -530,6 +616,10 @@ class SourceIndexRepository:
             "stale_note_count": stale_notes,
             "summarized_count": int(summarized),
             "stale_summary_count": int(stale_summaries),
+            "generated_card_count": int(generated_cards),
+            "last_generation_at": gen_state.get("last_generation_at"),
+            "last_generation_cards": gen_state.get("last_generation_cards"),
+            "last_generation_summaries": gen_state.get("last_generation_summaries"),
             "last_indexed_at": last_indexed,
             "configured_roots": roots,
         }

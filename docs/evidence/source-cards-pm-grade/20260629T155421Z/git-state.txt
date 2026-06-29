@@ -1,0 +1,26 @@
+## branch
+feat/source-cards-pm-grade-20260629T151455Z
+
+## base commit (origin/main)
+9e76158a Merge pull request #215 from RMF112018/feat/obsidian-mcp-llm-chat-memory
+
+## staged changes (final)
+ .../20260629T155421Z/README.md                     |  85 +++++
+ .../20260629T155421Z/git-state.txt                 |  20 ++
+ .../20260629T155421Z/grep-proof.txt                |  48 +++
+ .../20260629T155421Z/manual-live-status-smoke.txt  |  15 +
+ .../20260629T155421Z/sample-card-A-312.md          | 132 ++++++++
+ .../20260629T155421Z/sqlite-proof.json             |  47 +++
+ .../20260629T155421Z/test-backend.txt              |  17 +
+ .../20260629T155421Z/test-frontend.txt             |  23 ++
+ .../components/settings/ObsidianMcpPanel.test.tsx  |  72 ++++
+ .../src/components/settings/ObsidianMcpPanel.tsx   |  13 +
+ src/hb_assistant/obsidian_mcp/config.py            |   3 +
+ src/hb_assistant/obsidian_mcp/llm.py               |  80 +++++
+ src/hb_assistant/obsidian_mcp/source_analyzers.py  | 368 +++++++++++++++++++++
+ .../obsidian_mcp/source_index_repository.py        |  90 +++++
+ src/hb_assistant/obsidian_mcp/source_indexer.py    |  76 ++++-
+ src/hb_assistant/obsidian_mcp/source_notes.py      | 303 +++++++++++++++--
+ tests/test_obsidian_source_cards_pm_grade.py       | 283 ++++++++++++++++
+ tests/test_obsidian_source_rebuild_autogen.py      | 133 ++++++++
+ 18 files changed, 1771 insertions(+), 37 deletions(-)

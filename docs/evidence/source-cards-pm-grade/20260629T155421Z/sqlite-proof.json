@@ -1,0 +1,47 @@
+{
+  "generated_notes": [
+    {
+      "source_id": "88b27a5f01ef9bc3805283992e7d9e9c",
+      "note_rel_path": "Source Notes/22-101-00/A-312-WALL-SECTIONS-Rev.1.txt.md",
+      "generation_status": "generated"
+    },
+    {
+      "source_id": "1095336ed2d1560ee1a9466d5430a742",
+      "note_rel_path": "Source Notes/22-101-00/A-611-CURTAIN-WALL-Rev.0.txt.md",
+      "generation_status": "generated"
+    }
+  ],
+  "summaries": [],
+  "relationships": [
+    {
+      "src_source_id": "88b27a5f01ef9bc3805283992e7d9e9c",
+      "dst_kind": "project",
+      "dst_ref": "22-101-00",
+      "relation": "belongs_to_project",
+      "confidence": "high",
+      "evidence_json": null
+    },
+    {
+      "src_source_id": "1095336ed2d1560ee1a9466d5430a742",
+      "dst_kind": "project",
+      "dst_ref": "22-101-00",
+      "relation": "belongs_to_project",
+      "confidence": "high",
+      "evidence_json": null
+    },
+    {
+      "src_source_id": "88b27a5f01ef9bc3805283992e7d9e9c",
+      "dst_kind": "source",
+      "dst_ref": "1095336ed2d1560ee1a9466d5430a742",
+      "relation": "links_to",
+      "confidence": "high",
+      "evidence_json": "{\"sheet\": \"A-611\", \"match_scope\": \"project_folder\"}"
+    }
+  ],
+  "index_status_telemetry": {
+    "sources_total": 2,
+    "generated_card_count": 2,
+    "last_generation_cards": "2",
+    "last_generation_summaries": "0"
+  }
+}

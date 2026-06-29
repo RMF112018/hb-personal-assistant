@@ -106,6 +106,7 @@ class ObsidianMcpConfig(BaseModel):
     source_card_auto_generate_kinds: list[str] = Field(default_factory=lambda: ["external_file"])
     source_summary_auto_generate_kinds: list[str] = Field(default_factory=lambda: ["external_file"])
     source_summary_auto_max_per_drain: int = 5
+    source_card_auto_max_per_drain: int = 200
     schema_version: int = 7
 
     model_config = {"extra": "forbid"}
@@ -157,6 +158,7 @@ class ObsidianMcpConfig(BaseModel):
         "source_summary_max_input_chars",
         "source_summary_ollama_timeout_seconds",
         "source_summary_auto_max_per_drain",
+        "source_card_auto_max_per_drain",
     )
     @classmethod
     def validate_positive(cls, value: int) -> int:
@@ -291,6 +293,7 @@ class ObsidianMcpConfigPatch(BaseModel):
     source_card_auto_generate_kinds: list[str] | None = None
     source_summary_auto_generate_kinds: list[str] | None = None
     source_summary_auto_max_per_drain: int | None = None
+    source_card_auto_max_per_drain: int | None = None
 
     model_config = {"extra": "forbid"}
 

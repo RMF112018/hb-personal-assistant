@@ -70,6 +70,86 @@ def _prompt_for(file_ext: str | None) -> str:
     return _FILE_TYPE_PROMPTS.get(file_ext.lower(), _SYSTEM_PROMPT)
 
 
+# --- Typed construction-drawing advisory (PM-grade) --------------------------------------------
+# The model receives DETERMINISTIC facts (already extracted) + a bounded excerpt and returns a
+# strict PM-facing schema. It must not invent facts; unsupported fields are "unknown"/empty.
+_DRAWING_LIST_KEYS = (
+    "scope_elements", "coordination_items", "submittals_or_shop_drawings", "field_installation_risks",
+    "referenced_sheets", "revision_impacts", "pm_followups", "verify_against_source",
+)
+_DRAWING_CONFIDENCE_KEYS = ("sheet_identity", "scope_summary", "action_items")
+_DRAWING_LIST_CAP = 12
+
+_DRAWING_SYSTEM_PROMPT = (
+    "You assist a construction Project Manager. You are given DETERMINISTIC FACTS already extracted "
+    "from one construction drawing sheet (sheet number, title, project, revision, referenced sheets, "
+    "datums, notes, coordination flags), followed by a bounded text excerpt. Produce a PM-facing "
+    "interpretation. Do NOT invent entities, dates, revision descriptions, or sheet references that "
+    "are not present in the facts/excerpt; if a field is unsupported, use \"unknown\" or an empty "
+    "array. Use construction PM language focused on coordination, submittals, procurement, field "
+    "risk, and cross-discipline references. Output is advisory and NOT authoritative.\n"
+    "Return ONLY a JSON object with keys: plain_english_summary (string), what_this_sheet_is_for "
+    "(string), scope_elements (string array), coordination_items (string array), "
+    "submittals_or_shop_drawings (string array), field_installation_risks (string array), "
+    "referenced_sheets (string array), revision_impacts (string array), pm_followups (string array), "
+    "confidence (object with keys sheet_identity, scope_summary, action_items each one of "
+    "high|medium|low), verify_against_source (string array)."
+)
+
+
+def _normalize_drawing(data: dict[str, Any]) -> dict[str, Any]:
+    """Coerce model output into the strict drawing schema (bounded, typed)."""
+    out: dict[str, Any] = {
+        "plain_english_summary": str(data.get("plain_english_summary") or "").strip(),
+        "what_this_sheet_is_for": str(data.get("what_this_sheet_is_for") or "").strip(),
+    }
+    for key in _DRAWING_LIST_KEYS:
+        value = data.get(key)
+        out[key] = (
+            [str(v).strip() for v in value if str(v).strip()][:_DRAWING_LIST_CAP]
+            if isinstance(value, list) else []
+        )
+    conf = data.get("confidence") if isinstance(data.get("confidence"), dict) else {}
+    out["confidence"] = {
+        k: (str(conf.get(k)).lower() if str(conf.get(k)).lower() in ("high", "medium", "low") else "low")
+        for k in _DRAWING_CONFIDENCE_KEYS
+    }
+    return out
+
+
+def summarize_drawing(
+    config: ObsidianMcpConfig,
+    *,
+    prompt_text: str,
+    backend: GenerationBackend | None = None,
+) -> tuple[dict[str, Any] | None, str, str]:
+    """Typed PM advisory for construction drawings. Returns (data|None, mode, reason).
+
+    ``data`` is the normalized drawing schema on the model path, else ``None`` with ``mode``
+    ``"deterministic_fallback"`` and a specific ``reason`` (disabled/ollama_unavailable/timeout/
+    empty_response/invalid_json). The caller falls back to the deterministic card on None.
+    ``prompt_text`` already embeds the deterministic facts + bounded excerpt.
+    """
+    if config.summarization_backend == "deterministic":
+        return None, "deterministic_fallback", "disabled"
+    chosen = backend or _resolve_backend(config)
+    if chosen is None:
+        return None, "deterministic_fallback", "ollama_unavailable"
+    try:
+        raw = chosen.generate_json(system=_DRAWING_SYSTEM_PROMPT, prompt=prompt_text)
+    except Exception as exc:  # noqa: BLE001 - any backend failure falls back deterministically
+        return None, "deterministic_fallback", _network_reason(exc)
+    if not (raw or "").strip():
+        return None, "deterministic_fallback", "empty_response"
+    try:
+        data = json.loads(raw)
+        if not isinstance(data, dict):
+            raise ValueError("non_object_response")
+    except (ValueError, TypeError, KeyError):
+        return None, "deterministic_fallback", "invalid_json"
+    return _normalize_drawing(data), "llm", "ok"
+
+
 class GenerationBackend(Protocol):
     def generate_json(self, *, system: str, prompt: str) -> str: ...
 

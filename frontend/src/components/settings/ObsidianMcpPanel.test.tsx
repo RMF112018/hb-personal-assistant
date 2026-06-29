@@ -227,3 +227,75 @@ describe('ObsidianMcpPanel — external source roots', () => {
     assertNoForbidden(document.body.textContent || '')
   })
 })
+
+// Source Intelligence generation policy UI (A1.8).
+function renderPanelWith(opts: { sourceIndex?: any; config?: any } = {}) {
+  getObsidianMcpConfig.mockResolvedValue({ config: { ...BASE_CONFIG, ...(opts.config || {}) } })
+  getObsidianMcpStatus.mockResolvedValue({})
+  getObsidianMcpTools.mockResolvedValue({ tools: [] })
+  getObsidianMcpGrokConfig.mockResolvedValue({})
+  getObsidianMcpMutations.mockResolvedValue({ mutations: [] })
+  getObsidianMcpOAuth.mockResolvedValue({})
+  getObsidianMcpReadReceipts.mockResolvedValue({ read_receipts: [] })
+  getObsidianMcpChatGPT.mockResolvedValue({})
+  getObsidianMcpLlmChatStatus.mockResolvedValue({})
+  getObsidianMcpSourceIndexStatus.mockResolvedValue(opts.sourceIndex || { sources_total: 0 })
+  getObsidianMcpSourceWatchStatus.mockResolvedValue({ running: false, mode: 'watchdog', roots: [] })
+  patchObsidianMcpConfig.mockImplementation(async (patch: any) => ({ config: { ...BASE_CONFIG, ...patch } }))
+  const client = makeClient()
+  return render(
+    <QueryClientProvider client={client}>
+      <MemoryRouter>
+        <ObsidianMcpPanel />
+      </MemoryRouter>
+    </QueryClientProvider>
+  )
+}
+
+describe('ObsidianMcpPanel — source intelligence generation policy', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('shows the auto-generation toggles', async () => {
+    renderPanelWith()
+    expect(await screen.findByText('Auto-generate cards on index')).toBeInTheDocument()
+    expect(screen.getByText('Auto-summarize on index')).toBeInTheDocument()
+    expect(screen.getByText('Auto-refresh existing cards')).toBeInTheDocument()
+  })
+
+  it('keeps the manual source-id generate/summarize/refresh controls', async () => {
+    renderPanelWith()
+    await screen.findByText('Source Intelligence')
+    expect(screen.getByText('Generate card')).toBeInTheDocument()
+    expect(screen.getByText('Summarize')).toBeInTheDocument()
+    expect(screen.getByText('Refresh stale notes')).toBeInTheDocument()
+  })
+
+  it('rebuild helper text reflects that card generation is ON', async () => {
+    renderPanelWith({ config: { source_card_auto_generate_enabled: true } })
+    await screen.findByText('Source Intelligence')
+    expect(document.body.textContent).toContain('generates deterministic source cards')
+    expect(document.body.textContent).toContain('Source Notes/')
+  })
+
+  it('rebuild helper text reflects that card generation is OFF', async () => {
+    renderPanelWith({ config: { source_card_auto_generate_enabled: false } })
+    await screen.findByText('Source Intelligence')
+    expect(document.body.textContent).toContain('does not generate cards')
+  })
+
+  it('shows generated-card and last-generation counts when the backend returns them', async () => {
+    renderPanelWith({
+      sourceIndex: {
+        sources_total: 12, generated_card_count: 7, summarized_count: 3, stale_summary_count: 0,
+        last_generation_at: '2026-06-29T10:00:00Z', last_generation_cards: '5', last_generation_summaries: '2',
+      },
+    })
+    await screen.findByText('Source Intelligence')
+    expect(screen.getByText('Generated cards')).toBeInTheDocument()
+    expect(screen.getByText('7')).toBeInTheDocument()
+    expect(screen.getByText('Last generation (cards/sum)')).toBeInTheDocument()
+    expect(screen.getByText('5 / 2')).toBeInTheDocument()
+  })
+})

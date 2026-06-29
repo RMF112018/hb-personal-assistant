@@ -1,0 +1,17 @@
+Backend test results (PYTHONPATH=src:subrepos/...; HB_PA_CONFIG temp per test)
+
+New A1.8 suites:
+  tests/test_obsidian_source_cards_pm_grade.py ....... 8 passed
+  tests/test_obsidian_source_rebuild_autogen.py ...... 7 passed
+  (combined: 15 passed in ~17s)
+
+Full regression (no failures introduced):
+  python3 -m pytest tests/ -k "obsidian or source_index"
+  => 485 passed, 6194 deselected, 1 warning in ~6m12s
+
+py_compile of all of src/ : OK
+
+Task-named files all green within the 485: test_obsidian_source_notes.py,
+test_source_index_repository.py, test_obsidian_mcp_backend.py, test_obsidian_mcp_timeout.py,
+test_obsidian_source_analyzer.py, test_obsidian_source_auto_generate.py,
+test_obsidian_source_summaries.py.
