@@ -141,6 +141,7 @@ export function ObsidianMcpPanel() {
   const [scanMaxFilesInput, setScanMaxFilesInput] = useState('')
   const [pollIntervalInput, setPollIntervalInput] = useState('')
   const [debounceInput, setDebounceInput] = useState('')
+  const [cardMaxPerDrainInput, setCardMaxPerDrainInput] = useState('')
 
   async function refreshAll() {
     setBusy('refresh')
@@ -192,6 +193,7 @@ export function ObsidianMcpPanel() {
     setScanMaxFilesInput(config.external_source_scan_max_files != null ? String(config.external_source_scan_max_files) : '')
     setPollIntervalInput(config.watch_poll_interval_seconds != null ? String(config.watch_poll_interval_seconds) : '')
     setDebounceInput(config.watch_debounce_seconds != null ? String(config.watch_debounce_seconds) : '')
+    setCardMaxPerDrainInput(config.source_card_auto_max_per_drain != null ? String(config.source_card_auto_max_per_drain) : '')
     /* eslint-enable react-hooks/set-state-in-effect */
   }, [config, rootsDirty])
 
@@ -1174,6 +1176,10 @@ export function ObsidianMcpPanel() {
             <Toggle label="Auto-generate cards on index" checked={!!config?.source_card_auto_generate_enabled} onChange={(v) => saveConfig({ source_card_auto_generate_enabled: v })} disabled={busy !== null} />
             <Toggle label="Auto-summarize on index" checked={!!config?.source_summary_auto_generate_enabled} onChange={(v) => saveConfig({ source_summary_auto_generate_enabled: v })} disabled={busy !== null} />
             <Toggle label="Auto-refresh existing cards" checked={config?.source_note_auto_refresh_enabled !== false} onChange={(v) => saveConfig({ source_note_auto_refresh_enabled: v })} disabled={busy !== null} />
+          </div>
+
+          <div className="mt-2 grid gap-2 sm:grid-cols-2">
+            <Field label="Card auto max per drain" value={cardMaxPerDrainInput} onChange={setCardMaxPerDrainInput} onBlur={() => commitNumericField('source_card_auto_max_per_drain', cardMaxPerDrainInput, 'int')} />
           </div>
 
           <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_auto_auto]">

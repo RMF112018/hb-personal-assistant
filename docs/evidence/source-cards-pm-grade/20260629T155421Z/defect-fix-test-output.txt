@@ -1,0 +1,4 @@
+=== backend (config wiring + cap honored) ===
+2 passed, 1 warning in 3.68s
+=== frontend ObsidianMcpPanel ===
+16 passed (incl. displays + submits card auto max per drain)

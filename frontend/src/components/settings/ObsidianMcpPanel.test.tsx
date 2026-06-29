@@ -285,6 +285,25 @@ describe('ObsidianMcpPanel — source intelligence generation policy', () => {
     expect(document.body.textContent).toContain('does not generate cards')
   })
 
+  it('displays the card auto-max-per-drain control seeded from config', async () => {
+    renderPanelWith({ config: { source_card_auto_max_per_drain: 25 } })
+    await screen.findByText('Source Intelligence')
+    await waitFor(() =>
+      expect((screen.getByLabelText('Card auto max per drain') as HTMLInputElement).value).toBe('25'),
+    )
+  })
+
+  it('submits the card auto-max-per-drain value on blur', async () => {
+    renderPanelWith({ config: { source_card_auto_max_per_drain: 200 } })
+    await screen.findByText('Source Intelligence')
+    const input = await screen.findByLabelText('Card auto max per drain')
+    await waitFor(() => expect((input as HTMLInputElement).value).toBe('200'))
+    fireEvent.change(input, { target: { value: '25' } })
+    fireEvent.blur(input)
+    await waitFor(() => expect(patchObsidianMcpConfig).toHaveBeenCalled())
+    expect(lastPatch()).toEqual(expect.objectContaining({ source_card_auto_max_per_drain: 25 }))
+  })
+
   it('shows generated-card and last-generation counts when the backend returns them', async () => {
     renderPanelWith({
       sourceIndex: {

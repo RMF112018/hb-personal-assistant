@@ -352,6 +352,7 @@ class ObsidianMcpConfigPatchRequest(BaseModel):
     source_card_auto_generate_kinds: list[str] | None = None
     source_summary_auto_generate_kinds: list[str] | None = None
     source_summary_auto_max_per_drain: int | None = None
+    source_card_auto_max_per_drain: int | None = None
 
 
 class ObsidianMcpGenerateSourceCardRequest(BaseModel):

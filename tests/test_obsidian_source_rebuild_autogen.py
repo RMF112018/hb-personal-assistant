@@ -101,6 +101,20 @@ def test_rebuild_card_cap_is_resumable(tmp_path, monkeypatch) -> None:
     assert _card_count(vault) == 3
 
 
+def test_rebuild_uses_configured_card_cap_not_default(tmp_path, monkeypatch) -> None:
+    """The drain honors the CONFIGURED source_card_auto_max_per_drain (here 1), not the 200 default."""
+    repo, config, vault = _make(tmp_path, monkeypatch, n_files=3,
+                                source_card_auto_generate_enabled=True,
+                                source_card_auto_max_per_drain=1)
+    assert config.source_card_auto_max_per_drain == 1  # configured value, not default 200 / None
+    repo.enqueue_event(event_type="rebuild", source_root_key="proj")
+    drain_queue(repo, config)  # first drain: exactly one card (the configured cap)
+    assert _card_count(vault) == 1
+    while drain_queue(repo, config) > 0:  # remainder resumes on later drains
+        pass
+    assert _card_count(vault) == 3
+
+
 def test_rebuild_summary_auto_respects_per_drain_cap(tmp_path, monkeypatch) -> None:
     monkeypatch.setattr(llm, "_resolve_backend", lambda config: _FakeBackend())
     repo, config, vault = _make(tmp_path, monkeypatch, n_files=3,

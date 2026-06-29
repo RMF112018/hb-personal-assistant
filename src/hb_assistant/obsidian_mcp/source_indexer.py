@@ -425,7 +425,10 @@ def drain_queue(repo: SourceIndexRepository, config: ObsidianMcpConfig, *, batch
                 root = roots.get(event["source_root_key"])
                 if root and event["rel_path"]:
                     source_id = index_source_file(Path(root.path) / event["rel_path"], root, repo, config)
-                    if source_id is not None and cards_done < card_cap:
+                    if source_id is not None:
+                        # One card per single-file event (naturally bounded by the claim batch);
+                        # the card_cap bounds the rebuild scan-burst, not per-file events. Summaries
+                        # stay capped via summaries_remaining.
                         c, s = _auto_generate(
                             repo, config, source_id, root,
                             summaries_remaining=summary_cap - summaries_done,
