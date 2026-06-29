@@ -6,6 +6,7 @@ dependency factory so the base package remains FastAPI-free.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from contextlib import AsyncExitStack, asynccontextmanager, suppress
@@ -1805,6 +1806,62 @@ def create_app(*, db_path: str | None = None) -> Any:
         from hb_assistant.obsidian_mcp import ObsidianMcpService
 
         return ObsidianMcpService(db_path=db_path).rebuild_source_index({})
+
+    def _resolve_source_watcher() -> Any:
+        """Return the lifespan watcher, lazily constructing one if watch was disabled at boot."""
+        watcher = getattr(app.state, "source_watcher", None)
+        if watcher is not None:
+            return watcher
+        from hb_assistant.config.path_policy import PathPolicy
+        from hb_assistant.obsidian_mcp.config import load_config as _load_obsidian_config
+        from hb_assistant.obsidian_mcp.source_watch import SourceWatcher
+
+        _watch_db = str(db_path) if db_path else str(PathPolicy().get_db_path())
+        watcher = SourceWatcher(_watch_db, _load_obsidian_config())
+        app.state.source_watcher = watcher
+        return watcher
+
+    @app.get("/api/settings/obsidian-mcp/source-watch/status")
+    def settings_obsidian_mcp_source_watch_status(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        watcher = getattr(app.state, "source_watcher", None)
+        if watcher is None:
+            return {"running": False, "mode": "stopped", "watch_enabled": False}
+        return watcher.status()
+
+    @app.post("/api/settings/obsidian-mcp/source-watch/start")
+    async def settings_obsidian_mcp_source_watch_start(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        require_operator_role(role)
+        watcher = _resolve_source_watcher()
+        await asyncio.to_thread(watcher.start)
+        return watcher.status()
+
+    @app.post("/api/settings/obsidian-mcp/source-watch/stop")
+    async def settings_obsidian_mcp_source_watch_stop(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        require_operator_role(role)
+        watcher = getattr(app.state, "source_watcher", None)
+        if watcher is None:
+            return {"running": False, "mode": "stopped"}
+        await asyncio.to_thread(watcher.stop)
+        return watcher.status()
+
+    @app.post("/api/settings/obsidian-mcp/source-watch/restart")
+    async def settings_obsidian_mcp_source_watch_restart(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        require_operator_role(role)
+        watcher = _resolve_source_watcher()
+        return await asyncio.to_thread(watcher.restart)
+
+    @app.post("/api/settings/obsidian-mcp/source-watch/test-event")
+    async def settings_obsidian_mcp_source_watch_test_event(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        require_operator_role(role)
+        watcher = _resolve_source_watcher()
+        return await asyncio.to_thread(watcher.test_event)
+
+    @app.post("/api/settings/obsidian-mcp/source-watch/recover-stuck")
+    async def settings_obsidian_mcp_source_watch_recover_stuck(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        require_operator_role(role)
+        watcher = _resolve_source_watcher()
+        return await asyncio.to_thread(watcher.recover_stuck)
 
     @app.post("/api/settings/obsidian-mcp/source-card/generate")
     def settings_obsidian_mcp_source_card_generate(
