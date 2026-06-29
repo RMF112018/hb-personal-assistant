@@ -20,6 +20,7 @@ import { ProjectMeetingsPage } from '../pages/ProjectMeetingsPage'
 import { ProjectFieldOperationsPage } from '../pages/ProjectFieldOperationsPage'
 import { ProjectCostTimePage } from '../pages/ProjectCostTimePage'
 import { ProjectSchedulePage } from '../pages/ProjectSchedulePage'
+import { ProjectScheduleImportPage } from '../pages/ProjectScheduleImportPage'
 import { ProjectScheduleWorkbenchPage } from '../pages/ProjectScheduleWorkbenchPage'
 import { ProjectScheduleDriverDetailPage } from '../pages/ProjectScheduleDriverDetailPage'
 import { MyItemsPage } from '../pages/MyItemsPage'
@@ -168,6 +169,10 @@ const router = createBrowserRouter([
       {
         path: 'projects/:projectKey/schedule',
         element: <ProjectSchedulePage />,
+      },
+      {
+        path: 'projects/:projectKey/schedule/import',
+        element: <ProjectScheduleImportPage />,
       },
       {
         path: 'projects/:projectKey/schedule/workbench',

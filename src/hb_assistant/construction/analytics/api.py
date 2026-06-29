@@ -3739,6 +3739,13 @@ def create_app(*, db_path: str | None = None) -> Any:
 
         return ScheduleImportService(db_path=_schedule_db_path())
 
+    def _project_schedule_import_pipeline_service() -> Any:
+        from hb_assistant.construction.analytics.project_schedule_import_pipeline_service import (
+            ProjectScheduleImportPipelineService,
+        )
+
+        return ProjectScheduleImportPipelineService(db_path=_schedule_db_path())
+
     def _schedule_read_service() -> Any:
         from hb_assistant.construction.analytics.schedule_import_service import (
             ScheduleReadService,
@@ -4576,6 +4583,93 @@ def create_app(*, db_path: str | None = None) -> Any:
             confirm=request.confirm,
             confirm_supersede=request.confirm_supersede,
             column_roles=request.column_roles,
+        )
+
+    @app.post("/api/projects/{project_key}/schedule/import-preview")
+    async def project_schedule_import_preview(
+        project_key: str,
+        role: dict[str, str] = role_dep,
+        _schema: None = Depends(require_schedule_schema_ready),
+        file: FastAPIUploadFile = FastAPIFile(...),
+        column_roles: str | None = FastAPIForm(None),
+        confirm_supersede: bool = FastAPIForm(False),
+    ) -> dict[str, Any]:
+        from hb_assistant.construction.analytics.schedule_file_parser import ScheduleImportError
+        from hb_assistant.construction.analytics.schedule_import_service import MAX_UPLOAD_BYTES
+
+        require_operator_role(role)
+        try:
+            filename, data = await _read_schedule_upload(file, max_bytes=MAX_UPLOAD_BYTES)
+            parsed_roles: dict[str, str] | None = None
+            if column_roles:
+                try:
+                    parsed_roles = json.loads(column_roles)
+                except json.JSONDecodeError as exc:
+                    raise ScheduleImportError(
+                        "schedule_import_invalid",
+                        message="column_roles must be valid JSON",
+                    ) from exc
+            return _schedule_call(
+                _project_schedule_import_pipeline_service().preview_bytes,
+                project_key=project_key,
+                filename=filename,
+                data=data,
+                column_roles=parsed_roles,
+                confirm_supersede=confirm_supersede,
+            )
+        except HTTPException:
+            raise
+        except ScheduleImportError as exc:
+            _raise_schedule_import_error(exc)
+            raise AssertionError("unreachable") from exc
+        except Exception as exc:
+            _logger.exception("project schedule import-preview failed project_key=%s", project_key)
+            raise HTTPException(status_code=500, detail="schedule_import_invalid") from exc
+
+    @app.post("/api/projects/{project_key}/schedule/import-commit")
+    def project_schedule_import_commit(
+        project_key: str,
+        request: ScheduleImportCommitRequest,
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        from fastapi import HTTPException
+
+        require_operator_role(role)
+        if request.project_key != project_key:
+            raise HTTPException(status_code=400, detail="schedule_project_mismatch")
+        return _schedule_call(
+            _project_schedule_import_pipeline_service().commit,
+            project_key=project_key,
+            import_id=request.import_id,
+            confirm=request.confirm,
+            confirm_supersede=request.confirm_supersede,
+            column_roles=request.column_roles,
+        )
+
+    @app.get("/api/projects/{project_key}/schedule/imports/{import_id}/status")
+    def project_schedule_import_status(
+        project_key: str,
+        import_id: str,
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        del role
+        return _schedule_call(
+            _project_schedule_import_pipeline_service().build_status,
+            project_key=project_key,
+            import_id=import_id,
+        )
+
+    @app.post("/api/projects/{project_key}/schedule/imports/{import_id}/recompute-cpm")
+    def project_schedule_import_recompute_cpm(
+        project_key: str,
+        import_id: str,
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        require_operator_role(role)
+        return _schedule_call(
+            _project_schedule_import_pipeline_service().retry_cpm,
+            project_key=project_key,
+            import_id=import_id,
         )
 
     @app.post("/api/schedules/cost-mapping/runs")

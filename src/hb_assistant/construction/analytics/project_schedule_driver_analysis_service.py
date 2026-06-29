@@ -139,10 +139,14 @@ class ProjectScheduleDriverAnalysisService:
             reverse_adj=reverse_adj,
             row_by_id=row_by_id,
         )
-        top = drivers[0] if drivers else None
+        pm_drivers = [d for d in drivers if d.get("context_quality") != "low"]
+        top = pm_drivers[0] if pm_drivers else (drivers[0] if drivers else None)
+        top_wbs = (top or {}).get("display_wbs") or "—"
+        top_wbs_reason = (top or {}).get("wbs_context_reason")
         summary = {
             "candidate_driver_count": len(drivers),
-            "top_wbs_area": (top or {}).get("wbs_code") or "Unassigned",
+            "top_wbs_area": top_wbs,
+            "top_wbs_context_reason": top_wbs_reason,
             "top_driver_activity_id": (top or {}).get("activity_id"),
             "top_driver_activity_name": (top or {}).get("activity_name"),
             "top_driver_downstream_count": int((top or {}).get("downstream_moved_later_count") or 0),
@@ -157,7 +161,7 @@ class ProjectScheduleDriverAnalysisService:
             "comparison_finish_basis": "resolved_finish_date",
             "advisory_posture": _ADVISORY_POSTURE,
             "summary": summary,
-            "top_drivers": drivers[:_DRIVER_PREVIEW],
+            "top_drivers": (pm_drivers or drivers)[:_DRIVER_PREVIEW],
             "logic_changes": logic_changes,
             "duration_changes": duration_changes,
             "milestone_impacts": milestone_impacts,
@@ -254,24 +258,59 @@ class ProjectScheduleDriverAnalysisService:
         top = (analysis.get("top_drivers") or [None])[0]
         if not top:
             return {}
-        movement = int(top.get("finish_delta_days") or top.get("duration_delta_days") or 0)
+        basis = str(top.get("movement_basis") or "downstream_cluster")
+        wbs_label = top.get("display_wbs") or "the schedule"
+        activity_label = top.get("activity_name") or top.get("activity_id") or "This activity"
+        downstream = int(top.get("downstream_moved_later_count") or 0)
         milestone_name = top.get("top_milestone_name")
         milestone_clause = f", including {milestone_name}" if milestone_name else ""
+        finish_delta = int(top.get("finish_delta_days") or 0)
+        start_delta = int(top.get("start_delta_days") or 0)
+        duration_delta = int(top.get("duration_delta_days") or 0)
+
+        if basis == "self_finish_moved":
+            movement_days = max(abs(finish_delta), abs(start_delta))
+            movement_clause = (
+                f"{activity_label} moved by {movement_days} days"
+                if movement_days
+                else f"{activity_label} shows date movement in this comparison"
+            )
+        elif basis == "duration_extended":
+            movement_clause = (
+                f"{activity_label} extended by {duration_delta} days"
+                if duration_delta
+                else f"{activity_label} shows a duration increase in this comparison"
+            )
+        elif basis == "logic_changed":
+            movement_clause = f"{activity_label} has logic changes in this comparison"
+        elif basis == "float_degraded":
+            movement_clause = f"{activity_label} shows float degradation nearby in this comparison"
+        elif basis == "milestone_path_touched":
+            movement_clause = f"{activity_label} appears connected to moved milestone paths"
+        else:
+            movement_clause = (
+                f"{activity_label} did not move materially itself, but it sits upstream of "
+                f"{downstream} activities that moved later"
+            )
+
         narrative = (
-            f"The largest movement appears concentrated around {top.get('wbs_code') or 'the schedule'}. "
-            f"{top.get('activity_name') or top.get('activity_id')} moved or extended by {abs(movement)} days "
-            f"and appears connected to {top.get('downstream_moved_later_count', 0)} downstream activities"
+            f"The largest movement appears concentrated around {wbs_label}. "
+            f"{movement_clause} and appears connected to {downstream} downstream activities"
             f"{milestone_clause}. Review this sequence first."
         )
         return {
             "primary_driver_narrative": narrative,
+            "movement_basis": basis,
             "top_review_sequence": {
-                "wbs_code": top.get("wbs_code"),
+                "wbs_code": top.get("display_wbs"),
+                "wbs_context_reason": top.get("wbs_context_reason"),
                 "driver_activity_id": top.get("activity_id"),
                 "driver_activity_name": top.get("activity_name"),
-                "downstream_count": top.get("downstream_moved_later_count"),
+                "downstream_count": downstream,
                 "milestone_touch_count": top.get("milestone_touch_count"),
                 "review_priority": top.get("review_priority"),
+                "movement_basis": basis,
+                "context_quality": top.get("context_quality"),
             },
         }
 
@@ -401,7 +440,9 @@ class ProjectScheduleDriverAnalysisService:
             if score < _MIN_DRIVER_SCORE:
                 continue
 
-            wbs_counts = Counter(s.get("wbs_code") or "Unassigned" for s in successors)
+            wbs_counts = Counter(
+                self._display_wbs(s.get("wbs_code"))[0] for s in successors if self._display_wbs(s.get("wbs_code"))[0] != "—"
+            )
             top_milestone = None
             for s in successors:
                 paths = s.get("affected_milestone_path") or []
@@ -415,14 +456,30 @@ class ProjectScheduleDriverAnalysisService:
             succ_delta = (current_rels.get(aid) or {}).get("successor_count", 0) - (
                 prior_rels.get(aid) or {}
             ).get("successor_count", 0)
+            display_wbs, missing_reasons, wbs_context_reason = self._display_wbs(row.get("wbs_code"))
+            movement_basis = self._movement_basis(
+                row,
+                logic_score=logic_score,
+                downstream_moved=downstream_moved,
+                float_deg=float_deg,
+                milestone_touch=milestone_touch,
+            )
+            context_quality, context_missing = self._driver_context_quality(
+                row,
+                display_wbs=display_wbs,
+                movement_basis=movement_basis,
+            )
 
             drivers.append(
                 {
                     "activity_id": aid,
                     "activity_name": row.get("activity_name"),
                     "wbs_code": row.get("wbs_code"),
+                    "display_wbs": display_wbs,
+                    "wbs_context_reason": wbs_context_reason,
                     "finish_delta_days": finish_delta,
                     "start_delta_days": start_delta,
+                    "duration_delta_days": row.get("duration_delta_days"),
                     "float_delta_days": row.get("float_delta_days"),
                     "downstream_moved_later_count": downstream_moved,
                     "milestone_touch_count": milestone_touch,
@@ -432,10 +489,13 @@ class ProjectScheduleDriverAnalysisService:
                     "successor_count_delta": succ_delta,
                     "computed_cpm_critical": row.get("computed_cpm_critical"),
                     "computed_cpm_near_critical": row.get("computed_cpm_near_critical"),
-                    "dominant_impacted_wbs": wbs_counts.most_common(1)[0][0] if wbs_counts else row.get("wbs_code"),
+                    "dominant_impacted_wbs": wbs_counts.most_common(1)[0][0] if wbs_counts else display_wbs,
                     "top_milestone_name": top_milestone,
                     "review_priority": min(100, int(score)),
                     "driver_score": round(score, 2),
+                    "movement_basis": movement_basis,
+                    "context_quality": context_quality,
+                    "missing_context_reasons": missing_reasons + context_missing,
                     "sequence_cue": _SEQUENCE_CUE,
                     "impacted_successors_preview": successors[:_SUCCESSOR_PREVIEW],
                 }
@@ -828,6 +888,62 @@ class ProjectScheduleDriverAnalysisService:
             if int(item.get("movement_days") or 0) > 0 and item.get("activity_id"):
                 ids.add(str(item["activity_id"]))
         return ids
+
+    @staticmethod
+    def _display_wbs(wbs_code: Any) -> tuple[str, list[str], str | None]:
+        if wbs_code not in (None, ""):
+            return str(wbs_code), [], None
+        return "—", ["wbs_missing_from_comparison_row"], "WBS was not present in the comparison row."
+
+    @staticmethod
+    def _movement_basis(
+        row: dict[str, Any],
+        *,
+        logic_score: int,
+        downstream_moved: int,
+        float_deg: float,
+        milestone_touch: int,
+    ) -> str:
+        finish_delta = row.get("finish_delta_days") or 0
+        start_delta = row.get("start_delta_days") or 0
+        duration_delta = row.get("duration_delta_days") or 0
+        if finish_delta not in (None, 0) or start_delta not in (None, 0):
+            return "self_finish_moved"
+        if duration_delta not in (None, 0) and duration_delta > 0:
+            return "duration_extended"
+        if logic_score:
+            return "logic_changed"
+        if downstream_moved >= 2:
+            return "downstream_cluster"
+        if float_deg < 0:
+            return "float_degraded"
+        if milestone_touch:
+            return "milestone_path_touched"
+        return "downstream_cluster"
+
+    @staticmethod
+    def _driver_context_quality(
+        row: dict[str, Any],
+        *,
+        display_wbs: str,
+        movement_basis: str,
+    ) -> tuple[str, list[str]]:
+        missing: list[str] = []
+        activity_name = row.get("activity_name")
+        activity_id = row.get("activity_id")
+        if not activity_name:
+            missing.append("activity_name_missing")
+        if display_wbs == "—":
+            missing.append("wbs_missing")
+        if not activity_id:
+            missing.append("activity_id_missing")
+        if missing:
+            if len(missing) >= 2:
+                return "low", missing
+            return "medium", missing
+        if movement_basis == "downstream_cluster" and display_wbs == "—":
+            return "medium", missing
+        return "high", missing
 
     def _has_movement_signal(self, row: dict[str, Any]) -> bool:
         return (

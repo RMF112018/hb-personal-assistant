@@ -17,6 +17,15 @@ function text(value: unknown, fallback = 'Not available') {
   return String(value)
 }
 
+function formatWbs(item: Record<string, unknown>) {
+  const display = item.display_wbs ?? item.wbs_code
+  if (display === null || display === undefined || display === '' || display === '—') {
+    const reason = item.wbs_context_reason
+    return reason ? `WBS not in source (${String(reason)})` : 'WBS not in comparison row'
+  }
+  return String(display)
+}
+
 function num(value: unknown, fallback = '0') {
   if (value === null || value === undefined || value === '') return fallback
   return String(value)
@@ -326,7 +335,7 @@ function DriverEvidenceSection({
                         {text(item.activity_name)}
                       </Link>
                     </td>
-                    <td className="px-3 py-2">{text(item.wbs_code)}</td>
+                    <td className="px-3 py-2">{formatWbs(item)}</td>
                     <td className="px-3 py-2">{item.finish_delta_days != null ? `${item.finish_delta_days}d` : '—'}</td>
                     <td className="px-3 py-2">{num(item.downstream_moved_later_count)}</td>
                     <td className="px-3 py-2">P{num(item.review_priority)}</td>
@@ -496,6 +505,9 @@ export function ProjectSchedulePage() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
+            <Link className="badge" to={`/projects/${projectKey}/schedule/import`}>
+              Import Schedule
+            </Link>
             <Link
               className="badge"
               to={

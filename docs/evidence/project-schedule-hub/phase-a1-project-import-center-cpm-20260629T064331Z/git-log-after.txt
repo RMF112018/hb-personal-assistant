@@ -1,0 +1,5 @@
+f6ddaf22 feat(schedule): Project Schedule Hub Phase 5 narrative QA and presentation polish
+7da79799 feat(schedule): Project Schedule Hub Phases 2–4 workbench and driver workflow
+b1840fc2 fix(schedule): correct project schedule change-impact comparison
+7e8e3d3d Add project schedule hub
+fde2560d Merge pull request #185 from RMF112018/feat/obsidian-mcp-second-brain-foundation

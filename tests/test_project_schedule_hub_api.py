@@ -563,7 +563,7 @@ def test_project_schedule_no_schedule_contract_and_prefilled_import_link(tmp_pat
 
     assert body["status"] == "no_schedule"
     assert body["readiness"]["no_schedule"]["required"] is True
-    assert body["technical_links"]["schedule_import_url"] == "/schedules/imports?project=tropical"
+    assert body["technical_links"]["schedule_import_url"] == "/projects/tropical/schedule/import"
     assert body["schedule_story"]["headline"] == "No schedule update is imported for this project."
 
 

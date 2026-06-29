@@ -1,0 +1,18 @@
+ M frontend/src/app/routes.tsx
+ M frontend/src/lib/api.ts
+ M frontend/src/pages/ProjectSchedulePage.tsx
+ M src/hb_assistant/construction/analytics/api.py
+ M src/hb_assistant/construction/analytics/project_schedule_driver_analysis_service.py
+ M src/hb_assistant/construction/analytics/project_schedule_narrative_qa.py
+ M src/hb_assistant/construction/analytics/project_schedule_summary_service.py
+ M src/hb_assistant/construction/analytics/schedule_import_service.py
+ M src/hb_assistant/construction/analytics/schedule_trust_service.py
+ M tests/test_project_schedule_hub_api.py
+ M tests/test_schedule_cpm_api.py
+?? docs/evidence/project-schedule-hub/phase-a1-project-import-center-cpm-20260629T064331Z/
+?? frontend/docs/evidence/project-schedule-hub/
+?? frontend/src/pages/ProjectScheduleImportPage.test.tsx
+?? frontend/src/pages/ProjectScheduleImportPage.tsx
+?? src/hb_assistant/construction/analytics/project_schedule_import_pipeline_service.py
+?? src/hb_assistant/construction/analytics/schedule_cpm_recompute_service.py
+?? tests/test_project_schedule_import_pipeline.py

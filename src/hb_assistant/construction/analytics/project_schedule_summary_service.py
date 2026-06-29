@@ -1964,7 +1964,9 @@ class ProjectScheduleSummaryService:
                 "all_items": [],
                 "total_count": 1,
             },
-            "technical_links": {"schedule_import_url": f"/schedules/imports?project={project_key}"},
+            "technical_links": {
+                "schedule_import_url": f"/projects/{project_key}/schedule/import",
+            },
             "technical_evidence": {"collapsed_by_default": True, "raw_keys_available": False},
         }
 
@@ -2024,7 +2026,7 @@ class ProjectScheduleSummaryService:
             "computed_cpm_url": f"/schedules/cpm?project={project_key}&version={encoded_current}",
             "activities_url": f"/schedules/activities?project={project_key}&version={encoded_current}",
             "identity_review_url": f"/schedules/identity-review?project={project_key}",
-            "schedule_import_url": f"/schedules/imports?project={project_key}",
+            "schedule_import_url": f"/projects/{project_key}/schedule/import",
             "schedule_workbench_url": f"/projects/{project_key}/schedule/workbench",
             "schedule_export_url": f"/api/projects/{project_key}/schedule/export?format=markdown",
         }
