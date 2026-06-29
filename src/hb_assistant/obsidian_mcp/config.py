@@ -96,7 +96,8 @@ class ObsidianMcpConfig(BaseModel):
     source_card_excerpt_chars: int = 600
     source_summary_enabled: bool = True
     source_summary_max_input_chars: int = 6000
-    schema_version: int = 5
+    source_summary_ollama_timeout_seconds: int = 45
+    schema_version: int = 6
 
     model_config = {"extra": "forbid"}
 
@@ -145,6 +146,7 @@ class ObsidianMcpConfig(BaseModel):
         "watch_poll_interval_seconds",
         "source_card_excerpt_chars",
         "source_summary_max_input_chars",
+        "source_summary_ollama_timeout_seconds",
     )
     @classmethod
     def validate_positive(cls, value: int) -> int:
@@ -272,6 +274,7 @@ class ObsidianMcpConfigPatch(BaseModel):
     source_card_excerpt_chars: int | None = None
     source_summary_enabled: bool | None = None
     source_summary_max_input_chars: int | None = None
+    source_summary_ollama_timeout_seconds: int | None = None
 
     model_config = {"extra": "forbid"}
 

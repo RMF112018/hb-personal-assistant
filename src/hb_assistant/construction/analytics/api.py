@@ -339,6 +339,12 @@ class ObsidianMcpConfigPatchRequest(BaseModel):
     source_notes_folder: str | None = None
     source_card_generation_enabled: bool | None = None
     source_card_excerpt_chars: int | None = None
+    summarization_backend: str | None = None
+    summarization_provider: str | None = None
+    summarization_model: str | None = None
+    source_summary_enabled: bool | None = None
+    source_summary_max_input_chars: int | None = None
+    source_summary_ollama_timeout_seconds: int | None = None
 
 
 class ObsidianMcpGenerateSourceCardRequest(BaseModel):
@@ -1751,10 +1757,19 @@ def create_app(*, db_path: str | None = None) -> Any:
     ) -> dict[str, Any]:
         require_operator_role(role)
         from hb_assistant.obsidian_mcp import ObsidianMcpConfigPatch, ObsidianMcpService
+        from hb_assistant.obsidian_mcp.llm import validate_summary_model
 
-        return ObsidianMcpService().update_config(
+        service = ObsidianMcpService()
+        result = service.update_config(
             ObsidianMcpConfigPatch.model_validate(request.model_dump(exclude_none=True))
         )
+        # Advisory (never blocking): if the operator set a summary model, validate it against the
+        # installed Ollama tags so the UI can flag a missing/tag-resolved model. Ollama may be down
+        # at save time, so this never rejects the save.
+        if request.summarization_model is not None:
+            with suppress(Exception):
+                result["model_validation"] = validate_summary_model(service.get_config())
+        return result
 
     @app.get("/api/settings/obsidian-mcp/status")
     def settings_obsidian_mcp_status(role: dict[str, str] = role_dep) -> dict[str, Any]:
@@ -1823,6 +1838,14 @@ def create_app(*, db_path: str | None = None) -> Any:
         return ObsidianMcpService(db_path=db_path).summarize_source(
             {"source_id": request.source_id, "principal_kind": "local"}
         )
+
+    @app.post("/api/settings/obsidian-mcp/model/test")
+    def settings_obsidian_mcp_model_test(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        require_operator_role(role)
+        from hb_assistant.obsidian_mcp import ObsidianMcpService
+        from hb_assistant.obsidian_mcp.llm import validate_summary_model
+
+        return validate_summary_model(ObsidianMcpService().get_config())
 
     @app.get("/api/settings/obsidian-mcp/tools")
     def settings_obsidian_mcp_tools(role: dict[str, str] = role_dep) -> dict[str, Any]:

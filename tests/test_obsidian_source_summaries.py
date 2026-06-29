@@ -85,7 +85,8 @@ def test_ollama_unavailable_keeps_base_no_advisory(env, monkeypatch) -> None:
     _force_backend(monkeypatch, None)  # model unavailable
     sid = _index(env, "a.md", "Some indexed content here.")
     out = summarize_source(repo, config, source_id=sid)
-    assert out["summarized"] is False and out["reason"] == "model_unavailable"
+    # A None backend means the daemon/model couldn't be reached → specific category code.
+    assert out["summarized"] is False and out["reason"] == "ollama_unavailable"
     # base deterministic card WAS created (one-call contract), but with no advisory
     card = (vault / out["note_path"]).read_text(encoding="utf-8")
     assert "summary_advisory: false" in card
