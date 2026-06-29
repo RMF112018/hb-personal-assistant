@@ -1,0 +1,19 @@
+# repo state
+branch: feat/obsidian-mcp-ollama-summaries (stacked on #201 feat/obsidian-mcp-source-cards)
+base head: 22f2c620
+
+## changed/new files
+ M src/hb_assistant/construction/analytics/api.py
+ M src/hb_assistant/obsidian_mcp/config.py
+ M src/hb_assistant/obsidian_mcp/mcp_app.py
+ M src/hb_assistant/obsidian_mcp/service.py
+ M src/hb_assistant/obsidian_mcp/source_index_repository.py
+ M src/hb_assistant/obsidian_mcp/source_notes.py
+ M src/hb_assistant/obsidian_mcp/tools.py
+ M src/hb_assistant/store/migrator.py
+ M src/hb_assistant/store/source_intelligence_tables.py
+ M tests/test_obsidian_mcp_backend.py
+ M tests/test_obsidian_mcp_timeout.py
+?? docs/evidence/source-summaries/
+?? tests/test_migrator_v94_source_summaries.py
+?? tests/test_obsidian_source_summaries.py

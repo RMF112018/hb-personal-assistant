@@ -47,7 +47,7 @@ _ALL_TOOLS = [
     "vault_auto_link_plan", "vault_bulk_tagging_plan", "vault_email_to_note_plan",
     "vault_email_to_note_apply",
     "search_sources", "search_knowledge", "source_index_status", "rebuild_source_index",
-    "generate_source_card", "refresh_stale_source_notes",
+    "generate_source_card", "refresh_stale_source_notes", "summarize_source",
 ]
 
 # Minimal arguments per tool. Missing files / bogus plan_ids are fine: a structured
@@ -81,6 +81,7 @@ _MIN_ARGS: dict[str, dict] = {
     "search_sources": {"query": "Grok"},
     "search_knowledge": {"query": "Grok"},
     "generate_source_card": {"source_id": "missing"},
+    "summarize_source": {"source_id": "missing"},
 }
 
 

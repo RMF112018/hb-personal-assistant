@@ -64,6 +64,7 @@ _TOOL_SCOPES = {
     "rebuild_source_index": "obsidian.write",
     "generate_source_card": "obsidian.write",
     "refresh_stale_source_notes": "obsidian.write",
+    "summarize_source": "obsidian.write",
 }
 
 _BEARER_PREFIX = "Bearer "
@@ -1170,6 +1171,23 @@ def build_streamable_http_app(
             "refresh_stale_source_notes", ctx,
             lambda: svc.refresh_stale_source_notes(
                 {"max_updates": max_updates, "principal_kind": args["principal_kind"]}
+            ),
+            args,
+        )
+
+    @mcp.tool()
+    async def summarize_source(ctx: Context, source_id: str) -> dict[str, Any]:
+        """Model-assisted (Ollama) ADVISORY enrichment of a source card: generates the
+        deterministic base if missing, then adds a bounded, clearly-labelled advisory summary
+        section in place. Falls back to summarized:false when the model is unavailable; never
+        runs in the search path. Write-scoped."""
+        _enforce("summarize_source", ctx)
+        args = {"source_id": source_id, "principal_kind": _principal_kind(ctx),
+                "operator_mode": _operator_mode(ctx)}
+        return await _run_tool(
+            "summarize_source", ctx,
+            lambda: svc.summarize_source(
+                {"source_id": source_id, "principal_kind": args["principal_kind"]}
             ),
             args,
         )

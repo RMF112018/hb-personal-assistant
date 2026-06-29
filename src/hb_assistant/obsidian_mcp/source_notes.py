@@ -1,27 +1,41 @@
-"""Deterministic Obsidian source cards.
+"""Obsidian source cards: deterministic base + optional advisory model summary.
 
-A source card is a curated note that *describes and links back to* an indexed source — NOT a
-copy of it. No model output (Ollama is a later slice). No raw file dumping (only a small,
-bounded, labeled preview of already-indexed text, withheld for sensitive sources). No raw email
-body (link sources have no extracted text by construction). Cards are written through the
-existing ``create_note`` guardrails: write policy, SHA-gated overwrite, atomic write, backup,
-receipt, and pathsafe protected/hidden/symlink checks.
+A source card describes and links back to an indexed source — NOT a copy of it. The base card
+is fully deterministic (no model output). ``summarize_source`` may add an OPTIONAL advisory
+section produced by a local model (Ollama), clearly labelled and never authoritative; the
+deterministic tools (``generate_source_card``/``refresh_stale_source_notes``) never emit model
+content and strip any advisory section. No raw file dumping (bounded labelled preview, withheld
+for sensitive sources). No raw email body (link sources have no extracted text). Cards are
+written through the existing ``create_note`` guardrails (write policy, SHA-gated overwrite,
+atomic write, backup, receipt, pathsafe).
 """
 
 from __future__ import annotations
 
+import hashlib
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from . import extract, llm
 from .config import ObsidianMcpConfig
 from .mutations import create_note, resolve_markdown_write_path, sha256_file
 from .source_index_repository import SourceIndexRepository
 from .tools import ObsidianMcpToolError
 
+# Bump when the advisory prompt/template changes so receipts record which version produced a card.
+SUMMARY_PROMPT_VERSION = "source-card-v1"
+_ADVISORY_LIST_KEYS = ("key_points", "action_items", "decisions", "entities")
+_ADVISORY_MAX_ITEMS = 10
+_ADVISORY_ITEM_CHARS = 200
+
 
 def _now() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+
+
+def _sha256_text(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
 def _card_rel_path(config: ObsidianMcpConfig, detail: dict[str, Any]) -> str:
@@ -42,7 +56,7 @@ def _yaml_str(value: object) -> str:
     return f'"{text}"'
 
 
-def _frontmatter(detail: dict[str, Any], generated_at: str, card_excerpt_chars: int) -> str:
+def _frontmatter(detail: dict[str, Any], generated_at: str, advisory: dict[str, Any] | None) -> str:
     lines = ["---", "note_type: source_card",
              f"source_id: {_yaml_str(detail['source_id'])}",
              f"source_kind: {_yaml_str(detail['source_kind'])}"]
@@ -60,19 +74,49 @@ def _frontmatter(detail: dict[str, Any], generated_at: str, card_excerpt_chars: 
         "stale: false",
         f"project_key: {_yaml_str(detail.get('project_key'))}",
         f"project_number: {_yaml_str(detail.get('project_number'))}",
-        "tags:",
-        f"  - source/{detail['source_kind']}",
     ]
+    lines.append(f"summary_advisory: {'true' if advisory else 'false'}")
+    if advisory:
+        lines += [
+            f"summary_model_provider: {_yaml_str(advisory.get('model_provider'))}",
+            f"summary_model_name: {_yaml_str(advisory.get('model_name'))}",
+            f"summary_prompt_version: {_yaml_str(advisory.get('prompt_version'))}",
+            f"summary_generated_at: {_yaml_str(advisory.get('generated_at'))}",
+        ]
+    lines += ["tags:", f"  - source/{detail['source_kind']}"]
     if detail.get("project_number"):
         lines.append(f"  - project/{detail['project_number']}")
+    if advisory:
+        lines.append("  - source/ai-summarized")
     lines.append("---")
     return "\n".join(lines)
 
 
-def _render_card(config: ObsidianMcpConfig, detail: dict[str, Any], generated_at: str) -> str:
+def _render_advisory(advisory: dict[str, Any]) -> list[str]:
+    parts = ["## AI Summary (advisory — model-generated, not authoritative)",
+             str(advisory.get("summary") or "").strip() or "_(model returned no summary text)_", ""]
+    for key in _ADVISORY_LIST_KEYS:
+        items = [str(v).strip()[:_ADVISORY_ITEM_CHARS] for v in (advisory.get(key) or []) if str(v).strip()]
+        if items:
+            parts.append(f"**{key.replace('_', ' ').title()}:**")
+            parts += [f"- {item}" for item in items[:_ADVISORY_MAX_ITEMS]]
+            parts.append("")
+    parts += [
+        f"_Model: {advisory.get('model_provider')}/{advisory.get('model_name')} · prompt "
+        f"{advisory.get('prompt_version')} · generated {advisory.get('generated_at')}. "
+        "Advisory only — verify against the source._",
+        "",
+    ]
+    return parts
+
+
+def _render_card(config: ObsidianMcpConfig, detail: dict[str, Any], generated_at: str,
+                 advisory: dict[str, Any] | None = None) -> str:
     cap = int(getattr(config, "source_card_excerpt_chars", 600))
     display = Path(detail["rel_path"]).name if detail.get("rel_path") else str(detail.get("domain_ref_id"))
-    parts = [_frontmatter(detail, generated_at, cap), "", f"# Source Card: {display}", ""]
+    parts = [_frontmatter(detail, generated_at, advisory), "", f"# Source Card: {display}", ""]
+    if advisory:
+        parts += _render_advisory(advisory)
 
     parts += ["## Overview (deterministic — no model summary)",
               f"- Source kind: {detail['source_kind']}"]
@@ -150,6 +194,8 @@ def generate_source_card(repo: SourceIndexRepository, config: ObsidianMcpConfig,
         caller_surface="mcp", tool_name="generate_source_card", principal_kind=principal_kind,
     )
     repo.record_generated_note(source_id, card_rel, "generated", generated_at)
+    # Deterministic card carries no advisory section -> drop any prior model-summary receipt.
+    repo.delete_summary(source_id)
     return {"source_id": source_id, "note_path": card_rel, "sha256": result["sha256"],
             "overwritten": bool(result.get("overwritten")), "status": "generated"}
 
@@ -170,3 +216,85 @@ def refresh_stale_source_notes(repo: SourceIndexRepository, config: ObsidianMcpC
             failed.append({"source_id": note["source_id"], "reason": type(exc).__name__})
     return {"refreshed": refreshed, "failed": failed, "count": len(refreshed),
             "max_updates": int(max_updates)}
+
+
+def _source_input_text(detail: dict[str, Any]) -> str | None:
+    """Bounded text the model summarizes. None for sensitive/link sources (no usable text)."""
+    if not detail.get("rel_path"):
+        return None  # link sources (email/procore/schedule) carry no extracted text
+    if detail.get("text_vault_ref") and not detail.get("text_excerpt"):
+        return None  # sensitive: indexed text is encrypted; do not feed it to the model here
+    return str(detail.get("text_excerpt") or "").strip() or None
+
+
+def summarize_source(repo: SourceIndexRepository, config: ObsidianMcpConfig, *, source_id: str,
+                     principal_kind: str | None = None, backend: Any = None) -> dict[str, Any]:
+    """Model-assisted advisory enrichment of a source card. One call: generates the deterministic
+    base if missing, then (only when a real model produced output) writes an advisory section in
+    place. Never blocks on Ollama; falls back to ``summarized: false`` when unavailable."""
+    if not getattr(config, "source_summary_enabled", True):
+        raise ObsidianMcpToolError("source_summary_disabled")
+    detail = repo.get_source_detail(source_id)
+    if detail is None:
+        raise ObsidianMcpToolError("source_not_found")
+    if detail["source_kind"] == "obsidian_note":
+        raise ObsidianMcpToolError("source_card_not_applicable")
+    if detail.get("deleted"):
+        raise ObsidianMcpToolError("source_deleted")
+
+    # One-call contract: ensure the deterministic base card exists first (generate if missing).
+    card_rel = _card_rel_path(config, detail)
+    resolved = resolve_markdown_write_path(config, card_rel, must_exist=False, parent_must_exist=False)
+    if not resolved.path.exists():
+        generate_source_card(repo, config, source_id=source_id, overwrite=False,
+                             principal_kind=principal_kind)
+
+    text = _source_input_text(detail)
+    if not text:  # sensitive / link source: base card exists, but no text to summarize
+        return {"summarized": False, "reason": "no_summarizable_text",
+                "source_id": source_id, "note_path": card_rel}
+
+    cap = int(getattr(config, "source_summary_max_input_chars", 6000))
+    text = text[:cap]
+    rel = str(detail.get("rel_path"))
+    deterministic = extract.analyze(rel, text, max_chars=cap)
+    result, mode = llm.summarize(config, text=text, deterministic=deterministic, backend=backend)
+    if mode != "llm":
+        # Ollama unavailable / fallback: the deterministic base card stands; no advisory written.
+        return {"summarized": False, "reason": "model_unavailable", "mode": mode,
+                "source_id": source_id, "note_path": card_rel}
+
+    generated_at = _now()
+    advisory = {
+        "summary": result.get("summary", ""),
+        "key_points": result.get("key_points", []),
+        "action_items": result.get("action_items", []),
+        "decisions": result.get("decisions", []),
+        "entities": result.get("entities", []),
+        "model_provider": config.summarization_provider,
+        "model_name": config.summarization_model,
+        "prompt_version": SUMMARY_PROMPT_VERSION,
+        "generated_at": generated_at,
+    }
+    content = _render_card(config, detail, generated_at, advisory=advisory)
+
+    resolved = resolve_markdown_write_path(config, card_rel, must_exist=False, parent_must_exist=False)
+    exists = resolved.path.exists()
+    result_write = create_note(
+        config, path=card_rel, content=content, overwrite=exists,
+        create_parent_dirs=True, expected_sha256=sha256_file(resolved.path) if exists else None,
+        caller_surface="mcp", tool_name="summarize_source", principal_kind=principal_kind,
+    )
+    repo.record_generated_note(source_id, card_rel, "generated", generated_at)
+    repo.upsert_summary(source_id, {
+        "model_provider": config.summarization_provider,
+        "model_name": config.summarization_model,
+        "prompt_version": SUMMARY_PROMPT_VERSION,
+        "prompt_sha256": _sha256_text(f"{SUMMARY_PROMPT_VERSION}|{text}"),
+        "summary_sha256": _sha256_text(str(advisory["summary"])),
+        "source_sha256": detail.get("content_sha256"),
+    })
+    return {"summarized": True, "source_id": source_id, "note_path": card_rel,
+            "sha256": result_write["sha256"], "mode": "llm",
+            "model_provider": config.summarization_provider, "model_name": config.summarization_model,
+            "prompt_version": SUMMARY_PROMPT_VERSION}

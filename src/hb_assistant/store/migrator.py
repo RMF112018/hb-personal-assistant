@@ -14,7 +14,7 @@ from .connection import get_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 93
+LATEST_SCHEMA_VERSION = 94
 
 
 class StaffingMigrationError(RuntimeError):
@@ -6920,6 +6920,12 @@ class SQLiteMigrator:
 
         return V93_FTS_STATEMENTS
 
+    @staticmethod
+    def _v94_statements() -> list[str]:
+        from hb_assistant.store.source_intelligence_tables import V94_STATEMENTS
+
+        return V94_STATEMENTS
+
     # v79 Detailed schedule version diff facts.
     @staticmethod
     def _v79_statements() -> list[str]:
@@ -8555,6 +8561,16 @@ class SQLiteMigrator:
             if cur.fetchone() is None:
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (93, 'v93_source_intelligence_index', ?)",
+                    (now,),
+                )
+
+            # v94 Source-intelligence advisory model-summary receipt (additive).
+            for stmt in self._v94_statements():
+                conn.execute(stmt)
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 94")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (94, 'v94_source_intelligence_summaries', ?)",
                     (now,),
                 )
 

@@ -233,6 +233,28 @@ V93_FTS_STATEMENTS: list[str] = [
     "USING fts5(text_excerpt, rel_path, aux, tokenize='unicode61');",
 ]
 
+# V94 — advisory model-summary receipt (one row per source whose card currently carries an AI
+# summary). NO raw prompt or model response stored: hashes + model identity + advisory marker
+# only. The bounded summary text lives only in the card, clearly labelled advisory.
+V94_TABLES: tuple[str, ...] = ("source_intelligence_summaries",)
+
+V94_STATEMENTS: list[str] = [
+    """
+    CREATE TABLE IF NOT EXISTS source_intelligence_summaries (
+      source_id TEXT PRIMARY KEY REFERENCES source_intelligence_sources(source_id),
+      model_provider TEXT NOT NULL,
+      model_name TEXT,
+      prompt_version TEXT NOT NULL,
+      prompt_sha256 TEXT,
+      summary_sha256 TEXT,
+      source_sha256 TEXT,
+      advisory INTEGER NOT NULL DEFAULT 1 CHECK(advisory = 1),
+      generated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_si_summaries_source ON source_intelligence_summaries(source_id);",
+]
+
 
 def fts5_available(conn: sqlite3.Connection) -> bool:
     """True when the runtime SQLite can create FTS5 virtual tables."""
