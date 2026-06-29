@@ -519,6 +519,20 @@ class SourceIndexRepository:
                                 "source_root_key": r[3], "event_type": r[4]})
             return claimed
 
+    def sample_queued_events(self, *, limit: int = 500,
+                             conn: sqlite3.Connection | None = None) -> list[dict[str, Any]]:
+        """Bounded read of queued events (rel_path) for the coarse queue-composition diagnostic.
+
+        Read-only; does NOT claim/mutate. Single-file events only (rebuild/deleted have no rel_path).
+        """
+        with borrow_connection(conn, self.db_path) as c:
+            rows = c.execute(
+                "SELECT rel_path, source_root_key, event_type FROM source_intelligence_events "
+                "WHERE status='queued' AND rel_path IS NOT NULL ORDER BY created_at LIMIT ?",
+                (int(limit),),
+            ).fetchall()
+        return [{"rel_path": r[0], "source_root_key": r[1], "event_type": r[2]} for r in rows]
+
     def complete_event(self, event_id: str, status: str, *, error_code: str | None = None,
                        conn: sqlite3.Connection | None = None) -> None:
         with borrow_connection(conn, self.db_path) as c, transaction(c):
@@ -611,6 +625,16 @@ class SourceIndexRepository:
             errors = c.execute(
                 "SELECT COUNT(*) FROM source_intelligence_events WHERE status='error'"
             ).fetchone()[0]
+            skipped = c.execute(
+                "SELECT COUNT(*) FROM source_intelligence_events WHERE status='skipped'"
+            ).fetchone()[0]
+            skipped_by_code = {
+                (row[0] or "unspecified"): row[1]
+                for row in c.execute(
+                    "SELECT error_code, COUNT(*) FROM source_intelligence_events "
+                    "WHERE status='skipped' GROUP BY error_code"
+                ).fetchall()
+            }
             last_indexed = c.execute(
                 "SELECT MAX(indexed_at) FROM source_intelligence_metadata"
             ).fetchone()[0]
@@ -646,6 +670,8 @@ class SourceIndexRepository:
             "queued_count": queued,
             "processing_count": processing,
             "error_count": errors,
+            "skipped_count": int(skipped),
+            "skipped_by_code": skipped_by_code,
             "stale_note_count": stale_notes,
             "summarized_count": int(summarized),
             "stale_summary_count": int(stale_summaries),

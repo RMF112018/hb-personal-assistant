@@ -1,0 +1,78 @@
+### A. Classifier (source_value.py)
+20:class SourceValueDisposition(str, Enum):
+37:HIGH_DOCUMENT_TYPES = frozenset({
+46:NORMAL_DOCUMENT_TYPES = frozenset({
+63:def _ext_norm(file_ext: Any) -> str:
+68:def _path_has_segment(rel_path: str, parts: Any) -> bool:
+105:def classify_source_value(detail: dict[str, Any], config: ObsidianMcpConfig) -> SourceValue:
+129:    if document_type in HIGH_DOCUMENT_TYPES:
+131:    elif document_type in NORMAL_DOCUMENT_TYPES:
+
+### B. New doc-types (source_analyzers.py)
+218:def _spreadsheet_doc_type(rel_path: str, text: str) -> str:
+227:        return "pay_application"
+229:        return "project_controls"
+231:        return "staffing_report"
+247:        return "change_order"
+249:        return "pay_application"
+253:        return "daily_log"
+255:        return "punchlist"
+257:        return "closeout"
+263:        return "project_controls"
+271:        return "site_map"
+
+### C. Drain prioritization (source_indexer.py)
+22:from .source_value import SourceValue, _ext_norm, classify_source_value
+393:        disposition = classify_source_value(detail, config)
+394:    if not disposition.allow_auto_card:
+434:    return {_ext_norm(e) for e in (getattr(config, "source_index_unsupported_file_types", []) or [])}
+437:def _order_eligible_sources(
+450:        disp = classify_source_value(detail, config)
+451:        if disp.allow_auto_card:
+488:                        eligible = _order_eligible_sources(repo, config, report.indexed_source_ids)
+494:                                disposition=disp,
+526:                repo.complete_event(event["event_id"], "skipped", error_code="unsupported_file_type")
+536:                        disp = classify_source_value(detail, config) if detail else None
+537:                        if disp is not None and disp.allow_auto_card:
+543:                                disposition=disp,
+
+### D. Spreadsheet card + basis (source_notes.py)
+210:def _card_basis(detail: dict[str, Any]) -> str:
+231:def _render_spreadsheet_sections(detail: dict[str, Any], analysis: SourceAnalysis) -> list[str]:
+244:    parts = _section("Spreadsheet Identity", identity)
+583:    parts.append(f"- Card basis: {_card_basis(detail)}")
+
+### E. Config policy
+30:DEFAULT_DEFERRED_PATH_PARTS = [
+36:DEFAULT_UNSUPPORTED_FILE_TYPES = [
+51:def _normalize_file_types(value: list[str]) -> list[str]:
+153:        default_factory=lambda: list(DEFAULT_DEFERRED_PATH_PARTS)
+156:    source_index_unsupported_file_types: list[str] = Field(
+157:        default_factory=lambda: list(DEFAULT_UNSUPPORTED_FILE_TYPES)
+162:    source_value_high_priority_path_signals: list[str] = Field(
+168:    source_card_auto_metadata_only_enabled: bool = False
+273:    @field_validator("source_index_unsupported_file_types")
+279:        return normalized or list(DEFAULT_UNSUPPORTED_FILE_TYPES)
+
+### F. Status (source_search/repo)
+src/hb_assistant/obsidian_mcp/source_search.py:87:    status["source_value_policy"] = {
+src/hb_assistant/obsidian_mcp/source_search.py:97:    status["queued_by_disposition"] = _queued_by_disposition(repo, config)
+src/hb_assistant/obsidian_mcp/source_search.py:104:def _queued_by_disposition(repo: SourceIndexRepository, config: ObsidianMcpConfig,
+src/hb_assistant/obsidian_mcp/source_index_repository.py:522:    def sample_queued_events(self, *, limit: int = 500,
+src/hb_assistant/obsidian_mcp/source_index_repository.py:631:            skipped_by_code = {
+src/hb_assistant/obsidian_mcp/source_index_repository.py:673:            "skipped_count": int(skipped),
+src/hb_assistant/obsidian_mcp/source_index_repository.py:674:            "skipped_by_code": skipped_by_code,
+
+### G. Maintenance test-card (source_maintenance.py)
+23:TEST_CARD_PATH_SIGNALS = ("source-summary-test", "manual-test")
+35:    if any(sig in haystack for sig in TEST_CARD_PATH_SIGNALS):
+36:        return "test"
+62:            "test": sum(1 for m in matched if m["policy"] == "test"),
+
+### H. UI / api request
+frontend/src/lib/api.ts:565:  source_value_high_priority_path_signals?: string[];
+frontend/src/components/settings/ObsidianMcpPanel.tsx:207:    setHighSignalsInput(Array.isArray(config.source_value_high_priority_path_signals) ? config.source_value_high_priority_path_signals.join(', ') : '')
+frontend/src/components/settings/ObsidianMcpPanel.tsx:1229:            <div className="text-[11px] font-semibold text-[var(--hb-fg)]">PM source value policy</div>
+frontend/src/components/settings/ObsidianMcpPanel.tsx:1236:              <Field label="High-priority path signals" value={highSignalsInput} onChange={setHighSignalsInput} onBlur={() => commitListField(highSignalsInput, 'source_value_high_priority_path_signals')} />
+frontend/src/components/settings/ObsidianMcpPanel.tsx:1245:              <Field label="Unsupported file types" value={unsupportedTypesInput} onChange={setUnsupportedTypesInput} onBlur={() => commitListField(unsupportedTypesInput, 'source_index_unsupported_file_types')} />
+src/hb_assistant/construction/analytics/api.py:360:    source_value_high_priority_path_signals: list[str] | None = None

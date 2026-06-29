@@ -1,0 +1,7 @@
+No retire apply was run (dry-run matched_count=0; the source-summary-test card is already stale).
+Inventory is therefore unchanged; before == after.
+
+generation_status  n 
+-----------------  --
+generated          15
+stale              52

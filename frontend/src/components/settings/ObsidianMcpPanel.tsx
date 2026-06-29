@@ -144,6 +144,10 @@ export function ObsidianMcpPanel() {
   const [cardMaxPerDrainInput, setCardMaxPerDrainInput] = useState('')
   const [excludedPartsInput, setExcludedPartsInput] = useState('')
   const [deferredPartsInput, setDeferredPartsInput] = useState('')
+  const [unsupportedTypesInput, setUnsupportedTypesInput] = useState('')
+  const [metadataOnlyTypesInput, setMetadataOnlyTypesInput] = useState('')
+  const [highSignalsInput, setHighSignalsInput] = useState('')
+  const [normalSignalsInput, setNormalSignalsInput] = useState('')
 
   async function refreshAll() {
     setBusy('refresh')
@@ -198,6 +202,10 @@ export function ObsidianMcpPanel() {
     setCardMaxPerDrainInput(config.source_card_auto_max_per_drain != null ? String(config.source_card_auto_max_per_drain) : '')
     setExcludedPartsInput(Array.isArray(config.source_index_excluded_path_parts) ? config.source_index_excluded_path_parts.join(', ') : '')
     setDeferredPartsInput(Array.isArray(config.source_index_deferred_path_parts) ? config.source_index_deferred_path_parts.join(', ') : '')
+    setUnsupportedTypesInput(Array.isArray(config.source_index_unsupported_file_types) ? config.source_index_unsupported_file_types.join(', ') : '')
+    setMetadataOnlyTypesInput(Array.isArray(config.source_index_metadata_only_file_types) ? config.source_index_metadata_only_file_types.join(', ') : '')
+    setHighSignalsInput(Array.isArray(config.source_value_high_priority_path_signals) ? config.source_value_high_priority_path_signals.join(', ') : '')
+    setNormalSignalsInput(Array.isArray(config.source_value_normal_priority_path_signals) ? config.source_value_normal_priority_path_signals.join(', ') : '')
     /* eslint-enable react-hooks/set-state-in-effect */
   }, [config, rootsDirty])
 
@@ -315,6 +323,11 @@ export function ObsidianMcpPanel() {
   function commitDeferredParts() {
     const parts = deferredPartsInput.split(',').map((p) => p.trim()).filter((p) => p.length > 0)
     void saveConfig({ source_index_deferred_path_parts: parts })
+  }
+
+  function commitListField(value: string, key: string) {
+    const parts = value.split(',').map((p) => p.trim()).filter((p) => p.length > 0)
+    void saveConfig({ [key]: parts })
   }
 
   async function handleSaveRoots() {
@@ -1209,6 +1222,30 @@ export function ObsidianMcpPanel() {
             <div className="mt-1 text-[10px] text-[var(--hb-muted)]" role="note">
               Comma-separated path segments (e.g. <span className="font-mono">HB INSURANCE RENEWALS</span>). Deferred sources are still indexed
               and searchable, but are intentionally not auto-carded or auto-summarized (distinct from hard exclusions).
+            </div>
+          </div>
+
+          <div className="mt-4 border-t border-[var(--hb-border)] pt-3">
+            <div className="text-[11px] font-semibold text-[var(--hb-fg)]">PM source value policy</div>
+            <div className="mt-1 text-[10px] text-[var(--hb-muted)]" role="note">
+              Auto card-generation prefers high-value PM/control artifacts (drawings, bid packages, RFIs, PCCOs, pay apps, contracts,
+              schedules). Unsupported types are skipped; metadata-only types index without auto-carding. High/normal signals match anywhere
+              in the path (substring); deferred/excluded match whole folder segments.
+            </div>
+            <div className="mt-2">
+              <Field label="High-priority path signals" value={highSignalsInput} onChange={setHighSignalsInput} onBlur={() => commitListField(highSignalsInput, 'source_value_high_priority_path_signals')} />
+            </div>
+            <div className="mt-2">
+              <Field label="Normal-priority path signals" value={normalSignalsInput} onChange={setNormalSignalsInput} onBlur={() => commitListField(normalSignalsInput, 'source_value_normal_priority_path_signals')} />
+            </div>
+            <div className="mt-2">
+              <Field label="Metadata-only file types" value={metadataOnlyTypesInput} onChange={setMetadataOnlyTypesInput} onBlur={() => commitListField(metadataOnlyTypesInput, 'source_index_metadata_only_file_types')} />
+            </div>
+            <div className="mt-2">
+              <Field label="Unsupported file types" value={unsupportedTypesInput} onChange={setUnsupportedTypesInput} onBlur={() => commitListField(unsupportedTypesInput, 'source_index_unsupported_file_types')} />
+              <div className="mt-1 text-[10px] text-[var(--hb-muted)]" role="note">
+                Comma-separated extensions (e.g. <span className="font-mono">url, aspx, png, jpg</span>). These are never auto-carded; placeholder/link/image types are skipped, not indexed.
+              </div>
             </div>
           </div>
 

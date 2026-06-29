@@ -560,6 +560,11 @@ export interface ObsidianMcpConfigPatch {
   source_card_auto_max_per_drain?: number;
   source_index_excluded_path_parts?: string[];
   source_index_deferred_path_parts?: string[];
+  source_index_unsupported_file_types?: string[];
+  source_index_metadata_only_file_types?: string[];
+  source_value_high_priority_path_signals?: string[];
+  source_value_normal_priority_path_signals?: string[];
+  source_card_auto_metadata_only_enabled?: boolean;
   [key: string]: unknown;
 }
 

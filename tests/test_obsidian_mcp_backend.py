@@ -693,3 +693,39 @@ def test_search_respects_result_cap(tmp_path: Path, monkeypatch: pytest.MonkeyPa
     results = search_vault(cfg, query="conduit", limit=3)
     assert len(results["results"]) == 3
     assert sum(len(item.get("snippet", "")) for item in results["results"]) <= 20
+
+
+def test_source_value_policy_and_skipped_count_surfaced_in_status(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A1.11: status exposes the PM source-value policy, a skipped_count, and a queue diagnostic."""
+    client, vault = _client(tmp_path, monkeypatch)
+    status = client.get(
+        "/api/settings/obsidian-mcp/source-index/status", headers={"X-HB-UI-Role": "operator"}
+    ).json()
+    policy = status["source_value_policy"]
+    assert any("insurance renewals" in p.lower() for p in policy["deferred_path_parts"])
+    assert "url" in policy["unsupported_file_types"] and "aspx" in policy["unsupported_file_types"]
+    assert "xlsx" in policy["metadata_only_file_types"]
+    assert policy["high_priority_path_signals"] and policy["normal_priority_path_signals"]
+    assert status["skipped_count"] == 0
+    assert isinstance(status["skipped_by_code"], dict)
+    assert status["queued_by_disposition"]["counts"]["auto_card_high"] == 0
+
+
+def test_config_persists_pm_value_policy_fields(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """New policy fields PATCH/persist; file-type lists normalize (dot/case), signals lowercase."""
+    client, vault = _client(tmp_path, monkeypatch)
+    res = client.patch(
+        "/api/settings/obsidian-mcp/config",
+        json={"enabled": True, "vault_root": str(vault),
+              "source_index_unsupported_file_types": [".URL", "PNG", "png"],
+              "source_value_high_priority_path_signals": ["Pay App", "RFI"]},
+        headers={"X-HB-UI-Role": "operator"},
+    )
+    assert res.status_code == 200
+    cfg = load_config()
+    assert cfg.source_index_unsupported_file_types == ["url", "png"]  # normalized + deduped
+    assert cfg.source_value_high_priority_path_signals == ["pay app", "rfi"]

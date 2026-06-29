@@ -215,6 +215,23 @@ def _bid_package_signal(rel_path: str, text: str) -> bool:
     return _BID_BOILERPLATE in blob
 
 
+def _spreadsheet_doc_type(rel_path: str, text: str) -> str:
+    """Narrow high-value Excel classes (else generic 'spreadsheet' → metadata_only).
+
+    Promotion uses near-exact phrases ONLY (never bare 'cost') so generic workbooks do not drift
+    into high priority.
+    """
+    name = Path(rel_path).name.lower()
+    blob = f"{name}\n{text[:2000].lower()}"
+    if re.search(r"pay app|payapp|payment application|application for payment", blob):
+        return "pay_application"
+    if re.search(r"cost entries|cost report|\bforecast\b|\bbudget\b", blob):
+        return "project_controls"
+    if re.search(r"\bstaffing\b|\bmanpower\b|\blabor\b", blob):
+        return "staffing_report"
+    return "spreadsheet"
+
+
 def _doc_type_from_text(rel_path: str, text: str, fallback: str) -> str:
     name = Path(rel_path).name.lower()
     blob = f"{name}\n{text[:2000].lower()}"
@@ -226,13 +243,33 @@ def _doc_type_from_text(rel_path: str, text: str, fallback: str) -> str:
         return "rfi"
     if "submittal" in blob or ("shop drawing" in blob and "specification" not in blob):
         return "submittal"
+    if re.search(r"\bpcco\b|\bpco\b|\bcor\b|change order|change directive", blob):
+        return "change_order"
+    if re.search(r"pay app|payapp|payment application|application for payment|\bg70[23]\b", blob):
+        return "pay_application"
+    if re.search(r"\bcontract\b|\bsubcontract\b|notice to proceed|\bntp\b", name):
+        return "contract"
+    if re.search(r"daily log|daily report", blob):
+        return "daily_log"
+    if re.search(r"punch ?list", blob):
+        return "punchlist"
+    if re.search(r"close ?out|as[- ]?built|o&m manual|\bwarranty\b", blob):
+        return "closeout"
     if "meeting minutes" in blob or re.search(r"\bminutes\b", name):
         return "meeting_minutes"
     if re.search(r"specification|section \d{4,6}", blob):
         return "specification"
+    if re.search(r"project controls|cost report|cost forecast", blob):
+        return "project_controls"
     if re.search(r"\bschedule\b", name):
         return "schedule"
-    if re.search(r"budget|cost|invoice|change order|pay application", blob):
+    if re.search(r"presentation|\bdeck\b", blob):
+        return "presentation"
+    if re.search(r"marketing|brochure", blob):
+        return "marketing"
+    if re.search(r"site map|parcel map|project map|vicinity map", blob):
+        return "site_map"
+    if re.search(r"budget|cost|invoice|pay application", blob):
         return "cost_document"
     return fallback
 
@@ -425,6 +462,25 @@ def _pm_followups(flags: list[str], submittals: list[str], refs: list[str]) -> l
     return _dedup(out)
 
 
+def _classify_non_spreadsheet(rel_path: str, text: str, sheet_number: str | None,
+                              doctype_guess: str) -> str:
+    """document_type for non-spreadsheet sources (drawing sheet vs filename/text keywords)."""
+    if sheet_number is None:
+        return _doc_type_from_text(rel_path, text, doctype_guess)
+    # A sheet number implies a drawing. Only the FILENAME (not body coordination keywords) may
+    # reclassify it as a spec/RFI/submittal/bid sheet.
+    name_upper = Path(rel_path).name.upper()
+    if "BID PACKAGE" in name_upper:
+        return "bid_package"
+    if "SPECIFICATION" in name_upper or re.search(r"\bSPEC\b", name_upper):
+        return "specification"
+    if "RFI" in name_upper:
+        return "rfi"
+    if "SUBMITTAL" in name_upper:
+        return "submittal"
+    return doctype_guess
+
+
 def from_detail(detail: dict[str, Any]) -> SourceAnalysis:
     """Build a :class:`SourceAnalysis` from an indexed source ``detail`` dict. Fail-soft."""
     rel_path = str(detail.get("rel_path") or "")
@@ -432,27 +488,16 @@ def from_detail(detail: dict[str, Any]) -> SourceAnalysis:
     text = str(detail.get("text_excerpt") or "")[: _MAX_ITEM_CHARS * _MAX_SCAN_LINES]
     lines = text.splitlines()[:_MAX_SCAN_LINES]
 
-    sheet_number, discipline, doctype_guess = _sheet_number_from_filename(rel_path)
-    # A bare general fallback by extension when no sheet number was found.
-    if sheet_number is None:
-        doctype_guess = "general_pdf" if ext == "pdf" else "general_document"
-    if sheet_number is None:
-        # No sheet number: classify purely from filename + text keywords.
-        document_type = _doc_type_from_text(rel_path, text, doctype_guess)
+    if ext in ("xlsx", "xlsm"):
+        # Spreadsheets never imply a drawing sheet number; classify by narrow Excel phrases.
+        sheet_number, discipline = None, "unknown"
+        document_type = _spreadsheet_doc_type(rel_path, text)
     else:
-        # A sheet number implies a drawing. Only the FILENAME (not coordination keywords in the
-        # body) may reclassify it as a spec/RFI/submittal sheet, so notes that merely *mention*
-        # shop drawings don't flip an architectural drawing to "submittal".
-        document_type = doctype_guess
-        name_upper = Path(rel_path).name.upper()
-        if "BID PACKAGE" in name_upper:
-            document_type = "bid_package"
-        elif "SPECIFICATION" in name_upper or re.search(r"\bSPEC\b", name_upper):
-            document_type = "specification"
-        elif "RFI" in name_upper:
-            document_type = "rfi"
-        elif "SUBMITTAL" in name_upper:
-            document_type = "submittal"
+        sheet_number, discipline, doctype_guess = _sheet_number_from_filename(rel_path)
+        # A bare general fallback by extension when no sheet number was found.
+        if sheet_number is None:
+            doctype_guess = "general_pdf" if ext == "pdf" else "general_document"
+        document_type = _classify_non_spreadsheet(rel_path, text, sheet_number, doctype_guess)
 
     sheet_title = _sheet_title_from_filename(rel_path, sheet_number)
     number, date, description = _revision(text)

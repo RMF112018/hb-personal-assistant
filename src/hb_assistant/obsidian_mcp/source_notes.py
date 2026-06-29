@@ -207,6 +207,68 @@ def _render_drawing_sections(analysis: SourceAnalysis) -> list[str]:
     return parts
 
 
+def _card_basis(detail: dict[str, Any]) -> str:
+    """How this card was produced (A1.11): full text, spreadsheet metadata, metadata, or filename."""
+    ext = (detail.get("file_ext") or "").lower()
+    has_text = bool(detail.get("text_excerpt"))
+    if ext in ("xlsx", "xlsm"):
+        return "spreadsheet metadata + bounded cell sample"
+    if detail.get("text_vault_ref") and not has_text:
+        return "metadata only (sensitive source — extracted text withheld)"
+    if has_text:
+        return "full extracted text (bounded)"
+    if detail.get("extraction_status") in ("failed", "unsupported", "skipped_too_large") or not has_text:
+        return "filename/path analysis + metadata only"
+    return "metadata only"
+
+
+_SPREADSHEET_SIGNAL_TERMS = (
+    "pay app", "payment application", "cost", "budget", "forecast", "staffing", "manpower",
+    "labor", "schedule", "total", "subtotal", "contract", "change order",
+)
+
+
+def _render_spreadsheet_sections(detail: dict[str, Any], analysis: SourceAnalysis) -> list[str]:
+    """Deterministic PM sections for an Excel workbook (metadata + bounded cell-sample only).
+
+    No formula evaluation and no macro execution — signals come from the already-extracted bounded
+    excerpt (sheet names + cell sample). The card states its basis explicitly.
+    """
+    identity = [f"Document type: {analysis.document_type}"]
+    if detail.get("file_ext"):
+        identity.append(f"File type: {detail['file_ext']}")
+    if detail.get("sheet_count") is not None:
+        identity.append(f"Sheets: {detail['sheet_count']}")
+    if detail.get("project_number"):
+        identity.append(f"Project number: {detail['project_number']}")
+    parts = _section("Spreadsheet Identity", identity)
+
+    high_value = {
+        "pay_application": "Pay application / payment workbook",
+        "project_controls": "Project controls / cost report / forecast / budget workbook",
+        "staffing_report": "Staffing / manpower / labor workbook",
+    }
+    relevance = high_value.get(analysis.document_type, "Generic spreadsheet (no high-value class detected)")
+    parts += _section("PM Relevance", [relevance])
+
+    excerpt = str(detail.get("text_excerpt") or "")
+    sheet_names = [ln[4:-4].strip() for ln in excerpt.splitlines() if ln.startswith("--- ") and ln.endswith(" ---")]
+    low = excerpt.lower()
+    hits = [term for term in _SPREADSHEET_SIGNAL_TERMS if term in low]
+    signals: list[str] = []
+    if sheet_names:
+        signals.append("Sheet names: " + ", ".join(sheet_names[:_ADVISORY_MAX_ITEMS]))
+    if hits:
+        signals.append("Detected terms: " + ", ".join(hits))
+    parts += _section("Detected Workbook Signals", signals)
+
+    parts += _section("Review / Verification Notes", [
+        "Derived from spreadsheet metadata and a bounded cell sample (no formulas evaluated, no "
+        "macros executed). Verify figures against the source workbook before relying on them.",
+    ])
+    return parts
+
+
 def _render_fallback_sections(detail: dict[str, Any], analysis: SourceAnalysis) -> list[str]:
     """Deterministic PM-relevant sections for non-drawing documents."""
     identity = [f"Document type: {analysis.document_type}"]
@@ -518,11 +580,14 @@ def _render_card(config: ObsidianMcpConfig, detail: dict[str, Any], generated_at
         parts.append(f"- Extraction status: {detail['extraction_status']}")
     if detail.get("project_number"):
         parts.append(f"- Project number: {detail['project_number']}")
+    parts.append(f"- Card basis: {_card_basis(detail)}")
     parts.append("")
 
-    # PM-grade deterministic sections: drawing-specific, bid-package, or general-document fallback.
+    # PM-grade deterministic sections: spreadsheet, drawing-specific, bid-package, or fallback.
     if analysis is not None:
-        if analysis.is_drawing:
+        if (detail.get("file_ext") or "").lower() in ("xlsx", "xlsm"):
+            parts += _render_spreadsheet_sections(detail, analysis)
+        elif analysis.is_drawing:
             parts += _render_drawing_sections(analysis)
             if repo is not None:
                 parts += _render_related_sources(repo, detail["source_id"], analysis)
