@@ -248,6 +248,55 @@ class SourceIndexRepository:
         with borrow_connection(conn, self.db_path) as c, transaction(c):
             self._mark_generated_notes_stale(c, source_id)
 
+    # ----- source detail + generated-note tracking (source cards) ----------------------------
+    def get_source_detail(self, source_id: str, *, conn: sqlite3.Connection | None = None) -> dict[str, Any] | None:
+        """Joined sources+metadata+text row for rendering a source card. None if absent."""
+        with borrow_connection(conn, self.db_path) as c:
+            row = c.execute(
+                "SELECT s.source_id, s.source_kind, s.source_root_key, s.rel_path, s.domain_ref_table, "
+                "  s.domain_ref_id, s.project_key, s.project_number, s.deleted, "
+                "  m.file_ext, m.size_bytes, m.mtime_ns, m.content_sha256, m.page_count, "
+                "  m.paragraph_count, m.sheet_count, m.extraction_status, m.indexed_at, "
+                "  t.text_excerpt, t.excerpt_char_count, t.excerpt_truncated, t.text_vault_ref "
+                "FROM source_intelligence_sources s "
+                "LEFT JOIN source_intelligence_metadata m ON m.source_id = s.source_id "
+                "LEFT JOIN source_intelligence_text t ON t.source_id = s.source_id "
+                "WHERE s.source_id = ?",
+                (source_id,),
+            ).fetchone()
+        if row is None:
+            return None
+        keys = ("source_id", "source_kind", "source_root_key", "rel_path", "domain_ref_table",
+                "domain_ref_id", "project_key", "project_number", "deleted", "file_ext",
+                "size_bytes", "mtime_ns", "content_sha256", "page_count", "paragraph_count",
+                "sheet_count", "extraction_status", "indexed_at", "text_excerpt",
+                "excerpt_char_count", "excerpt_truncated", "text_vault_ref")
+        detail = dict(zip(keys, row, strict=True))
+        detail["deleted"] = bool(detail["deleted"])
+        return detail
+
+    def record_generated_note(self, source_id: str, note_rel_path: str, status: str,
+                              generated_at: str, *, conn: sqlite3.Connection | None = None) -> None:
+        with borrow_connection(conn, self.db_path) as c, transaction(c):
+            c.execute(
+                "INSERT INTO source_intelligence_generated_notes "
+                "(generated_note_id, source_id, note_rel_path, generation_status, generated_at, updated_at) "
+                "VALUES (?,?,?,?,?,?) "
+                "ON CONFLICT(source_id, note_rel_path) DO UPDATE SET "
+                " generation_status=excluded.generation_status, generated_at=excluded.generated_at, "
+                " updated_at=excluded.updated_at",
+                (uuid.uuid4().hex, source_id, note_rel_path, status, generated_at, _now()),
+            )
+
+    def list_stale_generated_notes(self, limit: int = 25, *, conn: sqlite3.Connection | None = None) -> list[dict[str, Any]]:
+        with borrow_connection(conn, self.db_path) as c:
+            rows = c.execute(
+                "SELECT source_id, note_rel_path FROM source_intelligence_generated_notes "
+                "WHERE generation_status='stale' ORDER BY updated_at LIMIT ?",
+                (int(limit),),
+            ).fetchall()
+        return [{"source_id": r[0], "note_rel_path": r[1]} for r in rows]
+
     # ----- durable queue ---------------------------------------------------------------------
     def enqueue_event(self, *, event_type: str, rel_path: str | None = None,
                       source_root_key: str | None = None, source_id: str | None = None,
