@@ -161,7 +161,7 @@ class ObsidianMcpService:
             blocker="mcp_http_unavailable",
         )
         add("caps_configured", config.max_file_mb > 0 and config.max_result_chars > 0, "file/result caps configured", blocker="caps_invalid")
-        add("tool_registry", len(tool_registry()) == 42, "forty-two Obsidian MCP tools registered", blocker="tool_registry_invalid")
+        add("tool_registry", len(tool_registry()) == 45, "forty-five Obsidian MCP tools registered", blocker="tool_registry_invalid")
         add("http_port", self._port_available_or_self(config), "HTTP port is available or owned by backend", warning="port_unavailable")
         readiness = write_readiness(config)
         add("vault_writable", bool(readiness["vault_writable"]), "vault root is writable", warning="vault_not_writable")
@@ -312,6 +312,21 @@ class ObsidianMcpService:
         from .source_indexer import request_rebuild
 
         return request_rebuild(self._source_repo(), self.get_config())
+
+    def generate_source_card(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .source_notes import generate_source_card
+
+        return generate_source_card(self._source_repo(), self.get_config(), **args)
+
+    def refresh_stale_source_notes(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .source_notes import refresh_stale_source_notes
+
+        return refresh_stale_source_notes(self._source_repo(), self.get_config(), **args)
+
+    def summarize_source(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .source_notes import summarize_source
+
+        return summarize_source(self._source_repo(), self.get_config(), **args)
 
     def read_file(self, args: dict[str, Any]) -> dict[str, Any]:
         return read_file(self.get_config(), **args)

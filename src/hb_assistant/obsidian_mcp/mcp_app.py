@@ -62,6 +62,9 @@ _TOOL_SCOPES = {
     "search_knowledge": "obsidian.read",
     "source_index_status": "obsidian.read",
     "rebuild_source_index": "obsidian.write",
+    "generate_source_card": "obsidian.write",
+    "refresh_stale_source_notes": "obsidian.write",
+    "summarize_source": "obsidian.write",
 }
 
 _BEARER_PREFIX = "Bearer "
@@ -87,6 +90,7 @@ _SAFE_LOG_KEYS = frozenset(
         "update_links", "allow_overwrite", "require_expected_sha256", "mode",
         "summary_style", "strategy", "source_type", "date", "section",
         "min_confidence", "operator_mode", "principal_kind", "project_key",
+        "source_id",
     }
 )
 _LEN_ONLY_LOG_KEYS = frozenset({"content", "updates"})
@@ -1140,6 +1144,53 @@ def build_streamable_http_app(
         _enforce("rebuild_source_index", ctx)
         args: dict[str, Any] = {"operator_mode": _operator_mode(ctx)}
         return await _run_tool("rebuild_source_index", ctx, lambda: svc.rebuild_source_index({}), args)
+
+    @mcp.tool()
+    async def generate_source_card(ctx: Context, source_id: str, overwrite: bool = False) -> dict[str, Any]:
+        """Generate a deterministic curated source card (Markdown note) for one indexed source_id.
+        Describes + links the source; no model summary, no raw file/email-body dump. Write-scoped."""
+        _enforce("generate_source_card", ctx)
+        args = {"source_id": source_id, "overwrite": overwrite,
+                "principal_kind": _principal_kind(ctx), "operator_mode": _operator_mode(ctx)}
+        return await _run_tool(
+            "generate_source_card", ctx,
+            lambda: svc.generate_source_card(
+                {"source_id": source_id, "overwrite": overwrite, "principal_kind": args["principal_kind"]}
+            ),
+            args,
+        )
+
+    @mcp.tool()
+    async def refresh_stale_source_notes(ctx: Context, max_updates: int = 25) -> dict[str, Any]:
+        """Refresh source cards whose underlying source changed (status=stale), up to max_updates.
+        SHA-gated whole-file replacement via the write guardrails. Write-scoped."""
+        _enforce("refresh_stale_source_notes", ctx)
+        args = {"max_updates": max_updates, "principal_kind": _principal_kind(ctx),
+                "operator_mode": _operator_mode(ctx)}
+        return await _run_tool(
+            "refresh_stale_source_notes", ctx,
+            lambda: svc.refresh_stale_source_notes(
+                {"max_updates": max_updates, "principal_kind": args["principal_kind"]}
+            ),
+            args,
+        )
+
+    @mcp.tool()
+    async def summarize_source(ctx: Context, source_id: str) -> dict[str, Any]:
+        """Model-assisted (Ollama) ADVISORY enrichment of a source card: generates the
+        deterministic base if missing, then adds a bounded, clearly-labelled advisory summary
+        section in place. Falls back to summarized:false when the model is unavailable; never
+        runs in the search path. Write-scoped."""
+        _enforce("summarize_source", ctx)
+        args = {"source_id": source_id, "principal_kind": _principal_kind(ctx),
+                "operator_mode": _operator_mode(ctx)}
+        return await _run_tool(
+            "summarize_source", ctx,
+            lambda: svc.summarize_source(
+                {"source_id": source_id, "principal_kind": args["principal_kind"]}
+            ),
+            args,
+        )
 
     app = mcp.streamable_http_app()
     return BearerTokenMiddleware(app, service=svc)

@@ -336,6 +336,22 @@ class ObsidianMcpConfigPatchRequest(BaseModel):
     source_index_max_chunk_chars: int | None = None
     watch_poll_interval_seconds: int | None = None
     watch_debounce_seconds: float | None = None
+    source_notes_folder: str | None = None
+    source_card_generation_enabled: bool | None = None
+    source_card_excerpt_chars: int | None = None
+
+
+class ObsidianMcpGenerateSourceCardRequest(BaseModel):
+    source_id: str
+    overwrite: bool = False
+
+
+class ObsidianMcpRefreshStaleRequest(BaseModel):
+    max_updates: int = 25
+
+
+class ObsidianMcpSummarizeSourceRequest(BaseModel):
+    source_id: str
 
 
 class ObsidianMcpListDirectoryRequest(BaseModel):
@@ -1754,6 +1770,39 @@ def create_app(*, db_path: str | None = None) -> Any:
         from hb_assistant.obsidian_mcp import ObsidianMcpService
 
         return ObsidianMcpService(db_path=db_path).rebuild_source_index({})
+
+    @app.post("/api/settings/obsidian-mcp/source-card/generate")
+    def settings_obsidian_mcp_source_card_generate(
+        request: ObsidianMcpGenerateSourceCardRequest, role: dict[str, str] = role_dep
+    ) -> dict[str, Any]:
+        require_operator_role(role)
+        from hb_assistant.obsidian_mcp import ObsidianMcpService
+
+        return ObsidianMcpService(db_path=db_path).generate_source_card(
+            {"source_id": request.source_id, "overwrite": request.overwrite, "principal_kind": "local"}
+        )
+
+    @app.post("/api/settings/obsidian-mcp/source-notes/refresh-stale")
+    def settings_obsidian_mcp_source_notes_refresh(
+        request: ObsidianMcpRefreshStaleRequest, role: dict[str, str] = role_dep
+    ) -> dict[str, Any]:
+        require_operator_role(role)
+        from hb_assistant.obsidian_mcp import ObsidianMcpService
+
+        return ObsidianMcpService(db_path=db_path).refresh_stale_source_notes(
+            {"max_updates": request.max_updates, "principal_kind": "local"}
+        )
+
+    @app.post("/api/settings/obsidian-mcp/source-card/summarize")
+    def settings_obsidian_mcp_source_card_summarize(
+        request: ObsidianMcpSummarizeSourceRequest, role: dict[str, str] = role_dep
+    ) -> dict[str, Any]:
+        require_operator_role(role)
+        from hb_assistant.obsidian_mcp import ObsidianMcpService
+
+        return ObsidianMcpService(db_path=db_path).summarize_source(
+            {"source_id": request.source_id, "principal_kind": "local"}
+        )
 
     @app.get("/api/settings/obsidian-mcp/tools")
     def settings_obsidian_mcp_tools(role: dict[str, str] = role_dep) -> dict[str, Any]:

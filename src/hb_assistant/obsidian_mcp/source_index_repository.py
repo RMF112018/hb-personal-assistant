@@ -248,6 +248,100 @@ class SourceIndexRepository:
         with borrow_connection(conn, self.db_path) as c, transaction(c):
             self._mark_generated_notes_stale(c, source_id)
 
+    # ----- source detail + generated-note tracking (source cards) ----------------------------
+    def get_source_detail(self, source_id: str, *, conn: sqlite3.Connection | None = None) -> dict[str, Any] | None:
+        """Joined sources+metadata+text row for rendering a source card. None if absent."""
+        with borrow_connection(conn, self.db_path) as c:
+            row = c.execute(
+                "SELECT s.source_id, s.source_kind, s.source_root_key, s.rel_path, s.domain_ref_table, "
+                "  s.domain_ref_id, s.project_key, s.project_number, s.deleted, "
+                "  m.file_ext, m.size_bytes, m.mtime_ns, m.content_sha256, m.page_count, "
+                "  m.paragraph_count, m.sheet_count, m.extraction_status, m.indexed_at, "
+                "  t.text_excerpt, t.excerpt_char_count, t.excerpt_truncated, t.text_vault_ref "
+                "FROM source_intelligence_sources s "
+                "LEFT JOIN source_intelligence_metadata m ON m.source_id = s.source_id "
+                "LEFT JOIN source_intelligence_text t ON t.source_id = s.source_id "
+                "WHERE s.source_id = ?",
+                (source_id,),
+            ).fetchone()
+        if row is None:
+            return None
+        keys = ("source_id", "source_kind", "source_root_key", "rel_path", "domain_ref_table",
+                "domain_ref_id", "project_key", "project_number", "deleted", "file_ext",
+                "size_bytes", "mtime_ns", "content_sha256", "page_count", "paragraph_count",
+                "sheet_count", "extraction_status", "indexed_at", "text_excerpt",
+                "excerpt_char_count", "excerpt_truncated", "text_vault_ref")
+        detail = dict(zip(keys, row, strict=True))
+        detail["deleted"] = bool(detail["deleted"])
+        return detail
+
+    def record_generated_note(self, source_id: str, note_rel_path: str, status: str,
+                              generated_at: str, *, conn: sqlite3.Connection | None = None) -> None:
+        with borrow_connection(conn, self.db_path) as c, transaction(c):
+            c.execute(
+                "INSERT INTO source_intelligence_generated_notes "
+                "(generated_note_id, source_id, note_rel_path, generation_status, generated_at, updated_at) "
+                "VALUES (?,?,?,?,?,?) "
+                "ON CONFLICT(source_id, note_rel_path) DO UPDATE SET "
+                " generation_status=excluded.generation_status, generated_at=excluded.generated_at, "
+                " updated_at=excluded.updated_at",
+                (uuid.uuid4().hex, source_id, note_rel_path, status, generated_at, _now()),
+            )
+
+    def list_stale_generated_notes(self, limit: int = 25, *, conn: sqlite3.Connection | None = None) -> list[dict[str, Any]]:
+        with borrow_connection(conn, self.db_path) as c:
+            rows = c.execute(
+                "SELECT source_id, note_rel_path FROM source_intelligence_generated_notes "
+                "WHERE generation_status='stale' ORDER BY updated_at LIMIT ?",
+                (int(limit),),
+            ).fetchall()
+        return [{"source_id": r[0], "note_rel_path": r[1]} for r in rows]
+
+    # ----- advisory model-summary receipts (V94) ---------------------------------------------
+    def upsert_summary(self, source_id: str, receipt: dict[str, Any], *,
+                       conn: sqlite3.Connection | None = None) -> None:
+        with borrow_connection(conn, self.db_path) as c, transaction(c):
+            c.execute(
+                "INSERT INTO source_intelligence_summaries "
+                "(source_id, model_provider, model_name, prompt_version, prompt_sha256, "
+                " summary_sha256, source_sha256, advisory, generated_at) "
+                "VALUES (?,?,?,?,?,?,?,1,?) "
+                "ON CONFLICT(source_id) DO UPDATE SET model_provider=excluded.model_provider, "
+                " model_name=excluded.model_name, prompt_version=excluded.prompt_version, "
+                " prompt_sha256=excluded.prompt_sha256, summary_sha256=excluded.summary_sha256, "
+                " source_sha256=excluded.source_sha256, generated_at=excluded.generated_at",
+                (source_id, receipt["model_provider"], receipt.get("model_name"),
+                 receipt["prompt_version"], receipt.get("prompt_sha256"),
+                 receipt.get("summary_sha256"), receipt.get("source_sha256"), _now()),
+            )
+
+    def delete_summary(self, source_id: str, *, conn: sqlite3.Connection | None = None) -> None:
+        with borrow_connection(conn, self.db_path) as c, transaction(c):
+            c.execute("DELETE FROM source_intelligence_summaries WHERE source_id=?", (source_id,))
+
+    def get_summary(self, source_id: str, *, conn: sqlite3.Connection | None = None) -> dict[str, Any] | None:
+        with borrow_connection(conn, self.db_path) as c:
+            row = c.execute(
+                "SELECT model_provider, model_name, prompt_version, prompt_sha256, summary_sha256, "
+                " source_sha256, generated_at FROM source_intelligence_summaries WHERE source_id=?",
+                (source_id,),
+            ).fetchone()
+        if row is None:
+            return None
+        return dict(zip(("model_provider", "model_name", "prompt_version", "prompt_sha256",
+                         "summary_sha256", "source_sha256", "generated_at"), row, strict=True))
+
+    def summary_counts(self, *, conn: sqlite3.Connection | None = None) -> dict[str, int]:
+        """summarized_count + stale_summary_count (receipt source_sha drifted from current)."""
+        with borrow_connection(conn, self.db_path) as c:
+            total = c.execute("SELECT COUNT(*) FROM source_intelligence_summaries").fetchone()[0]
+            stale = c.execute(
+                "SELECT COUNT(*) FROM source_intelligence_summaries s "
+                "JOIN source_intelligence_metadata m ON m.source_id = s.source_id "
+                "WHERE s.source_sha256 IS NOT m.content_sha256"
+            ).fetchone()[0]
+        return {"summarized_count": int(total), "stale_summary_count": int(stale)}
+
     # ----- durable queue ---------------------------------------------------------------------
     def enqueue_event(self, *, event_type: str, rel_path: str | None = None,
                       source_root_key: str | None = None, source_id: str | None = None,
@@ -392,6 +486,12 @@ class SourceIndexRepository:
             roots_row = c.execute(
                 "SELECT state_value FROM source_intelligence_state WHERE state_key='source_roots'"
             ).fetchone()
+            summarized = c.execute("SELECT COUNT(*) FROM source_intelligence_summaries").fetchone()[0]
+            stale_summaries = c.execute(
+                "SELECT COUNT(*) FROM source_intelligence_summaries s "
+                "JOIN source_intelligence_metadata m ON m.source_id = s.source_id "
+                "WHERE s.source_sha256 IS NOT m.content_sha256"
+            ).fetchone()[0]
         roots = json.loads(roots_row[0]) if roots_row and roots_row[0] else []
         return {
             "fts_available": fts,
@@ -401,6 +501,8 @@ class SourceIndexRepository:
             "processing_count": processing,
             "error_count": errors,
             "stale_note_count": stale_notes,
+            "summarized_count": int(summarized),
+            "stale_summary_count": int(stale_summaries),
             "last_indexed_at": last_indexed,
             "configured_roots": roots,
         }

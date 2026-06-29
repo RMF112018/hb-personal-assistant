@@ -230,6 +230,9 @@ def test_streamable_http_mount_lists_phase1_tools(tmp_path: Path, monkeypatch: p
             "search_knowledge",
             "source_index_status",
             "rebuild_source_index",
+            "generate_source_card",
+            "refresh_stale_source_notes",
+            "summarize_source",
         ]
 
         create = client.post(

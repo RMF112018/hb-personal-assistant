@@ -418,6 +418,9 @@ _TOOL_REGISTRY: list[tuple[str, str, str, str]] = [
     ("search_knowledge", "Source Intelligence", "Search across both Obsidian notes and external source intelligence (mixed result types) via the index.", "query, path_scope, limit"),
     ("source_index_status", "Source Intelligence", "Report source-intelligence index + watcher status (counts, queue, freshness); read-only.", "(none)"),
     ("rebuild_source_index", "Source Intelligence", "Operator action: enqueue a bounded rebuild of the configured source roots and the vault note index (never scans in-request).", "(none)"),
+    ("generate_source_card", "Source Intelligence", "Generate a deterministic curated source card (Markdown) for one indexed source_id with source-traceability frontmatter (no model summary, no raw file/email-body dump).", "source_id, overwrite"),
+    ("refresh_stale_source_notes", "Source Intelligence", "Refresh source cards whose underlying source changed (status=stale) up to max_updates, via SHA-gated whole-file replacement.", "max_updates"),
+    ("summarize_source", "Source Intelligence", "Model-assisted (Ollama) advisory enrichment of a source card: generates the deterministic base if missing, then adds a bounded clearly-labelled advisory summary section. Falls back to summarized:false when the model is unavailable; never runs in the search path.", "source_id"),
 ]
 
 
