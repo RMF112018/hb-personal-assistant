@@ -1,0 +1,18 @@
+# Tests run (PYTHONPATH=src:subrepos/CFR/src; venv python 3.14.5; watchdog 6.0.0)
+
+test_migrator_v93_source_intelligence.py  -> 7 passed (additive, tables+FTS, CHECK invariants)
+test_source_index_repository.py           -> 9 passed (FTS sync, idempotency, queue, domain link)
+test_obsidian_source_index.py             -> 9 passed (scan idempotent/delete, caps, unsupported, project match, Text Vault)
+test_obsidian_source_watch.py             -> 6 passed (gating, polling fallback, durable queue, real watchdog event)
+test_obsidian_mcp_backend.py + _oauth.py + above (combined) -> 62 passed
+test_obsidian_mcp_timeout.py              -> 42 passed (4 new tools in strict-JSON sweep; no tool_timeout on indexed search)
+regression: read_hardening + data_quality_table_inventory + migrator_v89 + second_brain_cli -> 20 passed
+ruff check (new modules + tests) -> All checks passed
+mypy (7 new/changed src modules) -> Success
+api.py ruff: 50 pre-existing findings, 0 added (stash comparison identical)
+
+Runtime (real app lifespan + /mcp, temp DB/vault):
+  GET source-index/status (viewer)=200 ; POST rebuild viewer=403 / operator=200 (roots_queued=2)
+  rebuild indexed external_file:1 + obsidian_note:1, fts_available=True
+  MCP: search_sources=source_index ; search_knowledge=[obsidian_note,source] ; search_vault(broad)=note_index ; source_index_status fts=True
+  tool_start/tool_end on every call; 0 tracebacks / 0 timeouts
