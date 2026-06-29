@@ -350,6 +350,10 @@ class ObsidianMcpRefreshStaleRequest(BaseModel):
     max_updates: int = 25
 
 
+class ObsidianMcpSummarizeSourceRequest(BaseModel):
+    source_id: str
+
+
 class ObsidianMcpListDirectoryRequest(BaseModel):
     path: str = ""
     recursive: bool = False
@@ -1787,6 +1791,17 @@ def create_app(*, db_path: str | None = None) -> Any:
 
         return ObsidianMcpService(db_path=db_path).refresh_stale_source_notes(
             {"max_updates": request.max_updates, "principal_kind": "local"}
+        )
+
+    @app.post("/api/settings/obsidian-mcp/source-card/summarize")
+    def settings_obsidian_mcp_source_card_summarize(
+        request: ObsidianMcpSummarizeSourceRequest, role: dict[str, str] = role_dep
+    ) -> dict[str, Any]:
+        require_operator_role(role)
+        from hb_assistant.obsidian_mcp import ObsidianMcpService
+
+        return ObsidianMcpService(db_path=db_path).summarize_source(
+            {"source_id": request.source_id, "principal_kind": "local"}
         )
 
     @app.get("/api/settings/obsidian-mcp/tools")

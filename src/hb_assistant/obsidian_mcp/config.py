@@ -82,7 +82,9 @@ class ObsidianMcpConfig(BaseModel):
     source_notes_folder: str = "Source Notes"
     source_card_generation_enabled: bool = True
     source_card_excerpt_chars: int = 600
-    schema_version: int = 4
+    source_summary_enabled: bool = True
+    source_summary_max_input_chars: int = 6000
+    schema_version: int = 5
 
     model_config = {"extra": "forbid"}
 
@@ -128,6 +130,7 @@ class ObsidianMcpConfig(BaseModel):
         "source_index_max_chunk_chars",
         "watch_poll_interval_seconds",
         "source_card_excerpt_chars",
+        "source_summary_max_input_chars",
     )
     @classmethod
     def validate_positive(cls, value: int) -> int:
@@ -228,6 +231,8 @@ class ObsidianMcpConfigPatch(BaseModel):
     source_notes_folder: str | None = None
     source_card_generation_enabled: bool | None = None
     source_card_excerpt_chars: int | None = None
+    source_summary_enabled: bool | None = None
+    source_summary_max_input_chars: int | None = None
 
     model_config = {"extra": "forbid"}
 
