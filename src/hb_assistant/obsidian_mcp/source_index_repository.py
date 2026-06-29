@@ -304,6 +304,16 @@ class SourceIndexRepository:
             if status == "generated":
                 self._set_state(c, "last_note_at", _now())
 
+    def has_generated_note(self, source_id: str, *, conn: sqlite3.Connection | None = None) -> bool:
+        """True if a card was ever generated for this source (status generated or stale)."""
+        with borrow_connection(conn, self.db_path) as c:
+            row = c.execute(
+                "SELECT 1 FROM source_intelligence_generated_notes "
+                "WHERE source_id=? AND generation_status IN ('generated','stale') LIMIT 1",
+                (source_id,),
+            ).fetchone()
+        return row is not None
+
     def list_stale_generated_notes(self, limit: int = 25, *, conn: sqlite3.Connection | None = None) -> list[dict[str, Any]]:
         with borrow_connection(conn, self.db_path) as c:
             rows = c.execute(
