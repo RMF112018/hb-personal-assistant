@@ -1,0 +1,48 @@
+### Slice 1 — rebuild auto-generate plumbing (source_indexer.py)
+252:    indexed_source_ids: list[str] = field(default_factory=list)
+300:                report.indexed_source_ids.append(source_id)
+316:def _auto_generate(
+373:def drain_queue(repo: SourceIndexRepository, config: ObsidianMcpConfig, *, batch: int = 50) -> int:
+377:    ``source_summary_auto_max_per_drain`` and deterministic cards by ``source_card_auto_max_per_drain``
+379:    re-enqueues the remainder as ``reindex_requested`` events, so work resumes on the next drain
+384:    card_cap = int(getattr(config, "source_card_auto_max_per_drain", 200))
+400:                        pending = report.indexed_source_ids
+401:                        budget = max(0, card_cap - cards_done)
+416:                                        event_type="reindex_requested", rel_path=detail["rel_path"],
+424:            else:  # created / modified / reindex_requested
+428:                    if source_id is not None and cards_done < card_cap:
+443:            repo.record_generation_result(cards=cards_done, summaries=summaries_done)
+
+### Slice 2 — analyzer module (source_analyzers.py)
+24:DRAWING_DOCUMENT_TYPES = frozenset(
+102:class SourceAnalysis:
+127:        return self.document_type in DRAWING_DOCUMENT_TYPES
+217:def _revision(text: str) -> tuple[str | None, str | None, str | None]:
+248:def _referenced_sheets(text: str, own_sheet: str | None) -> list[str]:
+258:def _datums(lines: list[str]) -> list[str]:
+317:def from_detail(detail: dict[str, Any]) -> SourceAnalysis:
+
+### Slice 3 + 4 — PM-grade card + typed drawing prompt (source_notes.py / llm.py)
+32:DRAWING_PROMPT_VERSION = "source-card-drawing-v1"
+138:def _render_drawing_advisory(advisory: dict[str, Any]) -> list[str]:
+168:def _render_drawing_sections(analysis: SourceAnalysis) -> list[str]:
+268:def _resolve_and_record_relationships(repo: SourceIndexRepository, detail: dict[str, Any],
+304:def _build_drawing_prompt(detail: dict[str, Any], analysis: SourceAnalysis, text: str) -> str:
+583:        prompt_version = DRAWING_PROMPT_VERSION
+83:_DRAWING_SYSTEM_PROMPT = (
+100:def _normalize_drawing(data: dict[str, Any]) -> dict[str, Any]:
+120:def summarize_drawing(
+139:        raw = chosen.generate_json(system=_DRAWING_SYSTEM_PROMPT, prompt=prompt_text)
+
+### Slice 5 — relationships read/write (source_index_repository.py)
+138:    def list_root_file_sources(self, source_root_key: str, *,
+153:    def list_relationships(self, source_id: str, *,
+175:    def record_relationships(self, source_id: str, relationships: list[dict[str, Any]], *,
+
+### config + UI
+109:    source_card_auto_max_per_drain: int = 200
+161:        "source_card_auto_max_per_drain",
+296:    source_card_auto_max_per_drain: int | None = None
+1004:              ? 'generates deterministic source cards'
+1025:            <StatusRow label="Generated cards" value={String(sourceIndex?.generated_card_count ?? 0)} />
+1026:            <StatusRow label="Last generation (cards/sum)" value={sourceIndex?.last_generation_at ? `${sourceIndex?.last_generation_cards ?? 0} / ${sourceIndex?.last_generation_summaries ?? 0}` : '—'} />

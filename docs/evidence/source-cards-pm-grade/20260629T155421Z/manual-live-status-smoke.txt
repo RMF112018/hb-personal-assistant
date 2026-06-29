@@ -1,0 +1,15 @@
+Read-only live smoke (no rebuild; live vault/DB NOT mutated):
+GET /api/settings/obsidian-mcp/source-index/status  (X-HB-UI-Role: operator)
+{
+  "sources_total": 8849,
+  "summarized_count": 8,
+  "generated_card_count": 53,
+  "last_generation_at": null,
+  "last_generation_cards": null,
+  "last_generation_summaries": null
+}
+=> New telemetry fields (generated_card_count, last_generation_*) are surfaced by the endpoint.
+The full rebuild->card-generation flow was validated in an ISOLATED temp root/vault/DB (see
+sample-card-A-312.md + sqlite-proof.json) to avoid mutating the operator's real vault. To run it
+live, enable "Auto-generate cards on index" and click Rebuild index (cards land in
+~/Documents/Obsidian Vault/Source Notes/<source path>.md).

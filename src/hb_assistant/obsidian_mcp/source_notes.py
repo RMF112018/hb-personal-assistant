@@ -13,19 +13,23 @@ atomic write, backup, receipt, pathsafe).
 from __future__ import annotations
 
 import hashlib
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from . import extract, llm
+from . import extract, llm, source_analyzers
 from .config import ObsidianMcpConfig
 from .mutations import create_note, resolve_markdown_write_path, sha256_file
+from .source_analyzers import SourceAnalysis
 from .source_index_repository import SourceIndexRepository
 from .tools import ObsidianMcpToolError
 
 # Bump when the advisory prompt/template changes so receipts record which version produced a card.
 # v2: file-type-specific advisory prompts + deterministic per-type analyzer block.
 SUMMARY_PROMPT_VERSION = "source-card-v2"
+# Construction drawings use a typed PM-summary prompt + schema (separate version for auditability).
+DRAWING_PROMPT_VERSION = "source-card-drawing-v1"
 _ADVISORY_LIST_KEYS = ("key_points", "action_items", "decisions", "entities")
 _ADVISORY_MAX_ITEMS = 10
 _ADVISORY_ITEM_CHARS = 200
@@ -57,7 +61,8 @@ def _yaml_str(value: object) -> str:
     return f'"{text}"'
 
 
-def _frontmatter(detail: dict[str, Any], generated_at: str, advisory: dict[str, Any] | None) -> str:
+def _frontmatter(detail: dict[str, Any], generated_at: str, advisory: dict[str, Any] | None,
+                 analysis: SourceAnalysis | None = None) -> str:
     lines = ["---", "note_type: source_card",
              f"source_id: {_yaml_str(detail['source_id'])}",
              f"source_kind: {_yaml_str(detail['source_kind'])}"]
@@ -76,6 +81,9 @@ def _frontmatter(detail: dict[str, Any], generated_at: str, advisory: dict[str, 
         f"project_key: {_yaml_str(detail.get('project_key'))}",
         f"project_number: {_yaml_str(detail.get('project_number'))}",
     ]
+    if analysis is not None:
+        for key, value in analysis.to_frontmatter_dict().items():
+            lines.append(f"{key}: {_yaml_str(value)}")
     lines.append(f"summary_advisory: {'true' if advisory else 'false'}")
     if advisory:
         lines += [
@@ -109,6 +117,218 @@ def _render_advisory(advisory: dict[str, Any]) -> list[str]:
         "",
     ]
     return parts
+
+
+def _md_list(title: str, items: list[str]) -> list[str]:
+    """Render a bounded markdown bullet list under a bold label; empty list → nothing."""
+    clean = [str(v).strip() for v in (items or []) if str(v).strip()]
+    if not clean:
+        return []
+    return [f"**{title}:**", *[f"- {v}" for v in clean[:_ADVISORY_MAX_ITEMS]], ""]
+
+
+def _section(title: str, items: list[str]) -> list[str]:
+    """Render a `## title` section from a bounded bullet list; empty list → nothing."""
+    clean = [str(v).strip() for v in (items or []) if str(v).strip()]
+    if not clean:
+        return []
+    return [f"## {title}", *[f"- {v}" for v in clean[:_ADVISORY_MAX_ITEMS]], ""]
+
+
+def _render_drawing_advisory(advisory: dict[str, Any]) -> list[str]:
+    """PM-facing advisory sections for the typed construction-drawing schema."""
+    parts = ["## AI PM Summary (advisory — model-generated, not authoritative)",
+             str(advisory.get("plain_english_summary") or "").strip()
+             or "_(model returned no summary text)_", ""]
+    if str(advisory.get("what_this_sheet_is_for") or "").strip():
+        parts += ["## Why This Sheet Matters", str(advisory["what_this_sheet_is_for"]).strip(), ""]
+    parts += _section("Scope / Assembly Signals", advisory.get("scope_elements") or [])
+    parts += _section("Coordination Items", advisory.get("coordination_items") or [])
+    parts += _section("Submittals / Shop Drawings", advisory.get("submittals_or_shop_drawings") or [])
+    parts += _section("Field / Procurement Risks", advisory.get("field_installation_risks") or [])
+    parts += _section("PM Follow-ups", advisory.get("pm_followups") or [])
+    parts += _section("Revision Impacts", advisory.get("revision_impacts") or [])
+    verify = list(advisory.get("verify_against_source") or [])
+    conf = advisory.get("confidence") or {}
+    if conf:
+        verify = verify + [
+            f"Confidence — sheet identity: {conf.get('sheet_identity', 'low')}, "
+            f"scope: {conf.get('scope_summary', 'low')}, action items: {conf.get('action_items', 'low')}."
+        ]
+    parts += _section("Verification Notes", verify)
+    parts += [
+        f"_Model: {advisory.get('model_provider')}/{advisory.get('model_name')} · prompt "
+        f"{advisory.get('prompt_version')} · generated {advisory.get('generated_at')}. "
+        "Advisory only — verify against the source._",
+        "",
+    ]
+    return parts
+
+
+def _render_drawing_sections(analysis: SourceAnalysis) -> list[str]:
+    """Deterministic PM-grade sections for a construction drawing."""
+    parts: list[str] = ["## Drawing Identity"]
+    parts.append(f"- Document type: {analysis.document_type}")
+    parts.append(f"- Discipline: {analysis.discipline}")
+    if analysis.sheet_number:
+        parts.append(f"- Sheet number: {analysis.sheet_number}")
+    if analysis.sheet_title:
+        parts.append(f"- Sheet title: {analysis.sheet_title}")
+    parts.append("")
+
+    title_block = []
+    if analysis.project_name:
+        title_block.append(f"Project: {analysis.project_name}")
+    if analysis.project_address:
+        title_block.append(f"Address: {analysis.project_address}")
+    if analysis.issue_status:
+        title_block.append(f"Issue status: {analysis.issue_status}")
+    if analysis.scale:
+        title_block.append(f"Scale: {analysis.scale}")
+    parts += _section("Title Block", title_block)
+
+    rev = []
+    if analysis.revision_number:
+        rev.append(f"Revision: {analysis.revision_number}")
+    if analysis.revision_date:
+        rev.append(f"Date: {analysis.revision_date}")
+    if analysis.revision_description:
+        rev.append(f"Description: {analysis.revision_description}")
+    parts += _section("Revision / Issue Information", rev)
+
+    parts += _section("Referenced Sheets and Details", analysis.referenced_sheets)
+    parts += _section("Numbered Notes / Keynotes", analysis.numbered_notes)
+    parts += _section("Rooms / Areas Shown", analysis.spaces)
+    parts += _section("Elevation Datums", analysis.datums)
+    parts += _section("PM Coordination Flags", analysis.coordination_flags)
+    return parts
+
+
+def _render_fallback_sections(detail: dict[str, Any], analysis: SourceAnalysis) -> list[str]:
+    """Deterministic PM-relevant sections for non-drawing documents."""
+    identity = [f"Document type: {analysis.document_type}"]
+    if analysis.discipline and analysis.discipline != "unknown":
+        identity.append(f"Discipline: {analysis.discipline}")
+    if detail.get("file_ext"):
+        identity.append(f"File type: {detail['file_ext']}")
+    parts = _section("Document Identity", identity)
+
+    meta = []
+    if analysis.project_name:
+        meta.append(f"Project: {analysis.project_name}")
+    if analysis.issue_status:
+        meta.append(f"Issue status: {analysis.issue_status}")
+    if analysis.revision_number:
+        meta.append(f"Revision: {analysis.revision_number} {analysis.revision_date or ''}".strip())
+    parts += _section("Extracted Metadata", meta)
+
+    signals = list(analysis.coordination_flags) + list(analysis.pm_followup_categories)
+    parts += _section("PM-Relevant Signals", signals)
+    return parts
+
+
+def _sheet_in_name(name: str, sheet: str) -> bool:
+    """True if a filename mentions the sheet number as a standalone token (e.g. 'A-611')."""
+    return re.search(r"(?<![A-Z0-9])" + re.escape(sheet) + r"(?![0-9])", name.upper()) is not None
+
+
+def _match_referenced_sheets(repo: SourceIndexRepository, source_root_key: str | None,
+                             project_number: str | None, referenced_sheets: list[str],
+                             *, exclude_source_id: str) -> list[dict[str, Any]]:
+    """Conservatively match referenced sheet numbers to indexed sources WITHIN THE SAME ROOT.
+
+    Scope order (first non-empty wins): same project folder (project_number) → same root. A scope
+    with more than one candidate is ambiguous and left unmatched (rendered as "not found"), never
+    matched globally across roots — this avoids cross-project false positives (A-611 is everywhere).
+    """
+    if not (source_root_key and referenced_sheets):
+        return []
+    candidates = [c for c in repo.list_root_file_sources(source_root_key)
+                  if c["source_id"] != exclude_source_id]
+    rels: list[dict[str, Any]] = []
+    for sheet in referenced_sheets:
+        scoped: tuple[list[dict[str, Any]], str, str] | None = None
+        if project_number:
+            same_proj = [c for c in candidates if c.get("project_number") == project_number
+                         and _sheet_in_name(Path(c["rel_path"]).name, sheet)]
+            if same_proj:
+                scoped = (same_proj, "project_folder", "high")
+        if scoped is None:
+            same_root = [c for c in candidates if _sheet_in_name(Path(c["rel_path"]).name, sheet)]
+            if same_root:
+                scoped = (same_root, "same_root", "medium")
+        if scoped is None or len(scoped[0]) != 1:
+            continue  # not found or ambiguous → render-only, no relationship row
+        target, match_scope, confidence = scoped[0][0], scoped[1], scoped[2]
+        rels.append({"dst_kind": "source", "dst_ref": target["source_id"], "relation": "links_to",
+                     "confidence": confidence, "evidence": {"sheet": sheet, "match_scope": match_scope}})
+    return rels
+
+
+def _resolve_and_record_relationships(repo: SourceIndexRepository, detail: dict[str, Any],
+                                      analysis: SourceAnalysis) -> None:
+    """Resolve referenced-sheet links at card-generation time (when the full root is indexed)
+    and persist them as ``links_to`` relationship rows. Best-effort; never raises."""
+    if not analysis.is_drawing or not analysis.referenced_sheets:
+        return
+    matched = _match_referenced_sheets(
+        repo, detail.get("source_root_key"), detail.get("project_number"),
+        analysis.referenced_sheets, exclude_source_id=detail["source_id"],
+    )
+    if matched:
+        repo.record_relationships(detail["source_id"], matched)
+
+
+def _render_related_sources(repo: SourceIndexRepository, source_id: str,
+                            analysis: SourceAnalysis) -> list[str]:
+    """`## Related Sources` (matched referenced sheets) + unmatched-reference list."""
+    matched_rows = [
+        r for r in repo.list_relationships(source_id)
+        if r.get("relation") == "links_to" and r.get("dst_kind") == "source"
+    ]
+    matched_sheets: set[str] = set()
+    related: list[str] = []
+    for row in matched_rows:
+        evidence = row.get("evidence") or {}
+        sheet = str(evidence.get("sheet") or "").strip()
+        if sheet:
+            matched_sheets.add(sheet)
+        target = row.get("dst_rel_path") or row.get("dst_ref")
+        related.append(f"{sheet + ' → ' if sheet else ''}`{target}`")
+    parts = _section("Related Sources", related)
+    unmatched = [s for s in analysis.referenced_sheets if s not in matched_sheets]
+    parts += _section("Referenced Sheets Not Found in Index", unmatched)
+    return parts
+
+
+def _build_drawing_prompt(detail: dict[str, Any], analysis: SourceAnalysis, text: str) -> str:
+    """Compose the model input: deterministic facts FIRST, then the bounded excerpt."""
+    facts: list[str] = ["DETERMINISTIC FACTS (extracted — treat as authoritative, do not contradict):"]
+    scalar = [
+        ("Document type", analysis.document_type), ("Discipline", analysis.discipline),
+        ("Sheet number", analysis.sheet_number), ("Sheet title", analysis.sheet_title),
+        ("Project", analysis.project_name), ("Issue status", analysis.issue_status),
+        ("Scale", analysis.scale),
+    ]
+    for label, value in scalar:
+        if value:
+            facts.append(f"- {label}: {value}")
+    if analysis.revision_number or analysis.revision_date or analysis.revision_description:
+        facts.append(
+            f"- Revision: {analysis.revision_number or '?'} / {analysis.revision_date or '?'} / "
+            f"{analysis.revision_description or '?'}"
+        )
+    for label, items in (
+        ("Referenced sheets", analysis.referenced_sheets),
+        ("Numbered notes", analysis.numbered_notes),
+        ("Rooms/areas", analysis.spaces),
+        ("Elevation datums", analysis.datums),
+        ("Coordination flags", analysis.coordination_flags),
+    ):
+        if items:
+            facts.append(f"- {label}: {', '.join(items)}")
+    facts += ["", "BOUNDED TEXT EXCERPT (may be noisy OCR/extraction):", text]
+    return "\n".join(facts)
 
 
 _FILE_TYPE_LABELS = {
@@ -186,12 +406,16 @@ def _analyzer_block(detail: dict[str, Any]) -> list[str]:
 
 
 def _render_card(config: ObsidianMcpConfig, detail: dict[str, Any], generated_at: str,
-                 advisory: dict[str, Any] | None = None) -> str:
+                 advisory: dict[str, Any] | None = None, *,
+                 repo: SourceIndexRepository | None = None) -> str:
     cap = int(getattr(config, "source_card_excerpt_chars", 600))
     display = Path(detail["rel_path"]).name if detail.get("rel_path") else str(detail.get("domain_ref_id"))
-    parts = [_frontmatter(detail, generated_at, advisory), "", f"# Source Card: {display}", ""]
+    # Deterministic construction analysis (file sources only; sensitive sources have no excerpt).
+    analysis = source_analyzers.from_detail(detail) if detail.get("rel_path") else None
+    parts = [_frontmatter(detail, generated_at, advisory, analysis), "", f"# Source Card: {display}", ""]
     if advisory:
-        parts += _render_advisory(advisory)
+        parts += (_render_drawing_advisory(advisory) if advisory.get("kind") == "drawing"
+                  else _render_advisory(advisory))
 
     parts += ["## Overview (deterministic — no model summary)",
               f"- Source kind: {detail['source_kind']}"]
@@ -207,6 +431,15 @@ def _render_card(config: ObsidianMcpConfig, detail: dict[str, Any], generated_at
     if detail.get("project_number"):
         parts.append(f"- Project number: {detail['project_number']}")
     parts.append("")
+
+    # PM-grade deterministic sections: drawing-specific or general-document fallback.
+    if analysis is not None:
+        if analysis.is_drawing:
+            parts += _render_drawing_sections(analysis)
+            if repo is not None:
+                parts += _render_related_sources(repo, detail["source_id"], analysis)
+        else:
+            parts += _render_fallback_sections(detail, analysis)
 
     # File-type-specific deterministic evidence (file sources only).
     if detail.get("rel_path"):
@@ -260,7 +493,10 @@ def generate_source_card(repo: SourceIndexRepository, config: ObsidianMcpConfig,
 
     generated_at = _now()
     card_rel = _card_rel_path(config, detail)
-    content = _render_card(config, detail, generated_at)
+    # Resolve referenced-sheet links now (the whole root is indexed by card-generation time) so the
+    # rendered "Related Sources" reflects current matches.
+    _resolve_and_record_relationships(repo, detail, source_analyzers.from_detail(detail))
+    content = _render_card(config, detail, generated_at, repo=repo)
 
     expected_sha: str | None = None
     resolved = resolve_markdown_write_path(config, card_rel, must_exist=False, parent_must_exist=False)
@@ -336,11 +572,26 @@ def summarize_source(repo: SourceIndexRepository, config: ObsidianMcpConfig, *, 
     cap = int(getattr(config, "source_summary_max_input_chars", 6000))
     text = text[:cap]
     rel = str(detail.get("rel_path"))
-    deterministic = extract.analyze(rel, text, max_chars=cap)
-    result, mode, reason = llm.summarize(
-        config, text=text, deterministic=deterministic, backend=backend,
-        file_ext=detail.get("file_ext"),
-    )
+    analysis = source_analyzers.from_detail(detail)
+    _resolve_and_record_relationships(repo, detail, analysis)
+
+    if analysis.is_drawing:
+        # Typed PM-summary path: the model receives deterministic facts + the bounded excerpt and
+        # emits the strict drawing schema. Prompt version is distinct for auditability.
+        prompt_input = _build_drawing_prompt(detail, analysis, text)
+        data, mode, reason = llm.summarize_drawing(config, prompt_text=prompt_input, backend=backend)
+        prompt_version = DRAWING_PROMPT_VERSION
+        summary_text_for_sha = "" if data is None else str(data.get("plain_english_summary") or "")
+    else:
+        deterministic = extract.analyze(rel, text, max_chars=cap)
+        result, mode, reason = llm.summarize(
+            config, text=text, deterministic=deterministic, backend=backend,
+            file_ext=detail.get("file_ext"),
+        )
+        data = result if mode == "llm" else None
+        prompt_version = SUMMARY_PROMPT_VERSION
+        summary_text_for_sha = "" if data is None else str(data.get("summary") or "")
+
     if mode != "llm":
         # Ollama unavailable / fallback: the deterministic base card stands; no advisory written.
         # ``reason`` is a specific category (timeout / invalid_json / empty_response /
@@ -349,18 +600,24 @@ def summarize_source(repo: SourceIndexRepository, config: ObsidianMcpConfig, *, 
                 "source_id": source_id, "note_path": card_rel}
 
     generated_at = _now()
-    advisory = {
-        "summary": result.get("summary", ""),
-        "key_points": result.get("key_points", []),
-        "action_items": result.get("action_items", []),
-        "decisions": result.get("decisions", []),
-        "entities": result.get("entities", []),
+    model_meta = {
         "model_provider": config.summarization_provider,
         "model_name": config.summarization_model,
-        "prompt_version": SUMMARY_PROMPT_VERSION,
+        "prompt_version": prompt_version,
         "generated_at": generated_at,
     }
-    content = _render_card(config, detail, generated_at, advisory=advisory)
+    if analysis.is_drawing:
+        advisory = {"kind": "drawing", **dict(data or {}), **model_meta}
+    else:
+        advisory = {
+            "summary": (data or {}).get("summary", ""),
+            "key_points": (data or {}).get("key_points", []),
+            "action_items": (data or {}).get("action_items", []),
+            "decisions": (data or {}).get("decisions", []),
+            "entities": (data or {}).get("entities", []),
+            **model_meta,
+        }
+    content = _render_card(config, detail, generated_at, advisory=advisory, repo=repo)
 
     resolved = resolve_markdown_write_path(config, card_rel, must_exist=False, parent_must_exist=False)
     exists = resolved.path.exists()
@@ -373,12 +630,12 @@ def summarize_source(repo: SourceIndexRepository, config: ObsidianMcpConfig, *, 
     repo.upsert_summary(source_id, {
         "model_provider": config.summarization_provider,
         "model_name": config.summarization_model,
-        "prompt_version": SUMMARY_PROMPT_VERSION,
-        "prompt_sha256": _sha256_text(f"{SUMMARY_PROMPT_VERSION}|{text}"),
-        "summary_sha256": _sha256_text(str(advisory["summary"])),
+        "prompt_version": prompt_version,
+        "prompt_sha256": _sha256_text(f"{prompt_version}|{text}"),
+        "summary_sha256": _sha256_text(summary_text_for_sha),
         "source_sha256": detail.get("content_sha256"),
     })
     return {"summarized": True, "source_id": source_id, "note_path": card_rel,
             "sha256": result_write["sha256"], "mode": "llm",
             "model_provider": config.summarization_provider, "model_name": config.summarization_model,
-            "prompt_version": SUMMARY_PROMPT_VERSION}
+            "prompt_version": prompt_version}

@@ -247,6 +247,9 @@ class ScanReport:
     errors: int = 0
     truncated: bool = False
     error_codes: list[str] = field(default_factory=list)
+    # source_ids of files newly indexed/changed this scan (NOT skipped/unchanged) — drives
+    # rebuild auto-generation. Unchanged files are absent, so cards aren't needlessly regenerated.
+    indexed_source_ids: list[str] = field(default_factory=list)
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -294,6 +297,7 @@ def scan_source_root(root: ExternalSourceRoot, repo: SourceIndexRepository,
             source_id = index_source_file(abs_path, root, repo, config)
             if source_id is not None:
                 report.indexed += 1
+                report.indexed_source_ids.append(source_id)
                 if existing:
                     repo.mark_generated_notes_stale(source_id)
         except Exception as exc:  # never let one bad file abort the scan
@@ -316,19 +320,20 @@ def _auto_generate(
     root: ExternalSourceRoot,
     *,
     summaries_remaining: int,
-) -> int:
+) -> tuple[int, int]:
     """Policy-driven card/summary generation after a successful index.
 
-    Returns the number of advisory summaries produced (0 or 1) so the caller can enforce a
-    per-drain cap. NEVER raises — an auto-gen failure must not fail the index event (indexing
-    already succeeded). Sensitive roots get a card (preview withheld by the renderer) but never
-    an advisory summary. Vault writes go through the existing write-policy in ``source_notes``.
+    Returns ``(cards_generated, summaries_generated)`` (each 0 or 1) so the caller can enforce
+    per-drain caps. NEVER raises — an auto-gen failure must not fail the index/rebuild event
+    (indexing already succeeded); a failure is counted as 0 (a skip). Sensitive roots get a card
+    (preview withheld by the renderer) but never an advisory summary. Vault writes go through the
+    existing write-policy in ``source_notes``.
     """
     from . import source_notes  # lazy import to avoid a module cycle
 
     detail = repo.get_source_detail(source_id)
     if detail is None or detail.get("deleted") or detail["source_kind"] == "obsidian_note":
-        return 0
+        return 0, 0
     kind = detail["source_kind"]
 
     want_card = (
@@ -337,11 +342,16 @@ def _auto_generate(
         and getattr(config, "source_card_generation_enabled", True)
     )
     want_refresh = getattr(config, "source_note_auto_refresh_enabled", True)
+    cards = 0
     if want_card or (want_refresh and repo.has_generated_note(source_id)):
-        with suppress(Exception):
+        try:
             source_notes.generate_source_card(
                 repo, config, source_id=source_id, overwrite=True, principal_kind="local"
             )
+            cards = 1
+        except Exception:  # noqa: BLE001 - card generation is best-effort; a failure is a skip
+            _logger.warning("source_index.auto_card_error", extra={"obsidian_mcp": {
+                "root": root.source_root_key}})
 
     want_summary = (
         summaries_remaining > 0
@@ -354,17 +364,26 @@ def _auto_generate(
         try:
             out = source_notes.summarize_source(repo, config, source_id=source_id, principal_kind="local")
         except Exception:  # noqa: BLE001 - advisory summary is best-effort
-            return 0
+            return cards, 0
         if out.get("summarized"):
-            return 1
-    return 0
+            return cards, 1
+    return cards, 0
 
 
 def drain_queue(repo: SourceIndexRepository, config: ObsidianMcpConfig, *, batch: int = 50) -> int:
-    """Process queued events (called by the watcher worker / rebuild path). Returns processed count."""
+    """Process queued events (called by the watcher worker / rebuild path). Returns processed count.
+
+    Auto-generation is bounded BOTH by count and time: advisory summaries by
+    ``source_summary_auto_max_per_drain`` and deterministic cards by ``source_card_auto_max_per_drain``
+    per drain. A rebuild whose changed-file set exceeds the card budget generates up to the cap and
+    re-enqueues the remainder as ``reindex_requested`` events, so work resumes on the next drain
+    pass instead of blocking on one giant burst.
+    """
     roots = {r.source_root_key: r for r in config.external_sources}
     summary_cap = int(getattr(config, "source_summary_auto_max_per_drain", 5))
+    card_cap = int(getattr(config, "source_card_auto_max_per_drain", 200))
     summaries_done = 0
+    cards_done = 0
     processed = 0
     for event in repo.claim_queued(batch):
         try:
@@ -374,7 +393,29 @@ def drain_queue(repo: SourceIndexRepository, config: ObsidianMcpConfig, *, batch
                 else:
                     root = roots.get(event["source_root_key"])
                     if root and root.enabled:
-                        scan_source_root(root, repo, config)
+                        report = scan_source_root(root, repo, config)
+                        # Indexing succeeded; auto-generate per changed source AFTER the scan.
+                        # _auto_generate never raises, so a card/summary failure is a skip — it
+                        # must not flip this rebuild event to error.
+                        pending = report.indexed_source_ids
+                        budget = max(0, card_cap - cards_done)
+                        for sid in pending[:budget]:
+                            c, s = _auto_generate(
+                                repo, config, sid, root,
+                                summaries_remaining=summary_cap - summaries_done,
+                            )
+                            cards_done += c
+                            summaries_done += s
+                        overflow = pending[budget:]
+                        for sid in overflow:
+                            # Resume the remainder on a later drain (bounded, no giant burst).
+                            with suppress(Exception):
+                                detail = repo.get_source_detail(sid)
+                                if detail and detail.get("rel_path"):
+                                    repo.enqueue_event(
+                                        event_type="reindex_requested", rel_path=detail["rel_path"],
+                                        source_root_key=root.source_root_key,
+                                    )
                 repo.complete_event(event["event_id"], "done")
             elif event["event_type"] == "deleted":
                 if event["rel_path"]:
@@ -384,15 +425,22 @@ def drain_queue(repo: SourceIndexRepository, config: ObsidianMcpConfig, *, batch
                 root = roots.get(event["source_root_key"])
                 if root and event["rel_path"]:
                     source_id = index_source_file(Path(root.path) / event["rel_path"], root, repo, config)
-                    if source_id is not None:
-                        summaries_done += _auto_generate(
+                    if source_id is not None and cards_done < card_cap:
+                        c, s = _auto_generate(
                             repo, config, source_id, root,
                             summaries_remaining=summary_cap - summaries_done,
                         )
+                        cards_done += c
+                        summaries_done += s
                 repo.complete_event(event["event_id"], "done")
             processed += 1
         except Exception as exc:
             repo.complete_event(event["event_id"], "error", error_code=type(exc).__name__)
+    if cards_done or summaries_done:
+        _logger.info("source_index.drain_generated", extra={"obsidian_mcp": {
+            "cards": cards_done, "summaries": summaries_done}})
+        with suppress(Exception):
+            repo.record_generation_result(cards=cards_done, summaries=summaries_done)
     with suppress(Exception):
         repo.record_drain()
     return processed

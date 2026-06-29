@@ -998,6 +998,17 @@ export function ObsidianMcpPanel() {
             </button>
           </div>
 
+          <div className="mb-2 text-[10px] text-[var(--hb-muted)]">
+            Rebuild re-indexes changed files and{' '}
+            {config?.source_card_auto_generate_enabled
+              ? 'generates deterministic source cards'
+              : 'does not generate cards (deterministic cards are off)'}
+            {config?.source_summary_auto_generate_enabled
+              ? ' plus bounded advisory summaries (model permitting)'
+              : '; advisory summaries are off, but deterministic cards may still be generated'}
+            . Cards are written to <span className="font-mono">Source Notes/&lt;source path&gt;.md</span>.
+          </div>
+
           {(sourceIndex?.config_warnings || []).length > 0 && (
             <div className="mb-2 rounded border border-amber-400 bg-amber-50 p-2 text-amber-700">
               {(sourceIndex.config_warnings as string[]).map((w) => (
@@ -1011,6 +1022,8 @@ export function ObsidianMcpPanel() {
             <StatusRow label="Queued / processing / error" value={`${sourceIndex?.queued_count ?? 0} / ${sourceIndex?.processing_count ?? 0} / ${sourceIndex?.error_count ?? 0}`} />
             <StatusRow label="Stale notes" value={String(sourceIndex?.stale_note_count ?? 0)} />
             <StatusRow label="Summaries (stale)" value={`${sourceIndex?.summarized_count ?? 0} (${sourceIndex?.stale_summary_count ?? 0})`} />
+            <StatusRow label="Generated cards" value={String(sourceIndex?.generated_card_count ?? 0)} />
+            <StatusRow label="Last generation (cards/sum)" value={sourceIndex?.last_generation_at ? `${sourceIndex?.last_generation_cards ?? 0} / ${sourceIndex?.last_generation_summaries ?? 0}` : '—'} />
             <StatusRow label="Last indexed" value={sourceIndex?.last_indexed_at || 'Never'} />
             <StatusRow label="FTS available" value={sourceIndex?.fts_available ? 'Yes' : 'No'} />
           </div>
