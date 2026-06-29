@@ -1,0 +1,8 @@
+Command:
+env PYTHONPATH=src:subrepos/construction-financial-review/src .venv/bin/python -m pytest tests/test_project_schedule_visualization_metric_contract.py tests/test_project_schedule_hub_api.py tests/test_project_schedule_hub_drilldowns.py tests/test_project_schedule_driver_analysis.py tests/test_project_schedule_review_workbench.py tests/test_project_schedule_baseline_selection.py
+
+Result:
+47 passed, 1 warning in 58.31s
+
+Warning:
+tests/test_project_schedule_hub_drilldowns.py::test_project_schedule_drilldown_unsupported_type_returns_structured_error emitted StarletteDeprecationWarning from fastapi/testclient.py.

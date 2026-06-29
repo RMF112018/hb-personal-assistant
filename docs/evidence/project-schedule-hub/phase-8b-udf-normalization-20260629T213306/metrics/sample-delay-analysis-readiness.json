@@ -1,0 +1,9 @@
+{
+  "blockers": [],
+  "caveats": [
+    "This metric is a schedule review cue only; it is not a causation, entitlement, responsibility, or compensability finding."
+  ],
+  "metric": "delay_analysis",
+  "partial_dimension_support": false,
+  "ready": true
+}

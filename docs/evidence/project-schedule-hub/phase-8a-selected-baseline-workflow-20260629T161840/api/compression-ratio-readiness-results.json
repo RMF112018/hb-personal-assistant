@@ -1,0 +1,157 @@
+{
+  "missing_duration_facts": {
+    "available": false,
+    "project_key": "tropical",
+    "metric_key": "schedule_compression_ratio",
+    "display_name": "Schedule Compression Ratio",
+    "readiness_status": "ready_after_baseline_selection",
+    "as_of_date": "2026-07-03",
+    "basis_labels": [
+      "source_export",
+      "baseline",
+      "selected_baseline",
+      "prior_update"
+    ],
+    "comparison_basis": [
+      "selected_baseline",
+      "prior_update"
+    ],
+    "weighting_basis": "duration_weighted",
+    "caveats": [
+      "Do not hard-code any Tropical fixture baseline as the global baseline."
+    ],
+    "formula_summary": "Compression percentage = ((baseline/comparison remaining duration / current remaining duration) - 1) * 100.",
+    "points": [],
+    "summary": {
+      "prior_update_comparison_separate": true,
+      "backend_derived": true
+    },
+    "unavailable_variants": [],
+    "source_version_keys": [
+      "tropical|S1|2026-06-01",
+      "tropical|S1|2026-07-01"
+    ],
+    "data_quality_notes": [
+      "Selected-baseline matching or duration facts are incomplete; no compression value was fabricated."
+    ],
+    "reason": "selected_baseline_recompute_required",
+    "readiness": {
+      "ready": false,
+      "blockers": [
+        "duration_basis_unavailable",
+        "current_duration_unavailable",
+        "baseline_duration_unavailable"
+      ],
+      "backend_derived": true,
+      "matched_activity_count": 2,
+      "usable_duration_activity_count": 0,
+      "duration_basis": "duration_remaining_then_original",
+      "current_remaining_duration_days": null,
+      "baseline_remaining_duration_days": null,
+      "compression_ratio": null
+    },
+    "recompute_required": true,
+    "selected_baseline": {
+      "selected_baseline_version_key": "tropical|S1|2026-06-01",
+      "selected_baseline_label": "TWNU18",
+      "selected_baseline_data_date": "2026-06-01",
+      "status": "recompute_required",
+      "readiness": {
+        "ready": false,
+        "blockers": [
+          "duration_basis_unavailable",
+          "current_duration_unavailable",
+          "baseline_duration_unavailable"
+        ],
+        "backend_derived": true,
+        "matched_activity_count": 2,
+        "usable_duration_activity_count": 0,
+        "duration_basis": "duration_remaining_then_original",
+        "current_remaining_duration_days": null,
+        "baseline_remaining_duration_days": null,
+        "compression_ratio": null
+      },
+      "recompute_required": true
+    }
+  },
+  "with_duration_facts": {
+    "available": true,
+    "project_key": "tropical",
+    "metric_key": "schedule_compression_ratio",
+    "display_name": "Schedule Compression Ratio",
+    "readiness_status": "ready_after_baseline_selection",
+    "as_of_date": "2026-07-03",
+    "basis_labels": [
+      "source_export",
+      "baseline",
+      "selected_baseline",
+      "prior_update"
+    ],
+    "comparison_basis": [
+      "selected_baseline",
+      "prior_update"
+    ],
+    "weighting_basis": "duration_weighted",
+    "caveats": [
+      "Do not hard-code any Tropical fixture baseline as the global baseline."
+    ],
+    "formula_summary": "Compression percentage = ((baseline/comparison remaining duration / current remaining duration) - 1) * 100.",
+    "points": [
+      {
+        "data_date": "2026-07-01",
+        "period": "2026-07-01",
+        "current_version_key": "tropical|S1|2026-07-01",
+        "selected_baseline_version_key": "tropical|S1|2026-06-01",
+        "compression_ratio": 60.0,
+        "matched_activity_count": 2,
+        "current_remaining_duration_days": 5.0,
+        "baseline_remaining_duration_days": 8.0,
+        "comparison_basis": "selected_baseline"
+      }
+    ],
+    "summary": {
+      "prior_update_comparison_separate": true,
+      "backend_derived": true,
+      "duration_basis": "duration_remaining_then_original"
+    },
+    "unavailable_variants": [],
+    "source_version_keys": [
+      "tropical|S1|2026-06-01",
+      "tropical|S1|2026-07-01"
+    ],
+    "data_quality_notes": [
+      "Compression ratio is backend-derived from selected-baseline matched activity durations."
+    ],
+    "reason": null,
+    "readiness": {
+      "ready": true,
+      "blockers": [],
+      "backend_derived": true,
+      "matched_activity_count": 2,
+      "usable_duration_activity_count": 1,
+      "duration_basis": "duration_remaining_then_original",
+      "current_remaining_duration_days": 5.0,
+      "baseline_remaining_duration_days": 8.0,
+      "compression_ratio": 60.0
+    },
+    "recompute_required": false,
+    "selected_baseline": {
+      "selected_baseline_version_key": "tropical|S1|2026-06-01",
+      "selected_baseline_label": "TWNU18",
+      "selected_baseline_data_date": "2026-06-01",
+      "status": "ready",
+      "readiness": {
+        "ready": true,
+        "blockers": [],
+        "backend_derived": true,
+        "matched_activity_count": 2,
+        "usable_duration_activity_count": 1,
+        "duration_basis": "duration_remaining_then_original",
+        "current_remaining_duration_days": 5.0,
+        "baseline_remaining_duration_days": 8.0,
+        "compression_ratio": 60.0
+      },
+      "recompute_required": false
+    }
+  }
+}

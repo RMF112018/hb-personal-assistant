@@ -1,0 +1,62 @@
+{
+  "batch_request": {
+    "route": "GET /api/projects/{project_key}/schedule/metrics/trends",
+    "as_of_source": "schedule.as_of_date then current_schedule.data_date fallback",
+    "metrics": [
+      "monthly_activity_start_finish_distribution",
+      "planned_vs_actual_percent_complete",
+      "schedule_performance_ratio",
+      "schedule_delay_over_time",
+      "schedule_changes_over_time",
+      "project_schedule_health_index",
+      "schedule_feasibility_score",
+      "required_recovery_days",
+      "critical_path_length_index",
+      "total_float_consumption_index",
+      "delay_analysis",
+      "window_start_accuracy",
+      "window_finish_accuracy",
+      "should_have_finished_status",
+      "critical_issues_category_model",
+      "schedule_compression_ratio"
+    ]
+  },
+  "supported_metric_shape": {
+    "available": true,
+    "metric_key": "planned_vs_actual_percent_complete",
+    "display_name": "Planned vs Actual Percent Complete",
+    "readiness_status": "ready_after_trend_aggregation",
+    "basis_labels": [
+      "source_export",
+      "current_update"
+    ],
+    "comparison_basis": [
+      "current_update"
+    ],
+    "weighting_basis": "duration_weighted",
+    "caveats": [
+      "Review cue only; no causation, entitlement, responsibility, or compensability determination."
+    ],
+    "points": [
+      {
+        "data_date": "2026-06-16",
+        "planned_percent_complete": 0.25,
+        "actual_percent_complete": 0.2
+      },
+      {
+        "data_date": "2026-06-23",
+        "planned_percent_complete": 0.35,
+        "actual_percent_complete": 0.3
+      }
+    ],
+    "data_quality_notes": [
+      "Backend-provided notes render in the metric panel."
+    ]
+  },
+  "blocked_metric_shape": {
+    "metric_key": "delay_analysis",
+    "detail": "metric_not_trend_ready",
+    "ui_treatment": "Not yet available card; no chart rendered."
+  },
+  "cost_weighted_unavailable_treatment": "No cost-weighted selector is rendered unless backend reports an available variant."
+}

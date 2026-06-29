@@ -1,0 +1,13 @@
+ M frontend/src/components/projects/ProjectScheduleDashboardVisualizations.tsx
+ M frontend/src/lib/api.ts
+ M frontend/src/pages/ProjectSchedulePage.test.tsx
+ M frontend/src/pages/ProjectSchedulePage.tsx
+ M src/hb_assistant/construction/analytics/api.py
+?? docs/evidence/project-schedule-hub/phase-5-visualization-metric-contract-20260629T144215/
+?? docs/evidence/project-schedule-hub/phase-6-trend-aggregation-20260629T151259/
+?? docs/evidence/project-schedule-hub/phase-7-pm-visualization-ui-20260629T153459/
+?? docs/implementation/project-schedule-controls/visualization-metric-formula-contract.md
+?? src/hb_assistant/construction/analytics/project_schedule_trend_aggregation_service.py
+?? src/hb_assistant/construction/analytics/project_schedule_visualization_metric_contract.py
+?? tests/test_project_schedule_trend_aggregation_api.py
+?? tests/test_project_schedule_visualization_metric_contract.py

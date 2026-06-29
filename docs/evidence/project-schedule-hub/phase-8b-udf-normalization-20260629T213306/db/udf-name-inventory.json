@@ -1,0 +1,61 @@
+{
+  "available": true,
+  "backend_derived": true,
+  "project_key": "tropical",
+  "total_rows": 39,
+  "udf_names": [
+    {
+      "row_count": 3,
+      "udf_type_name": "Cost Code"
+    },
+    {
+      "row_count": 3,
+      "udf_type_name": "FLOOR"
+    },
+    {
+      "row_count": 3,
+      "udf_type_name": "Filter Out"
+    },
+    {
+      "row_count": 3,
+      "udf_type_name": "Finish (Previous Status)"
+    },
+    {
+      "row_count": 3,
+      "udf_type_name": "OLD ID"
+    },
+    {
+      "row_count": 3,
+      "udf_type_name": "PHASE"
+    },
+    {
+      "row_count": 3,
+      "udf_type_name": "SECTOR / AREA"
+    },
+    {
+      "row_count": 3,
+      "udf_type_name": "SUBCONTRACTOR"
+    },
+    {
+      "row_count": 3,
+      "udf_type_name": "Schedule Review Comments"
+    },
+    {
+      "row_count": 3,
+      "udf_type_name": "Start (Previous Status)"
+    },
+    {
+      "row_count": 3,
+      "udf_type_name": "Update Notes"
+    },
+    {
+      "row_count": 3,
+      "udf_type_name": "Update Notes - 1"
+    },
+    {
+      "row_count": 3,
+      "udf_type_name": "Update Notes - 2"
+    }
+  ],
+  "version_key": "tropical|S1|2026-07-01"
+}

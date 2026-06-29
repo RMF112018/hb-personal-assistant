@@ -1,0 +1,14 @@
+{
+  "activities_with_udf_count": 3,
+  "activity_count": 3,
+  "available": true,
+  "backend_derived": true,
+  "deterministic_join_proven": true,
+  "join_failure_count": 0,
+  "join_success_rate": 1.0,
+  "joined_udf_row_count": 39,
+  "orphan_udf_examples": [],
+  "project_key": "tropical",
+  "udf_row_count": 39,
+  "version_key": "tropical|S1|2026-07-01"
+}

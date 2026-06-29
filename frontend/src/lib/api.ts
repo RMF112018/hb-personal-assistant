@@ -256,6 +256,59 @@ export function getProjectScheduleSummary(projectKey: string) {
     `/api/projects/${encodeURIComponent(projectKey)}/schedule`,
   );
 }
+export type ProjectScheduleMetricTrendResponse = {
+  available?: boolean;
+  project_key?: string;
+  metric_key?: string;
+  display_name?: string;
+  readiness_status?: string;
+  as_of_date?: string;
+  basis_labels?: string[];
+  comparison_basis?: string[];
+  weighting_basis?: string;
+  caveats?: string[];
+  formula_summary?: string;
+  points?: any[];
+  summary?: Record<string, any>;
+  unavailable_variants?: any[];
+  source_version_keys?: string[];
+  data_quality_notes?: string[];
+  reason?: string;
+  [key: string]: any;
+}
+export type ProjectScheduleMetricTrendsResponse = {
+  available?: boolean;
+  project_key?: string;
+  as_of_date?: string;
+  metrics?: ProjectScheduleMetricTrendResponse[];
+  errors?: { metric_key?: string; detail?: string }[];
+  [key: string]: any;
+}
+export function getProjectScheduleMetricTrend(
+  projectKey: string,
+  metricKey: string,
+  opts?: { asOf?: string; weightingBasis?: string },
+) {
+  const params = new URLSearchParams();
+  if (opts?.asOf) params.set('as_of', opts.asOf);
+  if (opts?.weightingBasis) params.set('weighting_basis', opts.weightingBasis);
+  const qs = params.toString();
+  return fetchJson<ProjectScheduleMetricTrendResponse>(
+    `/api/projects/${encodeURIComponent(projectKey)}/schedule/metrics/${encodeURIComponent(metricKey)}/trend${qs ? `?${qs}` : ''}`,
+  );
+}
+export function getProjectScheduleMetricTrends(
+  projectKey: string,
+  opts?: { asOf?: string; metrics?: string[] },
+) {
+  const params = new URLSearchParams();
+  if (opts?.asOf) params.set('as_of', opts.asOf);
+  if (opts?.metrics?.length) params.set('metrics', opts.metrics.join(','));
+  const qs = params.toString();
+  return fetchJson<ProjectScheduleMetricTrendsResponse>(
+    `/api/projects/${encodeURIComponent(projectKey)}/schedule/metrics/trends${qs ? `?${qs}` : ''}`,
+  );
+}
 export function getProjectScheduleDrivers(
   projectKey: string,
   drilldownType: string,
@@ -2560,6 +2613,8 @@ export const api = {
   getProjectFieldOperations,
   getProjectCostTime,
   getProjectScheduleSummary,
+  getProjectScheduleMetricTrend,
+  getProjectScheduleMetricTrends,
   getProjectScheduleDrilldown,
   getProjectScheduleDrivers,
   getProjectScheduleBaseline,

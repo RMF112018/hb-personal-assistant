@@ -1,0 +1,54 @@
+{
+  "as_of_date": "2026-07-10",
+  "available": false,
+  "basis_labels": [
+    "source_export",
+    "computed_cpm",
+    "current_update",
+    "udf_derived"
+  ],
+  "caveats": [
+    "Criticality must identify source/export float versus selected computed CPM criticality."
+  ],
+  "comparison_basis": [
+    "current_update"
+  ],
+  "data_quality_notes": [
+    "No unfinished activities were due on or before the data date."
+  ],
+  "dimension_coverage": {
+    "cost_code": 1.0,
+    "filter_out": 1.0,
+    "finish_previous_status": 1.0,
+    "floor": 1.0,
+    "old_id": 1.0,
+    "phase": 1.0,
+    "schedule_review_comments": 1.0,
+    "sector_area": 1.0,
+    "start_previous_status": 1.0,
+    "subcontractor": 1.0,
+    "update_notes": 1.0,
+    "update_notes_1": 1.0,
+    "update_notes_2": 1.0
+  },
+  "display_name": "Should Have Finished Status",
+  "formula_summary": "Activities due by data date are classified as on track, at risk, or delayed using finish, progress, status, float, and criticality facts.",
+  "metric_key": "should_have_finished_status",
+  "partial_dimension_support": false,
+  "points": [],
+  "project_key": "tropical",
+  "readiness": {
+    "blockers": [],
+    "partial_dimension_support": false,
+    "ready": true
+  },
+  "readiness_status": "ready_after_udf_normalization",
+  "reason": "no_due_unfinished_activities",
+  "source_version_keys": [
+    "tropical|S1|2026-06-01",
+    "tropical|S1|2026-07-01"
+  ],
+  "summary": {},
+  "unavailable_variants": [],
+  "weighting_basis": "activity_count"
+}

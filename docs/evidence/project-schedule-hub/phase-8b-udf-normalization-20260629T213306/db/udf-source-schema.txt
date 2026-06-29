@@ -1,0 +1,14 @@
+CREATE TABLE procore_ep_schedule_udf_values (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      project_key TEXT NOT NULL,
+      schedule_table_id TEXT,
+      schedule_id TEXT NOT NULL,
+      schedule_version_key TEXT NOT NULL,
+      import_id TEXT NOT NULL,
+      activity_id TEXT NOT NULL,
+      udf_type_name TEXT,
+      udf_data_type TEXT,
+      udf_value TEXT,
+      source_object_id TEXT,
+      FOREIGN KEY (import_id) REFERENCES schedule_file_imports(import_id)
+    )

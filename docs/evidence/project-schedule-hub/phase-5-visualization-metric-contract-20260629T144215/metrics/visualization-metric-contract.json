@@ -1,0 +1,1852 @@
+[
+  {
+    "basis_labels": [
+      "source_export",
+      "baseline",
+      "selected_baseline",
+      "computed_cpm",
+      "current_update"
+    ],
+    "blockers": [
+      "monthly aggregation API not implemented in Phase 5"
+    ],
+    "category": "distribution",
+    "caveats": [
+      "Baseline buckets require selected baseline context when multiple baselines exist."
+    ],
+    "comparison_basis": [
+      "current_update",
+      "selected_baseline",
+      "computed_cpm"
+    ],
+    "configurable_thresholds": {
+      "monthly_bucket_timezone": "project_local"
+    },
+    "configurable_weights": {},
+    "default_weighting_basis": "activity_count",
+    "display_aliases": [],
+    "display_name": "Monthly Activity Start/Finish Distribution",
+    "formula_detail": "For each schedule version, count activity starts and finishes by calendar month. Use actual_start/actual_finish for actuals, planned_start/planned_finish or start_date/finish_date for planned/current dates, schedule_baseline_activities for baseline dates, and selected CPM result dates for computed early/late dates when available.",
+    "formula_summary": "Bucket activity start and finish dates by month for each selected date family.",
+    "future_api_payload_shape": {
+      "fields": [
+        "project_key",
+        "schedule_version_key",
+        "month",
+        "date_family",
+        "start_count",
+        "finish_count"
+      ],
+      "type": "object"
+    },
+    "metric_key": "monthly_activity_start_finish_distribution",
+    "notes": [
+      "Contract only; no chart aggregation is implemented in Phase 5."
+    ],
+    "pm_facing_purpose": "Show when starts and finishes fall by month across actual, planned, baseline, early, and late date families.",
+    "readiness_status": "ready_after_trend_aggregation",
+    "required_tests": [
+      "schema columns exist for mapped date families",
+      "baseline and CPM date families are separately labeled"
+    ],
+    "source_columns": {
+      "procore_ep_schedule_activities": [
+        "schedule_version_key",
+        "activity_id",
+        "activity_name",
+        "activity_status",
+        "planned_start",
+        "planned_finish",
+        "start_date",
+        "finish_date",
+        "early_start",
+        "early_finish",
+        "late_start",
+        "late_finish",
+        "actual_start",
+        "actual_finish",
+        "duration_original",
+        "duration_remaining",
+        "percent_complete",
+        "duration_percent_complete",
+        "physical_percent_complete",
+        "total_float",
+        "derived_total_float_days",
+        "explicit_total_float_days",
+        "is_milestone",
+        "wbs_code",
+        "wbs_path"
+      ],
+      "project_schedule_baseline_selections": [
+        "project_key",
+        "current_schedule_version_key",
+        "selected_baseline_schedule_version_key",
+        "selection_status"
+      ],
+      "schedule_baseline_activities": [
+        "current_schedule_version_key",
+        "baseline_project_key",
+        "activity_id",
+        "planned_start",
+        "planned_finish",
+        "start_date",
+        "finish_date",
+        "early_start",
+        "early_finish",
+        "late_start",
+        "late_finish"
+      ],
+      "schedule_cpm_activity_results": [
+        "schedule_version_key",
+        "cpm_run_id",
+        "activity_id",
+        "computed_early_start",
+        "computed_early_finish",
+        "computed_late_start",
+        "computed_late_finish"
+      ],
+      "schedule_file_imports": [
+        "project_key",
+        "schedule_version_key",
+        "import_status",
+        "created_at",
+        "cost_loaded_status"
+      ]
+    },
+    "source_tables": [
+      "procore_ep_schedule_activities",
+      "schedule_baseline_activities",
+      "project_schedule_baseline_selections",
+      "schedule_cpm_activity_results",
+      "schedule_file_imports"
+    ],
+    "udf_dependencies": [],
+    "weighting_basis": [
+      "activity_count"
+    ]
+  },
+  {
+    "basis_labels": [
+      "source_export",
+      "prior_update",
+      "current_update"
+    ],
+    "blockers": [
+      "trend aggregation by data date is not implemented",
+      "cost-weighted variant requires cost/resource loading validation"
+    ],
+    "category": "progress",
+    "caveats": [
+      "Do not present cost-weighted progress as primary until cost/resource loading is verified."
+    ],
+    "comparison_basis": [
+      "current_update",
+      "prior_update"
+    ],
+    "configurable_thresholds": {
+      "minimum_duration_days": 0.0
+    },
+    "configurable_weights": {},
+    "default_weighting_basis": "duration_weighted",
+    "display_aliases": [],
+    "display_name": "Planned vs Actual Percent Complete",
+    "formula_detail": "Use duration_percent_complete when present, then percent_complete, then physical_percent_complete, with status-derived completion only as a clearly labeled fallback. Planned progress is the duration-weighted share planned complete by the data date. Activity-count weighting is a secondary variant. Cost weighting remains blocked until cost/resource loading is validated.",
+    "formula_summary": "Default actual progress is duration weighted: sum(percent_complete * original_duration) / sum(original_duration).",
+    "future_api_payload_shape": {
+      "fields": [
+        "data_date",
+        "planned_percent_complete",
+        "actual_percent_complete",
+        "weighting_basis"
+      ],
+      "type": "object"
+    },
+    "metric_key": "planned_vs_actual_percent_complete",
+    "notes": [
+      "This is a schedule-progress metric, not an earned-value certification."
+    ],
+    "pm_facing_purpose": "Compare progress achieved by the data date with progress planned by the same date.",
+    "readiness_status": "ready_after_trend_aggregation",
+    "required_tests": [
+      "duration-weighted default is declared",
+      "cost-weighted variant is blocked"
+    ],
+    "source_columns": {
+      "procore_ep_schedule_activities": [
+        "schedule_version_key",
+        "activity_id",
+        "activity_name",
+        "activity_status",
+        "planned_start",
+        "planned_finish",
+        "start_date",
+        "finish_date",
+        "early_start",
+        "early_finish",
+        "late_start",
+        "late_finish",
+        "actual_start",
+        "actual_finish",
+        "duration_original",
+        "duration_remaining",
+        "percent_complete",
+        "duration_percent_complete",
+        "physical_percent_complete",
+        "total_float",
+        "derived_total_float_days",
+        "explicit_total_float_days",
+        "is_milestone",
+        "wbs_code",
+        "wbs_path"
+      ],
+      "schedule_file_imports": [
+        "project_key",
+        "schedule_version_key",
+        "import_status",
+        "created_at",
+        "cost_loaded_status"
+      ]
+    },
+    "source_tables": [
+      "procore_ep_schedule_activities",
+      "schedule_file_imports"
+    ],
+    "udf_dependencies": [],
+    "weighting_basis": [
+      "duration_weighted",
+      "activity_count",
+      "cost_weighted_deferred"
+    ]
+  },
+  {
+    "basis_labels": [
+      "source_export",
+      "prior_update",
+      "current_update"
+    ],
+    "blockers": [
+      "trend aggregation by data date is not implemented",
+      "earned-value/cost-weighted basis is not validated"
+    ],
+    "category": "progress",
+    "caveats": [
+      "Permitted display alias SPI must state this is duration-weighted schedule performance, not certified earned-value SPI."
+    ],
+    "comparison_basis": [
+      "current_update",
+      "prior_update"
+    ],
+    "configurable_thresholds": {
+      "low_ratio_fail": 0.8,
+      "low_ratio_warning": 0.9
+    },
+    "configurable_weights": {},
+    "default_weighting_basis": "duration_weighted",
+    "display_aliases": [
+      "SPI-like duration ratio"
+    ],
+    "display_name": "Schedule Performance Ratio",
+    "formula_detail": "EV-like progress = percent_complete * original_duration. PV-like planned progress = planned percent complete at data date * original_duration. Cost-weighted SPI is deferred until reliable cost/resource loading is proven.",
+    "formula_summary": "Default ratio is duration-weighted EV-like progress divided by duration-weighted PV-like planned progress.",
+    "future_api_payload_shape": {
+      "fields": [
+        "data_date",
+        "schedule_performance_ratio",
+        "ev_duration",
+        "pv_duration",
+        "weighting_basis"
+      ],
+      "type": "object"
+    },
+    "metric_key": "schedule_performance_ratio",
+    "notes": [
+      "Display alias may include SPI only with explicit basis text."
+    ],
+    "pm_facing_purpose": "Show schedule progress efficiency across updates without claiming earned-value SPI unless earned value basis is proven.",
+    "readiness_status": "ready_after_trend_aggregation",
+    "required_tests": [
+      "duration-weighted default is declared",
+      "cost-weighted SPI is blocked"
+    ],
+    "source_columns": {
+      "procore_ep_schedule_activities": [
+        "schedule_version_key",
+        "activity_id",
+        "activity_name",
+        "activity_status",
+        "planned_start",
+        "planned_finish",
+        "start_date",
+        "finish_date",
+        "early_start",
+        "early_finish",
+        "late_start",
+        "late_finish",
+        "actual_start",
+        "actual_finish",
+        "duration_original",
+        "duration_remaining",
+        "percent_complete",
+        "duration_percent_complete",
+        "physical_percent_complete",
+        "total_float",
+        "derived_total_float_days",
+        "explicit_total_float_days",
+        "is_milestone",
+        "wbs_code",
+        "wbs_path"
+      ],
+      "schedule_file_imports": [
+        "project_key",
+        "schedule_version_key",
+        "import_status",
+        "created_at",
+        "cost_loaded_status"
+      ]
+    },
+    "source_tables": [
+      "procore_ep_schedule_activities",
+      "schedule_file_imports"
+    ],
+    "udf_dependencies": [],
+    "weighting_basis": [
+      "duration_weighted",
+      "activity_count",
+      "cost_weighted_deferred"
+    ]
+  },
+  {
+    "basis_labels": [
+      "source_export",
+      "prior_update",
+      "selected_baseline",
+      "baseline",
+      "diff_derived"
+    ],
+    "blockers": "multi-update trend API is not implemented",
+    "category": "trend",
+    "caveats": [
+      "This metric is a schedule review cue only; it is not a causation, entitlement, responsibility, or compensability finding.",
+      "Update-to-update movement is not baseline variance."
+    ],
+    "comparison_basis": [
+      "prior_update",
+      "selected_baseline"
+    ],
+    "configurable_thresholds": {
+      "delay_fail_days": 14,
+      "delay_warning_days": 7
+    },
+    "configurable_weights": {},
+    "default_weighting_basis": "calendar_days",
+    "display_aliases": [],
+    "display_name": "Schedule Delay Over Time",
+    "formula_detail": "Period delay/gain uses prior-update context. Baseline variance uses selected baseline finish and must be labeled separately. Net movement is current forecast finish minus prior forecast finish.",
+    "formula_summary": "For each period, compare current forecast finish to prior forecast finish and selected baseline finish separately.",
+    "future_api_payload_shape": {
+      "fields": [
+        "period",
+        "prior_version_key",
+        "current_version_key",
+        "prior_forecast_finish",
+        "current_forecast_finish",
+        "baseline_finish",
+        "delay_days",
+        "gain_days"
+      ],
+      "type": "object"
+    },
+    "metric_key": "schedule_delay_over_time",
+    "notes": [
+      "Uses resolved forecast finish semantics from the canonical schedule hub services."
+    ],
+    "pm_facing_purpose": "Show finish movement, gain, delay, baseline variance, and net movement across updates.",
+    "readiness_status": "ready_after_trend_aggregation",
+    "required_tests": [
+      "prior-update and baseline basis are both declared",
+      "non-causation caveat is present"
+    ],
+    "source_columns": {
+      "procore_ep_schedule_activities": [
+        "schedule_version_key",
+        "activity_id",
+        "activity_name",
+        "activity_status",
+        "planned_start",
+        "planned_finish",
+        "start_date",
+        "finish_date",
+        "early_start",
+        "early_finish",
+        "late_start",
+        "late_finish",
+        "actual_start",
+        "actual_finish",
+        "duration_original",
+        "duration_remaining",
+        "percent_complete",
+        "duration_percent_complete",
+        "physical_percent_complete",
+        "total_float",
+        "derived_total_float_days",
+        "explicit_total_float_days",
+        "is_milestone",
+        "wbs_code",
+        "wbs_path"
+      ],
+      "project_schedule_baseline_selections": [
+        "current_schedule_version_key",
+        "selected_baseline_schedule_version_key",
+        "selection_status"
+      ],
+      "schedule_baseline_projects": [
+        "baseline_project_key",
+        "current_schedule_version_key",
+        "scheduled_finish",
+        "baseline_data_date"
+      ],
+      "schedule_file_imports": [
+        "project_key",
+        "schedule_version_key",
+        "import_status",
+        "created_at",
+        "cost_loaded_status"
+      ],
+      "schedule_version_diffs": [
+        "from_schedule_version_key",
+        "to_schedule_version_key",
+        "finish_drift_days",
+        "created_at"
+      ]
+    },
+    "source_tables": [
+      "procore_ep_schedule_activities",
+      "schedule_version_diffs",
+      "project_schedule_baseline_selections",
+      "schedule_baseline_projects"
+    ],
+    "udf_dependencies": [],
+    "weighting_basis": [
+      "calendar_days"
+    ]
+  },
+  {
+    "basis_labels": [
+      "diff_derived",
+      "computed_cpm",
+      "prior_update"
+    ],
+    "blockers": "multi-period diff aggregation API is not implemented",
+    "category": "trend",
+    "caveats": [
+      "Critical and near-critical changes must use the selected CPM run, not all CPM rows."
+    ],
+    "comparison_basis": [
+      "prior_update"
+    ],
+    "configurable_thresholds": {
+      "high_change_count": 100
+    },
+    "configurable_weights": {},
+    "default_weighting_basis": "change_count",
+    "display_aliases": [],
+    "display_name": "Schedule Changes Over Time",
+    "formula_detail": "Use schedule_version_diffs for high-level counts, schedule_version_diff_detail_facts for activity/relationship/field changes, impact rollups for grouped impact counts, and selected CPM flags for critical and near-critical context.",
+    "formula_summary": "Aggregate persisted diff facts by update period and change category.",
+    "future_api_payload_shape": {
+      "fields": [
+        "period",
+        "change_category",
+        "change_count",
+        "critical_change_count"
+      ],
+      "type": "object"
+    },
+    "metric_key": "schedule_changes_over_time",
+    "notes": [
+      "Relationship and duration details remain driver-drilldown facts unless promoted in a later API phase."
+    ],
+    "pm_facing_purpose": "Show how activity, logic, duration, criticality, lag, calendar, added, and deleted changes vary by update.",
+    "readiness_status": "ready_after_trend_aggregation",
+    "required_tests": [
+      "diff source tables are mapped",
+      "computed CPM criticality is labeled separately"
+    ],
+    "source_columns": {
+      "schedule_cpm_activity_results": [
+        "cpm_run_id",
+        "activity_id",
+        "computed_critical_flag",
+        "computed_near_critical_flag"
+      ],
+      "schedule_version_diff_detail_facts": [
+        "diff_id",
+        "change_domain",
+        "change_type",
+        "field_name",
+        "day_delta",
+        "is_critical_path_related"
+      ],
+      "schedule_version_diff_impact_rollups": [
+        "diff_id",
+        "rollup_type",
+        "change_count",
+        "logic_change_count",
+        "relationship_change_count",
+        "activity_added_count",
+        "activity_removed_count"
+      ],
+      "schedule_version_diffs": [
+        "activity_added_count",
+        "activity_removed_count",
+        "activity_changed_count",
+        "relationship_added_count",
+        "relationship_removed_count",
+        "calendar_churn_count",
+        "code_churn_count"
+      ]
+    },
+    "source_tables": [
+      "schedule_version_diffs",
+      "schedule_version_diff_detail_facts",
+      "schedule_version_diff_impact_rollups",
+      "schedule_cpm_activity_results"
+    ],
+    "udf_dependencies": [],
+    "weighting_basis": [
+      "change_count"
+    ]
+  },
+  {
+    "basis_labels": [
+      "source_export",
+      "diff_derived",
+      "prior_update",
+      "udf_derived"
+    ],
+    "blockers": [
+      "named UDF normalization is not proven stable",
+      "trend aggregation API is not implemented"
+    ],
+    "category": "review_cue",
+    "caveats": [
+      "This metric is a schedule review cue only; it is not a causation, entitlement, responsibility, or compensability finding."
+    ],
+    "comparison_basis": [
+      "prior_update"
+    ],
+    "configurable_thresholds": {
+      "candidate_driver_min_day_delta": 1
+    },
+    "configurable_weights": {},
+    "default_weighting_basis": "day_delta",
+    "display_aliases": [],
+    "display_name": "Delay Analysis",
+    "formula_detail": "For each period, compute delay/gain/net movement from resolved finish dates and attach candidate driver/WBS cues from diff detail and impact rollup facts. UDF-derived phase/area/subcontractor labels require normalization.",
+    "formula_summary": "Combine prior-update movement, diff impact rollups, and candidate driver facts for PM review.",
+    "future_api_payload_shape": {
+      "fields": [
+        "period",
+        "data_date",
+        "schedule_end_date",
+        "delays",
+        "gains",
+        "planned_movement",
+        "net_movement",
+        "candidate_driver",
+        "primary_wbs_phase"
+      ],
+      "type": "object"
+    },
+    "metric_key": "delay_analysis",
+    "notes": [
+      "Candidate driver wording must stay advisory."
+    ],
+    "pm_facing_purpose": "Summarize period delays, gains, planned movement, likely review sequences, and affected WBS/phase.",
+    "readiness_status": "ready_after_udf_normalization",
+    "required_tests": [
+      "non-causation caveat is present",
+      "UDF dependency blocks ready_now"
+    ],
+    "source_columns": {
+      "procore_ep_schedule_activities": [
+        "schedule_version_key",
+        "activity_id",
+        "activity_name",
+        "activity_status",
+        "planned_start",
+        "planned_finish",
+        "start_date",
+        "finish_date",
+        "early_start",
+        "early_finish",
+        "late_start",
+        "late_finish",
+        "actual_start",
+        "actual_finish",
+        "duration_original",
+        "duration_remaining",
+        "percent_complete",
+        "duration_percent_complete",
+        "physical_percent_complete",
+        "total_float",
+        "derived_total_float_days",
+        "explicit_total_float_days",
+        "is_milestone",
+        "wbs_code",
+        "wbs_path"
+      ],
+      "procore_ep_schedule_udf_values": [
+        "schedule_version_key",
+        "activity_id",
+        "udf_type_name",
+        "udf_value"
+      ],
+      "schedule_file_imports": [
+        "project_key",
+        "schedule_version_key",
+        "import_status",
+        "created_at",
+        "cost_loaded_status"
+      ],
+      "schedule_version_diff_detail_facts": [
+        "diff_id",
+        "activity_id",
+        "wbs_code",
+        "change_domain",
+        "change_type",
+        "day_delta",
+        "requires_attention"
+      ],
+      "schedule_version_diff_impact_rollups": [
+        "diff_id",
+        "rollup_type",
+        "wbs_code",
+        "max_later_day_delta",
+        "net_day_delta",
+        "impact_score",
+        "requires_attention"
+      ]
+    },
+    "source_tables": [
+      "procore_ep_schedule_activities",
+      "schedule_version_diff_detail_facts",
+      "schedule_version_diff_impact_rollups",
+      "procore_ep_schedule_udf_values"
+    ],
+    "udf_dependencies": [
+      "PHASE",
+      "FLOOR",
+      "SECTOR / AREA",
+      "SUBCONTRACTOR",
+      "Update Notes",
+      "Schedule Review Comments"
+    ],
+    "weighting_basis": [
+      "day_delta",
+      "impact_score"
+    ]
+  },
+  {
+    "basis_labels": [
+      "source_export",
+      "selected_baseline",
+      "baseline",
+      "prior_update",
+      "current_update",
+      "udf_derived"
+    ],
+    "blockers": [
+      "named UDF filters/status fields are not normalized",
+      "window aggregation API is not implemented"
+    ],
+    "category": "execution_reliability",
+    "caveats": [
+      "The selected planned-start basis must be shown with the result."
+    ],
+    "comparison_basis": [
+      "prior_update",
+      "selected_baseline",
+      "current_update"
+    ],
+    "configurable_thresholds": {
+      "lookahead_days": 21,
+      "lookback_days": 7,
+      "on_time_grace_days": 0
+    },
+    "configurable_weights": {},
+    "default_weighting_basis": "activity_count",
+    "display_aliases": [],
+    "display_name": "Window Start Accuracy",
+    "formula_detail": "Default window is prior data date minus 7 days through current data date plus configured lookahead days. Classify each planned start as on time, late, or did not start using actual_start and selected planned-start basis.",
+    "formula_summary": "On-time starts divided by total planned starts in the configured window.",
+    "future_api_payload_shape": {
+      "fields": [
+        "window_start",
+        "window_end",
+        "planned_start_basis",
+        "on_time_count",
+        "late_count",
+        "did_not_start_count",
+        "accuracy_ratio"
+      ],
+      "type": "object"
+    },
+    "metric_key": "window_start_accuracy",
+    "notes": [
+      "Can use prior update or selected baseline as planned-start basis in later APIs."
+    ],
+    "pm_facing_purpose": "Measure whether activities planned to start in a near-term update window actually started on time.",
+    "readiness_status": "ready_after_udf_normalization",
+    "required_tests": [
+      "window thresholds are configurable",
+      "UDF dependency blocks ready_now"
+    ],
+    "source_columns": {
+      "procore_ep_schedule_activities": [
+        "schedule_version_key",
+        "activity_id",
+        "activity_name",
+        "activity_status",
+        "planned_start",
+        "planned_finish",
+        "start_date",
+        "finish_date",
+        "early_start",
+        "early_finish",
+        "late_start",
+        "late_finish",
+        "actual_start",
+        "actual_finish",
+        "duration_original",
+        "duration_remaining",
+        "percent_complete",
+        "duration_percent_complete",
+        "physical_percent_complete",
+        "total_float",
+        "derived_total_float_days",
+        "explicit_total_float_days",
+        "is_milestone",
+        "wbs_code",
+        "wbs_path"
+      ],
+      "procore_ep_schedule_udf_values": [
+        "schedule_version_key",
+        "activity_id",
+        "udf_type_name",
+        "udf_value"
+      ],
+      "project_schedule_baseline_selections": [
+        "project_key",
+        "current_schedule_version_key",
+        "selected_baseline_schedule_version_key"
+      ],
+      "schedule_baseline_activities": [
+        "baseline_project_key",
+        "activity_id",
+        "planned_start",
+        "start_date",
+        "early_start"
+      ],
+      "schedule_file_imports": [
+        "project_key",
+        "schedule_version_key",
+        "import_status",
+        "created_at",
+        "cost_loaded_status"
+      ]
+    },
+    "source_tables": [
+      "procore_ep_schedule_activities",
+      "schedule_baseline_activities",
+      "project_schedule_baseline_selections",
+      "procore_ep_schedule_udf_values"
+    ],
+    "udf_dependencies": [
+      "Filter Out",
+      "Start Previous Status"
+    ],
+    "weighting_basis": [
+      "activity_count"
+    ]
+  },
+  {
+    "basis_labels": [
+      "source_export",
+      "selected_baseline",
+      "baseline",
+      "prior_update",
+      "current_update",
+      "udf_derived"
+    ],
+    "blockers": [
+      "named UDF filters/status fields are not normalized",
+      "window aggregation API is not implemented"
+    ],
+    "category": "execution_reliability",
+    "caveats": [
+      "The selected planned-finish basis must be shown with the result."
+    ],
+    "comparison_basis": [
+      "prior_update",
+      "selected_baseline",
+      "current_update"
+    ],
+    "configurable_thresholds": {
+      "lookahead_days": 21,
+      "lookback_days": 7,
+      "on_time_grace_days": 0
+    },
+    "configurable_weights": {},
+    "default_weighting_basis": "activity_count",
+    "display_aliases": [],
+    "display_name": "Window Finish Accuracy",
+    "formula_detail": "Classify planned finishes as finished on time, finished late, or did not finish using actual_finish and the selected planned-finish basis. Default lookback/lookahead configuration mirrors start accuracy.",
+    "formula_summary": "Finished-on-time count divided by total planned finishes in the configured window.",
+    "future_api_payload_shape": {
+      "fields": [
+        "window_start",
+        "window_end",
+        "planned_finish_basis",
+        "finished_on_time_count",
+        "finished_late_count",
+        "did_not_finish_count",
+        "accuracy_ratio"
+      ],
+      "type": "object"
+    },
+    "metric_key": "window_finish_accuracy",
+    "notes": [
+      "Supports future drilldown by due/not-finished classification."
+    ],
+    "pm_facing_purpose": "Measure whether activities planned to finish in a near-term update window actually finished on time.",
+    "readiness_status": "ready_after_udf_normalization",
+    "required_tests": [
+      "window thresholds are configurable",
+      "UDF dependency blocks ready_now"
+    ],
+    "source_columns": {
+      "procore_ep_schedule_activities": [
+        "schedule_version_key",
+        "activity_id",
+        "activity_name",
+        "activity_status",
+        "planned_start",
+        "planned_finish",
+        "start_date",
+        "finish_date",
+        "early_start",
+        "early_finish",
+        "late_start",
+        "late_finish",
+        "actual_start",
+        "actual_finish",
+        "duration_original",
+        "duration_remaining",
+        "percent_complete",
+        "duration_percent_complete",
+        "physical_percent_complete",
+        "total_float",
+        "derived_total_float_days",
+        "explicit_total_float_days",
+        "is_milestone",
+        "wbs_code",
+        "wbs_path"
+      ],
+      "procore_ep_schedule_udf_values": [
+        "schedule_version_key",
+        "activity_id",
+        "udf_type_name",
+        "udf_value"
+      ],
+      "project_schedule_baseline_selections": [
+        "project_key",
+        "current_schedule_version_key",
+        "selected_baseline_schedule_version_key"
+      ],
+      "schedule_baseline_activities": [
+        "baseline_project_key",
+        "activity_id",
+        "planned_finish",
+        "finish_date",
+        "early_finish"
+      ],
+      "schedule_file_imports": [
+        "project_key",
+        "schedule_version_key",
+        "import_status",
+        "created_at",
+        "cost_loaded_status"
+      ]
+    },
+    "source_tables": [
+      "procore_ep_schedule_activities",
+      "schedule_baseline_activities",
+      "project_schedule_baseline_selections",
+      "procore_ep_schedule_udf_values"
+    ],
+    "udf_dependencies": [
+      "Filter Out",
+      "Finish Previous Status"
+    ],
+    "weighting_basis": [
+      "activity_count"
+    ]
+  },
+  {
+    "basis_labels": [
+      "source_export",
+      "computed_cpm",
+      "current_update",
+      "udf_derived"
+    ],
+    "blockers": [
+      "named UDF filters/comments are not normalized",
+      "future donut/drilldown API is not implemented"
+    ],
+    "category": "execution_reliability",
+    "caveats": [
+      "Criticality must identify source/export float versus selected computed CPM criticality."
+    ],
+    "comparison_basis": [
+      "current_update"
+    ],
+    "configurable_thresholds": {
+      "at_risk_float_days": 5,
+      "critical_float_threshold_days": 1
+    },
+    "configurable_weights": {},
+    "default_weighting_basis": "activity_count",
+    "display_aliases": [],
+    "display_name": "Should Have Finished Status",
+    "formula_detail": "Use planned_finish or early_finish as the due basis, actual_finish for completion, current data date for due status, percent/status for progress, source/export total float, and selected computed CPM criticality where available.",
+    "formula_summary": "Activities due by data date are classified as on track, at risk, or delayed using finish, progress, status, float, and criticality facts.",
+    "future_api_payload_shape": {
+      "fields": [
+        "status",
+        "activity_count",
+        "basis",
+        "drilldown_url"
+      ],
+      "type": "object"
+    },
+    "metric_key": "should_have_finished_status",
+    "notes": [
+      "Output supports a future donut chart and activity drilldown."
+    ],
+    "pm_facing_purpose": "Identify activities due to finish by the current data date and classify them for PM review.",
+    "readiness_status": "ready_after_udf_normalization",
+    "required_tests": [
+      "critical threshold is configurable",
+      "UDF dependency blocks ready_now"
+    ],
+    "source_columns": {
+      "procore_ep_schedule_activities": [
+        "schedule_version_key",
+        "activity_id",
+        "activity_name",
+        "activity_status",
+        "planned_start",
+        "planned_finish",
+        "start_date",
+        "finish_date",
+        "early_start",
+        "early_finish",
+        "late_start",
+        "late_finish",
+        "actual_start",
+        "actual_finish",
+        "duration_original",
+        "duration_remaining",
+        "percent_complete",
+        "duration_percent_complete",
+        "physical_percent_complete",
+        "total_float",
+        "derived_total_float_days",
+        "explicit_total_float_days",
+        "is_milestone",
+        "wbs_code",
+        "wbs_path"
+      ],
+      "procore_ep_schedule_udf_values": [
+        "schedule_version_key",
+        "activity_id",
+        "udf_type_name",
+        "udf_value"
+      ],
+      "schedule_cpm_activity_results": [
+        "cpm_run_id",
+        "activity_id",
+        "computed_critical_flag",
+        "computed_near_critical_flag",
+        "computed_total_float"
+      ],
+      "schedule_file_imports": [
+        "project_key",
+        "schedule_version_key",
+        "import_status",
+        "created_at",
+        "cost_loaded_status"
+      ]
+    },
+    "source_tables": [
+      "procore_ep_schedule_activities",
+      "schedule_cpm_activity_results",
+      "procore_ep_schedule_udf_values"
+    ],
+    "udf_dependencies": [
+      "Filter Out",
+      "Update Notes",
+      "Schedule Review Comments"
+    ],
+    "weighting_basis": [
+      "activity_count"
+    ]
+  },
+  {
+    "basis_labels": [
+      "source_export",
+      "baseline",
+      "selected_baseline",
+      "prior_update"
+    ],
+    "blockers": "selected baseline/crosswalk must be confirmed for product use",
+    "category": "feasibility",
+    "caveats": [
+      "Do not hard-code any Tropical fixture baseline as the global baseline."
+    ],
+    "comparison_basis": [
+      "selected_baseline",
+      "prior_update"
+    ],
+    "configurable_thresholds": {
+      "green_max_percent": 14,
+      "red_min_percent": 26,
+      "yellow_max_percent": 25
+    },
+    "configurable_weights": {},
+    "default_weighting_basis": "duration_weighted",
+    "display_aliases": [],
+    "display_name": "Schedule Compression Ratio",
+    "formula_detail": "Compare matched unfinished activities between current and selected baseline/comparison version. Use duration_remaining or duration_original with explicit basis labels. TWNU07 may be a Tropical fixture baseline only and is not a product default.",
+    "formula_summary": "Compression percentage = ((baseline/comparison remaining duration / current remaining duration) - 1) * 100.",
+    "future_api_payload_shape": {
+      "fields": [
+        "comparison_basis",
+        "matched_remaining_count",
+        "current_remaining_duration",
+        "comparison_remaining_duration",
+        "compression_percent",
+        "status"
+      ],
+      "type": "object"
+    },
+    "metric_key": "schedule_compression_ratio",
+    "notes": [
+      "Prior-update variant is allowed only when selected baseline is unavailable and labeled."
+    ],
+    "pm_facing_purpose": "Measure execution intensity of remaining work versus a selected baseline or comparison update.",
+    "readiness_status": "ready_after_baseline_selection",
+    "required_tests": [
+      "thresholds are configurable",
+      "TWNU07 is not hard-coded"
+    ],
+    "source_columns": {
+      "procore_ep_schedule_activities": [
+        "schedule_version_key",
+        "activity_id",
+        "activity_name",
+        "activity_status",
+        "planned_start",
+        "planned_finish",
+        "start_date",
+        "finish_date",
+        "early_start",
+        "early_finish",
+        "late_start",
+        "late_finish",
+        "actual_start",
+        "actual_finish",
+        "duration_original",
+        "duration_remaining",
+        "percent_complete",
+        "duration_percent_complete",
+        "physical_percent_complete",
+        "total_float",
+        "derived_total_float_days",
+        "explicit_total_float_days",
+        "is_milestone",
+        "wbs_code",
+        "wbs_path"
+      ],
+      "project_schedule_baseline_selections": [
+        "project_key",
+        "current_schedule_version_key",
+        "selected_baseline_schedule_version_key",
+        "selection_status"
+      ],
+      "schedule_baseline_activities": [
+        "baseline_project_key",
+        "activity_id",
+        "duration_original",
+        "duration_remaining",
+        "actual_finish"
+      ],
+      "schedule_baseline_activity_crosswalk": [
+        "current_schedule_version_key",
+        "baseline_project_key",
+        "current_activity_id",
+        "baseline_activity_id",
+        "match_confidence",
+        "review_required"
+      ],
+      "schedule_file_imports": [
+        "project_key",
+        "schedule_version_key",
+        "import_status",
+        "created_at",
+        "cost_loaded_status"
+      ]
+    },
+    "source_tables": [
+      "procore_ep_schedule_activities",
+      "schedule_baseline_activities",
+      "schedule_baseline_activity_crosswalk",
+      "project_schedule_baseline_selections"
+    ],
+    "udf_dependencies": [],
+    "weighting_basis": [
+      "duration_weighted"
+    ]
+  },
+  {
+    "basis_labels": [
+      "quality_derived",
+      "source_export",
+      "computed_cpm",
+      "selected_baseline",
+      "current_update"
+    ],
+    "blockers": [
+      "composite aggregation API is not implemented",
+      "compression overlay depends on selected baseline readiness"
+    ],
+    "category": "quality",
+    "caveats": [
+      "Composite score should expose component penalties, not only the final number."
+    ],
+    "comparison_basis": [
+      "current_update",
+      "selected_baseline"
+    ],
+    "configurable_thresholds": {
+      "green_min_score": 85,
+      "yellow_min_score": 70
+    },
+    "configurable_weights": {
+      "compression": 0.1,
+      "constraints": 0.15,
+      "critical_duration": 0.15,
+      "float": 0.2,
+      "logic_density": 0.2,
+      "update_quality": 0.2
+    },
+    "default_weighting_basis": "weighted_penalty_model",
+    "display_aliases": [],
+    "display_name": "Project Schedule Health Index",
+    "formula_detail": "Start from 100 and subtract configurable weighted penalties for logic density/open ends, negative/excessive float, high-duration critical/near-critical activities, constraint reliance, update quality, and compression overlay. Use existing quality scorecards where available.",
+    "formula_summary": "Weighted penalty model on a 0-100 scale using schedule quality, float, critical duration, constraints, update quality, and compression inputs.",
+    "future_api_payload_shape": {
+      "fields": [
+        "schedule_version_key",
+        "health_index",
+        "grade",
+        "component_scores",
+        "weights"
+      ],
+      "type": "object"
+    },
+    "metric_key": "project_schedule_health_index",
+    "notes": [
+      "Existing quality tables are first-class inputs; Phase 5 does not compute the score."
+    ],
+    "pm_facing_purpose": "Provide a composite schedule reliability and usability score for PM review.",
+    "readiness_status": "ready_after_trend_aggregation",
+    "required_tests": [
+      "weights are configurable",
+      "quality tables are mapped"
+    ],
+    "source_columns": {
+      "procore_ep_schedule_activities": [
+        "schedule_version_key",
+        "activity_id",
+        "activity_name",
+        "activity_status",
+        "planned_start",
+        "planned_finish",
+        "start_date",
+        "finish_date",
+        "early_start",
+        "early_finish",
+        "late_start",
+        "late_finish",
+        "actual_start",
+        "actual_finish",
+        "duration_original",
+        "duration_remaining",
+        "percent_complete",
+        "duration_percent_complete",
+        "physical_percent_complete",
+        "total_float",
+        "derived_total_float_days",
+        "explicit_total_float_days",
+        "is_milestone",
+        "wbs_code",
+        "wbs_path"
+      ],
+      "schedule_cpm_activity_results": [
+        "cpm_run_id",
+        "activity_id",
+        "computed_critical_flag",
+        "computed_near_critical_flag",
+        "computed_total_float"
+      ],
+      "schedule_file_imports": [
+        "project_key",
+        "schedule_version_key",
+        "import_status",
+        "created_at",
+        "cost_loaded_status"
+      ],
+      "schedule_quality_evaluation_runs": [
+        "evaluation_run_id",
+        "schedule_version_key",
+        "status",
+        "is_latest"
+      ],
+      "schedule_quality_findings": [
+        "finding_code",
+        "severity",
+        "category",
+        "activity_id"
+      ],
+      "schedule_quality_metric_results": [
+        "metric_code",
+        "metric_family",
+        "numerator",
+        "denominator",
+        "value",
+        "status"
+      ],
+      "schedule_quality_scorecards": [
+        "quality_score",
+        "quality_grade",
+        "finding_counts_json",
+        "downstream_readiness_json"
+      ]
+    },
+    "source_tables": [
+      "schedule_quality_evaluation_runs",
+      "schedule_quality_metric_results",
+      "schedule_quality_scorecards",
+      "schedule_quality_findings",
+      "procore_ep_schedule_activities",
+      "schedule_cpm_activity_results"
+    ],
+    "udf_dependencies": [],
+    "weighting_basis": [
+      "weighted_penalty_model"
+    ]
+  },
+  {
+    "basis_labels": [
+      "source_export",
+      "computed_cpm",
+      "quality_derived",
+      "selected_baseline",
+      "prior_update",
+      "current_update"
+    ],
+    "blockers": "depends on schedule compression, health index, and performance ratio APIs",
+    "category": "feasibility",
+    "caveats": [
+      "Composite feasibility is advisory and should show dependency readiness."
+    ],
+    "comparison_basis": [
+      "current_update",
+      "selected_baseline",
+      "prior_update"
+    ],
+    "configurable_thresholds": {
+      "green_min_score": 80,
+      "yellow_min_score": 65
+    },
+    "configurable_weights": {
+      "compression": 0.25,
+      "forecast_variance": 0.15,
+      "health_index": 0.25,
+      "negative_float": 0.2,
+      "performance_ratio": 0.15
+    },
+    "default_weighting_basis": "weighted_composite",
+    "display_aliases": [],
+    "display_name": "Schedule Feasibility Score",
+    "formula_detail": "Combine normalized inputs from schedule_compression_ratio, source/export negative float, project_schedule_health_index, schedule_performance_ratio, and forecast finish variance. Each dependency must expose its own basis.",
+    "formula_summary": "Composite score from compression, negative float, health index, schedule performance ratio, and forecast completion variance.",
+    "future_api_payload_shape": {
+      "fields": [
+        "schedule_version_key",
+        "feasibility_score",
+        "component_scores",
+        "dependency_readiness"
+      ],
+      "type": "object"
+    },
+    "metric_key": "schedule_feasibility_score",
+    "notes": [
+      "Not ready until dependent metric APIs exist."
+    ],
+    "pm_facing_purpose": "Summarize forward-looking realism of the remaining schedule.",
+    "readiness_status": "ready_after_trend_aggregation",
+    "required_tests": [
+      "dependency map includes upstream metrics",
+      "weights are configurable"
+    ],
+    "source_columns": {
+      "procore_ep_schedule_activities": [
+        "schedule_version_key",
+        "activity_id",
+        "activity_name",
+        "activity_status",
+        "planned_start",
+        "planned_finish",
+        "start_date",
+        "finish_date",
+        "early_start",
+        "early_finish",
+        "late_start",
+        "late_finish",
+        "actual_start",
+        "actual_finish",
+        "duration_original",
+        "duration_remaining",
+        "percent_complete",
+        "duration_percent_complete",
+        "physical_percent_complete",
+        "total_float",
+        "derived_total_float_days",
+        "explicit_total_float_days",
+        "is_milestone",
+        "wbs_code",
+        "wbs_path"
+      ],
+      "project_schedule_baseline_selections": [
+        "current_schedule_version_key",
+        "selected_baseline_schedule_version_key"
+      ],
+      "schedule_cpm_activity_results": [
+        "computed_critical_flag",
+        "computed_near_critical_flag",
+        "computed_total_float"
+      ],
+      "schedule_file_imports": [
+        "project_key",
+        "schedule_version_key",
+        "import_status",
+        "created_at",
+        "cost_loaded_status"
+      ],
+      "schedule_quality_scorecards": [
+        "quality_score",
+        "quality_grade",
+        "downstream_readiness_json"
+      ]
+    },
+    "source_tables": [
+      "procore_ep_schedule_activities",
+      "schedule_quality_scorecards",
+      "schedule_cpm_activity_results",
+      "project_schedule_baseline_selections"
+    ],
+    "udf_dependencies": [],
+    "weighting_basis": [
+      "weighted_composite"
+    ]
+  },
+  {
+    "basis_labels": [
+      "computed_cpm",
+      "prior_update",
+      "source_export"
+    ],
+    "blockers": "critical-path delay trend API is not implemented",
+    "category": "feasibility",
+    "caveats": [
+      "This metric is a schedule review cue only; it is not a causation, entitlement, responsibility, or compensability finding.",
+      "Do not conflate critical path list length with critical remaining count."
+    ],
+    "comparison_basis": [
+      "prior_update",
+      "computed_cpm"
+    ],
+    "configurable_thresholds": {
+      "recovery_fail_days": 10,
+      "recovery_warning_days": 5
+    },
+    "configurable_weights": {},
+    "default_weighting_basis": "calendar_days",
+    "display_aliases": [],
+    "display_name": "Required Recovery Days",
+    "formula_detail": "Critical path delay should come from selected computed CPM path/criticality facts when available. Forecast finish movement uses prior-update resolved finish semantics. If CPM path delay is unavailable, classify as blocked rather than substituting source float.",
+    "formula_summary": "Required recovery days = critical path delay minus forecast finish movement.",
+    "future_api_payload_shape": {
+      "fields": [
+        "period",
+        "critical_path_delay_days",
+        "forecast_finish_movement_days",
+        "required_recovery_days"
+      ],
+      "type": "object"
+    },
+    "metric_key": "required_recovery_days",
+    "notes": [
+      "Uses selected CPM run/path provenance from Phase 3."
+    ],
+    "pm_facing_purpose": "Quantify implied future recovery built into the current forecast.",
+    "readiness_status": "ready_after_trend_aggregation",
+    "required_tests": [
+      "non-causation caveat is present",
+      "computed CPM basis is declared"
+    ],
+    "source_columns": {
+      "procore_ep_schedule_activities": [
+        "schedule_version_key",
+        "activity_id",
+        "activity_name",
+        "activity_status",
+        "planned_start",
+        "planned_finish",
+        "start_date",
+        "finish_date",
+        "early_start",
+        "early_finish",
+        "late_start",
+        "late_finish",
+        "actual_start",
+        "actual_finish",
+        "duration_original",
+        "duration_remaining",
+        "percent_complete",
+        "duration_percent_complete",
+        "physical_percent_complete",
+        "total_float",
+        "derived_total_float_days",
+        "explicit_total_float_days",
+        "is_milestone",
+        "wbs_code",
+        "wbs_path"
+      ],
+      "schedule_cpm_activity_results": [
+        "cpm_run_id",
+        "activity_id",
+        "computed_critical_flag",
+        "computed_total_float"
+      ],
+      "schedule_cpm_path_activities": [
+        "path_id",
+        "activity_id",
+        "computed_early_finish",
+        "computed_late_finish",
+        "computed_total_float",
+        "path_sequence"
+      ],
+      "schedule_cpm_paths": [
+        "cpm_run_id",
+        "path_type",
+        "path_duration",
+        "path_finish_offset_days",
+        "path_total_float",
+        "path_status"
+      ],
+      "schedule_file_imports": [
+        "project_key",
+        "schedule_version_key",
+        "import_status",
+        "created_at",
+        "cost_loaded_status"
+      ]
+    },
+    "source_tables": [
+      "schedule_cpm_paths",
+      "schedule_cpm_path_activities",
+      "schedule_cpm_activity_results",
+      "procore_ep_schedule_activities"
+    ],
+    "udf_dependencies": [],
+    "weighting_basis": [
+      "calendar_days"
+    ]
+  },
+  {
+    "basis_labels": [
+      "computed_cpm",
+      "source_export",
+      "prior_update",
+      "current_update"
+    ],
+    "blockers": "critical path trend aggregation API is not implemented",
+    "category": "critical_path",
+    "caveats": [
+      "Criticality source must be displayed as computed CPM or source/export float fallback."
+    ],
+    "comparison_basis": [
+      "computed_cpm",
+      "current_update",
+      "prior_update"
+    ],
+    "configurable_thresholds": {
+      "critical_float_threshold_days": 1,
+      "near_critical_float_threshold_days": 10
+    },
+    "configurable_weights": {},
+    "default_weighting_basis": "duration_weighted",
+    "display_aliases": [],
+    "display_name": "Critical Path Length Index",
+    "formula_detail": "Prefer selected application-computed CPM criticality and path membership. Source/export total float can be a separately labeled fallback. Critical threshold defaults to total float <= 1 working day and must be configurable.",
+    "formula_summary": "Compare critical/near-critical progress against planned progress using duration-weighted path or subset durations.",
+    "future_api_payload_shape": {
+      "fields": [
+        "data_date",
+        "criticality_basis",
+        "critical_path_length_index",
+        "thresholds"
+      ],
+      "type": "object"
+    },
+    "metric_key": "critical_path_length_index",
+    "notes": [
+      "Analog metric; not a proprietary product metric."
+    ],
+    "pm_facing_purpose": "Measure critical-path execution performance using an explicitly labeled criticality basis.",
+    "readiness_status": "ready_after_trend_aggregation",
+    "required_tests": [
+      "critical threshold is configurable",
+      "computed CPM basis is preferred"
+    ],
+    "source_columns": {
+      "procore_ep_schedule_activities": [
+        "schedule_version_key",
+        "activity_id",
+        "activity_name",
+        "activity_status",
+        "planned_start",
+        "planned_finish",
+        "start_date",
+        "finish_date",
+        "early_start",
+        "early_finish",
+        "late_start",
+        "late_finish",
+        "actual_start",
+        "actual_finish",
+        "duration_original",
+        "duration_remaining",
+        "percent_complete",
+        "duration_percent_complete",
+        "physical_percent_complete",
+        "total_float",
+        "derived_total_float_days",
+        "explicit_total_float_days",
+        "is_milestone",
+        "wbs_code",
+        "wbs_path"
+      ],
+      "schedule_cpm_activity_results": [
+        "computed_critical_flag",
+        "computed_near_critical_flag",
+        "critical_float_threshold_days",
+        "near_critical_float_threshold_days"
+      ],
+      "schedule_cpm_path_activities": [
+        "path_id",
+        "activity_id",
+        "duration_value",
+        "computed_total_float",
+        "path_sequence"
+      ],
+      "schedule_cpm_paths": [
+        "cpm_run_id",
+        "path_duration",
+        "path_total_float",
+        "path_status"
+      ],
+      "schedule_file_imports": [
+        "project_key",
+        "schedule_version_key",
+        "import_status",
+        "created_at",
+        "cost_loaded_status"
+      ]
+    },
+    "source_tables": [
+      "schedule_cpm_paths",
+      "schedule_cpm_path_activities",
+      "schedule_cpm_activity_results",
+      "procore_ep_schedule_activities"
+    ],
+    "udf_dependencies": [],
+    "weighting_basis": [
+      "duration_weighted"
+    ]
+  },
+  {
+    "basis_labels": [
+      "source_export",
+      "computed_cpm",
+      "prior_update",
+      "current_update"
+    ],
+    "blockers": "multi-update float aggregation API is not implemented",
+    "category": "critical_path",
+    "caveats": [
+      "Source/export float and computed CPM float must remain separate."
+    ],
+    "comparison_basis": [
+      "prior_update",
+      "computed_cpm"
+    ],
+    "configurable_thresholds": {
+      "high_consumption_ratio": 1.0
+    },
+    "configurable_weights": {},
+    "default_weighting_basis": "float_days",
+    "display_aliases": [],
+    "display_name": "Total Float Consumption Index",
+    "formula_detail": "Use prior and current float values from the same labeled source. Computed CPM float and source/export float must not be mixed without labeling. Critical/near-critical subset should use selected computed CPM flags when available.",
+    "formula_summary": "Float consumed between updates divided by elapsed time or planned float allowance for the selected critical/near-critical subset.",
+    "future_api_payload_shape": {
+      "fields": [
+        "period",
+        "float_basis",
+        "criticality_basis",
+        "float_consumed_days",
+        "elapsed_days",
+        "consumption_index"
+      ],
+      "type": "object"
+    },
+    "metric_key": "total_float_consumption_index",
+    "notes": [
+      "This is an analog index and should not reuse proprietary names internally."
+    ],
+    "pm_facing_purpose": "Measure erosion of float across critical and near-critical activities.",
+    "readiness_status": "ready_after_trend_aggregation",
+    "required_tests": [
+      "float basis separation is declared",
+      "computed CPM/source export labels are present"
+    ],
+    "source_columns": {
+      "procore_ep_schedule_activities": [
+        "schedule_version_key",
+        "activity_id",
+        "activity_name",
+        "activity_status",
+        "planned_start",
+        "planned_finish",
+        "start_date",
+        "finish_date",
+        "early_start",
+        "early_finish",
+        "late_start",
+        "late_finish",
+        "actual_start",
+        "actual_finish",
+        "duration_original",
+        "duration_remaining",
+        "percent_complete",
+        "duration_percent_complete",
+        "physical_percent_complete",
+        "total_float",
+        "derived_total_float_days",
+        "explicit_total_float_days",
+        "is_milestone",
+        "wbs_code",
+        "wbs_path"
+      ],
+      "schedule_cpm_activity_results": [
+        "cpm_run_id",
+        "activity_id",
+        "computed_total_float",
+        "computed_critical_flag",
+        "computed_near_critical_flag"
+      ],
+      "schedule_file_imports": [
+        "project_key",
+        "schedule_version_key",
+        "import_status",
+        "created_at",
+        "cost_loaded_status"
+      ]
+    },
+    "source_tables": [
+      "procore_ep_schedule_activities",
+      "schedule_cpm_activity_results"
+    ],
+    "udf_dependencies": [],
+    "weighting_basis": [
+      "float_days",
+      "elapsed_days"
+    ]
+  },
+  {
+    "basis_labels": [
+      "source_export",
+      "computed_cpm",
+      "quality_derived",
+      "prior_update",
+      "current_update",
+      "udf_derived"
+    ],
+    "blockers": [
+      "named UDF comments/ownership fields are not normalized",
+      "panel aggregation and review-generation rules are not implemented"
+    ],
+    "category": "review_cue",
+    "caveats": [
+      "This metric is a schedule review cue only; it is not a causation, entitlement, responsibility, or compensability finding.",
+      "Review item eligibility is advisory until operator action."
+    ],
+    "comparison_basis": [
+      "current_update",
+      "prior_update",
+      "computed_cpm"
+    ],
+    "configurable_thresholds": {
+      "high_priority_min_score": 80,
+      "medium_priority_min_score": 50
+    },
+    "configurable_weights": {
+      "compression": 0.2,
+      "execution_status": 0.2,
+      "float_erosion": 0.25,
+      "logic_quality": 0.2,
+      "review_external": 0.15
+    },
+    "default_weighting_basis": "severity_model",
+    "display_aliases": [],
+    "display_name": "Critical Issues Category Model",
+    "formula_detail": "Categories: negative float and critical path erosion; schedule compression on critical path; logic and quality findings; execution and status gaps; review and external flags. Use review items/events only as workflow evidence, not causation findings.",
+    "formula_summary": "Classify issue candidates into five PM-facing categories with severity, drilldown basis, review eligibility, and caveats.",
+    "future_api_payload_shape": {
+      "fields": [
+        "category",
+        "severity",
+        "candidate_count",
+        "drilldown_basis",
+        "review_item_eligible"
+      ],
+      "type": "object"
+    },
+    "metric_key": "critical_issues_category_model",
+    "notes": [
+      "This model defines future critical issue panels; Phase 5 does not create review items."
+    ],
+    "pm_facing_purpose": "Define issue categories for future critical issue panels and review item generation.",
+    "readiness_status": "ready_after_udf_normalization",
+    "required_tests": [
+      "five categories are documented",
+      "non-causation caveat is present",
+      "UDF dependency blocks ready_now"
+    ],
+    "source_columns": {
+      "procore_ep_schedule_activities": [
+        "schedule_version_key",
+        "activity_id",
+        "activity_name",
+        "activity_status",
+        "planned_start",
+        "planned_finish",
+        "start_date",
+        "finish_date",
+        "early_start",
+        "early_finish",
+        "late_start",
+        "late_finish",
+        "actual_start",
+        "actual_finish",
+        "duration_original",
+        "duration_remaining",
+        "percent_complete",
+        "duration_percent_complete",
+        "physical_percent_complete",
+        "total_float",
+        "derived_total_float_days",
+        "explicit_total_float_days",
+        "is_milestone",
+        "wbs_code",
+        "wbs_path"
+      ],
+      "procore_ep_schedule_udf_values": [
+        "schedule_version_key",
+        "activity_id",
+        "udf_type_name",
+        "udf_value"
+      ],
+      "project_schedule_review_item_events": [
+        "event_type",
+        "prior_status",
+        "new_status",
+        "operator_id"
+      ],
+      "project_schedule_review_items": [
+        "stable_item_key",
+        "item_type",
+        "priority",
+        "review_status",
+        "source_activity_id"
+      ],
+      "schedule_cpm_activity_results": [
+        "computed_critical_flag",
+        "computed_near_critical_flag",
+        "computed_total_float"
+      ],
+      "schedule_file_imports": [
+        "project_key",
+        "schedule_version_key",
+        "import_status",
+        "created_at",
+        "cost_loaded_status"
+      ],
+      "schedule_quality_findings": [
+        "finding_code",
+        "severity",
+        "category",
+        "activity_id"
+      ],
+      "schedule_quality_metric_results": [
+        "metric_code",
+        "metric_family",
+        "value",
+        "status"
+      ]
+    },
+    "source_tables": [
+      "procore_ep_schedule_activities",
+      "schedule_cpm_activity_results",
+      "schedule_quality_findings",
+      "schedule_quality_metric_results",
+      "project_schedule_review_items",
+      "project_schedule_review_item_events",
+      "procore_ep_schedule_udf_values"
+    ],
+    "udf_dependencies": [
+      "Update Notes",
+      "Schedule Review Comments",
+      "SUBCONTRACTOR",
+      "Cost Code"
+    ],
+    "weighting_basis": [
+      "severity_model"
+    ]
+  }
+]

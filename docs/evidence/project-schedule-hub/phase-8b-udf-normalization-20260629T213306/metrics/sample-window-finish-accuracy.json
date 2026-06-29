@@ -1,0 +1,72 @@
+{
+  "as_of_date": "2026-07-03",
+  "available": true,
+  "basis_labels": [
+    "source_export",
+    "selected_baseline",
+    "baseline",
+    "prior_update",
+    "current_update",
+    "udf_derived"
+  ],
+  "caveats": [
+    "The selected planned-finish basis must be shown with the result."
+  ],
+  "comparison_basis": [
+    "prior_update",
+    "selected_baseline",
+    "current_update"
+  ],
+  "data_quality_notes": [
+    "filter_out ambiguous for activity A300; not excluded"
+  ],
+  "dimension_coverage": {
+    "cost_code": 1.0,
+    "filter_out": 1.0,
+    "finish_previous_status": 1.0,
+    "floor": 1.0,
+    "old_id": 1.0,
+    "phase": 1.0,
+    "schedule_review_comments": 1.0,
+    "sector_area": 1.0,
+    "start_previous_status": 1.0,
+    "subcontractor": 1.0,
+    "update_notes": 1.0,
+    "update_notes_1": 1.0,
+    "update_notes_2": 1.0
+  },
+  "display_name": "Window Finish Accuracy",
+  "formula_summary": "Finished-on-time count divided by total planned finishes in the configured window.",
+  "metric_key": "window_finish_accuracy",
+  "partial_dimension_support": false,
+  "points": [
+    {
+      "accuracy_ratio": 0.0,
+      "data_date": "2026-07-01",
+      "did_not_finish_count": 2,
+      "excluded_by_filter_out_count": 0,
+      "finished_late_count": 0,
+      "finished_on_time_count": 0,
+      "planned_finish_basis": "planned_finish_or_finish_date",
+      "window_end": "2026-07-22",
+      "window_start": "2026-06-24"
+    }
+  ],
+  "project_key": "tropical",
+  "readiness": {
+    "blockers": [],
+    "partial_dimension_support": false,
+    "ready": true
+  },
+  "readiness_status": "ready_after_udf_normalization",
+  "source_version_keys": [
+    "tropical|S1|2026-06-01",
+    "tropical|S1|2026-07-01"
+  ],
+  "summary": {
+    "activity_count_basis": "activity_count",
+    "backend_derived": true
+  },
+  "unavailable_variants": [],
+  "weighting_basis": "activity_count"
+}

@@ -1,0 +1,7 @@
+ M src/hb_assistant/construction/analytics/api.py
+?? docs/evidence/project-schedule-hub/phase-5-visualization-metric-contract-20260629T144215/
+?? docs/implementation/project-schedule-controls/visualization-metric-formula-contract.md
+?? src/hb_assistant/construction/analytics/project_schedule_trend_aggregation_service.py
+?? src/hb_assistant/construction/analytics/project_schedule_visualization_metric_contract.py
+?? tests/test_project_schedule_trend_aggregation_api.py
+?? tests/test_project_schedule_visualization_metric_contract.py

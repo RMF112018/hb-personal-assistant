@@ -1,0 +1,15 @@
+# Evidence Index
+
+api/compression-ratio-readiness-results.json
+api/selected-baseline-curl-results.txt
+db/baseline-selection-schema.txt
+metrics/baseline-comparison-readiness.md
+notes/phase-8a-findings.md
+notes/recompute-readiness.md
+repo/branch.txt
+repo/changed-files.txt
+repo/head.txt
+repo/status-short.txt
+tests/backend-pytest-results.txt
+tests/frontend-test-results.txt
+tests/typecheck-results.txt

@@ -1,0 +1,9 @@
+{
+  "blockers": [],
+  "caveats": [
+    "This metric is a schedule review cue only; it is not a causation, entitlement, responsibility, or compensability finding."
+  ],
+  "metric": "critical_issues_category_model",
+  "partial_dimension_support": false,
+  "ready": true
+}
