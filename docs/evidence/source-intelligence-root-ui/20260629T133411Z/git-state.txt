@@ -1,0 +1,19 @@
+## branch
+feat/source-intelligence-root-ui-20260629T133411Z
+
+## base commit
+b920aee2 Merge pull request #213 from RMF112018/feat/obsidian-mcp-analyzer-templates
+
+## staged changes (final, pre-commit)
+ .../20260629T133411Z/README.md                     |  75 ++++++
+ .../20260629T133411Z/diff-stat.txt                 |   7 +
+ .../20260629T133411Z/git-state.txt                 |  27 +++
+ .../20260629T133411Z/grep-proof.txt                |  29 +++
+ .../20260629T133411Z/manual-api-smoke.txt          |  42 ++++
+ .../20260629T133411Z/test-backend.txt              |   8 +
+ .../20260629T133411Z/test-frontend.txt             |  24 ++
+ .../components/settings/ObsidianMcpPanel.test.tsx  | 229 ++++++++++++++++++
+ .../src/components/settings/ObsidianMcpPanel.tsx   | 262 ++++++++++++++++++++-
+ src/hb_assistant/construction/analytics/api.py     |  14 +-
+ tests/test_obsidian_mcp_backend.py                 |  64 +++++
+ 11 files changed, 776 insertions(+), 5 deletions(-)

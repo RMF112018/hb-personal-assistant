@@ -1766,10 +1766,18 @@ def create_app(*, db_path: str | None = None) -> Any:
         from hb_assistant.obsidian_mcp import ObsidianMcpConfigPatch, ObsidianMcpService
         from hb_assistant.obsidian_mcp.llm import validate_summary_model
 
+        from fastapi import HTTPException
+        from pydantic import ValidationError
+
         service = ObsidianMcpService()
-        result = service.update_config(
-            ObsidianMcpConfigPatch.model_validate(request.model_dump(exclude_none=True))
-        )
+        try:
+            patch = ObsidianMcpConfigPatch.model_validate(request.model_dump(exclude_none=True))
+        except ValidationError as exc:
+            # Surface invalid config (e.g. a non-absolute external source path) as a clean 422
+            # instead of letting the raw validation error escape as a 500. The detail is a stable,
+            # non-sensitive code; field-level guidance is enforced in the settings UI.
+            raise HTTPException(status_code=422, detail="invalid_obsidian_mcp_config") from exc
+        result = service.update_config(patch)
         # Advisory (never blocking): if the operator set a summary model, validate it against the
         # installed Ollama tags so the UI can flag a missing/tag-resolved model. Ollama may be down
         # at save time, so this never rejects the save.

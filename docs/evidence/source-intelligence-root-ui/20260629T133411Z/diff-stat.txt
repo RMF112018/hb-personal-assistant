@@ -1,0 +1,7 @@
+ .../07-obsidian-output-preview.md                  |  28 +--
+ .../obsidian-data-quality-dry-run.json             |   4 +-
+ .../components/settings/ObsidianMcpPanel.test.tsx  | 229 ++++++++++++++++++
+ .../src/components/settings/ObsidianMcpPanel.tsx   | 262 ++++++++++++++++++++-
+ src/hb_assistant/construction/analytics/api.py     |  14 +-
+ tests/test_obsidian_mcp_backend.py                 |  64 +++++
+ 6 files changed, 580 insertions(+), 21 deletions(-)

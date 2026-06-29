@@ -98,6 +98,70 @@ def test_config_update_redacts_token_and_persists(tmp_path: Path, monkeypatch: p
     assert reread["config"]["token_configured"] is True
 
 
+def test_config_update_persists_external_sources_and_preserves_token(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The UI roots editor PATCHes external_sources; existing config (incl. token) is preserved."""
+    client, vault = _client(tmp_path, monkeypatch)
+    # Seed a bearer token via an unrelated patch so we can prove it survives a partial update.
+    client.patch(
+        "/api/settings/obsidian-mcp/config",
+        json={"enabled": True, "vault_root": str(vault), "bearer_token": "secret-token"},
+        headers={"X-HB-UI-Role": "operator"},
+    )
+
+    ext_root = str(tmp_path / "ext-root")
+    res = client.patch(
+        "/api/settings/obsidian-mcp/config",
+        json={
+            "external_sources": [
+                {
+                    "source_root_key": "manual-test",
+                    "path": ext_root,
+                    "enabled": True,
+                    "sensitive": False,
+                    "source_kind": "external_file",
+                }
+            ]
+        },
+        headers={"X-HB-UI-Role": "operator"},
+    )
+    assert res.status_code == 200
+    body = res.json()
+    _assert_safe(body)
+    roots = body["config"]["external_sources"]
+    assert len(roots) == 1
+    assert roots[0]["source_root_key"] == "manual-test"
+    assert roots[0]["path"] == ext_root
+    assert roots[0]["source_kind"] == "external_file"
+    # Partial update preserves the unrelated bearer token.
+    assert body["config"]["token_configured"] is True
+    persisted = load_config()
+    assert persisted.bearer_token == "secret-token"
+    assert [r.source_root_key for r in persisted.external_sources] == ["manual-test"]
+
+
+def test_config_update_rejects_relative_external_source_path(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A non-absolute external source path is rejected by Pydantic validation (422)."""
+    client, vault = _client(tmp_path, monkeypatch)
+    res = client.patch(
+        "/api/settings/obsidian-mcp/config",
+        json={
+            "enabled": True,
+            "vault_root": str(vault),
+            "external_sources": [
+                {"source_root_key": "rel", "path": "relative/path", "source_kind": "external_file"}
+            ],
+        },
+        headers={"X-HB-UI-Role": "operator"},
+    )
+    assert res.status_code == 422
+    # No external roots should have been persisted by the rejected request.
+    assert load_config().external_sources == []
+
+
 def test_status_health_tools_and_grok_config_are_safe(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
