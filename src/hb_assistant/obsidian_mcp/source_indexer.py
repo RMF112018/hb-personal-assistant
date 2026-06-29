@@ -335,6 +335,8 @@ def drain_queue(repo: SourceIndexRepository, config: ObsidianMcpConfig, *, batch
             processed += 1
         except Exception as exc:
             repo.complete_event(event["event_id"], "error", error_code=type(exc).__name__)
+    with suppress(Exception):
+        repo.record_drain()
     return processed
 
 
