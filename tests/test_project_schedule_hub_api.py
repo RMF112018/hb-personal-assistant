@@ -16,12 +16,16 @@ import pytest
 pytest.importorskip("fastapi")
 
 from hb_assistant.construction.analytics import create_app
+from hb_assistant.construction.analytics.project_schedule_canonical_metrics import (
+    ProjectScheduleCanonicalMetricService,
+)
 from hb_assistant.construction.analytics.project_schedule_summary_service import (
     ProjectScheduleSummaryService,
     _comparison_activity_movement,
     _comparison_finish_field,
 )
 from hb_assistant.store.migrator import SQLiteMigrator
+from hb_assistant.store.project_schedule_hub_repository import ProjectScheduleHubRepository
 from tests.schedule_project_test_helpers import seed_procore_ep_project
 
 RAW_VERSION_PATTERN = re.compile(r"[A-Za-z0-9_-]+\|[A-Za-z0-9_-]+\|\d{4}-\d{2}-\d{2}")
@@ -781,6 +785,229 @@ def _seed_xer_change_impact_comparison(db: Path) -> None:
         conn.commit()
 
 
+def _seed_twnu18_twnu19_canonical_metrics(db: Path) -> None:
+    prior_key = "tropical|S1|2026-06-28"
+    current_key = "tropical|S1|2026-06-29"
+    prior_rows: list[tuple[str, str, str, int]] = []
+    current_rows: list[tuple[str, str, str, int]] = []
+
+    def add_common(
+        aid: str,
+        *,
+        prior_finish: str,
+        current_finish: str,
+        prior_float: str,
+        current_float: str,
+        is_milestone: int = 0,
+    ) -> None:
+        prior_rows.append((aid, prior_finish, prior_float, is_milestone))
+        current_rows.append((aid, current_finish, current_float, is_milestone))
+
+    common_index = 0
+    for idx in range(461):
+        common_index += 1
+        prior_float, current_float = ("0", "-1") if common_index <= 378 else (("-2", "-1") if common_index <= 500 else ("-1", "-1"))
+        add_common(
+            f"LATER-{idx:03d}",
+            prior_finish="2026-10-01",
+            current_finish="2026-11-03",
+            prior_float=prior_float,
+            current_float=current_float,
+            is_milestone=1 if idx < 6 else 0,
+        )
+    for idx in range(76):
+        common_index += 1
+        prior_float, current_float = ("0", "-1") if common_index <= 378 else (("-2", "-1") if common_index <= 500 else ("-1", "-1"))
+        add_common(
+            f"EARLIER-{idx:03d}",
+            prior_finish="2026-10-01",
+            current_finish="2026-09-01",
+            prior_float=prior_float,
+            current_float=current_float,
+        )
+    for idx in range(77):
+        common_index += 1
+        prior_float, current_float = ("1", "1") if idx == 0 else ("-1", "-1")
+        add_common(
+            f"UNCHANGED-{idx:03d}",
+            prior_finish="2026-10-15",
+            current_finish="2026-10-15",
+            prior_float=prior_float,
+            current_float=current_float,
+        )
+    for idx in range(98):
+        current_rows.append((f"NEW-{idx:03d}", "2026-10-20", "-1", 0))
+
+    assert len(prior_rows) == 614
+    assert len(current_rows) == 712
+
+    with sqlite3.connect(db) as conn:
+        for import_id, version_key, filename, rows, created_at in (
+            ("imp-twnu18", prior_key, "TWNU18.xer", prior_rows, "2026-06-28T10:00:00Z"),
+            ("imp-twnu19", current_key, "TWNU19.xer", current_rows, "2026-06-29T10:00:00Z"),
+        ):
+            conn.execute(
+                """
+                INSERT INTO schedule_file_imports (
+                  import_id, project_key, source_type, source_format, import_status,
+                  activity_count, relationship_count, cost_loaded_status,
+                  schedule_version_key, source_filename_redacted, created_at
+                ) VALUES (?, 'tropical', 'xer', 'primavera_xer', 'committed',
+                  ?, 0, 'not_cost_loaded', ?, ?, ?)
+                """,
+                (import_id, len(rows), version_key, filename, created_at),
+            )
+            for aid, finish, total_float, is_milestone in rows:
+                conn.execute(
+                    """
+                    INSERT INTO procore_ep_schedule_activities (
+                      project_key, schedule_id, schedule_version_key, import_id,
+                      source_type, source_format, activity_id, activity_name,
+                      start_date, finish_date, actual_start, actual_finish,
+                      remaining_finish, remaining_early_finish,
+                      wbs_code, total_float, is_milestone
+                    ) VALUES (
+                      'tropical', 'S1', ?, ?, 'xer', 'primavera_xer',
+                      ?, ?, '2026-06-01', ?, NULL, NULL,
+                      NULL, NULL, 'WBS-A', ?, ?
+                    )
+                    """,
+                    (version_key, import_id, aid, f"Activity {aid}", finish, total_float, is_milestone),
+                )
+        conn.execute(
+            """
+            INSERT INTO schedule_identities (
+              schedule_identity_key, project_key, identity_status, latest_import_id,
+              latest_schedule_version_key
+            ) VALUES ('identity-main', 'tropical', 'active', 'imp-twnu19', ?)
+            """,
+            (current_key,),
+        )
+        for import_id, version_key, rows in (
+            ("imp-twnu18", prior_key, prior_rows),
+            ("imp-twnu19", current_key, current_rows),
+        ):
+            conn.execute(
+                """
+                INSERT INTO schedule_version_identity_matches (
+                  match_id, schedule_identity_key, schedule_version_key, import_id, project_key,
+                  source_format, activity_count, relationship_count, wbs_count,
+                  match_type, match_status, match_rule, confidence_score, requires_review
+                ) VALUES (?, 'identity-main', ?, ?, 'tropical', 'primavera_xer',
+                  ?, 0, 0, 'seed', 'resolved', 'seed', '1.00', 0)
+                """,
+                (f"match-{import_id}", version_key, import_id, len(rows)),
+            )
+        conn.execute(
+            """
+            INSERT INTO schedule_version_diffs (
+              project_key, from_schedule_version_key, to_schedule_version_key,
+              diff_type, activity_changed_count, finish_drift_days
+            ) VALUES (
+              'tropical', ?, ?, 'identity_safe_default', 537, '33'
+            )
+            """,
+            (prior_key, current_key),
+        )
+        conn.execute(
+            """
+            INSERT INTO schedule_cpm_runs (
+              cpm_run_id, project_key, schedule_version_key, import_id,
+              calculation_type, cpm_recalculation_status, analysis_scope,
+              computed_activity_count, critical_float_threshold_days,
+              near_critical_float_threshold_days,
+              computed_critical_activity_count, computed_near_critical_activity_count,
+              created_at
+            ) VALUES (
+              'cpm-twnu19-criticality', 'tropical', ?, 'imp-twnu19',
+              'criticality', 'completed', 'criticality', ?, 0, 10, 613, 0,
+              '2026-06-29T12:00:00Z'
+            )
+            """,
+            (current_key, len(current_rows)),
+        )
+        for idx, (aid, _finish, total_float, _is_milestone) in enumerate(current_rows):
+            conn.execute(
+                """
+                INSERT INTO schedule_cpm_activity_results (
+                  cpm_run_id, schedule_version_key, project_key, activity_id,
+                  activity_name, computed_total_float, forward_pass_status,
+                  computed_critical_flag, computed_near_critical_flag,
+                  computed_criticality_class, computed_criticality_status,
+                  computed_criticality_basis,
+                  critical_float_threshold_days, near_critical_float_threshold_days
+                ) VALUES (
+                  'cpm-twnu19-criticality', ?, 'tropical', ?, ?,
+                  ?, 'complete', ?, 0, ?, 'classified', 'total_float_threshold',
+                  0, 10
+                )
+                """,
+                (
+                    current_key,
+                    aid,
+                    f"Activity {aid}",
+                    float(total_float),
+                    1 if idx < 613 else 0,
+                    "critical" if idx < 613 else "noncritical",
+                ),
+            )
+        conn.commit()
+
+
+def _seed_non_authoritative_failed_cpm_run(db: Path) -> None:
+    current_key = "tropical|S1|2026-06-29"
+    with sqlite3.connect(db) as conn:
+        conn.execute(
+            """
+            INSERT INTO schedule_cpm_runs (
+              cpm_run_id, project_key, schedule_version_key, import_id,
+              calculation_type, cpm_recalculation_status, analysis_scope,
+              computed_activity_count, critical_float_threshold_days,
+              near_critical_float_threshold_days,
+              computed_critical_activity_count, computed_near_critical_activity_count,
+              created_at
+            ) VALUES (
+              'cpm-twnu19-criticality-failed', 'tropical', ?, 'imp-twnu19',
+              'criticality', 'failed', 'criticality', 712, 0, 10, 0, 2,
+              '2026-06-29T13:00:00Z'
+            )
+            """,
+            (current_key,),
+        )
+        activity_ids = [
+            row[0]
+            for row in conn.execute(
+                "SELECT activity_id FROM procore_ep_schedule_activities WHERE schedule_version_key=? ORDER BY activity_id",
+                (current_key,),
+            ).fetchall()
+        ]
+        for idx, aid in enumerate(activity_ids):
+            conn.execute(
+                """
+                INSERT INTO schedule_cpm_activity_results (
+                  cpm_run_id, schedule_version_key, project_key, activity_id,
+                  activity_name, computed_total_float, forward_pass_status,
+                  computed_critical_flag, computed_near_critical_flag,
+                  computed_criticality_class, computed_criticality_status,
+                  computed_criticality_basis,
+                  critical_float_threshold_days, near_critical_float_threshold_days
+                ) VALUES (
+                  'cpm-twnu19-criticality-failed', ?, 'tropical', ?, ?,
+                  2, 'complete', 0, ?, ?, 'failed', 'non_authoritative_failed_run',
+                  0, 10
+                )
+                """,
+                (
+                    current_key,
+                    aid,
+                    f"Activity {aid}",
+                    1 if idx < 2 else 0,
+                    "computed_near_critical" if idx < 2 else "noncritical",
+                ),
+            )
+        conn.commit()
+
+
 def test_comparison_finish_field_prefers_remaining_finish_then_finish_date() -> None:
     assert _comparison_finish_field({"remaining_finish": "2026-08-01", "finish_date": "2026-09-01"}) == "2026-08-01"
     assert _comparison_finish_field({"finish_date": "2026-08-25 16:00", "remaining_early_finish": "2026-07-30 16:00"}) == "2026-08-25 16:00"
@@ -814,7 +1041,8 @@ def test_change_impact_uses_finish_date_when_remaining_finish_blank(tmp_path: Pa
     )
 
     summary = body["change_impact"]["direct_remaining_changes"]["summary"]
-    assert body["change_impact"]["comparison_basis"] == "resolved_finish_date"
+    assert body["change_impact"]["comparison_basis"] == "prior_update"
+    assert body["change_impact"]["finish_movement_basis"] == "resolved_finish_date"
     assert summary["finish_moved_later_count"] >= 2
     assert summary["finish_changed_count"] >= 3
     assert summary["finish_moved_earlier_count"] >= 1
@@ -828,6 +1056,158 @@ def test_change_impact_uses_finish_date_when_remaining_finish_blank(tmp_path: Pa
     assert "moved" in driver_text.lower() or "appears connected" in driver_text.lower()
     assert body.get("change_driver_analysis", {}).get("available") is True
     assert summary["finish_moved_later_count"] > 0
+
+
+def test_canonical_twnu18_twnu19_cpm_float_acceptance_values(tmp_path: Path) -> None:
+    db = _fresh_db(tmp_path)
+    _seed_twnu18_twnu19_canonical_metrics(db)
+
+    metrics = ProjectScheduleCanonicalMetricService(db_path=str(db)).build_metrics(
+        project_key="tropical",
+        current_key="tropical|S1|2026-06-29",
+        previous_key="tropical|S1|2026-06-28",
+    )
+
+    assert metrics["values"]["remaining_work"] == 712
+    assert metrics["values"]["remaining_later"] == 461
+    assert metrics["values"]["remaining_earlier"] == 76
+    assert metrics["values"]["finish_changed"] == 537
+    assert metrics["values"]["new_remaining"] == 98
+    assert metrics["values"]["worsened_float"] == 378
+    assert metrics["values"]["improved_float"] == 122
+    assert metrics["values"]["moved_remaining_milestones"] == 6
+    assert metrics["values"]["source_export_negative_float"] == 711
+    assert metrics["values"]["computed_cpm_critical_remaining"] == 613
+    assert metrics["values"]["computed_cpm_near_critical_remaining"] == 0
+    assert metrics["values"]["forecast_finish"] == "2026-11-03"
+    assert metrics["comparison_basis"] == "prior_update"
+    assert metrics["finish_movement_basis"] == "resolved_finish_date"
+
+
+def test_canonical_cpm_selected_run_provenance_and_raw_collector_regression(tmp_path: Path) -> None:
+    db = _fresh_db(tmp_path)
+    _seed_twnu18_twnu19_canonical_metrics(db)
+    _seed_non_authoritative_failed_cpm_run(db)
+
+    service = ProjectScheduleCanonicalMetricService(db_path=str(db))
+    metrics = service.build_metrics(
+        project_key="tropical",
+        current_key="tropical|S1|2026-06-29",
+        previous_key="tropical|S1|2026-06-28",
+    )
+    cpm = metrics["computed_cpm_summary"]
+
+    assert metrics["values"]["computed_cpm_critical_remaining"] == 613
+    assert metrics["values"]["computed_cpm_near_critical_remaining"] == 0
+    assert metrics["values"]["source_export_negative_float"] == 711
+    assert cpm["source_cpm_run_id"] == "cpm-twnu19-criticality"
+    assert cpm["selected_cpm_run"]["status"] == "completed"
+    assert cpm["computed_at"] == "2026-06-29T12:00:00Z"
+    assert cpm["schedule_version_key"] == "tropical|S1|2026-06-29"
+    assert cpm["data_date"] == "2026-06-29"
+    assert cpm["criticality_basis"] == "total_float_threshold"
+    assert cpm["near_critical_float_threshold_days"] == 10.0
+    assert cpm["near_critical_threshold_source"] == "selected_cpm_run"
+    assert cpm["source_export_evidence"] == "separate"
+    assert any(run["cpm_run_id"] == "cpm-twnu19-criticality-failed" for run in cpm["excluded_cpm_runs"])
+
+    flags = service.cpm_flags_by_activity("tropical|S1|2026-06-29")
+    assert sum(1 for row in flags.values() if row.get("computed_critical_flag")) == 613
+    assert sum(1 for row in flags.values() if row.get("computed_near_critical_flag")) == 0
+
+    with sqlite3.connect(db) as conn:
+        raw_failed = conn.execute(
+            """
+            SELECT
+              SUM(CASE WHEN computed_critical_flag=1 THEN 1 ELSE 0 END),
+              SUM(CASE WHEN computed_near_critical_flag=1 THEN 1 ELSE 0 END)
+            FROM schedule_cpm_activity_results
+            WHERE schedule_version_key='tropical|S1|2026-06-29'
+              AND cpm_run_id='cpm-twnu19-criticality-failed'
+            """
+        ).fetchone()
+    assert tuple(raw_failed) == (0, 2)
+
+
+def test_hub_summary_cpm_provenance_and_source_float_separation(tmp_path: Path) -> None:
+    db = _fresh_db(tmp_path)
+    _seed_twnu18_twnu19_canonical_metrics(db)
+    _seed_non_authoritative_failed_cpm_run(db)
+
+    body = ProjectScheduleSummaryService(db_path=str(db)).build_summary("tropical", as_of=date(2026, 6, 29))
+    cpm = body["computed_cpm_summary"]
+    source_float = body["source_float_summary"]
+
+    assert cpm["critical_remaining_count"] == 613
+    assert cpm["near_critical_remaining_count"] == 0
+    assert cpm["source_cpm_run_id"] == "cpm-twnu19-criticality"
+    assert cpm["selected_cpm_run"]["calculation_type"] == "criticality"
+    assert cpm["source_export_evidence"] == "separate"
+    assert cpm["near_critical_float_threshold_days"] == 10.0
+    assert source_float["negative_float_remaining_count"] == 711
+    assert source_float["evidence_class"] == "source_exported"
+    assert source_float["field_precedence"] == ["total_float", "derived_total_float_days", "explicit_total_float_days"]
+    assert source_float["app_computed_cpm_evidence"] == "separate"
+
+
+def test_hub_summary_prior_update_context_and_update_counts(tmp_path: Path) -> None:
+    db = _fresh_db(tmp_path)
+    _seed_twnu18_twnu19_canonical_metrics(db)
+
+    service = ProjectScheduleSummaryService(db_path=str(db))
+    prior_only = service.build_summary("tropical", as_of=date(2026, 6, 28))
+    current = service.build_summary("tropical", as_of=date(2026, 6, 29))
+
+    prior_context = prior_only["technical_evidence"]["prior_update_comparison_context"]
+    assert prior_only["current_schedule"]["friendly_label"] == "TWNU18"
+    assert prior_context["current_version_key"] == "tropical|S1|2026-06-28"
+    assert prior_context["previous_version_key"] is None
+    assert prior_context["available"] is False
+    assert prior_context["unavailable_reason"] == "no_prior_update"
+    assert prior_context["as_of_eligibility_basis"] == "hub_eligible_schedule_data_date_on_or_before_as_of"
+
+    context = current["technical_evidence"]["prior_update_comparison_context"]
+    direct = current["change_impact"]["direct_remaining_changes"]["summary"]
+    assert current["current_schedule"]["friendly_label"] == "TWNU19"
+    assert context["available"] is True
+    assert context["current_version_key"] == "tropical|S1|2026-06-29"
+    assert context["previous_version_key"] == "tropical|S1|2026-06-28"
+    assert context["comparison_basis"] == "prior_update"
+    assert context["finish_movement_basis"] == "resolved_finish_date"
+    assert context["schedule_identity_key"] == "identity-main"
+    assert context["as_of_date"] == "2026-06-29"
+    assert context["diff_id"] is not None
+    assert current["change_impact"]["comparison_basis"] == "prior_update"
+    assert current["change_impact"]["finish_movement_basis"] == "resolved_finish_date"
+    assert direct["finish_moved_later_count"] == 461
+    assert direct["finish_moved_earlier_count"] == 76
+    assert direct["finish_changed_count"] == 537
+    assert direct["new_remaining_activities"] == 98
+    assert direct["worsened_float_count"] == 378
+    assert direct["improved_float_count"] == 122
+    assert direct["moved_remaining_milestones_count"] == 6
+
+
+def test_prior_update_context_baseline_selection_does_not_change_update_counts(tmp_path: Path) -> None:
+    db = _fresh_db(tmp_path)
+    _seed_twnu18_twnu19_canonical_metrics(db)
+    ProjectScheduleHubRepository(db_path=str(db)).set_baseline_selection(
+        project_key="tropical",
+        current_schedule_version_key="tropical|S1|2026-06-29",
+        selected_baseline_schedule_version_key="tropical|S1|2026-06-28",
+        selected_by_operator="operator",
+    )
+
+    service = ProjectScheduleSummaryService(db_path=str(db))
+    remaining_later = service.build_drilldown(
+        "tropical",
+        drilldown_type="remaining_later",
+        as_of=date(2026, 6, 29),
+    )
+
+    assert remaining_later["count"] == 461
+    assert remaining_later["comparison_basis"] == "prior_update"
+    assert remaining_later["comparison_context"]["previous_version_key"] == "tropical|S1|2026-06-28"
 
 
 def test_project_schedule_populated_comparison_actions_and_no_mutation(tmp_path: Path) -> None:

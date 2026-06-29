@@ -117,18 +117,9 @@ class ProjectScheduleComparisonService:
                     (right_key,),
                 ).fetchall()
             ]
-            cpm_by_id = {
-                str(row["activity_id"]): dict(row)
-                for row in conn.execute(
-                    """
-                    SELECT activity_id, computed_critical_flag, computed_near_critical_flag,
-                           computed_total_float
-                    FROM schedule_cpm_activity_results
-                    WHERE schedule_version_key=?
-                    """,
-                    (left_key,),
-                ).fetchall()
-            }
+        from .project_schedule_canonical_metrics import ProjectScheduleCanonicalMetricService
+
+        cpm_by_id = ProjectScheduleCanonicalMetricService(db_path=self._db_path).cpm_flags_by_activity(left_key)
 
         right_by_id = {str(row.get("activity_id")): row for row in right_rows if row.get("activity_id")}
         left_ids = {str(row.get("activity_id")) for row in left_rows if row.get("activity_id")}
