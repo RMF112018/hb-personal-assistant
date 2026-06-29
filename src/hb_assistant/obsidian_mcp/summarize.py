@@ -60,7 +60,9 @@ def summarize_note(
         include_decisions=include_decisions,
         include_entities=include_entities,
     )
-    result, mode = llm.summarize(config, text=content, deterministic=deterministic, backend=backend)
+    result, mode, _reason = llm.summarize(
+        config, text=content, deterministic=deterministic, backend=backend
+    )
     payload: dict[str, Any] = {
         "path": rel,
         "file_type": read.get("file_type"),

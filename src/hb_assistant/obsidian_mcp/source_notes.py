@@ -258,10 +258,12 @@ def summarize_source(repo: SourceIndexRepository, config: ObsidianMcpConfig, *, 
     text = text[:cap]
     rel = str(detail.get("rel_path"))
     deterministic = extract.analyze(rel, text, max_chars=cap)
-    result, mode = llm.summarize(config, text=text, deterministic=deterministic, backend=backend)
+    result, mode, reason = llm.summarize(config, text=text, deterministic=deterministic, backend=backend)
     if mode != "llm":
         # Ollama unavailable / fallback: the deterministic base card stands; no advisory written.
-        return {"summarized": False, "reason": "model_unavailable", "mode": mode,
+        # ``reason`` is a specific category (timeout / invalid_json / empty_response /
+        # ollama_unavailable / disabled) so the operator can tell why summarization fell back.
+        return {"summarized": False, "reason": reason, "mode": mode,
                 "source_id": source_id, "note_path": card_rel}
 
     generated_at = _now()
