@@ -545,6 +545,12 @@ export function getObsidianMcpGrokConfig() {
 export function getObsidianMcpOAuth() {
   return fetchJson('/api/settings/obsidian-mcp/oauth');
 }
+export function getObsidianMcpChatGPT() {
+  return fetchJson('/api/settings/obsidian-mcp/chatgpt');
+}
+export function runObsidianMcpChatGPTReadiness() {
+  return fetchJson('/api/settings/obsidian-mcp/chatgpt/readiness-check', { method: 'POST' });
+}
 
 /* Onboarding readiness (Prompt D) — drives first-time routing and returning-user reauth state.
  * Uses only normalized /api paths. Never triggers sync.

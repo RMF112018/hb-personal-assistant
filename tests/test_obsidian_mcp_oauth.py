@@ -25,7 +25,7 @@ from hb_assistant.obsidian_mcp.config import ObsidianMcpConfigPatch, apply_patch
 from hb_assistant.obsidian_mcp.tools import ObsidianMcpToolError
 
 REDIRECT_URI = "https://grok.example.com/connector/callback"
-BASE_URL = "https://seafood-gene-relief-league.trycloudflare.com"
+BASE_URL = "https://mcp.bobby-fetting.me"
 
 # Raw token/code shapes that must never leak in advisory responses.
 _FORBIDDEN_MARKERS = ("BEGIN RSA", "BEGIN PRIVATE", "?sig=", "AKIA", "sk-")
@@ -76,6 +76,7 @@ def _token(client: TestClient, *, code: str, verifier: str) -> dict:
             "redirect_uri": REDIRECT_URI,
             "client_id": oauth_store.CLIENT_ID,
             "code_verifier": verifier,
+            "resource": f"{BASE_URL}/mcp",
         },
     )
     return {"status": response.status_code, "body": response.json()}
@@ -97,6 +98,175 @@ def test_protected_resource_metadata(tmp_path: Path) -> None:
     body = _client(tmp_path).get("/.well-known/oauth-protected-resource").json()
     assert body["resource"] == f"{BASE_URL}/mcp"
     assert body["authorization_servers"] == [BASE_URL]
+
+
+def test_authorization_server_metadata_advertises_dcr_not_cimd(tmp_path: Path) -> None:
+    _enable_oauth()
+    body = _client(tmp_path).get("/.well-known/oauth-authorization-server").json()
+    assert body["registration_endpoint"] == f"{BASE_URL}/oauth/register"
+    assert "client_id_metadata_document_supported" not in body
+
+
+def test_oauth_register_accepts_valid_chatgpt_public_client(tmp_path: Path) -> None:
+    _enable_oauth()
+    response = _client(tmp_path).post(
+        "/oauth/register",
+        json={
+            "redirect_uris": ["https://chatgpt.com/connector/oauth/callback-id"],
+            "grant_types": ["authorization_code"],
+            "response_types": ["code"],
+            "token_endpoint_auth_method": "none",
+            "scope": "obsidian.read",
+            "client_name": "ChatGPT",
+        },
+    )
+    assert response.status_code == 201, response.text
+    body = response.json()
+    assert body["client_id"].startswith("chatgpt_")
+    assert body["redirect_uris"] == ["https://chatgpt.com/connector/oauth/callback-id"]
+    assert body["scope"] == "obsidian.read"
+    assert body["token_endpoint_auth_method"] == "none"
+
+
+@pytest.mark.parametrize(
+    ("payload", "error"),
+    [
+        ({"client_secret": "secret"}, "invalid_client_metadata"),
+        ({"token_endpoint_auth_method": "client_secret_basic"}, "invalid_client_metadata"),
+        ({"grant_types": ["client_credentials"]}, "invalid_client_metadata"),
+        ({"scope": "obsidian.delete"}, "invalid_scope"),
+        ({"redirect_uris": ["http://chatgpt.com/callback"]}, "invalid_redirect_uri"),
+        ({"redirect_uris": ["https://127.0.0.1/callback"]}, "invalid_redirect_uri"),
+    ],
+)
+def test_oauth_register_rejects_invalid_public_client_metadata(tmp_path: Path, payload: dict, error: str) -> None:
+    _enable_oauth()
+    base_payload = {
+        "redirect_uris": ["https://chatgpt.com/connector/oauth/callback-id"],
+        "grant_types": ["authorization_code"],
+        "response_types": ["code"],
+        "token_endpoint_auth_method": "none",
+        "scope": "obsidian.read",
+        "client_name": "ChatGPT",
+    }
+    response = _client(tmp_path).post("/oauth/register", json={**base_payload, **payload})
+    assert response.status_code == 400
+    assert response.json()["error"] == error
+
+
+def test_registered_client_authorize_redirect_exact_match_required(tmp_path: Path) -> None:
+    _enable_oauth()
+    client = _client(tmp_path)
+    registered = client.post(
+        "/oauth/register",
+        json={
+            "redirect_uris": ["https://chatgpt.com/connector/oauth/exact"],
+            "grant_types": ["authorization_code"],
+            "response_types": ["code"],
+            "token_endpoint_auth_method": "none",
+            "scope": "obsidian.read",
+            "client_name": "ChatGPT",
+        },
+    ).json()
+    _, challenge = _pkce()
+    good = client.get(
+        "/oauth/authorize",
+        params={
+            "response_type": "code",
+            "client_id": registered["client_id"],
+            "redirect_uri": "https://chatgpt.com/connector/oauth/exact",
+            "scope": "obsidian.read",
+            "state": "s",
+            "code_challenge": challenge,
+            "code_challenge_method": "S256",
+            "resource": f"{BASE_URL}/mcp",
+        },
+    )
+    assert good.status_code == 200
+    bad = client.get(
+        "/oauth/authorize",
+        params={
+            "response_type": "code",
+            "client_id": registered["client_id"],
+            "redirect_uri": "https://chatgpt.com/connector/oauth/other",
+            "scope": "obsidian.read",
+            "state": "s",
+            "code_challenge": challenge,
+            "code_challenge_method": "S256",
+            "resource": f"{BASE_URL}/mcp",
+        },
+    )
+    assert bad.status_code == 400
+
+
+def test_dynamic_client_can_complete_resource_bound_pkce_flow(tmp_path: Path) -> None:
+    _enable_oauth()
+    client = _client(tmp_path)
+    registered = client.post(
+        "/oauth/register",
+        json={
+            "redirect_uris": ["https://chatgpt.com/connector/oauth/flow"],
+            "grant_types": ["authorization_code"],
+            "response_types": ["code"],
+            "token_endpoint_auth_method": "none",
+            "scope": "obsidian.read",
+            "client_name": "ChatGPT",
+        },
+    ).json()
+    verifier, challenge = _pkce()
+    auth = client.post(
+        "/oauth/authorize",
+        data={
+            "response_type": "code",
+            "client_id": registered["client_id"],
+            "redirect_uri": "https://chatgpt.com/connector/oauth/flow",
+            "scope": "obsidian.read",
+            "state": "s",
+            "code_challenge": challenge,
+            "code_challenge_method": "S256",
+            "resource": f"{BASE_URL}/mcp",
+            "decision": "approve",
+        },
+        follow_redirects=False,
+    )
+    assert auth.status_code == 302, auth.text
+    code = parse_qs(urlsplit(auth.headers["location"]).query)["code"][0]
+    token = client.post(
+        "/oauth/token",
+        data={
+            "grant_type": "authorization_code",
+            "code": code,
+            "redirect_uri": "https://chatgpt.com/connector/oauth/flow",
+            "client_id": registered["client_id"],
+            "code_verifier": verifier,
+            "resource": f"{BASE_URL}/mcp",
+        },
+    )
+    assert token.status_code == 200, token.text
+    info = oauth_store.validate_access_token(token.json()["access_token"], resource=f"{BASE_URL}/mcp")
+    assert info is not None
+    assert info.client_id == registered["client_id"]
+    assert info.resource == f"{BASE_URL}/mcp"
+
+
+def test_token_exchange_rejects_wrong_resource(tmp_path: Path) -> None:
+    _enable_oauth()
+    client = _client(tmp_path)
+    verifier, challenge = _pkce()
+    code = _authorize(client, scope="obsidian.read", challenge=challenge)
+    response = client.post(
+        "/oauth/token",
+        data={
+            "grant_type": "authorization_code",
+            "code": code,
+            "redirect_uri": REDIRECT_URI,
+            "client_id": oauth_store.CLIENT_ID,
+            "code_verifier": verifier,
+            "resource": "https://other.example.com/mcp",
+        },
+    )
+    assert response.status_code == 400
+    assert response.json()["error"] == "invalid_target"
 
 
 def test_authorize_renders_consent_with_scopes_and_vault(tmp_path: Path) -> None:
@@ -162,7 +332,10 @@ def test_token_exchange_success(tmp_path: Path) -> None:
     assert body["token_type"] == "Bearer"
     assert body["expires_in"] == 3600
     assert body["scope"] == "obsidian.read obsidian.write"
-    assert oauth_store.validate_access_token(body["access_token"]) is not None
+    info = oauth_store.validate_access_token(body["access_token"], resource=f"{BASE_URL}/mcp")
+    assert info is not None
+    assert info.client_id == oauth_store.CLIENT_ID
+    assert info.resource == f"{BASE_URL}/mcp"
 
 
 def test_pkce_mismatch_rejected(tmp_path: Path) -> None:
@@ -204,10 +377,10 @@ def test_expired_token_not_valid(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     verifier, challenge = _pkce()
     code = _authorize(client, scope="obsidian.read", challenge=challenge)
     token = _token(client, code=code, verifier=verifier)["body"]["access_token"]
-    assert oauth_store.validate_access_token(token) is not None
+    assert oauth_store.validate_access_token(token, resource=f"{BASE_URL}/mcp") is not None
     real_now = oauth_store._now()
     monkeypatch.setattr(oauth_store, "_now", lambda: real_now + oauth_store.TOKEN_TTL_SECONDS + 5)
-    assert oauth_store.validate_access_token(token) is None
+    assert oauth_store.validate_access_token(token, resource=f"{BASE_URL}/mcp") is None
 
 
 def test_scope_enforcement_read_token_cannot_write(tmp_path: Path) -> None:
@@ -308,6 +481,25 @@ def test_mcp_rejects_missing_or_bad_token(tmp_path: Path, authorization: str | N
     headers = {"authorization": authorization} if authorization else {}
     response = client.post("/mcp", headers=headers, content=b"{}")
     assert response.status_code == 401
+    assert response.headers["www-authenticate"] == (
+        f'Bearer resource_metadata="{BASE_URL}/.well-known/oauth-protected-resource", scope="obsidian.read"'
+    )
+    assert "bogus-token" not in response.text
+    assert "bogus-token" not in response.headers["www-authenticate"]
+
+
+def test_mcp_401_challenge_uses_public_base_url_and_not_request_path(tmp_path: Path) -> None:
+    pytest.importorskip("mcp")
+    _enable_oauth(public_base_url="https://mcp.bobby-fetting.me")
+    response = _client(tmp_path).post("/mcp?session_id=abc", content=b"{}")
+    assert response.status_code == 401
+    challenge = response.headers["www-authenticate"]
+    assert challenge == (
+        'Bearer resource_metadata="https://mcp.bobby-fetting.me/.well-known/oauth-protected-resource", '
+        'scope="obsidian.read"'
+    )
+    assert "session_id" not in challenge
+    assert "/mcp?" not in challenge
 
 
 def _middleware_client() -> TestClient:
@@ -329,7 +521,11 @@ def _middleware_client() -> TestClient:
 
 def test_middleware_accepts_valid_oauth_token(tmp_path: Path) -> None:
     _enable_oauth()
-    token = oauth_store.issue_access_token(["obsidian.read"])["access_token"]
+    token = oauth_store.issue_access_token(
+        scopes=["obsidian.read"],
+        client_id=oauth_store.CLIENT_ID,
+        resource=f"{BASE_URL}/mcp",
+    )["access_token"]
     client = _middleware_client()
     assert client.post("/mcp", headers={"authorization": f"Bearer {token}"}).status_code == 200
     assert client.post("/mcp", headers={"authorization": "Bearer bogus"}).status_code == 401

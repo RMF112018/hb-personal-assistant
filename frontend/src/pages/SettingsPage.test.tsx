@@ -41,6 +41,8 @@ const testObsidianMcpReadFile = vi.fn()
 const testObsidianMcpWriteSmoke = vi.fn()
 const getObsidianMcpGrokConfig = vi.fn()
 const getObsidianMcpOAuth = vi.fn()
+const getObsidianMcpChatGPT = vi.fn()
+const runObsidianMcpChatGPTReadiness = vi.fn()
 
 vi.mock('../app/providers', () => ({
   useTheme: () => ({ theme: 'dark', setTheme: vi.fn() }),
@@ -112,6 +114,8 @@ vi.mock('../lib/api', () => ({
   testObsidianMcpWriteSmoke: () => testObsidianMcpWriteSmoke(),
   getObsidianMcpGrokConfig: () => getObsidianMcpGrokConfig(),
   getObsidianMcpOAuth: () => getObsidianMcpOAuth(),
+  getObsidianMcpChatGPT: () => getObsidianMcpChatGPT(),
+  runObsidianMcpChatGPTReadiness: () => runObsidianMcpChatGPTReadiness(),
 }))
 
 function renderSettings() {
@@ -319,26 +323,49 @@ describe('SettingsPage guided setup', () => {
     })
     getObsidianMcpOAuth.mockResolvedValue({
       oauth_enabled: true,
-      public_base_url: 'https://seafood-gene-relief-league.trycloudflare.com',
+      public_base_url: 'https://mcp.bobby-fetting.me',
       client_id: 'hb-obsidian-grok',
       scopes_supported: ['obsidian.read', 'obsidian.write'],
       token_auth_method: 'none (PKCE)',
       endpoints: {
-        authorization_endpoint: 'https://seafood-gene-relief-league.trycloudflare.com/oauth/authorize',
-        token_endpoint: 'https://seafood-gene-relief-league.trycloudflare.com/oauth/token',
-        metadata_endpoint: 'https://seafood-gene-relief-league.trycloudflare.com/.well-known/oauth-authorization-server',
-        mcp_url: 'https://seafood-gene-relief-league.trycloudflare.com/mcp',
+        authorization_endpoint: 'https://mcp.bobby-fetting.me/oauth/authorize',
+        token_endpoint: 'https://mcp.bobby-fetting.me/oauth/token',
+        metadata_endpoint: 'https://mcp.bobby-fetting.me/.well-known/oauth-authorization-server',
+        mcp_url: 'https://mcp.bobby-fetting.me/mcp',
       },
       grok_setup: {
-        mcp_url: 'https://seafood-gene-relief-league.trycloudflare.com/mcp',
+        mcp_url: 'https://mcp.bobby-fetting.me/mcp',
         client_id: 'hb-obsidian-grok',
         client_secret: '',
-        authorization_endpoint: 'https://seafood-gene-relief-league.trycloudflare.com/oauth/authorize',
-        token_endpoint: 'https://seafood-gene-relief-league.trycloudflare.com/oauth/token',
+        authorization_endpoint: 'https://mcp.bobby-fetting.me/oauth/authorize',
+        token_endpoint: 'https://mcp.bobby-fetting.me/oauth/token',
         scopes: ['obsidian.read', 'obsidian.write'],
         token_auth_method: 'none (PKCE)',
       },
       recent_events: [{ kind: 'access_token_issued', scope: 'obsidian.read', at: '2026-06-28T10:00:00+00:00' }],
+    })
+    getObsidianMcpChatGPT.mockResolvedValue({
+      enabled: true,
+      readonly_mode: true,
+      dynamic_client_registration_enabled: true,
+      client_id_metadata_document_supported: false,
+      initial_scopes: ['obsidian.read'],
+      setup: {
+        connector_url: 'https://mcp.bobby-fetting.me/mcp',
+        protected_resource_metadata_url: 'https://mcp.bobby-fetting.me/.well-known/oauth-protected-resource',
+        authorization_server_metadata_url: 'https://mcp.bobby-fetting.me/.well-known/oauth-authorization-server',
+        authorization_endpoint: 'https://mcp.bobby-fetting.me/oauth/authorize',
+        token_endpoint: 'https://mcp.bobby-fetting.me/oauth/token',
+        registration_endpoint: 'https://mcp.bobby-fetting.me/oauth/register',
+        registration_mode: 'dynamic_client_registration',
+        initial_scope: 'obsidian.read',
+        client_id_metadata_document_supported: false,
+      },
+      recent_events: [],
+    })
+    runObsidianMcpChatGPTReadiness.mockResolvedValue({
+      ok: true,
+      checks: [{ name: 'oauth_register_post', status: 'pass', detail: 'POST /oauth/register accepted synthetic public client' }],
     })
   })
 
@@ -451,6 +478,11 @@ describe('SettingsPage guided setup', () => {
     expect(screen.getAllByText('vault_email_inventory').length).toBeGreaterThan(0)
     expect(screen.getByText('Work/Email/inbox')).toBeInTheDocument()
     expect(screen.getByText('Grok usage examples')).toBeInTheDocument()
+    expect(screen.getByText('ChatGPT App Connection')).toBeInTheDocument()
+    expect(screen.getByText('https://mcp.bobby-fetting.me/.well-known/oauth-protected-resource')).toBeInTheDocument()
+    expect(screen.getByText('https://mcp.bobby-fetting.me/oauth/register')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Copy ChatGPT setup values/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Run readiness check/i })).toBeInTheDocument()
     expect(document.body.textContent).toContain('Bearer <configured-token>')
     expect(document.body.textContent).not.toContain('secret-token')
     expect(document.body.textContent).not.toContain('raw note body')
@@ -481,6 +513,9 @@ describe('SettingsPage guided setup', () => {
     fireEvent.click(screen.getByRole('button', { name: /Run write smoke test/i }))
     await waitFor(() => expect(testObsidianMcpWriteSmoke).toHaveBeenCalled())
     expect(document.body.textContent).not.toContain('managed note proves')
+
+    fireEvent.click(screen.getByRole('button', { name: /Run readiness check/i }))
+    await waitFor(() => expect(runObsidianMcpChatGPTReadiness).toHaveBeenCalled())
   })
 
   it('renders the Remote Connector / OAuth section with Grok setup values and no token leak', async () => {
@@ -491,12 +526,12 @@ describe('SettingsPage guided setup', () => {
     expect(screen.getByText('hb-obsidian-grok')).toBeInTheDocument()
     expect(screen.getByLabelText('OAuth enabled')).toBeChecked()
     expect(
-      screen.getByText('https://seafood-gene-relief-league.trycloudflare.com/oauth/authorize'),
+      screen.getByText('https://mcp.bobby-fetting.me/oauth/authorize'),
     ).toBeInTheDocument()
     expect(
-      screen.getByText('https://seafood-gene-relief-league.trycloudflare.com/oauth/token'),
+      screen.getByText('https://mcp.bobby-fetting.me/oauth/token'),
     ).toBeInTheDocument()
-    expect(screen.getByText('https://seafood-gene-relief-league.trycloudflare.com/mcp')).toBeInTheDocument()
+    expect(screen.getAllByText('https://mcp.bobby-fetting.me/mcp').length).toBeGreaterThan(0)
     expect(screen.getByRole('button', { name: /Copy Grok OAuth setup values/i })).toBeInTheDocument()
     expect(screen.getByText('access_token_issued')).toBeInTheDocument()
 
@@ -511,11 +546,11 @@ describe('SettingsPage guided setup', () => {
     await screen.findByText('Remote Connector / OAuth')
 
     const input = screen.getByLabelText('Public MCP Base URL')
-    fireEvent.change(input, { target: { value: 'https://new-tunnel.trycloudflare.com' } })
+    fireEvent.change(input, { target: { value: 'https://mcp.bobby-fetting.me' } })
     fireEvent.blur(input)
     await waitFor(() =>
       expect(patchObsidianMcpConfig).toHaveBeenCalledWith(
-        expect.objectContaining({ public_base_url: 'https://new-tunnel.trycloudflare.com' }),
+        expect.objectContaining({ public_base_url: 'https://mcp.bobby-fetting.me' }),
       ),
     )
   })

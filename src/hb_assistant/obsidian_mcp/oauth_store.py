@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import ipaddress
 import json
 import os
 import secrets
@@ -29,6 +30,7 @@ TOKEN_AUTH_METHOD = "none (PKCE)"
 CODE_TTL_SECONDS = 600
 TOKEN_TTL_SECONDS = 3600
 _MAX_EVENTS = 50
+DCR_CLIENT_PREFIX = "chatgpt_"
 
 
 class OAuthError(Exception):
@@ -43,6 +45,37 @@ class OAuthError(Exception):
 @dataclass(frozen=True)
 class TokenInfo:
     scopes: tuple[str, ...]
+    client_id: str
+    resource: str
+
+
+@dataclass(frozen=True)
+class OAuthClient:
+    client_id: str
+    client_name: str
+    redirect_uris: tuple[str, ...]
+    scopes: tuple[str, ...]
+    grant_types: tuple[str, ...] = ("authorization_code",)
+    response_types: tuple[str, ...] = ("code",)
+    token_endpoint_auth_method: str = "none"
+    source: str = "dynamic"
+    issued_at: int | None = None
+    allow_any_https_redirect: bool = False
+    allow_localhost_redirect: bool = False
+
+    def public_dict(self) -> dict:
+        payload = {
+            "client_id": self.client_id,
+            "redirect_uris": list(self.redirect_uris),
+            "grant_types": list(self.grant_types),
+            "response_types": list(self.response_types),
+            "token_endpoint_auth_method": self.token_endpoint_auth_method,
+            "scope": " ".join(self.scopes),
+            "client_name": self.client_name,
+        }
+        if self.issued_at is not None:
+            payload["client_id_issued_at"] = self.issued_at
+        return payload
 
 
 def _now() -> float:
@@ -93,6 +126,63 @@ def _events_path() -> Path:
     return oauth_dir() / "events.json"
 
 
+def _clients_path() -> Path:
+    return oauth_dir() / "clients.json"
+
+
+def mcp_resource(base_url: str) -> str:
+    return f"{base_url.rstrip('/')}/mcp"
+
+
+def fixed_grok_client() -> OAuthClient:
+    return OAuthClient(
+        client_id=CLIENT_ID,
+        client_name="Grok",
+        redirect_uris=(),
+        scopes=SUPPORTED_SCOPES,
+        source="fixed",
+        allow_any_https_redirect=True,
+        allow_localhost_redirect=True,
+    )
+
+
+def _client_from_record(record: dict) -> OAuthClient | None:
+    try:
+        scopes = tuple(str(record.get("scope", "")).split())
+        return OAuthClient(
+            client_id=str(record["client_id"]),
+            client_name=str(record.get("client_name") or "Registered MCP client"),
+            redirect_uris=tuple(str(item) for item in record.get("redirect_uris", [])),
+            scopes=scopes,
+            grant_types=tuple(str(item) for item in record.get("grant_types", ["authorization_code"])),
+            response_types=tuple(str(item) for item in record.get("response_types", ["code"])),
+            token_endpoint_auth_method=str(record.get("token_endpoint_auth_method", "none")),
+            source=str(record.get("source", "dynamic")),
+            issued_at=int(record["client_id_issued_at"]) if record.get("client_id_issued_at") is not None else None,
+        )
+    except (KeyError, TypeError, ValueError):
+        return None
+
+
+def registered_clients() -> dict[str, OAuthClient]:
+    raw = _read(_clients_path()).get("clients", {})
+    if not isinstance(raw, dict):
+        return {}
+    clients: dict[str, OAuthClient] = {}
+    for client_id, record in raw.items():
+        if isinstance(record, dict):
+            client = _client_from_record(record | {"client_id": str(client_id)})
+            if client is not None:
+                clients[client.client_id] = client
+    return clients
+
+
+def get_client(client_id: str) -> OAuthClient | None:
+    if client_id == CLIENT_ID:
+        return fixed_grok_client()
+    return registered_clients().get(client_id)
+
+
 # ---------------------------------------------------------------------------
 # Request validation (shared by the authorize render + submit paths).
 # ---------------------------------------------------------------------------
@@ -109,15 +199,75 @@ def normalize_scopes(scope: str | None) -> list[str]:
     return normalized
 
 
-def _validate_redirect_uri(redirect_uri: str) -> None:
+def _validate_https_redirect_uri(redirect_uri: str) -> None:
+    if not redirect_uri:
+        raise OAuthError("invalid_redirect_uri", "redirect_uris must not be empty")
+    parsed = urlsplit(redirect_uri)
+    if parsed.scheme != "https" or not parsed.netloc:
+        raise OAuthError("invalid_redirect_uri", "redirect_uris must be absolute HTTPS URLs")
+    host = parsed.hostname or ""
+    if host in {"localhost", "127.0.0.1", "::1"}:
+        raise OAuthError("invalid_redirect_uri", "localhost redirect URIs are not allowed for dynamic clients")
+    with suppress(ValueError):
+        ip = ipaddress.ip_address(host)
+        if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved:
+            raise OAuthError("invalid_redirect_uri", "private IP redirect URIs are not allowed for dynamic clients")
+
+
+def _validate_redirect_uri_for_client(client: OAuthClient, redirect_uri: str) -> None:
     if not redirect_uri:
         raise OAuthError("invalid_request", "redirect_uri is required")
     parsed = urlsplit(redirect_uri)
-    if parsed.scheme == "https" and parsed.netloc:
+    if client.allow_any_https_redirect and parsed.scheme == "https" and parsed.netloc:
         return
-    if parsed.scheme == "http" and parsed.hostname in {"localhost", "127.0.0.1"}:
+    if client.allow_localhost_redirect and parsed.scheme == "http" and parsed.hostname in {"localhost", "127.0.0.1"}:
         return
-    raise OAuthError("invalid_request", "redirect_uri must be https or a localhost http URL")
+    if redirect_uri in client.redirect_uris:
+        return
+    raise OAuthError("invalid_request", "redirect_uri is not registered for this client")
+
+
+def register_client(metadata: dict) -> dict:
+    if metadata.get("client_secret") or metadata.get("client_secret_expires_at"):
+        raise OAuthError("invalid_client_metadata", "client secrets are not accepted for public clients")
+    redirect_uris = metadata.get("redirect_uris")
+    if not isinstance(redirect_uris, list) or not redirect_uris:
+        raise OAuthError("invalid_redirect_uri", "redirect_uris is required")
+    normalized_redirects: list[str] = []
+    for item in redirect_uris:
+        uri = str(item)
+        _validate_https_redirect_uri(uri)
+        if uri not in normalized_redirects:
+            normalized_redirects.append(uri)
+    grant_types = metadata.get("grant_types", ["authorization_code"])
+    response_types = metadata.get("response_types", ["code"])
+    if grant_types != ["authorization_code"]:
+        raise OAuthError("invalid_client_metadata", "grant_types must be ['authorization_code']")
+    if response_types != ["code"]:
+        raise OAuthError("invalid_client_metadata", "response_types must be ['code']")
+    if metadata.get("token_endpoint_auth_method", "none") != "none":
+        raise OAuthError("invalid_client_metadata", "token_endpoint_auth_method must be none")
+    scopes = normalize_scopes(str(metadata.get("scope") or "obsidian.read"))
+    issued_at = int(_now())
+    client_id = f"{DCR_CLIENT_PREFIX}{secrets.token_urlsafe(18)}"
+    client = OAuthClient(
+        client_id=client_id,
+        client_name=str(metadata.get("client_name") or "ChatGPT"),
+        redirect_uris=tuple(normalized_redirects),
+        scopes=tuple(scopes),
+        issued_at=issued_at,
+        source="dynamic",
+    )
+    path = _clients_path()
+    data = _read(path)
+    records = data.get("clients")
+    if not isinstance(records, dict):
+        records = {}
+    records[client_id] = client.public_dict() | {"source": "dynamic"}
+    data["clients"] = records
+    _write(path, data)
+    record_event("client_registered", scope=" ".join(scopes), client_id=client_id)
+    return client.public_dict()
 
 
 def validate_authorize_request(
@@ -128,18 +278,29 @@ def validate_authorize_request(
     scope: str,
     code_challenge: str,
     code_challenge_method: str,
+    resource: str | None = None,
+    base_url: str | None = None,
 ) -> list[str]:
     """Validate an /oauth/authorize request and return normalized scopes."""
     if response_type != "code":
         raise OAuthError("unsupported_response_type", "response_type must be 'code'")
-    if client_id != CLIENT_ID:
+    client = get_client(client_id)
+    if client is None:
         raise OAuthError("unauthorized_client", "unknown client_id")
-    _validate_redirect_uri(redirect_uri)
+    _validate_redirect_uri_for_client(client, redirect_uri)
     if code_challenge_method != "S256":
         raise OAuthError("invalid_request", "code_challenge_method must be S256")
     if not code_challenge:
         raise OAuthError("invalid_request", "code_challenge is required")
-    return normalize_scopes(scope)
+    scopes = normalize_scopes(scope)
+    for item in scopes:
+        if item not in client.scopes:
+            raise OAuthError("invalid_scope", f"scope not registered for client: {item}")
+    if base_url is not None:
+        expected_resource = mcp_resource(base_url)
+        if resource and resource != expected_resource:
+            raise OAuthError("invalid_target", "resource does not match this MCP server")
+    return scopes
 
 
 # ---------------------------------------------------------------------------
@@ -152,7 +313,12 @@ def create_authorization_code(
     scope: str,
     code_challenge: str,
     code_challenge_method: str,
+    resource: str | None = None,
+    base_url: str | None = None,
 ) -> str:
+    if base_url is None:
+        raise OAuthError("invalid_request", "base_url is required")
+    resolved_resource = resource or mcp_resource(base_url)
     scopes = validate_authorize_request(
         response_type="code",
         client_id=client_id,
@@ -160,6 +326,8 @@ def create_authorization_code(
         scope=scope,
         code_challenge=code_challenge,
         code_challenge_method=code_challenge_method,
+        resource=resolved_resource,
+        base_url=base_url,
     )
     raw = secrets.token_urlsafe(32)
     now = _now()
@@ -170,6 +338,7 @@ def create_authorization_code(
         "client_id": client_id,
         "redirect_uri": redirect_uri,
         "scope": " ".join(scopes),
+        "resource": resolved_resource,
         "code_challenge": code_challenge,
         "code_challenge_method": "S256",
         "issued_at": _iso(now),
@@ -178,7 +347,7 @@ def create_authorization_code(
         "used": False,
     }
     _write(path, data)
-    record_event("authorization_code_issued", scope=" ".join(scopes))
+    record_event("authorization_code_issued", scope=" ".join(scopes), client_id=client_id)
     return raw
 
 
@@ -196,7 +365,9 @@ def consume_authorization_code(
     client_id: str,
     redirect_uri: str,
     code_verifier: str,
-) -> list[str]:
+    resource: str | None = None,
+    base_url: str | None = None,
+) -> tuple[list[str], str, str]:
     path = _codes_path()
     data = _read(path)
     key = _sha256(raw_code or "")
@@ -214,18 +385,25 @@ def consume_authorization_code(
         raise OAuthError("invalid_grant", "client_id mismatch")
     if redirect_uri != record.get("redirect_uri"):
         raise OAuthError("invalid_grant", "redirect_uri mismatch")
+    expected_resource = mcp_resource(base_url) if base_url else str(record.get("resource") or "")
+    stored_resource = str(record.get("resource") or "")
+    requested_resource = resource or stored_resource
+    if not stored_resource or requested_resource != stored_resource or (expected_resource and stored_resource != expected_resource):
+        raise OAuthError("invalid_target", "resource mismatch")
     if not _verify_pkce(code_verifier, str(record.get("code_challenge", ""))):
         raise OAuthError("invalid_grant", "PKCE verification failed")
     record["used"] = True
     _write(path, data)
-    record_event("authorization_code_redeemed", scope=str(record.get("scope", "")))
-    return (record.get("scope") or "").split()
+    record_event("authorization_code_redeemed", scope=str(record.get("scope", "")), client_id=client_id)
+    return (record.get("scope") or "").split(), client_id, stored_resource
 
 
 # ---------------------------------------------------------------------------
 # Access tokens.
 # ---------------------------------------------------------------------------
-def issue_access_token(scopes: list[str]) -> dict:
+def issue_access_token(*, scopes: list[str], client_id: str, resource: str) -> dict:
+    if not resource:
+        raise OAuthError("invalid_target", "resource is required")
     raw = secrets.token_urlsafe(32)
     now = _now()
     path = _tokens_path()
@@ -233,13 +411,15 @@ def issue_access_token(scopes: list[str]) -> dict:
     _prune(data, now)
     data[_sha256(raw)] = {
         "scope": " ".join(scopes),
+        "client_id": client_id,
+        "resource": resource,
         "issued_at": _iso(now),
         "expires_at": _iso(now + TOKEN_TTL_SECONDS),
         "expires_ts": now + TOKEN_TTL_SECONDS,
         "revoked": False,
     }
     _write(path, data)
-    record_event("access_token_issued", scope=" ".join(scopes))
+    record_event("access_token_issued", scope=" ".join(scopes), client_id=client_id)
     return {
         "access_token": raw,
         "token_type": "Bearer",
@@ -248,7 +428,7 @@ def issue_access_token(scopes: list[str]) -> dict:
     }
 
 
-def validate_access_token(raw_token: str) -> TokenInfo | None:
+def validate_access_token(raw_token: str, *, resource: str | None = None) -> TokenInfo | None:
     if not raw_token:
         return None
     record = _read(_tokens_path()).get(_sha256(raw_token))
@@ -256,7 +436,14 @@ def validate_access_token(raw_token: str) -> TokenInfo | None:
         return None
     if _now() > float(record.get("expires_ts", 0)):
         return None
-    return TokenInfo(scopes=tuple((record.get("scope") or "").split()))
+    token_resource = str(record.get("resource") or "")
+    if not token_resource or (resource is not None and token_resource != resource):
+        return None
+    return TokenInfo(
+        scopes=tuple((record.get("scope") or "").split()),
+        client_id=str(record.get("client_id") or ""),
+        resource=token_resource,
+    )
 
 
 def _prune(data: dict, now: float) -> None:
@@ -268,7 +455,7 @@ def _prune(data: dict, now: float) -> None:
 # ---------------------------------------------------------------------------
 # Redacted audit events (never contain code/token values).
 # ---------------------------------------------------------------------------
-def record_event(kind: str, *, scope: str | None = None) -> None:
+def record_event(kind: str, *, scope: str | None = None, client_id: str | None = None) -> None:
     path = _events_path()
     data = _read(path)
     events = data.get("events")
@@ -277,6 +464,8 @@ def record_event(kind: str, *, scope: str | None = None) -> None:
     entry = {"kind": kind, "at": _iso(_now())}
     if scope is not None:
         entry["scope"] = scope
+    if client_id is not None:
+        entry["client_id"] = client_id
     events.append(entry)
     data["events"] = events[-_MAX_EVENTS:]
     _write(path, data)
@@ -298,6 +487,7 @@ def authorization_server_metadata(base_url: str) -> dict:
         "issuer": base,
         "authorization_endpoint": f"{base}/oauth/authorize",
         "token_endpoint": f"{base}/oauth/token",
+        "registration_endpoint": f"{base}/oauth/register",
         "response_types_supported": ["code"],
         "grant_types_supported": ["authorization_code"],
         "code_challenge_methods_supported": ["S256"],
@@ -309,23 +499,57 @@ def authorization_server_metadata(base_url: str) -> dict:
 def protected_resource_metadata(base_url: str) -> dict:
     base = base_url.rstrip("/")
     return {
-        "resource": f"{base}/mcp",
+        "resource": mcp_resource(base),
         "authorization_servers": [base],
         "scopes_supported": list(SUPPORTED_SCOPES),
         "bearer_methods_supported": ["header"],
     }
 
 
+def resource_metadata_url(base_url: str) -> str:
+    return f"{base_url.rstrip('/')}/.well-known/oauth-protected-resource"
+
+
+def www_authenticate_header(base_url: str, *, scope: str = "obsidian.read", error: str | None = None, error_description: str | None = None) -> str:
+    parts = [
+        f'resource_metadata="{resource_metadata_url(base_url)}"',
+        f'scope="{scope}"',
+    ]
+    if error:
+        parts.append(f'error="{error}"')
+    if error_description:
+        parts.append(f'error_description="{error_description}"')
+    return "Bearer " + ", ".join(parts)
+
+
 def grok_setup_values(base_url: str) -> dict:
     base = base_url.rstrip("/")
+    client = fixed_grok_client()
     return {
-        "mcp_url": f"{base}/mcp",
-        "client_id": CLIENT_ID,
+        "mcp_url": mcp_resource(base),
+        "client_id": client.client_id,
         "client_secret": "",
         "authorization_endpoint": f"{base}/oauth/authorize",
         "token_endpoint": f"{base}/oauth/token",
-        "scopes": list(SUPPORTED_SCOPES),
+        "scopes": list(client.scopes),
         "token_auth_method": TOKEN_AUTH_METHOD,
+    }
+
+
+def chatgpt_setup_values(base_url: str) -> dict:
+    base = base_url.rstrip("/")
+    return {
+        "connector_url": mcp_resource(base),
+        "mcp_url": mcp_resource(base),
+        "protected_resource_metadata_url": resource_metadata_url(base),
+        "authorization_server_metadata_url": f"{base}/.well-known/oauth-authorization-server",
+        "openid_configuration_url": f"{base}/.well-known/openid-configuration",
+        "authorization_endpoint": f"{base}/oauth/authorize",
+        "token_endpoint": f"{base}/oauth/token",
+        "registration_endpoint": f"{base}/oauth/register",
+        "registration_mode": "dynamic_client_registration",
+        "client_id_metadata_document_supported": False,
+        "initial_scope": "obsidian.read",
     }
 
 
