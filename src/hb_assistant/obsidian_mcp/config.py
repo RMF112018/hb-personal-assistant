@@ -19,6 +19,26 @@ DEFAULT_ALLOWED_WRITE_FILE_TYPES = ["md"]
 DEFAULT_PROTECTED_PATHS = [".git", ".obsidian", ".trash", ".hb-assistant/backups"]
 
 
+class ExternalSourceRoot(BaseModel):
+    """A configured external directory to index (raw files stay where they are)."""
+
+    source_root_key: str
+    path: str
+    enabled: bool = True
+    source_kind: Literal["external_file"] = "external_file"
+    sensitive: bool = False
+
+    model_config = {"extra": "forbid"}
+
+    @field_validator("path")
+    @classmethod
+    def _absolute_path(cls, value: str) -> str:
+        candidate = Path(value.strip()).expanduser()
+        if not str(value).strip() or not candidate.is_absolute():
+            raise ValueError("external_source_path_must_be_absolute")
+        return str(candidate)
+
+
 class ObsidianMcpConfig(BaseModel):
     enabled: bool = False
     mode: Literal["filesystem"] = "filesystem"
@@ -50,7 +70,16 @@ class ObsidianMcpConfig(BaseModel):
     daily_notes_folder: str = "Daily Notes"
     archive_folder: str = "Archive"
     tool_timeout_seconds: int = 30
-    schema_version: int = 2
+    external_sources: list[ExternalSourceRoot] = Field(default_factory=list)
+    external_source_index_enabled: bool = True
+    external_source_watch_enabled: bool = False
+    external_source_scan_max_files: int = 5000
+    source_index_max_excerpt_chars: int = 8000
+    source_index_max_chunks: int = 40
+    source_index_max_chunk_chars: int = 1500
+    watch_poll_interval_seconds: int = 30
+    watch_debounce_seconds: float = 1.5
+    schema_version: int = 3
 
     model_config = {"extra": "forbid"}
 
@@ -90,6 +119,11 @@ class ObsidianMcpConfig(BaseModel):
         "max_write_chars",
         "curation_dense_folder_threshold",
         "tool_timeout_seconds",
+        "external_source_scan_max_files",
+        "source_index_max_excerpt_chars",
+        "source_index_max_chunks",
+        "source_index_max_chunk_chars",
+        "watch_poll_interval_seconds",
     )
     @classmethod
     def validate_positive(cls, value: int) -> int:
@@ -178,6 +212,15 @@ class ObsidianMcpConfigPatch(BaseModel):
     daily_notes_folder: str | None = None
     archive_folder: str | None = None
     tool_timeout_seconds: int | None = None
+    external_sources: list[ExternalSourceRoot] | None = None
+    external_source_index_enabled: bool | None = None
+    external_source_watch_enabled: bool | None = None
+    external_source_scan_max_files: int | None = None
+    source_index_max_excerpt_chars: int | None = None
+    source_index_max_chunks: int | None = None
+    source_index_max_chunk_chars: int | None = None
+    watch_poll_interval_seconds: int | None = None
+    watch_debounce_seconds: float | None = None
 
     model_config = {"extra": "forbid"}
 
@@ -228,7 +271,8 @@ def apply_patch(patch: ObsidianMcpConfigPatch) -> tuple[ObsidianMcpConfig, str |
     if "vault_root" in updates and updates["vault_root"] is not None:
         updates["vault_root"] = str(Path(str(updates["vault_root"])).expanduser())
 
-    next_config = current.model_copy(update=updates)
-    next_config = ObsidianMcpConfig.model_validate(next_config.model_dump())
+    # Merge as plain data then validate, so nested models (e.g. external_sources) are coerced
+    # cleanly from dicts without an intermediate model_dump over half-built submodels.
+    next_config = ObsidianMcpConfig.model_validate({**current.model_dump(), **updates})
     save_config(next_config)
     return next_config, one_time_token

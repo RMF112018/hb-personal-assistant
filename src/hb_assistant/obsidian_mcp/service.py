@@ -34,6 +34,23 @@ def _now() -> str:
 class ObsidianMcpService:
     """Application-backend service used by FastAPI routes and MCP handlers."""
 
+    def __init__(self, db_path: str | None = None) -> None:
+        self._db_path = db_path
+
+    @property
+    def db_path(self) -> str:
+        """SQLite path for the source-intelligence index (same DB as the migrator)."""
+        if self._db_path is not None:
+            return self._db_path
+        from hb_assistant.config.path_policy import PathPolicy
+
+        return str(PathPolicy().get_db_path())
+
+    def _source_repo(self) -> Any:
+        from .source_index_repository import SourceIndexRepository
+
+        return SourceIndexRepository(self.db_path)
+
     def get_config(self) -> ObsidianMcpConfig:
         return load_config()
 
@@ -144,7 +161,7 @@ class ObsidianMcpService:
             blocker="mcp_http_unavailable",
         )
         add("caps_configured", config.max_file_mb > 0 and config.max_result_chars > 0, "file/result caps configured", blocker="caps_invalid")
-        add("tool_registry", len(tool_registry()) == 38, "thirty-eight Obsidian MCP tools registered", blocker="tool_registry_invalid")
+        add("tool_registry", len(tool_registry()) == 42, "forty-two Obsidian MCP tools registered", blocker="tool_registry_invalid")
         add("http_port", self._port_available_or_self(config), "HTTP port is available or owned by backend", warning="port_unavailable")
         readiness = write_readiness(config)
         add("vault_writable", bool(readiness["vault_writable"]), "vault root is writable", warning="vault_not_writable")
@@ -265,7 +282,36 @@ class ObsidianMcpService:
         return list_directory(self.get_config(), **args)
 
     def search_vault(self, args: dict[str, Any]) -> dict[str, Any]:
-        return search_vault(self.get_config(), **args)
+        """Narrow ``path_scope`` queries use the live bounded scan; broad/no-scope queries use
+        the curated Obsidian-note index (never a live full-vault scan)."""
+        path_scope = (args.get("path_scope") or "").strip()
+        if path_scope:
+            result = search_vault(self.get_config(), **args)
+            result.setdefault("search_backend", "live_scope_scan")
+            return result
+        from .source_search import search_vault_indexed
+
+        return search_vault_indexed(self._source_repo(), self.get_config(), **args)
+
+    def search_sources(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .source_search import search_sources
+
+        return search_sources(self._source_repo(), self.get_config(), **args)
+
+    def search_knowledge(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .source_search import search_knowledge
+
+        return search_knowledge(self._source_repo(), self.get_config(), **args)
+
+    def source_index_status(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .source_search import source_index_status
+
+        return source_index_status(self._source_repo(), self.get_config())
+
+    def rebuild_source_index(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .source_indexer import request_rebuild
+
+        return request_rebuild(self._source_repo(), self.get_config())
 
     def read_file(self, args: dict[str, Any]) -> dict[str, Any]:
         return read_file(self.get_config(), **args)

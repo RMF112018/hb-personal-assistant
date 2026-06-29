@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 import logging
-from contextlib import AsyncExitStack, asynccontextmanager
+from contextlib import AsyncExitStack, asynccontextmanager, suppress
 from enum import Enum
 from pathlib import Path
 from typing import Any
@@ -327,6 +327,15 @@ class ObsidianMcpConfigPatchRequest(BaseModel):
     oauth_enabled: bool | None = None
     public_base_url: str | None = None
     tool_timeout_seconds: int | None = None
+    external_sources: list[dict[str, Any]] | None = None
+    external_source_index_enabled: bool | None = None
+    external_source_watch_enabled: bool | None = None
+    external_source_scan_max_files: int | None = None
+    source_index_max_excerpt_chars: int | None = None
+    source_index_max_chunks: int | None = None
+    source_index_max_chunk_chars: int | None = None
+    watch_poll_interval_seconds: int | None = None
+    watch_debounce_seconds: float | None = None
 
 
 class ObsidianMcpListDirectoryRequest(BaseModel):
@@ -637,6 +646,31 @@ async def _forecast_lifespan(app: Any) -> Any:
     except Exception:
         poll_task = None
 
+    # Source-intelligence: register configured roots (indexing ON by default) and start the
+    # external-source watcher only when enabled. Fail-closed — never blocks app startup.
+    source_watcher: Any = None
+    try:
+        from hb_assistant.config.path_policy import PathPolicy
+        from hb_assistant.obsidian_mcp.config import load_config as _load_obsidian_config
+        from hb_assistant.obsidian_mcp.source_index_repository import SourceIndexRepository
+        from hb_assistant.obsidian_mcp.source_watch import SourceWatcher
+
+        _configured = getattr(app.state, "db_path", None)
+        _watch_db = str(_configured) if _configured else str(PathPolicy().get_db_path())
+        _watch_config = _load_obsidian_config()
+        if getattr(_watch_config, "external_source_index_enabled", True):
+            SourceIndexRepository(_watch_db).register_source_roots(
+                [{"source_root_key": r.source_root_key, "enabled": r.enabled}
+                 for r in _watch_config.external_sources]
+            )
+        source_watcher = SourceWatcher(_watch_db, _watch_config)
+        if getattr(_watch_config, "external_source_watch_enabled", False):
+            await asyncio.to_thread(source_watcher.start)
+        app.state.source_watcher = source_watcher
+    except Exception:
+        app.state.source_watcher = None
+        source_watcher = None
+
     mcp_wrapper = getattr(app.state, "mcp_streamable_http_app", None)
     mcp_app = getattr(mcp_wrapper, "app", mcp_wrapper)
     mcp_lifespan = getattr(getattr(mcp_app, "router", None), "lifespan_context", None)
@@ -647,6 +681,9 @@ async def _forecast_lifespan(app: Any) -> Any:
         try:
             yield
         finally:
+            if source_watcher is not None:
+                with suppress(Exception):
+                    source_watcher.stop()
             if poll_task is not None:
                 poll_task.cancel()
                 try:
@@ -692,7 +729,7 @@ def create_app(*, db_path: str | None = None) -> Any:
     try:
         from hb_assistant.obsidian_mcp.mcp_app import build_streamable_http_app
 
-        mcp_streamable_http_app = build_streamable_http_app()
+        mcp_streamable_http_app = build_streamable_http_app(db_path=db_path)
         app.state.mcp_streamable_http_app = mcp_streamable_http_app
     except Exception:
         # Optional SDK or adapter unavailable: the UI health check reports the precise blocker.
@@ -1698,6 +1735,25 @@ def create_app(*, db_path: str | None = None) -> Any:
         from hb_assistant.obsidian_mcp import ObsidianMcpService
 
         return ObsidianMcpService().health_check()
+
+    @app.get("/api/settings/obsidian-mcp/source-index/status")
+    def settings_obsidian_mcp_source_index_status(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        from hb_assistant.obsidian_mcp import ObsidianMcpService
+
+        result = ObsidianMcpService(db_path=db_path).source_index_status({})
+        watcher = getattr(app.state, "source_watcher", None)
+        if watcher is not None:
+            with suppress(Exception):
+                result["watcher"] = watcher.status()
+        return result
+
+    @app.post("/api/settings/obsidian-mcp/source-index/rebuild")
+    def settings_obsidian_mcp_source_index_rebuild(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        require_operator_role(role)
+        from hb_assistant.obsidian_mcp import ObsidianMcpService
+
+        return ObsidianMcpService(db_path=db_path).rebuild_source_index({})
 
     @app.get("/api/settings/obsidian-mcp/tools")
     def settings_obsidian_mcp_tools(role: dict[str, str] = role_dep) -> dict[str, Any]:

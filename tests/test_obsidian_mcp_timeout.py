@@ -46,6 +46,7 @@ _ALL_TOOLS = [
     "vault_curation_plan", "vault_curation_apply", "vault_create_moc_plan",
     "vault_auto_link_plan", "vault_bulk_tagging_plan", "vault_email_to_note_plan",
     "vault_email_to_note_apply",
+    "search_sources", "search_knowledge", "source_index_status", "rebuild_source_index",
 ]
 
 # Minimal arguments per tool. Missing files / bogus plan_ids are fine: a structured
@@ -76,6 +77,8 @@ _MIN_ARGS: dict[str, dict] = {
     "vault_curation_apply": {"plan_id": "missing"},
     "vault_email_to_note_plan": {"email_path": "Projects/Scope.md", "target_folder": "Managed"},
     "vault_email_to_note_apply": {"plan_id": "missing"},
+    "search_sources": {"query": "Grok"},
+    "search_knowledge": {"query": "Grok"},
 }
 
 
