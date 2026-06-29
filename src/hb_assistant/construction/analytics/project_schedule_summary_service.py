@@ -29,6 +29,7 @@ from .project_schedule_comparison import (
     comparison_start_field,
     label_from_source,
 )
+from .project_schedule_canonical_metrics import ProjectScheduleCanonicalMetricService
 from .project_schedule_drilldown_service import ProjectScheduleDrilldownService
 from .project_schedule_driver_analysis_service import ProjectScheduleDriverAnalysisService
 from .project_schedule_memo_service import ProjectScheduleMemoService
@@ -93,6 +94,7 @@ class ProjectScheduleSummaryService:
         self._review = ProjectScheduleReviewService(db_path=db_path)
         self._memo = ProjectScheduleMemoService()
         self._imports = ScheduleImportRepository(db_path=db_path)
+        self._canonical_metrics = ProjectScheduleCanonicalMetricService(db_path=db_path)
         self._stage_timings: list[dict[str, Any]] = []
 
     def build_summary(self, project_key: str, *, as_of: date | None = None) -> dict[str, Any]:
@@ -126,6 +128,11 @@ class ProjectScheduleSummaryService:
         previous = previous_choice.version if previous_choice else None
         previous_key = str(previous["schedule_version_key"]) if previous else None
         previous_data_date = self._data_date(previous) if previous else None
+        comparison_context = self._prior_update_comparison_context(
+            current_choice=current_choice,
+            previous_choice=previous_choice,
+            as_of_date=as_of_date,
+        )
 
         activity_summary = self._timed(
             "current_activity_summary",
@@ -177,6 +184,7 @@ class ProjectScheduleSummaryService:
                 previous=previous,
                 current_key=current_key,
                 previous_key=previous_key,
+                comparison_context=comparison_context,
             ),
         )
         milestones = self._timed(
@@ -187,7 +195,7 @@ class ProjectScheduleSummaryService:
             cap=_MILESTONE_CAP,
             fn=lambda: self._milestones(current_key, previous_key, recent),
         )
-        comparison_ready = previous is not None
+        comparison_ready = bool(comparison_context.get("available"))
         baseline_summary = self._baseline_summary(
             project_key=project_key,
             current=current,
@@ -264,6 +272,9 @@ class ProjectScheduleSummaryService:
         )
         source_float_summary = {
             "basis": "source_export_float",
+            "evidence_class": "source_exported",
+            "field_precedence": ["total_float", "derived_total_float_days", "explicit_total_float_days"],
+            "app_computed_cpm_evidence": "separate",
             "negative_float_remaining_count": remaining_health["float_pressure"]["negative_float_count"],
             "zero_float_remaining_count": remaining_health["float_pressure"]["zero_float_count"],
             "near_critical_source_count": remaining_health["float_pressure"]["near_critical_count"],
@@ -274,6 +285,26 @@ class ProjectScheduleSummaryService:
             "critical_remaining_count": cpm_summary["summary"].get("critical_remaining_count", 0),
             "near_critical_remaining_count": cpm_summary["summary"].get("near_critical_remaining_count", 0),
             "drilldown_url": cpm_summary["summary"].get("drilldown_url"),
+            "source_cpm_run_id": cpm_summary["summary"].get("source_cpm_run_id"),
+            "selected_cpm_run": _pm_cpm_run_payload(cpm_summary["summary"].get("selected_cpm_run")),
+            "all_cpm_runs": _pm_cpm_run_list(cpm_summary["summary"].get("all_cpm_runs")),
+            "excluded_cpm_runs": _pm_cpm_run_list(cpm_summary["summary"].get("excluded_cpm_runs")),
+            "run_availability": {
+                key: _pm_cpm_run_payload(value)
+                for key, value in (cpm_summary["summary"].get("run_availability") or {}).items()
+            },
+            "selected_run_policy": cpm_summary["summary"].get("selected_run_policy"),
+            "data_date": cpm_summary["summary"].get("data_date"),
+            "computed_at": cpm_summary["summary"].get("computed_at"),
+            "run_status": cpm_summary["summary"].get("run_status"),
+            "calculation_type": cpm_summary["summary"].get("calculation_type"),
+            "criticality_basis": cpm_summary["summary"].get("criticality_basis"),
+            "critical_float_threshold_days": cpm_summary["summary"].get("critical_float_threshold_days"),
+            "near_critical_float_threshold_days": cpm_summary["summary"].get("near_critical_float_threshold_days"),
+            "near_critical_threshold_source": cpm_summary["summary"].get("near_critical_threshold_source"),
+            "source_export_evidence": cpm_summary["summary"].get("source_export_evidence"),
+            "source_export_float_basis": cpm_summary["summary"].get("source_export_float_basis"),
+            "app_computed_float_basis": cpm_summary["summary"].get("app_computed_float_basis"),
         }
         review_drilldowns = self._drilldowns.build_preview_map(
             project_key=project_key,
@@ -353,6 +384,7 @@ class ProjectScheduleSummaryService:
                 "data_date": _date_str(previous_data_date),
                 "comparison_ready": previous is not None and not readiness["identity_review_required"]["required"],
                 "comparison_basis": "same_schedule_identity" if previous else None,
+                "unavailable_reason": comparison_context.get("unavailable_reason"),
             },
             "readiness": readiness,
             "schedule_story": story,
@@ -368,7 +400,7 @@ class ProjectScheduleSummaryService:
             "remaining_health": remaining_health,
             "critical_path": cpm_summary["critical_path"],
             "milestones": milestones,
-            "computed_cpm": cpm_summary["summary"],
+            "computed_cpm": _pm_cpm_summary_payload(cpm_summary["summary"]),
             "trend_summary": trends,
             "trend_series": trend_series,
             "schedule_trust": schedule_trust,
@@ -393,6 +425,7 @@ class ProjectScheduleSummaryService:
                 "selected_baseline_schedule_version_key": baseline_summary.get(
                     "_selected_baseline_schedule_version_key"
                 ),
+                "prior_update_comparison_context": comparison_context,
                 "schedule_identity_key": (
                     current_choice.identity_match.get("schedule_identity_key")
                     if current_choice.identity_match
@@ -426,8 +459,9 @@ class ProjectScheduleSummaryService:
             c for c in resolved
             if (data_date := self._data_date(c.version)) is None or data_date <= as_of_date
         ]
-        if non_future:
-            resolved = non_future
+        if not non_future:
+            return None
+        resolved = non_future
         if not resolved:
             return None
         resolved.sort(key=lambda c: (_date_sort_key(self._data_date(c.version)), str(c.version.get("imported_at") or "")), reverse=True)
@@ -471,6 +505,35 @@ class ProjectScheduleSummaryService:
             reverse=True,
         )
         return candidates[0] if candidates else None
+
+    def _prior_update_comparison_context(
+        self,
+        *,
+        current_choice: _VersionChoice,
+        previous_choice: _VersionChoice | None,
+        as_of_date: date,
+    ) -> dict[str, Any]:
+        current_key = str(current_choice.version["schedule_version_key"])
+        previous_key = str(previous_choice.version["schedule_version_key"]) if previous_choice else None
+        identity_key = _identity_key(current_choice.identity_match)
+        unavailable_reason = None
+        if not previous_key:
+            unavailable_reason = "no_prior_update"
+        elif _requires_identity_review(current_choice.identity_match):
+            unavailable_reason = "identity_review_required"
+        return {
+            "available": previous_key is not None and unavailable_reason is None,
+            "current_version_key": current_key,
+            "previous_version_key": previous_key,
+            "diff_id": current_choice.version.get("default_diff_id"),
+            "comparison_basis": "prior_update",
+            "finish_movement_basis": "resolved_finish_date",
+            "schedule_identity_key": identity_key,
+            "as_of_date": as_of_date.isoformat(),
+            "unavailable_reason": unavailable_reason,
+            "as_of_eligibility_basis": "hub_eligible_schedule_data_date_on_or_before_as_of",
+            "tie_breakers": ["schedule_data_date_desc", "imported_at_desc"],
+        }
 
     # ------------------------------------------------------------------ bounded hub reads
 
@@ -585,6 +648,7 @@ class ProjectScheduleSummaryService:
         return versions
 
     def _activity_summary(self, schedule_version_key: str) -> dict[str, Any]:
+        return self._canonical_metrics.activity_summary(schedule_version_key)
         with open_connection(self._db_path) as conn:
             row = conn.execute(
                 """
@@ -899,6 +963,11 @@ class ProjectScheduleSummaryService:
         current_key = str(current_choice.version["schedule_version_key"])
         previous_choice = self._resolve_previous(project_key, current_choice, versions)
         previous_key = str(previous_choice.version["schedule_version_key"]) if previous_choice else None
+        comparison_context = self._prior_update_comparison_context(
+            current_choice=current_choice,
+            previous_choice=previous_choice,
+            as_of_date=as_of_date,
+        )
         baseline = self._hub_repo.get_active_baseline_selection(
             project_key=project_key,
             current_schedule_version_key=current_key,
@@ -921,8 +990,9 @@ class ProjectScheduleSummaryService:
                 "limit": limit,
                 "offset": offset,
                 "items": items[offset : offset + limit],
+                "comparison_context": comparison_context,
             }
-        return self._drilldowns.list_drilldown(
+        out = self._drilldowns.list_drilldown(
             project_key=project_key,
             drilldown_type=drilldown_type,
             current_key=current_key,
@@ -930,6 +1000,13 @@ class ProjectScheduleSummaryService:
             limit=limit,
             offset=offset,
         )
+        if drilldown_type.startswith("baseline_"):
+            out["comparison_basis"] = "baseline"
+        else:
+            out["comparison_basis"] = comparison_context["comparison_basis"]
+            out["comparison_context"] = comparison_context
+        out["finish_movement_basis"] = comparison_context["finish_movement_basis"]
+        return out
 
     def build_review_items(
         self,
@@ -1013,6 +1090,11 @@ class ProjectScheduleSummaryService:
         current_key = str(current["schedule_version_key"])
         previous_choice = self._resolve_previous(project_key, current_choice, versions)
         previous_key = str(previous_choice.version["schedule_version_key"]) if previous_choice else None
+        comparison_context = self._prior_update_comparison_context(
+            current_choice=current_choice,
+            previous_choice=previous_choice,
+            as_of_date=as_of_date,
+        )
         milestones = self._milestones(current_key, previous_key, {"completed_milestone_count": 0})
         baseline_summary = self._baseline_summary(
             project_key=project_key,
@@ -1020,7 +1102,7 @@ class ProjectScheduleSummaryService:
             current_key=current_key,
             previous=previous_choice.version if previous_choice else None,
         )
-        comparison_ready = previous_choice is not None and not _requires_identity_review(current_choice.identity_match)
+        comparison_ready = bool(comparison_context.get("available"))
         change_driver_analysis = self._drivers.build_hub_analysis(
             project_key=project_key,
             current_key=current_key,
@@ -1038,6 +1120,7 @@ class ProjectScheduleSummaryService:
             previous=previous_choice.version if previous_choice else None,
             current_key=current_key,
             previous_key=previous_key,
+            comparison_context=comparison_context,
         )
         cpm_summary = self._computed_cpm(current_key)
         remaining_health = self._remaining_health(
@@ -1106,20 +1189,27 @@ class ProjectScheduleSummaryService:
         current_key = str(current_choice.version["schedule_version_key"])
         previous_choice = self._resolve_previous(project_key, current_choice, versions)
         previous_key = str(previous_choice.version["schedule_version_key"]) if previous_choice else None
-        comparison_ready = not _requires_identity_review(current_choice.identity_match)
+        comparison_context = self._prior_update_comparison_context(
+            current_choice=current_choice,
+            previous_choice=previous_choice,
+            as_of_date=as_of_date,
+        )
+        comparison_ready = bool(comparison_context["available"])
         milestones = self._milestones(current_key, previous_key, {"completed_milestone_count": 0})
-        return self._drivers.list_drilldown(
+        out = self._drivers.list_drilldown(
             project_key=project_key,
             drilldown_type=drilldown_type,
             current_key=current_key,
             previous_key=previous_key,
-            diff_id=current_choice.version.get("default_diff_id"),
+            diff_id=comparison_context.get("diff_id"),
             milestones=milestones,
             driver_activity_id=driver_activity_id,
             limit=limit,
             offset=offset,
-            comparison_ready=comparison_ready and previous_key is not None,
+            comparison_ready=comparison_ready,
         )
+        out["comparison_context"] = comparison_context
+        return out
 
     def _change_impact(
         self,
@@ -1129,11 +1219,15 @@ class ProjectScheduleSummaryService:
         previous: dict[str, Any] | None,
         current_key: str,
         previous_key: str | None,
+        comparison_context: dict[str, Any],
     ) -> dict[str, Any]:
         if not previous or not previous_key:
             return {
                 "available": False,
                 "reason": "no_prior_update",
+                "comparison_basis": comparison_context["comparison_basis"],
+                "finish_movement_basis": comparison_context["finish_movement_basis"],
+                "as_of_date": comparison_context["as_of_date"],
                 "direct_remaining_changes": {"items": [], "summary": {}},
                 "upstream_remaining_impact": {"items": [], "summary": {}},
             }
@@ -1168,7 +1262,9 @@ class ProjectScheduleSummaryService:
         return {
             "available": True,
             "diff_id": diff_id,
-            "comparison_basis": "resolved_finish_date",
+            "comparison_basis": comparison_context["comparison_basis"],
+            "finish_movement_basis": comparison_context["finish_movement_basis"],
+            "as_of_date": comparison_context["as_of_date"],
             "direct_remaining_changes": {
                 **direct_comparison,
                 "default_limit": _DIRECT_REMAINING_CHANGE_CAP,
@@ -1228,6 +1324,7 @@ class ProjectScheduleSummaryService:
         return out
 
     def _computed_cpm(self, current_key: str) -> dict[str, Any]:
+        canonical_summary = self._canonical_metrics.computed_cpm_summary(current_key)
         with open_connection(self._db_path) as conn:
             runs: dict[str, dict[str, Any]] = {}
             for row in conn.execute(
@@ -1315,16 +1412,7 @@ class ProjectScheduleSummaryService:
             if kind not in runs
         ]
         return {
-            "summary": {
-                "available": available,
-                "summary": "Computed CPM is available for this update." if available else "Computed CPM is unavailable for this update.",
-                "critical_remaining_count": critical_count,
-                "near_critical_remaining_count": near_count,
-                "drilldown_url": "/schedules/cpm",
-                "missing_dependency_reasons": missing,
-                "evidence_class": "application_computed_cpm",
-                "source_export_evidence": "separate",
-            },
+            "summary": canonical_summary,
             "critical_path": {
                 "available": bool(primary_path),
                 "basis": "computed_cpm" if primary_path else "unavailable",
@@ -2269,3 +2357,37 @@ def _safe_story_text(text: str) -> str:
     for word in _FORBIDDEN_STORY_WORDS:
         safe = re.sub(re.escape(word), "schedule movement", safe, flags=re.I)
     return safe
+
+
+def _pm_cpm_run_payload(value: Any) -> dict[str, Any] | None:
+    if not isinstance(value, dict):
+        return None
+    return {
+        key: item
+        for key, item in value.items()
+        if key != "schedule_version_key"
+    }
+
+
+def _pm_cpm_run_list(value: Any) -> list[dict[str, Any]]:
+    if not isinstance(value, list):
+        return []
+    return [payload for item in value if (payload := _pm_cpm_run_payload(item))]
+
+
+def _pm_cpm_summary_payload(value: Any) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        return {}
+    out = {
+        key: item
+        for key, item in value.items()
+        if key != "schedule_version_key"
+    }
+    out["selected_cpm_run"] = _pm_cpm_run_payload(value.get("selected_cpm_run"))
+    out["all_cpm_runs"] = _pm_cpm_run_list(value.get("all_cpm_runs"))
+    out["excluded_cpm_runs"] = _pm_cpm_run_list(value.get("excluded_cpm_runs"))
+    out["run_availability"] = {
+        key: _pm_cpm_run_payload(item)
+        for key, item in (value.get("run_availability") or {}).items()
+    }
+    return out

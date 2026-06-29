@@ -1196,6 +1196,7 @@ def create_app(*, db_path: str | None = None) -> Any:
     ) -> dict[str, Any]:
         del role
         from datetime import date as date_type
+        from fastapi import HTTPException
 
         from hb_assistant.construction.analytics.project_schedule_summary_service import (
             ProjectScheduleSummaryService,
@@ -1208,13 +1209,18 @@ def create_app(*, db_path: str | None = None) -> Any:
             except ValueError as exc:
                 raise HTTPException(status_code=400, detail="invalid_as_of_date") from exc
 
-        return ProjectScheduleSummaryService(db_path=_schedule_db_path()).build_drilldown(
-            project_key,
-            drilldown_type=type,
-            limit=limit,
-            offset=offset,
-            as_of=as_of_date,
-        )
+        try:
+            return ProjectScheduleSummaryService(db_path=_schedule_db_path()).build_drilldown(
+                project_key,
+                drilldown_type=type,
+                limit=limit,
+                offset=offset,
+                as_of=as_of_date,
+            )
+        except ValueError as exc:
+            if str(exc) == "unsupported_drilldown_type":
+                raise HTTPException(status_code=400, detail="unsupported_drilldown_type") from exc
+            raise
 
     @app.get("/api/projects/{project_key}/schedule/drivers")
     def project_schedule_drivers(
