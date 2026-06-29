@@ -1375,6 +1375,73 @@ def create_app(*, db_path: str | None = None) -> Any:
                 raise HTTPException(status_code=400, detail="invalid_review_status") from exc
             raise
 
+    @app.get("/api/projects/{project_key}/schedule/metrics/{metric_key}/trend")
+    def project_schedule_metric_trend(
+        project_key: str,
+        metric_key: str,
+        as_of: str | None = None,
+        weighting_basis: str | None = None,
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        del role
+        from datetime import date as date_type
+
+        from fastapi import HTTPException
+
+        from hb_assistant.construction.analytics.project_schedule_trend_aggregation_service import (
+            ProjectScheduleTrendAggregationService,
+        )
+
+        as_of_date: date_type | None = None
+        if as_of:
+            try:
+                as_of_date = date_type.fromisoformat(as_of)
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail="invalid_as_of_date") from exc
+        try:
+            return ProjectScheduleTrendAggregationService(db_path=_schedule_db_path()).build_trend(
+                project_key,
+                metric_key,
+                as_of=as_of_date,
+                weighting_basis=weighting_basis,
+            )
+        except ValueError as exc:
+            code = str(exc)
+            if code in {"unsupported_metric_key", "unsupported_weighting_basis"}:
+                raise HTTPException(status_code=400, detail=code) from exc
+            if code in {"metric_not_trend_ready", "cost_weighted_unavailable"}:
+                raise HTTPException(status_code=422, detail=code) from exc
+            raise
+
+    @app.get("/api/projects/{project_key}/schedule/metrics/trends")
+    def project_schedule_metric_trends(
+        project_key: str,
+        as_of: str | None = None,
+        metrics: str | None = None,
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        del role
+        from datetime import date as date_type
+
+        from fastapi import HTTPException
+
+        from hb_assistant.construction.analytics.project_schedule_trend_aggregation_service import (
+            ProjectScheduleTrendAggregationService,
+        )
+
+        as_of_date: date_type | None = None
+        if as_of:
+            try:
+                as_of_date = date_type.fromisoformat(as_of)
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail="invalid_as_of_date") from exc
+        metric_keys = [m.strip() for m in metrics.split(",") if m.strip()] if metrics else None
+        return ProjectScheduleTrendAggregationService(db_path=_schedule_db_path()).build_trends(
+            project_key,
+            metric_keys=metric_keys,
+            as_of=as_of_date,
+        )
+
     @app.get("/api/projects/{project_key}/schedule/export")
     def project_schedule_export(
         project_key: str,
@@ -1423,9 +1490,12 @@ def create_app(*, db_path: str | None = None) -> Any:
     @app.get("/api/projects/{project_key}/schedule/baseline")
     def project_schedule_baseline_get(project_key: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
         del role
-        from hb_assistant.store.project_schedule_hub_repository import ProjectScheduleHubRepository
         from hb_assistant.construction.analytics.project_schedule_summary_service import (
             ProjectScheduleSummaryService,
+        )
+        from hb_assistant.construction.analytics.project_schedule_selected_baseline_service import (
+            ProjectScheduleSelectedBaselineService,
+            public_selected_baseline_state,
         )
 
         service = ProjectScheduleSummaryService(db_path=_schedule_db_path())
@@ -1436,13 +1506,12 @@ def create_app(*, db_path: str | None = None) -> Any:
         current_key = summary.get("technical_evidence", {}).get("schedule_version_key")
         if not current_key:
             return {"available": False, "reason": "no_current_schedule"}
-        selection = ProjectScheduleHubRepository(db_path=_schedule_db_path()).get_active_baseline_selection(
-            project_key=project_key,
-            current_schedule_version_key=str(current_key),
+        state = ProjectScheduleSelectedBaselineService(db_path=_schedule_db_path()).get_state(
+            project_key=project_key, current_schedule_version_key=str(current_key)
         )
         return {
             "available": True,
-            "selection": selection,
+            **public_selected_baseline_state(state),
             "baseline_summary": summary.get("baseline_summary"),
         }
 
@@ -1453,27 +1522,40 @@ def create_app(*, db_path: str | None = None) -> Any:
         role: dict[str, str] = role_dep,
     ) -> dict[str, Any]:
         require_operator_role(role)
-        from hb_assistant.store.project_schedule_hub_repository import ProjectScheduleHubRepository
         from hb_assistant.construction.analytics.project_schedule_summary_service import (
             ProjectScheduleSummaryService,
         )
+        from hb_assistant.construction.analytics.project_schedule_selected_baseline_service import (
+            ProjectScheduleSelectedBaselineService,
+            public_selected_baseline_state,
+        )
+        from fastapi import HTTPException
 
         current_key = str(request.get("current_schedule_version_key") or "")
         baseline_key = str(request.get("selected_baseline_schedule_version_key") or "")
-        if not current_key or not baseline_key:
-            raise HTTPException(status_code=400, detail="baseline_selection_required")
-        if current_key == baseline_key:
-            raise HTTPException(status_code=400, detail="baseline_must_differ_from_current")
-        repo = ProjectScheduleHubRepository(db_path=_schedule_db_path())
-        selection = repo.set_baseline_selection(
-            project_key=project_key,
-            current_schedule_version_key=current_key,
-            selected_baseline_schedule_version_key=baseline_key,
-            selected_by_operator=role.get("role"),
-            selection_note=str(request.get("selection_note") or "") or None,
-        )
+        try:
+            state = ProjectScheduleSelectedBaselineService(db_path=_schedule_db_path()).select_baseline(
+                project_key=project_key,
+                current_schedule_version_key=current_key,
+                selected_baseline_schedule_version_key=baseline_key,
+                selected_by_operator=role.get("role"),
+                selection_note=str(request.get("selection_note") or "") or None,
+            )
+        except ValueError as exc:
+            code = str(exc)
+            if code in {
+                "baseline_selection_required",
+                "baseline_must_differ_from_current",
+                "invalid_current_schedule_version",
+                "invalid_selected_baseline_version",
+                "baseline_project_mismatch",
+                "baseline_identity_mismatch",
+                "baseline_must_not_be_future_of_current",
+            }:
+                raise HTTPException(status_code=400, detail=code) from exc
+            raise
         summary = ProjectScheduleSummaryService(db_path=_schedule_db_path()).build_summary(project_key)
-        return {"selection": selection, "baseline_summary": summary.get("baseline_summary")}
+        return {**public_selected_baseline_state(state), "baseline_summary": summary.get("baseline_summary")}
 
     @app.get("/api/my-items")
     def my_items(role: dict[str, str] = role_dep) -> dict[str, Any]:

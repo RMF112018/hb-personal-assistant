@@ -1,0 +1,5 @@
+frontend/src/components/projects/ProjectScheduleDashboardVisualizations.tsx
+frontend/src/lib/api.ts
+frontend/src/pages/ProjectSchedulePage.test.tsx
+frontend/src/pages/ProjectSchedulePage.tsx
+src/hb_assistant/construction/analytics/api.py

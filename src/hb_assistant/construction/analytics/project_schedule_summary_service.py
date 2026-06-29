@@ -899,29 +899,44 @@ class ProjectScheduleSummaryService:
                 "previous_update_label": self._friendly_label(previous) if previous else None,
             }
 
+        from .project_schedule_selected_baseline_service import (
+            ProjectScheduleSelectedBaselineService,
+            public_selected_baseline_state,
+        )
+
+        selected_baseline_state = ProjectScheduleSelectedBaselineService(db_path=self._db_path).get_state(
+            project_key=project_key,
+            current_schedule_version_key=current_key,
+        )
         baseline_key = str(selection["selected_baseline_schedule_version_key"])
         baseline_version = self._version_row(project_key, baseline_key)
-        comparison_result = self._comparison.compare_versions(left_key=current_key, right_key=baseline_key)
-        current_finish = _parse_date(
-            self._forecast_finish(current_key, baseline_key).get("current_forecast_finish")
-        )
-        baseline_finish = _parse_date(
-            self._forecast_finish(current_key, baseline_key).get("previous_forecast_finish")
-        )
+        comparison: dict[str, Any] = {}
+        if selected_baseline_state.get("status") == "ready":
+            comparison_result = self._comparison.compare_versions(left_key=current_key, right_key=baseline_key)
+            current_finish = _parse_date(
+                self._forecast_finish(current_key, baseline_key).get("current_forecast_finish")
+            )
+            baseline_finish = _parse_date(
+                self._forecast_finish(current_key, baseline_key).get("previous_forecast_finish")
+            )
+            comparison = {
+                **comparison_result["summary"],
+                "forecast_finish_delta_days": _date_delta_days(baseline_finish, current_finish),
+                "comparison_basis": "selected_baseline",
+            }
         return {
             "selected_baseline_available": True,
             "selected_baseline_label": self._friendly_label(baseline_version) if baseline_version else label_from_source(baseline_key),
             "selected_baseline_data_date": _date_str(self._data_date(baseline_version)) if baseline_version else None,
             "original_baseline_detected": bool(original),
             "original_baseline_label": original_label,
-            "status": "ready",
+            "status": selected_baseline_state.get("status") or "recompute_required",
+            "readiness": selected_baseline_state.get("readiness"),
+            "recompute_required": bool(selected_baseline_state.get("recompute_required")),
+            "selected_baseline_state": public_selected_baseline_state(selected_baseline_state),
             "current_update_label": self._friendly_label(current),
             "previous_update_label": self._friendly_label(previous) if previous else None,
-            "comparison": {
-                **comparison_result["summary"],
-                "forecast_finish_delta_days": _date_delta_days(baseline_finish, current_finish),
-                "comparison_basis": "resolved_finish_date",
-            },
+            "comparison": comparison,
             "_selected_baseline_schedule_version_key": baseline_key,
         }
 

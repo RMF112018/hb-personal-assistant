@@ -8,6 +8,7 @@ import { ProjectSchedulePage } from './ProjectSchedulePage'
 
 const getProjectsMock = vi.fn()
 const getProjectScheduleSummaryMock = vi.fn()
+const getProjectScheduleMetricTrendsMock = vi.fn()
 
 vi.mock('../lib/api', async () => {
   const actual = await vi.importActual<typeof import('../lib/api')>('../lib/api')
@@ -17,6 +18,7 @@ vi.mock('../lib/api', async () => {
       ...actual.api,
       getProjects: (...args: unknown[]) => getProjectsMock(...args),
       getProjectScheduleSummary: (...args: unknown[]) => getProjectScheduleSummaryMock(...args),
+      getProjectScheduleMetricTrends: (...args: unknown[]) => getProjectScheduleMetricTrendsMock(...args),
     },
   }
 })
@@ -226,7 +228,120 @@ function scheduleResponse(overrides = {}) {
   }
 }
 
-function renderPage(response = scheduleResponse()) {
+function trendMetric(key: string, overrides: Record<string, unknown> = {}) {
+  return {
+    available: true,
+    metric_key: key,
+    display_name: key.replaceAll('_', ' '),
+    readiness_status: 'ready_after_trend_aggregation',
+    as_of_date: '2026-06-28',
+    basis_labels: ['source_export', 'prior_update'],
+    comparison_basis: ['prior_update'],
+    weighting_basis: key === 'schedule_changes_over_time' ? 'change_count' : 'duration_weighted',
+    caveats: ['Review cue only — not causation, entitlement, responsibility, or compensability.'],
+    formula_summary: 'Backend-provided formula summary.',
+    points: [
+      {
+        data_date: '2026-06-16',
+        period: '2026-06-16',
+        month: '2026-06',
+        date_family: 'planned_start',
+        activity_count: 2,
+        planned_percent_complete: 0.25,
+        actual_percent_complete: 0.2,
+        schedule_performance_ratio: 0.8,
+        delay_days: 0,
+        gain_days: 0,
+        net_movement_days: 0,
+        categories: { activity_changes: 1, logic_changes: 0, duration_changes: 0, critical_changes: 0, added_activity_changes: 0, deleted_activity_changes: 0 },
+        health_index: 82,
+        required_recovery_days: 4,
+        critical_path_length_index: 120,
+        series: [
+          { float_basis: 'source_export', total_float_days: -10 },
+          { float_basis: 'computed_cpm', total_float_days: -8 },
+        ],
+      },
+      {
+        data_date: '2026-06-23',
+        period: '2026-06-23',
+        month: '2026-06',
+        date_family: 'actual_finish',
+        activity_count: 3,
+        planned_percent_complete: 0.35,
+        actual_percent_complete: 0.3,
+        schedule_performance_ratio: 0.86,
+        delay_days: 9,
+        gain_days: 0,
+        net_movement_days: 9,
+        categories: { activity_changes: 3, logic_changes: 1, duration_changes: 1, critical_changes: 1, added_activity_changes: 1, deleted_activity_changes: 0 },
+        health_index: 84,
+        required_recovery_days: 7,
+        critical_path_length_index: 130,
+        series: [
+          { float_basis: 'source_export', total_float_days: -12 },
+          { float_basis: 'computed_cpm', total_float_days: -9 },
+        ],
+      },
+    ],
+    summary: {},
+    unavailable_variants: [{ variant: 'cost_weighted', reason: 'cost_weighted_unavailable' }],
+    data_quality_notes: ['Backend note for PM review.'],
+    ...overrides,
+  }
+}
+
+function trendResponse(overrides: Record<string, unknown> = {}) {
+  return {
+    available: true,
+    project_key: 'tropical',
+    as_of_date: '2026-06-28',
+    metrics: [
+      trendMetric('monthly_activity_start_finish_distribution', { weighting_basis: 'activity_count' }),
+      trendMetric('planned_vs_actual_percent_complete'),
+      trendMetric('schedule_performance_ratio'),
+      trendMetric('schedule_delay_over_time', { weighting_basis: 'calendar_days' }),
+      trendMetric('schedule_changes_over_time', { weighting_basis: 'change_count' }),
+      trendMetric('project_schedule_health_index', { weighting_basis: 'weighted_penalty_model' }),
+      trendMetric('schedule_feasibility_score', {
+        available: false,
+        reason: 'dependency_inputs_unavailable',
+        points: [],
+        data_quality_notes: ['Feasibility score is waiting on dependency inputs.'],
+      }),
+      trendMetric('required_recovery_days', { weighting_basis: 'calendar_days' }),
+      trendMetric('critical_path_length_index'),
+      trendMetric('total_float_consumption_index', { weighting_basis: 'float_days', basis_labels: ['source_export', 'computed_cpm', 'prior_update'] }),
+      trendMetric('delay_analysis', {
+        available: false,
+        reason: 'prior_update_diff_unavailable',
+        points: [],
+        caveats: ['This metric is a schedule review cue only; it is not a causation, entitlement, responsibility, or compensability finding.'],
+      }),
+      trendMetric('window_start_accuracy', {
+        available: false,
+        reason: 'no_activities_in_window',
+        points: [],
+        partial_dimension_support: true,
+        data_quality_notes: ['UDF dimension coverage is partial.'],
+      }),
+      trendMetric('window_finish_accuracy', { available: false, reason: 'no_activities_in_window', points: [] }),
+      trendMetric('should_have_finished_status', { available: false, reason: 'no_due_unfinished_activities', points: [] }),
+      trendMetric('critical_issues_category_model', {
+        available: false,
+        reason: 'no_candidates',
+        points: [],
+        caveats: ['This metric is a schedule review cue only; it is not a causation, entitlement, responsibility, or compensability finding.'],
+      }),
+    ],
+    errors: [
+      { metric_key: 'schedule_compression_ratio', detail: 'metric_not_trend_ready' },
+    ],
+    ...overrides,
+  }
+}
+
+function renderPage(response = scheduleResponse(), trends: Promise<unknown> | unknown = trendResponse()) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const router = createMemoryRouter(
     [
@@ -237,6 +352,7 @@ function renderPage(response = scheduleResponse()) {
   )
   getProjectsMock.mockResolvedValue(projectsResponse)
   getProjectScheduleSummaryMock.mockResolvedValue(response)
+  getProjectScheduleMetricTrendsMock.mockReturnValue(trends instanceof Promise ? trends : Promise.resolve(trends))
   return render(
     <QueryClientProvider client={client}>
       <RouterProvider router={router} />
@@ -248,6 +364,7 @@ describe('ProjectSchedulePage', () => {
   beforeEach(() => {
     getProjectsMock.mockReset()
     getProjectScheduleSummaryMock.mockReset()
+    getProjectScheduleMetricTrendsMock.mockReset()
   })
 
   it('renders a PM-facing above-fold schedule story and scoped project tab', async () => {
@@ -275,6 +392,122 @@ describe('ProjectSchedulePage', () => {
     expect(screen.getAllByText(/appears connected to 3 downstream activities/).length).toBeGreaterThanOrEqual(1)
     expect(screen.getByText('Forecast 2026-12-15')).toBeInTheDocument()
     expect(screen.getAllByText('Review Next').length).toBeGreaterThanOrEqual(1)
+    expect(await screen.findByText('Schedule Controls')).toBeInTheDocument()
+  })
+
+  it('requests controls trends with summary as-of context and renders supported panels', async () => {
+    renderPage()
+
+    expect(await screen.findByText('Trend Analytics')).toBeInTheDocument()
+    expect(getProjectScheduleMetricTrendsMock).toHaveBeenCalledWith('tropical', {
+      asOf: '2026-06-28',
+      metrics: expect.arrayContaining([
+        'monthly_activity_start_finish_distribution',
+        'planned_vs_actual_percent_complete',
+        'schedule_performance_ratio',
+        'schedule_changes_over_time',
+      ]),
+    })
+    expect(screen.getByText('Controls Overview')).toBeInTheDocument()
+    expect(screen.getByText('Monthly Activity Start/Finish Distribution')).toBeInTheDocument()
+    expect(screen.getByText('Planned vs Actual Percent Complete')).toBeInTheDocument()
+    expect(screen.getByText('Schedule Performance Ratio')).toBeInTheDocument()
+    expect(screen.getByText('Schedule Delay Over Time')).toBeInTheDocument()
+    expect(screen.getByText('Schedule Changes Over Time')).toBeInTheDocument()
+    expect((await screen.findAllByText('duration weighted')).length).toBeGreaterThan(0)
+    expect(screen.getAllByText('prior update').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Backend note for PM review.').length).toBeGreaterThan(0)
+    expect(screen.queryByText(/cost weighted/i)).not.toBeInTheDocument()
+  })
+
+  it('falls back to current data date when summary as-of is absent', async () => {
+    renderPage(scheduleResponse({ as_of_date: undefined }))
+
+    await screen.findByText('Schedule Controls')
+    expect(getProjectScheduleMetricTrendsMock).toHaveBeenCalledWith('tropical', expect.objectContaining({
+      asOf: '2026-06-23',
+    }))
+  })
+
+  it('renders blocked and empty metric states without activating unavailable metrics', async () => {
+    renderPage()
+
+    expect(await screen.findByText('Blocked / Not Yet Available Metrics')).toBeInTheDocument()
+    expect(screen.getByText('Schedule Compression Ratio')).toBeInTheDocument()
+    expect(await screen.findByText('Execution Reliability / Review Cues')).toBeInTheDocument()
+    expect(screen.getAllByText(/Not yet available/).length).toBeGreaterThanOrEqual(6)
+    expect(screen.getByText('Partial UDF dimension coverage reported by backend.')).toBeInTheDocument()
+    expect(await screen.findByText('Feasibility score is waiting on dependency inputs.')).toBeInTheDocument()
+  })
+
+  it('renders available UDF metric panels when backend marks them available', async () => {
+    renderPage(scheduleResponse(), trendResponse({
+      metrics: [
+        trendMetric('window_start_accuracy', {
+          available: true,
+          partial_dimension_support: true,
+          data_quality_notes: ['Filter Out coverage is sparse on 12% of activities.'],
+          points: [{
+            data_date: '2026-06-28',
+            on_time_count: 4,
+            late_count: 1,
+            did_not_start_count: 2,
+            accuracy_ratio: 0.57,
+          }],
+        }),
+      ],
+      errors: [],
+    }))
+
+    expect(await screen.findByText('Window Start Accuracy')).toBeInTheDocument()
+    expect(await screen.findByText('On time')).toBeInTheDocument()
+    expect(screen.getByText('Partial UDF dimension coverage reported by backend.')).toBeInTheDocument()
+    expect(screen.queryByText('Requires UDF normalization')).not.toBeInTheDocument()
+    expect(document.body.textContent || '').not.toMatch(/responsible party|entitlement finding/i)
+  })
+
+  it('renders selected-baseline compression readiness when provided by the backend', async () => {
+    renderPage(scheduleResponse(), trendResponse({
+      metrics: [
+        trendMetric('schedule_compression_ratio', {
+          available: false,
+          reason: 'selected_baseline_recompute_required',
+          points: [],
+          selected_baseline: {
+            selected_baseline_label: 'TWNU18',
+            selected_baseline_data_date: '2026-06-16',
+            recompute_required: true,
+          },
+          data_quality_notes: ['Selected-baseline matching or duration facts are incomplete.'],
+        }),
+      ],
+      errors: [],
+    }))
+
+    expect(await screen.findByText('Schedule Compression Ratio')).toBeInTheDocument()
+    expect(await screen.findByText('Selected-baseline matching or duration facts are incomplete.')).toBeInTheDocument()
+    expect(await screen.findByText(/Selected baseline: TWNU18 \(2026-06-16\).*Recompute\/readiness required/)).toBeInTheDocument()
+    expect(screen.queryByText('Not yet available: Requires selected baseline')).not.toBeInTheDocument()
+  })
+
+  it('renders accessible loading and clean error states for trend payloads', async () => {
+    let resolveTrends: (value: unknown) => void = () => {}
+    const loadingView = renderPage(scheduleResponse(), new Promise((resolve) => { resolveTrends = resolve }))
+
+    expect(await screen.findByRole('status')).toHaveTextContent('Loading schedule controls trends')
+    resolveTrends(trendResponse({
+      metrics: [trendMetric('monthly_activity_start_finish_distribution', { points: [], data_quality_notes: [] })],
+      errors: [],
+    }))
+    expect(await screen.findByText('No trend points are available for the selected update window.')).toBeInTheDocument()
+    loadingView.unmount()
+
+    let rejectTrends: (reason?: unknown) => void = () => {}
+    renderPage(scheduleResponse(), new Promise((_, reject) => { rejectTrends = reject }))
+    expect(await screen.findByRole('status')).toHaveTextContent('Loading schedule controls trends')
+    rejectTrends(new Error('500 Internal Server Error: stack trace detail'))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Schedule controls trends are unavailable right now.')
+    expect(document.body.textContent || '').not.toContain('stack trace detail')
   })
 
   it('shows trust banner when schedule trust requires review', async () => {

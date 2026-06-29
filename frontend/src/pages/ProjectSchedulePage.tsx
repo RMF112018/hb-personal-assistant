@@ -117,6 +117,25 @@ const DRIVER_TABS = [
   { id: 'milestone_impacts', label: 'Milestone Impacts' },
 ] as const
 
+const SCHEDULE_CONTROLS_METRICS = [
+  'monthly_activity_start_finish_distribution',
+  'planned_vs_actual_percent_complete',
+  'schedule_performance_ratio',
+  'schedule_delay_over_time',
+  'schedule_changes_over_time',
+  'project_schedule_health_index',
+  'schedule_feasibility_score',
+  'required_recovery_days',
+  'critical_path_length_index',
+  'total_float_consumption_index',
+  'delay_analysis',
+  'window_start_accuracy',
+  'window_finish_accuracy',
+  'should_have_finished_status',
+  'critical_issues_category_model',
+  'schedule_compression_ratio',
+] as const
+
 const DRILLDOWN_LABELS: Record<string, string> = {
   remaining_later: 'Remaining Later',
   remaining_earlier: 'Remaining Earlier',
@@ -407,6 +426,22 @@ export function ProjectSchedulePage() {
     queryFn: () => api.getProjectScheduleSummary(projectKey),
     enabled: Boolean(projectKey),
   })
+  const trendSchedule = (data || {}) as ProjectScheduleSummaryResponse
+  const trendCurrent = trendSchedule.current_schedule || {}
+  const trendAsOf = String(trendSchedule.as_of_date || trendCurrent.data_date || '')
+  const {
+    data: controlsTrendPayload,
+    isLoading: controlsTrendLoading,
+    error: controlsTrendError,
+  } = useQuery({
+    queryKey: ['project', 'schedule', projectKey, 'controls-trends', trendAsOf],
+    queryFn: () =>
+      api.getProjectScheduleMetricTrends(projectKey, {
+        asOf: trendAsOf || undefined,
+        metrics: [...SCHEDULE_CONTROLS_METRICS],
+      }),
+    enabled: Boolean(projectKey) && Boolean(trendCurrent?.available) && !isLoading && !error,
+  })
 
   if (isLoading) {
     return (
@@ -604,7 +639,12 @@ export function ProjectSchedulePage() {
         </div>
 
         <div className="card">
-          <ProjectScheduleDashboardVisualizations schedule={schedule} />
+          <ProjectScheduleDashboardVisualizations
+            schedule={schedule}
+            trendPayload={controlsTrendPayload as any}
+            trendLoading={controlsTrendLoading}
+            trendError={controlsTrendError}
+          />
         </div>
 
         {reviewWorkbench.available && (

@@ -1,0 +1,5 @@
+Command:
+env PYTHONPATH=src:subrepos/construction-financial-review/src .venv/bin/python -m py_compile src/hb_assistant/construction/analytics/project_schedule_trend_aggregation_service.py src/hb_assistant/construction/analytics/project_schedule_visualization_metric_contract.py src/hb_assistant/construction/analytics/api.py
+
+Result:
+passed with exit code 0

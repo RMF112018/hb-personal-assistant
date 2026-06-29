@@ -1,0 +1,446 @@
+{
+  "batch_mixed": {
+    "body": {
+      "as_of_date": "2026-06-29",
+      "available": true,
+      "errors": [
+        {
+          "detail": "metric_not_trend_ready",
+          "metric_key": "delay_analysis"
+        },
+        {
+          "detail": "unsupported_metric_key",
+          "metric_key": "nope"
+        }
+      ],
+      "metrics": [
+        {
+          "as_of_date": "2026-06-29",
+          "available": true,
+          "basis_labels": [
+            "source_export",
+            "prior_update",
+            "current_update"
+          ],
+          "caveats": [
+            "Do not present cost-weighted progress as primary until cost/resource loading is verified."
+          ],
+          "comparison_basis": [
+            "current_update",
+            "prior_update"
+          ],
+          "data_quality_notes": [],
+          "display_name": "Planned vs Actual Percent Complete",
+          "formula_summary": "Default actual progress is duration weighted: sum(percent_complete * original_duration) / sum(original_duration).",
+          "metric_key": "planned_vs_actual_percent_complete",
+          "points": [
+            {
+              "actual_percent_complete": 0.0,
+              "actual_weighted_value": 0.0,
+              "data_date": "2026-06-28",
+              "denominator": 614.0,
+              "planned_percent_complete": 0.21845444136964756,
+              "planned_weighted_value": 134.1310270009636,
+              "schedule_version_key": "tropical|S1|2026-06-28",
+              "weighting_basis": "duration_weighted"
+            },
+            {
+              "actual_percent_complete": 0.0,
+              "actual_weighted_value": 0.0,
+              "data_date": "2026-06-29",
+              "denominator": 712.0,
+              "planned_percent_complete": 0.19904745536758303,
+              "planned_weighted_value": 141.72178822171912,
+              "schedule_version_key": "tropical|S1|2026-06-29",
+              "weighting_basis": "duration_weighted"
+            }
+          ],
+          "project_key": "tropical",
+          "readiness_status": "ready_after_trend_aggregation",
+          "source_version_keys": [
+            "tropical|S1|2026-06-28",
+            "tropical|S1|2026-06-29"
+          ],
+          "summary": {
+            "default_weighting_basis": "duration_weighted"
+          },
+          "unavailable_variants": [
+            {
+              "reason": "cost_weighted_unavailable",
+              "variant": "cost_weighted"
+            }
+          ],
+          "weighting_basis": "duration_weighted"
+        }
+      ],
+      "project_key": "tropical"
+    },
+    "path": "/api/projects/tropical/schedule/metrics/trends?as_of=2026-06-29&metrics=planned_vs_actual_percent_complete,delay_analysis,nope",
+    "status_code": 200
+  },
+  "blocked_delay_analysis": {
+    "body": {
+      "detail": "metric_not_trend_ready"
+    },
+    "path": "/api/projects/tropical/schedule/metrics/delay_analysis/trend?as_of=2026-06-29",
+    "status_code": 422
+  },
+  "cost_weighted_unavailable": {
+    "body": {
+      "detail": "cost_weighted_unavailable"
+    },
+    "path": "/api/projects/tropical/schedule/metrics/schedule_performance_ratio/trend?as_of=2026-06-29&weighting_basis=cost_weighted",
+    "status_code": 422
+  },
+  "monthly_activity_start_finish_distribution": {
+    "body": {
+      "as_of_date": "2026-06-29",
+      "available": true,
+      "basis_labels": [
+        "source_export",
+        "baseline",
+        "selected_baseline",
+        "computed_cpm",
+        "current_update"
+      ],
+      "caveats": [
+        "Baseline buckets require selected baseline context when multiple baselines exist."
+      ],
+      "comparison_basis": [
+        "current_update",
+        "selected_baseline",
+        "computed_cpm"
+      ],
+      "data_quality_notes": [
+        "Baseline monthly buckets are unavailable unless an active selected baseline exists."
+      ],
+      "display_name": "Monthly Activity Start/Finish Distribution",
+      "formula_summary": "Bucket activity start and finish dates by month for each selected date family.",
+      "metric_key": "monthly_activity_start_finish_distribution",
+      "points": [
+        {
+          "activity_count": 614,
+          "data_date": "2026-06-28",
+          "date_family": "current_finish",
+          "month": "2026-10",
+          "schedule_version_key": "tropical|S1|2026-06-28"
+        },
+        {
+          "activity_count": 614,
+          "data_date": "2026-06-28",
+          "date_family": "current_start",
+          "month": "2026-06",
+          "schedule_version_key": "tropical|S1|2026-06-28"
+        },
+        {
+          "activity_count": 76,
+          "data_date": "2026-06-29",
+          "date_family": "current_finish",
+          "month": "2026-09",
+          "schedule_version_key": "tropical|S1|2026-06-29"
+        },
+        {
+          "activity_count": 175,
+          "data_date": "2026-06-29",
+          "date_family": "current_finish",
+          "month": "2026-10",
+          "schedule_version_key": "tropical|S1|2026-06-29"
+        },
+        {
+          "activity_count": 461,
+          "data_date": "2026-06-29",
+          "date_family": "current_finish",
+          "month": "2026-11",
+          "schedule_version_key": "tropical|S1|2026-06-29"
+        },
+        {
+          "activity_count": 712,
+          "data_date": "2026-06-29",
+          "date_family": "current_start",
+          "month": "2026-06",
+          "schedule_version_key": "tropical|S1|2026-06-29"
+        }
+      ],
+      "project_key": "tropical",
+      "readiness_status": "ready_after_trend_aggregation",
+      "source_version_keys": [
+        "tropical|S1|2026-06-28",
+        "tropical|S1|2026-06-29"
+      ],
+      "summary": {
+        "point_count": 6
+      },
+      "unavailable_variants": [],
+      "weighting_basis": "activity_count"
+    },
+    "path": "/api/projects/tropical/schedule/metrics/monthly_activity_start_finish_distribution/trend?as_of=2026-06-29",
+    "status_code": 200
+  },
+  "planned_vs_actual_percent_complete": {
+    "body": {
+      "as_of_date": "2026-06-29",
+      "available": true,
+      "basis_labels": [
+        "source_export",
+        "prior_update",
+        "current_update"
+      ],
+      "caveats": [
+        "Do not present cost-weighted progress as primary until cost/resource loading is verified."
+      ],
+      "comparison_basis": [
+        "current_update",
+        "prior_update"
+      ],
+      "data_quality_notes": [],
+      "display_name": "Planned vs Actual Percent Complete",
+      "formula_summary": "Default actual progress is duration weighted: sum(percent_complete * original_duration) / sum(original_duration).",
+      "metric_key": "planned_vs_actual_percent_complete",
+      "points": [
+        {
+          "actual_percent_complete": 0.0,
+          "actual_weighted_value": 0.0,
+          "data_date": "2026-06-28",
+          "denominator": 614.0,
+          "planned_percent_complete": 0.21845444136964756,
+          "planned_weighted_value": 134.1310270009636,
+          "schedule_version_key": "tropical|S1|2026-06-28",
+          "weighting_basis": "duration_weighted"
+        },
+        {
+          "actual_percent_complete": 0.0,
+          "actual_weighted_value": 0.0,
+          "data_date": "2026-06-29",
+          "denominator": 712.0,
+          "planned_percent_complete": 0.19904745536758303,
+          "planned_weighted_value": 141.72178822171912,
+          "schedule_version_key": "tropical|S1|2026-06-29",
+          "weighting_basis": "duration_weighted"
+        }
+      ],
+      "project_key": "tropical",
+      "readiness_status": "ready_after_trend_aggregation",
+      "source_version_keys": [
+        "tropical|S1|2026-06-28",
+        "tropical|S1|2026-06-29"
+      ],
+      "summary": {
+        "default_weighting_basis": "duration_weighted"
+      },
+      "unavailable_variants": [
+        {
+          "reason": "cost_weighted_unavailable",
+          "variant": "cost_weighted"
+        }
+      ],
+      "weighting_basis": "duration_weighted"
+    },
+    "path": "/api/projects/tropical/schedule/metrics/planned_vs_actual_percent_complete/trend?as_of=2026-06-29",
+    "status_code": 200
+  },
+  "schedule_changes_over_time": {
+    "body": {
+      "as_of_date": "2026-06-29",
+      "available": true,
+      "basis_labels": [
+        "diff_derived",
+        "computed_cpm",
+        "prior_update"
+      ],
+      "caveats": [
+        "Critical and near-critical changes must use the selected CPM run, not all CPM rows."
+      ],
+      "comparison_basis": [
+        "prior_update"
+      ],
+      "data_quality_notes": [],
+      "display_name": "Schedule Changes Over Time",
+      "formula_summary": "Aggregate persisted diff facts by update period and change category.",
+      "metric_key": "schedule_changes_over_time",
+      "points": [
+        {
+          "categories": {
+            "activity_changes": 0,
+            "added_activity_changes": 0,
+            "calendar_changes": 0,
+            "critical_changes": 0,
+            "deleted_activity_changes": 0,
+            "duration_changes": 0,
+            "lag_changes": 0,
+            "logic_changes": 0,
+            "near_critical_changes": 0,
+            "total_activities": 614
+          },
+          "period": "2026-06-28",
+          "schedule_version_key": "tropical|S1|2026-06-28"
+        },
+        {
+          "categories": {
+            "activity_changes": 537,
+            "added_activity_changes": 0,
+            "calendar_changes": 0,
+            "critical_changes": 0,
+            "deleted_activity_changes": 0,
+            "duration_changes": 0,
+            "lag_changes": 0,
+            "logic_changes": 0,
+            "near_critical_changes": 0,
+            "total_activities": 712
+          },
+          "period": "2026-06-29",
+          "schedule_version_key": "tropical|S1|2026-06-29"
+        }
+      ],
+      "project_key": "tropical",
+      "readiness_status": "ready_after_trend_aggregation",
+      "source_version_keys": [
+        "tropical|S1|2026-06-28",
+        "tropical|S1|2026-06-29"
+      ],
+      "summary": {
+        "category_count": 10
+      },
+      "unavailable_variants": [],
+      "weighting_basis": "change_count"
+    },
+    "path": "/api/projects/tropical/schedule/metrics/schedule_changes_over_time/trend?as_of=2026-06-29",
+    "status_code": 200
+  },
+  "schedule_delay_over_time": {
+    "body": {
+      "as_of_date": "2026-06-29",
+      "available": true,
+      "basis_labels": [
+        "source_export",
+        "prior_update",
+        "selected_baseline",
+        "baseline",
+        "diff_derived"
+      ],
+      "caveats": [
+        "This metric is a schedule review cue only; it is not a causation, entitlement, responsibility, or compensability finding.",
+        "Update-to-update movement is not baseline variance."
+      ],
+      "comparison_basis": [
+        "prior_update",
+        "selected_baseline"
+      ],
+      "data_quality_notes": [
+        "Baseline variance is kept separate from prior-update movement."
+      ],
+      "display_name": "Schedule Delay Over Time",
+      "formula_summary": "For each period, compare current forecast finish to prior forecast finish and selected baseline finish separately.",
+      "metric_key": "schedule_delay_over_time",
+      "points": [
+        {
+          "baseline_finish": null,
+          "current_forecast_finish": "2026-10-15",
+          "current_version_key": "tropical|S1|2026-06-28",
+          "delay_days": 0,
+          "gain_days": 0,
+          "net_movement_days": null,
+          "period": "2026-06-28",
+          "planned_variance_days": null,
+          "prior_forecast_finish": null,
+          "prior_version_key": null
+        },
+        {
+          "baseline_finish": null,
+          "current_forecast_finish": "2026-11-03",
+          "current_version_key": "tropical|S1|2026-06-29",
+          "delay_days": 19,
+          "gain_days": 0,
+          "net_movement_days": 19,
+          "period": "2026-06-29",
+          "planned_variance_days": null,
+          "prior_forecast_finish": "2026-10-15",
+          "prior_version_key": "tropical|S1|2026-06-28"
+        }
+      ],
+      "project_key": "tropical",
+      "readiness_status": "ready_after_trend_aggregation",
+      "source_version_keys": [
+        "tropical|S1|2026-06-28",
+        "tropical|S1|2026-06-29"
+      ],
+      "summary": {
+        "baseline_variance_separate": true
+      },
+      "unavailable_variants": [],
+      "weighting_basis": "calendar_days"
+    },
+    "path": "/api/projects/tropical/schedule/metrics/schedule_delay_over_time/trend?as_of=2026-06-29",
+    "status_code": 200
+  },
+  "schedule_performance_ratio": {
+    "body": {
+      "as_of_date": "2026-06-29",
+      "available": true,
+      "basis_labels": [
+        "source_export",
+        "prior_update",
+        "current_update"
+      ],
+      "caveats": [
+        "Permitted display alias SPI must state this is duration-weighted schedule performance, not certified earned-value SPI."
+      ],
+      "comparison_basis": [
+        "current_update",
+        "prior_update"
+      ],
+      "data_quality_notes": [
+        "This is a duration-weighted schedule performance ratio, not certified earned-value SPI."
+      ],
+      "display_name": "Schedule Performance Ratio",
+      "formula_summary": "Default ratio is duration-weighted EV-like progress divided by duration-weighted PV-like planned progress.",
+      "metric_key": "schedule_performance_ratio",
+      "points": [
+        {
+          "actual_percent_complete": 0.0,
+          "actual_weighted_value": 0.0,
+          "data_date": "2026-06-28",
+          "denominator": 614.0,
+          "ev_duration": 0.0,
+          "planned_percent_complete": 0.21845444136964756,
+          "planned_weighted_value": 134.1310270009636,
+          "pv_duration": 134.1310270009636,
+          "schedule_performance_ratio": 0.0,
+          "schedule_version_key": "tropical|S1|2026-06-28",
+          "weighting_basis": "duration_weighted"
+        },
+        {
+          "actual_percent_complete": 0.0,
+          "actual_weighted_value": 0.0,
+          "data_date": "2026-06-29",
+          "denominator": 712.0,
+          "ev_duration": 0.0,
+          "planned_percent_complete": 0.19904745536758303,
+          "planned_weighted_value": 141.72178822171912,
+          "pv_duration": 141.72178822171912,
+          "schedule_performance_ratio": 0.0,
+          "schedule_version_key": "tropical|S1|2026-06-29",
+          "weighting_basis": "duration_weighted"
+        }
+      ],
+      "project_key": "tropical",
+      "readiness_status": "ready_after_trend_aggregation",
+      "source_version_keys": [
+        "tropical|S1|2026-06-28",
+        "tropical|S1|2026-06-29"
+      ],
+      "summary": {
+        "default_weighting_basis": "duration_weighted",
+        "earned_value_spi": false
+      },
+      "unavailable_variants": [
+        {
+          "reason": "cost_weighted_unavailable",
+          "variant": "cost_weighted"
+        }
+      ],
+      "weighting_basis": "duration_weighted"
+    },
+    "path": "/api/projects/tropical/schedule/metrics/schedule_performance_ratio/trend?as_of=2026-06-29",
+    "status_code": 200
+  }
+}

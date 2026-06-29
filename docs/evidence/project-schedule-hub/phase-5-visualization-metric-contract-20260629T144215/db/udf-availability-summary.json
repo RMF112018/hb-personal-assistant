@@ -1,0 +1,44 @@
+{
+  "contract_udf_dependencies": [
+    "Cost Code",
+    "FLOOR",
+    "Filter Out",
+    "Finish Previous Status",
+    "PHASE",
+    "SECTOR / AREA",
+    "SUBCONTRACTOR",
+    "Schedule Review Comments",
+    "Start Previous Status",
+    "Update Notes"
+  ],
+  "generic_udf_table": "procore_ep_schedule_udf_values",
+  "generic_udf_table_columns": [
+    "id",
+    "project_key",
+    "schedule_table_id",
+    "schedule_id",
+    "schedule_version_key",
+    "import_id",
+    "activity_id",
+    "udf_type_name",
+    "udf_data_type",
+    "udf_value",
+    "source_object_id"
+  ],
+  "generic_udf_table_present": true,
+  "readiness_rule": "Named UDF-dependent metrics cannot be ready_now until normalized queryable UDF semantics are proven.",
+  "required_named_udfs": [
+    "OLD ID",
+    "PHASE",
+    "FLOOR",
+    "SECTOR / AREA",
+    "SUBCONTRACTOR",
+    "Cost Code",
+    "Filter Out",
+    "Start Previous Status",
+    "Finish Previous Status",
+    "Update Notes",
+    "Schedule Review Comments"
+  ],
+  "stable_named_udf_normalization_proven": false
+}

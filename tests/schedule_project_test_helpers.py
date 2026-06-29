@@ -64,3 +64,58 @@ def seed_procore_ep_project(
         project_number=project_number,
         project_id=project_id,
     )
+
+
+def seed_named_schedule_udfs(
+    db_path: str | Path,
+    *,
+    project_key: str,
+    schedule_version_key: str,
+    import_id: str,
+    schedule_id: str = "S1",
+    activity_ids: list[str] | None = None,
+) -> None:
+    """Seed Phase 8B named UDF rows for schedule-controls normalization tests."""
+    targets = activity_ids or ["A100", "A200", "A300"]
+    udf_rows: list[tuple[str, str, str, str]] = [
+        ("OLD ID", "Text", "OLD-100"),
+        ("PHASE", "Text", "Phase 1"),
+        ("FLOOR", "Text", "Level 2"),
+        ("SECTOR / AREA", "Text", "North Wing"),
+        ("SUBCONTRACTOR", "Text", "ABC Electric"),
+        ("Cost Code", "Text", "26-100"),
+        ("Filter Out", "Text", "N"),
+        ("Start (Previous Status)", "Text", "Planned"),
+        ("Finish (Previous Status)", "Text", "Planned"),
+        ("Update Notes", "Text", "Awaiting inspection"),
+        ("Update Notes - 1", "Text", "Note one"),
+        ("Update Notes - 2", "Text", "Note two"),
+        ("Schedule Review Comments", "Text", "Review next week"),
+    ]
+    with sqlite3.connect(str(db_path)) as conn:
+        for activity_id in targets:
+            for udf_type_name, udf_data_type, udf_value in udf_rows:
+                if activity_id == "A300" and udf_type_name == "Filter Out":
+                    udf_value = "MAYBE"
+                conn.execute(
+                    """
+                    INSERT INTO procore_ep_schedule_udf_values (
+                      project_key, schedule_table_id, schedule_id, schedule_version_key,
+                      import_id, activity_id, udf_type_name, udf_data_type, udf_value,
+                      source_object_id
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        project_key,
+                        schedule_id,
+                        schedule_id,
+                        schedule_version_key,
+                        import_id,
+                        activity_id,
+                        udf_type_name,
+                        udf_data_type,
+                        udf_value,
+                        f"obj-{udf_type_name}",
+                    ),
+                )
+        conn.commit()

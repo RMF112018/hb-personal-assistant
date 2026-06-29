@@ -1,0 +1,106 @@
+{
+  "as_of_date": "2026-07-03",
+  "available": true,
+  "basis_labels": [
+    "source_export",
+    "computed_cpm",
+    "quality_derived",
+    "prior_update",
+    "current_update",
+    "udf_derived"
+  ],
+  "caveats": [
+    "This metric is a schedule review cue only; it is not a causation, entitlement, responsibility, or compensability finding."
+  ],
+  "comparison_basis": [
+    "current_update",
+    "prior_update",
+    "computed_cpm"
+  ],
+  "data_quality_notes": [
+    "Issue categories are review cues only; Phase 8B does not create review items or infer responsibility."
+  ],
+  "dimension_coverage": {
+    "cost_code": 1.0,
+    "filter_out": 1.0,
+    "finish_previous_status": 1.0,
+    "floor": 1.0,
+    "old_id": 1.0,
+    "phase": 1.0,
+    "schedule_review_comments": 1.0,
+    "sector_area": 1.0,
+    "start_previous_status": 1.0,
+    "subcontractor": 1.0,
+    "update_notes": 1.0,
+    "update_notes_1": 1.0,
+    "update_notes_2": 1.0
+  },
+  "display_name": "Critical Issues Category Model",
+  "formula_summary": "Classify issue candidates into five PM-facing categories with severity, drilldown basis, review eligibility, and caveats.",
+  "metric_key": "critical_issues_category_model",
+  "partial_dimension_support": false,
+  "points": [
+    {
+      "candidate_count": 0,
+      "category": "negative_float_and_critical_path_erosion",
+      "category_label": "Negative float and critical path erosion",
+      "drilldown_basis": "normalized_udf_and_schedule_facts",
+      "review_item_eligible": false,
+      "severity": "review"
+    },
+    {
+      "candidate_count": 0,
+      "category": "schedule_compression_on_critical_path",
+      "category_label": "Schedule compression on critical path",
+      "drilldown_basis": "normalized_udf_and_schedule_facts",
+      "review_item_eligible": false,
+      "severity": "review"
+    },
+    {
+      "candidate_count": 0,
+      "category": "logic_and_quality_findings",
+      "category_label": "Logic and quality findings",
+      "drilldown_basis": "normalized_udf_and_schedule_facts",
+      "review_item_eligible": false,
+      "severity": "review"
+    },
+    {
+      "candidate_count": 2,
+      "category": "execution_and_status_gaps",
+      "category_label": "Execution and status gaps",
+      "drilldown_basis": "normalized_udf_and_schedule_facts",
+      "review_item_eligible": false,
+      "severity": "review"
+    },
+    {
+      "candidate_count": 3,
+      "category": "review_and_external_flags",
+      "category_label": "Review and external flags",
+      "drilldown_basis": "normalized_udf_and_schedule_facts",
+      "review_item_eligible": false,
+      "severity": "review"
+    }
+  ],
+  "project_key": "tropical",
+  "readiness": {
+    "blockers": [],
+    "caveats": [
+      "This metric is a schedule review cue only; it is not a causation, entitlement, responsibility, or compensability finding."
+    ],
+    "partial_dimension_support": false,
+    "ready": true
+  },
+  "readiness_status": "ready_after_udf_normalization",
+  "source_version_keys": [
+    "tropical|S1|2026-06-01",
+    "tropical|S1|2026-07-01"
+  ],
+  "summary": {
+    "backend_derived": true,
+    "category_count": 5,
+    "review_item_eligible": false,
+    "total_candidate_count": 5
+  },
+  "unavailable_variants": [],
+  "weighting_basis": "severity_model"
+}

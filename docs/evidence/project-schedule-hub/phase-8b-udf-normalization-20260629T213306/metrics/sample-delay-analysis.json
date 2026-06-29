@@ -1,0 +1,71 @@
+{
+  "as_of_date": "2026-07-03",
+  "available": true,
+  "basis_labels": [
+    "source_export",
+    "diff_derived",
+    "prior_update",
+    "udf_derived"
+  ],
+  "caveats": [
+    "This metric is a schedule review cue only; it is not a causation, entitlement, responsibility, or compensability finding."
+  ],
+  "comparison_basis": [
+    "prior_update"
+  ],
+  "data_quality_notes": [
+    "Candidate driver wording is advisory and not a causation or entitlement finding."
+  ],
+  "dimension_coverage": {
+    "cost_code": 1.0,
+    "filter_out": 1.0,
+    "finish_previous_status": 1.0,
+    "floor": 1.0,
+    "old_id": 1.0,
+    "phase": 1.0,
+    "schedule_review_comments": 1.0,
+    "sector_area": 1.0,
+    "start_previous_status": 1.0,
+    "subcontractor": 1.0,
+    "update_notes": 1.0,
+    "update_notes_1": 1.0,
+    "update_notes_2": 1.0
+  },
+  "display_name": "Delay Analysis",
+  "formula_summary": "Combine prior-update movement, diff impact rollups, and candidate driver facts for PM review.",
+  "metric_key": "delay_analysis",
+  "partial_dimension_support": false,
+  "points": [
+    {
+      "candidate_driver": "prior_update_finish_movement",
+      "data_date": "2026-07-01",
+      "delays": 1,
+      "gains": 0,
+      "net_movement": 5,
+      "period": "2026-07-01",
+      "planned_movement": 5,
+      "primary_wbs_phase": "Phase 1",
+      "schedule_end_date": null
+    }
+  ],
+  "project_key": "tropical",
+  "readiness": {
+    "blockers": [],
+    "caveats": [
+      "This metric is a schedule review cue only; it is not a causation, entitlement, responsibility, or compensability finding."
+    ],
+    "partial_dimension_support": false,
+    "ready": true
+  },
+  "readiness_status": "ready_after_udf_normalization",
+  "source_version_keys": [
+    "tropical|S1|2026-06-01",
+    "tropical|S1|2026-07-01"
+  ],
+  "summary": {
+    "backend_derived": true,
+    "review_cue_only": true
+  },
+  "unavailable_variants": [],
+  "weighting_basis": "day_delta"
+}

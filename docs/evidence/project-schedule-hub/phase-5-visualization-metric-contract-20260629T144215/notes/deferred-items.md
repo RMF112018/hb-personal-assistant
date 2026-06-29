@@ -1,0 +1,18 @@
+# Deferred / Blocked Items
+
+- `monthly_activity_start_finish_distribution`: `ready_after_trend_aggregation` — monthly aggregation API not implemented in Phase 5
+- `planned_vs_actual_percent_complete`: `ready_after_trend_aggregation` — trend aggregation by data date is not implemented; cost-weighted variant requires cost/resource loading validation
+- `schedule_performance_ratio`: `ready_after_trend_aggregation` — trend aggregation by data date is not implemented; earned-value/cost-weighted basis is not validated
+- `schedule_delay_over_time`: `ready_after_trend_aggregation` — m; u; l; t; i; -; u; p; d; a; t; e;  ; t; r; e; n; d;  ; A; P; I;  ; i; s;  ; n; o; t;  ; i; m; p; l; e; m; e; n; t; e; d
+- `schedule_changes_over_time`: `ready_after_trend_aggregation` — m; u; l; t; i; -; p; e; r; i; o; d;  ; d; i; f; f;  ; a; g; g; r; e; g; a; t; i; o; n;  ; A; P; I;  ; i; s;  ; n; o; t;  ; i; m; p; l; e; m; e; n; t; e; d
+- `delay_analysis`: `ready_after_udf_normalization` — named UDF normalization is not proven stable; trend aggregation API is not implemented
+- `window_start_accuracy`: `ready_after_udf_normalization` — named UDF filters/status fields are not normalized; window aggregation API is not implemented
+- `window_finish_accuracy`: `ready_after_udf_normalization` — named UDF filters/status fields are not normalized; window aggregation API is not implemented
+- `should_have_finished_status`: `ready_after_udf_normalization` — named UDF filters/comments are not normalized; future donut/drilldown API is not implemented
+- `schedule_compression_ratio`: `ready_after_baseline_selection` — s; e; l; e; c; t; e; d;  ; b; a; s; e; l; i; n; e; /; c; r; o; s; s; w; a; l; k;  ; m; u; s; t;  ; b; e;  ; c; o; n; f; i; r; m; e; d;  ; f; o; r;  ; p; r; o; d; u; c; t;  ; u; s; e
+- `project_schedule_health_index`: `ready_after_trend_aggregation` — composite aggregation API is not implemented; compression overlay depends on selected baseline readiness
+- `schedule_feasibility_score`: `ready_after_trend_aggregation` — d; e; p; e; n; d; s;  ; o; n;  ; s; c; h; e; d; u; l; e;  ; c; o; m; p; r; e; s; s; i; o; n; ,;  ; h; e; a; l; t; h;  ; i; n; d; e; x; ,;  ; a; n; d;  ; p; e; r; f; o; r; m; a; n; c; e;  ; r; a; t; i; o;  ; A; P; I; s
+- `required_recovery_days`: `ready_after_trend_aggregation` — c; r; i; t; i; c; a; l; -; p; a; t; h;  ; d; e; l; a; y;  ; t; r; e; n; d;  ; A; P; I;  ; i; s;  ; n; o; t;  ; i; m; p; l; e; m; e; n; t; e; d
+- `critical_path_length_index`: `ready_after_trend_aggregation` — c; r; i; t; i; c; a; l;  ; p; a; t; h;  ; t; r; e; n; d;  ; a; g; g; r; e; g; a; t; i; o; n;  ; A; P; I;  ; i; s;  ; n; o; t;  ; i; m; p; l; e; m; e; n; t; e; d
+- `total_float_consumption_index`: `ready_after_trend_aggregation` — m; u; l; t; i; -; u; p; d; a; t; e;  ; f; l; o; a; t;  ; a; g; g; r; e; g; a; t; i; o; n;  ; A; P; I;  ; i; s;  ; n; o; t;  ; i; m; p; l; e; m; e; n; t; e; d
+- `critical_issues_category_model`: `ready_after_udf_normalization` — named UDF comments/ownership fields are not normalized; panel aggregation and review-generation rules are not implemented

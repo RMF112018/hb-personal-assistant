@@ -1,0 +1,117 @@
+[
+  {
+    "method": "GET",
+    "path": "/api/projects/tropical/schedule/baseline",
+    "status_code": 200,
+    "body": {
+      "available": true,
+      "project_key": "tropical",
+      "current_version_key": "tropical|S1|2026-06-01",
+      "current_label": "TWNU18",
+      "current_data_date": "2026-06-01",
+      "selected_baseline_version_key": null,
+      "selected_baseline_label": null,
+      "selected_baseline_data_date": null,
+      "status": "no_selection",
+      "readiness": {
+        "ready": false,
+        "blockers": [
+          "selected_baseline_required"
+        ],
+        "backend_derived": true
+      },
+      "recompute_required": false,
+      "selection": null,
+      "caveats": [
+        "Selected-baseline comparison is a review cue and remains separate from prior-update comparison.",
+        "Phase 8A does not trigger import, CPM, or diff recompute."
+      ],
+      "prior_update_comparison": {
+        "basis": "prior_update",
+        "separate": true
+      },
+      "baseline_summary": {
+        "selected_baseline_available": false,
+        "selected_baseline_label": null,
+        "selected_baseline_data_date": null,
+        "original_baseline_detected": false,
+        "original_baseline_label": null,
+        "status": "no_selection",
+        "comparison": {},
+        "current_update_label": "TWNU18",
+        "previous_update_label": null
+      }
+    }
+  },
+  {
+    "method": "PUT viewer",
+    "path": "/api/projects/tropical/schedule/baseline",
+    "status_code": 403,
+    "body": {
+      "detail": "operator_role_required"
+    }
+  },
+  {
+    "method": "PUT operator",
+    "path": "/api/projects/tropical/schedule/baseline",
+    "status_code": 200,
+    "body": {
+      "available": true,
+      "project_key": "tropical",
+      "current_version_key": "tropical|S1|2026-07-01",
+      "current_label": "TWNU19",
+      "current_data_date": "2026-07-01",
+      "selected_baseline_version_key": "tropical|S1|2026-06-01",
+      "selected_baseline_label": "TWNU18",
+      "selected_baseline_data_date": "2026-06-01",
+      "status": "recompute_required",
+      "readiness": {
+        "ready": false,
+        "blockers": [
+          "duration_basis_unavailable",
+          "current_duration_unavailable",
+          "baseline_duration_unavailable"
+        ],
+        "backend_derived": true,
+        "matched_activity_count": 2,
+        "usable_duration_activity_count": 0,
+        "duration_basis": "duration_remaining_then_original",
+        "current_remaining_duration_days": null,
+        "baseline_remaining_duration_days": null,
+        "compression_ratio": null
+      },
+      "recompute_required": true,
+      "selection": {
+        "selection_id": "pbs-5387622226dd4c039ff5d8ad59ac6fe7",
+        "project_key": "tropical",
+        "current_schedule_version_key": "tropical|S1|2026-07-01",
+        "selected_baseline_schedule_version_key": "tropical|S1|2026-06-01",
+        "selection_status": "active",
+        "selected_by_operator": "operator",
+        "selected_at": "2026-06-29T20:32:23.337276+00:00",
+        "selection_note": "Phase 8A evidence",
+        "created_at": "2026-06-29T20:32:23.337276+00:00",
+        "updated_at": "2026-06-29T20:32:23.337276+00:00"
+      },
+      "caveats": [
+        "Selected-baseline comparison is a review cue and remains separate from prior-update comparison.",
+        "Phase 8A does not trigger import, CPM, or diff recompute."
+      ],
+      "prior_update_comparison": {
+        "basis": "prior_update",
+        "separate": true
+      },
+      "baseline_summary": {
+        "selected_baseline_available": false,
+        "selected_baseline_label": null,
+        "selected_baseline_data_date": null,
+        "original_baseline_detected": false,
+        "original_baseline_label": null,
+        "status": "no_selection",
+        "comparison": {},
+        "current_update_label": "TWNU18",
+        "previous_update_label": null
+      }
+    }
+  }
+]

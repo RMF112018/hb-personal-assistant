@@ -1,0 +1,25 @@
+ M frontend/src/components/projects/ProjectScheduleDashboardVisualizations.tsx
+ M frontend/src/lib/api.ts
+ M frontend/src/pages/ProjectSchedulePage.test.tsx
+ M frontend/src/pages/ProjectSchedulePage.tsx
+ M src/hb_assistant/construction/analytics/api.py
+ M src/hb_assistant/construction/analytics/project_schedule_summary_service.py
+ M tests/schedule_project_test_helpers.py
+ M tests/test_project_schedule_baseline_selection.py
+?? docs/evidence/project-schedule-hub/phase-5-visualization-metric-contract-20260629T144215/
+?? docs/evidence/project-schedule-hub/phase-6-trend-aggregation-20260629T151259/
+?? docs/evidence/project-schedule-hub/phase-7-pm-visualization-ui-20260629T153459/
+?? docs/evidence/project-schedule-hub/phase-8a-selected-baseline-workflow-20260629T161840/
+?? docs/evidence/project-schedule-hub/phase-8b-udf-normalization-20260629T213302/
+?? docs/evidence/project-schedule-hub/phase-8b-udf-normalization-20260629T213306/
+?? docs/implementation/project-schedule-controls/selected-baseline-workflow-repo-truth.md
+?? docs/implementation/project-schedule-controls/udf-normalization-repo-truth.md
+?? docs/implementation/project-schedule-controls/visualization-metric-formula-contract.md
+?? scripts/generate_phase_8b_udf_evidence.py
+?? src/hb_assistant/construction/analytics/project_schedule_selected_baseline_service.py
+?? src/hb_assistant/construction/analytics/project_schedule_trend_aggregation_service.py
+?? src/hb_assistant/construction/analytics/project_schedule_udf_normalization_service.py
+?? src/hb_assistant/construction/analytics/project_schedule_visualization_metric_contract.py
+?? tests/test_project_schedule_trend_aggregation_api.py
+?? tests/test_project_schedule_udf_normalization.py
+?? tests/test_project_schedule_visualization_metric_contract.py

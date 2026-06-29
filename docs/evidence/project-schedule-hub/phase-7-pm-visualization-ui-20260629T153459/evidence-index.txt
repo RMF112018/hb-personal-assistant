@@ -1,0 +1,14 @@
+# Evidence Index
+
+api/sample-payloads-used.json
+notes/blocked-metrics-ui-treatment.md
+notes/phase-7-findings.md
+repo/branch.txt
+repo/changed-files.txt
+repo/head.txt
+repo/status-short.txt
+tests/backend-pytest-results.txt
+tests/frontend-test-results.txt
+tests/typecheck-results.txt
+ui/rendered-state-summary.md
+ui/screenshot-instructions.md
