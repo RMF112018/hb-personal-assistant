@@ -14,7 +14,7 @@ from .connection import get_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 89
+LATEST_SCHEMA_VERSION = 91
 
 
 class StaffingMigrationError(RuntimeError):
@@ -6890,6 +6890,18 @@ class SQLiteMigrator:
 
         return V78_STATEMENTS
 
+    @staticmethod
+    def _v90_statements() -> list[str]:
+        from hb_assistant.store.project_schedule_hub_tables import V90_STATEMENTS
+
+        return V90_STATEMENTS
+
+    @staticmethod
+    def _v91_statements() -> list[str]:
+        from hb_assistant.store.project_schedule_hub_tables import V91_STATEMENTS
+
+        return V91_STATEMENTS
+
     # v79 Detailed schedule version diff facts.
     @staticmethod
     def _v79_statements() -> list[str]:
@@ -8472,6 +8484,26 @@ class SQLiteMigrator:
             if cur.fetchone() is None:
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (89, 'v89_schedule_quality_app_cpm_metric_status', ?)",
+                    (now,),
+                )
+
+            # v90 Project Schedule Hub Phase 2: series membership + baseline selection tables.
+            for stmt in self._v90_statements():
+                conn.execute(stmt)
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 90")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (90, 'v90_project_schedule_hub_phase2', ?)",
+                    (now,),
+                )
+
+            # v91 Project Schedule Hub Phase 4: PM review workbench persistence.
+            for stmt in self._v91_statements():
+                conn.execute(stmt)
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 91")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (91, 'v91_project_schedule_review_workbench', ?)",
                     (now,),
                 )
 

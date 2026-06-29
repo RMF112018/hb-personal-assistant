@@ -1,0 +1,17 @@
+
+> frontend@0.0.0 test
+> vitest run ProjectSchedulePage.test.tsx
+
+
+ RUN  v1.6.1 /Users/bobbyfetting/hb-personal-assistant/frontend
+
+stderr | src/pages/ProjectSchedulePage.test.tsx > ProjectSchedulePage > renders a PM-facing above-fold schedule story and scoped project tab
+⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+
+ ✓ src/pages/ProjectSchedulePage.test.tsx  (5 tests) 166ms
+
+ Test Files  1 passed (1)
+      Tests  5 passed (5)
+   Start at  19:28:05
+   Duration  1.19s (transform 87ms, setup 69ms, collect 184ms, tests 166ms, environment 357ms, prepare 59ms)
+

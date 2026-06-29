@@ -256,6 +256,126 @@ export function getProjectScheduleSummary(projectKey: string) {
     `/api/projects/${encodeURIComponent(projectKey)}/schedule`,
   );
 }
+export function getProjectScheduleDrivers(
+  projectKey: string,
+  drilldownType: string,
+  opts?: { limit?: number; offset?: number; asOf?: string; driverActivityId?: string },
+) {
+  const params = new URLSearchParams({ type: drilldownType });
+  if (opts?.limit != null) params.set('limit', String(opts.limit));
+  if (opts?.offset != null) params.set('offset', String(opts.offset));
+  if (opts?.asOf) params.set('as_of', opts.asOf);
+  if (opts?.driverActivityId) params.set('driver_activity_id', opts.driverActivityId);
+  return fetchJson(
+    `/api/projects/${encodeURIComponent(projectKey)}/schedule/drivers?${params.toString()}`,
+  );
+}
+export function getProjectScheduleDrilldown(
+  projectKey: string,
+  drilldownType: string,
+  opts?: { limit?: number; offset?: number; asOf?: string },
+) {
+  const params = new URLSearchParams({ type: drilldownType });
+  if (opts?.limit != null) params.set('limit', String(opts.limit));
+  if (opts?.offset != null) params.set('offset', String(opts.offset));
+  if (opts?.asOf) params.set('as_of', opts.asOf);
+  return fetchJson(
+    `/api/projects/${encodeURIComponent(projectKey)}/schedule/drilldowns?${params.toString()}`,
+  );
+}
+export function getProjectScheduleBaseline(projectKey: string) {
+  return fetchJson(`/api/projects/${encodeURIComponent(projectKey)}/schedule/baseline`);
+}
+export function putProjectScheduleBaseline(
+  projectKey: string,
+  body: {
+    current_schedule_version_key: string;
+    selected_baseline_schedule_version_key: string;
+    selection_note?: string | null;
+  },
+) {
+  return fetchJson(`/api/projects/${encodeURIComponent(projectKey)}/schedule/baseline`, {
+    method: 'PUT',
+    body: JSON.stringify(body),
+  });
+}
+export function getProjectScheduleDriverDetail(
+  projectKey: string,
+  activityId: string,
+  opts?: { comparisonBasis?: 'prior_update' | 'baseline'; asOf?: string },
+) {
+  const params = new URLSearchParams();
+  if (opts?.comparisonBasis) params.set('comparison_basis', opts.comparisonBasis);
+  if (opts?.asOf) params.set('as_of', opts.asOf);
+  const qs = params.toString();
+  return fetchJson(
+    `/api/projects/${encodeURIComponent(projectKey)}/schedule/drivers/${encodeURIComponent(activityId)}/detail${qs ? `?${qs}` : ''}`,
+  );
+}
+export function syncProjectScheduleReviewItems(
+  projectKey: string,
+  opts?: { asOf?: string },
+) {
+  const params = new URLSearchParams();
+  if (opts?.asOf) params.set('as_of', opts.asOf);
+  const qs = params.toString();
+  return fetchJson(
+    `/api/projects/${encodeURIComponent(projectKey)}/schedule/review-items${qs ? `?${qs}` : ''}`,
+    {
+      method: 'POST',
+      body: JSON.stringify({}),
+    },
+  );
+}
+export function getProjectScheduleReviewItems(
+  projectKey: string,
+  opts?: { reviewStatus?: string; limit?: number; offset?: number; asOf?: string },
+) {
+  const params = new URLSearchParams();
+  if (opts?.reviewStatus) params.set('review_status', opts.reviewStatus);
+  if (opts?.limit != null) params.set('limit', String(opts.limit));
+  if (opts?.offset != null) params.set('offset', String(opts.offset));
+  if (opts?.asOf) params.set('as_of', opts.asOf);
+  const qs = params.toString();
+  return fetchJson(
+    `/api/projects/${encodeURIComponent(projectKey)}/schedule/review-items${qs ? `?${qs}` : ''}`,
+  );
+}
+export function patchProjectScheduleReviewItem(
+  projectKey: string,
+  reviewItemId: string,
+  body: { review_status?: string; pm_notes?: string | null },
+) {
+  return fetchJson(
+    `/api/projects/${encodeURIComponent(projectKey)}/schedule/review-items/${encodeURIComponent(reviewItemId)}`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    },
+  );
+}
+export async function downloadProjectScheduleExport(
+  projectKey: string,
+  format: 'markdown' | 'html' = 'markdown',
+  opts?: { asOf?: string },
+) {
+  const { downloadBlob } = await import('../components/forecast/forecastMonthlyExportWriters');
+  const role = getLocalUiRole();
+  const params = new URLSearchParams({ format });
+  if (opts?.asOf) params.set('as_of', opts.asOf);
+  const response = await fetch(
+    `${API_BASE}/api/projects/${encodeURIComponent(projectKey)}/schedule/export?${params.toString()}`,
+    { headers: { 'X-HB-UI-Role': role } },
+  );
+  if (!response.ok) {
+    throw new Error(`export_failed_${response.status}`);
+  }
+  const blob = await response.blob();
+  const disposition = response.headers.get('Content-Disposition') || '';
+  const match = disposition.match(/filename="([^"]+)"/);
+  const filename = match?.[1] || `schedule-memo-${projectKey}.${format === 'markdown' ? 'md' : 'html'}`;
+  downloadBlob(blob, filename);
+}
 
 /* My Items (Prompt 09 / UI-09). Aggregate only — no subroutes. */
 export function getMyItems() {
@@ -1933,6 +2053,20 @@ export function getScheduleIdentity(projectKey: string, scheduleIdentityKey: str
 export function getScheduleIdentityReview(projectKey: string) {
   return fetchJson(`/api/schedules/projects/${encodeURIComponent(projectKey)}/identity-review`);
 }
+export function setScheduleSeriesMembership(
+  projectKey: string,
+  scheduleVersionKey: string,
+  membershipStatus: 'accepted' | 'excluded' | 'pending',
+  reason?: string,
+) {
+  return fetchJson(
+    `/api/schedules/projects/${encodeURIComponent(projectKey)}/versions/${encodeURIComponent(scheduleVersionKey)}/series-membership`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ membership_status: membershipStatus, reason: reason || null }),
+    },
+  );
+}
 export function reassignScheduleIdentity(
   projectKey: string,
   scheduleVersionKey: string,
@@ -2266,6 +2400,15 @@ export const api = {
   getProjectFieldOperations,
   getProjectCostTime,
   getProjectScheduleSummary,
+  getProjectScheduleDrilldown,
+  getProjectScheduleDrivers,
+  getProjectScheduleBaseline,
+  putProjectScheduleBaseline,
+  getProjectScheduleDriverDetail,
+  syncProjectScheduleReviewItems,
+  getProjectScheduleReviewItems,
+  patchProjectScheduleReviewItem,
+  downloadProjectScheduleExport,
   getMyItems,
   getAdmin,
   getAdminSourceSyncHealth,
@@ -2428,6 +2571,7 @@ export const api = {
   getScheduleIdentities,
   getScheduleIdentity,
   getScheduleIdentityReview,
+  setScheduleSeriesMembership,
   reassignScheduleIdentity,
   splitScheduleIdentity,
   mergeScheduleIdentities,
