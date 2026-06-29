@@ -284,8 +284,12 @@ def test_insufficient_scope_rejected_before_offload(
 
     monkeypatch.setattr(ObsidianMcpService, "create_note", _flag_create)
     with client:
-        _configure(client, vault, oauth_enabled=True)
-        token = oauth_store.issue_access_token(["obsidian.read"])["access_token"]
+        _configure(client, vault, oauth_enabled=True, public_base_url=f"http://{HOST}")
+        token = oauth_store.issue_access_token(
+            scopes=["obsidian.read"],
+            client_id=oauth_store.CLIENT_ID,
+            resource=oauth_store.mcp_resource(f"http://{HOST}"),
+        )["access_token"]
         headers = _session(client, authorization=f"Bearer {token}")
         resp = _call(client, headers, "create_note", {"path": "Managed/Nope.md", "content": "x"}, _id=8)
         assert resp.status_code == 200

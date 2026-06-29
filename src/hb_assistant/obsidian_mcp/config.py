@@ -62,6 +62,11 @@ class ObsidianMcpConfig(BaseModel):
     allowed_write_file_types: list[str] = Field(default_factory=lambda: list(DEFAULT_ALLOWED_WRITE_FILE_TYPES))
     oauth_enabled: bool = False
     public_base_url: str | None = None
+    chatgpt_enabled: bool = True
+    chatgpt_readonly_mode: bool = True
+    dynamic_client_registration_enabled: bool = True
+    client_id_metadata_document_enabled: bool = False
+    chatgpt_initial_scopes: list[str] = Field(default_factory=lambda: ["obsidian.read"])
     curation_dense_folder_threshold: int = 5
     curation_operator_hidden_inspection: bool = False
     summarization_backend: Literal["auto", "deterministic", "llm"] = "auto"
@@ -162,6 +167,19 @@ class ObsidianMcpConfig(BaseModel):
                 normalized.append(ext)
         return normalized or list(DEFAULT_ALLOWED_WRITE_FILE_TYPES)
 
+    @field_validator("chatgpt_initial_scopes")
+    @classmethod
+    def validate_chatgpt_initial_scopes(cls, value: list[str]) -> list[str]:
+        supported = {"obsidian.read", "obsidian.write"}
+        normalized: list[str] = []
+        for item in value:
+            scope = item.strip()
+            if scope not in supported:
+                raise ValueError(f"unsupported_chatgpt_scope:{scope}")
+            if scope not in normalized:
+                normalized.append(scope)
+        return normalized or ["obsidian.read"]
+
     @field_validator("protected_paths")
     @classmethod
     def validate_protected_paths(cls, value: list[str]) -> list[str]:
@@ -211,6 +229,11 @@ class ObsidianMcpConfigPatch(BaseModel):
     allowed_write_file_types: list[str] | None = None
     oauth_enabled: bool | None = None
     public_base_url: str | None = None
+    chatgpt_enabled: bool | None = None
+    chatgpt_readonly_mode: bool | None = None
+    dynamic_client_registration_enabled: bool | None = None
+    client_id_metadata_document_enabled: bool | None = None
+    chatgpt_initial_scopes: list[str] | None = None
     curation_dense_folder_threshold: int | None = None
     curation_operator_hidden_inspection: bool | None = None
     summarization_backend: Literal["auto", "deterministic", "llm"] | None = None
@@ -282,6 +305,13 @@ def apply_patch(patch: ObsidianMcpConfigPatch) -> tuple[ObsidianMcpConfig, str |
 
     if "vault_root" in updates and updates["vault_root"] is not None:
         updates["vault_root"] = str(Path(str(updates["vault_root"])).expanduser())
+
+    if "chatgpt_readonly_mode" in updates and "chatgpt_initial_scopes" not in updates:
+        updates["chatgpt_initial_scopes"] = (
+            ["obsidian.read"] if updates["chatgpt_readonly_mode"] else ["obsidian.read", "obsidian.write"]
+        )
+    elif "chatgpt_initial_scopes" in updates and "chatgpt_readonly_mode" not in updates:
+        updates["chatgpt_readonly_mode"] = "obsidian.write" not in updates["chatgpt_initial_scopes"]
 
     # Merge as plain data then validate, so nested models (e.g. external_sources) are coerced
     # cleanly from dicts without an intermediate model_dump over half-built submodels.

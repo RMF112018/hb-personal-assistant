@@ -126,6 +126,18 @@ def _safe_descriptors(args: dict[str, Any]) -> dict[str, Any]:
     return safe
 
 
+def _tool_start_message(tool: str) -> str:
+    return f"obsidian_mcp.tool_start tool={tool}"
+
+
+def _tool_end_message(tool: str, elapsed_ms: float) -> str:
+    return f"obsidian_mcp.tool_end tool={tool} elapsed_ms={elapsed_ms}"
+
+
+def _tool_error_message(tool: str, error_code: str, elapsed_ms: float) -> str:
+    return f"obsidian_mcp.tool_error tool={tool} error_code={error_code} elapsed_ms={elapsed_ms}"
+
+
 def _auth_required(config: ObsidianMcpConfig) -> bool:
     return bool(config.token_configured or getattr(config, "oauth_enabled", False))
 
@@ -136,7 +148,12 @@ def is_authorized(authorization: str | None, config: ObsidianMcpConfig) -> bool:
     if config.token_configured and auth == f"Bearer {config.bearer_token}":
         return True
     if getattr(config, "oauth_enabled", False) and auth.startswith(_BEARER_PREFIX):
-        return oauth_store.validate_access_token(auth[len(_BEARER_PREFIX):]) is not None
+        if not config.public_base_url:
+            return False
+        return oauth_store.validate_access_token(
+            auth[len(_BEARER_PREFIX):],
+            resource=oauth_store.mcp_resource(config.public_base_url),
+        ) is not None
     return False
 
 
@@ -152,7 +169,12 @@ def resolve_granted_scopes(authorization: str | None, config: ObsidianMcpConfig)
     if config.token_configured and auth == f"Bearer {config.bearer_token}":
         return None
     if auth.startswith(_BEARER_PREFIX):
-        info = oauth_store.validate_access_token(auth[len(_BEARER_PREFIX):])
+        if not config.public_base_url:
+            return ()
+        info = oauth_store.validate_access_token(
+            auth[len(_BEARER_PREFIX):],
+            resource=oauth_store.mcp_resource(config.public_base_url),
+        )
         if info is not None:
             return tuple(info.scopes)
     return ()
@@ -181,11 +203,19 @@ class BearerTokenMiddleware:
             if _auth_required(config):
                 headers = {k.decode("latin1").lower(): v.decode("latin1") for k, v in scope.get("headers", [])}
                 if not is_authorized(headers.get("authorization"), config):
+                    response_headers = [(b"content-type", b"application/json")]
+                    if config.public_base_url:
+                        response_headers.append(
+                            (
+                                b"www-authenticate",
+                                oauth_store.www_authenticate_header(config.public_base_url).encode("latin1"),
+                            )
+                        )
                     await send(
                         {
                             "type": "http.response.start",
                             "status": 401,
-                            "headers": [(b"content-type", b"application/json")],
+                            "headers": response_headers,
                         }
                     )
                     await send({"type": "http.response.body", "body": b'{"detail":"unauthorized"}'})
@@ -227,6 +257,7 @@ def build_streamable_http_app(
     from mcp.server.transport_security import (  # type: ignore[import-not-found]  # noqa: PLC0415
         TransportSecuritySettings,
     )
+    from mcp.types import ToolAnnotations  # type: ignore[import-not-found]  # noqa: PLC0415
 
     svc = service or ObsidianMcpService(db_path=db_path)
     mcp = FastMCP(
@@ -281,6 +312,18 @@ def build_streamable_http_app(
             return pathsafe.PRINCIPAL_LOCAL
         return pathsafe.PRINCIPAL_OAUTH
 
+    def _tool_options(tool_name: str, *, read_only: bool, destructive: bool = False) -> dict[str, Any]:
+        scope = _TOOL_SCOPES[tool_name]
+        security_scheme = {"type": "oauth2", "scopes": [scope]}
+        return {
+            "annotations": ToolAnnotations(readOnlyHint=read_only, destructiveHint=destructive),
+            "meta": {
+                "securitySchemes": [security_scheme],
+                "openai/toolInvocation/invoking": f"Running {tool_name}",
+                "openai/toolInvocation/invoked": f"Completed {tool_name}",
+            },
+        }
+
     async def _run_tool(
         tool: str,
         ctx: Context,
@@ -301,7 +344,7 @@ def build_streamable_http_app(
             **_safe_descriptors(args),
         }
         _logger.info(
-            "obsidian_mcp.tool_start",
+            _tool_start_message(tool),
             extra={"obsidian_mcp": {"tool": tool, "status": "start", **diag}},
         )
         started = time.monotonic()
@@ -314,7 +357,7 @@ def build_streamable_http_app(
         except TimeoutError:
             elapsed_ms = round((time.monotonic() - started) * 1000, 1)
             _logger.warning(
-                "obsidian_mcp.tool_error",
+                _tool_error_message(tool, "tool_timeout", elapsed_ms),
                 extra={
                     "obsidian_mcp": {
                         "tool": tool,
@@ -329,7 +372,7 @@ def build_streamable_http_app(
         except ObsidianMcpToolError as exc:
             elapsed_ms = round((time.monotonic() - started) * 1000, 1)
             _logger.warning(
-                "obsidian_mcp.tool_error",
+                _tool_error_message(tool, exc.code, elapsed_ms),
                 extra={
                     "obsidian_mcp": {
                         "tool": tool,
@@ -344,7 +387,7 @@ def build_streamable_http_app(
         except Exception as exc:
             elapsed_ms = round((time.monotonic() - started) * 1000, 1)
             _logger.warning(
-                "obsidian_mcp.tool_error",
+                _tool_error_message(tool, "internal_error", elapsed_ms),
                 extra={
                     "obsidian_mcp": {
                         "tool": tool,
@@ -358,12 +401,12 @@ def build_streamable_http_app(
             raise ObsidianMcpToolError("internal_error") from exc
         elapsed_ms = round((time.monotonic() - started) * 1000, 1)
         _logger.info(
-            "obsidian_mcp.tool_end",
+            _tool_end_message(tool, elapsed_ms),
             extra={"obsidian_mcp": {"tool": tool, "status": "ok", "elapsed_ms": elapsed_ms, **diag}},
         )
         return result
 
-    @mcp.tool()
+    @mcp.tool(**_tool_options("list_directory", read_only=True))
     async def list_directory(
         ctx: Context,
         path: str = "",
@@ -381,7 +424,7 @@ def build_streamable_http_app(
         }
         return await _run_tool("list_directory", ctx, lambda: svc.list_directory(args), args)
 
-    @mcp.tool()
+    @mcp.tool(**_tool_options("search_vault", read_only=True))
     async def search_vault(
         ctx: Context,
         query: str,
@@ -401,7 +444,7 @@ def build_streamable_http_app(
         }
         return await _run_tool("search_vault", ctx, lambda: svc.search_vault(args), args)
 
-    @mcp.tool()
+    @mcp.tool(**_tool_options("read_file", read_only=True))
     async def read_file(
         ctx: Context,
         path: str,
@@ -421,7 +464,7 @@ def build_streamable_http_app(
         }
         return await _run_tool("read_file", ctx, lambda: svc.read_file(args), args)
 
-    @mcp.tool()
+    @mcp.tool(**_tool_options("create_note", read_only=False))
     async def create_note(
         ctx: Context,
         path: str,
@@ -444,7 +487,7 @@ def build_streamable_http_app(
         }
         return await _run_tool("create_note", ctx, lambda: svc.create_note(args), args)
 
-    @mcp.tool()
+    @mcp.tool(**_tool_options("patch_note", read_only=False, destructive=True))
     async def patch_note(ctx: Context, path: str, content: str, expected_sha256: str) -> dict[str, Any]:
         """Replace an existing Markdown note as a whole-file replacement when SHA-256 matches."""
         _enforce("patch_note", ctx)

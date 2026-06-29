@@ -253,8 +253,10 @@ class ObsidianMcpService:
             CLIENT_ID,
             SUPPORTED_SCOPES,
             TOKEN_AUTH_METHOD,
+            chatgpt_setup_values,
             grok_setup_values,
             recent_events,
+            resource_metadata_url,
         )
 
         config = self.get_config()
@@ -262,7 +264,9 @@ class ObsidianMcpService:
         endpoints = {
             "authorization_endpoint": f"{base}/oauth/authorize" if base else None,
             "token_endpoint": f"{base}/oauth/token" if base else None,
+            "registration_endpoint": f"{base}/oauth/register" if base else None,
             "metadata_endpoint": f"{base}/.well-known/oauth-authorization-server" if base else None,
+            "protected_resource_metadata_endpoint": resource_metadata_url(base) if base else None,
             "mcp_url": f"{base}/mcp" if base else None,
         }
         return {
@@ -274,7 +278,104 @@ class ObsidianMcpService:
             "token_auth_method": TOKEN_AUTH_METHOD,
             "endpoints": endpoints,
             "grok_setup": grok_setup_values(base) if base else None,
+            "chatgpt_setup": chatgpt_setup_values(base, initial_scopes=config.chatgpt_initial_scopes) if base else None,
+            "chatgpt": self.chatgpt_status(base),
             "recent_events": recent_events(20),
+            "guardrails": self.guardrails(),
+        }
+
+    def chatgpt_status(self, base: str | None = None) -> dict[str, Any]:
+        from .oauth_store import SUPPORTED_SCOPES, chatgpt_setup_values, recent_events
+
+        config = self.get_config()
+        resolved_base = (base or config.public_base_url or "").rstrip("/")
+        return {
+            "surface": "settings.obsidian_mcp.chatgpt",
+            "enabled": config.chatgpt_enabled,
+            "readonly_mode": config.chatgpt_readonly_mode,
+            "dynamic_client_registration_enabled": config.dynamic_client_registration_enabled,
+            "client_id_metadata_document_enabled": False,
+            "client_id_metadata_document_supported": False,
+            "initial_scopes": config.chatgpt_initial_scopes,
+            "supported_scopes": list(SUPPORTED_SCOPES),
+            "setup": chatgpt_setup_values(resolved_base, initial_scopes=config.chatgpt_initial_scopes) if resolved_base else None,
+            "recent_events": recent_events(20),
+            "guardrails": self.guardrails(),
+        }
+
+    def chatgpt_readiness(self) -> dict[str, Any]:
+        from .oauth_store import (
+            authorization_server_metadata,
+            protected_resource_metadata,
+            register_client,
+            www_authenticate_header,
+        )
+
+        config = self.get_config()
+        base = (config.public_base_url or "").rstrip("/")
+        checks: list[dict[str, Any]] = []
+
+        def add(name: str, ok: bool, detail: str) -> None:
+            checks.append({"name": name, "status": "pass" if ok else "fail", "detail": detail})
+
+        add("public_base_url", bool(base), base or "public_base_url_missing")
+        if base:
+            challenge = www_authenticate_header(base)
+            add("mcp_401_www_authenticate", "resource_metadata=" in challenge and "obsidian.read" in challenge, challenge)
+            protected = protected_resource_metadata(base)
+            metadata = authorization_server_metadata(base)
+            add("protected_resource_metadata", protected.get("resource") == f"{base}/mcp", str(protected.get("resource")))
+            add("authorization_server_metadata", metadata.get("issuer") == base, str(metadata.get("issuer")))
+            add("registration_endpoint", metadata.get("registration_endpoint") == f"{base}/oauth/register", str(metadata.get("registration_endpoint")))
+            add(
+                "cimd_unadvertised",
+                "client_id_metadata_document_supported" not in metadata,
+                "CIMD disabled and unadvertised",
+            )
+            add("no_stale_trycloudflare", "trycloudflare.com" not in str(protected) + str(metadata), "no stale tunnel URL")
+        else:
+            add("mcp_401_www_authenticate", False, "public_base_url_missing")
+            add("protected_resource_metadata", False, "public_base_url_missing")
+            add("authorization_server_metadata", False, "public_base_url_missing")
+            add("registration_endpoint", False, "public_base_url_missing")
+            add("cimd_unadvertised", True, "CIMD disabled and unadvertised")
+            add("no_stale_trycloudflare", True, "no stale tunnel URL")
+
+        if config.dynamic_client_registration_enabled:
+            try:
+                initial_scope = " ".join(config.chatgpt_initial_scopes)
+                sample = register_client(
+                    {
+                        "redirect_uris": ["https://chatgpt.com/connector/oauth/readiness-check"],
+                        "grant_types": ["authorization_code"],
+                        "response_types": ["code"],
+                        "token_endpoint_auth_method": "none",
+                        "scope": initial_scope,
+                        "client_name": "ChatGPT Readiness Check",
+                    }
+                )
+                add(
+                    "oauth_register_post",
+                    str(sample.get("client_id", "")).startswith("chatgpt_") and sample.get("scope") == initial_scope,
+                    f"POST /oauth/register accepted synthetic public client with scope {sample.get('scope')}",
+                )
+            except Exception as exc:
+                add("oauth_register_post", False, f"{type(exc).__name__}: {exc}")
+        else:
+            add("oauth_register_post", False, "dynamic_client_registration_disabled")
+
+        initial_scope = " ".join(config.chatgpt_initial_scopes)
+        expected_scope = "obsidian.read" if config.chatgpt_readonly_mode else "obsidian.read obsidian.write"
+        add(
+            "chatgpt_setup_scope",
+            initial_scope == expected_scope,
+            f"initial ChatGPT setup scope is {initial_scope}",
+        )
+        return {
+            "surface": "settings.obsidian_mcp.chatgpt_readiness",
+            "checked_at": _now(),
+            "ok": all(check["status"] == "pass" for check in checks),
+            "checks": checks,
             "guardrails": self.guardrails(),
         }
 
