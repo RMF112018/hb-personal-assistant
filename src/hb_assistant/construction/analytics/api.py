@@ -579,6 +579,13 @@ def _oauth_consent_html(*, scopes: list[str], vault_root: str, write_enabled: bo
         for key, value in params.items()
     )
     scope_items = "".join(f"<li><code>{_html.escape(scope)}</code></li>" for scope in scopes)
+    write_warning = (
+        "<p style='border:1px solid #f59e0b;padding:.75rem'>"
+        "This connection is requesting write access to your Obsidian vault. Write operations remain subject to "
+        "the configured vault write policy and protected-path rules.</p>"
+        if "obsidian.write" in scopes
+        else ""
+    )
     write_label = "enabled" if write_enabled else "disabled"
     client_name = params.get("client_name") or "MCP client"
     redirect_host = urlsplit(params.get("redirect_uri") or "").hostname or "unknown"
@@ -592,6 +599,7 @@ def _oauth_consent_html(*, scopes: list[str], vault_root: str, write_enabled: bo
         "<p>Approve this request to let this remote MCP connector use your local Obsidian vault.</p>"
         "<p><strong>Requested scopes</strong></p>"
         f"<ul>{scope_items}</ul>"
+        f"{write_warning}"
         f"<p><strong>Redirect host:</strong> <code>{_html.escape(redirect_host)}</code></p>"
         f"<p><strong>MCP resource:</strong> <code>{_html.escape(resource)}</code></p>"
         f"<p><strong>Public base URL:</strong> <code>{_html.escape(public_base_url)}</code></p>"
