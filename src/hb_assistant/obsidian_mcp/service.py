@@ -35,6 +35,23 @@ def _now() -> str:
 class ObsidianMcpService:
     """Application-backend service used by FastAPI routes and MCP handlers."""
 
+    def __init__(self, db_path: str | None = None) -> None:
+        self._db_path = db_path
+
+    @property
+    def db_path(self) -> str:
+        """SQLite path for the source-intelligence index (same DB as the migrator)."""
+        if self._db_path is not None:
+            return self._db_path
+        from hb_assistant.config.path_policy import PathPolicy
+
+        return str(PathPolicy().get_db_path())
+
+    def _source_repo(self) -> Any:
+        from .source_index_repository import SourceIndexRepository
+
+        return SourceIndexRepository(self.db_path)
+
     def get_config(self) -> ObsidianMcpConfig:
         return load_config()
 
@@ -245,8 +262,10 @@ class ObsidianMcpService:
             CLIENT_ID,
             SUPPORTED_SCOPES,
             TOKEN_AUTH_METHOD,
+            chatgpt_setup_values,
             grok_setup_values,
             recent_events,
+            resource_metadata_url,
         )
 
         config = self.get_config()
@@ -254,7 +273,9 @@ class ObsidianMcpService:
         endpoints = {
             "authorization_endpoint": f"{base}/oauth/authorize" if base else None,
             "token_endpoint": f"{base}/oauth/token" if base else None,
+            "registration_endpoint": f"{base}/oauth/register" if base else None,
             "metadata_endpoint": f"{base}/.well-known/oauth-authorization-server" if base else None,
+            "protected_resource_metadata_endpoint": resource_metadata_url(base) if base else None,
             "mcp_url": f"{base}/mcp" if base else None,
         }
         return {
@@ -266,7 +287,104 @@ class ObsidianMcpService:
             "token_auth_method": TOKEN_AUTH_METHOD,
             "endpoints": endpoints,
             "grok_setup": grok_setup_values(base) if base else None,
+            "chatgpt_setup": chatgpt_setup_values(base, initial_scopes=config.chatgpt_initial_scopes) if base else None,
+            "chatgpt": self.chatgpt_status(base),
             "recent_events": recent_events(20),
+            "guardrails": self.guardrails(),
+        }
+
+    def chatgpt_status(self, base: str | None = None) -> dict[str, Any]:
+        from .oauth_store import SUPPORTED_SCOPES, chatgpt_setup_values, recent_events
+
+        config = self.get_config()
+        resolved_base = (base or config.public_base_url or "").rstrip("/")
+        return {
+            "surface": "settings.obsidian_mcp.chatgpt",
+            "enabled": config.chatgpt_enabled,
+            "readonly_mode": config.chatgpt_readonly_mode,
+            "dynamic_client_registration_enabled": config.dynamic_client_registration_enabled,
+            "client_id_metadata_document_enabled": False,
+            "client_id_metadata_document_supported": False,
+            "initial_scopes": config.chatgpt_initial_scopes,
+            "supported_scopes": list(SUPPORTED_SCOPES),
+            "setup": chatgpt_setup_values(resolved_base, initial_scopes=config.chatgpt_initial_scopes) if resolved_base else None,
+            "recent_events": recent_events(20),
+            "guardrails": self.guardrails(),
+        }
+
+    def chatgpt_readiness(self) -> dict[str, Any]:
+        from .oauth_store import (
+            authorization_server_metadata,
+            protected_resource_metadata,
+            register_client,
+            www_authenticate_header,
+        )
+
+        config = self.get_config()
+        base = (config.public_base_url or "").rstrip("/")
+        checks: list[dict[str, Any]] = []
+
+        def add(name: str, ok: bool, detail: str) -> None:
+            checks.append({"name": name, "status": "pass" if ok else "fail", "detail": detail})
+
+        add("public_base_url", bool(base), base or "public_base_url_missing")
+        if base:
+            challenge = www_authenticate_header(base)
+            add("mcp_401_www_authenticate", "resource_metadata=" in challenge and "obsidian.read" in challenge, challenge)
+            protected = protected_resource_metadata(base)
+            metadata = authorization_server_metadata(base)
+            add("protected_resource_metadata", protected.get("resource") == f"{base}/mcp", str(protected.get("resource")))
+            add("authorization_server_metadata", metadata.get("issuer") == base, str(metadata.get("issuer")))
+            add("registration_endpoint", metadata.get("registration_endpoint") == f"{base}/oauth/register", str(metadata.get("registration_endpoint")))
+            add(
+                "cimd_unadvertised",
+                "client_id_metadata_document_supported" not in metadata,
+                "CIMD disabled and unadvertised",
+            )
+            add("no_stale_trycloudflare", "trycloudflare.com" not in str(protected) + str(metadata), "no stale tunnel URL")
+        else:
+            add("mcp_401_www_authenticate", False, "public_base_url_missing")
+            add("protected_resource_metadata", False, "public_base_url_missing")
+            add("authorization_server_metadata", False, "public_base_url_missing")
+            add("registration_endpoint", False, "public_base_url_missing")
+            add("cimd_unadvertised", True, "CIMD disabled and unadvertised")
+            add("no_stale_trycloudflare", True, "no stale tunnel URL")
+
+        if config.dynamic_client_registration_enabled:
+            try:
+                initial_scope = " ".join(config.chatgpt_initial_scopes)
+                sample = register_client(
+                    {
+                        "redirect_uris": ["https://chatgpt.com/connector/oauth/readiness-check"],
+                        "grant_types": ["authorization_code"],
+                        "response_types": ["code"],
+                        "token_endpoint_auth_method": "none",
+                        "scope": initial_scope,
+                        "client_name": "ChatGPT Readiness Check",
+                    }
+                )
+                add(
+                    "oauth_register_post",
+                    str(sample.get("client_id", "")).startswith("chatgpt_") and sample.get("scope") == initial_scope,
+                    f"POST /oauth/register accepted synthetic public client with scope {sample.get('scope')}",
+                )
+            except Exception as exc:
+                add("oauth_register_post", False, f"{type(exc).__name__}: {exc}")
+        else:
+            add("oauth_register_post", False, "dynamic_client_registration_disabled")
+
+        initial_scope = " ".join(config.chatgpt_initial_scopes)
+        expected_scope = "obsidian.read" if config.chatgpt_readonly_mode else "obsidian.read obsidian.write"
+        add(
+            "chatgpt_setup_scope",
+            initial_scope == expected_scope,
+            f"initial ChatGPT setup scope is {initial_scope}",
+        )
+        return {
+            "surface": "settings.obsidian_mcp.chatgpt_readiness",
+            "checked_at": _now(),
+            "ok": all(check["status"] == "pass" for check in checks),
+            "checks": checks,
             "guardrails": self.guardrails(),
         }
 
@@ -274,7 +392,51 @@ class ObsidianMcpService:
         return list_directory(self.get_config(), **args)
 
     def search_vault(self, args: dict[str, Any]) -> dict[str, Any]:
-        return search_vault(self.get_config(), **args)
+        """Narrow ``path_scope`` queries use the live bounded scan; broad/no-scope queries use
+        the curated Obsidian-note index (never a live full-vault scan)."""
+        path_scope = (args.get("path_scope") or "").strip()
+        if path_scope:
+            result = search_vault(self.get_config(), **args)
+            result.setdefault("search_backend", "live_scope_scan")
+            return result
+        from .source_search import search_vault_indexed
+
+        return search_vault_indexed(self._source_repo(), self.get_config(), **args)
+
+    def search_sources(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .source_search import search_sources
+
+        return search_sources(self._source_repo(), self.get_config(), **args)
+
+    def search_knowledge(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .source_search import search_knowledge
+
+        return search_knowledge(self._source_repo(), self.get_config(), **args)
+
+    def source_index_status(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .source_search import source_index_status
+
+        return source_index_status(self._source_repo(), self.get_config())
+
+    def rebuild_source_index(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .source_indexer import request_rebuild
+
+        return request_rebuild(self._source_repo(), self.get_config())
+
+    def generate_source_card(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .source_notes import generate_source_card
+
+        return generate_source_card(self._source_repo(), self.get_config(), **args)
+
+    def refresh_stale_source_notes(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .source_notes import refresh_stale_source_notes
+
+        return refresh_stale_source_notes(self._source_repo(), self.get_config(), **args)
+
+    def summarize_source(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .source_notes import summarize_source
+
+        return summarize_source(self._source_repo(), self.get_config(), **args)
 
     def read_file(self, args: dict[str, Any]) -> dict[str, Any]:
         return read_file(self.get_config(), **args)
@@ -289,6 +451,156 @@ class ObsidianMcpService:
         from .curation import vault_map
 
         return vault_map(self.get_config(), **args)
+
+    def vault_summarize_note(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .summarize import summarize_note
+
+        return summarize_note(self.get_config(), **args)
+
+    def vault_summarize_folder(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .summarize import summarize_folder
+
+        return summarize_folder(self.get_config(), **args)
+
+    def vault_read_eml(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .eml import read_eml
+
+        return read_eml(self.get_config(), **args)
+
+    def vault_email_inventory(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .eml import email_inventory
+
+        return email_inventory(self.get_config(), **args)
+
+    def vault_parse_email(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .eml import parse_email
+
+        return parse_email(self.get_config(), **args)
+
+    def vault_read_frontmatter(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .frontmatter import read_frontmatter
+
+        return read_frontmatter(self.get_config(), **args)
+
+    def vault_update_frontmatter(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .frontmatter import update_frontmatter
+
+        return update_frontmatter(self.get_config(), **args)
+
+    def vault_search_by_properties(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .frontmatter import search_by_properties
+
+        return search_by_properties(self.get_config(), **args)
+
+    def vault_dataview_query(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .frontmatter import dataview_query
+
+        return dataview_query(self.get_config(), **args)
+
+    def vault_semantic_search(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .search import semantic_search
+
+        return semantic_search(self.get_config(), **args)
+
+    def vault_extract_action_items(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .domain import extract_action_items
+
+        return extract_action_items(self.get_config(), **args)
+
+    def vault_project_status_summary(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .domain import project_status_summary
+
+        return project_status_summary(self.get_config(), **args)
+
+    def vault_extract_project_mentions(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .domain import extract_project_mentions
+
+        return extract_project_mentions(self.get_config(), **args)
+
+    def vault_move_note_plan(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .fileops import move_note_plan
+
+        return move_note_plan(self.get_config(), **args)
+
+    def vault_move_note_apply(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .fileops import move_note_apply
+
+        return move_note_apply(self.get_config(), **args)
+
+    def vault_rename_note_plan(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .fileops import rename_note_plan
+
+        return rename_note_plan(self.get_config(), **args)
+
+    def vault_rename_note_apply(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .fileops import rename_note_apply
+
+        return rename_note_apply(self.get_config(), **args)
+
+    def vault_archive_note_plan(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .fileops import archive_note_plan
+
+        return archive_note_plan(self.get_config(), **args)
+
+    def vault_archive_note_apply(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .fileops import archive_note_apply
+
+        return archive_note_apply(self.get_config(), **args)
+
+    def vault_delete_note_plan(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .fileops import delete_note_plan
+
+        return delete_note_plan(self.get_config(), **args)
+
+    def vault_create_note_from_template(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .templates import create_note_from_template
+
+        return create_note_from_template(self.get_config(), **args)
+
+    def vault_append_to_daily_note(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .templates import append_to_daily_note
+
+        return append_to_daily_note(self.get_config(), **args)
+
+    def vault_get_backlinks(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .graph import get_backlinks
+
+        return get_backlinks(self.get_config(), **args)
+
+    def vault_get_unlinked_mentions(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .graph import get_unlinked_mentions
+
+        return get_unlinked_mentions(self.get_config(), **args)
+
+    def vault_get_note_graph(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .graph import get_note_graph
+
+        return get_note_graph(self.get_config(), **args)
+
+    def vault_create_moc_plan(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .curation import build_moc_plan
+
+        return build_moc_plan(self.get_config(), **args)
+
+    def vault_auto_link_plan(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .curation import build_auto_link_plan
+
+        return build_auto_link_plan(self.get_config(), **args)
+
+    def vault_bulk_tagging_plan(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .curation import build_bulk_tagging_plan
+
+        return build_bulk_tagging_plan(self.get_config(), **args)
+
+    def vault_email_to_note_plan(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .curation import build_email_to_note_plan
+
+        return build_email_to_note_plan(self.get_config(), **args)
+
+    def vault_email_to_note_apply(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .curation import apply_email_to_note_plan
+
+        return apply_email_to_note_plan(self.get_config(), **args)
 
     def vault_curation_plan(self, args: dict[str, Any]) -> dict[str, Any]:
         from .curation import build_curation_plan
@@ -377,6 +689,15 @@ class ObsidianMcpService:
         return {
             "surface": "settings.obsidian_mcp.mutations",
             "mutations": recent_mutations(limit),
+            "guardrails": self.guardrails(),
+        }
+
+    def read_receipts(self, limit: int = 20) -> dict[str, Any]:
+        from .mutations import recent_read_receipts
+
+        return {
+            "surface": "settings.obsidian_mcp.read_receipts",
+            "read_receipts": recent_read_receipts(limit),
             "guardrails": self.guardrails(),
         }
 

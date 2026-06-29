@@ -28,7 +28,7 @@ from typing import Any
 
 import yaml
 
-from . import pathsafe, plan_store
+from . import mdutil, pathsafe, plan_store
 from .config import ObsidianMcpConfig
 from .mutations import create_note, patch_note, sha256_file
 from .tools import ObsidianMcpToolError, resolve_safe_path
@@ -45,11 +45,15 @@ DEFAULT_ALLOWED_ACTIONS = sorted(MUTATING_ACTIONS)
 
 _OP_RANK = {"prepend_frontmatter": 0, "merge_frontmatter_tags": 1, "append_section": 2}
 
-_FRONTMATTER_RE = re.compile(r"^---\n(.*?)\n---\s*\n?", re.DOTALL)
-_TAG_RE = re.compile(r"(?:^|\s)#([A-Za-z0-9][\w/-]*)")
-_WIKILINK_RE = re.compile(r"\[\[([^\]\n]+)\]\]")
-_H1_RE = re.compile(r"^#\s+(.+)$", re.MULTILINE)
 _RELATED_RE = re.compile(r"^#{2,}\s+Related\b", re.MULTILINE | re.IGNORECASE)
+
+# Shared Markdown helpers live in mdutil; alias them to keep call sites terse.
+_split_frontmatter = mdutil.split_frontmatter
+_frontmatter_tags = mdutil.frontmatter_tags
+_extract_tags = mdutil.extract_tags
+_normalized = mdutil.normalized_tags
+_extract_wikilinks = mdutil.extract_wikilinks
+_title_of = mdutil.title_of
 
 _PREVIEW_CHARS = 240
 _MIN_TITLE_MATCH = 4
@@ -77,63 +81,6 @@ def _read_text(path: Path) -> str:
         return path.read_text(encoding="utf-8", errors="replace")
     except OSError:
         return ""
-
-
-def _split_frontmatter(text: str) -> tuple[dict[str, Any] | None, str]:
-    match = _FRONTMATTER_RE.match(text)
-    if not match:
-        return None, text
-    try:
-        loaded = yaml.safe_load(match.group(1))
-    except yaml.YAMLError:
-        loaded = None
-    fm = loaded if isinstance(loaded, dict) else {}
-    return fm, text[match.end():]
-
-
-def _frontmatter_tags(fm: dict[str, Any] | None) -> list[str]:
-    if not fm:
-        return []
-    raw = fm.get("tags")
-    if isinstance(raw, str):
-        raw = [t for t in re.split(r"[,\s]+", raw) if t]
-    if not isinstance(raw, list):
-        return []
-    return [str(t).strip().lstrip("#") for t in raw if str(t).strip()]
-
-
-def _extract_tags(body: str, fm: dict[str, Any] | None) -> list[str]:
-    tags = {m.group(1) for m in _TAG_RE.finditer(body)}
-    tags.update(_frontmatter_tags(fm))
-    return sorted(tags)
-
-
-def _normalize_tag(tag: str) -> str:
-    norm = re.sub(r"[\s_]+", "-", tag.strip().lstrip("#").lower())
-    norm = re.sub(r"[^a-z0-9/-]", "", norm)
-    return norm.strip("-/")
-
-
-def _normalized(tags: list[str]) -> list[str]:
-    return sorted({n for n in (_normalize_tag(t) for t in tags) if n})
-
-
-def _link_target(raw: str) -> str:
-    return raw.split("|", 1)[0].split("#", 1)[0].strip()
-
-
-def _extract_wikilinks(text: str) -> list[str]:
-    seen: list[str] = []
-    for raw in _WIKILINK_RE.findall(text):
-        target = _link_target(raw)
-        if target and target not in seen:
-            seen.append(target)
-    return seen
-
-
-def _title_of(rel: str, text: str) -> str:
-    match = _H1_RE.search(text)
-    return match.group(1).strip() if match else Path(rel).stem
 
 
 def _folder_name(folder: str) -> str:
@@ -171,7 +118,7 @@ def _related_block(links: list[str]) -> str:
 # Apply-time edit operations (pure text transforms, canonical order).
 # ---------------------------------------------------------------------------
 def _op_prepend_frontmatter(text: str, block: str) -> str:
-    if _FRONTMATTER_RE.match(text):
+    if mdutil.FRONTMATTER_RE.match(text):
         return text
     return block + text
 
@@ -481,6 +428,247 @@ def _redact_action(action: dict[str, Any]) -> dict[str, Any]:
         "expected_sha256": action["expected_sha256"],
         "preview": action["preview"],
     }
+
+
+# ---------------------------------------------------------------------------
+# Focused planners — emit curation-compatible plans applied via apply_curation_plan.
+# ---------------------------------------------------------------------------
+def _save_focused_plan(
+    *, root_rel: str, strategy: str, allowed: set[str], actions: list[dict[str, Any]], baseline: dict[str, str]
+) -> dict[str, Any]:
+    counts: dict[str, int] = {}
+    for action in actions:
+        counts[action["action"]] = counts.get(action["action"], 0) + 1
+    plan_id = plan_store.new_plan_id()
+    plan_store.save_plan(
+        {
+            "plan_id": plan_id,
+            "created_at": _now_iso(),
+            "root_path": root_rel,
+            "strategy": strategy,
+            "dry_run": True,
+            "allowed_actions": sorted(allowed),
+            "baseline_shas": baseline,
+            "actions": actions,
+        }
+    )
+    return {
+        "plan_id": plan_id,
+        "root_path": root_rel,
+        "strategy": strategy,
+        "allowed_actions": sorted(allowed),
+        "actions": [_redact_action(a) for a in actions],
+        "counts": counts,
+    }
+
+
+def _moc_body_sections(name: str, titles: list[str], sections: list[str] | None) -> str:
+    lines = [f"# {name} MOC", "", f"Map of content for **{name}**.", ""]
+    for section in sections or ["notes"]:
+        lines.append(f"## {section.replace('_', ' ').title()}")
+        lines.append("")
+        if section.lower() in {"notes", "related_notes", "overview"}:
+            lines += [f"- [[{title}]]" for title in sorted(set(titles))]
+        lines.append("")
+    return "\n".join(lines)
+
+
+def build_moc_plan(
+    config: ObsidianMcpConfig,
+    *,
+    root_path: str = "",
+    moc_title: str | None = None,
+    target_path: str | None = None,
+    max_files: int = 100,
+    include_sections: list[str] | None = None,
+    operator_mode: bool = False,
+) -> dict[str, Any]:
+    resolved = resolve_safe_path(config, root_path, must_exist=True)
+    notes, _folders = _scan_notes(config, root_path, max_depth=None, max_files=max_files)
+    name = (moc_title or _folder_name(resolved.relative)).strip()
+    prefix = f"{resolved.relative}/" if resolved.relative else ""
+    target = target_path or f"{prefix}{name} MOC.md"
+    body = _moc_body_sections(name, [n["title"] for n in notes], include_sections)
+    action = {
+        "id": "a0001",
+        "action": "create_moc_notes",
+        "target_path": target,
+        "op": "create",
+        "expected_sha256": None,
+        "preview": _preview(body),
+        "payload": body,
+    }
+    return _save_focused_plan(
+        root_rel=resolved.relative, strategy="moc", allowed={"create_moc_notes"}, actions=[action], baseline={}
+    )
+
+
+def build_auto_link_plan(
+    config: ObsidianMcpConfig,
+    *,
+    root_path: str = "",
+    max_files: int = 200,
+    min_confidence: float = 0.75,
+    max_suggestions: int = 100,
+    operator_mode: bool = False,
+) -> dict[str, Any]:
+    resolved = resolve_safe_path(config, root_path, must_exist=True)
+    notes, _folders = _scan_notes(config, root_path, max_depth=None, max_files=max_files)
+    title_index = {n["title"].lower(): n for n in notes if n["title"]}
+    actions: list[dict[str, Any]] = []
+    baseline: dict[str, str] = {}
+    counter = 0
+    for note in notes:
+        candidates: list[str] = []
+        for title_l, other in title_index.items():
+            if other["rel"] == note["rel"] or len(title_l) < _MIN_TITLE_MATCH:
+                continue
+            confidence = min(1.0, 0.5 + len(title_l) / 20)
+            if title_l in note["body_lower"] and other["title"] not in note["wikilinks"] and confidence >= min_confidence:
+                candidates.append(other["title"])
+        candidates = sorted(set(candidates))[:_MAX_SUGGESTED_LINKS]
+        if candidates:
+            counter += 1
+            baseline[note["rel"]] = note["sha"]
+            actions.append(
+                {
+                    "id": f"a{counter:04d}",
+                    "action": "suggest_links",
+                    "target_path": note["rel"],
+                    "op": "append_section",
+                    "expected_sha256": note["sha"],
+                    "preview": _preview("Suggested links: " + ", ".join(candidates)),
+                    "payload": {"links": candidates},
+                }
+            )
+            if counter >= max_suggestions:
+                break
+    return _save_focused_plan(
+        root_rel=resolved.relative, strategy="auto_link", allowed={"suggest_links"}, actions=actions, baseline=baseline
+    )
+
+
+def build_bulk_tagging_plan(
+    config: ObsidianMcpConfig,
+    *,
+    root_path: str = "",
+    tag_namespace: str | None = None,
+    max_files: int = 200,
+    max_suggestions: int = 100,
+    operator_mode: bool = False,
+) -> dict[str, Any]:
+    resolved = resolve_safe_path(config, root_path, must_exist=True)
+    notes, _folders = _scan_notes(config, root_path, max_depth=None, max_files=max_files)
+    namespace = mdutil.normalize_tag(tag_namespace) if tag_namespace else None
+    actions: list[dict[str, Any]] = []
+    baseline: dict[str, str] = {}
+    counter = 0
+    for note in notes:
+        missing = [t for t in note["normalized_tags"] if t not in note["frontmatter_tags_norm"]]
+        if namespace and namespace not in note["frontmatter_tags_norm"] and namespace not in missing:
+            missing.append(namespace)
+        if missing:
+            counter += 1
+            baseline[note["rel"]] = note["sha"]
+            actions.append(
+                {
+                    "id": f"a{counter:04d}",
+                    "action": "suggest_tags",
+                    "target_path": note["rel"],
+                    "op": "merge_frontmatter_tags",
+                    "expected_sha256": note["sha"],
+                    "preview": _preview("tags: " + ", ".join(missing)),
+                    "payload": {"tags": missing},
+                }
+            )
+            if counter >= max_suggestions:
+                break
+    return _save_focused_plan(
+        root_rel=resolved.relative, strategy="bulk_tagging", allowed={"suggest_tags"}, actions=actions, baseline=baseline
+    )
+
+
+def _email_note_body(email: dict[str, Any], *, link_projects: bool, include_actions: bool, include_decisions: bool) -> str:
+    fm: dict[str, Any] = {"type": "email-note", "source_email": email["path"]}
+    if email.get("from"):
+        fm["from"] = email["from"]
+    if email.get("date"):
+        fm["date"] = email["date"]
+    if link_projects and email.get("detected_projects"):
+        fm["projects"] = email["detected_projects"]
+    dumped = yaml.safe_dump(fm, sort_keys=True, allow_unicode=True).strip()
+    subject = email.get("subject") or Path(email["path"]).stem
+    lines = [f"---\n{dumped}\n---", "", f"# {subject}", "", "## Summary", "", (email.get("body_preview") or "(no body)")[:1200], ""]
+    if include_actions and email.get("detected_action_items"):
+        lines += ["## Action Items", "", *[f"- [ ] {a}" for a in email["detected_action_items"]], ""]
+    if include_decisions and email.get("detected_decisions"):
+        lines += ["## Decisions", "", *[f"- {d}" for d in email["detected_decisions"]], ""]
+    if link_projects and email.get("detected_projects"):
+        lines += ["## Related", "", *[f"- [[{p}]]" for p in email["detected_projects"]], ""]
+    lines += [f"> Source email: {email['path']}", ""]
+    return "\n".join(lines)
+
+
+def build_email_to_note_plan(
+    config: ObsidianMcpConfig,
+    *,
+    email_path: str,
+    target_folder: str,
+    template_path: str | None = None,
+    link_projects: bool = True,
+    extract_action_items: bool = True,
+    extract_decisions: bool = True,
+    redact: bool = False,
+    max_chars: int = 12000,
+    operator_mode: bool = False,
+) -> dict[str, Any]:
+    from .eml import read_eml
+
+    email = read_eml(
+        config,
+        path=email_path,
+        include_body=True,
+        max_body_chars=max_chars,
+        redact_email_addresses=redact,
+        redact_phone_numbers=redact,
+        operator_mode=operator_mode,
+    )
+    folder = target_folder.strip("/")
+    target = f"{folder}/{Path(email['path']).stem}.md" if folder else f"{Path(email['path']).stem}.md"
+    body = _email_note_body(
+        email, link_projects=link_projects, include_actions=extract_action_items, include_decisions=extract_decisions
+    )
+    action = {
+        "id": "a0001",
+        "action": "email_to_note",
+        "target_path": target,
+        "op": "create",
+        "expected_sha256": None,
+        "preview": _preview(body),
+        "payload": body,
+    }
+    result = _save_focused_plan(
+        root_rel=folder, strategy="email_to_note", allowed={"email_to_note"}, actions=[action], baseline={}
+    )
+    result["target_path"] = target
+    result["source_email"] = email["path"]
+    return result
+
+
+def apply_email_to_note_plan(
+    config: ObsidianMcpConfig,
+    *,
+    plan_id: str,
+    max_updates: int = 25,
+    operator_mode: bool = False,
+) -> dict[str, Any]:
+    return apply_curation_plan(
+        config,
+        plan_id=plan_id,
+        approved_actions=["email_to_note"],
+        max_updates=max_updates,
+        operator_mode=operator_mode,
+    )
 
 
 # ---------------------------------------------------------------------------

@@ -1,0 +1,16 @@
+# repo state
+branch: feat/obsidian-mcp-source-cards (stacked on PR #200 feat/obsidian-mcp-source-intelligence)
+base: 7d0ebf2b ; foundation head 7d0ebf2b
+
+## changed/new files
+ M src/hb_assistant/construction/analytics/api.py
+ M src/hb_assistant/obsidian_mcp/config.py
+ M src/hb_assistant/obsidian_mcp/mcp_app.py
+ M src/hb_assistant/obsidian_mcp/service.py
+ M src/hb_assistant/obsidian_mcp/source_index_repository.py
+ M src/hb_assistant/obsidian_mcp/tools.py
+ M tests/test_obsidian_mcp_backend.py
+ M tests/test_obsidian_mcp_timeout.py
+?? docs/evidence/source-cards/
+?? src/hb_assistant/obsidian_mcp/source_notes.py
+?? tests/test_obsidian_source_notes.py

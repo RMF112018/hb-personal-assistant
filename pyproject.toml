@@ -83,6 +83,13 @@ retrieval-local = [
   "llama-index-core>=0.12",
   "llama-index-embeddings-huggingface>=0.3",
 ]
+# Obsidian MCP external-source watcher — opt-in real-time filesystem events. Lazy-imported
+# inside source_watch only; when absent the watcher degrades to a periodic polling loop, so
+# the base install, migrations, and full test suite run with NO watchdog present.
+# Install with `pip install -e ".[watch]"` for real-time watching.
+watch = [
+  "watchdog>=4.0",
+]
 # Future FastAPI/UI analytics dashboard shell. Lazy-imported so the base install,
 # migrations, CLI, and non-UI tests remain FastAPI-free. Install with
 # `pip install -e ".[analytics-ui]"` to exercise the optional app shell.

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 import logging
-from contextlib import AsyncExitStack, asynccontextmanager
+from contextlib import AsyncExitStack, asynccontextmanager, suppress
 from enum import Enum
 from pathlib import Path
 from typing import Any
@@ -326,6 +326,32 @@ class ObsidianMcpConfigPatchRequest(BaseModel):
     allowed_write_file_types: list[str] | None = None
     oauth_enabled: bool | None = None
     public_base_url: str | None = None
+    tool_timeout_seconds: int | None = None
+    external_sources: list[dict[str, Any]] | None = None
+    external_source_index_enabled: bool | None = None
+    external_source_watch_enabled: bool | None = None
+    external_source_scan_max_files: int | None = None
+    source_index_max_excerpt_chars: int | None = None
+    source_index_max_chunks: int | None = None
+    source_index_max_chunk_chars: int | None = None
+    watch_poll_interval_seconds: int | None = None
+    watch_debounce_seconds: float | None = None
+    source_notes_folder: str | None = None
+    source_card_generation_enabled: bool | None = None
+    source_card_excerpt_chars: int | None = None
+
+
+class ObsidianMcpGenerateSourceCardRequest(BaseModel):
+    source_id: str
+    overwrite: bool = False
+
+
+class ObsidianMcpRefreshStaleRequest(BaseModel):
+    max_updates: int = 25
+
+
+class ObsidianMcpSummarizeSourceRequest(BaseModel):
+    source_id: str
 
 
 class ObsidianMcpListDirectoryRequest(BaseModel):
@@ -570,23 +596,39 @@ def _oauth_error_html(error: str, description: str | None = None) -> str:
 
 
 def _oauth_consent_html(*, scopes: list[str], vault_root: str, write_enabled: bool, params: dict[str, str]) -> str:
-    """Simple local approval page for the fixed Grok client (no login system)."""
+    """Simple local approval page for trusted MCP OAuth clients (no login system)."""
     import html as _html
+    from urllib.parse import urlsplit
 
     hidden = "".join(
         f"<input type='hidden' name='{_html.escape(key)}' value='{_html.escape(value)}'>"
         for key, value in params.items()
     )
     scope_items = "".join(f"<li><code>{_html.escape(scope)}</code></li>" for scope in scopes)
+    write_warning = (
+        "<p style='border:1px solid #f59e0b;padding:.75rem'>"
+        "This connection is requesting write access to your Obsidian vault. Write operations remain subject to "
+        "the configured vault write policy and protected-path rules.</p>"
+        if "obsidian.write" in scopes
+        else ""
+    )
     write_label = "enabled" if write_enabled else "disabled"
+    client_name = params.get("client_name") or "MCP client"
+    redirect_host = urlsplit(params.get("redirect_uri") or "").hostname or "unknown"
+    resource = params.get("resource") or "not provided"
+    public_base_url = params.get("public_base_url") or "not configured"
     return (
         "<!doctype html><html><head><meta charset='utf-8'>"
-        "<title>HB Obsidian MCP — authorize Grok</title></head>"
+        "<title>HB Obsidian MCP — authorize client</title></head>"
         "<body style='font-family:system-ui;max-width:34rem;margin:3rem auto;padding:0 1rem'>"
-        "<h1 style='font-size:1.15rem'>Grok is requesting access to HB Obsidian MCP</h1>"
-        "<p>Approve this request to let the Grok Remote MCP connector use your local Obsidian vault.</p>"
+        f"<h1 style='font-size:1.15rem'>{_html.escape(client_name)} is requesting access to HB Obsidian MCP</h1>"
+        "<p>Approve this request to let this remote MCP connector use your local Obsidian vault.</p>"
         "<p><strong>Requested scopes</strong></p>"
         f"<ul>{scope_items}</ul>"
+        f"{write_warning}"
+        f"<p><strong>Redirect host:</strong> <code>{_html.escape(redirect_host)}</code></p>"
+        f"<p><strong>MCP resource:</strong> <code>{_html.escape(resource)}</code></p>"
+        f"<p><strong>Public base URL:</strong> <code>{_html.escape(public_base_url)}</code></p>"
         f"<p><strong>Vault root:</strong> <code>{_html.escape(vault_root)}</code></p>"
         f"<p><strong>Write mode:</strong> {write_label}</p>"
         "<form method='post' action='/oauth/authorize'>"
@@ -636,6 +678,31 @@ async def _forecast_lifespan(app: Any) -> Any:
     except Exception:
         poll_task = None
 
+    # Source-intelligence: register configured roots (indexing ON by default) and start the
+    # external-source watcher only when enabled. Fail-closed — never blocks app startup.
+    source_watcher: Any = None
+    try:
+        from hb_assistant.config.path_policy import PathPolicy
+        from hb_assistant.obsidian_mcp.config import load_config as _load_obsidian_config
+        from hb_assistant.obsidian_mcp.source_index_repository import SourceIndexRepository
+        from hb_assistant.obsidian_mcp.source_watch import SourceWatcher
+
+        _configured = getattr(app.state, "db_path", None)
+        _watch_db = str(_configured) if _configured else str(PathPolicy().get_db_path())
+        _watch_config = _load_obsidian_config()
+        if getattr(_watch_config, "external_source_index_enabled", True):
+            SourceIndexRepository(_watch_db).register_source_roots(
+                [{"source_root_key": r.source_root_key, "enabled": r.enabled}
+                 for r in _watch_config.external_sources]
+            )
+        source_watcher = SourceWatcher(_watch_db, _watch_config)
+        if getattr(_watch_config, "external_source_watch_enabled", False):
+            await asyncio.to_thread(source_watcher.start)
+        app.state.source_watcher = source_watcher
+    except Exception:
+        app.state.source_watcher = None
+        source_watcher = None
+
     mcp_wrapper = getattr(app.state, "mcp_streamable_http_app", None)
     mcp_app = getattr(mcp_wrapper, "app", mcp_wrapper)
     mcp_lifespan = getattr(getattr(mcp_app, "router", None), "lifespan_context", None)
@@ -646,6 +713,9 @@ async def _forecast_lifespan(app: Any) -> Any:
         try:
             yield
         finally:
+            if source_watcher is not None:
+                with suppress(Exception):
+                    source_watcher.stop()
             if poll_task is not None:
                 poll_task.cancel()
                 try:
@@ -691,7 +761,7 @@ def create_app(*, db_path: str | None = None) -> Any:
     try:
         from hb_assistant.obsidian_mcp.mcp_app import build_streamable_http_app
 
-        mcp_streamable_http_app = build_streamable_http_app()
+        mcp_streamable_http_app = build_streamable_http_app(db_path=db_path)
         app.state.mcp_streamable_http_app = mcp_streamable_http_app
     except Exception:
         # Optional SDK or adapter unavailable: the UI health check reports the precise blocker.
@@ -1698,6 +1768,58 @@ def create_app(*, db_path: str | None = None) -> Any:
 
         return ObsidianMcpService().health_check()
 
+    @app.get("/api/settings/obsidian-mcp/source-index/status")
+    def settings_obsidian_mcp_source_index_status(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        from hb_assistant.obsidian_mcp import ObsidianMcpService
+
+        result = ObsidianMcpService(db_path=db_path).source_index_status({})
+        watcher = getattr(app.state, "source_watcher", None)
+        if watcher is not None:
+            with suppress(Exception):
+                result["watcher"] = watcher.status()
+        return result
+
+    @app.post("/api/settings/obsidian-mcp/source-index/rebuild")
+    def settings_obsidian_mcp_source_index_rebuild(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        require_operator_role(role)
+        from hb_assistant.obsidian_mcp import ObsidianMcpService
+
+        return ObsidianMcpService(db_path=db_path).rebuild_source_index({})
+
+    @app.post("/api/settings/obsidian-mcp/source-card/generate")
+    def settings_obsidian_mcp_source_card_generate(
+        request: ObsidianMcpGenerateSourceCardRequest, role: dict[str, str] = role_dep
+    ) -> dict[str, Any]:
+        require_operator_role(role)
+        from hb_assistant.obsidian_mcp import ObsidianMcpService
+
+        return ObsidianMcpService(db_path=db_path).generate_source_card(
+            {"source_id": request.source_id, "overwrite": request.overwrite, "principal_kind": "local"}
+        )
+
+    @app.post("/api/settings/obsidian-mcp/source-notes/refresh-stale")
+    def settings_obsidian_mcp_source_notes_refresh(
+        request: ObsidianMcpRefreshStaleRequest, role: dict[str, str] = role_dep
+    ) -> dict[str, Any]:
+        require_operator_role(role)
+        from hb_assistant.obsidian_mcp import ObsidianMcpService
+
+        return ObsidianMcpService(db_path=db_path).refresh_stale_source_notes(
+            {"max_updates": request.max_updates, "principal_kind": "local"}
+        )
+
+    @app.post("/api/settings/obsidian-mcp/source-card/summarize")
+    def settings_obsidian_mcp_source_card_summarize(
+        request: ObsidianMcpSummarizeSourceRequest, role: dict[str, str] = role_dep
+    ) -> dict[str, Any]:
+        require_operator_role(role)
+        from hb_assistant.obsidian_mcp import ObsidianMcpService
+
+        return ObsidianMcpService(db_path=db_path).summarize_source(
+            {"source_id": request.source_id, "principal_kind": "local"}
+        )
+
     @app.get("/api/settings/obsidian-mcp/tools")
     def settings_obsidian_mcp_tools(role: dict[str, str] = role_dep) -> dict[str, Any]:
         del role
@@ -1714,6 +1836,16 @@ def create_app(*, db_path: str | None = None) -> Any:
         from hb_assistant.obsidian_mcp import ObsidianMcpService
 
         return ObsidianMcpService().mutations(limit)
+
+    @app.get("/api/settings/obsidian-mcp/read-receipts")
+    def settings_obsidian_mcp_read_receipts(
+        limit: int = Query(default=20, ge=1, le=100),
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        del role
+        from hb_assistant.obsidian_mcp import ObsidianMcpService
+
+        return ObsidianMcpService().read_receipts(limit)
 
     @app.post("/api/settings/obsidian-mcp/write-readiness")
     def settings_obsidian_mcp_write_readiness(role: dict[str, str] = role_dep) -> dict[str, Any]:
@@ -1816,6 +1948,20 @@ def create_app(*, db_path: str | None = None) -> Any:
 
         return ObsidianMcpService().llm_chat_status()
 
+    @app.get("/api/settings/obsidian-mcp/chatgpt")
+    def settings_obsidian_mcp_chatgpt(request: Request, role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        from hb_assistant.obsidian_mcp import ObsidianMcpService
+
+        return ObsidianMcpService().chatgpt_status(base=str(request.base_url).rstrip("/"))
+
+    @app.post("/api/settings/obsidian-mcp/chatgpt/readiness-check")
+    def settings_obsidian_mcp_chatgpt_readiness(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        require_operator_role(role)
+        from hb_assistant.obsidian_mcp import ObsidianMcpService
+
+        return ObsidianMcpService().chatgpt_readiness()
+
     def _oauth_base_url(request: Request) -> str:
         from hb_assistant.obsidian_mcp import ObsidianMcpService
 
@@ -1862,6 +2008,35 @@ def create_app(*, db_path: str | None = None) -> Any:
 
         return protected_resource_metadata(_oauth_base_url(request))
 
+    @app.get("/.well-known/oauth-protected-resource/mcp")
+    def oauth_protected_resource_metadata_mcp(request: Request) -> dict[str, Any]:
+        from hb_assistant.obsidian_mcp.oauth_store import protected_resource_metadata
+
+        return protected_resource_metadata(_oauth_base_url(request))
+
+    @app.post("/oauth/register")
+    async def oauth_register(request: Request) -> Any:
+        from fastapi.responses import JSONResponse
+
+        from hb_assistant.obsidian_mcp import ObsidianMcpService
+        from hb_assistant.obsidian_mcp.oauth_store import OAuthError, register_client
+
+        config = ObsidianMcpService().get_config()
+        if not config.oauth_enabled:
+            return JSONResponse({"error": "invalid_request", "error_description": "oauth disabled"}, status_code=403)
+        if not config.dynamic_client_registration_enabled:
+            return JSONResponse({"error": "invalid_request", "error_description": "dynamic client registration disabled"}, status_code=403)
+        try:
+            payload = await request.json()
+        except Exception:
+            payload = {}
+        if not isinstance(payload, dict):
+            return JSONResponse({"error": "invalid_client_metadata", "error_description": "JSON object required"}, status_code=400)
+        try:
+            return JSONResponse(register_client(payload), status_code=201)
+        except OAuthError as exc:
+            return JSONResponse({"error": exc.error, "error_description": exc.description}, status_code=400)
+
     @app.get("/oauth/authorize")
     def oauth_authorize_form(
         request: Request,
@@ -1872,14 +2047,22 @@ def create_app(*, db_path: str | None = None) -> Any:
         state: str = Query(default=""),
         code_challenge: str = Query(default=""),
         code_challenge_method: str = Query(default=""),
+        resource: str = Query(default=""),
     ) -> Any:
         from fastapi.responses import HTMLResponse
 
         from hb_assistant.obsidian_mcp import ObsidianMcpService
-        from hb_assistant.obsidian_mcp.oauth_store import OAuthError, validate_authorize_request
+        from hb_assistant.obsidian_mcp.oauth_store import (
+            OAuthError,
+            get_client,
+            mcp_resource,
+            validate_authorize_request,
+        )
 
         if not _oauth_enabled():
             return HTMLResponse(_oauth_error_html("oauth_disabled", "OAuth is not enabled on this server."), status_code=403)
+        base_url = _oauth_base_url(request)
+        resolved_resource = resource or mcp_resource(base_url)
         try:
             scopes = validate_authorize_request(
                 response_type=response_type,
@@ -1888,10 +2071,13 @@ def create_app(*, db_path: str | None = None) -> Any:
                 scope=scope,
                 code_challenge=code_challenge,
                 code_challenge_method=code_challenge_method,
+                resource=resolved_resource,
+                base_url=base_url,
             )
         except OAuthError as exc:
             return HTMLResponse(_oauth_error_html(exc.error, exc.description), status_code=400)
         config = ObsidianMcpService().get_config()
+        oauth_client = get_client(client_id)
         html = _oauth_consent_html(
             scopes=scopes,
             vault_root=config.vault_root,
@@ -1899,11 +2085,14 @@ def create_app(*, db_path: str | None = None) -> Any:
             params={
                 "response_type": response_type,
                 "client_id": client_id,
+                "client_name": oauth_client.client_name if oauth_client else client_id,
                 "redirect_uri": redirect_uri,
                 "scope": scope,
                 "state": state,
                 "code_challenge": code_challenge,
                 "code_challenge_method": code_challenge_method,
+                "resource": resolved_resource,
+                "public_base_url": base_url,
             },
         )
         return HTMLResponse(html)
@@ -1924,6 +2113,10 @@ def create_app(*, db_path: str | None = None) -> Any:
         params = await _oauth_form_params(request)
         redirect_uri = params.get("redirect_uri", "")
         state = params.get("state", "")
+        base_url = _oauth_base_url(request)
+        from hb_assistant.obsidian_mcp.oauth_store import mcp_resource
+
+        resource = params.get("resource", "") or mcp_resource(base_url)
         try:
             validate_authorize_request(
                 response_type=params.get("response_type", ""),
@@ -1932,6 +2125,8 @@ def create_app(*, db_path: str | None = None) -> Any:
                 scope=params.get("scope", ""),
                 code_challenge=params.get("code_challenge", ""),
                 code_challenge_method=params.get("code_challenge_method", ""),
+                resource=resource,
+                base_url=base_url,
             )
         except OAuthError as exc:
             return HTMLResponse(_oauth_error_html(exc.error, exc.description), status_code=400)
@@ -1943,6 +2138,8 @@ def create_app(*, db_path: str | None = None) -> Any:
             scope=params.get("scope", ""),
             code_challenge=params.get("code_challenge", ""),
             code_challenge_method=params.get("code_challenge_method", ""),
+            resource=resource,
+            base_url=base_url,
         )
         return RedirectResponse(redirect_with(redirect_uri, {"code": code, "state": state}), status_code=302)
 
@@ -1962,13 +2159,15 @@ def create_app(*, db_path: str | None = None) -> Any:
         if params.get("grant_type", "") != "authorization_code":
             return JSONResponse({"error": "unsupported_grant_type"}, status_code=400)
         try:
-            scopes = consume_authorization_code(
+            scopes, client_id, resource = consume_authorization_code(
                 raw_code=params.get("code", ""),
                 client_id=params.get("client_id", ""),
                 redirect_uri=params.get("redirect_uri", ""),
                 code_verifier=params.get("code_verifier", ""),
+                resource=params.get("resource", "") or None,
+                base_url=_oauth_base_url(request),
             )
-            token = issue_access_token(scopes)
+            token = issue_access_token(scopes=scopes, client_id=client_id, resource=resource)
         except OAuthError as exc:
             return JSONResponse({"error": exc.error, "error_description": exc.description}, status_code=400)
         return JSONResponse(token)

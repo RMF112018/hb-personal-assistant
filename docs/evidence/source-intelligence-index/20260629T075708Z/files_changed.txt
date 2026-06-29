@@ -1,0 +1,10 @@
+ pyproject.toml                                 |  7 +++
+ src/hb_assistant/construction/analytics/api.py | 60 +++++++++++++++++++++++++-
+ src/hb_assistant/obsidian_mcp/config.py        | 50 +++++++++++++++++++--
+ src/hb_assistant/obsidian_mcp/mcp_app.py       | 51 ++++++++++++++++++++--
+ src/hb_assistant/obsidian_mcp/service.py       | 50 ++++++++++++++++++++-
+ src/hb_assistant/obsidian_mcp/tools.py         |  4 ++
+ src/hb_assistant/store/migrator.py             | 37 +++++++++++++++-
+ tests/test_obsidian_mcp_backend.py             |  4 ++
+ tests/test_obsidian_mcp_timeout.py             |  3 ++
+ 9 files changed, 255 insertions(+), 11 deletions(-)
