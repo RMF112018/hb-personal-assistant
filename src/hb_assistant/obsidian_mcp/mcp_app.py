@@ -4,7 +4,12 @@
 # evaluates tool type hints via ``get_type_hints``, and the ``Context`` param is
 # bound in a local scope, so annotations must stay real objects (not strings).
 
+import logging
+import time
+from collections.abc import Callable
 from typing import Any
+
+import anyio
 
 from . import oauth_store, pathsafe
 from .config import ObsidianMcpConfig
@@ -56,6 +61,61 @@ _TOOL_SCOPES = {
 }
 
 _BEARER_PREFIX = "Bearer "
+
+
+_logger = logging.getLogger("hb_assistant.obsidian_mcp.mcp")
+
+_DEFAULT_TOOL_TIMEOUT_SECONDS = 30.0
+
+# Allow-list of argument keys that are safe to log verbatim. Vault-relative paths
+# are already constrained by pathsafe; the rest are structural scalars/enums/ints/
+# bools. Free-text and payload keys (content, updates, query, titles, names, dict/
+# list bodies) are never logged verbatim: ``content``/``updates`` become a char
+# count, and any key not on this allow-list is dropped entirely.
+_SAFE_LOG_KEYS = frozenset(
+    {
+        "path", "path_scope", "root_path", "target_path", "source_path", "email_path",
+        "template_path", "target_folder", "file_types", "extract", "extract_fields",
+        "include", "limit", "max_files", "max_depth", "max_results", "max_nodes",
+        "max_updates", "max_suggestions", "max_chars", "max_body_chars", "depth",
+        "lookback_days", "recursive", "include_hidden", "include_snippets", "dry_run",
+        "overwrite", "create_parent_dirs", "merge_tags", "backup_before_replace",
+        "update_links", "allow_overwrite", "require_expected_sha256", "mode",
+        "summary_style", "strategy", "source_type", "date", "section",
+        "min_confidence", "operator_mode", "principal_kind",
+    }
+)
+_LEN_ONLY_LOG_KEYS = frozenset({"content", "updates"})
+
+
+def _tool_timeout_seconds(config: ObsidianMcpConfig) -> float:
+    """Per-tool execution budget (seconds); falls back to the default if unset/invalid."""
+    try:
+        value = float(getattr(config, "tool_timeout_seconds", _DEFAULT_TOOL_TIMEOUT_SECONDS))
+    except (TypeError, ValueError):
+        return _DEFAULT_TOOL_TIMEOUT_SECONDS
+    return value if value > 0 else _DEFAULT_TOOL_TIMEOUT_SECONDS
+
+
+def _safe_descriptors(args: dict[str, Any]) -> dict[str, Any]:
+    """Redacted, allow-listed view of tool args for diagnostics.
+
+    Never returns secrets, note content, raw bodies, or free-text query/title values.
+    """
+    safe: dict[str, Any] = {}
+    for key, value in args.items():
+        if key in _LEN_ONLY_LOG_KEYS:
+            try:
+                safe[f"{key}_chars"] = len(value) if value is not None else 0
+            except TypeError:
+                safe[f"{key}_chars"] = None
+            continue
+        if key not in _SAFE_LOG_KEYS:
+            continue
+        if isinstance(value, str) and len(value) > 256:
+            value = value[:256]
+        safe[key] = value
+    return safe
 
 
 def _auth_required(config: ObsidianMcpConfig) -> bool:
@@ -240,8 +300,90 @@ def build_streamable_http_app(service: ObsidianMcpService | None = None) -> Any:
             },
         }
 
+    async def _run_tool(
+        tool: str,
+        ctx: Context,
+        call: Callable[[], dict[str, Any]],
+        args: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Run a blocking service call off the event loop, bounded by a timeout.
+
+        ``call`` is a zero-arg callable closing over already-resolved args; it must
+        not touch ``ctx`` (the request contextvar is not valid in a worker thread).
+        All ctx/scope/principal resolution happens on the loop before this point.
+        """
+        is_http, authorization = _request_authorization(ctx)
+        diag = {
+            "caller_surface": "mcp",
+            "authorization_present": bool(authorization),
+            "principal_kind": _principal_kind(ctx) if is_http else pathsafe.PRINCIPAL_LOCAL,
+            **_safe_descriptors(args),
+        }
+        _logger.info(
+            "obsidian_mcp.tool_start",
+            extra={"obsidian_mcp": {"tool": tool, "status": "start", **diag}},
+        )
+        started = time.monotonic()
+        try:
+            with anyio.fail_after(_tool_timeout_seconds(svc.get_config())):
+                # abandon_on_cancel=True is required: on timeout the worker thread is
+                # abandoned and the loop is freed immediately, so a truly stuck I/O
+                # call surfaces as a fast structured error instead of hanging forever.
+                result = await anyio.to_thread.run_sync(call, abandon_on_cancel=True)
+        except TimeoutError:
+            elapsed_ms = round((time.monotonic() - started) * 1000, 1)
+            _logger.warning(
+                "obsidian_mcp.tool_error",
+                extra={
+                    "obsidian_mcp": {
+                        "tool": tool,
+                        "status": "tool_timeout",
+                        "error_code": "tool_timeout",
+                        "elapsed_ms": elapsed_ms,
+                        **diag,
+                    }
+                },
+            )
+            raise ObsidianMcpToolError("tool_timeout") from None
+        except ObsidianMcpToolError as exc:
+            elapsed_ms = round((time.monotonic() - started) * 1000, 1)
+            _logger.warning(
+                "obsidian_mcp.tool_error",
+                extra={
+                    "obsidian_mcp": {
+                        "tool": tool,
+                        "status": "error",
+                        "error_code": exc.code,
+                        "elapsed_ms": elapsed_ms,
+                        **diag,
+                    }
+                },
+            )
+            raise
+        except Exception as exc:
+            elapsed_ms = round((time.monotonic() - started) * 1000, 1)
+            _logger.warning(
+                "obsidian_mcp.tool_error",
+                extra={
+                    "obsidian_mcp": {
+                        "tool": tool,
+                        "status": "error",
+                        "error_code": "internal_error",
+                        "elapsed_ms": elapsed_ms,
+                        **diag,
+                    }
+                },
+            )
+            raise ObsidianMcpToolError("internal_error") from exc
+        elapsed_ms = round((time.monotonic() - started) * 1000, 1)
+        _logger.info(
+            "obsidian_mcp.tool_end",
+            extra={"obsidian_mcp": {"tool": tool, "status": "ok", "elapsed_ms": elapsed_ms, **diag}},
+        )
+        return result
+
     @mcp.tool(**_tool_options("list_directory", read_only=True))
-    def list_directory(
+    async def list_directory(
         ctx: Context,
         path: str = "",
         recursive: bool = False,
@@ -249,18 +391,17 @@ def build_streamable_http_app(service: ObsidianMcpService | None = None) -> Any:
         max_depth: int | None = None,
     ) -> dict[str, Any]:
         _enforce("list_directory", ctx)
-        return svc.list_directory(
-            {
-                "path": path,
-                "recursive": recursive,
-                "extensions": extensions,
-                "max_depth": max_depth,
-                "operator_mode": _operator_mode(ctx),
-            }
-        )
+        args = {
+            "path": path,
+            "recursive": recursive,
+            "extensions": extensions,
+            "max_depth": max_depth,
+            "operator_mode": _operator_mode(ctx),
+        }
+        return await _run_tool("list_directory", ctx, lambda: svc.list_directory(args), args)
 
     @mcp.tool(**_tool_options("search_vault", read_only=True))
-    def search_vault(
+    async def search_vault(
         ctx: Context,
         query: str,
         path_scope: str | None = None,
@@ -269,19 +410,18 @@ def build_streamable_http_app(service: ObsidianMcpService | None = None) -> Any:
         include_content_snippet: bool = True,
     ) -> dict[str, Any]:
         _enforce("search_vault", ctx)
-        return svc.search_vault(
-            {
-                "query": query,
-                "path_scope": path_scope,
-                "file_types": file_types,
-                "limit": limit,
-                "include_content_snippet": include_content_snippet,
-                "operator_mode": _operator_mode(ctx),
-            }
-        )
+        args = {
+            "query": query,
+            "path_scope": path_scope,
+            "file_types": file_types,
+            "limit": limit,
+            "include_content_snippet": include_content_snippet,
+            "operator_mode": _operator_mode(ctx),
+        }
+        return await _run_tool("search_vault", ctx, lambda: svc.search_vault(args), args)
 
     @mcp.tool(**_tool_options("read_file", read_only=True))
-    def read_file(
+    async def read_file(
         ctx: Context,
         path: str,
         start_page: int | None = None,
@@ -290,19 +430,18 @@ def build_streamable_http_app(service: ObsidianMcpService | None = None) -> Any:
         max_chars: int | None = None,
     ) -> dict[str, Any]:
         _enforce("read_file", ctx)
-        return svc.read_file(
-            {
-                "path": path,
-                "start_page": start_page,
-                "end_page": end_page,
-                "section": section,
-                "max_chars": max_chars,
-                "operator_mode": _operator_mode(ctx),
-            }
-        )
+        args = {
+            "path": path,
+            "start_page": start_page,
+            "end_page": end_page,
+            "section": section,
+            "max_chars": max_chars,
+            "operator_mode": _operator_mode(ctx),
+        }
+        return await _run_tool("read_file", ctx, lambda: svc.read_file(args), args)
 
     @mcp.tool(**_tool_options("create_note", read_only=False))
-    def create_note(
+    async def create_note(
         ctx: Context,
         path: str,
         content: str,
@@ -312,36 +451,34 @@ def build_streamable_http_app(service: ObsidianMcpService | None = None) -> Any:
     ) -> dict[str, Any]:
         """Create a Markdown note under the configured autonomous vault policy."""
         _enforce("create_note", ctx)
-        return svc.create_note(
-            {
-                "path": path,
-                "content": content,
-                "overwrite": overwrite,
-                "create_parent_dirs": create_parent_dirs,
-                "expected_sha256": expected_sha256,
-                "caller_surface": "mcp",
-                "tool_name": "create_note",
-                "principal_kind": _principal_kind(ctx),
-            }
-        )
+        args = {
+            "path": path,
+            "content": content,
+            "overwrite": overwrite,
+            "create_parent_dirs": create_parent_dirs,
+            "expected_sha256": expected_sha256,
+            "caller_surface": "mcp",
+            "tool_name": "create_note",
+            "principal_kind": _principal_kind(ctx),
+        }
+        return await _run_tool("create_note", ctx, lambda: svc.create_note(args), args)
 
     @mcp.tool(**_tool_options("patch_note", read_only=False, destructive=True))
-    def patch_note(ctx: Context, path: str, content: str, expected_sha256: str) -> dict[str, Any]:
+    async def patch_note(ctx: Context, path: str, content: str, expected_sha256: str) -> dict[str, Any]:
         """Replace an existing Markdown note as a whole-file replacement when SHA-256 matches."""
         _enforce("patch_note", ctx)
-        return svc.patch_note(
-            {
-                "path": path,
-                "content": content,
-                "expected_sha256": expected_sha256,
-                "caller_surface": "mcp",
-                "tool_name": "patch_note",
-                "principal_kind": _principal_kind(ctx),
-            }
-        )
+        args = {
+            "path": path,
+            "content": content,
+            "expected_sha256": expected_sha256,
+            "caller_surface": "mcp",
+            "tool_name": "patch_note",
+            "principal_kind": _principal_kind(ctx),
+        }
+        return await _run_tool("patch_note", ctx, lambda: svc.patch_note(args), args)
 
     @mcp.tool()
-    def vault_map(
+    async def vault_map(
         ctx: Context,
         root_path: str = "",
         recursive: bool = True,
@@ -355,23 +492,22 @@ def build_streamable_http_app(service: ObsidianMcpService | None = None) -> Any:
     ) -> dict[str, Any]:
         """Read-only crawl of the vault returning a folder/file inventory."""
         _enforce("vault_map", ctx)
-        return svc.vault_map(
-            {
-                "root_path": root_path,
-                "recursive": recursive,
-                "max_depth": max_depth,
-                "file_types": file_types,
-                "include_hidden": include_hidden,
-                "include_frontmatter": include_frontmatter,
-                "include_links": include_links,
-                "include_tags": include_tags,
-                "max_files": max_files,
-                "operator_mode": _operator_mode(ctx),
-            }
-        )
+        args = {
+            "root_path": root_path,
+            "recursive": recursive,
+            "max_depth": max_depth,
+            "file_types": file_types,
+            "include_hidden": include_hidden,
+            "include_frontmatter": include_frontmatter,
+            "include_links": include_links,
+            "include_tags": include_tags,
+            "max_files": max_files,
+            "operator_mode": _operator_mode(ctx),
+        }
+        return await _run_tool("vault_map", ctx, lambda: svc.vault_map(args), args)
 
     @mcp.tool()
-    def vault_summarize_note(
+    async def vault_summarize_note(
         ctx: Context,
         path: str,
         max_chars: int | None = None,
@@ -382,20 +518,19 @@ def build_streamable_http_app(service: ObsidianMcpService | None = None) -> Any:
     ) -> dict[str, Any]:
         """Summarize one note (md/txt/pdf/docx) with action items, decisions, and entities."""
         _enforce("vault_summarize_note", ctx)
-        return svc.vault_summarize_note(
-            {
-                "path": path,
-                "max_chars": max_chars,
-                "summary_style": summary_style,
-                "include_action_items": include_action_items,
-                "include_decisions": include_decisions,
-                "include_entities": include_entities,
-                "operator_mode": _operator_mode(ctx),
-            }
-        )
+        args = {
+            "path": path,
+            "max_chars": max_chars,
+            "summary_style": summary_style,
+            "include_action_items": include_action_items,
+            "include_decisions": include_decisions,
+            "include_entities": include_entities,
+            "operator_mode": _operator_mode(ctx),
+        }
+        return await _run_tool("vault_summarize_note", ctx, lambda: svc.vault_summarize_note(args), args)
 
     @mcp.tool()
-    def vault_summarize_folder(
+    async def vault_summarize_folder(
         ctx: Context,
         root_path: str = "",
         recursive: bool = True,
@@ -408,23 +543,22 @@ def build_streamable_http_app(service: ObsidianMcpService | None = None) -> Any:
     ) -> dict[str, Any]:
         """Summarize a folder/subtree into themes, per-file summaries, and aggregated actions."""
         _enforce("vault_summarize_folder", ctx)
-        return svc.vault_summarize_folder(
-            {
-                "root_path": root_path,
-                "recursive": recursive,
-                "max_depth": max_depth,
-                "max_files": max_files,
-                "summary_style": summary_style,
-                "include_file_summaries": include_file_summaries,
-                "include_themes": include_themes,
-                "include_action_items": include_action_items,
-                "operator_mode": _operator_mode(ctx),
-                "principal_kind": _principal_kind(ctx),
-            }
-        )
+        args = {
+            "root_path": root_path,
+            "recursive": recursive,
+            "max_depth": max_depth,
+            "max_files": max_files,
+            "summary_style": summary_style,
+            "include_file_summaries": include_file_summaries,
+            "include_themes": include_themes,
+            "include_action_items": include_action_items,
+            "operator_mode": _operator_mode(ctx),
+            "principal_kind": _principal_kind(ctx),
+        }
+        return await _run_tool("vault_summarize_folder", ctx, lambda: svc.vault_summarize_folder(args), args)
 
     @mcp.tool()
-    def vault_read_eml(
+    async def vault_read_eml(
         ctx: Context,
         path: str,
         include_body: bool = True,
@@ -435,20 +569,19 @@ def build_streamable_http_app(service: ObsidianMcpService | None = None) -> Any:
     ) -> dict[str, Any]:
         """Parse one .eml email: headers, body, attachment metadata, detected entities."""
         _enforce("vault_read_eml", ctx)
-        return svc.vault_read_eml(
-            {
-                "path": path,
-                "include_body": include_body,
-                "include_attachments": include_attachments,
-                "max_body_chars": max_body_chars,
-                "redact_email_addresses": redact_email_addresses,
-                "redact_phone_numbers": redact_phone_numbers,
-                "operator_mode": _operator_mode(ctx),
-            }
-        )
+        args = {
+            "path": path,
+            "include_body": include_body,
+            "include_attachments": include_attachments,
+            "max_body_chars": max_body_chars,
+            "redact_email_addresses": redact_email_addresses,
+            "redact_phone_numbers": redact_phone_numbers,
+            "operator_mode": _operator_mode(ctx),
+        }
+        return await _run_tool("vault_read_eml", ctx, lambda: svc.vault_read_eml(args), args)
 
     @mcp.tool()
-    def vault_email_inventory(
+    async def vault_email_inventory(
         ctx: Context,
         root_path: str = "",
         recursive: bool = True,
@@ -461,23 +594,22 @@ def build_streamable_http_app(service: ObsidianMcpService | None = None) -> Any:
     ) -> dict[str, Any]:
         """Inventory .eml files in a folder without reading full bodies by default."""
         _enforce("vault_email_inventory", ctx)
-        return svc.vault_email_inventory(
-            {
-                "root_path": root_path,
-                "recursive": recursive,
-                "max_depth": max_depth,
-                "max_files": max_files,
-                "include_subject": include_subject,
-                "include_from": include_from,
-                "include_date": include_date,
-                "include_body_preview": include_body_preview,
-                "operator_mode": _operator_mode(ctx),
-                "principal_kind": _principal_kind(ctx),
-            }
-        )
+        args = {
+            "root_path": root_path,
+            "recursive": recursive,
+            "max_depth": max_depth,
+            "max_files": max_files,
+            "include_subject": include_subject,
+            "include_from": include_from,
+            "include_date": include_date,
+            "include_body_preview": include_body_preview,
+            "operator_mode": _operator_mode(ctx),
+            "principal_kind": _principal_kind(ctx),
+        }
+        return await _run_tool("vault_email_inventory", ctx, lambda: svc.vault_email_inventory(args), args)
 
     @mcp.tool()
-    def vault_parse_email(
+    async def vault_parse_email(
         ctx: Context,
         path: str,
         extract: list[str] | None = None,
@@ -487,25 +619,25 @@ def build_streamable_http_app(service: ObsidianMcpService | None = None) -> Any:
     ) -> dict[str, Any]:
         """Parse one .eml into construction/PM extraction categories."""
         _enforce("vault_parse_email", ctx)
-        return svc.vault_parse_email(
-            {
-                "path": path,
-                "extract": extract,
-                "max_body_chars": max_body_chars,
-                "redact_email_addresses": redact_email_addresses,
-                "redact_phone_numbers": redact_phone_numbers,
-                "operator_mode": _operator_mode(ctx),
-            }
-        )
+        args = {
+            "path": path,
+            "extract": extract,
+            "max_body_chars": max_body_chars,
+            "redact_email_addresses": redact_email_addresses,
+            "redact_phone_numbers": redact_phone_numbers,
+            "operator_mode": _operator_mode(ctx),
+        }
+        return await _run_tool("vault_parse_email", ctx, lambda: svc.vault_parse_email(args), args)
 
     @mcp.tool()
-    def vault_read_frontmatter(ctx: Context, path: str) -> dict[str, Any]:
+    async def vault_read_frontmatter(ctx: Context, path: str) -> dict[str, Any]:
         """Read YAML frontmatter/properties plus body and file SHA-256 from a note."""
         _enforce("vault_read_frontmatter", ctx)
-        return svc.vault_read_frontmatter({"path": path, "operator_mode": _operator_mode(ctx)})
+        args = {"path": path, "operator_mode": _operator_mode(ctx)}
+        return await _run_tool("vault_read_frontmatter", ctx, lambda: svc.vault_read_frontmatter(args), args)
 
     @mcp.tool()
-    def vault_update_frontmatter(
+    async def vault_update_frontmatter(
         ctx: Context,
         path: str,
         updates: dict[str, Any],
@@ -515,20 +647,19 @@ def build_streamable_http_app(service: ObsidianMcpService | None = None) -> Any:
     ) -> dict[str, Any]:
         """Update frontmatter properties safely (SHA-gated, body-preserving, backup + receipt)."""
         _enforce("vault_update_frontmatter", ctx)
-        return svc.vault_update_frontmatter(
-            {
-                "path": path,
-                "updates": updates,
-                "expected_sha256": expected_sha256,
-                "merge_tags": merge_tags,
-                "backup_before_replace": backup_before_replace,
-                "operator_mode": _operator_mode(ctx),
-                "principal_kind": _principal_kind(ctx),
-            }
-        )
+        args = {
+            "path": path,
+            "updates": updates,
+            "expected_sha256": expected_sha256,
+            "merge_tags": merge_tags,
+            "backup_before_replace": backup_before_replace,
+            "operator_mode": _operator_mode(ctx),
+            "principal_kind": _principal_kind(ctx),
+        }
+        return await _run_tool("vault_update_frontmatter", ctx, lambda: svc.vault_update_frontmatter(args), args)
 
     @mcp.tool()
-    def vault_search_by_properties(
+    async def vault_search_by_properties(
         ctx: Context,
         root_path: str = "",
         filters: dict[str, Any] | None = None,
@@ -538,19 +669,18 @@ def build_streamable_http_app(service: ObsidianMcpService | None = None) -> Any:
     ) -> dict[str, Any]:
         """Find notes by frontmatter property filters and tag any/all matching."""
         _enforce("vault_search_by_properties", ctx)
-        return svc.vault_search_by_properties(
-            {
-                "root_path": root_path,
-                "filters": filters,
-                "tags_any": tags_any,
-                "tags_all": tags_all,
-                "limit": limit,
-                "operator_mode": _operator_mode(ctx),
-            }
-        )
+        args = {
+            "root_path": root_path,
+            "filters": filters,
+            "tags_any": tags_any,
+            "tags_all": tags_all,
+            "limit": limit,
+            "operator_mode": _operator_mode(ctx),
+        }
+        return await _run_tool("vault_search_by_properties", ctx, lambda: svc.vault_search_by_properties(args), args)
 
     @mcp.tool()
-    def vault_dataview_query(
+    async def vault_dataview_query(
         ctx: Context,
         root_path: str = "",
         where: list[dict[str, Any]] | None = None,
@@ -559,18 +689,17 @@ def build_streamable_http_app(service: ObsidianMcpService | None = None) -> Any:
     ) -> dict[str, Any]:
         """Constrained structured query over note properties (no arbitrary Dataview execution)."""
         _enforce("vault_dataview_query", ctx)
-        return svc.vault_dataview_query(
-            {
-                "root_path": root_path,
-                "where": where,
-                "select": select,
-                "limit": limit,
-                "operator_mode": _operator_mode(ctx),
-            }
-        )
+        args = {
+            "root_path": root_path,
+            "where": where,
+            "select": select,
+            "limit": limit,
+            "operator_mode": _operator_mode(ctx),
+        }
+        return await _run_tool("vault_dataview_query", ctx, lambda: svc.vault_dataview_query(args), args)
 
     @mcp.tool()
-    def vault_get_backlinks(
+    async def vault_get_backlinks(
         ctx: Context,
         target_path: str,
         root_path: str = "",
@@ -578,17 +707,16 @@ def build_streamable_http_app(service: ObsidianMcpService | None = None) -> Any:
     ) -> dict[str, Any]:
         """Find notes that link to a target note (wikilinks and Markdown links)."""
         _enforce("vault_get_backlinks", ctx)
-        return svc.vault_get_backlinks(
-            {
-                "target_path": target_path,
-                "root_path": root_path,
-                "max_results": max_results,
-                "operator_mode": _operator_mode(ctx),
-            }
-        )
+        args = {
+            "target_path": target_path,
+            "root_path": root_path,
+            "max_results": max_results,
+            "operator_mode": _operator_mode(ctx),
+        }
+        return await _run_tool("vault_get_backlinks", ctx, lambda: svc.vault_get_backlinks(args), args)
 
     @mcp.tool()
-    def vault_get_unlinked_mentions(
+    async def vault_get_unlinked_mentions(
         ctx: Context,
         target_title: str,
         root_path: str = "",
@@ -597,18 +725,17 @@ def build_streamable_http_app(service: ObsidianMcpService | None = None) -> Any:
     ) -> dict[str, Any]:
         """Find notes that mention a title/entity but do not link to it."""
         _enforce("vault_get_unlinked_mentions", ctx)
-        return svc.vault_get_unlinked_mentions(
-            {
-                "target_title": target_title,
-                "root_path": root_path,
-                "max_results": max_results,
-                "include_snippets": include_snippets,
-                "operator_mode": _operator_mode(ctx),
-            }
-        )
+        args = {
+            "target_title": target_title,
+            "root_path": root_path,
+            "max_results": max_results,
+            "include_snippets": include_snippets,
+            "operator_mode": _operator_mode(ctx),
+        }
+        return await _run_tool("vault_get_unlinked_mentions", ctx, lambda: svc.vault_get_unlinked_mentions(args), args)
 
     @mcp.tool()
-    def vault_get_note_graph(
+    async def vault_get_note_graph(
         ctx: Context,
         root_path: str = "",
         target_path: str | None = None,
@@ -617,18 +744,17 @@ def build_streamable_http_app(service: ObsidianMcpService | None = None) -> Any:
     ) -> dict[str, Any]:
         """Return local graph data (nodes, edges, orphans, high-degree notes)."""
         _enforce("vault_get_note_graph", ctx)
-        return svc.vault_get_note_graph(
-            {
-                "root_path": root_path,
-                "target_path": target_path,
-                "depth": depth,
-                "max_nodes": max_nodes,
-                "operator_mode": _operator_mode(ctx),
-            }
-        )
+        args = {
+            "root_path": root_path,
+            "target_path": target_path,
+            "depth": depth,
+            "max_nodes": max_nodes,
+            "operator_mode": _operator_mode(ctx),
+        }
+        return await _run_tool("vault_get_note_graph", ctx, lambda: svc.vault_get_note_graph(args), args)
 
     @mcp.tool()
-    def vault_create_note_from_template(
+    async def vault_create_note_from_template(
         ctx: Context,
         template_path: str,
         target_path: str,
@@ -639,21 +765,20 @@ def build_streamable_http_app(service: ObsidianMcpService | None = None) -> Any:
     ) -> dict[str, Any]:
         """Create a note from a vault template with variable substitution and frontmatter."""
         _enforce("vault_create_note_from_template", ctx)
-        return svc.vault_create_note_from_template(
-            {
-                "template_path": template_path,
-                "target_path": target_path,
-                "variables": variables,
-                "frontmatter": frontmatter,
-                "overwrite": overwrite,
-                "create_parent_dirs": create_parent_dirs,
-                "operator_mode": _operator_mode(ctx),
-                "principal_kind": _principal_kind(ctx),
-            }
-        )
+        args = {
+            "template_path": template_path,
+            "target_path": target_path,
+            "variables": variables,
+            "frontmatter": frontmatter,
+            "overwrite": overwrite,
+            "create_parent_dirs": create_parent_dirs,
+            "operator_mode": _operator_mode(ctx),
+            "principal_kind": _principal_kind(ctx),
+        }
+        return await _run_tool("vault_create_note_from_template", ctx, lambda: svc.vault_create_note_from_template(args), args)
 
     @mcp.tool()
-    def vault_append_to_daily_note(
+    async def vault_append_to_daily_note(
         ctx: Context,
         content: str,
         date: str = "today",
@@ -663,20 +788,19 @@ def build_streamable_http_app(service: ObsidianMcpService | None = None) -> Any:
     ) -> dict[str, Any]:
         """Append structured content to a daily note (section-aware, create-if-missing)."""
         _enforce("vault_append_to_daily_note", ctx)
-        return svc.vault_append_to_daily_note(
-            {
-                "content": content,
-                "date": date,
-                "section": section,
-                "create_if_missing": create_if_missing,
-                "template_path": template_path,
-                "operator_mode": _operator_mode(ctx),
-                "principal_kind": _principal_kind(ctx),
-            }
-        )
+        args = {
+            "content": content,
+            "date": date,
+            "section": section,
+            "create_if_missing": create_if_missing,
+            "template_path": template_path,
+            "operator_mode": _operator_mode(ctx),
+            "principal_kind": _principal_kind(ctx),
+        }
+        return await _run_tool("vault_append_to_daily_note", ctx, lambda: svc.vault_append_to_daily_note(args), args)
 
     @mcp.tool()
-    def vault_semantic_search(
+    async def vault_semantic_search(
         ctx: Context,
         query: str,
         path_scope: str | None = None,
@@ -687,35 +811,33 @@ def build_streamable_http_app(service: ObsidianMcpService | None = None) -> Any:
     ) -> dict[str, Any]:
         """Semantic/hybrid search (falls back to lexical with a warning when no index exists)."""
         _enforce("vault_semantic_search", ctx)
-        return svc.vault_semantic_search(
-            {
-                "query": query,
-                "path_scope": path_scope,
-                "file_types": file_types,
-                "limit": limit,
-                "mode": mode,
-                "include_snippets": include_snippets,
-                "operator_mode": _operator_mode(ctx),
-            }
-        )
+        args = {
+            "query": query,
+            "path_scope": path_scope,
+            "file_types": file_types,
+            "limit": limit,
+            "mode": mode,
+            "include_snippets": include_snippets,
+            "operator_mode": _operator_mode(ctx),
+        }
+        return await _run_tool("vault_semantic_search", ctx, lambda: svc.vault_semantic_search(args), args)
 
     @mcp.tool()
-    def vault_move_note_plan(
+    async def vault_move_note_plan(
         ctx: Context, source_path: str, target_path: str, update_links: bool = True
     ) -> dict[str, Any]:
         """Plan a note move with a backlink-impact preview (read-only)."""
         _enforce("vault_move_note_plan", ctx)
-        return svc.vault_move_note_plan(
-            {
-                "source_path": source_path,
-                "target_path": target_path,
-                "update_links": update_links,
-                "operator_mode": _operator_mode(ctx),
-            }
-        )
+        args = {
+            "source_path": source_path,
+            "target_path": target_path,
+            "update_links": update_links,
+            "operator_mode": _operator_mode(ctx),
+        }
+        return await _run_tool("vault_move_note_plan", ctx, lambda: svc.vault_move_note_plan(args), args)
 
     @mcp.tool()
-    def vault_move_note_apply(
+    async def vault_move_note_apply(
         ctx: Context,
         plan_id: str,
         update_links: bool = True,
@@ -724,34 +846,32 @@ def build_streamable_http_app(service: ObsidianMcpService | None = None) -> Any:
     ) -> dict[str, Any]:
         """Apply an approved move plan_id (backup, sha-gated link rewrite, receipts)."""
         _enforce("vault_move_note_apply", ctx)
-        return svc.vault_move_note_apply(
-            {
-                "plan_id": plan_id,
-                "update_links": update_links,
-                "max_updates": max_updates,
-                "allow_overwrite": allow_overwrite,
-                "operator_mode": _operator_mode(ctx),
-                "principal_kind": _principal_kind(ctx),
-            }
-        )
+        args = {
+            "plan_id": plan_id,
+            "update_links": update_links,
+            "max_updates": max_updates,
+            "allow_overwrite": allow_overwrite,
+            "operator_mode": _operator_mode(ctx),
+            "principal_kind": _principal_kind(ctx),
+        }
+        return await _run_tool("vault_move_note_apply", ctx, lambda: svc.vault_move_note_apply(args), args)
 
     @mcp.tool()
-    def vault_rename_note_plan(
+    async def vault_rename_note_plan(
         ctx: Context, source_path: str, new_name: str, update_links: bool = True
     ) -> dict[str, Any]:
         """Plan a note rename with a backlink-impact preview (read-only)."""
         _enforce("vault_rename_note_plan", ctx)
-        return svc.vault_rename_note_plan(
-            {
-                "source_path": source_path,
-                "new_name": new_name,
-                "update_links": update_links,
-                "operator_mode": _operator_mode(ctx),
-            }
-        )
+        args = {
+            "source_path": source_path,
+            "new_name": new_name,
+            "update_links": update_links,
+            "operator_mode": _operator_mode(ctx),
+        }
+        return await _run_tool("vault_rename_note_plan", ctx, lambda: svc.vault_rename_note_plan(args), args)
 
     @mcp.tool()
-    def vault_rename_note_apply(
+    async def vault_rename_note_apply(
         ctx: Context,
         plan_id: str,
         update_links: bool = True,
@@ -760,31 +880,29 @@ def build_streamable_http_app(service: ObsidianMcpService | None = None) -> Any:
     ) -> dict[str, Any]:
         """Apply an approved rename plan_id (backup, sha-gated link rewrite, receipts)."""
         _enforce("vault_rename_note_apply", ctx)
-        return svc.vault_rename_note_apply(
-            {
-                "plan_id": plan_id,
-                "update_links": update_links,
-                "max_updates": max_updates,
-                "allow_overwrite": allow_overwrite,
-                "operator_mode": _operator_mode(ctx),
-                "principal_kind": _principal_kind(ctx),
-            }
-        )
+        args = {
+            "plan_id": plan_id,
+            "update_links": update_links,
+            "max_updates": max_updates,
+            "allow_overwrite": allow_overwrite,
+            "operator_mode": _operator_mode(ctx),
+            "principal_kind": _principal_kind(ctx),
+        }
+        return await _run_tool("vault_rename_note_apply", ctx, lambda: svc.vault_rename_note_apply(args), args)
 
     @mcp.tool()
-    def vault_archive_note_plan(ctx: Context, source_path: str, update_links: bool = True) -> dict[str, Any]:
+    async def vault_archive_note_plan(ctx: Context, source_path: str, update_links: bool = True) -> dict[str, Any]:
         """Plan moving a note to the archive folder with a backlink-impact preview (read-only)."""
         _enforce("vault_archive_note_plan", ctx)
-        return svc.vault_archive_note_plan(
-            {
-                "source_path": source_path,
-                "update_links": update_links,
-                "operator_mode": _operator_mode(ctx),
-            }
-        )
+        args = {
+            "source_path": source_path,
+            "update_links": update_links,
+            "operator_mode": _operator_mode(ctx),
+        }
+        return await _run_tool("vault_archive_note_plan", ctx, lambda: svc.vault_archive_note_plan(args), args)
 
     @mcp.tool()
-    def vault_archive_note_apply(
+    async def vault_archive_note_apply(
         ctx: Context,
         plan_id: str,
         update_links: bool = True,
@@ -793,31 +911,29 @@ def build_streamable_http_app(service: ObsidianMcpService | None = None) -> Any:
     ) -> dict[str, Any]:
         """Apply an approved archive plan_id (backup, sha-gated link rewrite, receipts)."""
         _enforce("vault_archive_note_apply", ctx)
-        return svc.vault_archive_note_apply(
-            {
-                "plan_id": plan_id,
-                "update_links": update_links,
-                "max_updates": max_updates,
-                "allow_overwrite": allow_overwrite,
-                "operator_mode": _operator_mode(ctx),
-                "principal_kind": _principal_kind(ctx),
-            }
-        )
+        args = {
+            "plan_id": plan_id,
+            "update_links": update_links,
+            "max_updates": max_updates,
+            "allow_overwrite": allow_overwrite,
+            "operator_mode": _operator_mode(ctx),
+            "principal_kind": _principal_kind(ctx),
+        }
+        return await _run_tool("vault_archive_note_apply", ctx, lambda: svc.vault_archive_note_apply(args), args)
 
     @mcp.tool()
-    def vault_delete_note_plan(ctx: Context, source_path: str, update_links: bool = True) -> dict[str, Any]:
+    async def vault_delete_note_plan(ctx: Context, source_path: str, update_links: bool = True) -> dict[str, Any]:
         """Refuses permanent deletion; returns an archive plan as the safe substitute."""
         _enforce("vault_delete_note_plan", ctx)
-        return svc.vault_delete_note_plan(
-            {
-                "source_path": source_path,
-                "update_links": update_links,
-                "operator_mode": _operator_mode(ctx),
-            }
-        )
+        args = {
+            "source_path": source_path,
+            "update_links": update_links,
+            "operator_mode": _operator_mode(ctx),
+        }
+        return await _run_tool("vault_delete_note_plan", ctx, lambda: svc.vault_delete_note_plan(args), args)
 
     @mcp.tool()
-    def vault_extract_action_items(
+    async def vault_extract_action_items(
         ctx: Context,
         path: str,
         source_type: str = "note",
@@ -826,19 +942,18 @@ def build_streamable_http_app(service: ObsidianMcpService | None = None) -> Any:
     ) -> dict[str, Any]:
         """Extract action items, decisions, risks, owners, and dates from a note, email, or folder."""
         _enforce("vault_extract_action_items", ctx)
-        return svc.vault_extract_action_items(
-            {
-                "path": path,
-                "source_type": source_type,
-                "extract_fields": extract_fields,
-                "max_chars": max_chars,
-                "operator_mode": _operator_mode(ctx),
-                "principal_kind": _principal_kind(ctx),
-            }
-        )
+        args = {
+            "path": path,
+            "source_type": source_type,
+            "extract_fields": extract_fields,
+            "max_chars": max_chars,
+            "operator_mode": _operator_mode(ctx),
+            "principal_kind": _principal_kind(ctx),
+        }
+        return await _run_tool("vault_extract_action_items", ctx, lambda: svc.vault_extract_action_items(args), args)
 
     @mcp.tool()
-    def vault_project_status_summary(
+    async def vault_project_status_summary(
         ctx: Context,
         root_path: str = "",
         lookback_days: int = 30,
@@ -847,19 +962,18 @@ def build_streamable_http_app(service: ObsidianMcpService | None = None) -> Any:
     ) -> dict[str, Any]:
         """Summarize project notes/emails into a PM-facing status summary."""
         _enforce("vault_project_status_summary", ctx)
-        return svc.vault_project_status_summary(
-            {
-                "root_path": root_path,
-                "lookback_days": lookback_days,
-                "include": include,
-                "max_files": max_files,
-                "operator_mode": _operator_mode(ctx),
-                "principal_kind": _principal_kind(ctx),
-            }
-        )
+        args = {
+            "root_path": root_path,
+            "lookback_days": lookback_days,
+            "include": include,
+            "max_files": max_files,
+            "operator_mode": _operator_mode(ctx),
+            "principal_kind": _principal_kind(ctx),
+        }
+        return await _run_tool("vault_project_status_summary", ctx, lambda: svc.vault_project_status_summary(args), args)
 
     @mcp.tool()
-    def vault_extract_project_mentions(
+    async def vault_extract_project_mentions(
         ctx: Context,
         root_path: str = "",
         project_aliases: list[str] | None = None,
@@ -868,19 +982,18 @@ def build_streamable_http_app(service: ObsidianMcpService | None = None) -> Any:
     ) -> dict[str, Any]:
         """Detect project references (HB numbers and aliases) across notes and emails."""
         _enforce("vault_extract_project_mentions", ctx)
-        return svc.vault_extract_project_mentions(
-            {
-                "root_path": root_path,
-                "project_aliases": project_aliases,
-                "max_files": max_files,
-                "include_snippets": include_snippets,
-                "operator_mode": _operator_mode(ctx),
-                "principal_kind": _principal_kind(ctx),
-            }
-        )
+        args = {
+            "root_path": root_path,
+            "project_aliases": project_aliases,
+            "max_files": max_files,
+            "include_snippets": include_snippets,
+            "operator_mode": _operator_mode(ctx),
+            "principal_kind": _principal_kind(ctx),
+        }
+        return await _run_tool("vault_extract_project_mentions", ctx, lambda: svc.vault_extract_project_mentions(args), args)
 
     @mcp.tool()
-    def vault_curation_plan(
+    async def vault_curation_plan(
         ctx: Context,
         root_path: str = "",
         strategy: str = "second_brain",
@@ -891,20 +1004,19 @@ def build_streamable_http_app(service: ObsidianMcpService | None = None) -> Any:
     ) -> dict[str, Any]:
         """Read-only second-brain analysis returning a durable plan_id and proposed actions."""
         _enforce("vault_curation_plan", ctx)
-        return svc.vault_curation_plan(
-            {
-                "root_path": root_path,
-                "strategy": strategy,
-                "max_depth": max_depth,
-                "max_files": max_files,
-                "allowed_actions": allowed_actions,
-                "dry_run": dry_run,
-                "operator_mode": _operator_mode(ctx),
-            }
-        )
+        args = {
+            "root_path": root_path,
+            "strategy": strategy,
+            "max_depth": max_depth,
+            "max_files": max_files,
+            "allowed_actions": allowed_actions,
+            "dry_run": dry_run,
+            "operator_mode": _operator_mode(ctx),
+        }
+        return await _run_tool("vault_curation_plan", ctx, lambda: svc.vault_curation_plan(args), args)
 
     @mcp.tool()
-    def vault_curation_apply(
+    async def vault_curation_apply(
         ctx: Context,
         plan_id: str,
         approved_actions: list[str] | None = None,
@@ -914,19 +1026,18 @@ def build_streamable_http_app(service: ObsidianMcpService | None = None) -> Any:
     ) -> dict[str, Any]:
         """Apply approved actions from a server-generated curation plan_id only."""
         _enforce("vault_curation_apply", ctx)
-        return svc.vault_curation_apply(
-            {
-                "plan_id": plan_id,
-                "approved_actions": approved_actions,
-                "require_expected_sha256": require_expected_sha256,
-                "backup_before_replace": backup_before_replace,
-                "max_updates": max_updates,
-                "operator_mode": _operator_mode(ctx),
-            }
-        )
+        args = {
+            "plan_id": plan_id,
+            "approved_actions": approved_actions,
+            "require_expected_sha256": require_expected_sha256,
+            "backup_before_replace": backup_before_replace,
+            "max_updates": max_updates,
+            "operator_mode": _operator_mode(ctx),
+        }
+        return await _run_tool("vault_curation_apply", ctx, lambda: svc.vault_curation_apply(args), args)
 
     @mcp.tool()
-    def vault_create_moc_plan(
+    async def vault_create_moc_plan(
         ctx: Context,
         root_path: str = "",
         moc_title: str | None = None,
@@ -936,19 +1047,18 @@ def build_streamable_http_app(service: ObsidianMcpService | None = None) -> Any:
     ) -> dict[str, Any]:
         """Plan creation of a Map of Content note (applied via vault_curation_apply)."""
         _enforce("vault_create_moc_plan", ctx)
-        return svc.vault_create_moc_plan(
-            {
-                "root_path": root_path,
-                "moc_title": moc_title,
-                "target_path": target_path,
-                "max_files": max_files,
-                "include_sections": include_sections,
-                "operator_mode": _operator_mode(ctx),
-            }
-        )
+        args = {
+            "root_path": root_path,
+            "moc_title": moc_title,
+            "target_path": target_path,
+            "max_files": max_files,
+            "include_sections": include_sections,
+            "operator_mode": _operator_mode(ctx),
+        }
+        return await _run_tool("vault_create_moc_plan", ctx, lambda: svc.vault_create_moc_plan(args), args)
 
     @mcp.tool()
-    def vault_auto_link_plan(
+    async def vault_auto_link_plan(
         ctx: Context,
         root_path: str = "",
         max_files: int = 200,
@@ -957,18 +1067,17 @@ def build_streamable_http_app(service: ObsidianMcpService | None = None) -> Any:
     ) -> dict[str, Any]:
         """Plan suggested links between notes by title/entity overlap."""
         _enforce("vault_auto_link_plan", ctx)
-        return svc.vault_auto_link_plan(
-            {
-                "root_path": root_path,
-                "max_files": max_files,
-                "min_confidence": min_confidence,
-                "max_suggestions": max_suggestions,
-                "operator_mode": _operator_mode(ctx),
-            }
-        )
+        args = {
+            "root_path": root_path,
+            "max_files": max_files,
+            "min_confidence": min_confidence,
+            "max_suggestions": max_suggestions,
+            "operator_mode": _operator_mode(ctx),
+        }
+        return await _run_tool("vault_auto_link_plan", ctx, lambda: svc.vault_auto_link_plan(args), args)
 
     @mcp.tool()
-    def vault_bulk_tagging_plan(
+    async def vault_bulk_tagging_plan(
         ctx: Context,
         root_path: str = "",
         tag_namespace: str | None = None,
@@ -977,18 +1086,17 @@ def build_streamable_http_app(service: ObsidianMcpService | None = None) -> Any:
     ) -> dict[str, Any]:
         """Plan normalized tag suggestions for notes."""
         _enforce("vault_bulk_tagging_plan", ctx)
-        return svc.vault_bulk_tagging_plan(
-            {
-                "root_path": root_path,
-                "tag_namespace": tag_namespace,
-                "max_files": max_files,
-                "max_suggestions": max_suggestions,
-                "operator_mode": _operator_mode(ctx),
-            }
-        )
+        args = {
+            "root_path": root_path,
+            "tag_namespace": tag_namespace,
+            "max_files": max_files,
+            "max_suggestions": max_suggestions,
+            "operator_mode": _operator_mode(ctx),
+        }
+        return await _run_tool("vault_bulk_tagging_plan", ctx, lambda: svc.vault_bulk_tagging_plan(args), args)
 
     @mcp.tool()
-    def vault_email_to_note_plan(
+    async def vault_email_to_note_plan(
         ctx: Context,
         email_path: str,
         target_folder: str,
@@ -1000,26 +1108,24 @@ def build_streamable_http_app(service: ObsidianMcpService | None = None) -> Any:
     ) -> dict[str, Any]:
         """Plan conversion of one .eml into a structured note (applied via vault_email_to_note_apply)."""
         _enforce("vault_email_to_note_plan", ctx)
-        return svc.vault_email_to_note_plan(
-            {
-                "email_path": email_path,
-                "target_folder": target_folder,
-                "template_path": template_path,
-                "link_projects": link_projects,
-                "extract_action_items": extract_action_items,
-                "extract_decisions": extract_decisions,
-                "redact": redact,
-                "operator_mode": _operator_mode(ctx),
-            }
-        )
+        args = {
+            "email_path": email_path,
+            "target_folder": target_folder,
+            "template_path": template_path,
+            "link_projects": link_projects,
+            "extract_action_items": extract_action_items,
+            "extract_decisions": extract_decisions,
+            "redact": redact,
+            "operator_mode": _operator_mode(ctx),
+        }
+        return await _run_tool("vault_email_to_note_plan", ctx, lambda: svc.vault_email_to_note_plan(args), args)
 
     @mcp.tool()
-    def vault_email_to_note_apply(ctx: Context, plan_id: str, max_updates: int = 25) -> dict[str, Any]:
+    async def vault_email_to_note_apply(ctx: Context, plan_id: str, max_updates: int = 25) -> dict[str, Any]:
         """Create the structured note from an approved email-to-note plan_id."""
         _enforce("vault_email_to_note_apply", ctx)
-        return svc.vault_email_to_note_apply(
-            {"plan_id": plan_id, "max_updates": max_updates, "operator_mode": _operator_mode(ctx)}
-        )
+        args = {"plan_id": plan_id, "max_updates": max_updates, "operator_mode": _operator_mode(ctx)}
+        return await _run_tool("vault_email_to_note_apply", ctx, lambda: svc.vault_email_to_note_apply(args), args)
 
     app = mcp.streamable_http_app()
     return BearerTokenMiddleware(app, service=svc)

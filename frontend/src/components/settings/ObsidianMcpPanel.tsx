@@ -6,6 +6,7 @@ import {
   disableObsidianMcp,
   enableObsidianMcp,
   getObsidianMcpConfig,
+  getObsidianMcpChatGPT,
   getObsidianMcpGrokConfig,
   getObsidianMcpMutations,
   getObsidianMcpOAuth,
@@ -14,6 +15,7 @@ import {
   getObsidianMcpTools,
   patchObsidianMcpConfig,
   restartObsidianMcp,
+  runObsidianMcpChatGPTReadiness,
   runObsidianMcpHealthCheck,
   runObsidianMcpWriteReadiness,
   testObsidianMcpListDirectory,
@@ -34,6 +36,8 @@ export function ObsidianMcpPanel() {
   const [tools, setTools] = useState<any[]>([])
   const [grok, setGrok] = useState<any>(null)
   const [oauth, setOauth] = useState<any>(null)
+  const [chatgpt, setChatgpt] = useState<any>(null)
+  const [chatgptReadiness, setChatgptReadiness] = useState<any>(null)
   const [mutations, setMutations] = useState<any[]>([])
   const [readReceipts, setReadReceipts] = useState<any[]>([])
   const [writeReadiness, setWriteReadiness] = useState<any>(null)
@@ -50,7 +54,7 @@ export function ObsidianMcpPanel() {
     setBusy('refresh')
     setError(null)
     try {
-      const [cfg, st, toolData, grokData, mutationData, oauthData, receiptData] = await Promise.all([
+      const [cfg, st, toolData, grokData, mutationData, oauthData, receiptData, chatgptData] = await Promise.all([
         getObsidianMcpConfig(),
         getObsidianMcpStatus(),
         getObsidianMcpTools(),
@@ -58,6 +62,7 @@ export function ObsidianMcpPanel() {
         getObsidianMcpMutations(10),
         getObsidianMcpOAuth(),
         getObsidianMcpReadReceipts(10),
+        getObsidianMcpChatGPT(),
       ])
       setConfig((cfg as any).config || cfg)
       setStatus(st)
@@ -66,6 +71,7 @@ export function ObsidianMcpPanel() {
       setMutations((mutationData as any).mutations || [])
       setOauth(oauthData)
       setReadReceipts((receiptData as any).read_receipts || [])
+      setChatgpt(chatgptData)
     } catch (err) {
       setError(err)
     } finally {
@@ -160,6 +166,20 @@ export function ObsidianMcpPanel() {
     }
   }
 
+  async function runChatgptReadiness() {
+    setBusy('chatgpt-readiness')
+    setError(null)
+    try {
+      const result = await runObsidianMcpChatGPTReadiness()
+      setChatgptReadiness(result)
+      await refreshAll()
+    } catch (err) {
+      setError(err)
+    } finally {
+      setBusy(null)
+    }
+  }
+
   async function copyGrokConfig() {
     const text = JSON.stringify((grok as any)?.mcp_config || {}, null, 2)
     try {
@@ -188,6 +208,31 @@ export function ObsidianMcpPanel() {
     try {
       await navigator.clipboard.writeText(text)
       setMessage('Grok OAuth setup values copied.')
+    } catch {
+      setMessage('Copy unavailable in this browser.')
+    }
+  }
+
+  async function copyChatgptSetup() {
+    const setup = (chatgpt as any)?.setup || (oauth as any)?.chatgpt_setup
+    if (!setup) {
+      setMessage('Set a Public MCP Base URL to generate ChatGPT setup values.')
+      return
+    }
+    const text = [
+      `Connector URL:\n${setup.connector_url}`,
+      `Protected Resource Metadata:\n${setup.protected_resource_metadata_url}`,
+      `Authorization Server Metadata:\n${setup.authorization_server_metadata_url}`,
+      `Authorization Endpoint:\n${setup.authorization_endpoint}`,
+      `Token Endpoint:\n${setup.token_endpoint}`,
+      `Registration Endpoint:\n${setup.registration_endpoint}`,
+      `Registration Mode:\n${setup.registration_mode}`,
+      `Initial Scope:\n${setup.initial_scope}`,
+      `CIMD Supported:\n${setup.client_id_metadata_document_supported ? 'yes' : 'no'}`,
+    ].join('\n\n')
+    try {
+      await navigator.clipboard.writeText(text)
+      setMessage('ChatGPT setup values copied.')
     } catch {
       setMessage('Copy unavailable in this browser.')
     }
@@ -431,7 +476,7 @@ export function ObsidianMcpPanel() {
               value={config?.public_base_url || ''}
               onChange={(event) => setConfig({ ...(config || {}), public_base_url: event.target.value })}
               onBlur={() => saveConfig({ public_base_url: config?.public_base_url || '' })}
-              placeholder="https://your-tunnel.trycloudflare.com"
+              placeholder="https://mcp.bobby-fetting.me"
             />
           </div>
         </div>
@@ -458,6 +503,47 @@ export function ObsidianMcpPanel() {
             </div>
           )}
         </div>
+      </div>
+
+      <div className="mt-4 rounded border border-[var(--hb-border)] p-3">
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <h4 className="text-sm font-medium">ChatGPT App Connection</h4>
+          <div className="flex flex-wrap gap-2">
+            <button className="badge inline-flex items-center gap-1" onClick={copyChatgptSetup}>
+              <Copy size={13} aria-hidden />
+              Copy ChatGPT setup values
+            </button>
+            <button className="badge inline-flex items-center gap-1" onClick={runChatgptReadiness} disabled={busy !== null}>
+              <Play size={13} aria-hidden />
+              {busy === 'chatgpt-readiness' ? 'Checking...' : 'Run readiness check'}
+            </button>
+          </div>
+        </div>
+        <div className="grid gap-2 text-xs sm:grid-cols-2">
+          <StatusRow label="ChatGPT" value={chatgpt?.enabled ? 'Enabled' : 'Disabled'} />
+          <StatusRow label="Read-only mode" value={chatgpt?.readonly_mode ? 'Enabled' : 'Disabled'} />
+          <StatusRow label="DCR" value={chatgpt?.dynamic_client_registration_enabled ? 'Enabled' : 'Disabled'} />
+          <StatusRow label="CIMD" value={chatgpt?.client_id_metadata_document_supported ? 'Advertised' : 'Disabled'} />
+          <StatusRow label="Initial scopes" value={(chatgpt?.initial_scopes || ['obsidian.read']).join(', ')} />
+          <StatusRow label="Readiness" value={chatgptReadiness ? (chatgptReadiness.ok ? 'Passing' : 'Needs attention') : 'Not checked'} />
+        </div>
+        <div className="mt-3 grid gap-2 text-xs">
+          <StatusRow label="Connector URL" value={chatgpt?.setup?.connector_url || oauth?.chatgpt_setup?.connector_url || 'Set the Public MCP Base URL'} />
+          <StatusRow label="Protected resource metadata" value={chatgpt?.setup?.protected_resource_metadata_url || oauth?.endpoints?.protected_resource_metadata_endpoint || 'Set the Public MCP Base URL'} />
+          <StatusRow label="Authorization metadata" value={chatgpt?.setup?.authorization_server_metadata_url || oauth?.endpoints?.metadata_endpoint || 'Set the Public MCP Base URL'} />
+          <StatusRow label="Registration endpoint" value={chatgpt?.setup?.registration_endpoint || oauth?.endpoints?.registration_endpoint || 'Set the Public MCP Base URL'} />
+        </div>
+        {chatgptReadiness?.checks?.length ? (
+          <div className="mt-3 grid gap-2">
+            {chatgptReadiness.checks.map((check: any) => (
+              <div key={check.name} className="flex flex-wrap items-center gap-2 rounded border border-[var(--hb-border)] p-2 text-xs">
+                <span className={`badge ${check.status === 'pass' ? 'badge-fresh' : 'badge-stale'}`}>{check.status}</span>
+                <span className="font-medium">{check.name}</span>
+                <span className="text-[var(--hb-muted)]">{check.detail}</span>
+              </div>
+            ))}
+          </div>
+        ) : null}
       </div>
 
       <div className="mt-4 grid gap-4 xl:grid-cols-2">
