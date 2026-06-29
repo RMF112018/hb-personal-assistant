@@ -506,6 +506,7 @@ export interface ObsidianMcpConfigPatch {
   source_summary_auto_max_per_drain?: number;
   source_card_auto_max_per_drain?: number;
   source_index_excluded_path_parts?: string[];
+  source_index_deferred_path_parts?: string[];
   [key: string]: unknown;
 }
 

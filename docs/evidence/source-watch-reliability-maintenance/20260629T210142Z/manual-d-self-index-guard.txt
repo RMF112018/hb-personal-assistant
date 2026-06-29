@@ -1,0 +1,5 @@
+Manual D — isolated self-index guard demonstration (temp DB; live DB untouched)
+  normal note indexed: True (expect True)
+  Source Notes card indexed: False (expect False)
+  is_source_notes_path('Source Notes/test-self-index-guard.md'): True (expect True)
+Result: generated Source Notes cards are NOT re-indexed as vault notes -> no recursive source work.

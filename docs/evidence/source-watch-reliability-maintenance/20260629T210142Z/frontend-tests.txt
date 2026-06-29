@@ -1,0 +1,1 @@
+frontend: npm run typecheck clean; ObsidianMcpPanel.test.tsx => 20 passed (18 prior + 2 deferred-control)

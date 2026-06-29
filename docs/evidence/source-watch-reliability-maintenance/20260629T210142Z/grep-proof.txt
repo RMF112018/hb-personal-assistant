@@ -1,0 +1,46 @@
+### Defect 1+2 — watcher start/status honor fresh config (source_watch.py + api.py)
+45:        self._config = config
+56:    def start(self, *, config: ObsidianMcpConfig | None = None) -> None:
+61:            self._config = config
+198:    def status(self, *, config: ObsidianMcpConfig | None = None) -> dict[str, Any]:
+202:        cfg = config if config is not None else self._config
+1830:                result["watcher"] = watcher.status(config=_fresh_obsidian_config())
+1852:    def _fresh_obsidian_config() -> Any:
+1868:        watcher = SourceWatcher(_watch_db, _fresh_obsidian_config())
+1878:        return watcher.status(config=_fresh_obsidian_config())
+1884:        cfg = _fresh_obsidian_config()  # honor a just-PATCHed external_source_watch_enabled
+1886:        return watcher.status(config=cfg)
+1895:        return watcher.status(config=_fresh_obsidian_config())
+
+### Defect 3 — source-notes self-index guard
+src/hb_assistant/obsidian_mcp/source_watch.py:144:                if self._root_key == _VAULT_ROOT_KEY and is_source_notes_path(rel, config):
+src/hb_assistant/obsidian_mcp/source_indexer.py:70:def is_source_notes_path(rel_path: str, config: ObsidianMcpConfig) -> bool:
+src/hb_assistant/obsidian_mcp/source_indexer.py:263:                or is_source_notes_path(rel_path, config)
+
+### Defect 5 — deferred policy
+src/hb_assistant/obsidian_mcp/source_indexer.py:55:def is_deferred_source_path(rel_path: str, config: ObsidianMcpConfig) -> bool:
+src/hb_assistant/obsidian_mcp/source_indexer.py:60:    segment-based against ``config.source_index_deferred_path_parts``.
+src/hb_assistant/obsidian_mcp/source_indexer.py:62:    deferred = getattr(config, "source_index_deferred_path_parts", None)
+src/hb_assistant/obsidian_mcp/source_indexer.py:487:                repo.complete_event(event["event_id"], "skipped", error_code="deferred_path")
+src/hb_assistant/obsidian_mcp/source_search.py:83:    status["deferred_policy"] = {
+src/hb_assistant/obsidian_mcp/source_search.py:84:        "deferred_path_parts": list(getattr(config, "source_index_deferred_path_parts", []) or [])
+src/hb_assistant/obsidian_mcp/config.py:29:DEFAULT_DEFERRED_PATH_PARTS = ["HB INSURANCE RENEWALS"]
+src/hb_assistant/obsidian_mcp/config.py:123:    source_index_deferred_path_parts: list[str] = Field(
+src/hb_assistant/obsidian_mcp/config.py:124:        default_factory=lambda: list(DEFAULT_DEFERRED_PATH_PARTS)
+src/hb_assistant/obsidian_mcp/config.py:219:    @field_validator("source_index_deferred_path_parts")
+src/hb_assistant/obsidian_mcp/config.py:221:    def validate_deferred_path_parts(cls, value: list[str]) -> list[str]:
+src/hb_assistant/obsidian_mcp/config.py:335:    source_index_deferred_path_parts: list[str] | None = None
+src/hb_assistant/obsidian_mcp/source_notes.py:660:        return {"summarized": False, "reason": "deferred_path",
+
+### Defect 4 — maintenance op
+src/hb_assistant/construction/analytics/api.py:1840:    @app.post("/api/settings/obsidian-mcp/source-cards/retire")
+src/hb_assistant/obsidian_mcp/source_maintenance.py:34:def retire_source_cards(repo: SourceIndexRepository, config: ObsidianMcpConfig, *,
+src/hb_assistant/obsidian_mcp/source_index_repository.py:400:    def list_generated_notes(self, *, statuses: tuple[str, ...] = ("generated",),
+src/hb_assistant/obsidian_mcp/source_index_repository.py:423:    def set_generated_note_status(self, generated_note_id: str, status: str, *,
+src/hb_assistant/obsidian_mcp/service.py:436:    def retire_source_cards(self, args: dict[str, Any]) -> dict[str, Any]:
+
+### UI
+frontend/src/components/settings/ObsidianMcpPanel.tsx:200:    setDeferredPartsInput(Array.isArray(config.source_index_deferred_path_parts) ? config.source_index_deferred_path_parts.join(', ') : '')
+frontend/src/components/settings/ObsidianMcpPanel.tsx:317:    void saveConfig({ source_index_deferred_path_parts: parts })
+frontend/src/components/settings/ObsidianMcpPanel.tsx:1208:            <Field label="Deferred path parts" value={deferredPartsInput} onChange={setDeferredPartsInput} onBlur={commitDeferredParts} />
+frontend/src/lib/api.ts:509:  source_index_deferred_path_parts?: string[];

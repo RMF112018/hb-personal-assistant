@@ -24,6 +24,9 @@ DEFAULT_EXCLUDED_PATH_PARTS = [
     "__pycache__", ".pytest_cache", "coverage", "site-packages", ".ds_store",
     ".cache", ".mypy_cache", ".ruff_cache",
 ]
+# Path SEGMENTS for DEFERRED business classes: valid records that are indexed/searchable but
+# intentionally NOT auto-carded/summarized (distinct from hard exclusions). Opt-in; safe default.
+DEFAULT_DEFERRED_PATH_PARTS = ["HB INSURANCE RENEWALS"]
 
 
 class ExternalSourceRoot(BaseModel):
@@ -117,6 +120,9 @@ class ObsidianMcpConfig(BaseModel):
     source_index_excluded_path_parts: list[str] = Field(
         default_factory=lambda: list(DEFAULT_EXCLUDED_PATH_PARTS)
     )
+    source_index_deferred_path_parts: list[str] = Field(
+        default_factory=lambda: list(DEFAULT_DEFERRED_PATH_PARTS)
+    )
     schema_version: int = 7
 
     model_config = {"extra": "forbid"}
@@ -209,6 +215,17 @@ class ObsidianMcpConfig(BaseModel):
             if part and part not in normalized:
                 normalized.append(part)
         return normalized or list(DEFAULT_EXCLUDED_PATH_PARTS)
+
+    @field_validator("source_index_deferred_path_parts")
+    @classmethod
+    def validate_deferred_path_parts(cls, value: list[str]) -> list[str]:
+        # Deferred is opt-in: an explicit empty list clears it (no fall back to excluded defaults).
+        normalized: list[str] = []
+        for item in value:
+            part = item.strip().replace("\\", "/").strip("/").lower()
+            if part and part not in normalized:
+                normalized.append(part)
+        return normalized
 
     @field_validator("chatgpt_initial_scopes")
     @classmethod
@@ -315,6 +332,7 @@ class ObsidianMcpConfigPatch(BaseModel):
     source_summary_auto_max_per_drain: int | None = None
     source_card_auto_max_per_drain: int | None = None
     source_index_excluded_path_parts: list[str] | None = None
+    source_index_deferred_path_parts: list[str] | None = None
 
     model_config = {"extra": "forbid"}
 

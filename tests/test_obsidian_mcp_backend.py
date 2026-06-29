@@ -189,6 +189,79 @@ def test_config_update_persists_excluded_path_parts_and_status_exposes_policy(
     assert status["exclusion_policy"]["excluded_path_parts"] == ["node_modules", ".venv", "dist"]
 
 
+def test_config_persists_deferred_path_parts_and_status_exposes_policy(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The deferred policy persists (normalized) and is surfaced in status, distinct from exclusions."""
+    client, vault = _client(tmp_path, monkeypatch)
+    res = client.patch(
+        "/api/settings/obsidian-mcp/config",
+        json={"enabled": True, "vault_root": str(vault),
+              "source_index_deferred_path_parts": ["HB INSURANCE RENEWALS", "Archive"]},
+        headers={"X-HB-UI-Role": "operator"},
+    )
+    assert res.status_code == 200
+    body = res.json()
+    _assert_safe(body)
+    assert body["config"]["source_index_deferred_path_parts"] == ["hb insurance renewals", "archive"]
+    assert load_config().source_index_deferred_path_parts == ["hb insurance renewals", "archive"]
+    status = client.get(
+        "/api/settings/obsidian-mcp/source-index/status", headers={"X-HB-UI-Role": "operator"}
+    ).json()
+    assert status["deferred_policy"]["deferred_path_parts"] == ["hb insurance renewals", "archive"]
+
+
+def test_source_watch_start_honors_patched_config_and_status_is_consistent(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """PATCH watch=true then start (no restart) reports watch_enabled:true; stop + PATCH false makes
+    both top-level and nested watcher.watch_enabled false."""
+    client, vault = _client(tmp_path, monkeypatch)
+    client.patch(
+        "/api/settings/obsidian-mcp/config",
+        json={"enabled": True, "vault_root": str(vault), "external_source_watch_enabled": True,
+              "watch_poll_interval_seconds": 1},
+        headers={"X-HB-UI-Role": "operator"},
+    )
+    try:
+        started = client.post(
+            "/api/settings/obsidian-mcp/source-watch/start", headers={"X-HB-UI-Role": "operator"}
+        ).json()
+        assert started["watch_enabled"] is True  # NOT stale false; no /restart needed
+    finally:
+        client.post("/api/settings/obsidian-mcp/source-watch/stop", headers={"X-HB-UI-Role": "operator"})
+    client.patch(
+        "/api/settings/obsidian-mcp/config",
+        json={"external_source_watch_enabled": False},
+        headers={"X-HB-UI-Role": "operator"},
+    )
+    status = client.get(
+        "/api/settings/obsidian-mcp/source-index/status", headers={"X-HB-UI-Role": "operator"}
+    ).json()
+    assert status["watch_enabled"] is False
+    assert status["watcher"]["watch_enabled"] is False  # not the stale manager snapshot
+    assert status["watcher"]["running"] is False
+
+
+def test_retire_source_cards_endpoint_dry_run_is_operator_gated_and_non_mutating(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The retire endpoint requires operator and defaults to a non-mutating dry-run."""
+    client, _vault = _client(tmp_path, monkeypatch)
+    forbidden = client.post(
+        "/api/settings/obsidian-mcp/source-cards/retire", json={}, headers={"X-HB-UI-Role": "viewer"}
+    )
+    assert forbidden.status_code == 403
+    res = client.post(
+        "/api/settings/obsidian-mcp/source-cards/retire", json={},
+        headers={"X-HB-UI-Role": "operator"},
+    )
+    assert res.status_code == 200
+    body = res.json()
+    assert body["apply"] is False and body["retired_count"] == 0
+    assert "matched_count" in body and "sample_paths" in body
+
+
 def test_source_card_generate_tool_error_returns_clean_422(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

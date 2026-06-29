@@ -397,6 +397,39 @@ class SourceIndexRepository:
             ).fetchall()
         return [{"source_id": r[0], "note_rel_path": r[1]} for r in rows]
 
+    def list_generated_notes(self, *, statuses: tuple[str, ...] = ("generated",),
+                             conn: sqlite3.Connection | None = None) -> list[dict[str, Any]]:
+        """Generated-note rows joined to their source (rel_path/kind) — for maintenance scans.
+
+        Unlike ``list_stale_generated_notes`` this is not status-locked or row-capped; the caller
+        filters by source path. Returns generated_note_id, source_id, note_rel_path,
+        generation_status, source_rel_path, source_kind.
+        """
+        statuses = tuple(statuses) or ("generated",)
+        placeholders = ",".join("?" for _ in statuses)
+        with borrow_connection(conn, self.db_path) as c:
+            rows = c.execute(
+                "SELECT g.generated_note_id, g.source_id, g.note_rel_path, g.generation_status, "
+                "       s.rel_path, s.source_kind "
+                "FROM source_intelligence_generated_notes g "
+                "JOIN source_intelligence_sources s ON s.source_id = g.source_id "
+                f"WHERE g.generation_status IN ({placeholders}) ORDER BY g.updated_at",
+                statuses,
+            ).fetchall()
+        return [{"generated_note_id": r[0], "source_id": r[1], "note_rel_path": r[2],
+                 "generation_status": r[3], "source_rel_path": r[4], "source_kind": r[5]}
+                for r in rows]
+
+    def set_generated_note_status(self, generated_note_id: str, status: str, *,
+                                  conn: sqlite3.Connection | None = None) -> None:
+        """Set one generated-note row's status (legal: not_generated/generated/stale)."""
+        with borrow_connection(conn, self.db_path) as c, transaction(c):
+            c.execute(
+                "UPDATE source_intelligence_generated_notes SET generation_status=?, updated_at=? "
+                "WHERE generated_note_id=?",
+                (status, _now(), generated_note_id),
+            )
+
     # ----- advisory model-summary receipts (V94) ---------------------------------------------
     def upsert_summary(self, source_id: str, receipt: dict[str, Any], *,
                        conn: sqlite3.Connection | None = None) -> None:

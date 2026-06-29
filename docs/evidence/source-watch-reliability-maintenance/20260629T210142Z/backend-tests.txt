@@ -1,0 +1,16 @@
+A1.10 backend test results
+
+New suites:
+  tests/test_obsidian_source_watch_reliability.py  (Defects 1+2)
+  tests/test_obsidian_source_self_index_guard.py   (Defect 3)
+  tests/test_obsidian_source_deferred.py           (Defect 5)
+  tests/test_obsidian_source_maintenance.py        (Defect 4)
+  tests/test_obsidian_mcp_backend.py (extended: start-after-PATCH consistency, deferred policy
+    PATCH/status, operator-gated retire dry-run)
+  => focused run: 33 passed
+
+Full regression:
+  python3 -m pytest tests -k "source_watch or source_index or obsidian or deferred or maintenance or self_index"
+  => 545 passed, 6166 deselected, 1 warning
+
+py_compile all src/: OK. ruff on changed files: All checks passed (service.py I001 is pre-existing on origin/main).
