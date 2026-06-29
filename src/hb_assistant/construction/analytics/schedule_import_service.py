@@ -1367,6 +1367,18 @@ class ScheduleImportService:
                 },
             ) from exc
 
+        if identity_resolution is not None:
+            from hb_assistant.construction.analytics.schedule_trust_service import (
+                ScheduleTrustService,
+            )
+
+            ScheduleTrustService(db_path=self._db_path).evaluate_import_guardrail(
+                project_key=project_key,
+                schedule_version_key=version_key,
+                import_id=import_id,
+                identity_match=identity_resolution.match,
+            )
+
         evidence_id = write_import_evidence(
             import_id=import_id,
             project_key=project_key,
@@ -1402,6 +1414,28 @@ class ScheduleImportService:
         )
         health_snapshot = ScheduleReadService(db_path=self._db_path).get_health_data(version_key) or {}
 
+        from hb_assistant.construction.analytics.schedule_cpm_recompute_service import (
+            ScheduleCpmRecomputeService,
+        )
+
+        cpm_result: dict[str, Any] = {
+            "cpm_recompute_triggered": False,
+            "cpm_recompute_status": "unavailable",
+        }
+        try:
+            cpm_result = ScheduleCpmRecomputeService(db_path=self._db_path).recompute(version_key)
+        except Exception:
+            _logger.exception(
+                "schedule import post-commit CPM recompute failed import_id=%s version_key=%s",
+                import_id,
+                version_key,
+            )
+            cpm_result = {
+                "cpm_recompute_triggered": True,
+                "cpm_recompute_status": "failed",
+                "failure_reason": "cpm_recompute_exception",
+            }
+
         _PREVIEW_CACHE.pop(import_id, None)
         from .schedule_project_catalog import ScheduleProjectCatalog
 
@@ -1431,6 +1465,15 @@ class ScheduleImportService:
             else None,
             "identity_match": identity_resolution.public_match() if identity_resolution else None,
             "comparison_basis": health_snapshot.get("comparison_basis"),
+            "cpm_recompute_triggered": cpm_result.get("cpm_recompute_triggered"),
+            "cpm_recompute_status": cpm_result.get("cpm_recompute_status"),
+            "cpm_run_id": cpm_result.get("cpm_run_id"),
+            "computed_activity_count": cpm_result.get("computed_activity_count"),
+            "computed_critical_activity_count": cpm_result.get("computed_critical_activity_count"),
+            "computed_near_critical_activity_count": cpm_result.get("computed_near_critical_activity_count"),
+            "longest_path_available": cpm_result.get("longest_path_available"),
+            "diagnostics_count": cpm_result.get("diagnostics_count"),
+            "cpm_failure_reason": cpm_result.get("failure_reason"),
         }
 
     @staticmethod

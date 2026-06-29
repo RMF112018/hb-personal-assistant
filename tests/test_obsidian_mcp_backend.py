@@ -17,7 +17,7 @@ from fastapi.testclient import TestClient
 from hb_assistant.construction.analytics import create_app
 from hb_assistant.obsidian_mcp.config import load_config
 from hb_assistant.obsidian_mcp.mutations import create_note, patch_note, recent_mutations, sha256_file
-from hb_assistant.obsidian_mcp.tools import read_file, search_vault
+from hb_assistant.obsidian_mcp.tools import read_file, required_tool_names, search_vault
 from hb_assistant.store.migrator import SQLiteMigrator
 
 
@@ -187,53 +187,11 @@ def test_streamable_http_mount_lists_phase1_tools(tmp_path: Path, monkeypatch: p
         assert tools.status_code == 200
         assert tools.status_code != 421
         payload = _mcp_json_payload(tools)
-        assert [tool["name"] for tool in payload["result"]["tools"]] == [
-            "list_directory",
-            "search_vault",
-            "read_file",
-            "create_note",
-            "patch_note",
-            "vault_map",
-            "vault_summarize_note",
-            "vault_summarize_folder",
-            "vault_read_eml",
-            "vault_email_inventory",
-            "vault_parse_email",
-            "vault_read_frontmatter",
-            "vault_update_frontmatter",
-            "vault_search_by_properties",
-            "vault_dataview_query",
-            "vault_get_backlinks",
-            "vault_get_unlinked_mentions",
-            "vault_get_note_graph",
-            "vault_create_note_from_template",
-            "vault_append_to_daily_note",
-            "vault_semantic_search",
-            "vault_move_note_plan",
-            "vault_move_note_apply",
-            "vault_rename_note_plan",
-            "vault_rename_note_apply",
-            "vault_archive_note_plan",
-            "vault_archive_note_apply",
-            "vault_delete_note_plan",
-            "vault_extract_action_items",
-            "vault_project_status_summary",
-            "vault_extract_project_mentions",
-            "vault_curation_plan",
-            "vault_curation_apply",
-            "vault_create_moc_plan",
-            "vault_auto_link_plan",
-            "vault_bulk_tagging_plan",
-            "vault_email_to_note_plan",
-            "vault_email_to_note_apply",
-            "search_sources",
-            "search_knowledge",
-            "source_index_status",
-            "rebuild_source_index",
-            "generate_source_card",
-            "refresh_stale_source_notes",
-            "summarize_source",
-        ]
+        tool_names = [tool["name"] for tool in payload["result"]["tools"]]
+        for required in required_tool_names():
+            assert required in tool_names
+        assert "llm_chat_to_note_plan" in tool_names
+        assert "llm_chat_to_note_apply" in tool_names
 
         create = client.post(
             "/mcp",

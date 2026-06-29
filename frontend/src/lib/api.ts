@@ -545,6 +545,9 @@ export function getObsidianMcpGrokConfig() {
 export function getObsidianMcpOAuth() {
   return fetchJson('/api/settings/obsidian-mcp/oauth');
 }
+export function getObsidianMcpLlmChatStatus() {
+  return fetchJson('/api/settings/obsidian-mcp/llm-chat/status');
+}
 export function getObsidianMcpChatGPT() {
   return fetchJson('/api/settings/obsidian-mcp/chatgpt');
 }
@@ -2192,6 +2195,85 @@ export function commitScheduleImport(
     }),
   });
 }
+
+export async function uploadProjectScheduleImportPreview(
+  projectKey: string,
+  file: File,
+  columnRoles?: Record<string, string> | null,
+  confirmSupersede = false,
+) {
+  const form = new FormData();
+  form.append('file', file);
+  if (columnRoles) {
+    form.append('column_roles', JSON.stringify(columnRoles));
+  }
+  if (confirmSupersede) {
+    form.append('confirm_supersede', 'true');
+  }
+  const role = getLocalUiRole();
+  let res: Response;
+  try {
+    res = await fetch(
+      `${API_BASE}/api/projects/${encodeURIComponent(projectKey)}/schedule/import-preview`,
+      {
+        method: 'POST',
+        headers: { 'X-HB-UI-Role': role },
+        body: form,
+      },
+    );
+  } catch (err) {
+    throw new ScheduleNetworkError('schedule_upload_network_error', err);
+  }
+  if (!res.ok) {
+    let body: unknown;
+    try {
+      body = await res.json();
+    } catch {
+      body = null;
+    }
+    const schedErr = parseScheduleApiError(res.status, body);
+    if (schedErr) throw schedErr;
+    const detail =
+      body && typeof body === 'object' && 'detail' in body
+        ? String((body as { detail?: unknown }).detail ?? '')
+        : '';
+    const err = new Error(`${res.status} ${res.statusText}${detail ? `: ${detail}` : ''}`);
+    (err as { status?: number }).status = res.status;
+    throw err;
+  }
+  return res.json();
+}
+
+export function commitProjectScheduleImport(
+  projectKey: string,
+  importId: string,
+  columnRoles?: Record<string, string> | null,
+  confirmSupersede = false,
+) {
+  return fetchJson(`/api/projects/${encodeURIComponent(projectKey)}/schedule/import-commit`, {
+    method: 'POST',
+    body: JSON.stringify({
+      import_id: importId,
+      project_key: projectKey,
+      confirm: true,
+      confirm_supersede: confirmSupersede,
+      column_roles: columnRoles ?? null,
+    }),
+  });
+}
+
+export function getProjectScheduleImportStatus(projectKey: string, importId: string) {
+  return fetchJson(
+    `/api/projects/${encodeURIComponent(projectKey)}/schedule/imports/${encodeURIComponent(importId)}/status`,
+  );
+}
+
+export function retryProjectScheduleImportCpm(projectKey: string, importId: string) {
+  return fetchJson(
+    `/api/projects/${encodeURIComponent(projectKey)}/schedule/imports/${encodeURIComponent(importId)}/recompute-cpm`,
+    { method: 'POST', body: JSON.stringify({}) },
+  );
+}
 export function createScheduleCostMappingRun(
   projectKey: string,
   scheduleVersionKey: string,
@@ -2478,6 +2560,7 @@ export const api = {
   testObsidianMcpReadFile,
   testObsidianMcpWriteSmoke,
   getObsidianMcpGrokConfig,
+  getObsidianMcpLlmChatStatus,
   // Prompt D — onboarding + normalized auth flows (safe surfaces only)
   getOnboardingReadiness,
   startGraphDeviceAuth,
@@ -2602,6 +2685,10 @@ export const api = {
   mergeScheduleIdentities,
   uploadScheduleImportPreview,
   commitScheduleImport,
+  uploadProjectScheduleImportPreview,
+  commitProjectScheduleImport,
+  getProjectScheduleImportStatus,
+  retryProjectScheduleImportCpm,
   createScheduleCostMappingRun,
   getScheduleCostMappingRun,
   getScheduleCostMappingCandidates,

@@ -69,6 +69,13 @@ class ObsidianMcpConfig(BaseModel):
     chatgpt_initial_scopes: list[str] = Field(default_factory=lambda: ["obsidian.read"])
     curation_dense_folder_threshold: int = 5
     curation_operator_hidden_inspection: bool = False
+    llm_chat_enabled: bool = True
+    llm_chat_template_dir: str = "Templates/LLM Chat"
+    llm_chat_project_template_path: str = "Templates/Template - Project Note.md"
+    llm_chat_max_transcript_chars: int = 120000
+    llm_chat_max_plan_updates: int = 5
+    llm_chat_persist_raw_transcript: bool = False
+    llm_chat_default_target_folder: str = "Inbox/LLM Sessions"
     summarization_backend: Literal["auto", "deterministic", "llm"] = "auto"
     summarization_provider: Literal["ollama", "anthropic"] = "ollama"
     summarization_model: str = "llama3.1"
@@ -128,6 +135,8 @@ class ObsidianMcpConfig(BaseModel):
         "max_result_chars",
         "max_write_chars",
         "curation_dense_folder_threshold",
+        "llm_chat_max_transcript_chars",
+        "llm_chat_max_plan_updates",
         "tool_timeout_seconds",
         "external_source_scan_max_files",
         "source_index_max_excerpt_chars",
@@ -236,6 +245,13 @@ class ObsidianMcpConfigPatch(BaseModel):
     chatgpt_initial_scopes: list[str] | None = None
     curation_dense_folder_threshold: int | None = None
     curation_operator_hidden_inspection: bool | None = None
+    llm_chat_enabled: bool | None = None
+    llm_chat_template_dir: str | None = None
+    llm_chat_project_template_path: str | None = None
+    llm_chat_max_transcript_chars: int | None = None
+    llm_chat_max_plan_updates: int | None = None
+    llm_chat_persist_raw_transcript: bool | None = None
+    llm_chat_default_target_folder: str | None = None
     summarization_backend: Literal["auto", "deterministic", "llm"] | None = None
     summarization_provider: Literal["ollama", "anthropic"] | None = None
     summarization_model: str | None = None

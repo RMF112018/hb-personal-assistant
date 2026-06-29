@@ -65,6 +65,17 @@ _TOOL_SCOPES = {
     "generate_source_card": "obsidian.write",
     "refresh_stale_source_notes": "obsidian.write",
     "summarize_source": "obsidian.write",
+    "llm_chat_classify": "obsidian.read",
+    "llm_chat_ingest": "obsidian.read",
+    "llm_chat_summarize": "obsidian.read",
+    "llm_chat_extract_decisions": "obsidian.read",
+    "llm_chat_extract_action_items": "obsidian.read",
+    "llm_chat_select_template": "obsidian.read",
+    "llm_chat_link_existing_notes": "obsidian.read",
+    "llm_chat_to_note_plan": "obsidian.read",
+    "llm_chat_to_note_apply": "obsidian.write",
+    "llm_chat_update_topic_memory_plan": "obsidian.read",
+    "llm_chat_update_topic_memory_apply": "obsidian.write",
 }
 
 _BEARER_PREFIX = "Bearer "
@@ -1233,6 +1244,290 @@ def build_streamable_http_app(
                 {"source_id": source_id, "principal_kind": args["principal_kind"]}
             ),
             args,
+        )
+
+    @mcp.tool()
+    def llm_chat_ingest(
+        ctx: Context,
+        transcript: str | None = None,
+        transcript_text: str | None = None,
+        transcript_path: str | None = None,
+        max_chars: int | None = None,
+        redact: bool | None = None,
+    ) -> dict[str, Any]:
+        """Load, redact, and truncate LLM transcript text without persisting raw content."""
+        _enforce("llm_chat_ingest", ctx)
+        return svc.llm_chat_ingest(
+            {
+                "transcript": transcript,
+                "transcript_text": transcript_text,
+                "transcript_path": transcript_path,
+                "max_chars": max_chars,
+                "redact": redact,
+                "operator_mode": _operator_mode(ctx),
+            }
+        )
+
+    @mcp.tool()
+    def llm_chat_classify(
+        ctx: Context,
+        transcript: str | None = None,
+        transcript_text: str | None = None,
+        transcript_path: str | None = None,
+        max_chars: int | None = None,
+        redact: bool | None = None,
+    ) -> dict[str, Any]:
+        """Classify an LLM chat session by domain, knowledge type, and sensitivity."""
+        _enforce("llm_chat_classify", ctx)
+        return svc.llm_chat_classify(
+            {
+                "transcript": transcript,
+                "transcript_text": transcript_text,
+                "transcript_path": transcript_path,
+                "max_chars": max_chars,
+                "redact": redact,
+                "operator_mode": _operator_mode(ctx),
+            }
+        )
+
+    @mcp.tool()
+    def llm_chat_summarize(
+        ctx: Context,
+        transcript: str | None = None,
+        transcript_text: str | None = None,
+        transcript_path: str | None = None,
+        max_chars: int | None = None,
+        redact: bool | None = None,
+    ) -> dict[str, Any]:
+        """Produce a bounded summary from an LLM chat transcript."""
+        _enforce("llm_chat_summarize", ctx)
+        return svc.llm_chat_summarize(
+            {
+                "transcript": transcript,
+                "transcript_text": transcript_text,
+                "transcript_path": transcript_path,
+                "max_chars": max_chars,
+                "redact": redact,
+                "operator_mode": _operator_mode(ctx),
+            }
+        )
+
+    @mcp.tool()
+    def llm_chat_extract_decisions(
+        ctx: Context,
+        transcript: str | None = None,
+        transcript_text: str | None = None,
+        transcript_path: str | None = None,
+        max_chars: int | None = None,
+        redact: bool | None = None,
+    ) -> dict[str, Any]:
+        """Extract decision lines from an LLM chat transcript."""
+        _enforce("llm_chat_extract_decisions", ctx)
+        return svc.llm_chat_extract_decisions(
+            {
+                "transcript": transcript,
+                "transcript_text": transcript_text,
+                "transcript_path": transcript_path,
+                "max_chars": max_chars,
+                "redact": redact,
+                "operator_mode": _operator_mode(ctx),
+            }
+        )
+
+    @mcp.tool()
+    def llm_chat_extract_action_items(
+        ctx: Context,
+        transcript: str | None = None,
+        transcript_text: str | None = None,
+        transcript_path: str | None = None,
+        max_chars: int | None = None,
+        redact: bool | None = None,
+    ) -> dict[str, Any]:
+        """Extract action items from an LLM chat transcript."""
+        _enforce("llm_chat_extract_action_items", ctx)
+        return svc.llm_chat_extract_action_items(
+            {
+                "transcript": transcript,
+                "transcript_text": transcript_text,
+                "transcript_path": transcript_path,
+                "max_chars": max_chars,
+                "redact": redact,
+                "operator_mode": _operator_mode(ctx),
+            }
+        )
+
+    @mcp.tool()
+    def llm_chat_select_template(
+        ctx: Context,
+        transcript: str | None = None,
+        transcript_text: str | None = None,
+        transcript_path: str | None = None,
+        template_mode: str = "auto",
+        target_folder: str | None = None,
+        topic_domain: str | None = None,
+        routing_hint: str | None = None,
+    ) -> dict[str, Any]:
+        """Select a vault LLM session template based on classification."""
+        _enforce("llm_chat_select_template", ctx)
+        return svc.llm_chat_select_template(
+            {
+                "transcript": transcript,
+                "transcript_text": transcript_text,
+                "transcript_path": transcript_path,
+                "template_mode": template_mode,
+                "target_folder": target_folder,
+                "topic_domain": topic_domain,
+                "routing_hint": routing_hint,
+                "operator_mode": _operator_mode(ctx),
+            }
+        )
+
+    @mcp.tool()
+    def llm_chat_link_existing_notes(
+        ctx: Context,
+        transcript: str | None = None,
+        transcript_text: str | None = None,
+        transcript_path: str | None = None,
+        limit: int = 5,
+    ) -> dict[str, Any]:
+        """Suggest related existing vault notes for an LLM chat session."""
+        _enforce("llm_chat_link_existing_notes", ctx)
+        return svc.llm_chat_link_existing_notes(
+            {
+                "transcript": transcript,
+                "transcript_text": transcript_text,
+                "transcript_path": transcript_path,
+                "limit": limit,
+                "operator_mode": _operator_mode(ctx),
+            }
+        )
+
+    @mcp.tool()
+    def llm_chat_to_note_plan(
+        ctx: Context,
+        transcript: str | None = None,
+        transcript_text: str | None = None,
+        transcript_path: str | None = None,
+        max_chars: int | None = None,
+        redact: bool | None = None,
+        conversation_title: str | None = None,
+        conversation_date: str | None = None,
+        source_platform: str = "unknown",
+        source_model: str = "unknown",
+        topic_domain: str | None = None,
+        knowledge_type: str | None = None,
+        sensitivity: str | None = None,
+        target_folder: str | None = None,
+        template_mode: str = "auto",
+        include_raw_transcript: bool = False,
+        include_domain_specific_sections: bool | None = None,
+        routing_hint: str | None = None,
+        project_hint: str | None = None,
+        workstream_hint: str | None = None,
+        topic_hint: str | None = None,
+        people_hint: str | None = None,
+        location_hint: str | None = None,
+        source_context_hint: str | None = None,
+        related_notes: list[str] | None = None,
+        link_existing_notes: bool = False,
+    ) -> dict[str, Any]:
+        """Create a durable plan to convert an LLM chat into an Obsidian session note."""
+        _enforce("llm_chat_to_note_plan", ctx)
+        return svc.llm_chat_to_note_plan(
+            {
+                "transcript": transcript,
+                "transcript_text": transcript_text,
+                "transcript_path": transcript_path,
+                "max_chars": max_chars,
+                "redact": redact,
+                "conversation_title": conversation_title,
+                "conversation_date": conversation_date,
+                "source_platform": source_platform,
+                "source_model": source_model,
+                "topic_domain": topic_domain,
+                "knowledge_type": knowledge_type,
+                "sensitivity": sensitivity,
+                "target_folder": target_folder,
+                "template_mode": template_mode,
+                "include_raw_transcript": include_raw_transcript,
+                "include_domain_specific_sections": include_domain_specific_sections,
+                "routing_hint": routing_hint,
+                "project_hint": project_hint,
+                "workstream_hint": workstream_hint,
+                "topic_hint": topic_hint,
+                "people_hint": people_hint,
+                "location_hint": location_hint,
+                "source_context_hint": source_context_hint,
+                "related_notes": related_notes,
+                "link_existing_notes": link_existing_notes,
+                "operator_mode": _operator_mode(ctx),
+            }
+        )
+
+    @mcp.tool()
+    def llm_chat_to_note_apply(
+        ctx: Context,
+        plan_id: str,
+        approved_action_ids: list[str] | None = None,
+        approved_actions: list[str] | None = None,
+        max_updates: int | None = None,
+    ) -> dict[str, Any]:
+        """Apply approved actions from a server-generated LLM chat plan_id only."""
+        _enforce("llm_chat_to_note_apply", ctx)
+        return svc.llm_chat_to_note_apply(
+            {
+                "plan_id": plan_id,
+                "approved_action_ids": approved_action_ids,
+                "approved_actions": approved_actions,
+                "max_updates": max_updates,
+                "tool_name": "llm_chat_to_note_apply",
+                "principal_kind": _principal_kind(ctx),
+            }
+        )
+
+    @mcp.tool()
+    def llm_chat_update_topic_memory_plan(
+        ctx: Context,
+        target_path: str,
+        transcript: str | None = None,
+        transcript_text: str | None = None,
+        transcript_path: str | None = None,
+        max_chars: int | None = None,
+        redact: bool | None = None,
+    ) -> dict[str, Any]:
+        """Plan an append-only update to a durable topic memory note."""
+        _enforce("llm_chat_update_topic_memory_plan", ctx)
+        return svc.llm_chat_update_topic_memory_plan(
+            {
+                "target_path": target_path,
+                "transcript": transcript,
+                "transcript_text": transcript_text,
+                "transcript_path": transcript_path,
+                "max_chars": max_chars,
+                "redact": redact,
+                "operator_mode": _operator_mode(ctx),
+            }
+        )
+
+    @mcp.tool()
+    def llm_chat_update_topic_memory_apply(
+        ctx: Context,
+        plan_id: str,
+        approved_action_ids: list[str] | None = None,
+        approved_actions: list[str] | None = None,
+        max_updates: int | None = None,
+    ) -> dict[str, Any]:
+        """Apply approved topic-memory updates from a server-generated plan_id only."""
+        _enforce("llm_chat_update_topic_memory_apply", ctx)
+        return svc.llm_chat_update_topic_memory_apply(
+            {
+                "plan_id": plan_id,
+                "approved_action_ids": approved_action_ids,
+                "approved_actions": approved_actions,
+                "max_updates": max_updates,
+                "tool_name": "llm_chat_update_topic_memory_apply",
+                "principal_kind": _principal_kind(ctx),
+            }
         )
 
     app = mcp.streamable_http_app()

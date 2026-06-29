@@ -55,14 +55,14 @@ def _run_chain(db: str, svk: str) -> None:
 # --------------------------------------------------------------------------- summary
 
 
-def test_cpm_summary_available_false_without_runs(tmp_path: Path) -> None:
+def test_cpm_summary_available_after_import_commit(tmp_path: Path) -> None:
     client, svk, _ = _client(tmp_path)
     resp = client.get(f"/api/schedules/versions/{svk}/cpm/summary", headers=_viewer())
     assert resp.status_code == 200
     body = resp.json()
-    assert body["available"] is False
-    assert body["dcma_critical_path"]["available"] is False
-    assert "forward_pass" in body["missing_dependency_reasons"]
+    assert body["available"] is True
+    assert body["runs"]["forward_pass"]["available"] is True
+    assert body["runs"]["criticality"]["available"] is True
 
 
 def test_cpm_summary_full_chain(tmp_path: Path) -> None:
@@ -100,19 +100,18 @@ def test_cpm_activities_uses_criticality_run_and_excludes_source_fields(tmp_path
         assert forbidden not in a
 
 
-def test_cpm_activities_falls_back_to_forward_only(tmp_path: Path) -> None:
-    client, svk, db = _client(tmp_path)
-    ScheduleCpmGraphService(db_path=db).run_forward_pass(svk)  # only forward
-    body = client.get(f"/api/schedules/versions/{svk}/cpm/activities", headers=_viewer()).json()
-    assert body["available"] is True
-    assert body["source_run"]["calculation_type"] == "forward_pass"
-
-
-def test_cpm_activities_available_false_without_runs(tmp_path: Path) -> None:
+def test_cpm_activities_prefers_criticality_after_import_commit(tmp_path: Path) -> None:
     client, svk, _ = _client(tmp_path)
     body = client.get(f"/api/schedules/versions/{svk}/cpm/activities", headers=_viewer()).json()
-    assert body["available"] is False
-    assert body["activities"] == []
+    assert body["available"] is True
+    assert body["source_run"]["calculation_type"] == "criticality"
+
+
+def test_cpm_activities_available_after_import_commit(tmp_path: Path) -> None:
+    client, svk, _ = _client(tmp_path)
+    body = client.get(f"/api/schedules/versions/{svk}/cpm/activities", headers=_viewer()).json()
+    assert body["available"] is True
+    assert body["total_count"] == 2
 
 
 # --------------------------------------------------------------------------- longest path
@@ -127,11 +126,11 @@ def test_cpm_longest_path(tmp_path: Path) -> None:
     assert [a["activity_id"] for a in body["activities"]] == ["A1000", "A1010"]
 
 
-def test_cpm_longest_path_missing_is_non_500(tmp_path: Path) -> None:
+def test_cpm_longest_path_available_after_import_commit(tmp_path: Path) -> None:
     client, svk, _ = _client(tmp_path)
     resp = client.get(f"/api/schedules/versions/{svk}/cpm/longest-path", headers=_viewer())
     assert resp.status_code == 200
-    assert resp.json()["available"] is False
+    assert resp.json()["available"] is True
 
 
 # --------------------------------------------------------------------------- diagnostics
@@ -164,8 +163,7 @@ def test_cpm_endpoints_are_read_only(tmp_path: Path) -> None:
     assert repo.list_runs(svk) == runs_before  # no runs created/mutated by reads
 
 
-def test_cpm_summary_source_only_not_measurable(tmp_path: Path) -> None:
-    # Imported but no CPM chain -> DCMA computed evidence not measurable (source-only).
+def test_cpm_summary_measurable_after_import_commit(tmp_path: Path) -> None:
     client, svk, _ = _client(tmp_path)
     body = client.get(f"/api/schedules/versions/{svk}/cpm/summary", headers=_viewer()).json()
-    assert body["dcma_critical_path"]["measurable"] is False
+    assert body["dcma_critical_path"]["measurable"] is True

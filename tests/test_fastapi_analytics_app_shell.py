@@ -157,6 +157,7 @@ def test_openapi_exposes_only_shell_routes(tmp_path: Path) -> None:
         "/api/settings/obsidian-mcp/test/read-file",
         "/api/settings/obsidian-mcp/test/write-smoke",
         "/api/settings/obsidian-mcp/grok-config",
+        "/api/settings/obsidian-mcp/llm-chat/status",
         "/api/settings/preferences",
         "/api/settings/admin-sync",
         "/api/settings/admin",

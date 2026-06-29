@@ -81,6 +81,7 @@ def validate_summary(summary: dict[str, Any]) -> dict[str, Any]:
     )
 
     _check_duplicate_phrasing(story=story, warnings=warnings)
+    _check_zero_day_movement(story=story, violations=violations)
 
     source_basis = _source_basis_map(summary)
 
@@ -186,6 +187,24 @@ def _check_basis_consistency(
             {
                 "code": "mixed_basis_terms",
                 "message": "Story mixes prior-update and baseline terms; keep basis explicit per section.",
+            }
+        )
+
+
+def _check_zero_day_movement(*, story: dict[str, Any], violations: list[dict[str, str]]) -> None:
+    combined = " ".join(_story_prose_fields(story).values()).lower()
+    if re.search(r"moved or extended by\s+0\s+days", combined):
+        violations.append(
+            {
+                "code": "zero_day_movement",
+                "message": "Driver narrative must not claim zero-day movement.",
+            }
+        )
+    if re.search(r"\bmoved by\s+0\s+days\b", combined):
+        violations.append(
+            {
+                "code": "zero_day_movement",
+                "message": "Driver narrative must not claim zero-day movement.",
             }
         )
 

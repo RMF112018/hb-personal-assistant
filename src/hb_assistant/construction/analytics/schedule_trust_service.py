@@ -40,6 +40,138 @@ class ScheduleTrustService:
     def list_series_memberships(self, *, project_key: str) -> list[dict[str, Any]]:
         return self._hub_repo.list_memberships(project_key=project_key)
 
+    def preview_import_trust(
+        self,
+        *,
+        project_key: str,
+        schedule_version_key: str,
+        activity_ids: set[str],
+        source_project_id: str | None,
+        data_date: str | None,
+        duplicate_exists: bool = False,
+        confirm_supersede: bool = False,
+    ) -> dict[str, Any]:
+        """Best-effort pre-commit trust preview; does not persist membership."""
+        warnings: list[dict[str, str]] = []
+        posture = "likely_same_schedule_series"
+        accepted = self._accepted_representative(project_key)
+
+        if duplicate_exists and not confirm_supersede:
+            warnings.append(
+                {
+                    "code": "duplicate_schedule_version",
+                    "message": "This schedule version already exists. Supersede confirmation is required to replace it.",
+                }
+            )
+            posture = "supersede_required"
+        elif duplicate_exists and confirm_supersede:
+            warnings.append(
+                {
+                    "code": "supersede_required",
+                    "message": "This preview will replace the existing committed schedule version for this project.",
+                }
+            )
+            posture = "supersede_required"
+
+        if not accepted:
+            warnings.append(
+                {
+                    "code": "likely_new_schedule_series",
+                    "message": "No accepted schedule series exists yet for this project. Review identity after commit.",
+                }
+            )
+            posture = "likely_new_schedule_series"
+        else:
+            accepted_key = str(accepted["schedule_version_key"])
+            overlap = self._overlap_from_ids(activity_ids, accepted_key)
+            if overlap < _OVERLAP_REVIEW_THRESHOLD:
+                warnings.append(
+                    {
+                        "code": "low_activity_overlap",
+                        "message": (
+                            "Activity IDs overlap weakly with the current accepted schedule. "
+                            "Review identity before accepting this file as the current update."
+                        ),
+                    }
+                )
+                posture = "identity_requires_review"
+            elif overlap >= 0.7:
+                posture = "likely_same_schedule_series"
+            else:
+                posture = "identity_requires_review"
+                warnings.append(
+                    {
+                        "code": "identity_requires_review",
+                        "message": "This file may belong to a different schedule series. Review identity before commit.",
+                    }
+                )
+
+            accepted_data_date = self._data_date_for_version(accepted_key)
+            if accepted_data_date and data_date and data_date < accepted_data_date:
+                warnings.append(
+                    {
+                        "code": "data_date_out_of_sequence",
+                        "message": (
+                            "Data date appears earlier than the accepted schedule update. "
+                            "Confirm this is the intended current snapshot."
+                        ),
+                    }
+                )
+
+        if source_project_id:
+            procore_id = self._procore_project_id(project_key)
+            if procore_id and str(source_project_id) != str(procore_id):
+                warnings.append(
+                    {
+                        "code": "source_project_mismatch",
+                        "message": "Source project ID in the file does not match the linked project record.",
+                    }
+                )
+        else:
+            warnings.append(
+                {
+                    "code": "source_project_unknown",
+                    "message": "Source project ID was not detected in the uploaded schedule.",
+                }
+            )
+
+        return {
+            "posture": posture,
+            "warnings": warnings,
+            "accepted_schedule_version_key": (accepted or {}).get("schedule_version_key"),
+            "preview_schedule_version_key": schedule_version_key,
+            "limitations": [
+                "Pre-commit identity match is best-effort and does not run full identity resolution.",
+            ],
+        }
+
+    def _overlap_from_ids(self, left_ids: set[str], right_version_key: str) -> float:
+        with open_connection(self._db_path) as conn:
+            right_ids = {
+                str(row[0])
+                for row in conn.execute(
+                    "SELECT activity_id FROM procore_ep_schedule_activities WHERE schedule_version_key=?",
+                    (right_version_key,),
+                ).fetchall()
+            }
+        if not left_ids or not right_ids:
+            return 0.0
+        return len(left_ids & right_ids) / max(len(left_ids), len(right_ids))
+
+    def _data_date_for_version(self, schedule_version_key: str) -> str | None:
+        from hb_assistant.store.schedule_identity_repository import parse_schedule_version_data_date
+
+        parsed = parse_schedule_version_data_date(schedule_version_key)
+        return parsed.date().isoformat() if parsed else None
+
+    def _procore_project_id(self, project_key: str) -> str | None:
+        with open_connection(self._db_path) as conn:
+            row = conn.execute(
+                "SELECT project_id FROM procore_ep_projects WHERE project_key=? LIMIT 1",
+                (project_key,),
+            ).fetchone()
+        return str(row[0]) if row and row[0] else None
+
     def evaluate_import_guardrail(
         self,
         *,

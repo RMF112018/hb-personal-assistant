@@ -1,0 +1,25 @@
+
+> frontend@0.0.0 test
+> vitest run ProjectScheduleImportPage.test.tsx ScheduleImportsPage.test.tsx ProjectSchedulePage.test.tsx --run
+
+
+ RUN  v1.6.1 /Users/bobbyfetting/hb-personal-assistant/frontend
+
+stderr | src/pages/ScheduleImportsPage.test.tsx > ScheduleImportsPage > shows 50 MB upload label with XER and zip-package support
+⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+
+stderr | src/pages/ProjectScheduleImportPage.test.tsx > ProjectScheduleImportPage > renders project-scoped import page without project picker
+⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+
+stderr | src/pages/ProjectSchedulePage.test.tsx > ProjectSchedulePage > renders a PM-facing above-fold schedule story and scoped project tab
+⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+
+ ✓ src/pages/ProjectScheduleImportPage.test.tsx  (4 tests) 148ms
+ ✓ src/pages/ProjectSchedulePage.test.tsx  (5 tests) 303ms
+ ✓ src/pages/ScheduleImportsPage.test.tsx  (21 tests) 636ms
+
+ Test Files  3 passed (3)
+      Tests  30 passed (30)
+   Start at  02:40:26
+   Duration  1.92s (transform 446ms, setup 229ms, collect 1.37s, tests 1.09s, environment 1.28s, prepare 185ms)
+

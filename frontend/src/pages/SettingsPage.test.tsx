@@ -41,6 +41,7 @@ const testObsidianMcpReadFile = vi.fn()
 const testObsidianMcpWriteSmoke = vi.fn()
 const getObsidianMcpGrokConfig = vi.fn()
 const getObsidianMcpOAuth = vi.fn()
+const getObsidianMcpLlmChatStatus = vi.fn()
 const getObsidianMcpChatGPT = vi.fn()
 const runObsidianMcpChatGPTReadiness = vi.fn()
 
@@ -114,6 +115,7 @@ vi.mock('../lib/api', () => ({
   testObsidianMcpWriteSmoke: () => testObsidianMcpWriteSmoke(),
   getObsidianMcpGrokConfig: () => getObsidianMcpGrokConfig(),
   getObsidianMcpOAuth: () => getObsidianMcpOAuth(),
+  getObsidianMcpLlmChatStatus: () => getObsidianMcpLlmChatStatus(),
   getObsidianMcpChatGPT: () => getObsidianMcpChatGPT(),
   runObsidianMcpChatGPTReadiness: () => runObsidianMcpChatGPTReadiness(),
 }))
@@ -348,6 +350,16 @@ describe('SettingsPage guided setup', () => {
       },
       recent_events: [{ kind: 'access_token_issued', scope: 'obsidian.read', at: '2026-06-28T10:00:00+00:00' }],
     })
+    getObsidianMcpLlmChatStatus.mockResolvedValue({
+      llm_chat_enabled: true,
+      template_dir: 'Templates/LLM Chat',
+      project_template_path: 'Templates/Template - Project Note.md',
+      plan_count: 0,
+      raw_transcript_persistence: false,
+      redaction_enabled: true,
+      recent_plans: [],
+      templates_found: 14,
+    })
     getObsidianMcpChatGPT.mockResolvedValue({
       enabled: true,
       readonly_mode: true,
@@ -457,6 +469,7 @@ describe('SettingsPage guided setup', () => {
   it('renders Obsidian MCP controls and tool registry without token values', async () => {
     renderSettings()
     await screen.findByText('Obsidian MCP')
+    expect(screen.getByText('LLM Chat Memory Tools')).toBeInTheDocument()
 
     expect(screen.getByRole('button', { name: /Run Health Check/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Enable MCP/i })).toBeInTheDocument()

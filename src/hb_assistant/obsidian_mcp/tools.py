@@ -421,7 +421,52 @@ _TOOL_REGISTRY: list[tuple[str, str, str, str]] = [
     ("generate_source_card", "Source Intelligence", "Generate a deterministic curated source card (Markdown) for one indexed source_id with source-traceability frontmatter (no model summary, no raw file/email-body dump).", "source_id, overwrite"),
     ("refresh_stale_source_notes", "Source Intelligence", "Refresh source cards whose underlying source changed (status=stale) up to max_updates, via SHA-gated whole-file replacement.", "max_updates"),
     ("summarize_source", "Source Intelligence", "Model-assisted (Ollama) advisory enrichment of a source card: generates the deterministic base if missing, then adds a bounded clearly-labelled advisory summary section. Falls back to summarized:false when the model is unavailable; never runs in the search path.", "source_id"),
+    ("llm_chat_ingest", "LLM Chat Memory", "Load, redact, and truncate LLM transcript text without persisting raw content.", "transcript, transcript_text, transcript_path, max_chars, redact"),
+    ("llm_chat_classify", "LLM Chat Memory", "Classify an LLM chat session by domain, knowledge type, and sensitivity.", "transcript, transcript_text, transcript_path, max_chars, redact"),
+    ("llm_chat_summarize", "LLM Chat Memory", "Produce a bounded summary from an LLM chat transcript.", "transcript, transcript_text, transcript_path, max_chars, redact"),
+    ("llm_chat_extract_decisions", "LLM Chat Memory", "Extract decision lines from an LLM chat transcript.", "transcript, transcript_text, transcript_path, max_chars, redact"),
+    ("llm_chat_extract_action_items", "LLM Chat Memory", "Extract action items from an LLM chat transcript.", "transcript, transcript_text, transcript_path, max_chars, redact"),
+    ("llm_chat_select_template", "LLM Chat Memory", "Select a vault LLM session template based on classification.", "transcript, transcript_text, transcript_path, template_mode, target_folder, topic_domain, routing_hint"),
+    ("llm_chat_link_existing_notes", "LLM Chat Memory", "Suggest related existing vault notes for an LLM chat session.", "transcript, transcript_text, transcript_path, limit"),
+    ("llm_chat_to_note_plan", "LLM Chat Memory", "Create a durable plan to convert an LLM chat into an Obsidian session note.", "transcript, transcript_text, transcript_path, max_chars, redact, conversation_title, conversation_date, source_platform, source_model, topic_domain, knowledge_type, sensitivity, target_folder, template_mode, include_raw_transcript, include_domain_specific_sections, routing_hint, project_hint, workstream_hint, topic_hint, people_hint, location_hint, source_context_hint, related_notes, link_existing_notes"),
+    ("llm_chat_to_note_apply", "LLM Chat Memory", "Apply approved actions from a server-generated LLM chat plan_id only.", "plan_id, approved_action_ids, approved_actions, max_updates"),
+    ("llm_chat_update_topic_memory_plan", "LLM Chat Memory", "Plan an append-only update to a durable topic memory note.", "target_path, transcript, transcript_text, transcript_path, max_chars, redact"),
+    ("llm_chat_update_topic_memory_apply", "LLM Chat Memory", "Apply approved topic-memory updates from a server-generated plan_id only.", "plan_id, approved_action_ids, approved_actions, max_updates"),
 ]
+
+
+REQUIRED_OBSIDIAN_MCP_TOOL_NAMES = frozenset(
+    {
+        "list_directory",
+        "search_vault",
+        "read_file",
+        "create_note",
+        "patch_note",
+        "vault_map",
+        "vault_curation_plan",
+        "vault_curation_apply",
+        "llm_chat_ingest",
+        "llm_chat_classify",
+        "llm_chat_summarize",
+        "llm_chat_extract_decisions",
+        "llm_chat_extract_action_items",
+        "llm_chat_select_template",
+        "llm_chat_link_existing_notes",
+        "llm_chat_to_note_plan",
+        "llm_chat_to_note_apply",
+        "llm_chat_update_topic_memory_plan",
+        "llm_chat_update_topic_memory_apply",
+    }
+)
+
+
+def required_tool_names() -> frozenset[str]:
+    return REQUIRED_OBSIDIAN_MCP_TOOL_NAMES
+
+
+def missing_required_tools() -> set[str]:
+    registered = {tool["name"] for tool in tool_registry()}
+    return set(REQUIRED_OBSIDIAN_MCP_TOOL_NAMES) - registered
 
 
 def tool_registry() -> list[dict[str, Any]]:
