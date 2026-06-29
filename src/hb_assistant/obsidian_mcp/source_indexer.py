@@ -52,6 +52,35 @@ def is_excluded_source_path(rel_path: str, config: ObsidianMcpConfig) -> bool:
     return any(seg in excluded_set for seg in segments)
 
 
+def is_deferred_source_path(rel_path: str, config: ObsidianMcpConfig) -> bool:
+    """True if a source path is in a DEFERRED business class (e.g. 'HB INSURANCE RENEWALS').
+
+    Distinct from exclusion: deferred sources are still indexed/searchable, but auto card/summary
+    generation is intentionally skipped (they are valid records that are not PM-card-first). Pure +
+    segment-based against ``config.source_index_deferred_path_parts``.
+    """
+    deferred = getattr(config, "source_index_deferred_path_parts", None)
+    if not deferred:
+        return False
+    deferred_set = {str(p).strip().lower() for p in deferred if str(p).strip()}
+    segments = [seg for seg in str(rel_path).replace("\\", "/").lower().split("/") if seg]
+    return any(seg in deferred_set for seg in segments)
+
+
+def is_source_notes_path(rel_path: str, config: ObsidianMcpConfig) -> bool:
+    """True if a vault-relative path is a generated source card under ``source_notes_folder``.
+
+    Generated ``Source Notes/<...>.md`` cards must NOT be re-indexed as vault notes (that would feed
+    the watcher its own writes). Prefix match on the configured folder (default 'Source Notes'),
+    normalized + case-insensitive, honoring a custom/multi-segment folder.
+    """
+    folder = (getattr(config, "source_notes_folder", None) or "Source Notes").replace("\\", "/").strip("/").lower()
+    if not folder:
+        return False
+    rel = str(rel_path).replace("\\", "/").strip("/").lower()
+    return rel == folder or rel.startswith(folder + "/")
+
+
 def match_path_to_project(rel_path: str) -> tuple[str | None, str | None, str]:
     """Deterministic HB project-number extraction from a path. Returns (key, number, confidence).
 
@@ -228,7 +257,10 @@ def scan_vault_notes(repo: SourceIndexRepository, config: ObsidianMcpConfig) -> 
         if not abs_path.is_file():
             continue
         rel_path = str(abs_path.relative_to(vault_root))
+        # Never re-index our own generated source cards (Source Notes/...) as vault notes — that
+        # would feed the watcher its own writes and create recursive source work.
         if (should_ignore(rel_path, abs_path.name) or is_excluded_source_path(rel_path, config)
+                or is_source_notes_path(rel_path, config)
                 or pathsafe.symlink_escapes(abs_path, vault_root)):
             continue
         report.scanned += 1
@@ -351,6 +383,10 @@ def _auto_generate(
     detail = repo.get_source_detail(source_id)
     if detail is None or detail.get("deleted") or detail["source_kind"] == "obsidian_note":
         return 0, 0
+    # Deferred classes (e.g. insurance renewals) are indexed/searchable but never AUTO-carded or
+    # auto-summarized — a deliberate skip, not an error. Manual generation can still override.
+    if detail.get("rel_path") and is_deferred_source_path(str(detail["rel_path"]), config):
+        return 0, 0
     kind = detail["source_kind"]
 
     want_card = (
@@ -441,6 +477,14 @@ def drain_queue(repo: SourceIndexRepository, config: ObsidianMcpConfig, *, batch
             elif event["rel_path"] and is_excluded_source_path(event["rel_path"], config):
                 # Excluded dependency/build path: skip cleanly (not an error, not indexed, no card).
                 repo.complete_event(event["event_id"], "skipped", error_code="excluded_path")
+            elif event["rel_path"] and is_deferred_source_path(event["rel_path"], config):
+                # Deferred business record: index for search (no card/summary), mark a clear skip
+                # receipt (NOT an error). _auto_generate also no-ops for deferred on the rebuild path.
+                root = roots.get(event["source_root_key"])
+                if root and event["rel_path"]:
+                    with suppress(Exception):
+                        index_source_file(Path(root.path) / event["rel_path"], root, repo, config)
+                repo.complete_event(event["event_id"], "skipped", error_code="deferred_path")
             else:  # created / modified / reindex_requested
                 root = roots.get(event["source_root_key"])
                 if root and event["rel_path"]:

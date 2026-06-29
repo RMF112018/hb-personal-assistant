@@ -23,7 +23,7 @@ from .config import ObsidianMcpConfig
 from .mutations import create_note, resolve_markdown_write_path, sha256_file
 from .source_analyzers import SourceAnalysis
 from .source_index_repository import SourceIndexRepository
-from .source_indexer import is_excluded_source_path
+from .source_indexer import is_deferred_source_path, is_excluded_source_path
 from .tools import ObsidianMcpToolError
 
 # Bump when the advisory prompt/template changes so receipts record which version produced a card.
@@ -653,6 +653,11 @@ def summarize_source(repo: SourceIndexRepository, config: ObsidianMcpConfig, *, 
     if detail.get("rel_path") and is_excluded_source_path(str(detail["rel_path"]), config):
         # Excluded dependency/build tree: no card, and never call the model.
         return {"summarized": False, "reason": "excluded_path",
+                "source_id": source_id, "note_path": card_rel}
+    if detail.get("rel_path") and is_deferred_source_path(str(detail["rel_path"]), config):
+        # Deferred business record: skip auto-summary (clean reason, no model call). Distinct from
+        # excluded — deferred sources stay indexed/searchable and may be carded manually.
+        return {"summarized": False, "reason": "deferred_path",
                 "source_id": source_id, "note_path": card_rel}
 
     # One-call contract: ensure the deterministic base card exists first (generate if missing).

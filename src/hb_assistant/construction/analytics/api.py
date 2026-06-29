@@ -354,6 +354,7 @@ class ObsidianMcpConfigPatchRequest(BaseModel):
     source_summary_auto_max_per_drain: int | None = None
     source_card_auto_max_per_drain: int | None = None
     source_index_excluded_path_parts: list[str] | None = None
+    source_index_deferred_path_parts: list[str] | None = None
 
 
 class ObsidianMcpGenerateSourceCardRequest(BaseModel):
@@ -363,6 +364,11 @@ class ObsidianMcpGenerateSourceCardRequest(BaseModel):
 
 class ObsidianMcpRefreshStaleRequest(BaseModel):
     max_updates: int = 25
+
+
+class ObsidianMcpRetireSourceCardsRequest(BaseModel):
+    apply: bool = False  # default dry-run (no mutation)
+    delete_files: bool = False  # only with apply; removes the card .md file (never the source)
 
 
 class ObsidianMcpSummarizeSourceRequest(BaseModel):
@@ -1819,7 +1825,9 @@ def create_app(*, db_path: str | None = None) -> Any:
         watcher = getattr(app.state, "source_watcher", None)
         if watcher is not None:
             with suppress(Exception):
-                result["watcher"] = watcher.status()
+                # Derive the nested watcher's watch_enabled/roots from the CURRENT on-disk config so
+                # it matches the top-level (service-derived) watch_enabled — no stale nested state.
+                result["watcher"] = watcher.status(config=_fresh_obsidian_config())
         return result
 
     @app.post("/api/settings/obsidian-mcp/source-index/rebuild")
@@ -1829,17 +1837,35 @@ def create_app(*, db_path: str | None = None) -> Any:
 
         return ObsidianMcpService(db_path=db_path).rebuild_source_index({})
 
+    @app.post("/api/settings/obsidian-mcp/source-cards/retire")
+    def settings_obsidian_mcp_source_cards_retire(
+        request: ObsidianMcpRetireSourceCardsRequest, role: dict[str, str] = role_dep
+    ) -> dict[str, Any]:
+        require_operator_role(role)
+        from hb_assistant.obsidian_mcp import ObsidianMcpService
+
+        # Non-destructive by default: apply=False is a dry-run; delete_files only acts with apply.
+        return ObsidianMcpService(db_path=db_path).retire_source_cards(
+            {"apply": request.apply, "delete_files": request.delete_files}
+        )
+
+    def _fresh_obsidian_config() -> Any:
+        """Current on-disk Obsidian MCP config (no cache) — used to keep watcher start/status in
+        sync with a just-PATCHed config without a backend restart."""
+        from hb_assistant.obsidian_mcp.config import load_config as _load_obsidian_config
+
+        return _load_obsidian_config()
+
     def _resolve_source_watcher() -> Any:
         """Return the lifespan watcher, lazily constructing one if watch was disabled at boot."""
         watcher = getattr(app.state, "source_watcher", None)
         if watcher is not None:
             return watcher
         from hb_assistant.config.path_policy import PathPolicy
-        from hb_assistant.obsidian_mcp.config import load_config as _load_obsidian_config
         from hb_assistant.obsidian_mcp.source_watch import SourceWatcher
 
         _watch_db = str(db_path) if db_path else str(PathPolicy().get_db_path())
-        watcher = SourceWatcher(_watch_db, _load_obsidian_config())
+        watcher = SourceWatcher(_watch_db, _fresh_obsidian_config())
         app.state.source_watcher = watcher
         return watcher
 
@@ -1849,14 +1875,15 @@ def create_app(*, db_path: str | None = None) -> Any:
         watcher = getattr(app.state, "source_watcher", None)
         if watcher is None:
             return {"running": False, "mode": "stopped", "watch_enabled": False}
-        return watcher.status()
+        return watcher.status(config=_fresh_obsidian_config())
 
     @app.post("/api/settings/obsidian-mcp/source-watch/start")
     async def settings_obsidian_mcp_source_watch_start(role: dict[str, str] = role_dep) -> dict[str, Any]:
         require_operator_role(role)
         watcher = _resolve_source_watcher()
-        await asyncio.to_thread(watcher.start)
-        return watcher.status()
+        cfg = _fresh_obsidian_config()  # honor a just-PATCHed external_source_watch_enabled
+        await asyncio.to_thread(watcher.start, config=cfg)
+        return watcher.status(config=cfg)
 
     @app.post("/api/settings/obsidian-mcp/source-watch/stop")
     async def settings_obsidian_mcp_source_watch_stop(role: dict[str, str] = role_dep) -> dict[str, Any]:
@@ -1865,7 +1892,7 @@ def create_app(*, db_path: str | None = None) -> Any:
         if watcher is None:
             return {"running": False, "mode": "stopped"}
         await asyncio.to_thread(watcher.stop)
-        return watcher.status()
+        return watcher.status(config=_fresh_obsidian_config())
 
     @app.post("/api/settings/obsidian-mcp/source-watch/restart")
     async def settings_obsidian_mcp_source_watch_restart(role: dict[str, str] = role_dep) -> dict[str, Any]:

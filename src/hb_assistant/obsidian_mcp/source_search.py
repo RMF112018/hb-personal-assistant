@@ -80,6 +80,9 @@ def source_index_status(repo: SourceIndexRepository, config: ObsidianMcpConfig,
     status["exclusion_policy"] = {
         "excluded_path_parts": list(getattr(config, "source_index_excluded_path_parts", []) or [])
     }
+    status["deferred_policy"] = {
+        "deferred_path_parts": list(getattr(config, "source_index_deferred_path_parts", []) or [])
+    }
     status["search_backend"] = "source_index"
     if watcher is not None:
         status["watcher"] = watcher

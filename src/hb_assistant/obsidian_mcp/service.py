@@ -433,6 +433,15 @@ class ObsidianMcpService:
 
         return request_rebuild(self._source_repo(), self.get_config())
 
+    def retire_source_cards(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .source_maintenance import retire_source_cards
+
+        return retire_source_cards(
+            self._source_repo(), self.get_config(),
+            apply=bool(args.get("apply", False)),
+            delete_files=bool(args.get("delete_files", False)),
+        )
+
     def generate_source_card(self, args: dict[str, Any]) -> dict[str, Any]:
         from .source_notes import generate_source_card
 

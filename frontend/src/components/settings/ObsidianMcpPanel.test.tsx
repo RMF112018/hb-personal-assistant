@@ -326,6 +326,28 @@ describe('ObsidianMcpPanel — source intelligence generation policy', () => {
     )
   })
 
+  it('displays the deferred-path-parts control seeded from config', async () => {
+    renderPanelWith({ config: { source_index_deferred_path_parts: ['HB INSURANCE RENEWALS'] } })
+    await screen.findByText('Source Intelligence')
+    await waitFor(() =>
+      expect((screen.getByLabelText('Deferred path parts') as HTMLInputElement).value).toBe('HB INSURANCE RENEWALS'),
+    )
+    expect(document.body.textContent).toContain('not auto-carded')
+  })
+
+  it('submits edited deferred path parts as an array on blur', async () => {
+    renderPanelWith({ config: { source_index_deferred_path_parts: ['HB INSURANCE RENEWALS'] } })
+    await screen.findByText('Source Intelligence')
+    const input = await screen.findByLabelText('Deferred path parts')
+    await waitFor(() => expect((input as HTMLInputElement).value).toBe('HB INSURANCE RENEWALS'))
+    fireEvent.change(input, { target: { value: 'HB INSURANCE RENEWALS , Archive' } })
+    fireEvent.blur(input)
+    await waitFor(() => expect(patchObsidianMcpConfig).toHaveBeenCalled())
+    expect(lastPatch()).toEqual(
+      expect.objectContaining({ source_index_deferred_path_parts: ['HB INSURANCE RENEWALS', 'Archive'] }),
+    )
+  })
+
   it('shows generated-card and last-generation counts when the backend returns them', async () => {
     renderPanelWith({
       sourceIndex: {

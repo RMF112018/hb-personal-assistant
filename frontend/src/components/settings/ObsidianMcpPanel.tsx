@@ -143,6 +143,7 @@ export function ObsidianMcpPanel() {
   const [debounceInput, setDebounceInput] = useState('')
   const [cardMaxPerDrainInput, setCardMaxPerDrainInput] = useState('')
   const [excludedPartsInput, setExcludedPartsInput] = useState('')
+  const [deferredPartsInput, setDeferredPartsInput] = useState('')
 
   async function refreshAll() {
     setBusy('refresh')
@@ -196,6 +197,7 @@ export function ObsidianMcpPanel() {
     setDebounceInput(config.watch_debounce_seconds != null ? String(config.watch_debounce_seconds) : '')
     setCardMaxPerDrainInput(config.source_card_auto_max_per_drain != null ? String(config.source_card_auto_max_per_drain) : '')
     setExcludedPartsInput(Array.isArray(config.source_index_excluded_path_parts) ? config.source_index_excluded_path_parts.join(', ') : '')
+    setDeferredPartsInput(Array.isArray(config.source_index_deferred_path_parts) ? config.source_index_deferred_path_parts.join(', ') : '')
     /* eslint-enable react-hooks/set-state-in-effect */
   }, [config, rootsDirty])
 
@@ -308,6 +310,11 @@ export function ObsidianMcpPanel() {
   function commitExcludedParts() {
     const parts = excludedPartsInput.split(',').map((p) => p.trim()).filter((p) => p.length > 0)
     void saveConfig({ source_index_excluded_path_parts: parts })
+  }
+
+  function commitDeferredParts() {
+    const parts = deferredPartsInput.split(',').map((p) => p.trim()).filter((p) => p.length > 0)
+    void saveConfig({ source_index_deferred_path_parts: parts })
   }
 
   async function handleSaveRoots() {
@@ -1194,6 +1201,14 @@ export function ObsidianMcpPanel() {
             <div className="mt-1 rounded border border-amber-400 bg-amber-50 p-2 text-[10px] text-amber-700" role="note">
               Comma-separated path segments (e.g. <span className="font-mono">node_modules, .venv, dist, build</span>). Broad roots can create
               low-value cards unless excluded paths are set; excluded paths are skipped during indexing and card generation.
+            </div>
+          </div>
+
+          <div className="mt-3">
+            <Field label="Deferred path parts" value={deferredPartsInput} onChange={setDeferredPartsInput} onBlur={commitDeferredParts} />
+            <div className="mt-1 text-[10px] text-[var(--hb-muted)]" role="note">
+              Comma-separated path segments (e.g. <span className="font-mono">HB INSURANCE RENEWALS</span>). Deferred sources are still indexed
+              and searchable, but are intentionally not auto-carded or auto-summarized (distinct from hard exclusions).
             </div>
           </div>
 

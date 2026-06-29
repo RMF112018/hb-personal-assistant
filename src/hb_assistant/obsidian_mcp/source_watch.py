@@ -20,6 +20,7 @@ from .source_index_repository import SourceIndexRepository
 from .source_indexer import (
     _VAULT_ROOT_KEY,
     drain_queue,
+    is_source_notes_path,
     scan_source_root,
     scan_vault_notes,
     should_ignore,
@@ -52,7 +53,12 @@ class SourceWatcher:
         self._last_test_event_at: str | None = None
 
     # ----- lifecycle -------------------------------------------------------------------------
-    def start(self) -> None:
+    def start(self, *, config: ObsidianMcpConfig | None = None) -> None:
+        # Honor a freshly-loaded config (HTTP layer passes the current on-disk config so a just-
+        # PATCHed external_source_watch_enabled takes effect WITHOUT a process restart). Default
+        # None keeps the injected snapshot (so direct unit tests are unchanged).
+        if config is not None:
+            self._config = config
         if not getattr(self._config, "external_source_watch_enabled", False):
             self._mode = "stopped"
             return
@@ -85,9 +91,9 @@ class SourceWatcher:
     def restart(self) -> dict[str, Any]:
         """Stop, reload config from disk (so config edits take effect), and start again."""
         self.stop()
-        self._config = load_config()
-        self.start()
-        return self.status()
+        fresh = load_config()
+        self.start(config=fresh)
+        return self.status(config=fresh)
 
     def recover_stuck(self, ttl_seconds: int = 900) -> dict[str, Any]:
         """Re-queue events stuck in 'processing' past the TTL (operator manual recovery)."""
@@ -132,6 +138,10 @@ class SourceWatcher:
                 except ValueError:
                     return
                 if should_ignore(rel, Path(src_path).name):
+                    return
+                # Vault watcher: ignore our own generated source cards (Source Notes/...) so card
+                # writes don't re-enter source processing. Scoped to the vault root only.
+                if self._root_key == _VAULT_ROOT_KEY and is_source_notes_path(rel, config):
                     return
                 repo.enqueue_event(event_type=event_type, rel_path=rel, source_root_key=self._root_key)
                 watcher._last_event_at = _now()
@@ -185,7 +195,11 @@ class SourceWatcher:
         scan_vault_notes(self._repo, self._config)
 
     # ----- status ----------------------------------------------------------------------------
-    def status(self) -> dict[str, Any]:
+    def status(self, *, config: ObsidianMcpConfig | None = None) -> dict[str, Any]:
+        # ``running``/``mode`` reflect the real thread state; ``watch_enabled``/``roots`` are derived
+        # from ``config`` (the HTTP layer passes the current on-disk config) so the reported state is
+        # internally consistent with the top-level config-derived ``watch_enabled`` and never stale.
+        cfg = config if config is not None else self._config
         running = self._thread is not None and self._thread.is_alive()
         health: dict[str, Any] = {}
         try:
@@ -195,7 +209,7 @@ class SourceWatcher:
         return {
             "running": running,
             "mode": self._mode,
-            "watch_enabled": bool(getattr(self._config, "external_source_watch_enabled", False)),
+            "watch_enabled": bool(getattr(cfg, "external_source_watch_enabled", False)),
             "queued_count": health.get("queued_count"),
             "queue_health": health,
             "last_event_at": self._last_event_at,
@@ -203,5 +217,5 @@ class SourceWatcher:
             "last_error_code": self._last_error_code,
             "roots": [{"key": r.source_root_key, "path": r.path, "enabled": r.enabled,
                        "sensitive": bool(getattr(r, "sensitive", False))}
-                      for r in getattr(self._config, "external_sources", []) or []],
+                      for r in getattr(cfg, "external_sources", []) or []],
         }
