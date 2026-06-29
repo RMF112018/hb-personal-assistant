@@ -14,7 +14,7 @@ from .connection import get_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 92
+LATEST_SCHEMA_VERSION = 93
 
 
 class StaffingMigrationError(RuntimeError):
@@ -6908,6 +6908,18 @@ class SQLiteMigrator:
 
         return V92_STATEMENTS
 
+    @staticmethod
+    def _v93_statements() -> list[str]:
+        from hb_assistant.store.source_intelligence_tables import V93_STATEMENTS
+
+        return V93_STATEMENTS
+
+    @staticmethod
+    def _v93_fts_statements() -> list[str]:
+        from hb_assistant.store.source_intelligence_tables import V93_FTS_STATEMENTS
+
+        return V93_FTS_STATEMENTS
+
     # v79 Detailed schedule version diff facts.
     @staticmethod
     def _v79_statements() -> list[str]:
@@ -8520,6 +8532,29 @@ class SQLiteMigrator:
             if cur.fetchone() is None:
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (92, 'v92_project_schedule_review_item_events', ?)",
+                    (now,),
+                )
+
+            # v93 Source Intelligence Index (additive; FTS5 created only when available).
+            from hb_assistant.store.source_intelligence_tables import fts5_available
+
+            for stmt in self._v93_statements():
+                conn.execute(stmt)
+            fts_ok = fts5_available(conn)
+            if fts_ok:
+                for stmt in self._v93_fts_statements():
+                    conn.execute(stmt)
+            conn.execute(
+                "INSERT INTO source_intelligence_state (state_key, state_value, updated_at) "
+                "VALUES ('fts_available', ?, ?) "
+                "ON CONFLICT(state_key) DO UPDATE SET state_value = excluded.state_value, "
+                "updated_at = excluded.updated_at",
+                ("1" if fts_ok else "0", now),
+            )
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 93")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (93, 'v93_source_intelligence_index', ?)",
                     (now,),
                 )
 
