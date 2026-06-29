@@ -346,6 +346,12 @@ class ObsidianMcpConfigPatchRequest(BaseModel):
     source_summary_enabled: bool | None = None
     source_summary_max_input_chars: int | None = None
     source_summary_ollama_timeout_seconds: int | None = None
+    source_card_auto_generate_enabled: bool | None = None
+    source_summary_auto_generate_enabled: bool | None = None
+    source_note_auto_refresh_enabled: bool | None = None
+    source_card_auto_generate_kinds: list[str] | None = None
+    source_summary_auto_generate_kinds: list[str] | None = None
+    source_summary_auto_max_per_drain: int | None = None
 
 
 class ObsidianMcpGenerateSourceCardRequest(BaseModel):

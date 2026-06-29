@@ -97,7 +97,16 @@ class ObsidianMcpConfig(BaseModel):
     source_summary_enabled: bool = True
     source_summary_max_input_chars: int = 6000
     source_summary_ollama_timeout_seconds: int = 45
-    schema_version: int = 6
+    # Policy-driven auto-generation after indexing (conservative defaults: cards/summaries OFF,
+    # refresh of already-generated cards ON). Auto work runs only on the watcher/rebuild drain
+    # threads, never the request loop.
+    source_card_auto_generate_enabled: bool = False
+    source_summary_auto_generate_enabled: bool = False
+    source_note_auto_refresh_enabled: bool = True
+    source_card_auto_generate_kinds: list[str] = Field(default_factory=lambda: ["external_file"])
+    source_summary_auto_generate_kinds: list[str] = Field(default_factory=lambda: ["external_file"])
+    source_summary_auto_max_per_drain: int = 5
+    schema_version: int = 7
 
     model_config = {"extra": "forbid"}
 
@@ -147,6 +156,7 @@ class ObsidianMcpConfig(BaseModel):
         "source_card_excerpt_chars",
         "source_summary_max_input_chars",
         "source_summary_ollama_timeout_seconds",
+        "source_summary_auto_max_per_drain",
     )
     @classmethod
     def validate_positive(cls, value: int) -> int:
@@ -275,6 +285,12 @@ class ObsidianMcpConfigPatch(BaseModel):
     source_summary_enabled: bool | None = None
     source_summary_max_input_chars: int | None = None
     source_summary_ollama_timeout_seconds: int | None = None
+    source_card_auto_generate_enabled: bool | None = None
+    source_summary_auto_generate_enabled: bool | None = None
+    source_note_auto_refresh_enabled: bool | None = None
+    source_card_auto_generate_kinds: list[str] | None = None
+    source_summary_auto_generate_kinds: list[str] | None = None
+    source_summary_auto_max_per_drain: int | None = None
 
     model_config = {"extra": "forbid"}
 
