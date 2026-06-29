@@ -542,6 +542,9 @@ export function getObsidianMcpGrokConfig() {
 export function getObsidianMcpOAuth() {
   return fetchJson('/api/settings/obsidian-mcp/oauth');
 }
+export function getObsidianMcpLlmChatStatus() {
+  return fetchJson('/api/settings/obsidian-mcp/llm-chat/status');
+}
 
 /* Onboarding readiness (Prompt D) — drives first-time routing and returning-user reauth state.
  * Uses only normalized /api paths. Never triggers sync.
@@ -2547,6 +2550,7 @@ export const api = {
   testObsidianMcpReadFile,
   testObsidianMcpWriteSmoke,
   getObsidianMcpGrokConfig,
+  getObsidianMcpLlmChatStatus,
   // Prompt D — onboarding + normalized auth flows (safe surfaces only)
   getOnboardingReadiness,
   startGraphDeviceAuth,

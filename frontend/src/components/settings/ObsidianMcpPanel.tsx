@@ -9,6 +9,7 @@ import {
   getObsidianMcpGrokConfig,
   getObsidianMcpMutations,
   getObsidianMcpOAuth,
+  getObsidianMcpLlmChatStatus,
   getObsidianMcpStatus,
   getObsidianMcpTools,
   patchObsidianMcpConfig,
@@ -33,6 +34,7 @@ export function ObsidianMcpPanel() {
   const [tools, setTools] = useState<any[]>([])
   const [grok, setGrok] = useState<any>(null)
   const [oauth, setOauth] = useState<any>(null)
+  const [llmChat, setLlmChat] = useState<any>(null)
   const [mutations, setMutations] = useState<any[]>([])
   const [writeReadiness, setWriteReadiness] = useState<any>(null)
   const [busy, setBusy] = useState<string | null>(null)
@@ -48,13 +50,14 @@ export function ObsidianMcpPanel() {
     setBusy('refresh')
     setError(null)
     try {
-      const [cfg, st, toolData, grokData, mutationData, oauthData] = await Promise.all([
+      const [cfg, st, toolData, grokData, mutationData, oauthData, llmChatData] = await Promise.all([
         getObsidianMcpConfig(),
         getObsidianMcpStatus(),
         getObsidianMcpTools(),
         getObsidianMcpGrokConfig(),
         getObsidianMcpMutations(10),
         getObsidianMcpOAuth(),
+        getObsidianMcpLlmChatStatus(),
       ])
       setConfig((cfg as any).config || cfg)
       setStatus(st)
@@ -62,6 +65,7 @@ export function ObsidianMcpPanel() {
       setGrok(grokData)
       setMutations((mutationData as any).mutations || [])
       setOauth(oauthData)
+      setLlmChat(llmChatData)
     } catch (err) {
       setError(err)
     } finally {
@@ -209,6 +213,28 @@ export function ObsidianMcpPanel() {
   }
 
   const configText = useMemo(() => JSON.stringify((grok as any)?.mcp_config || {}, null, 2), [grok])
+  const llmChatTools = useMemo(
+    () => tools.filter((tool) => String(tool.name || '').startsWith('llm_chat_')),
+    [tools],
+  )
+  const llmChatUsageExample = useMemo(
+    () =>
+      [
+        '1. llm_chat_to_note_plan(transcript="...")',
+        '2. Review plan_id, previews, and proposed_actions',
+        '3. llm_chat_to_note_apply(plan_id="<plan_id>")',
+      ].join('\n'),
+    [],
+  )
+
+  async function copyText(text: string, successMessage: string) {
+    try {
+      await navigator.clipboard.writeText(text)
+      setMessage(successMessage)
+    } catch {
+      setMessage('Copy unavailable in this browser.')
+    }
+  }
   const blockers = (health?.blocking_issues || status?.blocking_issues || []) as any[]
   const warnings = (health?.warnings || status?.warnings || []) as any[]
   const writePolicy = config || status?.write_policy || {}
@@ -454,6 +480,57 @@ export function ObsidianMcpPanel() {
             </div>
           )}
         </div>
+      </div>
+
+      <div className="mt-4 rounded border border-[var(--hb-border)] p-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h4 className="text-sm font-medium">LLM Chat Memory Tools</h4>
+          <button className="badge" onClick={() => copyText(llmChatUsageExample, 'LLM chat usage example copied.')} type="button">
+            <Copy className="mr-1 inline h-3 w-3" /> Copy usage example
+          </button>
+        </div>
+        <div className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
+          <StatusRow label="Enabled" value={llmChat?.llm_chat_enabled ? 'Yes' : 'No'} />
+          <StatusRow label="Plan store count" value={String(llmChat?.plan_count ?? 0)} />
+          <StatusRow label="Template directory" value={llmChat?.template_dir || config?.llm_chat_template_dir || 'Templates/LLM Chat'} />
+          <StatusRow label="Project template" value={llmChat?.project_template_path || config?.llm_chat_project_template_path || 'Templates/Template - Project Note.md'} />
+          <StatusRow label="Raw transcript persistence" value={llmChat?.raw_transcript_persistence ? 'On' : 'Off'} />
+          <StatusRow label="Redaction" value={llmChat?.redaction_enabled ? 'On' : 'Off'} />
+        </div>
+        <div className="mt-3">
+          <div className="text-xs font-medium">Tools ({llmChatTools.length})</div>
+          <div className="mt-2 grid gap-2">
+            {llmChatTools.map((tool) => (
+              <div key={tool.name} className="rounded border border-[var(--hb-border)] p-2 text-xs">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="font-medium">{tool.name}</span>
+                  <span className="badge badge-muted">{tool.scope || 'obsidian.read'}</span>
+                </div>
+                <div className="mt-1 text-[var(--hb-muted)]">{tool.description}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="mt-3">
+          <div className="text-xs font-medium">Recent plans</div>
+          {(llmChat?.recent_plans || []).length === 0 ? (
+            <div className="mt-1 text-xs text-[var(--hb-muted)]">No LLM chat plans recorded yet.</div>
+          ) : (
+            <div className="mt-2 grid gap-2">
+              {(llmChat?.recent_plans || []).map((plan: any, index: number) => (
+                <div key={`${plan.plan_id || 'plan'}-${index}`} className="rounded border border-[var(--hb-border)] p-2 text-xs">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-mono">{plan.plan_id}</span>
+                    <span className="badge badge-muted">{plan.primary_domain || plan.plan_kind}</span>
+                    <span className="text-[var(--hb-muted)]">{plan.created_at || ''}</span>
+                    <span className="text-[var(--hb-muted)]">{plan.action_count ?? 0} action(s)</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        <TechnicalDetails summary="LLM chat usage example" details={llmChatUsageExample} className="mt-3" />
       </div>
 
       <div className="mt-4 grid gap-4 xl:grid-cols-2">

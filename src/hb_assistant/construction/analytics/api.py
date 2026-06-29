@@ -1809,6 +1809,13 @@ def create_app(*, db_path: str | None = None) -> Any:
 
         return ObsidianMcpService().oauth_status(request_base=str(request.base_url).rstrip("/"))
 
+    @app.get("/api/settings/obsidian-mcp/llm-chat/status")
+    def settings_obsidian_mcp_llm_chat_status(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        from hb_assistant.obsidian_mcp import ObsidianMcpService
+
+        return ObsidianMcpService().llm_chat_status()
+
     def _oauth_base_url(request: Request) -> str:
         from hb_assistant.obsidian_mcp import ObsidianMcpService
 

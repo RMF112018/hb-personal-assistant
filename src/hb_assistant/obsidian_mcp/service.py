@@ -21,6 +21,7 @@ from .tools import (
     read_file,
     resolve_safe_path,
     search_vault,
+    missing_required_tools,
     tool_registry,
 )
 
@@ -144,7 +145,15 @@ class ObsidianMcpService:
             blocker="mcp_http_unavailable",
         )
         add("caps_configured", config.max_file_mb > 0 and config.max_result_chars > 0, "file/result caps configured", blocker="caps_invalid")
-        add("tool_registry", len(tool_registry()) == 8, "eight Obsidian MCP tools registered", blocker="tool_registry_invalid")
+        missing = missing_required_tools()
+        add(
+            "tool_registry",
+            not missing,
+            "required Obsidian MCP tools registered"
+            if not missing
+            else f"missing tools: {sorted(missing)}",
+            blocker="tool_registry_invalid",
+        )
         add("http_port", self._port_available_or_self(config), "HTTP port is available or owned by backend", warning="port_unavailable")
         readiness = write_readiness(config)
         add("vault_writable", bool(readiness["vault_writable"]), "vault root is writable", warning="vault_not_writable")
@@ -290,6 +299,69 @@ class ObsidianMcpService:
         from .curation import apply_curation_plan
 
         return apply_curation_plan(self.get_config(), **args)
+
+    def llm_chat_ingest(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .llm_chat import llm_chat_ingest
+
+        return llm_chat_ingest(self.get_config(), **args)
+
+    def llm_chat_classify(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .llm_chat import llm_chat_classify
+
+        return llm_chat_classify(self.get_config(), **args)
+
+    def llm_chat_summarize(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .llm_chat import llm_chat_summarize
+
+        return llm_chat_summarize(self.get_config(), **args)
+
+    def llm_chat_extract_decisions(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .llm_chat import llm_chat_extract_decisions
+
+        return llm_chat_extract_decisions(self.get_config(), **args)
+
+    def llm_chat_extract_action_items(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .llm_chat import llm_chat_extract_action_items
+
+        return llm_chat_extract_action_items(self.get_config(), **args)
+
+    def llm_chat_select_template(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .llm_chat import llm_chat_select_template
+
+        return llm_chat_select_template(self.get_config(), **args)
+
+    def llm_chat_link_existing_notes(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .llm_chat import llm_chat_link_existing_notes
+
+        return llm_chat_link_existing_notes(self.get_config(), **args)
+
+    def llm_chat_to_note_plan(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .llm_chat import llm_chat_to_note_plan
+
+        return llm_chat_to_note_plan(self.get_config(), **args)
+
+    def llm_chat_to_note_apply(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .llm_chat import llm_chat_to_note_apply
+
+        return llm_chat_to_note_apply(self.get_config(), **args)
+
+    def llm_chat_update_topic_memory_plan(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .llm_chat import llm_chat_update_topic_memory_plan
+
+        return llm_chat_update_topic_memory_plan(self.get_config(), **args)
+
+    def llm_chat_update_topic_memory_apply(self, args: dict[str, Any]) -> dict[str, Any]:
+        from .llm_chat import llm_chat_update_topic_memory_apply
+
+        return llm_chat_update_topic_memory_apply(self.get_config(), **args)
+
+    def llm_chat_status(self) -> dict[str, Any]:
+        from .llm_chat import llm_chat_status
+
+        payload = llm_chat_status(self.get_config())
+        payload["guardrails"] = self.guardrails()
+        payload["surface"] = "settings.obsidian_mcp.llm_chat"
+        return payload
 
     def curation_receipt(self, plan_id: str) -> dict[str, Any]:
         from . import plan_store

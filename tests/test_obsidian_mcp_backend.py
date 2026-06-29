@@ -17,7 +17,7 @@ from fastapi.testclient import TestClient
 from hb_assistant.construction.analytics import create_app
 from hb_assistant.obsidian_mcp.config import load_config
 from hb_assistant.obsidian_mcp.mutations import create_note, patch_note, recent_mutations, sha256_file
-from hb_assistant.obsidian_mcp.tools import read_file, search_vault
+from hb_assistant.obsidian_mcp.tools import read_file, required_tool_names, search_vault
 from hb_assistant.store.migrator import SQLiteMigrator
 
 
@@ -183,16 +183,11 @@ def test_streamable_http_mount_lists_phase1_tools(tmp_path: Path, monkeypatch: p
         assert tools.status_code == 200
         assert tools.status_code != 421
         payload = _mcp_json_payload(tools)
-        assert [tool["name"] for tool in payload["result"]["tools"]] == [
-            "list_directory",
-            "search_vault",
-            "read_file",
-            "create_note",
-            "patch_note",
-            "vault_map",
-            "vault_curation_plan",
-            "vault_curation_apply",
-        ]
+        tool_names = [tool["name"] for tool in payload["result"]["tools"]]
+        for required in required_tool_names():
+            assert required in tool_names
+        assert "llm_chat_to_note_plan" in tool_names
+        assert "llm_chat_to_note_apply" in tool_names
 
         create = client.post(
             "/mcp",

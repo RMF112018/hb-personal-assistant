@@ -373,6 +373,40 @@ def search_vault(
     return {"query": q, "results": results[:max_results]}
 
 
+REQUIRED_OBSIDIAN_MCP_TOOL_NAMES = frozenset(
+    {
+        "list_directory",
+        "search_vault",
+        "read_file",
+        "create_note",
+        "patch_note",
+        "vault_map",
+        "vault_curation_plan",
+        "vault_curation_apply",
+        "llm_chat_ingest",
+        "llm_chat_classify",
+        "llm_chat_summarize",
+        "llm_chat_extract_decisions",
+        "llm_chat_extract_action_items",
+        "llm_chat_select_template",
+        "llm_chat_link_existing_notes",
+        "llm_chat_to_note_plan",
+        "llm_chat_to_note_apply",
+        "llm_chat_update_topic_memory_plan",
+        "llm_chat_update_topic_memory_apply",
+    }
+)
+
+
+def required_tool_names() -> frozenset[str]:
+    return REQUIRED_OBSIDIAN_MCP_TOOL_NAMES
+
+
+def missing_required_tools() -> set[str]:
+    registered = {tool["name"] for tool in tool_registry()}
+    return set(REQUIRED_OBSIDIAN_MCP_TOOL_NAMES) - registered
+
+
 def tool_registry() -> list[dict[str, Any]]:
     return [
         {
@@ -430,5 +464,94 @@ def tool_registry() -> list[dict[str, Any]]:
             "input_schema_summary": "plan_id, approved_actions, require_expected_sha256, backup_before_replace, max_updates",
             "enabled": True,
             "last_validation_status": "not_run",
+            "scope": "obsidian.write",
+        },
+        {
+            "name": "llm_chat_ingest",
+            "description": "Load, redact, and truncate LLM transcript text without persisting raw content.",
+            "input_schema_summary": "transcript, transcript_text, transcript_path, max_chars, redact",
+            "enabled": True,
+            "last_validation_status": "not_run",
+            "scope": "obsidian.read",
+        },
+        {
+            "name": "llm_chat_classify",
+            "description": "Classify an LLM chat session by domain, knowledge type, and sensitivity.",
+            "input_schema_summary": "transcript, transcript_text, transcript_path, max_chars, redact",
+            "enabled": True,
+            "last_validation_status": "not_run",
+            "scope": "obsidian.read",
+        },
+        {
+            "name": "llm_chat_summarize",
+            "description": "Produce a bounded summary from an LLM chat transcript.",
+            "input_schema_summary": "transcript, transcript_text, transcript_path, max_chars, redact",
+            "enabled": True,
+            "last_validation_status": "not_run",
+            "scope": "obsidian.read",
+        },
+        {
+            "name": "llm_chat_extract_decisions",
+            "description": "Extract decision lines from an LLM chat transcript.",
+            "input_schema_summary": "transcript, transcript_text, transcript_path, max_chars, redact",
+            "enabled": True,
+            "last_validation_status": "not_run",
+            "scope": "obsidian.read",
+        },
+        {
+            "name": "llm_chat_extract_action_items",
+            "description": "Extract action items from an LLM chat transcript.",
+            "input_schema_summary": "transcript, transcript_text, transcript_path, max_chars, redact",
+            "enabled": True,
+            "last_validation_status": "not_run",
+            "scope": "obsidian.read",
+        },
+        {
+            "name": "llm_chat_select_template",
+            "description": "Select a vault LLM session template based on classification.",
+            "input_schema_summary": "transcript, transcript_text, transcript_path, template_mode, target_folder, topic_domain, routing_hint",
+            "enabled": True,
+            "last_validation_status": "not_run",
+            "scope": "obsidian.read",
+        },
+        {
+            "name": "llm_chat_link_existing_notes",
+            "description": "Suggest related existing vault notes for an LLM chat session.",
+            "input_schema_summary": "transcript, transcript_text, transcript_path, limit",
+            "enabled": True,
+            "last_validation_status": "not_run",
+            "scope": "obsidian.read",
+        },
+        {
+            "name": "llm_chat_to_note_plan",
+            "description": "Create a durable plan to convert an LLM chat into an Obsidian session note.",
+            "input_schema_summary": "transcript, transcript_text, transcript_path, max_chars, redact, conversation_title, conversation_date, source_platform, source_model, topic_domain, knowledge_type, sensitivity, target_folder, template_mode, include_raw_transcript, include_domain_specific_sections, routing_hint, project_hint, workstream_hint, topic_hint, people_hint, location_hint, source_context_hint, related_notes, link_existing_notes",
+            "enabled": True,
+            "last_validation_status": "not_run",
+            "scope": "obsidian.read",
+        },
+        {
+            "name": "llm_chat_to_note_apply",
+            "description": "Apply approved actions from a server-generated LLM chat plan_id only.",
+            "input_schema_summary": "plan_id, approved_action_ids, approved_actions, max_updates",
+            "enabled": True,
+            "last_validation_status": "not_run",
+            "scope": "obsidian.write",
+        },
+        {
+            "name": "llm_chat_update_topic_memory_plan",
+            "description": "Plan an append-only update to a durable topic memory note.",
+            "input_schema_summary": "target_path, transcript, transcript_text, transcript_path, max_chars, redact",
+            "enabled": True,
+            "last_validation_status": "not_run",
+            "scope": "obsidian.read",
+        },
+        {
+            "name": "llm_chat_update_topic_memory_apply",
+            "description": "Apply approved topic-memory updates from a server-generated plan_id only.",
+            "input_schema_summary": "plan_id, approved_action_ids, approved_actions, max_updates",
+            "enabled": True,
+            "last_validation_status": "not_run",
+            "scope": "obsidian.write",
         },
     ]

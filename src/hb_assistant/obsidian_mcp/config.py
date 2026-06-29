@@ -44,7 +44,14 @@ class ObsidianMcpConfig(BaseModel):
     public_base_url: str | None = None
     curation_dense_folder_threshold: int = 5
     curation_operator_hidden_inspection: bool = False
-    schema_version: int = 1
+    llm_chat_enabled: bool = True
+    llm_chat_template_dir: str = "Templates/LLM Chat"
+    llm_chat_project_template_path: str = "Templates/Template - Project Note.md"
+    llm_chat_max_transcript_chars: int = 120000
+    llm_chat_max_plan_updates: int = 5
+    llm_chat_persist_raw_transcript: bool = False
+    llm_chat_default_target_folder: str = "Inbox/LLM Sessions"
+    schema_version: int = 2
 
     model_config = {"extra": "forbid"}
 
@@ -78,7 +85,14 @@ class ObsidianMcpConfig(BaseModel):
             raise ValueError("port_out_of_range")
         return value
 
-    @field_validator("max_file_mb", "max_result_chars", "max_write_chars", "curation_dense_folder_threshold")
+    @field_validator(
+        "max_file_mb",
+        "max_result_chars",
+        "max_write_chars",
+        "curation_dense_folder_threshold",
+        "llm_chat_max_transcript_chars",
+        "llm_chat_max_plan_updates",
+    )
     @classmethod
     def validate_positive(cls, value: int) -> int:
         if value <= 0:
@@ -160,6 +174,13 @@ class ObsidianMcpConfigPatch(BaseModel):
     public_base_url: str | None = None
     curation_dense_folder_threshold: int | None = None
     curation_operator_hidden_inspection: bool | None = None
+    llm_chat_enabled: bool | None = None
+    llm_chat_template_dir: str | None = None
+    llm_chat_project_template_path: str | None = None
+    llm_chat_max_transcript_chars: int | None = None
+    llm_chat_max_plan_updates: int | None = None
+    llm_chat_persist_raw_transcript: bool | None = None
+    llm_chat_default_target_folder: str | None = None
 
     model_config = {"extra": "forbid"}
 
